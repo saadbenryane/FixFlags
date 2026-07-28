@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How We Reduced Our Bundle Size by 40% — The Dev Blog</title>
+  <meta name="description" content="A deep dive into our performance optimization journey, including code splitting, tree shaking, and lazy loading strategies that cut our bundle by 40%.">
+  <meta property="og:title" content="How We Reduced Our Bundle Size by 40%">
+  <meta property="og:description" content="Code splitting, tree shaking, and lazy loading strategies that cut our bundle by 40%.">
+  <meta property="og:image" content="https://example.com/blog/bundle-size/og.jpg">
+  <meta property="og:type" content="article">
+  <meta property="article:published_time" content="2024-09-15T10:00:00Z">
+  <meta property="article:author" content="Alex Chen">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="canonical" href="https://example.com/blog/bundle-size">
+  <script type="application/ld+json">
+  {"@type":"BlogPosting","headline":"How We Reduced Our Bundle Size by 40%","author":{"@type":"Person","name":"Alex Chen"},"datePublished":"2024-09-15","description":"A deep dive into our performance optimization journey."}
+  </script>
+</head>
+<body>
+  <a href="#content" class="skip-link">Skip to content</a>
+  <nav aria-label="Main">
+    <a href="/">Home</a>
+    <a href="/blog">Blog</a>
+    <a href="/docs">Docs</a>
+    <a href="/changelog">Changelog</a>
+  </nav>
+
+  <article id="content">
+    <header>
+      <p><a href="/blog">Blog</a> / <a href="/blog/performance">Performance</a></p>
+      <h1>How We Reduced Our Bundle Size by 40%</h1>
+      <p>Published on September 15, 2024 by Alex Chen. 8 min read.</p>
+    </header>
+
+    <section>
+      <h2>The Problem</h2>
+      <p>Our initial bundle was 2.4MB gzipped. Core Web Vitals were failing, and users on slower connections were bouncing. We needed to cut the bundle without rewriting the entire application.</p>
+      <p>We set a target: get the initial load under 1.5MB while keeping all existing features intact. Here's how we got there.</p>
+    </section>
+
+    <section>
+      <h2>Step 1: Audit the Bundle</h2>
+      <p>Before optimizing, we needed to know where the weight was. We used <code>webpack-bundle-analyzer</code> to visualize our dependency tree.</p>
+      <pre><code>npx webpack-bundle-analyzer stats.json</code></pre>
+      <p>The analysis revealed three major culprits:</p>
+      <ul>
+        <li><strong>Moment.js</strong> — 67KB gzipped, pulling in all locale files</li>
+        <li><strong>Lodash</strong> — 52KB gzipped, full library imported for 4 functions</li>
+        <li><strong>Chart.js</strong> — 62KB gzipped, loaded on every page</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Step 2: Replace Heavy Dependencies</h2>
+      <p>Moment.js was the easiest win. We replaced it with <code>date-fns</code>, which supports tree shaking. This single change saved 58KB.</p>
+      <pre><code>// Before
+import moment from 'moment';
+moment(date).format('MMM D, YYYY');
+
+// After
+import { format } from 'date-fns';
+format(date, 'MMM d, yyyy');</code></pre>
+      <p>For Lodash, we imported individual functions: <code>import debounce from 'lodash/debounce'</code>. This cut it from 52KB to 3KB.</p>
+    </section>
+
+    <section>
+      <h2>Step 3: Lazy Load Non-Critical Components</h2>
+      <p>Chart.js was only used on the dashboard page, but it was bundled with the main entry point. We used dynamic imports to load it on demand:</p>
+      <pre><code>const Chart = lazy(() => import('./Chart'));</code></pre>
+      <p>This moved 62KB out of the initial bundle and into a separate chunk loaded only when users visit the dashboard.</p>
+    </section>
+
+    <section>
+      <h2>Results</h2>
+      <p>After these three steps, our bundle dropped from 2.4MB to 1.4MB gzipped — a 42% reduction. Core Web Vitals improved across the board:</p>
+      <ul>
+        <li>LCP: 4.2s → 2.1s</li>
+        <li>FID: 180ms → 45ms</li>
+        <li>CLS: 0.15 → 0.02</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>What's Next</h2>
+      <p>We're now looking at server-side rendering for the product pages and exploring edge functions for dynamic content. The bundle size journey never really ends — but getting the fundamentals right makes every future optimization easier.</p>
+    </section>
+
+    <section>
+      <h2>Tags</h2>
+      <p><a href="/blog/tag/performance">Performance</a> <a href="/blog/tag/javascript">JavaScript</a> <a href="/blog/tag/web-vitals">Web Vitals</a></p>
+    </section>
+  </article>
+
+  <footer>
+    <p>&copy; 2024 The Dev Blog. All rights reserved.</p>
+    <nav aria-label="Footer">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/about">About</a>
+      <a href="/rss">RSS Feed</a>
+    </nav>
+  </footer>
+
+  <script src="/analytics.js" defer></script>
+</body>
+</html>
