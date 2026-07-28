@@ -51,6 +51,8 @@ type FunnelEvent =
   | 'share_link_created'
   | 'marketing_page_view'
   | 'beta_interest_submitted'
+  | 'scan_limit_gate_signup_completed'
+  | 'report_upgrade_gate_viewed'
 
 export type ReportSurface = 'focused' | 'details' | 'sample' | 'shared'
 export type ReportAccessState = 'anonymous' | 'owner' | 'signed_in' | 'shared'
@@ -145,6 +147,8 @@ type EventParams = {
     device?: string
   }
   beta_interest_submitted: { plan?: string; email?: string }
+  scan_limit_gate_signup_completed: Record<string, never>
+  report_upgrade_gate_viewed: { audit_id?: string }
 }
 
 function deviceClass(): string | undefined {

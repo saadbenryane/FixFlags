@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { projectLimitForPlan } from '@/lib/billing/plans'
 import { Plan } from '@prisma/client'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { URL_PLACEHOLDER } from '@/lib/marketing/copy'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { ProjectScanAccessPanel } from '@/components/settings/ProjectScanAccessPanel'
 
@@ -186,7 +187,7 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
             icon={<Globe className="h-4 w-4" />}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com"
+            placeholder={URL_PLACEHOLDER}
             type="url"
             inputMode="url"
             autoComplete="url"

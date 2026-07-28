@@ -289,7 +289,7 @@ export const SHARE_COPY = {
 
 export const ANON_VALUE_STRIP = {
   headline: (n: number) => `${n} flag${n === 1 ? '' : 's'} found`,
-  body: 'Every Flag and its evidence are visible. One complete fix prompt is demonstrated above. Create a free account to unlock the remaining prompts, save this report, and re-check.',
+  body: 'Every Flag and its evidence are visible. One complete fix prompt is demonstrated above. Create a free account to see the remaining prompts, save this report, and re-check.',
   primaryCta: 'Create free account',
   secondaryCta: 'Sign in',
 } as const
@@ -321,4 +321,29 @@ export const SAMPLE_FIX = {
   signInCta: 'Sign in',
   subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save reports, re-check, and run more URL checks.`,
   primaryCta: 'Create free account',
+} as const
+
+export const SCAN_LIMIT_GATE = {
+  signup: {
+    title: 'Create a free account to continue',
+    body: 'You have already used your free scan. Create a free account for fix prompts, saved reports, and more URL checks.',
+    primaryCta: 'Create free account',
+    secondaryCta: 'Sign in',
+    exit: 'Leave this page',
+  },
+  upgrade: {
+    title: 'URL check limit reached',
+    body: 'You have used all the checks in your current plan. Upgrade to Pro for 5 journeys per month, before/after compare, and MCP.',
+    primaryCta: 'Upgrade to Pro',
+    secondaryCta: 'See plans',
+    exit: 'Leave this page',
+  },
+} as const
+
+export const REPORT_UPGRADE_GATE = {
+  title: 'Upgrade to continue scanning',
+  body: 'You have used all the checks in your current plan. Re-checks on reports you own stay free. Upgrade for more journeys each month.',
+  primaryCta: 'Upgrade to Pro',
+  saving: 'Preparing your upgrade',
+  savingBody: 'Taking you to checkout.',
 } as const

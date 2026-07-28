@@ -22,6 +22,8 @@ export const OUTPUT_LABELS = {
   nextStep: 'Paste into editor → run → re-check.',
 } as const
 
+export const URL_PLACEHOLDER = 'https://yoursite.com'
+
 export const TOOLS = {
   metaPreview: {
     badge: 'Free Tool',
@@ -84,7 +86,7 @@ export const TOOLS = {
 export const ROAST_COPY = {
   title: 'Website Roast',
   subhead: 'Paste your URL. Get roasted. Fix what matters.',
-  placeholder: 'https://your-site.com',
+  placeholder: URL_PLACEHOLDER,
   cta: 'Roast it',
   ctaLoading: 'Roasting...',
   overallLabel: 'Overall Quality',

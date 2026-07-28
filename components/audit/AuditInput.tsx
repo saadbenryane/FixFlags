@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
 import { ArrowRight, Link2, Loader2 } from 'lucide-react'
-import { HERO, AUDIT_PROGRESS, OFFER } from '@/lib/marketing/copy'
+import { HERO, AUDIT_PROGRESS, OFFER, URL_PLACEHOLDER } from '@/lib/marketing/copy'
 import { SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics/events'
@@ -16,6 +16,7 @@ import {
 } from '@/lib/audit/start-scan-handoff'
 import { AuditReportProgressiveShell } from '@/components/audit/AuditReportProgressive'
 import { Logo } from '@/components/brand/Logo'
+import { ScanLimitModal } from '@/components/audit/ScanLimitModal'
 
 const AUTOSTART_DONE_KEY = 'ff:autostart-url'
 
@@ -48,6 +49,11 @@ export function AuditInput({
   const [loading, setLoading] = useState(false)
   const [hydrated, setHydrated] = useState(false)
   const [urlError, setUrlError] = useState('')
+  const [limitGate, setLimitGate] = useState<{
+    code?: string
+    action?: string
+    message: string
+  } | null>(null)
   const autoStartedRef = useRef(false)
   const resolvedPlacement = ctaPlacement ?? (variant === 'landing' ? 'hero' : undefined)
   const isLanding = variant === 'landing'
@@ -126,7 +132,23 @@ export function AuditInput({
       },
     })
     if (!result.ok) {
-      setUrlError(result.message)
+      const isLimitBlock =
+        result.code === 'AUTH_REQUIRED' ||
+        result.code === 'UPGRADE_REQUIRED' ||
+        result.code === 'TOKEN_LIMIT' ||
+        result.action === 'signup' ||
+        result.action === 'upgrade' ||
+        result.action === 'buy_credits'
+
+      if (isLimitBlock) {
+        setLimitGate({
+          code: result.code,
+          action: result.action,
+          message: result.message,
+        })
+      } else {
+        setUrlError(result.message)
+      }
       setLoading(false)
     }
   }
@@ -247,7 +269,7 @@ export function AuditInput({
               type="text"
               inputMode="url"
               autoComplete="url"
-              placeholder="https://yoursite.com"
+              placeholder={URL_PLACEHOLDER}
               value={url}
               onChange={(e) => {
                 setUrl(e.target.value)
@@ -310,6 +332,13 @@ export function AuditInput({
         </div>
       ) : null}
       </div>
+      <ScanLimitModal
+        code={limitGate?.code}
+        action={limitGate?.action}
+        message={limitGate?.message ?? ''}
+        open={Boolean(limitGate)}
+        onClose={() => setLimitGate(null)}
+      />
     </>
   )
 }

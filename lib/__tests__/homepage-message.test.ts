@@ -1,6 +1,7 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import {
+  ANON_VALUE_STRIP,
   BRAND,
   CHANGELOG_ENTRIES,
   DIFFERENTIATION,
@@ -33,6 +34,7 @@ const BANNED_LANDING_PHRASES = [
   /robust/i,
   /\bleverage\b/i,
   /holistic/i,
+  /seamless/i,
 ] as const
 
 function collectStrings(value: unknown, out: string[] = []): string[] {
@@ -53,6 +55,7 @@ function collectStrings(value: unknown, out: string[] = []): string[] {
 const LANDING_MARKETING_STRINGS = [
   ...collectStrings(LANDING_PAGE),
   ...collectStrings(FINAL_CTA),
+  ...collectStrings(ANON_VALUE_STRIP),
 ]
 
 const CORE_LOOP_STRINGS = [
@@ -290,6 +293,34 @@ describe('homepage message guardrails', () => {
     assert.equal(LANDING_PAGE.whyBuildersChoose.features.length, 5)
     assert.match(LANDING_PAGE.editorIntegrations.headlineDisplay, /workflow/i)
     assert.match(LANDING_PAGE.editorIntegrations.label, /works where you build/i)
+  })
+
+  it('editor integrations headline avoids banned jargon and template copy', () => {
+    const { editorIntegrations } = LANDING_PAGE
+    for (const line of [
+      editorIntegrations.headlineDisplay,
+      editorIntegrations.headline,
+      editorIntegrations.body,
+      editorIntegrations.moreComing,
+    ]) {
+      for (const pattern of BANNED_LANDING_PHRASES) {
+        assert.ok(!pattern.test(line), `Banned phrase (${pattern}) in editor integrations: ${line}`)
+      }
+      assert.ok(!/coming soon/i.test(line), `Template copy in editor integrations: ${line}`)
+    }
+  })
+
+  it('anonymous report CTA avoids banned words', () => {
+    for (const line of [
+      ANON_VALUE_STRIP.headline(3),
+      ANON_VALUE_STRIP.body,
+      ANON_VALUE_STRIP.primaryCta,
+      ANON_VALUE_STRIP.secondaryCta,
+    ]) {
+      for (const pattern of BANNED_LANDING_PHRASES) {
+        assert.ok(!pattern.test(line), `Banned phrase (${pattern}) in anonymous CTA: ${line}`)
+      }
+    }
   })
 
   it('sample report section links to the full sample review', () => {

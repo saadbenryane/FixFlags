@@ -86,6 +86,7 @@ export async function ReportRoute({ params, shareToken }: Props & { shareToken?:
         pollStatus
         session={state.session}
         requireAuthGate={requireAuthGate}
+        atAuditLimit={state.atAuditLimit}
       />
     )
   }

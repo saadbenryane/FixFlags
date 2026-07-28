@@ -34,11 +34,42 @@ export async function loadReportRouteState(
   }
 
   if (progressive.kind === 'progressive') {
+    const progressiveUser = progressive.session?.user
+      ? await prisma.user.findUnique({
+          where: { id: progressive.session.user.id },
+          select: {
+            id: true,
+            plan: true,
+            role: true,
+            subscriptionStatus: true,
+            auditsUsed: true,
+            auditsLimit: true,
+          },
+        })
+      : null
+    const progressivePending = progressiveUser
+      ? await getPendingCheckCount(progressiveUser.id)
+      : 0
+    const progressiveEffectiveLimit = progressiveUser
+      ? getEffectiveScanLimit(progressiveUser)
+      : 3
+    const progressiveIsEffectivelyFree =
+      progressiveUser?.plan === 'FREE' ||
+      (progressiveUser
+        ? hasRevokedSubscriptionStatus(progressiveUser.subscriptionStatus)
+        : true)
+    const progressiveAtAuditLimit =
+      progressiveIsEffectivelyFree &&
+      !!progressiveUser &&
+      !isUnlimitedScanLimit(progressiveEffectiveLimit) &&
+      isAtCheckLimit(progressiveUser.auditsUsed, progressivePending, progressiveEffectiveLimit)
+
     return {
       kind: 'progressive' as const,
       id,
       audit: progressive.audit,
       session: progressive.session,
+      atAuditLimit: progressiveAtAuditLimit,
     }
   }
 

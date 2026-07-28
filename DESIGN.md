@@ -85,7 +85,7 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 
 - `--motion-fast`: 200ms base duration
 - `--ease-out`: cubic-bezier(0, 0, 0.2, 1)
-- `active:scale-[0.96]` on buttons for press feedback
+- `active:scale-[0.98]` on buttons for press feedback
 - `prefers-reduced-motion` respected globally — no motion if user prefers reduced
 - Entry animations: `fade-in-up` (0.4s), `scale-in` (0.3s), `soft-reveal` (0.2s)
 - List/accordion: `accordion-down/up` (0.2s)
@@ -113,7 +113,7 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 
 ### Button
 - Control radius (`--radius-control` ~10px)
-- `active:scale-[0.96]` press effect
+- `active:scale-[0.98]` press effect
 - Layered shadow on hover
 - Min 44×44px hit target (`min-h-11 min-w-11`); carousel prev/next controls follow same rule
 - Focus ring on `--ring`

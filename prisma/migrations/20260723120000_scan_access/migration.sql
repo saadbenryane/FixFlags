@@ -1,3 +1,3 @@
--- Preview/staging scan access credentials (encrypted at rest).
-ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "scan_access_encrypted" TEXT;
-ALTER TABLE "audits" ADD COLUMN IF NOT EXISTS "scan_access_encrypted" TEXT;
+-- No-op: scan_access_encrypted was already renamed to scanAccessEncrypted
+-- by migration 20260723081407_scan_access. This migration is a no-op to
+-- avoid conflicts with the earlier rename.
