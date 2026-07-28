@@ -48,7 +48,6 @@ export async function runAllChecks(
   axeViolations?: AxeViolation[],
   ariaSnapshot?: string | null
 ): Promise<RunAllChecksResult> {
-  const allFindings: DeterministicFlag[] = []
   const failedModules: string[] = []
 
   // Detect the page's high-level purpose once. Conversion-friction, content,

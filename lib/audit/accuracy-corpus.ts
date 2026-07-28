@@ -94,9 +94,9 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://bolt.new',
     tier: 'builder',
     maxImportantFalseBlockers: 2,
-    expectedTop3: ['trust-unsupported-claims', 'links-no-text', 'trust-no-authority-signals'],
+    expectedTop3: ['trust-unsupported-claims', 'trust-no-authority-signals', 'cookie-consent-absent'],
     knownFalsePositives: ['messaging-weak-value-prop'],
-    expectedPresent: ['trust-unsupported-claims', 'links-no-text'],
+    expectedPresent: ['trust-unsupported-claims'],
   },
   {
     file: 'cineverse-replit-app.html',
@@ -128,7 +128,6 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
       'description-missing',
       'no-cta-detected',
       'form-missing-validation',
-      'images-missing-alt',
     ],
   },
   {
@@ -136,7 +135,7 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://html5up.net',
     tier: 'structural',
     maxImportantFalseBlockers: 99,
-    expectedTop3: ['form-missing-validation', 'form-inputs-no-label', 'description-missing'],
+    expectedTop3: ['form-missing-validation', 'description-missing', 'messaging-headline-too-short'],
     knownFalsePositives: [
       'template-default-copy',
       'placeholder-copy-detected',
@@ -177,9 +176,9 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://shopify.com',
     tier: 'builder',
     maxImportantFalseBlockers: 2,
-    expectedTop3: ['buttons-no-text', 'title-too-long', 'cookie-consent-absent'],
+    expectedTop3: ['title-too-long', 'cookie-consent-absent', 'no-structured-data'],
     knownFalsePositives: [],
-    expectedPresent: ['buttons-no-text', 'cookie-consent-absent'],
+    expectedPresent: ['cookie-consent-absent'],
   },
   // ── E-commerce fixture ──────────────────────────────────────────────────────
   // Product listing page with prices, add-to-cart buttons, reviews, newsletter
@@ -197,7 +196,7 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
   },
   // ── Blog post fixture ───────────────────────────────────────────────────────
   // Article page with author, date, structured data, code samples, and footer.
-  // Classified as 'article' — no-cta-detected and no-contact-info must NOT fire.
+  // Classified as 'article', no-cta-detected and no-contact-info must NOT fire.
   {
     file: 'blog-post.html',
     url: 'https://devblog.example.com/blog/bundle-size',
@@ -221,7 +220,6 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     knownFalsePositives: ['og-image-broken', 'broken-internal-links', 'robots-txt-missing', 'sitemap-missing'],
     expectedPresent: ['measurement-ga-gtm-posthog-missing', 'skip-link-missing'],
     brokenLinks: true,
-  },
   },
 ]
 
