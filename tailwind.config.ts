@@ -129,6 +129,7 @@ const config: Config = {
         lg: 'var(--radius-card)',
         card: 'var(--radius-card)',
         nested: 'var(--radius-nested-md)',
+        'nested-lg': 'var(--radius-nested-lg)',
         pill: 'var(--radius-pill)',
       },
       letterSpacing: {

@@ -47,49 +47,12 @@ export function gradeRank(grade: string): number {
   return GRADE_ORDER[grade] ?? 99
 }
 
-export function rubricLabel(name: string): string {
-  const map: Record<string, string> = {
-    MESSAGE: 'Message',
-    EXPERIENCE: 'Experience',
-    REACH: 'Reach',
-  }
-  return map[name] ?? name
-}
-
-export function rubricDescription(name: string): string {
-  const map: Record<string, string> = {
-    MESSAGE:
-      'Does the page make sense and feel credible? Copy, headline, positioning, audience, benefits, social proof, and trust signals.',
-    EXPERIENCE:
-      'Does the page work well for users? Design, layout, mobile, accessibility, speed, polish, and broken interactions.',
-    REACH:
-      'Can people find, share, and measure it? SEO, metadata, share previews, analytics, and conversion tracking.',
-  }
-  return map[name] ?? ''
-}
-
-export function severityLabel(severity: string): string {
-  const map: Record<string, string> = {
-    CRITICAL: 'Critical Flag',
-    IMPORTANT: 'Important Flag',
-    POLISH: 'Polish Flag',
-  }
-  return map[severity] ?? severity
-}
-
-export function impactTagLabel(tag: string | null | undefined): string | null {
-  if (!tag) return null
-  const map: Record<string, string> = {
-    CONVERSION: 'Conversion',
-    REVENUE: 'Revenue',
-    TRUST: 'Trust',
-    MEASUREMENT: 'Measurement',
-    SHARING: 'Sharing',
-    SEO: 'SEO',
-    ACCESSIBILITY: 'Accessibility',
-  }
-  return map[tag] ?? tag
-}
+export {
+  rubricLabel,
+  rubricDescription,
+  severityLabel,
+  impactTagLabel,
+} from '@/lib/marketing/copy'
 
 export function rubricStatusColor(status: string): string {
   const map: Record<string, string> = {

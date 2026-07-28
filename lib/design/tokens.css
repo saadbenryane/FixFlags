@@ -202,6 +202,31 @@
   --terminal-border: 240 4% 90%;
 }
 
+.workflow-glass-tile {
+  background: hsl(var(--background) / 0.82);
+  box-shadow:
+    inset 0 0 0 1px hsl(var(--border) / 0.8),
+    inset 0 1px 0 hsl(0 0% 100% / 0.9),
+    0 1px 2px hsl(var(--foreground) / 0.04),
+    0 18px 34px -18px hsl(var(--foreground) / 0.2);
+  backdrop-filter: blur(18px);
+}
+
+.workflow-note {
+  background: hsl(var(--background) / 0.72);
+  box-shadow:
+    inset 0 0 0 1px hsl(var(--border) / 0.52),
+    0 8px 18px -16px hsl(var(--foreground) / 0.28);
+  backdrop-filter: blur(12px);
+}
+
+.workflow-finding-line {
+  background: hsl(var(--muted));
+  box-shadow:
+    inset 0 0 0 1px hsl(var(--border) / 0.7),
+    inset 0 1px 2px hsl(var(--foreground) / 0.05);
+}
+
 .dark {
   /* ── Surfaces: ink canvas, charcoal panels ── */
   --background: 240 8% 5%;

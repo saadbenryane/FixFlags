@@ -2293,7 +2293,8 @@ describe('trigger matrix - one failing signal per checkId', () => {
   }
 
   it('triggers matrix covers every checkId without extras', () => {
-    const triggerKeys = Object.keys(triggers).sort()
+    const _triggerKeys = Object.keys(triggers).sort()
+    void _triggerKeys
     const allIds = [...ALL_CHECK_IDS].sort()
     const missing = allIds.filter((id) => !(id in triggers))
     if (missing.length > 0) {

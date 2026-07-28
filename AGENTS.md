@@ -87,6 +87,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for setup, databases, deployment, and debug
 - Shared report behavior belongs in existing audit/report utilities, not duplicated component logic.
 - Check-to-plan and re-check-to-diff behavior belongs in `lib/audit/task-contracts.ts`; transports call one task-shaped outcome.
 - Public HTTP boundaries are `/api/checks` and `/api/reports/[id]/*`. Do not add `/api/audits` compatibility routes.
+- Do not keep off-by-default feature flags for unproven or unused code. If a feature is not wired into a product surface and has not shipped, remove it entirely rather than gating it behind a `USE_*` env flag. Re-add only when product need is demonstrated.
 
 Full pipeline behavior and report composition live in [docs/audit-pipeline.md](docs/audit-pipeline.md), [ARCHITECTURE.md](ARCHITECTURE.md), and [DESIGN.md](DESIGN.md).
 

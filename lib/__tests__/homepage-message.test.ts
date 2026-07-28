@@ -266,6 +266,11 @@ describe('homepage message guardrails', () => {
       assert.ok(card.topIssues.length >= 3)
       assert.ok(card.panelTitle.length > 0)
     }
+    assert.equal(LANDING_PAGE.checkDimensions.allChecks.checks.length, 4)
+    assert.deepEqual(
+      [...new Set(LANDING_PAGE.checkDimensions.allChecks.topIssues.map((issue) => issue.category))].sort(),
+      ['experience', 'message', 'reach']
+    )
   })
 
   it('product evidence holds real product findings', () => {
@@ -292,7 +297,8 @@ describe('homepage message guardrails', () => {
     assert.match(LANDING_PAGE.whyBuildersChoose.headlineDisplay, /more than a score/i)
     assert.equal(LANDING_PAGE.whyBuildersChoose.features.length, 5)
     assert.match(LANDING_PAGE.editorIntegrations.headlineDisplay, /workflow/i)
-    assert.match(LANDING_PAGE.editorIntegrations.label, /works where you build/i)
+    assert.match(LANDING_PAGE.editorIntegrations.label, /MCP/i)
+    assert.equal(LANDING_PAGE.editorIntegrations.steps.length, 4)
   })
 
   it('editor integrations headline avoids banned jargon and template copy', () => {
@@ -301,7 +307,11 @@ describe('homepage message guardrails', () => {
       editorIntegrations.headlineDisplay,
       editorIntegrations.headline,
       editorIntegrations.body,
-      editorIntegrations.moreComing,
+      ...editorIntegrations.steps.flatMap((step) => [
+        step.title,
+        step.body,
+        step.note.type === 'text' ? step.note.text : step.note.items.join(' '),
+      ]),
     ]) {
       for (const pattern of BANNED_LANDING_PHRASES) {
         assert.ok(!pattern.test(line), `Banned phrase (${pattern}) in editor integrations: ${line}`)
@@ -342,7 +352,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('landing page exposes three-rubric check story', () => {
-    assert.match(LANDING_PAGE.checkDimensions.headlineDisplay, /your product needs/i)
+    assert.match(LANDING_PAGE.checkDimensions.headlineDisplay, /release readiness/i)
     assert.deepEqual(
       LANDING_PAGE.checkDimensions.cards.map((c) => c.title),
       ['Message', 'Experience', 'Reach']

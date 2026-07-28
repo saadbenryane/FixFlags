@@ -29,7 +29,6 @@ function StepCard({ step }: { step: LoopStep }) {
           height={step.imageHeight}
           sizes="(min-width: 1024px) 280px, (min-width: 768px) 30vw, 80vw"
           loading="lazy"
-          unoptimized
           className="h-auto w-full max-w-[17.5rem] object-contain drop-shadow-sm"
         />
       </div>

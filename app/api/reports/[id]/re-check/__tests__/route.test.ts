@@ -12,13 +12,13 @@ vi.mock('@/lib/auth', () => ({ auth: { api: { getSession } } }))
 vi.mock('next/headers', () => ({ headers: async () => new Headers() }))
 vi.mock('@/lib/audit/task-contracts', () => ({ recheckAndCompare }))
 
-import { POST } from '@/app/api/reports/[id]/monitoring/route'
+import { POST } from '@/app/api/reports/[id]/re-check/route'
 
 function postReq() {
   return {} as unknown as NextRequest
 }
 
-describe('POST /api/reports/[id]/monitoring', () => {
+describe('POST /api/reports/[id]/re-check', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getSession.mockResolvedValue({ user: { id: 'u1' } })

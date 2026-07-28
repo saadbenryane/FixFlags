@@ -19,6 +19,8 @@ interface EditorToolMarksProps {
   variant?: 'default' | 'hero'
   /** When false, hide the logoCloud label (section header already names the tools). */
   showLabel?: boolean
+  /** Use compact display names when marks sit inside a tight integration grid. */
+  shortLabels?: boolean
 }
 
 export function EditorToolMarks({
@@ -26,6 +28,7 @@ export function EditorToolMarks({
   compact = false,
   variant = 'default',
   showLabel = true,
+  shortLabels = false,
 }: EditorToolMarksProps) {
   const { label, logos, disclaimer } = LANDING_PAGE.logoCloud
   const isHero = variant === 'hero'
@@ -69,7 +72,7 @@ export function EditorToolMarks({
             )}
           >
             {LOGO_MARKS[name]}
-            {name}
+            {shortLabels && name === 'Claude Code' ? 'Claude' : name}
           </li>
         ))}
       </ul>

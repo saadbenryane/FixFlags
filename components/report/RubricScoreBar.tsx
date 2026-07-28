@@ -1,14 +1,8 @@
 'use client'
 
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
-import { rubricIcon } from '@/lib/rubric-icons'
+import { rubricIcon, rubricTint } from '@/lib/rubric-icons'
 import { cn } from '@/lib/utils'
-
-const RUBRIC_TINT: Record<string, string> = {
-  Message: 'text-brand',
-  Experience: 'text-success',
-  Reach: 'text-info',
-}
 
 export function RubricScoreBar({
   name,
@@ -22,7 +16,7 @@ export function RubricScoreBar({
   const scoreLabel = score == null ? 'N/A' : String(score)
   const barWidth = score == null ? 0 : Math.min(100, score)
   const Icon = rubricIcon(name)
-  const tint = RUBRIC_TINT[name]
+  const tint = rubricTint(name)
 
   return (
     <div

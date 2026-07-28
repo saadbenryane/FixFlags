@@ -1,129 +1,211 @@
-import Image from "next/image";
+import Image from 'next/image'
 import {
-  Check,
-  Crosshair,
-  Gem,
-  RefreshCw,
-  ShieldCheck,
-  TrendingUp,
-  Wrench,
-} from "lucide-react";
-import { EditorToolMarks } from "@/components/marketing/landing/EditorToolMarks";
-import { LandingSectionHeader } from "@/components/marketing/landing/LandingSectionHeader";
-import { RevealOnView } from "@/components/marketing/landing/RevealOnView";
-import { Container } from "@/components/ui/container";
-import { Section } from "@/components/ui/section";
-import { LANDING_PAGE } from "@/lib/marketing/copy";
+  ArrowRight,
+  CircleAlert,
+  CircleCheckBig,
+  Info,
+  ListChecks,
+  Plug,
+  Terminal,
+} from 'lucide-react'
+import { EditorMark } from '@/components/brand/EditorMarks'
+import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
+import { Container } from '@/components/ui/container'
+import { Section } from '@/components/ui/section'
+import { LANDING_PAGE } from '@/lib/marketing/copy'
+import { cn } from '@/lib/utils'
 
-const INPUT_ICONS = {
-  target: Crosshair,
-  shield: ShieldCheck,
-  wrench: Wrench,
-  refresh: RefreshCw,
-} as const;
-
-const OUTPUT_ICONS = {
-  check: Check,
-  trend: TrendingUp,
-  diamond: Gem,
-} as const;
+const STEP_VISUALS = {
+  connect: ConnectVisual,
+  review: ReviewVisual,
+  findings: FindingsVisual,
+  ship: ShipVisual,
+} as const
 
 export function EditorIntegrationsSection() {
-  const copy = LANDING_PAGE.editorIntegrations;
+  const copy = LANDING_PAGE.editorIntegrations
 
   return (
     <Section
       spacing="marketing"
       tint="subtle"
       id="integrations"
-      className="scroll-mt-[var(--header-offset)]"
+      className="scroll-mt-[var(--header-offset)] overflow-hidden py-12 sm:py-14 lg:py-14"
     >
       <Container variant="marketing" className="px-4 sm:px-6 lg:px-12">
         <RevealOnView>
-          <div className="overflow-hidden rounded-card bg-background p-6 shadow-card sm:p-8 lg:p-10">
-            <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-12">
-              <div className="space-y-6">
-                <LandingSectionHeader
-                  align="left"
-                  label={copy.label}
-                  brandEyebrow
-                  headline={copy.headlineDisplay}
-                  accentPeriod={copy.headlineAccentPeriod}
-                  subhead={copy.body}
-                  size="sm"
-                  className="max-w-md"
-                />
-
-                <EditorToolMarks
-                  showLabel={false}
-                  className="[&_ul]:gap-2.5 [&_li]:rounded-full [&_li]:border [&_li]:border-border/60 [&_li]:bg-muted/40 [&_li]:px-3 [&_li]:py-2 [&_li]:text-xs [&_li]:font-medium [&_li]:text-foreground/80 [&_svg]:h-4 [&_svg]:w-4"
-                />
-
-                <p className="text-xs text-muted-foreground">
-                  {copy.moreComing}
-                </p>
-              </div>
-
-              <WorkflowDiagram />
-            </div>
-          </div>
+          <header className="mx-auto max-w-[48rem] text-center">
+            <p className="inline-flex items-center justify-center gap-2 font-mono text-[0.6875rem] font-semibold uppercase tracking-label text-brand sm:text-xs">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />
+              {copy.label}
+            </p>
+            <h2 className="mt-4 text-balance font-display text-[2.25rem] font-bold leading-[1.02] tracking-display text-foreground sm:text-[2.75rem] lg:text-[3rem]">
+              <span className="block">{copy.headlineLines[0]}</span>
+              <span className="block">
+                {copy.headlineLines[1]}
+                <span className="text-brand" aria-hidden>
+                  .
+                </span>
+              </span>
+            </h2>
+            <p className="mx-auto mt-4 max-w-[39rem] text-pretty text-sm leading-relaxed text-muted-foreground sm:text-[0.9375rem]">
+              {copy.body}
+            </p>
+          </header>
         </RevealOnView>
+
+        <ol
+          data-design-qa="editor-workflow"
+          className="mt-10 grid gap-12 sm:mt-12 sm:grid-cols-2 sm:gap-x-7 sm:gap-y-14 lg:grid-cols-4 lg:gap-8"
+        >
+          {copy.steps.map((step, index) => {
+            const Visual = STEP_VISUALS[step.visual]
+
+            return (
+              <RevealOnView key={step.id}>
+                <li className="relative flex h-full flex-col">
+                  <div className="min-h-[6.25rem]">
+                    <p className="font-mono text-xs font-semibold tabular-nums text-brand">
+                      {String(index + 1).padStart(2, '0')}
+                    </p>
+                    <h3 className="mt-2 font-display text-base font-semibold tracking-heading text-foreground sm:text-[1.0625rem]">
+                      {step.title}
+                    </h3>
+                    <p className="mt-2 max-w-[17rem] text-[0.8125rem] leading-[1.55] text-muted-foreground">
+                      {step.body}
+                    </p>
+                  </div>
+
+                  <div className="relative mt-4">
+                    <div className="workflow-glass-tile mx-auto flex aspect-square w-full max-w-[11rem] items-center justify-center rounded-[1.35rem]">
+                      <Visual />
+                    </div>
+                    {index < copy.steps.length - 1 ? (
+                      <span
+                        className="absolute left-[calc(100%+0.5rem)] top-1/2 hidden -translate-y-1/2 text-foreground/75 lg:inline-flex"
+                        aria-hidden
+                      >
+                        <ArrowRight className="h-7 w-7" strokeWidth={1.35} />
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <StepNote step={step} />
+                </li>
+              </RevealOnView>
+            )
+          })}
+        </ol>
       </Container>
     </Section>
-  );
+  )
 }
 
-function WorkflowDiagram() {
-  const { inputs, outputs } = LANDING_PAGE.editorIntegrations.workflow;
+function StepNote({
+  step,
+}: {
+  step: (typeof LANDING_PAGE.editorIntegrations.steps)[number]
+}) {
+  if (step.note.type === 'tools') {
+    return (
+      <div className="workflow-note mx-auto mt-4 flex min-h-12 w-full max-w-[13.75rem] items-center justify-center gap-3 rounded-[0.8rem] px-3 py-2 text-[0.6875rem] font-semibold text-foreground/85 lg:max-w-none">
+        {step.note.items.map((tool) => (
+          <span key={tool} className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            {tool === 'CLI' ? (
+              <Terminal className="h-3.5 w-3.5 text-foreground" strokeWidth={2} aria-hidden />
+            ) : (
+              <EditorMark
+                name={tool}
+                className={cn(
+                  'h-3.5 w-3.5 shrink-0',
+                  tool === 'Lovable' ? 'text-brand' : 'text-foreground',
+                )}
+              />
+            )}
+            {tool}
+          </span>
+        ))}
+      </div>
+    )
+  }
 
   return (
-    <div
+    <p className="workflow-note mx-auto mt-4 flex min-h-12 w-full max-w-[13.75rem] items-center justify-center rounded-[0.8rem] px-4 py-2 text-center text-[0.6875rem] leading-[1.4] text-muted-foreground lg:max-w-none">
+      {step.note.text}
+    </p>
+  )
+}
+
+function ConnectVisual() {
+  return (
+    <Plug
+      className="h-[4.75rem] w-[4.75rem] -rotate-45 text-brand drop-shadow-[0_14px_14px_hsl(var(--brand)/0.2)]"
+      strokeWidth={2.4}
       aria-hidden
-      className="relative mx-auto flex w-full max-w-lg flex-col items-center gap-5 sm:gap-6 md:flex-row md:items-center md:justify-center md:gap-5"
-    >
-      <ul className="flex w-full flex-row flex-wrap justify-center gap-2 md:w-auto md:flex-col md:flex-nowrap md:gap-2.5">
-        {inputs.map((item) => {
-          const Icon = INPUT_ICONS[item.icon];
-          return (
-            <li
-              key={item.id}
-              className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-2 text-xs font-medium shadow-sm"
-            >
-              <Icon className="h-3.5 w-3.5 text-brand" strokeWidth={1.75} />
-              {item.title}
-            </li>
-          );
-        })}
-      </ul>
+    />
+  )
+}
 
-      <div className="relative flex flex-col items-center">
-        <Image
-          src="/marketing/visuals/pricing-glass-mark.webp"
-          alt=""
-          width={1448}
-          height={1086}
-          sizes="(min-width: 768px) 15rem, 13rem"
-          className="h-auto w-52 select-none object-contain mix-blend-multiply sm:w-60"
-          loading="lazy"
-          draggable={false}
-        />
-      </div>
-
-      <ul className="flex w-full flex-row flex-wrap justify-center gap-2 md:w-auto md:flex-col md:flex-nowrap md:gap-2.5">
-        {outputs.map((item) => {
-          const Icon = OUTPUT_ICONS[item.icon];
-          return (
-            <li
-              key={item.id}
-              className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-2 text-xs font-medium shadow-sm"
-            >
-              <Icon className="h-3.5 w-3.5 text-brand" strokeWidth={1.75} />
-              <span className="flex-1">{item.title}</span>
-              <span className="h-1.5 w-1.5 rounded-full bg-success" />
-            </li>
-          );
-        })}
-      </ul>
+function ReviewVisual() {
+  return (
+    <div className="relative flex h-[6.5rem] w-[6.5rem] items-center justify-center">
+      <CircleCheckBig
+        className="h-full w-full text-brand drop-shadow-[0_14px_14px_hsl(var(--brand)/0.16)]"
+        strokeWidth={1.65}
+        aria-hidden
+      />
     </div>
-  );
+  )
+}
+
+function FindingsVisual() {
+  return (
+    <div className="relative w-[7.75rem]">
+      <ListChecks className="absolute inset-0 h-full w-full text-border/35" aria-hidden />
+      <div className="space-y-2.5">
+        <FindingRow icon={CircleAlert} tone="brand" />
+        <FindingRow icon={CircleAlert} tone="warning" />
+        <FindingRow icon={Info} tone="info" />
+      </div>
+    </div>
+  )
+}
+
+function FindingRow({
+  icon: Icon,
+  tone,
+}: {
+  icon: typeof CircleAlert
+  tone: 'brand' | 'warning' | 'info'
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <Icon
+        className={cn(
+          'h-[1.15rem] w-[1.15rem] shrink-0',
+          tone === 'brand' && 'text-brand',
+          tone === 'warning' && 'text-warning',
+          tone === 'info' && 'text-info',
+        )}
+        strokeWidth={1.8}
+        aria-hidden
+      />
+      <span className="workflow-finding-line h-5 flex-1 rounded-full" />
+    </div>
+  )
+}
+
+function ShipVisual() {
+  return (
+    <Image
+      src="/brand/logo-mark.png"
+      alt=""
+      width={512}
+      height={512}
+      sizes="96px"
+      className="h-24 w-24 object-contain drop-shadow-[0_16px_16px_hsl(var(--brand)/0.2)]"
+      unoptimized
+      draggable={false}
+    />
+  )
 }

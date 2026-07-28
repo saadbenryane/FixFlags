@@ -1,7 +1,4 @@
 import type { PageMetadata } from './metadata'
-import { getEnv } from '@/lib/env'
-import { openai } from './judge-runner'
-import { logger } from '@/lib/logger'
 
 /**
  * Coarse page-purpose classification used to gate product-conversion checks.
@@ -172,60 +169,4 @@ export function detectPagePurpose(
 /** True when product-conversion checks should run. */
 export function isProductPage(p: PagePurpose): boolean {
   return p === 'marketing' || p === 'unknown'
-}
-
-const LLM_PURPOSE_VALUES = ['placeholder', 'docs', 'article', 'oss', 'marketing'] as const
-
-/**
- * Lightweight LLM classifier for pages where the heuristic result was `marketing`
- * (the ambiguous fallback). Returns the classified purpose, or null if the LLM
- * call fails or is unavailable. Gated behind USE_LLM_PAGE_PURPOSE env flag.
- */
-export async function classifyPagePurposeWithLlm(
-  meta: PageMetadata,
-  url: string
-): Promise<PagePurposeResult | null> {
-  const env = getEnv()
-  if (!env.USE_LLM_PAGE_PURPOSE) return null
-  if (!openai) return null
-
-  const title = meta.title ?? 'untitled'
-  const text = (meta.pageText ?? '').slice(0, 800)
-  const linkCount = (meta.links ?? []).length
-  const imageCount = (meta.images ?? []).length
-  const words = text.split(/\s+/).length
-
-  try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      max_tokens: 10,
-      temperature: 0,
-      messages: [
-        {
-          role: 'user',
-          content: `Classify this web page as exactly one word from this list: placeholder, docs, article, oss, marketing.
-
-Page title: ${title}
-URL path: ${url}
-Links: ${linkCount}, Images: ${imageCount}, Words: ${words}
-First 500 chars of text: ${text.slice(0, 500)}
-
-Respond with only one word.`,
-        },
-      ],
-    })
-
-    const raw = response.choices[0]?.message?.content?.trim().toLowerCase() ?? ''
-    const purpose = LLM_PURPOSE_VALUES.find((v) => raw.includes(v))
-    if (purpose) {
-      return {
-        purpose,
-        reasons: [`LLM classified as ${purpose}`],
-      }
-    }
-    return null
-  } catch (err) {
-    logger.warn('LLM page-purpose classification failed, falling back to heuristics', err)
-    return null
-  }
 }

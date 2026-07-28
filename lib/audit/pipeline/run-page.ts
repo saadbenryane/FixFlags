@@ -410,7 +410,6 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     screenshots?.captureMetrics ?? null,
     screenshots?.responseHeaders ?? null,
     screenshots?.axeViolations ?? [],
-    screenshots?.ariaSnapshot ?? null
   )
 
   for (const mod of failedModules) {

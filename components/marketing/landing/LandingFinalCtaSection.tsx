@@ -23,14 +23,14 @@ export function LandingFinalCtaSection() {
   return (
     <Section
       id="final-cta"
-      spacing="marketing"
-      className="scroll-mt-[var(--header-offset)]"
+      spacing="compact"
+      className="scroll-mt-[var(--header-offset)] bg-muted/15"
     >
       <Container variant="marketing" className="px-4 sm:px-6 lg:px-12">
-        <div className="rounded-card border border-border/50 bg-background p-6 shadow-card sm:p-8 lg:p-10">
-          <div className="grid items-center gap-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-12">
-            <div className="flex items-start gap-4 sm:gap-5">
-              <div className="relative hidden h-16 w-16 shrink-0 items-center justify-center rounded-[1rem] bg-muted/60 shadow-sm sm:flex">
+        <div className="rounded-[1rem] border border-border/50 bg-background p-5 shadow-card sm:p-6 lg:p-7">
+          <div className="grid items-center gap-6 lg:grid-cols-2 lg:gap-10">
+            <div className="flex items-start gap-4 sm:gap-5 lg:gap-10">
+              <div className="relative hidden h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-[0.875rem] bg-muted/55 shadow-sm sm:flex">
                 <Image
                   src="/brand/logo-mark.png"
                   alt=""
@@ -45,18 +45,18 @@ export function LandingFinalCtaSection() {
                 headline={FINAL_CTA.headlineDisplay}
                 accentPeriod={FINAL_CTA.headlineAccentPeriod}
                 subhead={FINAL_CTA.body}
-                className="max-w-md space-y-2.5"
+                className="max-w-[25rem] space-y-2 [&_h2]:max-w-[14rem] [&_h2]:!text-xl [&_h2]:!leading-[1.08] [&_p]:!text-[0.6875rem] [&_p]:!leading-relaxed lg:[&_p]:whitespace-nowrap"
               />
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3">
               <AuditInput
                 variant="landing"
                 idSuffix="-final-cta"
                 ctaPlacement="final"
                 showLandingExtras={false}
               />
-              <AssuranceRow />
+              <AssuranceRow className="lg:justify-center" />
             </div>
           </div>
         </div>

@@ -57,8 +57,6 @@ const envSchema = z.object({
   OPENAI_JUDGE_IMAGE_DETAIL: z.enum(['low', 'high', 'auto']).optional(),
   CRITICAL_PATH_CONCURRENCY: z.string().optional(),
   AUDIT_WORKER_CONCURRENCY: z.string().optional(),
-  USE_LLM_PAGE_PURPOSE: z.enum(['true', 'false']).default('false').transform(s => s === 'true'),
-  USE_SEMANTIC_SLOP: z.enum(['true', 'false']).default('false').transform(s => s === 'true'),
   // Ad-platform conversion tracking (Workstream D). All optional; each feature
   // is gated on presence, mirroring NEXT_PUBLIC_GA_ID.
   NEXT_PUBLIC_GOOGLE_ADS_ID: z.string().optional(),

@@ -79,7 +79,7 @@ export function AuditPageActions({
     try {
       const result = await startScanWithHandoff(router, {
         url,
-        endpoint: `/api/reports/${auditId}/monitoring`,
+        endpoint: `/api/reports/${auditId}/re-check`,
         body: {},
         errorFallback: REPORT_COPY.recheck.error,
         onStarted: () => {

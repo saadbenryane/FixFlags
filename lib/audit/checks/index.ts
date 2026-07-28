@@ -7,7 +7,7 @@ import { runSeoChecks } from './seo'
 import { runTrustChecks } from './trust'
 import { runMobileChecks } from './mobile'
 import { runContentChecks } from './content'
-import { runSlopChecks, filterSlopFlagsWithLlm } from './slop'
+import { runSlopChecks } from './slop'
 import { runLayoutChecks } from './layout'
 import { runInteractionChecks } from './interaction'
 import { runMeasurementChecks } from './measurement'
@@ -25,7 +25,7 @@ import { logger } from '@/lib/logger'
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
 import { filterToolingPathFlags } from '../tooling-path-filter'
-import { detectPagePurpose, classifyPagePurposeWithLlm, type PagePurposeResult } from '../page-purpose'
+import { detectPagePurpose } from '../page-purpose'
 import { suppressOverlappingFlags } from '../suppression'
 
 export type { DeterministicFlag } from '../flag-types'
@@ -46,26 +46,14 @@ export async function runAllChecks(
   captureMetrics?: CaptureMetrics | null,
   responseHeaders?: Record<string, string> | null,
   axeViolations?: AxeViolation[],
-  _ariaSnapshot?: string | null
 ): Promise<RunAllChecksResult> {
-  void _ariaSnapshot
   const failedModules: string[] = []
 
   // Detect the page's high-level purpose once. Conversion-friction, content,
   // and trust-psychology checks gate on this so they do not fire on docs,
   // articles, placeholder domains, or open-source project pages where the
   // "missing trial / contact / authority signal" is not actionable.
-  let purpose: PagePurposeResult = detectPagePurpose(metadata, url)
-
-  // Phase 2B: Optional LLM fallback for ambiguous marketing classification.
-  // Only fires when the heuristic result is `marketing` (the default fallback)
-  // and the USE_LLM_PAGE_PURPOSE flag is enabled.
-  if (purpose.purpose === 'marketing') {
-    const llmPurpose = await classifyPagePurposeWithLlm(metadata, url)
-    if (llmPurpose) {
-      purpose = llmPurpose
-    }
-  }
+  const purpose = detectPagePurpose(metadata, url)
 
   // Group checks into independent buckets for parallel execution.
   // Each bucket reads from different data sources, so they can run concurrently.
@@ -147,7 +135,7 @@ export async function runAllChecks(
   })
 
   return {
-    flags: filterToolingPathFlags(suppressOverlappingFlags(await filterSlopFlagsWithLlm(flags))),
+    flags: filterToolingPathFlags(suppressOverlappingFlags(flags)),
     failedModules,
   }
 }

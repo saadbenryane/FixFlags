@@ -27,6 +27,16 @@ export function rubricIcon(name: string): LucideIcon {
   return map[name] ?? MessageSquare
 }
 
+const TINT_MAP: Record<string, string> = {
+  MESSAGE: 'text-brand',
+  EXPERIENCE: 'text-success',
+  REACH: 'text-info',
+}
+
+export function rubricTint(name: string): string {
+  return TINT_MAP[name.toUpperCase()] ?? 'text-muted-foreground'
+}
+
 export function impactTagIcon(tag: string | null | undefined): LucideIcon | null {
   if (!tag) return null
   const map: Record<string, LucideIcon> = {

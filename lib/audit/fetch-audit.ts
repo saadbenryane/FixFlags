@@ -392,6 +392,6 @@ export async function getGatedAuditForRequest(id: string) {
     triageDegraded,
     prescriptionFailed,
     sampleFixFlag,
-    session,
+    session: session?.user ? { user: { id: session.user.id } } : null,
   }
 }

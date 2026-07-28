@@ -1,4 +1,4 @@
-import { cn, rubricLabel, gradeColor } from '@/lib/utils'
+import { cn, gradeColor } from '@/lib/utils'
 import { resolveScoreDisplay } from '@/lib/audit/score-display'
 
 export type ScoreDisplayVariant = 'compact' | 'inline'
@@ -52,7 +52,8 @@ export function ScoreDisplay({
   className,
 }: ScoreDisplayProps) {
   const resolved = resolveScoreDisplay({ grade, score })
-  const displayLabel = label ?? (rubricName ? rubricLabel(rubricName) : 'Overall')
+  void rubricName
+  void label
 
   if (variant === 'compact') {
     return (

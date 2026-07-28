@@ -124,7 +124,7 @@ export function AuditReportProgressive({
   )
 
   const targetProgress = getProgressPercent(progress, status)
-  const [displayProgress, setDisplayProgress] = useState(targetProgress)
+  const [, setDisplayProgress] = useState(targetProgress)
   const [easeTick, setEaseTick] = useState(0)
 
   const showWorkerWarning =

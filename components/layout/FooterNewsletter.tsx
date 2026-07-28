@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { ArrowUpRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Callout } from '@/components/ui/callout'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { cn } from '@/lib/utils'
 
-export function FooterNewsletter() {
+export function FooterNewsletter({ className }: { className?: string }) {
   const {
     title,
     placeholder,
@@ -59,29 +61,44 @@ export function FooterNewsletter() {
   }
 
   return (
-    <div className="space-y-3 lg:col-span-1">
-      <p className="text-sm font-semibold">{title}</p>
-      <p className="text-sm text-muted-foreground">{blurb}</p>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+    <div className={cn('space-y-3', className)}>
+      <p className="font-mono text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-foreground/85">
+        {title}
+      </p>
+      <p className="max-w-[15rem] text-[0.625rem] leading-[1.55] text-muted-foreground">{blurb}</p>
+      <form onSubmit={handleSubmit} className="space-y-2">
         <div className="space-y-2">
           <label htmlFor="footer-newsletter-email" className="sr-only">Email address</label>
-          <Input
-            id="footer-newsletter-email"
-            type="email"
-            name="email"
-            placeholder={placeholder}
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value)
-              setError('')
-              setSuccess('')
-            }}
-            disabled={loading}
-            className="h-11"
-            autoComplete="email"
-            aria-invalid={Boolean(error)}
-            aria-describedby={error ? 'footer-newsletter-error' : success ? 'footer-newsletter-success' : undefined}
-          />
+          <div className="flex items-center rounded-[var(--radius-control)] border border-border/70 bg-background p-1 shadow-sm focus-within:ring-2 focus-within:ring-focus-ring">
+            <Input
+              id="footer-newsletter-email"
+              type="email"
+              name="email"
+              placeholder={placeholder}
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                setError('')
+                setSuccess('')
+              }}
+              disabled={loading}
+              className="h-9 min-w-0 flex-1 border-0 bg-transparent px-2.5 text-[0.6875rem] shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              autoComplete="email"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? 'footer-newsletter-error' : success ? 'footer-newsletter-success' : undefined}
+            />
+            <Button
+              type="submit"
+              variant="ghost"
+              size="icon"
+              loading={loading}
+              loadingLabel={<span className="sr-only">Joining…</span>}
+              className="h-9 min-h-9 w-9 min-w-9 shrink-0 border border-border/60 bg-muted/35 text-foreground hover:bg-muted"
+              aria-label={cta}
+            >
+              <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
+            </Button>
+          </div>
           {error ? (
             <Callout id="footer-newsletter-error" variant="danger" className="text-xs">
               {error}
@@ -93,15 +110,6 @@ export function FooterNewsletter() {
             </Callout>
           ) : null}
         </div>
-        <Button
-          type="submit"
-          size="sm"
-          loading={loading}
-          loadingLabel="Joining…"
-          className="h-11 w-full px-5 sm:w-auto"
-        >
-          {cta}
-        </Button>
       </form>
     </div>
   )

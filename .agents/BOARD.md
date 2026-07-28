@@ -16,6 +16,10 @@
 
 | Task ID | Owner | Scope | Completed |
 |---------|-------|-------|-----------|
+| homepage-footer-reference-fidelity | codex-root | Reference-faithful final CTA and footer with compact six-column navigation, builder integrations, product-true trust band, functional newsletter, and responsive desktop/mobile QA | 2026-07-28 |
+| homepage-hiw-illustration-refresh | codex-root | Replaced the pixelated three-step homepage artwork with high-resolution transparent WebP illustrations, preserved copy and layout, and verified clean light/dark rendering plus responsive geometry | 2026-07-28 |
+| homepage-benefits-workflow-fidelity | codex-root | Reference-faithful benefits and editor-workflow composition with exact desktop proportions, compact rails, real product imagery, connector flow, canonical copy, responsive QA, and preserved integration truth | 2026-07-28 |
+| check-dimensions-tab-fidelity | codex-root | Reference-faithful release-readiness section with outcome-led headline, compact editorial composition, product-true content across all four tabs, keyboard navigation, and responsive visual QA | 2026-07-28 |
 | launch-ready-product-completion | codex-root | Centralized responsive spacing, permanent homepage artwork, launch-critical journey polish, canonical billing-plan reconciliation, browser QA, focused regression coverage, and a passing full repository gate | 2026-07-26 |
 | dogfood-scan-accuracy | codex-root | Adjudicated the latest saadbenryane.com scan, removed CTA and AI false positives, consolidated repeated route occurrences, added a rendered accuracy gate and reusable dogfood skill, and proved the result with a fresh production-path scan | 2026-07-26 |
 | scan-freeze-core-path | codex-root | Dedicated web/worker runtime, lightweight progressive report handoff, shared pipeline deadlines and terminal recovery, operational health, local real-URL browser proof, full repository verification; deployment proof handed off separately | 2026-07-26 |

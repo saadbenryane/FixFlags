@@ -278,4 +278,15 @@ Systematically improve scan accuracy and reliability across FixFlags by integrat
 | A11y false positive rate | ~40% of a11y flags | <10% |
 | Schema compliance failures | ~8-15% | <0.1% |
 | CHECKING stage latency | ~15s | ~5s |
-| Browser corpus size | 4 targets | 15+ targets |
+| Browser corpus size | 4 targets | 15+ targets (shipped: 14) |
+
+## Completion & Cleanup (2026-07-28)
+
+All six phases shipped:
+
+- **Phase 1A–C:** axe-core integrated; ARIA snapshot removed (never consumed; dead capture); OpenAI `json_schema` strict adopted.
+- **Phase 2A–D:** Parallel check buckets (`Promise.allSettled`); LLM page-purpose removed (gated, off-by-default dead code); CrUX field data; browser corpus expanded 4→14.
+- **Phase 3A:** Semantic-slop LLM filter removed (gated, off-by-default dead code).
+- **Phase 4 (cleanup):** RUM inert feature removed; ANON_IP_SOFT_LIMIT → 1; a11y metadata fallback now gated on `axe == null`; `/monitoring` route → `/re-check`; session stripped from fetch response; copy label functions canonicalized to `copy/brand.ts`; rubric tints canonical in `rubric-icons.ts`; `rounded-nested-lg` added to Tailwind.
+- **Verification:** `tsc` 0 errors; build passed; `accuracy:browser` 0 failures (14 targets); `accuracy:eval` 953/965 passed; homepage + ReportFixLoop tests 32/32.
+- **Docs:** `DECISIONS.md`, `AGENTS.md`, and `.agents/handoffs/codebase-cleanup-2026-07-28.md` updated with invariants, rationale, and refactor checklist.

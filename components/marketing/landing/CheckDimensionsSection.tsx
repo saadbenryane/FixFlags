@@ -100,7 +100,7 @@ export function CheckDimensionsSection() {
 
   const activeCard =
     tab === "all"
-      ? null
+      ? copy.allChecks
       : (copy.cards.find((card) => card.id === tab) ?? copy.cards[0]!);
 
   const selectTab = useCallback((next: TabId) => {
@@ -133,14 +133,14 @@ export function CheckDimensionsSection() {
 
   return (
     <Section
-      spacing="marketing"
+      spacing="default"
       tint="subtle"
       id="what-it-checks"
       className="scroll-mt-[var(--header-offset)]"
     >
       <Container
         variant="marketing"
-        className="space-y-10 px-4 sm:space-y-12 sm:px-6 lg:space-y-14 lg:px-12"
+        className="space-y-8 px-4 sm:space-y-9 sm:px-6 lg:space-y-10 lg:px-12"
       >
         <LandingSectionHeader
           label={copy.label}
@@ -148,12 +148,14 @@ export function CheckDimensionsSection() {
           headline={copy.headlineDisplay}
           accentPeriod={copy.headlineAccentPeriod}
           subhead={copy.subhead}
+          size="lg"
+          className="max-w-xl"
         />
 
         <div
           role="tablist"
           aria-label="Release readiness dimensions"
-          className="flex gap-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:justify-center [&::-webkit-scrollbar]:hidden"
+          className="mx-auto flex w-full max-w-[34rem] justify-between gap-0 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {copy.cards.map((card) => {
             const Icon = rubricIcon(card.icon);
@@ -173,7 +175,7 @@ export function CheckDimensionsSection() {
                 onClick={() => setTab(card.id)}
                 onKeyDown={(e) => onTabKeyDown(e, card.id)}
                 className={cn(
-                  "inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition-colors sm:px-4",
+                  "inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-2 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 sm:px-4 sm:text-sm",
                   selected
                     ? "border-brand text-brand"
                     : "border-transparent text-muted-foreground hover:text-foreground",
@@ -191,168 +193,133 @@ export function CheckDimensionsSection() {
             type="button"
             role="tab"
             id={tabButtonId("all")}
+            aria-label={copy.allChecksTab}
             aria-selected={tab === "all"}
             aria-controls={panelId}
             tabIndex={tab === "all" ? 0 : -1}
             onClick={() => setTab("all")}
             onKeyDown={(e) => onTabKeyDown(e, "all")}
             className={cn(
-              "inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-sm font-medium transition-colors sm:px-4",
+              "inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-2 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 sm:px-4 sm:text-sm",
               tab === "all"
                 ? "border-brand text-brand"
                 : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
             <LayoutGrid className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            {copy.allChecksTab}
+            <span className="sm:hidden">All</span>
+            <span className="hidden sm:inline">{copy.allChecksTab}</span>
           </button>
         </div>
 
         <RevealOnView>
           <div role="tabpanel" id={panelId} aria-labelledby={tabButtonId(tab)}>
-            {tab === "all" ? (
-              <div className="grid gap-4 md:grid-cols-3">
-                {copy.cards.map((card) => {
-                    const Icon = rubricIcon(card.icon);
-                  return (
-                    <article
-                      key={card.id}
-                      className="rounded-card bg-background/80 p-5 shadow-card sm:p-6"
-                    >
-                      <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-background text-brand shadow-card">
+            <div className="mx-auto grid max-w-[72rem] items-start gap-8 lg:grid-cols-[minmax(0,0.72fr)_minmax(22rem,1.45fr)_minmax(0,0.84fr)] lg:gap-8 xl:gap-10">
+              <div className="space-y-4 lg:pt-4">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-background text-brand shadow-card">
+                    {(() => {
+                      const Icon =
+                        activeCard.icon === "all"
+                          ? LayoutGrid
+                          : rubricIcon(activeCard.icon);
+                      return (
                         <Icon
                           className="h-4 w-4"
                           strokeWidth={1.75}
                           aria-hidden
                         />
-                      </div>
-                      <h3 className="mt-4 text-base font-semibold">
-                        {card.title}
-                      </h3>
-                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground text-pretty">
-                        {card.question}
-                      </p>
-                      <ul className="mt-4 space-y-2">
-                        {card.checks.map((check) => (
-                          <li
-                            key={check}
-                            className="flex items-start gap-2 text-sm text-foreground/85"
-                          >
-                            <CheckCircle2
-                              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand"
-                              aria-hidden
-                            />
-                            <span>{check}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </article>
-                  );
-                })}
-              </div>
-            ) : activeCard ? (
-              <div className="grid items-center gap-7 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.2fr)_minmax(0,0.88fr)] lg:gap-7 xl:gap-9">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-background text-brand shadow-card">
-                      {(() => {
-                        const Icon = rubricIcon(activeCard.icon);
-                        return (
-                          <Icon
-                            className="h-4 w-4"
-                            strokeWidth={1.75}
-                            aria-hidden
-                          />
-                        );
-                      })()}
-                    </span>
-                    <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-label text-brand">
-                      {activeCard.label}
-                    </p>
-                  </div>
-                  <h3 className="text-xl font-semibold tracking-heading sm:text-[1.35rem]">
-                    {activeCard.panelTitle}
-                  </h3>
-                  <p className="text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
-                    {activeCard.panelBody}
+                      );
+                    })()}
+                  </span>
+                  <p className="font-mono text-[0.6875rem] font-semibold uppercase tracking-label text-brand">
+                    {activeCard.label}
                   </p>
-                  <ul className="space-y-2.5 pt-1">
-                    {activeCard.checks.map((check) => (
-                      <li
-                        key={check}
-                        className="flex items-start gap-2.5 text-sm text-foreground"
-                      >
-                        <CheckCircle2
-                          className="mt-0.5 h-4 w-4 shrink-0 text-brand"
-                          aria-hidden
-                        />
-                        <span>{check}</span>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
+                <h3 className="text-xl font-semibold tracking-heading sm:text-[1.35rem]">
+                  {activeCard.panelTitle}
+                </h3>
+                <p className="text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
+                  {activeCard.panelBody}
+                </p>
+                <ul className="space-y-2.5 pt-1">
+                  {activeCard.checks.map((check) => (
+                    <li
+                      key={check}
+                      className="flex items-start gap-2.5 text-sm text-foreground"
+                    >
+                      <CheckCircle2
+                        className="mt-0.5 h-4 w-4 shrink-0 text-brand"
+                        aria-hidden
+                      />
+                      <span>{check}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
 
-                <CheckDimensionsScene className="order-first lg:order-none" />
+              <CheckDimensionsScene className="lg:pt-8" />
 
-                <div className="rounded-card bg-background p-5 shadow-card sm:p-6">
-                  <div className="flex items-center justify-between gap-3">
-                    <h4 className="text-sm font-semibold">
-                      {copy.topIssuesTitle}
-                    </h4>
-                    <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-2 text-xs font-semibold tabular-nums text-foreground">
-                      {activeCard.topIssues.length}
-                    </span>
-                  </div>
-                  <ul className="mt-4 space-y-0">
-                    {activeCard.topIssues.map((issue) => (
-                      <li
-                        key={issue.title}
-                        className="border-b border-border/50 py-3 first:pt-0 last:border-0 last:pb-0"
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center">
-                            <SeverityIcon severity={issue.severity} />
-                          </span>
-                          <div className="min-w-0 flex-1 space-y-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="text-sm font-medium text-foreground text-pretty">
-                                {issue.title}
-                              </p>
-                              <span
-                                className={cn(
-                                  "shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold",
-                                  SEVERITY_TONE[issue.severity] ??
-                                    "bg-muted text-muted-foreground",
-                                )}
-                              >
-                                {issue.severity}
-                              </span>
-                            </div>
-                            <p className="text-xs leading-relaxed text-muted-foreground text-pretty">
+              <div className="rounded-card bg-background p-5 shadow-card sm:p-6">
+                <div className="flex items-center justify-between gap-3">
+                  <h4 className="text-sm font-semibold">
+                    {copy.topIssuesTitle}
+                  </h4>
+                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-2 text-xs font-semibold tabular-nums text-foreground">
+                    {activeCard.topIssues.length}
+                  </span>
+                </div>
+                <ul className="mt-4 space-y-0">
+                  {activeCard.topIssues.map((issue) => (
+                    <li
+                      key={issue.title}
+                      className="border-b border-border/50 py-2.5 first:pt-0 last:border-0 last:pb-0"
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center">
+                          <SeverityIcon severity={issue.severity} />
+                        </span>
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium text-foreground text-pretty">
+                              {issue.title}
+                            </p>
+                            <span
+                              className={cn(
+                                "shrink-0 rounded-full px-2 py-0.5 text-2xs font-semibold",
+                                SEVERITY_TONE[issue.severity] ??
+                                  "bg-muted text-muted-foreground",
+                              )}
+                            >
+                              {issue.severity}
+                            </span>
+                          </div>
+                          <div className="flex items-end gap-2">
+                            <p className="min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground text-pretty">
                               {issue.body}
                             </p>
                             <Link
                               href={issue.categoryHref}
-                              className="inline-flex min-h-11 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+                              className="relative inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground before:absolute before:-inset-x-2 before:-inset-y-3 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
                             >
                               /{issue.category}
                               <ArrowRight className="h-3 w-3" aria-hidden />
                             </Link>
                           </div>
                         </div>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    href={copy.viewAllIssuesHref}
-                    className="mt-5 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-foreground hover:text-brand"
-                  >
-                    {copy.viewAllIssues}
-                    <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                  </Link>
-                </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={copy.viewAllIssuesHref}
+                  className="mt-5 inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-foreground hover:text-brand"
+                >
+                  {copy.viewAllIssues}
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </Link>
               </div>
-            ) : null}
+            </div>
           </div>
         </RevealOnView>
 

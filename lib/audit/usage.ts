@@ -18,7 +18,7 @@ export {
 export const ANON_AUDIT_IDS_COOKIE = 'ff_anon_report_ids'
 
 /** Soft ceiling: clearing cookies must not unlock unlimited free triage. */
-export const ANON_IP_SOFT_LIMIT = 5
+export const ANON_IP_SOFT_LIMIT = 1
 export const ANON_IP_SOFT_WINDOW_SECONDS = 60 * 60 * 24
 
 export function readAnonAuditIds(raw: string | undefined): string[] {
