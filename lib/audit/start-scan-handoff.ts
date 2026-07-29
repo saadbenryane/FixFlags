@@ -1,10 +1,7 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
-import { setActiveAudit } from '@/lib/audit/active-audit'
 import { trackEvent } from '@/lib/analytics/events'
-import type { QueueStatus } from '@/lib/queue/estimate'
 
 type CreateCheckBody = Record<string, unknown>
 
@@ -33,7 +30,6 @@ export type CreateCheckResult =
  * Visual pending and error states belong to the control that initiated the request.
  */
 export async function startScanWithHandoff(
-  router: ReturnType<typeof useRouter>,
   options: StartScanOptions
 ): Promise<CreateCheckResult> {
   try {
@@ -62,24 +58,20 @@ export async function startScanWithHandoff(
     options.onStarted?.(data)
 
     if (reportId) {
-      const queue =
-        data.queue && typeof data.queue === 'object'
-          ? data.queue as QueueStatus
-          : undefined
-      setActiveAudit({
-        auditId: reportId,
-        url: options.url,
-        queue,
-      }, { notify: false })
-      // Foreground checks move directly into the report. Suppressing the
-      // storage event prevents the global background-check banner from
-      // flashing on the page we are leaving.
+      // The report becomes the owner of active-audit state after it mounts.
+      // Keeping creation stateless prevents the homepage resume banner from
+      // becoming a competing foreground handoff.
       window.location.replace(`/report/${reportId}`)
       return { ok: true, reportId }
     }
 
-    router.replace('/dashboard')
-    return { ok: true }
+    return {
+      ok: false,
+      message:
+        options.errorFallback ||
+        'Your review started, but FixFlags could not open the report. Try again.',
+      code: 'REPORT_HANDOFF_MISSING',
+    }
   } catch {
     return {
       ok: false,

@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { RefreshCw, ArrowLeftRight } from 'lucide-react'
 
@@ -64,7 +63,6 @@ export function AuditPageActions({
   showFixPrompts = false,
   toolbar = false,
 }: Props) {
-  const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
   const [recheckLoading, setRecheckLoading] = useState(false)
 
@@ -77,7 +75,7 @@ export function AuditPageActions({
   async function handleRecheck() {
     setRecheckLoading(true)
     try {
-      const result = await startScanWithHandoff(router, {
+      const result = await startScanWithHandoff({
         url,
         endpoint: `/api/reports/${auditId}/re-check`,
         body: {},

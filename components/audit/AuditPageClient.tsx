@@ -301,7 +301,11 @@ export function AuditPageClient({
           <AuditReportProgressive {...progressiveProps} />
         </ProgressiveErrorBoundary>
       </div>
-      <ReportAuthGate auditId={id} required={requireAuthGate} />
+      <ReportAuthGate
+        auditId={id}
+        required={requireAuthGate}
+        reportUrl={progressiveProps.url}
+      />
     </AuditShell>
   )
 }

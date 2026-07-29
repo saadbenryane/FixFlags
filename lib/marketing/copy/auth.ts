@@ -1,10 +1,10 @@
 export const AUTH = {
   reportGate: {
     title: 'Your site review is underway',
-    subtitle: 'Create a free account while FixFlags checks the site.',
-    emailSignup: 'Sign up with email',
-    emailSignin: 'Sign in with email',
-    backToOptions: 'Back to sign-in options',
+    subtitle: (hostname?: string | null) =>
+      hostname
+        ? `Create a free account while FixFlags reviews ${hostname}. Your report will be saved here.`
+        : 'Create a free account while FixFlags reviews your site. Your report will be saved here.',
     preparingOptions: 'Preparing sign-in options',
     backHome: 'Back to home',
     exit: 'Leave this report',
@@ -146,8 +146,10 @@ export const AUTH = {
     continueWithGoogle: 'Continue with Google',
     continueWithGitHub: 'Continue with GitHub',
     signInFailed: 'Sign in failed. Try again.',
-    separator: 'or',
+    separator: 'or use email',
     popupBlocked: 'Your browser blocked the sign-in popup. Allow popups, then try again.',
+    discoveryError: 'Social sign-in options could not load.',
+    discoveryRetry: 'Try again',
   },
   password: {
     showLabel: 'Show password',

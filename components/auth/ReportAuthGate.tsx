@@ -15,13 +15,16 @@ import { Button } from '@/components/ui/button'
 import { AUTH } from '@/lib/marketing/copy/auth'
 import { useMe } from '@/hooks/useMe'
 import { trackEvent } from '@/lib/analytics/events'
+import { displayHostname } from '@/lib/utils/url-helpers'
 
 export function ReportAuthGate({
   auditId,
   required,
+  reportUrl,
 }: {
   auditId: string
   required: boolean
+  reportUrl?: string | null
 }) {
   const router = useRouter()
   const { user, claimAnonymous } = useMe({ load: false })
@@ -47,6 +50,8 @@ export function ReportAuthGate({
   }
 
   if (!required || user) return null
+  const hostname = reportUrl ? displayHostname(reportUrl) : null
+  const description = AUTH.reportGate.subtitle(hostname)
 
   return (
     <Dialog open>
@@ -57,7 +62,7 @@ export function ReportAuthGate({
         onInteractOutside={(event) => event.preventDefault()}
       >
         <DialogTitle className="sr-only">{AUTH.reportGate.title}</DialogTitle>
-        <DialogDescription className="sr-only">{AUTH.reportGate.subtitle}</DialogDescription>
+        <DialogDescription className="sr-only">{description}</DialogDescription>
         {claiming ? (
           <div
             className="flex min-h-72 flex-col items-center justify-center gap-3 text-center"
@@ -77,6 +82,7 @@ export function ReportAuthGate({
               nextPath={`/report/${auditId}`}
               from="report"
               auditId={auditId}
+              reportHostname={hostname}
               onAuthenticated={handleAuthenticated}
             />
             <Button asChild variant="ghost" className="w-full">

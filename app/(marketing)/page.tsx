@@ -1,4 +1,3 @@
-import { CheckDimensionsSection } from '@/components/marketing/landing/CheckDimensionsSection'
 import { EditorIntegrationsSection } from '@/components/marketing/landing/EditorIntegrationsSection'
 import { HowItWorksLoopSection } from '@/components/marketing/landing/HowItWorksLoopSection'
 import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
@@ -21,7 +20,6 @@ export default async function HomePage() {
       <LandingHeroSection />
       <SampleReportSection audit={sample.audit} />
       <HowItWorksLoopSection sampleHref="/samples" />
-      <CheckDimensionsSection />
       <WhyBuildersChooseSection />
       <EditorIntegrationsSection />
       <LandingFinalCtaSection />

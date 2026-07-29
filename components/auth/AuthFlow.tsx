@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Fingerprint, Loader2, Mail } from 'lucide-react'
+import { Fingerprint, Loader2, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy/auth'
@@ -33,6 +33,7 @@ interface AuthFlowProps {
   from?: string | null
   onAuthenticated?: () => Promise<void> | void
   auditId?: string
+  reportHostname?: string | null
 }
 
 export function AuthFlow({
@@ -42,6 +43,7 @@ export function AuthFlow({
   from,
   onAuthenticated,
   auditId,
+  reportHostname,
 }: AuthFlowProps) {
   const route = useAuthRedirect()
   const router = useRouter()
@@ -50,7 +52,6 @@ export function AuthFlow({
   useRedirectIfAuthenticated({ disabled: isDialog })
 
   const [mode, setMode] = useState<AuthFlowMode>(initialMode)
-  const [emailExpanded, setEmailExpanded] = useState(!isDialog)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState<'email' | 'passkey' | null>(null)
@@ -69,7 +70,6 @@ export function AuthFlow({
 
   useEffect(() => {
     setMode(initialMode)
-    setEmailExpanded(!isDialog)
   }, [initialMode, isDialog])
 
   function markStarted(method: string) {
@@ -87,7 +87,6 @@ export function AuthFlow({
 
   function switchMode(nextMode: AuthFlowMode) {
     setMode(nextMode)
-    setEmailExpanded(false)
     setPassword('')
   }
 
@@ -186,7 +185,7 @@ export function AuthFlow({
       ? AUTH.signUp.title
       : AUTH.signIn.title
   const subtitle = isDialog
-    ? AUTH.reportGate.subtitle
+    ? AUTH.reportGate.subtitle(reportHostname)
     : mode === 'signup'
       ? AUTH.signUp.subtitle
       : AUTH.signIn.subtitle
@@ -217,37 +216,29 @@ export function AuthFlow({
           mode={mode}
           onMethodSelected={markStarted}
         />
+      ) : oauth.error ? (
+        <div
+          className="flex items-center justify-between gap-3 rounded-[var(--radius-control)] bg-muted/40 px-3 py-2.5"
+          role="alert"
+        >
+          <p className="text-sm text-muted-foreground">{AUTH.oauth.discoveryError}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={oauth.retry}
+          >
+            {AUTH.oauth.discoveryRetry}
+          </Button>
+        </div>
       ) : null}
 
-      {!emailExpanded ? (
-        <Button
-          type="button"
-          variant={oauth.anyEnabled ? 'ghost' : 'default'}
-          className="w-full"
-          onClick={() => {
-            markStarted('email')
-            setEmailExpanded(true)
-          }}
-        >
-          <Mail className="h-4 w-4" aria-hidden />
-          {mode === 'signup' ? AUTH.reportGate.emailSignup : AUTH.reportGate.emailSignin}
-        </Button>
-      ) : (
-        <FormContainer
-          onSubmit={handleEmailSubmit}
-          className="space-y-4"
-          aria-live="polite"
-        >
-          {isDialog && oauth.anyEnabled ? (
-            <button
-              type="button"
-              className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-              onClick={() => setEmailExpanded(false)}
-            >
-              <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-              {AUTH.reportGate.backToOptions}
-            </button>
-          ) : null}
+      <FormContainer
+        onSubmit={handleEmailSubmit}
+        className="space-y-4"
+        aria-live="polite"
+      >
           <IconInput
             type="email"
             name="email"
@@ -318,8 +309,7 @@ export function AuthFlow({
               </button>
             </div>
           ) : null}
-        </FormContainer>
-      )}
+      </FormContainer>
 
       <p className="text-center text-sm text-muted-foreground">
         {mode === 'signup' ? AUTH.signUp.footer : AUTH.signIn.footer}{' '}

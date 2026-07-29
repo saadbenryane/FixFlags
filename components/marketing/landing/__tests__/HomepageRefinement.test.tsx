@@ -1,49 +1,36 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { CheckDimensionsSection } from '@/components/marketing/landing/CheckDimensionsSection'
+import { EditorIntegrationsSection } from '@/components/marketing/landing/EditorIntegrationsSection'
+import { HowItWorksLoopSection } from '@/components/marketing/landing/HowItWorksLoopSection'
 import { WhyBuildersChooseSection } from '@/components/marketing/landing/WhyBuildersChooseSection'
 
 describe('homepage refinement sections', () => {
-  it('renders the complete supported-builder workflow', () => {
+  it('shows a report-shaped finish plan instead of a decorative workflow image', () => {
     render(<WhyBuildersChooseSection />)
 
-    expect(screen.getByText('Works where you build')).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', {
-        name: /Review, fix, and re-check in your existing workflow/i,
-      })
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('img', {
-        name: /Review, Flag, Fix, and Re-check.*cleared Flags.*improved release status.*confident shipping/i,
-      })
-    ).toBeInTheDocument()
-    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument()
+    expect(screen.getByText('Finish Plan')).toBeInTheDocument()
+    expect(screen.getByText('Why it matters')).toBeInTheDocument()
+    expect(screen.getByText('Fix prompt')).toBeInTheDocument()
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
-  it('keeps all four release-readiness tabs keyboard-operable', () => {
-    render(<CheckDimensionsSection />)
+  it('merges the three rubrics into the how-it-works report demo', () => {
+    render(<HowItWorksLoopSection />)
 
     const message = screen.getByRole('tab', { name: 'Message' })
     const experience = screen.getByRole('tab', { name: 'Experience' })
 
-    fireEvent.click(experience)
     expect(experience).toHaveAttribute('aria-selected', 'true')
-    expect(
-      screen.getByRole('heading', { name: 'Make every next step obvious.' })
-    ).toBeInTheDocument()
+    fireEvent.click(message)
+    expect(message).toHaveAttribute('aria-selected', 'true')
+    expect(experience).toHaveAttribute('aria-selected', 'false')
+  })
 
-    fireEvent.keyDown(experience, { key: 'ArrowRight' })
-    expect(screen.getByRole('tab', { name: 'Reach' })).toHaveAttribute(
-      'aria-selected',
-      'true'
-    )
+  it('shows one connected editor workflow without generated step artwork', () => {
+    render(<EditorIntegrationsSection />)
 
-    fireEvent.keyDown(screen.getByRole('tab', { name: 'Reach' }), { key: 'End' })
-    expect(screen.getByRole('tab', { name: 'All checks' })).toHaveAttribute(
-      'aria-selected',
-      'true'
-    )
-    expect(message).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByText('Product release review')).toBeInTheDocument()
+    expect(screen.getByText('Release path verified')).toBeInTheDocument()
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 })

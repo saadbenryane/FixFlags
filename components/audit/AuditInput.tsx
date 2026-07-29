@@ -100,7 +100,7 @@ export function AuditInput({
     setUrl(normalized)
     setLoading(true)
     const params = new URLSearchParams(window.location.search)
-    const result = await startScanWithHandoff(router, {
+    const result = await startScanWithHandoff({
       url: normalized,
       body: {
         url: normalized,

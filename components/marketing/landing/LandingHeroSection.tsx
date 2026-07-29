@@ -22,13 +22,13 @@ export function LandingHeroSection() {
   return (
     <Section
       spacing="hero"
-      className="relative flex min-h-0 flex-col overflow-x-clip"
+      className="relative flex min-h-0 flex-col overflow-x-clip !pb-10 !pt-7 sm:!pb-12 sm:!pt-10 lg:!pb-14 lg:!pt-10"
     >
       <Container
         variant="marketing"
         className="flex w-full flex-col px-4 sm:px-6 lg:px-12"
       >
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,27rem)_minmax(0,1fr)] lg:items-center lg:gap-x-5 xl:grid-cols-[minmax(0,31rem)_minmax(0,1fr)] xl:gap-x-6">
+        <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,27rem)_minmax(0,1fr)] lg:items-center lg:gap-x-5 xl:grid-cols-[minmax(0,31rem)_minmax(0,1fr)] xl:gap-x-6">
           <div className="order-1 flex max-w-xl flex-col gap-4 sm:gap-5 lg:max-w-none lg:pt-1">
             <p className="inline-flex items-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.2em] text-brand sm:text-xs">
               <span
@@ -90,9 +90,9 @@ export function LandingHeroSection() {
             />
           </div>
 
-          <div className="order-2 relative mx-auto flex w-full max-w-[28rem] justify-center sm:max-w-[32rem] lg:mx-0 lg:block lg:h-[32rem] lg:max-w-none lg:justify-self-stretch">
+          <div className="order-2 relative mx-auto flex w-full max-w-[27rem] justify-center sm:max-w-[31rem] lg:mx-0 lg:block lg:h-[30rem] lg:max-w-none lg:justify-self-stretch">
             <div
-              className="relative w-full lg:absolute lg:-right-9 lg:-top-[4.5rem] lg:w-[37.5rem] lg:max-w-none"
+              className="relative w-full lg:absolute lg:-right-8 lg:-top-[3.25rem] lg:w-[35.5rem] lg:max-w-none"
               style={{
                 aspectRatio: `${HERO_GLASS.width} / ${HERO_GLASS.height}`,
               }}
@@ -103,7 +103,7 @@ export function LandingHeroSection() {
                 width={HERO_GLASS.width}
                 height={HERO_GLASS.height}
                 priority
-                sizes="(min-width: 1024px) 37.5rem, (min-width: 640px) 32rem, 28rem"
+                sizes="(min-width: 1024px) 35.5rem, (min-width: 640px) 31rem, 27rem"
                 className="h-full w-full select-none object-contain object-center drop-shadow-[0_28px_56px_hsl(240_8%_5%/0.12)] dark:drop-shadow-[0_28px_56px_rgb(0_0_0/0.4)] lg:object-right"
                 draggable={false}
               />
@@ -113,11 +113,11 @@ export function LandingHeroSection() {
 
         <a
           href="#sample-review"
-          className="mx-auto mt-8 flex min-h-11 w-fit flex-col items-center justify-center gap-0.5 text-[0.625rem] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground/80 sm:mt-10 lg:mt-8"
+          className="mx-auto mt-5 flex min-h-11 w-fit flex-col items-center justify-center gap-0.5 text-[0.625rem] font-medium uppercase tracking-[0.18em] text-muted-foreground transition-colors hover:text-foreground/80 sm:mt-6 lg:mt-4"
         >
           {HERO.scrollHint}
           <ChevronDown
-            className="h-3.5 w-3.5 animate-bounce motion-reduce:animate-none"
+            className="h-3.5 w-3.5"
             aria-hidden
           />
         </a>

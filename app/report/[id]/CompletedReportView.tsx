@@ -166,7 +166,11 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
         <McpFixNudge auditId={state.id} isPaid={state.viewerIsPaid} />
         <AiReviewPendingRefresh auditId={state.id} enabled={state.aiReviewPending} />
       </div>
-      <ReportAuthGate auditId={state.id} required={Boolean(requireAuthGate)} />
+      <ReportAuthGate
+        auditId={state.id}
+        required={Boolean(requireAuthGate)}
+        reportUrl={state.audit.url}
+      />
       {state.isOwner && state.showPrescription && !state.aiReviewPending ? (
         <ReportPromptsUnlockedTracker
           auditId={state.id}

@@ -535,21 +535,34 @@ export const LANDING_PAGE = {
         step: 1,
         title: 'Start your check',
         body: 'Paste the live URL you want FixFlags to review.',
-        visual: 'start' as const,
       },
       {
         step: 2,
         title: 'We check the live product',
         body: 'We check your product across Message, Experience, and Reach.',
-        visual: 'review' as const,
       },
       {
         step: 3,
         title: 'Fix it. Check again.',
         body: 'Apply the fixes with our prompts, then re-check to confirm you are ready.',
-        visual: 'recheck' as const,
       },
     ] as const,
+    demo: {
+      heading: 'Three rubrics. One clear fix.',
+      body: 'Every Flag stays connected to its evidence, fix prompt, and the Re-check that proves the change.',
+      reportTitle: 'FixFlags report',
+      hostname: 'yourproduct.com',
+      status: 'Ready to re-check',
+      priorityLabel: 'Prioritized Flag',
+      evidenceLabel: 'Evidence captured from the live page',
+      promptTitle: 'Fix prompt',
+      promptStatus: 'Ready for your AI editor',
+      copyAction: 'Copy',
+      copyAriaLabel: 'Copy example fix prompt',
+      prompt:
+        'Update the primary action so it appears in the first mobile viewport. Keep the current visual hierarchy, then verify at 375px and 430px before publishing.',
+      recheckLabel: 'Re-check verifies the same path',
+    },
   },
   reportExamples: {
     headline: 'Flags you can act on.',
@@ -597,45 +610,38 @@ export const LANDING_PAGE = {
     headlineAccentPeriod: true,
     headline: 'More than a score. Everything you need to finish.',
     subhead: 'FixFlags turns complex quality signals into clear guidance so you can finish the product your users need.',
-    features: [
-      {
-        id: 'findings',
-        title: 'Clear Flags',
-        body: 'Plain-language Flags tied to user impact.',
-        icon: 'sparkles' as const,
-      },
-      {
-        id: 'fixes',
-        title: 'Actionable fixes',
-        body: 'Copy-ready prompts your AI can use.',
-        icon: 'code' as const,
-      },
-      {
-        id: 'priority',
-        title: 'Prioritized by impact',
-        body: 'Focus on what matters most, first.',
-        icon: 'trend' as const,
-      },
-      {
-        id: 'evidence',
-        title: 'Evidence you trust',
-        body: 'Screenshots and context for every Flag.',
-        icon: 'shield' as const,
-      },
-      {
-        id: 'recheck',
-        title: 'Re-check and improve',
-        body: 'Verify every fix and watch your status improve.',
-        icon: 'refresh' as const,
-      },
-    ] as const,
-  },
-  builderWorkflow: {
-    label: 'Works where you build',
-    headlineDisplay: 'Review, fix, and re-check in your existing workflow',
-    body: 'Bring FixFlags into the editor you already use. Keep the live product and every fix in the same loop.',
-    inputs: ['Review', 'Flag', 'Fix', 'Re-check'] as const,
-    outcomes: ['Flags cleared', 'Critical count reduced', 'Re-check verified'] as const,
+    demo: {
+      title: 'Finish Plan',
+      path: 'Evidence → fix → verification',
+      status: 'Live product checked',
+      listLabel: 'Prioritized Flags',
+      flags: [
+        {
+          title: 'Primary CTA below the fold',
+          meta: 'Experience · Critical',
+        },
+        {
+          title: 'Hero outcome stays unclear',
+          meta: 'Message · Important',
+        },
+        {
+          title: 'Social preview has no image',
+          meta: 'Reach · Important',
+        },
+      ] as const,
+      severity: 'Critical · Experience',
+      flagTitle: 'Primary CTA is below the fold on mobile',
+      evidenceStatus: 'Live evidence',
+      whyTitle: 'Why it matters',
+      whyBody:
+        'On a phone, people cannot see the main action before scrolling. The page delays the exact next step it asks them to take.',
+      viewportLabel: 'action begins below first viewport',
+      promptTitle: 'Fix prompt',
+      copyAction: 'Copy',
+      prompt:
+        'Move the primary CTA into the first mobile viewport. Preserve the desktop hierarchy. Verify the updated page at 375px and 430px, then report the final CTA position.',
+      recheckLabel: 'Re-check compares the same viewport',
+    },
   },
   editorIntegrations: {
     label: 'How it works (MCP)',
@@ -644,64 +650,42 @@ export const LANDING_PAGE = {
     headline: 'FixFlags in your workflow. Always in sync.',
     headlineLines: ['FixFlags in your workflow.', 'Always in sync'] as const,
     body: 'Connect FixFlags through MCP. Review each change, act on clear Flags, and Re-check the live product.',
-    steps: [
-      {
-        id: 'connect',
-        title: 'Connect',
-        body: 'Add FixFlags through MCP in your AI editor or CLI.',
-        visual: {
-          src: '/marketing/visuals/mcp-plug-v2.webp',
-          width: 1254,
-          height: 1254,
+    workspace: {
+      title: 'Product release review',
+      meta: 'editor · FixFlags MCP',
+      status: 'Connected',
+      builderLabel: 'Your builder',
+      userLabel: 'You',
+      request:
+        'Check the live landing page. Fix the first Critical Flag, then re-check it.',
+      liveProductNote:
+        'FixFlags reads the live product, not the editor preview',
+      assistantLabel: 'FixFlags',
+      assistantStatus: 'Live review complete',
+      states: [
+        {
+          id: 'flag',
+          label: 'Flag',
+          title: 'CTA below fold',
+          body: 'Evidence captured at the mobile viewport.',
         },
-        note: {
-          type: 'tools' as const,
-          items: ['Lovable', 'Cursor', 'CLI'] as const,
+        {
+          id: 'fix',
+          label: 'Fix',
+          title: 'Prompt applied',
+          body: 'The builder moved the action into view.',
         },
-      },
-      {
-        id: 'review',
-        title: 'Review each change',
-        body: 'Run a fresh live-product check after a change or before release.',
-        visual: {
-          src: '/marketing/visuals/mcp-review-v2.webp',
-          width: 1254,
-          height: 1254,
+        {
+          id: 'recheck',
+          label: 'Re-check',
+          title: 'Verified',
+          body: 'A fresh capture confirms the Flag is cleared.',
         },
-        note: {
-          type: 'text' as const,
-          text: 'Message, Experience, and Reach',
-        },
-      },
-      {
-        id: 'findings',
-        title: 'Get clear Flags',
-        body: 'See what matters, why it matters, and what to fix.',
-        visual: {
-          src: '/marketing/visuals/mcp-findings-v2.webp',
-          width: 1254,
-          height: 1254,
-        },
-        note: {
-          type: 'text' as const,
-          text: 'Evidence and fix prompts you can act on',
-        },
-      },
-      {
-        id: 'ship',
-        title: 'Fix, deploy, re-check',
-        body: 'Apply the fix with your AI, deploy, then verify the same path.',
-        visual: {
-          src: '/marketing/visuals/mcp-ship-v2.webp',
-          width: 1254,
-          height: 1254,
-        },
-        note: {
-          type: 'text' as const,
-          text: 'Re-check proves the fix landed',
-        },
-      },
-    ] as const,
+      ] as const,
+      verifiedTitle: 'Release path verified',
+      verifiedBody: 'The result stays attached to the original Flag.',
+      continueLabel: 'Continue in editor',
+    },
   },
   productEvidence: {
     headline: 'What a review actually catches',

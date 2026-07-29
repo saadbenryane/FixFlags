@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export interface OAuthProviders {
   google: boolean
@@ -10,6 +10,8 @@ export interface OAuthProviders {
 interface OAuthProvidersState extends OAuthProviders {
   isLoading: boolean
   anyEnabled: boolean
+  error: boolean
+  retry: () => void
 }
 
 // Cache the result for the lifetime of the page so navigating between
@@ -24,33 +26,50 @@ let cached: OAuthProviders | null = null
  */
 export function useOAuthProviders(): OAuthProvidersState {
   const [providers, setProviders] = useState<OAuthProviders | null>(cached)
+  const [error, setError] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
-    if (cached) return
+    if (cached) {
+      setProviders(cached)
+      setError(false)
+      return
+    }
     let cancelled = false
     ;(async () => {
       try {
         const res = await fetch('/api/auth/providers')
+        if (!res.ok) throw new Error('Provider discovery failed')
         const data = (await res.json()) as OAuthProviders
         if (cancelled) return
         cached = { google: !!data.google, github: !!data.github }
         setProviders(cached)
+        setError(false)
       } catch {
         if (!cancelled) {
-          cached = { google: false, github: false }
-          setProviders(cached)
+          setProviders(null)
+          setError(true)
         }
       }
     })()
     return () => {
       cancelled = true
     }
+  }, [attempt])
+
+  const retry = useCallback(() => {
+    cached = null
+    setProviders(null)
+    setError(false)
+    setAttempt((value) => value + 1)
   }, [])
 
   return {
     google: providers?.google ?? false,
     github: providers?.github ?? false,
     anyEnabled: !!providers && (providers.google || providers.github),
-    isLoading: providers === null,
+    isLoading: providers === null && !error,
+    error,
+    retry,
   }
 }

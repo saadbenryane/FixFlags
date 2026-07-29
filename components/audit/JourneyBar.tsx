@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useRouter } from 'next/navigation'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -53,7 +52,6 @@ function dotColor(page: JourneyPage): string {
 }
 
 export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }: JourneyBarProps) {
-  const router = useRouter()
   const [scanning, setScanning] = useState(false)
 
   if (pages.length <= 1) return null
@@ -62,7 +60,7 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
     if (!primaryUrl || scanning) return
     setScanning(true)
     try {
-      const result = await startScanWithHandoff(router, {
+      const result = await startScanWithHandoff({
         url: primaryUrl,
         body: {
           url: primaryUrl,

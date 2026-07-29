@@ -1,14 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import {
-  ChevronRight,
-  Crosshair,
-  Lock,
-  RefreshCw,
-  ShieldCheck,
-  Users,
-  Zap,
-} from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { rubricIcon } from '@/lib/rubric-icons'
@@ -18,21 +10,11 @@ import {
 } from '@/components/marketing/landing/SampleFunnelEvents'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { CHECK_ID_COUNT } from '@/lib/audit/check-ids'
 import type { CuratedSampleAudit } from '@/lib/marketing/curated-sample'
 import { buildSampleReportDisplay } from '@/lib/marketing/sample-report-display'
 import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
-
-const TRUST_ICONS = {
-  zap: Zap,
-  refresh: RefreshCw,
-  lock: Lock,
-  shield: ShieldCheck,
-  target: Crosshair,
-  users: Users,
-} as const
 
 interface SampleReportSectionProps {
   audit?: CuratedSampleAudit
@@ -135,72 +117,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
           </div>
         </div>
 
-        <RevealOnView>
-          <div className="space-y-2.5">
-            <p className="text-center font-mono text-[0.6875rem] font-medium uppercase tracking-label text-muted-foreground">
-              {copy.trustLabel}
-            </p>
-            <ul className="grid grid-cols-1 gap-4 overflow-hidden rounded-[1.35rem] glass-surface-elevated px-5 py-4 sm:grid-cols-2 sm:gap-5 sm:px-6 sm:py-4 md:grid-cols-3 lg:grid-cols-6 lg:items-stretch lg:gap-0 lg:px-3 lg:py-3 xl:px-5">
-              <TrustMetric
-                icon={ShieldCheck}
-                value={copy.checksMetric(CHECK_ID_COUNT).value}
-                label={copy.checksMetric(CHECK_ID_COUNT).label}
-              />
-              <TrustMetric
-                icon={Crosshair}
-                value={copy.issuesMetric(flagCount).value}
-                label={copy.issuesMetric(flagCount).label}
-                divider
-              />
-              {copy.trustMetrics.map((metric) => {
-                const Icon = TRUST_ICONS[metric.icon]
-                return (
-                  <TrustMetric
-                    key={metric.id}
-                    icon={Icon}
-                    value={metric.value}
-                    label={metric.label}
-                    divider
-                  />
-                )
-              })}
-            </ul>
-          </div>
-        </RevealOnView>
       </Container>
     </Section>
-  )
-}
-
-function TrustMetric({
-  icon: Icon,
-  value,
-  label,
-  divider = false,
-}: {
-  icon: typeof ShieldCheck
-  value: string
-  label: string
-  divider?: boolean
-}) {
-  return (
-    <li
-      className={cn(
-        'flex items-start gap-3 text-left sm:flex-col sm:items-center sm:px-2 sm:text-center lg:px-4 lg:py-1 xl:px-5',
-        divider && 'lg:border-l lg:border-border/45'
-      )}
-    >
-      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-brand/10 text-brand">
-        <Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-[0.9375rem] font-semibold leading-tight tabular-nums text-foreground sm:text-base">
-          {value}
-        </span>
-        <span className="mt-1 block text-xs leading-snug text-muted-foreground text-pretty">
-          {label}
-        </span>
-      </span>
-    </li>
   )
 }

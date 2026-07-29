@@ -239,7 +239,7 @@ describe('homepage message guardrails', () => {
     assert.equal(LANDING_PAGE.howItWorks.steps.length, 3)
   })
 
-  it('how it works steps match glass mockup titles and keep product-true rubrics', () => {
+  it('how it works steps keep product-true rubrics without decorative artwork contracts', () => {
     assert.deepEqual(
       LANDING_PAGE.howItWorks.steps.map((s) => s.title),
       ['Start your check', 'We check the live product', 'Fix it. Check again.']
@@ -247,10 +247,7 @@ describe('homepage message guardrails', () => {
     const scan = LANDING_PAGE.howItWorks.steps[1]!
     assert.match(scan.body, /Message, Experience, and Reach/i)
     assert.doesNotMatch(scan.body, /performance, accessibility, SEO/i)
-    assert.deepEqual(
-      LANDING_PAGE.howItWorks.steps.map((step) => step.visual),
-      ['start', 'review', 'recheck']
-    )
+    assert.ok(LANDING_PAGE.howItWorks.steps.every((step) => !('visual' in step)))
   })
 
   it('dimension cards have checklists and proof examples', () => {
@@ -294,13 +291,10 @@ describe('homepage message guardrails', () => {
   it('why builders and editor integrations sections exist', () => {
     assert.ok(!('whyAiNeedsFixFlags' in LANDING_PAGE))
     assert.match(LANDING_PAGE.whyBuildersChoose.headlineDisplay, /more than a score/i)
-    assert.equal(LANDING_PAGE.whyBuildersChoose.features.length, 5)
+    assert.equal(LANDING_PAGE.whyBuildersChoose.demo.flags.length, 3)
     assert.match(LANDING_PAGE.editorIntegrations.headlineDisplay, /workflow/i)
     assert.match(LANDING_PAGE.editorIntegrations.label, /MCP/i)
-    assert.equal(LANDING_PAGE.editorIntegrations.steps.length, 4)
-    assert.match(LANDING_PAGE.builderWorkflow.label, /works where you build/i)
-    assert.equal(LANDING_PAGE.builderWorkflow.inputs.length, 4)
-    assert.equal(LANDING_PAGE.builderWorkflow.outcomes.length, 3)
+    assert.equal(LANDING_PAGE.editorIntegrations.workspace.states.length, 3)
   })
 
   it('editor integrations headline avoids banned jargon and template copy', () => {
@@ -309,10 +303,9 @@ describe('homepage message guardrails', () => {
       editorIntegrations.headlineDisplay,
       editorIntegrations.headline,
       editorIntegrations.body,
-      ...editorIntegrations.steps.flatMap((step) => [
-        step.title,
-        step.body,
-        step.note.type === 'text' ? step.note.text : step.note.items.join(' '),
+      ...editorIntegrations.workspace.states.flatMap((state) => [
+        state.title,
+        state.body,
       ]),
     ]) {
       for (const pattern of BANNED_LANDING_PHRASES) {
