@@ -5,7 +5,7 @@ Source: FixFlags brand guidelines. Reference assets in `public/brand/`.
 ## Identity
 
 - **Name:** FixFlags
-- **One-liner:** FixFlags is the release readiness layer for AI-built products.
+- **One-liner:** Finish what your AI started.
 - **Campaign line:** Finish what your AI started.
 - **Product loop:** Flag → Fix → Re-check.
 - **Mark:** Official geometric folded-F from brand sheet raster (`public/brand/logo-mark.png`). Do not regenerate or invent SVG geometry. Icon-left, Inter Tight wordmark-right lockup via `components/brand/Logo.tsx`.

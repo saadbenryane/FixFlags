@@ -34,8 +34,8 @@ export function Heading({ as: Tag = 'h2', className, ...props }: HeadingProps) {
     <Tag
       className={cn(
         isDisplay
-          ? 'font-serif font-semibold leading-display tracking-display text-balance'
-          : 'font-serif font-semibold leading-heading tracking-heading text-balance',
+          ? 'font-display font-semibold leading-display tracking-display text-balance'
+          : 'font-sans font-semibold leading-heading tracking-heading text-balance',
         headingStyles[Tag],
         className
       )}

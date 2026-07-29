@@ -167,6 +167,16 @@
   --motion-fast: 200ms;
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
 
+  /* ── Z-index layers (mirrors tailwind.config.ts extend.zIndex) ── */
+  --z-background: -1;
+  --z-content: 10;
+  --z-navbar: 50;
+  --z-fab: 60;
+  --z-overlay: 70;
+  --z-dropdown: 100;
+  --z-modal: 200;
+  --z-tooltip: 300;
+
   --header-height: 3.5rem;
   --header-height-marketing: 4.75rem;
   --header-offset: 6.5rem;

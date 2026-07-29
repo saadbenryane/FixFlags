@@ -13,7 +13,7 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Concept | Canonical Source |
 |---------|------------------|
 | Why FixFlags exists | `knowledge/foundations.md` → The Thesis |
-| 25 foundational principles | `knowledge/foundations.md` → 25 Foundational Principles |
+| 12 foundational principles | `knowledge/foundations.md` → Principles |
 | Research validation | `knowledge/foundations.md` → Research Validation |
 | Brand identity | `SOUL.md` → Why FixFlags deserves to exist |
 | Emotional experience | `SOUL.md` → Emotional experience |

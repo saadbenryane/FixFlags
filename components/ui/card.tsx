@@ -8,6 +8,9 @@ const cardVariants = cva(
     variants: {
       variant: {
         default: '',
+        elevated: 'glass-surface-elevated shadow-card',
+        nested: 'rounded-nested-md bg-muted/20 backdrop-blur-md',
+        flat: 'bg-muted/30 backdrop-blur-md',
         solid: 'bg-card backdrop-blur-none shadow-card',
         strong: 'glass-surface-elevated shadow-card',
         subtle: 'shadow-card',

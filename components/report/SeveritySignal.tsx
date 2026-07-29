@@ -1,6 +1,6 @@
 'use client'
 
-import { CircleAlert } from 'lucide-react'
+import { CircleAlert, TriangleAlert, Info } from 'lucide-react'
 import {
   Tooltip,
   TooltipContent,
@@ -14,15 +14,19 @@ interface Props {
   className?: string
 }
 
-/**
- * Compact severity signal for flag meta rows.
- * Single CircleAlert (no outer ring). Hover shows "Critical Flag" etc.
- */
+const config: Record<string, { icon: typeof CircleAlert; color: string }> = {
+  CRITICAL: { icon: CircleAlert, color: 'text-destructive' },
+  IMPORTANT: { icon: TriangleAlert, color: 'text-warning' },
+  POLISH: { icon: Info, color: 'text-info' },
+}
+
 export function SeveritySignal({ severity, className }: Props) {
   const label = severityLabel(severity)
-  if (severity !== 'CRITICAL') {
+  const entry = config[severity]
+  if (!entry) {
     return <span className="sr-only">{label}</span>
   }
+  const Icon = entry.icon
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -31,9 +35,9 @@ export function SeveritySignal({ severity, className }: Props) {
           <span
             role="img"
             aria-label={label}
-            className={cn('inline-flex shrink-0 items-center justify-center text-destructive')}
+            className={cn('inline-flex shrink-0 items-center justify-center', entry.color)}
           >
-            <CircleAlert
+            <Icon
               className={cn('h-5 w-5', className)}
               aria-hidden
               strokeWidth={2.25}

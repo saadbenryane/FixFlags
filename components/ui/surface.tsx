@@ -1,17 +1,18 @@
 import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
+import { cardVariants } from '@/components/ui/card'
 
-const surfaceVariants = cva('rounded-card border-0 text-card-foreground shadow-glass glass-surface', {
+const surfaceVariants = cva('', {
   variants: {
     variant: {
-      elevated: 'glass-surface-elevated shadow-card p-5 sm:p-6',
-      nested: 'rounded-nested-md bg-muted/20 p-4 backdrop-blur-md',
-      flat: 'bg-muted/30 p-4 backdrop-blur-md',
-      solid: 'bg-card backdrop-blur-none shadow-card p-5 sm:p-6',
+      elevated: 'p-5 sm:p-6',
+      nested: 'p-4',
+      flat: 'p-4',
+      solid: 'p-5 sm:p-6',
     },
     interactive: {
-      true: 'transition-[box-shadow,transform] duration-200 ease-out hover:shadow-card-hover hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 motion-reduce:transition-none',
+      true: '',
       false: '',
     },
   },
@@ -27,6 +28,13 @@ export interface SurfaceProps
 
 export function Surface({ className, variant, interactive, ...props }: SurfaceProps) {
   return (
-    <div className={cn(surfaceVariants({ variant, interactive }), className)} {...props} />
+    <div
+      className={cn(
+        cardVariants({ variant, interactive }),
+        surfaceVariants({ variant, interactive }),
+        className
+      )}
+      {...props}
+    />
   )
 }
