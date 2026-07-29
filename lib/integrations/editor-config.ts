@@ -21,11 +21,12 @@ export function getMcpEndpoint(baseUrl: string = SITE_URL): string {
 
 export function buildEditorMcpConfiguration(
   editorKey: EditorIntegrationKey,
-  baseUrl: string = SITE_URL
+  baseUrl: string = SITE_URL,
+  apiKey: string = FIXFLAGS_API_KEY_PLACEHOLDER
 ): EditorMcpConfiguration {
   const editor = getEditorIntegration(editorKey)
   const url = getMcpEndpoint(baseUrl)
-  const authorization = `Bearer ${FIXFLAGS_API_KEY_PLACEHOLDER}`
+  const authorization = `Bearer ${apiKey}`
 
   if (editorKey === 'cursor' || editorKey === 'claudeCode') {
     return {
@@ -109,4 +110,3 @@ export function buildEditorSetupPath(editorKey: EditorIntegrationKey): string {
   const returnTo = `/docs/integrations#${getEditorIntegration(editorKey).docsAnchor}`
   return `/dashboard/mcp-setup?builder=${editorKey}&returnTo=${encodeURIComponent(returnTo)}`
 }
-

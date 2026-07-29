@@ -69,6 +69,8 @@ const MCP_TOOL_MARKS: Record<string, EditorMarkName | 'other'> = {
   lovable: 'Lovable',
   bolt: 'Bolt',
   replit: 'Replit',
+  codex: 'Codex',
+  devin: 'Devin',
   other: 'other',
 }
 

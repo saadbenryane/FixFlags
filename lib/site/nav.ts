@@ -4,7 +4,7 @@ export const MARKETING_LINKS = [
   { href: '/how-it-works', label: 'How it works' },
   { href: '/samples', label: 'Examples' },
   { href: '/pricing', label: 'Pricing' },
-  { href: '/help', label: 'Docs' },
+  { href: '/docs', label: 'Docs' },
 ] as const
 
 export const MARKETING_NAV = MARKETING_LINKS
@@ -19,7 +19,8 @@ export const FOOTER_COLUMNS = {
   resources: [
     { href: '/roast', label: 'Website Roast' },
     { href: '/help', label: 'Help Center' },
-    { href: '/help/mcp', label: 'MCP guide' },
+    { href: '/docs', label: 'Documentation' },
+    { href: '/docs/integrations', label: 'Integration guides' },
     { href: '/examples', label: 'Examples' },
     { href: '/faq', label: 'FAQ' },
     { href: '/blog', label: 'Blog' },

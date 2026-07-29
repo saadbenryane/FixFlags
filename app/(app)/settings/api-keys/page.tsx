@@ -219,8 +219,8 @@ export default function ApiKeysPage() {
 
       <div className="text-center text-sm text-muted-foreground">
         See the{' '}
-        <TextLink href="/help/mcp">MCP setup guide</TextLink>{' '}
-        to connect your key to Cursor, Claude Code, Windsurf, Lovable, Bolt, or VS Code.
+        <TextLink href="/docs/integrations">editor integration guide</TextLink>{' '}
+        to connect your key to the editor you already use.
       </div>
       {confirmDialog}
     </Container>

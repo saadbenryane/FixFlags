@@ -17,6 +17,7 @@ import {
   SEO,
 } from '@/lib/marketing/copy'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
+import { HOMEPAGE_EDITOR_INTEGRATIONS } from '@/lib/integrations/editor-catalog'
 
 const FORBIDDEN_TAXONOMY = /\b7 areas\b|\bseven areas\b/i
 
@@ -358,7 +359,7 @@ describe('homepage message guardrails', () => {
     assert.match(LANDING_PAGE.howItWorks.headline, /three steps/i)
     assert.match(LANDING_PAGE.sampleReport.body, /editor-ready fix/i)
     assert.match(LANDING_PAGE.logoCloud.label, /works where you build/i)
-    assert.deepEqual([...LANDING_PAGE.logoCloud.logos], [
+    assert.deepEqual(HOMEPAGE_EDITOR_INTEGRATIONS.map((editor) => editor.label), [
       'Lovable',
       'Bolt',
       'Cursor',

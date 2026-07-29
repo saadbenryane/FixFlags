@@ -147,11 +147,12 @@ test('unknown share tokens render an unavailable or not-found state', async ({ p
   ).toBeVisible()
 })
 
-test('help and MCP setup surfaces render without client errors', async ({ page }) => {
+test('docs and legacy MCP setup surfaces render without client errors', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
 
   await page.goto('/help/mcp')
+  await expect(page).toHaveURL(/\/docs\/integrations$/)
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await expect(page.getByText(/Lovable|Bolt|Cursor/i).first()).toBeVisible()
 

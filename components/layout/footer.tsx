@@ -1,7 +1,7 @@
 import type { Route } from 'next'
 import Link from 'next/link'
 import { Clock3, LockKeyhole, RefreshCcw, ShieldCheck } from 'lucide-react'
-import { EditorMark, type EditorMarkName } from '@/components/brand/EditorMarks'
+import { EditorMark } from '@/components/brand/EditorMarks'
 import { Logo } from '@/components/brand/Logo'
 import { FooterNewsletter } from '@/components/layout/FooterNewsletter'
 import { FooterThemeToggle } from '@/components/layout/FooterThemeToggle'
@@ -13,7 +13,7 @@ import {
   editorDocsHref,
 } from '@/lib/integrations/editor-catalog'
 
-const FOOTER_EDITOR_MARKS = HOMEPAGE_EDITOR_INTEGRATIONS.slice(0, 6)
+const FOOTER_EDITOR_MARKS = HOMEPAGE_EDITOR_INTEGRATIONS
 
 const METRIC_ICONS = {
   speed: Clock3,
@@ -63,7 +63,7 @@ export function Footer() {
                     className="flex min-h-9 items-center gap-1.5 rounded-[var(--radius-control)] border border-border/65 bg-background px-2.5 text-[0.625rem] font-semibold text-foreground/80 shadow-sm transition-colors hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                   >
                     <EditorMark
-                      name={editor.label as EditorMarkName}
+                      name={editor.label}
                       className="inline-flex h-4 w-4 shrink-0 items-center justify-center"
                     />
                     <span className="truncate">

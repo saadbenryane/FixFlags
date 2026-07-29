@@ -39,6 +39,11 @@ export const SEO = {
     description:
       'Guides for FixFlags checks, reports, billing, MCP setup, and your account. Chat with us when you need a human.',
   },
+  docs: {
+    title: 'FixFlags Documentation',
+    description:
+      'Learn FixFlags checks, Finish Plans, editor integrations, CLI workflows, MCP tools, and Re-checks.',
+  },
   changelog: {
     title: 'Changelog',
     description: 'Product updates, new checks, and shipping improvements for FixFlags.',

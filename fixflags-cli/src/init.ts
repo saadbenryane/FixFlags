@@ -9,7 +9,7 @@ import { homedir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { API_BASE } from './credentials.js'
 
-export const EDITORS = ['codex', 'claude', 'cursor', 'lovable', 'bolt'] as const
+export const EDITORS = ['cursor', 'claude', 'windsurf', 'codex'] as const
 export type Editor = (typeof EDITORS)[number]
 
 interface InitOptions {
@@ -73,6 +73,7 @@ function detectedEditors(cwd: string): Editor[] {
   const found: Editor[] = []
   if (existsSync(join(cwd, '.cursor'))) found.push('cursor')
   if (existsSync(join(cwd, '.claude'))) found.push('claude')
+  if (existsSync(join(cwd, '.windsurf'))) found.push('windsurf')
   if (existsSync(join(cwd, '.agents')) || existsSync(join(cwd, 'AGENTS.md'))) {
     found.push('codex')
   }
@@ -87,24 +88,6 @@ alwaysApply: false
 ---
 
 ${body.trim()}
-`
-}
-
-function setupDocument(editor: 'lovable' | 'bolt', skillUrl: string): string {
-  const location =
-    editor === 'lovable'
-      ? 'Lovable Settings → Connectors → Add custom connector'
-      : 'Bolt Settings → MCP → Add server'
-  return `# Connect FixFlags to ${editor === 'lovable' ? 'Lovable' : 'Bolt'}
-
-Open ${location}.
-
-- Name: FixFlags
-- URL: ${API_BASE}/api/mcp
-- Authentication: Bearer token from FixFlags Settings → API keys
-- Workflow skill: ${skillUrl}
-
-Keep the credential in the editor's secret store. Do not add it to this project.
 `
 }
 
@@ -185,10 +168,23 @@ export async function initializeFixFlags(options: InitOptions = {}) {
       continue
     }
 
-    writes.push({
-      path: join(cwd, '.fixflags', `${editor}-setup.md`),
-      content: setupDocument(editor, skillUrl),
-    })
+    if (editor === 'windsurf') {
+      const root =
+        scope === 'user'
+          ? join(homedir(), '.codeium', 'windsurf')
+          : join(cwd, '.windsurf')
+      const mcpPath = join(root, 'mcp_config.json')
+      writes.push({ path: join(root, 'skills', 'fixflags', 'SKILL.md'), content: skill })
+      writes.push({
+        path: mcpPath,
+        content: mergeMcpJson(mcpPath, {
+          command: 'fixflags',
+          args: ['mcp'],
+          env: { FIXFLAGS_API_URL: API_BASE },
+        }),
+      })
+      continue
+    }
   }
 
   if (options.productUrl) {

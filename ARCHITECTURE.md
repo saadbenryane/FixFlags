@@ -229,7 +229,7 @@ Playwright Chromium via `lib/audit/screenshot.ts` + `lib/audit/browser/page-sess
 
 ### Support and Help Center
 
-- **Help Center:** `/help` hub + `/help/[category]/[slug]` articles from `lib/help/catalog.ts`. Canonical MCP guide: `/help/mcp` (legacy `/docs/mcp` shares `McpGuideContent`, canonical URL points to `/help/mcp`).
+- **Documentation and Help:** public product documentation lives under `/docs`, including the canonical `/docs/integrations` and `/docs/mcp` guides. `/help` remains the support surface for billing, account, failed checks, privacy, and human support. `/help/mcp` permanently redirects to `/docs/integrations`.
 - **FAQ:** `/faq` remains a searchable FAQ projection (`FAQ` in copy.ts) with a link into Help.
 - **Live chat:** `SupportProvider` in `SiteShell` + FAB widget. APIs under `/api/support/*`. Admin inbox: `/admin/feedback`. Welcome SYSTEM message from `lib/help/sla.ts` / `SUPPORT_CHAT`.
 - **Escalation:** Help articles and stuck surfaces (`AuditFailurePanel`, limit gate, billing) call `openSupportChat` or deep-link to articles via `lib/help/contextual.ts`.

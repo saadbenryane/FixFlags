@@ -79,7 +79,7 @@ export default async function HelpArticlePage({ params }: Props) {
 
           {article.slug === 'mcp-setup' && (
             <Button asChild variant="outline" size="sm">
-              <Link href="/help/mcp">{HELP_CENTER.mcpGuideCta}</Link>
+              <Link href="/docs/integrations">{HELP_CENTER.mcpGuideCta}</Link>
             </Button>
           )}
 

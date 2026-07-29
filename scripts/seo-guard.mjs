@@ -51,7 +51,7 @@ for (const key of seoKeys) {
   }
 }
 
-const requiredLlmsPaths = ['/', '/how-it-works', '/samples', '/pricing', '/docs/mcp', '/faq', '/privacy', '/terms', '/examples', '/tools/meta-preview', '/tools/placeholder-detector']
+const requiredLlmsPaths = ['/', '/how-it-works', '/samples', '/pricing', '/docs', '/docs/getting-started', '/docs/reports', '/docs/integrations', '/docs/cli', '/docs/mcp', '/docs/mcp/tools', '/docs/troubleshooting', '/faq', '/privacy', '/terms', '/examples', '/tools/meta-preview', '/tools/placeholder-detector']
 for (const path of requiredLlmsPaths) {
   if (!llmsPaths.includes(path)) {
     errors.push(`LLMS_SECTIONS missing path "${path}"`)

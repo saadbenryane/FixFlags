@@ -152,7 +152,7 @@ export const HOW_IT_WORKS_PAGE = {
     primaryCta: 'Review my site',
     primaryHref: '/#audit',
     secondaryCta: 'Set up MCP',
-    secondaryHref: '/help/mcp',
+    secondaryHref: '/docs/integrations#quick-start',
     annotations: [
       {
         id: 'ai-build',
@@ -256,7 +256,7 @@ export const HOW_IT_WORKS_PAGE = {
     title: 'Your agent reads the same report you do.',
     body: 'MCP is the open standard that lets coding agents call outside tools. Connect FixFlags so Launch Check and fix prompts land in the editor you already use.',
     setupCta: 'Set up MCP',
-    setupHref: '/help/mcp',
+    setupHref: '/docs/integrations#quick-start',
     plansCta: 'See plans',
     plansHref: '/pricing',
     transcript: `User: "Check the landing page and fix the first Critical Flag"
@@ -273,7 +273,7 @@ Agent reports: "Experience has no Critical Flags. One Flag cleared."`,
     primaryCta: 'Review my site',
     primaryHref: '/#audit',
     secondaryCta: 'Connect MCP',
-    secondaryHref: '/help/mcp',
+    secondaryHref: '/docs/integrations#quick-start',
     tryLabel: 'Try it on a live URL',
   },
 } as const

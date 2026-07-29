@@ -4,9 +4,10 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { EDITOR_INTEGRATION_KEYS } from '@/lib/integrations/editor-catalog'
 
 const VALID_LEVELS = ['beginner', 'regular', 'advanced'] as const
-const VALID_TOOLS = ['cursor', 'claudeCode', 'windsurf', 'lovable', 'bolt', 'other'] as const
+const VALID_TOOLS = [...EDITOR_INTEGRATION_KEYS, 'other'] as const
 
 export async function PATCH(req: NextRequest) {
   try {
