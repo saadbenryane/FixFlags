@@ -1,15 +1,12 @@
 import type { ReactNode } from 'react'
 import { Terminal } from 'lucide-react'
+import {
+  EDITOR_MARK_NAMES,
+  type EditorMarkName,
+} from '@/lib/integrations/editor-catalog'
 
-export type EditorMarkName =
-  | 'Cursor'
-  | 'Claude Code'
-  | 'Windsurf'
-  | 'Lovable'
-  | 'Bolt'
-  | 'Replit'
-  | 'Codex'
-  | 'Devin'
+export { EDITOR_MARK_NAMES }
+export type { EditorMarkName }
 
 const SVG_MARKS: Record<EditorMarkName, ReactNode> = {
   Cursor: (
@@ -96,5 +93,3 @@ export function McpToolMark({ toolKey, className }: { toolKey: string; className
 export function getEditorMark(name: EditorMarkName): ReactNode {
   return SVG_MARKS[name]
 }
-
-export const EDITOR_MARK_NAMES = Object.keys(SVG_MARKS) as EditorMarkName[]

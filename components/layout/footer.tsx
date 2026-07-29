@@ -8,15 +8,12 @@ import { FooterThemeToggle } from '@/components/layout/FooterThemeToggle'
 import { Container } from '@/components/ui/container'
 import { BRAND, LANDING_PAGE } from '@/lib/marketing/copy'
 import { FOOTER_COLUMNS, LEGAL_LINKS } from '@/lib/site/nav'
+import {
+  HOMEPAGE_EDITOR_INTEGRATIONS,
+  editorDocsHref,
+} from '@/lib/integrations/editor-catalog'
 
-const FOOTER_EDITOR_MARKS: readonly EditorMarkName[] = [
-  'Cursor',
-  'Claude Code',
-  'Lovable',
-  'Bolt',
-  'Replit',
-  'Windsurf',
-] as const
+const FOOTER_EDITOR_MARKS = HOMEPAGE_EDITOR_INTEGRATIONS.slice(0, 6)
 
 const METRIC_ICONS = {
   speed: Clock3,
@@ -57,13 +54,22 @@ export function Footer() {
               {buildersBody}
             </p>
             <ul className="grid max-w-[17rem] grid-cols-2 gap-2" aria-label="Supported AI builders">
-              {FOOTER_EDITOR_MARKS.map((name) => (
+              {FOOTER_EDITOR_MARKS.map((editor) => (
                 <li
-                  key={name}
-                  className="flex min-h-9 items-center gap-1.5 rounded-[var(--radius-control)] border border-border/65 bg-background px-2.5 text-[0.625rem] font-semibold text-foreground/80 shadow-sm"
+                  key={editor.key}
                 >
-                  <EditorMark name={name} className="inline-flex h-4 w-4 shrink-0 items-center justify-center" />
-                  <span className="truncate">{name === 'Claude Code' ? 'Claude' : name}</span>
+                  <Link
+                    href={editorDocsHref(editor)}
+                    className="flex min-h-9 items-center gap-1.5 rounded-[var(--radius-control)] border border-border/65 bg-background px-2.5 text-[0.625rem] font-semibold text-foreground/80 shadow-sm transition-colors hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                  >
+                    <EditorMark
+                      name={editor.label as EditorMarkName}
+                      className="inline-flex h-4 w-4 shrink-0 items-center justify-center"
+                    />
+                    <span className="truncate">
+                      {editor.label === 'Claude Code' ? 'Claude' : editor.label}
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>

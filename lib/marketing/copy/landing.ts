@@ -282,7 +282,6 @@ export const LANDING_PAGE = {
   logoCloud: {
     label: 'Works where you build',
     disclaimer: '',
-    logos: ['Lovable', 'Bolt', 'Cursor', 'Replit', 'Claude Code', 'Windsurf', 'Codex', 'Devin'] as const,
   },
   checkDimensions: {
     label: 'Built to cover what matters',
@@ -720,9 +719,9 @@ export const LANDING_PAGE = {
     headlineAccentPeriod: true,
     body: 'Copy a precise fix into any AI builder. On Pro, MCP lets your agent check, fix, and Re-check without leaving the editor.',
     mcpCta: 'Set up MCP',
-    mcpHref: '/help/mcp',
+    mcpHref: '/docs/integrations#quick-start',
     cliCta: 'CLI docs',
-    cliHref: '/docs/mcp',
+    cliHref: '/docs/cli',
   },
   sampleReport: {
     label: 'Sample report',

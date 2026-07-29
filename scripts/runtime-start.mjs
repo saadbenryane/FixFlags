@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync } from 'node:fs'
 import { spawn, spawnSync } from 'node:child_process'
+import { createServer } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { config } from 'dotenv'
 
@@ -34,7 +35,25 @@ const childEnv = {
     ? { AUDIT_WORKER_CONCURRENCY: '2' }
     : {}),
 }
+
+let healthServer
+if (mode === 'worker') {
+  const port = parseInt(process.env.PORT || '8080', 10)
+  healthServer = createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ status: 'ok' }))
+  })
+  healthServer.listen(port, '0.0.0.0', () => {
+    console.log(`[health] Worker health server listening on port ${port}`)
+  })
+}
+
 const child = spawn(process.execPath, [entry], { stdio: 'inherit', env: childEnv })
+
+if (healthServer) {
+  child.on('exit', () => healthServer.close())
+}
+
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => child.kill(signal))
 }

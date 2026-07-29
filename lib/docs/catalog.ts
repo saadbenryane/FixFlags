@@ -1,0 +1,237 @@
+import type { Metadata } from 'next'
+import { SITE_URL } from '@/lib/marketing/copy'
+
+export type DocsPageKey =
+  | 'home'
+  | 'getting-started'
+  | 'reports'
+  | 'integrations'
+  | 'cli'
+  | 'mcp'
+  | 'mcp-tools'
+  | 'troubleshooting'
+
+export type DocsNavigationGroup = 'Start' | 'Use FixFlags' | 'Connect' | 'Reference'
+
+export interface DocsHeadingDefinition {
+  id: string
+  title: string
+  level?: 2 | 3
+}
+
+export interface DocsPageDefinition {
+  key: DocsPageKey
+  path: string
+  group: DocsNavigationGroup
+  title: string
+  description: string
+  source?: string
+  order: number
+  headings: readonly DocsHeadingDefinition[]
+}
+
+export const DOCS_PAGES: readonly DocsPageDefinition[] = [
+  {
+    key: 'home',
+    path: '/docs',
+    group: 'Start',
+    title: 'FixFlags documentation',
+    description: 'Learn the Check → Fix → Re-check workflow and ship a stronger product.',
+    source: 'index.md',
+    order: 0,
+    headings: [
+      { id: 'quick-start', title: 'Quick start' },
+      { id: 'product-loop', title: 'The product loop' },
+      { id: 'choose-your-path', title: 'Choose your path' },
+    ],
+  },
+  {
+    key: 'getting-started',
+    path: '/docs/getting-started',
+    group: 'Start',
+    title: 'Getting started',
+    description: 'Run your first check, understand the result, and take the next action.',
+    source: 'getting-started.md',
+    order: 1,
+    headings: [
+      { id: 'before-you-start', title: 'Before you start' },
+      { id: 'run-your-first-check', title: 'Run your first check' },
+      { id: 'claim-your-report', title: 'Claim your report' },
+      { id: 'fix-the-first-flag', title: 'Fix the first Flag' },
+      { id: 're-check', title: 'Re-check' },
+    ],
+  },
+  {
+    key: 'reports',
+    path: '/docs/reports',
+    group: 'Use FixFlags',
+    title: 'Finish Plans and reports',
+    description: 'Understand Flags, evidence, priorities, fix prompts, sharing, and Re-checks.',
+    source: 'reports.md',
+    order: 2,
+    headings: [
+      { id: 'report-structure', title: 'Report structure' },
+      { id: 'flags-and-evidence', title: 'Flags and evidence' },
+      { id: 'scores-and-priority', title: 'Scores and priority' },
+      { id: 'fix-prompts', title: 'Fix prompts' },
+      { id: 're-check-and-compare', title: 'Re-check and compare' },
+      { id: 'sharing-and-watch', title: 'Sharing and Watch' },
+    ],
+  },
+  {
+    key: 'integrations',
+    path: '/docs/integrations',
+    group: 'Connect',
+    title: 'Editor integrations',
+    description: 'Connect FixFlags to the editor you already use.',
+    order: 3,
+    headings: [
+      { id: 'quick-start', title: 'Quick start' },
+      { id: 'lovable', title: 'Lovable' },
+      { id: 'bolt', title: 'Bolt' },
+      { id: 'cursor', title: 'Cursor' },
+      { id: 'replit', title: 'Replit' },
+      { id: 'claude-code', title: 'Claude Code' },
+      { id: 'windsurf', title: 'Windsurf' },
+      { id: 'codex', title: 'Codex' },
+      { id: 'devin', title: 'Devin' },
+      { id: 'verify', title: 'Verify the connection' },
+      { id: 'security', title: 'Keep credentials safe' },
+      { id: 'troubleshooting', title: 'Troubleshooting' },
+    ],
+  },
+  {
+    key: 'cli',
+    path: '/docs/cli',
+    group: 'Connect',
+    title: 'FixFlags CLI',
+    description: 'Install, authenticate, configure supported editors, check, and Re-check from the terminal.',
+    source: 'cli.md',
+    order: 4,
+    headings: [
+      { id: 'availability', title: 'Availability' },
+      { id: 'install', title: 'Install' },
+      { id: 'authenticate', title: 'Authenticate' },
+      { id: 'configure-an-editor', title: 'Configure an editor' },
+      { id: 'check-and-re-check', title: 'Check and Re-check' },
+      { id: 'json-and-ci', title: 'JSON and CI' },
+    ],
+  },
+  {
+    key: 'mcp',
+    path: '/docs/mcp',
+    group: 'Connect',
+    title: 'Model Context Protocol',
+    description: 'How FixFlags MCP authentication, transport, workflows, and connection testing work.',
+    source: 'mcp.md',
+    order: 5,
+    headings: [
+      { id: 'how-it-works', title: 'How it works' },
+      { id: 'endpoint-and-authentication', title: 'Endpoint and authentication' },
+      { id: 'recommended-workflow', title: 'Recommended workflow' },
+      { id: 'connection-testing', title: 'Connection testing' },
+      { id: 'security', title: 'Security' },
+    ],
+  },
+  {
+    key: 'mcp-tools',
+    path: '/docs/mcp/tools',
+    group: 'Reference',
+    title: 'MCP tool reference',
+    description: 'The public FixFlags tools available to connected agents.',
+    order: 6,
+    headings: [{ id: 'tools', title: 'Tools' }],
+  },
+  {
+    key: 'troubleshooting',
+    path: '/docs/troubleshooting',
+    group: 'Reference',
+    title: 'Troubleshooting',
+    description: 'Resolve authentication, URL, queue, timeout, configuration, and credential issues.',
+    source: 'troubleshooting.md',
+    order: 7,
+    headings: [
+      { id: 'authentication', title: 'Authentication' },
+      { id: 'plan-access', title: 'Plan access' },
+      { id: 'public-url', title: 'Public URL requirements' },
+      { id: 'timeouts-and-queues', title: 'Timeouts and queues' },
+      { id: 'configuration', title: 'Configuration' },
+      { id: 'credential-recovery', title: 'Credential recovery' },
+      { id: 'get-help', title: 'Get help' },
+    ],
+  },
+] as const
+
+export const DOCS_GROUPS: readonly DocsNavigationGroup[] = [
+  'Start',
+  'Use FixFlags',
+  'Connect',
+  'Reference',
+]
+
+export function getDocsPage(key: DocsPageKey) {
+  const page = DOCS_PAGES.find((candidate) => candidate.key === key)
+  if (!page) throw new Error(`Unknown docs page: ${key}`)
+  return page
+}
+
+export function getDocsPageByPath(path: string) {
+  return DOCS_PAGES.find((candidate) => candidate.path === path)
+}
+
+export function buildDocsMetadata(page: DocsPageDefinition): Metadata {
+  const url = `${SITE_URL}${page.path}`
+  return {
+    title: `${page.title} | FixFlags Docs`,
+    description: page.description,
+    alternates: { canonical: url },
+    robots: { index: true, follow: true },
+    openGraph: {
+      type: 'article',
+      title: page.title,
+      description: page.description,
+      url,
+      siteName: 'FixFlags',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: page.title,
+      description: page.description,
+    },
+  }
+}
+
+export function docsStructuredData(page: DocsPageDefinition) {
+  const url = `${SITE_URL}${page.path}`
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Docs', item: `${SITE_URL}/docs` },
+          ...(page.path === '/docs'
+            ? []
+            : [{ '@type': 'ListItem', position: 2, name: page.title, item: url }]),
+        ],
+      },
+      {
+        '@type': 'TechArticle',
+        headline: page.title,
+        description: page.description,
+        url,
+        isPartOf: { '@type': 'WebSite', name: 'FixFlags', url: SITE_URL },
+        publisher: { '@type': 'Organization', name: 'FixFlags', url: SITE_URL },
+      },
+    ],
+  }
+}
+
+export function slugifyDocsHeading(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[`_*[\]()]/g, '')
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}

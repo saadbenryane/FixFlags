@@ -1,12 +1,16 @@
 import type { ReactNode } from 'react'
 import { getEditorMark, type EditorMarkName } from '@/components/brand/EditorMarks'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
+import { HOMEPAGE_EDITOR_INTEGRATIONS } from '@/lib/integrations/editor-catalog'
 import { cn } from '@/lib/utils'
 
-type ToolLogoName = (typeof LANDING_PAGE.logoCloud.logos)[number]
+type ToolLogoName = (typeof HOMEPAGE_EDITOR_INTEGRATIONS)[number]['label']
 
 const LOGO_MARKS: Record<ToolLogoName, ReactNode> = Object.fromEntries(
-  LANDING_PAGE.logoCloud.logos.map((name) => [name, getEditorMark(name as EditorMarkName)])
+  HOMEPAGE_EDITOR_INTEGRATIONS.map(({ label }) => [
+    label,
+    getEditorMark(label as EditorMarkName),
+  ])
 ) as Record<ToolLogoName, ReactNode>
 
 interface EditorToolMarksProps {
@@ -30,7 +34,8 @@ export function EditorToolMarks({
   showLabel = true,
   shortLabels = false,
 }: EditorToolMarksProps) {
-  const { label, logos, disclaimer } = LANDING_PAGE.logoCloud
+  const { label, disclaimer } = LANDING_PAGE.logoCloud
+  const logos = HOMEPAGE_EDITOR_INTEGRATIONS.map((editor) => editor.label)
   const isHero = variant === 'hero'
 
   return (

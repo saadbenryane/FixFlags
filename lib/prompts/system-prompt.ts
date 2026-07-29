@@ -81,7 +81,7 @@ For each new flag, provide: problem (one-line title), evidence (1-2 sentences qu
 Return ALL 3 rubric entries: MESSAGE, EXPERIENCE, REACH. Mark assessmentState ASSESSED only when a score is supported by evidence; otherwise PARTIAL or UNKNOWN with score exactly null. launchChecklist must include exactly 5 items with IDs: https, social-preview, mobile-cta, console-errors, privacy-contact. Mark passed/failed from evidence.`
 }
 
-interface TriageContext {
+export interface TriageContext {
   screenshotHint?: 'no-screenshot' | 'desktop-only' | 'mobile-only' | 'desktop-and-mobile'
   url: string
   pageText: string
@@ -251,7 +251,7 @@ SCOPE GUARD: Every tool-specific prompt and every rubric prompt MUST include a "
 If a flag already has deterministic fix text, enrich it with page-specific details and suggested copy - never just repeat the deterministic fix. Add the whyItMatters and tool-specific prompts that the deterministic check could not provide. The deterministic fix is a starting point; your job is to make it specific to this URL, this page structure, and these screenshots.`
 }
 
-interface PrescriptionContext {
+export interface PrescriptionContext {
   screenshotHint?: 'desktop-only' | 'desktop-and-mobile'
   url: string
   pageText: string

@@ -1,0 +1,3 @@
+ALTER TYPE "ApiKeyClient" ADD VALUE IF NOT EXISTS 'replit';
+ALTER TYPE "ApiKeyClient" ADD VALUE IF NOT EXISTS 'codex';
+ALTER TYPE "ApiKeyClient" ADD VALUE IF NOT EXISTS 'devin';

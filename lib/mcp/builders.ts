@@ -11,11 +11,7 @@ export type PromptToolKey = (typeof PROMPT_TOOL_KEYS)[number]
 
 export const API_KEY_CLIENTS = [
   'cli',
-  'cursor',
-  'claudeCode',
-  'windsurf',
-  'lovable',
-  'bolt',
+  ...EDITOR_INTEGRATION_KEYS,
   'vscode',
   'other',
 ] as const
@@ -41,36 +37,36 @@ export const BUILDERS: readonly BuilderDefinition[] = [
   },
   {
     key: 'cursor',
-    label: 'Cursor',
-    apiKeyClient: 'cursor',
+    label: getEditorIntegration('cursor').label,
+    apiKeyClient: getEditorIntegration('cursor').apiKeyClient,
     supportsMcp: true,
     setupKind: 'config',
   },
   {
     key: 'claude',
-    label: 'Claude Code',
-    apiKeyClient: 'claudeCode',
+    label: getEditorIntegration('claudeCode').label,
+    apiKeyClient: getEditorIntegration('claudeCode').apiKeyClient,
     supportsMcp: true,
     setupKind: 'config',
   },
   {
     key: 'windsurf',
-    label: 'Windsurf',
-    apiKeyClient: 'windsurf',
+    label: getEditorIntegration('windsurf').label,
+    apiKeyClient: getEditorIntegration('windsurf').apiKeyClient,
     supportsMcp: true,
     setupKind: 'config',
   },
   {
     key: 'lovable',
-    label: 'Lovable',
-    apiKeyClient: 'lovable',
+    label: getEditorIntegration('lovable').label,
+    apiKeyClient: getEditorIntegration('lovable').apiKeyClient,
     supportsMcp: true,
     setupKind: 'connector',
   },
   {
     key: 'bolt',
-    label: 'Bolt',
-    apiKeyClient: 'bolt',
+    label: getEditorIntegration('bolt').label,
+    apiKeyClient: getEditorIntegration('bolt').apiKeyClient,
     supportsMcp: true,
     setupKind: 'connector',
   },
@@ -94,6 +90,14 @@ export function apiKeyClientForTool(tool: PromptToolKey): ApiKeyClient | undefin
   return getBuilder(tool).apiKeyClient ?? undefined
 }
 
+export function editorKeyForApiKeyClient(
+  client: ApiKeyClient
+): EditorIntegrationKey | undefined {
+  return (EDITOR_INTEGRATION_KEYS as readonly string[]).includes(client)
+    ? (client as EditorIntegrationKey)
+    : undefined
+}
+
 export function resolveToolPrompt(
   toolPrompts: Partial<Record<PromptToolKey, string | null | undefined>> | undefined,
   selectedTool: PromptToolKey,
@@ -106,3 +110,8 @@ export function resolveToolPrompt(
   const prompt = toolPrompts?.[selectedTool]?.trim()
   return prompt || null
 }
+import {
+  EDITOR_INTEGRATION_KEYS,
+  getEditorIntegration,
+  type EditorIntegrationKey,
+} from '@/lib/integrations/editor-catalog'

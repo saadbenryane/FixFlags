@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
-import { EditorToolMarks } from '@/components/marketing/landing/EditorToolMarks'
+import { EditorIntegrationGrid } from '@/components/marketing/landing/EditorIntegrationGrid'
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -18,27 +18,23 @@ export function IntegrationsBlock() {
     >
       <Container variant="marketing" className="px-4 sm:px-6 lg:px-12">
         <RevealOnView>
-          <div className="max-w-3xl">
+          <div className="max-w-[80rem]">
             <p className="inline-flex items-center gap-2 font-mono text-[0.6875rem] font-semibold uppercase tracking-label text-brand sm:text-xs">
               <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />
               {copy.label}
             </p>
-            <h2 className="mt-4 text-balance font-display text-[2rem] font-bold leading-[1.04] tracking-display text-foreground sm:text-[2.5rem] lg:text-[3rem]">
+            <h2 className="mt-4 max-w-[15ch] text-balance font-display text-[2.5rem] font-bold leading-[0.98] tracking-display text-foreground sm:text-[3.5rem] lg:text-[4.5rem] xl:text-[5.25rem]">
               {copy.headlineDisplay}
               {copy.headlineAccentPeriod ? (
                 <span className="text-brand" aria-hidden>.</span>
               ) : null}
             </h2>
-            <p className="mt-5 max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground">
+            <p className="mt-6 max-w-[48rem] text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
               {copy.body}
             </p>
 
-            <div className="mt-7">
-              <EditorToolMarks
-                variant="hero"
-                showLabel={false}
-                className="justify-start"
-              />
+            <div className="mt-8 max-w-[72rem] sm:mt-10">
+              <EditorIntegrationGrid />
             </div>
 
             <div className="mt-7 flex flex-wrap items-center gap-3">
