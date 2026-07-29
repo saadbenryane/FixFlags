@@ -113,7 +113,7 @@ available from npm. `check` returns the canonical Fix List. `recheck` performs a
 fresh capture and returns Fixed, Remaining, New, and Regressed Flags. See
 [`fixflags-cli/README.md`](fixflags-cli/README.md) for authentication and JSON output.
 
-**OAuth sign-in:** Set both `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` (and/or GitHub equivalents) in `.env.local`. Sign-in and sign-up pages show Google/GitHub buttons automatically.
+**OAuth sign-in:** Set the Google and GitHub client ID/secret pairs. Local development can run with either provider, but production readiness requires both so report signup always presents the complete SSO-first path.
 
 ## Production deployment (Railway)
 
@@ -126,7 +126,7 @@ Railway uses two required services from the same image: the **Web** service from
 
 > R2, a live worker, Chromium, AI, PageSpeed, production auth, billing, email, and Product Watch dependencies are launch requirements. Production validation and `/api/health/ready` reject partial configuration; local development can still run an explicitly visible degraded mode.
 
-**SSO:** Google/GitHub buttons appear automatically once `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (or the GitHub pair) are set on the deployed service — availability is resolved at runtime via `GET /api/auth/providers`, so **no rebuild is needed**. Register the callback `https://fixflags.com/api/auth/callback/google` and run `npm run auth:check` to verify.
+**SSO:** Google/GitHub availability is resolved at runtime via `GET /api/auth/providers`, so **no rebuild is needed** after credentials change. Production requires both provider pairs. Register `https://fixflags.com/api/auth/callback/google` and `https://fixflags.com/api/auth/callback/github`, then run `npm run auth:check`.
 
 Deploy at least one dedicated **Worker** service (`railway.worker.toml`, `npm run worker:build && npm run worker:start`). Additional workers consume the same Redis queue; recovery is Redis-lock guarded.
 

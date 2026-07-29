@@ -14,10 +14,12 @@ import {
 
 console.log('FixFlags auth / SSO configuration\n')
 
+let validationFailed = false
 try {
   validateAuthEnv()
   console.log('Auth env validation: OK (warnings may appear above)\n')
 } catch (err) {
+  validationFailed = true
   console.error('Auth env validation failed:', err instanceof Error ? err.message : err)
   console.log('')
 }
@@ -41,3 +43,7 @@ if (!isAnyOAuthConfigured()) {
 console.log('Register these callback URLs in each provider console:')
 console.log(`  Google: ${oauthCallbackUrl('google')}`)
 console.log(`  GitHub: ${oauthCallbackUrl('github')}`)
+
+if (validationFailed) {
+  process.exitCode = 1
+}

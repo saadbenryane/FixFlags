@@ -67,6 +67,15 @@ export function validateAuthEnv(): void {
     if (!authUrl.startsWith('https://')) {
       throw new Error('BETTER_AUTH_URL must use https in production')
     }
+    const missingOAuthProviders = [
+      !isGoogleOAuthConfigured() ? 'Google' : null,
+      !isGithubOAuthConfigured() ? 'GitHub' : null,
+    ].filter((provider): provider is string => provider !== null)
+    if (missingOAuthProviders.length > 0) {
+      throw new Error(
+        `${missingOAuthProviders.join(' and ')} OAuth must be configured in production`
+      )
+    }
   } else if (secret && (secret.length < 32 || WEAK_AUTH_SECRETS.has(secret))) {
     logger.warn(
       '[auth] BETTER_AUTH_SECRET is weak or a placeholder. Generate one with: openssl rand -hex 32'

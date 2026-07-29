@@ -67,4 +67,28 @@ describe('lib/auth/env', () => {
     process.env.NEXT_PUBLIC_APP_URL = 'https://www.fixflags.com'
     assert.throws(() => validateAuthEnv(), /must match/)
   })
+
+  it('validateAuthEnv requires Google and GitHub OAuth in production', () => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      NODE_ENV: 'production',
+      BETTER_AUTH_SECRET: 'a'.repeat(32),
+      BETTER_AUTH_URL: 'https://fixflags.com',
+      NEXT_PUBLIC_APP_URL: 'https://fixflags.com',
+    }
+    delete process.env.GOOGLE_CLIENT_ID
+    delete process.env.GOOGLE_CLIENT_SECRET
+    delete process.env.GITHUB_CLIENT_ID
+    delete process.env.GITHUB_CLIENT_SECRET
+
+    assert.throws(() => validateAuthEnv(), /Google and GitHub OAuth/)
+
+    process.env.GOOGLE_CLIENT_ID = 'google-id'
+    process.env.GOOGLE_CLIENT_SECRET = 'google-secret'
+    assert.throws(() => validateAuthEnv(), /GitHub OAuth/)
+
+    process.env.GITHUB_CLIENT_ID = 'github-id'
+    process.env.GITHUB_CLIENT_SECRET = 'github-secret'
+    assert.doesNotThrow(() => validateAuthEnv())
+  })
 })

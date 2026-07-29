@@ -114,7 +114,6 @@ describe('AuditInput scan handoff', () => {
 
     await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledOnce())
     expect(startScanWithHandoff).toHaveBeenCalledWith(
-      router,
       expect.objectContaining({
         url: 'https://example.com',
         body: expect.objectContaining({

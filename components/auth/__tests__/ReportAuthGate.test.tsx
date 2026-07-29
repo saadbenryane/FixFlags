@@ -14,13 +14,16 @@ vi.mock('@/lib/analytics/events', () => ({ trackEvent }))
 vi.mock('@/components/auth/AuthFlow', () => ({
   AuthFlow: ({
     nextPath,
+    reportHostname,
     onAuthenticated,
   }: {
     nextPath: string
+    reportHostname?: string | null
     onAuthenticated: () => Promise<void>
   }) => (
     <div>
       <span>{nextPath}</span>
+      {reportHostname ? <span>{reportHostname}</span> : null}
       <button type="button" onClick={() => void onAuthenticated()}>
         Complete auth
       </button>
@@ -38,10 +41,17 @@ describe('ReportAuthGate', () => {
   })
 
   it('opens for an anonymous report and preserves the report return path', () => {
-    render(<ReportAuthGate auditId="audit-1" required />)
+    render(
+      <ReportAuthGate
+        auditId="audit-1"
+        required
+        reportUrl="https://southernia.com/pricing"
+      />
+    )
 
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('/report/audit-1')).toBeInTheDocument()
+    expect(screen.getByText('southernia.com')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Leave this report/i })).toHaveAttribute(
       'href',
       '/'

@@ -16,13 +16,14 @@ export function ActiveAuditBanner() {
   const { active, dismiss } = useActiveAudit()
   const pathname = usePathname()
   const [stillRunning, setStillRunning] = useState(true)
+  const isActiveReport = Boolean(active && pathname === `/report/${active.auditId}`)
 
   useEffect(() => {
     if (!active) {
       setStillRunning(false)
       return
     }
-    if (pathname === `/report/${active.auditId}`) {
+    if (isActiveReport) {
       setStillRunning(false)
       return
     }
@@ -67,9 +68,9 @@ export function ActiveAuditBanner() {
       controller?.abort()
       if (timeout) clearTimeout(timeout)
     }
-  }, [active, dismiss, pathname])
+  }, [active, dismiss, isActiveReport])
 
-  if (!active || !stillRunning) return null
+  if (!active || !stillRunning || isActiveReport) return null
 
   const hostname = auditHostname(active.url)
 

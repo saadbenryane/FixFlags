@@ -129,7 +129,7 @@ Agents work directly on `main` and coordinate write ownership through `.agents/B
 | PageSpeed partial / 429 | No `PAGESPEED_API_KEY` | Set key in Railway; retries added in pipeline |
 | Audits stuck in QUEUED | Redis not running | `docker compose up -d` |
 | Audits stuck then fail | Worker down past give-up window | Check `/api/health/worker`; see `recover-audit-job.ts` |
-| OAuth buttons hidden | Google/GitHub env vars not set at runtime | Set `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` |
+| OAuth buttons hidden | Provider env vars are missing or provider discovery failed | Set both Google and GitHub ID/secret pairs in production, then retry `GET /api/auth/providers` |
 | `better-auth.session_token` mismatch | Cookie name difference | Check `proxy.ts` matcher (handles both dev and `__Secure-` prefix) |
 | Build fails with TS2589 | Deep type instantiation | Check `zodToJsonSchema` calls; add explicit type annotation |
 
