@@ -5,6 +5,8 @@ description: Check a deployed product with FixFlags, validate its highest-ranked
 
 # FixFlags
 
+For product behavior and architecture context, load `.agents/skills/fixflags-product/SKILL.md`.
+
 Use the deployed product URL configured by the user. If none is configured, ask for it before starting.
 
 1. Run `fixflags check <deployed-url> --wait --plan` or the MCP tool `ff_check_and_plan`.

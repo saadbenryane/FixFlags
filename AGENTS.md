@@ -118,6 +118,16 @@ FixFlags currently works directly on `main`.
 5. Create `.agents/handoffs/<task-id>.md` before leaving meaningful work incomplete.
 6. Use `.agents/sessions/` for substantial implementation or durable decisions, not transcripts or exhaustive command logs.
 
+## Token efficiency
+
+The agent's cost is dominated by reading, not writing. Optimize every turn for context budget:
+
+- **Output filtering:** Strip tool output to signal. A passing test suite returns `PASS`, not 800 lines. A build log returns the error line, not the full log. Every excess token rebills on every subsequent turn.
+- **Skeleton before body:** Load signatures, types, and exports first when exploring a module. Load implementation bodies only when needed for the change.
+- **Subagent dispatch:** Break complex multi-file changes into independent subagents. Each subagent gets a fresh, isolated context. Use the `task` tool with `subagent_type: "general"` for each subtask. Review spec compliance first, code quality second.
+- **Skill loading:** Load only the skill relevant to the task. Do not pre-load every skill. Skills in `.agents/skills/` are available via the `skill` tool.
+- **Prompt-cache discipline:** Keep this file and all skill content stable across a session. Do not edit system-level instructions mid-turn — that busts the cache.
+
 ## Definition of done
 
 - The change matches the user outcome and canonical product intent.
