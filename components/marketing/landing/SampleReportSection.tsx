@@ -215,13 +215,13 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                         strokeWidth={1.7}
                         aria-hidden
                       />
-                      <div>
-                        <dd className="font-mono text-xs font-semibold tabular-nums text-background">
-                          {metric.value}
-                        </dd>
-                        <dt className="mt-0.5 text-2xs text-background/50">
+                      <div className="flex flex-col">
+                        <dt className="order-2 mt-0.5 text-2xs text-background/50">
                           {metric.label}
                         </dt>
+                        <dd className="order-1 font-mono text-xs font-semibold tabular-nums text-background">
+                          {metric.value}
+                        </dd>
                       </div>
                     </div>
                   );

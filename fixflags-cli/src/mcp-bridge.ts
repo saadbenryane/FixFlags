@@ -1,5 +1,5 @@
 import { createInterface } from 'node:readline'
-import { API_BASE, requireApiKey } from './credentials.js'
+import { API_BASE, getCredential } from './credentials.js'
 
 interface JsonRpcRequest {
   jsonrpc?: string
@@ -10,8 +10,20 @@ function write(value: unknown): void {
   process.stdout.write(`${JSON.stringify(value)}\n`)
 }
 
+function authError(id: string | number | null | undefined) {
+  return {
+    jsonrpc: '2.0' as const,
+    id: id ?? null,
+    error: {
+      code: -32001,
+      message: 'Not authenticated. Run fixflags login, or set FIXFLAGS_API_KEY for CI.',
+      data: { action: 'login' },
+    },
+  }
+}
+
 export async function runMcpBridge(): Promise<void> {
-  const apiKey = requireApiKey()
+  const apiKey = await getCredential()
   const lines = createInterface({
     input: process.stdin,
     crlfDelay: Infinity,
@@ -29,6 +41,11 @@ export async function runMcpBridge(): Promise<void> {
         id: null,
         error: { code: -32700, message: 'Invalid JSON from MCP client' },
       })
+      continue
+    }
+
+    if (!apiKey) {
+      write(authError(request.id))
       continue
     }
 

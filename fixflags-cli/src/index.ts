@@ -12,6 +12,7 @@ import {
 } from './workflows.js'
 import {
   API_BASE,
+  getCredential,
   hasConfiguredCredential,
   removeCredential,
   requireApiKey,
@@ -33,15 +34,16 @@ const CLI_VERSION = (
 
 let rpcId = 1
 
-function createMcpCaller(apiKey: string): McpCaller {
+function createMcpCaller(apiKey?: string): McpCaller {
   return async (tool, args) => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json, text/event-stream',
+    }
+    if (apiKey) headers['x-api-key'] = apiKey
     const response = await fetch(`${API_BASE}/api/mcp`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json, text/event-stream',
-        'x-api-key': apiKey,
-      },
+      headers,
       body: JSON.stringify({
         jsonrpc: '2.0',
         id: rpcId++,
@@ -132,7 +134,7 @@ program
       workflows: ['check <url>', 'recheck <reportId>', 'status <reportId>'],
       next: authenticated
         ? ['fixflags check <url>', 'fixflags --help']
-        : ['fixflags login', 'fixflags init'],
+        : ['npx fixflags check <url>', 'fixflags login', 'fixflags init'],
     }
     if (options.json) console.log(JSON.stringify(payload, null, 2))
     else {
@@ -188,7 +190,9 @@ program
   .action(async (options: { json?: boolean }) => {
     const json = Boolean(options.json || program.opts().json)
     try {
-      const identity = await fetchIdentity(requireApiKey())
+      const apiKey = await getCredential()
+      if (!apiKey) throw new Error('Not authenticated. Run fixflags login, or set FIXFLAGS_API_KEY for CI.')
+      const identity = await fetchIdentity(apiKey)
       if (json) console.log(JSON.stringify(identity, null, 2))
       else {
         console.log(identity.user.email)
@@ -353,7 +357,8 @@ program
       const json = Boolean(options.json || program.opts().json)
       const spinner = ora({ text: 'Checking product...', isEnabled: !json }).start()
       try {
-        const call = createMcpCaller(requireApiKey())
+        const apiKey = await getCredential()
+        const call = createMcpCaller(apiKey ?? undefined)
         const scanAccess = parseScanAccessFromCli(options)
         const result = await checkAndPlan(call, url, {
           wait: options.wait,
@@ -420,7 +425,9 @@ program
       const json = Boolean(options.json || program.opts().json)
       const spinner = ora({ text: 'Re-checking product...', isEnabled: !json }).start()
       try {
-        const result = await recheckAndDiff(createMcpCaller(requireApiKey()), reportId, {
+        const apiKey = await getCredential()
+        if (!apiKey) throw new Error('Re-check requires authentication. Run fixflags login first, or set FIXFLAGS_API_KEY for CI.')
+        const result = await recheckAndDiff(createMcpCaller(apiKey), reportId, {
           wait: options.wait,
         })
         spinner.stop()
@@ -466,7 +473,9 @@ program
   .action(async (reportId: string, options: { json?: boolean }) => {
     const json = Boolean(options.json || program.opts().json)
     try {
-      const result = await createMcpCaller(requireApiKey())('ff_get_check_status', {
+      const apiKey = await getCredential()
+      if (!apiKey) throw new Error('Not authenticated. Run fixflags login, or set FIXFLAGS_API_KEY for CI.')
+      const result = await createMcpCaller(apiKey)('ff_get_check_status', {
         reportId,
       })
       if (json) console.log(JSON.stringify(result, null, 2))

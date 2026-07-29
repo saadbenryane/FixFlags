@@ -1,5 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { User } from '@prisma/client'
+import { registerAnonTaskTools as registerAnonymousTaskTools } from '@/lib/mcp/anon-task-tools'
+import { registerAnonCheckStatusTools as registerAnonymousCheckStatusTools } from '@/lib/mcp/anon-check-status'
 import { registerTaskTools } from '@/lib/mcp/task-tools'
 import { registerCheckStatusTools } from './check-status'
 import { registerFlagTools } from './flags'
@@ -11,9 +13,14 @@ export { assertAuditAccess } from '@/lib/mcp/access'
 
 export function registerAllTools(
   server: McpServer,
-  user: User,
+  user: User | null,
   options?: { signal?: AbortSignal }
 ) {
+  if (!user) {
+    registerAnonymousTaskTools(server, options)
+    registerAnonymousCheckStatusTools(server)
+    return
+  }
   registerTaskTools(server, user, options)
   registerCheckStatusTools(server, user)
   registerFlagTools(server, user)

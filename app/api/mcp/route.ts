@@ -1,3 +1,4 @@
+import type { ApiKeyClient } from '@prisma/client'
 import { NextRequest } from 'next/server'
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
@@ -20,7 +21,29 @@ export const maxDuration = 60
 
 async function handleMcpRequest(req: NextRequest): Promise<Response> {
   const credential = extractMcpCredential(req.headers)
-  if (!credential.ok) {
+
+  let user: import('@prisma/client').User | null = null
+  let apiKey: { id: string; client: ApiKeyClient | null } | null = null
+
+  if (credential.ok) {
+    const authContext = await validateApiKey(credential.key)
+    if (!authContext) {
+      return Response.json(
+        {
+          jsonrpc: '2.0',
+          error: {
+            code: -32001,
+            message: 'Provide a valid FixFlags API key. Create one at /settings/api-keys.',
+            data: { code: 'INVALID_API_KEY', action: 'create_api_key' },
+          },
+          id: null,
+        },
+        { status: 401, headers: { 'WWW-Authenticate': 'Bearer realm="FixFlags"' } }
+      )
+    }
+    user = authContext.user
+    apiKey = authContext.apiKey
+  } else if (credential.code === 'INVALID_AUTHORIZATION' || credential.code === 'CONFLICTING_API_KEYS') {
     return Response.json(
       {
         jsonrpc: '2.0',
@@ -37,23 +60,6 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
       }
     )
   }
-
-  const authContext = await validateApiKey(credential.key)
-  if (!authContext) {
-    return Response.json(
-      {
-        jsonrpc: '2.0',
-        error: {
-          code: -32001,
-          message: 'Provide a valid FixFlags API key. Create one at /settings/api-keys.',
-          data: { code: 'INVALID_API_KEY', action: 'create_api_key' },
-        },
-        id: null,
-      },
-      { status: 401, headers: { 'WWW-Authenticate': 'Bearer realm="FixFlags"' } }
-    )
-  }
-  const { user, apiKey } = authContext
 
   let requestSummary = { method: 'unknown', tool: null as string | null, auditIdFromParams: null as string | null }
   try {
@@ -97,48 +103,54 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
       auditIdFromResult
     )
 
-    await logMcpInteraction(
-      {
-        userId: user.id,
-        apiKeyId: apiKey.id,
-        client: apiKey.client,
-        method: requestSummary.method,
-        tool: requestSummary.tool,
-        success: outcome.success,
-        durationMs,
-        errorCode: outcome.errorCode,
-        auditId,
-        metadata: responseBody
-          ? extractMcpLogMetadata(responseBody, response.status)
-          : { httpStatus: response.status },
-      },
-      (data) => prisma.mcpInteraction.create({ data })
-    )
+    if (user && apiKey) {
+      await logMcpInteraction(
+        {
+          userId: user.id,
+          apiKeyId: apiKey.id,
+          client: apiKey.client,
+          method: requestSummary.method,
+          tool: requestSummary.tool,
+          success: outcome.success,
+          durationMs,
+          errorCode: outcome.errorCode,
+          auditId,
+          metadata: responseBody
+            ? extractMcpLogMetadata(responseBody, response.status)
+            : { httpStatus: response.status },
+        },
+        (data) => prisma.mcpInteraction.create({ data })
+      )
+    }
     return response
   } catch (error) {
     const duration = Date.now() - start
     const errorCode = error instanceof Error ? error.message.slice(0, 100) : 'unknown'
-    await logMcpInteraction(
-      {
+    if (user && apiKey) {
+      await logMcpInteraction(
+        {
+          userId: user.id,
+          apiKeyId: apiKey.id,
+          client: apiKey.client,
+          method: requestSummary.method,
+          tool: requestSummary.tool,
+          success: false,
+          durationMs: duration,
+          errorCode,
+          auditId: requestSummary.auditIdFromParams,
+          metadata: { httpStatus: 500 },
+        },
+        (data) => prisma.mcpInteraction.create({ data })
+      )
+    }
+    if (user) {
+      logger.error('MCP request failed', {
         userId: user.id,
-        apiKeyId: apiKey.id,
-        client: apiKey.client,
         method: requestSummary.method,
         tool: requestSummary.tool,
-        success: false,
-        durationMs: duration,
-        errorCode,
-        auditId: requestSummary.auditIdFromParams,
-        metadata: { httpStatus: 500 },
-      },
-      (data) => prisma.mcpInteraction.create({ data })
-    )
-    logger.error('MCP request failed', {
-      userId: user.id,
-      method: requestSummary.method,
-      tool: requestSummary.tool,
-      error,
-    })
+        error,
+      })
+    }
     return Response.json(
       {
         jsonrpc: '2.0',

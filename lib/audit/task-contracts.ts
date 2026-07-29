@@ -10,6 +10,7 @@ import { parseProductContract } from '@/lib/audit/product-contract'
 import {
   buildUnifiedPlanBundle,
 } from '@/lib/audit/load-finish-plan-flags'
+import type { FinishPlanPromptAccess } from '@/lib/audit/finish-plan'
 import {
   loadTechnologyProfile,
   type TechnologyProfile,
@@ -161,7 +162,8 @@ function toTaskItems(
 
 export async function loadCompletedOutcome(
   reportId: string,
-  tool: PromptToolKey = 'universal'
+  tool: PromptToolKey = 'universal',
+  promptAccess?: FinishPlanPromptAccess
 ): Promise<{
   score: number | null
   verdict: string | null
@@ -191,7 +193,7 @@ export async function loadCompletedOutcome(
     flags: audit.flags,
     rubricRows: audit.rubrics,
     contract,
-    promptAccess: 'all' as const,
+    promptAccess: promptAccess ?? 'all',
   }
   const [{ fixList }, technologyProfile] = await Promise.all([
     buildUnifiedPlanBundle(planInput),
@@ -376,7 +378,9 @@ export async function checkAndPlan(options: TaskQueueOptions & {
         : {}),
     }
   }
-  return { ...base, ...(await loadCompletedOutcome(auditId, options.tool)) }
+  const anon = options.userId === null
+  const outcome = await loadCompletedOutcome(auditId, options.tool, anon ? 'one' : undefined)
+  return { ...base, ...outcome }
 }
 
 export async function recheckAndCompare(options: TaskQueueOptions & {

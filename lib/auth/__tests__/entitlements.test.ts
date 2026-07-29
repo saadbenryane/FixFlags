@@ -376,6 +376,7 @@ describe('getEntitlements', () => {
       canMonitor: true,
       canWatchProduct: false,
       canUseMcp: false,
+      canAccessBasicMcp: true,
       canScanRepositories: false,
     })
   })
@@ -390,6 +391,7 @@ describe('getEntitlements', () => {
       canMonitor: true,
       canWatchProduct: true,
       canUseMcp: true,
+      canAccessBasicMcp: true,
       canScanRepositories: false,
     })
   })
@@ -404,6 +406,7 @@ describe('getEntitlements', () => {
       canMonitor: true,
       canWatchProduct: true,
       canUseMcp: true,
+      canAccessBasicMcp: true,
       canScanRepositories: true,
     })
   })
@@ -418,6 +421,7 @@ describe('getEntitlements', () => {
       canMonitor: true,
       canWatchProduct: true,
       canUseMcp: true,
+      canAccessBasicMcp: true,
       canScanRepositories: true,
     })
   })
@@ -434,6 +438,7 @@ describe('getEntitlements', () => {
       canMonitor: true,
       canWatchProduct: false,
       canUseMcp: false,
+      canAccessBasicMcp: false,
       canScanRepositories: false,
     })
   })
