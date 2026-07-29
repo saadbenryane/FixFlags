@@ -31,14 +31,12 @@ if (!existsSync(entry)) {
 const childEnv = {
   ...process.env,
   FIXFLAGS_PROCESS_ROLE: mode,
-  ...(mode === 'worker' && !process.env.AUDIT_WORKER_CONCURRENCY
-    ? { AUDIT_WORKER_CONCURRENCY: '2' }
-    : {}),
+  ...(mode === 'worker' && !process.env.AUDIT_WORKER_CONCURRENCY ? { AUDIT_WORKER_CONCURRENCY: '2' } : {}),
 }
 
 let healthServer
 if (mode === 'worker') {
-  const port = parseInt(process.env.PORT || '8080', 10)
+  const port = parseInt(process.env.WORKER_HEALTH_PORT || process.env.PORT || '8080', 10)
   healthServer = createServer((_req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ status: 'ok' }))
@@ -48,7 +46,10 @@ if (mode === 'worker') {
   })
 }
 
-const child = spawn(process.execPath, [entry], { stdio: 'inherit', env: childEnv })
+const child = spawn(process.execPath, [entry], {
+  stdio: 'inherit',
+  env: childEnv,
+})
 
 if (healthServer) {
   child.on('exit', () => healthServer.close())

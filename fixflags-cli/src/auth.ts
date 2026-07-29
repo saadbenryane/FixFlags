@@ -31,12 +31,14 @@ export async function loginWithToken(options: { insecureStorage?: boolean }) {
   const apiKey = await readSecretFromStdin('Paste your FixFlags API key: ')
   if (!apiKey) throw new Error('No API key was provided.')
   const identity = await fetchIdentity(apiKey)
-  saveCredential(apiKey, options)
+  await saveCredential(apiKey, options)
   return identity
 }
 
 export async function loginWithBrowser(options: { insecureStorage?: boolean }) {
-  const response = await fetch(`${API_BASE}/api/cli/auth/device`, { method: 'POST' })
+  const response = await fetch(`${API_BASE}/api/cli/auth/device`, {
+    method: 'POST',
+  })
   const body = await responseBody(response)
   if (!response.ok) {
     throw new Error(String(body.message || 'Could not start browser login.'))
@@ -69,15 +71,12 @@ export async function loginWithBrowser(options: { insecureStorage?: boolean }) {
     }
     if (tokenResponse.ok && tokenBody.accessToken) {
       const identity = await fetchIdentity(tokenBody.accessToken)
-      saveCredential(tokenBody.accessToken, options)
+      await saveCredential(tokenBody.accessToken, options)
       return identity
     }
     if (tokenBody.code === 'AUTHORIZATION_PENDING') continue
     if (tokenBody.code === 'SLOW_DOWN') {
-      interval = Math.max(
-        interval,
-        Number(tokenResponse.headers.get('retry-after') || interval) + 1
-      )
+      interval = Math.max(interval, Number(tokenResponse.headers.get('retry-after') || interval) + 1)
       continue
     }
     if (tokenBody.code === 'ACCESS_DENIED') {

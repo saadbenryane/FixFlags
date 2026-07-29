@@ -3,9 +3,7 @@ import { defineConfig, devices } from '@playwright/test'
 const externalBaseUrl = process.env.E2E_BASE_URL
 const baseURL = externalBaseUrl ?? 'http://127.0.0.1:3107'
 const credentialedDatabaseUrl =
-  process.env.E2E_CREDENTIALED === 'true'
-    ? process.env.RELEASE_FRESH_DATABASE_URL
-    : undefined
+  process.env.E2E_CREDENTIALED === 'true' ? process.env.RELEASE_FRESH_DATABASE_URL : undefined
 
 const localRuntimeEnv = {
   FIXFLAGS_ALLOW_DEGRADED_LOCAL: 'true',
@@ -16,6 +14,7 @@ const localRuntimeEnv = {
   BETTER_AUTH_URL: baseURL,
   NEXT_DIST_DIR: '.next-e2e',
   PORT: '3107',
+  WORKER_HEALTH_PORT: '3108',
   ...(credentialedDatabaseUrl ? { DATABASE_URL: credentialedDatabaseUrl } : {}),
 }
 
@@ -29,9 +28,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-  ],
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: externalBaseUrl
     ? undefined
     : {

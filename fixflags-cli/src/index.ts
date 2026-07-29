@@ -4,32 +4,14 @@ import { Command } from 'commander'
 import chalk from 'chalk'
 import ora from 'ora'
 import { readFileSync } from 'node:fs'
-import {
-  checkAndPlan,
-  recheckAndDiff,
-  type FinishPlan,
-  type McpCaller,
-} from './workflows.js'
-import {
-  API_BASE,
-  getCredential,
-  hasConfiguredCredential,
-  removeCredential,
-  requireApiKey,
-} from './credentials.js'
-import {
-  fetchIdentity,
-  loginWithBrowser,
-  loginWithToken,
-  revokeCredential,
-} from './auth.js'
+import { checkAndPlan, recheckAndDiff, type FinishPlan, type McpCaller } from './workflows.js'
+import { API_BASE, getCredential, hasConfiguredCredential, removeCredential, requireApiKey } from './credentials.js'
+import { fetchIdentity, loginWithBrowser, loginWithToken, revokeCredential } from './auth.js'
 import { EDITORS, initializeFixFlags, type Editor } from './init.js'
 import { runMcpBridge } from './mcp-bridge.js'
 const PROMPT_PREVIEW_LENGTH = 700
 const CLI_VERSION = (
-  JSON.parse(
-    readFileSync(new URL('../package.json', import.meta.url), 'utf8')
-  ) as { version: string }
+  JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }
 ).version
 
 let rpcId = 1
@@ -78,12 +60,7 @@ function promptPreview(prompt: string | null | undefined, full: boolean): string
   return `${prompt.slice(0, PROMPT_PREVIEW_LENGTH)}\n[truncated, rerun with --full]`
 }
 
-function printPlan(
-  plan: FinishPlan | undefined,
-  full: boolean,
-  limit?: number,
-  label = 'All fixes'
-): void {
+function printPlan(plan: FinishPlan | undefined, full: boolean, limit?: number, label = 'All fixes'): void {
   const allItems = plan?.items ?? []
   const items = limit == null ? allItems : allItems.slice(0, limit)
   if (items.length === 0) {
@@ -94,9 +71,7 @@ function printPlan(
   console.log(chalk.bold(`${label} (${items.length})`))
   for (const [index, item] of items.entries()) {
     console.log('')
-    console.log(
-      `${chalk.bold(`${index + 1}.`)} ${chalk.red(item.severity)} · ${chalk.cyan(item.rubric)}`
-    )
+    console.log(`${chalk.bold(`${index + 1}.`)} ${chalk.red(item.severity)} · ${chalk.cyan(item.rubric)}`)
     console.log(item.problem)
     const prompt = promptPreview(item.fixPrompt, full)
     if (prompt) console.log(`${chalk.gray('Fix:')}\n${prompt}`)
@@ -154,34 +129,28 @@ program
   .option('--with-token', 'Read an existing API key from a hidden prompt or standard input')
   .option(
     '--insecure-storage',
-    'Explicitly store the credential in a mode-0600 config file instead of the OS credential store'
+    'Explicitly store the credential in an encrypted mode-0600 local file instead of the OS credential store'
   )
-  .action(
-    async (options: { withToken?: boolean; insecureStorage?: boolean }) => {
-      try {
-        if (process.env.FIXFLAGS_API_KEY) {
-          const identity = await fetchIdentity(process.env.FIXFLAGS_API_KEY)
-          console.log(
-            chalk.green(`Authenticated as ${identity.user.email} through FIXFLAGS_API_KEY.`)
-          )
-          return
-        }
-        const identity = options.withToken
-          ? await loginWithToken(options)
-          : await loginWithBrowser(options)
-        console.log(chalk.green(`Authenticated as ${identity.user.email}.`))
-        if (options.insecureStorage) {
-          console.log(
-            chalk.yellow(
-              'Credential stored in the local config because --insecure-storage was explicitly selected.'
-            )
-          )
-        }
-      } catch (error) {
-        fail(error)
+  .action(async (options: { withToken?: boolean; insecureStorage?: boolean }) => {
+    try {
+      if (process.env.FIXFLAGS_API_KEY) {
+        const identity = await fetchIdentity(process.env.FIXFLAGS_API_KEY)
+        console.log(chalk.green(`Authenticated as ${identity.user.email} through FIXFLAGS_API_KEY.`))
+        return
       }
+      const identity = options.withToken ? await loginWithToken(options) : await loginWithBrowser(options)
+      console.log(chalk.green(`Authenticated as ${identity.user.email}.`))
+      if (options.insecureStorage) {
+        console.log(
+          chalk.yellow(
+            'Credential stored in an encrypted local file because --insecure-storage was explicitly selected.'
+          )
+        )
+      }
+    } catch (error) {
+      fail(error)
     }
-  )
+  })
 
 program
   .command('whoami')
@@ -211,19 +180,13 @@ program
   .action(async (options: { localOnly?: boolean }) => {
     try {
       if (process.env.FIXFLAGS_API_KEY) {
-        throw new Error(
-          'FIXFLAGS_API_KEY is set. Remove it from the environment to log out.'
-        )
+        throw new Error('FIXFLAGS_API_KEY is set. Remove it from the environment to log out.')
       }
       const apiKey = requireApiKey()
       if (!options.localOnly) await revokeCredential(apiKey)
       removeCredential()
       console.log(
-        chalk.green(
-          options.localOnly
-            ? 'Local CLI credential removed.'
-            : 'CLI credential revoked and removed.'
-        )
+        chalk.green(options.localOnly ? 'Local CLI credential removed.' : 'CLI credential revoked and removed.')
       )
     } catch (error) {
       fail(error)
@@ -233,10 +196,7 @@ program
 program
   .command('init [url]')
   .description('Connect FixFlags to this project and install its customer skill')
-  .option(
-    '--editor <editor>',
-    `Editor to configure (${[...EDITORS, 'all'].join(', ')})`
-  )
+  .option('--editor <editor>', `Editor to configure (${[...EDITORS, 'all'].join(', ')})`)
   .option('--scope <scope>', 'Install for this project or this user', 'project')
   .option('--dry-run', 'Show the files that would change without writing them')
   .option('--yes', 'Accept detected settings without prompting')
@@ -251,11 +211,7 @@ program
       }
     ) => {
       try {
-        if (
-          options.editor &&
-          options.editor !== 'all' &&
-          !EDITORS.includes(options.editor as Editor)
-        ) {
+        if (options.editor && options.editor !== 'all' && !EDITORS.includes(options.editor as Editor)) {
           throw new Error(`--editor must be one of ${[...EDITORS, 'all'].join(', ')}`)
         }
         if (options.scope !== 'project' && options.scope !== 'user') {
@@ -267,18 +223,12 @@ program
           productUrl: url,
           dryRun: options.dryRun,
         })
-        console.log(
-          result.dryRun
-            ? 'FixFlags init preview:'
-            : chalk.green('FixFlags connected to this project.')
-        )
+        console.log(result.dryRun ? 'FixFlags init preview:' : chalk.green('FixFlags connected to this project.'))
         for (const file of result.files) console.log(`  ${file}`)
         console.log(`Skill: ${result.skillUrl}`)
         if (!process.env.FIXFLAGS_API_KEY) {
           console.log(
-            chalk.gray(
-              'MCP uses the CLI credential store through fixflags mcp; no secret was written to the project.'
-            )
+            chalk.gray('MCP uses the CLI credential store through fixflags mcp; no secret was written to the project.')
           )
         }
       } catch (error) {
@@ -355,7 +305,10 @@ program
       }
     ) => {
       const json = Boolean(options.json || program.opts().json)
-      const spinner = ora({ text: 'Checking product...', isEnabled: !json }).start()
+      const spinner = ora({
+        text: 'Checking product...',
+        isEnabled: !json,
+      }).start()
       try {
         const apiKey = await getCredential()
         const call = createMcpCaller(apiKey ?? undefined)
@@ -368,9 +321,7 @@ program
         })
 
         spinner.stop()
-        const hasCritical = Boolean(
-          result.rubrics?.some((rubric) => (rubric.criticalCount ?? 0) > 0)
-        )
+        const hasCritical = Boolean(result.rubrics?.some((rubric) => (rubric.criticalCount ?? 0) > 0))
         if (json) {
           console.log(JSON.stringify(result, null, 2))
           if (hasCritical) process.exitCode = 1
@@ -420,13 +371,23 @@ program
   .action(
     async (
       reportId: string,
-      options: { wait: boolean; diff?: boolean; limit?: string; full?: boolean; json?: boolean }
+      options: {
+        wait: boolean
+        diff?: boolean
+        limit?: string
+        full?: boolean
+        json?: boolean
+      }
     ) => {
       const json = Boolean(options.json || program.opts().json)
-      const spinner = ora({ text: 'Re-checking product...', isEnabled: !json }).start()
+      const spinner = ora({
+        text: 'Re-checking product...',
+        isEnabled: !json,
+      }).start()
       try {
         const apiKey = await getCredential()
-        if (!apiKey) throw new Error('Re-check requires authentication. Run fixflags login first, or set FIXFLAGS_API_KEY for CI.')
+        if (!apiKey)
+          throw new Error('Re-check requires authentication. Run fixflags login first, or set FIXFLAGS_API_KEY for CI.')
         const result = await recheckAndDiff(createMcpCaller(apiKey), reportId, {
           wait: options.wait,
         })

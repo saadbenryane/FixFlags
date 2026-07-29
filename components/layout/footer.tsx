@@ -8,10 +8,7 @@ import { FooterThemeToggle } from '@/components/layout/FooterThemeToggle'
 import { Container } from '@/components/ui/container'
 import { BRAND, LANDING_PAGE } from '@/lib/marketing/copy'
 import { FOOTER_COLUMNS, LEGAL_LINKS } from '@/lib/site/nav'
-import {
-  HOMEPAGE_EDITOR_INTEGRATIONS,
-  editorDocsHref,
-} from '@/lib/integrations/editor-catalog'
+import { HOMEPAGE_EDITOR_INTEGRATIONS, editorDocsHref } from '@/lib/integrations/editor-catalog'
 
 const FOOTER_EDITOR_MARKS = HOMEPAGE_EDITOR_INTEGRATIONS
 
@@ -23,22 +20,16 @@ const METRIC_ICONS = {
 } as const
 
 export function Footer() {
-  const { tagline, madeWith, buildersTitle, buildersBody, buildersCta, buildersHref } =
-    LANDING_PAGE.footer
+  const { tagline, madeWith, buildersTitle, buildersBody, buildersCta, buildersHref } = LANDING_PAGE.footer
   const trustMetrics = LANDING_PAGE.sampleReport.trustMetrics
 
   return (
     <footer className="border-t border-border/45 bg-background">
-      <Container
-        variant="marketing"
-        className="px-5 pb-7 pt-10 sm:px-6 sm:pb-8 sm:pt-12 lg:px-12 lg:pb-9 lg:pt-8"
-      >
+      <Container variant="marketing" className="px-5 pb-7 pt-10 sm:px-6 sm:pb-8 sm:pt-12 lg:px-12 lg:pb-9 lg:pt-8">
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-[1.35fr_repeat(4,minmax(0,0.78fr))_1.28fr] lg:gap-x-7 xl:gap-x-10">
           <div className="col-span-2 space-y-4 lg:col-span-1">
             <Logo variant="lockup" size="lg" href="/" />
-            <p className="max-w-[15rem] text-xs leading-[1.65] text-muted-foreground text-pretty">
-              {tagline}
-            </p>
+            <p className="max-w-[15rem] text-xs leading-[1.65] text-muted-foreground text-pretty">{tagline}</p>
           </div>
 
           <FooterColumn title="Product" links={FOOTER_COLUMNS.product} />
@@ -50,25 +41,19 @@ export function Footer() {
             <p className="font-mono text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-foreground/85">
               {buildersTitle}
             </p>
-            <p className="max-w-[16rem] text-xs leading-[1.6] text-muted-foreground text-pretty">
-              {buildersBody}
-            </p>
+            <p className="max-w-[16rem] text-xs leading-[1.6] text-muted-foreground text-pretty">{buildersBody}</p>
             <ul className="grid max-w-[17rem] grid-cols-2 gap-2" aria-label="Supported AI builders">
               {FOOTER_EDITOR_MARKS.map((editor) => (
-                <li
-                  key={editor.key}
-                >
+                <li key={editor.key}>
                   <Link
                     href={editorDocsHref(editor)}
-                    className="flex min-h-9 items-center gap-1.5 rounded-[var(--radius-control)] border border-border/65 bg-background px-2.5 text-[0.625rem] font-semibold text-foreground/80 shadow-sm transition-colors hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                    className="flex min-h-11 items-center gap-1.5 rounded-[var(--radius-control)] border border-border/65 bg-background px-2.5 text-[0.625rem] font-semibold text-foreground/80 shadow-sm transition-colors hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                   >
                     <EditorMark
                       name={editor.label}
                       className="inline-flex h-4 w-4 shrink-0 items-center justify-center"
                     />
-                    <span className="truncate">
-                      {editor.label === 'Claude Code' ? 'Claude' : editor.label}
-                    </span>
+                    <span className="truncate">{editor.label === 'Claude Code' ? 'Claude' : editor.label}</span>
                   </Link>
                 </li>
               ))}
@@ -92,12 +77,7 @@ export function Footer() {
           </div>
 
           {trustMetrics.map((metric) => (
-            <FooterMetric
-              key={metric.id}
-              id={metric.id}
-              value={metric.value}
-              label={metric.label}
-            />
+            <FooterMetric key={metric.id} id={metric.id} value={metric.value} label={metric.label} />
           ))}
 
           <FooterNewsletter className="col-span-2 lg:col-span-1 lg:pl-7" />
@@ -107,15 +87,7 @@ export function Footer() {
   )
 }
 
-function FooterMetric({
-  id,
-  value,
-  label,
-}: {
-  id: keyof typeof METRIC_ICONS
-  value: string
-  label: string
-}) {
+function FooterMetric({ id, value, label }: { id: keyof typeof METRIC_ICONS; value: string; label: string }) {
   const Icon = METRIC_ICONS[id]
 
   return (
@@ -127,13 +99,7 @@ function FooterMetric({
   )
 }
 
-function FooterColumn({
-  title,
-  links,
-}: {
-  title: string
-  links: readonly { href: string; label: string }[]
-}) {
+function FooterColumn({ title, links }: { title: string; links: readonly { href: string; label: string }[] }) {
   return (
     <div>
       <p className="mb-3 font-mono text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-foreground/85">
