@@ -23,7 +23,7 @@ export function CliInstallCard() {
   }, [])
 
   const command = release?.available
-    ? `npm install --global fixflags@${release.tag}`
+    ? `npm install --global fixflags@${release.version}`
     : null
   async function copy(value: string, target: 'install' | 'skill') {
     await navigator.clipboard.writeText(value)

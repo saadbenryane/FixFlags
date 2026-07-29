@@ -361,29 +361,21 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'mcp-setup',
     categoryId: 'mcp-and-editors',
     title: 'Set up MCP',
-    excerpt: 'Connect FixFlags to Cursor, Claude Code, Windsurf, Lovable, or Bolt with an API key.',
+    excerpt: 'Open the canonical editor guide, create a scoped API key, and test the connection.',
     popular: true,
-    searchTokens: ['mcp', 'cursor', 'claude code', 'windsurf', 'api'],
+    searchTokens: ['mcp', 'editor', 'integration', 'api key', 'connection'],
     body: [
       {
         type: 'p',
-        text: 'MCP lets your agent check and fix your site without copy-pasting URLs. Pro plan required for API keys.',
-      },
-      {
-        type: 'ol',
-        items: [
-          'Generate an API key in Settings → API Keys (Pro plan).',
-          'Paste the HTTP config into Cursor, Claude Code, or Windsurf, or add the custom HTTP connector in Lovable or Bolt.',
-          'Run ff_check_and_plan to verify your key.',
-        ],
+        text: 'MCP lets your editor use the FixFlags Check → Fix → Re-check workflow. The public documentation explains each editor. Creating a credential and testing the connection requires Pro.',
       },
       {
         type: 'p',
-        text: 'Full config examples and tool list live on the MCP guide. Public URLs only. Localhost and private sites are not reachable yet.',
+        text: 'Open the editor integration guide for the current setup location, placeholder-safe configuration, verification steps, and official vendor documentation.',
       },
       {
         type: 'callout',
-        text: 'Open the full MCP guide for install buttons, curl tests, and security notes.',
+        text: 'Credentials are revealed once. Keep them in the editor secret store and never send them through support.',
       },
     ],
     related: ['api-keys', 'lovable-bolt-paste', 'free-vs-pro'],

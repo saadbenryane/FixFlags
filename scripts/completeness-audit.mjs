@@ -78,6 +78,54 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   assert(!read(root, 'fixflags-cli/src/index.ts').includes(".alias('scan')"), 'Unpublished CLI scan alias is still registered')
   assert(!read(root, 'fixflags-cli/README.md').includes('fixflags scan '), 'CLI README still documents scan')
 
+  const editorCatalog = read(root, 'lib/integrations/editor-catalog.ts')
+  const editorKeys = [...editorCatalog.matchAll(/^\s{4}key:\s*'([a-zA-Z]+)',/gm)].map((match) => match[1])
+  const editorAnchors = [...editorCatalog.matchAll(/^\s{4}docsAnchor:\s*'([a-z0-9-]+)',/gm)].map((match) => match[1])
+  assert(editorKeys.length === 8, `Editor catalog drift: expected=8, code=${editorKeys.length}`)
+  assert(new Set(editorKeys).size === editorKeys.length, 'Editor catalog keys are not unique')
+  assert(new Set(editorAnchors).size === editorAnchors.length, 'Editor documentation anchors are not unique')
+  assert(editorAnchors.length === editorKeys.length, 'Every editor must have one documentation anchor')
+
+  const editorConsumers = [
+    'components/marketing/landing/EditorIntegrationGrid.tsx',
+    'components/layout/footer.tsx',
+    'app/(docs)/docs/integrations/page.tsx',
+    'app/(app)/dashboard/mcp-setup/page.tsx',
+    'app/api/me/preferences/route.ts',
+  ]
+  for (const file of editorConsumers) {
+    const source = read(root, file)
+    assert(
+      source.includes('EDITOR_INTEGRATION') || source.includes('HOMEPAGE_EDITOR_INTEGRATIONS'),
+      `Editor surface does not consume the canonical catalog: ${file}`,
+    )
+  }
+  const integrationPage = read(root, 'app/(docs)/docs/integrations/page.tsx')
+  assert(
+    integrationPage.includes('buildEditorMcpConfiguration'),
+    'Integration docs do not consume the canonical configuration generator',
+  )
+  assert(
+    read(root, 'app/(docs)/docs/mcp/tools/page.tsx').includes("from '@/lib/mcp/tool-manifest'"),
+    'MCP tool reference does not consume the canonical tool manifest',
+  )
+  assert(
+    read(root, 'fixflags-cli/src/init.ts').includes(
+      "export const EDITORS = ['cursor', 'claude', 'windsurf', 'codex']",
+    ),
+    'CLI-managed editor list must contain only Cursor, Claude Code, Windsurf, and Codex',
+  )
+  for (const key of ['replit', 'codex', 'devin']) {
+    assert(schema.includes(`  ${key}`), `ApiKeyClient enum is missing ${key}`)
+  }
+  const pendingSmokeCount = (editorCatalog.match(/productionSmoke:\s*'pending'/g) ?? []).length
+  if (pendingSmokeCount > 0) {
+    assert(
+      !/\beight (?:production-ready )?integrations\b/i.test(read(root, 'PRODUCT.md')),
+      'PRODUCT.md claims eight shipped integrations before production smokes are recorded',
+    )
+  }
+
   const toolbar = read(root, 'components/audit/ReportStickyToolbar.tsx')
   const reportSources = [
     'components/audit/AuditReport.tsx',
@@ -145,7 +193,12 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   return {
     ok: failures.length === 0,
     failures,
-    facts: { modelCount, mcpToolCount: manifest.size, sectionCount: sectionIds.length },
+    facts: {
+      modelCount,
+      mcpToolCount: manifest.size,
+      editorCount: editorKeys.length,
+      sectionCount: sectionIds.length,
+    },
   }
 }
 
@@ -155,6 +208,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     for (const failure of result.failures) console.error(`FAIL ${failure}`)
     process.exitCode = 1
   } else {
-    console.log(`PASS completeness audit: ${result.facts.modelCount} models, ${result.facts.mcpToolCount} MCP tools, ${result.facts.sectionCount} sticky destinations`)
+    console.log(`PASS completeness audit: ${result.facts.modelCount} models, ${result.facts.mcpToolCount} MCP tools, ${result.facts.editorCount} editor integrations, ${result.facts.sectionCount} sticky destinations`)
   }
 }

@@ -2,9 +2,11 @@ import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:http'
 import {
+  existsSync,
   mkdtempSync,
   readFileSync,
   statSync,
+  writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -192,4 +194,25 @@ test('init merges MCP configuration, installs the canonical rule, and is idempot
   )
   assert.equal(second.code, 0, second.stderr)
   assert.equal(readFileSync(mcpPath, 'utf8'), firstConfig)
+
+  const all = await runCli(
+    ['init', 'https://product.example', '--editor', 'all', '--yes'],
+    options
+  )
+  assert.equal(all.code, 0, all.stderr)
+  assert.match(readFileSync(join(root, '.mcp.json'), 'utf8'), /"command": "fixflags"/)
+  assert.match(readFileSync(join(root, '.windsurf', 'mcp_config.json'), 'utf8'), /"command": "fixflags"/)
+  assert.match(readFileSync(join(root, '.codex', 'config.toml'), 'utf8'), /mcp_servers\.fixflags/)
+  assert.equal(existsSync(join(root, '.fixflags', 'lovable-setup.md')), false)
+  assert.equal(existsSync(join(root, '.fixflags', 'bolt-setup.md')), false)
+
+  const malformedPath = join(root, '.windsurf', 'mcp_config.json')
+  writeFileSync(malformedPath, '{invalid', 'utf8')
+  const malformed = await runCli(
+    ['init', 'https://product.example', '--editor', 'windsurf', '--yes'],
+    options
+  )
+  assert.notEqual(malformed.code, 0)
+  assert.match(malformed.stderr, /malformed configuration/i)
+  assert.equal(readFileSync(malformedPath, 'utf8'), '{invalid')
 })

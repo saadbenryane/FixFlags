@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
+import { CopyableCommand } from '@/components/marketing/landing/CopyableCommand'
 import { EditorIntegrationGrid } from '@/components/marketing/landing/EditorIntegrationGrid'
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
 import { Container } from '@/components/ui/container'
@@ -35,6 +36,14 @@ export function IntegrationsBlock() {
 
             <div className="mt-8 max-w-[72rem] sm:mt-10">
               <EditorIntegrationGrid />
+            </div>
+
+            <div className="mt-6 max-w-[30rem]">
+              <CopyableCommand
+                command={copy.npxCheckCommand}
+                label={copy.npxCheckLabel}
+                description={copy.npxCheckDescription}
+              />
             </div>
 
             <div className="mt-7 flex flex-wrap items-center gap-3">

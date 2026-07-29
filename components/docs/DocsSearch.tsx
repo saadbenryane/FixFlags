@@ -49,6 +49,8 @@ export function DocsSearch({
         <input
           id={`${listId}-input`}
           type="search"
+          role="combobox"
+          aria-autocomplete="list"
           value={query}
           onChange={(event) => {
             setQuery(event.target.value)

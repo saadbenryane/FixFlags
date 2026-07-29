@@ -39,8 +39,12 @@ describe('homepage lean sections', () => {
     render(<IntegrationsBlock />)
 
     expect(screen.getByText((content) => content.includes('Works in the editor you already use'))).toBeInTheDocument()
-    expect(screen.getByText('Set up MCP')).toBeInTheDocument()
-    expect(screen.getByText('CLI docs')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Set up MCP' })).toHaveAttribute(
+      'href',
+      '/docs/integrations#quick-start'
+    )
+    expect(screen.getByRole('link', { name: 'CLI docs' })).toHaveAttribute('href', '/docs/cli')
+    expect(screen.getAllByRole('link', { name: /integration guide/i })).toHaveLength(8)
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 

@@ -19,6 +19,9 @@ import { useConfirm } from '@/components/ui/confirm-dialog'
 import { SettingsSkeleton } from '@/components/settings/settings-skeleton'
 import { createApiKey } from '@/lib/api/api-key-client'
 import type { ApiKeyClient } from '@/lib/mcp/builders'
+import { EDITOR_INTEGRATIONS } from '@/lib/integrations/editor-catalog'
+
+const EDITOR_NAMES = EDITOR_INTEGRATIONS.map((editor) => editor.label).join(', ')
 
 interface ApiKey {
   id: string
@@ -116,7 +119,7 @@ export default function ApiKeysPage() {
     <Container variant="narrow" className="py-8 space-y-8">
       <PageHeader
         title="API Keys"
-        description={`Use API keys to connect ${BRAND.name} to Cursor, Claude Code, Windsurf, Lovable, Bolt, or VS Code via MCP.`}
+        description={`Use API keys to connect ${BRAND.name} to ${EDITOR_NAMES} via MCP.`}
       />
 
       {!canUseKeys && (
@@ -181,7 +184,7 @@ export default function ApiKeysPage() {
           {keys.length === 0 ? (
             <EmptyState
               title="No API keys yet"
-              description="Create a key above to connect FixFlags to Cursor, Claude Code, Windsurf, Lovable, Bolt, or VS Code via MCP."
+              description="Create a key above to connect FixFlags to your editor through MCP."
             />
           ) : (
             keys.map((key) => (

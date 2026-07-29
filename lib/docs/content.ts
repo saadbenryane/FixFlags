@@ -48,7 +48,7 @@ export async function buildDocsSearchIndex(): Promise<DocsSearchEntry[]> {
   const editors = EDITOR_INTEGRATIONS.map((editor) => ({
     title: `${editor.label} integration`,
     description: `Connect FixFlags in ${editor.label}.`,
-    href: `/docs/integrations#${editor.anchor}`,
+    href: `/docs/integrations#${editor.docsAnchor}`,
     keywords: `${editor.label} ${editor.setupMode} ${editor.setupLocation} MCP editor connection`,
   }))
 

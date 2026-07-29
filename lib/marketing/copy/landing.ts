@@ -722,6 +722,9 @@ export const LANDING_PAGE = {
     mcpHref: '/docs/integrations#quick-start',
     cliCta: 'CLI docs',
     cliHref: '/docs/cli',
+    npxCheckCommand: 'npx fixflags check https://site.com',
+    npxCheckLabel: 'Terminal',
+    npxCheckDescription: 'No signup. No install. Just paste your URL.',
   },
   sampleReport: {
     label: 'Sample report',

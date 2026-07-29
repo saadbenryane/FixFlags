@@ -44,7 +44,7 @@ describe('PATCH /api/me/preferences', () => {
       method: 'PATCH',
       body: JSON.stringify({
         vibecodingLevel: 'advanced',
-        preferredTools: ['lovable', 'bolt', 'notepad'],
+        preferredTools: ['lovable', 'bolt', 'replit', 'codex', 'devin', 'notepad'],
       }),
     }))
     expect(ok.status).toBe(200)
@@ -52,7 +52,7 @@ describe('PATCH /api/me/preferences', () => {
       where: { id: 'user-1' },
       data: {
         vibecodingLevel: 'advanced',
-        preferredTools: ['lovable', 'bolt'],
+        preferredTools: ['lovable', 'bolt', 'replit', 'codex', 'devin'],
       },
     })
   })
