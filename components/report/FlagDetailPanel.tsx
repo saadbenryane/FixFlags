@@ -127,7 +127,7 @@ function FlagEvidenceMeta({ flag }: { flag: ExplorerFlag }) {
           {stepMatch ? (
             <a
               href="#report-timeline"
-              className="inline-flex items-center gap-1.5 text-xs text-brand hover:underline"
+              className="inline-flex items-center gap-1.5 text-xs text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-sm"
             >
               View timeline step {stepMatch[1]}
             </a>
@@ -138,7 +138,7 @@ function FlagEvidenceMeta({ flag }: { flag: ExplorerFlag }) {
               href={pageUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-sm"
             >
               <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
               <span className="truncate max-w-[300px]">{pageUrl}</span>

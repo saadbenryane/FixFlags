@@ -148,7 +148,7 @@ function EvidenceTooltip({
     <div
       role="tooltip"
       className={cn(
-        'pointer-events-none absolute z-10 max-w-[14rem] rounded-md border border-border/60 bg-card px-3 py-2 text-left shadow-raised',
+        'pointer-events-none absolute z-content max-w-[14rem] rounded-md border border-border/60 bg-card px-3 py-2 text-left shadow-raised',
         anchorClassName
       )}
     >
@@ -501,7 +501,7 @@ function ScreenshotPanel({
       {comparisonLabel ? (
         <div
           className={cn(
-            'absolute left-2 top-2 z-20 inline-flex min-h-7 items-center gap-1.5 rounded-md border bg-background/95 px-2 py-1 text-2xs font-medium shadow-sm backdrop-blur',
+            'absolute left-2 top-2 z-overlay inline-flex min-h-7 items-center gap-1.5 rounded-md border bg-background/95 px-2 py-1 text-2xs font-medium shadow-sm backdrop-blur',
             resolvedComparisonState === 'affected'
               ? 'border-destructive/40 text-destructive'
               : 'border-emerald-600/40 text-emerald-700 dark:text-emerald-400'

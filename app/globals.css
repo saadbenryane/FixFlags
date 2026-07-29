@@ -114,6 +114,10 @@
     letter-spacing: var(--tracking-label);
   }
 
+  .rounded-nested-sm {
+    border-radius: var(--radius-nested-sm);
+  }
+
   .rounded-nested-md {
     border-radius: var(--radius-nested-md);
   }

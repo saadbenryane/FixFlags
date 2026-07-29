@@ -170,6 +170,7 @@
   /* ── Z-index layers (mirrors tailwind.config.ts extend.zIndex) ── */
   --z-background: -1;
   --z-content: 10;
+  --z-skip-link: 100;
   --z-navbar: 50;
   --z-fab: 60;
   --z-overlay: 70;

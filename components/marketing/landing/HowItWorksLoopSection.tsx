@@ -35,7 +35,7 @@ function ReportDemo() {
   const issue = active.topIssues[0]
 
   return (
-    <div className="overflow-hidden rounded-[1.25rem] border border-border/50 bg-background shadow-[0_24px_70px_-34px_hsl(240_8%_5%/0.32),0_2px_10px_hsl(240_8%_5%/0.06)]">
+    <div className="overflow-hidden rounded-[1.25rem] border border-border/50 bg-background shadow-glass-hero">
       <div className="flex min-h-14 items-center justify-between gap-4 border-b border-border/45 px-4 sm:px-5">
         <div className="min-w-0">
           <p className="truncate text-xs font-semibold text-foreground">

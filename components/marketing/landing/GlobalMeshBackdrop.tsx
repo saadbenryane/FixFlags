@@ -30,7 +30,7 @@ export function GlobalMeshBackdrop({
         aria-hidden
         className={cn(
           'pointer-events-none overflow-hidden',
-          fixed ? 'fixed inset-0 -z-10' : 'absolute inset-0',
+          fixed ? 'fixed inset-0 -z-background' : 'absolute inset-0',
           className
         )}
       >

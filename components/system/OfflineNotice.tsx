@@ -22,7 +22,7 @@ export function OfflineNotice() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed inset-x-0 bottom-0 z-50 bg-foreground px-4 py-3 text-center text-sm text-background"
+      className="fixed inset-x-0 bottom-0 z-navbar bg-foreground px-4 py-3 text-center text-sm text-background"
     >
       You are offline. Existing pages remain visible, but actions will retry after reconnection.
     </div>

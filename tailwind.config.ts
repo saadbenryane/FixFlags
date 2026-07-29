@@ -171,6 +171,7 @@ const config: Config = {
       zIndex: {
         background: '-1',
         content: '10',
+        'skip-link': '100',
         navbar: '50',
         fab: '60',
         overlay: '70',

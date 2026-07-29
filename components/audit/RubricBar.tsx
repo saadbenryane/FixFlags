@@ -44,7 +44,7 @@ export function RubricBar({
             )}
             className={cn(
               'group flex min-h-16 min-w-0 items-center gap-3 border-t border-border/35 px-3 py-2 first:border-t-0 sm:border-l sm:border-t-0 sm:first:border-l-0 sm:px-4',
-              'transition-colors duration-150 hover:bg-accent/45 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
+              'transition-colors duration-150 hover:bg-accent/45 focus-visible:z-content focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
             )}
           >
             <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />

@@ -502,7 +502,7 @@ export function ReportExplorer({
 
   const shellClass = cn(
     'overflow-clip rounded-card glass-surface shadow-card',
-    variant === 'hero' && 'shadow-2xl',
+    variant === 'hero' && 'shadow-raised',
     className
   )
 

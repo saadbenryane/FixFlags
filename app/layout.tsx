@@ -60,7 +60,7 @@ export default function RootLayout({
         <Providers>
           <a
             href="#main-content"
-            className="fixed left-4 top-4 z-[100] -translate-y-24 rounded-full bg-[var(--glass-bg-elevated)] px-4 py-3 text-sm font-semibold shadow-lg backdrop-blur-md transition-transform focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-focus-ring"
+            className="fixed left-4 top-4 z-skip-link -translate-y-24 rounded-full bg-[var(--glass-bg-elevated)] px-4 py-3 text-sm font-semibold shadow-card backdrop-blur-md transition-transform focus:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             Skip to content
           </a>

@@ -48,7 +48,7 @@ export function EditorIntegrationsSection() {
         </RevealOnView>
 
         <RevealOnView>
-          <div className="mx-auto mt-10 max-w-[72rem] overflow-hidden rounded-[1.25rem] border border-border/50 bg-background shadow-[0_30px_80px_-42px_hsl(240_8%_5%/0.3),0_2px_10px_hsl(240_8%_5%/0.05)]">
+          <div className="mx-auto mt-10 max-w-[72rem] overflow-hidden rounded-[1.25rem] border border-border/50 bg-background shadow-glass-hero">
             <div className="flex min-h-14 items-center justify-between gap-4 border-b border-border/45 px-4 sm:px-5">
               <div className="flex min-w-0 items-center gap-3">
                 <EditorMark name="Cursor" className="h-4 w-4 shrink-0 text-foreground" />

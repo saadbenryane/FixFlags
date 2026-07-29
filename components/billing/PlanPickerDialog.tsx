@@ -282,7 +282,7 @@ export function PlanPickerDialog({
             aria-hidden
             className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30"
           />
-          <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border/40 bg-background/95 px-5 pb-4 pt-3 backdrop-blur">
+          <div className="sticky top-0 z-content flex items-start justify-between gap-3 border-b border-border/40 bg-background/95 px-5 pb-4 pt-3 backdrop-blur">
             <div>
               <SheetTitle className="text-base font-semibold tracking-heading text-foreground">
                 {PRICING.pickerTitle}

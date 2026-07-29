@@ -334,7 +334,7 @@ describe('homepage message guardrails', () => {
     assert.match(LANDING_PAGE.sampleReport.headlineDisplay, /exactly what ai misses/i)
     assert.match(LANDING_PAGE.sampleReport.label, /sample report/i)
     assert.match(LANDING_PAGE.sampleReport.body, /live product/i)
-    assert.match(LANDING_PAGE.sampleReport.body, /next fix/i)
+    assert.match(LANDING_PAGE.sampleReport.body, /editor-ready fix/i)
     assert.ok(!/\d{2,},\d{3}/.test(LANDING_PAGE.sampleReport.body))
     assert.equal(LANDING_PAGE.sampleReport.trustMetrics.length, 4)
     for (const metric of LANDING_PAGE.sampleReport.trustMetrics) {
@@ -356,7 +356,7 @@ describe('homepage message guardrails', () => {
     )
     assert.match(LANDING_PAGE.checkDimensions.cards[0].question, /understand and care/i)
     assert.match(LANDING_PAGE.howItWorks.headline, /three steps/i)
-    assert.match(LANDING_PAGE.sampleReport.body, /next fix/i)
+    assert.match(LANDING_PAGE.sampleReport.body, /editor-ready fix/i)
     assert.match(LANDING_PAGE.logoCloud.label, /works where you build/i)
     assert.deepEqual([...LANDING_PAGE.logoCloud.logos], [
       'Lovable',
