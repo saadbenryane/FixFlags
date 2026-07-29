@@ -244,6 +244,33 @@ export function getStaticSampleAudit(): CuratedSampleAudit {
         at: '2026-06-09T14:30:00Z',
       },
     ],
+    scoreHistory: [
+      {
+        id: 'curated-sample-v0',
+        score: 61,
+        checkedAt: new Date('2026-06-02T14:30:00Z'),
+      },
+      {
+        id: 'curated-sample-v0-1',
+        score: 64,
+        checkedAt: new Date('2026-06-04T14:30:00Z'),
+      },
+      {
+        id: 'curated-sample-v0-2',
+        score: 63,
+        checkedAt: new Date('2026-06-06T14:30:00Z'),
+      },
+      {
+        id: 'curated-sample-v0-3',
+        score: 67,
+        checkedAt: new Date('2026-06-08T14:30:00Z'),
+      },
+      {
+        id: 'curated-sample-v1',
+        score: overall,
+        checkedAt: new Date('2026-06-10T14:30:00Z'),
+      },
+    ],
     previewMeta: {
       title: `${DEMO_BRAND.name} · Smart plant monitoring`,
       description: originalFixture.subhead,

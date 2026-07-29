@@ -366,7 +366,7 @@ export function ReportExplorer({
   )
 
   const scoreHeader = (
-    <div className="flex flex-wrap items-center gap-3 border-b border-border/30 pb-3">
+    <div className="flex flex-wrap items-center gap-3 border-b border-border/30 pb-3.5">
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
         <RubricTabs
           rubricFilter={effectiveRubricFilter}
@@ -437,7 +437,7 @@ export function ReportExplorer({
   )
 
   const listPane = (
-    <div className="min-w-0 space-y-3 lg:max-h-[calc(100vh-var(--header-offset)-5rem)] lg:overflow-y-auto lg:pr-2 scrollbar-thin">
+    <div className="min-w-0 space-y-3.5 lg:max-h-[calc(100vh-var(--header-offset)-5rem)] lg:overflow-y-auto lg:pr-2 scrollbar-thin">
       {secondaryFilters}
       {flagCount === 0 ? (
         <p className="text-sm text-muted-foreground">
@@ -482,7 +482,7 @@ export function ReportExplorer({
   const masterDetail = (
     <div className="space-y-5">
       {scoreHeader}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(260px,38%)_minmax(0,1fr)]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(19rem,40%)_minmax(0,1fr)]">
         {listPane}
         <div
           ref={detailRef}

@@ -14,18 +14,6 @@
       "replaces": ["/marketing/visuals/home-hero-master-v2.webp"]
     },
     {
-      "id": "homepage-sample-report",
-      "src": "/marketing/visuals/sample-report-workspace-v3.png",
-      "classification": "replaced",
-      "width": 1536,
-      "height": 1024,
-      "requiresAlpha": true,
-      "contentBearing": true,
-      "requiredTerms": ["Sample Finish Plan", "7 Flags", "Message", "Experience", "Reach", "Fix prompt", "Re-check"],
-      "consumers": ["components/marketing/landing/SampleReportSection.tsx"],
-      "replaces": []
-    },
-    {
       "id": "homepage-final-cta",
       "src": "/marketing/visuals/pricing-glass-mark.webp",
       "classification": "approved",

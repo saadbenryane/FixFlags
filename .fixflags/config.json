@@ -1,6 +1,8 @@
 {
-  "productUrl": "https://fixflags.com/",
+  "productUrl": "http://localhost:3000/",
   "editors": [
+    "cursor",
+    "claude",
     "codex"
   ]
 }

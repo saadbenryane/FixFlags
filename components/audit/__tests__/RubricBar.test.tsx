@@ -7,14 +7,14 @@ describe('RubricBar', () => {
     render(
       <RubricBar
         rubrics={[
-          { name: 'MESSAGE', criticalCount: 2 },
-          { name: 'EXPERIENCE', criticalCount: 0 },
-          { name: 'REACH', criticalCount: 0 },
+          { name: 'MESSAGE', flagCount: 4, criticalCount: 2 },
+          { name: 'EXPERIENCE', flagCount: 1, criticalCount: 0 },
+          { name: 'REACH', flagCount: 0, criticalCount: 0 },
         ]}
         firstCriticalIds={{ MESSAGE: 'flag-message-1' }}
       />
     )
-    expect(screen.getByText('2 critical')).toBeInTheDocument()
+    expect(screen.getByText('4 Flags · 2 critical')).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: 'Show 2 Critical Flags in Message' })
     ).toHaveAttribute(
@@ -27,14 +27,15 @@ describe('RubricBar', () => {
     render(
       <RubricBar
         rubrics={[
-          { name: 'MESSAGE', criticalCount: 0 },
-          { name: 'EXPERIENCE', criticalCount: 0 },
-          { name: 'REACH', criticalCount: 0 },
+          { name: 'MESSAGE', flagCount: 0, criticalCount: 0 },
+          { name: 'EXPERIENCE', flagCount: 3, criticalCount: 0 },
+          { name: 'REACH', flagCount: 1, criticalCount: 0 },
         ]}
         firstCriticalIds={{}}
       />
     )
-    expect(screen.getAllByText('0 critical')).toHaveLength(3)
+    expect(screen.getByText('3 Flags')).toBeInTheDocument()
+    expect(screen.getByText('1 Flag')).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: 'Show all Experience Flags' })
     ).toHaveAttribute('href', '?rubric=EXPERIENCE#report-flags')

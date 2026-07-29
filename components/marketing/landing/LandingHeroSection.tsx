@@ -41,7 +41,7 @@ export function LandingHeroSection() {
             <div className="space-y-5 sm:space-y-6 lg:mt-2.5 lg:space-y-4">
               <Heading
                 as="h1"
-                className="max-w-[14ch] text-[2.75rem] font-bold leading-[1.08] tracking-display [text-rendering:geometricPrecision] sm:text-[3.125rem] sm:leading-[1.08] lg:text-[4rem] lg:leading-none xl:text-[4.125rem]"
+                className="max-w-[14ch] font-display text-[2.75rem] font-bold leading-[1.08] tracking-display [text-rendering:geometricPrecision] sm:text-[3.125rem] sm:leading-[1.08] lg:text-[4rem] lg:leading-none xl:text-[4.125rem]"
               >
                 {HERO.headlineDisplay}
                 {HERO.headlineAccentPeriod ? (

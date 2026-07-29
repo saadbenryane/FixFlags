@@ -1,6 +1,7 @@
-import { AlertTriangle, Flag, History } from 'lucide-react'
+import { CircleAlert, Flag, History } from 'lucide-react'
 import { RubricBar } from '@/components/audit/RubricBar'
-import { ScoreSparkline } from '@/components/audit/ScoreSparkline'
+import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
+import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
@@ -41,15 +42,28 @@ export function ReportWorkspaceOutcome({
 export function ReportWorkspaceSummary({
   model,
   className,
+  reportHref = '',
 }: {
   model: ReportWorkspaceModel
   className?: string
+  reportHref?: string
 }) {
   const rubrics = model.summary.rubrics.map((rubric) => ({
     name: rubric.name,
+    flagCount: rubric.flagCount,
     criticalCount: rubric.criticalCount,
   }))
-  const scores = model.summary.history?.map((point) => point.score) ?? []
+  const history =
+    model.summary.history ??
+    (model.summary.score != null && model.identity.checkedAt
+      ? [
+          {
+            id: model.identity.auditId ?? 'current-scan',
+            score: model.summary.score,
+            checkedAt: model.identity.checkedAt,
+          },
+        ]
+      : [])
   const firstCritical = model.explorer.flags.find(
     (flag) => flag.severity === 'CRITICAL'
   )
@@ -64,7 +78,7 @@ export function ReportWorkspaceSummary({
     })
   )
   const criticalHref = firstCritical
-    ? `?severity=CRITICAL&flag=${encodeURIComponent(firstCritical.id)}#report-flags`
+    ? `${reportHref}?severity=CRITICAL&flag=${encodeURIComponent(firstCritical.id)}#report-flags`
     : undefined
 
   return (
@@ -75,42 +89,60 @@ export function ReportWorkspaceSummary({
         className
       )}
     >
-      <div
-        className={cn(
-          'grid',
-          scores.length > 1
-            ? 'md:grid-cols-[minmax(10rem,0.8fr)_minmax(0,2.4fr)_minmax(10rem,0.9fr)]'
-            : 'md:grid-cols-[minmax(10rem,0.8fr)_minmax(0,2.4fr)]'
-        )}
-      >
-        <SummarySegment
-          icon={model.outcome.criticalCount > 0 ? AlertTriangle : Flag}
-          label={REPORT_COPY.workspace.criticalFlags}
-          value={
-            model.context.loading
-              ? REPORT_COPY.reportFirst.checkingLabel
-              : String(model.outcome.criticalCount)
-          }
-          href={criticalHref}
-          ariaLabel={
-            model.context.loading
-              ? REPORT_COPY.reportFirst.statusPendingLabel
-              : model.outcome.criticalCount > 0
-                ? REPORT_COPY.workspace.showCriticalFlags(
-                    model.outcome.criticalCount
-                  )
-                : REPORT_COPY.workspace.criticalCount(0)
-          }
-        />
-        <div className="min-w-0 border-t border-border/35 md:border-l md:border-t-0">
-          <RubricBar
-            rubrics={rubrics}
-            firstCriticalIds={firstCriticalIds}
+      <div className="grid lg:grid-cols-[minmax(12rem,0.78fr)_minmax(10rem,0.62fr)_minmax(20rem,1.6fr)]">
+        <div className="flex min-h-32 items-center gap-4 p-4 sm:p-5">
+          <ScoreRingGauge
+            score={model.summary.score}
             loading={model.context.loading}
+            size="md"
           />
+          <div className="min-w-0">
+            <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
+              {REPORT_COPY.workspace.releaseScore}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-foreground">
+              {model.summary.score == null
+                ? REPORT_COPY.workspace.scoreUnavailable
+                : REPORT_COPY.workspace.scoreOutOfHundred(model.summary.score)}
+            </p>
+          </div>
         </div>
-        {scores.length > 1 ? (
-          <div className="border-t border-border/35 p-3 sm:p-4 md:border-l md:border-t-0">
+
+        <div className="flex min-h-32 flex-col justify-center border-t border-border/35 p-4 sm:p-5 lg:border-l lg:border-t-0">
+          <div className="flex items-center gap-2">
+            <Flag className="h-4 w-4 text-muted-foreground" aria-hidden />
+            <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
+              {REPORT_COPY.workspace.unresolvedFlags}
+            </p>
+          </div>
+          <p className="mt-2 font-mono text-3xl font-semibold tabular-nums leading-none text-foreground">
+            {model.context.loading
+              ? REPORT_COPY.reportFirst.checkingLabel
+              : model.outcome.unresolvedCount}
+          </p>
+          {model.context.loading ? null : model.outcome.criticalCount > 0 && criticalHref ? (
+            <a
+              href={criticalHref}
+              aria-label={REPORT_COPY.workspace.showCriticalFlags(
+                model.outcome.criticalCount
+              )}
+              className="mt-2 inline-flex min-h-7 items-center gap-1.5 self-start text-xs font-medium text-destructive transition-colors hover:text-destructive/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            >
+              <CircleAlert className="h-3.5 w-3.5" aria-hidden />
+              {REPORT_COPY.workspace.criticalCount(model.outcome.criticalCount)}
+            </a>
+          ) : (
+            <p
+              aria-label={REPORT_COPY.workspace.criticalCount(0)}
+              className="mt-2 text-xs font-medium text-success"
+            >
+              {REPORT_COPY.workspace.noCriticalFlags}
+            </p>
+          )}
+        </div>
+
+        <div className="min-h-32 border-t border-border/35 p-4 sm:p-5 lg:border-l lg:border-t-0">
+          <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-2">
               <History className="h-4 w-4 text-muted-foreground" aria-hidden />
               <div>
@@ -118,64 +150,31 @@ export function ReportWorkspaceSummary({
                   {REPORT_COPY.workspace.history}
                 </p>
                 <p className="mt-0.5 text-xs font-medium text-foreground">
-                  {REPORT_COPY.workspace.recheckCount(scores.length - 1)}
+                  {history.length > 1
+                    ? REPORT_COPY.workspace.scanCount(history.length)
+                    : REPORT_COPY.workspace.firstScan}
                 </p>
               </div>
             </div>
-            <ScoreSparkline
-              scores={scores}
-              width={120}
-              height={28}
-              responsive
-              className="mt-3 h-7 w-full"
-            />
           </div>
-        ) : null}
+          {history.length > 0 ? (
+            <ScoreHistoryChart history={history} className="mt-2.5 h-20 w-full" />
+          ) : (
+            <p className="mt-5 text-xs text-muted-foreground">
+              {REPORT_COPY.workspace.historyUnavailable}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="min-w-0 border-t border-border/35">
+        <RubricBar
+          rubrics={rubrics}
+          firstCriticalIds={firstCriticalIds}
+          loading={model.context.loading}
+          reportHref={reportHref}
+        />
       </div>
     </section>
-  )
-}
-
-function SummarySegment({
-  icon: Icon,
-  label,
-  value,
-  ariaLabel,
-  href,
-}: {
-  icon: typeof Flag
-  label: string
-  value: string
-  ariaLabel?: string
-  href?: string
-}) {
-  const content = (
-    <>
-      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-      <div className="min-w-0">
-        <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
-          {label}
-        </p>
-        <p className="mt-0.5 truncate text-sm font-semibold text-foreground">
-          {value}
-        </p>
-      </div>
-    </>
-  )
-
-  const className = cn(
-    'flex min-h-16 items-center gap-3 border-t border-border/35 p-3 first:border-t-0 sm:p-4 md:border-l md:border-t-0 md:first:border-l-0',
-    href &&
-      'transition-colors duration-150 hover:bg-accent/45 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring'
-  )
-
-  return href ? (
-    <a href={href} aria-label={ariaLabel} className={className}>
-      {content}
-    </a>
-  ) : (
-    <div aria-label={ariaLabel} className={className}>
-      {content}
-    </div>
   )
 }

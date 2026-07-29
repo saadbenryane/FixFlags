@@ -39,6 +39,11 @@ export type CuratedSampleAudit = {
   actionTimeline?: import('@/lib/audit/action-timeline').ActionTimelineEvent[]
   productContract?: import('@/lib/audit/product-contract').ProductContract | null
   verifiedLearnings?: import('@/lib/audit/product-intelligence').VerifiedLearning[]
+  scoreHistory?: Array<{
+    id: string
+    score: number
+    checkedAt: Date
+  }>
   intentionalNotes?: string[]
   knownRisks?: string[]
 }

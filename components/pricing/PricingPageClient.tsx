@@ -66,7 +66,7 @@ export function PricingPageClient() {
             </p>
             <Heading
               as="h1"
-              className="mt-4 max-w-[17ch] text-balance text-[2.75rem] font-bold leading-[1.03] tracking-display sm:text-[3.35rem] lg:text-[3.65rem]"
+              className="mt-4 max-w-[17ch] font-display text-balance text-[2.75rem] font-bold leading-[1.03] tracking-display sm:text-[3.35rem] lg:text-[3.65rem]"
             >
               {PRICING.headline}
             </Heading>

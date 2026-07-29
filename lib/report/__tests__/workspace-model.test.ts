@@ -16,7 +16,12 @@ describe('report workspace model', () => {
     expect(workspace.outcome.criticalCount).toBe(1)
     expect(workspace.explorer.flags.filter((flag) => flag.hasFixPrompt)).toHaveLength(1)
     expect(workspace.capabilities.demonstratedFlagId).toBe(report.demonstratedFlagId)
-    expect(workspace.summary.history).toBeNull()
+    expect(workspace.summary.history).toHaveLength(5)
+    // History is null when there are fewer than 2 points
+    const noHistory = buildCuratedSampleWorkspaceModel(
+      buildSampleReportDisplay({ ...getStaticSampleAudit(), scoreHistory: undefined })
+    )
+    expect(noHistory.summary.history).toBeNull()
   })
 
   it('orders persisted history and omits single-point trends', () => {

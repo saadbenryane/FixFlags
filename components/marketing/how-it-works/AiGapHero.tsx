@@ -118,7 +118,7 @@ export function AiGapHero() {
             <div className="space-y-4">
               <Heading
                 as="h1"
-                className="max-w-[18ch] text-[2.25rem] leading-[1.08] sm:text-5xl lg:text-[3.15rem] xl:text-[3.4rem]"
+                className="max-w-[18ch] font-display text-[2.25rem] leading-[1.08] sm:text-5xl lg:text-[3.15rem] xl:text-[3.4rem]"
               >
                 {headlineWithoutPeriod}
                 {hero.headlineAccentPeriod ? (

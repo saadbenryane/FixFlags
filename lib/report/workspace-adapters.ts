@@ -18,6 +18,7 @@ export function buildCuratedSampleWorkspaceModel(
     pageType: report.pageType,
     checkedAt: report.completedAt,
     status: 'completed',
+    history: report.scoreHistory,
     checkedScope: 'the curated demo page',
     promptAccess: 'demonstrated',
     demonstratedFlagId: report.demonstratedFlagId,

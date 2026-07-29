@@ -28,7 +28,7 @@ export function RubricTabs({
   total: number
 }) {
   const tabs: Array<{ id: RubricFilter; label: string; count: number; icon?: LucideIcon }> = [
-    { id: 'ALL', label: 'All', count: total },
+    { id: 'ALL', label: 'All Flags', count: total },
     ...RUBRIC_ORDER.map((rubric) => ({
       id: rubric as RubricFilter,
       label: rubricLabel(rubric),
@@ -46,6 +46,7 @@ export function RubricTabs({
           icon={tab.icon}
           active={rubricFilter === tab.id}
           onClick={() => onRubricChange(tab.id)}
+          className="rounded-[var(--radius-control)] px-3 text-xs"
         >
           {tab.label}
           <span className="ml-1.5 font-mono text-2xs tabular-nums opacity-70">{tab.count}</span>

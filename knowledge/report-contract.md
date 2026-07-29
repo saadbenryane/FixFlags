@@ -14,7 +14,7 @@ FixFlags is one product: **paste URL → receive every unresolved Flag ranked by
 
 1. Compact identity row with hostname, URL, status, and actions
 2. Re-check result, when applicable
-3. One summary band for unresolved Flags, overall readiness, and Message, Experience, Reach
+3. One summary band for the release score, unresolved Flags, Critical subset, Re-check history, and Message, Experience, Reach coverage
 4. Compact Made with disclosure and section navigation
 5. Complete ranked fix list with screenshot evidence and selected fix detail
 6. Product Contract and verified memory, when present

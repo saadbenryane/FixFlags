@@ -28,6 +28,7 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Banned phrases | `docs/voice-and-copy.md` → Vocabulary (Avoid) |
 | Anti-slop scoring | `docs/voice-and-copy.md` → Anti-slop scoring |
 | Naming preferences | `SOUL.md` → Naming preferences |
+| Privacy and trust principles | `knowledge/privacy.md` |
 | Tensions and trade-offs | `SOUL.md` → Tensions and trade-offs |
 
 ---
@@ -82,6 +83,16 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Recently closed items | `ROADMAP.md` → Recently closed |
 | Completion signals | `ROADMAP.md` → Completion signals |
 | Readiness assessment | `ROADMAP.md` → Readiness (reconciled) |
+| Open-source strategy | `knowledge/open-source.md` |
+| Growth engine and distribution | `knowledge/growth.md` |
+| User personas and conversion architecture | `knowledge/user-journey.md` |
+| Integrity Engine (five-dimension evaluation) | `knowledge/integrity-engine.md` |
+| Product Intelligence model and Product Contract | `knowledge/product-intelligence.md` |
+| Product surfaces (Quick Check / Finish Check / Watch) | `knowledge/product-system.md` |
+| Evidence classes, severity, and Flag anatomy | `knowledge/evidence-rules.md` |
+| Fix List and Quick Plan artifact | `knowledge/finish-plan.md` |
+| Launch readiness and validation | `knowledge/launch-requirements.md` |
+| Target technical architecture | `knowledge/technical-architecture-spec.md` |
 | Durable decisions | `DECISIONS.md` |
 
 ---
@@ -108,6 +119,7 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Launch gates | `PRODUCT.md` → Launch gates |
 | Support | `PRODUCT.md` → Support |
 | Constraints | `PRODUCT.md` → Constraints |
+| Report hierarchy and information architecture | `knowledge/report-contract.md` |
 | Unresolved questions | `PRODUCT.md` → Unresolved questions |
 
 ### Architecture

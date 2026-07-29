@@ -56,11 +56,11 @@ function FlagList({
           <>
             <SeveritySignal severity={flag.severity} className="h-4 w-4" />
             <span
-              className="flex shrink-0 items-center gap-1 rounded-full bg-muted/70 px-1.5 py-0.5 text-muted-foreground"
+              className="flex shrink-0 items-center gap-1 text-muted-foreground"
               title={categoryLabel}
             >
-              <RubricIcon className="h-3 w-3" aria-hidden />
-              {ImpactIcon && <ImpactIcon className="h-3 w-3" aria-hidden />}
+              <RubricIcon className="h-3.5 w-3.5" aria-hidden />
+              {ImpactIcon && <ImpactIcon className="h-3.5 w-3.5" aria-hidden />}
             </span>
             <span className="min-w-0 flex-1 truncate">{flag.title}</span>
             {flag.hasFixPrompt !== false && (
@@ -69,9 +69,9 @@ function FlagList({
           </>
         )
         const rowClassName = cn(
-          'flex min-h-11 w-full min-w-0 items-center gap-2 rounded-md px-2.5 py-2.5 text-left text-xs leading-snug transition-colors',
+          'flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-[var(--radius-control)] px-3 py-2.5 text-left text-sm leading-snug transition-colors',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-0',
-          selected ? 'bg-brand/10 text-foreground' : 'hover:bg-muted/40'
+          selected ? 'bg-accent/55 text-foreground' : 'hover:bg-muted/45'
         )
         return (
           <li key={flag.id}>

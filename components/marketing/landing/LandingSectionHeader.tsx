@@ -64,7 +64,7 @@ export function LandingSectionHeader({
       ) : null}
       <Heading
         as={as}
-        className={cn(as === 'h2' && sizeClasses[size])}
+        className={cn('font-display', as === 'h2' && sizeClasses[size])}
       >
         {headline}
         {accentPeriod ? (

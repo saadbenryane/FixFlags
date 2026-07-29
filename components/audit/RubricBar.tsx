@@ -9,13 +9,20 @@ import type { RubricName } from '@/lib/audit/constants'
 interface Props {
   rubrics: Array<{
     name: RubricName
+    flagCount: number
     criticalCount: number
   }>
   firstCriticalIds: Partial<Record<RubricName, string>>
   loading?: boolean
+  reportHref?: string
 }
 
-export function RubricBar({ rubrics, firstCriticalIds, loading = false }: Props) {
+export function RubricBar({
+  rubrics,
+  firstCriticalIds,
+  loading = false,
+  reportHref = '',
+}: Props) {
   return (
     <div className="grid min-w-0 grid-cols-1 sm:grid-cols-3">
       {rubrics.map((rubric) => {
@@ -24,8 +31,8 @@ export function RubricBar({ rubrics, firstCriticalIds, loading = false }: Props)
         const firstCriticalId = firstCriticalIds[rubric.name]
         const href =
           rubric.criticalCount > 0 && firstCriticalId
-            ? `?rubric=${rubric.name}&severity=CRITICAL&flag=${encodeURIComponent(firstCriticalId)}#report-flags`
-            : `?rubric=${rubric.name}#report-flags`
+            ? `${reportHref}?rubric=${rubric.name}&severity=CRITICAL&flag=${encodeURIComponent(firstCriticalId)}#report-flags`
+            : `${reportHref}?rubric=${rubric.name}#report-flags`
 
         return (
           <a
@@ -48,7 +55,8 @@ export function RubricBar({ rubrics, firstCriticalIds, loading = false }: Props)
               <span className="mt-0.5 block text-2xs tabular-nums text-muted-foreground">
                 {loading
                   ? REPORT_COPY.reportFirst.checkingLabel
-                  : REPORT_COPY.workspace.rubricCriticalCount(
+                  : REPORT_COPY.workspace.rubricFlagCount(
+                      rubric.flagCount,
                       rubric.criticalCount
                     )}
               </span>

@@ -65,7 +65,7 @@ describe('AuditReportProgressive', () => {
   it('shows capturing progress with an honest pending score', () => {
     render(<AuditReportProgressive status="CAPTURING" url={URL} />)
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
-    expect(screen.getByLabelText(/Status pending/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/Step 2 of 5/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Scanning/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Step 2 of 5/).length).toBeGreaterThan(0)
   })

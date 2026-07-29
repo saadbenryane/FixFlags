@@ -21,7 +21,9 @@ describe('ReportWorkspace', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Fix list' })).toBeInTheDocument()
-    expect(screen.getByText('Critical Flags')).toBeInTheDocument()
+    expect(screen.getByText('Release score')).toBeInTheDocument()
+    expect(screen.getByText('Unresolved Flags')).toBeInTheDocument()
+    expect(screen.getByText('Score history')).toBeInTheDocument()
     expect(
       screen.getByRole('link', {
         name: `Show ${criticalFlags.length} Critical ${criticalFlags.length === 1 ? 'Flag' : 'Flags'}`,
@@ -56,7 +58,9 @@ describe('ReportWorkspace', () => {
       </MeProvider>
     )
 
-    expect(screen.getByLabelText('0 Critical Flags')).toHaveTextContent('0')
+    expect(screen.getByLabelText('0 Critical Flags')).toHaveTextContent(
+      'No Critical Flags'
+    )
     expect(
       screen.queryByRole('link', { name: /Show 0 Critical Flags/i })
     ).not.toBeInTheDocument()

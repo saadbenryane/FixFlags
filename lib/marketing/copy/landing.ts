@@ -718,7 +718,7 @@ export const LANDING_PAGE = {
     headline: 'Works in the editor you already use.',
     headlineDisplay: 'Works in the editor you already use',
     headlineAccentPeriod: true,
-    body: 'Paste fix prompts into your builder, or connect MCP on Pro so your agent checks, fixes, and re-checks without copy-pasting URLs.',
+    body: 'Copy a precise fix into any AI builder. On Pro, MCP lets your agent check, fix, and Re-check without leaving the editor.',
     mcpCta: 'Set up MCP',
     mcpHref: '/help/mcp',
     cliCta: 'CLI docs',
@@ -729,7 +729,7 @@ export const LANDING_PAGE = {
     headlineDisplay: 'See exactly what AI misses',
     headlineAccentPeriod: true,
     headline: 'See exactly what AI misses.',
-    body: 'FixFlags checks the live product, ranks the Flags, and gives your builder the next fix.',
+    body: 'FixFlags scans the live product the way users experience it, then turns every issue into a ranked, editor-ready fix.',
     previewEyebrow: 'Fix list',
     previewTitle: 'Every fix, ranked and ready',
     previewBadge: 'Screenshot evidence included',
@@ -764,7 +764,7 @@ export const LANDING_PAGE = {
     checksLabel: (count: number) => `${count} checks across Message, Experience, and Reach`,
     checksMetric: (count: number) => ({
       value: `${count}+`,
-      label: 'checks performed',
+      label: 'check points',
     }),
     issuesMetric: (count: number) => ({
       value: String(count),
@@ -848,16 +848,28 @@ export const REPORT_COPY = {
       const preposition = checkedScope.includes('release') ? 'in' : 'on'
       return `${unresolvedLabel} ${preposition} ${checkedScope}.`
     },
-    summaryLabel: 'Critical Flags by rubric',
+    summaryLabel: 'Release score, unresolved Flags, score history, and rubric coverage',
+    releaseScore: 'Release score',
+    scoreUnavailable: 'Score unavailable',
+    scoreOutOfHundred: (score: number) => `${score} out of 100`,
+    unresolvedFlags: 'Unresolved Flags',
     criticalFlags: 'Critical Flags',
     criticalCount: (count: number) => `${count} Critical ${count === 1 ? 'Flag' : 'Flags'}`,
+    noCriticalFlags: 'No Critical Flags',
     rubricCriticalCount: (count: number) => `${count} critical`,
+    rubricFlagCount: (count: number, criticalCount: number) => {
+      const flagLabel = `${count} ${count === 1 ? 'Flag' : 'Flags'}`
+      return criticalCount > 0 ? `${flagLabel} · ${criticalCount} critical` : flagLabel
+    },
     showCriticalFlags: (count: number) => `Show ${count} Critical ${count === 1 ? 'Flag' : 'Flags'}`,
     showRubricFlags: (rubric: string, count: number) =>
       count > 0
         ? `Show ${count} Critical ${count === 1 ? 'Flag' : 'Flags'} in ${rubric}`
         : `Show all ${rubric} Flags`,
     history: 'Score history',
+    scanCount: (count: number) => `${count} completed scans`,
+    firstScan: 'First completed scan',
+    historyUnavailable: 'History appears after the first completed scan.',
     recheckCount: (count: number) => `${count} completed ${count === 1 ? 'Re-check' : 'Re-checks'}`,
     dashboard: {
       latestRelease: 'Latest completed release',
