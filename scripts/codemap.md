@@ -39,8 +39,6 @@ File-to-scope mappings:
 - `demo-fixture-audit.ts` — Audit a frozen HTML fixture (offline, no server)
 - `demo-fixture-flow-audit.ts` — Flow audit on demo fixture
 - `smoke-triage-prod.ts` — Post-deploy production smoke test
-- `smoke-recheck-full.ts` — Full re-check smoke test
-- `batch-audit-test.ts` — Batch audit test runner
 
 ## Backfill Scripts
 - `backfill-leads.ts` — Backfill leads table

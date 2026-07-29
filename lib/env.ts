@@ -36,6 +36,7 @@ const envSchema = z.object({
   BILLING_REQUIRED: z.enum(['true', 'false']).optional(),
   DEV_SIMULATE_BILLING: z.enum(['true', 'false']).optional(),
   FIXFLAGS_ALLOW_DEGRADED_LOCAL: z.enum(['true', 'false']).optional(),
+  DEV_ALLOW_LOCALHOST: z.enum(['true', 'false']).optional(),
   FIXFLAGS_PROCESS_ROLE: z.enum(['web', 'worker']).optional(),
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),

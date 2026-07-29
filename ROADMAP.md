@@ -5,7 +5,7 @@
 ## Recently closed
 
 - **Beat Scout: precision over spectacle — shipped.** Network/API failure Flags, overlay click-blocker detection, structured action timeline, Product Contract, truth labels in model/API data. See board `beat-scout-precision` / `beat-scout-completeness`.
-- **Help Center — shipped.** `/help` hub + articles + MCP guide; live chat escalation; contextual links on failure/limit/billing; payment-failure user email. See `lib/help/`, `DECISIONS.md`.
+- **Docs and Help separation — shipped locally.** `/docs` owns product usage, reports, editor integrations, CLI, MCP, generated reference, search, and stable anchors. `/help` owns billing, account, failed checks, privacy, and human support. Credentialed production smokes for newly cataloged editors remain required before expanding the verified shipped-integration claim. See `lib/docs/`, `lib/integrations/`, `lib/help/`, and `DECISIONS.md`.
 - **Monetization blockers — CLOSED.** Automated coverage in CI via `npm run test:unit`. See [QUALITY.md](./QUALITY.md).
 - **Scan depth Phase 1 — shipped.** Flow scan, slop detection, preview cards, og:image validation.
 - **Ultimate audit Phases 0–4 — shipped.** Playwright-only stack, narrative report, Journey Review MVP, MCP plan-mode + re-check next-fixes.

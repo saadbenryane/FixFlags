@@ -56,7 +56,7 @@ npm run agent -- eval accuracy
 |-------|--------|----------------|
 | HTML fixtures + `accuracy:eval` | Metadata, a11y names, messaging, trust heuristics | Flow paths, overlay clicks, PageSpeed live |
 | `accuracy:probe` / `accuracy:browser` | Hydrated DOM checks, rendered CTA geometry, candidate semantics, visual metrics | PageSpeed and full pipeline persistence |
-| `dogfood-audit.ts --include-ai` | Full prod pipeline | Not in CI without creds |
+| `fixflags check <url> --wait --full` | Full prod pipeline (requires auth) | Not in CI without API key |
 | `non-html-regression.json` | PageSpeed, overlay, network, flow check IDs | Live capture refresh |
 
 ## Verification before ship

@@ -20,12 +20,25 @@ function getRateLimitRedis(): Redis {
   return redis
 }
 
-/** Run a Redis operation, falling open if the connection fails. */
+let _rateLimitRedisDown = false
+
+/** Run a Redis operation. Falls open when Redis is unavailable to avoid
+ *  breaking the entire site, but logs a critical error on first detection
+ *  and warns on every subsequent request. */
 async function redisFailOpen<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
     return await fn()
   } catch (err) {
-    logger.warn('Rate-limit Redis unavailable, allowing request', err instanceof Error ? err.message : String(err))
+    if (!_rateLimitRedisDown) {
+      _rateLimitRedisDown = true
+      logger.error(
+        '[rate-limit] Redis unavailable — rate limiting is DISABLED. ' +
+        'All requests will be allowed until Redis recovers.',
+        err instanceof Error ? err.message : String(err)
+      )
+    } else {
+      logger.warn('[rate-limit] Redis still unavailable, allowing request')
+    }
     return fallback
   }
 }

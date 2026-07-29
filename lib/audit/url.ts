@@ -48,12 +48,16 @@ export function isBlockedHostname(hostname: string): boolean {
     .toLowerCase()
     .replace(/\.$/, '')
     .replace(/^\[|\]$/g, '')
-  return (
+  const isLocal =
     normalized === 'localhost' ||
     normalized.endsWith('.localhost') ||
+    normalized === '127.0.0.1' ||
+    normalized === '::1'
+  if (isLocal && process.env.DEV_ALLOW_LOCALHOST === 'true') return false
+  return (
+    isLocal ||
     normalized.endsWith('.local') ||
     normalized.endsWith('.internal') ||
-    normalized === 'metadata.google.internal' ||
     (isIP(normalized) !== 0 && !isPublicIp(normalized))
   )
 }

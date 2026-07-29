@@ -12,13 +12,7 @@ Read `AGENTS.md`, then `.agents/skills/fixflags-scan-accuracy/SKILL.md` and `.ag
 1. Run `git status`, `npm run agent`, and read `.agents/BOARD.md`.
 2. Claim a non-overlapping accuracy scope before writes.
 3. Resolve the exact audit ID from the report URL or local database.
-4. Dump the persisted report:
-
-```bash
-DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config scripts/dogfood-dump.ts --id <audit-id>
-```
-
-Group suffixed IDs such as `check-id::page:2` by their base check ID. Distinguish raw database rows from distinct user fixes.
+4. View the persisted report via the web UI at `https://fixflags.com/report/<audit-id>` or use Prisma Studio for DB inspection.
 
 ## Independently inspect the target
 
@@ -61,10 +55,11 @@ npm run accuracy:eval
 npm run accuracy:browser
 ```
 
-Then create a fresh audit:
+Then create a fresh audit through the real product path:
 
 ```bash
-DOTENV_CONFIG_PATH=.env.local npx tsx -r dotenv/config scripts/dogfood-audit.ts --out /tmp/fixflags-dogfood.json https://target.example
+# Web: https://fixflags.com → enter URL → get report
+# CLI: fixflags check https://target.example --wait --full
 ```
 
 Compare:

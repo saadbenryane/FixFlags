@@ -34,10 +34,6 @@ export function IntegrationsBlock() {
               {copy.body}
             </p>
 
-            <div className="mt-8 max-w-[72rem] sm:mt-10">
-              <EditorIntegrationGrid />
-            </div>
-
             <div className="mt-6 max-w-[30rem]">
               <CopyableCommand
                 command={copy.npxCheckCommand}
@@ -61,6 +57,10 @@ export function IntegrationsBlock() {
                 {copy.cliCta}
                 <ArrowRight className="h-3.5 w-3.5" aria-hidden />
               </Link>
+            </div>
+
+            <div className="mt-10 max-w-[72rem]">
+              <EditorIntegrationGrid />
             </div>
           </div>
         </RevealOnView>

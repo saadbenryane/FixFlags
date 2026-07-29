@@ -200,6 +200,7 @@ Full evidence rules: `knowledge/evidence-rules.md`.
 - Evidence-backed Made with profiles across reports, re-check diffs, API/CLI/MCP summaries, and access-safe `/madewith/[hostname]` pages
 - Sample size gate (`MIN_SAMPLE_SIZE` in `lib/graph/queries.ts`; target 20, temporarily 3 while seeding)
 - MCP integration for Cursor, Claude Code, Windsurf, Lovable, and Bolt; public tool names live in `lib/mcp/tool-manifest.ts`, register through modular handlers, and are checked by `npm run mcp:quality-gate`.
+- Public documentation at `/docs` covers the product loop, Finish Plans, editor setup, CLI, MCP, generated tool reference, and troubleshooting. The code-backed editor catalog is the source for homepage, footer, docs, preferences, setup, and API-key attribution. Production-smoke claims remain limited to verified integrations.
 - Project-scoped Product Intelligence persistence
 - Canonical `/report/[id]` workspace with identity, readiness, re-check results, and the complete ranked Flag explorer, governed by `knowledge/report-contract.md`
 - Fix list with every unresolved Flag and contract-aware ranking from one shared service across web, export, MCP, CLI, re-check, and sample
@@ -255,7 +256,7 @@ Five concrete checks from report evidence. Fix before shipping:
 
 ## Support
 
-- **Help Center** at `/help` — searchable guides (getting started, checks, billing, MCP, account). Content in `lib/help/`.
+- **Help Center** at `/help` — billing, account, privacy, failed checks, plan questions, and human support. Product usage and technical integration guides live under `/docs`.
 - **Live chat** on all non-admin pages — first-party widget; team replies in `/admin/feedback`. Typical reply within a few hours.
 - **FAQ** at `/faq` — short Q&A; links into Help for deeper guides.
 - **Email** `hello@fixflags.com` — privacy, terms, high-volume pricing. Not a ticket system.

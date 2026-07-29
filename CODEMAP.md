@@ -25,7 +25,8 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 | Directory | Responsibility | Detailed Map |
 |-----------|----------------|--------------|
 | `app/` | Next.js App Router routes (marketing, auth, dashboard, audit, admin, API) | [app/codemap.md](app/codemap.md) |
-| `app/(marketing)/` | Public pages: homepage, pricing, FAQ, help, tools, docs, changelog, roast | — |
+| `app/(marketing)/` | Public pages: homepage, pricing, FAQ, Help, tools, changelog, roast | — |
+| `app/(docs)/` | Public product documentation shell and `/docs` routes | `lib/docs/catalog.ts` |
 | `app/(auth)/` | Sign-in, sign-up, forgot/reset password | — |
 | `app/(app)/` | Authenticated dashboard, billing, settings | — |
 | `app/report/[id]/` | Canonical complete report and ranked Fix list; `details/` redirects here | `knowledge/report-contract.md` |
@@ -45,6 +46,8 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 | `lib/prompts/` | AI system prompts (triage + prescription) | — |
 | `lib/marketing/` | Copy SSoT, metadata, SEO, structured data | — |
 | `lib/help/` | Help Center catalog, search, contextual hrefs, SLA | — |
+| `lib/docs/` | Typed docs catalog, Markdown loading, and search index | — |
+| `lib/integrations/` | Canonical editor catalog and MCP configuration generator | — |
 | `lib/mcp/` | Model Context Protocol server (16 tools) | — |
 | `lib/design/` | Design tokens, brand spec | — |
 | `prisma/` | Database schema, migrations, seed | — |
@@ -71,6 +74,8 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 - **Shared UI primitives** → `components/ui/` (shadcn-based)
 - **API routes** → `app/api/` (audits, auth, MCP, Stripe, cron, health)
 - **Marketing pages** → `app/(marketing)/` (homepage, pricing, FAQ, etc.)
+- **Public product documentation** → `app/(docs)/`, `content/docs/`, and `lib/docs/catalog.ts`
+- **Editor integration behavior** → `lib/integrations/editor-catalog.ts` and `lib/integrations/editor-config.ts`
 - **Auth pages** → `app/(auth)/` (sign-in, sign-up, password reset)
 - **Dashboard pages** → `app/(app)/` (authenticated user area)
 - **Edge middleware** → `proxy.ts` (CSP, HSTS, auth gating; no Prisma/Node imports)
