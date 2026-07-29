@@ -1,5 +1,6 @@
 'use client'
 
+import type { Route } from 'next'
 import Link from 'next/link'
 import { ArrowRight, LockKeyhole } from 'lucide-react'
 import { useMe } from '@/hooks/useMe'
@@ -14,7 +15,9 @@ export function DocsConnectAction({ editorKey }: { editorKey: EditorIntegrationK
   const { user, isLoading } = useMe()
   const editor = getEditorIntegration(editorKey)
   const setupPath = buildEditorSetupPath(editorKey)
-  const href = user ? setupPath : `/sign-in?next=${encodeURIComponent(setupPath)}`
+  const href: Route = user
+    ? setupPath
+    : (`/sign-in?next=${encodeURIComponent(setupPath)}` as Route)
   const requiresUpgrade = Boolean(user && !user.entitlements.canUseMcp)
 
   return (

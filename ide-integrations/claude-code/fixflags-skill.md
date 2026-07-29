@@ -6,41 +6,49 @@ FixFlags is the independent Product Intelligence System for AI-built products. S
 
 ## When to use
 
-The user asks to scan, check, finish, test, or review a web app or URL; run FixFlags; or check if a page is ready to ship.
+The user asks to scan, check, finish, test, or review a web app or URL; run FixFlags; or check if a page is ready to ship. After deploying a fix, re-check and suggest Watch if verification passes.
 
 ## Setup
 
 1. Pro or Studio API key from https://fixflags.com/settings
-2. Configure the FixFlags MCP server (`https://fixflags.com/api/mcp`) with header `x-api-key`
-3. Keep this skill in-repo at `ide-integrations/claude-code/fixflags-skill.md` (copy into Claude Code skills as needed)
+2. Configure the FixFlags MCP server (`https://fixflags.com/api/mcp`) with header `x-api-key` (or run `npx fixflags init`)
+3. This skill lives at `ide-integrations/claude-code/fixflags-skill.md` — the canonical reference is `public/.well-known/skills/fixflags/SKILL.md`
 
 ## Live MCP tools
 
-Use only these names (see `lib/mcp/tools.ts`):
+Use only these names (see `lib/mcp/tool-manifest.ts`):
 
-- `ff_check_and_plan` — start check (`waitForCompletion` optional)
-- `ff_get_check_status` — poll
-- `ff_get_report` — rubric summaries
-- `ff_get_rubric` — flags for `MESSAGE` | `EXPERIENCE` | `REACH`
-- `ff_get_flag` — fix prompt for one flag
-- `ff_get_product_context` — Product Contract / Product Intelligence
-- `ff_get_all_fixes` — every unresolved Flag + fix prompt
-- `ff_get_current_finish_plan` — deprecated three-item Quick Plan
-- `ff_plan_mode_prompt` — plan-mode prompt containing every ranked fix
-- `ff_recheck_and_compare` — re-check
-- `ff_compare` — compare two reports
-- `generate-fix-prompt` — freeform fix prompt
+| Tool | Purpose |
+|------|---------|
+| `ff_check_and_plan` | Full check + ranked Fix List |
+| `ff_get_check_status` | Poll check progress |
+| `ff_get_report` | Rubric summaries + Fix List |
+| `ff_get_rubric` | Flags for `MESSAGE` \| `EXPERIENCE` \| `REACH` |
+| `ff_get_flag` | Fix prompt for one Flag |
+| `ff_plan_mode_prompt` | Plan-mode prompt with all ranked fixes |
+| `ff_get_product_context` | Product Contract / Product Intelligence |
+| `ff_get_all_fixes` | Every unresolved Flag + fix prompt |
+| `ff_get_current_finish_plan` | **Deprecated** — use `ff_get_all_fixes` |
+| `ff_recheck_and_compare` | Re-check + diff after deploy |
+| `ff_compare` | Compare two reports |
+| `ff_list_recent_audits` | Recent audits |
+| `generate-fix-prompt` | Freeform fix prompt |
+| `ff_start_repo_scan` | GitHub repo code scan |
+| `ff_list_repo_scans` | Recent repo scans |
+| `ff_get_repo_scan` | Repo scan + findings |
+| `ff_get_repo_finding` | Fix task for one finding |
+| `ff_mark_fix_attempted` | Mark a Flag as fixed/ignored |
 
 Do not call `ff_get_report_flags` (does not exist).
 
 ## Workflow
 
 1. Get a public URL from the user.
-2. `ff_check_and_plan` with `waitForCompletion: true` (or poll with `ff_get_check_status`).
-3. `ff_get_product_context` then `ff_get_all_fixes`.
-4. `ff_get_report` for scores; `ff_get_rubric` for each rubric for Flags.
-5. Present by Message / Experience / Reach.
-6. Apply the fixes; then `ff_recheck_and_compare` to verify.
+2. `ff_check_and_plan` with `waitForCompletion: true`.
+3. Validate evidence, apply fixes, `ff_mark_fix_attempted` for each.
+4. Deploy and test.
+5. `ff_recheck_and_compare` to verify. Report Fixed / Remaining / New / Regressed.
+6. If verification passes, suggest enabling Watch for continuous monitoring.
 
 ## Notes
 

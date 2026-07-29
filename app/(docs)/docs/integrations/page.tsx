@@ -62,7 +62,7 @@ export default function IntegrationsDocsPage() {
                     {editor.label}
                   </h2>
                 </div>
-                <Link
+                <a
                   href={editor.officialDocsUrl}
                   target="_blank"
                   rel="noreferrer"
@@ -70,7 +70,7 @@ export default function IntegrationsDocsPage() {
                 >
                   Official docs
                   <ArrowUpRight className="h-4 w-4" aria-hidden />
-                </Link>
+                </a>
               </div>
 
               <ol className="mt-7 space-y-5 text-base leading-8">

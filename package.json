@@ -22,6 +22,7 @@
     "image:artwork-guard": "node scripts/marketing-artwork-guard.mjs",
     "product:contract-guard": "node scripts/product-contract-guard.mjs",
     "routes:contract-guard": "node scripts/route-contract-registry.mjs",
+    "skills:sync": "node scripts/sync-skills.mjs",
     "skills:validate": "node scripts/skill-validator.mjs",
     "brand:icons": "node scripts/generate-brand-icons.mjs",
     "seo:guard": "node scripts/seo-guard.mjs",

@@ -1,5 +1,6 @@
 'use client'
 
+import type { Route } from 'next'
 import Link from 'next/link'
 import { Search, X } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
@@ -95,7 +96,7 @@ export function DocsSearch({
             results.map((result) => (
               <Link
                 key={`${result.href}-${result.title}`}
-                href={result.href}
+                href={result.href as Route}
                 role="option"
                 onClick={() => {
                   setQuery('')

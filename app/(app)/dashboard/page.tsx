@@ -221,15 +221,6 @@ export default async function DashboardPage({
 
   const entitlements = getEntitlements(user);
 
-  const totalCritical = completedAudits.reduce(
-    (sum, a) =>
-      sum +
-      a.rubrics.reduce(
-        (s, r) => s + r.flags.filter((f) => f.severity === "CRITICAL").length,
-        0,
-      ),
-    0,
-  );
   const releaseWorkspace = currentRelease
     ? await (async () => {
         const productContract = parseProductContract(currentRelease.productContract);
@@ -307,20 +298,7 @@ export default async function DashboardPage({
 
       {/* Primary action: start a new Check after orienting to current release health. */}
       <Surface variant="elevated" className="sm:p-6">
-        <div className="flex items-center justify-between mb-4">
-          <SectionTitle>Review a URL</SectionTitle>
-          {completedAudits.length > 0 && (
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {completedAudits.length} check
-              {completedAudits.length !== 1 ? "s" : ""}
-              {totalCritical > 0 && (
-                <span className="ml-2 text-destructive">
-                  {totalCritical} critical Flag{totalCritical !== 1 ? "s" : ""}
-                </span>
-              )}
-            </span>
-          )}
-        </div>
+        <SectionTitle className="mb-4">Review a URL</SectionTitle>
         <AuditInput
           initialUrl={initialAuditUrl}
           autoStart={Boolean(initialAuditUrl)}

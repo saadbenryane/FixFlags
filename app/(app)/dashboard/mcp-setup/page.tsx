@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import type { Route } from 'next'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, Check, CheckCircle, Copy, LockKeyhole } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -25,8 +26,8 @@ import {
   getMcpEndpoint,
 } from '@/lib/integrations/editor-config'
 
-function safeReturnTo(value: string | null) {
-  return value?.startsWith('/docs/') ? value : '/dashboard'
+function safeReturnTo(value: string | null): Route {
+  return value?.startsWith('/docs/') ? (value as Route) : '/dashboard'
 }
 
 export default function McpSetupWizard() {
@@ -41,7 +42,7 @@ export default function McpSetupWizard() {
   const [keyError, setKeyError] = useState<string | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
-  const [returnTo, setReturnTo] = useState('/dashboard')
+  const [returnTo, setReturnTo] = useState<Route>('/dashboard')
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)

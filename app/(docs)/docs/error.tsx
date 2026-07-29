@@ -1,14 +1,24 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
+import { RouteErrorPage } from '@/components/ui/route-error-page'
 
-export default function DocsError({ reset }: { reset: () => void }) {
+export default function DocsError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string }
+  reset: () => void
+}) {
   return (
-    <div className="mx-auto flex min-h-[28rem] max-w-2xl flex-col items-start justify-center px-5 py-16">
-      <p className="font-mono text-xs font-semibold uppercase tracking-label text-brand">Docs</p>
-      <h1 className="mt-3 font-serif text-4xl font-semibold">This page could not be loaded.</h1>
-      <p className="mt-4 text-muted-foreground">Try the page again. Your product data was not changed.</p>
-      <Button className="mt-7" onClick={reset}>Try again</Button>
-    </div>
+    <RouteErrorPage
+      error={error}
+      reset={reset}
+      event="ui.docs.error"
+      title="This page could not be loaded."
+      description="Try the page again. Your product data was not changed."
+      returnHref="/docs"
+      returnLabel="Documentation home"
+      shell="marketing"
+    />
   )
 }

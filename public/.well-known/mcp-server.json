@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "id": "fixflags",
+  "name": "FixFlags",
+  "description": "Product Intelligence for AI-built products. Check a deployed URL and return a ranked Fix List across Message, Experience, and Reach with fix prompts for your AI editor.",
+  "homepage": "https://fixflags.com",
+  "repository": "https://github.com/saadbenryane/QewOS",
+  "license": "MIT",
+  "author": {
+    "name": "FixFlags"
+  },
+  "server": {
+    "url": "https://fixflags.com/api/mcp",
+    "transport": "streamable-http"
+  },
+  "tools": [
+    {
+      "name": "ff_check_and_plan",
+      "description": "Check a deployed URL and return its canonical ranked Fix List"
+    },
+    {
+      "name": "ff_recheck_and_compare",
+      "description": "After testing and deploying a product fix, run a fresh Re-check and return Fixed, Remaining, New, and Regressed Flags"
+    },
+    {
+      "name": "ff_get_check_status",
+      "description": "Check if a report is complete"
+    },
+    {
+      "name": "ff_get_report",
+      "description": "Get rubric summaries, report status, and the complete Fix List"
+    },
+    {
+      "name": "ff_get_rubric",
+      "description": "Get detailed flags and fix prompts for one rubric"
+    },
+    {
+      "name": "ff_get_flag",
+      "description": "Get the fix prompt for a specific Flag"
+    },
+    {
+      "name": "ff_get_all_fixes",
+      "description": "Get every unresolved Flag and fix prompt, ranked by launch impact"
+    },
+    {
+      "name": "ff_plan_mode_prompt",
+      "description": "Get one plan-mode prompt containing every ranked fix"
+    },
+    {
+      "name": "ff_get_product_context",
+      "description": "Get Product Contract and Product Intelligence context"
+    },
+    {
+      "name": "ff_compare",
+      "description": "Compare two reports to see what improved, stayed the same, or regressed"
+    },
+    {
+      "name": "ff_mark_fix_attempted",
+      "description": "Mark a Flag as fixed or ignored with an optional comment"
+    },
+    {
+      "name": "ff_list_recent_audits",
+      "description": "List recent audits with status, score, and key metadata"
+    },
+    {
+      "name": "generate-fix-prompt",
+      "description": "Generate a custom fix prompt from a problem description"
+    },
+    {
+      "name": "ff_start_repo_scan",
+      "description": "Start a GitHub repository code scan for an allow-listed repository"
+    },
+    {
+      "name": "ff_list_repo_scans",
+      "description": "List recent GitHub repository scans and finding counts"
+    },
+    {
+      "name": "ff_get_repo_scan",
+      "description": "Get a GitHub repository scan and its code findings"
+    },
+    {
+      "name": "ff_get_repo_finding",
+      "description": "Get a branch-ready fix task for one repository finding"
+    }
+  ],
+  "categories": ["developer-tools", "code-quality", "testing"],
+  "tags": ["product-intelligence", "qa", "testing", "ai", "verification", "lighthouse", "accessibility", "seo"],
+  "icon": "https://fixflags.com/favicon.ico"
+}

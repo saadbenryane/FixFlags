@@ -1,3 +1,4 @@
+import type { Route } from 'next'
 import { SITE_URL } from '@/lib/marketing/copy/brand'
 import {
   getEditorIntegration,
@@ -106,7 +107,7 @@ export function buildMcpTestCurl(baseUrl: string = SITE_URL): string {
   -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"fixflags-curl","version":"1.0.0"}},"id":1}'`
 }
 
-export function buildEditorSetupPath(editorKey: EditorIntegrationKey): string {
+export function buildEditorSetupPath(editorKey: EditorIntegrationKey): Route {
   const returnTo = `/docs/integrations#${getEditorIntegration(editorKey).docsAnchor}`
-  return `/dashboard/mcp-setup?builder=${editorKey}&returnTo=${encodeURIComponent(returnTo)}`
+  return `/dashboard/mcp-setup?builder=${editorKey}&returnTo=${encodeURIComponent(returnTo)}` as Route
 }

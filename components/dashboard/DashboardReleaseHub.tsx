@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import type { Route } from 'next'
 import { ArrowRight, Globe2 } from 'lucide-react'
-import { ReportFixLoop } from '@/components/report/ReportFixLoop'
 import {
   ReportWorkspaceOutcome,
   ReportWorkspaceSummary,
@@ -16,15 +15,6 @@ export function DashboardReleaseHub({
   model: ReportWorkspaceModel
 }) {
   const reportHref = `/report/${model.identity.auditId}`
-  const flags = model.explorer.flags.slice(0, 5).map((flag) => ({
-    id: flag.id,
-    title: flag.title,
-    rubric: flag.rubric,
-    impactTag: flag.impactTag,
-    severity: flag.severity,
-    hasFixPrompt: false,
-  }))
-  const topFlag = flags[0]
 
   return (
     <section
@@ -58,45 +48,6 @@ export function DashboardReleaseHub({
 
       <ReportWorkspaceOutcome model={model} compact />
       <ReportWorkspaceSummary model={model} />
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(15rem,0.75fr)]">
-        <div className="min-w-0">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold">
-              {REPORT_COPY.workspace.dashboard.topFlags}
-            </h3>
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {REPORT_COPY.workspace.dashboard.total(model.outcome.unresolvedCount)}
-            </span>
-          </div>
-          <ReportFixLoop flags={flags} reportHref={reportHref} compact />
-        </div>
-        <div className="flex min-h-32 flex-col justify-between rounded-[var(--radius-inner)] bg-muted/35 p-4">
-          <div>
-            <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
-              {REPORT_COPY.workspace.dashboard.nextActionLabel}
-            </p>
-            <p className="mt-2 text-sm font-medium text-foreground">
-              {topFlag
-                ? REPORT_COPY.workspace.dashboard.nextActionBody
-                : REPORT_COPY.workspace.dashboard.clearReleaseBody}
-            </p>
-          </div>
-          <Button asChild className="mt-4 w-full">
-            <Link
-              href={
-                (topFlag
-                  ? `${reportHref}?flag=${encodeURIComponent(topFlag.id)}`
-                  : reportHref) as Route
-              }
-            >
-              {topFlag
-                ? REPORT_COPY.workspace.dashboard.reviewTopFlag
-                : REPORT_COPY.workspace.dashboard.reviewClearRelease}
-            </Link>
-          </Button>
-        </div>
-      </div>
     </section>
   )
 }

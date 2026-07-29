@@ -16,25 +16,30 @@ When asked to scan, test, finish, or review a web app, use the FixFlags MCP tool
 
 User needs Pro/Agency API key and MCP configured (`.cursor/mcp.json`) pointing at `https://fixflags.com/api/mcp` with `x-api-key`.
 
-Copy this rule into the project as `.cursor/rules/fixflags.mdc`, or keep it under `ide-integrations/cursor/`.
+The canonical skill reference is at `public/.well-known/skills/fixflags/SKILL.md`.
 
 ## Live MCP tools (canonical)
 
 | Tool | Use |
 |------|-----|
-| `ff_check_and_plan` | Check a URL and return the report + complete ranked Fix list. Pass `waitForCompletion: true` for the completed outcome. |
+| `ff_check_and_plan` | Check a URL and return the report + complete ranked Fix List. Pass `waitForCompletion: true` for the completed outcome. |
 | `ff_get_check_status` | Poll status / progress |
 | `ff_get_report` | Rubric summaries + shareStatus |
 | `ff_get_rubric` | Flags + fix text for one rubric (`MESSAGE` \| `EXPERIENCE` \| `REACH`) |
-| `ff_get_flag` | Full fix prompt for one flag (`tool`: cursor/claude/lovable/bolt/…) |
+| `ff_get_flag` | Full fix prompt for one flag |
+| `ff_plan_mode_prompt` | Single plan-mode prompt for every ranked fix |
 | `ff_get_product_context` | Product Contract / Product Intelligence for the report |
 | `ff_get_all_fixes` | Every unresolved Flag + fix prompt, ranked by launch impact |
-| `ff_get_current_finish_plan` | Deprecated three-item Quick Plan compatibility tool |
-| `ff_plan_mode_prompt` | Single plan-mode prompt for every ranked fix |
-| `ff_recheck_and_compare` | Re-check same URL (verify fixes) |
+| `ff_get_current_finish_plan` | **Deprecated** — use `ff_get_all_fixes` or `ff_check_and_plan` |
+| `ff_recheck_and_compare` | Re-check same URL (verify fixes). Pass `waitForCompletion: true`. |
 | `ff_compare` | Diff two reports |
 | `ff_list_recent_audits` | Recent audits |
 | `generate-fix-prompt` | Custom fix prompt from a problem description |
+| `ff_start_repo_scan` | Start a GitHub repo code scan |
+| `ff_list_repo_scans` | List recent repo scans |
+| `ff_get_repo_scan` | Get a repo scan and findings |
+| `ff_get_repo_finding` | Get a branch-ready fix task for a finding |
+| `ff_mark_fix_attempted` | Mark a Flag as fixed or ignored with optional comment |
 
 There is **no** `ff_get_report_flags` tool. Use `ff_get_rubric` per rubric or `ff_get_flag`.
 
@@ -44,7 +49,9 @@ There is **no** `ff_get_report_flags` tool. Use `ff_get_rubric` per rubric or `f
 2. Call `ff_check_and_plan` with `waitForCompletion: true`.
 3. Present its complete ranked Fix list by **Message**, **Experience**, **Reach**.
 4. Use context, rubric, or flag tools only when the user needs deeper evidence.
-5. Apply the fixes, then call `ff_recheck_and_compare` with `waitForCompletion: true`.
+5. Apply the fixes, call `ff_mark_fix_attempted` for each, then call `ff_recheck_and_compare` with `waitForCompletion: true`.
+6. Report Fixed / Remaining / New / Regressed.
+7. If verification passes, suggest enabling Watch for continuous monitoring.
 
 ## Presenting results
 

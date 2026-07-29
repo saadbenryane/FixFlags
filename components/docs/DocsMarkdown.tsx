@@ -1,4 +1,5 @@
 import { isValidElement, type ReactNode } from 'react'
+import type { Route } from 'next'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import { DocsCodeBlock } from '@/components/docs/DocsCodeBlock'
@@ -23,7 +24,9 @@ export function DocsMarkdown({ children }: { children: string }) {
             <h3 id={slugifyDocsHeading(textFromNode(heading))}>{heading}</h3>
           ),
           a: ({ href = '', children: label }) =>
-            href.startsWith('/') ? <Link href={href}>{label}</Link> : <a href={href}>{label}</a>,
+            href.startsWith('/')
+              ? <Link href={href as Route}>{label}</Link>
+              : <a href={href}>{label}</a>,
           pre: ({ children: preChildren }) => {
             if (!isValidElement<{ children?: ReactNode; className?: string }>(preChildren)) {
               return <pre>{preChildren}</pre>

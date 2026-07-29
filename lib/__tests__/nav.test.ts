@@ -10,7 +10,7 @@ describe('marketing nav labels', () => {
         ['How it works', '/how-it-works'],
         ['Examples', '/samples'],
         ['Pricing', '/pricing'],
-        ['Docs', '/help'],
+        ['Docs', '/docs'],
       ]
     )
   })

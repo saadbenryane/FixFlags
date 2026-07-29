@@ -1,5 +1,6 @@
 'use client'
 
+import type { Route } from 'next'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { DOCS_GROUPS, DOCS_PAGES } from '@/lib/docs/catalog'
@@ -21,7 +22,7 @@ export function DocsNavigation({ onNavigate }: { onNavigate?: () => void }) {
               return (
                 <li key={page.path}>
                   <Link
-                    href={page.path}
+                    href={page.path as Route}
                     onClick={onNavigate}
                     aria-current={active ? 'page' : undefined}
                     className={cn(
