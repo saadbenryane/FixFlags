@@ -1,13 +1,12 @@
 import type { User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { canAccessAudit } from '@/lib/audit/access'
-import { canUseApiKeys } from '@/lib/auth/permissions'
 import { canSharePublicly } from '@/lib/auth/entitlements'
 
 export async function assertMcpAccess(user: User): Promise<User> {
   const fresh = await prisma.user.findUnique({ where: { id: user.id } })
-  if (!fresh || !canUseApiKeys(fresh)) {
-    throw new Error('Upgrade to Pro to use MCP API access')
+  if (!fresh) {
+    throw new Error('User not found')
   }
   return fresh
 }

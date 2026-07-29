@@ -1,4 +1,3 @@
-import { Entry } from '@napi-rs/keyring'
 import {
   chmodSync,
   existsSync,
@@ -8,18 +7,20 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs'
-import { homedir, platform } from 'node:os'
+import { homedir, machine, platform } from 'node:os'
 import { dirname, join } from 'node:path'
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
 
 const SERVICE = 'FixFlags CLI'
 export const API_BASE = (
   process.env.FIXFLAGS_API_URL || 'https://fixflags.com'
 ).replace(/\/$/, '')
 
+type Storage = 'keyring' | 'encrypted'
+
 interface Config {
   apiBase?: string
-  credentialStorage?: 'keyring' | 'insecure'
-  apiKey?: string
+  credentialStorage?: Storage
 }
 
 function configDirectory(): string {
@@ -31,6 +32,30 @@ function configDirectory(): string {
 }
 
 const CONFIG_PATH = join(configDirectory(), 'config.json')
+const ENCRYPTED_PATH = join(configDirectory(), 'credentials.enc')
+
+function machineKey(): string {
+  return createHash('sha256').update(`${machine()}:${homedir()}:fixflags-credential-v1`).digest('hex')
+}
+
+function encryptValue(plaintext: string): string {
+  const key = Buffer.from(machineKey(), 'hex')
+  const iv = randomBytes(16)
+  const cipher = createCipheriv('aes-256-gcm', key, iv)
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
+  const tag = cipher.getAuthTag()
+  return `${iv.toString('base64url')}.${tag.toString('base64url')}.${encrypted.toString('base64url')}`
+}
+
+function decryptValue(encoded: string): string {
+  const parts = encoded.split('.')
+  if (parts.length !== 3) throw new Error('Malformed encrypted credential')
+  const [ivB64, tagB64, dataB64] = parts
+  const key = Buffer.from(machineKey(), 'hex')
+  const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(ivB64, 'base64url'))
+  decipher.setAuthTag(Buffer.from(tagB64, 'base64url'))
+  return decipher.update(Buffer.from(dataB64, 'base64url'), undefined, 'utf8') + decipher.final('utf8')
+}
 
 function loadConfig(): Config {
   if (!existsSync(CONFIG_PATH)) return {}
@@ -44,93 +69,122 @@ function loadConfig(): Config {
 function saveConfig(config: Config): void {
   mkdirSync(dirname(CONFIG_PATH), { recursive: true, mode: 0o700 })
   const temporary = `${CONFIG_PATH}.${process.pid}.tmp`
-  writeFileSync(temporary, `${JSON.stringify(config, null, 2)}\n`, {
-    mode: 0o600,
-  })
+  writeFileSync(temporary, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 })
   chmodSync(temporary, 0o600)
   renameSync(temporary, CONFIG_PATH)
 }
 
-function keyringEntry(): Entry {
-  return new Entry(SERVICE, API_BASE)
+function tryKeyringSync<T>(fn: (entry: { setPassword: (password: string) => void; getPassword: () => string; deletePassword: () => void }) => T): T | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { Entry } = require('@napi-rs/keyring') as typeof import('@napi-rs/keyring')
+    const entry = new Entry(SERVICE, API_BASE)
+    return fn(entry as any)
+  } catch {
+    return null
+  }
+}
+
+async function tryKeyringAsync<T>(fn: (entry: { setPassword: (password: string) => void; getPassword: () => string; deletePassword: () => void }) => T): Promise<{ ok: true; value: T } | { ok: false; error: unknown }> {
+  try {
+    const { Entry } = await import('@napi-rs/keyring')
+    const entry = new Entry(SERVICE, API_BASE)
+    return { ok: true, value: fn(entry as any) }
+  } catch (error) {
+    return { ok: false, error }
+  }
 }
 
 export function hasConfiguredCredential(): boolean {
   if (process.env.FIXFLAGS_API_KEY) return true
   const config = loadConfig()
-  return config.credentialStorage === 'keyring' || Boolean(config.apiKey)
+  if (!config.credentialStorage) return false
+  if (config.credentialStorage === 'keyring') return tryKeyringSync((entry) => entry.getPassword()) !== null
+  if (config.credentialStorage === 'encrypted') return existsSync(ENCRYPTED_PATH)
+  return false
+}
+
+export async function getCredential(): Promise<string | null> {
+  if (process.env.FIXFLAGS_API_KEY) return process.env.FIXFLAGS_API_KEY
+  const config = loadConfig()
+  if (!config.credentialStorage) return null
+
+  if (config.credentialStorage === 'keyring') {
+    const result = await tryKeyringAsync((entry) => entry.getPassword())
+    if (result.ok && result.value) return result.value
+    return null
+  }
+
+  if (config.credentialStorage === 'encrypted') {
+    if (!existsSync(ENCRYPTED_PATH)) return null
+    try {
+      const blob = readFileSync(ENCRYPTED_PATH, 'utf8').trim()
+      return decryptValue(blob)
+    } catch {
+      return null
+    }
+  }
+
+  return null
 }
 
 export function requireApiKey(): string {
   if (process.env.FIXFLAGS_API_KEY) return process.env.FIXFLAGS_API_KEY
   const config = loadConfig()
+
   if (config.credentialStorage === 'keyring') {
-    try {
-      const key = keyringEntry().getPassword()
-      if (key) return key
-    } catch (error) {
+    const result = tryKeyringSync((entry) => entry.getPassword())
+    if (result) return result
+  }
+
+  if (config.credentialStorage === 'encrypted') {
+    if (!existsSync(ENCRYPTED_PATH)) {
       throw new Error(
-        `The operating-system credential store is unavailable: ${(error as Error).message}. Use FIXFLAGS_API_KEY for CI or run fixflags login --with-token --insecure-storage.`
+        'Encrypted credential file not found. Run fixflags login, or set FIXFLAGS_API_KEY for CI.'
+      )
+    }
+    try {
+      const blob = readFileSync(ENCRYPTED_PATH, 'utf8').trim()
+      return decryptValue(blob)
+    } catch {
+      throw new Error(
+        'Failed to decrypt credential. Run fixflags login again, or set FIXFLAGS_API_KEY for CI.'
       )
     }
   }
-  if (config.credentialStorage === 'insecure' && config.apiKey) {
-    return config.apiKey
-  }
+
   throw new Error(
     'Not authenticated. Run fixflags login, or set FIXFLAGS_API_KEY for CI.'
   )
 }
 
-export function saveCredential(
+export async function saveCredential(
   apiKey: string,
-  options: { insecureStorage?: boolean } = {}
-): void {
-  if (options.insecureStorage) {
-    try {
-      keyringEntry().deletePassword()
-    } catch {
-      // The user explicitly selected file storage. An unavailable keyring
-      // cannot prevent replacing the active local credential.
-    }
-    saveConfig({
-      apiBase: API_BASE,
-      credentialStorage: 'insecure',
-      apiKey,
-    })
+  _options?: { insecureStorage?: boolean }
+): Promise<void> {
+  const keyringResult = await tryKeyringAsync((entry) => entry.setPassword(apiKey))
+
+  if (keyringResult.ok) {
+    saveConfig({ apiBase: API_BASE, credentialStorage: 'keyring' })
     return
   }
-  try {
-    keyringEntry().setPassword(apiKey)
-  } catch (error) {
-    throw new Error(
-      `The operating-system credential store is unavailable: ${(error as Error).message}. No credential was saved. Use FIXFLAGS_API_KEY or explicitly pass --insecure-storage.`
-    )
-  }
-  try {
-    saveConfig({ apiBase: API_BASE, credentialStorage: 'keyring' })
-  } catch (error) {
-    try {
-      keyringEntry().deletePassword()
-    } catch {
-      // Preserve the original config-write error below.
-    }
-    throw error
-  }
+
+  const encrypted = encryptValue(apiKey)
+  mkdirSync(dirname(ENCRYPTED_PATH), { recursive: true, mode: 0o700 })
+  const temporary = `${ENCRYPTED_PATH}.${process.pid}.tmp`
+  writeFileSync(temporary, `${encrypted}\n`, { mode: 0o600 })
+  chmodSync(temporary, 0o600)
+  renameSync(temporary, ENCRYPTED_PATH)
+  saveConfig({ apiBase: API_BASE, credentialStorage: 'encrypted' })
 }
 
 export function removeCredential(): void {
   const config = loadConfig()
   if (config.credentialStorage === 'keyring') {
-    try {
-      keyringEntry().deletePassword()
-    } catch (error) {
-      throw new Error(
-        `Could not remove the credential from the operating-system store: ${(error as Error).message}`
-      )
-    }
+    tryKeyringSync((entry) => entry.deletePassword())
   }
   rmSync(CONFIG_PATH, { force: true })
+  if (existsSync(ENCRYPTED_PATH)) rmSync(ENCRYPTED_PATH, { force: true })
 }
 
 export async function readSecretFromStdin(prompt: string): Promise<string> {

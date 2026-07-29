@@ -62,6 +62,17 @@ export function canUseApiKeys(
   return canAccessPaidFeatures(user)
 }
 
+/** Basic MCP access is available to all authenticated users. Plan gates for
+ *  premium features (compare, repo scan, deep journeys) are enforced per tool. */
+export function canAccessBasicMcp(
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
+): boolean {
+  if (!shouldEnforcePlanGates()) return true
+  if (user.role === 'admin' || isAdminUser(user)) return true
+  if (hasRevokedSubscriptionStatus(user.subscriptionStatus)) return false
+  return true
+}
+
 /** Codebase (GitHub repo) scanning - Studio plan only, same tier as public sharing. */
 export function canScanRepositories(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
@@ -95,6 +106,7 @@ export interface UserEntitlements {
   canMonitor: boolean
   canWatchProduct: boolean
   canUseMcp: boolean
+  canAccessBasicMcp: boolean
   canScanRepositories: boolean
 }
 
@@ -111,6 +123,7 @@ export function getEntitlements(
     canMonitor: canAccessMonitoring(),
     canWatchProduct: canAccessProductWatch(user),
     canUseMcp: canUseApiKeys(user),
+    canAccessBasicMcp: canAccessBasicMcp(user),
     canScanRepositories: canScanRepositories(user),
   }
 }

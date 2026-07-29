@@ -1,5 +1,5 @@
-import Image from 'next/image'
-import Link from 'next/link'
+import Image from "next/image";
+import Link from "next/link";
 import {
   ArrowRight,
   ChartNoAxesColumnIncreasing,
@@ -12,32 +12,32 @@ import {
   ShieldCheck,
   TriangleAlert,
   UserRound,
-} from 'lucide-react'
-import { ReportWorkspaceSummary } from '@/components/report/ReportWorkspaceChrome'
-import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
-import { rubricIcon } from '@/lib/rubric-icons'
-import { cn } from '@/lib/utils'
+} from "lucide-react";
+import { ReportWorkspaceSummary } from "@/components/report/ReportWorkspaceChrome";
+import type { ReportWorkspaceModel } from "@/lib/report/workspace-model";
+import { rubricIcon } from "@/lib/rubric-icons";
+import { cn } from "@/lib/utils";
 
 export function HomepageReportPreview({
   model,
 }: {
-  model: ReportWorkspaceModel
+  model: ReportWorkspaceModel;
 }) {
   const selectedFlag =
-    model.explorer.flags.find((flag) => flag.severity === 'CRITICAL') ??
-    model.explorer.flags[0]
+    model.explorer.flags.find((flag) => flag.severity === "CRITICAL") ??
+    model.explorer.flags[0];
   const rubricCounts = model.summary.rubrics.map((rubric) => ({
     id: rubric.name,
     label: rubric.label,
     count: rubric.flagCount,
-  }))
+  }));
   const reportDate = model.identity.checkedAt
-    ? new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
+    ? new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
       }).format(model.identity.checkedAt)
-    : null
+    : null;
 
   return (
     <div className="relative overflow-hidden rounded-card bg-background shadow-glass-hero ring-1 ring-border/55">
@@ -55,7 +55,7 @@ export function HomepageReportPreview({
               {model.identity.displayHost}
             </p>
             <p className="mt-0.5 truncate text-2xs text-muted-foreground">
-              Curated sample{reportDate ? ` · ${reportDate}` : ''}
+              Curated sample{reportDate ? ` · ${reportDate}` : ""}
             </p>
           </div>
         </div>
@@ -92,8 +92,8 @@ export function HomepageReportPreview({
             <span
               key={index}
               className={cn(
-                'inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-control)] text-muted-foreground',
-                index === 0 && 'bg-muted/70 text-foreground'
+                "inline-flex h-9 w-9 items-center justify-center rounded-[var(--radius-control)] text-muted-foreground",
+                index === 0 && "bg-muted/70 text-foreground",
               )}
             >
               <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -105,10 +105,11 @@ export function HomepageReportPreview({
           <ReportWorkspaceSummary
             model={model}
             reportHref="/samples"
+            compact
             className="rounded-[var(--radius-inner)] shadow-none ring-1 ring-border/45"
           />
 
-          <div className="mt-3.5 grid min-w-0 gap-3.5 lg:grid-cols-[minmax(19rem,1.1fr)_minmax(17rem,0.9fr)]">
+          <div className="mt-3.5 grid min-w-0 gap-3.5 md:grid-cols-[minmax(16rem,1.1fr)_minmax(14rem,0.9fr)]">
             <div className="min-w-0">
               <div className="flex min-w-0 gap-1 overflow-x-auto border-b border-border/40 pb-2.5 scrollbar-none">
                 <span className="inline-flex min-h-8 shrink-0 items-center rounded-[var(--radius-control)] bg-foreground px-3 text-2xs font-medium text-background">
@@ -130,26 +131,29 @@ export function HomepageReportPreview({
                 ))}
               </div>
 
-              <ul className="mt-1.5 divide-y divide-border/35" aria-label="Sample Flags">
+              <ul
+                className="mt-1.5 divide-y divide-border/35"
+                aria-label="Sample Flags"
+              >
                 {model.explorer.flags.slice(0, 5).map((flag) => {
-                  const RubricIcon = rubricIcon(flag.rubric)
-                  const selected = flag.id === selectedFlag?.id
+                  const RubricIcon = rubricIcon(flag.rubric);
+                  const selected = flag.id === selectedFlag?.id;
                   const SeverityIcon =
-                    flag.severity === 'CRITICAL' ? CircleAlert : TriangleAlert
+                    flag.severity === "CRITICAL" ? CircleAlert : TriangleAlert;
                   return (
                     <li
                       key={flag.id}
                       className={cn(
-                        'flex min-h-12 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 text-left',
-                        selected && 'bg-accent/45'
+                        "flex min-h-12 items-center gap-2.5 rounded-[var(--radius-control)] px-2.5 text-left",
+                        selected && "bg-accent/45",
                       )}
                     >
                       <SeverityIcon
                         className={cn(
-                          'h-4 w-4 shrink-0',
-                          flag.severity === 'CRITICAL'
-                            ? 'text-destructive'
-                            : 'text-grade-D'
+                          "h-4 w-4 shrink-0",
+                          flag.severity === "CRITICAL"
+                            ? "text-destructive"
+                            : "text-grade-D",
                         )}
                         aria-hidden
                       />
@@ -164,7 +168,7 @@ export function HomepageReportPreview({
                         {flag.rubricLabel}
                       </span>
                     </li>
-                  )
+                  );
                 })}
               </ul>
               <Link
@@ -187,7 +191,10 @@ export function HomepageReportPreview({
                       {selectedFlag.severityLabel} · {selectedFlag.rubricLabel}
                     </p>
                   </div>
-                  <CircleAlert className="h-4 w-4 shrink-0 text-destructive" aria-hidden />
+                  <CircleAlert
+                    className="h-4 w-4 shrink-0 text-destructive"
+                    aria-hidden
+                  />
                 </div>
 
                 <div className="mt-4 space-y-3.5">
@@ -209,10 +216,16 @@ export function HomepageReportPreview({
                   </div>
                   <div className="flex min-h-9 items-center justify-between gap-3 rounded-[var(--radius-control)] bg-foreground px-3 text-background">
                     <span className="inline-flex items-center gap-1.5 text-2xs font-medium">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-success" aria-hidden />
+                      <CheckCircle2
+                        className="h-3.5 w-3.5 text-success"
+                        aria-hidden
+                      />
                       Ready for your editor
                     </span>
-                    <ArrowRight className="h-3.5 w-3.5 text-background/65" aria-hidden />
+                    <ArrowRight
+                      className="h-3.5 w-3.5 text-background/65"
+                      aria-hidden
+                    />
                   </div>
                 </div>
               </div>
@@ -221,5 +234,5 @@ export function HomepageReportPreview({
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,28 +1,28 @@
-import { CircleAlert, Flag, History } from 'lucide-react'
-import { RubricBar } from '@/components/audit/RubricBar'
-import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
-import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
-import { REPORT_COPY } from '@/lib/marketing/copy'
-import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
-import { cn } from '@/lib/utils'
+import { CircleAlert, Flag, History } from "lucide-react";
+import { RubricBar } from "@/components/audit/RubricBar";
+import { ScoreHistoryChart } from "@/components/report/ScoreHistoryChart";
+import { ScoreRingGauge } from "@/components/report/ScoreRingGauge";
+import { REPORT_COPY } from "@/lib/marketing/copy";
+import type { ReportWorkspaceModel } from "@/lib/report/workspace-model";
+import { cn } from "@/lib/utils";
 
 export function ReportWorkspaceOutcome({
   model,
   compact = false,
   className,
 }: {
-  model: ReportWorkspaceModel
-  compact?: boolean
-  className?: string
+  model: ReportWorkspaceModel;
+  compact?: boolean;
+  className?: string;
 }) {
-  const unresolved = model.outcome.unresolvedCount
+  const unresolved = model.outcome.unresolvedCount;
 
   return (
-    <header className={cn('space-y-2', className)}>
+    <header className={cn("space-y-2", className)}>
       <h2
         className={cn(
-          'font-sans font-semibold tracking-heading text-balance text-foreground',
-          compact ? 'text-xl sm:text-2xl' : 'text-2xl sm:text-3xl'
+          "font-sans font-semibold tracking-heading text-balance text-foreground",
+          compact ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl",
         )}
       >
         {REPORT_COPY.workspace.heading}
@@ -36,61 +36,74 @@ export function ReportWorkspaceOutcome({
             })}
       </p>
     </header>
-  )
+  );
 }
 
 export function ReportWorkspaceSummary({
   model,
   className,
-  reportHref = '',
+  reportHref = "",
+  compact = false,
 }: {
-  model: ReportWorkspaceModel
-  className?: string
-  reportHref?: string
+  model: ReportWorkspaceModel;
+  className?: string;
+  reportHref?: string;
+  compact?: boolean;
 }) {
   const rubrics = model.summary.rubrics.map((rubric) => ({
     name: rubric.name,
     flagCount: rubric.flagCount,
     criticalCount: rubric.criticalCount,
-  }))
+  }));
   const history =
     model.summary.history ??
     (model.summary.score != null && model.identity.checkedAt
       ? [
           {
-            id: model.identity.auditId ?? 'current-scan',
+            id: model.identity.auditId ?? "current-scan",
             score: model.summary.score,
             checkedAt: model.identity.checkedAt,
           },
         ]
-      : [])
+      : []);
   const firstCritical = model.explorer.flags.find(
-    (flag) => flag.severity === 'CRITICAL'
-  )
+    (flag) => flag.severity === "CRITICAL",
+  );
   const firstCriticalIds = Object.fromEntries(
     model.summary.rubrics.flatMap((rubric) => {
       const flag = model.explorer.flags.find(
         (candidate) =>
-          candidate.rubric === rubric.name &&
-          candidate.severity === 'CRITICAL'
-      )
-      return flag ? [[rubric.name, flag.id]] : []
-    })
-  )
+          candidate.rubric === rubric.name && candidate.severity === "CRITICAL",
+      );
+      return flag ? [[rubric.name, flag.id]] : [];
+    }),
+  );
   const criticalHref = firstCritical
     ? `${reportHref}?severity=CRITICAL&flag=${encodeURIComponent(firstCritical.id)}#report-flags`
-    : undefined
+    : undefined;
 
   return (
     <section
       aria-label={REPORT_COPY.workspace.summaryLabel}
       className={cn(
-        'overflow-hidden rounded-card bg-card/80 shadow-card glass-surface',
-        className
+        "overflow-hidden rounded-card bg-card/80 shadow-card glass-surface",
+        className,
       )}
     >
-      <div className="grid lg:grid-cols-[minmax(12rem,0.78fr)_minmax(10rem,0.62fr)_minmax(20rem,1.6fr)]">
-        <div className="flex min-h-32 items-center gap-4 p-4 sm:p-5">
+      <div
+        className={cn(
+          "grid",
+          compact
+            ? "sm:grid-cols-[minmax(9rem,0.8fr)_minmax(8rem,0.65fr)_minmax(14rem,1.35fr)]"
+            : "lg:grid-cols-[minmax(12rem,0.78fr)_minmax(10rem,0.62fr)_minmax(20rem,1.6fr)]",
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-4",
+            compact ? "min-h-28 p-3 sm:p-4" : "min-h-32 p-4 sm:p-5",
+          )}
+        >
           <ScoreRingGauge
             score={model.summary.score}
             loading={model.context.loading}
@@ -108,7 +121,14 @@ export function ReportWorkspaceSummary({
           </div>
         </div>
 
-        <div className="flex min-h-32 flex-col justify-center border-t border-border/35 p-4 sm:p-5 lg:border-l lg:border-t-0">
+        <div
+          className={cn(
+            "flex flex-col justify-center border-t border-border/35",
+            compact
+              ? "min-h-28 p-3 sm:border-l sm:border-t-0 sm:p-4"
+              : "min-h-32 p-4 sm:p-5 lg:border-l lg:border-t-0",
+          )}
+        >
           <div className="flex items-center gap-2">
             <Flag className="h-4 w-4 text-muted-foreground" aria-hidden />
             <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
@@ -120,11 +140,12 @@ export function ReportWorkspaceSummary({
               ? REPORT_COPY.reportFirst.checkingLabel
               : model.outcome.unresolvedCount}
           </p>
-          {model.context.loading ? null : model.outcome.criticalCount > 0 && criticalHref ? (
+          {model.context.loading ? null : model.outcome.criticalCount > 0 &&
+            criticalHref ? (
             <a
               href={criticalHref}
               aria-label={REPORT_COPY.workspace.showCriticalFlags(
-                model.outcome.criticalCount
+                model.outcome.criticalCount,
               )}
               className="mt-2 inline-flex min-h-7 items-center gap-1.5 self-start text-xs font-medium text-destructive transition-colors hover:text-destructive/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
@@ -141,7 +162,14 @@ export function ReportWorkspaceSummary({
           )}
         </div>
 
-        <div className="min-h-32 border-t border-border/35 p-4 sm:p-5 lg:border-l lg:border-t-0">
+        <div
+          className={cn(
+            "border-t border-border/35",
+            compact
+              ? "min-h-28 p-3 sm:border-l sm:border-t-0 sm:p-4"
+              : "min-h-32 p-4 sm:p-5 lg:border-l lg:border-t-0",
+          )}
+        >
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-2">
               <History className="h-4 w-4 text-muted-foreground" aria-hidden />
@@ -158,7 +186,10 @@ export function ReportWorkspaceSummary({
             </div>
           </div>
           {history.length > 0 ? (
-            <ScoreHistoryChart history={history} className="mt-2.5 h-20 w-full" />
+            <ScoreHistoryChart
+              history={history}
+              className={cn("mt-2.5 w-full", compact ? "h-16" : "h-20")}
+            />
           ) : (
             <p className="mt-5 text-xs text-muted-foreground">
               {REPORT_COPY.workspace.historyUnavailable}
@@ -176,5 +207,5 @@ export function ReportWorkspaceSummary({
         />
       </div>
     </section>
-  )
+  );
 }

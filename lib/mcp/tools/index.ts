@@ -25,7 +25,6 @@ export function registerAllTools(
 export async function validateApiKey(key: string | null) {
   const { prisma } = await import('../../db')
   const { hashApiKey } = await import('../../security/api-keys')
-  const { canUseApiKeys } = await import('../../auth/permissions')
 
   if (!key) return null
   const apiKey = await prisma.apiKey.findUnique({
@@ -33,7 +32,6 @@ export async function validateApiKey(key: string | null) {
     include: { user: true },
   })
   if (!apiKey || apiKey.revokedAt) return null
-  if (!canUseApiKeys(apiKey.user)) return null
   await prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsed: new Date() } })
   return {
     user: apiKey.user,

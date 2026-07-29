@@ -32,7 +32,7 @@ async function redisFailOpen<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
     if (!_rateLimitRedisDown) {
       _rateLimitRedisDown = true
       logger.error(
-        '[rate-limit] Redis unavailable — rate limiting is DISABLED. ' +
+        '[rate-limit] Redis unavailable. Rate limiting is DISABLED. ' +
         'All requests will be allowed until Redis recovers.',
         err instanceof Error ? err.message : String(err)
       )

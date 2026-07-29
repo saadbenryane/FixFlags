@@ -2,33 +2,24 @@
 
 Product Intelligence for AI-built products. A thin, task-shaped client over the FixFlags MCP API.
 
-## Status
-
-Version `0.2.0-beta.1` is release-ready. The website only presents it as
-installable after that exact version is verified on npm. Publishing is performed
-from a version tag through npm trusted publishing. The QewOS source
-repository stays private, so npm provenance attestations are intentionally not
-generated.
-
-## Setup
+## Quick start
 
 ```bash
-npm install --global fixflags@beta
-fixflags login
-fixflags init https://your-app.com
+# Check any URL — no account required
+npx fixflags check https://your-app.com
+
+# Connect to your account (optional, unlocks history and re-checks)
+npx fixflags login
+npx fixflags init https://your-app.com
 ```
 
-Browser login stores the credential in the operating-system credential store.
-Use `fixflags login --with-token` to paste a manually created key through a
-hidden prompt or standard input. Plaintext storage is never selected silently.
-For CI, set `FIXFLAGS_API_KEY`; it has the highest precedence. Set
-`FIXFLAGS_API_URL` only when targeting a non-production API.
+`npx fixflags` runs without install. Browser login stores the credential in
+the operating-system credential store. Use `fixflags login --with-token` to
+paste a manually created API key. For CI, set `FIXFLAGS_API_KEY`.
 
 `fixflags init` merges FixFlags-managed editor configuration without replacing
-existing settings. Codex, Claude, and Cursor run `fixflags mcp` as a local
-bridge, so the editor uses the same credential store without putting a secret in
-the repository. Use `--dry-run`, `--editor`, `--scope`, and `--yes` for review
-or automation.
+existing settings. Use `--dry-run`, `--editor`, `--scope`, and `--yes` for
+review or automation.
 
 ## Usage
 
@@ -81,8 +72,8 @@ The default human-readable result bounds each fix prompt. Use `--full` for compl
 - `ff_check_and_plan`
 - `ff_get_check_status`
 - `ff_get_report`
-- `ff_get_current_finish_plan`
 - `ff_recheck_and_compare`
+- `ff_mark_fix_attempted`
 
 ## Development
 
