@@ -47,8 +47,8 @@ describe('MadeWithProfile', () => {
   })
 
   it.each([
-    ['not_captured', 'Technology signals were not captured for this audit'],
-    ['unavailable', 'Technology signals were unavailable for this scan'],
+    ['not_captured', 'Technology signals were not captured for this check'],
+    ['unavailable', 'Technology signals were unavailable for this check'],
     ['complete', 'No technologies could be verified'],
   ] as const)('renders the %s state explicitly', (status, expected) => {
     render(

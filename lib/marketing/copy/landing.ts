@@ -1035,7 +1035,7 @@ export const MADE_WITH_COPY = {
   verified: 'Verified',
   strongSignal: 'Strong signal',
   legacy: 'Technology signals were not captured for this check. Run a Re-check to create a verified profile.',
-  unavailable: 'Technology signals were unavailable for this scan. The rest of the report is unaffected.',
+  unavailable: 'Technology signals were unavailable for this check. The rest of the report is unaffected.',
   empty: 'No technologies could be verified from the site’s public signals.',
   partial: 'Partial profile. Only signals preserved by the historical capture are shown.',
   changed: 'Changed since the last re-check',

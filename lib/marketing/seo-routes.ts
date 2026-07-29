@@ -28,6 +28,7 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/tools/placeholder-detector', seoKey: 'placeholderDetector', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/issues', seoKey: 'issues', priority: 0.6, changeFrequency: 'weekly' },
   { path: '/partners', seoKey: 'partners', priority: 0.5, changeFrequency: 'monthly' },
+  { path: '/roast', seoKey: 'roast', priority: 0.6, changeFrequency: 'monthly' },
 ] as const
 
 export const LLMS_TXT_PATH = '/llms.txt'

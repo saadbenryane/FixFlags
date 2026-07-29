@@ -74,4 +74,9 @@ export const SEO = {
     description:
       'FixFlags Verified Delivery for Lovable, Bolt, and MVP studios. Catch Flags before client handoff.',
   },
+  roast: {
+    title: 'Website Roast – FixFlags',
+    description:
+      'Get a blunt quality check across Message, Experience, and Reach. Paste a URL, get a grade, then fix what matters.',
+  },
 } as const
