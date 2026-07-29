@@ -34,9 +34,17 @@ Import the FixFlags power from this repo:
 2. Powers panel → Add Custom Power → Import from file
 3. Select `ide-integrations/kiro/fixflags-power.md` from this repository
 
+## OpenCode
+
+FixFlags skills load automatically from `.agents/skills/`. See `opencode.json` for MCP and tool configuration.
+
+## OpenCode
+
+OpenCode loads skills from `.agents/skills/` and configuration from `opencode.json`. The FixFlags skills are already available in-repo. Copy `opencode.json` to your project root if not present.
+
 ## How it works
 
-All three integrations use the FixFlags MCP server (17 tools). The rules/skill/power use `ff_check_and_plan` and `ff_recheck_and_compare` for complete tasks, with granular tools for drill-down.
+All integrations use the FixFlags MCP server. The rules/skill/power use `ff_check_and_plan` and `ff_recheck_and_compare` for complete tasks, with granular tools for drill-down.
 
 ## Requirements
 

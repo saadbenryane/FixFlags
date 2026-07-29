@@ -713,6 +713,17 @@ export const LANDING_PAGE = {
     cta: 'See a sample review',
     ctaHref: '/#sample-review',
   },
+  integrationsBlock: {
+    label: 'Works where you build',
+    headline: 'Works in the editor you already use.',
+    headlineDisplay: 'Works in the editor you already use',
+    headlineAccentPeriod: true,
+    body: 'Paste fix prompts into your builder, or connect MCP on Pro so your agent checks, fixes, and re-checks without copy-pasting URLs.',
+    mcpCta: 'Set up MCP',
+    mcpHref: '/help/mcp',
+    cliCta: 'CLI docs',
+    cliHref: '/docs/mcp',
+  },
   sampleReport: {
     label: 'Sample report',
     headlineDisplay: 'See exactly what AI misses',

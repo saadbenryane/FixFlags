@@ -24,11 +24,11 @@ FixFlags is the independent Product Intelligence System for AI-built software. A
 | Report hierarchy or sharing | [knowledge/report-contract.md](knowledge/report-contract.md), [SECURITY.md](SECURITY.md) | `npm run agent -- context ui` |
 | First-value / anon dogfood | [`.agents/sessions/customer-journey-completion-plan.md`](.agents/sessions/customer-journey-completion-plan.md), [PRODUCT.md](PRODUCT.md) | `npm run agent -- context ui` |
 | Audit pipeline and checks | [docs/audit-pipeline.md](docs/audit-pipeline.md), `lib/audit/` | `npm run agent -- context audit` |
-| Browser capture (Playwright) | [`.cursor/skills/fixflags-browser-capture/SKILL.md`](.cursor/skills/fixflags-browser-capture/SKILL.md), `lib/audit/screenshot.ts` | `npm run agent -- context audit` |
-| Scan accuracy and fixtures | [`.agents/sessions/launch-readiness-completion-plan.md`](.agents/sessions/launch-readiness-completion-plan.md), `lib/audit/accuracy-corpus.ts`, [`.cursor/skills/fixflags-scan-accuracy/SKILL.md`](.cursor/skills/fixflags-scan-accuracy/SKILL.md), [`.cursor/skills/fixflags-dogfood-accuracy/SKILL.md`](.cursor/skills/fixflags-dogfood-accuracy/SKILL.md) | `npm run agent -- context accuracy` |
+| Browser capture (Playwright) | [`.agents/skills/fixflags-browser-capture/SKILL.md`](.agents/skills/fixflags-browser-capture/SKILL.md), `lib/audit/screenshot.ts` | `npm run agent -- context audit` |
+| Scan accuracy and fixtures | [`.agents/sessions/launch-readiness-completion-plan.md`](.agents/sessions/launch-readiness-completion-plan.md), `lib/audit/accuracy-corpus.ts`, [`.agents/skills/fixflags-scan-accuracy/SKILL.md`](.agents/skills/fixflags-scan-accuracy/SKILL.md), [`.agents/skills/fixflags-dogfood-accuracy/SKILL.md`](.agents/skills/fixflags-dogfood-accuracy/SKILL.md) | `npm run agent -- context accuracy` |
 | AI prompts and models | `lib/prompts/system-prompt.ts`, `lib/audit/judge-config.ts` | `npm run agent -- context prompts` |
 | Billing and entitlements | `lib/billing/`, `lib/auth/entitlements.ts` | `npm run agent -- context billing` |
-| Public CLI | `fixflags-cli/`, [`.cursor/skills/fixflags-npm-operations/SKILL.md`](.cursor/skills/fixflags-npm-operations/SKILL.md) | `npm run agent -- context cli` |
+| Public CLI | `fixflags-cli/`, [`.agents/skills/fixflags-npm-operations/SKILL.md`](.agents/skills/fixflags-npm-operations/SKILL.md) | `npm run agent -- context cli` |
 | Canonical knowledge | [CANONICAL-SOURCES.md](CANONICAL-SOURCES.md), [EVOLUTION-RULES.md](EVOLUTION-RULES.md) | `npm run agent -- context docs` |
 | Failures and recovery | [QUALITY.md](QUALITY.md), `lib/queue/`, `.agents/learnings/` | `npm run agent -- context recovery` |
 

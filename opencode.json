@@ -1,0 +1,41 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md"],
+  "skills": {
+    "paths": [".agents/skills", ".cursor/skills"]
+  },
+  "tool_output": {
+    "max_lines": 200,
+    "max_bytes": 8192
+  },
+  "references": {
+    "docs": {
+      "path": "docs",
+      "description": "Use for audit pipeline, runtime, deployment, and technical documentation"
+    },
+    "knowledge": {
+      "path": "knowledge",
+      "description": "Use for product vision, report contract, integrity engine, and strategic knowledge"
+    },
+    "design": {
+      "path": ".",
+      "description": "Use for DESIGN.md design system and visual language reference"
+    }
+  },
+  "permission": {
+    "edit": "allow",
+    "bash": {
+      "npm *": "allow",
+      "npx *": "allow",
+      "git *": "allow",
+      "node *": "allow",
+      "tsx *": "allow",
+      "vitest *": "allow",
+      "curl *": "allow",
+      "docker *": "ask",
+      "gh *": "allow",
+      "rg *": "allow",
+      "*": "ask"
+    }
+  }
+}

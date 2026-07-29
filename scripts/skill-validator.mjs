@@ -6,6 +6,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
 const SKILLS_ROOT = '.cursor/skills'
+const AGENT_SKILLS_ROOT = '.agents/skills'
 const CUSTOMER_SKILLS_ROOT = 'public/.well-known/skills'
 const DEPRECATED_SKILLS_ROOT = '.opencode/skills'
 const MAX_SKILL_LINES = 180
@@ -41,12 +42,13 @@ function frontmatter(source) {
 
 export function validateSkills(root = process.cwd()) {
   const skillsRoot = path.join(root, SKILLS_ROOT)
+  const agentSkillsRoot = path.join(root, AGENT_SKILLS_ROOT)
   const customerSkillsRoot = path.join(root, CUSTOMER_SKILLS_ROOT)
   const errors = []
   if (!existsSync(path.join(customerSkillsRoot, 'fixflags', 'SKILL.md'))) {
     errors.push(`${CUSTOMER_SKILLS_ROOT}/fixflags/SKILL.md: canonical customer skill is missing`)
   }
-  const roots = [skillsRoot, customerSkillsRoot].filter(existsSync)
+  const roots = [skillsRoot, agentSkillsRoot, customerSkillsRoot].filter(existsSync)
   const directories = roots.flatMap((currentRoot) =>
     readdirSync(currentRoot)
       .filter((entry) => {

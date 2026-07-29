@@ -1,10 +1,8 @@
-import { EditorIntegrationsSection } from '@/components/marketing/landing/EditorIntegrationsSection'
-import { HowItWorksLoopSection } from '@/components/marketing/landing/HowItWorksLoopSection'
+import { IntegrationsBlock } from '@/components/marketing/landing/IntegrationsBlock'
 import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
 import { LandingHeroSection } from '@/components/marketing/landing/LandingHeroSection'
 import { LandingViewTracker } from '@/components/marketing/landing/LandingViewTracker'
 import { SampleReportSection } from '@/components/marketing/landing/SampleReportSection'
-import { WhyBuildersChooseSection } from '@/components/marketing/landing/WhyBuildersChooseSection'
 import { getCuratedSampleAudit } from '@/lib/marketing/curated-sample'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 
@@ -19,9 +17,7 @@ export default async function HomePage() {
       <LandingViewTracker />
       <LandingHeroSection />
       <SampleReportSection audit={sample.audit} />
-      <HowItWorksLoopSection sampleHref="/samples" />
-      <WhyBuildersChooseSection />
-      <EditorIntegrationsSection />
+      <IntegrationsBlock />
       <LandingFinalCtaSection />
     </>
   )
