@@ -10,7 +10,7 @@
       "requiresAlpha": true,
       "contentBearing": true,
       "requiredTerms": ["Reviewing", "7 Flags", "Fixing", "Ready to ship", "Message", "Experience", "Reach", "Re-check"],
-      "consumers": ["components/marketing/landing/LandingHeroSection.tsx"],
+      "consumers": [],
       "replaces": ["/marketing/visuals/home-hero-master-v2.webp"]
     },
     {
