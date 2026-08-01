@@ -13,6 +13,9 @@
 
 ## Now
 
+- **Live Review Workspace (UI)** — Split layout: chat + activity left, live/replay browser right; morph into today’s Fix list report on complete. In-app chat (cheap router model). Funnel + session path replay in browser panel. Update review header + Pro compare payoff. **Mobile parity** (Lovable-inspired Chat ↔ Product, no stripped features). Canon: [docs/product-ui-intent.md](./docs/product-ui-intent.md), PRD §8. Board: `live-review-workspace-ui`.
+  *Signal:* paste URL → workspace on phone and desktop → chat during review → complete Fix list → path replay → update review → compare on Pro.
+
 - **Product Hunt completion release** — canonical complete Fix list workspace, deterministic curated sample, claim retry integrity, scoped share grants, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`. First-value dogfood: [`.agents/sessions/customer-journey-completion-plan.md`](./.agents/sessions/customer-journey-completion-plan.md).
   *Signal:* anonymous URL → progressive complete Fix list with real evidence → one demonstrated prompt (clipboard real) → successful claim → copy remaining → free re-check → diff; Studio password share → canonical report → revoke.
 

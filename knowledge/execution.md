@@ -22,7 +22,8 @@ Maps to Check → Fix → Verify → Watch. See [vision.md](./vision.md).
 
 ## Now (ordered)
 
-1. **Complete loop** — `/report/[id]` is every ranked Flag, proof, copy, supporting context, and re-check.
+1. **Live Review Workspace UI** — split chat + browser during review; in-app chat (cost-capped model); funnel path replay; mobile full parity. See [docs/product-ui-intent.md](../docs/product-ui-intent.md).
+2. **Complete loop** — `/report/[id]` is every ranked Flag, proof, copy, supporting context, and update review.
 2. **Depth without route splitting** — Contract, Memory, journeys, timeline, explorer, previews, gates, watch, and secondary actions stay on the canonical report.
 3. **Honest acquisition** — deterministic curated sample; anonymous gets every Flag and evidence summary plus exactly one complete fix.
 4. **Claim integrity** — Product anchor, Contract merge, usage, prescription enqueue, retry, then return to the report.

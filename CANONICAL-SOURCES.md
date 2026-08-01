@@ -166,6 +166,8 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Spacing | `DESIGN.md` → Spacing |
 | Components (button, card, input) | `DESIGN.md` → Components |
 | Responsive behavior | `DESIGN.md` → Responsive behavior |
+| Product UI intent (layout, chat, mobile, milestones) | `docs/product-ui-intent.md` |
+| Live Review PRD | `docs/live-review-and-product-intelligence-prd.md` |
 | States (rest, hover, focus, active, disabled) | `DESIGN.md` → States |
 | Icons | `DESIGN.md` → Icons |
 | Accessibility | `DESIGN.md` → Accessibility |

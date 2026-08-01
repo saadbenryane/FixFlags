@@ -4,6 +4,8 @@
 
 **Customer vs internal language:** Customer surfaces use Product QA, product review, update review, deep review, Funnel, and path. Internal code may still use re-check routes, recheck components, and monitoring implementation names.
 
+**Product UI direction (locked):** Layout modes, chat, funnel/path replay, mobile parity, and milestone order live in [docs/product-ui-intent.md](../docs/product-ui-intent.md). Visual tokens and component rules stay in this file.
+
 ## Design principles
 
 1. **Editorial + technical credibility** — the product looks like a sharp review, not a SaaS dashboard. Inter Tight display, glass cards, shadow depth, mono labels.
