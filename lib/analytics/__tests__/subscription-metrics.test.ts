@@ -11,9 +11,9 @@ describe('subscriptionMetrics', () => {
     ], 2, true)
 
     expect(metrics).toMatchObject({
-      newMrr: 39,
-      expansionMrr: 90,
-      churnedMrr: 129,
+      newMrr: 69,
+      expansionMrr: 130,
+      churnedMrr: 199,
       activatedUsers: 1,
       churnedUsers: 1,
     })
@@ -26,6 +26,6 @@ describe('subscriptionMetrics', () => {
     ], 0, false)
 
     expect(metrics.churnRate).toBeNull()
-    expect(metrics.churnedMrr).toBe(39)
+    expect(metrics.churnedMrr).toBe(69)
   })
 })

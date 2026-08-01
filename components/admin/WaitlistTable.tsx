@@ -49,16 +49,16 @@ export function WaitlistTable({ rows }: Props) {
             <AdminTableCell className="text-xs tabular-nums">
               {row.joinedAt.toISOString().slice(0, 10)}
             </AdminTableCell>
-            <AdminTableCell className="text-xs">{row.source ?? '—'}</AdminTableCell>
+            <AdminTableCell className="text-xs">{row.source ?? '-'}</AdminTableCell>
             <AdminTableCell className="text-xs tabular-nums">
               {row.auditsUsed}/{row.auditsLimit} · {row.completedAudits} done
             </AdminTableCell>
             <AdminTableCell className="text-xs">{row.segment}</AdminTableCell>
             <AdminTableCell className="text-xs tabular-nums">
-              {row.invitedAt ? row.invitedAt.toISOString().slice(0, 10) : '—'}
+              {row.invitedAt ? row.invitedAt.toISOString().slice(0, 10) : '-'}
             </AdminTableCell>
             <AdminTableCell className="text-xs tabular-nums">
-              {row.convertedAt ? row.convertedAt.toISOString().slice(0, 10) : '—'}
+              {row.convertedAt ? row.convertedAt.toISOString().slice(0, 10) : '-'}
             </AdminTableCell>
             <AdminTableCell>
               {!row.invitedAt && (

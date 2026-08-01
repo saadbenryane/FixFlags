@@ -214,7 +214,7 @@ describe('homepage message guardrails', () => {
     assert.match(PRICING.trustBadge, /product reviews/i)
     assert.doesNotMatch(PRICING.trustBadge, /unlimited re-checks/i)
     assert.ok(
-      PLAN_DEFINITIONS.FREE.features.some((feature) => /product reviews per month/i.test(feature))
+      PLAN_DEFINITIONS.FREE.features.some((feature) => /product reviews.*lifetime/i.test(feature))
     )
     assert.ok(
       PLAN_DEFINITIONS.BUILDER.features.some((feature) => /before\/after/i.test(feature))

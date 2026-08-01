@@ -9,6 +9,7 @@ describe('documentation catalog', () => {
       '/docs',
       '/docs/getting-started',
       '/docs/reports',
+      '/docs/deep-review',
       '/docs/integrations',
       '/docs/cli',
       '/docs/mcp',

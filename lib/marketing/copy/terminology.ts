@@ -21,7 +21,7 @@ export const CUSTOMER_TERMS = {
   flags: 'Flags',
 } as const
 
-/** Shared pricing numbers for marketing, help, and FAQ — must match `lib/billing/plans.ts` enforcement. */
+/** Shared pricing numbers for marketing, help, and FAQ. Must match `lib/billing/plans.ts` enforcement. */
 export const PRICING_COPY = {
   freeProductReviewsLifetime: 3,
   freeDeepReviewTeaserLifetime: 1,

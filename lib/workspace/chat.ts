@@ -3,7 +3,7 @@ import { getTriageProviderConfig } from '@/lib/audit/judge-config'
 
 const SYSTEM = `You are FixFlags workspace chat. Help the builder understand Flags on their product review report.
 Stay concise. Do not invent findings. Suggest what to fix first when asked.
-You are not running a new scan — only explain and steer based on the report context provided.`
+You are not running a new scan. Only explain and steer based on the report context provided.`
 
 export async function runWorkspaceChat(input: {
   message: string

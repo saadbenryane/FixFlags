@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 
 const prismaMock = vi.hoisted(() => ({
   user: { findUnique: vi.fn() },
+  paidPlanWaitlistEntry: { findUnique: vi.fn() },
 }))
 const getSession = vi.hoisted(() => vi.fn())
 const getStripe = vi.hoisted(() => vi.fn())
@@ -17,7 +18,7 @@ vi.mock('@/lib/security/rate-limit', () => ({
   RateLimitError: class RateLimitError extends Error { retryAfter = 60 },
 }))
 vi.mock('@/lib/stripe', () => ({ getStripe }))
-vi.mock('@/lib/get-app-url', () => ({ getAppUrl }))
+vi.mock('@/lib/billing/paid-open', () => ({ isPaidOpenServer: () => true }))
 vi.mock('@/lib/billing/plans', () => ({
   PLAN_DEFINITIONS: {
     FREE: { plan: 'FREE', stripePriceId: null },
@@ -49,6 +50,7 @@ describe('stripe checkout and portal routes', () => {
     })
     stripe.checkout.sessions.create.mockResolvedValue({ url: 'https://stripe.test/checkout' })
     stripe.billingPortal.sessions.create.mockResolvedValue({ url: 'https://stripe.test/portal' })
+    prismaMock.paidPlanWaitlistEntry.findUnique.mockResolvedValue(null)
   })
 
   it('requires sign-in for checkout', async () => {
