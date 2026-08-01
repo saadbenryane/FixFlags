@@ -869,7 +869,7 @@ export const LANDING_PAGE = {
 
 export const REPORT_COPY = {
   workspace: {
-    heading: "Fix list",
+    heading: "Your review",
     identityFallback: "Website review",
     status: {
       checking: "Checking",
@@ -880,6 +880,10 @@ export const REPORT_COPY = {
       unavailable: "Unavailable",
     },
     checkingScope: "Flags appear as they are verified.",
+    checkingProgress: (percent: number, detail: string) =>
+      `${percent}% · ${detail}`,
+    flagsFoundSoFar: (count: number) =>
+      `${count} ${count === 1 ? "Flag" : "Flags"} found so far`,
     context: ({
       unresolved,
       checkedScope,
@@ -1083,6 +1087,7 @@ export const REPORT_COPY = {
     rememberHint: "Verified on re-check. Stays with this product across scans.",
   },
   stickyNav: {
+    polish: "Polish",
     contract: "Contract",
     remember: "Proved",
     journey: "Journey",

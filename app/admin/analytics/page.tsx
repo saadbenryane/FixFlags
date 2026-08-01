@@ -324,6 +324,10 @@ export default async function AdminAnalyticsPage() {
           <p><code className="text-foreground font-mono text-xs">clicked_sample_cta</code>: Sample CTA clicked</p>
           <p><code className="text-foreground font-mono text-xs">report_signup_cta_clicked</code>: Report signup CTA (value strip, sample fix, claim guide, limit gate)</p>
           <p><code className="text-foreground font-mono text-xs">audits_claimed</code>: Anonymous reports saved after signup</p>
+          <p className="pt-2 text-xs text-muted-foreground">
+            Key events (GA4 Admin): run <code className="font-mono text-foreground">npm run growth:configure-ga4-key-events</code> after deploying tracking changes.
+            Canonical list lives in <code className="font-mono text-foreground">lib/growth/ga-key-events.ts</code>.
+          </p>
         </div>
       </section>
     </Container>

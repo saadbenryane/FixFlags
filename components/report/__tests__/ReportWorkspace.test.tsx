@@ -20,7 +20,7 @@ describe('ReportWorkspace', () => {
       </MeProvider>
     )
 
-    expect(screen.getByRole('heading', { name: 'Fix list' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Your review' })).toBeInTheDocument()
     expect(screen.getByText('Release score')).toBeInTheDocument()
     expect(screen.getByText('Unresolved Flags')).toBeInTheDocument()
     expect(screen.getByText('Score history')).toBeInTheDocument()

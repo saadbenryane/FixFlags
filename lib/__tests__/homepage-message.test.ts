@@ -342,7 +342,7 @@ describe('homepage message guardrails', () => {
       assert.ok(!/\d{2,},\d{3}/.test(metric.value), `Invented count: ${metric.value}`)
       assert.ok(!/manual review/i.test(metric.label), `Unsupported claim: ${metric.label}`)
     }
-    assert.equal(REPORT_COPY.workspace.heading, 'Fix list')
+    assert.equal(REPORT_COPY.workspace.heading, 'Your review')
     assert.equal(REPORT_COPY.workspace.criticalFlags, 'Critical Flags')
   })
 

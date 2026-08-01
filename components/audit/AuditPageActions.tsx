@@ -66,10 +66,6 @@ export function AuditPageActions({
   const [isPublic, setIsPublic] = useState(initialIsPublic)
   const [recheckLoading, setRecheckLoading] = useState(false)
 
-  useEffect(() => {
-    trackEvent('viewed_report', { audit_id: auditId, is_owner: isOwner })
-  }, [auditId, isOwner])
-
   const showRecheck = isLoggedIn && isOwner
 
   async function handleRecheck() {

@@ -62,7 +62,7 @@ function FlagList({
               <RubricIcon className="h-3.5 w-3.5" aria-hidden />
               {ImpactIcon && <ImpactIcon className="h-3.5 w-3.5" aria-hidden />}
             </span>
-            <span className="min-w-0 flex-1 truncate">{flag.title}</span>
+            <span className="min-w-0 flex-1 line-clamp-2">{flag.title}</span>
             {flag.hasFixPrompt !== false && (
               <Wrench className="h-3 w-3 shrink-0 text-brand/70" aria-hidden />
             )}

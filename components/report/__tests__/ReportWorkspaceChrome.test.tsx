@@ -18,13 +18,13 @@ describe('ReportWorkspaceOutcome', () => {
   it('renders the heading and context', () => {
     const model = buildModel()
     render(<ReportWorkspaceOutcome model={model} />)
-    expect(screen.getByText('Fix list')).toBeInTheDocument()
+    expect(screen.getByText('Your review')).toBeInTheDocument()
   })
 
   it('renders compact heading variant', () => {
     const model = buildModel()
     render(<ReportWorkspaceOutcome model={model} compact />)
-    expect(screen.getByText('Fix list')).toBeInTheDocument()
+    expect(screen.getByText('Your review')).toBeInTheDocument()
   })
 })
 

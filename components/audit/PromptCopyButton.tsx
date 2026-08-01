@@ -58,6 +58,13 @@ export function PromptCopyButton({
       access_state: accessState,
       item_position: itemPosition,
     })
+    if (kind === 'plan') {
+      trackEvent('polish_pass_copied', {
+        audit_id: auditId,
+        surface,
+        access_state: accessState,
+      })
+    }
     setCopied(true)
     toast.success('Prompt copied', nextStep ? { description: nextStep } : undefined)
     setTimeout(() => setCopied(false), 2000)

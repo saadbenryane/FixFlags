@@ -69,6 +69,7 @@
     "growth:pull-gsc": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/growth/pull-gsc.ts",
     "growth:self-seed": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/growth/self-seed.ts",
     "growth:pull-ga": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/growth/pull-ga.ts",
+    "growth:configure-ga4-key-events": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/growth/configure-ga4-key-events.ts",
     "growth:backfill-tech": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/graph/backfill-tech-detect.ts",
     "verify": "node scripts/validate.mjs full",
     "verify:release": "node scripts/validate.mjs release",

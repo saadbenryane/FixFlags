@@ -17,6 +17,8 @@ import {
 import { toast } from 'sonner'
 import { AUDIT_ERRORS, AUDIT_PROGRESS, BRAND, SYSTEM_COPY } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
+import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
+import { ReportViewedTracker } from '@/components/analytics/ReportViewedTracker'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import {
   setActiveAudit,
@@ -221,13 +223,14 @@ export function AuditPageClient({
       actionTimeline: statusPayload?.actionTimeline ?? [],
       productContract: statusPayload?.productContract ?? null,
       technologyProfile: statusPayload?.technologyProfile,
+      auditId: id,
     }
   }, [status, progress, statusPayload?.partialFlags,
       statusPayload?.screenshots, statusPayload?.rubrics, statusPayload?.actionTimeline,
       statusPayload?.productContract, statusPayload?.technologyProfile,
       statusPayload?.screenshotCapture, statusPayload?.url, statusPayload?.pageType,
       statusPayload?.verdict, statusPayload?.score,
-      initialAudit, workerIdle])
+      initialAudit, workerIdle, id])
 
   async function handleRetrySameAudit() {
     setRetryLoading(true)
@@ -292,6 +295,15 @@ export function AuditPageClient({
   // In-progress and COMPLETED hold share the progressive frame until SSR swap.
   return (
     <AuditShell session={session}>
+      {!isNotFound && !isForbidden && !isFailed ? (
+        <ReportViewedTracker
+          auditId={id}
+          isOwner={Boolean(session?.user)}
+          accessState={
+            requireAuthGate ? 'anonymous' : session?.user ? 'owner' : 'anonymous'
+          }
+        />
+      ) : null}
       <div
         className={requireAuthGate ? 'pointer-events-none select-none blur-[3px]' : undefined}
         aria-hidden={requireAuthGate || undefined}

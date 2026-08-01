@@ -126,7 +126,7 @@ function FlagEvidenceMeta({ flag }: { flag: ExplorerFlag }) {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {stepMatch ? (
             <a
-              href="#report-timeline"
+              href="#report-journey"
               className="inline-flex items-center gap-1.5 text-xs text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-sm"
             >
               View timeline step {stepMatch[1]}
@@ -169,6 +169,15 @@ export function FlagDetailPanel({
 
   return (
     <div key={flag.id} className="space-y-3 animate-soft-reveal" aria-live="polite">
+      {flag.evidence ? (
+        <div className="hidden rounded-[var(--radius-inner)] border border-border/40 bg-muted/15 px-4 py-3 lg:block">
+          <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
+            {flag.truthLabel}
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-foreground text-pretty">{flag.evidence}</p>
+        </div>
+      ) : null}
+
       {showShareablePreview && (
         <InlineSocialPreview preview={previewMeta!} checkId={flag.checkId} />
       )}

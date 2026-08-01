@@ -50,7 +50,7 @@ export function ReportPolishPass({
       id="report-polish-pass"
       aria-label={copy.title}
       className={cn(
-        'scroll-mt-[var(--header-offset)] overflow-hidden rounded-card bg-card/80 shadow-card glass-surface',
+        'scroll-mt-[var(--report-chrome-offset)] overflow-hidden rounded-card bg-card/80 shadow-card glass-surface',
         className
       )}
     >

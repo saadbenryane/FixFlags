@@ -20,10 +20,11 @@ import {
   type RubricFilter,
 } from '@/lib/report/explorer-filters'
 import type { JourneyPage } from '@/components/audit/JourneyBar'
-import { cn } from '@/lib/utils'
+import { scrollToReportSection } from '@/lib/report/scroll-to-section'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
+import { trackEvent } from '@/lib/analytics/events'
 import { IMPACT_TAG_ORDER, SEVERITY_ORDER } from '@/lib/audit/constants'
-import { impactTagLabel, severityLabel } from '@/lib/utils'
+import { impactTagLabel, severityLabel, cn } from '@/lib/utils'
 
 type ExplorerVariant = 'hero' | 'live'
 
@@ -239,6 +240,22 @@ export function ReportExplorer({
   const selectedIndex = filteredFlags.findIndex((flag) => flag.id === selectedFlagId)
   const safeFlagIndex = clampFlagIndex(selectedIndex, flagCount)
   const currentFlag = filteredFlags[safeFlagIndex] ?? filteredFlags[0]
+
+  useEffect(() => {
+    if (variant !== 'live' || !auditId || !currentFlag) return
+    const storageKey = `fixflags:event:flag_detail_viewed:${auditId}:${currentFlag.id}`
+    if (typeof window !== 'undefined' && window.sessionStorage.getItem(storageKey)) return
+    if (typeof window !== 'undefined') window.sessionStorage.setItem(storageKey, '1')
+    trackEvent('flag_detail_viewed', {
+      audit_id: auditId,
+      flag_id: currentFlag.id,
+      check_id: currentFlag.checkId ?? undefined,
+      severity: currentFlag.severity,
+      surface: 'focused',
+      item_position: model.flags.findIndex((flag) => flag.id === currentFlag.id) + 1 || undefined,
+    })
+  }, [variant, auditId, currentFlag, model.flags])
+
   const pageScopedFlags = filterExplorerFlags(model.flags, {
     rubricFilter: effectiveRubricFilter,
     pageFilter: null,
@@ -294,11 +311,7 @@ export function ReportExplorer({
       })
       if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
         requestAnimationFrame(() => {
-          const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-          detailRef.current?.scrollIntoView({
-            behavior: reducedMotion ? 'auto' : 'smooth',
-            block: 'start',
-          })
+          scrollToReportSection('selected-flag-detail')
           detailHeadingRef.current?.focus({ preventScroll: true })
         })
       }
@@ -379,7 +392,7 @@ export function ReportExplorer({
   )
 
   const secondaryFilters = (
-    <div className="space-y-2">
+    <div className="hidden space-y-2 lg:block">
       <div className="flex flex-wrap gap-2">
         <label className="sr-only" htmlFor="flag-severity-filter">Filter by severity</label>
         <select
@@ -490,7 +503,7 @@ export function ReportExplorer({
           aria-live="polite"
           aria-atomic="true"
           className={cn(
-            'min-w-0 scroll-mt-24 border-t border-border/30 pt-6',
+            'min-w-0 scroll-mt-[var(--report-chrome-offset)] border-t border-border/30 pt-6',
             'lg:sticky lg:top-[calc(var(--header-offset)+1rem)] lg:max-h-[calc(100vh-var(--header-offset)-2rem)] lg:overflow-y-auto lg:border-t-0 lg:pr-2 lg:pt-0 lg:self-start scrollbar-thin'
           )}
         >

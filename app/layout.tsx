@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import { ConversionScripts } from '@/components/analytics/ConversionScripts'
 import '@/lib/design/tokens.css'
 import './globals.css'
@@ -57,6 +58,9 @@ export default function RootLayout({
       <link rel="preconnect" href="https://www.googletagmanager.com" />
       <link rel="preconnect" href="https://connect.facebook.net" />
       <body className={`${fontVariables} font-sans antialiased`}>
+        <Script id="gtag-stub" strategy="beforeInteractive">
+          {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}`}
+        </Script>
         <Providers>
           <a
             href="#main-content"

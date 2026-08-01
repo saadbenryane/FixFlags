@@ -3,10 +3,12 @@ import dynamic from 'next/dynamic'
 import { type ReactNode } from 'react'
 import { ReportStickyToolbar } from '@/components/audit/ReportStickyToolbar'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
+import { ReportProgressBand } from '@/components/report/ReportWorkspaceChrome'
+import { ReportPolishPass } from '@/components/report/ReportPolishPass'
 import {
-  ReportWorkspaceOutcome,
-  ReportWorkspaceSummary,
-} from '@/components/report/ReportWorkspaceChrome'
+  ReportWorkspaceShell,
+  REPORT_SECTION_SCROLL_MT,
+} from '@/components/report/ReportWorkspaceShell'
 const LiveReportExplorer = dynamic(
   () => import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
 )
@@ -14,7 +16,6 @@ import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { TriageUnavailableCallout } from '@/components/audit/TriageUnavailableCallout'
 import { Card, CardTitle } from '@/components/ui/card'
-import { Container } from '@/components/ui/container'
 import { SectionTitle } from '@/components/ui/typography'
 import { UPSELLS, REPORT_COPY, HERO, AUDIT_ERRORS, ANON_VALUE_STRIP } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
@@ -30,6 +31,7 @@ import { AuditPipelineProof } from '@/components/audit/AuditPipelineProof'
 import { ReportFeedback } from '@/components/report/ReportFeedback'
 import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
 import type { RubricComputed, ShareStatus } from '@/lib/audit/rubric'
+import type { FixList } from '@/lib/audit/finish-plan'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { LaunchGates } from '@/components/audit/LaunchGates'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
@@ -58,8 +60,7 @@ import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
-import type { FixList } from '@/lib/audit/finish-plan'
-import { ReportPolishPass } from '@/components/report/ReportPolishPass'
+import { cn } from '@/lib/utils'
 
 interface RubricRow {
   id: string
@@ -245,279 +246,284 @@ export function AuditReport({
     (aiReviewPending || triageDegraded || prescriptionFailed || isPartialReport)
 
   return (
-    <Container
-      variant="report"
-      className={isSample ? 'space-y-4 pb-4 sm:pb-6' : 'space-y-5 py-5 sm:space-y-6 sm:py-6'}
-    >
-      <AuditReportHero
-        variant={isSample ? 'minimal' : 'default'}
-        pageType={audit.pageType}
-        url={audit.url}
-        screenshots={audit.screenshots}
-        capturePresentation={capturePresentation}
-        pageSpeedCoverage={audit.pageSpeedCoverage}
-        actions={toolbarActions ?? actions}
-      />
-
-      <ReportWorkspaceOutcome model={workspace} compact={isSample} />
-
-      {!isSample && (
+    <ReportWorkspaceShell
+      workspace={workspace}
+      compact={isSample}
+      hero={
+        <AuditReportHero
+          variant={isSample ? 'minimal' : 'default'}
+          pageType={audit.pageType}
+          url={audit.url}
+          screenshots={audit.screenshots}
+          capturePresentation={capturePresentation}
+          pageSpeedCoverage={audit.pageSpeedCoverage}
+          actions={toolbarActions ?? actions}
+        />
+      }
+      beforeProgress={
+        !isSample && showStatusCallouts ? (
+          <div className="space-y-3 sm:space-y-4">
+            {aiReviewPending && (
+              <Callout variant="info" title={REPORT_COPY.aiPending.title}>
+                {REPORT_COPY.aiPending.body}
+              </Callout>
+            )}
+            {prescriptionFailed && (
+              <Callout variant="warning" title={REPORT_COPY.prescriptionUnavailable.title}>
+                {AUDIT_ERRORS.partialAiReview}
+              </Callout>
+            )}
+            {triageDegraded && auditId ? (
+              <TriageUnavailableCallout
+                auditId={auditId}
+                failureCode={failureCode}
+                isLoggedIn={isLoggedIn}
+                canRetry={isLoggedIn && isViewerOwner}
+                signUpHref={signUpHref}
+              />
+            ) : null}
+            {triageDegraded && !auditId ? (
+              <Callout variant="warning" title={REPORT_COPY.triageUnavailable.title}>
+                {triageUnavailableBody(failureCode, isLoggedIn)}
+              </Callout>
+            ) : null}
+            {isPartialReport && !triageDegraded && (
+              <Callout variant="warning" title={REPORT_COPY.partialReport.title}>
+                {REPORT_COPY.partialReport.body}
+              </Callout>
+            )}
+          </div>
+        ) : null
+      }
+      afterProgress={
+        !isSample && recheckDiff ? (
+          <>
+            {auditId && audit.parentId ? (
+              <RecheckCompletedTracker
+                auditId={auditId}
+                parentAuditId={audit.parentId}
+                outcome="report_diff"
+              />
+            ) : null}
+            <RecheckDiffStrip summary={recheckDiff} compareHref={compareHref} />
+          </>
+        ) : null
+      }
+      progressBand={<ReportProgressBand model={workspace} />}
+      stickyNav={
+        !isSample ? (
+          <div className="space-y-4">
+            {userVerdict ? (
+              <blockquote className="border-l-2 border-brand pl-4 font-sans text-sm font-medium leading-relaxed text-foreground text-pretty sm:text-base">
+                {userVerdict}
+              </blockquote>
+            ) : null}
+            <ReportStickyToolbar
+              showPolish={unresolvedFlagCount > 0}
+              showContract={showContract}
+              showRemember={showRemember}
+              showJourney={showJourney || showJourneyReview}
+              showFlow={showFlow}
+              showTimeline={showTimeline}
+              showPreviews={showPreviews}
+              showLaunch={hasLaunchGates}
+              showStack={showStack}
+              showRecheckSection={isLoggedIn && isViewerOwner}
+              siteUrl={audit.url}
+              auditId={auditId}
+            />
+          </div>
+        ) : null
+      }
+      polishPass={
+        !isSample && unresolvedFlagCount > 0 ? (
+          <ReportPolishPass
+            flagCount={unresolvedFlagCount}
+            prompt={polishPassPrompt}
+            locked={fixPromptLocked && !polishPassPrompt}
+            generating={aiReviewPending && !polishPassPrompt}
+            signUpHref={signUpHref}
+            auditId={auditId}
+            accessState={fixPromptLocked ? 'anonymous' : 'owner'}
+          />
+        ) : null
+      }
+      flagsSection={
+        unresolvedFlagCount > 0 ? (
+          <section id="report-flags" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-3')}>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>
+              <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                {unresolvedFlagCount} total
+              </span>
+            </div>
+            <LiveReportExplorer
+              model={explorerModel}
+              showFeedback={showFeedback}
+              aiLocked={fixPromptLocked}
+              aiEnhancementPending={isLoggedIn && aiReviewPending}
+              signUpHref={signUpHref}
+              pages={pages}
+              auditId={auditId}
+              demonstratedFlagId={sampleFixFlag?.id}
+            />
+          </section>
+        ) : (
+          <section id="report-flags" className={REPORT_SECTION_SCROLL_MT}>
+            <Callout variant="neutral" title={REPORT_COPY.noFlags.title}>
+              {REPORT_COPY.noFlags.body}
+            </Callout>
+          </section>
+        )
+      }
+      contextSections={
         <>
-          {showStatusCallouts ? (
-            <div className="space-y-3 sm:space-y-4">
-              {aiReviewPending && (
-                <Callout variant="info" title={REPORT_COPY.aiPending.title}>
-                  {REPORT_COPY.aiPending.body}
-                </Callout>
-              )}
-
-              {prescriptionFailed && (
-                <Callout variant="warning" title={REPORT_COPY.prescriptionUnavailable.title}>
-                  {AUDIT_ERRORS.partialAiReview}
-                </Callout>
-              )}
-
-              {triageDegraded && auditId ? (
-                <TriageUnavailableCallout
-                  auditId={auditId}
-                  failureCode={failureCode}
-                  isLoggedIn={isLoggedIn}
-                  canRetry={isLoggedIn && isViewerOwner}
-                  signUpHref={signUpHref}
-                />
-              ) : null}
-
-              {triageDegraded && !auditId ? (
-                <Callout variant="warning" title={REPORT_COPY.triageUnavailable.title}>
-                  {triageUnavailableBody(failureCode, isLoggedIn)}
-                </Callout>
-              ) : null}
-
-              {isPartialReport && !triageDegraded && (
-                <Callout variant="warning" title={REPORT_COPY.partialReport.title}>
-                  {REPORT_COPY.partialReport.body}
-                </Callout>
-              )}
+          {!isSample && audit.technologyProfile ? (
+            <div id="report-stack" className={REPORT_SECTION_SCROLL_MT}>
+              <MadeWithProfile profile={audit.technologyProfile} compact />
             </div>
           ) : null}
 
-          {recheckDiff ? (
-            <>
-              {auditId && audit.parentId ? (
-                <RecheckCompletedTracker
-                  auditId={auditId}
-                  parentAuditId={audit.parentId}
-                  outcome="report_diff"
-                />
-              ) : null}
-              <RecheckDiffStrip summary={recheckDiff} compareHref={compareHref} />
-            </>
+          {showContract && audit.productContract ? (
+            <div id="report-contract" className={REPORT_SECTION_SCROLL_MT}>
+              <ProductContractCard
+                contract={audit.productContract}
+                auditId={auditId}
+                canEdit={isLoggedIn && isViewerOwner}
+              />
+            </div>
           ) : null}
-        </>
-      )}
 
-      <ReportWorkspaceSummary model={workspace} />
-
-      {!isSample && unresolvedFlagCount > 0 ? (
-        <ReportPolishPass
-          flagCount={unresolvedFlagCount}
-          prompt={polishPassPrompt}
-          locked={fixPromptLocked && !polishPassPrompt}
-          generating={aiReviewPending && !polishPassPrompt}
-          signUpHref={signUpHref}
-          auditId={auditId}
-          accessState={fixPromptLocked ? 'anonymous' : 'owner'}
-        />
-      ) : null}
-
-      {!isSample && audit.technologyProfile ? (
-        <div id="report-stack" className="scroll-mt-[var(--header-offset)]">
-          <MadeWithProfile profile={audit.technologyProfile} compact />
-        </div>
-      ) : null}
-
-      {!isSample ? (
-        <div className="space-y-4">
-          {userVerdict ? (
-            <blockquote className="border-l-2 border-brand pl-4 font-sans text-sm font-medium leading-relaxed text-foreground text-pretty sm:text-base">
-              {userVerdict}
-            </blockquote>
-          ) : null}
-          <ReportStickyToolbar
-            showContract={showContract}
-            showRemember={showRemember}
-            showJourney={showJourney || showJourneyReview}
-            showFlow={showFlow}
-            showTimeline={showTimeline}
-            showPreviews={showPreviews}
-            showLaunch={hasLaunchGates}
-            showStack={showStack}
-            showRecheckSection={isLoggedIn && isViewerOwner}
-            siteUrl={audit.url}
-          />
-        </div>
-      ) : null}
-
-      {unresolvedFlagCount > 0 ? (
-        <section id="report-flags" className="scroll-mt-[var(--header-offset)] space-y-3">
-          <div>
-            <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>
-          </div>
-          <LiveReportExplorer
-            model={explorerModel}
-            showFeedback={showFeedback}
-            aiLocked={fixPromptLocked}
-            aiEnhancementPending={isLoggedIn && aiReviewPending}
-            signUpHref={signUpHref}
-            pages={pages}
-            auditId={auditId}
-            demonstratedFlagId={sampleFixFlag?.id}
-          />
-        </section>
-      ) : (
-        <section id="report-flags" className="scroll-mt-[var(--header-offset)]">
-          <Callout variant="neutral" title={REPORT_COPY.noFlags.title}>
-            {REPORT_COPY.noFlags.body}
-          </Callout>
-        </section>
-      )}
-
-      {showContract && audit.productContract ? (
-        <div id="report-contract" className="scroll-mt-[var(--header-offset)]">
-          <ProductContractCard
-            contract={audit.productContract}
-            auditId={auditId}
-            canEdit={isLoggedIn && isViewerOwner}
-          />
-        </div>
-      ) : null}
-
-      {showRemember && auditId ? (
-        <ProductMemoryStrip
-          auditId={auditId}
-          verifiedLearnings={audit.verifiedLearnings}
-          intentionalNotes={audit.intentionalNotes}
-          knownRisks={audit.knownRisks}
-        />
-      ) : null}
-
-      {(showJourney || showJourneyReview || showFlow || showTimeline) ? (
-        <div id="report-journey" className="scroll-mt-[var(--header-offset)] space-y-4">
-          {showJourney ? (
-            <JourneyBar
-              pages={pages}
-              totalFlags={unresolvedFlagCount}
+          {showRemember && auditId ? (
+            <ProductMemoryStrip
               auditId={auditId}
-              primaryUrl={audit.url}
+              verifiedLearnings={audit.verifiedLearnings}
+              intentionalNotes={audit.intentionalNotes}
+              knownRisks={audit.knownRisks}
             />
           ) : null}
-          {showJourneyReview ? <JourneyReviewTimeline reviews={journeyReviews} /> : null}
-          {showFlow && audit.flowData ? <FlowScanTimeline flowData={audit.flowData} /> : null}
-          {showTimeline && (audit.actionTimeline?.length ?? 0) > 0 ? (
-            <section className="rounded-card bg-card/40 px-5 py-4 shadow-card glass-surface">
-              <SectionTitle>{REPORT_COPY.sectionTitles.timelineCompleted}</SectionTitle>
-              <ActionTimeline events={audit.actionTimeline ?? []} className="mt-3" />
-            </section>
+
+          {(showJourney || showJourneyReview || showFlow || showTimeline) ? (
+            <div id="report-journey" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-4')}>
+              {showJourney ? (
+                <JourneyBar
+                  pages={pages}
+                  totalFlags={unresolvedFlagCount}
+                  auditId={auditId}
+                  primaryUrl={audit.url}
+                />
+              ) : null}
+              {showJourneyReview ? <JourneyReviewTimeline reviews={journeyReviews} /> : null}
+              {showFlow && audit.flowData ? <FlowScanTimeline flowData={audit.flowData} /> : null}
+              {showTimeline && (audit.actionTimeline?.length ?? 0) > 0 ? (
+                <section className="rounded-card bg-card/40 px-5 py-4 shadow-card glass-surface">
+                  <SectionTitle>{REPORT_COPY.sectionTitles.timelineCompleted}</SectionTitle>
+                  <ActionTimeline events={audit.actionTimeline ?? []} className="mt-3" />
+                </section>
+              ) : null}
+            </div>
           ) : null}
-        </div>
-      ) : null}
 
-      {showPreviews && audit.previewMeta ? <PreviewCards preview={audit.previewMeta} /> : null}
+          {showPreviews && audit.previewMeta ? <PreviewCards preview={audit.previewMeta} /> : null}
 
-      {hasLaunchGates && audit.launchReadiness?.checklist ? (
-        <LaunchGates checklist={audit.launchReadiness.checklist} />
-      ) : null}
+          {hasLaunchGates && audit.launchReadiness?.checklist ? (
+            <LaunchGates checklist={audit.launchReadiness.checklist} />
+          ) : null}
 
-      {!isSample && fixPromptLocked && (
-        <Card className="space-y-3 p-5 text-center sm:p-6">
-          <div className="space-y-1">
-            <p className="text-sm font-medium">{ANON_VALUE_STRIP.headline(unresolvedFlagCount)}</p>
-            <p className="text-xs text-muted-foreground text-pretty">{ANON_VALUE_STRIP.body}</p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-3">
-            <ReportSignupCta href={signUpHref} from="value_strip" size="sm">
-              {ANON_VALUE_STRIP.primaryCta}
-            </ReportSignupCta>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/sign-in">{ANON_VALUE_STRIP.secondaryCta}</Link>
-            </Button>
-          </div>
-        </Card>
-      )}
+          {!isSample && fixPromptLocked && (
+            <Card className="space-y-3 p-5 text-center sm:p-6">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">{ANON_VALUE_STRIP.headline(unresolvedFlagCount)}</p>
+                <p className="text-xs text-muted-foreground text-pretty">{ANON_VALUE_STRIP.body}</p>
+              </div>
+              <div className="flex flex-wrap justify-center gap-3">
+                <ReportSignupCta href={signUpHref} from="value_strip" size="sm">
+                  {ANON_VALUE_STRIP.primaryCta}
+                </ReportSignupCta>
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="/sign-in">{ANON_VALUE_STRIP.secondaryCta}</Link>
+                </Button>
+              </div>
+            </Card>
+          )}
+        </>
+      }
+      footerSections={
+        <div id="report-recheck" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-6 sm:space-y-8')}>
+          {showMonitoringHint && isLoggedIn && isViewerOwner && (
+            <Card className="space-y-3 p-5">
+              <CardTitle className="text-sm">{REPORT_COPY.recheckHint.title}</CardTitle>
+              {projectId ? (
+                <ProductWatchControls
+                  projectId={projectId}
+                  canWatch={canWatchProduct}
+                  canDaily={canDailyWatch}
+                  initialInterval={watchInterval}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground text-pretty">
+                  {REPORT_COPY.recheckHint.bodyPrefix}{' '}
+                  <strong>{REPORT_COPY.recheck.label}</strong> {REPORT_COPY.recheckHint.bodySuffix}
+                </p>
+              )}
+            </Card>
+          )}
 
-      <div id="report-recheck" className="scroll-mt-[var(--header-offset)] space-y-6 sm:space-y-8">
-        {showMonitoringHint && isLoggedIn && isViewerOwner && (
-          <Card className="space-y-3 p-5">
-            <CardTitle className="text-sm">{REPORT_COPY.recheckHint.title}</CardTitle>
-            {projectId ? (
-              <ProductWatchControls
-                projectId={projectId}
-                canWatch={canWatchProduct}
-                canDaily={canDailyWatch}
-                initialInterval={watchInterval}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground text-pretty">
-                {REPORT_COPY.recheckHint.bodyPrefix}{' '}
-                <strong>{REPORT_COPY.recheck.label}</strong> {REPORT_COPY.recheckHint.bodySuffix}
+          {isSample && (
+            <Card className="space-y-3 p-5 text-center sm:p-6">
+              <CardTitle>{REPORT_COPY.sampleCta.title}</CardTitle>
+              <p className="text-sm text-muted-foreground text-pretty">{REPORT_COPY.sampleCta.body}</p>
+              <Button asChild>
+                <Link href="/#audit">{HERO.primaryCta}</Link>
+              </Button>
+            </Card>
+          )}
+
+          {!isSample && showDeterministicFixes && !showPrescription && isLoggedIn && (
+            <Card className="space-y-2 p-6 text-center">
+              <CardTitle>
+                {aiReviewPending ? UPSELLS.signedInAiPending.headline : UPSELLS.signedInAiDegraded.headline}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {aiReviewPending ? UPSELLS.signedInAiPending.body : UPSELLS.signedInAiDegraded.body}
               </p>
-            )}
-          </Card>
-        )}
+            </Card>
+          )}
 
-        {isSample && (
-          <Card className="space-y-3 p-5 text-center sm:p-6">
-            <CardTitle>{REPORT_COPY.sampleCta.title}</CardTitle>
-            <p className="text-sm text-muted-foreground text-pretty">{REPORT_COPY.sampleCta.body}</p>
-            <Button asChild>
-              <Link href="/#audit">{HERO.primaryCta}</Link>
-            </Button>
-          </Card>
-        )}
-
-        {!isSample && showDeterministicFixes && !showPrescription && isLoggedIn && (
-          <Card className="space-y-2 p-6 text-center">
-            <CardTitle>
-              {aiReviewPending ? UPSELLS.signedInAiPending.headline : UPSELLS.signedInAiDegraded.headline}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {aiReviewPending ? UPSELLS.signedInAiPending.body : UPSELLS.signedInAiDegraded.body}
+          {!isSample && !isViewerOwner && (
+            <p className="text-center text-sm text-muted-foreground">
+              <Link href="/#audit" className="text-link font-medium underline-offset-2 hover:underline">
+                {REPORT_COPY.runYourOwnAudit}
+              </Link>
             </p>
-          </Card>
-        )}
+          )}
 
-        {!isSample && !isViewerOwner && (
-          <p className="text-center text-sm text-muted-foreground">
-            <Link href="/#audit" className="text-link font-medium underline-offset-2 hover:underline">
-              {REPORT_COPY.runYourOwnAudit}
-            </Link>
-          </p>
-        )}
+          {!isSample &&
+            isLoggedIn &&
+            !viewerIsPaid &&
+            showPrescription &&
+            upgradeMoment &&
+            upgradeMoment !== 'free_default' && (
+            <ContextualUpgradeCard
+              moment={upgradeMoment}
+              isLoggedIn
+              currentPlan={viewerPlan}
+              auditId={auditId}
+            />
+          )}
 
-        {!isSample &&
-          isLoggedIn &&
-          !viewerIsPaid &&
-          showPrescription &&
-          upgradeMoment &&
-          upgradeMoment !== 'free_default' && (
-          <ContextualUpgradeCard
-            moment={upgradeMoment}
-            isLoggedIn
-            currentPlan={viewerPlan}
-          />
-        )}
+          {!isSample && auditId && <ReportFeedback auditId={auditId} />}
 
-        {!isSample && auditId && <ReportFeedback auditId={auditId} />}
-
-        {!isSample && (
-          <AuditPipelineProof
-            pipelineVersion={audit.pipelineVersion}
-            pipelineLog={audit.pipelineLog}
-            startedAt={audit.startedAt}
-            completedAt={audit.completedAt}
-          />
-        )}
-      </div>
-    </Container>
+          {!isSample && (
+            <AuditPipelineProof
+              pipelineVersion={audit.pipelineVersion}
+              pipelineLog={audit.pipelineLog}
+              startedAt={audit.startedAt}
+              completedAt={audit.completedAt}
+            />
+          )}
+        </div>
+      }
+    />
   )
 }

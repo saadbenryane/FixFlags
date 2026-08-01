@@ -87,20 +87,19 @@ export function buildEvidenceHighlightsForFlag(
 
   if (highlights.length > 0) return highlights
 
-  const fallbackRegion = anchorToRegion(key, { x: 0.5, y: 0.28 })
   return [
     {
       id: `${flag.id}-fallback`,
       flagId: flag.id,
       flagIndex: index,
       device: preferred,
-      scope: fallbackRegion.scope,
-      x: fallbackRegion.x,
-      y: fallbackRegion.y,
-      width: fallbackRegion.width,
-      height: fallbackRegion.height,
+      scope: 'page' as const,
+      x: 0,
+      y: 0,
+      width: 1,
+      height: 1,
       label: flag.problem,
-      detail: visualDetail,
+      detail: `${visualDetail} Approximate area — exact element could not be pinned on the capture.`,
       severity: flag.severity,
       visualTarget: flag.checkId ? visualTargetLabel(flag.checkId) : 'Flagged area',
     },

@@ -29,9 +29,16 @@ Growth thresholds and deferred work live in `ROADMAP.md` and the launch funnel h
 | `recheck_started` | `ReportRecheckButton` / detailed `AuditPageActions` |
 | `recheck_completed` | Compare page **and** report with `recheckDiff` |
 | `report_signup_cta_clicked` | `ReportSignupCta` (`from`: `value_strip` \| `sample_fix` \| `limit_gate`), `AuditLimitGate` |
-| `audits_claimed` | `ClaimAnonymousAudits` after successful claim |
+| `audits_claimed` | `useMe.claimAnonymous` after successful claim |
+| `audit_limit_reached` | `ContextualUpgradeCard` when free limit gate shows |
+| `report_upgrade_gate_viewed` | `ContextualUpgradeCard` on report upgrade moments |
+| `report_progress_viewed` / `sticky_nav_used` / `polish_pass_copied` / `flag_detail_viewed` | Report workspace instrumentation |
 | `product_contract_saved` | `ProductContractCard` after successful PATCH |
 | `remember_shown` | `ProductMemoryStrip` when verified learnings render |
+
+**GA4 key events:** Run `npm run growth:configure-ga4-key-events` (requires `GA4_PROPERTY_ID` + service account with `analytics.edit`). Canonical names: `lib/growth/ga-key-events.ts`.
+
+**Client bootstrap:** `app/layout.tsx` installs a `beforeInteractive` gtag stub; `trackEvent` queues to `dataLayer` so early funnel events are not dropped before gtag.js loads.
 
 **Anon funnel stages (GA4):** `started_audit` (`is_logged_in: false`) → `viewed_report` → `report_signup_cta_clicked` → `signed_up` → `audits_claimed` → `fix_prompt_copied` → `recheck_*`.
 

@@ -9,6 +9,7 @@ import {
   getUpgradeMomentContent,
   type UpgradeMoment,
 } from '@/lib/billing/upgrade-moments'
+import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -20,6 +21,7 @@ interface Props {
   showCta?: boolean
   className?: string
   userEmail?: string
+  auditId?: string
 }
 
 export function ContextualUpgradeCard({
@@ -31,10 +33,30 @@ export function ContextualUpgradeCard({
   showCta = true,
   className,
   userEmail,
+  auditId,
 }: Props) {
   const content = getUpgradeMomentContent(moment, { scoreDelta })
   const signUpHref =
     content.plan === 'TEAM' ? '/sign-up?plan=TEAM' : '/sign-up?plan=BUILDER'
+
+  useOneShotEvent(
+    'audit_limit_reached',
+    auditId ?? 'dashboard-limit',
+    () => (moment === 'audit_limit_reached' ? { reason: 'monthly_quota' } : null),
+    [moment, auditId],
+  )
+
+  useOneShotEvent(
+    'report_upgrade_gate_viewed',
+    auditId ?? moment,
+    () =>
+      moment !== 'audit_limit_reached' && moment !== 'free_default'
+        ? auditId
+          ? { audit_id: auditId }
+          : {}
+        : null,
+    [moment, auditId],
+  )
 
   return (
     <Card className={cn('space-y-3 p-6 text-center', className)}>

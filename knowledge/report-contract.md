@@ -14,16 +14,19 @@ FixFlags is one product: **paste URL → receive every unresolved Flag ranked by
 
 1. Compact identity row with hostname, URL, status, and actions
 2. Re-check result, when applicable
-3. One summary band for the release score, unresolved Flags, Critical subset, Re-check history, and Message, Experience, Reach coverage
-4. Compact Made with disclosure and section navigation
-5. Complete ranked fix list with screenshot evidence and selected fix detail
-6. Product Contract and verified memory, when present
-7. Journey, flow, and action timeline
-8. Share and search previews, launch gates, watch, sharing, export, project, and MCP controls
-9. Owner re-check
-10. At most one contextual signup or upgrade moment
+3. Progress band (`#report-status`) with release score or scan percent, unresolved Flag count, Re-check history, and Message, Experience, Reach coverage
+4. Sticky section navigation when two or more sections exist
+5. Polish pass (`#report-polish-pass`) with the full ranked fix bundle, when Flags exist
+6. Complete ranked fix list (`#report-flags`) with screenshot evidence and selected fix detail
+7. Made with (`#report-stack`), Product Contract (`#report-contract`), verified memory (`#report-remember`), when present
+8. Journey, flow, and action timeline (`#report-journey`)
+9. Share and search previews, launch gates, watch, sharing, export, project, and MCP controls
+10. Owner re-check (`#report-recheck`)
+11. At most one contextual signup or upgrade moment
 
-**Report header copy:** "Fix these before you share it" with blocker count and checked scope. Not a score.
+Sticky nav order matches DOM order: Polish pass → All fixes → Made with → Contract → Remember → Journey → Previews → Launch → Re-check.
+
+**Report header copy:** "Your review" with unresolved count and checked scope. The progress band owns the release score.
 
 New anonymous scans are visually gated by a mandatory auth dialog over an inert report. Users can authenticate or return home, but cannot inspect the progressive or completed private report anonymously. Email claims and refreshes in place. OAuth, passkey, and two-factor routes claim through `/post-login` and return to the same report. Anonymous API serialization remains redacted: evidence must be real page evidence, prompt fields are removed, and gate strings are never persisted into Flag rows.
 
@@ -31,7 +34,7 @@ New anonymous scans are visually gated by a mandatory auth dialog over an inert 
 
 ## Progressive report
 
-The homepage paints report geometry as soon as a valid URL is submitted. After `/api/checks` returns an ID, navigation history is replaced with `/report/[id]` without showing the background-check banner. Progressive UI appends every verified Flag to the same ranked explorer used by the completed report. Desktop and mobile capture placeholders resolve independently; a failed viewport remains explicit while a successful viewport stays visible. Show honest status, captures, early findings, and a layout-matched Made with skeleton that resolves to verified, empty, partial, or unavailable. Put Contract and Action Timeline inside “How FixFlags is checking.” Keep the frame mounted until the completed server report replaces it.
+The homepage paints report geometry as soon as a valid URL is submitted. After `/api/checks` returns an ID, navigation history is replaced with `/report/[id]` without showing the background-check banner. Progressive UI uses the same `ReportWorkspaceShell` as the completed report. The progress band shows honest 0–100% pipeline progress and stage detail. Partial Flags stream into the same ranked explorer. Desktop and mobile capture placeholders resolve independently inside flag detail on mobile; the standalone capture pair stays on large screens only. Show honest status, early findings, and a layout-matched Made with skeleton that resolves to verified, empty, partial, or unavailable. Contract and Action Timeline stay inside collapsed “How FixFlags is checking” until the scan completes, then promote below the work zone. Keep the frame mounted until the completed server report replaces it.
 
 ## Samples and sharing
 

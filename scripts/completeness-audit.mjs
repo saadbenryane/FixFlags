@@ -141,6 +141,13 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
     assert(reportSources.includes(`id="${sectionId}"`) || reportSources.includes(`id={${sectionId}`), `Sticky destination has no report section: ${sectionId}`)
   }
 
+  const shell = read(root, 'components/report/ReportWorkspaceShell.tsx')
+  assert(
+    shell.indexOf('{stickyNav}') < shell.indexOf('{polishPass}') &&
+      shell.indexOf('{polishPass}') < shell.indexOf('{flagsSection}'),
+    'ReportWorkspaceShell section order must be sticky → polish → flags',
+  )
+
   assert(schema.includes('canonicalHost') && schema.includes('isManaged'), 'Product identity schema is missing canonicalHost/isManaged')
   assert(schema.includes('productIntelligenceRevision'), 'Product Intelligence revision is missing')
   assert(schema.includes('passwordHash') && !/model ShareLink[\s\S]*?\n\}/.exec(schema)?.[0].includes('password     '), 'ShareLink passwordHash contract drift')

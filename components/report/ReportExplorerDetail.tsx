@@ -145,22 +145,29 @@ export function FlagDetailPane({
         </div>
       </header>
 
-      <div className={cn(isHero && 'space-y-6', 'flex flex-col')}>
-        {!shareableFlag && !isHero ? (
-          <div className="order-2 mb-5 lg:order-1 lg:mb-5">
-            <ScreenshotWithHighlights
-              host={model.displayHost}
-              desktopScreenshot={model.desktopScreenshot}
-              mobileScreenshot={model.mobileScreenshot}
-              highlights={model.allHighlights}
-              selectedFlagId={flag.id}
-              onPinSelect={onSelectFlag}
-              showDesktop={showDesktop}
-              showMobile={showMobile}
-              affectedDevices={flag.affectedDevices}
-              className={cn(compact && 'lg:mb-0')}
-            />
+      <div className={cn(isHero && 'space-y-6', 'flex flex-col gap-5')}>
+        {!shareableFlag && !isHero && flag.evidence ? (
+          <div className="lg:hidden">
+            <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
+              {flag.truthLabel}
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-foreground text-pretty">{flag.evidence}</p>
           </div>
+        ) : null}
+
+        {!shareableFlag && !isHero ? (
+          <ScreenshotWithHighlights
+            host={model.displayHost}
+            desktopScreenshot={model.desktopScreenshot}
+            mobileScreenshot={model.mobileScreenshot}
+            highlights={model.allHighlights}
+            selectedFlagId={flag.id}
+            onPinSelect={onSelectFlag}
+            showDesktop={showDesktop}
+            showMobile={showMobile}
+            affectedDevices={flag.affectedDevices}
+            className={cn(compact && 'lg:mb-0')}
+          />
         ) : null}
         {isHero && !shareableFlag ? (
           <ScreenshotWithHighlights
@@ -176,7 +183,7 @@ export function FlagDetailPane({
           />
         ) : null}
 
-        <div className={cn('order-1 lg:order-2', isHero && 'pt-2')}>
+        <div className={cn(isHero && 'pt-2')}>
           <FlagDetailPanel
             flag={flag}
             showFeedback={showFeedback}

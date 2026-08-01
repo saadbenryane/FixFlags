@@ -3,14 +3,17 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Container } from '@/components/ui/container'
 import { REPORT_COPY } from '@/lib/marketing/copy'
+import { trackEvent } from '@/lib/analytics/events'
+import { scrollToReportSection } from '@/lib/report/scroll-to-section'
 import { cn } from '@/lib/utils'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
+const POLISH_SECTION = { id: 'report-polish-pass', label: REPORT_COPY.stickyNav.polish } as const
+const FLAGS_SECTION = { id: 'report-flags', label: REPORT_COPY.stickyNav.flags } as const
+const STACK_SECTION = { id: 'report-stack', label: REPORT_COPY.stickyNav.stack } as const
 const CONTRACT_SECTION = { id: 'report-contract', label: REPORT_COPY.stickyNav.contract } as const
 const REMEMBER_SECTION = { id: 'report-remember', label: REPORT_COPY.stickyNav.remember } as const
 const JOURNEY_SECTION = { id: 'report-journey', label: REPORT_COPY.stickyNav.journey } as const
-const FLAGS_SECTION = { id: 'report-flags', label: REPORT_COPY.stickyNav.flags } as const
-const STACK_SECTION = { id: 'report-stack', label: REPORT_COPY.stickyNav.stack } as const
 const PREVIEWS_SECTION = { id: 'report-previews', label: REPORT_COPY.stickyNav.previews } as const
 const LAUNCH_SECTION = { id: 'report-launch-gates', label: REPORT_COPY.stickyNav.launch } as const
 const RECHECK_SECTION = { id: 'report-recheck', label: REPORT_COPY.recheck.label } as const
@@ -19,6 +22,7 @@ type NavSection = { id: string; label: string }
 
 interface Props {
   className?: string
+  showPolish?: boolean
   showContract?: boolean
   showRemember?: boolean
   showJourney?: boolean
@@ -30,6 +34,7 @@ interface Props {
   showRecheckSection?: boolean
   siteUrl?: string
   actions?: ReactNode
+  auditId?: string
 }
 
 function readHeaderHeightPx(): number {
@@ -37,13 +42,13 @@ function readHeaderHeightPx(): number {
   const raw = getComputedStyle(document.documentElement).getPropertyValue('--header-height').trim()
   const parsed = Number.parseFloat(raw)
   if (!Number.isFinite(parsed)) return 56
-  // rem → px when unit is rem
   if (raw.endsWith('rem')) return parsed * 16
   return parsed
 }
 
 export function ReportStickyToolbar({
   className,
+  showPolish = false,
   showContract = false,
   showRemember = false,
   showJourney = false,
@@ -55,23 +60,25 @@ export function ReportStickyToolbar({
   showRecheckSection = true,
   siteUrl,
   actions,
+  auditId,
 }: Props) {
   const navShellRef = useRef<HTMLDivElement>(null)
+  const navRef = useRef<HTMLElement>(null)
   const [isStuck, setIsStuck] = useState(false)
   const sections = useMemo((): NavSection[] => {
     const items: NavSection[] = []
+    if (showPolish) items.push(POLISH_SECTION)
+    items.push(FLAGS_SECTION)
+    if (showStack) items.push(STACK_SECTION)
     if (showContract) items.push(CONTRACT_SECTION)
     if (showRemember) items.push(REMEMBER_SECTION)
     if (showJourney || showFlow || showTimeline) items.push(JOURNEY_SECTION)
-    if (showStack) items.push(STACK_SECTION)
-    items.push(FLAGS_SECTION)
     if (showPreviews) items.push(PREVIEWS_SECTION)
     if (showLaunch) items.push(LAUNCH_SECTION)
-    if (showRecheckSection) {
-      items.push(RECHECK_SECTION)
-    }
+    if (showRecheckSection) items.push(RECHECK_SECTION)
     return items
   }, [
+    showPolish,
     showContract,
     showRemember,
     showJourney,
@@ -115,38 +122,60 @@ export function ReportStickyToolbar({
   useEffect(() => {
     if (typeof IntersectionObserver === 'undefined') return
 
-    const observers: IntersectionObserver[] = []
+    const ratios = new Map<string, number>()
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          ratios.set(entry.target.id, entry.intersectionRatio)
+        }
+        let bestId = sections[0]?.id ?? FLAGS_SECTION.id
+        let bestRatio = 0
+        for (const section of sections) {
+          const ratio = ratios.get(section.id) ?? 0
+          if (ratio > bestRatio) {
+            bestRatio = ratio
+            bestId = section.id
+          }
+        }
+        if (bestRatio > 0) setActive(bestId)
+      },
+      { rootMargin: '-20% 0px -55% 0px', threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] }
+    )
 
     for (const section of sections) {
       const el = document.getElementById(section.id)
-      if (!el) continue
-
-      const observer = new IntersectionObserver(
-        (entries) => {
-          for (const entry of entries) {
-            if (entry.isIntersecting) {
-              setActive(section.id)
-            }
-          }
-        },
-        { rootMargin: '-40% 0px -50% 0px', threshold: 0 }
-      )
-      observer.observe(el)
-      observers.push(observer)
+      if (el) observer.observe(el)
     }
 
-    return () => observers.forEach((o) => o.disconnect())
+    return () => observer.disconnect()
   }, [sections])
 
-  function scrollTo(id: string) {
-    const el = document.getElementById(id)
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      setActive(id)
+  useEffect(() => {
+    const nav = navRef.current
+    if (!nav) return
+    const activeButton = nav.querySelector<HTMLButtonElement>(`[data-section-id="${active}"]`)
+    if (!activeButton || typeof activeButton.scrollIntoView !== 'function') return
+    try {
+      activeButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    } catch {
+      /* scrollIntoView is not fully implemented in some test runtimes */
     }
+  }, [active])
+
+  function scrollTo(id: string) {
+    scrollToReportSection(id)
+    setActive(id)
+    trackEvent('sticky_nav_used', {
+      section_id: id,
+      audit_id: auditId,
+      surface: 'focused',
+    })
   }
 
   const hostname = siteUrl ? displayHostname(siteUrl) : null
+
+  if (sections.length < 2) return null
 
   return (
     <div
@@ -167,6 +196,7 @@ export function ReportStickyToolbar({
             </span>
           )}
           <nav
+            ref={navRef}
             aria-label="Report sections"
             className={cn('flex min-w-max items-center gap-3 sm:gap-5', className)}
           >
@@ -174,11 +204,12 @@ export function ReportStickyToolbar({
               <button
                 type="button"
                 key={section.id}
+                data-section-id={section.id}
                 onClick={() => scrollTo(section.id)}
                 aria-current={active === section.id ? 'page' : undefined}
                 className={cn(
                   'relative shrink-0 border-b-2 px-0.5 font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
-                  'h-10 text-xs max-xl:h-10 sm:h-12 sm:text-sm',
+                  'min-h-11 text-xs sm:text-sm',
                   active === section.id
                     ? 'border-brand text-foreground'
                     : 'border-transparent text-muted-foreground hover:text-foreground'

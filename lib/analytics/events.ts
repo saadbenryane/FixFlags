@@ -3,6 +3,7 @@ import {
   fireMetaPixelEvent,
   getGoogleAdsSignupLabel,
 } from '@/lib/analytics/ad-conversions'
+import { ensureGtagStub, isGaConfigured } from '@/lib/analytics/gtag'
 
 declare global {
   interface Window {
@@ -56,6 +57,10 @@ export type FunnelEvent =
   | 'plan_picker_dismissed'
   | 'scan_limit_gate_signup_completed'
   | 'report_upgrade_gate_viewed'
+  | 'report_progress_viewed'
+  | 'sticky_nav_used'
+  | 'polish_pass_copied'
+  | 'flag_detail_viewed'
 
 export type ReportSurface = 'focused' | 'details' | 'sample' | 'shared'
 export type ReportAccessState = 'anonymous' | 'owner' | 'signed_in' | 'shared'
@@ -155,6 +160,32 @@ type EventParams = {
   plan_picker_dismissed: { source?: string }
   scan_limit_gate_signup_completed: Record<string, never>
   report_upgrade_gate_viewed: { audit_id?: string }
+  report_progress_viewed: {
+    audit_id?: string
+    progress_percent?: number
+    status?: string
+    surface?: ReportSurface
+  }
+  sticky_nav_used: {
+    section_id: string
+    audit_id?: string
+    surface?: ReportSurface
+  }
+  polish_pass_copied: {
+    audit_id?: string
+    flag_count?: number
+    surface?: ReportSurface
+    access_state?: ReportAccessState
+  }
+  flag_detail_viewed: {
+    audit_id?: string
+    flag_id?: string
+    check_id?: string
+    severity?: string
+    surface?: ReportSurface
+    access_state?: ReportAccessState
+    item_position?: number
+  }
 }
 
 function deviceClass(): string | undefined {
@@ -178,13 +209,15 @@ export function trackEvent<T extends FunnelEvent>(
   event: T,
   params?: EventParams[T],
 ) {
-  if (typeof window === 'undefined' || typeof window.gtag === 'undefined') return
+  if (!ensureGtagStub()) return
+  if (!isGaConfigured() && process.env.NODE_ENV === 'production') return
+
   const eventParams = {
     device: deviceClass(),
     ...(params as Record<string, unknown> | undefined),
   }
   try {
-    window.gtag('event', event, eventParams)
+    window.gtag!('event', event, eventParams)
   } catch {
     /* ga not available */
   }

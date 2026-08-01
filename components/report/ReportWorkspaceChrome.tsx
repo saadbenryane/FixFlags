@@ -90,9 +90,10 @@ export function ReportWorkspaceSummary({
 
   return (
     <section
+      id="report-status"
       aria-label={REPORT_COPY.workspace.summaryLabel}
       className={cn(
-        "overflow-hidden rounded-card bg-card/80 shadow-card glass-surface",
+        "scroll-mt-[var(--report-chrome-offset)] overflow-hidden rounded-card bg-card/80 shadow-card glass-surface",
         className,
       )}
     >
@@ -215,6 +216,33 @@ export function ReportWorkspaceSummary({
           reportHref={reportHref}
         />
       </div>
+
+      {model.context.loading && typeof scanProgress === "number" ? (
+        <div
+          className="border-t border-border/35 px-4 pb-4 pt-3 sm:px-5"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {stageDetail ?? REPORT_COPY.reportFirst.checkingLabel}
+            </span>
+            <span className="font-mono tabular-nums">{scanProgress}%</span>
+          </div>
+          <div
+            className="h-0.5 w-full overflow-hidden rounded-full bg-muted"
+            aria-hidden
+          >
+            <div
+              className="h-full rounded-full bg-brand motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out"
+              style={{ width: `${Math.min(100, Math.max(0, scanProgress))}%` }}
+            />
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
+
+/** Unified progress band for loading and completed report states. */
+export const ReportProgressBand = ReportWorkspaceSummary;

@@ -13,6 +13,7 @@ import {
 import type { loadReportRouteState } from './load-report-route-state'
 import { ReportAuthGate } from '@/components/auth/ReportAuthGate'
 import { ReportPromptsUnlockedTracker } from '@/components/report/ReportPromptsUnlockedTracker'
+import { ReportViewedTracker } from '@/components/analytics/ReportViewedTracker'
 
 type CompletedState = Extract<
   Awaited<ReturnType<typeof loadReportRouteState>>,
@@ -121,6 +122,14 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           : false
       }
     >
+      <ReportViewedTracker
+        auditId={state.id}
+        isOwner={state.isOwner}
+        accessState={
+          requireAuthGate ? 'anonymous' : state.isOwner ? 'owner' : state.isLoggedIn ? 'signed_in' : 'anonymous'
+        }
+        surface={state.isMarketingSample ? 'sample' : state.shareToken ? 'shared' : 'focused'}
+      />
       <div
         className={requireAuthGate ? 'pointer-events-none select-none blur-[3px]' : undefined}
         aria-hidden={requireAuthGate || undefined}

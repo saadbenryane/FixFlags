@@ -17,8 +17,11 @@ import {
 import type { EvidenceHighlight } from '@/lib/audit/evidence-highlights'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import {
+  computeLetterboxLayout,
   highlightCenter,
+  mapHighlightToLetterbox,
   normalizedPercent,
+  type LetterboxLayout,
 } from '@/lib/audit/highlight-geometry'
 import { cn } from '@/lib/utils'
 import { REPORT_COPY } from '@/lib/marketing/copy'
@@ -188,18 +191,20 @@ function PinOverlay({
   selected,
   onPinSelect,
   useMobileTooltip,
+  layout,
 }: {
   highlight: EvidenceHighlight
   selected?: boolean
   onPinSelect?: (flagId: string) => void
   useMobileTooltip?: boolean
+  layout?: LetterboxLayout
 }) {
   const pinRef = useRef<HTMLButtonElement>(null)
   const { open, setOpen, narrow, showFixedTooltip, close } = useTooltipTrigger({
     useMobileTooltip,
     triggerRef: pinRef,
   })
-  const center = highlightCenter(highlight)
+  const center = highlightCenter(highlight, layout)
 
   const handleClick = () => {
     onPinSelect?.(highlight.flagId)
@@ -299,11 +304,13 @@ function EvidenceInteractiveOverlay({
   selected,
   onPinSelect,
   useMobileTooltip,
+  layout,
 }: {
   highlight: EvidenceHighlight
   selected?: boolean
   onPinSelect?: (flagId: string) => void
   useMobileTooltip?: boolean
+  layout?: LetterboxLayout
 }) {
   if (highlight.scope === 'page') {
     return (
@@ -322,6 +329,7 @@ function EvidenceInteractiveOverlay({
       selected={selected}
       onPinSelect={onPinSelect}
       useMobileTooltip={useMobileTooltip}
+      layout={layout}
     />
   )
 }
@@ -329,12 +337,15 @@ function EvidenceInteractiveOverlay({
 function EvidenceRegionGlow({
   highlight,
   selected,
+  layout,
 }: {
   highlight: EvidenceHighlight
   selected?: boolean
+  layout?: LetterboxLayout
 }) {
   const isCritical = highlight.severity === 'CRITICAL'
   const isPage = highlight.scope === 'page'
+  const rect = layout ? mapHighlightToLetterbox(highlight, layout) : highlight
 
   if (isPage) {
     return (
@@ -365,10 +376,10 @@ function EvidenceRegionGlow({
             )
       )}
       style={{
-        left: normalizedPercent(highlight.x),
-        top: normalizedPercent(highlight.y),
-        width: normalizedPercent(highlight.width),
-        height: normalizedPercent(highlight.height),
+        left: normalizedPercent(rect.x),
+        top: normalizedPercent(rect.y),
+        width: normalizedPercent(rect.width),
+        height: normalizedPercent(rect.height),
       }}
       aria-hidden={!selected}
     />
@@ -379,10 +390,12 @@ function RegionLayer({
   highlights,
   device,
   selectedFlagId,
+  layout,
 }: {
   highlights: EvidenceHighlight[]
   device: 'desktop' | 'mobile'
   selectedFlagId?: string
+  layout?: LetterboxLayout
 }) {
   const visible = highlights.filter((h) => h.device === device && h.flagId === selectedFlagId)
   if (visible.length === 0) return null
@@ -390,7 +403,7 @@ function RegionLayer({
   return (
     <>
       {visible.map((h) => (
-        <EvidenceRegionGlow key={h.id} highlight={h} selected />
+        <EvidenceRegionGlow key={h.id} highlight={h} selected layout={layout} />
       ))}
     </>
   )
@@ -402,12 +415,14 @@ function InteractiveLayer({
   selectedFlagId,
   onPinSelect,
   useMobileTooltip,
+  layout,
 }: {
   highlights: EvidenceHighlight[]
   device: 'desktop' | 'mobile'
   selectedFlagId?: string
   onPinSelect?: (flagId: string) => void
   useMobileTooltip?: boolean
+  layout?: LetterboxLayout
 }) {
   const visible = highlights.filter((h) => {
     if (h.device !== device) return false
@@ -427,6 +442,7 @@ function InteractiveLayer({
           selected={h.flagId === selectedFlagId}
           onPinSelect={onPinSelect}
           useMobileTooltip={useMobileTooltip}
+          layout={layout}
         />
       ))}
     </>
@@ -460,6 +476,8 @@ function ScreenshotPanel({
 }) {
   const resolvedImageUrl = normalizeInternalScreenshotUrl(imageUrl)
   const [imgError, setImgError] = useState(false)
+  const [letterbox, setLetterbox] = useState<LetterboxLayout | undefined>()
+  const panelRef = useRef<HTMLDivElement>(null)
   const panelStyle: CSSProperties = size
     ? { width: size.width, height: size.height, maxHeight: size.height, flexShrink: 0 }
     : viewportAspectStyle(device)
@@ -481,9 +499,42 @@ function ScreenshotPanel({
   const ComparisonIcon =
     resolvedComparisonState === 'affected' ? CircleAlert : CheckCircle2
 
+  const updateLetterbox = useCallback(
+    (img: HTMLImageElement) => {
+      const panel = panelRef.current
+      if (!panel || !img.naturalWidth || !img.naturalHeight) return
+      const containerAspect = panel.clientWidth / panel.clientHeight
+      const imageAspect = img.naturalWidth / img.naturalHeight
+      setLetterbox(computeLetterboxLayout(imageAspect, containerAspect))
+    },
+    []
+  )
+
+  useEffect(() => {
+    const panel = panelRef.current
+    if (!panel) return
+    const observer = new ResizeObserver(() => {
+      const img = panel.querySelector('img')
+      if (img?.naturalWidth) updateLetterbox(img)
+    })
+    observer.observe(panel)
+    return () => observer.disconnect()
+  }, [updateLetterbox])
+
+  const setRefs = useCallback(
+    (node: HTMLDivElement | null) => {
+      panelRef.current = node
+      if (typeof containerRef === 'function') containerRef(node)
+      else if (containerRef && 'current' in containerRef) {
+        containerRef.current = node
+      }
+    },
+    [containerRef]
+  )
+
   return (
     <div
-      ref={containerRef}
+      ref={setRefs}
       className={cn(
         'relative overflow-hidden rounded-md bg-muted/30 shadow-card',
         pageBorderSelected && 'border-[3px]',
@@ -523,15 +574,21 @@ function ScreenshotPanel({
           width={1440}
           height={900}
           loading="lazy"
+          onLoad={(event) => updateLetterbox(event.currentTarget)}
           onError={() => setImgError(true)}
           className={cn(
-            'absolute inset-0 h-full w-full object-cover object-top transition-[filter] duration-300',
+            'absolute inset-0 h-full w-full object-contain object-top transition-[filter] duration-300',
             active && 'brightness-[0.92]'
           )}
         />
       )}
       <div className="pointer-events-none absolute inset-0">
-        <RegionLayer highlights={highlights} device={device} selectedFlagId={selectedFlagId} />
+        <RegionLayer
+          highlights={highlights}
+          device={device}
+          selectedFlagId={selectedFlagId}
+          layout={letterbox}
+        />
       </div>
       <div className="pointer-events-none absolute inset-0">
         <div className="pointer-events-auto relative h-full w-full">
@@ -541,6 +598,7 @@ function ScreenshotPanel({
             selectedFlagId={selectedFlagId}
             onPinSelect={onPinSelect}
             useMobileTooltip={useMobileTooltip}
+            layout={letterbox}
           />
         </div>
       </div>

@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { toast } from 'sonner'
 import { AUTH } from '@/lib/marketing/copy'
+import { trackEvent } from '@/lib/analytics/events'
 
 export interface MeUser {
   id: string
@@ -125,6 +126,9 @@ export function MeProvider({
       if (options?.showToast && data.claimedCount > 0 && !claimToastShown) {
         claimToastShown = true
         toast.success(AUTH.me.claimSuccess(data.claimedCount))
+      }
+      if (data.claimedCount > 0) {
+        trackEvent('audits_claimed', { claimed_count: data.claimedCount })
       }
       return data
     } catch (error) {
