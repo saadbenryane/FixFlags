@@ -52,7 +52,7 @@ export function WorkspaceChatPanel({ auditId, className }: WorkspaceChatPanelPro
   }
 
   return (
-    <div className={cn('flex min-h-[200px] flex-col rounded-lg border border-border bg-card/50', className)}>
+    <div className={cn('flex min-h-[200px] flex-col rounded-card border border-border bg-card/50', className)}>
       <div className="border-b border-border px-3 py-2 text-xs font-semibold text-muted-foreground">
         Chat with FixFlags
       </div>

@@ -14,7 +14,7 @@ export function WorkspaceViewToggle({ view, onChange, className }: WorkspaceView
   return (
     <div
       className={cn(
-        'inline-flex rounded-lg border border-border bg-muted/40 p-0.5 text-xs font-medium',
+        'inline-flex rounded-card border border-border bg-muted/40 p-0.5 text-xs font-medium',
         className
       )}
       role="tablist"

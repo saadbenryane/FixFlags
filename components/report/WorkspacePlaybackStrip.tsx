@@ -25,7 +25,7 @@ export function WorkspacePlaybackStrip({
   return (
     <ol
       className={cn(
-        'flex items-center gap-2 overflow-x-auto rounded-lg border border-border bg-muted/30 px-3 py-2',
+        'flex items-center gap-2 overflow-x-auto rounded-card border border-border bg-muted/30 px-3 py-2',
         className
       )}
       aria-label="Path playback"

@@ -29,7 +29,7 @@ export default async function AdminWaitlistPage({
 
       <div className="flex flex-wrap items-center gap-3">
         <Button variant={planFilter === undefined ? 'default' : 'outline'} size="sm" asChild>
-          <Link href="/admin/waitlist">All ({proCount + studioCount})</Link>
+          <Link href={'/admin/waitlist' as Route}>All ({proCount + studioCount})</Link>
         </Button>
         <Button variant={planFilter === 'BUILDER' ? 'default' : 'outline'} size="sm" asChild>
           <Link href={'/admin/waitlist?plan=BUILDER' as Route}>Pro ({proCount})</Link>

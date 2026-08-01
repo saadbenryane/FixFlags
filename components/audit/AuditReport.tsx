@@ -250,6 +250,43 @@ export function AuditReport({
     !isSample &&
     (aiReviewPending || triageDegraded || prescriptionFailed || isPartialReport)
 
+  const flagsExplorer =
+    unresolvedFlagCount > 0 ? (
+      <LiveReportExplorer
+        model={explorerModel}
+        showFeedback={showFeedback}
+        aiLocked={fixPromptLocked}
+        aiEnhancementPending={isLoggedIn && aiReviewPending}
+        signUpHref={signUpHref}
+        pages={pages}
+        auditId={auditId}
+        demonstratedFlagId={sampleFixFlag?.id}
+      />
+    ) : null
+
+  const flagsNoFlagsSection = (
+    <section id="report-flags" className={REPORT_SECTION_SCROLL_MT}>
+      <Callout variant="neutral" title={REPORT_COPY.noFlags.title}>
+        {REPORT_COPY.noFlags.body}
+      </Callout>
+    </section>
+  )
+
+  const flagsSectionWithHeader =
+    unresolvedFlagCount > 0 ? (
+      <section id="report-flags" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-3')}>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>
+          <span className="font-mono text-xs tabular-nums text-muted-foreground">
+            {unresolvedFlagCount} total
+          </span>
+        </div>
+        {flagsExplorer}
+      </section>
+    ) : (
+      flagsNoFlagsSection
+    )
+
   return (
     <ReportWorkspaceShell
       workspace={workspace}
@@ -365,34 +402,7 @@ export function AuditReport({
             browserPanel={
               <WorkspaceBrowserPanel url={audit.url} screenshots={audit.screenshots} />
             }
-            reportPanel={
-              unresolvedFlagCount > 0 ? (
-                <section id="report-flags" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-3')}>
-                  <div className="flex flex-wrap items-end justify-between gap-3">
-                    <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>
-                    <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                      {unresolvedFlagCount} total
-                    </span>
-                  </div>
-                  <LiveReportExplorer
-                    model={explorerModel}
-                    showFeedback={showFeedback}
-                    aiLocked={fixPromptLocked}
-                    aiEnhancementPending={isLoggedIn && aiReviewPending}
-                    signUpHref={signUpHref}
-                    pages={pages}
-                    auditId={auditId}
-                    demonstratedFlagId={sampleFixFlag?.id}
-                  />
-                </section>
-              ) : (
-                <section id="report-flags" className={REPORT_SECTION_SCROLL_MT}>
-                  <Callout variant="neutral" title={REPORT_COPY.noFlags.title}>
-                    {REPORT_COPY.noFlags.body}
-                  </Callout>
-                </section>
-              )
-            }
+            reportPanel={flagsSectionWithHeader}
             playbackPanel={
               <WorkspacePlaybackStrip
                 steps={(audit.actionTimeline ?? []).slice(0, 12).map((event, index) => ({
@@ -401,46 +411,10 @@ export function AuditReport({
                 }))}
               />
             }
-            mobileProductPanel={
-              unresolvedFlagCount > 0 ? (
-                <LiveReportExplorer
-                  model={explorerModel}
-                  showFeedback={showFeedback}
-                  aiLocked={fixPromptLocked}
-                  aiEnhancementPending={isLoggedIn && aiReviewPending}
-                  signUpHref={signUpHref}
-                  pages={pages}
-                  auditId={auditId}
-                  demonstratedFlagId={sampleFixFlag?.id}
-                />
-              ) : null
-            }
+            mobileProductPanel={flagsExplorer}
           />
-        ) : unresolvedFlagCount > 0 ? (
-          <section id="report-flags" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-3')}>
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>
-              <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                {unresolvedFlagCount} total
-              </span>
-            </div>
-            <LiveReportExplorer
-              model={explorerModel}
-              showFeedback={showFeedback}
-              aiLocked={fixPromptLocked}
-              aiEnhancementPending={isLoggedIn && aiReviewPending}
-              signUpHref={signUpHref}
-              pages={pages}
-              auditId={auditId}
-              demonstratedFlagId={sampleFixFlag?.id}
-            />
-          </section>
         ) : (
-          <section id="report-flags" className={REPORT_SECTION_SCROLL_MT}>
-            <Callout variant="neutral" title={REPORT_COPY.noFlags.title}>
-              {REPORT_COPY.noFlags.body}
-            </Callout>
-          </section>
+          flagsSectionWithHeader
         )
       }
       contextSections={
