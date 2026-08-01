@@ -4,8 +4,8 @@ export const BRAND = {
   name: 'FixFlags',
   domain: 'fixflags.com',
   tagline: 'Finish what your AI started.',
-  category: 'Independent product verification for AI-built products.',
-  oneLiner: 'Check your AI-built product, fix what blocks the release, re-check, and watch until it ships.',
+  category: 'Product QA for AI-built products.',
+  oneLiner: 'Product QA for what you shipped: review, fix, update review, and verify before you share.',
   supportEmail: 'hello@fixflags.com',
   mcpServerKey: 'fixflags',
   exportPrefix: 'FixFlags Report',
@@ -19,7 +19,7 @@ export const OUTPUT_LABELS = {
   whatYouGet: 'Sample output',
   fixPrompt: 'Fix prompt',
   seeFullSample: 'See full sample report',
-  nextStep: 'Paste into editor → run → re-check.',
+  nextStep: 'Paste into editor → publish → update review.',
 } as const
 
 export const URL_PLACEHOLDER = 'https://yoursite.com'
@@ -31,7 +31,7 @@ export const TOOLS = {
     subhead:
       'See how your page looks when shared on Slack, X, LinkedIn, and Discord. Enter a URL to check its og:image, title, and description tags.',
     ctaCheck: 'Check preview',
-    ctaAudit: 'Run a full check on this URL',
+    ctaAudit: 'Run a product review on this URL',
     socialPreviewHeading: 'Social Preview',
     metaTagsHeading: 'Meta Tags',
     metaFieldLabels: {
@@ -49,7 +49,7 @@ export const TOOLS = {
     canonicalMissing: 'No canonical',
     robotsPresent: 'Robots meta',
     robotsMissing: 'No robots meta',
-    auditHeading: 'Run a full check',
+    auditHeading: 'Run a product review',
     auditSubhead:
       'Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.',
   },
@@ -71,15 +71,15 @@ export const TOOLS = {
       'template-token': 'Template Token',
       'social-proof': 'Social proof',
     },
-    auditHeading: 'Run a full check',
+    auditHeading: 'Run a product review',
     auditSubhead:
       'Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.',
   },
   shared: {
-    auditHeading: 'Run a full check',
+    auditHeading: 'Run a product review',
     auditSubhead:
       'Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.',
-    ctaAudit: 'Run a full check on this URL',
+    ctaAudit: 'Run a product review on this URL',
   },
 } as const
 
@@ -132,8 +132,8 @@ export const ROAST_COPY = {
 
 /** Canonical free-tier offer. Wire every surface from here; do not paraphrase. */
 export const OFFER = {
-  line: 'Free check. See what\u2019s broken. Sign up when you want the fix prompts and re-check.',
-  short: 'Free check. See what\u2019s broken before you share the link.',
+  line: 'Free product review. See what\u2019s broken. Sign up when you want the fix prompts and update reviews.',
+  short: 'Free product review. See what\u2019s broken before you share the link.',
   /** Privacy page / FAQ only. Do not render on marketing heroes. */
   privacy: 'We scan your live URL. We do not change your site or touch your code.',
   linkPrivacy:
@@ -213,7 +213,7 @@ export function rubricDescription(name: string): string {
     MESSAGE:
       'Does the page make sense and feel credible? Copy, headline, positioning, audience, benefits, social proof, and trust signals.',
     EXPERIENCE:
-      'Does the page work well for users? Design, layout, mobile, accessibility, speed, polish, and broken interactions.',
+      'Does the page work well for users? Design, layout, mobile, accessibility, speed, visual consistency, and broken interactions.',
     REACH:
       'Can people find, share, and measure it? SEO, metadata, share previews, analytics, and conversion tracking.',
   }

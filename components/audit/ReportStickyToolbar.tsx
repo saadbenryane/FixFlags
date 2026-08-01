@@ -13,13 +13,7 @@ const FLAGS_SECTION = { id: 'report-flags', label: REPORT_COPY.stickyNav.flags }
 const STACK_SECTION = { id: 'report-stack', label: REPORT_COPY.stickyNav.stack } as const
 const CONTRACT_SECTION = { id: 'report-contract', label: REPORT_COPY.stickyNav.contract } as const
 const REMEMBER_SECTION = { id: 'report-remember', label: REPORT_COPY.stickyNav.remember } as const
-<<<<<<< HEAD
 const FUNNEL_SECTION = { id: 'report-funnel', label: REPORT_COPY.stickyNav.journey } as const
-=======
-const FUNNEL_SECTION = { id: 'report-funnel', label: REPORT_COPY.stickyNav.journey } as const
-const FLAGS_SECTION = { id: 'report-flags', label: REPORT_COPY.stickyNav.flags } as const
-const STACK_SECTION = { id: 'report-stack', label: REPORT_COPY.stickyNav.stack } as const
->>>>>>> 47a9fd1c (Voice copy rollout: Product QA terminology across marketing, help, and UI)
 const PREVIEWS_SECTION = { id: 'report-previews', label: REPORT_COPY.stickyNav.previews } as const
 const LAUNCH_SECTION = { id: 'report-launch-gates', label: REPORT_COPY.stickyNav.launch } as const
 const RECHECK_SECTION = { id: 'report-recheck', label: REPORT_COPY.recheck.label } as const
@@ -78,13 +72,7 @@ export function ReportStickyToolbar({
     if (showStack) items.push(STACK_SECTION)
     if (showContract) items.push(CONTRACT_SECTION)
     if (showRemember) items.push(REMEMBER_SECTION)
-<<<<<<< HEAD
     if (showJourney || showFlow || showTimeline) items.push(FUNNEL_SECTION)
-=======
-    if (showJourney || showFlow || showTimeline) items.push(FUNNEL_SECTION)
-    if (showStack) items.push(STACK_SECTION)
-    items.push(FLAGS_SECTION)
->>>>>>> 47a9fd1c (Voice copy rollout: Product QA terminology across marketing, help, and UI)
     if (showPreviews) items.push(PREVIEWS_SECTION)
     if (showLaunch) items.push(LAUNCH_SECTION)
     if (showRecheckSection) items.push(RECHECK_SECTION)

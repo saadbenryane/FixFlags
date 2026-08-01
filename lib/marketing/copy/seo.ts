@@ -1,18 +1,18 @@
 export const SEO = {
   home: {
-    title: 'FixFlags - Check before you publish',
+    title: 'FixFlags - Product QA before you publish',
     description:
-      'Your AI says it\u2019s done. Paste a URL and FixFlags checks the product for Message, Experience, and Reach Flags. Fix prompts for Cursor, Claude, Lovable, Bolt, and Devin. Free check.',
+      'Your AI says it\u2019s done. Paste a URL and FixFlags runs Product QA for Message, Experience, and Reach Flags. Fix prompts for Cursor, Claude, Lovable, Bolt, and Devin. Free product review.',
   },
   pricing: {
     title: 'Pricing',
     description:
-      'Start free with the full report, 3 AI checks, and unlimited re-checks. Pro adds 5 journeys per month, compare, and MCP.',
+      'Start free with 3 product reviews per month and 1 deep review teaser. Pro adds 25 product reviews, 4 deep reviews, compare, and MCP.',
   },
   howItWorks: {
     title: 'How FixFlags Works',
     description:
-      'FixFlags closes the AI gap from prompt to product: Check, Fix, and Re-check across Message, Experience, and Reach. Browser check or MCP in your editor.',
+      'FixFlags closes the AI gap from prompt to product: Build, Review, Fix, and Verify across Message, Experience, and Reach. Product reviews in the browser or MCP in your editor.',
   },
   samples: {
     title: 'Sample Report',
@@ -22,27 +22,27 @@ export const SEO = {
   examples: {
     title: 'Example Reports',
     description:
-      'Automated FixFlags checks of recognizable sites like web.dev, Vercel, and Wikipedia.',
+      'Automated FixFlags product reviews of recognizable sites like web.dev, Vercel, and Wikipedia.',
   },
   mcp: {
     title: 'MCP Integration',
     description:
-      'Connect FixFlags to Cursor, Claude Code, Windsurf, Lovable, or Bolt. Check and fix your site inside your builder.',
+      'Connect FixFlags to Cursor, Claude Code, Windsurf, Lovable, or Bolt. Review and fix your site inside your builder.',
   },
   faq: {
     title: 'FAQ',
     description:
-      'Answers about FixFlags checks, Flags, fix prompts, free vs paid plans, MCP integration, and who it\u2019s for.',
+      'Answers about FixFlags product reviews, Flags, fix prompts, free vs paid plans, MCP integration, and who it\u2019s for.',
   },
   help: {
     title: 'Help Center',
     description:
-      'Guides for FixFlags checks, reports, billing, MCP setup, and your account. Chat with us when you need a human.',
+      'Guides for FixFlags product reviews, reports, billing, MCP setup, and your account. Chat with us when you need a human.',
   },
   docs: {
     title: 'FixFlags Documentation',
     description:
-      'Learn FixFlags checks, Finish Plans, editor integrations, CLI workflows, MCP tools, and Re-checks.',
+      'Learn FixFlags product reviews, Finish Plans, editor integrations, CLI workflows, MCP tools, and update reviews.',
   },
   changelog: {
     title: 'Changelog',
@@ -60,7 +60,7 @@ export const SEO = {
   },
   blog: {
     title: 'Blog',
-    description: 'Notes on shipping AI-built products without the embarrassing bugs. QA, launch checklists, and what breaks when you publish fast.',
+    description: 'Notes on shipping AI-built products without the embarrassing bugs: product review, what breaks first, and what to fix before users see it.',
   },
   privacy: {
     title: 'Privacy Policy',
@@ -72,7 +72,7 @@ export const SEO = {
   },
   issues: {
     title: 'Flag Library',
-    description: 'Real Flags from checked sites, with frequency, affected frameworks, examples, and fixes.',
+    description: 'Real Flags from reviewed sites, with frequency, affected frameworks, examples, and fixes.',
   },
   partners: {
     title: 'Expert program',

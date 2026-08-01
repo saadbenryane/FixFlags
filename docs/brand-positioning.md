@@ -9,17 +9,17 @@
 
 ## Category
 
-The release readiness layer for AI-built products. AI tools ship fast. Products look done before they are actually ready. FixFlags catches what they still miss: broken flows, weak mobile UX, slow pages, unclear CTAs, SEO gaps, accessibility problems, trust issues, and conversion friction.
+Product QA for what you shipped. AI tools ship fast. Products look done before they are actually ready. FixFlags catches what they still miss: broken flows, weak mobile UX, slow pages, unclear CTAs, SEO gaps, accessibility problems, trust issues, and conversion friction.
 
 It is the missing quality layer after Cursor, Claude Code, Lovable, Bolt, Replit, v0, and Codex.
 
 ## One-Liner
 
-FixFlags is the release readiness layer for AI-built products.
+FixFlags is Product QA for AI-built products.
 
 ## Tagline
 
-The release readiness layer for AI-built products.
+Finish what your AI started.
 
 ## Anchoring / Campaign Line
 
@@ -27,7 +27,7 @@ Finish what your AI started.
 
 ## Pitch (Canonical)
 
-**AI reviews your site like a person would: capture, check, judge. Every issue includes a fix prompt.**
+**Product QA on your live URL: review, flag, fix, update review. Every issue includes a fix prompt.**
 
 ### Five-Audience Stress Test
 
@@ -35,10 +35,10 @@ Run this before changing hero copy.
 
 | Persona | Cares about | Passes if… |
 |---------|-------------|------------|
-| AI shipper (Cursor) | Fix loop in editor | Mentions fix prompts + re-check |
+| AI shipper (Cursor) | Fix loop in editor | Mentions fix prompts + update review |
 | Live site founder | Why traffic doesn't convert | Mentions AI reads page / conversion |
 | Studio designer | Not generic audit tool | Shows screenshot review, not Lighthouse clone |
-| Skeptic dev | Real pipeline | Capture → Check → Judge is explicit |
+| Skeptic dev | Real pipeline | Capture → review → judge is explicit |
 | Non-technical founder | Plain language | No jargon; clear what happens on paste |
 
 If any persona fails, fix that gap before polishing design.
@@ -47,7 +47,7 @@ If any persona fails, fix that gap before polishing design.
 
 - **FixFlags completes the AI loop.** AI coding tools (Cursor, Claude Code, Lovable, Bolt) ship fast. They ship UIs that look right at a glance. FixFlags is the calm reviewer that catches what speed skipped: message gaps, UX issues, missing metadata. With fix prompts your AI can run immediately.
 - **The fix prompt is the differentiator, not the AI.** Anyone can screenshot a page and ask GPT what is wrong. The unique value is: evidence + fix prompt tuned for your AI editor in one step. Paste and ship.
-- **Re-check loop proves improvement.** Not just finding issues, but verifying they are resolved. Before/after comparison is the proof.
+- **Update review proves improvement.** Not just finding issues, but verifying they are resolved. Before/after comparison is the proof.
 - **Not a Lighthouse wrapper.** Lighthouse scores performance and best practices. FixFlags reads screenshots for message clarity, UX gaps, and shareability.
 - **Not a consulting service.** No manual QA, no enterprise dashboards, no compliance reports.
 

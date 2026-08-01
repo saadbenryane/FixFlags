@@ -38,11 +38,11 @@ Sharp senior reviewer who has shipped messy launches. Not a consultant selling a
 
 ## Product principles
 
-1. **Check → Fix → Verify → Watch** — the core product loop. Every feature serves this or it does not ship. See [knowledge/product-system.md](./knowledge/product-system.md).
+1. **Build → Review → Fix → Verify → Learn** — the core product loop. Every feature serves this or it does not ship. See [knowledge/product-system.md](./knowledge/product-system.md).
 2. **Evidence before opinion** — every flag has a screenshot, code reference, or measurable signal.
 3. **Finish Plan before backlog** — few highest-leverage improvements beat a long inventory.
 4. **Fix prompts are the delivery** — actionable paste-ready repairs for the builder's agent.
-5. **Re-check is the habit** — never gate it. Verification precedes confidence.
+5. **Update review closes the loop** — each run after a fix uses a product review credit. Verification precedes confidence.
 6. **Distribution before premature depth** — more users matter more than more checks; expand with demand.
 7. **Calm before loud** — trust through accuracy, not marketing volume.
 8. **Human before technical** — flags describe user impact, not HTML violations.
@@ -129,7 +129,7 @@ Before shipping prose longer than a sentence, score 1-10 on: directness, rhythm,
 | Simplicity vs. power | Default to simple. Add depth behind accordions and drill-downs. |
 | Warmth vs. precision | Prefer precision. Warmth comes from clarity, not friendliness. |
 | Speed vs. depth | Default to speed. Run deterministic checks fast, AI review follows. |
-| Free vs. paid | Free is Quick Check + 3 lifetime URL checks + unlimited re-checks. Finish Check is $49 one-time. Pro unlocks volume and monitoring. Never gate re-checks. |
+| Free vs. paid | Free starts with Live Review, then unlocks full report context after account creation. Finish Check is $49 one-time. Pro unlocks volume and Watch. Never gate re-checks. |
 | Technical vs. accessible | Flags describe user impact. Technical detail is in expandable evidence. |
 | Generic vs. distinctive | Prefer distinctive. The orange, the soft control radius, the Inter Tight display — they make FixFlags recognizable, not generic SaaS. |
 

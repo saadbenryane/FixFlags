@@ -125,7 +125,7 @@ describe('projectLimitForPlan', () => {
 describe('proUpgradeCta', () => {
   it('includes the Pro price in the default CTA', () => {
     const cta = proUpgradeCta()
-    assert.ok(cta.includes('$39'))
+    assert.ok(cta.includes('$69'))
     assert.ok(cta.includes('/mo'))
   })
 

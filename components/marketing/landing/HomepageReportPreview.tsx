@@ -71,7 +71,7 @@ export function HomepageReportPreview({
             className="inline-flex min-h-9 items-center gap-1.5 rounded-[var(--radius-control)] border border-border/55 bg-background px-3 text-2xs font-medium text-foreground transition-colors hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             <RefreshCw className="h-3 w-3" aria-hidden />
-            Re-check
+            Update review
           </Link>
         </div>
       </header>

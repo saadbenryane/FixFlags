@@ -44,7 +44,7 @@ export function UsageMeter({
               strokeWidth={1.75}
               aria-hidden
             />
-            Check usage
+            Product review usage
           </span>
           {plan !== "FREE" && !isUnlimited && (
             <span className="text-xs text-muted-foreground">
@@ -59,8 +59,8 @@ export function UsageMeter({
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {isUnlimited
-              ? `journey${used === 1 ? "" : "s"} this period`
-              : `journey${remaining === 1 ? "" : "s"} remaining`}
+              ? `product review${used === 1 ? "" : "s"} this period`
+              : `product review${remaining === 1 ? "" : "s"} remaining`}
           </p>
         </div>
 
@@ -90,7 +90,7 @@ export function UsageMeter({
 
         {!isUnlimited && plan === "FREE" && remaining > 0 && (
           <p className="mt-3 text-xs text-muted-foreground">
-            {limit > 0 ? `${used + pending} of ${limit} free checks used` : ""}
+            {limit > 0 ? `${used + pending} of ${limit} product reviews used` : ""}
             {remaining === 1 && (
               <span>
                 {" - "}
@@ -113,13 +113,13 @@ export function UsageMeter({
 
         {atLimit && plan !== "FREE" && purchasedCredits === 0 && (
           <p className="mt-3 text-xs text-muted-foreground">
-            Plan limit reached. Re-checks stay free.
+            Plan limit reached. Upgrade for more product reviews.
           </p>
         )}
 
         <div className="mt-auto flex items-center gap-2 pt-5 text-xs text-muted-foreground">
           <RotateCcw className="h-3.5 w-3.5 text-brand" aria-hidden />
-          Re-checks on reports you own stay free.
+          Update reviews use the same product review credits as new URLs.
         </div>
       </CardContent>
     </Card>

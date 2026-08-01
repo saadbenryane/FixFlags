@@ -173,7 +173,7 @@ export function RecentChecksList({
                         />
                         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                           <ArrowLeftRight className="h-3 w-3" aria-hidden />
-                          {audit.monitoringAudits.length} re-check
+                          {audit.monitoringAudits.length} update review
                           {audit.monitoringAudits.length === 1 ? "" : "s"}
                         </span>
                       </div>
@@ -187,7 +187,7 @@ export function RecentChecksList({
                       className="w-fit gap-1 text-muted-foreground"
                     >
                       <ArrowLeftRight className="h-3 w-3" aria-hidden />
-                      {audit.monitoringAudits.length} re-check
+                      {audit.monitoringAudits.length} update review
                       {audit.monitoringAudits.length === 1 ? "" : "s"}
                     </Badge>
                   ) : null}

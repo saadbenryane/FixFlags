@@ -1,19 +1,19 @@
 # Business Model
 
-*Last updated: 2026-07-19*
+*Last updated: 2026-08-01*
 
-FixFlags is the QA layer for AI-built products. The business model supports the loop: Flag, Fix, Re-check.
+FixFlags is Product QA for AI-built products. The business model supports the loop: Flag, Fix, Update review.
 
 See [`year-1-operating-plan.md`](./year-1-operating-plan.md) for Year 1 revenue, customer, and growth targets. Stripe wiring: [`stripe-setup.md`](./stripe-setup.md).
 
 ## What We Ship
 
-- **Full report on each new URL check** (within plan quota): deterministic scans plus AI review across Message, Experience, and Reach. Rubric scores, flags, and fix prompts.
-- **Re-check loop** (free, unlimited on owned reports): re-run the same URL and diff flags. This is the core habit.
-- **Before/after compare** (Pro+): side-by-side proof after re-checks.
+- **Product review** (within plan quota): full report across Message, Experience, and Reach with Flags, evidence, and fix prompts.
+- **Update review** on the same URL: uses one product review credit; diffs Flags after you fix.
+- **Deep review** (paid quota): journeys, funnel map, and path playback.
+- **Before/after compare** (Pro+): side-by-side proof after update reviews.
 - **MCP integration** (Pro+): MCP tools for Cursor and Claude Code (see `AGENTS.md` Project facts).
-- **Share links and proof export** (Agency): public report links and client-ready summaries.
-- **Credit packs** (paid plans): +10 / +25 / +50 new URL checks ($15 / $30 / $50). Overflow only; does not change tier.
+- **Share links and proof export** (Studio): public report links and client-ready summaries.
 
 ## What We Do Not Ship (Current)
 
@@ -30,27 +30,32 @@ These ship when they serve the core loop and users ask for them.
 
 ## Free Tier Strategy
 
-- **Free accounts get 3 new URL checks total.** Every check runs the full pipeline and returns the complete report with fix prompts.
-- **At limit, new URL checks are blocked** until upgrade. Re-checks on owned reports stay free.
-- **Every free report is an upsell impression.** Upgrade when you ship weekly and need MCP, compare, or more new checks.
-- **Cost is negligible at this stage.** Prioritize distribution over optimization.
+- **Free accounts get 3 product reviews per month** and **1 deep review teaser per month**.
+- **Update reviews use the same product review credits** as new URLs.
+- **At limit, product reviews pause** until upgrade or the next billing cycle.
+- **Every free report is an upsell impression.** Upgrade when you ship weekly and need MCP, compare, or more reviews.
 
-Why: habit over scarcity. More users = more data = stronger moat = more upgrades.
+Pricing numbers: [`lib/marketing/copy/terminology.ts`](../lib/marketing/copy/terminology.ts) `PRICING_COPY`.
 
 ## Pricing Philosophy
 
-- **Keep entry pricing easy to justify.** Current amounts and any pricing experiments live in [knowledge/strategy.md](../knowledge/strategy.md).
-- **Flat-rate subscription** for the monthly new-check quota. Credit packs are optional overflow for paid plans.
-- **Re-checks never gated.** The core loop (Flag, Fix, Re-check) is the habit.
+- **Keep entry pricing easy to justify.** Target amounts live in marketing copy and [knowledge/strategy.md](../knowledge/strategy.md).
+- **Flat-rate subscription** for monthly product review and deep review quotas.
+- **Hard stop at cap** with upgrade CTA. Credit packs are a future paid overflow option.
 - **Annual discount:** Later (not at launch). Monthly only until retention justifies it.
 - **No founding offers.** Founding offers create expectation debt.
 
-## Pricing Tiers (Current)
+## Pricing Tiers (Marketing target)
 
-Current tier amounts and strategy live in [knowledge/strategy.md](../knowledge/strategy.md).
-Shipped names, quotas, and capabilities come from `lib/billing/plans.ts` and [PRODUCT.md](../PRODUCT.md).
+| Plan | Price | Product reviews/mo | Deep reviews/mo |
+|------|-------|--------------------|-----------------|
+| Free | $0 | 3 | 1 teaser |
+| Pro | $69/mo | 25 | 4 |
+| Studio | $199/mo | 80 | 10 |
 
-Display name **Agency** maps to `TEAM` enum. There is no Studio tier in the schema.
+Shipped Stripe IDs and enforcement may lag; see `lib/billing/plans.ts` and [PRODUCT.md](../PRODUCT.md).
+
+Display name **Studio** maps to `TEAM` enum.
 
 ## Target Customer
 
@@ -61,8 +66,8 @@ Display name **Agency** maps to `TEAM` enum. There is no Studio tier in the sche
 
 ## Revenue Model
 
-- Monthly subscriptions (Pro / Agency).
-- Credit packs as paid overflow for subscribers who exceed monthly new-check quota.
+- Monthly subscriptions (Pro / Studio).
+- Future: credit packs as paid overflow for subscribers who exceed monthly quotas.
 - Future: agency white-label? Data licensing (aggregate flags report)?
 
 ## Moat Strategy

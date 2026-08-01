@@ -1,14 +1,16 @@
 # Voice & Copy Guidelines
 
-*Last updated: 2026-07-19*
+*Last updated: 2026-08-01*
 
 ## FixFlags adaptation
 
-This document preserves the operator voice principles from the design system spec, adapted for **FixFlags**: the QA layer for AI-built products.
+This document preserves the operator voice principles from the design system spec, adapted for **FixFlags**: Product QA for AI-built products.
 
-**Product context:** FixFlags is the QA layer for AI-built products. Run an audit, see the flags, copy the fix prompts, and re-check before users find the problems. Fix prompts paste straight into Cursor, Claude Code, Lovable, or Bolt. The voice should sound like a calm senior product reviewer who has shipped messy launches, not a consultant selling a methodology. The loop is Flag, Fix, Re-check. The AI built it. FixFlags finishes it.
+**Product context:** FixFlags is Product QA for what you shipped. Run a product review, see the Flags, copy the fix prompts, and run an update review before users find the problems. Fix prompts paste straight into Cursor, Claude Code, Lovable, or Bolt. The voice should sound like a calm senior product reviewer who has shipped messy launches, not a consultant selling a methodology. The loop is Flag, Fix, Update review. The AI built it. FixFlags finishes it.
 
-**What stays the same:** Clear before clever. Specific before impressive. Useful before polished. No startup-bro language. No fake urgency. No em dashes. Ever.
+**Canonical terms:** See [`lib/marketing/copy/terminology.ts`](../lib/marketing/copy/terminology.ts). Customer-facing: **product review**, **update review**, **deep review**, **funnel**, **path**. Do not use re-check, polish (as a product tier), or journey as a pricing meter.
+
+**What stays the same:** Clear before clever. Specific before impressive. Useful before polished (writing quality only, not product tier naming). No startup-bro language. No fake urgency. No em dashes. Ever.
 
 **What adapts:** Examples about "founders" and "product clarity advisory" map to builders, launch quality, and fix loops. Prefer *ship, fix, evidence, pattern, outcome* over *unlock, leverage, holistic, transformation*.
 
@@ -18,7 +20,7 @@ This document preserves the operator voice principles from the design system spe
 - **Counts over stacked status labels.** Report summaries show Critical counts. Do not pair `Needs Attention` or `Blocked` with the same severity signal.
 - **No hero CYA.** Lines like "read-only review," "we never modify your site," "compatibility is not endorsement," and "claim the report" belong on `/privacy` or FAQ, not marketing heroes or logo clouds.
 - **Report privacy framing:** "Save to your account" beats "claim." Owned reports are private. Public SEO site pages are a different surface.
-- **Industry vernacular:** *paste into Cursor*, *what's broken*, *before you share the link*, *copy the fix*, *re-check*.
+- **Industry vernacular:** *paste into Cursor*, *what's broken*, *before you share the link*, *copy the fix*, *update review*, *product review*.
 
 **Related files:**
 - Business model & pricing: [`docs/business-model.md`](./business-model.md)
@@ -223,7 +225,7 @@ Pick exactly one of each. If you need two, split into two blocks.
 | **Who** | One reader situation | Has a public URL (new or live) |
 | **Problem** | One pain | Issues on the page cost signups |
 | **Outcome** | One result | Clear report + fix prompts |
-| **Action** | One CTA | Review my site |
+| **Action** | One CTA | Review my product |
 
 ## Writing models to steal from
 

@@ -159,7 +159,7 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
               ) : (
                 <ArrowRight className="mr-1.5 h-3 w-3" />
               )}
-              Scan deeper
+              Run deep review
             </Button>
           </>
         )}
