@@ -44,11 +44,17 @@ export function ReportWorkspaceSummary({
   className,
   reportHref = "",
   compact = false,
+  scanProgress,
+  stageDetail,
 }: {
   model: ReportWorkspaceModel;
   className?: string;
   reportHref?: string;
   compact?: boolean;
+  /** Determinate scan progress (0-100) while loading. */
+  scanProgress?: number;
+  /** Honest stage detail shown under the score ring during loading. */
+  stageDetail?: string | null;
 }) {
   const rubrics = model.summary.rubrics.map((rubric) => ({
     name: rubric.name,
@@ -107,6 +113,7 @@ export function ReportWorkspaceSummary({
           <ScoreRingGauge
             score={model.summary.score}
             loading={model.context.loading}
+            progress={model.context.loading ? scanProgress : undefined}
             size="md"
           />
           <div className="min-w-0">
@@ -115,7 +122,9 @@ export function ReportWorkspaceSummary({
             </p>
             <p className="mt-1 text-sm font-semibold text-foreground">
               {model.summary.score == null
-                ? REPORT_COPY.workspace.scoreUnavailable
+                ? model.context.loading
+                  ? stageDetail ?? REPORT_COPY.reportFirst.checkingLabel
+                  : REPORT_COPY.workspace.scoreUnavailable
                 : REPORT_COPY.workspace.scoreOutOfHundred(model.summary.score)}
             </p>
           </div>

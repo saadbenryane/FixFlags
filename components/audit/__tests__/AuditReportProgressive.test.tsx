@@ -67,7 +67,7 @@ describe('AuditReportProgressive', () => {
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Step 2 of 5/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Scanning/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/Step 2 of 5/).length).toBeGreaterThan(0)
+    expect(screen.getByLabelText('Polish pass')).toBeInTheDocument()
   })
 
   it('renders product contract when provided', () => {

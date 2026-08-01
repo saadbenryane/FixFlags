@@ -60,6 +60,7 @@ const model: ReportExplorerModel = {
   score: 70,
   verdict: null,
   flagCount: 2,
+  polishPassPrompt: null,
   desktopScreenshot: null,
   mobileScreenshot: null,
   rubricScores: [

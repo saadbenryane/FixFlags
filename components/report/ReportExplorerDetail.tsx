@@ -145,20 +145,22 @@ export function FlagDetailPane({
         </div>
       </header>
 
-      <div className={cn(isHero && 'space-y-6')}>
+      <div className={cn(isHero && 'space-y-6', 'flex flex-col')}>
         {!shareableFlag && !isHero ? (
-          <ScreenshotWithHighlights
-            host={model.displayHost}
-            desktopScreenshot={model.desktopScreenshot}
-            mobileScreenshot={model.mobileScreenshot}
-            highlights={model.allHighlights}
-            selectedFlagId={flag.id}
-            onPinSelect={onSelectFlag}
-            showDesktop={showDesktop}
-            showMobile={showMobile}
-            affectedDevices={flag.affectedDevices}
-            className={cn('mb-5', compact && 'lg:mb-0')}
-          />
+          <div className="order-2 mb-5 lg:order-1 lg:mb-5">
+            <ScreenshotWithHighlights
+              host={model.displayHost}
+              desktopScreenshot={model.desktopScreenshot}
+              mobileScreenshot={model.mobileScreenshot}
+              highlights={model.allHighlights}
+              selectedFlagId={flag.id}
+              onPinSelect={onSelectFlag}
+              showDesktop={showDesktop}
+              showMobile={showMobile}
+              affectedDevices={flag.affectedDevices}
+              className={cn(compact && 'lg:mb-0')}
+            />
+          </div>
         ) : null}
         {isHero && !shareableFlag ? (
           <ScreenshotWithHighlights
@@ -174,7 +176,7 @@ export function FlagDetailPane({
           />
         ) : null}
 
-        <div className={cn(isHero && 'pt-2')}>
+        <div className={cn('order-1 lg:order-2', isHero && 'pt-2')}>
           <FlagDetailPanel
             flag={flag}
             showFeedback={showFeedback}

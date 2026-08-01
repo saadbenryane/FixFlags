@@ -136,9 +136,9 @@ function buildRankedFixes(
   const visiblePromptCount = items.filter((item) => item.prompt).length
   const copyPrompt =
     input.promptAccess === 'all' && visiblePromptCount > 0
-      ? buildPlanModePrompt(unresolved, {
+      ? buildAllFixPrompts({
+          flags: input.flags,
           url: input.url,
-          limit: options.limit,
           contract: input.contract ?? null,
         })
       : null

@@ -1056,6 +1056,18 @@ export const REPORT_COPY = {
     title: "PageSpeed unavailable",
     body: "No PageSpeed observation completed in this run. Experience Flags use the other captured evidence.",
   },
+  polishPass: {
+    title: "Polish pass",
+    loadingBody: "Ranked fix prompts appear as Flags are verified.",
+    readyBody: (count: number) =>
+      `${count} ${count === 1 ? "Flag" : "Flags"} ranked by impact. Copy one prompt for your AI editor.`,
+    copyCta: "Copy polish pass",
+    copyLabel: "Polish pass prompt",
+    previewToggle: "Preview prompt",
+    generating: "Generating fix prompts for every Flag…",
+    demonstratedNote:
+      "One complete fix prompt is shown. Create a free account to unlock the full polish pass.",
+  },
   sectionTitles: {
     allFixes: "All fixes",
     productContract: "Product contract",

@@ -59,6 +59,7 @@ import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 import type { FixList } from '@/lib/audit/finish-plan'
+import { ReportPolishPass } from '@/components/report/ReportPolishPass'
 
 interface RubricRow {
   id: string
@@ -230,6 +231,10 @@ export function AuditReport({
     degradedReason: triageDegraded ? failureCode : null,
   })
   const unresolvedFlagCount = workspace.outcome.unresolvedCount
+  const polishPassPrompt =
+    explorerModel.polishPassPrompt ??
+    explorerModel.flags.find((flag) => flag.hasFixPrompt)?.copyFixPrompt ??
+    null
   const userVerdict = resolveReportVerdict(
     displayVerdict(audit.verdict ?? null),
     explorerModel.flags[0]
@@ -312,6 +317,18 @@ export function AuditReport({
       )}
 
       <ReportWorkspaceSummary model={workspace} />
+
+      {!isSample && unresolvedFlagCount > 0 ? (
+        <ReportPolishPass
+          flagCount={unresolvedFlagCount}
+          prompt={polishPassPrompt}
+          locked={fixPromptLocked && !polishPassPrompt}
+          generating={aiReviewPending && !polishPassPrompt}
+          signUpHref={signUpHref}
+          auditId={auditId}
+          accessState={fixPromptLocked ? 'anonymous' : 'owner'}
+        />
+      ) : null}
 
       {!isSample && audit.technologyProfile ? (
         <div id="report-stack" className="scroll-mt-[var(--header-offset)]">

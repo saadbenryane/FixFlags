@@ -34,6 +34,7 @@ import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import { displayHostname } from '@/lib/utils/url-helpers'
+import { ReportPolishPass } from '@/components/report/ReportPolishPass'
 
 /** Catches crashes in the explorer subtree so the scanning UI stays visible. */
 class ExplorerErrorBoundary extends Component<
@@ -103,7 +104,7 @@ export function AuditReportProgressive({
   )
 
   const targetProgress = getProgressPercent(progress, status)
-  const [, setDisplayProgress] = useState(targetProgress)
+  const [displayProgress, setDisplayProgress] = useState(targetProgress)
   const [easeTick, setEaseTick] = useState(0)
 
   const showWorkerWarning =
@@ -194,6 +195,11 @@ export function AuditReportProgressive({
     checkedScope: 'the submitted page',
     promptAccess: 'none',
   })
+  const polishPassPrompt =
+    explorerModel.polishPassPrompt ??
+    explorerModel.flags.find((flag) => flag.hasFixPrompt)?.copyFixPrompt ??
+    null
+
   return (
     <Container variant="report" className="space-y-5 py-5 sm:space-y-6 sm:py-6">
       <AuditReportHero
@@ -219,34 +225,17 @@ export function AuditReportProgressive({
         </Callout>
       )}
 
-      <ProgressiveCapturePair
-        url={url}
-        screenshots={screenshots}
-        captureStatus={screenshotCapture}
+      <ReportWorkspaceSummary
+        model={workspace}
+        scanProgress={isLoading ? displayProgress : undefined}
+        stageDetail={isLoading ? stage.detail : null}
       />
 
-      <ReportWorkspaceSummary model={workspace} />
-
-      {isLoading && (!technologyProfile || technologyProfile.status === 'not_captured') ? (
-        <Card className="space-y-3 p-5" aria-label="Reading technology signals" id="report-stack">
-          <div className="flex items-center justify-between gap-3">
-            <div className="space-y-2">
-              <Skeleton className="h-3 w-28" />
-              <Skeleton className="h-5 w-24" />
-            </div>
-            <Skeleton className="h-3 w-24" />
-          </div>
-          <div className="flex gap-2">
-            <Skeleton className="h-8 w-24 rounded-full" />
-            <Skeleton className="h-8 w-20 rounded-full" />
-            <Skeleton className="h-8 w-28 rounded-full" />
-          </div>
-        </Card>
-      ) : technologyProfile ? (
-        <div id="report-stack" className="scroll-mt-[var(--header-offset)]">
-          <MadeWithProfile profile={technologyProfile} compact />
-        </div>
-      ) : null}
+      <ReportPolishPass
+        flagCount={explorerModel.flagCount}
+        prompt={polishPassPrompt}
+        loading={isLoading && explorerModel.flagCount === 0}
+      />
 
       {showSticky || userVerdict ? (
         <div className="space-y-4">
@@ -305,6 +294,33 @@ export function AuditReportProgressive({
         </ExplorerErrorBoundary>
       </section>
 
+      <ProgressiveCapturePair
+        url={url}
+        screenshots={screenshots}
+        captureStatus={screenshotCapture}
+      />
+
+      {isLoading && (!technologyProfile || technologyProfile.status === 'not_captured') ? (
+        <Card className="space-y-3 p-5" aria-label="Reading technology signals" id="report-stack">
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-5 w-24" />
+            </div>
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-24 rounded-full" />
+            <Skeleton className="h-8 w-20 rounded-full" />
+            <Skeleton className="h-8 w-28 rounded-full" />
+          </div>
+        </Card>
+      ) : technologyProfile ? (
+        <div id="report-stack" className="scroll-mt-[var(--header-offset)]">
+          <MadeWithProfile profile={technologyProfile} compact />
+        </div>
+      ) : null}
+
       {(showContract || showTimeline) ? (
         <details
           className="scroll-mt-[var(--header-offset)] rounded-card bg-card/40 p-5 shadow-card glass-surface"
@@ -353,6 +369,16 @@ export function AuditReportProgressiveShell({
           {REPORT_COPY.reportFirst.preparingReport}
         </p>
       </div>
+      <div className="overflow-hidden rounded-card bg-card/80 shadow-card glass-surface">
+        <div className="flex min-h-32 items-center gap-4 p-4 sm:p-5">
+          <Skeleton className="h-[88px] w-[88px] shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-5 w-40" />
+          </div>
+        </div>
+      </div>
+      <ReportPolishPass flagCount={0} prompt={null} loading />
       <ProgressiveCapturePair url={url} screenshots={[]} />
       <div className="flex flex-wrap gap-3">
         {RUBRIC_ORDER.map((name) => (

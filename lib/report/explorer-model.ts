@@ -85,6 +85,8 @@ export interface ReportExplorerModel {
   score: number | null
   verdict: string | null
   flagCount: number
+  /** All ranked flags bundled for one editor session. Null when prompts are gated. */
+  polishPassPrompt: string | null
   desktopScreenshot: string | null
   mobileScreenshot: string | null
   rubricScores: RubricScoreRow[]
@@ -210,6 +212,7 @@ export function buildLiveExplorerModel(input: {
     score: input.score,
     verdict: input.verdict,
     flagCount: sorted.length,
+    polishPassPrompt: fixList.copyPrompt,
     desktopScreenshot: desktop,
     mobileScreenshot: mobile,
     rubricScores: buildRubricScoreRows(input.rubricRows),
@@ -310,6 +313,7 @@ export function buildSampleExplorerModel(
     score: report.score,
     verdict: report.verdict,
     flagCount: report.flagCount,
+    polishPassPrompt: null,
     desktopScreenshot: report.desktopScreenshot,
     mobileScreenshot: report.mobileScreenshot,
     rubricScores: report.rubricScores,
