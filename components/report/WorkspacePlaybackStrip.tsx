@@ -23,30 +23,29 @@ export function WorkspacePlaybackStrip({
   if (steps.length === 0) return null
 
   return (
-    <div
+    <ol
       className={cn(
         'flex items-center gap-2 overflow-x-auto rounded-lg border border-border bg-muted/30 px-3 py-2',
         className
       )}
-      role="list"
       aria-label="Path playback"
     >
       {steps.map((step, index) => (
-        <button
-          key={step.id}
-          type="button"
-          role="listitem"
-          className={cn(
-            'shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors',
-            activeStepId === step.id
-              ? 'bg-brand text-brand-foreground'
-              : 'bg-background text-muted-foreground hover:text-foreground'
-          )}
-          onClick={() => onSelectStep?.(step.id)}
-        >
-          {index + 1}. {step.label}
-        </button>
+        <li key={step.id} className="shrink-0 list-none">
+          <button
+            type="button"
+            className={cn(
+              'rounded-md px-2 py-1 text-xs font-medium transition-colors',
+              activeStepId === step.id
+                ? 'bg-brand text-brand-foreground'
+                : 'bg-background text-muted-foreground hover:text-foreground'
+            )}
+            onClick={() => onSelectStep?.(step.id)}
+          >
+            {index + 1}. {step.label}
+          </button>
+        </li>
       ))}
-    </div>
+    </ol>
   )
 }
