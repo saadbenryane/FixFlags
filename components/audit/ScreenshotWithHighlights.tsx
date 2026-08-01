@@ -512,7 +512,7 @@ function ScreenshotPanel({
 
   useEffect(() => {
     const panel = panelRef.current
-    if (!panel) return
+    if (!panel || typeof ResizeObserver === 'undefined') return
     const observer = new ResizeObserver(() => {
       const img = panel.querySelector('img')
       if (img?.naturalWidth) updateLetterbox(img)

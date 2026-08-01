@@ -99,7 +99,7 @@ export function buildEvidenceHighlightsForFlag(
       width: 1,
       height: 1,
       label: flag.problem,
-      detail: `${visualDetail} Approximate area — exact element could not be pinned on the capture.`,
+      detail: `${visualDetail} Approximate area. Exact element could not be pinned on the capture.`,
       severity: flag.severity,
       visualTarget: flag.checkId ? visualTargetLabel(flag.checkId) : 'Flagged area',
     },
