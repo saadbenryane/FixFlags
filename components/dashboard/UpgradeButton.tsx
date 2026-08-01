@@ -3,10 +3,9 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sparkles } from 'lucide-react'
-import { toast } from 'sonner'
 import { trackEvent } from '@/lib/analytics/events'
 import { getUpgradeMomentContent, type UpgradeMoment } from '@/lib/billing/upgrade-moments'
-import { requestPlanCheckout } from '@/lib/billing/client-checkout'
+import { pickPlan } from '@/lib/billing/pick-plan'
 import { BILLING_ACTION_COPY, PRICING } from '@/lib/marketing/copy'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { WaitlistJoinForm } from '@/components/billing/WaitlistJoinForm'
@@ -40,27 +39,20 @@ export function UpgradeButton({
 
     setLoading(true)
     trackEvent('started_checkout', { plan, is_logged_in: true })
-    const outcome = await requestPlanCheckout(plan)
+    const result = await pickPlan({
+      plan,
+      isLoggedIn: true,
+      betaGated,
+      onPrivateBeta: () => setShowBetaForm(true),
+      onCheckoutRedirect: (url) => {
+        window.location.href = url
+      },
+    })
     setLoading(false)
 
-  if (outcome.kind === 'paid-checkout-closed') {
+    if (result.kind === 'private_beta') {
       setShowBetaForm(true)
-      return
     }
-    if (outcome.kind === 'redirect') {
-      if (outcome.existingSubscription) {
-        toast.message(BILLING_ACTION_COPY.checkout.existingTitle, {
-          description: BILLING_ACTION_COPY.checkout.existingBody,
-        })
-      }
-      window.location.href = outcome.url
-      return
-    }
-    toast.error(
-      outcome.kind === 'unavailable' || outcome.kind === 'error'
-        ? outcome.message
-        : BILLING_ACTION_COPY.checkout.missingDestination
-    )
   }
 
   if (showBetaForm) {

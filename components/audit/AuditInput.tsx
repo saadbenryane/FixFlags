@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
 import { ArrowRight, Link2, Loader2 } from 'lucide-react'
-import { HERO, AUDIT_PROGRESS, OFFER } from '@/lib/marketing/copy'
+import { HERO, AUDIT_PROGRESS, AUDIT_ERRORS, OFFER } from '@/lib/marketing/copy'
+import { URL_PLACEHOLDER } from '@/lib/marketing/copy/brand'
 import { SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics/events'
@@ -68,7 +69,7 @@ export function AuditInput({
 
     let normalized = (inputUrl ?? url).trim()
     if (!normalized) {
-      failValidation('empty', 'Enter a URL like https://yoursite.com')
+      failValidation('empty', AUDIT_ERRORS.urlRequired)
       return
     }
 
@@ -83,17 +84,17 @@ export function AuditInput({
     try {
       parsedUrl = new URL(normalized)
     } catch {
-      failValidation('malformed', 'Enter a valid URL like https://yoursite.com')
+      failValidation('malformed', AUDIT_ERRORS.urlMalformed)
       return
     }
 
     if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-      failValidation('scheme', 'Only http:// and https:// URLs can be checked')
+      failValidation('scheme', AUDIT_ERRORS.urlScheme)
       return
     }
 
     if (normalized.includes('localhost') || normalized.includes('127.0.0.1') || normalized.includes('0.0.0.0')) {
-      failValidation('localhost', 'FixFlags can only check publicly accessible URLs')
+      failValidation('localhost', AUDIT_ERRORS.urlLocalhost)
       return
     }
 
@@ -243,7 +244,7 @@ export function AuditInput({
               type="text"
               inputMode="url"
               autoComplete="url"
-              placeholder="https://yoursite.com"
+              placeholder={URL_PLACEHOLDER}
               value={url}
               onChange={(e) => {
                 setUrl(e.target.value)

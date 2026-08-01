@@ -1008,6 +1008,7 @@ export const REPORT_COPY = {
       reportView: "Report view",
       toggleLabel: "Workspace view",
     },
+    journeyRunDeepReview: "Run deep review",
   },
   reportFirst: {
     loadingLabel: "Loading report",

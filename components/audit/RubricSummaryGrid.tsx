@@ -5,6 +5,7 @@ import { rubricStatusColor, cn } from '@/lib/utils'
 import { RubricStatusBadge } from '@/components/audit/RubricStatusBadge'
 import { RubricScoreBar } from '@/components/report/RubricScoreBar'
 import { Card } from '@/components/ui/card'
+import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import type { RubricComputed } from '@/lib/audit/rubric'
 
 interface RubricRowInput {
@@ -76,7 +77,7 @@ export function RubricSummaryGrid({ rubrics, rubricRows, loading = false, active
                   )}
                 </span>
               ) : status === 'SCANNING' ? (
-                <span>Scanning…</span>
+                <span>{AUDIT_PROGRESS.submitLoading}</span>
               ) : (
                 <span>No Flags</span>
               )}

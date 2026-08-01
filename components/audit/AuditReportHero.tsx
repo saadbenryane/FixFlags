@@ -6,7 +6,7 @@ import { ImageOff } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Callout } from '@/components/ui/callout'
 import { Skeleton } from '@/components/ui/skeleton'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY, AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import {
   normalizeInternalScreenshotUrl,
   type AuditScreenshot,
@@ -54,8 +54,8 @@ export function AuditReportHero({
   }, [firstScreenshotUrl])
   const badgeLabel = scanning
     ? scanningLabel
-      ? `Scanning · ${scanningLabel}`
-      : 'Scanning'
+      ? AUDIT_PROGRESS.scanningBadge(scanningLabel)
+      : AUDIT_PROGRESS.bannerScanning
     : pageType
 
   if (isMinimal) {

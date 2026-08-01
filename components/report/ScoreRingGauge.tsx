@@ -1,6 +1,7 @@
 'use client'
 
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
+import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
 type ScoreRingGaugeSize = 'sm' | 'md'
@@ -48,11 +49,11 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, progress, 
       aria-label={
         isScanning
           ? isDeterminate
-            ? `Scanning, ${Math.round(scanNormalized)} percent`
-            : 'Scanning'
+            ? AUDIT_PROGRESS.ariaScanningPercent(Math.round(scanNormalized))
+            : AUDIT_PROGRESS.ariaScanning
           : score == null
-            ? 'Score unavailable'
-            : `Score ${score} percent`
+            ? AUDIT_PROGRESS.ariaScoreUnavailable
+            : AUDIT_PROGRESS.ariaScore(score)
       }
       aria-busy={isScanning || undefined}
     >
@@ -121,7 +122,7 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, progress, 
           </span>
         ) : score == null ? (
           <span className={cn('font-mono text-xs font-bold tabular-nums text-muted-foreground', scoreText)}>
-            N/A
+            {AUDIT_PROGRESS.scoreNa}
           </span>
         ) : (
           <span

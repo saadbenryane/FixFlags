@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { displayHostname, parsePageLabel } from '@/lib/utils/url-helpers'
 import { startScanWithHandoff } from '@/lib/audit/start-scan-handoff'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 
 export interface JourneyPage {
   id: string
@@ -159,7 +160,7 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
               ) : (
                 <ArrowRight className="mr-1.5 h-3 w-3" />
               )}
-              Run deep review
+              {REPORT_COPY.workspace.journeyRunDeepReview}
             </Button>
           </>
         )}

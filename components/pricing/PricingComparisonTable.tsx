@@ -1,6 +1,12 @@
 import { PLAN_DEFINITIONS } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 
+const DEEP_REVIEW_LABELS: Record<keyof typeof PLAN_DEFINITIONS, string> = {
+  FREE: `${PLAN_DEFINITIONS.FREE.deepReviewLimit} teaser per month`,
+  BUILDER: `${PLAN_DEFINITIONS.BUILDER.deepReviewLimit} per month`,
+  TEAM: `${PLAN_DEFINITIONS.TEAM.deepReviewLimit} per month`,
+}
+
 const ROWS = [
   {
     feature: "Who it's for",
@@ -16,9 +22,9 @@ const ROWS = [
   },
   {
     feature: "Deep reviews",
-    free: "1 teaser per month",
-    pro: "4 per month",
-    studio: "10 per month",
+    free: DEEP_REVIEW_LABELS.FREE,
+    pro: DEEP_REVIEW_LABELS.BUILDER,
+    studio: DEEP_REVIEW_LABELS.TEAM,
   },
   {
     feature: "Update reviews",

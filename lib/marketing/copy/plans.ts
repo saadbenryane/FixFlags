@@ -1,13 +1,15 @@
 import { OFFER } from "./brand";
+import { PRICING_COPY } from "./terminology";
 
 /**
  * Marketing plan display data. Defined here (not in lib/billing/plans) so the
  * copy barrel does not pull @prisma/client into 150+ client component bundles.
  * The billing module remains the source of truth for limits, pricing logic,
- * and Stripe price IDs.
+ * and Stripe price IDs. Prices and review counts derive from PRICING_COPY, and
+ * a parity test locks those numbers to lib/billing/plans.ts enforcement.
  */
-const PRO_PRICE = "$69";
-const PRO_PERIOD = "/mo";
+const PRO_PRICE = PRICING_COPY.proPrice;
+const PRO_PERIOD = PRICING_COPY.proPeriod;
 
 function proUpgradeCta(prefix = "Upgrade to Pro"): string {
   return `${prefix} - ${PRO_PRICE}${PRO_PERIOD}`;
@@ -21,10 +23,10 @@ export const PLANS = [
     period: "",
     persona: "Try before launch",
     outcome: "See everything on one page",
-    audits: "3 product reviews / month",
+    audits: `${PRICING_COPY.freeProductReviewsLifetime} product reviews / month`,
     features: [
-      "3 product reviews per month with full reports and fix prompts",
-      "1 deep review teaser per month",
+      `${PRICING_COPY.freeProductReviewsLifetime} product reviews per month with full reports and fix prompts`,
+      `${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser per month`,
       "Upgrade anytime for more reviews",
     ],
     cta: "Start free",
@@ -39,9 +41,9 @@ export const PLANS = [
     period: PRO_PERIOD,
     persona: "Solo builders shipping weekly",
     outcome: "Finish what your AI started, every week",
-    audits: "25 product reviews / month",
+    audits: `${PRICING_COPY.proProductReviewsPerMonth} product reviews / month`,
     features: [
-      "25 product reviews and 4 deep reviews per month",
+      `${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month`,
       "Before/after comparisons",
       "MCP in supported builders",
       "Weekly product watch with regression email",
@@ -54,14 +56,14 @@ export const PLANS = [
   {
     name: "Studio",
     plan: "TEAM" as const,
-    price: "$199",
-    period: "/mo",
+    price: PRICING_COPY.studioPrice,
+    period: PRICING_COPY.studioPeriod,
     persona: "Agencies and multi-site teams",
     outcome: "Finish many products, not just one",
-    audits: "80 product reviews / month",
+    audits: `${PRICING_COPY.studioProductReviewsPerMonth} product reviews / month`,
     features: [
       "Everything in Pro",
-      "80 product reviews and 10 deep reviews per month",
+      `${PRICING_COPY.studioProductReviewsPerMonth} product reviews and ${PRICING_COPY.studioDeepReviewsPerMonth} deep reviews per month`,
       "Up to 5 projects",
       "Client-ready public share links",
       "GitHub repository scans",

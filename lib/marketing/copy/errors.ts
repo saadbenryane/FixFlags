@@ -33,6 +33,12 @@ export const AUDIT_ERRORS = {
     'AI summary is unavailable because no provider key is configured on the scanner. Deterministic checks and fix steps are shown below.',
   partialReport: 'Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than being inferred.',
   pageSpeedUnavailable: 'PageSpeed data was unavailable for this run.',
+  urlRequired: 'Enter a URL like https://yoursite.com',
+  urlMalformed: 'Enter a valid URL like https://yoursite.com',
+  urlScheme: 'Only http:// and https:// URLs can be checked',
+  urlLocalhost: 'FixFlags can only check publicly accessible URLs',
+  scanErrorTitle: 'Something went wrong during scanning',
+  scanErrorBody: 'The scan encountered an unexpected error. Try again.',
 } as const
 
 export const SYSTEM_COPY = {
@@ -43,6 +49,7 @@ export const SYSTEM_COPY = {
     dashboard: 'Dashboard',
     billing: 'Billing',
     close: 'Close',
+    docsHome: 'Documentation home',
   },
   errors: {
     genericRetry: 'Something went wrong. Try again.',
@@ -86,6 +93,10 @@ export const SYSTEM_COPY = {
       title: 'Billing unavailable',
       body: 'Could not load billing information. Try again or return to the dashboard.',
     },
+    docs: {
+      title: 'This page could not be loaded',
+      body: 'Try the page again. Your product data was not changed.',
+    },
   },
 } as const
 
@@ -115,6 +126,12 @@ export const AUDIT_PROGRESS = {
   },
   formatStageStep: (current: number, total: number, label: string) =>
     `Step ${current} of ${total} · ${label}`,
+  scanningBadge: (label: string) => `Scanning · ${label}`,
+  ariaScanning: 'Scanning',
+  ariaScanningPercent: (percent: number) => `Scanning, ${percent} percent`,
+  ariaScore: (score: number) => `Score ${score} percent`,
+  ariaScoreUnavailable: 'Score unavailable',
+  scoreNa: 'N/A',
 } as const
 
 export function formatQueueWaitHint(seconds: number): string {

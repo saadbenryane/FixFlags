@@ -3,7 +3,7 @@
 import { RouteErrorPage } from '@/components/ui/route-error-page'
 import { SYSTEM_COPY } from '@/lib/marketing/copy'
 
-export default function DocsError({
+export default function DemoError({
   error,
   reset,
 }: {
@@ -14,12 +14,11 @@ export default function DocsError({
     <RouteErrorPage
       error={error}
       reset={reset}
-      event="ui.docs.error"
-      title={SYSTEM_COPY.errors.docs.title}
-      description={SYSTEM_COPY.errors.docs.body}
-      returnHref="/docs"
-      returnLabel={SYSTEM_COPY.actions.docsHome}
-      shell="marketing"
+      event="ui.demo.error"
+      title={SYSTEM_COPY.errors.marketing.title}
+      description={SYSTEM_COPY.errors.marketing.body}
+      returnHref="/"
+      returnLabel={SYSTEM_COPY.actions.home}
     />
   )
 }

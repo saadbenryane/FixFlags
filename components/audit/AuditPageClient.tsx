@@ -42,10 +42,10 @@ class ProgressiveErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         <Container variant="report" className="flex flex-1 flex-col items-center justify-center py-24 text-center">
-          <Heading as="h1">Something went wrong during scanning</Heading>
-          <Muted className="mt-2 max-w-md">The scan encountered an unexpected error. Try again.</Muted>
+          <Heading as="h1">{AUDIT_ERRORS.scanErrorTitle}</Heading>
+          <Muted className="mt-2 max-w-md">{AUDIT_ERRORS.scanErrorBody}</Muted>
           <div className="mt-8">
-            <Button onClick={() => { this.setState({ hasError: false }); this.props.onRetry() }}>Try again</Button>
+            <Button onClick={() => { this.setState({ hasError: false }); this.props.onRetry() }}>{SYSTEM_COPY.actions.retry}</Button>
           </div>
         </Container>
       )
