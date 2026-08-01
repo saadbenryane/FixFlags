@@ -130,6 +130,7 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   const reportSources = [
     'components/audit/AuditReport.tsx',
     'components/audit/AuditReportProgressive.tsx',
+    'components/report/ReportPolishPass.tsx',
     'components/audit/ProductMemoryStrip.tsx',
     'components/audit/RecheckDiffStrip.tsx',
     'components/audit/FlowScanTimeline.tsx',
