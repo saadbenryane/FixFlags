@@ -1,14 +1,3 @@
-declare global {
-  interface Window {
-    gtag: (
-      command: 'event' | 'config' | 'set',
-      target: string,
-      params?: Record<string, unknown>
-    ) => void
-    fbq: (...args: unknown[]) => void
-  }
-}
-
 export function getGoogleAdsId(): string | undefined {
   return process.env.NEXT_PUBLIC_GOOGLE_ADS_ID
 }

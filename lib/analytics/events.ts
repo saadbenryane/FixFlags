@@ -5,16 +5,6 @@ import {
 } from '@/lib/analytics/ad-conversions'
 import { ensureGtagStub, isGaConfigured } from '@/lib/analytics/gtag'
 
-declare global {
-  interface Window {
-    gtag: (
-      command: 'event' | 'config' | 'set',
-      target: string,
-      params?: Record<string, unknown>
-    ) => void
-  }
-}
-
 /**
  * Funnel events for launch instrumentation.
  * `started_audit` is the product name for scan_submitted (kept for ad conversions).

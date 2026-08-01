@@ -17,7 +17,6 @@ import {
 import { toast } from 'sonner'
 import { AUDIT_ERRORS, AUDIT_PROGRESS, BRAND, SYSTEM_COPY } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
-import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import { ReportViewedTracker } from '@/components/analytics/ReportViewedTracker'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import {

@@ -1,3 +1,6 @@
+/**
+ * @vitest-environment jsdom
+ */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ensureGtagStub, isGaConfigured } from '@/lib/analytics/gtag'
 import { trackEvent } from '@/lib/analytics/events'

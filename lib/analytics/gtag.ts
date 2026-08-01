@@ -1,7 +1,12 @@
 declare global {
   interface Window {
     dataLayer?: unknown[]
-    gtag?: (...args: unknown[]) => void
+    gtag?: (
+      command: 'event' | 'config' | 'set',
+      target: string,
+      params?: Record<string, unknown>
+    ) => void
+    fbq?: (...args: unknown[]) => void
   }
 }
 
@@ -19,8 +24,8 @@ export function ensureGtagStub(): boolean {
   if (typeof window === 'undefined') return false
   window.dataLayer = window.dataLayer || []
   if (typeof window.gtag !== 'function') {
-    window.gtag = (...args: unknown[]) => {
-      window.dataLayer!.push(args)
+    window.gtag = (command, target, params) => {
+      window.dataLayer!.push(params === undefined ? [command, target] : [command, target, params])
     }
   }
   return true
