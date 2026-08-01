@@ -42,10 +42,10 @@
 
 ## Billing (existing + launch)
 
-- [ ] Monthly subscription renewal
-- [ ] Cancel via Stripe portal
-- [ ] Product review limits per plan
-- [ ] Update reviews use product review credits (customer language)
+- [x] Monthly subscription renewal
+- [x] Cancel via Stripe portal
+- [x] Product review limits per plan (enforced in `lib/billing/plans.ts`)
+- [x] Update reviews use product review credits (enforced in `lib/audit/monitoring.ts`)
 
 ---
 

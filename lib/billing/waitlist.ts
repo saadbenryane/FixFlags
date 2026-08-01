@@ -1,4 +1,4 @@
-import type { Plan } from '@prisma/client'
+import type { Plan, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import {
   DEFAULT_WAITLIST_CAMPAIGN,
@@ -42,9 +42,13 @@ export async function markWaitlistInvited(entryId: string) {
   })
 }
 
-export async function markWaitlistConverted(userId: string, plan: Plan) {
+export async function markWaitlistConverted(
+  userId: string,
+  plan: Plan,
+  client: Prisma.TransactionClient | typeof prisma = prisma
+) {
   if (plan !== 'BUILDER' && plan !== 'TEAM') return
-  await prisma.paidPlanWaitlistEntry.updateMany({
+  await client.paidPlanWaitlistEntry.updateMany({
     where: { userId, plan, convertedAt: null },
     data: { convertedAt: new Date() },
   })

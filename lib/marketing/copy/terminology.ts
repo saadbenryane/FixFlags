@@ -21,10 +21,10 @@ export const CUSTOMER_TERMS = {
   flags: 'Flags',
 } as const
 
-/** Shared pricing numbers for marketing, help, and FAQ (target; Stripe may lag). */
+/** Shared pricing numbers for marketing, help, and FAQ — must match `lib/billing/plans.ts` enforcement. */
 export const PRICING_COPY = {
-  freeProductReviewsPerMonth: 3,
-  freeDeepReviewTeaserPerMonth: 1,
+  freeProductReviewsLifetime: 3,
+  freeDeepReviewTeaserLifetime: 1,
   proPrice: '$69',
   proPeriod: '/mo',
   proProductReviewsPerMonth: 25,

@@ -11,10 +11,13 @@ export interface PlanDefinition {
   period: string
   persona: string
   outcome: string
-  /** Monthly audit cap, or lifetime total for FREE */
+  /** Product review cap: monthly for paid, lifetime for FREE */
   auditLimit: number
   auditLimitKind: 'monthly' | 'lifetime'
   auditLimitLabel: string
+  deepReviewLimit: number
+  deepReviewLimitKind: 'monthly' | 'lifetime'
+  deepReviewLimitLabel: string
   stripePriceId?: string
   projectLimit?: number
   features: readonly string[]
@@ -34,10 +37,14 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     outcome: 'See everything on one page',
     auditLimit: 3,
     auditLimitKind: 'lifetime',
-    auditLimitLabel: '3 product reviews / month',
+    auditLimitLabel: '3 product reviews (lifetime)',
+    deepReviewLimit: 1,
+    deepReviewLimitKind: 'lifetime',
+    deepReviewLimitLabel: '1 deep review teaser (lifetime)',
     features: [
-      '3 product reviews per month with full reports and fix prompts',
-      '1 deep review teaser per month',
+      '3 product reviews (lifetime) with full reports and fix prompts',
+      '1 deep review teaser',
+      'Update reviews use the same product review credits',
       'Upgrade anytime for more reviews',
     ],
     highlight: false,
@@ -52,9 +59,12 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     period: '/mo',
     persona: 'Solo builders shipping weekly',
     outcome: 'Finish what your AI started, every week',
-    auditLimit: 5,
+    auditLimit: 25,
     auditLimitKind: 'monthly',
     auditLimitLabel: '25 product reviews / month',
+    deepReviewLimit: 4,
+    deepReviewLimitKind: 'monthly',
+    deepReviewLimitLabel: '4 deep reviews / month',
     stripePriceId: envPriceId('STRIPE_BUILDER_PRICE_ID'),
     features: [
       '25 product reviews and 4 deep reviews per month',
@@ -74,9 +84,12 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     period: '/mo',
     persona: 'Agencies and multi-site teams',
     outcome: 'Finish many products, not just one',
-    auditLimit: 25,
+    auditLimit: 80,
     auditLimitKind: 'monthly',
     auditLimitLabel: '80 product reviews / month',
+    deepReviewLimit: 10,
+    deepReviewLimitKind: 'monthly',
+    deepReviewLimitLabel: '10 deep reviews / month',
     stripePriceId: envPriceId('STRIPE_TEAM_PRICE_ID'),
     projectLimit: 5,
     features: [
@@ -113,6 +126,10 @@ export function proUpgradeCta(prefix = 'Upgrade to Pro'): string {
 
 export function scanLimitForPlan(plan: Plan): number {
   return PLAN_DEFINITIONS[plan].auditLimit
+}
+
+export function deepReviewLimitForPlan(plan: Plan): number {
+  return PLAN_DEFINITIONS[plan].deepReviewLimit
 }
 
 /**

@@ -101,12 +101,12 @@ describe('product contract limits', () => {
     assert.equal(total2, 0)
   })
 
-  it('pro plan has 5 monthly checks', () => {
-    assert.equal(scanLimitForPlan('BUILDER'), 5)
+  it('pro plan has 25 monthly checks', () => {
+    assert.equal(scanLimitForPlan('BUILDER'), 25)
   })
 
-  it('studio plan has 25 monthly checks', () => {
-    assert.equal(scanLimitForPlan('TEAM'), 25)
+  it('studio plan has 80 monthly checks', () => {
+    assert.equal(scanLimitForPlan('TEAM'), 80)
   })
 })
 

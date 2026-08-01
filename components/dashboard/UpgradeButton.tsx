@@ -9,7 +9,7 @@ import { getUpgradeMomentContent, type UpgradeMoment } from '@/lib/billing/upgra
 import { requestPlanCheckout } from '@/lib/billing/client-checkout'
 import { BILLING_ACTION_COPY, PRICING } from '@/lib/marketing/copy'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
-import { BetaInterestForm } from '@/components/billing/BetaInterestForm'
+import { WaitlistJoinForm } from '@/components/billing/WaitlistJoinForm'
 import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
 
 interface Props {
@@ -43,7 +43,7 @@ export function UpgradeButton({
     const outcome = await requestPlanCheckout(plan)
     setLoading(false)
 
-    if (outcome.kind === 'private-beta') {
+  if (outcome.kind === 'paid-checkout-closed') {
       setShowBetaForm(true)
       return
     }
@@ -65,7 +65,7 @@ export function UpgradeButton({
 
   if (showBetaForm) {
     return (
-      <BetaInterestForm plan={plan} initialEmail={userEmail} compact source="dashboard" />
+      <WaitlistJoinForm plan={plan} initialEmail={userEmail} compact source="dashboard" />
     )
   }
 

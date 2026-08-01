@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     if (!isPaidOpenServer()) {
       return apiError('Paid checkout is not open yet. Join the waitlist on pricing.', 403, {
-        code: 'PRIVATE_BETA',
+        code: 'PAID_CHECKOUT_CLOSED',
       })
     }
 
@@ -88,7 +88,8 @@ export async function POST(req: NextRequest) {
     }
 
     const checkoutPlan = plan as FounderCheckoutPlan
-    const founderDiscounts = founderCheckoutDiscounts(checkoutPlan, {
+    const founderDiscounts = await founderCheckoutDiscounts(checkoutPlan, {
+      id: session.user.id,
       founderOfferRedeemedAt: user?.founderOfferRedeemedAt ?? null,
     })
     const offerApplied = founderDiscounts != null

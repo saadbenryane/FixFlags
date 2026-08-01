@@ -11,7 +11,10 @@ import { getStripe, planFromPriceId } from '@/lib/stripe'
 import { applyPlanLimits } from '@/lib/billing/limits'
 import { refundPurchasedCredit } from '@/lib/billing/credits'
 import { notifyAdminPaymentFailed, notifyUserPaymentFailed } from '@/lib/billing/notify'
-import { FOUNDER_OFFER_ID } from '@/lib/billing/founder-offers'
+import {
+  FOUNDER_OFFER_ID,
+} from '@/lib/billing/founder-offers'
+import { markWaitlistConverted } from '@/lib/billing/waitlist'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
@@ -89,7 +92,7 @@ async function processSubscription(
       stripePriceId: priceIds[0] ?? null,
       stripeCurrentPeriodEnd: periodEnd,
       subscriptionStatus: status,
-      ...(resetUsage ? { auditsUsed: 0 } : {}),
+      ...(resetUsage ? { auditsUsed: 0, deepReviewsUsed: 0 } : {}),
     },
   })
   const price = subscription.items.data.find((item) => planFromPriceId(item.price.id))?.price
@@ -119,10 +122,7 @@ async function applyFounderOfferFulfillment(
     where: { id: result.userId },
     data: { founderOfferRedeemedAt: new Date() },
   })
-  await tx.paidPlanWaitlistEntry.updateMany({
-    where: { userId: result.userId, plan: result.plan, convertedAt: null },
-    data: { convertedAt: new Date() },
-  })
+  await markWaitlistConverted(result.userId, result.plan, tx)
 }
 
 async function recordSubscriptionLifecycle(

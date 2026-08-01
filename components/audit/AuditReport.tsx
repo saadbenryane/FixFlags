@@ -44,6 +44,7 @@ import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import type { FlowData } from '@/lib/audit/flow-data'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
+import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { JourneyBar, type JourneyPage } from '@/components/audit/JourneyBar'
 import { FlowScanTimeline } from '@/components/audit/FlowScanTimeline'
 import { PreviewCards } from '@/components/audit/PreviewCards'
@@ -58,7 +59,11 @@ import { ActionTimeline } from '@/components/audit/ActionTimeline'
 import { ReportSignupCta } from '@/components/audit/ReportSignupCta'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
-import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
+import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
+import { WorkspaceActivityPanel } from '@/components/report/WorkspaceActivityPanel'
+import { WorkspaceBrowserPanel } from '@/components/report/WorkspaceBrowserPanel'
+import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
+import { WorkspacePlaybackStrip } from '@/components/report/WorkspacePlaybackStrip'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
 
@@ -349,7 +354,69 @@ export function AuditReport({
         ) : null
       }
       flagsSection={
-        unresolvedFlagCount > 0 ? (
+        !isSample && auditId ? (
+          <ReportWorkspaceSplitShell
+            leftPanel={
+              <>
+                <WorkspaceActivityPanel events={audit.actionTimeline ?? []} />
+                <WorkspaceChatPanel auditId={auditId} />
+              </>
+            }
+            browserPanel={
+              <WorkspaceBrowserPanel url={audit.url} screenshots={audit.screenshots} />
+            }
+            reportPanel={
+              unresolvedFlagCount > 0 ? (
+                <section id="report-flags" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-3')}>
+                  <div className="flex flex-wrap items-end justify-between gap-3">
+                    <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>
+                    <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                      {unresolvedFlagCount} total
+                    </span>
+                  </div>
+                  <LiveReportExplorer
+                    model={explorerModel}
+                    showFeedback={showFeedback}
+                    aiLocked={fixPromptLocked}
+                    aiEnhancementPending={isLoggedIn && aiReviewPending}
+                    signUpHref={signUpHref}
+                    pages={pages}
+                    auditId={auditId}
+                    demonstratedFlagId={sampleFixFlag?.id}
+                  />
+                </section>
+              ) : (
+                <section id="report-flags" className={REPORT_SECTION_SCROLL_MT}>
+                  <Callout variant="neutral" title={REPORT_COPY.noFlags.title}>
+                    {REPORT_COPY.noFlags.body}
+                  </Callout>
+                </section>
+              )
+            }
+            playbackPanel={
+              <WorkspacePlaybackStrip
+                steps={(audit.actionTimeline ?? []).slice(0, 12).map((event, index) => ({
+                  id: `${event.kind}-${index}`,
+                  label: event.kind,
+                }))}
+              />
+            }
+            mobileProductPanel={
+              unresolvedFlagCount > 0 ? (
+                <LiveReportExplorer
+                  model={explorerModel}
+                  showFeedback={showFeedback}
+                  aiLocked={fixPromptLocked}
+                  aiEnhancementPending={isLoggedIn && aiReviewPending}
+                  signUpHref={signUpHref}
+                  pages={pages}
+                  auditId={auditId}
+                  demonstratedFlagId={sampleFixFlag?.id}
+                />
+              ) : null
+            }
+          />
+        ) : unresolvedFlagCount > 0 ? (
           <section id="report-flags" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-3')}>
             <div className="flex flex-wrap items-end justify-between gap-3">
               <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>

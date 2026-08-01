@@ -1,0 +1,52 @@
+'use client'
+
+import { cn } from '@/lib/utils'
+
+interface PlaybackStep {
+  id: string
+  label: string
+}
+
+interface WorkspacePlaybackStripProps {
+  steps: PlaybackStep[]
+  activeStepId?: string | null
+  onSelectStep?: (id: string) => void
+  className?: string
+}
+
+export function WorkspacePlaybackStrip({
+  steps,
+  activeStepId,
+  onSelectStep,
+  className,
+}: WorkspacePlaybackStripProps) {
+  if (steps.length === 0) return null
+
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2 overflow-x-auto rounded-lg border border-border bg-muted/30 px-3 py-2',
+        className
+      )}
+      role="list"
+      aria-label="Path playback"
+    >
+      {steps.map((step, index) => (
+        <button
+          key={step.id}
+          type="button"
+          role="listitem"
+          className={cn(
+            'shrink-0 rounded-md px-2 py-1 text-xs font-medium transition-colors',
+            activeStepId === step.id
+              ? 'bg-brand text-brand-foreground'
+              : 'bg-background text-muted-foreground hover:text-foreground'
+          )}
+          onClick={() => onSelectStep?.(step.id)}
+        >
+          {index + 1}. {step.label}
+        </button>
+      ))}
+    </div>
+  )
+}

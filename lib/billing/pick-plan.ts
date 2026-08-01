@@ -24,6 +24,8 @@ export interface PickPlanInput {
   isLoggedIn: boolean
   currentPlan?: string
   betaGated?: boolean
+  /** @deprecated Alias for betaGated */
+  paidCheckoutGated?: boolean
   userEmail?: string
   fallbackPath?: string
   /** When true, route Free picks to the active report if one is mid-scan. */
@@ -60,6 +62,7 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
     isLoggedIn,
     currentPlan,
     betaGated = false,
+    paidCheckoutGated,
     fallbackPath,
     respectActiveReport = true,
     onPrivateBeta,
@@ -86,7 +89,9 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
     return { kind: 'free_dashboard', url: fallbackPath ?? '/dashboard' }
   }
 
-  if (betaGated) {
+  const checkoutGated = paidCheckoutGated ?? betaGated
+
+  if (checkoutGated) {
     onPrivateBeta?.()
     return { kind: 'private_beta' }
   }
@@ -103,7 +108,7 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
     return { kind: 'checkout_redirect', url: outcome.url }
   }
 
-  if (outcome.kind === 'private-beta') {
+  if (outcome.kind === 'paid-checkout-closed') {
     onPrivateBeta?.()
     return { kind: 'private_beta' }
   }

@@ -30,7 +30,7 @@ These ship when they serve the core loop and users ask for them.
 
 ## Free Tier Strategy
 
-- **Free accounts get 3 product reviews per month** and **1 deep review teaser per month**.
+- **Free accounts get 3 product reviews (lifetime)** and **1 deep review teaser (lifetime)**.
 - **Update reviews use the same product review credits** as new URLs.
 - **At limit, product reviews pause** until upgrade or the next billing cycle.
 - **Every free report is an upsell impression.** Upgrade when you ship weekly and need MCP, compare, or more reviews.
@@ -53,7 +53,7 @@ Pricing numbers: [`lib/marketing/copy/terminology.ts`](../lib/marketing/copy/ter
 | Pro | $69/mo | 25 | 4 |
 | Studio | $199/mo | 80 | 10 |
 
-Shipped Stripe IDs and enforcement may lag; see `lib/billing/plans.ts` and [PRODUCT.md](../PRODUCT.md).
+Shipped Stripe IDs and enforcement: `lib/billing/plans.ts`, `lib/audit/usage.ts`.
 
 Display name **Studio** maps to `TEAM` enum.
 

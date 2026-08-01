@@ -6,40 +6,42 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BILLING_ACTION_COPY } from '@/lib/marketing/copy'
 import {
-  submitBetaInterest,
+  submitWaitlistJoin,
   type CheckoutPlan,
 } from '@/lib/billing/client-checkout'
 import { trackEvent } from '@/lib/analytics/events'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
-interface BetaInterestFormProps {
+interface WaitlistJoinFormProps {
   plan: CheckoutPlan
   initialEmail?: string
   compact?: boolean
   source?: string
 }
 
-export function BetaInterestForm({
+export function WaitlistJoinForm({
   plan,
   initialEmail = '',
   compact = false,
   source = 'pricing',
-}: BetaInterestFormProps) {
+}: WaitlistJoinFormProps) {
   const inputId = useId()
   const [email, setEmail] = useState(initialEmail)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const emailLocked = Boolean(initialEmail)
   const submitLabel =
-    plan === 'TEAM' ? BILLING_ACTION_COPY.beta.submitStudio : BILLING_ACTION_COPY.beta.submitPro
+    plan === 'TEAM'
+      ? BILLING_ACTION_COPY.waitlist.submitStudio
+      : BILLING_ACTION_COPY.waitlist.submitPro
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     if (!email.trim()) return
 
     setSubmitting(true)
-    const outcome = await submitBetaInterest({
+    const outcome = await submitWaitlistJoin({
       email: email.trim(),
       plan,
       source,
@@ -60,7 +62,7 @@ export function BetaInterestForm({
     return (
       <div className="flex items-center justify-center gap-2 text-sm text-foreground" role="status">
         <CheckCircle2 className="h-4 w-4 text-success" aria-hidden />
-        {BILLING_ACTION_COPY.beta.success}
+        {BILLING_ACTION_COPY.waitlist.success}
       </div>
     )
   }
@@ -87,15 +89,18 @@ export function BetaInterestForm({
         <Button
           type="submit"
           loading={submitting}
-          loadingLabel={BILLING_ACTION_COPY.beta.submitting}
+          loadingLabel={BILLING_ACTION_COPY.waitlist.submitting}
           disabled={!email.trim()}
         >
           {submitLabel}
         </Button>
       </div>
       <p className="text-center text-3xs leading-snug text-muted-foreground">
-        {BILLING_ACTION_COPY.beta.description}
+        {BILLING_ACTION_COPY.waitlist.description}
       </p>
     </form>
   )
 }
+
+/** @deprecated Use WaitlistJoinForm */
+export const BetaInterestForm = WaitlistJoinForm

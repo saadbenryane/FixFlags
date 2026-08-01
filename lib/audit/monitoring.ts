@@ -49,12 +49,14 @@ export async function startMonitoringAudit(
     return validation
   }
 
-  // Manual re-check is always a FULL fresh capture.
+  // Manual owner update reviews consume product-review credits; watch-triggered runs skip.
+  const skipUsage = (options.trigger ?? 'MANUAL') === 'WATCH'
+
   const { auditId, status } = await createAndEnqueueAudit({
     url: parent!.url,
     userId: user.id,
     parentId,
-    skipUsageCount: true,
+    skipUsageCount: skipUsage,
     monitoringMode: 'FULL',
     recheckTrigger: options.trigger ?? 'MANUAL',
     delayMs: options.delayMs,

@@ -79,7 +79,7 @@ describe('startMonitoringAudit', () => {
         url: 'https://example.com',
         userId: 'u1',
         parentId: 'parent-1',
-        skipUsageCount: true,
+        skipUsageCount: false,
         monitoringMode: 'FULL',
       })
     )

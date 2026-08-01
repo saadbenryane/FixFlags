@@ -97,24 +97,26 @@ Paste your live URL. FixFlags tests the paths that matter, shows exactly where t
 4. User creates an account to save all Flags and fix prompts.
 5. User pastes fix prompts into their AI editor.
 6. User ships fixes.
-7. User re-checks the same URL (free, unlimited).
+7. User runs an update review on the same URL (metered; uses a product review credit).
 8. User sees before/after comparison and cleared Flags.
-9. User upgrades to Finish Check for authenticated journey testing.
-10. User enables Watch for deployment-triggered regression detection.
+9. User upgrades to Pro or Studio for more reviews, compare, and MCP.
+10. User enables product watch (Pro/Studio) for deployment-triggered regression detection.
 
-Steps 4-10 are the differentiator. Re-check is the habit.
+Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
 
 ## What we ship
 
-### Three products
+### Subscription plans (shipped)
 
-| Product | Promise | Price |
-|---------|---------|-------|
-| **Quick Check** | See what you missed | Free |
-| **Finish Check** | Test what customers came to do | $49 one-time |
-| **Watch** | Know when an important path breaks | $39/mo (Pro) |
+| Plan | Price | Product reviews | Deep reviews |
+|------|-------|-----------------|--------------|
+| **Free** | $0 | 3 lifetime | 1 teaser (lifetime) |
+| **Pro** (`BUILDER`) | $69/mo | 25/month | 4/month |
+| **Studio** (`TEAM`) | $199/mo | 80/month | 10/month |
 
-Detail: `knowledge/product-system.md`.
+Update reviews use the same product review credit pool as new URLs. Internal route `/re-check` remains for API compatibility.
+
+Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 
 ### First check and account claim
 - A homepage URL submission immediately opens the progressive report canvas. New anonymous scans place a required sign-up or sign-in dialog over an inert report until ownership is confirmed.
@@ -124,43 +126,26 @@ Detail: `knowledge/product-system.md`.
 - URLs captured on `Audit` and `Lead` for outbound (`/admin/leads`)
 
 ### Free (forever)
-- 3 new URL checks lifetime (claimed teaser counts as 1; full report with fix prompts)
+- 3 product reviews lifetime (claimed teaser counts as 1; full report with fix prompts)
+- 1 deep review teaser (lifetime)
 - CTA flow test (automated click-through with before/after screenshots)
 - Preview cards (Google snippet + social link preview)
 - Fix prompts tuned for Cursor, Claude Code, Lovable, Bolt
-- Re-checks (free and unlimited on owned reports)
+- Update reviews metered (same product review credits)
 
-### Finish Check ($49 one-time)
-- One product, three important journeys
-- Desktop and mobile
-- Public or staging environment
-- Test-account support
-- Complete replay and evidence
-- Full Finish Plan
-- Builder-ready fixes
-- Unlimited re-checks for seven days
-
-### Pro ($39/mo) — `BUILDER` in schema
-- One active product
-- Five saved journeys
-- Deployment-triggered checks
-- Before-and-after history
-- GitHub integration
+### Pro ($69/mo) — `BUILDER` in schema
+- 25 product reviews and 4 deep reviews per month
+- Before-and-after compare
+- MCP in supported builders
 - CLI and MCP
-- Confirmed regression alerts
-- Included monthly journey allowance
-- Additional usage available
+- Product watch with regression email (weekly/daily on Studio)
 
-### Studio ($129/mo)
-- Up to ten active products
-- Twenty-five saved journeys
-- Client-ready reports
-- Team access
-- Project templates
-- GitHub and deployment integrations
-- Branded exports
-- More included runs
-- Priority support
+### Studio ($199/mo) — `TEAM` in schema
+- 80 product reviews and 10 deep reviews per month
+- Everything in Pro
+- Up to 5 projects
+- GitHub repository scans
+- Share links for client reports
 
 ## Rubrics
 
@@ -275,6 +260,6 @@ Five concrete checks from report evidence. Fix before shipping:
 
 - **Core loop above all.** Every feature must serve Check → Fix → Verify → Watch.
 - **Every feature must serve the core loop.** If it does not fit Check → Fix → Verify → Watch, it does not ship.
-- **Re-checks are never gated.** A user who re-checks is a user who sees value.
+- **Update reviews are metered** like new product reviews. Product watch-triggered runs do not consume the manual credit pool.
 - **Localhost and private networks are not supported.** Studio projects may store encrypted preview scan access (HTTP basic auth, cookies, headers) for public preview URLs.
 - **CI/CD:** Railway deployment webhook (`/api/webhooks/railway?apiKey=...&url=...`) enqueues Launch Checks after deploy. See `docs/railway-deploy-check.md`.

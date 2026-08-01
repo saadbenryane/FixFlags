@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { PRICING, BILLING_ACTION_COPY } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
 import { pickPlan, routerForPlanResult } from '@/lib/billing/pick-plan'
-import { BetaInterestForm } from '@/components/billing/BetaInterestForm'
+import { WaitlistJoinForm } from '@/components/billing/WaitlistJoinForm'
 import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
 
 interface Props {
@@ -75,7 +75,7 @@ export function PricingCTAButton({
   }
 
   if (showBetaForm && isPaidPlan) {
-    return <BetaInterestForm plan={plan} initialEmail={userEmail} source="pricing" />
+    return <WaitlistJoinForm plan={plan} initialEmail={userEmail} source="pricing" />
   }
 
   return (

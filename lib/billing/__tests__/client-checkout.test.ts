@@ -43,16 +43,16 @@ describe('requestPlanCheckout', () => {
     })
   })
 
-  it('returns the private beta state without inventing a destination', async () => {
+  it('returns paid-checkout-closed without inventing a destination', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
-        new Response(JSON.stringify({ code: 'PRIVATE_BETA' }), { status: 403 })
+        new Response(JSON.stringify({ code: 'PAID_CHECKOUT_CLOSED' }), { status: 403 })
       )
     )
 
     await expect(requestPlanCheckout('BUILDER')).resolves.toEqual({
-      kind: 'private-beta',
+      kind: 'paid-checkout-closed',
     })
   })
 
@@ -74,7 +74,7 @@ describe('submitBetaInterest', () => {
       submitBetaInterest({ email: 'builder@example.com', plan: 'TEAM', source: 'pricing' })
     ).resolves.toEqual({ kind: 'submitted' })
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/stripe/beta-interest',
+      '/api/stripe/waitlist',
       expect.objectContaining({
         body: JSON.stringify({
           email: 'builder@example.com',

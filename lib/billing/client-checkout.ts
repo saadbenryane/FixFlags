@@ -4,7 +4,7 @@ export type CheckoutPlan = 'BUILDER' | 'TEAM'
 
 export type CheckoutOutcome =
   | { kind: 'redirect'; url: string; existingSubscription: boolean }
-  | { kind: 'private-beta' }
+  | { kind: 'paid-checkout-closed' }
   | { kind: 'unavailable'; message: string }
   | { kind: 'error'; message: string }
   | { kind: 'missing-destination' }
@@ -31,7 +31,9 @@ export async function requestPlanCheckout(plan: CheckoutPlan): Promise<CheckoutO
     })
     const data = (await response.json().catch(() => ({}))) as CheckoutResponse
 
-    if (data.code === 'PRIVATE_BETA') return { kind: 'private-beta' }
+    if (data.code === 'PAID_CHECKOUT_CLOSED' || data.code === 'PRIVATE_BETA') {
+      return { kind: 'paid-checkout-closed' }
+    }
 
     if (typeof data.url === 'string' && (response.ok || response.status === 409)) {
       return {
@@ -61,18 +63,18 @@ export async function requestPlanCheckout(plan: CheckoutPlan): Promise<CheckoutO
   }
 }
 
-export type BetaInterestOutcome =
+export type WaitlistJoinOutcome =
   | { kind: 'submitted' }
   | { kind: 'error'; message: string }
 
-export async function submitBetaInterest(input: {
+export async function submitWaitlistJoin(input: {
   email: string
   plan: CheckoutPlan
   source?: string
   campaign?: string
-}): Promise<BetaInterestOutcome> {
+}): Promise<WaitlistJoinOutcome> {
   try {
-    const response = await fetch('/api/stripe/beta-interest', {
+    const response = await fetch('/api/stripe/waitlist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -88,9 +90,22 @@ export async function submitBetaInterest(input: {
     const data = (await response.json().catch(() => ({}))) as CheckoutResponse
     return {
       kind: 'error',
-      message: messageFrom(data) ?? BILLING_ACTION_COPY.beta.failed,
+      message: messageFrom(data) ?? BILLING_ACTION_COPY.waitlist.failed,
     }
   } catch {
-    return { kind: 'error', message: BILLING_ACTION_COPY.beta.failed }
+    return { kind: 'error', message: BILLING_ACTION_COPY.waitlist.failed }
   }
+}
+
+/** @deprecated Use submitWaitlistJoin */
+export type BetaInterestOutcome = WaitlistJoinOutcome
+
+/** @deprecated Use submitWaitlistJoin */
+export async function submitBetaInterest(input: {
+  email: string
+  plan: CheckoutPlan
+  source?: string
+  campaign?: string
+}): Promise<WaitlistJoinOutcome> {
+  return submitWaitlistJoin(input)
 }

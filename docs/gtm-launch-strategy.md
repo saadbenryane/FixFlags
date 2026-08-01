@@ -104,7 +104,7 @@ Manual invites for now. Automate from DB segments later.
 
 ## Dependencies
 
-- Billing metering may lag marketing copy — align before scaling paid ads ([PRODUCT.md](../PRODUCT.md), `usage.ts`).
+- Billing metering aligned with marketing: `lib/billing/plans.ts`, `lib/audit/usage.ts`, `scripts/billing-plans-guard.mjs`.
 - Live Stripe prices must match marketing $69 / $199 ([terminology.ts](../lib/marketing/copy/terminology.ts)).
 
 ---

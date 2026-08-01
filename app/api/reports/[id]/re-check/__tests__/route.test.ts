@@ -45,7 +45,7 @@ describe('POST /api/reports/[id]/re-check', () => {
     expect(res.status).toBe(404)
   })
 
-  it('starts a re-check without consulting quota (never gated)', async () => {
+  it('starts a re-check and forwards quota enforcement to task layer', async () => {
     const res = await POST(postReq(), { params: Promise.resolve({ id: 'parent-1' }) })
     expect(res.status).toBe(201)
     const body = await res.json()

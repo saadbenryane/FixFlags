@@ -19,15 +19,15 @@ Adjacent tools currently range from low-cost browser access around $19 monthly, 
 
 ## Pricing (current — shipped)
 
-| Tier | Plan enum | Price | New URL checks | Key hook |
-|------|-----------|-------|----------------|----------|
-| Free | `FREE` | $0 | 3 lifetime | Full report after claim, unlimited re-checks on owned reports |
-| Pro | `BUILDER` | $39/mo | 25/mo | Compare, MCP / API keys, Journey Review |
-| Studio | `TEAM` | $129/mo | 100/mo | Share links, projects, GitHub repo scans |
+| Tier | Plan enum | Price | Product reviews | Deep reviews | Notes |
+|------|-----------|-------|-----------------|--------------|-------|
+| Free | `FREE` | $0 | 3 lifetime | 1 teaser (lifetime) | Update reviews metered |
+| Pro | `BUILDER` | $69/mo | 25/mo | 4/mo | Compare, MCP, product watch |
+| Studio | `TEAM` | $199/mo | 80/mo | 10/mo | Share links, projects, GitHub scans |
 
-Display name **Studio** maps to `TEAM`. Do not use "Max" in docs.
+Display name **Studio** maps to `TEAM`. Enforcement: `lib/billing/plans.ts`, `lib/audit/usage.ts`.
 
-Re-checks are free and unlimited. Credit packs are paid overflow for new URL checks.
+Update reviews consume product review credits. Product watch-triggered re-checks skip the manual credit pool.
 
 ## Directional packaging (not in schema yet)
 

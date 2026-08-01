@@ -28,18 +28,18 @@ export const NURTURE_EMAILS = {
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
-  <p>You have ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month. Each one gives you Flags across Message, Experience, and Reach, plus a fix prompt you can paste into Cursor, Claude, Lovable, or Bolt.</p>
+  <p>You have ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime). Each one gives you Flags across Message, Experience, and Reach, plus a fix prompt you can paste into Cursor, Claude, Lovable, or Bolt.</p>
   <p>Paste the URL you are about to share. That is what this is for.</p>
   <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Run your first product review</a></p>
   <p style="font-size: 13px; color: hsl(212 10% 46%);">Common first reviews: your Product Hunt page, your demo day landing page, a client site before handoff.</p>
 `),
   },
   firstAuditNudge: {
-    subject: `Your ${PRICING_COPY.freeProductReviewsPerMonth} product reviews are waiting`,
+    subject: `Your ${PRICING_COPY.freeProductReviewsLifetime} product reviews are waiting`,
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
-  <p>You signed up for ${BRAND.name} yesterday. Your ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month are still waiting.</p>
+  <p>You signed up for ${BRAND.name} yesterday. Your ${PRICING_COPY.freeProductReviewsLifetime} product reviews are still waiting.</p>
   <p>Paste any public URL. You will get Flags with evidence and a fix prompt for each one. The whole thing takes about 60 seconds.</p>
   <p><a href="${SITE_URL}" style="${ctaStyle}">Paste a URL</a></p>
 `),
@@ -97,6 +97,16 @@ export const WAITLIST_EMAILS = {
   <p>When ${planLabel} checkout opens, eligible waitlist members can claim the <strong>40% Founder Discount</strong> for 12 months (one redemption per account).</p>
   <p>We'll email you when it's time to upgrade.</p>
   <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Back to your dashboard</a></p>
+`),
+  }),
+  invited: (planLabel: string) => ({
+    subject: `${planLabel} checkout is open for you`,
+    html: (name: string) =>
+      layout(`
+  <p>Hi${name ? ` ${name}` : ''},</p>
+  <p><strong>${planLabel} checkout is open.</strong> You can upgrade now from pricing or your dashboard.</p>
+  <p>As a waitlist member, you can claim the <strong>40% Founder Discount</strong> for 12 months when you checkout (one redemption per account).</p>
+  <p><a href="${SITE_URL}/pricing" style="${ctaStyle}">Open pricing</a></p>
 `),
   }),
 } as const

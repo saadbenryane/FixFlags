@@ -88,9 +88,9 @@ export async function trackAnonymousAuditId(auditId: string): Promise<void> {
 }
 
 /**
- * Count a completed new-URL check against the user's plan quota.
- * Idempotent via usageCountedAt. Re-checks (skipUsageCount) are marked counted
- * but never increment. Does not require prescription (aiReviewAt).
+ * Count a completed new-URL or update review against the user's product-review quota.
+ * Idempotent via usageCountedAt. Watch-triggered re-checks (skipUsageCount) are marked
+ * counted but never increment.
  */
 export async function incrementUsageOnCompleteForAudit(
   auditId: string,
@@ -147,6 +147,63 @@ export async function incrementUsageOnCompleteForAudit(
     await tx.audit.update({
       where: { id: auditId },
       data: { usageCountedAt: new Date() },
+    })
+  })
+}
+
+/**
+ * Count a completed deep review (journey exploration) against the user's deep-review quota.
+ * Idempotent via deepReviewUsageCountedAt on the audit.
+ */
+export async function incrementDeepReviewOnCompleteForAudit(
+  auditId: string,
+  userId: string
+): Promise<void> {
+  if (isDevUnlimitedScans()) return
+
+  await prisma.$transaction(async (tx) => {
+    const audit = await tx.audit.findUnique({
+      where: { id: auditId },
+      select: {
+        userId: true,
+        journeyReviewIncluded: true,
+        deepReviewUsageCountedAt: true,
+      },
+    })
+    if (
+      !audit ||
+      audit.userId !== userId ||
+      !audit.journeyReviewIncluded ||
+      audit.deepReviewUsageCountedAt
+    ) {
+      return
+    }
+
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { role: true, deepReviewsUsed: true, deepReviewsLimit: true },
+    })
+    if (!user) return
+
+    if (hasUnlimitedScans(user)) {
+      await tx.audit.update({
+        where: { id: auditId },
+        data: { deepReviewUsageCountedAt: new Date() },
+      })
+      return
+    }
+
+    const limit = user.deepReviewsLimit
+    if (user.deepReviewsUsed < limit) {
+      await tx.user.update({
+        where: { id: userId },
+        data: { deepReviewsUsed: { increment: 1 } },
+      })
+    }
+
+    await tx.audit.update({
+      where: { id: auditId },
+      data: { deepReviewUsageCountedAt: new Date() },
     })
   })
 }

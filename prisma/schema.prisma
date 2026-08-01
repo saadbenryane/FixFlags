@@ -245,6 +245,8 @@ model User {
   plan                    Plan                         @default(FREE)
   auditsUsed              Int                          @default(0)
   auditsLimit             Int                          @default(3)
+  deepReviewsUsed         Int                          @default(0)
+  deepReviewsLimit        Int                          @default(1)
   stripeCustomerId        String?                      @unique
   stripeSubscriptionId    String?                      @unique
   stripePriceId           String?
@@ -676,6 +678,7 @@ model Audit {
   startedAt       DateTime?
   completedAt     DateTime?
   usageCountedAt  DateTime?
+  deepReviewUsageCountedAt DateTime?
   finalizedAt     DateTime?
   leadSyncedAt    DateTime?
   errorMsg        String?

@@ -76,8 +76,7 @@ Product review, Deep review, Update review, Funnel, Path, Fix list — from `lib
 - **Customer journey trust close** — Anon evidence placeholders, dishonest Copy toast, score/BLOCKED contradiction, nav CTA clarity. Brand Phase 0 done (`fix-live-images`). Board `customer-journey-completion`.
   *Signal:* Phases 1-3 of customer-journey-completion-plan accepted on production dogfood.
 
-- **New pricing model** — Product review and deep review quotas per plan (Free 3 + 1 deep teaser; Pro $69/mo; Studio $199/mo). Marketing copy in `lib/marketing/copy/terminology.ts`; Stripe enforcement may lag. See [docs/business-model.md](./docs/business-model.md).
-  *Signal:* Finish Check purchasable without sales call; Watch triggers on deployments.
+- **Pricing and metering** — Product review + deep review quotas enforced in code ($69/$199 Pro/Studio). See [docs/business-model.md](./docs/business-model.md). **Closed** in `lib/billing/plans.ts` + `lib/audit/usage.ts`.
 
 - **Growth distribution** — anon → signed-up → paying conversion; upsell timing; re-engagement.
   *Signal:* >5% free-to-paid conversion.

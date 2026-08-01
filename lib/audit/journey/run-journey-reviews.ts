@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import type { ImpactTag, Prisma, RubricName, Severity } from '@prisma/client'
 import { getAuditBrowser } from '@/lib/audit/screenshot'
+import { incrementDeepReviewOnCompleteForAudit } from '@/lib/audit/usage'
 import { logger } from '@/lib/logger'
 import { PIPELINE_PROGRESS_SUBSTEP } from '@/lib/audit/progress'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
@@ -295,7 +296,7 @@ export async function runJourneyReviewsForAudit(
 
   const auditRow = await prisma.audit.findUnique({
     where: { id: auditId },
-    select: { productContract: true },
+    select: { productContract: true, userId: true },
   })
   const contract = parseProductContract(auditRow?.productContract)
   const journeyTypes = orderJourneysFromContract(contract)
@@ -444,6 +445,9 @@ export async function runJourneyReviewsForAudit(
     where: { id: auditId },
     data: { journeyReviewAt: new Date(), progress: PIPELINE_PROGRESS_SUBSTEP.JOURNEY_DONE },
   })
+  if (auditRow?.userId) {
+    await incrementDeepReviewOnCompleteForAudit(auditId, auditRow.userId)
+  }
   await logPipelineEvent(auditId, {
     stage: 'JOURNEY_REVIEW',
     event: 'completed',

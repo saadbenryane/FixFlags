@@ -184,6 +184,15 @@ export const BILLING_ACTION_COPY = {
     gatedStudioCta: 'Join Studio waitlist',
     gatedHint: 'Pro and Studio open in batches. Join the waitlist for the 40% Founder Discount.',
   },
+  waitlist: {
+    submitPro: 'Join Pro waitlist',
+    submitStudio: 'Join Studio waitlist',
+    submitting: 'Joining waitlist…',
+    failed: 'Could not join the waitlist. Try again.',
+    success: "You're on the list. We'll email you when checkout opens.",
+    description:
+      'Paid checkout opens in batches. Waitlist members can claim the 40% Founder Discount for 12 months when checkout opens (one redemption per account).',
+  },
   founderOffer: {
     name: '40% Founder Discount',
     duration: '12 months',
@@ -194,7 +203,7 @@ export const BILLING_ACTION_COPY = {
 export const UPSELLS = {
   anon: {
     headline: "Save this report and run more reviews",
-    body: "Create a free account for fix prompts, update reviews after fixes, and 3 product reviews per month. Your report saves to your history.",
+    body: "Create a free account for fix prompts, update reviews after fixes, and 3 product reviews (lifetime). Your report saves to your history.",
     primaryCta: "Create free account",
     secondaryCta: "See paid plans",
   },

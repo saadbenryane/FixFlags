@@ -6,7 +6,7 @@ import { UNLIMITED_SCAN_LIMIT } from '@/lib/auth/permissions'
 describe('computePlanLimitUpdate', () => {
   it('sets admin users to unlimited', () => {
     const update = computePlanLimitUpdate(
-      { role: 'admin', auditsUsed: 10, auditsLimit: 3 },
+      { role: 'admin', auditsUsed: 10, auditsLimit: 3, deepReviewsUsed: 2, deepReviewsLimit: 1 },
       'FREE'
     )
     assert.equal(update?.auditsLimit, UNLIMITED_SCAN_LIMIT)
@@ -15,7 +15,7 @@ describe('computePlanLimitUpdate', () => {
 
   it('sets free plan to 3 lifetime checks', () => {
     const update = computePlanLimitUpdate(
-      { role: 'user', auditsUsed: 0, auditsLimit: 25 },
+      { role: 'user', auditsUsed: 0, auditsLimit: 25, deepReviewsUsed: 0, deepReviewsLimit: 10 },
       'FREE'
     )
     assert.equal(update?.auditsLimit, 3)
@@ -24,7 +24,7 @@ describe('computePlanLimitUpdate', () => {
 
   it('caps used count when downgrading', () => {
     const update = computePlanLimitUpdate(
-      { role: 'user', auditsUsed: 20, auditsLimit: 25 },
+      { role: 'user', auditsUsed: 20, auditsLimit: 25, deepReviewsUsed: 5, deepReviewsLimit: 10 },
       'FREE'
     )
     assert.equal(update?.auditsLimit, 3)

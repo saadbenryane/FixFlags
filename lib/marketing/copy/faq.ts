@@ -49,11 +49,11 @@ export const FAQ = [
   },
   {
     question: 'Do I need an account for my first product review?',
-    answer: `Yes. Your report opens immediately while the product review runs. If you are signed out, create a free account or sign in to save it. Free includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month and ${PRICING_COPY.freeDeepReviewTeaserPerMonth} deep review teaser.`,
+    answer: `Yes. Your report opens immediately while the product review runs. If you are signed out, create a free account or sign in to save it. Free includes ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) and ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser.`,
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
-    answer: `Free: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month with full reports and fix prompts, plus ${PRICING_COPY.freeDeepReviewTeaserPerMonth} deep review teaser. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): before/after compare, MCP in supported builders, ${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month.`,
+    answer: `Free: ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) with full reports and fix prompts, plus ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser. Update reviews use the same product review credits. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): before/after compare, MCP in supported builders, ${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month.`,
   },
   {
     question: 'Do I need Cursor or MCP?',

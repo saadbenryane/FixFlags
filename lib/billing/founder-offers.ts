@@ -1,4 +1,5 @@
 import type { Plan } from '@prisma/client'
+import { prisma } from '@/lib/db'
 import { envPriceUsd } from '@/lib/billing/env'
 import { isPaidOpenServer } from '@/lib/billing/paid-open'
 
@@ -30,21 +31,29 @@ export function isFounderOfferConfigured(plan: FounderCheckoutPlan): boolean {
 }
 
 export interface FounderEligibilityInput {
+  id: string
   founderOfferRedeemedAt: Date | null
 }
 
-/** One founder redemption per account across Pro and Studio. */
-export function isFounderOfferEligible(user: FounderEligibilityInput): boolean {
+/** One founder redemption per account; waitlist membership required for the target plan. */
+export async function isFounderOfferEligible(
+  user: FounderEligibilityInput,
+  plan: FounderCheckoutPlan
+): Promise<boolean> {
   if (!isPaidOpenServer()) return false
   if (user.founderOfferRedeemedAt) return false
-  return true
+  const entry = await prisma.paidPlanWaitlistEntry.findUnique({
+    where: { userId_plan: { userId: user.id, plan } },
+    select: { id: true },
+  })
+  return Boolean(entry)
 }
 
-export function founderCheckoutDiscounts(
+export async function founderCheckoutDiscounts(
   plan: FounderCheckoutPlan,
   user: FounderEligibilityInput
-): { promotion_code: string }[] | undefined {
-  if (!isFounderOfferEligible(user)) return undefined
+): Promise<{ promotion_code: string }[] | undefined> {
+  if (!(await isFounderOfferEligible(user, plan))) return undefined
   const promotionId = founderPromotionIdForPlan(plan)
   if (!promotionId) return undefined
   return [{ promotion_code: promotionId }]

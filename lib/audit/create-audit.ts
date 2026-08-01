@@ -9,7 +9,8 @@ import {
   isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
 import { resolveIncludeAiForNewAudit } from '@/lib/audit/ai-report-entitlement'
-import { canAccessPaidFeatures, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
+import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
+import { wouldBlockDeepReview } from '@/lib/billing/deep-review-limit'
 import { wouldBlockNewCheckWithCredits } from '@/lib/billing/credits'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import type { AuditAttribution } from '@/lib/leads/attribution'
@@ -118,10 +119,17 @@ async function resolveJourneyReviewIncluded(userId: string | null | undefined): 
   if (!userId) return false
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, plan: true, role: true, subscriptionStatus: true },
+    select: {
+      id: true,
+      plan: true,
+      role: true,
+      subscriptionStatus: true,
+      deepReviewsUsed: true,
+      deepReviewsLimit: true,
+    },
   })
   if (!user) return false
-  return canAccessPaidFeatures(user)
+  return !wouldBlockDeepReview(user)
 }
 
 export async function createAndEnqueueAudit(

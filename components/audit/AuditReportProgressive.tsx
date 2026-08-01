@@ -29,6 +29,11 @@ import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
+import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
+import { WorkspaceActivityPanel } from '@/components/report/WorkspaceActivityPanel'
+import { WorkspaceBrowserPanel } from '@/components/report/WorkspaceBrowserPanel'
+import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
+import { WorkspacePlaybackStrip } from '@/components/report/WorkspacePlaybackStrip'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
@@ -286,6 +291,63 @@ export function AuditReportProgressive({
         />
       }
       flagsSection={
+        auditId ? (
+          <ReportWorkspaceSplitShell
+            isActiveReview
+            leftPanel={
+              <>
+                <WorkspaceActivityPanel events={actionTimeline} />
+                <WorkspaceChatPanel auditId={auditId} />
+              </>
+            }
+            browserPanel={
+              <WorkspaceBrowserPanel url={url} screenshots={screenshots} />
+            }
+            reportPanel={
+              <section
+                id={sectionId}
+                className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-4')}
+                aria-busy={isLoading}
+              >
+                <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+                  {isLoading ? `${stage.statusLine}. ${stage.detail}` : REPORT_COPY.sectionTitles.allFixes}
+                </p>
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>
+                  {flagCount > 0 ? (
+                    <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                      {flagCount} {flagCount === 1 ? 'flag' : 'flags'}
+                    </span>
+                  ) : null}
+                </div>
+                <ExplorerErrorBoundary
+                  fallback={
+                    <div className="space-y-3 py-4">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
+                      <Skeleton className="h-4 w-2/3" />
+                    </div>
+                  }
+                >
+                  <LiveReportExplorer model={explorerModel} loading={isLoading} />
+                </ExplorerErrorBoundary>
+              </section>
+            }
+            playbackPanel={
+              <WorkspacePlaybackStrip
+                steps={actionTimeline.slice(0, 12).map((event, index) => ({
+                  id: `${event.kind}-${index}`,
+                  label: event.kind,
+                }))}
+              />
+            }
+            mobileProductPanel={
+              <ExplorerErrorBoundary fallback={null}>
+                <LiveReportExplorer model={explorerModel} loading={isLoading} />
+              </ExplorerErrorBoundary>
+            }
+          />
+        ) : (
         <section
           id={sectionId}
           className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-4')}
@@ -317,6 +379,7 @@ export function AuditReportProgressive({
             />
           </ExplorerErrorBoundary>
         </section>
+        )
       }
       contextSections={
         <>
