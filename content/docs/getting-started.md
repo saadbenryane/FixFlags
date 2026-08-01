@@ -1,16 +1,16 @@
 ## Before you start
 
-Use a deployed, publicly reachable `http` or `https` URL. FixFlags cannot check localhost, private preview links, password-protected pages, or internal network addresses.
+Use a deployed, publicly reachable `http` or `https` URL. FixFlags cannot review localhost, private preview links, password-protected pages, or internal network addresses.
 
-## Run your first check
+## Run your first product review
 
-Open the FixFlags homepage, paste the URL, and choose **Review my site**. FixFlags captures the page, checks it, judges the evidence, and builds a Finish Plan.
+Open the FixFlags homepage, paste the URL, and choose **Review my product**. FixFlags captures the page, reviews it, judges the evidence, and builds a Finish Plan.
 
-Keep the report open while the check runs. The progress state shows whether FixFlags is capturing, checking, judging, or finalizing.
+Keep the report open while the product review runs. The progress state shows whether FixFlags is capturing, checking, judging, or finalizing.
 
 ## Claim your report
 
-An anonymous first check stays visible. Sign in from the report to claim it before you continue to a paid setup or another destination.
+An anonymous first product review stays visible. Sign in from the report to claim it before you continue to a paid setup or another destination.
 
 ## Fix the first Flag
 
@@ -18,6 +18,6 @@ Start with the highest-ranked Flag. Read the evidence before copying its prompt.
 
 You can paste that prompt directly or [connect your editor through MCP](/docs/integrations).
 
-## Re-check
+## Update review
 
-Deploy the change first, then choose **Re-check**. A manual Re-check performs a fresh capture and compares the new result with the original report. Re-checks are free and unlimited.
+Deploy the change first, then choose **Update review**. An update review performs a fresh capture and compares the new result with the original report. Each update review uses one product review credit.

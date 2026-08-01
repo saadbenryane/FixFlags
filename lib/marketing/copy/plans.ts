@@ -6,7 +6,7 @@ import { OFFER } from "./brand";
  * The billing module remains the source of truth for limits, pricing logic,
  * and Stripe price IDs.
  */
-const PRO_PRICE = "$39";
+const PRO_PRICE = "$69";
 const PRO_PERIOD = "/mo";
 
 function proUpgradeCta(prefix = "Upgrade to Pro"): string {
@@ -21,11 +21,11 @@ export const PLANS = [
     period: "",
     persona: "Try before launch",
     outcome: "See everything on one page",
-    audits: "3 new URL checks",
+    audits: "3 product reviews / month",
     features: [
-      "3 new URL checks with full reports and fix prompts",
-      "Unlimited re-checks on reports you own",
-      "Upgrade anytime for more new checks",
+      "3 product reviews per month with full reports and fix prompts",
+      "1 deep review teaser per month",
+      "Upgrade anytime for more reviews",
     ],
     cta: "Start free",
     href: "/sign-up?from=pricing",
@@ -39,9 +39,9 @@ export const PLANS = [
     period: PRO_PERIOD,
     persona: "Solo builders shipping weekly",
     outcome: "Finish what your AI started, every week",
-    audits: "5 journeys / month",
+    audits: "25 product reviews / month",
     features: [
-      "5 journeys per month (check → fix → re-check cycles)",
+      "25 product reviews and 4 deep reviews per month",
       "Before/after comparisons",
       "MCP in supported builders",
       "Weekly product watch with regression email",
@@ -54,14 +54,14 @@ export const PLANS = [
   {
     name: "Studio",
     plan: "TEAM" as const,
-    price: "$129",
+    price: "$199",
     period: "/mo",
     persona: "Agencies and multi-site teams",
     outcome: "Finish many products, not just one",
-    audits: "25 journeys / month",
+    audits: "80 product reviews / month",
     features: [
       "Everything in Pro",
-      "25 journeys per month",
+      "80 product reviews and 10 deep reviews per month",
       "Up to 5 projects",
       "Client-ready public share links",
       "GitHub repository scans",
@@ -78,22 +78,22 @@ export const PLANS = [
 export const PRICING_FAQ = [
   {
     question: "Can I start free and upgrade later?",
-    answer: `Yes. ${OFFER.line} Free accounts include 3 checks. Upgrade for more journeys, compare, and MCP.`,
+    answer: `Yes. ${OFFER.line} Upgrade for more product reviews, deep reviews, compare, and MCP.`,
   },
   {
-    question: "What counts as a scan?",
+    question: "What counts as a product review?",
     answer:
-      "A new URL check counts toward your plan limit. Re-checks on a report you own are free and unlimited. Failed scans that never produce a report do not use a credit.",
+      "A product review is one full pass on a URL: checks, report, and fix prompts. A new URL and an update review on the same report each use one product review from your monthly allowance. Failed runs that never produce a report do not count.",
   },
   {
-    question: "Is each page a separate scan?",
+    question: "What is a deep review?",
     answer:
-      "Yes. Each new URL you submit is a separate check. Re-checking the same report does not use another credit.",
+      "A deep review walks the journeys that matter, maps your funnel, and records path playback with evidence. Deep reviews use their own monthly allowance on paid plans.",
   },
   {
-    question: "Do re-checks consume credits?",
+    question: "Do update reviews consume credits?",
     answer:
-      "No. Re-checks on reports you own are free and unlimited on every plan.",
+      "Yes. An update review on a report you own uses one product review credit, the same as reviewing a new URL. Run another deep review only when you need full journey and funnel coverage again.",
   },
   {
     question: "Are reports public or private?",
@@ -102,7 +102,7 @@ export const PRICING_FAQ = [
   {
     question: "Are screenshots stored?",
     answer:
-      "Yes. We store screenshots and page evidence needed to show Flags and re-check diffs. See the Privacy Policy for retention details.",
+      "Yes. We store screenshots and page evidence needed to show Flags and before/after comparisons. See the Privacy Policy for retention details.",
   },
   {
     question: "How long are reports saved?",
@@ -115,9 +115,9 @@ export const PRICING_FAQ = [
       "Yes. Cancel from billing settings and keep access through the end of the current billing period.",
   },
   {
-    question: "What happens when I hit my check limit?",
+    question: "What happens when I hit my limit?",
     answer:
-      "Checks pause until you upgrade. Free accounts get 3 checks total (not monthly). Paid plans reset each billing cycle. Re-checks on owned reports stay free.",
+      "Product reviews pause until you upgrade or your billing cycle resets. Free includes 3 product reviews per month. Paid plans reset each cycle.",
   },
   {
     question: "Do I need Pro for MCP?",
@@ -127,15 +127,15 @@ export const PRICING_FAQ = [
   {
     question: "What\u2019s included in every plan?",
     answer:
-      "Every plan includes Flags with evidence, fix prompts after you create an account, and unlimited re-checks. Paid plans add more new checks, before/after compare, MCP, and team features.",
+      "Every plan includes Flags with evidence and fix prompts after you create an account. Paid plans add more product reviews, deep reviews, before/after compare, MCP, and team features.",
   },
 ] as const;
 
 export const PRICING = {
   label: "Simple pricing",
-  headline: "Start free. Upgrade when you\u2019re checking often.",
-  subhead: `${OFFER.line} Upgrade for more new checks, before/after compare, and MCP.`,
-  trustBadge: "Unlimited re-checks on every plan",
+  headline: "Start free. Upgrade when you\u2019re reviewing often.",
+  subhead: `${OFFER.line} Upgrade for more product reviews, deep reviews, compare, and MCP.`,
+  trustBadge: "Product reviews and deep reviews on every paid plan",
   assurances: [
     "Results in under 60 seconds",
     "No credit card for Free",
@@ -145,12 +145,12 @@ export const PRICING = {
   upgradeStepsLoggedIn: "Stripe checkout → Dashboard",
   checkoutRedirecting: "Redirecting to checkout…",
   allPlansInclude:
-    "Every check includes evidence and rubric summaries. Fix prompts come with a free account. Re-checks stay free. Pro adds compare, more new checks, and MCP.",
+    "Every product review includes evidence and rubric summaries. Fix prompts come with a free account. Pro adds compare, more reviews, deep reviews, and MCP.",
   pickerEyebrow: "Pick a plan",
   pickerTitle: "Choose how you want to start",
-  pickerSubtitle: "Free includes 3 URL checks and every Flag. Paid adds more checks, compare, and MCP.",
+  pickerSubtitle: "Free includes 3 product reviews per month and every Flag. Paid adds more reviews, deep reviews, compare, and MCP.",
   pickerBody: "Pick the plan that matches how often you ship.",
-  pickerBodyWithReport: "Your scan is still running. Pick a plan to keep your report and fix prompts.",
+  pickerBodyWithReport: "Your review is still running. Pick a plan to keep your report and fix prompts.",
   pickerReportNote: "Choosing Free returns you to the running report.",
   pickerFootnote: "Need more detail?",
   pickerCompareLink: "Open the full comparison.",
@@ -183,8 +183,8 @@ export const BILLING_ACTION_COPY = {
 
 export const UPSELLS = {
   anon: {
-    headline: "Save this report and run more checks",
-    body: "Create a free account for fix prompts, re-check after fixes, and 3 new URL checks. Your teaser scan saves to your history.",
+    headline: "Save this report and run more reviews",
+    body: "Create a free account for fix prompts, update reviews after fixes, and 3 product reviews per month. Your report saves to your history.",
     primaryCta: "Create free account",
     secondaryCta: "See paid plans",
   },
@@ -194,15 +194,15 @@ export const UPSELLS = {
   },
   signedInAiDegraded: {
     headline: "Fix steps are below",
-    body: "AI summary did not finish for this run. You still have evidence and fix steps for every Flag below. Re-check to retry the AI pass.",
+    body: "AI summary did not finish for this run. You still have evidence and fix steps for every Flag below. Run an update review to retry the AI pass.",
   },
-  atLimit: "Check limit reached. Upgrade to continue",
+  atLimit: "Product review limit reached. Upgrade to continue",
 } as const;
 
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
-    headline: "You\u2019ve used your 3 free checks",
-    body: "Re-checks on reports you own stay free and unlimited. Upgrade to Pro for 5 journeys per month, before/after compare, and MCP in Cursor, Claude Code, Windsurf, Lovable, or Bolt.",
+    headline: "You\u2019ve used your free product reviews this month",
+    body: "Upgrade to Pro for 25 product reviews and 4 deep reviews per month, before/after compare, and MCP in Cursor, Claude Code, Windsurf, Lovable, or Bolt.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
   },
@@ -211,12 +211,12 @@ export const UPGRADE_MOMENTS = {
       void scoreDelta;
       return "Fixes verified";
     },
-    body: "Keep the loop in your editor with MCP and 5 journeys each month.",
+    body: "Keep the loop in your editor with MCP and more product reviews each month.",
     cta: proUpgradeCta("Start Pro"),
     plan: "BUILDER" as const,
   },
   compare_flat: {
-    headline: "Still Flags after your re-check",
+    headline: "Still Flags after your update review",
     body: "Use MCP so your agent can close what remains without copy-pasting URLs.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
@@ -235,14 +235,19 @@ export const UPGRADE_MOMENTS = {
   },
   free_default: {
     headline: "Ship weekly? Automate the loop",
-    body: "Pro adds 5 journeys per month, before/after compare, and MCP so checks run inside your supported builder.",
+    body: "Pro adds 25 product reviews and 4 deep reviews per month, before/after compare, and MCP so reviews run inside your supported builder.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
   },
   report_completed: {
-    headline: "Automate the report loop",
-    body: "Pro adds 5 journeys each month, before/after proof, and MCP in your supported builder.",
+    headline: "Automate the review loop",
+    body: "Pro adds more product reviews and deep reviews each month, before/after proof, and MCP in your supported builder.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
   },
+} as const;
+
+export const BILLING_PAGE_COPY = {
+  pastDueBody:
+    "Update your card to restore paid features (compare, MCP, share). We'll retry automatically. Product reviews resume when payment succeeds.",
 } as const;

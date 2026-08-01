@@ -16,7 +16,7 @@ export const HELP_CATEGORIES: readonly HelpCategory[] = [
   {
     id: 'billing-and-plans',
     title: 'Billing and plans',
-    description: 'Free vs Pro, credits, re-checks, and payments.',
+    description: 'Free vs Pro, credits, update reviews, and payments.',
     icon: 'creditCard',
   },
   {
@@ -48,7 +48,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Your report opens immediately in scanning mode. If you are signed out, create an account or sign in while the check runs. A free account saves the report, reveals every available prompt, and includes 3 new URL checks. Re-checks on reports you own are unlimited and free.',
+        text: 'Your report opens immediately while the product review runs. If you are signed out, create an account or sign in to save it. A free account includes 3 product reviews per month and 1 deep review teaser. Update reviews on the same report also use product review credits.',
       },
       {
         type: 'ol',
@@ -91,25 +91,25 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'flag-fix-recheck',
     categoryId: 'getting-started',
-    title: 'Flag, fix, and re-check',
-    excerpt: 'The core loop. Re-checks never count against your new-URL limit.',
+    title: 'Flag, fix, and update review',
+    excerpt: 'The core loop. Update reviews use product review credits.',
     popular: true,
-    searchTokens: ['recheck', 're-check', 'fix prompt', 'loop'],
+    searchTokens: ['recheck', 'update review', 'fix prompt', 'loop'],
     body: [
       {
         type: 'p',
-        text: 'FixFlags is built around one loop: Flag → Fix → Re-check. Copy a fix prompt into your editor, apply the change, then re-check the same report.',
+        text: 'FixFlags is built around one loop: Flag → Fix → update review. Copy a fix prompt into your editor, apply the change, then update review the same report.',
       },
       {
         type: 'p',
-        text: 'Re-checks on reports you own are free and unlimited on every plan. They do not consume a new URL check or a credit pack.',
+        text: 'Update reviews use product review credits on every plan. They count toward the same monthly product review allowance.',
       },
       {
         type: 'callout',
         text: 'Pro adds before/after compare so you can prove what cleared and what is still open.',
       },
     ],
-    related: ['rechecks-are-free', 'reading-your-report', 'what-counts-as-a-check'],
+    related: ['update-review-credits', 'reading-your-report', 'what-counts-as-a-check'],
   },
   {
     slug: 'scores-and-severity',
@@ -198,13 +198,13 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'railway-deploy-check',
     categoryId: 'mcp-and-editors',
-    title: 'Railway deploy check',
-    excerpt: 'Enqueue a Launch Check after each Railway deployment succeeds.',
+    title: 'Railway deploy review',
+    excerpt: 'Enqueue a Live Review after each Railway deployment succeeds.',
     searchTokens: ['railway', 'deploy', 'webhook', 'ci', 'preview', 'release'],
     body: [
       {
         type: 'p',
-        text: 'FixFlags can enqueue a Launch Check when your Railway service deploys successfully. This is the supported post-deploy gate when you host on Railway (no GitHub Action or Vercel webhook required).',
+        text: 'FixFlags can enqueue a Live Review when your Railway service deploys successfully. This is the supported post-deploy review when you host on Railway (no GitHub Action or Vercel webhook required).',
       },
       {
         type: 'ol',
@@ -250,19 +250,19 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'Free: 3 new URL checks with full reports and fix prompts, plus unlimited re-checks on reports you own.',
+        text: 'Free: 3 product reviews per month with full reports and fix prompts, plus 1 deep review teaser.',
       },
       {
         type: 'p',
-        text: 'Pro ($39/mo): before/after compare, MCP in supported builders, and 5 journeys per month.',
+        text: 'Pro ($69/mo): before/after compare, MCP in supported builders, and 25 product reviews and 4 deep reviews per month.',
       },
       {
         type: 'p',
-        text: 'Studio ($129/mo): 25 journeys per month, share links for client reports, and everything in Pro.',
+        text: 'Studio ($199/mo): 80 product reviews and 10 deep reviews per month, share links for client reports, and everything in Pro.',
       },
       {
         type: 'p',
-        text: 'You can start free and upgrade anytime. Paid plans include more journeys per month as you scale.',
+        text: 'You can start free and upgrade anytime. Paid plans include more product reviews and deep reviews each month.',
       },
     ],
     related: ['what-counts-as-a-check', 'cancel-or-manage'],
@@ -270,35 +270,36 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'what-counts-as-a-check',
     categoryId: 'billing-and-plans',
-    title: 'What counts as a check',
-    excerpt: 'New URL checks count. Re-checks do not. Failed scans that never produce a report do not use a credit.',
+    title: 'What counts as a product review',
+    excerpt:
+      'New URLs and update reviews use product review credits. Failed runs that never produce a report do not.',
     searchTokens: ['quota', 'limit', 'credit', 'usage', 'scan'],
     body: [
       {
         type: 'p',
-        text: 'A new URL check counts toward your plan limit. Each new URL you submit is a separate check.',
+        text: 'A product review counts toward your monthly allowance. Each new URL and each update review on the same report uses one product review credit.',
       },
       {
         type: 'p',
-        text: 'Re-checking the same report does not use another credit. Failed scans that never produce a report do not use a credit.',
+        text: 'Failed product reviews that never produce a report do not use a credit.',
       },
     ],
-    related: ['rechecks-are-free', 'free-vs-pro'],
+    related: ['update-review-credits', 'free-vs-pro'],
   },
   {
-    slug: 'rechecks-are-free',
+    slug: 'update-review-credits',
     categoryId: 'billing-and-plans',
-    title: 'Re-checks are free',
-    excerpt: 'Unlimited re-checks on reports you own. They never gate behind quota.',
-    searchTokens: ['unlimited', 'free recheck'],
+    title: 'How update reviews use credits',
+    excerpt: 'Update reviews on reports you own use one product review credit each time.',
+    searchTokens: ['update review', 'recheck', 'quota', 'credit'],
     body: [
       {
         type: 'p',
-        text: 'Re-checks on reports you own are free and unlimited on every plan. They do not count toward your monthly or lifetime new-URL limit.',
+        text: 'An update review runs a fresh capture on the same report and compares it with the previous result. Each update review uses one product review credit on every plan.',
       },
       {
         type: 'callout',
-        text: 'You must own the report (signed-in account that ran or claimed the check). Anonymous private links cannot re-check until you save the report to an account.',
+        text: 'You must own the report (signed-in account that ran or claimed the product review). Anonymous private links cannot update review until you save the report to an account.',
       },
     ],
     related: ['flag-fix-recheck', 'what-counts-as-a-check'],
@@ -312,11 +313,11 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'Credit packs are no longer available for purchase. If you have existing credits, they remain active and never expire.',
+        text: 'Credit packs are no longer available for purchase. Existing credits remain active and never expire.',
       },
       {
         type: 'p',
-        text: 'Re-checks never consume credits.',
+        text: 'New product reviews still follow your plan allowance first.',
       },
     ],
     related: ['what-counts-as-a-check', 'free-vs-pro', 'payment-past-due'],
@@ -367,7 +368,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'MCP lets your editor use the FixFlags Check → Fix → Re-check workflow. The public documentation explains each editor. Creating a credential and testing the connection requires Pro.',
+        text: 'MCP lets your editor use the FixFlags Check → Fix → update review workflow. The public documentation explains each editor. Creating a credential and testing the connection requires Pro.',
       },
       {
         type: 'p',

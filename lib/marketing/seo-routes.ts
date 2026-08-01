@@ -49,12 +49,16 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
   {
     title: 'Product',
     links: [
-      { path: '/', label: 'Home', note: 'Free check, Flags, fix prompts' },
-      { path: '/how-it-works', label: 'How it works', note: 'Website checks and MCP workflow' },
+      { path: '/', label: 'Home', note: 'Free product review, Flags, fix prompts' },
+      { path: '/how-it-works', label: 'How it works', note: 'Product reviews and MCP workflow' },
       { path: '/samples', label: 'Sample report', note: 'Full example output' },
       { path: '/pricing', label: 'Pricing', note: 'Free vs Pro plans' },
       { path: '/docs', label: 'Documentation', note: 'Checks, reports, integrations, CLI, and MCP' },
-      { path: '/docs/getting-started', label: 'Getting started', note: 'First Check → Fix → Re-check workflow' },
+      {
+        path: '/docs/getting-started',
+        label: 'Getting started',
+        note: 'Product review → Fix → Update review workflow',
+      },
       { path: '/docs/reports', label: 'Finish Plans and reports', note: 'Flags, evidence, scores, and sharing' },
       { path: '/docs/integrations', label: 'Editor integrations', note: 'Eight editor setup guides' },
       { path: '/docs/cli', label: 'CLI docs', note: 'Terminal checks and local editor setup' },

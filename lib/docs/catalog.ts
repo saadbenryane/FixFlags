@@ -36,7 +36,7 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
     path: '/docs',
     group: 'Start',
     title: 'FixFlags documentation',
-    description: 'Learn the Check → Fix → Re-check workflow and ship a stronger product.',
+    description: 'Learn the Product review → Fix → Update review workflow and ship a stronger product.',
     source: 'index.md',
     order: 0,
     headings: [
@@ -58,7 +58,7 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
       { id: 'run-your-first-check', title: 'Run your first check' },
       { id: 'claim-your-report', title: 'Claim your report' },
       { id: 'fix-the-first-flag', title: 'Fix the first Flag' },
-      { id: 're-check', title: 'Re-check' },
+      { id: 'update-review', title: 'Update review' },
     ],
   },
   {
@@ -66,7 +66,7 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
     path: '/docs/reports',
     group: 'Use FixFlags',
     title: 'Finish Plans and reports',
-    description: 'Understand Flags, evidence, priorities, fix prompts, sharing, and Re-checks.',
+    description: 'Understand Flags, evidence, priorities, fix prompts, sharing, and update reviews.',
     source: 'reports.md',
     order: 2,
     headings: [
@@ -74,7 +74,7 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
       { id: 'flags-and-evidence', title: 'Flags and evidence' },
       { id: 'scores-and-priority', title: 'Scores and priority' },
       { id: 'fix-prompts', title: 'Fix prompts' },
-      { id: 're-check-and-compare', title: 'Re-check and compare' },
+      { id: 'update-review-and-compare', title: 'Update review and compare' },
       { id: 'sharing-and-watch', title: 'Sharing and Watch' },
     ],
   },
@@ -105,7 +105,7 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
     path: '/docs/cli',
     group: 'Connect',
     title: 'FixFlags CLI',
-    description: 'Install, authenticate, configure supported editors, check, and Re-check from the terminal.',
+    description: 'Install, authenticate, configure supported editors, review products, and update review from the terminal.',
     source: 'cli.md',
     order: 4,
     headings: [
@@ -113,7 +113,7 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
       { id: 'install', title: 'Install' },
       { id: 'authenticate', title: 'Authenticate' },
       { id: 'configure-an-editor', title: 'Configure an editor' },
-      { id: 'check-and-re-check', title: 'Check and Re-check' },
+      { id: 'check-and-update-review', title: 'Product review and update review' },
       { id: 'json-and-ci', title: 'JSON and CI' },
     ],
   },

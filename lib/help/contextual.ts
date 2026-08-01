@@ -58,7 +58,7 @@ const ARTICLE_CATEGORY: Record<HelpArticleSlug, HelpCategoryId> = {
   'vs-lighthouse': 'checks-and-reports',
   'free-vs-pro': 'billing-and-plans',
   'what-counts-as-a-check': 'billing-and-plans',
-  'rechecks-are-free': 'billing-and-plans',
+  'update-review-credits': 'billing-and-plans',
   credits: 'billing-and-plans',
   'cancel-or-manage': 'billing-and-plans',
   'payment-past-due': 'billing-and-plans',

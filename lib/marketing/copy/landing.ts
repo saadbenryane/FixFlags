@@ -1,19 +1,19 @@
 export const HERO = {
-  badge: "The product review layer",
+  badge: "Product QA",
   headline: "Finish what your AI started.",
   /** Full headline without the period; period is rendered in brand orange. */
   headlineDisplay: "Finish what your AI started",
   headlineAccentPeriod: true,
   subhead:
-    "AI builds your product. FixFlags checks Message, Experience, and Reach, then gives your builder the next fix.",
-  primaryCta: "Review my site",
-  compactPrimaryCta: "Review site",
+    "AI builds your product. FixFlags runs Product QA on Message, Experience, and Reach, then gives your builder the next fix.",
+  primaryCta: "Review my product",
+  compactPrimaryCta: "Review product",
   trySampleCta: "See a sample review",
   urlPlaceholder: "Paste your site or app URL",
   /** Honest product assurances only. No invented counts or testimonials. */
   assurances: [
     { id: "speed", label: "Results in under 60 seconds", icon: "zap" as const },
-    { id: "teaser", label: "3 checks included free", icon: "shield" as const },
+    { id: "teaser", label: "3 product reviews included", icon: "shield" as const },
     { id: "private", label: "Your report is private", icon: "lock" as const },
   ],
   /** Product-true trust line only. No invented member counts or stock avatars. */
@@ -29,7 +29,7 @@ export const DIFFERENTIATION = {
   is: [
     "A review layer that finishes what your AI started",
     "Flags with evidence, impact, and fix prompts",
-    "A re-check loop to prove fixes landed",
+    "An update review loop to prove fixes landed",
   ],
   isNot: [
     "Not a generic Lighthouse wrapper",
@@ -39,7 +39,7 @@ export const DIFFERENTIATION = {
   bullets: [
     "AI reads screenshots for message, experience, and reach gaps",
     "Every Flag comes with a fix prompt",
-    "Re-checks prove fixes landed",
+    "Update reviews prove fixes landed",
   ],
   rows: [
     {
@@ -73,7 +73,7 @@ export const DIFFERENTIATION = {
       fixflags: "Yes",
     },
     {
-      feature: "Re-check after fixes",
+      feature: "Update review after fixes",
       lighthouse: "Manual",
       manual: "Manual",
       fixflags: "Built-in",
@@ -134,14 +134,14 @@ export const DIFFERENTIATION = {
 export const FINAL_CTA = {
   headlineDisplay: "See what your release still needs",
   headlineAccentPeriod: true,
-  body: "Free check. Paste your site or app URL and get your FixFlags report.",
+  body: "Free product review. Paste your site or app URL and get your FixFlags report.",
 } as const;
 
 export const MCP_SECTION = {
-  headline: "Run checks from your editor",
-  body: "Connect via MCP so your agent finds Flags, fixes them, and re-checks without copy-pasting URLs.",
+  headline: "Run product reviews from your editor",
+  body: "Connect via MCP so your agent finds Flags, fixes them, and runs update reviews without copy-pasting URLs.",
   intro: "A typical prompt sequence looks like this:",
-  closing: "Then re-check to prove the improvement.",
+  closing: "Then run an update review to prove the improvement.",
   cta: "See MCP setup",
   workflow: `User: "Check https://myapp.com and review the Experience rubric"
 
@@ -162,8 +162,8 @@ export const HOW_IT_WORKS_PAGE = {
     headline: "AI can build the product. FixFlags checks what it missed.",
     headlineAccentPeriod: true,
     subhead:
-      "Run a live URL, review the Flags, copy the fix prompts, then Re-check.",
-    primaryCta: "Review my site",
+      "Run a live URL, review the Flags, copy the fix prompts, then run an update review.",
+    primaryCta: "Review my product",
     primaryHref: "/#audit",
     secondaryCta: "Set up MCP",
     secondaryHref: "/docs/integrations#quick-start",
@@ -212,7 +212,7 @@ export const HOW_IT_WORKS_PAGE = {
         icon: "check" as const,
       },
       {
-        title: "Then you Re-check",
+        title: "Then run an update review",
         body: "See which Flags cleared after the change.",
         icon: "rocket" as const,
       },
@@ -252,7 +252,7 @@ export const HOW_IT_WORKS_PAGE = {
   },
   loop: {
     label: "The operating loop",
-    title: "Flag. Fix. Re-check. Repeat when the page changes.",
+    title: "Flag. Fix. Update review. Repeat when the page changes.",
     steps: [
       {
         title: "Flag",
@@ -263,7 +263,7 @@ export const HOW_IT_WORKS_PAGE = {
         body: "Copy the prompt into your builder, or let MCP hand the exact Flag to your coding agent.",
       },
       {
-        title: "Re-check",
+        title: "Update review",
         body: "Run the same URL again, prove the fix landed, and ship when you are ready.",
       },
     ],
@@ -271,7 +271,7 @@ export const HOW_IT_WORKS_PAGE = {
   mcp: {
     label: "MCP workflow",
     title: "Your agent reads the same report you do.",
-    body: "MCP is the open standard that lets coding agents call outside tools. Connect FixFlags so Launch Check and fix prompts land in the editor you already use.",
+    body: "MCP is the open standard that lets coding agents call outside tools. Connect FixFlags so Live Review and fix prompts land in the editor you already use.",
     setupCta: "Set up MCP",
     setupHref: "/docs/integrations#quick-start",
     plansCta: "See plans",
@@ -286,8 +286,8 @@ Agent reports: "Experience has no Critical Flags. One Flag cleared."`,
   },
   finalCta: {
     headline: "Close the AI gap on a live URL.",
-    body: "Paste your site, get Flags with evidence and fix prompts, then Re-check to see what cleared.",
-    primaryCta: "Review my site",
+    body: "Paste your site, get Flags with evidence and fix prompts, then run an update review to see what cleared.",
+    primaryCta: "Review my product",
     primaryHref: "/#audit",
     secondaryCta: "Connect MCP",
     secondaryHref: "/docs/integrations#quick-start",
@@ -534,7 +534,7 @@ export const LANDING_PAGE = {
       },
       {
         id: "recheck",
-        title: "Re-check with confidence",
+        title: "Update review with confidence",
         body: "A fresh capture proves what changed.",
         icon: "refresh" as const,
       },
@@ -542,35 +542,35 @@ export const LANDING_PAGE = {
   },
   howItWorks: {
     label: "How it works",
-    headlineDisplay: "Three steps from check to fix to verified",
+    headlineDisplay: "Three steps from review to fix to verified",
     headlineAccentPeriod: true,
-    headline: "Three steps from check to fix to verified.",
+    headline: "Three steps from review to fix to verified.",
     subhead:
       "FixFlags analyzes your product, highlights what matters, and gives you clear fixes so you can publish when you are ready.",
     sampleLink: "Explore a full report",
     steps: [
       {
         step: 1,
-        title: "Start your check",
+        title: "Start your product review",
         body: "Paste the live URL you want FixFlags to review.",
       },
       {
         step: 2,
-        title: "We check the live product",
-        body: "We check your product across Message, Experience, and Reach.",
+        title: "We review the live product",
+        body: "We review your product across Message, Experience, and Reach.",
       },
       {
         step: 3,
-        title: "Fix it. Check again.",
-        body: "Apply the fixes with our prompts, then re-check to confirm you are ready.",
+        title: "Fix it. Review again.",
+        body: "Apply the fixes with our prompts, then run an update review to confirm you are ready.",
       },
     ] as const,
     demo: {
       heading: "Three rubrics. One clear fix.",
-      body: "Every Flag stays connected to its evidence, fix prompt, and the Re-check that proves the change.",
+      body: "Every Flag stays connected to its evidence, fix prompt, and the Update review that proves the change.",
       reportTitle: "FixFlags report",
       hostname: "yourproduct.com",
-      status: "Ready to re-check",
+      status: "Ready to update review",
       priorityLabel: "Prioritized Flag",
       evidenceLabel: "Evidence captured from the live page",
       promptTitle: "Fix prompt",
@@ -579,7 +579,7 @@ export const LANDING_PAGE = {
       copyAriaLabel: "Copy example fix prompt",
       prompt:
         "Update the primary action so it appears in the first mobile viewport. Keep the current visual hierarchy, then verify at 375px and 430px before publishing.",
-      recheckLabel: "Re-check verifies the same path",
+      recheckLabel: "Update review verifies the same path",
     },
   },
   reportExamples: {
@@ -665,7 +665,7 @@ export const LANDING_PAGE = {
       copyAction: "Copy",
       prompt:
         "Move the primary CTA into the first mobile viewport. Preserve the desktop hierarchy. Verify the updated page at 375px and 430px, then report the final CTA position.",
-      recheckLabel: "Re-check compares the same viewport",
+      recheckLabel: "Update review compares the same viewport",
     },
   },
   editorIntegrations: {
@@ -674,7 +674,7 @@ export const LANDING_PAGE = {
     headlineAccentPeriod: true,
     headline: "FixFlags in your workflow. Always in sync.",
     headlineLines: ["FixFlags in your workflow.", "Always in sync"] as const,
-    body: "Connect FixFlags through MCP. Review each change, act on clear Flags, and Re-check the live product.",
+    body: "Connect FixFlags through MCP. Review each change, act on clear Flags, and Update review the live product.",
     workspace: {
       title: "Product release review",
       meta: "editor · FixFlags MCP",
@@ -682,7 +682,7 @@ export const LANDING_PAGE = {
       builderLabel: "Your builder",
       userLabel: "You",
       request:
-        "Check the live landing page. Fix the first Critical Flag, then re-check it.",
+        "Check the live landing page. Fix the first Critical Flag, then update review it.",
       liveProductNote:
         "FixFlags reads the live product, not the editor preview",
       assistantLabel: "FixFlags",
@@ -702,7 +702,7 @@ export const LANDING_PAGE = {
         },
         {
           id: "recheck",
-          label: "Re-check",
+          label: "Update review",
           title: "Verified",
           body: "A fresh capture confirms the Flag is cleared.",
         },
@@ -755,7 +755,7 @@ export const LANDING_PAGE = {
     headline: "Works in the editor you already use.",
     headlineDisplay: "Works in the editor you already use",
     headlineAccentPeriod: true,
-    body: "Copy a precise fix into any AI builder. On Pro, MCP lets your agent check, fix, and Re-check without leaving the editor.",
+    body: "Copy a precise fix into any AI builder. On Pro, MCP lets your agent check, fix, and Update review without leaving the editor.",
     mcpCta: "Set up MCP",
     mcpHref: "/docs/integrations#quick-start",
     cliCta: "CLI docs",
@@ -769,7 +769,7 @@ export const LANDING_PAGE = {
     headlineDisplay: "See exactly what AI misses",
     headlineAccentPeriod: true,
     headline: "See exactly what AI misses.",
-    body: "FixFlags scans the live product the way users experience it, then turns every issue into a ranked, editor-ready fix.",
+    body: "FixFlags reviews the live product the way users experience it, then turns every issue into a ranked, editor-ready fix.",
     previewEyebrow: "Fix list",
     previewTitle: "Every fix, ranked and ready",
     previewBadge: "Screenshot evidence included",
@@ -802,7 +802,7 @@ export const LANDING_PAGE = {
     trustLabel: "Every report is built on real product signals",
     trustHeadline: "Proof you can act on, not another vanity score.",
     trustBody:
-      "FixFlags checks the live product, ranks what matters, and stays with you through every Re-check.",
+      "FixFlags reviews the live product, ranks what matters, and stays with you through every update review.",
     trustSupportLabel: "Built for the whole fix loop",
     issuesLabel: (count: number) => `${count} Flags in the sample review`,
     checksLabel: (count: number) =>
@@ -819,13 +819,13 @@ export const LANDING_PAGE = {
       {
         id: "speed",
         value: "<60s",
-        label: "typical scan time",
+        label: "typical review time",
         icon: "zap" as const,
       },
       {
         id: "recheck",
-        value: "Unlimited",
-        label: "re-checks",
+        value: "Prove",
+        label: "fixes with update reviews",
         icon: "refresh" as const,
       },
       {
@@ -836,15 +836,15 @@ export const LANDING_PAGE = {
       },
       {
         id: "teaser",
-        value: "3 checks",
-        label: "included on Free",
+        value: "3 reviews",
+        label: "per month on Free",
         icon: "users" as const,
       },
     ] as const,
   },
   footer: {
     tagline:
-      "Independent product verification for AI-built products. We check what blocks the release so you can fix it.",
+      "Product QA for AI-built products. We review what blocks the release so you can fix it.",
     madeWith: "Built for people shipping with AI.",
     buildersTitle: "Built for builders",
     buildersBody:
@@ -923,24 +923,25 @@ export const REPORT_COPY = {
         ? `Show ${count} Critical ${count === 1 ? "Flag" : "Flags"} in ${rubric}`
         : `Show all ${rubric} Flags`,
     history: "Score history",
-    scanCount: (count: number) => `${count} completed scans`,
-    firstScan: "First completed scan",
-    historyUnavailable: "History appears after the first completed scan.",
+    scanCount: (count: number) => `${count} completed product reviews`,
+    firstScan: "First completed product review",
+    historyUnavailable: "History appears after the first completed product review.",
     recheckCount: (count: number) =>
-      `${count} completed ${count === 1 ? "Re-check" : "Re-checks"}`,
+      `${count} completed ${count === 1 ? "Update review" : "Update reviews"}`,
     dashboard: {
       latestRelease: "Latest completed release",
       openReport: "Open report",
       topFlags: "Top ranked Flags",
       total: (count: number) => `${count} total`,
       nextActionLabel: "Next action",
-      nextActionBody: "Open a Flag, copy its fix, then Re-check the release.",
+      nextActionBody: "Open a Flag, copy its fix, then run an update review on the release.",
       clearReleaseBody:
         "No unresolved Flags remain. Open the report to verify the release details.",
       reviewTopFlag: "Review the top Flag",
       reviewClearRelease: "Review the release",
       rechecks: (count: number) =>
-        `${count} completed ${count === 1 ? "Re-check" : "Re-checks"}`,
+        `${count} completed ${count === 1 ? 'Update review' : 'Update reviews'}`,
+      pageDescription: 'Review what changed, copy the right fix, then run an update review.',
     },
     unavailableState: {
       identity: "FixFlags report",
@@ -953,13 +954,13 @@ export const REPORT_COPY = {
       sharedBody:
         "The link may have expired, been revoked, or no longer be eligible for sharing. Ask the owner for a new link.",
       returnHome: "Return home",
-      reviewSite: "Review my site",
+      reviewSite: "Review my product",
     },
   },
   reportFirst: {
     loadingLabel: "Loading report",
     loadingTitle: "Loading report…",
-    preparingReport: "Preparing your report while the scan runs.",
+    preparingReport: "Preparing your report while the review runs.",
     capturesTitle: "Page captures",
     capturesBody: "Desktop and mobile views resolve independently.",
     capturesLabel: "Desktop and mobile captures",
@@ -973,7 +974,7 @@ export const REPORT_COPY = {
   lovableBolt: {
     heroTitle: "Paste this into Lovable or Bolt",
     heroBody:
-      "One click copies a fix prompt tuned for your builder. Publish the change, then re-check here.",
+      "One click copies a fix prompt tuned for your builder. Publish the change, then run an update review here.",
     defaultToolHint:
       "Choose your builder, copy the fix, paste it into your AI editor.",
   },
@@ -988,8 +989,8 @@ export const REPORT_COPY = {
     preparingFixList: "Preparing your fix list…",
   },
   recheck: {
-    label: "Re-check",
-    error: "Could not start the re-check. Try again.",
+    label: "Update review",
+    error: "Could not start the update review. Try again.",
   },
   launchGates: {
     title: "Launch gates",
@@ -1076,7 +1077,7 @@ export const REPORT_COPY = {
     allFixes: "All fixes",
     productContract: "Product contract",
     productContractHeading: "What this product appears to do",
-    journey: "User journey walk",
+    journey: "Funnel",
     flow: "CTA flow test",
     timelineCompleted: "How we checked",
     timelineProgressive: "How FixFlags is checking",
@@ -1084,13 +1085,13 @@ export const REPORT_COPY = {
     madeWith: "Made with",
     previews: "Share & search previews",
     remember: "What we proved",
-    rememberHint: "Verified on re-check. Stays with this product across scans.",
+    rememberHint: "Verified on update review. Stays with this product across reviews.",
   },
   stickyNav: {
     polish: "Polish",
     contract: "Contract",
     remember: "Proved",
-    journey: "Journey",
+    journey: "Funnel",
     flow: "Flow",
     timeline: "Timeline",
     flags: "Fixes",
@@ -1103,7 +1104,7 @@ export const REPORT_COPY = {
     noMatchFilter: "No flags match this filter.",
     checkingIssues: "Checking for Flags…",
     selectFlag: "Select a flag to see evidence and the fix prompt.",
-    flagsAppear: "Flags appear here as the scan finishes.",
+    flagsAppear: "Flags appear here as the review finishes.",
     noFlagsNice: "No flags. Nice work.",
   },
   runYourOwnAudit: "Check your site",
@@ -1117,13 +1118,13 @@ export const MADE_WITH_COPY = {
   verified: "Verified",
   strongSignal: "Strong signal",
   legacy:
-    "Technology signals were not captured for this check. Run a Re-check to create a verified profile.",
+    "Technology signals were not captured for this review. Run an update review to create a verified profile.",
   unavailable:
     "Technology signals were unavailable for this check. The rest of the report is unaffected.",
   empty: "No technologies could be verified from the site’s public signals.",
   partial:
     "Partial profile. Only signals preserved by the historical capture are shown.",
-  changed: "Changed since the last re-check",
+  changed: "Changed since the last update review",
   added: "Added",
   removed: "Removed",
   evidenceChanged: "Evidence changed",
@@ -1148,7 +1149,7 @@ export const MADE_WITH_COPY = {
   openPublicReport: "Open the public report",
   relatedProfiles: "Related public profiles",
   ownSitePrompt: "Check your own site’s stack, score, evidence, and fix list.",
-  checkAgain: "Check this site again",
+  checkAgain: "Run a product review on this site again",
   metaTitle: (hostname: string, technologies: string[]) =>
     `${hostname} is made with ${technologies.slice(0, 3).join(", ")} | FixFlags`,
   metaDescription: (hostname: string) =>

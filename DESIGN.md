@@ -2,6 +2,8 @@
 
 *Validated visual and interaction standards. Code-enforced where possible, documented where not.*
 
+**Customer vs internal language:** Customer surfaces use Product QA, product review, update review, deep review, Funnel, and path. Internal code may still use re-check routes, recheck components, and monitoring implementation names.
+
 ## Design principles
 
 1. **Editorial + technical credibility** — the product looks like a sharp review, not a SaaS dashboard. Inter Tight display, glass cards, shadow depth, mono labels.

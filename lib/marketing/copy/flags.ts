@@ -1,25 +1,27 @@
 export const FLAG_STATUS_LABELS = {
   OPEN: { label: 'Open', description: 'Not fixed yet' },
-  FIXED: { label: 'Fixed', description: 'Cleared on a re-check' },
+  FIXED: { label: 'Fixed', description: 'Cleared on an update review' },
   IGNORED: { label: 'Ignored', description: 'Acknowledged and skipped' },
   REGRESSED: { label: 'Regressed', description: 'Same Flag, worse than before' },
 } as const
 
 export const RECHECK_DIFF_COPY = {
-  title: 'Prove your fixes with a re-check',
+  title: 'Prove your fixes with an update review',
   celebrationTitle: (n: number) => (n === 1 ? '1 flag cleared' : `${n} flags cleared`),
-  celebrationBody: 'Your re-check confirms the fixes. Keep going on what is still open.',
+  celebrationBody: 'Your update review confirms the fixes. Keep going on what is still open.',
   nextFixHint: 'Next up',
   cleared: 'Fixed',
   remaining: 'Still open',
   newIssues: 'New',
   regressed: 'Regressed',
-  empty: 'No flag changes on this re-check.',
+  empty: 'No flag changes on this update review.',
   compareCta: 'Open full before/after',
   compareProHint: 'Want side-by-side screenshots?',
   compareProCta: 'See Pro compare',
   outcomesHint:
     'Outcomes: Fixed, still open, unchanged severity, regressed, or unable to verify.',
+  compareProGateDescription:
+    'Before/after comparison is available on Pro. Update reviews use product review credits.',
 } as const
 
 export const FLAG_DISMISS_REASONS = [
@@ -67,7 +69,7 @@ export const FLOW_SCAN_STATUS = {
   },
   skipped: {
     label: 'Skipped',
-    description: 'Flow scan could not run during this audit. Run a new check to try again.',
+    description: 'Flow scan could not run during this review. Run a product review again to try.',
   },
   timeout: {
     label: 'Timed out',

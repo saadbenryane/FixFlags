@@ -16,6 +16,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Muted, SectionTitle } from '@/components/ui/typography'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
+import { RECHECK_DIFF_COPY } from '@/lib/marketing/copy'
 import { resolveCompareUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { canAccessAudit, resolveAuditAccess } from '@/lib/audit/access'
@@ -89,7 +90,7 @@ export default async function ComparePage({ params, searchParams }: Props) {
           <Container variant="report" className="space-y-8 py-8">
             <PageHeader
               title="Before vs After"
-              description="Before/after comparison is available on Pro. Re-checks stay free."
+              description={RECHECK_DIFF_COPY.compareProGateDescription}
             />
             <ContextualUpgradeCard
               moment="compare_flat"

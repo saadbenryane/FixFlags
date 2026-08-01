@@ -20,10 +20,10 @@ Fix prompts are written for implementation. Copy one into your editor, keep the 
 
 The anonymous report demonstrates exactly one complete fix prompt. Claim the report to access the remaining gated prompts.
 
-## Re-check and compare
+## Update review and compare
 
-After a deployment, Re-check captures the live product again and compares it with its parent report. A resolved Flag should disappear or be marked resolved because the underlying evidence changed.
+After a deployment, an update review captures the live product again and compares it with its parent report. A resolved Flag should disappear or be marked resolved because the underlying evidence changed.
 
 ## Sharing and Watch
 
-Share links respect report access and ownership. Watch surfaces recurring product checks where the plan and product surface support them. For plan access or billing questions, see the [Help Center](/help).
+Share links respect report access and ownership. Watch surfaces scheduled product reviews where the plan and product surface support them. For plan access or billing questions, see the [Help Center](/help).

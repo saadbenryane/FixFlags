@@ -2,21 +2,25 @@ import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import {
   ANON_VALUE_STRIP,
+  AUTH,
   BRAND,
   CHANGELOG_ENTRIES,
   DIFFERENTIATION,
+  FAQ,
   FINAL_CTA,
   HERO,
   HOW_IT_WORKS_PAGE,
   LANDING_PAGE,
   MCP_SECTION,
   OUTPUT_LABELS,
+  PLANS,
   PRICING,
   PRICING_FAQ,
   REPORT_COPY,
   SEO,
 } from '@/lib/marketing/copy'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
+import { BANNED_CUSTOMER_PHRASES } from '@/lib/marketing/copy/terminology'
 import { HOMEPAGE_EDITOR_INTEGRATIONS } from '@/lib/integrations/editor-catalog'
 
 const FORBIDDEN_TAXONOMY = /\b7 areas\b|\bseven areas\b/i
@@ -84,9 +88,32 @@ const ABOVE_FOLD_COPY = [
   LANDING_PAGE.howItWorks.headline,
 ]
 
+const COPY_BARREL_STRINGS = [
+  ...collectStrings(LANDING_PAGE),
+  ...collectStrings(PLANS),
+  ...collectStrings(PRICING_FAQ),
+  ...collectStrings(FAQ),
+  ...collectStrings(AUTH),
+]
+
 describe('homepage message guardrails', () => {
+  it('marketing copy barrel avoids banned customer phrases', () => {
+    for (const line of COPY_BARREL_STRINGS) {
+      for (const pattern of BANNED_CUSTOMER_PHRASES) {
+        assert.doesNotMatch(line, pattern, `Banned phrase (${pattern}) in: ${line}`)
+      }
+    }
+  })
+
+  it('canonical terminology anchors stay aligned', () => {
+    assert.equal(HERO.primaryCta, 'Review my product')
+    assert.equal(PLAN_DEFINITIONS.BUILDER.price, '$69')
+    assert.equal(REPORT_COPY.sectionTitles.journey, 'Funnel')
+    assert.equal(REPORT_COPY.recheck.label, 'Update review')
+  })
+
   it('hero headline names the finish-the-loop moment after AI builds', () => {
-    assert.match(HERO.badge, /product review layer/i)
+    assert.match(HERO.badge, /product qa/i)
     assert.match(HERO.headlineDisplay, /finish what your ai started/i)
     assert.equal(HERO.headline, `${HERO.headlineDisplay}.`)
     assert.equal(HERO.headlineAccentPeriod, true)
@@ -114,7 +141,7 @@ describe('homepage message guardrails', () => {
       assert.ok(!/builders? reviewed/i.test(item.label), `Fake social proof: ${item.label}`)
     }
     assert.ok(HERO.assurances.some((a) => /under 60 seconds/i.test(a.label)))
-    assert.ok(HERO.assurances.some((a) => /3 checks included free/i.test(a.label)))
+    assert.ok(HERO.assurances.some((a) => /3 product reviews included/i.test(a.label)))
     assert.ok(HERO.assurances.some((a) => /private/i.test(a.label)))
     assert.match(HERO.trustLine, /builders shipping with ai/i)
     assert.ok(!/\d{2,},\d{3}/.test(HERO.trustLine), `Invented count in trust line: ${HERO.trustLine}`)
@@ -124,7 +151,7 @@ describe('homepage message guardrails', () => {
   it('hero has no CYA trust-badge row; value lives in OFFER.short', async () => {
     const { OFFER } = await import('@/lib/marketing/copy')
     assert.ok(!('trustBadges' in HERO))
-    assert.match(OFFER.short, /free check/i)
+    assert.match(OFFER.short, /free product review/i)
     assert.match(OFFER.short, /what.?s broken/i)
     assert.ok(!/read-only/i.test(OFFER.short))
     assert.ok(!/claim/i.test(OFFER.short))
@@ -138,11 +165,11 @@ describe('homepage message guardrails', () => {
 
   it('offer is standardized across hero surfaces and final CTA', async () => {
     const { OFFER } = await import('@/lib/marketing/copy')
-    assert.match(OFFER.line, /free check/i)
+    assert.match(OFFER.line, /free product review/i)
     assert.match(OFFER.line, /fix prompts/i)
     assert.match(OFFER.privacy, /do not change your site/i)
     assert.match(OFFER.linkPrivacy, /private to your account/i)
-    assert.match(FINAL_CTA.body, /free check/i)
+    assert.match(FINAL_CTA.body, /free product review/i)
   })
 
   it('landing and hero avoid CYA, readiness jargon, and banned unlock', () => {
@@ -164,34 +191,36 @@ describe('homepage message guardrails', () => {
 
   it('OUTPUT_LABELS fix prompt label and next step are defined', () => {
     assert.equal(OUTPUT_LABELS.fixPrompt, 'Fix prompt')
-    assert.equal(OUTPUT_LABELS.nextStep, 'Paste into editor → run → re-check.')
+    assert.equal(OUTPUT_LABELS.nextStep, 'Paste into editor → publish → update review.')
   })
 
-  it('report copy names the free core-loop action as re-check', () => {
-    assert.equal(REPORT_COPY.recheck.label, 'Re-check')
+  it('report copy names the core-loop action as update review', () => {
+    assert.equal(REPORT_COPY.recheck.label, 'Update review')
     assert.match(REPORT_COPY.recheckHint.title, /prove your fixes worked/i)
     assert.match(REPORT_COPY.recheckHint.bodySuffix, /Flags cleared/i)
   })
 
-  it('core-loop copy consistently uses re-check', () => {
-    assert.ok(CORE_LOOP_STRINGS.some((line) => /re-check/i.test(line)))
+  it('core-loop copy consistently uses update review', () => {
+    assert.ok(CORE_LOOP_STRINGS.some((line) => /update review/i.test(line)))
     for (const line of CORE_LOOP_STRINGS) {
       assert.doesNotMatch(line, /\bmonitor(?:ed|ing|s)?\b/i)
       assert.doesNotMatch(line, /\bre-?scan\b/i)
+      assert.doesNotMatch(line, /\bre-?checks?\b/i)
     }
-    assert.match(LANDING_PAGE.howItWorks.steps.at(-1)?.body ?? '', /re-check/i)
+    assert.match(LANDING_PAGE.howItWorks.steps.at(-1)?.body ?? '', /update review/i)
   })
 
-  it('pricing keeps re-checks free and sells actual paid value', () => {
-    assert.match(PRICING.trustBadge, /unlimited re-checks/i)
+  it('pricing sells product reviews and deep reviews without unlimited re-check', () => {
+    assert.match(PRICING.trustBadge, /product reviews/i)
+    assert.doesNotMatch(PRICING.trustBadge, /unlimited re-checks/i)
     assert.ok(
-      PLAN_DEFINITIONS.FREE.features.some((feature) => /unlimited re-checks/i.test(feature))
+      PLAN_DEFINITIONS.FREE.features.some((feature) => /product reviews per month/i.test(feature))
     )
     assert.ok(
       PLAN_DEFINITIONS.BUILDER.features.some((feature) => /before\/after/i.test(feature))
     )
     assert.ok(
-      PLAN_DEFINITIONS.BUILDER.features.some((feature) => /journeys/i.test(feature))
+      PLAN_DEFINITIONS.BUILDER.features.some((feature) => /deep reviews/i.test(feature))
     )
     assert.doesNotMatch(PLAN_DEFINITIONS.BUILDER.features.join(' '), /unlimited re-check/i)
     for (const line of PRICING_STRINGS) {
@@ -205,8 +234,8 @@ describe('homepage message guardrails', () => {
     assert.ok(MCP_SECTION.closing.length > 0)
   })
 
-  it('primary CTA uses visitor-facing check language', () => {
-    assert.equal(HERO.primaryCta, 'Review my site')
+  it('primary CTA uses visitor-facing review language', () => {
+    assert.equal(HERO.primaryCta, 'Review my product')
     assert.ok(!/audit/i.test(HERO.primaryCta))
     assert.equal(FINAL_CTA.headlineDisplay, 'See what your release still needs')
     assert.ok(!/[.?]$/.test(FINAL_CTA.headlineDisplay))
@@ -243,7 +272,7 @@ describe('homepage message guardrails', () => {
   it('how it works steps keep product-true rubrics without decorative artwork contracts', () => {
     assert.deepEqual(
       LANDING_PAGE.howItWorks.steps.map((s) => s.title),
-      ['Start your check', 'We check the live product', 'Fix it. Check again.']
+      ['Start your product review', 'We review the live product', 'Fix it. Review again.']
     )
     const scan = LANDING_PAGE.howItWorks.steps[1]!
     assert.match(scan.body, /Message, Experience, and Reach/i)

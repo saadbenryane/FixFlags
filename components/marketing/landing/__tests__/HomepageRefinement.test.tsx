@@ -56,7 +56,7 @@ describe('homepage lean sections', () => {
         name: 'Release score, unresolved Flags, score history, and rubric coverage',
       })
     ).toBeInTheDocument()
-    expect(screen.getByText('5 completed scans')).toBeInTheDocument()
+    expect(screen.getByText('5 completed product reviews')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'View all 7 Flags' })).toBeInTheDocument()
     expect(screen.getByText('199+')).toBeInTheDocument()
     expect(

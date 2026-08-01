@@ -21,6 +21,7 @@ import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { formatUsd } from '@/lib/billing/costs'
+import { BILLING_PAGE_COPY } from '@/lib/marketing/copy'
 import { helpHrefForSurface } from '@/lib/help/contextual'
 import { Suspense } from 'react'
 import { BillingCreditsToast } from '@/components/billing/BillingCreditsToast'
@@ -85,10 +86,7 @@ export default async function BillingPage() {
 
       {user.subscriptionStatus === 'PAST_DUE' && (
         <Callout variant="warning" title="Payment past due: features paused">
-          <p>
-            Update your card to restore paid features (compare, MCP, share). We&rsquo;ll retry
-            automatically, but you can fix it now. Re-checks on owned reports stay free.
-          </p>
+          <p>{BILLING_PAGE_COPY.pastDueBody}</p>
           <div className="flex flex-wrap items-center gap-2 pt-1">
             {user.stripeCustomerId && <ManageSubscriptionButton />}
             <Button asChild variant="outline" size="sm">

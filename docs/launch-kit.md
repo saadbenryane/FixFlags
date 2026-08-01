@@ -13,18 +13,18 @@ Paste your URL. See what your AI missed. Fix it in 10 seconds.
 **FixFlags** — Paste your URL. See what your AI missed before your users do.
 
 ### Short description (under 260 chars)
-FixFlags reviews AI-built sites across Message, Experience, and Reach. Every issue comes with a fix prompt you paste into Cursor, Lovable, or Bolt. Re-check to prove it worked.
+FixFlags reviews AI-built sites across Message, Experience, and Reach. Every issue comes with a fix prompt you paste into Cursor, Lovable, or Bolt. update review to prove it worked.
 
 ### Maker comment (post at launch)
 I kept building with Cursor and Lovable, shipping fast, then discovering broken stuff after real users found it. Lighthouse told me what was wrong. It never told me how to fix it.
 
-So I built FixFlags. Paste your URL. Get a ranked fix list with prompts shaped for your editor. Fix the issue. Re-check. Flag cleared.
+So I built FixFlags. Paste your URL. Get a ranked fix list with prompts shaped for your editor. Fix the issue. update review. Flag cleared.
 
-The loop is: Flag, Fix, Re-check.
+The loop is: Flag, Fix, update review.
 
 What makes this different from other QA tools:
 - Fix prompts shaped for Cursor, Lovable, Bolt, Claude Code. Not generic recommendations.
-- Re-check loop that proves improvement. Run the same URL again and see which Flags cleared.
+- update review loop that proves improvement. Run the same URL again and see which Flags cleared.
 - Three rubrics only: Message (what the page says), Experience (how it works), Reach (how people find it).
 
 Try it on your next deploy before you share the link. Free check, no account needed for the teaser.
@@ -33,7 +33,7 @@ Try it on your next deploy before you share the link. Free check, no account nee
 1. **Hero shot:** Homepage with URL field, headline "Finish what your AI started"
 2. **Report view:** Full fix list with ranked flags, evidence, and fix prompt visible
 3. **Fix prompt close-up:** One flag expanded showing the copy-to-editor button and the prompt text
-4. **Re-check diff:** Before/after showing "3 flags cleared" with green checkmarks
+4. **update review diff:** Before/after showing "3 flags cleared" with green checkmarks
 5. **Editor integration:** Split screen showing fix prompt on left, Cursor/Lovable on right
 6. **Rubric cards:** Message / Experience / Reach cards with example findings
 
@@ -75,7 +75,7 @@ Especially if you are collecting emails. People will not sign up without it.
 **6. Navigation menu takes half the mobile screen (4 out of 10)**
 Announcement bar + nav + hamburger = 280px before any content. On a phone, that is a dealbreaker.
 
-**The interesting part:** I fixed 3 of these on my own site, re-checked, and the flags cleared. The re-check loop actually works.
+**The interesting part:** I fixed 3 of these on my own site, update reviewed, and the flags cleared. The update review loop actually works.
 
 If you want to try it: fixflags.com. Free check, no account needed for the teaser. Fix prompts are shaped for Cursor, Lovable, Bolt, and Claude Code.
 
@@ -101,7 +101,7 @@ Search for: "Lovable tutorial", "Cursor tutorial", "Bolt tutorial", "build with 
 
 Hey [Name],
 
-I built FixFlags, a tool that checks AI-built sites before you share the link. Paste a URL, get a ranked fix list with prompts you paste into Cursor/Lovable/Bolt, then re-check to prove it worked.
+I built FixFlags, a tool that checks AI-built sites before you share the link. Paste a URL, get a ranked fix list with prompts you paste into Cursor/Lovable/Bolt, then update review to prove it worked.
 
 I think it would be useful for your audience. Would you be open to trying it in a video?
 
@@ -122,7 +122,7 @@ Hey [Name], just bumping this. Quick version: free Pro account, check your site 
 2. Show the top 3 flags with evidence
 3. Copy a fix prompt and paste it into their editor
 4. Show the fix applied
-5. Re-check and show the flag cleared
+5. update review and show the flag cleared
 
 ---
 
@@ -133,7 +133,7 @@ Hey [Name], just bumping this. Quick version: free Pro account, check your site 
 **Tweet 1 (hook):**
 I built a tool that checks your AI-built site before you share the link.
 
-Paste URL. Get flags. Copy fix prompts into Cursor or Lovable. Re-check to prove it worked.
+Paste URL. Get flags. Copy fix prompts into Cursor or Lovable. update review to prove it worked.
 
 Here is what it catches: [screenshot of a report]
 
@@ -154,7 +154,7 @@ Reach — Can people find and share it?
 Every flag comes with a fix prompt shaped for your editor.
 
 **Tweet 4 (the loop):**
-The differentiator is the re-check loop.
+The differentiator is the update review loop.
 
 Fix the issue. Run the same URL again. See which flags cleared.
 
@@ -183,8 +183,8 @@ If it catches something on your site, quote this tweet and tell me what it found
 | Day 1 | PH launch post | Product Hunt |
 | Day 1 | Reddit post (above) | r/vibecoding |
 | Day 2 | "What we found on 50 AI-built sites" thread | X |
-| Day 3 | GIF showing paste URL -> fix prompt -> re-check | X |
-| Day 4 | "Before/after" post with real re-check diff | X |
+| Day 3 | GIF showing paste URL -> fix prompt -> update review | X |
+| Day 4 | "Before/after" post with real update review diff | X |
 | Day 5 | Reddit follow-up: "Update from 50 scans" | r/vibecoding |
 | Day 7 | "This app looked perfect until..." reel | Instagram/TikTok |
 | Day 8 | LinkedIn post (below) | LinkedIn |
@@ -218,7 +218,7 @@ If it catches something on your site, quote this tweet and tell me what it found
 
 [Copy fix prompt, paste in Cursor]
 
-"Re-check. Flag cleared."
+"update review. Flag cleared."
 
 "Fix your site before your users find the problems."
 
@@ -241,9 +241,9 @@ If it catches something on your site, quote this tweet and tell me what it found
 
 [Paste in editor]
 
-"Ship the change. Re-check."
+"Ship the change. update review."
 
-[Re-check, flag clears]
+[update review, flag clears]
 
 "Done."
 
@@ -266,7 +266,7 @@ If it catches something on your site, quote this tweet and tell me what it found
 
 **End card:** fixflags.com — Paste your URL
 
-### Reel 4: "Re-check day" (20-30s)
+### Reel 4: "update review day" (20-30s)
 
 **Visual:** Split screen or before/after
 
@@ -277,9 +277,9 @@ If it catches something on your site, quote this tweet and tell me what it found
 
 "Today I fixed 3 of them."
 
-[Show re-check diff: "3 flags cleared"]
+[Show update review diff: "3 flags cleared"]
 
-"The re-check proves it worked."
+"The update review proves it worked."
 
 [Show green checkmarks]
 
@@ -304,12 +304,12 @@ Try it: fixflags.com
 
 ---
 
-## 7. Launch Checklist
+## 7. Go-Live Playbook
 
 ### 2 weeks before launch
 - [ ] Run FixFlags on 5-10 real AI-built sites
 - [ ] Screenshot the top flags from each (for content bank)
-- [ ] Record 3-4 GIFs of the core loop (paste -> flags -> fix -> re-check)
+- [ ] Record 3-4 GIFs of the core loop (Build → Review → Fix → Verify)
 - [ ] Write maker comment for PH (above)
 - [ ] Prepare PH gallery images (6 images)
 - [ ] Find 5 YouTube creators and send outreach messages
@@ -371,7 +371,7 @@ Try it: fixflags.com
 
 **Secondary:** Fix prompts you paste into your editor. Not just a score.
 
-**Tertiary:** Re-check to prove the fix worked.
+**Tertiary:** update review to prove the fix worked.
 
 **Anti-messaging (never say):**
 - "AI-powered QA platform"
@@ -383,5 +383,5 @@ Try it: fixflags.com
 **Always say:**
 - "Paste your URL"
 - "Fix prompts for Cursor, Lovable, Bolt"
-- "Re-check to prove it worked"
+- "update review to prove it worked"
 - "Free check"

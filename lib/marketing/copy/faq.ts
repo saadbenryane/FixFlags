@@ -1,4 +1,5 @@
 import { OFFER, SCORE_HELP, SEVERITY_MEANINGS } from './brand'
+import { CORE_LOOP_LABEL, PRICING_COPY } from './terminology'
 
 export const FAQ_SECTION = {
   title: 'Common questions',
@@ -8,7 +9,8 @@ export const FAQ_SECTION = {
 
 export const FAQ_PAGE = {
   title: 'Frequently asked questions',
-  subhead: 'Everything you need to know about FixFlags checks, Flags, fix prompts, and plans.',
+  subhead:
+    'Everything you need to know about FixFlags product reviews, Flags, fix prompts, and plans.',
 } as const
 
 export const FAQ = [
@@ -18,7 +20,7 @@ export const FAQ = [
       'Lighthouse scores performance, accessibility, and SEO. FixFlags adds an AI reviewer that reads your screenshots for message, experience, and reach gaps, including trust and credibility signals. Every Flag includes evidence and a fix prompt. Results are grouped into three sections: Message, Experience, and Reach.',
   },
   {
-    question: 'How are FixFlags checks organized?',
+    question: 'How are FixFlags reviews organized?',
     answer:
       'Every report groups Flags into three sections. Message covers copy and positioning. Experience covers layout, usability, and performance. Reach covers SEO metadata and link previews. Each Flag includes evidence and a fix prompt your agent can run.',
   },
@@ -46,14 +48,12 @@ export const FAQ = [
     answer: `Critical: ${SEVERITY_MEANINGS.CRITICAL} Important: ${SEVERITY_MEANINGS.IMPORTANT} Polish: ${SEVERITY_MEANINGS.POLISH}`,
   },
   {
-    question: 'Do I need an account for my first check?',
-    answer:
-      'Yes. Your report opens in scanning mode immediately, then asks you to create a free account or sign in while the check runs. Free includes 3 new URL checks with full reports and unlimited re-checks on reports you own.',
+    question: 'Do I need an account for my first product review?',
+    answer: `Yes. Your report opens immediately while the product review runs. If you are signed out, create a free account or sign in to save it. Free includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month and ${PRICING_COPY.freeDeepReviewTeaserPerMonth} deep review teaser.`,
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
-    answer:
-      'Free: 3 new URL checks with full reports and fix prompts, plus unlimited re-checks on reports you own. Pro: before/after compare, MCP in supported builders, and 5 journeys per month.',
+    answer: `Free: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month with full reports and fix prompts, plus ${PRICING_COPY.freeDeepReviewTeaserPerMonth} deep review teaser. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): before/after compare, MCP in supported builders, ${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month.`,
   },
   {
     question: 'Do I need Cursor or MCP?',
@@ -61,9 +61,9 @@ export const FAQ = [
       'No. MCP is optional on Pro. Fix prompts copy into any editor, ticket, or brief. Lovable and Bolt also connect through custom MCP connectors.',
   },
   {
-    question: 'Can it check sites built with Lovable/Bolt/v0/Devin?',
+    question: 'Can it review sites built with Lovable/Bolt/v0/Devin?',
     answer:
-      'Yes. FixFlags checks any publicly accessible URL regardless of how it was built. Fix prompts are tuned for Cursor, Claude Code, Lovable, Bolt, and Devin.',
+      'Yes. FixFlags reviews any publicly accessible URL regardless of how it was built. Fix prompts are tuned for Cursor, Claude Code, Lovable, Bolt, and Devin.',
   },
   {
     question: 'How do fix prompts work with Cursor/Claude?',
@@ -71,9 +71,9 @@ export const FAQ = [
       'Each Flag includes a fix prompt with specific evidence from your page. Paste it into your AI agent and it knows exactly what to fix. With MCP, your agent fetches prompts automatically.',
   },
   {
-    question: 'Can I Re-check after my agent fixes Flags?',
+    question: 'Can I run an update review after my agent fixes Flags?',
     answer:
-      'Yes. All registered users can re-check reports they own as often as needed. Re-checks do not count against your new-URL limit. Pro adds before/after compare and MCP in your editor.',
+      'Yes. Update reviews on reports you own use one product review credit. Pro adds before/after compare and MCP in your editor.',
   },
   {
     question: 'Are my reports public?',
@@ -87,7 +87,7 @@ export const FAQ = [
   {
     question: 'We already have a live site. Is this only for pre-launch?',
     answer:
-      'No. FixFlags checks any public page, live or new. You get a prioritized fix list with screenshots, not another performance score.',
+      'No. FixFlags reviews any public page, live or new. You get a prioritized fix list with screenshots, not another performance score.',
   },
   {
     question: 'Who is FixFlags for?',
@@ -113,10 +113,10 @@ export const CHANGELOG_ENTRIES = [
     title: 'Report depth and Help Center',
     items: [
       'Product Contract and Action Timeline show what we inferred and how we checked',
-      'Journey and CTA flow evidence on Pro reports',
-      'Help Center with guides for checks, billing, MCP, and account',
-      'One free teaser check without an account; sign up to claim fix prompts',
-      'Re-checks stay free and unlimited on reports you own',
+      'Funnel and CTA flow evidence on Pro reports',
+      'Help Center with guides for reviews, billing, MCP, and account',
+      'One free teaser review without an account; sign up to claim fix prompts',
+      'Update reviews use product review credits on every plan',
     ],
   },
   {
@@ -124,7 +124,7 @@ export const CHANGELOG_ENTRIES = [
     title: 'FixFlags launches in open beta',
     items: [
       'Sign up and create your account to start testing your sites',
-      'Run free checks on any live or preview URL',
+      'Run free product reviews on any live or preview URL',
       'See Critical Flag counts across Message, Experience, and Reach',
       'Fix prompts for Cursor, Claude Code, Lovable, Bolt, Windsurf, and Devin',
       'View your report history and AI tool usage from your dashboard',
@@ -143,7 +143,7 @@ export const BLOG_POSTS = [
       'AI coding tools are very good at producing a page that looks finished. They are much less good at noticing the things that only show up when someone else actually uses the page: a call-to-action that points nowhere, an Open Graph image that never loads, a form input with no label.',
       'None of these are hard to fix. Almost all of them are invisible until a real user, or a QA pass, goes looking.',
       'That gap is what "finish what your AI started" means in practice. The build gets you 90% of the way. The last 10% is the pass that catches what speed skipped, and it is exactly the kind of checklist work that is easy to automate and easy to skip when you are moving fast.',
-      'The final review can be systematic: run the checks, get the Flags, fix what matters, then re-check. That loop is the habit.',
+      `The final review can be systematic: ${CORE_LOOP_LABEL.toLowerCase()}. That loop is the habit.`,
     ],
   },
 ] as const

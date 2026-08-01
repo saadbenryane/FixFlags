@@ -1,6 +1,6 @@
 ## How it works
 
-FixFlags exposes a remote Model Context Protocol server. A connected editor discovers public FixFlags tools and can run the Check → Fix → Re-check workflow without leaving the editor.
+FixFlags exposes a remote Model Context Protocol server. A connected editor discovers public FixFlags tools and can run the Product review → Fix → Update review workflow without leaving the editor.
 
 ## Endpoint and authentication
 
@@ -14,7 +14,7 @@ Create credentials only from the authenticated setup wizard. Public documentatio
 2. Inspect the highest-ranked Flag and its evidence.
 3. Apply one focused fix in the current codebase.
 4. Deploy the change.
-5. Ask FixFlags to Re-check and compare against the original report.
+5. Ask FixFlags to run an update review and compare against the original report.
 
 See the [public tool reference](/docs/mcp/tools) for exact tool names.
 

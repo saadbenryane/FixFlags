@@ -154,7 +154,7 @@ Internal-only system for organic growth. Never queried directly by public pages.
 | File | Role |
 |------|------|
 | `lib/graph/persist.ts` | Write audit data to graph tables |
-| `lib/graph/queries.ts` | Public read models (enforces MIN_SAMPLE_SIZE=20) |
+| `lib/graph/queries.ts` | Public read models (enforces MIN_SAMPLE_SIZE=3, temporary; target remains higher when data volume grows) |
 | `lib/graph/snapshot.ts` | Benchmark snapshots |
 | `lib/graph/types.ts` | Graph entity types |
 
@@ -175,11 +175,15 @@ Internal-only system for organic growth. Never queried directly by public pages.
 
 ## Billing
 
-| Plan | Env price ID | Price | New URL checks |
-|------|--------------|-------|----------------|
-| Free | — | $0 | 3 lifetime |
-| Pro (`BUILDER`) | `STRIPE_BUILDER_PRICE_ID` | $39/mo | 5/mo |
-| Studio (`TEAM`) | `STRIPE_TEAM_PRICE_ID` | $129/mo | 25/mo |
+Target marketing prices (Stripe price IDs may lag until a revenue ops change):
+
+| Plan | Env price ID | Marketing price | Product reviews/mo |
+|------|--------------|-----------------|-------------------|
+| Free | — | $0 | 3 |
+| Pro (`BUILDER`) | `STRIPE_BUILDER_PRICE_ID` | $69/mo (marketing) | 25 + 4 deep |
+| Studio (`TEAM`) | `STRIPE_TEAM_PRICE_ID` | $199/mo (marketing) | 80 + 10 deep |
+
+Customer copy: **product review**, **update review** (same credit pool), **deep review**. Internal: `/re-check` route, `recheck_*` analytics.
 
 - Stripe: hosted Checkout + Customer Portal + webhooks (`docs/stripe-setup.md`)
 - Cost tracking: `AuditRunCost` per audit phase (LLM tokens + estimated USD)
@@ -205,7 +209,7 @@ Internal-only system for organic growth. Never queried directly by public pages.
 5. Persists flags + scores + screenshots; resolves evidence anchors; optionally captures visual evidence (GIF/overlay) into `performanceData.flagVisualEvidence`
 6. If user is signed up and `includeAi` → enqueues `ai-review` job for prescription (5000 chars page text)
 7. Audit marked COMPLETED → user sees report (fix prompts when `aiReviewAt` set)
-8. Re-check: same URL → new capture → diff against previous flags
+8. Update review (customer term): same URL → new capture → diff against previous flags. Internal route: `/api/reports/[id]/re-check`.
 
 ### Report UI ownership
 
@@ -239,7 +243,7 @@ Playwright Chromium via `lib/audit/screenshot.ts` + `lib/audit/browser/page-sess
 1. Anonymous user: triage + deterministic flags → upsell at sign up for fix prompts
 2. Authenticated user with credits: triage → prescription job → full report with fix prompts
 3. Triage degraded: COMPLETED with flags/screenshots and honest partial-AI message (see `docs/audit-pipeline.md`)
-4. Re-checks: unlimited, free, gated only by URL ownership
+4. Update reviews use product review credits on every plan (customer copy). Internal re-check route remains ungated by ownership only until billing enforcement ships.
 
 ## Technical invariants
 

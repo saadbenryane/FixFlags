@@ -3,7 +3,8 @@ export const MCP_DOCS = {
 } as const
 
 export const PRODUCT_WATCH_COPY = {
-  description: 'FixFlags re-checks this product on a schedule and emails you only when something regresses.',
+  description:
+    'FixFlags runs scheduled product reviews and emails you only when something regresses.',
   weekly: 'Weekly',
   daily: 'Daily',
   off: 'Off',

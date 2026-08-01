@@ -17,7 +17,7 @@ export type HelpArticleSlug =
   | 'vs-lighthouse'
   | 'free-vs-pro'
   | 'what-counts-as-a-check'
-  | 'rechecks-are-free'
+  | 'update-review-credits'
   | 'credits'
   | 'cancel-or-manage'
   | 'payment-past-due'

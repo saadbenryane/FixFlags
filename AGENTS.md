@@ -8,9 +8,9 @@ Start with `npm run agent`. Use `npm run agent -- context <area>` for focused fi
 
 FixFlags is the independent Product Intelligence System for AI-built software. A user submits a URL and receives a Finish Plan across Message, Experience, and Reach, with fix prompts for their AI editor.
 
-- Core loop: **Check → Fix → Verify → Watch**.
+- Core loop: **Build → Review → Fix → Verify → Learn**.
 - Canonical report hierarchy: [knowledge/report-contract.md](knowledge/report-contract.md). Do not duplicate route or section order in skills.
-- Re-checks are free and unlimited; plans meter new URL checks.
+- Plans meter product reviews (new URLs and update reviews share the same credit pool). Customer copy uses **update review**; internal routes may still use `re-check`.
 - Stage: pre-revenue testing. Distribution has priority over additional product depth.
 - Shipped truth: [PRODUCT.md](PRODUCT.md). North star: [knowledge/vision.md](knowledge/vision.md).
 - Product and technical vocabulary: [knowledge/README.md](knowledge/README.md).
@@ -69,7 +69,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for setup, databases, deployment, and debug
 
 - Marketing copy has one source of truth: `lib/marketing/copy.ts`. Do not hardcode it in components.
 - The product exposes exactly three report rubrics: Message, Experience, Reach.
-- Re-check remains the user-facing term. `monitoring` is an internal implementation term unless a separately defined product surface explicitly requires it.
+- Customer-facing loop language lives in `lib/marketing/copy/terminology.ts`: product review, update review, deep review, Funnel, path. Internal code may still use `re-check`, `recheck`, and `monitoring` routes and analytics names.
 - The anonymous wedge is one teaser scan. Evidence stays visible on the Finish Plan; exactly one complete demonstrated fix prompt is shown; remaining prompts stay gated until claim. Public APIs must not leak gated prompts. Do not persist signup-gate strings as evidence or fix text.
 - Authentication flows land on `/post-login` so anonymous audits are claimed before checkout or `next` navigation.
 - Real product output is the proof surface. Do not invent testimonials, member counts, fake reports, or unsupported product claims.

@@ -92,6 +92,34 @@ function fail(error: unknown, json = false): void {
   process.exitCode = 1
 }
 
+function isJsonMode(
+  jsonOption?: boolean,
+  command?: {
+    optsWithGlobals?: () => { json?: boolean }
+    rawArgs?: string[]
+    parent?: {
+      rawArgs?: string[]
+    }
+  }
+): boolean {
+  const commandWithGlobals =
+    command && typeof command.optsWithGlobals === 'function'
+      ? command.optsWithGlobals()
+      : typeof (program as { optsWithGlobals?: () => { json?: boolean } }).optsWithGlobals === 'function'
+        ? (program as { optsWithGlobals: () => { json?: boolean } }).optsWithGlobals()
+        : program.opts()
+  const jsonMode = Boolean(
+    jsonOption ||
+      commandWithGlobals?.json ||
+      command?.rawArgs?.includes('--json') ||
+      command?.parent?.rawArgs?.includes('--json') ||
+      (program as { rawArgs?: string[] }).rawArgs?.includes('--json') ||
+      process.argv.includes('--json')
+  )
+
+  return jsonMode
+}
+
 const program = new Command()
 
 program
@@ -111,7 +139,8 @@ program
         ? ['fixflags check <url>', 'fixflags --help']
         : ['npx fixflags check <url>', 'fixflags login', 'fixflags init'],
     }
-    if (options.json) console.log(JSON.stringify(payload, null, 2))
+    const jsonMode = isJsonMode(options.json)
+    if (jsonMode) console.log(JSON.stringify(payload, null, 2))
     else {
       console.log('service: FixFlags')
       console.log(`api: ${payload.api}`)
@@ -155,21 +184,20 @@ program
 program
   .command('whoami')
   .description('Show the account used by the CLI')
-  .option('--json', 'Print structured JSON')
-  .action(async (options: { json?: boolean }) => {
-    const json = Boolean(options.json || program.opts().json)
+  .action(async (options: { json?: boolean }, command: { optsWithGlobals?: () => { json?: boolean } }) => {
+    const jsonMode = isJsonMode(options.json, command)
     try {
       const apiKey = await getCredential()
       if (!apiKey) throw new Error('Not authenticated. Run fixflags login, or set FIXFLAGS_API_KEY for CI.')
       const identity = await fetchIdentity(apiKey)
-      if (json) console.log(JSON.stringify(identity, null, 2))
+      if (jsonMode) console.log(JSON.stringify(identity, null, 2))
       else {
         console.log(identity.user.email)
         console.log(`Plan: ${identity.user.plan}`)
         console.log(`API: ${API_BASE}`)
       }
     } catch (error) {
-      fail(error, json)
+      fail(error, jsonMode)
     }
   })
 
@@ -288,26 +316,27 @@ program
   .option('--scan-access-file <path>', 'JSON file with httpBasic, cookies, or headers (Studio)')
   .option('--basic-auth <credentials>', 'HTTP basic auth as user:password (Studio)')
   .option('--cookie <value>', 'Session cookie value for protected previews (Studio)')
-  .option('--json', 'Print structured JSON')
-  .action(
-    async (
-      url: string,
-      options: {
-        wait: boolean
-        plan?: boolean
-        single?: boolean
-        limit?: string
-        full?: boolean
-        scanAccessFile?: string
-        basicAuth?: string
-        cookie?: string
-        json?: boolean
-      }
-    ) => {
-      const json = Boolean(options.json || program.opts().json)
+    .action(
+      async (
+        url: string,
+        options: {
+          wait: boolean
+          plan?: boolean
+          single?: boolean
+          limit?: string
+          full?: boolean
+          scanAccessFile?: string
+          basicAuth?: string
+          cookie?: string
+          json?: boolean
+        },
+        command: { optsWithGlobals?: () => { json?: boolean } }
+      ) => {
+        const jsonMode = isJsonMode(options.json, command)
       const spinner = ora({
         text: 'Checking product...',
-        isEnabled: !json,
+        isEnabled: !jsonMode,
+        isSilent: jsonMode,
       }).start()
       try {
         const apiKey = await getCredential()
@@ -322,7 +351,7 @@ program
 
         spinner.stop()
         const hasCritical = Boolean(result.rubrics?.some((rubric) => (rubric.criticalCount ?? 0) > 0))
-        if (json) {
+        if (jsonMode) {
           console.log(JSON.stringify(result, null, 2))
           if (hasCritical) process.exitCode = 1
           return
@@ -354,55 +383,56 @@ program
         if (hasCritical) process.exitCode = 1
       } catch (error) {
         spinner.stop()
-        fail(error, json)
+        fail(error, jsonMode)
       }
     }
   )
 
 program
   .command('recheck <reportId>')
-  .description('Run a fresh check and show what improved or regressed')
-  .option('--wait', 'Wait for the completed re-check', true)
-  .option('--no-wait', 'Return as soon as the re-check is queued')
+  .description('Run a fresh update review and show what improved or regressed')
+  .option('--wait', 'Wait for the completed update review', true)
+  .option('--no-wait', 'Return as soon as the update review is queued')
   .option('--diff', 'Show the verification diff', true)
   .option('--limit <count>', 'Print only the first count remaining fixes')
   .option('--full', 'Print complete remaining fix prompts')
-  .option('--json', 'Print structured JSON')
-  .action(
-    async (
-      reportId: string,
-      options: {
-        wait: boolean
-        diff?: boolean
-        limit?: string
-        full?: boolean
-        json?: boolean
-      }
-    ) => {
-      const json = Boolean(options.json || program.opts().json)
+    .action(
+      async (
+        reportId: string,
+        options: {
+          wait: boolean
+          diff?: boolean
+          limit?: string
+          full?: boolean
+          json?: boolean
+        },
+        command: { optsWithGlobals?: () => { json?: boolean } }
+      ) => {
+        const jsonMode = isJsonMode(options.json, command)
       const spinner = ora({
-        text: 'Re-checking product...',
-        isEnabled: !json,
+        text: 'Running update review...',
+        isEnabled: !jsonMode,
+        isSilent: jsonMode,
       }).start()
       try {
         const apiKey = await getCredential()
         if (!apiKey)
-          throw new Error('Re-check requires authentication. Run fixflags login first, or set FIXFLAGS_API_KEY for CI.')
+          throw new Error('Update review requires authentication. Run fixflags login first, or set FIXFLAGS_API_KEY for CI.')
         const result = await recheckAndDiff(createMcpCaller(apiKey), reportId, {
           wait: options.wait,
         })
         spinner.stop()
 
-        if (json) {
+        if (jsonMode) {
           console.log(JSON.stringify(result, null, 2))
           return
         }
         if (!options.wait) {
-          console.log(`Re-check queued: ${result.reportId}`)
+          console.log(`Update review queued: ${result.reportId}`)
           return
         }
 
-        console.log(chalk.bold.cyan('FixFlags Re-check'))
+        console.log(chalk.bold.cyan('FixFlags update review'))
         console.log(`Report: ${result.reportUrl || `${API_BASE}/report/${result.reportId}`}`)
         if (options.diff && result.diff) {
           console.log('')
@@ -422,7 +452,7 @@ program
         }
       } catch (error) {
         spinner.stop()
-        fail(error, json)
+        fail(error, jsonMode)
       }
     }
   )
@@ -430,19 +460,18 @@ program
 program
   .command('status <reportId>')
   .description('Get the current status of a check')
-  .option('--json', 'Print structured JSON')
-  .action(async (reportId: string, options: { json?: boolean }) => {
-    const json = Boolean(options.json || program.opts().json)
+    .action(async (reportId: string, options: { json?: boolean }, command: { optsWithGlobals?: () => { json?: boolean } }) => {
+    const jsonMode = isJsonMode(options.json, command)
     try {
       const apiKey = await getCredential()
       if (!apiKey) throw new Error('Not authenticated. Run fixflags login, or set FIXFLAGS_API_KEY for CI.')
       const result = await createMcpCaller(apiKey)('ff_get_check_status', {
         reportId,
       })
-      if (json) console.log(JSON.stringify(result, null, 2))
+      if (jsonMode) console.log(JSON.stringify(result, null, 2))
       else console.log(`Status: ${(result as { status?: string }).status ?? 'UNKNOWN'}`)
     } catch (error) {
-      fail(error, json)
+      fail(error, jsonMode)
     }
   })
 

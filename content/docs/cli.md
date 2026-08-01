@@ -18,9 +18,9 @@ The CLI can configure Cursor, Claude Code, Windsurf, and Codex. Hosted editors u
 
 `--editor all` means every editor the CLI can configure automatically. Existing valid configuration is preserved and updates are idempotent.
 
-## Check and Re-check
+## Product review and update review
 
-Use the CLI to start a check for a public URL, inspect its status, and fetch the completed report. After deploying a fix, start a Re-check against the original report.
+Use the CLI to start a product review for a public URL, inspect its status, and fetch the completed report. After deploying a fix, run an update review against the original report.
 
 ## JSON and CI
 

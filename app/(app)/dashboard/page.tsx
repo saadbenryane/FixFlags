@@ -34,6 +34,7 @@ import { projectLimitForPlan } from "@/lib/billing/plans";
 import { loadFinishPlanFlags } from "@/lib/audit/load-finish-plan-flags";
 import { buildLiveExplorerModel } from "@/lib/report/explorer-model";
 import { buildDashboardWorkspaceModel } from "@/lib/report/workspace-adapters";
+import { REPORT_COPY } from "@/lib/marketing/copy";
 import { parseProductContract } from "@/lib/audit/product-contract";
 
 type DashboardSearchParams = {
@@ -273,7 +274,7 @@ export default async function DashboardPage({
 
       <PageHeader
         title="Dashboard"
-        description="Review what changed, copy the right fix, then Re-check."
+        description={REPORT_COPY.workspace.dashboard.pageDescription}
         className="flex items-center justify-between gap-4"
       >
         <div className="flex items-center gap-3">

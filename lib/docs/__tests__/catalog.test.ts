@@ -26,7 +26,7 @@ describe('documentation catalog', () => {
   })
 
   it('creates stable heading and tool reference anchors', () => {
-    expect(slugifyDocsHeading('Re-check & Compare')).toBe('re-check-and-compare')
+    expect(slugifyDocsHeading('Update review & Compare')).toBe('update-review-and-compare')
     expect(new Set(MCP_TOOL_DEFINITIONS.map((tool) => tool.name)).size).toBe(
       MCP_TOOL_DEFINITIONS.length
     )

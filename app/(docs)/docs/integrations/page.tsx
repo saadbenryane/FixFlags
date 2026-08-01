@@ -15,7 +15,7 @@ const page = getDocsPage('integrations')
 export const metadata = buildDocsMetadata(page)
 
 const FIRST_PROMPT =
-  'Check https://your-product.com and build a Finish Plan. Validate the highest-ranked Flag against its evidence before changing code. After I deploy the fix, Re-check and compare against the original report.'
+  'Check https://your-product.com and build a Finish Plan. Validate the highest-ranked Flag against its evidence before changing code. After I deploy the fix, run an update review and compare against the original report.'
 
 export default function IntegrationsDocsPage() {
   return (

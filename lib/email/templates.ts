@@ -1,4 +1,5 @@
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
+import { PRICING_COPY } from '@/lib/marketing/copy/terminology'
 import { brandLight } from '@/lib/design/brand-spec'
 
 const p = brandLight
@@ -23,22 +24,22 @@ function layout(content: string): string {
 
 export const NURTURE_EMAILS = {
   welcome: {
-    subject: `Your first check is ready`,
+    subject: `Your first product review is ready`,
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
-  <p>You have 3 new URL checks. Each one gives you Flags across Message, Experience, and Reach, plus a fix prompt you can paste into Cursor, Claude, Lovable, or Bolt.</p>
+  <p>You have ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month. Each one gives you Flags across Message, Experience, and Reach, plus a fix prompt you can paste into Cursor, Claude, Lovable, or Bolt.</p>
   <p>Paste the URL you are about to share. That is what this is for.</p>
-  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Run your first check</a></p>
-  <p style="font-size: 13px; color: hsl(212 10% 46%);">Common first checks: your Product Hunt page, your demo day landing page, a client site before handoff.</p>
+  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Run your first product review</a></p>
+  <p style="font-size: 13px; color: hsl(212 10% 46%);">Common first reviews: your Product Hunt page, your demo day landing page, a client site before handoff.</p>
 `),
   },
   firstAuditNudge: {
-    subject: `Your 3 new URL checks are waiting`,
+    subject: `Your ${PRICING_COPY.freeProductReviewsPerMonth} product reviews are waiting`,
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
-  <p>You signed up for ${BRAND.name} yesterday. Your 3 new URL checks are still waiting.</p>
+  <p>You signed up for ${BRAND.name} yesterday. Your ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month are still waiting.</p>
   <p>Paste any public URL. You will get Flags with evidence and a fix prompt for each one. The whole thing takes about 60 seconds.</p>
   <p><a href="${SITE_URL}" style="${ctaStyle}">Paste a URL</a></p>
 `),
@@ -48,9 +49,9 @@ export const NURTURE_EMAILS = {
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
-  <p>You ran a ${BRAND.name} check a few days ago. AI editors are fast but they do not always fix what you think they fixed. Mobile layout, share previews, and performance are the usual misses.</p>
-  <p>A re-check runs the same URL again and shows exactly what cleared and what is still open.</p>
-  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Re-check your site</a></p>
+  <p>You ran a ${BRAND.name} product review a few days ago. AI editors are fast but they do not always fix what you think they fixed. Mobile layout, share previews, and performance are the usual misses.</p>
+  <p>An update review runs the same URL again and shows exactly what cleared and what is still open.</p>
+  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Run an update review</a></p>
 `),
   },
   launchChecklist: {
@@ -66,8 +67,8 @@ export const NURTURE_EMAILS = {
     <li>Social proof visible before the scroll</li>
     <li>Page job clear in the hero headline</li>
   </ul>
-  <p>${BRAND.name} checks all of this automatically and writes the fix prompt for anything that fails.</p>
-  <p><a href="${SITE_URL}" style="${ctaStyle}">Check before you publish</a></p>
+  <p>${BRAND.name} reviews all of this automatically and writes the fix prompt for anything that fails.</p>
+  <p><a href="${SITE_URL}" style="${ctaStyle}">Review before you publish</a></p>
 `),
   },
 } as const
@@ -79,7 +80,7 @@ export const BILLING_EMAILS = {
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
   <p>We could not process your latest subscription payment. Paid features are paused until the payment succeeds.</p>
-  <p>Update your card in Billing. Re-checks on reports you own stay free.</p>
+  <p>Update your card in Billing. Product reviews resume when payment succeeds.</p>
   <p><a href="${SITE_URL}/billing" style="${ctaStyle}">Update payment method</a></p>
   <p style="font-size: 13px; color: hsl(212 10% 46%);">Need a walkthrough? <a href="${SITE_URL}/help/billing-and-plans/payment-past-due" style="color: ${p.link};">Payment past due help</a> or reply to this email.</p>
 `),

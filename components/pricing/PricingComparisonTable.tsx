@@ -10,15 +10,21 @@ const ROWS = [
   },
   {
     feature: "What you get",
-    free: "3 checks with full reports and fix prompts",
+    free: "3 product reviews per month with full reports and fix prompts",
     pro: "Before/after compare + MCP in your editor",
     studio: "Share links, proof exports, 5 projects, GitHub repo scans",
   },
   {
-    feature: "Re-checks",
-    free: "Unlimited on reports you own",
-    pro: "Unlimited (no quota)",
-    studio: "Unlimited (no quota)",
+    feature: "Deep reviews",
+    free: "1 teaser per month",
+    pro: "4 per month",
+    studio: "10 per month",
+  },
+  {
+    feature: "Update reviews",
+    free: "Use product review credits",
+    pro: "Use product review credits",
+    studio: "Use product review credits",
   },
   {
     feature: "Limits",

@@ -307,7 +307,7 @@ export default function McpSetupWizard() {
         <div className="space-y-3">
           <p className="text-sm font-semibold">First workflow</p>
           <pre className="whitespace-pre-wrap rounded-[var(--radius-card)] bg-muted/55 p-4 font-mono text-xs leading-6">
-            <code>{`Check ${productUrl} and build a Finish Plan. Validate the highest-ranked Flag against its evidence. After I deploy the fix, Re-check and compare it with the original report.`}</code>
+            <code>{`Check ${productUrl} and build a Finish Plan. Validate the highest-ranked Flag against its evidence. After I deploy the fix, run an update review and compare it with the original report.`}</code>
           </pre>
         </div>
 
