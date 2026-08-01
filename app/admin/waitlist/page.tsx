@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { Route } from 'next'
 import { prisma } from '@/lib/db'
 import { listWaitlistRows } from '@/lib/billing/waitlist-segments'
 import { Container } from '@/components/ui/container'
@@ -31,10 +32,10 @@ export default async function AdminWaitlistPage({
           <Link href="/admin/waitlist">All ({proCount + studioCount})</Link>
         </Button>
         <Button variant={planFilter === 'BUILDER' ? 'default' : 'outline'} size="sm" asChild>
-          <Link href="/admin/waitlist?plan=BUILDER">Pro ({proCount})</Link>
+          <Link href={'/admin/waitlist?plan=BUILDER' as Route}>Pro ({proCount})</Link>
         </Button>
         <Button variant={planFilter === 'TEAM' ? 'default' : 'outline'} size="sm" asChild>
-          <Link href="/admin/waitlist?plan=TEAM">Studio ({studioCount})</Link>
+          <Link href={'/admin/waitlist?plan=TEAM' as Route}>Studio ({studioCount})</Link>
         </Button>
         <Button variant="outline" size="sm" asChild>
           <a href={`/api/admin/waitlist/export${planFilter ? `?plan=${planFilter}` : ''}`}>
