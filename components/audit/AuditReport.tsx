@@ -60,10 +60,9 @@ import { ReportSignupCta } from '@/components/audit/ReportSignupCta'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
-import { WorkspaceActivityPanel } from '@/components/report/WorkspaceActivityPanel'
+import { buildPlaybackSteps } from '@/components/report/WorkspacePlaybackStrip'
 import { WorkspaceBrowserPanel } from '@/components/report/WorkspaceBrowserPanel'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
-import { WorkspacePlaybackStrip } from '@/components/report/WorkspacePlaybackStrip'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
 
@@ -393,25 +392,13 @@ export function AuditReport({
       flagsSection={
         !isSample && auditId ? (
           <ReportWorkspaceSplitShell
-            leftPanel={
-              <>
-                <WorkspaceActivityPanel events={audit.actionTimeline ?? []} />
-                <WorkspaceChatPanel auditId={auditId} />
-              </>
-            }
+            leftPanel={<WorkspaceChatPanel auditId={auditId} />}
+            activityEvents={audit.actionTimeline ?? []}
             browserPanel={
               <WorkspaceBrowserPanel url={audit.url} screenshots={audit.screenshots} />
             }
             reportPanel={flagsSectionWithHeader}
-            playbackPanel={
-              <WorkspacePlaybackStrip
-                steps={(audit.actionTimeline ?? []).slice(0, 12).map((event, index) => ({
-                  id: `${event.kind}-${index}`,
-                  label: event.kind,
-                }))}
-              />
-            }
-            mobileProductPanel={flagsExplorer}
+            steps={buildPlaybackSteps(audit.actionTimeline ?? [])}
           />
         ) : (
           flagsSectionWithHeader

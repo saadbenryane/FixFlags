@@ -280,6 +280,7 @@ model User {
   subscriptionLifecycle   SubscriptionLifecycleEvent[]
   gscConnection           GscConnection?
   paidPlanWaitlistEntries PaidPlanWaitlistEntry[]
+  reportChatMessages      ReportChatMessage[]
 
   @@map("users")
 }
@@ -717,6 +718,7 @@ model Audit {
   shareLinks             ShareLink[]
   feedback               AuditFeedback[]
   technologyObservations AuditTechnologyObservation[]
+  chatMessages           ReportChatMessage[]
 
   searchPerformance        SearchPerformance[]
   indexStatuses            IndexStatus[]
@@ -739,6 +741,21 @@ model Audit {
   @@index([normalizedDomain])
   @@index([siteId])
   @@map("audits")
+}
+
+model ReportChatMessage {
+  id        String   @id @default(cuid())
+  auditId   String
+  audit     Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([auditId, createdAt(sort: Asc)])
+  @@index([userId])
+  @@map("report_chat_messages")
 }
 
 model JourneyReview {

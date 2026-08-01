@@ -978,6 +978,36 @@ export const REPORT_COPY = {
       returnHome: "Return home",
       reviewSite: "Review my product",
     },
+    activity: "Activity",
+    chat: {
+      title: "Chat with FixFlags",
+      placeholder: "What should I fix first?",
+      empty: "Ask what to fix first, or about a Flag on this report.",
+      send: "Send",
+      unavailable: "Could not reach FixFlags chat right now.",
+      notConfigured:
+        "AI chat is not configured on this environment. Open a Flag in the report for evidence and fix prompts.",
+      replyFallback:
+        "I could not generate a reply. Try asking about a specific Flag.",
+      notSignedIn: "Sign in to use workspace chat",
+      notOwner: "You can only chat on your own reports",
+      notFound: "Report not found",
+      messageRequired: "Message required",
+    },
+    playback: {
+      label: "Path playback",
+      evidenceTitle: (index: number) => `Step ${index} evidence`,
+      closeEvidence: "Close evidence",
+      empty: (url: string) =>
+        `Browser evidence appears here as FixFlags captures ${url}.`,
+    },
+    panels: {
+      chatTab: "Chat",
+      productTab: "Product",
+      browserView: "Browser view",
+      reportView: "Report view",
+      toggleLabel: "Workspace view",
+    },
   },
   reportFirst: {
     loadingLabel: "Loading report",

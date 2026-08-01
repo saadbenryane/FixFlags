@@ -30,10 +30,9 @@ import type { ProductContract } from '@/lib/audit/product-contract'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
-import { WorkspaceActivityPanel } from '@/components/report/WorkspaceActivityPanel'
+import { buildPlaybackSteps } from '@/components/report/WorkspacePlaybackStrip'
 import { WorkspaceBrowserPanel } from '@/components/report/WorkspaceBrowserPanel'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
-import { WorkspacePlaybackStrip } from '@/components/report/WorkspacePlaybackStrip'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
@@ -294,12 +293,8 @@ export function AuditReportProgressive({
         auditId ? (
           <ReportWorkspaceSplitShell
             isActiveReview
-            leftPanel={
-              <>
-                <WorkspaceActivityPanel events={actionTimeline} />
-                <WorkspaceChatPanel auditId={auditId} />
-              </>
-            }
+            leftPanel={<WorkspaceChatPanel auditId={auditId} />}
+            activityEvents={actionTimeline}
             browserPanel={
               <WorkspaceBrowserPanel url={url} screenshots={screenshots} />
             }
@@ -333,19 +328,7 @@ export function AuditReportProgressive({
                 </ExplorerErrorBoundary>
               </section>
             }
-            playbackPanel={
-              <WorkspacePlaybackStrip
-                steps={actionTimeline.slice(0, 12).map((event, index) => ({
-                  id: `${event.kind}-${index}`,
-                  label: event.kind,
-                }))}
-              />
-            }
-            mobileProductPanel={
-              <ExplorerErrorBoundary fallback={null}>
-                <LiveReportExplorer model={explorerModel} loading={isLoading} />
-              </ExplorerErrorBoundary>
-            }
+            steps={buildPlaybackSteps(actionTimeline)}
           />
         ) : (
         <section

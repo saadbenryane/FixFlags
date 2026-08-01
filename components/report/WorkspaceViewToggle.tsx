@@ -1,5 +1,6 @@
 'use client'
 
+import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
 export type WorkspacePanelView = 'browser' | 'report'
@@ -18,7 +19,7 @@ export function WorkspaceViewToggle({ view, onChange, className }: WorkspaceView
         className
       )}
       role="tablist"
-      aria-label="Workspace view"
+      aria-label={REPORT_COPY.workspace.panels.toggleLabel}
     >
       <button
         type="button"
@@ -30,7 +31,7 @@ export function WorkspaceViewToggle({ view, onChange, className }: WorkspaceView
         )}
         onClick={() => onChange('browser')}
       >
-        Browser view
+        {REPORT_COPY.workspace.panels.browserView}
       </button>
       <button
         type="button"
@@ -42,7 +43,7 @@ export function WorkspaceViewToggle({ view, onChange, className }: WorkspaceView
         )}
         onClick={() => onChange('report')}
       >
-        Report view
+        {REPORT_COPY.workspace.panels.reportView}
       </button>
     </div>
   )
