@@ -34,3 +34,11 @@ export function rubricLabel(rubric: string): string {
   if (r === 'REACH') return 'Reach'
   return rubric.charAt(0) + rubric.slice(1).toLowerCase()
 }
+
+export function rubricBadgeClasses(rubric: string): string {
+  const r = rubric.toUpperCase()
+  if (r === 'MESSAGE') return 'bg-brand-muted text-brand border-brand-border'
+  if (r === 'EXPERIENCE') return 'bg-warning-muted text-warning-foreground border-warning-border'
+  if (r === 'REACH') return 'bg-success-muted text-success border-success-border'
+  return 'bg-muted text-muted-foreground'
+}

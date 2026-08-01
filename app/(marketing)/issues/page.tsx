@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Heading, Lead, Muted } from '@/components/ui/typography'
 import { getIndexableIssueCheckIds, MIN_SAMPLE_SIZE } from '@/lib/graph/queries'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
+import { rubricBadgeClasses } from '@/lib/marketing/issue-page'
 import { prisma } from '@/lib/db'
 
 export const metadata = buildPageMetadata('issues', '/issues')
@@ -32,12 +33,6 @@ export default async function IssuesIndexPage() {
           },
         })
       : []
-
-  const rubricColor = (rubric: string) => {
-    if (rubric === 'MESSAGE') return 'bg-brand-muted text-brand border-brand-border'
-    if (rubric === 'EXPERIENCE') return 'bg-warning-muted text-warning-foreground border-warning-border'
-    return 'bg-success-muted text-success border-success-border'
-  }
 
   return (
     <Section spacing="marketing">
@@ -70,7 +65,7 @@ export default async function IssuesIndexPage() {
                   <Card variant="solid" interactive className="h-full">
                     <CardContent className="p-5 space-y-3">
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" size="sm" className={rubricColor(issue.rubric)}>
+                        <Badge variant="outline" size="sm" className={rubricBadgeClasses(issue.rubric)}>
                           {issue.rubric}
                         </Badge>
                         <span className="text-xs text-muted-foreground">

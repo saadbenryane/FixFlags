@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import type { Metadata } from 'next'
+import type { Metadata, Route } from 'next'
 import Link from 'next/link'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -8,11 +8,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Heading, Lead, Muted, Body } from '@/components/ui/typography'
 import { getIssuePage, MIN_SAMPLE_SIZE } from '@/lib/graph/queries'
+import { getRelatedIssues } from '@/lib/graph/related'
 import { issuePageSchema } from '@/lib/marketing/structured-data'
 import {
   issuePageTitle,
   issuePageDescription,
   rubricLabel,
+  rubricBadgeClasses,
 } from '@/lib/marketing/issue-page'
 import { SITE_URL } from '@/lib/marketing/copy'
 
@@ -54,6 +56,8 @@ export default async function IssuePage({ params }: Props) {
 
   if (!data) notFound()
 
+  const relatedIssues = await getRelatedIssues(checkId)
+
   const title = issuePageTitle(data)
   const description = issuePageDescription(data)
   const path = `/issues/${checkId}`
@@ -67,13 +71,6 @@ export default async function IssuePage({ params }: Props) {
     path,
   })
 
-  const rubricBadgeColor =
-    data.rubric === 'MESSAGE'
-      ? 'bg-brand-muted text-brand border-brand-border'
-      : data.rubric === 'EXPERIENCE'
-        ? 'bg-warning-muted text-warning-foreground border-warning-border'
-        : 'bg-success-muted text-success border-success-border'
-
   return (
     <>
       <script
@@ -86,14 +83,14 @@ export default async function IssuePage({ params }: Props) {
           <div className="space-y-10">
             {/* Hero */}
             <div className="text-center space-y-4">
-              <Badge variant="outline" className={rubricBadgeColor}>
+              <Badge variant="outline" className={rubricBadgeClasses(data.rubric)}>
                 {rubricLabel(data.rubric)}
               </Badge>
               <Heading as="h1" className="text-3xl sm:text-4xl font-bold text-foreground">
                 {data.problemTemplate}
               </Heading>
               <Lead className="max-w-xl mx-auto text-muted-foreground">
-                Observed on <strong className="text-foreground">{data.siteCount}</strong> audited
+                Observed on <strong className="text-foreground">{data.siteCount}</strong> reviewed
                 sites ({data.occurrenceCount} total occurrences)
               </Lead>
             </div>
@@ -149,6 +146,39 @@ export default async function IssuePage({ params }: Props) {
                           {ex.severity}
                         </Badge>
                       </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Related flags */}
+            {relatedIssues.length > 0 && (
+              <Card variant="solid">
+                <CardContent className="p-6 space-y-4">
+                  <Heading as="h2" className="text-lg">
+                    Related flags
+                  </Heading>
+                  <div className="space-y-2">
+                    {relatedIssues.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href as Route}
+                        className="flex items-center justify-between gap-4 rounded-card border border-border/40 bg-background/50 px-4 py-3 transition-colors hover:border-border"
+                      >
+                        <div className="min-w-0">
+                          <span className="block truncate font-medium text-foreground">
+                            {link.title}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {link.reason}
+                            {typeof link.siteCount === 'number' ? ` · ${link.siteCount} sites` : ''}
+                          </span>
+                        </div>
+                        <span className="text-muted-foreground" aria-hidden>
+                          →
+                        </span>
+                      </Link>
                     ))}
                   </div>
                 </CardContent>
