@@ -24,7 +24,7 @@ export const metadata = buildPageMetadata('howItWorks', '/how-it-works')
 const LOOP_ICONS = [Flag, Wrench, RefreshCcw] as const
 
 export default function HowItWorksPage() {
-  const { reportPreview, loop, mcp, finalCta } = HOW_IT_WORKS_PAGE
+  const { reportPreview, reviewTypes, loop, mcp, finalCta } = HOW_IT_WORKS_PAGE
 
   return (
     <>
@@ -87,6 +87,47 @@ export default function HowItWorksPage() {
               ))}
             </div>
           </Card>
+        </Container>
+      </Section>
+
+      <Section spacing="marketing">
+        <Container variant="wide" className="space-y-8">
+          <div className="mx-auto max-w-3xl space-y-3 text-center">
+            <Badge variant="outline" className="mx-auto w-fit">
+              {reviewTypes.label}
+            </Badge>
+            <Heading as="h2">{reviewTypes.title}</Heading>
+            <p className="text-base leading-relaxed text-muted-foreground">{reviewTypes.body}</p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Card variant="strong" className="p-5 sm:p-6">
+              <h3 className="text-lg font-semibold tracking-heading">
+                {reviewTypes.productReview.title}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {reviewTypes.productReview.body}
+              </p>
+            </Card>
+            <Card variant="strong" className="p-5 sm:p-6">
+              <h3 className="text-lg font-semibold tracking-heading">
+                {reviewTypes.deepReview.title}
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {reviewTypes.deepReview.body}
+              </p>
+            </Card>
+          </div>
+          <p className="mx-auto max-w-2xl text-center text-sm leading-relaxed text-muted-foreground">
+            {reviewTypes.analogyLine}
+          </p>
+          <div className="flex justify-center">
+            <Button variant="outline" asChild>
+              <Link href={reviewTypes.docsHref}>
+                {reviewTypes.docsCta}
+                <ArrowRight className="h-4 w-4" aria-hidden />
+              </Link>
+            </Button>
+          </div>
         </Container>
       </Section>
 

@@ -1,6 +1,57 @@
 # Roadmap
 
-*Repository-level direction. Not a duplicate of external tracker. Vision: [knowledge/vision.md](./knowledge/vision.md). Sequencing: [knowledge/execution.md](./knowledge/execution.md).*
+*Repository-level direction. Not a duplicate of external tracker. Vision: [knowledge/vision.md](./knowledge/vision.md). Sequencing: [knowledge/execution.md](./knowledge/execution.md). Workspace interface: [docs/workspace-interface.md](./docs/workspace-interface.md).*
+
+## Target report workspace interface
+
+Descriptive spec for the report workspace chrome (not a priority stack). Full detail: [docs/workspace-interface.md](./docs/workspace-interface.md). Product context: [docs/product-prd.md](./docs/product-prd.md).
+
+### Layout (desktop)
+
+| Region | Purpose |
+|--------|---------|
+| **Left — Chat** | Persistent conversation with FixFlags: steering, Flag Q&A, what to fix first, lightweight product corrections. Activity stream may live here or above chat. Cheap router model (not judge pipeline). |
+| **Right — Browser** | Dominant panel. Toggle **Browser view** vs **Report view** in the same workspace (not a separate route). |
+| **Bottom — Playback** | Timeline/scrub strip for path replay and step evidence. Syncs with browser when a path or Flag evidence is selected. |
+
+```mermaid
+flowchart TB
+  subgraph workspace [ReportWorkspace]
+    Chat[Left_Chat]
+    subgraph right [Right_Toggle]
+      BrowserView[BrowserView]
+      ReportView[ReportView]
+    end
+    Playback[Bottom_Playback]
+  end
+  Chat --- right
+  right --- Playback
+```
+
+### Browser view modes
+
+**Product review** — programmatic Playwright capture with screenshot-forward evidence (today’s pipeline). Live or stepped captures aligned to checks; not full agent autonomy.
+
+**Deep review** — agent-class browser: autonomous navigation and interaction (multi-step journeys, funnel traversal, path recording). Public site explains this as agent-level browser exploration. See [How it works](/how-it-works) and [/docs/deep-review](/docs/deep-review).
+
+### Report view
+
+Finish Plan surfaces: progress band, Fix list, Flag detail, Funnel, Contract, previews, update review affordances. Same review record; switching views does not lose context.
+
+### Morph behavior
+
+- **During active review:** default Browser view; chat left; playback bottom when steps exist.
+- **After complete:** default Report view for triage; user can return to Browser view for replay and evidence.
+
+Evolve `ReportWorkspaceShell` and progressive report parity; do not fork a second report app.
+
+### Mobile
+
+Full parity: Lovable-style **Chat ↔ Product** primary switch; Report view without stripped features; playback bottom or full-screen on small screens (layout choice open in PRD).
+
+### Customer labels
+
+Product review, Deep review, Update review, Funnel, Path, Fix list — from `lib/marketing/copy/terminology.ts`. No re-check in customer UI.
 
 ## Recently closed
 
@@ -13,7 +64,7 @@
 
 ## Now
 
-- **Live Review Workspace (UI)** — Split layout: chat + activity left, live/replay browser right; morph into today’s Fix list report on complete. In-app chat (cheap router model). Funnel + session path replay in browser panel. Update review header + Pro compare payoff. **Mobile parity** (Lovable-inspired Chat ↔ Product, no stripped features). Canon: [docs/product-ui-intent.md](./docs/product-ui-intent.md), PRD §8. Board: `live-review-workspace-ui`.
+- **Live Review Workspace (UI)** — Split layout: chat + activity left, live/replay browser right; Browser view ↔ Report view toggle; playback bottom. In-app chat (cheap router model). Funnel + session path replay in browser panel. Update review header + Pro compare payoff. **Mobile parity** (Lovable-inspired Chat ↔ Product). Canon: [docs/workspace-interface.md](./docs/workspace-interface.md), [docs/product-prd.md](./docs/product-prd.md). Board: `live-review-workspace-ui`.
   *Signal:* paste URL → workspace on phone and desktop → chat during review → complete Fix list → path replay → update review → compare on Pro.
 
 - **Product Hunt completion release** — canonical complete Fix list workspace, deterministic curated sample, claim retry integrity, scoped share grants, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`. First-value dogfood: [`.agents/sessions/customer-journey-completion-plan.md`](./.agents/sessions/customer-journey-completion-plan.md).
@@ -25,7 +76,7 @@
 - **Customer journey trust close** — Anon evidence placeholders, dishonest Copy toast, score/BLOCKED contradiction, nav CTA clarity. Brand Phase 0 done (`fix-live-images`). Board `customer-journey-completion`.
   *Signal:* Phases 1-3 of customer-journey-completion-plan accepted on production dogfood.
 
-- **New pricing model** — Replace URL-check credits with product/journey model. Quick Check (free), Finish Check ($49 one-time), Pro ($39/mo), Studio ($129/mo). See `knowledge/strategy.md`.
+- **New pricing model** — Product review and deep review quotas per plan (Free 3 + 1 deep teaser; Pro $69/mo; Studio $199/mo). Marketing copy in `lib/marketing/copy/terminology.ts`; Stripe enforcement may lag. See [docs/business-model.md](./docs/business-model.md).
   *Signal:* Finish Check purchasable without sales call; Watch triggers on deployments.
 
 - **Growth distribution** — anon → signed-up → paying conversion; upsell timing; re-engagement.

@@ -30,6 +30,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. A
 | Billing and entitlements | `lib/billing/`, `lib/auth/entitlements.ts` | `npm run agent -- context billing` |
 | Public CLI | `fixflags-cli/`, [`.agents/skills/fixflags-npm-operations/SKILL.md`](.agents/skills/fixflags-npm-operations/SKILL.md) | `npm run agent -- context cli` |
 | Canonical knowledge | [CANONICAL-SOURCES.md](CANONICAL-SOURCES.md), [EVOLUTION-RULES.md](EVOLUTION-RULES.md) | `npm run agent -- context docs` |
+| Product PRD and workspace UI | [docs/product-prd.md](docs/product-prd.md), [docs/workspace-interface.md](docs/workspace-interface.md) | `npm run agent -- context docs` |
 | Failures and recovery | [QUALITY.md](QUALITY.md), `lib/queue/`, `.agents/learnings/` | `npm run agent -- context recovery` |
 
 Do not read every linked document by default. Follow the task router and open deeper references only when the task requires them.

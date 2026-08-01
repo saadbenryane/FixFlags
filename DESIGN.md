@@ -4,7 +4,7 @@
 
 **Customer vs internal language:** Customer surfaces use Product QA, product review, update review, deep review, Funnel, and path. Internal code may still use re-check routes, recheck components, and monitoring implementation names.
 
-**Product UI direction (locked):** Layout modes, chat, funnel/path replay, mobile parity, and milestone order live in [docs/product-ui-intent.md](../docs/product-ui-intent.md). Visual tokens and component rules stay in this file.
+**Product UI direction (locked):** Layout modes, chat, funnel/path replay, and mobile parity live in [docs/workspace-interface.md](../docs/workspace-interface.md). Product requirements: [docs/product-prd.md](../docs/product-prd.md). Visual tokens and component rules stay in this file.
 
 ## Design principles
 

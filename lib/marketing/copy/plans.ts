@@ -88,7 +88,7 @@ export const PRICING_FAQ = [
   {
     question: "What is a deep review?",
     answer:
-      "A deep review walks the journeys that matter, maps your funnel, and records path playback with evidence. Deep reviews use their own monthly allowance on paid plans.",
+      "A deep review uses agent-level browser exploration: FixFlags navigates your journeys, maps the funnel, and records paths with scrubbable playback. It uses a separate monthly allowance from standard product reviews. See /docs/deep-review for the full comparison.",
   },
   {
     question: "Do update reviews consume credits?",

@@ -4,6 +4,7 @@
 
 **Canonical sources:**
 - Product vision and strategy: `knowledge/product.md`, `knowledge/strategy.md`
+- Target product requirements and shipped-vs-target gaps: `docs/product-prd.md` § shipped vs target
 - Three products: `knowledge/product-system.md`
 - Pricing tiers and philosophy: `knowledge/strategy.md` → Pricing
 - Core loop (philosophy): `knowledge/vision.md` → Core loop

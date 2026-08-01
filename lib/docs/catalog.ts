@@ -5,6 +5,7 @@ export type DocsPageKey =
   | 'home'
   | 'getting-started'
   | 'reports'
+  | 'deep-review'
   | 'integrations'
   | 'cli'
   | 'mcp'
@@ -76,6 +77,24 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
       { id: 'fix-prompts', title: 'Fix prompts' },
       { id: 'update-review-and-compare', title: 'Update review and compare' },
       { id: 'sharing-and-watch', title: 'Sharing and Watch' },
+    ],
+  },
+  {
+    key: 'deep-review',
+    path: '/docs/deep-review',
+    group: 'Use FixFlags',
+    title: 'Deep review',
+    description:
+      'Agent-level browser exploration for journeys, funnel maps, and path playback compared to standard product reviews.',
+    source: 'deep-review.md',
+    order: 2.5,
+    headings: [
+      { id: 'what-is-a-deep-review', title: 'What is a deep review?' },
+      { id: 'product-review-vs-deep-review', title: 'Product review vs deep review' },
+      { id: 'funnel-paths-and-playback', title: 'Funnel, paths, and playback' },
+      { id: 'when-to-run-each', title: 'When to run each' },
+      { id: 'plans-and-limits', title: 'Plans and limits' },
+      { id: 'related', title: 'Related' },
     ],
   },
   {
