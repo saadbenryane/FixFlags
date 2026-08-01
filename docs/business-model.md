@@ -43,7 +43,7 @@ Pricing numbers: [`lib/marketing/copy/terminology.ts`](../lib/marketing/copy/ter
 - **Flat-rate subscription** for monthly product review and deep review quotas.
 - **Hard stop at cap** with upgrade CTA. Credit packs are a future paid overflow option.
 - **Annual discount:** Later (not at launch). Monthly only until retention justifies it.
-- **No founding offers.** Founding offers create expectation debt.
+- **Founder cohort:** 12-month **40% Founder Discount** on Pro and Studio for launch waitlist cohort. One redemption per account. See [founder-offer.md](./founder-offer.md) and [gtm-launch-strategy.md](./gtm-launch-strategy.md).
 
 ## Pricing Tiers (Marketing target)
 

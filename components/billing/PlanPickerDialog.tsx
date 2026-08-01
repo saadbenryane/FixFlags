@@ -28,6 +28,7 @@ import {
   type PickerSource,
 } from '@/lib/billing/pick-plan'
 import { getActiveAudit } from '@/lib/audit/active-audit'
+import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
 import { cn } from '@/lib/utils'
 
 const PLAN_ICONS: Record<PickerPlan, typeof ShieldCheck> = {
@@ -97,7 +98,7 @@ export function PlanPickerDialog({
       source,
       isLoggedIn: Boolean(user),
       currentPlan: user?.plan,
-      betaGated: process.env.NEXT_PUBLIC_STRIPE_BETA_GATING === 'true',
+      betaGated: isPaidCheckoutGatedClient(),
       userEmail: user?.email ?? undefined,
       fallbackPath,
       onCheckoutRedirect: (url) => {

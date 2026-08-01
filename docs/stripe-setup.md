@@ -2,14 +2,39 @@
 
 Test vs live is determined only by key prefix (`sk_test_` / `sk_live_`) and matching price IDs. Never mix test prices with live keys.
 
-## Current test catalog (account AjciMDcWE1)
+## Founder offer (40% × 12 months)
 
-Created 2026-07-19 in **test mode** (`livemode=false`).
+Create in Dashboard (test first, mirror in live). See [founder-offer.md](./founder-offer.md).
 
-| Product | Price ID | Env var | Amount |
-|---------|----------|---------|--------|
-| FixFlags Pro | `price_1Tv0h4AjciMDcWE189gBj6wf` | `STRIPE_BUILDER_PRICE_ID` | $39/mo |
-| FixFlags Studio | `price_1Tv0h5AjciMDcWE1qGjHsdJR` | `STRIPE_TEAM_PRICE_ID` | $129/mo |
+| Object | Internal name | Promotion code | Settings |
+|--------|---------------|----------------|----------|
+| Pro coupon | `founder_pro_40_12m` | `FOUNDER40` | 40% off, repeating 12 months, max_redemptions 500 |
+| Studio coupon | `founder_studio_40_12m` | `FOUNDERSTUDIO40` | 40% off, repeating 12 months, max_redemptions 500 |
+
+**Env vars:**
+
+```
+STRIPE_PAID_OPEN=false                    # server: false = waitlist only for paid
+NEXT_PUBLIC_PAID_OPEN=false               # client: mirrors server for UI gating
+STRIPE_FOUNDER_PRO_PROMOTION_ID=promo_...
+STRIPE_FOUNDER_STUDIO_PROMOTION_ID=promo_...
+```
+
+When `STRIPE_PAID_OPEN=true`, checkout is public; founder promotions auto-apply when eligible.
+
+## Target list prices (marketing)
+
+| Product | Target | Env var | Notes |
+|---------|--------|---------|--------|
+| Pro | $69/mo | `STRIPE_BUILDER_PRICE_ID` | Create new test/live price; legacy test ID was $39 |
+| Studio | $199/mo | `STRIPE_TEAM_PRICE_ID` | Create new test/live price; legacy test ID was $129 |
+
+Legacy test IDs (2026-07-19, **$39 / $129** — replace for launch):
+
+| Product | Price ID | Amount |
+|---------|----------|--------|
+| FixFlags Pro | `price_1Tv0h4AjciMDcWE189gBj6wf` | $39/mo |
+| FixFlags Studio | `price_1Tv0h5AjciMDcWE1qGjHsdJR` | $129/mo |
 | Credit Pack +10 | `price_1Tv0h6AjciMDcWE1BtRvPmOg` | `STRIPE_CREDIT_PACK_10_ID` | $15 |
 | Credit Pack +25 | `price_1Tv0h6AjciMDcWE1ShtiyPUu` | `STRIPE_CREDIT_PACK_25_ID` | $30 |
 | Credit Pack +50 | `price_1Tv0h7AjciMDcWE1XZWi26WU` | `STRIPE_CREDIT_PACK_50_ID` | $50 |
@@ -31,6 +56,10 @@ STRIPE_CREDIT_PACK_10_ID=price_...
 STRIPE_CREDIT_PACK_25_ID=price_...
 STRIPE_CREDIT_PACK_50_ID=price_...
 STRIPE_API_VERSION=2025-02-24.acacia
+STRIPE_PAID_OPEN=false
+NEXT_PUBLIC_PAID_OPEN=false
+STRIPE_FOUNDER_PRO_PROMOTION_ID=promo_...
+STRIPE_FOUNDER_STUDIO_PROMOTION_ID=promo_...
 BILLING_REQUIRED=false              # local: allow boot while iterating
 ```
 
@@ -59,7 +88,7 @@ Health: `/api/health` → `billingConfigured: true`.
 2. New live webhook endpoint + live `whsec_`
 3. Railway: replace all Stripe vars with `sk_live_` / live price IDs / live webhook secret; keep `BILLING_REQUIRED=true`
 4. Rotate any keys that were pasted in chat before going live
-5. One real $39 smoke charge (refund if desired)
+5. One real smoke charge at list price (refund if desired); verify founder discount in test mode first
 
 ## Smoke
 

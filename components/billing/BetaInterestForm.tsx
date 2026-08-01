@@ -17,24 +17,33 @@ interface BetaInterestFormProps {
   plan: CheckoutPlan
   initialEmail?: string
   compact?: boolean
+  source?: string
 }
 
 export function BetaInterestForm({
   plan,
   initialEmail = '',
   compact = false,
+  source = 'pricing',
 }: BetaInterestFormProps) {
   const inputId = useId()
   const [email, setEmail] = useState(initialEmail)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const emailLocked = Boolean(initialEmail)
+  const submitLabel =
+    plan === 'TEAM' ? BILLING_ACTION_COPY.beta.submitStudio : BILLING_ACTION_COPY.beta.submitPro
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
     if (!email.trim()) return
 
     setSubmitting(true)
-    const outcome = await submitBetaInterest({ email: email.trim(), plan })
+    const outcome = await submitBetaInterest({
+      email: email.trim(),
+      plan,
+      source,
+    })
     setSubmitting(false)
 
     if (outcome.kind === 'error') {
@@ -42,6 +51,7 @@ export function BetaInterestForm({
       return
     }
 
+    trackEvent('waitlist_joined', { plan, source })
     trackEvent('beta_interest_submitted', { plan, email: email.trim() })
     setSubmitted(true)
   }
@@ -70,7 +80,8 @@ export function BetaInterestForm({
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           required
-          disabled={submitting}
+          disabled={submitting || emailLocked}
+          readOnly={emailLocked}
           className="min-w-0 flex-1"
         />
         <Button
@@ -79,7 +90,7 @@ export function BetaInterestForm({
           loadingLabel={BILLING_ACTION_COPY.beta.submitting}
           disabled={!email.trim()}
         >
-          {BILLING_ACTION_COPY.beta.submit}
+          {submitLabel}
         </Button>
       </div>
       <p className="text-center text-3xs leading-snug text-muted-foreground">

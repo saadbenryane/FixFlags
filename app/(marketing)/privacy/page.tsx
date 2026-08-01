@@ -4,42 +4,37 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Heading, Body } from '@/components/ui/typography'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
-import { BRAND, OFFER } from '@/lib/marketing/copy'
+import { BRAND, OFFER, LEGAL_PAGE_META, PRIVACY_SECTIONS } from '@/lib/marketing/copy'
 
 export const metadata = buildPageMetadata('privacy', '/privacy')
 
 export default function PrivacyPage() {
+  const sections = [
+    PRIVACY_SECTIONS.collect,
+    PRIVACY_SECTIONS.use,
+    PRIVACY_SECTIONS.reportAccess,
+    PRIVACY_SECTIONS.thirdParties,
+  ]
+
   return (
     <Section spacing="default">
       <Container variant="content" className="prose prose-neutral dark:prose-invert space-y-6">
         <Heading as="h1">Privacy Policy</Heading>
-        <Body className="text-muted-foreground">Last updated: June 2026</Body>
+        <Body className="text-muted-foreground">Last updated: {LEGAL_PAGE_META.privacyUpdated}</Body>
 
-        <section className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-          <h2 className="text-base font-semibold text-foreground">What we collect</h2>
-          <p>
-            When you create an account, we store your email and name. When you run a check, we store
-            the URL you submit, screenshots, automated check results, and AI-generated Flags.
-          </p>
-
-          <h2 className="text-base font-semibold text-foreground">How we use it</h2>
-          <p>
-            We use this data to generate reports, enforce plan limits, and improve the product. We do
-            not sell your personal data. {OFFER.privacy}
-          </p>
-
-          <h2 className="text-base font-semibold text-foreground">Report access</h2>
-          <p>
-            {OFFER.linkPrivacy} Studio plans can create public share links. Separate public pages for
-            sites are for discovery; they are not your private audit.
-          </p>
-
-          <h2 className="text-base font-semibold text-foreground">Third parties</h2>
-          <p>
-            We use service providers for hosting, payments (Stripe), email (Resend), screenshot storage
-            (Cloudflare R2), and AI analysis (OpenAI or Anthropic). These providers process data on our
-            behalf under their own terms.
-          </p>
+        <section className="space-y-4 text-sm leading-relaxed text-muted-foreground">
+          {sections.map((section) => (
+            <div key={section.title} className="space-y-2">
+              <h2 className="text-base font-semibold text-foreground">{section.title}</h2>
+              <p>
+                {section.title === 'How we use it'
+                  ? `${section.body} ${OFFER.privacy}`
+                  : section.title === 'Report access'
+                    ? `${section.body} ${OFFER.linkPrivacy}`
+                    : section.body}
+              </p>
+            </div>
+          ))}
 
           <h2 className="text-base font-semibold text-foreground">Contact</h2>
           <p>

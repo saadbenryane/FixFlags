@@ -40,6 +40,7 @@ export const ADMIN_NAV = [
   { href: '/admin/feedback', label: 'Feedback' },
   { href: '/admin/leads', label: 'Leads' },
   { href: '/admin/users', label: 'Users' },
+  { href: '/admin/waitlist', label: 'Waitlist' },
   { href: '/admin/audits', label: 'Audits' },
 ] as const
 

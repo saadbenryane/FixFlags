@@ -42,6 +42,7 @@ export type FunnelEvent =
   | 'share_link_created'
   | 'marketing_page_view'
   | 'beta_interest_submitted'
+  | 'waitlist_joined'
   | 'plan_picker_viewed'
   | 'plan_picker_picked'
   | 'plan_picker_dismissed'
@@ -145,6 +146,7 @@ type EventParams = {
     device?: string
   }
   beta_interest_submitted: { plan?: string; email?: string }
+  waitlist_joined: { plan: string; source?: string }
   plan_picker_viewed: { source?: string; current_plan?: string }
   plan_picker_picked: { plan: string; source?: string }
   plan_picker_dismissed: { source?: string }

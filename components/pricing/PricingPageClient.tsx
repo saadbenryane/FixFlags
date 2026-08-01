@@ -28,7 +28,7 @@ import { Section } from "@/components/ui/section";
 import { Surface } from "@/components/ui/surface";
 import { Body, Heading, Muted } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
-import { PLANS, PRICING, PRICING_FAQ } from "@/lib/marketing/copy";
+import { PLANS, PRICING, PRICING_FAQ, BILLING_ACTION_COPY } from "@/lib/marketing/copy";
 import { CONTACT_PLAN } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 import { useMe } from "@/hooks/useMe";
@@ -73,6 +73,9 @@ export function PricingPageClient() {
             <Body className="mt-5 max-w-2xl text-muted-foreground text-pretty sm:text-lg">
               {PRICING.subhead}
             </Body>
+            <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+              {BILLING_ACTION_COPY.founderOffer.pricingCallout}
+            </p>
 
             <ul className="mt-6 grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
               {PRICING.assurances.map((assurance, index) => {

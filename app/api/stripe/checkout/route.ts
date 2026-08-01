@@ -10,6 +10,12 @@ import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { getAppUrl } from '@/lib/get-app-url'
 import { Plan } from '@prisma/client'
 import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
+import { isPaidOpenServer } from '@/lib/billing/paid-open'
+import {
+  FOUNDER_OFFER_ID,
+  founderCheckoutDiscounts,
+  type FounderCheckoutPlan,
+} from '@/lib/billing/founder-offers'
 
 const PAID_PLANS = Object.values(PLAN_DEFINITIONS)
   .filter((def) => def.plan !== 'FREE' && def.stripePriceId)
@@ -42,7 +48,22 @@ export async function POST(req: NextRequest) {
       return apiError('This plan is not configured for checkout', 503, { code: 'BILLING_NOT_CONFIGURED' })
     }
 
-    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+    if (!isPaidOpenServer()) {
+      return apiError('Paid checkout is not open yet. Join the waitlist on pricing.', 403, {
+        code: 'PRIVATE_BETA',
+      })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        stripeCustomerId: true,
+        stripeSubscriptionId: true,
+        plan: true,
+        subscriptionStatus: true,
+        founderOfferRedeemedAt: true,
+      },
+    })
     const appUrl = getAppUrl()
 
     const hasActiveSubscription =
@@ -66,6 +87,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const checkoutPlan = plan as FounderCheckoutPlan
+    const founderDiscounts = founderCheckoutDiscounts(checkoutPlan, {
+      founderOfferRedeemedAt: user?.founderOfferRedeemedAt ?? null,
+    })
+    const offerApplied = founderDiscounts != null
+
     const checkoutSession = await getStripe().checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
@@ -79,14 +106,17 @@ export async function POST(req: NextRequest) {
         : undefined,
       success_url: `${appUrl}/dashboard?upgraded=1&plan=${plan}`,
       cancel_url: `${appUrl}/pricing`,
+      ...(founderDiscounts ? { discounts: founderDiscounts } : { allow_promotion_codes: true }),
       metadata: {
         userId: session.user.id,
         plan,
+        ...(offerApplied ? { offer_id: FOUNDER_OFFER_ID } : {}),
       },
       subscription_data: {
         metadata: {
           userId: session.user.id,
           plan,
+          ...(offerApplied ? { offer_id: FOUNDER_OFFER_ID } : {}),
         },
       },
     })

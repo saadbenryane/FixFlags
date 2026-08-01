@@ -1,4 +1,5 @@
 'use client'
+
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Sparkles } from 'lucide-react'
@@ -9,6 +10,7 @@ import { requestPlanCheckout } from '@/lib/billing/client-checkout'
 import { BILLING_ACTION_COPY, PRICING } from '@/lib/marketing/copy'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { BetaInterestForm } from '@/components/billing/BetaInterestForm'
+import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
 
 interface Props {
   context?: UpgradeMoment
@@ -18,10 +20,17 @@ interface Props {
   userEmail?: string
 }
 
-export function UpgradeButton({ context, plan = 'BUILDER', betaGated, userEmail }: Props) {
+export function UpgradeButton({
+  context,
+  plan = 'BUILDER',
+  betaGated = isPaidCheckoutGatedClient(),
+  userEmail,
+}: Props) {
   const [loading, setLoading] = useState(false)
   const [showBetaForm, setShowBetaForm] = useState(false)
   const momentContent = context ? getUpgradeMomentContent(context) : null
+  const waitlistCta =
+    plan === 'TEAM' ? BILLING_ACTION_COPY.beta.gatedStudioCta : BILLING_ACTION_COPY.beta.gatedProCta
 
   async function handleUpgrade() {
     if (betaGated) {
@@ -55,7 +64,9 @@ export function UpgradeButton({ context, plan = 'BUILDER', betaGated, userEmail 
   }
 
   if (showBetaForm) {
-    return <BetaInterestForm plan={plan} initialEmail={userEmail} compact />
+    return (
+      <BetaInterestForm plan={plan} initialEmail={userEmail} compact source="dashboard" />
+    )
   }
 
   return (
@@ -74,7 +85,7 @@ export function UpgradeButton({ context, plan = 'BUILDER', betaGated, userEmail 
       >
         {!loading && <Sparkles className="h-4 w-4 mr-2" />}
         {betaGated
-          ? `Join ${PLAN_DEFINITIONS[plan].name} beta`
+          ? waitlistCta
           : momentContent
             ? momentContent.cta
             : plan === 'TEAM'

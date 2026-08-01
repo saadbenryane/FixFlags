@@ -4,10 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { PRICING } from '@/lib/marketing/copy'
+import { PRICING, BILLING_ACTION_COPY } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
 import { pickPlan, routerForPlanResult } from '@/lib/billing/pick-plan'
 import { BetaInterestForm } from '@/components/billing/BetaInterestForm'
+import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
 
 interface Props {
   plan: 'FREE' | 'BUILDER' | 'TEAM'
@@ -27,7 +28,7 @@ export function PricingCTAButton({
   highlight,
   isLoggedIn,
   currentPlan,
-  betaGated = false,
+  betaGated = isPaidCheckoutGatedClient(),
   userEmail,
 }: Props) {
   const router = useRouter()
@@ -74,7 +75,7 @@ export function PricingCTAButton({
   }
 
   if (showBetaForm && isPaidPlan) {
-    return <BetaInterestForm plan={plan} initialEmail={userEmail} />
+    return <BetaInterestForm plan={plan} initialEmail={userEmail} source="pricing" />
   }
 
   return (
@@ -90,13 +91,15 @@ export function PricingCTAButton({
         {isCurrent
           ? 'Current plan'
           : betaGated && isPaidPlan
-            ? 'Join private beta'
+            ? plan === 'TEAM'
+              ? BILLING_ACTION_COPY.beta.gatedStudioCta
+              : BILLING_ACTION_COPY.beta.gatedProCta
             : cta}
       </Button>
       {isPaidPlan && !isCurrent && (
         <p className="text-3xs text-center text-muted-foreground leading-snug">
           {betaGated
-            ? 'Paid features are in private beta. Request an invitation above.'
+            ? BILLING_ACTION_COPY.beta.gatedHint
             : isLoggedIn
               ? PRICING.upgradeStepsLoggedIn
               : PRICING.upgradeSteps}

@@ -87,6 +87,20 @@ export const BILLING_EMAILS = {
   },
 } as const
 
+export const WAITLIST_EMAILS = {
+  joined: (planLabel: string) => ({
+    subject: `You're on the ${planLabel} waitlist`,
+    html: (name: string) =>
+      layout(`
+  <p>Hi${name ? ` ${name}` : ''},</p>
+  <p>You're on the ${planLabel} waitlist. Your free account stays active while we open paid checkout in batches.</p>
+  <p>When ${planLabel} checkout opens, eligible waitlist members can claim the <strong>40% Founder Discount</strong> for 12 months (one redemption per account).</p>
+  <p>We'll email you when it's time to upgrade.</p>
+  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Back to your dashboard</a></p>
+`),
+  }),
+} as const
+
 export const NEWSLETTER_EMAIL = {
   subject: 'You\u2019re on the FixFlags list',
   html: () =>

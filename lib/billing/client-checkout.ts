@@ -68,12 +68,20 @@ export type BetaInterestOutcome =
 export async function submitBetaInterest(input: {
   email: string
   plan: CheckoutPlan
+  source?: string
+  campaign?: string
 }): Promise<BetaInterestOutcome> {
   try {
     const response = await fetch('/api/stripe/beta-interest', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: input.email, plan: input.plan, name: '' }),
+      body: JSON.stringify({
+        email: input.email,
+        plan: input.plan,
+        name: '',
+        source: input.source,
+        campaign: input.campaign,
+      }),
     })
     if (response.ok) return { kind: 'submitted' }
 

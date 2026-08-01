@@ -18,6 +18,8 @@ export const HERO = {
   ],
   /** Product-true trust line only. No invented member counts or stock avatars. */
   trustLine: "Trusted by builders shipping with AI",
+  founderTeaser:
+    "Pro and Studio open in batches. Join the waitlist for the 40% Founder Discount for 12 months.",
   scrollHint: "Scroll to discover",
 } as const;
 

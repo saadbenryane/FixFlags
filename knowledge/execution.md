@@ -14,6 +14,8 @@ Do not launch as “AI website auditing with N checks.” Long-term category is 
 
 **Competitive posture:** Direct war is Scout/Signo (live product QA). CodeRabbit is adjacent (pre-merge code gate). Do not partner CodeRabbit for GTM. Do not clone Scout chat spectacle.
 
+**GTM launch:** Hybrid free + Pro/Studio waitlists + founder cohort. See [docs/gtm-launch-strategy.md](../docs/gtm-launch-strategy.md).
+
 ## Core loop (wedge expression)
 
 Paste link → Check → Fix → Verify → Watch.

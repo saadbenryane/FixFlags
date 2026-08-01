@@ -67,11 +67,11 @@ describe('requestPlanCheckout', () => {
 
 describe('submitBetaInterest', () => {
   it('submits the canonical beta-interest payload', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }))
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(
-      submitBetaInterest({ email: 'builder@example.com', plan: 'TEAM' })
+      submitBetaInterest({ email: 'builder@example.com', plan: 'TEAM', source: 'pricing' })
     ).resolves.toEqual({ kind: 'submitted' })
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/stripe/beta-interest',
@@ -80,6 +80,8 @@ describe('submitBetaInterest', () => {
           email: 'builder@example.com',
           plan: 'TEAM',
           name: '',
+          source: 'pricing',
+          campaign: undefined,
         }),
       })
     )

@@ -92,6 +92,10 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Evidence classes, severity, and Flag anatomy | `knowledge/evidence-rules.md` |
 | Fix List and Quick Plan artifact | `knowledge/finish-plan.md` |
 | Launch readiness and validation | `knowledge/launch-requirements.md` |
+| GTM launch strategy (hybrid free + paid waitlist) | `docs/gtm-launch-strategy.md` |
+| Founder offer (40% × 12 months) | `docs/founder-offer.md` |
+| GTM launch metrics and funnel | `docs/gtm-metrics.md` |
+| Legal launch checklist | `docs/legal-launch-checklist.md` |
 | Target technical architecture | `knowledge/technical-architecture-spec.md` |
 | Durable decisions | `DECISIONS.md` |
 

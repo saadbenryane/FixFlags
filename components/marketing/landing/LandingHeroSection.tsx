@@ -52,6 +52,9 @@ export function LandingHeroSection() {
             <p className="mx-auto max-w-[42ch] text-[0.9375rem] leading-relaxed text-muted-foreground/95 text-pretty sm:max-w-xl sm:text-base lg:max-w-[34rem] lg:text-base lg:leading-relaxed">
               {HERO.subhead}
             </p>
+            <p className="mx-auto max-w-xl text-sm leading-relaxed text-muted-foreground/90 text-pretty">
+              {HERO.founderTeaser}
+            </p>
           </div>
 
           <div

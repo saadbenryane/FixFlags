@@ -173,11 +173,21 @@ export const BILLING_ACTION_COPY = {
     existingBody: 'Opening the billing portal to change plans.',
   },
   beta: {
-    submit: 'Join beta',
-    submitting: 'Joining…',
-    failed: 'Could not join the beta. Try again.',
-    success: "You're on the list.",
-    description: 'Paid features are in private beta. Enter your email to get an invitation.',
+    submitPro: 'Join Pro waitlist',
+    submitStudio: 'Join Studio waitlist',
+    submitting: 'Joining waitlist…',
+    failed: 'Could not join the waitlist. Try again.',
+    success: "You're on the list. We'll email you when checkout opens.",
+    description:
+      'Paid checkout opens in batches. Waitlist members can claim the 40% Founder Discount for 12 months when checkout opens (one redemption per account).',
+    gatedProCta: 'Join Pro waitlist',
+    gatedStudioCta: 'Join Studio waitlist',
+    gatedHint: 'Pro and Studio open in batches. Join the waitlist for the 40% Founder Discount.',
+  },
+  founderOffer: {
+    name: '40% Founder Discount',
+    duration: '12 months',
+    pricingCallout: '40% Founder Discount for 12 months when paid checkout opens.',
   },
 } as const;
 

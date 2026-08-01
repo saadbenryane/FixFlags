@@ -250,6 +250,7 @@ model User {
   stripePriceId           String?
   stripeCurrentPeriodEnd  DateTime?
   subscriptionStatus      SubscriptionStatus           @default(NONE)
+  founderOfferRedeemedAt  DateTime?
   vibecodingLevel         String?
   preferredTools          String[]
   gclid                   String?
@@ -276,8 +277,29 @@ model User {
   repoFixPrs              RepoFixPr[]
   subscriptionLifecycle   SubscriptionLifecycleEvent[]
   gscConnection           GscConnection?
+  paidPlanWaitlistEntries PaidPlanWaitlistEntry[]
 
   @@map("users")
+}
+
+model PaidPlanWaitlistEntry {
+  id             String    @id @default(cuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan           Plan
+  joinedAt       DateTime  @default(now())
+  source         String?
+  campaign       String?
+  invitedAt      DateTime?
+  convertedAt    DateTime?
+  founderOfferId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([userId, plan])
+  @@index([plan, joinedAt(sort: Desc)])
+  @@index([invitedAt])
+  @@map("paid_plan_waitlist_entries")
 }
 
 enum RepoScanStatus {

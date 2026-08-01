@@ -11,6 +11,7 @@ import { getStripe, planFromPriceId } from '@/lib/stripe'
 import { applyPlanLimits } from '@/lib/billing/limits'
 import { refundPurchasedCredit } from '@/lib/billing/credits'
 import { notifyAdminPaymentFailed, notifyUserPaymentFailed } from '@/lib/billing/notify'
+import { FOUNDER_OFFER_ID } from '@/lib/billing/founder-offers'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 
@@ -102,6 +103,26 @@ async function processSubscription(
     unitAmount: price?.unit_amount ?? null,
     currency: price?.currency ?? null,
   }
+}
+
+async function applyFounderOfferFulfillment(
+  tx: Prisma.TransactionClient,
+  subscription: Stripe.Subscription,
+  result: Awaited<ReturnType<typeof processSubscription>>,
+): Promise<void> {
+  const offerId = subscription.metadata?.offer_id
+  if (!offerId || offerId !== FOUNDER_OFFER_ID) return
+  if (!hasPaidEntitlement(result.status)) return
+  if (result.plan !== 'BUILDER' && result.plan !== 'TEAM') return
+
+  await tx.user.update({
+    where: { id: result.userId },
+    data: { founderOfferRedeemedAt: new Date() },
+  })
+  await tx.paidPlanWaitlistEntry.updateMany({
+    where: { userId: result.userId, plan: result.plan, convertedAt: null },
+    data: { convertedAt: new Date() },
+  })
 }
 
 async function recordSubscriptionLifecycle(
@@ -204,13 +225,17 @@ export async function POST(req: NextRequest) {
 
       switch (event.type) {
         case 'customer.subscription.created': {
-          const result = await processSubscription(tx, event.data.object)
-          await recordSubscriptionLifecycle(tx, event, 'SUBSCRIPTION_CREATED', event.data.object, result)
+          const subscription = event.data.object
+          const result = await processSubscription(tx, subscription)
+          await applyFounderOfferFulfillment(tx, subscription, result)
+          await recordSubscriptionLifecycle(tx, event, 'SUBSCRIPTION_CREATED', subscription, result)
           break
         }
         case 'customer.subscription.updated': {
-          const result = await processSubscription(tx, event.data.object)
-          await recordSubscriptionLifecycle(tx, event, 'SUBSCRIPTION_UPDATED', event.data.object, result)
+          const subscription = event.data.object
+          const result = await processSubscription(tx, subscription)
+          await applyFounderOfferFulfillment(tx, subscription, result)
+          await recordSubscriptionLifecycle(tx, event, 'SUBSCRIPTION_UPDATED', subscription, result)
           break
         }
         case 'customer.subscription.deleted': {

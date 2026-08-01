@@ -4,52 +4,34 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Heading, Body } from '@/components/ui/typography'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
-import { BRAND } from '@/lib/marketing/copy'
+import { BRAND, LEGAL_PAGE_META, TERMS_SECTIONS } from '@/lib/marketing/copy'
 
 export const metadata = buildPageMetadata('terms', '/terms')
 
 export default function TermsPage() {
+  const sections = [
+    TERMS_SECTIONS.service,
+    TERMS_SECTIONS.accountsAndBilling,
+    TERMS_SECTIONS.founderOffer,
+    TERMS_SECTIONS.waitlist,
+    TERMS_SECTIONS.creditPacks,
+    TERMS_SECTIONS.refunds,
+    TERMS_SECTIONS.acceptableUse,
+  ]
+
   return (
     <Section spacing="default">
       <Container variant="content" className="prose prose-neutral dark:prose-invert space-y-6">
         <Heading as="h1">Terms of Service</Heading>
-        <Body className="text-muted-foreground">Last updated: July 2026</Body>
+        <Body className="text-muted-foreground">Last updated: {LEGAL_PAGE_META.termsUpdated}</Body>
 
-        <section className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-          <h2 className="text-base font-semibold text-foreground">Service</h2>
-          <p>
-            {BRAND.name} provides Product QA reviews and fix prompts for AI-built products.
-            The service is provided as-is. Report results are guidance for your own review, not
-            guarantees of production readiness, compliance, accessibility certification, or legal
-            advice.
-          </p>
-
-          <h2 className="text-base font-semibold text-foreground">Accounts and billing</h2>
-          <p>
-            Paid plans renew monthly unless you cancel through the Stripe billing portal. Product
-            review limits apply per plan. New URLs and update reviews on reports you own each use one
-            product review credit. Downgrades and cancellations take effect at the end of the
-            current billing period unless Stripe indicates otherwise.
-          </p>
-
-          <h2 className="text-base font-semibold text-foreground">Credit packs</h2>
-          <p>
-            Legacy credit packs, when purchased, added additional product review credits. Credits do
-            not expire and do not change your subscription tier.
-          </p>
-
-          <h2 className="text-base font-semibold text-foreground">Refunds and cancellation</h2>
-          <p>
-            You may cancel anytime via the Stripe billing portal and keep access through the end of
-            the paid period. We do not provide cash refunds for unused subscription time. Chargebacks
-            or payment disputes may result in immediate suspension of paid features.
-          </p>
-
-          <h2 className="text-base font-semibold text-foreground">Acceptable use</h2>
-          <p>
-            Do not use {BRAND.name} to check sites you do not have permission to test, to abuse rate
-            limits, or to reverse-engineer the service.
-          </p>
+        <section className="space-y-4 text-sm leading-relaxed text-muted-foreground">
+          {sections.map((section) => (
+            <div key={section.title} className="space-y-2">
+              <h2 className="text-base font-semibold text-foreground">{section.title}</h2>
+              <p>{section.body}</p>
+            </div>
+          ))}
 
           <h2 className="text-base font-semibold text-foreground">Contact</h2>
           <p>
