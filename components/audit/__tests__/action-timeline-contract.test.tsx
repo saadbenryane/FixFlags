@@ -10,7 +10,7 @@ describe('ActionTimeline', () => {
     const html = renderToStaticMarkup(
       React.createElement(ActionTimeline, { events: [] })
     )
-    assert.match(html, /Scan steps will appear/)
+    assert.match(html, /Review steps will appear/)
   })
 
   it('renders events', () => {

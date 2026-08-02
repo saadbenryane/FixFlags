@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
 import { repoFindingToRankableFlag } from '@/lib/audit/repo-rankable-flags'
-import { buildFinishPlan } from '@/lib/audit/finish-plan'
+import { buildFixList } from '@/lib/audit/finish-plan'
 
 describe('unified finish plan', () => {
   it('ranks repo findings alongside live flags', () => {
@@ -40,12 +40,12 @@ describe('unified finish plan', () => {
       windsurfPrompt: null,
     })
 
-    const plan = buildFinishPlan({
+    const plan = buildFixList({
       flags: [live, repo],
       promptAccess: 'all',
     })
 
-    assert.ok(plan.items.length <= 3)
+    assert.ok(plan.items.length >= 1)
     assert.equal(plan.items[0]?.problem, 'Exposed API key in repository')
   })
 })

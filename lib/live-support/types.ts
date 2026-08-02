@@ -23,6 +23,12 @@ export interface SupportSessionDto {
   createdAt: string
 }
 
+export interface SupportSessionProject {
+  id: string
+  name: string
+  url: string
+}
+
 export interface SupportSessionListItem extends SupportSessionDto {
   lead?: {
     normalizedDomain: string
@@ -33,6 +39,7 @@ export interface SupportSessionListItem extends SupportSessionDto {
     email: string
     plan: string
   } | null
+  project: SupportSessionProject | null
 }
 
 /** Intentionally unused until help-retrieval AI replies exist. Pass-through in v1. */

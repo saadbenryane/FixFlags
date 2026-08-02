@@ -68,7 +68,7 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
           parentId: auditId,
           mode: 'critical_path',
         },
-        errorFallback: 'Could not start the deeper scan. Try again.',
+        errorFallback: 'Could not start the deep review. Try again.',
       })
       if (!result.ok) toast.error(result.message)
     } finally {
@@ -80,10 +80,10 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
     <div className={cn('space-y-3', className)}>
       <div className="flex items-center gap-2">
         <p className="text-xs font-mono uppercase tracking-label text-muted-foreground">
-          Conversion flow
+          {REPORT_COPY.workspace.funnelLabel}
         </p>
         <span className="text-xs text-muted-foreground">
-          {pages.length} pages scanned &middot; {totalFlags} flag{totalFlags !== 1 ? 's' : ''}
+          {pages.length} pages reviewed &middot; {totalFlags} flag{totalFlags !== 1 ? 's' : ''}
         </span>
       </div>
 

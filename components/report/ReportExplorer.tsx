@@ -114,10 +114,8 @@ export function ReportExplorer({
     window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
   }, [])
 
-  useEffect(() => {
-    if (urlStateLoaded.current || typeof window === 'undefined') return
-    urlStateLoaded.current = true
-    const params = new URLSearchParams(window.location.search)
+  const applyExplorerUrlState = useCallback((search: string) => {
+    const params = new URLSearchParams(search)
     const requestedRubric = params.get('rubric')
     const nextRubric: RubricFilter =
       requestedRubric === 'MESSAGE' ||
@@ -168,6 +166,21 @@ export function ReportExplorer({
       page: nextPage,
     })
   }, [model.flags, pages, visibleDemonstratedFlagId, writeExplorerUrl])
+
+  useEffect(() => {
+    if (urlStateLoaded.current || typeof window === 'undefined') return
+    urlStateLoaded.current = true
+    applyExplorerUrlState(window.location.search)
+  }, [applyExplorerUrlState])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onPopState = () => {
+      applyExplorerUrlState(window.location.search)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [applyExplorerUrlState])
 
   useOneShotEvent(
     'first_finding_viewed',
@@ -392,7 +405,7 @@ export function ReportExplorer({
   )
 
   const secondaryFilters = (
-    <div className="hidden space-y-2 lg:block">
+    <div className="space-y-2 lg:hidden">
       <div className="flex flex-wrap gap-2">
         <label className="sr-only" htmlFor="flag-severity-filter">Filter by severity</label>
         <select
@@ -450,7 +463,7 @@ export function ReportExplorer({
   )
 
   const listPane = (
-    <div className="min-w-0 space-y-3.5 lg:max-h-[calc(100vh-var(--header-offset)-5rem)] lg:overflow-y-auto lg:pr-2 scrollbar-thin">
+    <div className="min-w-0 list-none space-y-3.5 lg:max-h-[calc(100vh-var(--header-offset)-5rem)] lg:overflow-y-auto lg:pr-2 scrollbar-thin [&_ul]:list-none [&_li]:list-none">
       {secondaryFilters}
       {flagCount === 0 ? (
         <p className="text-sm text-muted-foreground">

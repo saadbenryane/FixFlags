@@ -23,10 +23,10 @@ export const PLANS = [
     period: "",
     persona: "Try before launch",
     outcome: "See everything on one page",
-    audits: `${PRICING_COPY.freeProductReviewsLifetime} product reviews / month`,
+    audits: `${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime)`,
     features: [
-      `${PRICING_COPY.freeProductReviewsLifetime} product reviews per month with full reports and fix prompts`,
-      `${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser per month`,
+      `${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) with full reports and fix prompts`,
+      `${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser (lifetime)`,
       "Upgrade anytime for more reviews",
     ],
     cta: "Start free",
@@ -119,7 +119,7 @@ export const PRICING_FAQ = [
   {
     question: "What happens when I hit my limit?",
     answer:
-      "Product reviews pause until you upgrade or your billing cycle resets. Free includes 3 product reviews per month. Paid plans reset each cycle.",
+      "Product reviews pause until you upgrade. Free includes 3 product reviews in total. Paid plans reset each cycle.",
   },
   {
     question: "Do I need Pro for MCP?",
@@ -150,7 +150,7 @@ export const PRICING = {
     "Every product review includes evidence and rubric summaries. Fix prompts come with a free account. Pro adds compare, more reviews, deep reviews, and MCP.",
   pickerEyebrow: "Pick a plan",
   pickerTitle: "Choose how you want to start",
-  pickerSubtitle: "Free includes 3 product reviews per month and every Flag. Paid adds more reviews, deep reviews, compare, and MCP.",
+  pickerSubtitle: "Free includes 3 product reviews (lifetime) and every Flag. Paid adds more reviews, deep reviews, compare, and MCP.",
   pickerBody: "Pick the plan that matches how often you ship.",
   pickerBodyWithReport: "Your review is still running. Pick a plan to keep your report and fix prompts.",
   pickerReportNote: "Choosing Free returns you to the running report.",
@@ -222,7 +222,7 @@ export const UPSELLS = {
 
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
-    headline: "You\u2019ve used your free product reviews this month",
+    headline: "You\u2019ve used your free product reviews",
     body: "Upgrade to Pro for 25 product reviews and 4 deep reviews per month, before/after compare, and MCP in Cursor, Claude Code, Windsurf, Lovable, or Bolt.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,

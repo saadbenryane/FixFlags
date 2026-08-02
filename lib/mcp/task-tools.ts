@@ -103,12 +103,14 @@ export function registerTaskTools(
       const [userLimit, hostLimit, workerEstimate] = await Promise.all([
         recordRateLimit({
           scope: 'mcp-user', identifier: freshUser.id, limit: 60, windowSeconds: 3600,
+          onRedisDown: 'reject',
         }),
         recordRateLimit({
           scope: 'audit-host',
           identifier: new URL(normalizedUrl).hostname,
           limit: 20,
           windowSeconds: 3600,
+          onRedisDown: 'reject',
         }),
         getWorkerQueueEstimate(),
       ])
@@ -152,6 +154,7 @@ export function registerTaskTools(
       const [userLimit, workerEstimate] = await Promise.all([
         recordRateLimit({
           scope: 'mcp-user', identifier: freshUser.id, limit: 60, windowSeconds: 3600,
+          onRedisDown: 'reject',
         }),
         getWorkerQueueEstimate(),
       ])

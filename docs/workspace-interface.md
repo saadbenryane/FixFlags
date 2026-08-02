@@ -4,9 +4,9 @@
 
 **Canonical for:** layout regions, view modes, browser modes, playback strip, mobile behavior, and on-screen terminology.
 
-**Related:** Product requirements live in [product-prd.md](./product-prd.md). Visual tokens and component rules live in [DESIGN.md](../DESIGN.md). When this workspace ships, report section order and anchors in [knowledge/report-contract.md](../knowledge/report-contract.md) follow this spec (Funnel anchor: `report-funnel`).
+**Related:** Product requirements live in [product-prd.md](./product-prd.md). Visual tokens and component rules live in [DESIGN.md](../DESIGN.md). Report section order and anchors follow [knowledge/report-contract.md](../knowledge/report-contract.md) (Funnel anchor: `report-funnel`).
 
-**Implementation:** Evolve [ReportWorkspaceShell](../components/report/ReportWorkspaceShell.tsx) and progressive report parity. Do not fork a second report app.
+**Implementation:** The interactive split workspace lives in [ReportWorkspaceSplitShell](../components/report/ReportWorkspaceSplitShell.tsx) with progressive parity in [AuditReportProgressive](../components/audit/AuditReportProgressive.tsx). Do not fork a second report app.
 
 ---
 
@@ -46,7 +46,7 @@ Shows the product as FixFlags experienced it.
 
 ### Report view
 
-Today’s Finish Plan surfaces: progress band, Fix list, Flag detail, Funnel, Contract, previews, update review affordances. Same review record; switching views does not lose context.
+Today's **Fix list** toggle shows the ranked Fix list and Flag detail inside `#report-flags`. Progress band, Contract, Funnel, previews, and update review affordances stay in the canonical report column around the workspace split.
 
 ---
 
@@ -77,10 +77,10 @@ Today’s Finish Plan surfaces: progress band, Fix list, Flag detail, Funnel, Co
 
 ## Chat policy
 
-- Chat always available in the left panel (live, completed, update review context).
+- Chat is **owner-only**. The owner sees the panel on live, completed, and update review reports; shared viewers (password share) get no chat panel.
 - Scope: explain Flags, steer review, ask what to fix first, lightweight corrections to product understanding. Not a general coding agent.
-- **Model:** cheapest viable chat model on OpenRouter (or equivalent router). Product judgment and Flags stay on the audit/judge pipeline.
-- Requirements: separate chat model config from judge/triage; hard cap or rate limit per session/plan; degrade to canned actions (“Explain this Flag”) if provider unavailable.
+- **Model:** cheapest viable chat model, configured separately from judge and triage. `CHAT_MODEL` / `CHAT_MAX_TOKENS` / `CHAT_TIMEOUT_MS` default to the cheapest model per provider; `CHAT_BASE_URL` routes chat through an OpenAI-compatible gateway (for example the opencode gateway) as the router equivalent.
+- Requirements: separate chat model config from judge/triage (shipped); hard cap per session/plan (`CHAT_SESSION_CAP`, default 20 user turns per report); degrade to canned actions (“Explain this Flag”, “What should I fix first?”) if the provider is unavailable. Canned replies are deterministic and grounded in the report’s own Flags.
 
 ---
 
@@ -127,20 +127,17 @@ Do not show **re-check** in customer UI.
 
 | Area | Today | Target |
 |------|-------|--------|
-| Layout | Report-first single column | Split during live; report chrome after complete |
-| Browser | Screenshots in Flag detail | Live + replay in right panel |
-| Chat | MCP/CLI only | In-app left panel (cheap model) |
-| Funnel | Section title + journey list | + path replay in browser panel |
-| Mobile | Responsive report | Full-featured Chat ↔ Product parity |
-| View toggle | Report only | Browser view ↔ Report view |
+| Layout | Split workspace during live; report chrome after complete | Same |
+| Browser | Live captures in right panel; selected playback step renders that captured frame | Deep review (agent-class) live browser |
+| Playback | Scrub timeline + step markers; browser frame updates on select; activity click seeks; `?step=N` replay from Flag/Funnel evidence | Full session-style takeover replay |
+| Chat | In-app left panel, owner-only, dedicated `CHAT_*` model, per-plan cap, canned actions on outage | Same |
+| Funnel | Section + journey list + Replay path into the workspace browser | Same |
+| Mobile | Chat ↔ Product parity, adapted playback | Full-screen path replay |
+| View toggle | Browser ↔ Fix list in the same workspace | Same |
 
----
+## Resolved design questions
 
-## Open design questions
-
-1. Chat ↔ Product on mobile: bottom tabs vs swipe vs FAB drawer?
-2. Path replay: inline in report vs full-screen takeover on small screens?
-3. Deep review teaser on Free: one journey playback vs summary-only?
-4. Takeover (user controls browser): first release or follow-on?
-
-Do not block workspace scaffold on these answers.
+1. Chat ↔ Product on mobile: **tab switch** (Lovable-style) shipped. Swipe/FAB remain open alternatives.
+2. Path replay layout: inline playback strip + step evidence shipped on all sizes; full-screen takeover remains open.
+3. Deep review teaser on Free (one journey playback vs summary-only) — open.
+4. Takeover (user controls browser) — follow-on, not first release.

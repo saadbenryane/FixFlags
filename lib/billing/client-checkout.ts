@@ -96,16 +96,3 @@ export async function submitWaitlistJoin(input: {
     return { kind: 'error', message: BILLING_ACTION_COPY.waitlist.failed }
   }
 }
-
-/** @deprecated Use submitWaitlistJoin */
-export type BetaInterestOutcome = WaitlistJoinOutcome
-
-/** @deprecated Use submitWaitlistJoin */
-export async function submitBetaInterest(input: {
-  email: string
-  plan: CheckoutPlan
-  source?: string
-  campaign?: string
-}): Promise<WaitlistJoinOutcome> {
-  return submitWaitlistJoin(input)
-}

@@ -57,7 +57,7 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 |----------|---------|-----------------|
 | Identity | `AuditReportHero` | Hostname, URL, scan status, and actions only |
 | Summary | `ReportWorkspaceSummary` | Release score, unresolved Flags with the Critical subset, score history, and Message, Experience, Reach coverage |
-| Working triage | `ReportExplorer` | `ScoreRingGauge` **sm** (68px) beside rubric/page filters (no severity filter) |
+| Working triage | `ReportExplorer` | Rubric, severity, impact, and page filters; release score lives in `ReportWorkspaceSummary` above |
 | Stuck chrome | `ReportStickyToolbar` when stuck | Hostname only, with no repeated score |
 
 The summary is a shortcut, not a second scoring system. The score ring uses the canonical report score. The unresolved total is the complete ranked Fix list count; its Critical subset opens the first Critical Flag. Each rubric control shows its complete Flag count, keeps the Critical subset visible when present, and opens that rubric or its first Critical Flag. Score history plots persisted completed scans in chronological order and shows the current scan as a single-point baseline before a Re-check exists. Do not repeat Pass, Needs Attention, Blocked, or share-readiness labels beside severity counts. When shareStatus is `fix_before_sharing`, ShareDrawer may show one warning line. Sticky toolbar uses `top-[var(--header-height)]` under the site header. Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
@@ -150,7 +150,7 @@ Report information architecture is defined once in [`knowledge/report-contract.m
 
 `ReportWorkspaceModel` composes the canonical `ReportExplorerModel` with identity, unresolved and Critical counts, rubric coverage, real Re-check history, and capabilities. Completed, progressive, curated sample, shared, Re-check, homepage proof, and dashboard release-hub surfaces project this same model. Density may be `compact`, `full`, or `hub`; density changes spacing and available actions, never ranking, evidence, access policy, or scoring semantics.
 
-The workspace heading is “Fix list.” Its supporting line states the unresolved count and checked scope. The segmented summary owns the release score, complete unresolved count, Critical shortcut, per-rubric coverage, and chronological score history. Public curated samples expose the complete ranked list and exactly one demonstrated prompt.
+The workspace heading is “Your review.” Its supporting line states the unresolved count and checked scope. The ranked master/detail list below is the Fix list (“All fixes” section title). The segmented summary owns the release score, complete unresolved count, Critical shortcut, per-rubric coverage, and chronological score history. Public curated samples expose the complete ranked list and exactly one demonstrated prompt.
 
 Every interactive element must define: rest, hover, focus, active, disabled.
 

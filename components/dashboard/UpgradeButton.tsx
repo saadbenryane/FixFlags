@@ -15,14 +15,14 @@ interface Props {
   context?: UpgradeMoment
   /** Target plan for checkout. Defaults to Pro. Use TEAM for Studio. */
   plan?: 'BUILDER' | 'TEAM'
-  betaGated?: boolean
+  waitlistGated?: boolean
   userEmail?: string
 }
 
 export function UpgradeButton({
   context,
   plan = 'BUILDER',
-  betaGated = isPaidCheckoutGatedClient(),
+  waitlistGated = isPaidCheckoutGatedClient(),
   userEmail,
 }: Props) {
   const [loading, setLoading] = useState(false)
@@ -32,7 +32,7 @@ export function UpgradeButton({
     plan === 'TEAM' ? BILLING_ACTION_COPY.beta.gatedStudioCta : BILLING_ACTION_COPY.beta.gatedProCta
 
   async function handleUpgrade() {
-    if (betaGated) {
+    if (waitlistGated) {
       setShowBetaForm(true)
       return
     }
@@ -42,7 +42,7 @@ export function UpgradeButton({
     const result = await pickPlan({
       plan,
       isLoggedIn: true,
-      betaGated,
+      waitlistGated,
       onPrivateBeta: () => setShowBetaForm(true),
       onCheckoutRedirect: (url) => {
         window.location.href = url
@@ -50,7 +50,7 @@ export function UpgradeButton({
     })
     setLoading(false)
 
-    if (result.kind === 'private_beta') {
+    if (result.kind === 'waitlist') {
       setShowBetaForm(true)
     }
   }
@@ -76,7 +76,7 @@ export function UpgradeButton({
         loadingLabel={PRICING.checkoutRedirecting}
       >
         {!loading && <Sparkles className="h-4 w-4 mr-2" />}
-        {betaGated
+        {waitlistGated
           ? waitlistCta
           : momentContent
             ? momentContent.cta

@@ -1,17 +1,18 @@
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 import { getConfiguredJudgeProviderChain } from './judge-config'
+import { hasAnthropicProviderKey, getOpenAIProviderKey } from './llm-keys'
 import { isRetryableJudgeError } from './judge'
 import { JudgeContractError } from './validate-judge-output'
 import { logger } from '@/lib/logger'
 
-export const anthropic = process.env.ANTHROPIC_API_KEY
+const openAiApiKey = getOpenAIProviderKey()
+
+export const anthropic = hasAnthropicProviderKey()
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   : null
 
-export const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null
+export const openai = openAiApiKey ? new OpenAI({ apiKey: openAiApiKey }) : null
 
 export const MAX_RETRIES = 3
 export const RETRY_DELAY_MS = 2000

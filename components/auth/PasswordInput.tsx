@@ -58,7 +58,7 @@ export function PasswordInput({
         </Button>
       </div>
       {showRequirements && (
-        <ul className="text-xs text-muted-foreground space-y-1 px-1">
+        <ul className="list-none space-y-1 px-1 text-xs text-muted-foreground">
           <li className={cn(hasMinLength && 'text-foreground')}>
             {hasMinLength ? '✓' : '○'} {AUTH.password.minLength(minLength)}
           </li>

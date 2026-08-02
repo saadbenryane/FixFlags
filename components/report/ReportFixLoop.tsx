@@ -40,7 +40,7 @@ function FlagList({
   reportHref?: string
 }) {
   return (
-    <ul className="space-y-1" aria-label="Report Flags">
+    <ul className="space-y-1" style={{ listStyle: 'none' }} aria-label="Report Flags">
       {flags.map((flag) => {
         const selected = selectedFlagId === flag.id
         const RubricIcon = rubricIcon(flag.rubric)
@@ -74,7 +74,11 @@ function FlagList({
           selected ? 'bg-accent/55 text-foreground' : 'hover:bg-muted/45'
         )
         return (
-          <li key={flag.id}>
+          <li
+            key={flag.id}
+            className="list-none"
+            style={{ listStyle: 'none' }}
+          >
             {reportHref ? (
               <Link
                 href={`${reportHref}?flag=${encodeURIComponent(flag.id)}` as Route}

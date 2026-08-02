@@ -6,11 +6,32 @@ const prismaMock = vi.hoisted(() => ({
 }))
 const getSession = vi.hoisted(() => vi.fn())
 const recheckAndCompare = vi.hoisted(() => vi.fn())
+const recordRateLimit = vi.hoisted(() => vi.fn())
+const getWorkerQueueEstimate = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession } } }))
 vi.mock('next/headers', () => ({ headers: async () => new Headers() }))
 vi.mock('@/lib/audit/task-contracts', () => ({ recheckAndCompare }))
+vi.mock('@/lib/queue/estimate', () => ({
+  computeEnqueueDelay: vi.fn((_: number, queue: { delayedJobs: number }) => ({
+    delayMs: queue.delayedJobs,
+    queued: false,
+    queueReason: undefined,
+    queue: { active: queue.delayedJobs, waiting: 0, delayed: 0 } as never,
+  })),
+  getWorkerQueueEstimate: () => getWorkerQueueEstimate(),
+}))
+vi.mock('@/lib/security/rate-limit', () => ({
+  recordRateLimit,
+  RateLimitError: class RateLimitError extends Error {
+    retryAfter: number
+    constructor(retryAfter: number) {
+      super('Too many requests')
+      this.retryAfter = retryAfter
+    }
+  },
+}))
 
 import { POST } from '@/app/api/reports/[id]/re-check/route'
 
@@ -23,6 +44,15 @@ describe('POST /api/reports/[id]/re-check', () => {
     vi.clearAllMocks()
     getSession.mockResolvedValue({ user: { id: 'u1' } })
     prismaMock.user.findUnique.mockResolvedValue({ id: 'u1', plan: 'FREE' })
+    recordRateLimit.mockResolvedValue({ exceeded: false, retryAfterSeconds: 0, currentCount: 1 })
+    getWorkerQueueEstimate.mockResolvedValue({
+      activeJobs: 0,
+      waitingJobs: 0,
+      delayedJobs: 0,
+      active: 0,
+      waiting: 0,
+      delayed: 0,
+    })
     recheckAndCompare.mockResolvedValue({
       parentReportId: 'parent-1',
       reportId: 'child-1',
@@ -57,6 +87,7 @@ describe('POST /api/reports/[id]/re-check', () => {
     expect(recheckAndCompare).toHaveBeenCalledWith({
       parentReportId: 'parent-1',
       user: expect.objectContaining({ id: 'u1' }),
+      delayMs: 0,
     })
   })
 

@@ -138,6 +138,34 @@ describe('ReportExplorer anonymous teaser', () => {
     expect(window.location.search).not.toContain('deleted')
   })
 
+  it('reapplies explorer filter state from browser history navigation', async () => {
+    const localModel: typeof model = {
+      ...model,
+      flags: [
+        ...model.flags,
+        { ...model.flags[0], id: 'demo', title: 'Another issue' },
+      ],
+    }
+
+    window.history.replaceState({}, '', '/report/a1?flag=locked')
+    render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer model={localModel} />
+      </MeProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Locked first flag/ })).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    window.history.replaceState({}, '', '/report/a1?flag=demo')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Another issue/ })).toHaveAttribute('aria-pressed', 'true')
+    })
+  })
+
   it('marks affected and unaffected captures without treating missing captures as healthy', async () => {
     render(
       <MeProvider initialUser={null}>

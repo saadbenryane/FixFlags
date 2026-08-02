@@ -98,7 +98,7 @@ export function PlanPickerDialog({
       source,
       isLoggedIn: Boolean(user),
       currentPlan: user?.plan,
-      betaGated: isPaidCheckoutGatedClient(),
+      waitlistGated: isPaidCheckoutGatedClient(),
       userEmail: user?.email ?? undefined,
       fallbackPath,
       onCheckoutRedirect: (url) => {
@@ -107,7 +107,7 @@ export function PlanPickerDialog({
     })
     setBusyPlan(null)
 
-    if (result.kind === 'private_beta') {
+    if (result.kind === 'waitlist') {
       onOpenChange(false)
       window.location.href = '/pricing'
       return

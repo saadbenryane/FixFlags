@@ -504,19 +504,21 @@ Precision, false-positive handling, duplicate suppression, evidence completeness
 
 ## 43) Shipped vs target (facts)
 
+Canonical interface table: [docs/workspace-interface.md](../docs/workspace-interface.md) (Shipped vs target).
+
 | Area | Shipped today | Target |
 |------|---------------|--------|
-| Workspace layout | Report-first single column | Split chat + browser; Browser ↔ Report toggle; playback bottom |
-| Browser in UI | Screenshots in Flag detail | Live + replay in right panel |
-| In-app chat | MCP/CLI only | Left panel, cheap router model |
-| Product review capture | Playwright programmatic | Same, with live stream sync in workspace |
-| Deep review | Journey MVP in pipeline; limited UI | Agent-class browser + funnel + path playback |
-| Customer metering copy | Product review + deep review quotas in marketing | Enforcement in `usage.ts` may lag |
-| Update review billing | Customer copy: metered; route `/re-check` | Align enforcement with copy |
-| Pricing display | $69 / $199 in marketing | Stripe/plans may show legacy amounts |
-| Funnel + path UI | Section + journey list | Path replay in browser panel |
-| Mobile | Responsive report | Full Chat ↔ Product parity |
-| Compare | Pro feature (where wired) | Primary payoff after update review |
+| Workspace layout | Split chat + activity left; Browser ↔ Fix list toggle; playback strip | Same; full-screen path replay takeover |
+| Browser in UI | Screenshot replay in workspace browser panel; step scrub | Agent-class deep-review live browser |
+| In-app chat | Owner-only left panel; dedicated `CHAT_*` model; per-plan cap; canned degradation | Same |
+| Product review capture | Playwright programmatic with workspace sync | Same |
+| Deep review | Journey capture in pipeline; funnel + path playback in workspace | Agent-class browser mode in workspace panel |
+| Customer metering | Product review + deep review quotas enforced in `lib/billing/plans.ts` and `lib/audit/usage.ts` | Same |
+| Update review billing | Metered product review credits; internal route `/re-check` | Public API rename to update-review (open) |
+| Pricing display | $69 / $199 in marketing and Stripe plans | Same |
+| Funnel + path UI | Funnel section + Replay path into workspace | Full session-style takeover replay |
+| Mobile | Chat ↔ Product tabs; adapted playback | Full-screen path replay |
+| Compare | Pro before/after compare after update review | Primary payoff surface |
 
 Shipped truth detail: [PRODUCT.md](../PRODUCT.md).
 

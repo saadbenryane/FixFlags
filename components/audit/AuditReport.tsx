@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
-import { type ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import { ReportStickyToolbar } from '@/components/audit/ReportStickyToolbar'
 import { AuditReportHero } from '@/components/audit/AuditReportHero'
 import { ReportProgressBand } from '@/components/report/ReportWorkspaceChrome'
@@ -17,6 +17,9 @@ import { Callout } from '@/components/ui/callout'
 import { TriageUnavailableCallout } from '@/components/audit/TriageUnavailableCallout'
 import { Card, CardTitle } from '@/components/ui/card'
 import { SectionTitle } from '@/components/ui/typography'
+import { Play } from 'lucide-react'
+import { ReportFixListHeader } from '@/components/report/ReportFixListHeader'
+import { ReportVerdictBlockquote } from '@/components/report/ReportVerdictBlockquote'
 import { UPSELLS, REPORT_COPY, HERO, AUDIT_ERRORS, ANON_VALUE_STRIP } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
@@ -55,13 +58,11 @@ import {
 import { ProductContractCard } from '@/components/audit/ProductContractCard'
 import { ProductMemoryStrip } from '@/components/audit/ProductMemoryStrip'
 import { ProductWatchControls } from '@/components/audit/ProductWatchControls'
-import { ActionTimeline } from '@/components/audit/ActionTimeline'
 import { ReportSignupCta } from '@/components/audit/ReportSignupCta'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
 import { buildPlaybackSteps } from '@/components/report/WorkspacePlaybackStrip'
-import { WorkspaceBrowserPanel } from '@/components/report/WorkspaceBrowserPanel'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
@@ -274,12 +275,7 @@ export function AuditReport({
   const flagsSectionWithHeader =
     unresolvedFlagCount > 0 ? (
       <section id="report-flags" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-3')}>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>
-          <span className="font-mono text-xs tabular-nums text-muted-foreground">
-            {unresolvedFlagCount} total
-          </span>
-        </div>
+        <ReportFixListHeader count={unresolvedFlagCount} />
         {flagsExplorer}
       </section>
     ) : (
@@ -355,9 +351,7 @@ export function AuditReport({
         !isSample ? (
           <div className="space-y-4">
             {userVerdict ? (
-              <blockquote className="border-l-2 border-brand pl-4 font-sans text-sm font-medium leading-relaxed text-foreground text-pretty sm:text-base">
-                {userVerdict}
-              </blockquote>
+              <ReportVerdictBlockquote verdict={userVerdict} />
             ) : null}
             <ReportStickyToolbar
               showPolish={unresolvedFlagCount > 0}
@@ -391,15 +385,17 @@ export function AuditReport({
       }
       flagsSection={
         !isSample && auditId ? (
-          <ReportWorkspaceSplitShell
-            leftPanel={<WorkspaceChatPanel auditId={auditId} />}
-            activityEvents={audit.actionTimeline ?? []}
-            browserPanel={
-              <WorkspaceBrowserPanel url={audit.url} screenshots={audit.screenshots} />
-            }
-            reportPanel={flagsSectionWithHeader}
-            steps={buildPlaybackSteps(audit.actionTimeline ?? [])}
-          />
+          <Suspense fallback={null}>
+            <ReportWorkspaceSplitShell
+              showChatColumn={isViewerOwner}
+              leftPanel={<WorkspaceChatPanel auditId={auditId} canChat={isViewerOwner} />}
+              activityEvents={audit.actionTimeline ?? []}
+              browserUrl={audit.url}
+              browserScreenshots={audit.screenshots}
+              reportPanel={flagsSectionWithHeader}
+              steps={buildPlaybackSteps(audit.actionTimeline ?? [])}
+            />
+          </Suspense>
         ) : (
           flagsSectionWithHeader
         )
@@ -433,6 +429,18 @@ export function AuditReport({
 
           {(showJourney || showJourneyReview || showFlow || showTimeline) ? (
             <div id="report-funnel" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-4')}>
+              {(audit.actionTimeline?.length ?? 0) > 0 ? (
+                <div className="flex items-center justify-between gap-3">
+                  <SectionTitle>{REPORT_COPY.sectionTitles.timelineCompleted}</SectionTitle>
+                  <Link
+                    href={`?step=1#report-flags`}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-sm"
+                  >
+                    <Play className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    {REPORT_COPY.workspace.funnelReplayPath}
+                  </Link>
+                </div>
+              ) : null}
               {showJourney ? (
                 <JourneyBar
                   pages={pages}
@@ -443,12 +451,6 @@ export function AuditReport({
               ) : null}
               {showJourneyReview ? <JourneyReviewTimeline reviews={journeyReviews} /> : null}
               {showFlow && audit.flowData ? <FlowScanTimeline flowData={audit.flowData} /> : null}
-              {showTimeline && (audit.actionTimeline?.length ?? 0) > 0 ? (
-                <section className="rounded-card bg-card/40 px-5 py-4 shadow-card glass-surface">
-                  <SectionTitle>{REPORT_COPY.sectionTitles.timelineCompleted}</SectionTitle>
-                  <ActionTimeline events={audit.actionTimeline ?? []} className="mt-3" />
-                </section>
-              ) : null}
             </div>
           ) : null}
 

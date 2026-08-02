@@ -1,6 +1,14 @@
 import { describe, it, vi } from 'vitest'
 import assert from 'node:assert/strict'
-import { AuditDeadlineError, isNonRetryableAuditError, determineFailureCode, determineFailureStage, canTryPartialFinalize } from '@/lib/audit/pipeline-errors'
+import {
+  AuditDeadlineError,
+  BrowserLaunchError,
+  StorageNotConfiguredError,
+  StorageUploadError,
+  SiteOutageError,
+  auditFailureCodeFromError,
+  isNonRetryableAuditError,
+} from '@/lib/audit/pipeline-errors'
 import { sanitizeAuditErrorMessage } from '@/lib/audit/pipeline/context'
 import { assertDeadline } from '@/lib/audit/pipeline/context'
 import { AUDIT_DEADLINE_MS, MIN_JUDGE_BUDGET_MS, FINALIZE_RESERVE_MS, STUCK_AUDIT_MINUTES } from '@/lib/audit/pipeline-config'
@@ -101,53 +109,46 @@ describe('isNonRetryableAuditError', () => {
   })
 })
 
-// ── determineFailureCode ─────────────────────────────────────────
+// ── auditFailureCodeFromError ────────────────────────────────────
 
-describe('determineFailureCode', () => {
+describe('auditFailureCodeFromError', () => {
   it('maps AuditDeadlineError to AUDIT_TIMEOUT', () => {
-    assert.equal(determineFailureCode(new AuditDeadlineError('capturing')), 'AUDIT_TIMEOUT')
+    assert.equal(auditFailureCodeFromError(new AuditDeadlineError('capturing')), 'AUDIT_TIMEOUT')
   })
 
-  it('maps JudgeContractError to AI_CONTRACT_INVALID', () => {
-    assert.equal(determineFailureCode(new JudgeContractError('bad output')), 'AI_CONTRACT_INVALID')
+  it('maps BrowserLaunchError to BROWSER_LAUNCH_FAILED', () => {
+    assert.equal(
+      auditFailureCodeFromError(new BrowserLaunchError('chromium missing')),
+      'BROWSER_LAUNCH_FAILED'
+    )
   })
 
-  it('maps generic Error to AUDIT_PIPELINE_FAILED', () => {
-    assert.equal(determineFailureCode(new Error('something broke')), 'AUDIT_PIPELINE_FAILED')
+  it('maps StorageNotConfiguredError to STORAGE_NOT_CONFIGURED', () => {
+    assert.equal(
+      auditFailureCodeFromError(new StorageNotConfiguredError('R2 not configured')),
+      'STORAGE_NOT_CONFIGURED'
+    )
+  })
+
+  it('maps StorageUploadError to STORAGE_UPLOAD_FAILED', () => {
+    assert.equal(
+      auditFailureCodeFromError(new StorageUploadError('upload failed')),
+      'STORAGE_UPLOAD_FAILED'
+    )
+  })
+
+  it('maps SiteOutageError to its own failure code', () => {
+    const err = new SiteOutageError('SITE_UNREACHABLE', 'site is down', 'throw')
+    assert.equal(auditFailureCodeFromError(err), 'SITE_UNREACHABLE')
+  })
+
+  it('maps generic errors to AUDIT_PIPELINE_FAILED', () => {
+    assert.equal(auditFailureCodeFromError(new Error('something broke')), 'AUDIT_PIPELINE_FAILED')
   })
 
   it('maps non-Error throw values to AUDIT_PIPELINE_FAILED', () => {
-    assert.equal(determineFailureCode('string error'), 'AUDIT_PIPELINE_FAILED')
-    assert.equal(determineFailureCode(null), 'AUDIT_PIPELINE_FAILED')
-  })
-})
-
-// ── determineFailureStage ────────────────────────────────────────
-
-describe('determineFailureStage', () => {
-  it('returns error.stage for AuditDeadlineError', () => {
-    const stage = determineFailureStage(new AuditDeadlineError('judging'), 'CHECKING', false)
-    assert.equal(stage, 'judging')
-  })
-
-  it('returns "judging" when judge data exists (non-deadline error)', () => {
-    const stage = determineFailureStage(new Error('LLM error'), 'JUDGING', true)
-    assert.equal(stage, 'judging')
-  })
-
-  it('returns status lowercase when no judge data and non-deadline', () => {
-    const stage = determineFailureStage(new Error('capture failed'), 'CAPTURING', false)
-    assert.equal(stage, 'capturing')
-  })
-
-  it('returns "unknown" when no status and no judge data', () => {
-    const stage = determineFailureStage(new Error('crash'), null, false)
-    assert.equal(stage, 'unknown')
-  })
-
-  it('prefers judge data over status when both are available', () => {
-    const stage = determineFailureStage(new Error('judge error'), 'CHECKING', true)
-    assert.equal(stage, 'judging')
+    assert.equal(auditFailureCodeFromError('string error'), 'AUDIT_PIPELINE_FAILED')
+    assert.equal(auditFailureCodeFromError(null), 'AUDIT_PIPELINE_FAILED')
   })
 })
 
@@ -204,40 +205,6 @@ describe('sanitizeAuditErrorMessage', () => {
       '  Error at https://app.example.com: ANTHROPIC_API_KEY  invalid  '
     )
     assert.equal(result, 'Error at [url] [config] invalid')
-  })
-})
-
-// ── canTryPartialFinalize ────────────────────────────────────────
-
-describe('canTryPartialFinalize', () => {
-  it('returns false for empty page runs', () => {
-    assert.equal(canTryPartialFinalize([]), false)
-  })
-
-  it('returns true when all pages have desktop screenshots', () => {
-    const runs = [
-      { length: 5, desktopScreenshot: true },
-      { length: 3, desktopScreenshot: true },
-    ]
-    assert.equal(canTryPartialFinalize(runs), true)
-  })
-
-  it('returns false when any page lacks a desktop screenshot', () => {
-    const runs = [
-      { length: 5, desktopScreenshot: true },
-      { length: 0, desktopScreenshot: false },
-    ]
-    assert.equal(canTryPartialFinalize(runs), false)
-  })
-
-  it('returns true for a single page with screenshot', () => {
-    const runs = [{ length: 2, desktopScreenshot: true }]
-    assert.equal(canTryPartialFinalize(runs), true)
-  })
-
-  it('returns false for a single page without screenshot', () => {
-    const runs = [{ length: 0, desktopScreenshot: false }]
-    assert.equal(canTryPartialFinalize(runs), false)
   })
 })
 

@@ -1,4 +1,5 @@
 import type { HelpArticle, HelpCategory } from './types'
+import { PRICING_COPY } from '@/lib/marketing/copy/terminology'
 
 export const HELP_CATEGORIES: readonly HelpCategory[] = [
   {
@@ -48,7 +49,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Your report opens immediately while the product review runs. If you are signed out, create an account or sign in to save it. A free account includes 3 product reviews per month and 1 deep review teaser. Update reviews on the same report also use product review credits.',
+        text: `Your report opens immediately while the product review runs. If you are signed out, create an account or sign in to save it. A free account includes ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) and ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser (lifetime). Update reviews on the same report also use product review credits.`,
       },
       {
         type: 'ol',
@@ -250,7 +251,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'Free: 3 product reviews per month with full reports and fix prompts, plus 1 deep review teaser.',
+        text: `Free: ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) with full reports and fix prompts, plus ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser (lifetime).`,
       },
       {
         type: 'p',

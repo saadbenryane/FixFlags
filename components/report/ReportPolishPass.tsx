@@ -36,7 +36,7 @@ export function ReportPolishPass({
   className,
 }: ReportPolishPassProps) {
   const [previewOpen, setPreviewOpen] = useState(false)
-  const copy = REPORT_COPY.polishPass
+  const copy = REPORT_COPY.topFixes
   const hasPrompt = Boolean(prompt?.trim())
   const showLocked = locked && !hasPrompt
   const showGenerating = generating && !hasPrompt && !loading
@@ -47,7 +47,7 @@ export function ReportPolishPass({
 
   return (
     <section
-      id="report-polish-pass"
+      id="report-top-fixes"
       aria-label={copy.title}
       className={cn(
         'scroll-mt-[var(--report-chrome-offset)] overflow-hidden rounded-card bg-card/80 shadow-card glass-surface',

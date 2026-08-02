@@ -60,27 +60,31 @@ export async function POST(req: NextRequest) {
         identifier: session?.user?.id ?? clientId,
         limit: session?.user ? 120 : 60,
         windowSeconds: 3600,
+        onRedisDown: 'reject',
       }),
       enforceRateLimit({
         scope: 'audit-host-hard',
         identifier: new URL(url).hostname,
         limit: 120,
         windowSeconds: 3600,
+        onRedisDown: 'reject',
       }),
     ])
 
     const [userLimit, hostLimit, workerEstimate] = await Promise.all([
       recordRateLimit({
         scope: session?.user ? 'audit-user' : 'audit-client',
-        identifier: session?.user?.id ?? clientId,
+        identifier: session?.user ? session?.user.id : clientId,
         limit: session?.user ? 30 : 10,
         windowSeconds: 3600,
+        onRedisDown: 'reject',
       }),
       recordRateLimit({
         scope: 'audit-host',
         identifier: new URL(url).hostname,
         limit: 20,
         windowSeconds: 3600,
+        onRedisDown: 'reject',
       }),
       getWorkerQueueEstimate(),
     ])

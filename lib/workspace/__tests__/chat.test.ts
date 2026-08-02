@@ -1,18 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const fakeCreate = vi.hoisted(() =>
-  vi.fn().mockResolvedValue({
-    choices: [{ message: { content: 'Fix the critical flag first.' } }],
-  })
-)
+const fakeCreate = vi.fn()
 
-vi.mock('@/lib/audit/judge-runner', () => ({
-  openai: { chat: { completions: { create: fakeCreate } } },
-}))
-
-import { runWorkspaceChat, type ChatFlagContext } from '@/lib/workspace/chat'
-
-const flags: ChatFlagContext[] = [
+const flags = [
   {
     id: 'flag-1',
     rubric: 'Message',
@@ -31,26 +21,31 @@ const flags: ChatFlagContext[] = [
   },
 ]
 
+async function loadWorkspaceChat(overrides?: {
+  openai?: unknown
+  anthropic?: unknown
+}) {
+  vi.resetModules()
+  vi.doMock('@/lib/audit/judge-runner', () => ({
+    openai: overrides?.openai,
+    anthropic: overrides?.anthropic,
+  }))
+  const mod = await import('@/lib/workspace/chat')
+  return { runWorkspaceChat: mod.runWorkspaceChat }
+}
+
 beforeEach(() => {
-  fakeCreate.mockClear()
+  fakeCreate.mockReset().mockResolvedValue({ choices: [{ message: { content: 'Fix the critical flag first.' } }] })
 })
 
 describe('runWorkspaceChat', () => {
-  it('returns a helpful fallback when openai is undefined', async () => {
-    vi.resetModules()
-    vi.doMock('@/lib/audit/judge-runner', () => ({ openai: undefined }))
-    const { runWorkspaceChat: fallbackChat } = await import('@/lib/workspace/chat')
-    const reply = await fallbackChat({
-      message: 'hello',
-      url: 'https://example.com',
-      status: 'COMPLETED',
-      flags: [],
-    })
-    expect(reply).toContain('AI chat is not configured')
-  })
-
   it('sends flag context and report metadata in the user message', async () => {
-    const reply = await runWorkspaceChat({
+    const { runWorkspaceChat } = await loadWorkspaceChat({
+      openai: { chat: { completions: { create: fakeCreate } } },
+      anthropic: undefined,
+    })
+
+    const { reply, mode } = await runWorkspaceChat({
       message: 'What should I fix first?',
       url: 'https://example.com',
       status: 'COMPLETED',
@@ -58,6 +53,7 @@ describe('runWorkspaceChat', () => {
     })
 
     expect(reply).toBe('Fix the critical flag first.')
+    expect(mode).toBe('llm')
     expect(fakeCreate).toHaveBeenCalledOnce()
 
     const call = fakeCreate.mock.calls[0]![0]
@@ -78,19 +74,56 @@ describe('runWorkspaceChat', () => {
     expect(systemMessage.content).toContain('rank by severity')
   })
 
-  it('falls back to the retry prompt when the model returns empty', async () => {
-    fakeCreate.mockResolvedValueOnce({ choices: [{ message: { content: '' } }] })
-    const reply = await runWorkspaceChat({
+  it('degrades to a canned reply when the model returns empty', async () => {
+    const { runWorkspaceChat } = await loadWorkspaceChat({
+      openai: {
+        chat: {
+          completions: {
+            create: fakeCreate.mockResolvedValueOnce({ choices: [{ message: { content: '' } }] }),
+          },
+        },
+      },
+      anthropic: undefined,
+    })
+
+    const { reply } = await runWorkspaceChat({
       message: 'Why does the report fail?',
       url: 'https://example.com',
       status: 'QUEUED',
-      flags: [],
+      flags,
     })
-    expect(reply).toContain('I could not generate a reply')
-    expect(reply).toContain('Try asking about a specific Flag')
+    expect(reply).toContain('Start with the most important Flag')
+    expect(reply).toContain('Missing headline above the fold')
+  })
+
+  it('degrades to a canned reply when no provider is configured', async () => {
+    const { runWorkspaceChat } = await loadWorkspaceChat({
+      openai: undefined,
+      anthropic: undefined,
+    })
+
+    const { reply } = await runWorkspaceChat({
+      message: 'Explain this Flag',
+      url: 'https://example.com',
+      status: 'COMPLETED',
+      flags,
+    })
+    expect(reply).toContain('Start with the most important Flag')
+    expect(reply).toContain('Fix: Add an H1 with the primary value proposition')
   })
 
   it('uses no-flag message when flags array is empty', async () => {
+    const { runWorkspaceChat } = await loadWorkspaceChat({
+      openai: {
+        chat: {
+          completions: {
+            create: fakeCreate,
+          },
+        },
+      },
+      anthropic: undefined,
+    })
+
     await runWorkspaceChat({
       message: 'hello',
       url: 'https://example.com',

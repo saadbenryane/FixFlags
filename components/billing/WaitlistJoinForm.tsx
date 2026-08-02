@@ -54,7 +54,6 @@ export function WaitlistJoinForm({
     }
 
     trackEvent('waitlist_joined', { plan, source })
-    trackEvent('beta_interest_submitted', { plan, email: email.trim() })
     setSubmitted(true)
   }
 
@@ -101,6 +100,3 @@ export function WaitlistJoinForm({
     </form>
   )
 }
-
-/** @deprecated Use WaitlistJoinForm */
-export const BetaInterestForm = WaitlistJoinForm

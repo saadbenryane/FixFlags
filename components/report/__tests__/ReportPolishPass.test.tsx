@@ -14,14 +14,14 @@ const PROMPT = '## Mission\nFix all 2 issues.'
 describe('ReportPolishPass', () => {
   it('renders loading skeleton before flags arrive', () => {
     render(<ReportPolishPass flagCount={0} prompt={null} loading />)
-    expect(screen.getByLabelText('Polish pass')).toBeInTheDocument()
+    expect(screen.getByLabelText('Top fixes')).toBeInTheDocument()
     expect(screen.getByText(/Ranked fix prompts appear/i)).toBeInTheDocument()
   })
 
-  it('renders copy action for a bundled polish pass prompt', () => {
+  it('renders copy action for a bundled top fixes prompt', () => {
     render(<ReportPolishPass flagCount={3} prompt={PROMPT} />)
     expect(screen.getByText(/3 Flags ranked by impact/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Copy polish pass/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Copy top fixes/i })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Preview prompt/i }))
     expect(screen.getByTestId('fix-prompt-preview')).toHaveTextContent('Fix all 2 issues')
   })

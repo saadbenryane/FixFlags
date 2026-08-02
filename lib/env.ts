@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { validateAuthEnv } from '@/lib/auth/env'
 import { validateStripeBillingEnv } from '@/lib/billing/config'
+import { hasOpenAIProviderKey, hasAnthropicProviderKey } from '@/lib/audit/llm-keys'
 import { logger } from '@/lib/logger'
 
 const envSchema = z.object({
@@ -9,6 +10,7 @@ const envSchema = z.object({
   REDIS_URL: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
+  OPEN_CODE_API_KEY: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().optional(),
   BETTER_AUTH_URL: z.string().url().optional(),
   NEXT_PUBLIC_APP_URL: z.string().url().optional().or(z.literal('')),
@@ -54,6 +56,17 @@ const envSchema = z.object({
   // models when unset; small max_tokens keeps the anonymous scan cheap.
   TRIAGE_MODEL: z.string().optional(),
   TRIAGE_MAX_TOKENS: z.string().optional(),
+  // Workspace chat config, deliberately separate from judge and triage so a
+  // cheap chat model never couples to audit scoring. Defaults to the cheapest
+  // viable model per provider. CHAT_BASE_URL lets an OpenAI-compatible gateway
+  // (for example the opencode gateway) serve chat.
+  CHAT_MODEL: z.string().optional(),
+  CHAT_MAX_TOKENS: z.string().optional(),
+  CHAT_TIMEOUT_MS: z.string().optional(),
+  CHAT_BASE_URL: z.string().url().optional(),
+  // Hard cap on free-form chat turns per report/plan. Reaching it degrades the
+  // panel to canned actions instead of more LLM calls.
+  CHAT_SESSION_CAP: z.string().optional(),
   JUDGE_TIMEOUT_MS: z.string().optional(),
   OPENAI_JUDGE_IMAGE_DETAIL: z.enum(['low', 'high', 'auto']).optional(),
   CRITICAL_PATH_CONCURRENCY: z.string().optional(),
@@ -130,7 +143,7 @@ export function isProdStorageConfigured(): boolean {
 
 /** Whether at least one LLM provider key is set for triage and prescription. */
 export function isAiProviderConfigured(): boolean {
-  return Boolean(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY)
+  return Boolean(hasOpenAIProviderKey() || hasAnthropicProviderKey())
 }
 
 export function isExplicitLocalDegradedMode(): boolean {

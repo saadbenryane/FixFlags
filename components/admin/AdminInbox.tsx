@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Send } from 'lucide-react'
 import { toast } from 'sonner'
@@ -52,6 +52,7 @@ function SessionRow({
         {session.lead?.normalizedDomain && (
           <span className="truncate">{session.lead.normalizedDomain}</span>
         )}
+        {session.project && <span className="truncate">{session.project.name}</span>}
       </div>
     </button>
   )
@@ -83,10 +84,56 @@ export function AdminInbox() {
     useAdminSupportSessions(filter)
   const { data: messagesData, mutate: mutateMessages } = useAdminSupportMessages(selectedId)
 
-  const sessions = (sessionsData?.sessions ?? []) as SupportSessionListItem[]
+  const sessions = useMemo<SupportSessionListItem[]>(
+    () => sessionsData?.sessions ?? [],
+    [sessionsData?.sessions]
+  )
   const selected = sessions.find((s) => s.id === selectedId) ?? null
   const messages = messagesData?.messages ?? []
   const messageCount = messages.length
+
+  const groupedSessions = useMemo(() => {
+    const byProject = new Map<string, { name: string; sessions: SupportSessionListItem[] }>()
+    const generalSessions: SupportSessionListItem[] = []
+
+    for (const session of sessions) {
+      if (!session.project) {
+        generalSessions.push(session)
+        continue
+      }
+
+      const existing = byProject.get(session.project.id)
+      if (!existing) {
+        byProject.set(session.project.id, {
+          name: session.project.name,
+          sessions: [session],
+        })
+      } else {
+        existing.sessions.push(session)
+      }
+    }
+
+    const groupedProjects = [...byProject.entries()]
+      .sort((a, b) => a[1].name.localeCompare(b[1].name, undefined, { sensitivity: 'base' }))
+      .map(([projectId, value]) => ({
+        key: projectId,
+        title: value.name,
+        sessions: value.sessions,
+      }))
+
+    return [
+      ...(generalSessions.length > 0
+        ? [
+            {
+              key: '__general__',
+              title: 'General sessions',
+              sessions: generalSessions,
+            },
+          ]
+        : []),
+      ...groupedProjects,
+    ]
+  }, [sessions])
 
   useEffect(() => {
     if (initialSession && !selectedId) setSelectedId(initialSession)
@@ -158,14 +205,26 @@ export function AdminInbox() {
             <p className="p-4 text-sm text-muted-foreground">No sessions yet.</p>
           )}
           {!sessionsLoading &&
-            sessions.map((s) => (
-            <SessionRow
-              key={s.id}
-              session={s}
-              selected={s.id === selectedId}
-              onSelect={() => setSelectedId(s.id)}
-            />
-          ))}
+            groupedSessions.map((group) => (
+              <details key={group.key} open className="border-b border-border last:border-b-0">
+                <summary className="flex items-center justify-between gap-2 px-4 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground cursor-pointer">
+                  <span>{group.title}</span>
+                  <Badge variant="outline" size="sm" className="shrink-0">
+                    {group.sessions.length}
+                  </Badge>
+                </summary>
+                <div>
+                  {group.sessions.map((s) => (
+                    <SessionRow
+                      key={s.id}
+                      session={s}
+                      selected={s.id === selectedId}
+                      onSelect={() => setSelectedId(s.id)}
+                    />
+                  ))}
+                </div>
+              </details>
+            ))}
         </div>
       </div>
 
@@ -243,6 +302,15 @@ export function AdminInbox() {
                 </div>
               )
             })()}
+            {selected.project && (
+              <div>
+                <p className="text-xs text-muted-foreground">Project</p>
+                <p className="font-medium">{selected.project.name}</p>
+                <TextLink href={selected.project.url} className="text-xs break-all">
+                  {selected.project.url}
+                </TextLink>
+              </div>
+            )}
             {selected.lead && (
               <div>
                 <p className="text-xs text-muted-foreground">Lead</p>

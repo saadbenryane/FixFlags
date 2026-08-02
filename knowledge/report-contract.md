@@ -6,7 +6,7 @@ This is the canonical hierarchy for report code, copy, tests, documentation, and
 
 FixFlags is one product: **paste URL → receive every unresolved Flag ranked by impact → copy fixes into an AI editor → re-check and prove the result**.
 
-`buildUnifiedPlanBundle()` aggregates live and repository Flags once. `buildFixList()` then owns complete ranking, Product Contract bias, prompt availability, and anonymous redaction. `buildFinishPlan()` remains only as a deprecated three-item compatibility artifact.
+`buildUnifiedPlanBundle()` aggregates live and repository Flags once. `buildFixList()` then owns complete ranking, Product Contract bias, prompt availability, and anonymous redaction.
 
 ## Canonical report
 
@@ -16,15 +16,15 @@ FixFlags is one product: **paste URL → receive every unresolved Flag ranked by
 2. Re-check result, when applicable
 3. Progress band (`#report-status`) with release score or scan percent, unresolved Flag count, Re-check history, and Message, Experience, Reach coverage
 4. Sticky section navigation when two or more sections exist
-5. Polish pass (`#report-polish-pass`) with the full ranked fix bundle, when Flags exist
+5. Top fixes (`#report-top-fixes`) with the full ranked fix bundle, when Flags exist
 6. Complete ranked fix list (`#report-flags`) with screenshot evidence and selected fix detail
 7. Made with (`#report-stack`), Product Contract (`#report-contract`), verified memory (`#report-remember`), when present
-8. Journey, flow, and action timeline (`#report-journey`)
+8. Funnel, flow, and action timeline (`#report-funnel`)
 9. Share and search previews, launch gates, watch, sharing, export, project, and MCP controls
 10. Owner re-check (`#report-recheck`)
 11. At most one contextual signup or upgrade moment
 
-Sticky nav order matches DOM order: Polish pass → All fixes → Made with → Contract → Remember → Journey → Previews → Launch → Re-check.
+Sticky nav order matches DOM order: Top fixes → All fixes → Made with → Contract → Remember → Funnel → Previews → Launch → Re-check.
 
 **Report header copy:** "Your review" with unresolved count and checked scope. The progress band owns the release score.
 

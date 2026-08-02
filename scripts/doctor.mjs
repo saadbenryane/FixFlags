@@ -26,6 +26,8 @@ await check('environment', async () => {
   const missing = required.filter((key) => !process.env[key])
   if (
     !hasUsableCredential(process.env.OPENAI_API_KEY) &&
+    !hasUsableCredential(process.env.OPEN_CODE_API_KEY) &&
+    !hasUsableCredential(process.env.OPENCODE_API_KEY) &&
     !hasUsableCredential(process.env.ANTHROPIC_API_KEY)
   ) {
     missing.push('a non-placeholder OPENAI_API_KEY or ANTHROPIC_API_KEY')

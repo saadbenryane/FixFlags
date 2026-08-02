@@ -17,7 +17,7 @@ describe('ReportWorkspaceShell', () => {
         hero={<div data-testid="hero">Hero</div>}
         progressBand={<div data-testid="progress">Progress</div>}
         stickyNav={<div data-testid="sticky">Sticky</div>}
-        polishPass={<div data-testid="polish" id="report-polish-pass">Polish</div>}
+        polishPass={<div data-testid="polish" id="report-top-fixes">Top fixes</div>}
         flagsSection={<div data-testid="flags" id="report-flags">Flags</div>}
         contextSections={<div data-testid="context" id="report-stack">Context</div>}
       />,

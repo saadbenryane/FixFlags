@@ -8,7 +8,7 @@ import { scrollToReportSection } from '@/lib/report/scroll-to-section'
 import { cn } from '@/lib/utils'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
-const POLISH_SECTION = { id: 'report-polish-pass', label: REPORT_COPY.stickyNav.polish } as const
+const TOP_FIXES_SECTION = { id: 'report-top-fixes', label: REPORT_COPY.stickyNav.topFixes } as const
 const FLAGS_SECTION = { id: 'report-flags', label: REPORT_COPY.stickyNav.flags } as const
 const STACK_SECTION = { id: 'report-stack', label: REPORT_COPY.stickyNav.stack } as const
 const CONTRACT_SECTION = { id: 'report-contract', label: REPORT_COPY.stickyNav.contract } as const
@@ -67,7 +67,7 @@ export function ReportStickyToolbar({
   const [isStuck, setIsStuck] = useState(false)
   const sections = useMemo((): NavSection[] => {
     const items: NavSection[] = []
-    if (showPolish) items.push(POLISH_SECTION)
+    if (showPolish) items.push(TOP_FIXES_SECTION)
     items.push(FLAGS_SECTION)
     if (showStack) items.push(STACK_SECTION)
     if (showContract) items.push(CONTRACT_SECTION)

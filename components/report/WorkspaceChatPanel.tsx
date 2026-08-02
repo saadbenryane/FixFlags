@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils'
 
 interface WorkspaceChatPanelProps {
   auditId: string
+  /** Owner-only chat. Non-owners get no chat panel at all. */
+  canChat?: boolean
   className?: string
 }
 
@@ -17,13 +19,27 @@ interface ChatMessage {
   content: string
 }
 
+interface ChatMeta {
+  available: boolean
+  cap: number
+  userTurns: number
+}
+
 const chatCopy = REPORT_COPY.workspace.chat
 
-export function WorkspaceChatPanel({ auditId, className }: WorkspaceChatPanelProps) {
+const QUICK_PROMPTS = [chatCopy.cannedExplain, chatCopy.cannedFirst]
+
+export function WorkspaceChatPanel({
+  auditId,
+  canChat = true,
+  className,
+}: WorkspaceChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [historyLoaded, setHistoryLoaded] = useState(false)
+  const [meta, setMeta] = useState<ChatMeta>({ available: true, cap: 20, userTurns: 0 })
+  const [capReached, setCapReached] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -41,6 +57,14 @@ export function WorkspaceChatPanel({ auditId, className }: WorkspaceChatPanelPro
             )
           : []
         setMessages(history)
+        const userTurns = typeof data?.userTurns === 'number' ? data.userTurns : 0
+        const cap = typeof data?.cap === 'number' ? data.cap : 20
+        setMeta({
+          available: data?.available !== false,
+          cap,
+          userTurns,
+        })
+        setCapReached(userTurns >= cap)
       })
       .catch(() => {})
       .finally(() => {
@@ -51,8 +75,8 @@ export function WorkspaceChatPanel({ auditId, className }: WorkspaceChatPanelPro
     }
   }, [auditId])
 
-  async function handleSend() {
-    const trimmed = input.trim()
+  async function send(text: string) {
+    const trimmed = text.trim()
     if (!trimmed || loading) return
     const userMessage: ChatMessage = {
       id: `local-${Date.now()}-user`,
@@ -71,6 +95,18 @@ export function WorkspaceChatPanel({ auditId, className }: WorkspaceChatPanelPro
       const data = (await response.json().catch(() => ({}))) as {
         reply?: string
         error?: string
+        capReached?: boolean
+        cap?: number
+        userTurns?: number
+      }
+      if (typeof data.userTurns === 'number') {
+        setMeta((current) => ({ ...current, userTurns: data.userTurns as number }))
+      }
+      if (data.capReached) {
+        setCapReached(true)
+        if (typeof data.cap === 'number') {
+          setMeta((current) => ({ ...current, cap: data.cap as number }))
+        }
       }
       const reply =
         typeof data.reply === 'string'
@@ -92,12 +128,23 @@ export function WorkspaceChatPanel({ auditId, className }: WorkspaceChatPanelPro
     }
   }
 
+  function handleSend() {
+    void send(input)
+  }
+
+  if (!canChat) return null
+
+  const liveChat = meta.available && !capReached
+
   return (
     <div
       className={cn('flex min-h-[200px] flex-col rounded-card border border-border bg-card/50', className)}
     >
-      <div className="border-b border-border px-3 py-2 text-xs font-semibold text-muted-foreground">
-        {chatCopy.title}
+      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+        <span className="text-xs font-semibold text-muted-foreground">{chatCopy.title}</span>
+        <span className="rounded-full bg-muted/50 px-2 py-0.5 text-2xs text-muted-foreground">
+          {meta.userTurns}/{meta.cap}
+        </span>
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto p-3 text-sm">
         {messages.length === 0 ? (
@@ -116,24 +163,46 @@ export function WorkspaceChatPanel({ auditId, className }: WorkspaceChatPanelPro
           ))
         )}
       </div>
-      <form
-        className="flex gap-2 border-t border-border p-2"
-        onSubmit={(e) => {
-          e.preventDefault()
-          handleSend()
-        }}
-      >
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={chatCopy.placeholder}
-          disabled={loading}
-          className="text-sm"
-        />
-        <Button type="submit" size="sm" loading={loading} disabled={!input.trim()}>
-          {chatCopy.send}
-        </Button>
-      </form>
+
+      {liveChat ? (
+        <form
+          className="flex gap-2 border-t border-border p-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleSend()
+          }}
+        >
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={chatCopy.placeholder}
+            disabled={loading}
+            className="text-sm"
+          />
+          <Button type="submit" size="sm" loading={loading} disabled={!input.trim()}>
+            {chatCopy.send}
+          </Button>
+        </form>
+      ) : (
+        <div className="space-y-2 border-t border-border p-3">
+          <p className="text-xs text-muted-foreground">
+            {capReached ? chatCopy.capReached(meta.cap) : chatCopy.notConfigured}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {QUICK_PROMPTS.map((prompt) => (
+              <button
+                key={prompt}
+                type="button"
+                disabled={loading}
+                className="rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                onClick={() => void send(prompt)}
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

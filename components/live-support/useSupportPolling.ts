@@ -1,7 +1,11 @@
 'use client'
 
 import useSWR from 'swr'
-import type { SupportMessageDto, SupportSessionDto } from '@/lib/live-support/types'
+import type {
+  SupportMessageDto,
+  SupportSessionDto,
+  SupportSessionListItem,
+} from '@/lib/live-support/types'
 
 const jsonFetcher = (url: string) =>
   fetch(url).then((r) => {
@@ -33,7 +37,7 @@ export function useSupportMessages(sessionId: string | null, panelOpen: boolean)
 }
 
 export function useAdminSupportSessions(filter: 'open' | 'closed' | 'all' = 'open') {
-  return useSWR<{ sessions: SupportSessionDto[] }>(
+  return useSWR<{ sessions: SupportSessionListItem[] }>(
     `/api/admin/support/sessions?filter=${filter}`,
     jsonFetcher,
     { refreshInterval: 2000 }

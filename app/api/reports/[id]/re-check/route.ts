@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { recheckAndCompare } from '@/lib/audit/task-contracts'
+import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
+import { RateLimitError, recordRateLimit } from '@/lib/security/rate-limit'
 import { prisma } from '@/lib/db'
 
 export async function POST(
@@ -23,7 +25,24 @@ export async function POST(
       return apiError('User not found', 404)
     }
 
-    const outcome = await recheckAndCompare({ parentReportId: parentId, user })
+    const [recheckLimit, workerEstimate] = await Promise.all([
+      recordRateLimit({
+        scope: 'report-recheck',
+        identifier: user.id,
+        limit: 20,
+        windowSeconds: 3600,
+        onRedisDown: 'reject',
+      }),
+      getWorkerQueueEstimate(),
+    ])
+
+    if (recheckLimit.exceeded) {
+      throw new RateLimitError(recheckLimit.retryAfterSeconds)
+    }
+
+    const queue = computeEnqueueDelay(recheckLimit.exceeded ? recheckLimit.retryAfterSeconds : 0, workerEstimate)
+
+    const outcome = await recheckAndCompare({ parentReportId: parentId, user, delayMs: queue.delayMs })
 
     return NextResponse.json(
       {

@@ -1,14 +1,29 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Surface } from '@/components/ui/surface'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SectionTitle } from '@/components/ui/typography'
 import { IconInput } from '@/components/ui/icon-input'
-import { FolderPlus, Trash2, Tag, Globe, Loader2 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  ChevronDown,
+  FolderPlus,
+  FolderSync,
+  Loader2,
+  Tag,
+  Trash2,
+  Globe,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { projectLimitForPlan } from '@/lib/billing/plans'
 import { Plan } from '@prisma/client'
@@ -16,12 +31,116 @@ import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { URL_PLACEHOLDER } from '@/lib/marketing/copy'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { ProjectScanAccessPanel } from '@/components/settings/ProjectScanAccessPanel'
+import { startScanWithHandoff } from '@/lib/audit/start-scan-handoff'
 
 interface ProjectRow {
   id: string
   name: string
   url: string
   auditCount: number
+}
+
+function filePathToSegments(file: File): string[] {
+  const relativePath = file.webkitRelativePath || file.name
+  return relativePath.replace(/\\/g, '/').split('/')
+}
+
+function asDirectoryName(files: File[]): string {
+  if (files.length === 0) return 'Selected folder'
+  return filePathToSegments(files[0])[0] || 'Selected folder'
+}
+
+function normalizeCandidateUrl(candidate: string): string | null {
+  const trimmed = candidate.trim()
+  if (!trimmed) return null
+
+  const cleaned = trimmed.replace(/^git\+/, '')
+
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(cleaned)) {
+    try {
+      const parsed = new URL(cleaned)
+      if (parsed.protocol === 'ssh:' && parsed.hostname) {
+        return `https://${parsed.hostname}${parsed.pathname}`
+      }
+      if (parsed.protocol === 'file:') return null
+      return parsed.toString().replace(/\/$/, '')
+    } catch {
+      // continue below for non-standard formats
+    }
+  }
+
+  const scpMatch = cleaned.match(/^([^@\s]+)@([^:]+):(.+)$/)
+  if (scpMatch) {
+    const path = scpMatch[3].replace(/\.git$/i, '').replace(/\/$/, '')
+    return `https://${scpMatch[2]}/${path}`
+  }
+
+  if (/^[a-zA-Z0-9.-]+\.[a-zA-Z0-9.-]+(?:\/.+)?$/.test(cleaned)) {
+    return `https://${cleaned.replace(/\/$/, '')}`
+  }
+
+  return null
+}
+
+function extractOriginFromGitConfig(text: string): string | null {
+  const match = text.match(/remote\s+"origin"[\s\S]*?\n\s*url\s*=\s*([^\r\n]+)/i)
+  if (!match || !match[1]) return null
+  return normalizeCandidateUrl(match[1])
+}
+
+async function inferFolderSessionUrl(files: File[]): Promise<string | null> {
+  const gitConfig = files.find((file) => {
+    const segments = filePathToSegments(file)
+    return segments.includes('.git') && segments.at(-1) === 'config'
+  })
+  if (gitConfig) {
+    const raw = await gitConfig.text()
+    const parsed = extractOriginFromGitConfig(raw)
+    if (parsed) return parsed
+  }
+
+  const packageFile = files.find((file) => {
+    const segments = filePathToSegments(file)
+    return segments.at(-1) === 'package.json'
+  })
+  if (packageFile) {
+    try {
+      const raw = await packageFile.text()
+      const parsed = JSON.parse(raw)
+      if (typeof parsed.homepage === 'string') {
+        const url = normalizeCandidateUrl(parsed.homepage)
+        if (url) return url
+      }
+    } catch {
+      // ignore malformed package files
+    }
+  }
+
+  const cnameFile = files.find((file) => {
+    const segments = filePathToSegments(file)
+    return segments.at(-1) === 'CNAME'
+  })
+  if (cnameFile) {
+    const raw = (await cnameFile.text()).trim()
+    const url = normalizeCandidateUrl(raw)
+    if (url) return url
+  }
+
+  const indexFiles = files.filter((file) => {
+    const segments = filePathToSegments(file)
+    const name = segments.at(-1) ?? ''
+    return name === 'index.html' || name === 'index.htm'
+  })
+  for (const indexFile of indexFiles) {
+    const html = await indexFile.text()
+    const canonicalMatch = html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["'][^>]*>/i)
+    if (canonicalMatch?.[1]) {
+      const url = normalizeCandidateUrl(canonicalMatch[1])
+      if (url) return url
+    }
+  }
+
+  return null
 }
 
 interface Props {
@@ -38,6 +157,16 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
   const [formError, setFormError] = useState('')
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
+  const [startingSession, setStartingSession] = useState<string | null>(null)
+  const [folderBusy, setFolderBusy] = useState(false)
+  const folderInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const input = folderInputRef.current
+    if (!input) return
+    input.setAttribute('directory', '')
+    input.setAttribute('webkitdirectory', '')
+  }, [])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -66,6 +195,66 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
       setFormError('Could not create the project. Check your connection and try again.')
     } finally {
       setCreating(false)
+    }
+  }
+
+  async function startSession(urlToScan: string, marker?: string) {
+    const candidate = normalizeCandidateUrl(urlToScan)
+    if (!candidate) {
+      toast.error('Could not resolve a valid URL for this session.')
+      return
+    }
+
+    try {
+      setStartingSession(marker ?? candidate)
+      const result = await startScanWithHandoff({
+        url: candidate,
+        body: {
+          url: candidate,
+          source: 'dashboard',
+        },
+      })
+      if (!result.ok) {
+        toast.error(result.message)
+      }
+    } catch {
+      toast.error('Could not start this session. Please try again.')
+    } finally {
+      setStartingSession(null)
+    }
+  }
+
+  async function startSessionFromProject(project: ProjectRow) {
+    await startSession(project.url, project.id)
+  }
+
+  function openFolderPicker() {
+    const input = folderInputRef.current
+    if (!input) return
+    input.click()
+  }
+
+  async function handleFolderSelection(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+    if (files.length === 0) {
+      return
+    }
+
+    setFolderBusy(true)
+    const folderName = asDirectoryName(files)
+    try {
+      const inferredUrl = await inferFolderSessionUrl(files)
+      if (!inferredUrl) {
+        toast.error(`Could not infer a URL from ${folderName}. Link a directory with a homepage or repository config first.`)
+        return
+      }
+      await startSession(inferredUrl, `folder:${folderName}`)
+    } catch {
+      toast.error(`Could not start a session from ${folderName}.`)
+    } finally {
+      setFolderBusy(false)
+      if (folderInputRef.current) folderInputRef.current.value = ''
+      setStartingSession(null)
     }
   }
 
@@ -120,12 +309,70 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
       {confirmDialog}
       <div className="flex items-center justify-between gap-4">
         <div>
-        <SectionTitle>Projects</SectionTitle>
+          <SectionTitle>Projects</SectionTitle>
           <p className="text-xs text-muted-foreground">
             {projects.length} / {limit} used. Assign reports from their report pages.
           </p>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={startingSession !== null || folderBusy}
+            >
+              {startingSession || folderBusy ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <FolderPlus className="mr-2 h-4 w-4" />
+              )}
+              Start session
+              <ChevronDown className="ml-2 h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-72" sideOffset={6}>
+            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+              Linked directories
+            </div>
+            {projects.length === 0 ? (
+              <DropdownMenuItem disabled>No linked directories yet</DropdownMenuItem>
+            ) : (
+              projects.map((project) => (
+                <DropdownMenuItem
+                  key={project.id}
+                  onSelect={() => void startSessionFromProject(project)}
+                  disabled={startingSession !== null || folderBusy}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm">{project.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">{project.url}</p>
+                  </div>
+                  {startingSession === project.id ? (
+                    <Loader2 className="ml-2 h-3.5 w-3.5 animate-spin" />
+                  ) : null}
+                </DropdownMenuItem>
+              ))
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => void openFolderPicker()}
+              disabled={startingSession !== null || folderBusy}
+            >
+              <FolderSync className="mr-2 h-4 w-4" />
+              {folderBusy ? 'Starting from folder…' : 'Start from local folder'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
+
+      <input
+        ref={folderInputRef}
+        type="file"
+        multiple
+        onChange={(event) => void handleFolderSelection(event)}
+        className="sr-only"
+        aria-label="Select local folder"
+      />
 
       {projects.length === 0 ? (
         <EmptyState

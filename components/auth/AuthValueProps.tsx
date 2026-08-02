@@ -9,7 +9,7 @@ const ICONS = {
 
 export function AuthValueProps() {
   return (
-    <ul className="space-y-2 text-xs text-muted-foreground">
+    <ul className="list-none space-y-2 text-xs text-muted-foreground">
       {AUTH.valueProps.map((item) => {
         const Icon = ICONS[item.icon]
         return (

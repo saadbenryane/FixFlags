@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
         ...serializeSession(s),
         lead: s.lead,
         user: s.user,
+        project: s.project,
       })),
     })
   } catch (err) {

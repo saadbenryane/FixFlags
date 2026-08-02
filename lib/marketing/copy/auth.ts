@@ -1,3 +1,5 @@
+import { PRICING_COPY } from './terminology'
+
 export const AUTH = {
   reportGate: {
     title: 'Your site review is underway',
@@ -109,8 +111,8 @@ export const AUTH = {
   },
   signUp: {
     title: 'Create your free account',
-    subtitle: '3 product reviews per month · Upgrade anytime',
-    fromPricing: 'Create your free account: 3 product reviews per month included, upgrade anytime',
+    subtitle: `${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) · Upgrade anytime`,
+    fromPricing: `Create your free account: ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) included, upgrade anytime`,
     oauthNote: 'We never post or access your repositories.',
     cta: 'Create account',
     footer: 'Already have an account?',
@@ -326,7 +328,7 @@ export const SAMPLE_FIX = {
 export const SCAN_LIMIT_GATE = {
   signup: {
     title: 'Create a free account to continue',
-    body: 'You have already used your free product reviews this month. Create a free account for fix prompts, saved reports, and 3 product reviews per month.',
+    body: `You have already used your free product reviews. Create a free account for fix prompts, saved reports, and ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime).`,
     primaryCta: 'Create free account',
     secondaryCta: 'Sign in',
     exit: 'Leave this page',

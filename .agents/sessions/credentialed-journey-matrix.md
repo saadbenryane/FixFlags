@@ -12,7 +12,7 @@
 | `RELEASE_SMOKE_URL` | Blocked | Deployed smoke target still missing |
 | R2 capture credentials | Blocked | Required `R2_*` variables are absent |
 | Email / Product Watch credentials | Blocked | `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `ADMIN_NOTIFICATION_EMAIL` are absent |
-| `npm run verify` | Pass | Full gate passed 2026-07-26: 2,420 unit tests, 184 test files, accuracy, CLI, production web build, worker build, and zero moderate-or-higher dependency vulnerabilities |
+| `npm run agent -- verify` | Pass | Affected gate passed 2026-08-02 after product completion closeout (workspace architecture, copy parity, route tests) |
 | `npm run verify:release` | Blocked at preflight | `npm run agent -- eval release` stopped safely because `RELEASE_FRESH_DATABASE_URL` is absent; smoke, R2, email, and reset consent also remain required |
 | Credentialed Playwright suite | Implemented; sandbox run blocked | Eight executable journeys replace the former deliberate failures. `verify:release` now enables them and preflights every disposable fixture before destructive setup. Sandbox credentials remain absent locally. |
 | Dedicated worker topology | Local Pass; deploy pending | Stable local startup reported web role, one worker, concurrency one, zero contexts, and no stalled or overdue jobs. The container smoke now provisions Postgres, Redis, web, and worker, submits a real check, observes worker readiness, and requires a completed report. Railway deployment and external heartbeat smoke remain required. |

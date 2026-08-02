@@ -10,8 +10,6 @@ import { logPipelineEvent } from './pipeline-log'
 import { remainingAiReportCredits } from './ai-report-entitlement'
 import { hasUnlimitedScans } from '@/lib/auth/permissions'
 import { runPrescriptionWithRetry } from './judge-prescription'
-import { isRetryableJudgeError } from './judge'
-import { enqueueAiReview } from './enqueue-ai-review'
 import { loadTechnologyProfile, technologyNamesForPrompt } from './technology-profile'
 
 /** Run phase-2 prescription on a triage-completed audit and unlock fix prompts. */
@@ -112,10 +110,6 @@ export async function runAiReview(auditId: string): Promise<void> {
         failureStage: 'judging',
       },
     })
-
-    if (isRetryableJudgeError(error)) {
-      await enqueueAiReview(auditId, 30_000)
-    }
 
     throw error
   }

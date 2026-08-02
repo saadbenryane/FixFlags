@@ -65,7 +65,7 @@ for (const dir of SCAN_DIRS) {
       violations.push(`${rel}: arbitrary micro font size (use text-2xs/text-3xs or .section-label/.meta-label)`)
     }
 
-    if (/fetch\(['"]\/api\/stripe\/(?:checkout|beta-interest)['"]/.test(content)) {
+    if (/fetch\(['"]\/api\/stripe\/(?:checkout|waitlist)['"]/.test(content)) {
       violations.push(
         `${rel}: duplicate Stripe action request (use lib/billing/client-checkout.ts)`
       )

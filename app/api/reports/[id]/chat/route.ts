@@ -5,7 +5,13 @@ import { auth } from '@/lib/auth'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { prisma } from '@/lib/db'
-import { runWorkspaceChat, type ChatFlagContext } from '@/lib/workspace/chat'
+import { getEnv } from '@/lib/env'
+import {
+  buildCannedChatReply,
+  isWorkspaceChatConfigured,
+  runWorkspaceChat,
+  type ChatFlagContext,
+} from '@/lib/workspace/chat'
 
 const schema = z.object({
   message: z.string().min(1).max(2000),
@@ -13,6 +19,12 @@ const schema = z.object({
 
 const MAX_CHAT_FLAGS = 15
 const MAX_HISTORY_MESSAGES = 40
+const CHAT_SESSION_CAP = 20
+
+function chatSessionCap(): number {
+  const configured = Number(getEnv().CHAT_SESSION_CAP)
+  return configured > 0 ? configured : CHAT_SESSION_CAP
+}
 
 async function getAudit(id: string) {
   return prisma.audit.findUnique({
@@ -67,12 +79,18 @@ export async function GET(
       take: MAX_HISTORY_MESSAGES,
       select: { role: true, content: true, createdAt: true },
     })
+    const userTurns = await prisma.reportChatMessage.count({
+      where: { auditId, role: 'user' },
+    })
 
     return NextResponse.json({
       messages: messages.map((message) => ({
         role: message.role,
         content: message.content,
       })),
+      available: isWorkspaceChatConfigured(),
+      cap: chatSessionCap(),
+      userTurns,
     })
   } catch (error) {
     return handleRouteError(error, 'Chat history unavailable')
@@ -89,6 +107,7 @@ export async function POST(
       identifier: requestClientId(req.headers),
       limit: 20,
       windowSeconds: 60,
+      onRedisDown: 'reject',
     })
 
     const { id: auditId } = await params
@@ -102,6 +121,20 @@ export async function POST(
     const parsed = schema.safeParse(body)
     if (!parsed.success) return apiError('Message required', 400)
 
+    const flags = await loadFlagContext(auditId)
+    const cap = chatSessionCap()
+    const userMessageCount = await prisma.reportChatMessage.count({
+      where: { auditId, role: 'user' },
+    })
+    if (userMessageCount >= cap) {
+      return NextResponse.json({
+        reply: buildCannedChatReply({ flags }),
+        mode: 'canned',
+        capReached: true,
+        cap,
+      })
+    }
+
     await prisma.reportChatMessage.create({
       data: {
         auditId,
@@ -111,8 +144,7 @@ export async function POST(
       },
     })
 
-    const flags = await loadFlagContext(auditId)
-    const reply = await runWorkspaceChat({
+    const { reply, mode } = await runWorkspaceChat({
       message: parsed.data.message,
       url: owned.audit.url,
       status: owned.audit.status,
@@ -128,7 +160,7 @@ export async function POST(
       },
     })
 
-    return NextResponse.json({ reply })
+    return NextResponse.json({ reply, mode, cap, userTurns: userMessageCount + 1 })
   } catch (error) {
     return handleRouteError(error, 'Chat unavailable')
   }

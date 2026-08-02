@@ -12,6 +12,8 @@ interface ActionTimelineProps {
   emptyLabel?: string
   /** Sync selection from the playback strip to the matching activity row. */
   highlightIndex?: number | null
+  /** Seek playback to the matching activity row. */
+  onSelectRow?: (index: number) => void
   className?: string
 }
 
@@ -19,12 +21,13 @@ export function ActionTimeline({
   events,
   emptyLabel = REPORT_COPY.sectionTitles.timelineEmpty,
   highlightIndex,
+  onSelectRow,
   className,
 }: ActionTimelineProps) {
   const highlightedRef = useRef<HTMLLIElement | null>(null)
 
   useEffect(() => {
-    highlightedRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    highlightedRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
   }, [highlightIndex])
 
   if (!events.length) {
@@ -39,15 +42,12 @@ export function ActionTimeline({
       {events.map((event, index) => {
         const urlLabel = displayEvidenceUrl(event.url)
         const isHighlighted = index === highlightIndex
-        return (
-          <li
-            key={`${event.t}-${event.kind}-${index}`}
-            ref={isHighlighted ? highlightedRef : undefined}
-            className={cn(
-              'flex gap-3 rounded-md px-2 py-1 text-sm',
-              isHighlighted && 'border-l-2 border-brand bg-brand/5'
-            )}
-          >
+        const rowClassName = cn(
+          'flex gap-3 rounded-md px-2 py-1 text-sm',
+          isHighlighted && 'border-l-2 border-brand bg-brand/5'
+        )
+        const rowContent = (
+          <>
             <span className="w-12 shrink-0 font-mono text-xs text-muted-foreground tabular-nums pt-0.5">
               {formatElapsedMs(event.t)}
             </span>
@@ -64,6 +64,26 @@ export function ActionTimeline({
                 </span>
               )}
             </span>
+          </>
+        )
+        return (
+          <li
+            key={`${event.t}-${event.kind}-${index}`}
+            ref={isHighlighted ? highlightedRef : undefined}
+            className={cn('list-none', onSelectRow && 'rounded-md')}
+          >
+            {onSelectRow ? (
+              <button
+                type="button"
+                aria-pressed={isHighlighted}
+                onClick={() => onSelectRow(index)}
+                className={cn(rowClassName, 'w-full cursor-pointer text-left')}
+              >
+                {rowContent}
+              </button>
+            ) : (
+              <div className={rowClassName}>{rowContent}</div>
+            )}
           </li>
         )
       })}

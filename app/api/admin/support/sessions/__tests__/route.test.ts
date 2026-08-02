@@ -19,7 +19,13 @@ describe('GET /api/admin/support/sessions', () => {
     isAdminResponse.mockReturnValue(false)
     serializeSession.mockImplementation((session) => ({ id: session.id, status: session.status }))
     listAdminSessions.mockResolvedValue([
-      { id: 'session-1', status: 'open', lead: null, user: { id: 'user-1' } },
+      {
+        id: 'session-1',
+        status: 'open',
+        lead: null,
+        user: { id: 'user-1' },
+        project: null,
+      },
     ])
   })
 
@@ -39,7 +45,15 @@ describe('GET /api/admin/support/sessions', () => {
     expect(response.status).toBe(200)
     expect(listAdminSessions).toHaveBeenCalledWith('closed')
     expect(await response.json()).toEqual({
-      sessions: [{ id: 'session-1', status: 'open', lead: null, user: { id: 'user-1' } }],
+      sessions: [
+        {
+          id: 'session-1',
+          status: 'open',
+          lead: null,
+          user: { id: 'user-1' },
+          project: null,
+        },
+      ],
     })
   })
 })

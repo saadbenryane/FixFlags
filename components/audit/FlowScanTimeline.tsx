@@ -16,7 +16,7 @@ function statusCopy(status: string): { label: string; description: string } {
   if (entry) return entry
   return {
     label: status.replace(/_/g, ' '),
-    description: 'Flow scan did not complete successfully.',
+    description: 'The CTA flow test did not complete successfully.',
   }
 }
 

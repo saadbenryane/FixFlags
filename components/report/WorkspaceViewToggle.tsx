@@ -26,7 +26,7 @@ export function WorkspaceViewToggle({ view, onChange, className }: WorkspaceView
         role="tab"
         aria-selected={view === 'browser'}
         className={cn(
-          'rounded-md px-3 py-1.5 transition-colors',
+          'min-h-11 rounded-md px-3 py-1.5 transition-colors',
           view === 'browser' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
         )}
         onClick={() => onChange('browser')}

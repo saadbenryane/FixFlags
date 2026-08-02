@@ -14,8 +14,8 @@ import {
   issuePageTitle,
   issuePageDescription,
   rubricLabel,
-  rubricBadgeClasses,
 } from '@/lib/marketing/issue-page'
+import { rubricBadgeClasses } from '@/lib/rubric-icons'
 import { SITE_URL } from '@/lib/marketing/copy'
 
 interface Props {

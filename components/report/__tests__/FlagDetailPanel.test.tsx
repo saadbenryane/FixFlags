@@ -109,13 +109,15 @@ describe('FlagDetailPanel', () => {
     expect(links.some((l) => l.getAttribute('href') === 'https://example.com/page')).toBe(true)
   })
 
-  it('renders view timeline step link when stepMatch is set', () => {
+  it('renders replay step link that drives the workspace playback strip', () => {
     renderWithProviders(
       <FlagDetailPanel
         flag={makeFlag({ evidence: 'Reproduced at step 3: signup' })}
       />
     )
-    expect(screen.getByText(/view timeline step/i)).toBeInTheDocument()
+    const link = screen.getByText(/replay step 3/i)
+    expect(link).toBeInTheDocument()
+    expect(link.closest('a')).toHaveAttribute('href', '?step=3#report-flags')
   })
 })
 

@@ -126,10 +126,10 @@ function FlagEvidenceMeta({ flag }: { flag: ExplorerFlag }) {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {stepMatch ? (
             <a
-              href="#report-journey"
+              href={`?step=${stepMatch[1]}#report-flags`}
               className="inline-flex items-center gap-1.5 text-xs text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-sm"
             >
-              View timeline step {stepMatch[1]}
+              Replay step {stepMatch[1]}
             </a>
           ) : null}
           {pageUrls.map((pageUrl) => (

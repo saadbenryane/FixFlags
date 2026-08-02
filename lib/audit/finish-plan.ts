@@ -66,38 +66,21 @@ type PlanInput = {
   contract?: ProductContract | null
   promptAccess: FinishPlanPromptAccess
   demonstratedFlag?: RankableFlag | null
-  /** Cap for buildFinishPlan only. buildFixList ignores this and returns all unresolved flags. */
-  limit?: number
 }
 
 function unresolvedFlags(flags: FixListFlag[]): FixListFlag[] {
   return flags.filter((flag) => flag.status !== 'FIXED' && flag.status !== 'IGNORED')
 }
 
-function buildRankedFixes(
-  input: PlanInput,
-  options: { limit: number; demonstratedFirst: boolean }
-): FinishPlan {
+function buildRankedFixes(input: PlanInput, limit: number): FinishPlan {
   const unresolved = consolidateFlagsByCheck(unresolvedFlags(input.flags), {
     demonstratedFlagId: input.demonstratedFlag?.id,
   })
-  const ranked = rankFlagsByPriority(
-    unresolved,
-    input.rubricRows ?? [],
-    options.limit,
-    input.contract ?? null
-  )
+  const ranked = rankFlagsByPriority(unresolved, input.rubricRows ?? [], limit, input.contract ?? null)
   const demonstratedId = input.demonstratedFlag?.id
-  const orderedRanked =
-    options.demonstratedFirst && input.promptAccess === 'one' && demonstratedId
-      ? [
-          ...ranked.filter(({ flag }) => flag.id === demonstratedId),
-          ...ranked.filter(({ flag }) => flag.id !== demonstratedId),
-        ]
-      : ranked
   let demonstratedPromptUsed = false
 
-  const items = orderedRanked.map(({ flag, rubricName }) => {
+  const items = ranked.map(({ flag, rubricName }) => {
     const source = flag.id === demonstratedId ? input.demonstratedFlag ?? flag : flag
     const mayShowPrompt =
       input.promptAccess === 'all' ||
@@ -152,20 +135,6 @@ function buildRankedFixes(
  */
 export function buildFixList(input: PlanInput): FixList {
   const totalCount = consolidateFlagsByCheck(unresolvedFlags(input.flags)).length
-  const plan = buildRankedFixes(input, {
-    limit: totalCount,
-    demonstratedFirst: false,
-  })
+  const plan = buildRankedFixes(input, totalCount)
   return { ...plan, totalCount }
-}
-
-/**
- * Deprecated compatibility artifact for integrations that still expect the
- * historical three-item Finish Plan. New product surfaces use buildFixList().
- */
-export function buildFinishPlan(input: PlanInput): FinishPlan {
-  return buildRankedFixes(input, {
-    limit: input.limit ?? 3,
-    demonstratedFirst: true,
-  })
 }

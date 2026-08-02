@@ -35,6 +35,39 @@ export function normalizeInternalScreenshotUrl(url: string): string {
   return url
 }
 
+export type CaptureFrameState = 'loaded' | 'failed' | 'loading'
+
+export interface CapturePair {
+  desktop: string | null
+  mobile: string | null
+  desktopState: CaptureFrameState
+  mobileState: CaptureFrameState
+}
+
+/**
+ * Shared desktop/mobile capture resolution. Loaded when a screenshot exists,
+ * failed when capture reported failure, otherwise loading. Both the completed
+ * browser panel and the progressive capture card project this pair.
+ */
+export function resolveCapturePair(
+  screenshots: AuditScreenshot[],
+  captureStatus?: ScreenshotCaptureStatus | null
+): CapturePair {
+  const desktopShot = screenshots.find((s) => s.device === 'DESKTOP')
+  const mobileShot = screenshots.find((s) => s.device === 'MOBILE')
+  const frameState = (
+    shot: AuditScreenshot | undefined,
+    status: ScreenshotCaptureState | undefined
+  ): CaptureFrameState => (shot ? 'loaded' : status === 'failed' ? 'failed' : 'loading')
+
+  return {
+    desktop: desktopShot?.url ?? null,
+    mobile: mobileShot?.url ?? null,
+    desktopState: frameState(desktopShot, captureStatus?.desktop),
+    mobileState: frameState(mobileShot, captureStatus?.mobile),
+  }
+}
+
 export function resolveScreenshotPresentation(
   auditStatus: string,
   screenshots: AuditScreenshot[],

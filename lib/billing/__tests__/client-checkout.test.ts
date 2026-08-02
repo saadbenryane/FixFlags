@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   requestPlanCheckout,
-  submitBetaInterest,
+  submitWaitlistJoin,
 } from '@/lib/billing/client-checkout'
 
 afterEach(() => {
@@ -65,13 +65,13 @@ describe('requestPlanCheckout', () => {
   })
 })
 
-describe('submitBetaInterest', () => {
-  it('submits the canonical beta-interest payload', async () => {
+describe('submitWaitlistJoin', () => {
+  it('submits the canonical waitlist payload', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(
-      submitBetaInterest({ email: 'builder@example.com', plan: 'TEAM', source: 'pricing' })
+      submitWaitlistJoin({ email: 'builder@example.com', plan: 'TEAM', source: 'pricing' })
     ).resolves.toEqual({ kind: 'submitted' })
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/stripe/waitlist',

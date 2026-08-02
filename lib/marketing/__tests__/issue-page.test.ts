@@ -5,8 +5,8 @@ import {
   issuePageTitle,
   issuePageDescription,
   rubricLabel,
-  rubricBadgeClasses,
 } from '@/lib/marketing/issue-page'
+import { rubricBadgeClasses } from '@/lib/rubric-icons'
 
 describe('humanizeCheckId', () => {
   it('splits kebab-case into title case', () => {
@@ -122,18 +122,18 @@ describe('rubricBadgeClasses', () => {
     assert.match(classes, /border-brand-border/)
   })
 
-  it('returns warning classes for EXPERIENCE', () => {
+  it('returns success classes for EXPERIENCE', () => {
     const classes = rubricBadgeClasses('EXPERIENCE')
-    assert.match(classes, /bg-warning-muted/)
-    assert.match(classes, /text-warning-foreground/)
-    assert.match(classes, /border-warning-border/)
-  })
-
-  it('returns success classes for REACH', () => {
-    const classes = rubricBadgeClasses('REACH')
     assert.match(classes, /bg-success-muted/)
     assert.match(classes, /text-success/)
     assert.match(classes, /border-success-border/)
+  })
+
+  it('returns info classes for REACH', () => {
+    const classes = rubricBadgeClasses('REACH')
+    assert.match(classes, /bg-info-muted/)
+    assert.match(classes, /text-info/)
+    assert.match(classes, /border-info-border/)
   })
 
   it('returns muted fallback for unknown rubric', () => {

@@ -1,4 +1,5 @@
 import { getEnv } from '@/lib/env'
+import { hasOpenAIProviderKey } from './llm-keys'
 
 export interface ProviderConfig {
   model: string
@@ -60,7 +61,7 @@ export function getJudgeProviderChain(): string[] {
 /** Provider chain limited to vendors with API keys configured in the environment. */
 export function getConfiguredJudgeProviderChain(): string[] {
   return getJudgeProviderChain().filter((provider) => {
-    if (provider === 'openai') return Boolean(process.env.OPENAI_API_KEY)
+    if (provider === 'openai') return hasOpenAIProviderKey()
     if (provider === 'anthropic') return Boolean(process.env.ANTHROPIC_API_KEY)
     return false
   })
@@ -85,4 +86,38 @@ export function getTriageProviderConfig(provider: string, maxTimeoutMs?: number)
       (provider === 'anthropic' ? 'claude-haiku-4-5' : 'gpt-4o-mini'),
     maxTokens,
   }
+}
+
+const CHAT_DEFAULT_MAX_TOKENS = 600
+
+/**
+ * Workspace chat config. Kept separate from judge and triage so a cheap chat
+ * model never couples to audit scoring, per the workspace spec. Defaults to
+ * the cheapest viable model per provider; override with CHAT_MODEL (or route
+ * through an OpenAI-compatible gateway with CHAT_BASE_URL).
+ */
+export function getChatProviderConfig(provider: string, maxTimeoutMs?: number): ProviderConfig {
+  const env = getEnv()
+  const defaults = DEFAULTS[provider] ?? DEFAULTS.openai
+  const configuredTimeout = Number(env.CHAT_TIMEOUT_MS) || defaults.timeoutMs
+  return {
+    model:
+      env.CHAT_MODEL ??
+      (provider === 'anthropic' ? 'claude-haiku-4-5' : 'gpt-4o-mini'),
+    maxTokens: Number(env.CHAT_MAX_TOKENS) || CHAT_DEFAULT_MAX_TOKENS,
+    timeoutMs:
+      maxTimeoutMs != null && maxTimeoutMs > 0
+        ? Math.min(configuredTimeout, maxTimeoutMs)
+        : configuredTimeout,
+    imageDetail: 'low',
+  }
+}
+
+/** Provider chain limited to vendors configured for chat. */
+export function getConfiguredChatProviders(): string[] {
+  return ['openai', 'anthropic'].filter((provider) => {
+    if (provider === 'openai') return hasOpenAIProviderKey()
+    if (provider === 'anthropic') return Boolean(process.env.ANTHROPIC_API_KEY)
+    return false
+  })
 }

@@ -338,7 +338,7 @@ export function buildPlanModePrompt(
     'Group related issues by file or component. Order the work by user impact, starting with anything that blocks a visitor. Note any dependencies between fixes. Call out anything ambiguous or risky. Then wait for my go-ahead before editing.',
     '',
     '## Phase 3: Fix (one issue at a time)',
-    'Fix HIGH-confidence issues first. After each fix: deploy and verify the issue is resolved. If a fix does not clear on re-check, backtrack to the previous state and try an alternative approach. Flag any fix that requires more than 2 attempts for human review.',
+    'Fix HIGH-confidence issues first. After each fix: deploy and verify the issue is resolved. If a fix does not clear on an update review, backtrack to the previous state and try an alternative approach. Flag any fix that requires more than 2 attempts for human review.',
     '',
     `Issues (ordered by priority):`,
   ].join('\n')

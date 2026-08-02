@@ -1,3 +1,5 @@
+import { PRICING_COPY } from './terminology'
+
 export const SEO = {
   home: {
     title: 'FixFlags - Product QA before you publish',
@@ -7,7 +9,7 @@ export const SEO = {
   pricing: {
     title: 'Pricing',
     description:
-      'Start free with 3 product reviews per month and 1 deep review teaser. Pro adds 25 product reviews, 4 deep reviews, compare, and MCP.',
+      `Start free with ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) and ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser (lifetime). Pro adds ${PRICING_COPY.proProductReviewsPerMonth} product reviews, ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews, compare, and MCP.`,
   },
   howItWorks: {
     title: 'How FixFlags Works',

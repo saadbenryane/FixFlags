@@ -6,6 +6,7 @@ import {
 import { getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { prisma } from '@/lib/db'
 import { AUDIT_DEADLINE_MS } from '@/lib/audit/pipeline-config'
+import { getRateLimitRedisHealth } from '@/lib/security/rate-limit'
 
 export const dynamic = 'force-dynamic'
 const EVENT_LOOP_LAG_LIMIT_MS = 250
@@ -22,6 +23,7 @@ export async function GET() {
   await new Promise<void>((resolve) => setImmediate(resolve))
   const eventLoopLagMs = Math.round((performance.now() - eventLoopStarted) * 10) / 10
 
+  const rateLimit = getRateLimitRedisHealth()
   const [hb, est, oldest, overdue, stalled] = await Promise.allSettled([
     readWorkerHeartbeat(),
     getWorkerQueueEstimate(),
@@ -103,6 +105,7 @@ export async function GET() {
                 ? 'audit_overdue'
                 : 'ok',
     redis: redisReachable ? 'ok' : 'unreachable',
+    rateLimit,
     processRole: process.env.FIXFLAGS_PROCESS_ROLE ?? 'web',
     configuredConcurrency: worker.configuredConcurrency,
     eventLoopLagMs,

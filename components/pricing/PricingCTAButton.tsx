@@ -17,7 +17,7 @@ interface Props {
   highlight?: boolean
   isLoggedIn: boolean
   currentPlan: string
-  betaGated?: boolean
+  waitlistGated?: boolean
   userEmail?: string
 }
 
@@ -28,7 +28,7 @@ export function PricingCTAButton({
   highlight,
   isLoggedIn,
   currentPlan,
-  betaGated = isPaidCheckoutGatedClient(),
+  waitlistGated = isPaidCheckoutGatedClient(),
   userEmail,
 }: Props) {
   const router = useRouter()
@@ -55,7 +55,7 @@ export function PricingCTAButton({
       source: 'pricing',
       isLoggedIn,
       currentPlan,
-      betaGated,
+      waitlistGated,
       userEmail,
       onPrivateBeta: () => setShowBetaForm(true),
       onCheckoutRedirect: (url) => {
@@ -64,7 +64,7 @@ export function PricingCTAButton({
     })
     setLoading(false)
 
-    if (result.kind === 'private_beta') {
+    if (result.kind === 'waitlist') {
       setShowBetaForm(true)
       return
     }
@@ -90,7 +90,7 @@ export function PricingCTAButton({
       >
         {isCurrent
           ? 'Current plan'
-          : betaGated && isPaidPlan
+          : waitlistGated && isPaidPlan
             ? plan === 'TEAM'
               ? BILLING_ACTION_COPY.beta.gatedStudioCta
               : BILLING_ACTION_COPY.beta.gatedProCta
@@ -98,14 +98,14 @@ export function PricingCTAButton({
       </Button>
       {isPaidPlan && !isCurrent && (
         <p className="text-3xs text-center text-muted-foreground leading-snug">
-          {betaGated
+          {waitlistGated
             ? BILLING_ACTION_COPY.beta.gatedHint
             : isLoggedIn
               ? PRICING.upgradeStepsLoggedIn
               : PRICING.upgradeSteps}
         </p>
       )}
-      {isPaidPlan && !isLoggedIn && !betaGated && (
+      {isPaidPlan && !isLoggedIn && !waitlistGated && (
         <p className="text-3xs text-center text-muted-foreground">
           <Link href={signUpHref} className="underline hover:text-foreground">
             Sign up first

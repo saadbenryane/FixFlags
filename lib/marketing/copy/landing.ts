@@ -859,7 +859,7 @@ export const LANDING_PAGE = {
       {
         id: "teaser",
         value: "3 reviews",
-        label: "per month on Free",
+        label: "lifetime on Free",
         icon: "users" as const,
       },
     ] as const,
@@ -986,29 +986,42 @@ export const REPORT_COPY = {
       send: "Send",
       unavailable: "Could not reach FixFlags chat right now.",
       notConfigured:
-        "AI chat is not configured on this environment. Open a Flag in the report for evidence and fix prompts.",
+        "Live chat is off for this review. Use a quick prompt below for an instant answer, or open a Flag in the fix list for its evidence and fix prompt.",
       replyFallback:
         "I could not generate a reply. Try asking about a specific Flag.",
       notSignedIn: "Sign in to use workspace chat",
       notOwner: "You can only chat on your own reports",
       notFound: "Report not found",
       messageRequired: "Message required",
+      cannedExplain: "Explain this Flag",
+      cannedFirst: "What should I fix first?",
+      cannedHint:
+        "Quick prompts give instant answers while live chat is off. Open a Flag in the fix list for its evidence and fix prompt.",
+      capReached: (cap: number) =>
+        `Free-form chat is capped at ${cap} replies for this review. Open a Flag in the fix list for its evidence and fix prompt, or use the quick prompts below.`,
     },
     playback: {
       label: "Path playback",
+      scrubLabel: "Scrub through the review path",
+      counter: (current: number, total: number) => `${current}/${total}`,
+      stepNumber: (index: number) => `Step ${index}`,
       evidenceTitle: (index: number) => `Step ${index} evidence`,
       closeEvidence: "Close evidence",
+      backToLive: "Back to live",
+      noScreenshot: "No screenshot was captured for this step.",
       empty: (url: string) =>
         `Browser evidence appears here as FixFlags captures ${url}.`,
     },
     panels: {
       chatTab: "Chat",
       productTab: "Product",
-      browserView: "Browser view",
-      reportView: "Report view",
+      browserView: "Browser",
+      reportView: "Fix list",
       toggleLabel: "Workspace view",
     },
     journeyRunDeepReview: "Run deep review",
+    funnelReplayPath: "Replay path",
+    funnelLabel: "Funnel",
   },
   reportFirst: {
     loadingLabel: "Loading report",
@@ -1114,17 +1127,17 @@ export const REPORT_COPY = {
     title: "PageSpeed unavailable",
     body: "No PageSpeed observation completed in this run. Experience Flags use the other captured evidence.",
   },
-  polishPass: {
-    title: "Polish pass",
+  topFixes: {
+    title: "Top fixes",
     loadingBody: "Ranked fix prompts appear as Flags are verified.",
     readyBody: (count: number) =>
       `${count} ${count === 1 ? "Flag" : "Flags"} ranked by impact. Copy one prompt for your AI editor.`,
-    copyCta: "Copy polish pass",
-    copyLabel: "Polish pass prompt",
+    copyCta: "Copy top fixes",
+    copyLabel: "Top fixes prompt",
     previewToggle: "Preview prompt",
     generating: "Generating fix prompts for every Flag…",
     demonstratedNote:
-      "One complete fix prompt is shown. Create a free account to unlock the full polish pass.",
+      "One complete fix prompt is shown. Create a free account to unlock the rest of the fix list.",
   },
   sectionTitles: {
     allFixes: "All fixes",
@@ -1134,14 +1147,14 @@ export const REPORT_COPY = {
     flow: "CTA flow test",
     timelineCompleted: "How we checked",
     timelineProgressive: "How FixFlags is checking",
-    timelineEmpty: "Scan steps will appear as FixFlags checks the page.",
+    timelineEmpty: "Review steps will appear as FixFlags checks the page.",
     madeWith: "Made with",
     previews: "Share & search previews",
     remember: "What we proved",
     rememberHint: "Verified on update review. Stays with this product across reviews.",
   },
   stickyNav: {
-    polish: "Polish",
+    topFixes: "Top fixes",
     contract: "Contract",
     remember: "Proved",
     journey: "Funnel",

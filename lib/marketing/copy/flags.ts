@@ -69,10 +69,10 @@ export const FLOW_SCAN_STATUS = {
   },
   skipped: {
     label: 'Skipped',
-    description: 'Flow scan could not run during this review. Run a product review again to try.',
+    description: 'The CTA flow test could not run during this review. Run a product review again to try.',
   },
   timeout: {
     label: 'Timed out',
-    description: 'Flow scan exceeded the time limit before completing the click-through.',
+    description: 'The CTA flow test exceeded the time limit before completing the click-through.',
   },
 } as const

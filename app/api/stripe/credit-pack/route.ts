@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
       identifier: requestClientId(req.headers),
       limit: 10,
       windowSeconds: 60,
+      onRedisDown: 'reject',
     })
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) return apiError('Sign in to purchase credits', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })

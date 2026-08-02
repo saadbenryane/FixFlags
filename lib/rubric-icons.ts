@@ -37,6 +37,14 @@ export function rubricTint(name: string): string {
   return TINT_MAP[name.toUpperCase()] ?? 'text-muted-foreground'
 }
 
+export function rubricBadgeClasses(name: string): string {
+  const r = name.toUpperCase()
+  if (r === 'MESSAGE') return `bg-brand-muted ${rubricTint(r)} border-brand-border`
+  if (r === 'EXPERIENCE') return `bg-success-muted ${rubricTint(r)} border-success-border`
+  if (r === 'REACH') return `bg-info-muted ${rubricTint(r)} border-info-border`
+  return 'bg-muted text-muted-foreground'
+}
+
 export function impactTagIcon(tag: string | null | undefined): LucideIcon | null {
   if (!tag) return null
   const map: Record<string, LucideIcon> = {

@@ -1,28 +1,35 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
 import {
   AuditReportProgressive,
-  AuditReportProgressiveShell,
 } from '@/components/audit/AuditReportProgressive'
 import { setActiveAudit } from '@/lib/audit/active-audit'
 import { formatQueueWaitHint } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 
+vi.mock('next/navigation', () => ({
+  useSearchParams: () => ({ get: () => null }),
+}))
+
 const URL = 'https://example.com'
+const AUDIT_ID = 'audit-progressive-test'
+
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      json: async () => ({ messages: [], available: true, cap: 20, userTurns: 0 }),
+    })
+  )
+})
 
 afterEach(() => {
+  vi.unstubAllGlobals()
   sessionStorage.clear()
   localStorage.clear()
 })
 
 describe('AuditReportProgressive', () => {
-  it('uses a neutral route shell until the real audit state is known', () => {
-    render(<AuditReportProgressiveShell />)
-    expect(screen.getByRole('heading', { name: 'Loading report…' })).toBeInTheDocument()
-    expect(screen.queryByText(/Starting check/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Queued/i)).not.toBeInTheDocument()
-  })
-
   it('warns when the worker is idle instead of pretending to progress', () => {
     render(<AuditReportProgressive status="QUEUED" url={URL} workerIdle />)
     expect(screen.getByText('Still preparing')).toBeInTheDocument()
@@ -67,7 +74,7 @@ describe('AuditReportProgressive', () => {
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Step 2 of 5/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Scanning/i).length).toBeGreaterThan(0)
-    expect(screen.getByLabelText('Polish pass')).toBeInTheDocument()
+    expect(screen.getByLabelText('Top fixes')).toBeInTheDocument()
   })
 
   it('renders product contract when provided', () => {
@@ -92,16 +99,19 @@ describe('AuditReportProgressive', () => {
     expect(screen.queryByText('How FixFlags is checking')).not.toBeInTheDocument()
   })
 
-  it('shows the progressive timeline title when events are present', () => {
+  it('shows action events in the workspace activity panel when an audit id is present', () => {
     render(
       <AuditReportProgressive
+        auditId={AUDIT_ID}
+        isOwner
         status="CAPTURING"
         url={URL}
         actionTimeline={[{ t: 500, kind: 'capture', label: 'Opened page' }]}
       />
     )
-    expect(screen.getByText('How FixFlags is checking')).toBeInTheDocument()
-    expect(screen.getByText('Opened page')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
+    expect(screen.getAllByText('Activity').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Opened page').length).toBeGreaterThan(0)
   })
 
   it('keeps the completed frame focused on all fixes with sticky wayfinding', () => {
@@ -153,6 +163,7 @@ describe('AuditReportProgressive', () => {
   it('resolves desktop and mobile capture frames independently', () => {
     render(
       <AuditReportProgressive
+        auditId={AUDIT_ID}
         status="CAPTURING"
         url={URL}
         screenshots={[
@@ -161,9 +172,8 @@ describe('AuditReportProgressive', () => {
         screenshotCapture={{ desktop: 'ok', mobile: 'failed' }}
       />
     )
-    expect(screen.getByAltText('Desktop screenshot of example.com')).toBeInTheDocument()
-    expect(screen.getByText(/Screenshot could not be captured/i)).toBeInTheDocument()
-    expect(screen.queryByAltText('Mobile screenshot of example.com')).not.toBeInTheDocument()
+    expect(screen.getAllByAltText('Page screenshot').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Screenshot could not be captured for this check/i).length).toBeGreaterThan(0)
   })
 
   it('replaces the stack skeleton with verified progressive detections', () => {

@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { SUPPORT_WELCOME_MESSAGE } from '@/lib/help/sla'
 import { getDefaultSupportTenant } from '@/lib/live-support/tenant'
 import { resolveLeadIdForSession } from '@/lib/live-support/resolve-lead-context'
+import { extractAuditIdFromPageUrl } from '@/lib/live-support/extract-audit-id'
 
 const ACTIVE_STATUSES = ['OPEN', 'WAITING', 'ACTIVE'] as const
 
@@ -81,7 +82,7 @@ export async function listAdminSessions(filter?: 'open' | 'closed' | 'all') {
         ? { status: { in: [...ACTIVE_STATUSES] } }
         : {}
 
-  return prisma.supportSession.findMany({
+  const sessions = await prisma.supportSession.findMany({
     where: { tenantId: tenant.id, ...statusFilter },
     orderBy: [{ lastMessageAt: 'desc' }, { updatedAt: 'desc' }],
     take: 200,
@@ -90,6 +91,39 @@ export async function listAdminSessions(filter?: 'open' | 'closed' | 'all') {
       user: { select: { email: true, plan: true } },
     },
   })
+
+  const sessionAuditIds = Array.from(
+    new Set(
+      sessions
+        .map((session) => extractAuditIdFromPageUrl(session.pageUrl ?? null))
+        .filter((id): id is string => Boolean(id))
+    )
+  )
+
+  const audits = sessionAuditIds.length
+    ? await prisma.audit.findMany({
+        where: { id: { in: sessionAuditIds } },
+        select: {
+          id: true,
+          project: {
+            select: {
+              id: true,
+              name: true,
+              url: true,
+            },
+          },
+        },
+      })
+    : []
+
+  const projectByAuditId = new Map(audits.map((audit) => [audit.id, audit.project]))
+
+  return sessions.map((session) => ({
+    ...session,
+    project: sessionAuditIds.length
+      ? projectByAuditId.get(extractAuditIdFromPageUrl(session.pageUrl ?? null) ?? '') ?? null
+      : null,
+  }))
 }
 
 export async function getAdminUnreadCount(): Promise<number> {

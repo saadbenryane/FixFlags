@@ -23,9 +23,7 @@ export interface PickPlanInput {
   source?: PickerSource
   isLoggedIn: boolean
   currentPlan?: string
-  betaGated?: boolean
-  /** @deprecated Alias for betaGated */
-  paidCheckoutGated?: boolean
+  waitlistGated?: boolean
   userEmail?: string
   fallbackPath?: string
   /** When true, route Free picks to the active report if one is mid-scan. */
@@ -36,7 +34,7 @@ export interface PickPlanInput {
 }
 
 export interface PickPlanResult {
-  kind: 'free_dashboard' | 'free_report' | 'checkout_redirect' | 'private_beta' | 'unavailable' | 'error'
+  kind: 'free_dashboard' | 'free_report' | 'checkout_redirect' | 'waitlist' | 'unavailable' | 'error'
   url?: string
   message?: string
 }
@@ -51,8 +49,8 @@ function isReportPath(value: string | null | undefined): value is string {
  * Centralized plan-pick decision tree.
  *
  * Pricing page CTAs, the post-auth plan picker, and the post-signup plan picker
- * all funnel through this function so the routing, checkout, and beta-interest
- * branches stay in lockstep. The caller is responsible for navigation when
+ * all funnel through this function so the routing and checkout branches stay in
+ * lockstep. The caller is responsible for navigation when
  * `kind` is `free_dashboard` or `free_report`; for `checkout_redirect` the
  * caller must hand `url` to `window.location` (or `onCheckoutRedirect`).
  */
@@ -61,8 +59,7 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
     plan,
     isLoggedIn,
     currentPlan,
-    betaGated = false,
-    paidCheckoutGated,
+    waitlistGated = false,
     fallbackPath,
     respectActiveReport = true,
     onPrivateBeta,
@@ -89,11 +86,9 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
     return { kind: 'free_dashboard', url: fallbackPath ?? '/dashboard' }
   }
 
-  const checkoutGated = paidCheckoutGated ?? betaGated
-
-  if (checkoutGated) {
+  if (waitlistGated) {
     onPrivateBeta?.()
-    return { kind: 'private_beta' }
+    return { kind: 'waitlist' }
   }
 
   const outcome: CheckoutOutcome = await requestPlanCheckout(checkoutPlan)
@@ -110,7 +105,7 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
 
   if (outcome.kind === 'paid-checkout-closed') {
     onPrivateBeta?.()
-    return { kind: 'private_beta' }
+    return { kind: 'waitlist' }
   }
 
   if (outcome.kind === 'unavailable') {

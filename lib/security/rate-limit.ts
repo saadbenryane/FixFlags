@@ -2,7 +2,13 @@ import Redis from 'ioredis'
 import { getRedisUrl } from '@/lib/env'
 import { logger } from '@/lib/logger'
 
+type RedisFailureMode = 'allow' | 'reject'
+
 let redis: Redis | null = null
+
+let _rateLimitRedisDown = false
+let _rateLimitRedisDownAt: string | null = null
+let _rateLimitRedisLastError: string | null = null
 
 function getRateLimitRedis(): Redis {
   if (!redis) {
@@ -20,24 +26,49 @@ function getRateLimitRedis(): Redis {
   return redis
 }
 
-let _rateLimitRedisDown = false
+function describeError(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
 
-/** Run a Redis operation. Falls open when Redis is unavailable to avoid
- *  breaking the entire site, but logs a critical error on first detection
- *  and warns on every subsequent request. */
-async function redisFailOpen<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+function markRedisUnavailable(err: unknown) {
+  _rateLimitRedisLastError = describeError(err)
+  if (!_rateLimitRedisDown) {
+    _rateLimitRedisDown = true
+    _rateLimitRedisDownAt = new Date().toISOString()
+    logger.error(
+      '[rate-limit] Redis unavailable. Rate limiting is temporarily disabled.',
+      err instanceof Error ? err : new Error(String(err))
+    )
+  } else {
+    logger.warn('[rate-limit] Redis still unavailable while serving requests.', {
+      lastError: _rateLimitRedisLastError,
+      downSince: _rateLimitRedisDownAt,
+    })
+  }
+}
+
+function markRedisAvailable() {
+  if (_rateLimitRedisDown || _rateLimitRedisDownAt || _rateLimitRedisLastError) {
+    _rateLimitRedisDown = false
+    _rateLimitRedisDownAt = null
+    _rateLimitRedisLastError = null
+    logger.info('[rate-limit] Redis recovered. Rate limiting is enabled again.')
+  }
+}
+
+async function redisLimitWithFallback<T>(
+  fn: () => Promise<T>,
+  fallback: T,
+  onRedisDown: RedisFailureMode
+): Promise<T> {
   try {
-    return await fn()
-  } catch (err) {
-    if (!_rateLimitRedisDown) {
-      _rateLimitRedisDown = true
-      logger.error(
-        '[rate-limit] Redis unavailable. Rate limiting is DISABLED. ' +
-        'All requests will be allowed until Redis recovers.',
-        err instanceof Error ? err.message : String(err)
-      )
-    } else {
-      logger.warn('[rate-limit] Redis still unavailable, allowing request')
+    const value = await fn()
+    markRedisAvailable()
+    return value
+  } catch (error) {
+    markRedisUnavailable(error)
+    if (onRedisDown === 'reject') {
+      throw new RateLimitUnavailableError(30)
     }
     return fallback
   }
@@ -53,28 +84,48 @@ export class RateLimitError extends Error {
   }
 }
 
+export class RateLimitUnavailableError extends RateLimitError {
+  constructor(retryAfter: number) {
+    super(retryAfter)
+    this.name = 'RateLimitUnavailableError'
+    this.message =
+      'Rate limit service is unavailable. Access is denied temporarily for safety.'
+  }
+}
+
 export interface RateLimitResult {
   exceeded: boolean
   retryAfterSeconds: number
   currentCount: number
 }
 
-async function incrementRateLimit(input: {
+interface RateLimitInput {
   scope: string
   identifier: string
   limit: number
   windowSeconds: number
-}): Promise<RateLimitResult> {
-  return redisFailOpen(async () => {
+  onRedisDown?: RedisFailureMode
+}
+
+async function incrementRateLimit(input: RateLimitInput): Promise<RateLimitResult> {
+  const {
+    scope,
+    identifier,
+    limit,
+    windowSeconds,
+    onRedisDown = 'allow',
+  } = input
+
+  return redisLimitWithFallback(async () => {
     const client = getRateLimitRedis()
     if (client.status === 'wait') await client.connect()
 
-    const window = Math.floor(Date.now() / (input.windowSeconds * 1000))
-    const key = `qos:rate:${input.scope}:${input.identifier}:${window}`
+    const window = Math.floor(Date.now() / (windowSeconds * 1000))
+    const key = `qos:rate:${scope}:${identifier}:${window}`
     const count = await client.incr(key)
-    if (count === 1) await client.expire(key, input.windowSeconds + 5)
+    if (count === 1) await client.expire(key, windowSeconds + 5)
 
-    if (count > input.limit) {
+    if (count > limit) {
       const ttl = await client.ttl(key)
       return {
         exceeded: true,
@@ -84,29 +135,31 @@ async function incrementRateLimit(input: {
     }
 
     return { exceeded: false, retryAfterSeconds: 0, currentCount: count }
-  }, { exceeded: false, retryAfterSeconds: 0, currentCount: 0 })
+  }, { exceeded: false, retryAfterSeconds: 0, currentCount: 0 }, onRedisDown)
 }
 
 /** Record a hit and return whether the limit is exceeded (does not throw). */
-export async function recordRateLimit(input: {
-  scope: string
-  identifier: string
-  limit: number
-  windowSeconds: number
-}): Promise<RateLimitResult> {
+export async function recordRateLimit(input: RateLimitInput): Promise<RateLimitResult> {
   return incrementRateLimit(input)
 }
 
-/** Hard gate for routes that must reject when over limit (prefer recordRateLimit + queue). */
-export async function enforceRateLimit(input: {
-  scope: string
-  identifier: string
-  limit: number
-  windowSeconds: number
-}): Promise<void> {
+/** Hard gate for routes that must reject when over limit. */
+export async function enforceRateLimit(input: RateLimitInput): Promise<void> {
   const result = await incrementRateLimit(input)
   if (result.exceeded) {
     throw new RateLimitError(result.retryAfterSeconds)
+  }
+}
+
+export function getRateLimitRedisHealth(): {
+  redisDown: boolean
+  redisDownSince: string | null
+  lastError: string | null
+} {
+  return {
+    redisDown: _rateLimitRedisDown,
+    redisDownSince: _rateLimitRedisDownAt,
+    lastError: _rateLimitRedisLastError,
   }
 }
 

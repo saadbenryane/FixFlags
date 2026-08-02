@@ -88,6 +88,7 @@ export function registerAnonTaskTools(
             identifier: new URL(normalizedUrl).hostname,
             limit: 10,
             windowSeconds: 3600,
+            onRedisDown: 'reject',
           }),
           getWorkerQueueEstimate(),
         ])

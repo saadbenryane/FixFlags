@@ -27,44 +27,79 @@ export function buildPlaybackSteps(events: ActionTimelineEvent[]): PlaybackStep[
 
 interface WorkspacePlaybackStripProps {
   steps: PlaybackStep[]
-  activeStepId?: string | null
-  onSelectStep?: (id: string) => void
+  /** 0-based index of the selected step, or null when playing live. */
+  activeIndex?: number | null
+  onSelectStep?: (index: number) => void
+  onScrub?: (index: number) => void
   className?: string
 }
 
 export function WorkspacePlaybackStrip({
   steps,
-  activeStepId,
+  activeIndex,
   onSelectStep,
+  onScrub,
   className,
 }: WorkspacePlaybackStripProps) {
   if (steps.length === 0) return null
 
+  const selected =
+    activeIndex != null && activeIndex >= 0 && activeIndex < steps.length
+      ? activeIndex
+      : -1
+
   return (
-    <ol
+    <div
       className={cn(
-        'flex items-center gap-2 overflow-x-auto rounded-card border border-border bg-muted/30 px-3 py-2',
+        'rounded-card border border-border bg-muted/30 px-3 py-2',
         className
       )}
-      aria-label={REPORT_COPY.workspace.playback.label}
     >
-      {steps.map((step, index) => (
-        <li key={step.id} className="shrink-0 list-none">
-          <button
-            type="button"
-            aria-pressed={activeStepId === step.id}
-            className={cn(
-              'rounded-md px-2 py-1 text-xs font-medium transition-colors',
-              activeStepId === step.id
-                ? 'bg-brand text-brand-foreground'
-                : 'bg-background text-muted-foreground hover:text-foreground'
-            )}
-            onClick={() => onSelectStep?.(step.id)}
-          >
-            {index + 1}. {step.label}
-          </button>
-        </li>
-      ))}
-    </ol>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-muted-foreground">
+          {REPORT_COPY.workspace.playback.label}
+        </span>
+        <span className="font-mono text-xs text-muted-foreground tabular-nums">
+          {REPORT_COPY.workspace.playback.counter(
+            selected >= 0 ? selected + 1 : 0,
+            steps.length
+          )}
+        </span>
+      </div>
+
+      <input
+        type="range"
+        min={0}
+        max={steps.length - 1}
+        step={1}
+        value={selected >= 0 ? selected : 0}
+        onChange={(event) => onScrub?.(Number(event.target.value))}
+        aria-label={REPORT_COPY.workspace.playback.scrubLabel}
+        className="mt-2 w-full accent-brand"
+      />
+
+      <ol
+        className="mt-2 flex items-center gap-2 overflow-x-auto"
+        aria-label={REPORT_COPY.workspace.playback.label}
+      >
+        {steps.map((step, index) => (
+          <li key={step.id} className="shrink-0 list-none">
+            <button
+              type="button"
+              aria-pressed={index === selected}
+              className={cn(
+                'min-h-11 rounded-md px-2 text-xs font-medium transition-colors',
+                index === selected
+                  ? 'bg-brand text-brand-foreground'
+                  : 'bg-background text-muted-foreground hover:text-foreground'
+              )}
+              onClick={() => onSelectStep?.(index)}
+            >
+              {REPORT_COPY.workspace.playback.stepNumber(index + 1)} · {step.label}
+            </button>
+          </li>
+        ))}
+      </ol>
+    </div>
   )
 }
