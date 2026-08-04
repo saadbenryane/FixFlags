@@ -7,6 +7,1203 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                      String                       @id @default(cuid())
+  email                   String                       @unique
+  name                    String?
+  emailVerified           Boolean                      @default(false)
+  role                    String                       @default("user")
+  plan                    Plan                         @default(FREE)
+  auditsUsed              Int                          @default(0)
+  auditsLimit             Int                          @default(3)
+  stripeCustomerId        String?                      @unique
+  stripeSubscriptionId    String?                      @unique
+  stripePriceId           String?
+  stripeCurrentPeriodEnd  DateTime?
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
+  subscriptionStatus      SubscriptionStatus           @default(NONE)
+  preferredTools          String[]
+  vibecodingLevel         String?
+  image                   String?
+  gclid                   String?
+  fbclid                  String?
+  twoFactorEnabled        Boolean                      @default(false)
+  founderOfferRedeemedAt  DateTime?
+  deepReviewsUsed         Int                          @default(0)
+  deepReviewsLimit        Int                          @default(1)
+  gscConnection           GscConnection?
+  accounts                Account[]
+  apiKeys                 ApiKey[]
+  audits                  Audit[]
+  cliDeviceAuthorizations CliDeviceAuthorization[]
+  creditPurchases         CreditPurchase[]
+  emailLogs               EmailLog[]
+  githubConnection        GithubConnection?
+  linkedLeads             Lead[]                       @relation("LeadLinkedUser")
+  mcpInteractions         McpInteraction[]
+  paidPlanWaitlistEntries PaidPlanWaitlistEntry[]
+  passkeys                Passkey[]
+  projects                Project[]
+  repoFixPrs              RepoFixPr[]
+  repoScans               RepoScan[]
+  reportChatMessages      ReportChatMessage[]
+  sessions                Session[]
+  subscriptionLifecycle   SubscriptionLifecycleEvent[]
+  assignedSupportSessions SupportSession[]             @relation("SupportSessionAgent")
+  supportSessions         SupportSession[]             @relation("SupportSessionUser")
+  twoFactors              TwoFactor[]
+
+  @@map("users")
+}
+
+model PaidPlanWaitlistEntry {
+  id             String    @id @default(cuid())
+  userId         String
+  plan           Plan
+  joinedAt       DateTime  @default(now())
+  source         String?
+  campaign       String?
+  invitedAt      DateTime?
+  convertedAt    DateTime?
+  /// * Legacy: retired 40% founder offer reference. Kept for historical rows.
+  founderOfferId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  /// *
+  ///    * Launch discount tier snapshot at join time, by join order per plan:
+  ///    * 1 = first 500 (25% off), 2 = next 500 (15% off), null = list price.
+  ///    * Assigned under a per-plan advisory lock; never changes on re-join.
+  discountTier   Int?
+  /// *
+  ///    * Email captured at join time. May differ from the account email (e.g. SSO
+  ///    * private relay); the confirmation goes to this address.
+  email          String?
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, plan])
+  @@index([plan, joinedAt(sort: Desc)])
+  @@index([plan, discountTier])
+  @@index([invitedAt])
+  @@map("paid_plan_waitlist_entries")
+}
+
+/// *
+///  * App-level GitHub repo access for codebase scanning, separate from GitHub login (Account).
+model GithubConnection {
+  id                   String     @id @default(cuid())
+  userId               String     @unique
+  githubUserId         String
+  githubLogin          String
+  encryptedAccessToken String
+  scope                String
+  selectedRepos        String[]
+  connectedAt          DateTime   @default(now())
+  revokedAt            DateTime?
+  user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repoScans            RepoScan[]
+
+  @@map("github_connections")
+}
+
+model RepoScan {
+  id                 String            @id @default(cuid())
+  userId             String
+  githubConnectionId String
+  repoFullName       String
+  commitSha          String?
+  status             RepoScanStatus    @default(QUEUED)
+  errorMsg           String?
+  startedAt          DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime          @default(now())
+  fixPrs             RepoFixPr[]
+  findings           RepoScanFinding[]
+  githubConnection   GithubConnection  @relation(fields: [githubConnectionId], references: [id], onDelete: Cascade)
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([githubConnectionId])
+  @@map("repo_scans")
+}
+
+model RepoScanFinding {
+  id             String     @id @default(cuid())
+  repoScanId     String
+  severity       Severity
+  category       String
+  filePath       String
+  lineStart      Int?
+  lineEnd        Int?
+  problem        String
+  evidence       String
+  fix            String
+  agentPrompt    String?
+  cursorPrompt   String?
+  claudePrompt   String?
+  createdAt      DateTime   @default(now())
+  windsurfPrompt String?
+  fixPr          RepoFixPr?
+  repoScan       RepoScan   @relation(fields: [repoScanId], references: [id], onDelete: Cascade)
+
+  @@index([repoScanId])
+  @@map("repo_scan_findings")
+}
+
+/// *
+///  * A branch + draft PR opened for a single repo-scan finding (v1 write path: PR body is the
+///  * existing fix prompt, no arbitrary code changes - see lib/repo-scan/mechanical-patch.ts for
+///  * the narrow, mechanical exception).
+model RepoFixPr {
+  id           String          @id @default(cuid())
+  repoScanId   String
+  findingId    String          @unique
+  userId       String
+  branchName   String
+  baseSha      String
+  prNumber     Int?
+  prUrl        String?
+  status       RepoFixPrStatus @default(DRAFT)
+  patchApplied Boolean         @default(false)
+  errorMsg     String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  finding      RepoScanFinding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  repoScan     RepoScan        @relation(fields: [repoScanId], references: [id], onDelete: Cascade)
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([repoScanId])
+  @@index([userId])
+  @@map("repo_fix_prs")
+}
+
+model EmailLog {
+  id         String              @id @default(cuid())
+  userId     String
+  emailType  String
+  sentAt     DateTime            @default(now())
+  providerId String?
+  status     EmailDeliveryStatus @default(PENDING)
+  errorMsg   String?
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, emailType])
+  @@index([userId])
+  @@map("email_logs")
+}
+
+model NewsletterSubscriber {
+  id           String           @id @default(cuid())
+  email        String           @unique
+  status       NewsletterStatus @default(PENDING)
+  source       String           @default("footer")
+  subscribedAt DateTime         @default(now())
+  confirmedAt  DateTime?
+  updatedAt    DateTime         @updatedAt
+
+  @@map("newsletter_subscribers")
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  password              String?
+  idToken               String?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@index([expiresAt])
+  @@map("verifications")
+}
+
+/// WebAuthn / passkey credentials (better-auth passkey plugin)
+model Passkey {
+  id           String    @id
+  name         String?
+  publicKey    String
+  userId       String
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime?
+  aaguid       String?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([credentialID])
+  @@map("passkeys")
+}
+
+/// Two-factor secrets and backup codes (better-auth twoFactor plugin)
+model TwoFactor {
+  id                      String    @id @default(cuid())
+  userId                  String
+  secret                  String
+  backupCodes             String
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime?
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([secret])
+  @@map("two_factors")
+}
+
+model ApiKey {
+  id                      String                   @id @default(cuid())
+  userId                  String
+  name                    String
+  lastUsed                DateTime?
+  createdAt               DateTime                 @default(now())
+  keyHash                 String                   @unique
+  prefix                  String
+  lastFour                String
+  revokedAt               DateTime?
+  client                  ApiKeyClient?
+  user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cliDeviceAuthorizations CliDeviceAuthorization[]
+  mcpInteractions         McpInteraction[]
+
+  @@index([userId])
+  @@index([client])
+  @@map("api_keys")
+}
+
+model CliDeviceAuthorization {
+  id                  String                       @id @default(cuid())
+  deviceCodeHash      String                       @unique
+  userCodeHash        String                       @unique
+  status              CliDeviceAuthorizationStatus @default(PENDING)
+  intervalSeconds     Int                          @default(5)
+  encryptedCredential String?
+  userId              String?
+  apiKeyId            String?
+  lastPolledAt        DateTime?
+  expiresAt           DateTime
+  approvedAt          DateTime?
+  consumedAt          DateTime?
+  createdAt           DateTime                     @default(now())
+  apiKey              ApiKey?                      @relation(fields: [apiKeyId], references: [id])
+  user                User?                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, expiresAt])
+  @@index([userId, createdAt])
+  @@map("cli_device_authorizations")
+}
+
+model Project {
+  id                          String                @id @default(cuid())
+  userId                      String
+  name                        String
+  url                         String
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
+  /// *
+  ///    * Persistent Product Intelligence JSON — see knowledge/product-intelligence.md
+  productIntelligence         Json?
+  watchNextRunAt              DateTime?
+  watchLastRunAt              DateTime?
+  /// *
+  ///    * Lowercase hostname without www. Exact Product identity within an account.
+  canonicalHost               String
+  /// *
+  ///    * Agency-promoted Project. Internal Products remain available without consuming quota.
+  isManaged                   Boolean               @default(false)
+  /// *
+  ///    * Optimistic concurrency revision for all Product Intelligence mutations.
+  productIntelligenceRevision Int                   @default(0)
+  watchLeaseUntil             DateTime?
+  watchLastAttemptAt          DateTime?
+  watchConsecutiveFailures    Int                   @default(0)
+  watchLastError              String?
+  watchInterval               ProjectWatchInterval?
+  /// *
+  ///    * Encrypted scan access (HTTP basic, cookies, headers) for preview/staging URLs.
+  scanAccessEncrypted         String?
+  scan_access_encrypted       String?
+  audits                      Audit[]
+  user                        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, canonicalHost])
+  @@index([userId])
+  @@index([watchNextRunAt])
+  @@index([watchLeaseUntil])
+  @@map("projects")
+}
+
+model Audit {
+  id                         String                       @id @default(cuid())
+  userId                     String?
+  projectId                  String?
+  url                        String
+  status                     AuditStatus                  @default(QUEUED)
+  pageJob                    String?
+  pageType                   String?
+  verdict                    String?
+  score                      Int?
+  parentId                   String?
+  isPublic                   Boolean                      @default(false)
+  startedAt                  DateTime?
+  completedAt                DateTime?
+  errorMsg                   String?
+  htmlMetadata               Json?
+  performanceData            Json?
+  consoleErrors              Json?
+  createdAt                  DateTime                     @default(now())
+  updatedAt                  DateTime                     @updatedAt
+  progress                   Int                          @default(0)
+  skipUsageCount             Boolean                      @default(false)
+  usageCountedAt             DateTime?
+  auditMode                  AuditMode                    @default(CRITICAL_PATH)
+  launchReadiness            Json?
+  launchReadinessState       LaunchReadinessState         @default(UNKNOWN)
+  reportCompleteness         ReportCompleteness           @default(UNKNOWN)
+  evidenceCoverage           Json?
+  finalizedAt                DateTime?
+  failureCode                String?
+  failureStage               String?
+  failureMetadata            Json?
+  pipelineLog                Json?
+  pipelineVersion            String?
+  monitoringMode             MonitoringMode               @default(FULL)
+  flowData                   Json?
+  normalizedDomain           String?
+  source                     AuditSource                  @default(UNKNOWN)
+  referrer                   String?
+  utmSource                  String?
+  utmMedium                  String?
+  utmCampaign                String?
+  leadSyncedAt               DateTime?
+  includeAi                  Boolean                      @default(true)
+  aiReviewAt                 DateTime?
+  triageAt                   DateTime?
+  gclid                      String?
+  fbclid                     String?
+  siteId                     String?
+  journeyReviewIncluded      Boolean                      @default(false)
+  journeyReviewAt            DateTime?
+  /// *
+  ///    * Inferred product intent: purpose, first-value journey, critical outcomes.
+  productContract            Json?
+  watchNotifiedAt            DateTime?
+  recheckTrigger             RecheckTrigger?
+  watchRegressionCount       Int?
+  watchNotificationStatus    WatchNotificationStatus      @default(NOT_APPLICABLE)
+  watchNotificationAttempts  Int                          @default(0)
+  watchNotificationLastError String?
+  /// *
+  ///    * Per-audit scan access override (encrypted). Falls back to Project.scanAccessEncrypted.
+  scanAccessEncrypted        String?
+  scan_access_encrypted      String?
+  technologyDetectionStatus  TechnologyDetectionStatus    @default(NOT_CAPTURED)
+  technologyDetectorVersion  String?
+  technologyDetectedAt       DateTime?
+  deepReviewUsageCountedAt   DateTime?
+  /// *
+  ///    * Names of deterministic check modules that threw during this run. Their
+  ///    * findings are dropped, so the report shows a callout when this is non-empty.
+  failedModules              Json?
+  indexStatuses              IndexStatus[]
+  searchPerformance          SearchPerformance[]
+  feedback                   AuditFeedback[]
+  pages                      AuditPage[]
+  runCost                    AuditRunCost?
+  technologyObservations     AuditTechnologyObservation[]
+  parent                     Audit?                       @relation("Monitoring", fields: [parentId], references: [id])
+  monitoringAudits           Audit[]                      @relation("Monitoring")
+  project                    Project?                     @relation(fields: [projectId], references: [id])
+  site                       Site?                        @relation(fields: [siteId], references: [id])
+  user                       User?                        @relation(fields: [userId], references: [id])
+  flags                      Flag[]
+  journeyReviews             JourneyReview[]
+  chatMessages               ReportChatMessage[]
+  rubrics                    ReportRubric[]
+  screenshots                Screenshot[]
+  shareLinks                 ShareLink[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@index([status, updatedAt])
+  @@index([userId, status])
+  @@index([parentId])
+  @@index([normalizedDomain])
+  @@index([siteId])
+  @@map("audits")
+}
+
+model ReportChatMessage {
+  id        String   @id @default(cuid())
+  auditId   String
+  userId    String
+  role      String
+  content   String
+  createdAt DateTime @default(now())
+  audit     Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([auditId, createdAt])
+  @@index([userId])
+  @@map("report_chat_messages")
+}
+
+model JourneyReview {
+  id                    String              @id @default(cuid())
+  auditId               String
+  journeyType           String
+  startUrl              String
+  status                JourneyReviewStatus @default(QUEUED)
+  completedSteps        Int                 @default(0)
+  maxSteps              Int                 @default(10)
+  goalAchieved          Boolean?
+  blockedReason         String?
+  abandonedReason       String?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  durationMs            Int?
+  plannerInputTokens    Int                 @default(0)
+  plannerOutputTokens   Int                 @default(0)
+  plannerModel          String?
+  evaluatorInputTokens  Int                 @default(0)
+  evaluatorOutputTokens Int                 @default(0)
+  evaluatorModel        String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  planJson              Json?
+  findings              JourneyFinding[]
+  audit                 Audit               @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  steps                 JourneyStep[]
+
+  @@index([auditId])
+  @@index([status])
+  @@index([journeyType])
+  @@map("journey_reviews")
+}
+
+model JourneyStep {
+  id                  String        @id @default(cuid())
+  journeyReviewId     String
+  stepNumber          Int
+  actionType          String
+  actionDetail        Json
+  url                 String
+  screenshotBeforeUrl String?
+  screenshotAfterUrl  String?
+  accessibilityTree   String
+  consoleErrors       String[]      @default([])
+  networkErrors       String[]      @default([])
+  loadTimeMs          Int?
+  confidence          Float         @default(1.0)
+  reasoning           String?
+  createdAt           DateTime      @default(now())
+  elementRef          String?
+  elementDescription  String?
+  outcomeMatch        Boolean?
+  outcomeDetail       String?
+  journeyReview       JourneyReview @relation(fields: [journeyReviewId], references: [id], onDelete: Cascade)
+
+  @@unique([journeyReviewId, stepNumber])
+  @@index([journeyReviewId])
+  @@map("journey_steps")
+}
+
+model JourneyFinding {
+  id                    String        @id @default(cuid())
+  journeyReviewId       String
+  stepNumber            Int
+  url                   String
+  rubric                RubricName
+  severity              Severity
+  impactTag             ImpactTag
+  problem               String
+  evidence              String
+  whyItMatters          String
+  fix                   String?
+  screenshotUrl         String?
+  accessibilityEvidence String?
+  confidence            Float         @default(0.8)
+  reproducibility       String        @default("always")
+  flagId                String?
+  checkId               String?
+  createdAt             DateTime      @default(now())
+  findingType           String?
+  journeyReview         JourneyReview @relation(fields: [journeyReviewId], references: [id], onDelete: Cascade)
+
+  @@index([journeyReviewId])
+  @@index([rubric])
+  @@index([severity])
+  @@index([flagId])
+  @@map("journey_findings")
+}
+
+model ShareLink {
+  id           String    @id @default(cuid())
+  auditId      String
+  token        String    @unique
+  label        String?
+  expiresAt    DateTime?
+  maxViews     Int?
+  viewCount    Int       @default(0)
+  lastViewedAt DateTime?
+  revoked      Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  passwordHash String?
+  version      Int       @default(1)
+  audit        Audit     @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@index([auditId])
+  @@map("share_links")
+}
+
+model Lead {
+  id                String           @id @default(cuid())
+  normalizedDomain  String           @unique
+  firstSeenAt       DateTime
+  lastSeenAt        DateTime
+  scanCount         Int              @default(1)
+  status            LeadStatus       @default(NEW)
+  latestScore       Int?
+  latestAuditId     String?
+  latestUrl         String?
+  linkedUserId      String?
+  notes             String?
+  source            String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  totalCostUsd      Decimal          @default(0) @db.Decimal(10, 6)
+  latestScanCostUsd Decimal?         @db.Decimal(10, 6)
+  linkedUser        User?            @relation("LeadLinkedUser", fields: [linkedUserId], references: [id])
+  supportSessions   SupportSession[]
+
+  @@index([status])
+  @@index([lastSeenAt(sort: Desc)])
+  @@map("leads")
+}
+
+model SupportTenant {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  name        String
+  isUnlimited Boolean          @default(true)
+  ownerUserId String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  sessions    SupportSession[]
+
+  @@map("support_tenants")
+}
+
+model SupportSession {
+  id              String               @id @default(cuid())
+  tenantId        String
+  visitorToken    String
+  visitorName     String?
+  visitorEmail    String?
+  userId          String?
+  status          SupportSessionStatus @default(OPEN)
+  pageUrl         String?
+  leadId          String?
+  assignedAgentId String?
+  lastMessageAt   DateTime?
+  lastNotifiedAt  DateTime?
+  unreadByAgent   Int                  @default(0)
+  unreadByVisitor Int                  @default(0)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  messages        SupportMessage[]
+  assignedAgent   User?                @relation("SupportSessionAgent", fields: [assignedAgentId], references: [id])
+  lead            Lead?                @relation(fields: [leadId], references: [id])
+  tenant          SupportTenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user            User?                @relation("SupportSessionUser", fields: [userId], references: [id])
+
+  @@index([tenantId, visitorToken])
+  @@index([tenantId, status, lastMessageAt(sort: Desc)])
+  @@index([leadId])
+  @@map("support_sessions")
+}
+
+model SupportMessage {
+  id        String             @id @default(cuid())
+  sessionId String
+  role      SupportMessageRole
+  body      String
+  senderId  String?
+  createdAt DateTime           @default(now())
+  session   SupportSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("support_messages")
+}
+
+model AuditPage {
+  id              String             @id @default(cuid())
+  auditId         String
+  url             String
+  normalizedUrl   String
+  title           String?
+  role            String
+  position        Int
+  status          AuditPageStatus    @default(QUEUED)
+  completeness    ReportCompleteness @default(UNKNOWN)
+  htmlMetadata    Json?
+  performanceData Json?
+  consoleErrors   Json?
+  failureCode     String?
+  failureMessage  String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  pageId          String?
+  audit           Audit              @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  page_rel        Page?              @relation(fields: [pageId], references: [id])
+  flags           Flag[]
+  screenshots     Screenshot[]
+
+  @@unique([auditId, normalizedUrl])
+  @@unique([auditId, position])
+  @@index([auditId, status])
+  @@map("audit_pages")
+}
+
+model AuditRunCost {
+  auditId                  String   @id
+  durationMs               Int
+  llmInputTokens           Int      @default(0)
+  llmOutputTokens          Int      @default(0)
+  llmModel                 String?
+  llmCostUsd               Decimal  @db.Decimal(10, 6)
+  pagespeedCalls           Int      @default(0)
+  estimatedCostUsd         Decimal  @db.Decimal(10, 6)
+  createdAt                DateTime @default(now())
+  triageInputTokens        Int      @default(0)
+  triageOutputTokens       Int      @default(0)
+  triageModel              String?
+  triageCostUsd            Decimal  @default(0) @db.Decimal(10, 6)
+  prescriptionInputTokens  Int      @default(0)
+  prescriptionOutputTokens Int      @default(0)
+  prescriptionModel        String?
+  prescriptionCostUsd      Decimal  @default(0) @db.Decimal(10, 6)
+  audit                    Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@map("audit_run_costs")
+}
+
+model ReportRubric {
+  id              String          @id @default(cuid())
+  auditId         String
+  name            RubricName
+  score           Int?
+  grade           RubricGrade?
+  status          RubricStatus?
+  assessmentState AssessmentState @default(UNKNOWN)
+  confidence      Float?
+  summary         String
+  rubricPrompt    String
+  cursorPrompt    String?
+  claudePrompt    String?
+  lovablePrompt   String?
+  boltPrompt      String?
+  windsurfPrompt  String?
+  flags           Flag[]
+  audit           Audit           @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@unique([auditId, name])
+  @@index([auditId])
+  @@map("report_rubrics")
+}
+
+model Screenshot {
+  id      String     @id @default(cuid())
+  auditId String
+  device  Device
+  url     String
+  width   Int
+  height  Int
+  pageId  String?
+  audit   Audit      @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  page    AuditPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([auditId])
+  @@index([pageId])
+  @@map("screenshots")
+}
+
+model Flag {
+  id               String          @id @default(cuid())
+  auditId          String
+  pageId           String?
+  rubricId         String?
+  source           FlagSource
+  rubric           String
+  impactTag        ImpactTag?
+  severity         Severity
+  problem          String
+  evidence         String
+  whyItMatters     String
+  fix              String
+  confidence       Float
+  agentPrompt      String?
+  cursorPrompt     String?
+  claudePrompt     String?
+  lovablePrompt    String?
+  boltPrompt       String?
+  verificationRule String?
+  checkId          String?
+  pageUrl          String?
+  fingerprint      String?
+  position         Int
+  status           FlagStatus      @default(OPEN)
+  resolvedInId     String?
+  createdAt        DateTime        @default(now())
+  issueId          String?
+  windsurfPrompt   String?
+  causeCertainty   CauseCertainty?
+  fixConfidence    FixConfidence?
+  feedback         FlagFeedback[]
+  audit            Audit           @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  issue            Issue?          @relation(fields: [issueId], references: [id])
+  page             AuditPage?      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  rubric_rel       ReportRubric?   @relation(fields: [rubricId], references: [id])
+
+  @@index([auditId])
+  @@index([auditId, checkId])
+  @@index([pageId])
+  @@index([auditId, fingerprint])
+  @@index([issueId])
+  @@map("flags")
+}
+
+model FlagFeedback {
+  id           String   @id @default(cuid())
+  flagId       String
+  userId       String?
+  vote         Int
+  comment      String?
+  createdAt    DateTime @default(now())
+  visitorToken String?
+  flag         Flag     @relation(fields: [flagId], references: [id], onDelete: Cascade)
+
+  @@unique([flagId, userId])
+  @@unique([flagId, visitorToken])
+  @@index([flagId])
+  @@map("flag_feedback")
+}
+
+model AuditFeedback {
+  id           String   @id @default(cuid())
+  auditId      String
+  userId       String?
+  visitorToken String?
+  vote         Int
+  comment      String?
+  pageUrl      String?
+  createdAt    DateTime @default(now())
+  audit        Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@unique([auditId, visitorToken])
+  @@index([auditId])
+  @@index([vote])
+  @@index([createdAt])
+  @@map("audit_feedback")
+}
+
+model ProcessedStripeEvent {
+  id          String   @id
+  type        String
+  processedAt DateTime @default(now())
+  payloadHash String?
+
+  @@index([type])
+  @@index([processedAt])
+  @@map("processed_stripe_events")
+}
+
+model SubscriptionLifecycleEvent {
+  id              String                    @id @default(cuid())
+  stripeEventId   String                    @unique
+  stripeEventType String
+  type            SubscriptionLifecycleType
+  userId          String
+  subscriptionId  String?
+  customerId      String?
+  previousPlan    Plan?
+  plan            Plan
+  status          SubscriptionStatus
+  priceId         String?
+  unitAmount      Int?
+  currency        String?
+  occurredAt      DateTime
+  createdAt       DateTime                  @default(now())
+  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, occurredAt])
+  @@index([type, occurredAt])
+  @@index([status, occurredAt])
+  @@map("subscription_lifecycle_events")
+}
+
+model McpInteraction {
+  id         String        @id @default(cuid())
+  userId     String
+  method     String        @default("unknown")
+  tool       String?
+  durationMs Int?
+  success    Boolean       @default(true)
+  errorCode  String?
+  auditId    String?
+  metadata   Json?
+  createdAt  DateTime      @default(now())
+  apiKeyId   String?
+  client     ApiKeyClient?
+  apiKey     ApiKey?       @relation(fields: [apiKeyId], references: [id])
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([apiKeyId, createdAt])
+  @@index([client, createdAt])
+  @@index([createdAt])
+  @@index([method, tool])
+  @@index([success, createdAt])
+  @@map("mcp_interactions")
+}
+
+model CreditPurchase {
+  id                    String               @id @default(cuid())
+  userId                String
+  stripeSessionId       String?              @unique
+  stripePaymentIntentId String?
+  packId                String
+  creditsPurchased      Int
+  creditsRemaining      Int
+  priceUsdCents         Int
+  status                CreditPurchaseStatus @default(PENDING)
+  createdAt             DateTime             @default(now())
+  paidAt                DateTime?
+  user                  User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("credit_purchases")
+}
+
+model Site {
+  id            String            @id @default(cuid())
+  hostname      String            @unique
+  rootUrl       String
+  firstSeenAt   DateTime          @default(now())
+  lastAuditedAt DateTime          @default(now())
+  auditCount    Int               @default(0)
+  industryGuess String?
+  techGuess     Json?
+  industryId    String?
+  audits        Audit[]
+  occurrences   IssueOccurrence[]
+  pages         Page[]
+  industry      Industry?         @relation(fields: [industryId], references: [id])
+  technologies  SiteTechnology[]
+
+  @@index([lastAuditedAt])
+  @@map("graph_site")
+}
+
+model Page {
+  id          String      @id @default(cuid())
+  siteId      String
+  url         String
+  path        String
+  role        String
+  firstSeenAt DateTime    @default(now())
+  lastSeenAt  DateTime    @default(now())
+  audits      AuditPage[]
+  site        Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, url])
+  @@index([siteId])
+  @@map("graph_page")
+}
+
+model Technology {
+  id           String                       @id @default(cuid())
+  name         String                       @unique
+  kind         String
+  observations AuditTechnologyObservation[]
+  sites        SiteTechnology[]
+
+  @@map("graph_technology")
+}
+
+model AuditTechnologyObservation {
+  id              String     @id @default(cuid())
+  auditId         String
+  technologyId    String
+  confidence      Float
+  evidence        Json
+  detectorVersion String
+  detectedAt      DateTime   @default(now())
+  audit           Audit      @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  technology      Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@unique([auditId, technologyId])
+  @@index([auditId])
+  @@index([technologyId])
+  @@map("audit_technology_observation")
+}
+
+model SiteTechnology {
+  siteId       String
+  technologyId String
+  firstSeenAt  DateTime   @default(now())
+  lastSeenAt   DateTime   @default(now())
+  confidence   Float      @default(1.0)
+  isCurrent    Boolean    @default(true)
+  site         Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  technology   Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
+
+  @@id([siteId, technologyId])
+  @@index([technologyId])
+  @@index([siteId, isCurrent])
+  @@map("graph_site_technology")
+}
+
+model Industry {
+  id    String @id @default(cuid())
+  slug  String @unique
+  label String
+  sites Site[]
+
+  @@map("graph_industry")
+}
+
+model Issue {
+  id              String              @id @default(cuid())
+  fingerprint     String              @unique
+  checkId         String
+  rubric          String
+  problemTemplate String
+  fixTemplate     String
+  occurrenceCount Int                 @default(0)
+  siteCount       Int                 @default(0)
+  frameworkCount  Int                 @default(0)
+  examples        Json?
+  firstSeenAt     DateTime            @default(now())
+  lastSeenAt      DateTime            @default(now())
+  flags           Flag[]
+  snapshots       BenchmarkSnapshot[]
+  fixPrompts      FixPrompt[]
+  occurrences     IssueOccurrence[]
+
+  @@index([checkId])
+  @@index([rubric])
+  @@index([occurrenceCount])
+  @@map("graph_issue")
+}
+
+model IssueOccurrence {
+  id         String   @id @default(cuid())
+  issueId    String
+  siteId     String
+  flagId     String   @unique
+  observedAt DateTime @default(now())
+  issue      Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([issueId])
+  @@index([siteId])
+  @@map("graph_issue_occurrence")
+}
+
+model FixPrompt {
+  id          String   @id @default(cuid())
+  issueId     String
+  tool        String
+  template    String
+  usageCount  Int      @default(0)
+  successRate Float?
+  createdAt   DateTime @default(now())
+  issue       Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+
+  @@unique([issueId, tool])
+  @@index([issueId])
+  @@map("graph_fix_prompt")
+}
+
+model BenchmarkSnapshot {
+  id            String   @id @default(cuid())
+  scope         String
+  takenAt       DateTime @default(now())
+  sampleSize    Int
+  avgScore      Float
+  p25Score      Float
+  p50Score      Float
+  p75Score      Float
+  flagFrequency Json
+  topIssues     Json
+  topIssueId    String?
+  topIssue      Issue?   @relation(fields: [topIssueId], references: [id])
+
+  @@index([scope, takenAt])
+  @@map("graph_benchmark_snapshot")
+}
+
+model Experiment {
+  id         String    @id @default(cuid())
+  slug       String    @unique
+  hypothesis String
+  surface    String
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+  metric     String
+  baseline   Float?
+  result     Float?
+  decision   String?
+  notes      String?
+
+  @@index([surface, startedAt])
+  @@map("graph_experiment")
+}
+
+model ToolUsage {
+  id        String   @id @default(cuid())
+  toolSlug  String
+  inputHash String
+  result    Json
+  sessionId String?
+  source    String?
+  createdAt DateTime @default(now())
+
+  @@index([toolSlug, createdAt])
+  @@index([source, createdAt])
+  @@map("graph_tool_usage")
+}
+
+model GscConnection {
+  id                String              @id @default(cuid())
+  userId            String              @unique
+  accessToken       String
+  refreshToken      String
+  tokenExpiry       DateTime
+  siteUrl           String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  indexStatuses     IndexStatus[]
+  searchPerformance SearchPerformance[]
+
+  @@index([userId])
+}
+
+model SearchPerformance {
+  id            String         @id @default(cuid())
+  auditId       String
+  url           String
+  query         String
+  impressions   Int
+  clicks        Int
+  ctr           Float
+  position      Float
+  device        String
+  country       String
+  dateRange     String
+  createdAt     DateTime       @default(now())
+  userId        String?
+  audit         Audit          @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  gscConnection GscConnection? @relation(fields: [userId], references: [userId])
+
+  @@index([auditId])
+  @@index([url])
+  @@index([query])
+}
+
+model IndexStatus {
+  id              String         @id @default(cuid())
+  auditId         String
+  url             String
+  verdict         String
+  coverageState   String
+  robotsTxtState  String
+  indexingState   String
+  lastCrawlTime   DateTime?
+  googleCanonical String?
+  userCanonical   String?
+  crawledAs       String?
+  sitemap         String[]
+  richResults     Json?
+  createdAt       DateTime       @default(now())
+  userId          String?
+  audit           Audit          @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  gscConnection   GscConnection? @relation(fields: [userId], references: [userId])
+
+  @@unique([auditId, url])
+  @@index([auditId])
+}
+
+model GrowthArtifact {
+  id        String   @id @default(cuid())
+  kind      String
+  path      String   @unique
+  payload   Json
+  writtenAt DateTime @default(now())
+
+  @@index([kind, writtenAt])
+  @@map("graph_artifact")
+}
+
+model RumMeasurement {
+  id        String   @id @default(cuid())
+  siteId    String
+  page      String
+  metric    String
+  value     Float
+  rating    String?
+  delta     Float?
+  nav       Int?
+  createdAt DateTime @default(now())
+
+  @@index([siteId])
+  @@index([siteId, metric])
+  @@index([siteId, createdAt])
+  @@map("rum_measurements")
+}
+
 enum Plan {
   FREE
   BUILDER
@@ -14,17 +1211,17 @@ enum Plan {
 }
 
 enum ApiKeyClient {
-  cli
   cursor
   claudeCode
   windsurf
   lovable
   bolt
+  vscode
+  other
+  cli
   replit
   codex
   devin
-  vscode
-  other
 }
 
 enum CliDeviceAuthorizationStatus {
@@ -204,14 +1401,14 @@ enum LeadStatus {
 enum AuditSource {
   HOMEPAGE
   DASHBOARD
-  REPORT
   API
   MCP
+  UNKNOWN
+  REPORT
   SEED
   TOOL_PAGE
   ISSUE_PAGE
   BENCHMARK_PAGE
-  UNKNOWN
 }
 
 enum SupportSessionStatus {
@@ -235,89 +1432,6 @@ enum SubscriptionLifecycleType {
   PAYMENT_FAILED
 }
 
-model User {
-  id                      String                       @id @default(cuid())
-  email                   String                       @unique
-  name                    String?
-  emailVerified           Boolean                      @default(false)
-  image                   String?
-  role                    String                       @default("user")
-  plan                    Plan                         @default(FREE)
-  auditsUsed              Int                          @default(0)
-  auditsLimit             Int                          @default(3)
-  deepReviewsUsed         Int                          @default(0)
-  deepReviewsLimit        Int                          @default(1)
-  stripeCustomerId        String?                      @unique
-  stripeSubscriptionId    String?                      @unique
-  stripePriceId           String?
-  stripeCurrentPeriodEnd  DateTime?
-  subscriptionStatus      SubscriptionStatus           @default(NONE)
-  founderOfferRedeemedAt  DateTime?
-  vibecodingLevel         String?
-  preferredTools          String[]
-  gclid                   String?
-  fbclid                  String?
-  twoFactorEnabled        Boolean                      @default(false)
-  createdAt               DateTime                     @default(now())
-  updatedAt               DateTime                     @updatedAt
-  projects                Project[]
-  audits                  Audit[]
-  apiKeys                 ApiKey[]
-  cliDeviceAuthorizations CliDeviceAuthorization[]
-  sessions                Session[]
-  accounts                Account[]
-  passkeys                Passkey[]
-  twoFactors              TwoFactor[]
-  emailLogs               EmailLog[]
-  linkedLeads             Lead[]                       @relation("LeadLinkedUser")
-  supportSessions         SupportSession[]             @relation("SupportSessionUser")
-  assignedSupportSessions SupportSession[]             @relation("SupportSessionAgent")
-  mcpInteractions         McpInteraction[]
-  creditPurchases         CreditPurchase[]
-  githubConnection        GithubConnection?
-  repoScans               RepoScan[]
-  repoFixPrs              RepoFixPr[]
-  subscriptionLifecycle   SubscriptionLifecycleEvent[]
-  gscConnection           GscConnection?
-  paidPlanWaitlistEntries PaidPlanWaitlistEntry[]
-  reportChatMessages      ReportChatMessage[]
-
-  @@map("users")
-}
-
-model PaidPlanWaitlistEntry {
-  id             String    @id @default(cuid())
-  userId         String
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan           Plan
-  joinedAt       DateTime  @default(now())
-  source         String?
-  campaign       String?
-  invitedAt      DateTime?
-  convertedAt    DateTime?
-  /**
-   * Email captured at join time. May differ from the account email (e.g. SSO
-   * private relay); the confirmation goes to this address.
-   */
-  email          String?
-  /**
-   * Launch discount tier snapshot at join time, by join order per plan:
-   * 1 = first 500 (25% off), 2 = next 500 (15% off), null = list price.
-   * Assigned under a per-plan advisory lock; never changes on re-join.
-   */
-  discountTier   Int?
-  /** Legacy: retired 40% founder offer reference. Kept for historical rows. */
-  founderOfferId String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  @@unique([userId, plan])
-  @@index([plan, joinedAt(sort: Desc)])
-  @@index([plan, discountTier])
-  @@index([invitedAt])
-  @@map("paid_plan_waitlist_entries")
-}
-
 enum RepoScanStatus {
   QUEUED
   CLONING
@@ -326,300 +1440,11 @@ enum RepoScanStatus {
   FAILED
 }
 
-/**
- * App-level GitHub repo access for codebase scanning, separate from GitHub login (Account).
- */
-model GithubConnection {
-  id                   String     @id @default(cuid())
-  userId               String     @unique
-  user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  githubUserId         String
-  githubLogin          String
-  encryptedAccessToken String     @db.Text
-  scope                String
-  selectedRepos        String[]
-  connectedAt          DateTime   @default(now())
-  revokedAt            DateTime?
-  repoScans            RepoScan[]
-
-  @@map("github_connections")
-}
-
-model RepoScan {
-  id                 String            @id @default(cuid())
-  userId             String
-  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  githubConnectionId String
-  githubConnection   GithubConnection  @relation(fields: [githubConnectionId], references: [id], onDelete: Cascade)
-  repoFullName       String
-  commitSha          String?
-  status             RepoScanStatus    @default(QUEUED)
-  errorMsg           String?
-  startedAt          DateTime?
-  completedAt        DateTime?
-  findings           RepoScanFinding[]
-  fixPrs             RepoFixPr[]
-  createdAt          DateTime          @default(now())
-
-  @@index([userId, createdAt])
-  @@index([githubConnectionId])
-  @@map("repo_scans")
-}
-
-model RepoScanFinding {
-  id             String     @id @default(cuid())
-  repoScanId     String
-  repoScan       RepoScan   @relation(fields: [repoScanId], references: [id], onDelete: Cascade)
-  severity       Severity
-  category       String
-  filePath       String
-  lineStart      Int?
-  lineEnd        Int?
-  problem        String
-  evidence       String     @db.Text
-  fix            String     @db.Text
-  agentPrompt    String?    @db.Text
-  cursorPrompt   String?    @db.Text
-  claudePrompt   String?    @db.Text
-  windsurfPrompt String?    @db.Text
-  createdAt      DateTime   @default(now())
-  fixPr          RepoFixPr?
-
-  @@index([repoScanId])
-  @@map("repo_scan_findings")
-}
-
 enum RepoFixPrStatus {
   DRAFT
   CREATING
   CREATED
   FAILED
-}
-
-/**
- * A branch + draft PR opened for a single repo-scan finding (v1 write path: PR body is the
- * existing fix prompt, no arbitrary code changes - see lib/repo-scan/mechanical-patch.ts for
- * the narrow, mechanical exception).
- */
-model RepoFixPr {
-  id           String          @id @default(cuid())
-  repoScanId   String
-  repoScan     RepoScan        @relation(fields: [repoScanId], references: [id], onDelete: Cascade)
-  findingId    String          @unique
-  finding      RepoScanFinding @relation(fields: [findingId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  branchName   String
-  baseSha      String
-  prNumber     Int?
-  prUrl        String?
-  status       RepoFixPrStatus @default(DRAFT)
-  patchApplied Boolean         @default(false)
-  errorMsg     String?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-
-  @@index([repoScanId])
-  @@index([userId])
-  @@map("repo_fix_prs")
-}
-
-model EmailLog {
-  id         String              @id @default(cuid())
-  userId     String
-  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emailType  String
-  providerId String?
-  status     EmailDeliveryStatus @default(PENDING)
-  errorMsg   String?             @db.Text
-  sentAt     DateTime            @default(now())
-
-  @@unique([userId, emailType])
-  @@index([userId])
-  @@map("email_logs")
-}
-
-model NewsletterSubscriber {
-  id           String           @id @default(cuid())
-  email        String           @unique
-  status       NewsletterStatus @default(PENDING)
-  source       String           @default("footer")
-  subscribedAt DateTime         @default(now())
-  confirmedAt  DateTime?
-  updatedAt    DateTime         @updatedAt
-
-  @@map("newsletter_subscribers")
-}
-
-model Session {
-  id        String   @id
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  expiresAt DateTime
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@map("sessions")
-}
-
-model Account {
-  id                    String    @id @default(cuid())
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accountId             String
-  providerId            String
-  accessToken           String?
-  refreshToken          String?
-  accessTokenExpiresAt  DateTime?
-  idToken               String?
-  scope                 String?
-  refreshTokenExpiresAt DateTime?
-  password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-
-  @@unique([providerId, accountId])
-  @@index([userId])
-  @@map("accounts")
-}
-
-model Verification {
-  id         String   @id @default(cuid())
-  identifier String
-  value      String
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@index([identifier])
-  @@index([expiresAt])
-  @@map("verifications")
-}
-
-/// WebAuthn / passkey credentials (better-auth passkey plugin)
-model Passkey {
-  id           String    @id
-  name         String?
-  publicKey    String
-  userId       String
-  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  credentialID String
-  counter      Int
-  deviceType   String
-  backedUp     Boolean
-  transports   String?
-  createdAt    DateTime?
-  aaguid       String?
-
-  @@index([userId])
-  @@index([credentialID])
-  @@map("passkeys")
-}
-
-/// Two-factor secrets and backup codes (better-auth twoFactor plugin)
-model TwoFactor {
-  id                      String    @id @default(cuid())
-  userId                  String
-  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  secret                  String
-  backupCodes             String
-  verified                Boolean   @default(true)
-  failedVerificationCount Int       @default(0)
-  lockedUntil             DateTime?
-
-  @@index([userId])
-  @@index([secret])
-  @@map("two_factors")
-}
-
-model ApiKey {
-  id              String           @id @default(cuid())
-  userId          String
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name            String
-  client          ApiKeyClient?
-  keyHash         String           @unique
-  prefix          String
-  lastFour        String
-  lastUsed        DateTime?
-  revokedAt       DateTime?
-  createdAt       DateTime         @default(now())
-  mcpInteractions McpInteraction[]
-  cliDeviceAuthorizations CliDeviceAuthorization[]
-
-  @@index([userId])
-  @@index([client])
-  @@map("api_keys")
-}
-
-model CliDeviceAuthorization {
-  id                  String                       @id @default(cuid())
-  deviceCodeHash      String                       @unique
-  userCodeHash        String                       @unique
-  status              CliDeviceAuthorizationStatus @default(PENDING)
-  intervalSeconds     Int                          @default(5)
-  encryptedCredential String?                      @db.Text
-  userId              String?
-  user                User?                        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  apiKeyId            String?
-  apiKey              ApiKey?                      @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
-  lastPolledAt        DateTime?
-  expiresAt           DateTime
-  approvedAt          DateTime?
-  consumedAt          DateTime?
-  createdAt           DateTime                     @default(now())
-
-  @@index([status, expiresAt])
-  @@index([userId, createdAt])
-  @@map("cli_device_authorizations")
-}
-
-model Project {
-  id                          String                @id @default(cuid())
-  userId                      String
-  user                        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name                        String
-  url                         String
-  /**
-   * Lowercase hostname without www. Exact Product identity within an account.
-   */
-  canonicalHost               String
-  /**
-   * Persistent Product Intelligence JSON — see knowledge/product-intelligence.md
-   */
-  productIntelligence         Json?
-  /**
-   * Optimistic concurrency revision for all Product Intelligence mutations.
-   */
-  productIntelligenceRevision Int                   @default(0)
-  /**
-   * Agency-promoted Project. Internal Products remain available without consuming quota.
-   */
-  isManaged                   Boolean               @default(false)
-  watchInterval               ProjectWatchInterval?
-  watchNextRunAt              DateTime?
-  watchLeaseUntil             DateTime?
-  watchLastAttemptAt          DateTime?
-  watchLastRunAt              DateTime?
-  watchConsecutiveFailures    Int                   @default(0)
-  watchLastError              String?
-  /**
-   * Encrypted scan access (HTTP basic, cookies, headers) for preview/staging URLs.
-   */
-  scanAccessEncrypted         String?               @db.Text
-  audits                      Audit[]
-  createdAt                   DateTime              @default(now())
-  updatedAt                   DateTime              @updatedAt
-
-  @@unique([userId, canonicalHost])
-  @@index([userId])
-  @@index([watchNextRunAt])
-  @@index([watchLeaseUntil])
-  @@map("projects")
 }
 
 enum ProjectWatchInterval {
@@ -643,905 +1468,4 @@ enum WatchNotificationStatus {
 enum MonitoringMode {
   FULL
   SUMMARY_ONLY
-}
-
-model Audit {
-  id              String         @id @default(cuid())
-  userId          String?
-  user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
-  projectId       String?
-  project         Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  url             String
-  status          AuditStatus    @default(QUEUED)
-  progress        Int            @default(0)
-  monitoringMode  MonitoringMode @default(FULL)
-  pipelineLog     Json?
-  pipelineVersion String?
-
-  pageJob  String?
-  pageType String?
-  verdict  String?
-  score    Int?
-
-  parentId         String?
-  parent           Audit?          @relation("Monitoring", fields: [parentId], references: [id])
-  monitoringAudits Audit[]         @relation("Monitoring")
-  recheckTrigger   RecheckTrigger?
-
-  isPublic                   Boolean                   @default(false)
-  skipUsageCount             Boolean                   @default(false)
-  auditMode                  AuditMode                 @default(CRITICAL_PATH)
-  launchReadiness            Json?
-  launchReadinessState       LaunchReadinessState      @default(UNKNOWN)
-  reportCompleteness         ReportCompleteness        @default(UNKNOWN)
-  technologyDetectionStatus  TechnologyDetectionStatus @default(NOT_CAPTURED)
-  technologyDetectorVersion  String?
-  technologyDetectedAt       DateTime?
-  evidenceCoverage           Json?
-  includeAi                  Boolean                   @default(true)
-  triageAt                   DateTime?
-  aiReviewAt                 DateTime?
-  journeyReviewIncluded      Boolean                   @default(false)
-  journeyReviewAt            DateTime?
-  watchRegressionCount       Int?
-  watchNotificationStatus    WatchNotificationStatus   @default(NOT_APPLICABLE)
-  watchNotificationAttempts  Int                       @default(0)
-  watchNotificationLastError String?
-  watchNotifiedAt            DateTime?
-
-  startedAt       DateTime?
-  completedAt     DateTime?
-  usageCountedAt  DateTime?
-  deepReviewUsageCountedAt DateTime?
-  finalizedAt     DateTime?
-  leadSyncedAt    DateTime?
-  errorMsg        String?
-  failureCode     String?
-  failureStage    String?
-  failureMetadata Json?
-
-  htmlMetadata        Json?
-  performanceData     Json?
-  consoleErrors       Json?
-  flowData            Json?
-  /**
-   * Names of deterministic check modules that threw during this run. Their
-   * findings are dropped, so the report shows a callout when this is non-empty.
-   */
-  failedModules       Json?
-  /**
-   * Inferred product intent: purpose, first-value journey, critical outcomes.
-   */
-  productContract     Json?
-  /**
-   * Per-audit scan access override (encrypted). Falls back to Project.scanAccessEncrypted.
-   */
-  scanAccessEncrypted String? @db.Text
-
-  normalizedDomain String?
-  source           AuditSource @default(UNKNOWN)
-  referrer         String?
-  utmSource        String?
-  utmMedium        String?
-  utmCampaign      String?
-  gclid            String?
-  fbclid           String?
-
-  rubrics                ReportRubric[]
-  screenshots            Screenshot[]
-  flags                  Flag[]
-  pages                  AuditPage[]
-  journeyReviews         JourneyReview[]
-  runCost                AuditRunCost?
-  shareLinks             ShareLink[]
-  feedback               AuditFeedback[]
-  technologyObservations AuditTechnologyObservation[]
-  chatMessages           ReportChatMessage[]
-
-  searchPerformance        SearchPerformance[]
-  indexStatuses            IndexStatus[]
-
-  // Knowledge-graph back-references. Nullable + optional so the migration
-  // is safe to apply to existing audits; filled by
-  // scripts/graph/backfill-historical.ts and the live persist hook.
-  siteId String?
-  site   Site?   @relation(fields: [siteId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([status])
-  @@index([createdAt(sort: Desc)])
-  @@index([status, updatedAt])
-  @@index([userId, status])
-  @@index([parentId])
-  @@index([normalizedDomain])
-  @@index([siteId])
-  @@map("audits")
-}
-
-model ReportChatMessage {
-  id        String   @id @default(cuid())
-  auditId   String
-  audit     Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      String
-  content   String   @db.Text
-  createdAt DateTime @default(now())
-
-  @@index([auditId, createdAt(sort: Asc)])
-  @@index([userId])
-  @@map("report_chat_messages")
-}
-
-model JourneyReview {
-  id                    String              @id @default(cuid())
-  auditId               String
-  audit                 Audit               @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  journeyType           String
-  startUrl              String
-  status                JourneyReviewStatus @default(QUEUED)
-  completedSteps        Int                 @default(0)
-  maxSteps              Int                 @default(10)
-  goalAchieved          Boolean?
-  blockedReason         String?
-  abandonedReason       String?
-  startedAt             DateTime?
-  completedAt           DateTime?
-  durationMs            Int?
-  plannerInputTokens    Int                 @default(0)
-  plannerOutputTokens   Int                 @default(0)
-  plannerModel          String?
-  evaluatorInputTokens  Int                 @default(0)
-  evaluatorOutputTokens Int                 @default(0)
-  evaluatorModel        String?
-  planJson              Json?
-  steps                 JourneyStep[]
-  findings              JourneyFinding[]
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-
-  @@index([auditId])
-  @@index([status])
-  @@index([journeyType])
-  @@map("journey_reviews")
-}
-
-model JourneyStep {
-  id                  String        @id @default(cuid())
-  journeyReviewId     String
-  journeyReview       JourneyReview @relation(fields: [journeyReviewId], references: [id], onDelete: Cascade)
-  stepNumber          Int
-  actionType          String
-  actionDetail        Json
-  url                 String
-  screenshotBeforeUrl String?
-  screenshotAfterUrl  String?
-  accessibilityTree   String        @db.Text
-  consoleErrors       String[]      @default([])
-  networkErrors       String[]      @default([])
-  loadTimeMs          Int?
-  confidence          Float         @default(1.0)
-  reasoning           String?       @db.Text
-  elementRef          String?
-  elementDescription  String?
-  outcomeMatch        Boolean?
-  outcomeDetail       String?       @db.Text
-  createdAt           DateTime      @default(now())
-
-  @@unique([journeyReviewId, stepNumber])
-  @@index([journeyReviewId])
-  @@map("journey_steps")
-}
-
-model JourneyFinding {
-  id                    String        @id @default(cuid())
-  journeyReviewId       String
-  journeyReview         JourneyReview @relation(fields: [journeyReviewId], references: [id], onDelete: Cascade)
-  stepNumber            Int
-  url                   String
-  rubric                RubricName
-  severity              Severity
-  impactTag             ImpactTag
-  problem               String        @db.Text
-  evidence              String        @db.Text
-  whyItMatters          String        @db.Text
-  fix                   String?       @db.Text
-  screenshotUrl         String?
-  accessibilityEvidence String?       @db.Text
-  confidence            Float         @default(0.8)
-  reproducibility       String        @default("always")
-  flagId                String?
-  checkId               String?
-  findingType           String?
-  createdAt             DateTime      @default(now())
-
-  @@index([journeyReviewId])
-  @@index([rubric])
-  @@index([severity])
-  @@index([flagId])
-  @@map("journey_findings")
-}
-
-model ShareLink {
-  id           String    @id @default(cuid())
-  auditId      String
-  audit        Audit     @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  token        String    @unique
-  label        String?
-  passwordHash String?
-  version      Int       @default(1)
-  expiresAt    DateTime?
-  maxViews     Int?
-  viewCount    Int       @default(0)
-  lastViewedAt DateTime?
-  revoked      Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  @@index([auditId])
-  @@map("share_links")
-}
-
-model Lead {
-  id                String           @id @default(cuid())
-  normalizedDomain  String           @unique
-  firstSeenAt       DateTime
-  lastSeenAt        DateTime
-  scanCount         Int              @default(1)
-  status            LeadStatus       @default(NEW)
-  latestScore       Int?
-  latestAuditId     String?
-  latestUrl         String?
-  linkedUserId      String?
-  linkedUser        User?            @relation("LeadLinkedUser", fields: [linkedUserId], references: [id], onDelete: SetNull)
-  notes             String?          @db.Text
-  source            String?
-  totalCostUsd      Decimal          @default(0) @db.Decimal(10, 6)
-  latestScanCostUsd Decimal?         @db.Decimal(10, 6)
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  supportSessions   SupportSession[]
-
-  @@index([status])
-  @@index([lastSeenAt(sort: Desc)])
-  @@map("leads")
-}
-
-model SupportTenant {
-  id          String           @id @default(cuid())
-  slug        String           @unique
-  name        String
-  isUnlimited Boolean          @default(true)
-  ownerUserId String?
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  sessions    SupportSession[]
-
-  @@map("support_tenants")
-}
-
-model SupportSession {
-  id              String               @id @default(cuid())
-  tenantId        String
-  tenant          SupportTenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  visitorToken    String
-  visitorName     String?
-  visitorEmail    String?
-  userId          String?
-  user            User?                @relation("SupportSessionUser", fields: [userId], references: [id], onDelete: SetNull)
-  status          SupportSessionStatus @default(OPEN)
-  pageUrl         String?
-  leadId          String?
-  lead            Lead?                @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  assignedAgentId String?
-  assignedAgent   User?                @relation("SupportSessionAgent", fields: [assignedAgentId], references: [id], onDelete: SetNull)
-  lastMessageAt   DateTime?
-  lastNotifiedAt  DateTime?
-  unreadByAgent   Int                  @default(0)
-  unreadByVisitor Int                  @default(0)
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
-  messages        SupportMessage[]
-
-  @@index([tenantId, visitorToken])
-  @@index([tenantId, status, lastMessageAt(sort: Desc)])
-  @@index([leadId])
-  @@map("support_sessions")
-}
-
-model SupportMessage {
-  id        String             @id @default(cuid())
-  sessionId String
-  session   SupportSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role      SupportMessageRole
-  body      String             @db.Text
-  senderId  String?
-  createdAt DateTime           @default(now())
-
-  @@index([sessionId, createdAt])
-  @@map("support_messages")
-}
-
-model AuditPage {
-  id              String             @id @default(cuid())
-  auditId         String
-  audit           Audit              @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  url             String
-  normalizedUrl   String
-  title           String?
-  role            String
-  position        Int
-  status          AuditPageStatus    @default(QUEUED)
-  completeness    ReportCompleteness @default(UNKNOWN)
-  htmlMetadata    Json?
-  performanceData Json?
-  consoleErrors   Json?
-  failureCode     String?
-  failureMessage  String?
-  screenshots     Screenshot[]
-  flags           Flag[]
-
-  // Knowledge-graph: each distinct page URL is also a graph:Page.
-  pageId   String?
-  page_rel Page?   @relation(fields: [pageId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([auditId, normalizedUrl])
-  @@unique([auditId, position])
-  @@index([auditId, status])
-  @@map("audit_pages")
-}
-
-model AuditRunCost {
-  auditId          String  @id
-  audit            Audit   @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  durationMs       Int
-  llmInputTokens   Int     @default(0)
-  llmOutputTokens  Int     @default(0)
-  llmModel         String?
-  llmCostUsd       Decimal @db.Decimal(10, 6)
-  pagespeedCalls   Int     @default(0)
-  estimatedCostUsd Decimal @db.Decimal(10, 6)
-
-  // Per-phase LLM breakdown (triage = anonymous teaser pass, prescription = post-signup fixes).
-  // llm* columns above stay the running total across phases.
-  triageInputTokens        Int     @default(0)
-  triageOutputTokens       Int     @default(0)
-  triageModel              String?
-  triageCostUsd            Decimal @default(0) @db.Decimal(10, 6)
-  prescriptionInputTokens  Int     @default(0)
-  prescriptionOutputTokens Int     @default(0)
-  prescriptionModel        String?
-  prescriptionCostUsd      Decimal @default(0) @db.Decimal(10, 6)
-
-  createdAt DateTime @default(now())
-
-  @@map("audit_run_costs")
-}
-
-model ReportRubric {
-  id              String          @id @default(cuid())
-  auditId         String
-  audit           Audit           @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  name            RubricName
-  score           Int?
-  grade           RubricGrade?
-  status          RubricStatus?
-  assessmentState AssessmentState @default(UNKNOWN)
-  confidence      Float?
-  summary         String          @db.Text
-
-  rubricPrompt   String  @db.Text
-  cursorPrompt   String? @db.Text
-  claudePrompt   String? @db.Text
-  windsurfPrompt String? @db.Text
-  lovablePrompt  String? @db.Text
-  boltPrompt     String? @db.Text
-
-  flags Flag[]
-
-  @@unique([auditId, name])
-  @@index([auditId])
-  @@map("report_rubrics")
-}
-
-model Screenshot {
-  id      String     @id @default(cuid())
-  auditId String
-  audit   Audit      @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  pageId  String?
-  page    AuditPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  device  Device
-  url     String
-  width   Int
-  height  Int
-
-  @@index([auditId])
-  @@index([pageId])
-  @@map("screenshots")
-}
-
-model Flag {
-  id         String        @id @default(cuid())
-  auditId    String
-  audit      Audit         @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  pageId     String?
-  page       AuditPage?    @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  rubricId   String?
-  rubric_rel ReportRubric? @relation(fields: [rubricId], references: [id], onDelete: SetNull)
-  source     FlagSource
-
-  rubric       String
-  impactTag    ImpactTag?
-  severity     Severity
-  problem      String
-  evidence     String     @db.Text
-  whyItMatters String     @db.Text
-  fix          String     @db.Text
-  confidence   Float
-
-  agentPrompt    String? @db.Text
-  cursorPrompt   String? @db.Text
-  claudePrompt   String? @db.Text
-  windsurfPrompt String? @db.Text
-  lovablePrompt  String? @db.Text
-  boltPrompt     String? @db.Text
-
-  verificationRule String? @db.Text
-
-  checkId      String?
-  pageUrl      String?
-  fingerprint  String?
-  position     Int
-  status       FlagStatus @default(OPEN)
-  resolvedInId String?
-
-  fixConfidence  FixConfidence?
-  causeCertainty CauseCertainty?
-
-  feedback  FlagFeedback[]
-  createdAt DateTime       @default(now())
-
-  // Knowledge-graph link. Nullable so the migration is safe to apply to
-  // existing flags without recomputing fingerprints.
-  issueId String?
-  issue   Issue?  @relation(fields: [issueId], references: [id], onDelete: SetNull)
-
-  @@index([auditId])
-  @@index([auditId, checkId])
-  @@index([pageId])
-  @@index([auditId, fingerprint])
-  @@index([issueId])
-  @@map("flags")
-}
-
-model FlagFeedback {
-  id           String   @id @default(cuid())
-  flagId       String
-  flag         Flag     @relation(fields: [flagId], references: [id], onDelete: Cascade)
-  userId       String?
-  visitorToken String?
-  vote         Int
-  comment      String?  @db.Text
-  createdAt    DateTime @default(now())
-
-  @@unique([flagId, userId])
-  @@unique([flagId, visitorToken])
-  @@index([flagId])
-  @@map("flag_feedback")
-}
-
-model AuditFeedback {
-  id           String   @id @default(cuid())
-  auditId      String
-  audit        Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  userId       String?
-  visitorToken String?
-  vote         Int
-  comment      String?  @db.Text
-  pageUrl      String?
-  createdAt    DateTime @default(now())
-
-  @@unique([auditId, visitorToken])
-  @@index([auditId])
-  @@index([vote])
-  @@index([createdAt])
-  @@map("audit_feedback")
-}
-
-model ProcessedStripeEvent {
-  id          String   @id
-  type        String
-  processedAt DateTime @default(now())
-  payloadHash String?
-
-  @@index([type])
-  @@index([processedAt])
-  @@map("processed_stripe_events")
-}
-
-model SubscriptionLifecycleEvent {
-  id              String                    @id @default(cuid())
-  stripeEventId   String                    @unique
-  stripeEventType String
-  type            SubscriptionLifecycleType
-  userId          String
-  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subscriptionId  String?
-  customerId      String?
-  previousPlan    Plan?
-  plan            Plan
-  status          SubscriptionStatus
-  priceId         String?
-  unitAmount      Int?
-  currency        String?
-  occurredAt      DateTime
-  createdAt       DateTime                  @default(now())
-
-  @@index([userId, occurredAt])
-  @@index([type, occurredAt])
-  @@index([status, occurredAt])
-  @@map("subscription_lifecycle_events")
-}
-
-model McpInteraction {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  apiKeyId   String?
-  apiKey     ApiKey?  @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
-  client     ApiKeyClient?
-  method     String   @default("unknown")
-  tool       String?
-  durationMs Int?
-  success    Boolean  @default(true)
-  errorCode  String?
-  auditId    String?
-  metadata   Json?
-  createdAt  DateTime @default(now())
-
-  @@index([userId, createdAt])
-  @@index([apiKeyId, createdAt])
-  @@index([client, createdAt])
-  @@index([createdAt])
-  @@index([method, tool])
-  @@index([success, createdAt])
-  @@map("mcp_interactions")
-}
-
-model CreditPurchase {
-  id                    String               @id @default(cuid())
-  userId                String
-  user                  User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stripeSessionId       String?              @unique
-  stripePaymentIntentId String?
-  packId                String
-  creditsPurchased      Int
-  creditsRemaining      Int
-  priceUsdCents         Int
-  status                CreditPurchaseStatus @default(PENDING)
-  createdAt             DateTime             @default(now())
-  paidAt                DateTime?
-
-  @@index([userId, status])
-  @@map("credit_purchases")
-}
-
-// =============================================================================
-// Growth / Knowledge Graph
-//
-// Internal-only entities that model the relationships FixFlags discovers as it
-// audits sites. Public artifacts (issue pages, benchmark pages, free tools,
-// public reports) are derived from these tables — never read directly.
-//
-// See docs/growth/architecture.md for the full design.
-// =============================================================================
-
-model Site {
-  id            String            @id @default(cuid())
-  hostname      String            @unique
-  rootUrl       String
-  firstSeenAt   DateTime          @default(now())
-  lastAuditedAt DateTime          @default(now())
-  auditCount    Int               @default(0)
-  industryGuess String?
-  techGuess     Json?
-  pages         Page[]
-  audits        Audit[]
-  // Note: per-flag linkage to a Site lives in graph_issue_occurrence, not as
-  // a direct relation — keeps this model cheap to query by hostname alone.
-  technologies  SiteTechnology[]
-  industry      Industry?         @relation(fields: [industryId], references: [id], onDelete: SetNull)
-  industryId    String?
-  occurrences   IssueOccurrence[]
-
-  @@index([lastAuditedAt])
-  @@map("graph_site")
-}
-
-model Page {
-  id          String      @id @default(cuid())
-  siteId      String
-  site        Site        @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  url         String
-  path        String
-  role        String
-  firstSeenAt DateTime    @default(now())
-  lastSeenAt  DateTime    @default(now())
-  audits      AuditPage[]
-
-  @@unique([siteId, url])
-  @@index([siteId])
-  @@map("graph_page")
-}
-
-model Technology {
-  id           String                       @id @default(cuid())
-  name         String                       @unique
-  kind         String
-  sites        SiteTechnology[]
-  observations AuditTechnologyObservation[]
-
-  @@map("graph_technology")
-}
-
-model AuditTechnologyObservation {
-  id              String     @id @default(cuid())
-  auditId         String
-  audit           Audit      @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  technologyId    String
-  technology      Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
-  confidence      Float
-  evidence        Json
-  detectorVersion String
-  detectedAt      DateTime   @default(now())
-
-  @@unique([auditId, technologyId])
-  @@index([auditId])
-  @@index([technologyId])
-  @@map("audit_technology_observation")
-}
-
-model SiteTechnology {
-  siteId       String
-  technologyId String
-  firstSeenAt  DateTime @default(now())
-  lastSeenAt   DateTime @default(now())
-  confidence   Float    @default(1.0)
-  isCurrent    Boolean  @default(true)
-
-  site       Site       @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  technology Technology @relation(fields: [technologyId], references: [id], onDelete: Cascade)
-
-  @@id([siteId, technologyId])
-  @@index([technologyId])
-  @@index([siteId, isCurrent])
-  @@map("graph_site_technology")
-}
-
-model Industry {
-  id    String @id @default(cuid())
-  slug  String @unique
-  label String
-  sites Site[]
-
-  @@map("graph_industry")
-}
-
-model Issue {
-  id              String              @id @default(cuid())
-  // Stable hash of (checkId, normalized-evidence-shape). Same fingerprint
-  // across sites means it's the same underlying problem.
-  fingerprint     String              @unique
-  checkId         String
-  rubric          String
-  problemTemplate String              @db.Text
-  fixTemplate     String              @db.Text
-  // Denormalized counters, recomputed by scripts/growth/issue-frequencies.ts
-  occurrenceCount Int                 @default(0)
-  siteCount       Int                 @default(0)
-  frameworkCount  Int                 @default(0)
-  // Top-N redacted public examples — opaque to end users, drives the issue
-  // page's "what this looks like in the wild" section.
-  examples        Json?
-  firstSeenAt     DateTime            @default(now())
-  lastSeenAt      DateTime            @default(now())
-  flags           Flag[]
-  occurrences     IssueOccurrence[]
-  fixPrompts      FixPrompt[]
-  snapshots       BenchmarkSnapshot[]
-
-  @@index([checkId])
-  @@index([rubric])
-  @@index([occurrenceCount])
-  @@map("graph_issue")
-}
-
-model IssueOccurrence {
-  id         String   @id @default(cuid())
-  issueId    String
-  issue      Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  siteId     String
-  site       Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  flagId     String   @unique
-  observedAt DateTime @default(now())
-
-  @@index([issueId])
-  @@index([siteId])
-  @@map("graph_issue_occurrence")
-}
-
-model FixPrompt {
-  id          String   @id @default(cuid())
-  issueId     String
-  issue       Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  // cursor | claude | lovable | bolt | generic
-  tool        String
-  template    String   @db.Text
-  usageCount  Int      @default(0)
-  // Populated by flag feedback + re-audit signal over time.
-  successRate Float?
-  createdAt   DateTime @default(now())
-
-  @@unique([issueId, tool])
-  @@index([issueId])
-  @@map("graph_fix_prompt")
-}
-
-model BenchmarkSnapshot {
-  id            String   @id @default(cuid())
-  // e.g. "industry:saas", "framework:nextjs", "builder:lovable",
-  // "industry:saas+framework:nextjs"
-  scope         String
-  takenAt       DateTime @default(now())
-  sampleSize    Int
-  avgScore      Float
-  p25Score      Float
-  p50Score      Float
-  p75Score      Float
-  flagFrequency Json
-  topIssues     Json
-  // Optional reference to the dominant issue driving the snapshot.
-  topIssueId    String?
-  topIssue      Issue?   @relation(fields: [topIssueId], references: [id], onDelete: SetNull)
-
-  @@index([scope, takenAt])
-  @@map("graph_benchmark_snapshot")
-}
-
-model Experiment {
-  id         String    @id @default(cuid())
-  slug       String    @unique
-  hypothesis String    @db.Text
-  // landing-page | programmatic-page | free-tool | on-platform | outbound
-  surface    String
-  startedAt  DateTime  @default(now())
-  endedAt    DateTime?
-  metric     String
-  baseline   Float?
-  result     Float?
-  decision   String? // kept | reverted | inconclusive
-  notes      String?   @db.Text
-
-  @@index([surface, startedAt])
-  @@map("graph_experiment")
-}
-
-model ToolUsage {
-  id        String   @id @default(cuid())
-  // meta-preview | cta-above-fold | placeholder-copy-detector | ...
-  toolSlug  String
-  // Hash of normalized input — never the input itself; no PII.
-  inputHash String
-  result    Json
-  // Did the user click the CTA into the audit flow within the same session?
-  // Set by a correlation id from the client; null if unknown.
-  sessionId String?
-  // Organic attribution surface for funnel reads.
-  source    String?
-  createdAt DateTime @default(now())
-
-  @@index([toolSlug, createdAt])
-  @@index([source, createdAt])
-  @@map("graph_tool_usage")
-}
-
-model GscConnection {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  accessToken  String   @db.Text
-  refreshToken String   @db.Text
-  tokenExpiry  DateTime
-  siteUrl      String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  searchPerformance SearchPerformance[]
-  indexStatuses     IndexStatus[]
-
-  @@index([userId])
-}
-
-model SearchPerformance {
-  id            String   @id @default(cuid())
-  auditId       String
-  url           String
-  query         String
-  impressions   Int
-  clicks        Int
-  ctr           Float
-  position      Float
-  device        String
-  country       String
-  dateRange     String
-  createdAt     DateTime @default(now())
-
-  audit         Audit          @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  gscConnection GscConnection? @relation(fields: [userId], references: [userId])
-  userId        String?
-
-  @@index([auditId])
-  @@index([url])
-  @@index([query])
-}
-
-model IndexStatus {
-  id              String   @id @default(cuid())
-  auditId         String
-  url             String
-  verdict         String
-  coverageState   String
-  robotsTxtState  String
-  indexingState    String
-  lastCrawlTime   DateTime?
-  googleCanonical String?
-  userCanonical   String?
-  crawledAs       String?
-  sitemap         String[]
-  richResults     Json?
-  createdAt       DateTime @default(now())
-
-  audit         Audit          @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  gscConnection GscConnection? @relation(fields: [userId], references: [userId])
-  userId        String?
-
-  @@unique([auditId, url])
-  @@index([auditId])
-}
-
-model GrowthArtifact {
-  // Files written to docs/growth/metrics/ and similar — one row per file
-  // emission. Tracks the data lineage of every public statement we make.
-  id        String   @id @default(cuid())
-  // gsc-rolling-30d | benchmark-snapshot | opportunity-report | ...
-  kind      String
-  path      String   @unique
-  payload   Json
-  writtenAt DateTime @default(now())
-
-  @@index([kind, writtenAt])
-  @@map("graph_artifact")
-}
-
-model RumMeasurement {
-  id        String                 @id @default(cuid())
-  siteId    String
-  page      String
-  metric    String                 // LCP, CLS, INP, FCP, TTFB
-  value     Float
-  rating    String?                // good, needs-improvement, poor
-  delta     Float?
-  nav       Int?
-  createdAt DateTime               @default(now())
-
-  @@index([siteId])
-  @@index([siteId, metric])
-  @@index([siteId, createdAt])
-  @@map("rum_measurements")
 }
