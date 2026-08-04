@@ -57,7 +57,8 @@ jobs:
         run: |
           EXPECTED="fixflags-cli-v$(node -p \"require('./fixflags-cli/package.json').version\")"
           test "${GITHUB_REF_NAME}" = "${EXPECTED}"
-          echo "IS_PRERELEASE=$(node -p \"require('./fixflags-cli/package.json').version.includes('-')\")" >> $GITHUB_ENV
+          IS_PRERELEASE=$(node -p "require('./fixflags-cli/package.json').version.includes('-')")
+          echo "IS_PRERELEASE=$IS_PRERELEASE" >> $GITHUB_ENV
       - name: Publish beta
         if: env.IS_PRERELEASE == 'true'
         run: npm publish --provenance --tag beta --access public
