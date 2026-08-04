@@ -71,11 +71,11 @@ jobs:
           fi
       - name: Publish beta
         if: steps.prerelease.outputs.is_prerelease == 'true'
-        run: npm publish --provenance --tag beta --access public
+        run: npm publish --tag beta --access public
         working-directory: fixflags-cli
       - name: Publish stable
         if: steps.prerelease.outputs.is_prerelease == 'false'
-        run: npm publish --provenance --tag latest --access public
+        run: npm publish --tag latest --access public
         working-directory: fixflags-cli
       - name: Verify registry availability
         run: node scripts/verify-cli-registry.mjs --version "${{ steps.pkgver.outputs.version }}"
