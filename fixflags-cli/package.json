@@ -1,6 +1,6 @@
 {
   "name": "fixflags",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Agent-native FixFlags CLI. Check, finish, and verify AI-built products.",
   "type": "module",
   "bin": {
