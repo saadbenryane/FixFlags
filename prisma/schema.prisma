@@ -295,12 +295,25 @@ model PaidPlanWaitlistEntry {
   campaign       String?
   invitedAt      DateTime?
   convertedAt    DateTime?
+  /**
+   * Email captured at join time. May differ from the account email (e.g. SSO
+   * private relay); the confirmation goes to this address.
+   */
+  email          String?
+  /**
+   * Launch discount tier snapshot at join time, by join order per plan:
+   * 1 = first 500 (25% off), 2 = next 500 (15% off), null = list price.
+   * Assigned under a per-plan advisory lock; never changes on re-join.
+   */
+  discountTier   Int?
+  /** Legacy: retired 40% founder offer reference. Kept for historical rows. */
   founderOfferId String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   @@unique([userId, plan])
   @@index([plan, joinedAt(sort: Desc)])
+  @@index([plan, discountTier])
   @@index([invitedAt])
   @@map("paid_plan_waitlist_entries")
 }
@@ -691,6 +704,11 @@ model Audit {
   performanceData     Json?
   consoleErrors       Json?
   flowData            Json?
+  /**
+   * Names of deterministic check modules that threw during this run. Their
+   * findings are dropped, so the report shows a callout when this is non-empty.
+   */
+  failedModules       Json?
   /**
    * Inferred product intent: purpose, first-value journey, critical outcomes.
    */
