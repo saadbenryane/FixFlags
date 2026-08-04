@@ -1,0 +1,29 @@
+name: Update Latest Dist-Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to set as latest (e.g., 1.0.3)'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  update-dist-tag:
+    name: Update latest dist-tag
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Install OIDC-capable npm
+        run: npm install --global npm@latest
+      - name: Update latest dist-tag
+        run: npm dist-tag add fixflags@${{ github.event.inputs.version }} latest
