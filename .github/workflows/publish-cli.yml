@@ -57,14 +57,20 @@ jobs:
         run: |
           EXPECTED="fixflags-cli-v$(node -p "require('./fixflags-cli/package.json').version")"
           test "${GITHUB_REF_NAME}" = "${EXPECTED}"
-          IS_PRERELEASE=$(node -p "require('./fixflags-cli/package.json').version.includes('-')")
-          echo "IS_PRERELEASE=${IS_PRERELEASE}" >> $GITHUB_ENV
+      - name: Detect prerelease
+        id: prerelease
+        run: |
+          node -e "
+            const version = require('./fixflags-cli/package.json').version;
+            const isPrerelease = version.includes('-');
+            console.log('is_prerelease=' + isPrerelease);
+          " >> $GITHUB_OUTPUT
       - name: Publish beta
-        if: env.IS_PRERELEASE == 'true'
+        if: steps.prerelease.outputs.is_prerelease == 'true'
         run: npm publish --provenance --tag beta --access public
         working-directory: fixflags-cli
       - name: Publish stable
-        if: env.IS_PRERELEASE != 'true'
+        if: steps.prerelease.outputs.is_prerelease != 'true'
         run: npm publish --provenance --tag latest --access public
         working-directory: fixflags-cli
       - name: Verify registry availability
