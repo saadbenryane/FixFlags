@@ -2,6 +2,7 @@ import { CircleAlert, Flag, History } from "lucide-react";
 import { RubricBar } from "@/components/audit/RubricBar";
 import { ScoreHistoryChart } from "@/components/report/ScoreHistoryChart";
 import { ScoreRingGauge } from "@/components/report/ScoreRingGauge";
+import { SHIMMER_KEYFRAMES } from "@/components/ui/skeleton";
 import { REPORT_COPY } from "@/lib/marketing/copy";
 import type { ReportWorkspaceModel } from "@/lib/report/workspace-model";
 import { cn } from "@/lib/utils";
@@ -107,28 +108,27 @@ export function ReportWorkspaceSummary({
       >
         <div
           className={cn(
-            "flex items-center gap-4",
+            "flex flex-col items-center justify-center text-center",
             compact ? "min-h-28 p-3 sm:p-4" : "min-h-32 p-4 sm:p-5",
           )}
         >
+          <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
+            {REPORT_COPY.workspace.releaseScore}
+          </p>
           <ScoreRingGauge
             score={model.summary.score}
             loading={model.context.loading}
             progress={model.context.loading ? scanProgress : undefined}
             size="md"
+            className="mt-2"
           />
-          <div className="min-w-0">
-            <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
-              {REPORT_COPY.workspace.releaseScore}
+          {model.summary.score == null ? (
+            <p className="mt-2 text-sm font-semibold text-foreground">
+              {model.context.loading
+                ? stageDetail ?? REPORT_COPY.reportFirst.checkingLabel
+                : REPORT_COPY.workspace.scoreUnavailable}
             </p>
-            <p className="mt-1 text-sm font-semibold text-foreground">
-              {model.summary.score == null
-                ? model.context.loading
-                  ? stageDetail ?? REPORT_COPY.reportFirst.checkingLabel
-                  : REPORT_COPY.workspace.scoreUnavailable
-                : REPORT_COPY.workspace.scoreOutOfHundred(model.summary.score)}
-            </p>
-          </div>
+          ) : null}
         </div>
 
         <div
@@ -223,6 +223,7 @@ export function ReportWorkspaceSummary({
           role="status"
           aria-live="polite"
         >
+          <style>{SHIMMER_KEYFRAMES}</style>
           <div className="mb-2 flex items-center justify-between gap-3 text-xs text-muted-foreground">
             <span className="font-medium text-foreground">
               {stageDetail ?? REPORT_COPY.reportFirst.checkingLabel}
@@ -230,12 +231,16 @@ export function ReportWorkspaceSummary({
             <span className="font-mono tabular-nums">{scanProgress}%</span>
           </div>
           <div
-            className="h-0.5 w-full overflow-hidden rounded-full bg-muted"
+            className="relative h-0.5 w-full overflow-hidden rounded-full bg-muted"
             aria-hidden
           >
             <div
               className="h-full rounded-full bg-brand motion-safe:transition-[width] motion-safe:duration-700 motion-safe:ease-out"
               style={{ width: `${Math.min(100, Math.max(0, scanProgress))}%` }}
+            />
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-brand/25 to-transparent motion-safe:animate-[ff-shimmer_2.4s_linear_infinite]"
             />
           </div>
         </div>

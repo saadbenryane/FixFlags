@@ -32,6 +32,12 @@ describe('ScoreRingGauge', () => {
     expect(screen.getByText('42')).toBeInTheDocument()
   })
 
+  it('stays indeterminate at the QUEUED anchor instead of pinning a fake percent', () => {
+    render(<ScoreRingGauge score={null} loading progress={5} />)
+    expect(screen.getByRole('img')).toHaveAttribute('aria-label', 'Scanning')
+    expect(screen.queryByText('5')).not.toBeInTheDocument()
+  })
+
   it('shows empty center during indeterminate scan', () => {
     render(<ScoreRingGauge score={null} loading />)
     const centered = document.querySelector('.absolute.inset-0')

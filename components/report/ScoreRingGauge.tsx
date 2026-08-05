@@ -1,6 +1,7 @@
 'use client'
 
 import { scoreToScanColor } from '@/lib/marketing/scan-score-color'
+import { PIPELINE_PROGRESS } from '@/lib/audit/progress'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
@@ -37,7 +38,11 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, progress, 
   const fillColor = score != null ? scoreToScanColor(score) : undefined
   const trackColor = 'hsl(var(--muted-foreground) / 0.18)'
   const isScanning = loading && score == null
-  const isDeterminate = isScanning && typeof progress === 'number'
+  // The QUEUED anchor (5) is not real progress — stay indeterminate (spinning)
+  // until the server pushes a real milestone (CAPTURING+).
+  const hasRealProgress =
+    typeof progress === 'number' && progress > PIPELINE_PROGRESS.QUEUED
+  const isDeterminate = isScanning && hasRealProgress
   const scanNormalized = Math.min(100, Math.max(0, progress ?? 0))
   const scanFilled = circumference * (scanNormalized / 100)
 

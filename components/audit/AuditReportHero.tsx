@@ -92,6 +92,7 @@ export function AuditReportHero({
               />
             ) : showCapturePlaceholder ? (
               <Skeleton
+                shimmer
                 className="w-20 rounded-[var(--radius-inner)] ring-1 ring-border/40"
                 style={{ aspectRatio: 'var(--screenshot-desktop-aspect)' }}
                 aria-label="Capturing page screenshot"
@@ -116,7 +117,7 @@ export function AuditReportHero({
                     {hostname}
                   </h1>
                 ) : (
-                  <Skeleton className="h-6 w-40" />
+                  <Skeleton shimmer className="h-6 w-40" />
                 )}
                 {badgeLabel ? (
                   <Badge
@@ -130,7 +131,7 @@ export function AuditReportHero({
               {url ? (
                 <p className="break-all text-xs text-muted-foreground sm:truncate">{url}</p>
               ) : (
-                <Skeleton className="h-3 w-56" />
+                <Skeleton shimmer className="h-3 w-56" />
               )}
             </div>
             {actions && (

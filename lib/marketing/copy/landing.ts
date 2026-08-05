@@ -925,7 +925,6 @@ export const REPORT_COPY = {
       "Release score, unresolved Flags, score history, and rubric coverage",
     releaseScore: "Release score",
     scoreUnavailable: "Score unavailable",
-    scoreOutOfHundred: (score: number) => `${score} out of 100`,
     unresolvedFlags: "Unresolved Flags",
     criticalFlags: "Critical Flags",
     criticalCount: (count: number) =>

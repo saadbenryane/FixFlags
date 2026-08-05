@@ -311,9 +311,9 @@ export function AuditReportProgressive({
                   <ExplorerErrorBoundary
                     fallback={
                       <div className="space-y-3 py-4">
-                        <Skeleton className="h-4 w-3/4" />
-                        <Skeleton className="h-4 w-1/2" />
-                        <Skeleton className="h-4 w-2/3" />
+                        <Skeleton shimmer className="h-4 w-3/4" />
+                        <Skeleton shimmer className="h-4 w-1/2" />
+                        <Skeleton shimmer className="h-4 w-2/3" />
                       </div>
                     }
                   >
@@ -337,9 +337,9 @@ export function AuditReportProgressive({
           <ExplorerErrorBoundary
             fallback={
               <div className="space-y-3 py-4">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-4 w-2/3" />
+                <Skeleton shimmer className="h-4 w-3/4" />
+                <Skeleton shimmer className="h-4 w-1/2" />
+                <Skeleton shimmer className="h-4 w-2/3" />
               </div>
             }
           >
@@ -357,15 +357,15 @@ export function AuditReportProgressive({
             <Card className="space-y-3 p-5" aria-label="Reading technology signals" id="report-stack">
               <div className="flex items-center justify-between gap-3">
                 <div className="space-y-2">
-                  <Skeleton className="h-3 w-28" />
-                  <Skeleton className="h-5 w-24" />
+                  <Skeleton shimmer className="h-3 w-28" />
+                  <Skeleton shimmer className="h-5 w-24" />
                 </div>
-                <Skeleton className="h-3 w-24" />
+                <Skeleton shimmer className="h-3 w-24" />
               </div>
               <div className="flex gap-2">
-                <Skeleton className="h-8 w-24 rounded-full" />
-                <Skeleton className="h-8 w-20 rounded-full" />
-                <Skeleton className="h-8 w-28 rounded-full" />
+                <Skeleton shimmer className="h-8 w-24 rounded-full" />
+                <Skeleton shimmer className="h-8 w-20 rounded-full" />
+                <Skeleton shimmer className="h-8 w-28 rounded-full" />
               </div>
             </Card>
           ) : technologyProfile ? (

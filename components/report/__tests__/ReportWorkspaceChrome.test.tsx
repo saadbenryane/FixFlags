@@ -56,12 +56,33 @@ describe('ReportWorkspaceSummary', () => {
     expect(screen.getByLabelText('0 Critical Flags')).toHaveTextContent('No Critical Flags')
   })
 
-  it('renders the score out of 100', () => {
+  it('renders the score inside the ring without an out-of-100 line', () => {
     const model = buildModel()
     render(<ReportWorkspaceSummary model={model} />)
     if (model.summary.score != null) {
-      expect(screen.getByText(`${model.summary.score} out of 100`)).toBeInTheDocument()
+      expect(
+        screen.getByRole('img', { name: `Score ${model.summary.score} percent` })
+      ).toBeInTheDocument()
+      expect(screen.queryByText(/out of 100/)).not.toBeInTheDocument()
     }
+  })
+
+  it('renders an honest live progress band while loading', () => {
+    const model = buildModel()
+    model.context.loading = true
+    model.summary.score = null
+    render(
+      <ReportWorkspaceSummary
+        model={model}
+        scanProgress={5}
+        stageDetail="Preparing your review…"
+      />
+    )
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByText('5%')).toBeInTheDocument()
+    expect(
+      screen.getAllByText('Preparing your review…').length
+    ).toBeGreaterThan(0)
   })
 
   it('renders RubricBar with rubric links', () => {
