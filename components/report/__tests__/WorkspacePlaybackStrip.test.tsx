@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import {
   WorkspacePlaybackStrip,
-  buildPlaybackSteps,
 } from '@/components/report/WorkspacePlaybackStrip'
+import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 
 const fixtureEvents: ActionTimelineEvent[] = [

@@ -443,7 +443,7 @@ export function ReportExplorer({
             {REPORT_COPY.explorer.allPages} ({pageScopedFlags.length})
           </FilterPill>
           {pages.map((page) => {
-            const count = pageScopedFlags.filter((f) => f.pageUrls.includes(page.url)).length
+            const count = pageScopedFlags.filter((f) => (f.pageUrls ?? []).includes(page.url)).length
             if (count === 0) return null
             const label = pageFilterLabel(page.url, page.role)
             return (

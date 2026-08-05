@@ -140,7 +140,7 @@ function mapLiveFlag(
       : [flag.rubric === 'EXPERIENCE' ? 'mobile' : 'desktop'],
     hasFixPrompt: mayShowPrompt && Boolean(sourceFix),
     pageUrl: flag.pageUrl ?? null,
-    pageUrls: occurrences.pageUrls,
+    pageUrls: occurrences.pageUrls ?? [],
     occurrenceCount: occurrences.count,
     visualUrl,
     truthLabel: deriveTruthLabel(flag.source, flag.checkId ?? null),

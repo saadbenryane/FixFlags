@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
-import { buildPlaybackSteps } from '@/components/report/WorkspacePlaybackStrip'
+import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 
 const searchParamsMock = { get: vi.fn<(name: string) => string | null>(() => null) }
