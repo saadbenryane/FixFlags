@@ -7,10 +7,13 @@ import { pollAuditUntilDone } from '@/lib/audit/poll-audit'
 import { computeRubricsFromRows } from '@/lib/audit/rubric'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { parseProductContract } from '@/lib/audit/product-contract'
+import { findHighestSeverityFlagWithFix } from '@/lib/audit/report-access'
+import { rankFlagsByPriority } from '@/lib/audit/priority-flags'
 import {
   buildUnifiedPlanBundle,
 } from '@/lib/audit/load-finish-plan-flags'
 import type { FinishPlanPromptAccess } from '@/lib/audit/finish-plan'
+import type { RankableFlag } from '@/lib/audit/priority-flags'
 import {
   loadTechnologyProfile,
   type TechnologyProfile,
@@ -67,6 +70,8 @@ export interface CheckAndPlanOutcome {
   rubrics?: TaskRubricSummary[]
   fixList?: TaskFixList
   technologyProfile?: TechnologyProfile
+  /** Deterministic check modules that threw; their findings were dropped. */
+  failedModules?: string[]
   nextAction?: TaskNextAction
   error?: TaskOutcomeError
 }
@@ -120,6 +125,11 @@ function reportUrl(reportId: string): string {
   return `${appUrl.replace(/\/$/, '')}/report/${reportId}`
 }
 
+function parseFailedModules(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === 'string')
+}
+
 function toTaskItems(
   items: Array<{
     id: string
@@ -163,13 +173,15 @@ function toTaskItems(
 export async function loadCompletedOutcome(
   reportId: string,
   tool: PromptToolKey = 'universal',
-  promptAccess?: FinishPlanPromptAccess
+  promptAccess?: FinishPlanPromptAccess,
+  demonstratedFlag?: RankableFlag | null
 ): Promise<{
   score: number | null
   verdict: string | null
   rubrics: TaskRubricSummary[]
   fixList: TaskFixList
   technologyProfile: TechnologyProfile
+  failedModules: string[]
 }> {
   const audit = await prisma.audit.findUnique({
     where: { id: reportId },
@@ -187,6 +199,21 @@ export async function loadCompletedOutcome(
   }
 
   const contract = parseProductContract(audit.productContract)
+  // Teaser parity: when access is 'one', the demonstrated flag (the single
+  // exposed prompt) is derived from the same ranking the web report uses, so
+  // every anonymous surface shows the same one prompt.
+  const resolvedDemonstratedFlag =
+    demonstratedFlag ??
+    (promptAccess === 'one'
+      ? findHighestSeverityFlagWithFix(
+          rankFlagsByPriority(
+            audit.flags.filter((flag) => flag.status !== 'FIXED' && flag.status !== 'IGNORED'),
+            audit.rubrics,
+            audit.flags.length,
+            contract
+          ).map(({ flag }) => flag)
+        )
+      : null)
   const planInput = {
     userId: audit.userId,
     auditUrl: audit.url,
@@ -194,6 +221,7 @@ export async function loadCompletedOutcome(
     rubricRows: audit.rubrics,
     contract,
     promptAccess: promptAccess ?? 'all',
+    demonstratedFlag: resolvedDemonstratedFlag,
   }
   const [{ fixList }, technologyProfile] = await Promise.all([
     buildUnifiedPlanBundle(planInput),
@@ -236,6 +264,7 @@ export async function loadCompletedOutcome(
     verdict: audit.verdict,
     rubrics,
     technologyProfile,
+    failedModules: parseFailedModules(audit.failedModules),
     fixList: {
       reportId,
       url: audit.url,
@@ -246,9 +275,16 @@ export async function loadCompletedOutcome(
   }
 }
 
+export interface TaskOutcomeAccessOptions {
+  promptAccess?: FinishPlanPromptAccess
+  /** Demonstrated flag for the anonymous teaser (the only prompt exposed). */
+  demonstratedFlag?: RankableFlag | null
+}
+
 export async function loadCompletedTaskOutcome(
   reportId: string,
-  tool: PromptToolKey = 'universal'
+  tool: PromptToolKey = 'universal',
+  access?: TaskOutcomeAccessOptions
 ): Promise<CheckAndPlanOutcome & {
   parentReportId?: string
   diff?: RecheckAndCompareOutcome['diff']
@@ -285,7 +321,12 @@ export async function loadCompletedTaskOutcome(
       },
     }
   }
-  const completed = await loadCompletedOutcome(reportId, tool)
+  const completed = await loadCompletedOutcome(
+    reportId,
+    tool,
+    access?.promptAccess,
+    access?.demonstratedFlag
+  )
   if (!audit.parentId) {
     return { reportId, reportUrl: reportUrl(reportId), status: 'COMPLETED', ...completed }
   }

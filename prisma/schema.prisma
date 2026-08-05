@@ -360,7 +360,6 @@ model Project {
   /// *
   ///    * Encrypted scan access (HTTP basic, cookies, headers) for preview/staging URLs.
   scanAccessEncrypted         String?
-  scan_access_encrypted       String?
   audits                      Audit[]
   user                        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -434,7 +433,6 @@ model Audit {
   /// *
   ///    * Per-audit scan access override (encrypted). Falls back to Project.scanAccessEncrypted.
   scanAccessEncrypted        String?
-  scan_access_encrypted      String?
   technologyDetectionStatus  TechnologyDetectionStatus    @default(NOT_CAPTURED)
   technologyDetectorVersion  String?
   technologyDetectedAt       DateTime?

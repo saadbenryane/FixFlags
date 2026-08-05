@@ -23,6 +23,20 @@ export function canManageAudit(
   return sessionUser?.id === audit.userId
 }
 
+/**
+ * Anonymous visitors may retry their OWN failed teaser scan, gated on the
+ * anonymous-audit cookie (ANON_AUDIT_IDS_COOKIE) instead of userId. Public
+ * marketing samples are never retryable by visitors.
+ */
+export function canRetryAnonymousAudit(
+  audit: Pick<Audit, 'userId' | 'isPublic'>,
+  auditId: string,
+  anonAuditIds: string[]
+): boolean {
+  if (audit.userId !== null || audit.isPublic) return false
+  return anonAuditIds.includes(auditId)
+}
+
 export type AuditAccessContext =
   | 'owner'
   | 'anonymous_teaser'

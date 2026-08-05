@@ -12,6 +12,7 @@ export type IndexableRoute = {
 /** Single registry for sitemap, llms.txt, and SEO guard checks. */
 export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/', seoKey: 'home', priority: 1.0, changeFrequency: 'weekly' },
+  { path: '/waitlist', seoKey: 'waitlist', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/how-it-works', seoKey: 'howItWorks', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/pricing', seoKey: 'pricing', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/faq', seoKey: 'faq', priority: 0.7, changeFrequency: 'monthly' },

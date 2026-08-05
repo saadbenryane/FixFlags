@@ -8,7 +8,7 @@ import { getUpgradeMomentContent, type UpgradeMoment } from '@/lib/billing/upgra
 import { pickPlan } from '@/lib/billing/pick-plan'
 import { BILLING_ACTION_COPY, PRICING } from '@/lib/marketing/copy'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
-import { WaitlistJoinForm } from '@/components/billing/WaitlistJoinForm'
+import { waitlistPathForPlan } from '@/components/billing/WaitlistAuthDialog'
 import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
 
 interface Props {
@@ -16,6 +16,7 @@ interface Props {
   /** Target plan for checkout. Defaults to Pro. Use TEAM for Studio. */
   plan?: 'BUILDER' | 'TEAM'
   waitlistGated?: boolean
+  /** Deprecated: the waitlist page re-captures the email. */
   userEmail?: string
 }
 
@@ -23,17 +24,17 @@ export function UpgradeButton({
   context,
   plan = 'BUILDER',
   waitlistGated = isPaidCheckoutGatedClient(),
-  userEmail,
 }: Props) {
   const [loading, setLoading] = useState(false)
-  const [showBetaForm, setShowBetaForm] = useState(false)
   const momentContent = context ? getUpgradeMomentContent(context) : null
   const waitlistCta =
     plan === 'TEAM' ? BILLING_ACTION_COPY.beta.gatedStudioCta : BILLING_ACTION_COPY.beta.gatedProCta
 
   async function handleUpgrade() {
     if (waitlistGated) {
-      setShowBetaForm(true)
+      // Waitlist mode: route to the waitlist page (the join surface for
+      // everyone). userEmail is ignored: the waitlist page re-captures it.
+      window.location.href = waitlistPathForPlan(plan)
       return
     }
 
@@ -43,7 +44,6 @@ export function UpgradeButton({
       plan,
       isLoggedIn: true,
       waitlistGated,
-      onPrivateBeta: () => setShowBetaForm(true),
       onCheckoutRedirect: (url) => {
         window.location.href = url
       },
@@ -51,14 +51,8 @@ export function UpgradeButton({
     setLoading(false)
 
     if (result.kind === 'waitlist') {
-      setShowBetaForm(true)
+      window.location.href = waitlistPathForPlan(plan)
     }
-  }
-
-  if (showBetaForm) {
-    return (
-      <WaitlistJoinForm plan={plan} initialEmail={userEmail} compact source="dashboard" />
-    )
   }
 
   return (

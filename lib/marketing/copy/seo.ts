@@ -11,6 +11,11 @@ export const SEO = {
     description:
       `Start free with ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) and ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser (lifetime). Pro adds ${PRICING_COPY.proProductReviewsPerMonth} product reviews, ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews, compare, and MCP.`,
   },
+  waitlist: {
+    title: 'Join the waitlist',
+    description:
+      'Pro and Studio open in order. The first 500 waitlisters per plan get 25% off for 12 months from launch. The next 500 get 15% off. Sign up required.',
+  },
   howItWorks: {
     title: 'How FixFlags Works',
     description:

@@ -334,6 +334,9 @@ export async function loadReportRouteState(
       verifiedLearnings: audit.verifiedLearnings,
       intentionalNotes: audit.intentionalNotes,
       knownRisks: audit.knownRisks,
+      failedModules: Array.isArray(audit.failedModules)
+        ? audit.failedModules.filter((module): module is string => typeof module === 'string')
+        : [],
       actionTimeline: audit.actionTimeline,
       fixList,
     }

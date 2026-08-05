@@ -151,3 +151,38 @@ test('recheckAndDiff rejects a malformed authoritative outcome', async () => {
   )
   assert.deepEqual(mock.calls.map((item) => item.tool), ['ff_recheck_and_compare'])
 })
+
+test('checkAndPlan surfaces failedModules from the completed report after the wait loop', async () => {
+  const mock = caller({
+    ff_check_and_plan: {
+      reportId: 'report-slow',
+      reportUrl: 'https://fixflags.com/report/report-slow',
+      status: 'CHECKING',
+    },
+    ff_get_check_status: [{ reportId: 'report-slow', status: 'CHECKING' }, { reportId: 'report-slow', status: 'COMPLETED' }],
+    ff_get_report: {
+      reportId: 'report-slow',
+      reportUrl: 'https://fixflags.com/report/report-slow',
+      status: 'COMPLETED',
+      failedModules: ['accessibility', 'layout'],
+      fixList: {
+        reportId: 'report-slow',
+        totalCount: 1,
+        items: [{ problem: 'CTA is vague', rubric: 'MESSAGE', severity: 'IMPORTANT' }],
+      },
+    },
+  })
+
+  const result = await checkAndPlan(mock.call, 'https://example.com', {
+    wait: true,
+    single: false,
+    apiBase: 'https://fixflags.com',
+    pollIntervalMs: 0,
+    maxWaitMs: 100,
+  })
+  assert.equal(result.status, 'COMPLETED')
+  assert.deepEqual(result.failedModules, ['accessibility', 'layout'])
+  assert.deepEqual(mock.calls.map((item) => item.tool), [
+    'ff_check_and_plan', 'ff_get_check_status', 'ff_get_check_status', 'ff_get_report',
+  ])
+})

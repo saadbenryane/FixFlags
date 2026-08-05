@@ -1,5 +1,5 @@
 import { AuditDeadlineError } from '../pipeline-errors'
-import { finalizePartialAudit } from '../finalize'
+import { finalizePartialAudit, persistAuditFailedModules } from '../finalize'
 import { deriveAuditFailure } from './failure'
 import type { TriageResult } from '../judge-triage'
 import type { PipelineContext, PageRun } from './types'
@@ -59,6 +59,10 @@ export async function tryPartialFinalize(
     error,
     pageRuns.some((p) => p.triage) ? 'judging' : 'checking'
   )
+
+  // Keep the partial report honest: check modules that threw before the
+  // pipeline error are still surfaced to the user.
+  await persistAuditFailedModules(ctx.auditId, pageRuns)
 
   await finalizePartialAudit({
     auditId: ctx.auditId,

@@ -106,6 +106,7 @@ interface AuditReportProps {
     verifiedLearnings?: import('@/lib/audit/product-intelligence').VerifiedLearning[]
     intentionalNotes?: string[]
     knownRisks?: string[]
+    failedModules?: string[]
     technologyProfile?: TechnologyProfile
     fixList?: FixList
   }
@@ -248,7 +249,11 @@ export function AuditReport({
 
   const showStatusCallouts =
     !isSample &&
-    (aiReviewPending || triageDegraded || prescriptionFailed || isPartialReport)
+    (aiReviewPending ||
+      triageDegraded ||
+      prescriptionFailed ||
+      isPartialReport ||
+      (audit.failedModules?.length ?? 0) > 0)
 
   const flagsExplorer =
     unresolvedFlagCount > 0 ? (
@@ -327,6 +332,11 @@ export function AuditReport({
             {isPartialReport && !triageDegraded && (
               <Callout variant="warning" title={REPORT_COPY.partialReport.title}>
                 {REPORT_COPY.partialReport.body}
+              </Callout>
+            )}
+            {(audit.failedModules?.length ?? 0) > 0 && (
+              <Callout variant="warning" title={REPORT_COPY.failedChecks.title}>
+                {REPORT_COPY.failedChecks.body(audit.failedModules ?? [])}
               </Callout>
             )}
           </div>
@@ -471,7 +481,9 @@ export function AuditReport({
                   {ANON_VALUE_STRIP.primaryCta}
                 </ReportSignupCta>
                 <Button asChild variant="ghost" size="sm">
-                  <Link href="/sign-in">{ANON_VALUE_STRIP.secondaryCta}</Link>
+                  <Link href={auditId ? `/sign-in?next=/report/${auditId}&from=report` : '/sign-in?from=report'}>
+                    {ANON_VALUE_STRIP.secondaryCta}
+                  </Link>
                 </Button>
               </div>
             </Card>

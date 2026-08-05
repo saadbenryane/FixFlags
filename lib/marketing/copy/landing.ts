@@ -30,7 +30,7 @@ export const DIFFERENTIATION = {
   lighthouseLinkText: "Compare FixFlags checks with Google Lighthouse",
   is: [
     "A review layer that finishes what your AI started",
-    "Flags with evidence, impact, and fix prompts",
+    "Flags with evidence, impact, and a demonstrated fix prompt",
     "An update review loop to prove fixes landed",
   ],
   isNot: [
@@ -40,7 +40,7 @@ export const DIFFERENTIATION = {
   ],
   bullets: [
     "AI reads screenshots for message, experience, and reach gaps",
-    "Every Flag comes with a fix prompt",
+    "Sign up to unlock a fix prompt for every Flag",
     "Update reviews prove fixes landed",
   ],
   rows: [
@@ -69,7 +69,7 @@ export const DIFFERENTIATION = {
       fixflags: "Yes",
     },
     {
-      feature: "Writes fix prompts your agent runs",
+      feature: "Writes fix prompts your agent runs after signup",
       lighthouse: "No",
       manual: "No",
       fixflags: "Yes",
@@ -125,7 +125,7 @@ export const DIFFERENTIATION = {
       fixflags: "Yes",
     },
     {
-      feature: "Writes fix prompts your agent runs",
+      feature: "Writes fix prompts your agent runs after signup",
       lighthouse: "No",
       manual: "No",
       fixflags: "Yes",
@@ -1095,6 +1095,14 @@ export const REPORT_COPY = {
   partialReport: {
     title: "Partial report",
     body: "Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than being inferred.",
+  },
+  failedChecks: {
+    title: "Some checks could not run",
+    body: (modules: string[]) => {
+      const label =
+        modules.length === 1 ? `The ${modules[0]} check` : `${modules.join(", ")} checks`
+      return `${label} could not run, so some fixes may be missing from this report.`
+    },
   },
   captureLimited: {
     title: "Limited screenshots",

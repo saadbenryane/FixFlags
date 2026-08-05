@@ -20,13 +20,14 @@ import { runTriageStep } from '../pipeline/triage-step'
 
 vi.mock('../finalize', () => ({
   finalizePartialAudit: vi.fn(),
+  persistAuditFailedModules: vi.fn(),
 }))
 
 vi.mock('../pipeline/failure', () => ({
   deriveAuditFailure: vi.fn(),
 }))
 
-import { finalizePartialAudit } from '../finalize'
+import { finalizePartialAudit, persistAuditFailedModules } from '../finalize'
 import { deriveAuditFailure } from '../pipeline/failure'
 import { tryPartialFinalize, accumulateTriageUsage } from '../pipeline/context'
 import type { PipelineContext, PageRun } from '../pipeline/types'
@@ -230,6 +231,16 @@ describe('tryPartialFinalize', () => {
     expect(finalizePartialAudit).toHaveBeenCalledWith(expect.objectContaining({
       errorMsg: 'Error at [url] [config] is bad',
     }))
+  })
+
+  it('persists the union of failed check modules before finalizing', async () => {
+    const pages = [
+      stubPageRun({ failedModules: ['content'] }),
+      stubPageRun({ failedModules: ['seo', 'content'] }),
+    ]
+    const result = await tryPartialFinalize(ctx(), pages, new Error('boom'))
+    expect(result).toBe(true)
+    expect(persistAuditFailedModules).toHaveBeenCalledWith('test-audit', pages)
   })
 
   it('handles non-Error thrown values', async () => {

@@ -12,10 +12,9 @@ import { Plan } from '@prisma/client'
 import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { isPaidOpenServer } from '@/lib/billing/paid-open'
 import {
-  FOUNDER_OFFER_ID,
-  founderCheckoutDiscounts,
-  type FounderCheckoutPlan,
-} from '@/lib/billing/founder-offers'
+  tierCheckoutDiscounts,
+  type TierCheckoutPlan,
+} from '@/lib/billing/discount-tiers'
 
 const PAID_PLANS = Object.values(PLAN_DEFINITIONS)
   .filter((def) => def.plan !== 'FREE' && def.stripePriceId)
@@ -62,7 +61,6 @@ export async function POST(req: NextRequest) {
         stripeSubscriptionId: true,
         plan: true,
         subscriptionStatus: true,
-        founderOfferRedeemedAt: true,
       },
     })
     const appUrl = getAppUrl()
@@ -88,12 +86,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const checkoutPlan = plan as FounderCheckoutPlan
-    const founderDiscounts = await founderCheckoutDiscounts(checkoutPlan, {
-      id: session.user.id,
-      founderOfferRedeemedAt: user?.founderOfferRedeemedAt ?? null,
-    })
-    const offerApplied = founderDiscounts != null
+    // Auto-apply the launch discount tier when the user holds a waitlist spot.
+    // Discount codes are never customer-enterable: a user without a tier gets
+    // no promotion codes at all, so the 500/500 caps cannot be burned manually.
+    const tierDiscount = await tierCheckoutDiscounts(plan as TierCheckoutPlan, session.user.id)
+    const metadata: Record<string, string> = {
+      userId: session.user.id,
+      plan,
+    }
+    if (tierDiscount) metadata.discount_tier = String(tierDiscount.tier)
 
     const checkoutSession = await getStripe().checkout.sessions.create({
       mode: 'subscription',
@@ -108,18 +109,12 @@ export async function POST(req: NextRequest) {
         : undefined,
       success_url: `${appUrl}/dashboard?upgraded=1&plan=${plan}`,
       cancel_url: `${appUrl}/pricing`,
-      ...(founderDiscounts ? { discounts: founderDiscounts } : { allow_promotion_codes: true }),
-      metadata: {
-        userId: session.user.id,
-        plan,
-        ...(offerApplied ? { offer_id: FOUNDER_OFFER_ID } : {}),
-      },
+      ...(tierDiscount
+        ? { discounts: [{ promotion_code: tierDiscount.promotion_code }] }
+        : {}),
+      metadata,
       subscription_data: {
-        metadata: {
-          userId: session.user.id,
-          plan,
-          ...(offerApplied ? { offer_id: FOUNDER_OFFER_ID } : {}),
-        },
+        metadata,
       },
     })
 

@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { diffFlagsAgainstParent } from '@/lib/audit/diff-flags'
@@ -31,6 +32,22 @@ type FinalizeBaseInput = {
     mobilePageSpeed: boolean
     flowScan?: boolean
   }
+}
+
+/**
+ * Union of deterministic check-module names that threw across page runs.
+ * Persisted so the report can surface "some checks couldn't run" instead of
+ * silently dropping an entire check area.
+ */
+export async function persistAuditFailedModules(
+  auditId: string,
+  pageRuns: Array<{ failedModules: string[] }>
+): Promise<void> {
+  const modules = [...new Set(pageRuns.flatMap((page) => page.failedModules))].sort()
+  await prisma.audit.update({
+    where: { id: auditId },
+    data: modules.length > 0 ? { failedModules: modules } : { failedModules: Prisma.JsonNull },
+  })
 }
 
 /** Complete phase-1 triage. Anonymous visitors stop here; signed-up users may enqueue prescription. */

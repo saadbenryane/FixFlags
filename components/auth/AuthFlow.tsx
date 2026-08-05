@@ -31,6 +31,14 @@ interface AuthFlowProps {
   presentation?: AuthFlowPresentation
   nextPath?: string | null
   from?: string | null
+  /** Prefill the email field (e.g. an email typed on the waitlist page). */
+  initialEmail?: string
+  /** Override OAuth callback URLs (e.g. return to the waitlist page after SSO). */
+  oauthCallbackURL?: string
+  oauthNewUserCallbackURL?: string
+  /** Override the dialog title/subtitle (defaults to the report-gate copy). */
+  dialogTitle?: string
+  dialogSubtitle?: string
   onAuthenticated?: () => Promise<void> | void
   auditId?: string
   reportHostname?: string | null
@@ -41,6 +49,11 @@ export function AuthFlow({
   presentation = 'page',
   nextPath,
   from,
+  initialEmail = '',
+  oauthCallbackURL: oauthCallbackURLOverride,
+  oauthNewUserCallbackURL: oauthNewUserCallbackURLOverride,
+  dialogTitle,
+  dialogSubtitle,
   onAuthenticated,
   auditId,
   reportHostname,
@@ -52,7 +65,7 @@ export function AuthFlow({
   useRedirectIfAuthenticated({ disabled: isDialog })
 
   const [mode, setMode] = useState<AuthFlowMode>(initialMode)
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState<'email' | 'passkey' | null>(null)
   const signupStartedRef = useRef(false)
@@ -63,10 +76,13 @@ export function AuthFlow({
     () => buildPostLoginQuery(resolvedNext, route.plan, resolvedFrom),
     [resolvedFrom, resolvedNext, route.plan]
   )
-  const oauthNewUserCallbackURL = useMemo(
-    () => buildPostLoginQuery(resolvedNext, route.plan, resolvedFrom, { newUser: true }),
-    [resolvedFrom, resolvedNext, route.plan]
-  )
+  // The waitlist page overrides these so SSO returns to /waitlist/<plan>
+  // instead of /post-login (which would fire checkout for a plan param).
+  const resolvedOauthCallbackURL =
+    oauthCallbackURLOverride ?? postLoginHref
+  const resolvedOauthNewUserCallbackURL =
+    oauthNewUserCallbackURLOverride ??
+    buildPostLoginQuery(resolvedNext, route.plan, resolvedFrom, { newUser: true })
 
   useEffect(() => {
     setMode(initialMode)
@@ -180,12 +196,12 @@ export function AuthFlow({
   }
 
   const title = isDialog
-    ? AUTH.reportGate.title
+    ? dialogTitle ?? AUTH.reportGate.title
     : mode === 'signup'
       ? AUTH.signUp.title
       : AUTH.signIn.title
   const subtitle = isDialog
-    ? AUTH.reportGate.subtitle(reportHostname)
+    ? dialogSubtitle ?? AUTH.reportGate.subtitle(reportHostname)
     : mode === 'signup'
       ? AUTH.signUp.subtitle
       : AUTH.signIn.subtitle
@@ -207,8 +223,8 @@ export function AuthFlow({
         </div>
       ) : oauth.anyEnabled ? (
         <OAuthButtons
-          callbackURL={postLoginHref}
-          newUserCallbackURL={oauthNewUserCallbackURL}
+          callbackURL={resolvedOauthCallbackURL}
+          newUserCallbackURL={resolvedOauthNewUserCallbackURL}
           google={oauth.google}
           github={oauth.github}
           disabled={loading !== null}

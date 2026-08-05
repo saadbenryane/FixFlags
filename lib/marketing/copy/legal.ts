@@ -18,15 +18,15 @@ export const TERMS_SECTIONS = {
     body:
       'Paid plans renew monthly unless you cancel through the Stripe billing portal. Product review limits apply per plan. New URLs and update reviews on reports you own each use one product review credit. Downgrades and cancellations take effect at the end of the current billing period unless Stripe indicates otherwise.',
   },
-  founderOffer: {
-    title: '40% Founder Discount',
+  discountTiers: {
+    title: 'Launch discount tiers',
     body:
-      'From time to time we offer a promotional 40% Founder Discount on Pro or Studio subscriptions for twelve months from the subscription start date. The offer is limited, non-transferable, and available to one redemption per customer account. After twelve months, subscriptions renew at the standard list price unless you cancel. We may end or cap the offer before all waitlist members redeem.',
+      'From time to time we offer launch discounts on Pro or Studio subscriptions. The first 500 waitlisters per plan receive 25% off for twelve months from plan release. The next 500 waitlisters per plan receive 15% off for twelve months from plan release. Discounts are limited, non-transferable, tied to the waitlist position recorded at join time, and expire twelve months after plan release even if you subscribe later. After the discount period, subscriptions renew at the standard list price unless you cancel.',
   },
   waitlist: {
     title: 'Waitlist',
     body:
-      'If paid checkout is not yet open, you may join a Pro or Studio waitlist. We use your account email to notify you when checkout opens. Joining the waitlist does not guarantee a specific opening date or discount eligibility beyond the published offer terms.',
+      'If paid checkout is not yet open, you may join a Pro or Studio waitlist with a signed-in account. We record the email you enter at join time and use it to notify you when checkout opens. Joining the waitlist does not guarantee a specific opening date or discount eligibility beyond the published terms. Discount tiers are assigned by join order: the first 500 waitlisters per plan receive 25% off and the next 500 receive 15% off, each for twelve months from plan release.',
   },
   creditPacks: {
     title: 'Credit packs',

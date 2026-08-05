@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { PRICING, BILLING_ACTION_COPY } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
 import { pickPlan, routerForPlanResult } from '@/lib/billing/pick-plan'
-import { WaitlistJoinForm } from '@/components/billing/WaitlistJoinForm'
+import { waitlistPathForPlan } from '@/components/billing/WaitlistAuthDialog'
 import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
+import type { CheckoutPlan } from '@/lib/billing/client-checkout'
 
 interface Props {
   plan: 'FREE' | 'BUILDER' | 'TEAM'
@@ -33,12 +34,18 @@ export function PricingCTAButton({
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [showBetaForm, setShowBetaForm] = useState(false)
 
   const isCurrent = isLoggedIn && currentPlan === plan
   const isPaidPlan = plan !== 'FREE'
 
   async function handleClick() {
+    // Waitlist mode: paid CTAs always lead to the waitlist page, signed in or
+    // not. The waitlist page handles account creation and the join.
+    if (waitlistGated && isPaidPlan) {
+      router.push(waitlistPathForPlan(plan as CheckoutPlan) as Route)
+      return
+    }
+
     if (!isLoggedIn) {
       if (plan !== 'FREE') trackEvent('started_checkout', { plan, is_logged_in: isLoggedIn })
       router.push(signUpHref)
@@ -57,7 +64,6 @@ export function PricingCTAButton({
       currentPlan,
       waitlistGated,
       userEmail,
-      onPrivateBeta: () => setShowBetaForm(true),
       onCheckoutRedirect: (url) => {
         window.location.href = url
       },
@@ -65,17 +71,13 @@ export function PricingCTAButton({
     setLoading(false)
 
     if (result.kind === 'waitlist') {
-      setShowBetaForm(true)
+      router.push(waitlistPathForPlan(plan as CheckoutPlan) as Route)
       return
     }
     if (result.kind === 'checkout_redirect') return
     if (result.kind === 'unavailable' || result.kind === 'error') return
 
     routerForPlanResult(router, result)
-  }
-
-  if (showBetaForm && isPaidPlan) {
-    return <WaitlistJoinForm plan={plan} initialEmail={userEmail} source="pricing" />
   }
 
   return (

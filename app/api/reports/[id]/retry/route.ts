@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
-import { canManageAudit } from '@/lib/audit/access'
+import { canManageAudit, canRetryAnonymousAudit } from '@/lib/audit/access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { retryAudit } from '@/lib/audit/retry-audit'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
-import { headers } from 'next/headers'
+import { ANON_AUDIT_IDS_COOKIE, readAnonAuditIds } from '@/lib/audit/usage'
+import { cookies, headers } from 'next/headers'
 
 export async function POST(
   _req: NextRequest,
@@ -14,6 +15,8 @@ export async function POST(
   try {
     const { id } = await params
     const session = await resolveSessionUser()
+    const cookieStore = await cookies()
+    const anonAuditIds = readAnonAuditIds(cookieStore.get(ANON_AUDIT_IDS_COOKIE)?.value)
 
     const clientId = requestClientId(await headers())
     await enforceRateLimit({ scope: 'audit-retry', identifier: `${session?.user?.id ?? clientId}:${clientId}`, limit: 10, windowSeconds: 60 })
@@ -22,7 +25,10 @@ export async function POST(
       select: { userId: true, isPublic: true, status: true, triageAt: true, failureCode: true },
     })
     if (!audit) return apiError('Report not found', 404)
-    if (!canManageAudit(audit, session?.user)) {
+    if (
+      !canManageAudit(audit, session?.user) &&
+      !canRetryAnonymousAudit(audit, id, anonAuditIds)
+    ) {
       return apiError('You do not have access to this report', 403)
     }
 

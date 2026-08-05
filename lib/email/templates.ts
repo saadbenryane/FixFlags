@@ -93,9 +93,9 @@ export const WAITLIST_EMAILS = {
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
-  <p>You're on the ${planLabel} waitlist. Your free account stays active while we open paid checkout in batches.</p>
-  <p>When ${planLabel} checkout opens, eligible waitlist members can claim the <strong>40% Founder Discount</strong> for 12 months (one redemption per account).</p>
-  <p>We'll email you when it's time to upgrade.</p>
+  <p>You're on the ${planLabel} waitlist. Your free account stays active while paid checkout is closed.</p>
+  <p>Launch discounts are assigned by join order: the first 500 waitlisters per plan get <strong>25% off for 12 months</strong> from launch, and the next 500 get <strong>15% off</strong>. Your spot is locked in from the moment you joined.</p>
+  <p>We'll email you when checkout opens.</p>
   <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Back to your dashboard</a></p>
 `),
   }),
@@ -105,7 +105,7 @@ export const WAITLIST_EMAILS = {
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
   <p><strong>${planLabel} checkout is open.</strong> You can upgrade now from pricing or your dashboard.</p>
-  <p>As a waitlist member, you can claim the <strong>40% Founder Discount</strong> for 12 months when you checkout (one redemption per account).</p>
+  <p>Your launch discount is applied automatically at checkout: <strong>25% off for 12 months</strong> for the first 500 waitlisters, <strong>15% off</strong> for the next 500. Everyone else pays list price.</p>
   <p><a href="${SITE_URL}/pricing" style="${ctaStyle}">Open pricing</a></p>
 `),
   }),

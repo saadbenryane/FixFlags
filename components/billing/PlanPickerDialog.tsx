@@ -29,6 +29,8 @@ import {
 } from '@/lib/billing/pick-plan'
 import { getActiveAudit } from '@/lib/audit/active-audit'
 import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
+import { waitlistPathForPlan } from '@/components/billing/WaitlistAuthDialog'
+import type { CheckoutPlan } from '@/lib/billing/client-checkout'
 import { cn } from '@/lib/utils'
 
 const PLAN_ICONS: Record<PickerPlan, typeof ShieldCheck> = {
@@ -109,7 +111,7 @@ export function PlanPickerDialog({
 
     if (result.kind === 'waitlist') {
       onOpenChange(false)
-      window.location.href = '/pricing'
+      window.location.href = waitlistPathForPlan(plan as CheckoutPlan)
       return
     }
     if (result.kind === 'checkout_redirect') {

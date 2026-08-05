@@ -6,7 +6,9 @@ export type WaitlistSegment = 'power_waitlist' | 'power_no_waitlist' | 'waitlist
 export interface WaitlistRow {
   id: string
   userId: string
+  /** Email captured at join time; may differ from the account email (SSO). */
   email: string
+  accountEmail: string
   name: string | null
   plan: Plan
   joinedAt: Date
@@ -14,6 +16,8 @@ export interface WaitlistRow {
   campaign: string | null
   invitedAt: Date | null
   convertedAt: Date | null
+  /** 1 = first 500 (25% off), 2 = next 500 (15% off), null = list price. */
+  discountTier: number | null
   founderOfferId: string | null
   auditsUsed: number
   auditsLimit: number
@@ -68,7 +72,8 @@ export async function listWaitlistRows(plan?: Plan): Promise<WaitlistRow[]> {
     return {
       id: entry.id,
       userId: entry.userId,
-      email: entry.user.email,
+      email: entry.email ?? entry.user.email,
+      accountEmail: entry.user.email,
       name: entry.user.name,
       plan: entry.plan,
       joinedAt: entry.joinedAt,
@@ -76,6 +81,7 @@ export async function listWaitlistRows(plan?: Plan): Promise<WaitlistRow[]> {
       campaign: entry.campaign,
       invitedAt: entry.invitedAt,
       convertedAt: entry.convertedAt,
+      discountTier: entry.discountTier,
       founderOfferId: entry.founderOfferId,
       auditsUsed: entry.user.auditsUsed,
       auditsLimit: entry.user.auditsLimit,
@@ -94,11 +100,13 @@ export async function listWaitlistRows(plan?: Plan): Promise<WaitlistRow[]> {
 export function waitlistRowsToCsv(rows: WaitlistRow[]): string {
   const headers = [
     'email',
+    'account_email',
     'name',
     'plan',
     'joined_at',
     'source',
     'campaign',
+    'discount_tier',
     'invited_at',
     'converted_at',
     'audits_used',
@@ -110,11 +118,13 @@ export function waitlistRowsToCsv(rows: WaitlistRow[]): string {
   const lines = rows.map((row) =>
     [
       row.email,
+      row.accountEmail,
       row.name ?? '',
       row.plan,
       row.joinedAt.toISOString(),
       row.source ?? '',
       row.campaign ?? '',
+      row.discountTier ?? '',
       row.invitedAt?.toISOString() ?? '',
       row.convertedAt?.toISOString() ?? '',
       String(row.auditsUsed),
@@ -127,4 +137,14 @@ export function waitlistRowsToCsv(rows: WaitlistRow[]): string {
       .join(',')
   )
   return [headers.join(','), ...lines].join('\n')
+}
+
+/** How many members fall in each discount tier for a plan (null = list price). */
+export async function waitlistTierCounts(plan: Plan) {
+  const [tier1, tier2, noTier] = await Promise.all([
+    prisma.paidPlanWaitlistEntry.count({ where: { plan, discountTier: 1 } }),
+    prisma.paidPlanWaitlistEntry.count({ where: { plan, discountTier: 2 } }),
+    prisma.paidPlanWaitlistEntry.count({ where: { plan, discountTier: null } }),
+  ])
+  return { tier1, tier2, noTier }
 }

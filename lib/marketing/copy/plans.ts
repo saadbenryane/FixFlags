@@ -164,6 +164,23 @@ export const PRICING = {
   pickerBusy: "Working…",
 } as const;
 
+export const WAITLIST_PAGE = {
+  eyebrow: 'Paid plan waitlist',
+  headline: 'First 500 get 25% off for 12 months',
+  subhead:
+    'Pro and Studio open in order. The first 500 waitlisters per plan get 25% off for 12 months from launch. The next 500 get 15% off.',
+  planProLabel: 'Pro',
+  planStudioLabel: 'Studio',
+  planProDetail: '25 product reviews and 4 deep reviews per month',
+  planStudioDetail: '80 product reviews and 10 deep reviews per month',
+  emailPlaceholder: 'you@example.com',
+  joinCta: 'Join the waitlist',
+  signUpRequired: 'Sign up required',
+  success: "You're on the list. We'll email you when checkout opens.",
+  authDialogTitle: 'Sign in to join the waitlist',
+  authDialogBody: 'Continue with the email you entered, or use another method.',
+} as const;
+
 export const BILLING_ACTION_COPY = {
   checkout: {
     redirecting: 'Redirecting to checkout…',
@@ -181,10 +198,10 @@ export const BILLING_ACTION_COPY = {
     failed: 'Could not join the waitlist. Try again.',
     success: "You're on the list. We'll email you when checkout opens.",
     description:
-      'Paid checkout opens in batches. Waitlist members can claim the 40% Founder Discount for 12 months when checkout opens (one redemption per account).',
+      'Sign up required. The first 500 waitlisters per plan get 25% off for 12 months from launch. The next 500 get 15% off.',
     gatedProCta: 'Join Pro waitlist',
     gatedStudioCta: 'Join Studio waitlist',
-    gatedHint: 'Pro and Studio open in batches. Join the waitlist for the 40% Founder Discount.',
+    gatedHint: 'First 500 get 25% off for 12 months from launch. Next 500 get 15% off.',
   },
   waitlist: {
     submitPro: 'Join Pro waitlist',
@@ -193,12 +210,15 @@ export const BILLING_ACTION_COPY = {
     failed: 'Could not join the waitlist. Try again.',
     success: "You're on the list. We'll email you when checkout opens.",
     description:
-      'Paid checkout opens in batches. Waitlist members can claim the 40% Founder Discount for 12 months when checkout opens (one redemption per account).',
+      'Sign up required. The first 500 waitlisters per plan get 25% off for 12 months from launch. The next 500 get 15% off.',
   },
-  founderOffer: {
-    name: '40% Founder Discount',
-    duration: '12 months',
-    pricingCallout: '40% Founder Discount for 12 months when paid checkout opens.',
+  tierOffers: {
+    name: 'Launch discount tiers',
+    tier1Label: 'First 500: 25% off',
+    tier2Label: 'Next 500: 15% off',
+    duration: '12 months from launch',
+    pricingCallout:
+      'First 500 waitlisters get 25% off for 12 months from launch. Next 500 get 15% off.',
   },
 } as const;
 

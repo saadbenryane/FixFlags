@@ -12,7 +12,7 @@ export default function TermsPage() {
   const sections = [
     TERMS_SECTIONS.service,
     TERMS_SECTIONS.accountsAndBilling,
-    TERMS_SECTIONS.founderOffer,
+    TERMS_SECTIONS.discountTiers,
     TERMS_SECTIONS.waitlist,
     TERMS_SECTIONS.creditPacks,
     TERMS_SECTIONS.refunds,

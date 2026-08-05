@@ -309,7 +309,7 @@ program
   .description('Check a URL and return every ranked fix')
   .option('--wait', 'Wait for the completed check', true)
   .option('--no-wait', 'Return as soon as the check is queued')
-  .option('--plan', 'Return the complete ranked fix list', true)
+  .option('--plan', 'Also print the one-prompt fix plan with all fixes (default on)', true)
   .option('--single', 'Check only the given URL')
   .option('--limit <count>', 'Print only the first count fixes')
   .option('--full', 'Print complete fix prompts')
@@ -377,6 +377,17 @@ program
           throw new Error('--limit must be a positive integer')
         }
         printPlan(result.fixList, Boolean(options.full), limit)
+        if (options.plan && result.fixList?.planPrompt) {
+          console.log('')
+          console.log(chalk.bold('Plan-mode prompt'))
+          console.log(promptPreview(result.fixList.planPrompt, Boolean(options.full)))
+        }
+        if (result.failedModules?.length) {
+          console.log('')
+          console.log(
+            chalk.yellow(`Some checks couldn't run: ${result.failedModules.join(', ')}`)
+          )
+        }
         console.log('')
         console.log(chalk.gray(`Next: fixflags recheck ${result.reportId} --wait --diff`))
 

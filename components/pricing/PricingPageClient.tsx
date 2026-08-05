@@ -74,7 +74,7 @@ export function PricingPageClient() {
               {PRICING.subhead}
             </Body>
             <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-              {BILLING_ACTION_COPY.founderOffer.pricingCallout}
+              {BILLING_ACTION_COPY.tierOffers.pricingCallout}
             </p>
 
             <ul className="mt-6 grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">

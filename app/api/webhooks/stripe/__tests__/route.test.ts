@@ -17,6 +17,7 @@ const {
   mockSubscriptionsRetrieve,
   mockConstructEvent,
   mockCreateLifecycle,
+  mockWaitlistUpdateMany,
 } = vi.hoisted(() => ({
   mockFindUniqueProcessed: vi.fn(),
   mockCreateProcessed: vi.fn(),
@@ -32,6 +33,7 @@ const {
   mockSubscriptionsRetrieve: vi.fn(),
   mockConstructEvent: vi.fn(),
   mockCreateLifecycle: vi.fn(),
+  mockWaitlistUpdateMany: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -53,6 +55,9 @@ vi.mock('@/lib/db', () => ({
     subscriptionLifecycleEvent: {
       create: mockCreateLifecycle,
     },
+    paidPlanWaitlistEntry: {
+      updateMany: mockWaitlistUpdateMany,
+    },
     $transaction: vi.fn(async (cb: (tx: unknown) => unknown) =>
       cb({
         processedStripeEvent: {
@@ -71,6 +76,9 @@ vi.mock('@/lib/db', () => ({
         },
         subscriptionLifecycleEvent: {
           create: mockCreateLifecycle,
+        },
+        paidPlanWaitlistEntry: {
+          updateMany: mockWaitlistUpdateMany,
         },
       })
     ),

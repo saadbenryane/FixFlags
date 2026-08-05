@@ -37,6 +37,8 @@ export interface CheckResult {
   fixList?: FixList
   /** Legacy server compatibility. New responses use fixList. */
   finishPlan?: FinishPlan
+  /** Deterministic check modules that threw; their findings were dropped. */
+  failedModules?: string[]
   technologyProfile?: {
     status: string
     technologies: Array<{ name: string; category: string; confidenceBand: string }>
@@ -129,6 +131,14 @@ function parseFixList(value: unknown, tool: string): FixList | undefined {
   }
 }
 
+function parseFailedModules(value: unknown, tool: string): string[] | undefined {
+  if (value === undefined) return undefined
+  if (!Array.isArray(value)) {
+    throw new Error(`Malformed response from ${tool}: failedModules must be an array`)
+  }
+  return value.filter((item): item is string => typeof item === 'string')
+}
+
 function parseCheck(value: unknown, tool: string, apiBase: string): CheckResult {
   const outcome = record(value, tool)
   const reportId = requiredString(outcome.reportId, 'reportId', tool)
@@ -158,6 +168,7 @@ function parseCheck(value: unknown, tool: string, apiBase: string): CheckResult 
     rubrics,
     fixList: parseFixList(outcome.fixList, tool),
     finishPlan: parseFinishPlan(outcome.finishPlan, tool),
+    failedModules: parseFailedModules(outcome.failedModules, tool),
   }
 }
 

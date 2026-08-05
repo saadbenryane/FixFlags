@@ -9,6 +9,7 @@ import { tryCaptureVisualEvidenceForAudit } from '@/lib/audit/persist-visual-evi
 import {
   finalizeTriageAudit,
   finalizeTriageDegraded,
+  persistAuditFailedModules,
 } from '@/lib/audit/finalize'
 import { enqueueAiReview } from '@/lib/audit/enqueue-ai-review'
 import { runTriageStep } from '@/lib/audit/pipeline/triage-step'
@@ -220,6 +221,10 @@ export async function retryPrimaryTriage(
  */
 export async function finalizeFromOutcome(input: FinalizeFromOutcomeInput): Promise<boolean> {
   const outcome = resolveAuditOutcome(input.pageRuns)
+
+  // Surface any check modules that threw before the report completes, so
+  // "all fixes" never silently loses an entire check area.
+  await persistAuditFailedModules(input.auditId, input.pageRuns)
 
   if (outcome.kind === 'triage_complete') {
     try {

@@ -32,7 +32,9 @@ export function WaitlistTable({ rows }: Props) {
     <AdminTable emptyMessage="No waitlist entries yet." isEmpty={rows.length === 0}>
       <AdminTableHead>
         <AdminTableHeaderCell>Email</AdminTableHeaderCell>
+        <AdminTableHeaderCell>Account</AdminTableHeaderCell>
         <AdminTableHeaderCell>Plan</AdminTableHeaderCell>
+        <AdminTableHeaderCell>Tier</AdminTableHeaderCell>
         <AdminTableHeaderCell>Joined</AdminTableHeaderCell>
         <AdminTableHeaderCell>Source</AdminTableHeaderCell>
         <AdminTableHeaderCell>Usage</AdminTableHeaderCell>
@@ -45,7 +47,17 @@ export function WaitlistTable({ rows }: Props) {
         {rows.map((row, index) => (
           <AdminTableRow key={row.id} index={index}>
             <AdminTableCell className="font-mono text-xs">{row.email}</AdminTableCell>
+            <AdminTableCell className="font-mono text-xs text-muted-foreground">
+              {row.accountEmail === row.email ? '-' : row.accountEmail}
+            </AdminTableCell>
             <AdminTableCell>{row.plan === 'TEAM' ? 'Studio' : 'Pro'}</AdminTableCell>
+            <AdminTableCell>
+              {row.discountTier === 1
+                ? 'T1 · 25%'
+                : row.discountTier === 2
+                  ? 'T2 · 15%'
+                  : 'None'}
+            </AdminTableCell>
             <AdminTableCell className="text-xs tabular-nums">
               {row.joinedAt.toISOString().slice(0, 10)}
             </AdminTableCell>

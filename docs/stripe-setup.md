@@ -2,25 +2,38 @@
 
 Test vs live is determined only by key prefix (`sk_test_` / `sk_live_`) and matching price IDs. Never mix test prices with live keys.
 
-## Founder offer (40% × 12 months)
+## Launch discount tiers (replaces the retired founder offer)
 
-Create in Dashboard (test first, mirror in live). See [founder-offer.md](./founder-offer.md).
+Discounts are assigned by waitlist join order at join time (see `lib/billing/discount-tiers.ts` and `lib/billing/waitlist.ts`):
+
+- Positions 1..500 per plan → **tier 1: 25% off**
+- Positions 501..1000 per plan → **tier 2: 15% off**
+- Positions 1001+ → list price
+
+Each discount runs **12 months from plan release**, not from activation. Set `PLAN_RELEASE_DATE` (ISO date) in env; when it is unset or invalid there is no discount window and no promotion is applied at checkout. Stripe promotion codes must be created with `redeem_by = PLAN_RELEASE_DATE + 12 months` (the app also refuses to auto-apply outside the window, so a mis-set `redeem_by` cannot discount after the window).
+
+Create in Dashboard (test first, mirror in live):
 
 | Object | Internal name | Promotion code | Settings |
 |--------|---------------|----------------|----------|
-| Pro coupon | `founder_pro_40_12m` | `FOUNDER40` | 40% off, repeating 12 months, max_redemptions 500 |
-| Studio coupon | `founder_studio_40_12m` | `FOUNDERSTUDIO40` | 40% off, repeating 12 months, max_redemptions 500 |
+| Pro tier-1 coupon | `tier1_pro_25_12m` | `T1PRO25` | 25% off, repeating 12 months, max_redemptions 500, redeem_by = release + 12 months |
+| Studio tier-1 coupon | `tier1_studio_25_12m` | `T1STUDIO25` | 25% off, repeating 12 months, max_redemptions 500, redeem_by = release + 12 months |
+| Pro tier-2 coupon | `tier2_pro_15_12m` | `T2PRO15` | 15% off, repeating 12 months, max_redemptions 500, redeem_by = release + 12 months |
+| Studio tier-2 coupon | `tier2_studio_15_12m` | `T2STUDIO15` | 15% off, repeating 12 months, max_redemptions 500, redeem_by = release + 12 months |
 
 **Env vars:**
 
 ```
 STRIPE_PAID_OPEN=false                    # server: false = waitlist only for paid
 NEXT_PUBLIC_PAID_OPEN=false               # client: mirrors server for UI gating
-STRIPE_FOUNDER_PRO_PROMOTION_ID=promo_...
-STRIPE_FOUNDER_STUDIO_PROMOTION_ID=promo_...
+PLAN_RELEASE_DATE=2026-09-01              # ISO date; unset = no discount window
+STRIPE_TIER1_PRO_PROMOTION_ID=promo_...
+STRIPE_TIER1_STUDIO_PROMOTION_ID=promo_...
+STRIPE_TIER2_PRO_PROMOTION_ID=promo_...
+STRIPE_TIER2_STUDIO_PROMOTION_ID=promo_...
 ```
 
-When `STRIPE_PAID_OPEN=true`, checkout is public; founder promotions auto-apply when eligible.
+When `STRIPE_PAID_OPEN=true`, checkout is public; the tier promotion auto-applies for waitlist members with a tier. Promotion codes are **not customer-enterable**: the checkout route only passes `discounts` for tier holders and never enables `allow_promotion_codes`, so the 500/500 caps cannot be burned by manual code entry.
 
 ## Target list prices (marketing)
 
@@ -58,8 +71,11 @@ STRIPE_CREDIT_PACK_50_ID=price_...
 STRIPE_API_VERSION=2025-02-24.acacia
 STRIPE_PAID_OPEN=false
 NEXT_PUBLIC_PAID_OPEN=false
-STRIPE_FOUNDER_PRO_PROMOTION_ID=promo_...
-STRIPE_FOUNDER_STUDIO_PROMOTION_ID=promo_...
+PLAN_RELEASE_DATE=2026-09-01              # ISO date; unset = no discount window
+STRIPE_TIER1_PRO_PROMOTION_ID=promo_...
+STRIPE_TIER1_STUDIO_PROMOTION_ID=promo_...
+STRIPE_TIER2_PRO_PROMOTION_ID=promo_...
+STRIPE_TIER2_STUDIO_PROMOTION_ID=promo_...
 BILLING_REQUIRED=false              # local: allow boot while iterating
 ```
 
@@ -88,7 +104,7 @@ Health: `/api/health` → `billingConfigured: true`.
 2. New live webhook endpoint + live `whsec_`
 3. Railway: replace all Stripe vars with `sk_live_` / live price IDs / live webhook secret; keep `BILLING_REQUIRED=true`
 4. Rotate any keys that were pasted in chat before going live
-5. One real smoke charge at list price (refund if desired); verify founder discount in test mode first
+5. One real smoke charge at list price (refund if desired); verify tier discount in test mode first
 
 ## Smoke
 

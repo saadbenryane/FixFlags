@@ -43,6 +43,7 @@ export async function retryAudit(auditId: string): Promise<{ status: string }> {
       completedAt: null,
       finalizedAt: null,
       pipelineLog: [],
+      failedModules: undefined,
     },
   })
 

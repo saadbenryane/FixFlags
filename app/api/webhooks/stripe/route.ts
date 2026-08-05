@@ -11,9 +11,6 @@ import { getStripe, planFromPriceId } from '@/lib/stripe'
 import { applyPlanLimits } from '@/lib/billing/limits'
 import { refundPurchasedCredit } from '@/lib/billing/credits'
 import { notifyAdminPaymentFailed, notifyUserPaymentFailed } from '@/lib/billing/notify'
-import {
-  FOUNDER_OFFER_ID,
-} from '@/lib/billing/founder-offers'
 import { markWaitlistConverted } from '@/lib/billing/waitlist'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
@@ -108,20 +105,15 @@ async function processSubscription(
   }
 }
 
-async function applyFounderOfferFulfillment(
+async function applyWaitlistConversion(
   tx: Prisma.TransactionClient,
-  subscription: Stripe.Subscription,
   result: Awaited<ReturnType<typeof processSubscription>>,
 ): Promise<void> {
-  const offerId = subscription.metadata?.offer_id
-  if (!offerId || offerId !== FOUNDER_OFFER_ID) return
+  // Any paid subscription on a waitlisted plan counts as conversion for the
+  // member's waitlist row (tiered or not). updateMany is a no-op for users
+  // who never joined the waitlist.
   if (!hasPaidEntitlement(result.status)) return
   if (result.plan !== 'BUILDER' && result.plan !== 'TEAM') return
-
-  await tx.user.update({
-    where: { id: result.userId },
-    data: { founderOfferRedeemedAt: new Date() },
-  })
   await markWaitlistConverted(result.userId, result.plan, tx)
 }
 
@@ -227,14 +219,14 @@ export async function POST(req: NextRequest) {
         case 'customer.subscription.created': {
           const subscription = event.data.object
           const result = await processSubscription(tx, subscription)
-          await applyFounderOfferFulfillment(tx, subscription, result)
+          await applyWaitlistConversion(tx, result)
           await recordSubscriptionLifecycle(tx, event, 'SUBSCRIPTION_CREATED', subscription, result)
           break
         }
         case 'customer.subscription.updated': {
           const subscription = event.data.object
           const result = await processSubscription(tx, subscription)
-          await applyFounderOfferFulfillment(tx, subscription, result)
+          await applyWaitlistConversion(tx, result)
           await recordSubscriptionLifecycle(tx, event, 'SUBSCRIPTION_UPDATED', subscription, result)
           break
         }

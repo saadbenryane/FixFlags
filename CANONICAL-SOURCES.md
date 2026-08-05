@@ -93,7 +93,8 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Fix List and Quick Plan artifact | `knowledge/finish-plan.md` |
 | Launch readiness and validation | `knowledge/launch-requirements.md` |
 | GTM launch strategy (hybrid free + paid waitlist) | `docs/gtm-launch-strategy.md` |
-| Founder offer (40% × 12 months) | `docs/founder-offer.md` |
+| Launch discount tiers (25%/15% × 12mo from release) | `docs/stripe-setup.md`, `lib/billing/discount-tiers.ts`, `DECISIONS.md` (2026-08-04) |
+| Founder offer (40% × 12 months, retired 2026-08-04) | `docs/founder-offer.md` (historical) |
 | GTM launch metrics and funnel | `docs/gtm-metrics.md` |
 | Legal launch checklist | `docs/legal-launch-checklist.md` |
 | Target technical architecture | `knowledge/technical-architecture-spec.md` |

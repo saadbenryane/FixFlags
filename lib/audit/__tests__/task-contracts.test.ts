@@ -202,4 +202,33 @@ describe('task contracts', () => {
       delayMs: undefined,
     })
   })
+
+  it('exposes only one demonstrated prompt to anonymous callers and never the plan prompt', async () => {
+    const outcome = await checkAndPlan({
+      url: 'https://example.com',
+      userId: null,
+      waitForCompletion: true,
+    })
+
+    expect(outcome.status).toBe('COMPLETED')
+    const prompts = outcome.fixList?.items
+      .map((item) => item.fixPrompt)
+      .filter((prompt): prompt is string => Boolean(prompt))
+    expect(prompts).toHaveLength(1)
+    expect(prompts?.[0]).toBe('Rename the primary CTA to describe the outcome.')
+    expect(outcome.fixList?.planPrompt).toBe('')
+  })
+
+  it('surfaces failedModules on the completed outcome', async () => {
+    mocks.auditFindUnique.mockResolvedValue({
+      ...completedAudit(),
+      failedModules: ['layout', 'accessibility'],
+    })
+    const outcome = await checkAndPlan({
+      url: 'https://example.com',
+      userId: 'user-1',
+      waitForCompletion: true,
+    })
+    expect(outcome.failedModules).toEqual(['layout', 'accessibility'])
+  })
 })
