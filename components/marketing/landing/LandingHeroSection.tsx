@@ -5,7 +5,6 @@ import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { Heading } from "@/components/ui/typography";
 import { HERO } from "@/lib/marketing/copy";
-import Image from "next/image";
 
 export function LandingHeroSection() {
   return (
@@ -18,17 +17,6 @@ export function LandingHeroSection() {
         className="flex w-full flex-col px-4 sm:px-6 lg:px-12"
       >
         <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-4 text-center sm:gap-5 lg:pt-1">
-          <div className="relative mb-1 h-auto w-full max-w-[18rem] sm:max-w-[21rem] lg:max-w-[24rem]">
-            <Image
-              src="/marketing/visuals/home-hero-master-v3.png"
-              alt=""
-              width={1286}
-              height={1223}
-              priority
-              className="h-auto w-full object-contain"
-            />
-          </div>
-
           <p className="inline-flex items-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.2em] text-brand sm:text-xs">
             <span
               className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
