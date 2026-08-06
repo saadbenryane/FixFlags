@@ -3,9 +3,9 @@ import { googleServiceAccount } from '@/lib/growth/google-auth'
 import { persistGrowthArtifact } from '@/lib/growth/artifacts'
 
 function getGa4Property(): string {
-  const prop = process.env.GA4_PROPERTY_ID
-  if (!prop) throw new Error('GA4_PROPERTY_ID env var is required')
-  return prop
+  const raw = process.env.GA4_PROPERTY_ID?.trim()
+  if (!raw) throw new Error('GA4_PROPERTY_ID env var is required')
+  return raw.startsWith('properties/') ? raw : `properties/${raw}`
 }
 
 export interface GaPullResult {
