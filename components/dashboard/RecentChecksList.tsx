@@ -68,7 +68,7 @@ export function RecentChecksList({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-end justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1.5">
         <SectionTitle>Recent checks</SectionTitle>
         <p className="text-xs text-muted-foreground">
           Open a report to continue fixing.
@@ -142,9 +142,9 @@ export function RecentChecksList({
                         </Badge>
                       ) : null}
                     </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                      <span className="font-medium">Original check</span>
-                      <span>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      <span className="text-muted-foreground/90">Original check</span>
+                      <span className="tabular-nums">
                         {new Date(audit.createdAt).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
@@ -153,13 +153,13 @@ export function RecentChecksList({
                         })}
                       </span>
                       {criticalFlags > 0 && (
-                        <span className="inline-flex items-center gap-1 text-destructive">
-                          <AlertTriangle className="h-3 w-3" />
+                        <span className="inline-flex items-center gap-1 tabular-nums text-destructive">
+                          <AlertTriangle className="h-3 w-3" aria-hidden />
                           {criticalFlags} critical
                         </span>
                       )}
                       {importantFlags > 0 && (
-                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                        <span className="inline-flex items-center gap-1 tabular-nums text-muted-foreground">
                           {importantFlags} important
                         </span>
                       )}
@@ -191,9 +191,9 @@ export function RecentChecksList({
                       {audit.monitoringAudits.length === 1 ? "" : "s"}
                     </Badge>
                   ) : null}
-                  <span className="inline-flex min-h-11 shrink-0 items-center gap-1 self-end text-xs font-semibold text-foreground sm:self-auto">
+                  <span className="inline-flex min-h-11 shrink-0 items-center gap-1.5 self-end text-sm font-semibold text-foreground sm:self-auto">
                     {isCompleted ? "Open fixes" : "Open report"}
-                    <ArrowRight className="h-3.5 w-3.5 text-brand transition-transform duration-200 group-hover:translate-x-0.5" />
+                    <ArrowRight className="h-4 w-4 text-brand transition-transform duration-200 ease-out motion-reduce:transition-none group-hover:translate-x-0.5" aria-hidden />
                   </span>
                 </div>
               </CardContent>

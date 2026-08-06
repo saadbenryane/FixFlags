@@ -27,6 +27,7 @@ export function WorkspaceViewToggle({ view, onChange, className }: WorkspaceView
         aria-selected={view === 'browser'}
         className={cn(
           'min-h-11 rounded-md px-3 py-1.5 transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
           view === 'browser' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
         )}
         onClick={() => onChange('browser')}
@@ -38,7 +39,8 @@ export function WorkspaceViewToggle({ view, onChange, className }: WorkspaceView
         role="tab"
         aria-selected={view === 'report'}
         className={cn(
-          'rounded-md px-3 py-1.5 transition-colors',
+          'min-h-11 rounded-md px-3 py-1.5 transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
           view === 'report' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
         )}
         onClick={() => onChange('report')}

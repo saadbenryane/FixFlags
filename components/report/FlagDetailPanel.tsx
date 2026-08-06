@@ -220,7 +220,7 @@ export function FlagMetaPills({ flag }: { flag: ExplorerFlag }) {
   const ImpactIcon = impactTagIcon(flag.impactTag)
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <SeveritySignal severity={flag.severity} />
+      <SeveritySignal severity={flag.severity} className="h-4 w-4" />
       {flag.severity !== 'CRITICAL' ? (
         <span className="text-2xs font-medium text-muted-foreground">
           {flag.severityLabel}

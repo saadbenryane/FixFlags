@@ -54,7 +54,7 @@ export function UsageMeter({
         </div>
 
         <div className="mt-5">
-          <p className="font-mono text-3xl font-semibold tabular-nums tracking-display">
+          <p className="font-mono text-3xl font-semibold tabular-nums leading-none">
             {isUnlimited ? used : Math.max(0, remaining)}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -89,7 +89,7 @@ export function UsageMeter({
         )}
 
         {!isUnlimited && plan === "FREE" && remaining > 0 && (
-          <p className="mt-3 text-xs text-muted-foreground">
+          <p className="mt-3 text-xs tabular-nums text-muted-foreground">
             {limit > 0 ? `${used + pending} of ${limit} product reviews used` : ""}
             {remaining === 1 && (
               <span>

@@ -47,7 +47,7 @@ export function DashboardReleaseHub({
       </div>
 
       <ReportWorkspaceOutcome model={model} compact />
-      <ReportWorkspaceSummary model={model} />
+      <ReportWorkspaceSummary model={model} className="rounded-nested-md" />
     </section>
   )
 }

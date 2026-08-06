@@ -90,7 +90,7 @@ export function ReportWorkspaceSplitShell({
             </p>
             <button
               type="button"
-              className="min-h-11 text-xs font-medium text-muted-foreground hover:text-foreground"
+              className="min-h-11 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 rounded-md"
               onClick={() => setActiveIndex(null)}
             >
               {REPORT_COPY.workspace.playback.closeEvidence}
@@ -162,8 +162,10 @@ export function ReportWorkspaceSplitShell({
         <div className="flex gap-2 lg:hidden">
           <button
             type="button"
+            aria-pressed={mobileFocus === 'chat'}
             className={cn(
-              'min-h-11 flex-1 rounded-md border px-3 text-sm font-medium',
+              'min-h-11 flex-1 rounded-md border px-3 text-sm font-medium transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
               mobileFocus === 'chat' ? 'border-brand bg-brand/10' : 'border-border'
             )}
             onClick={() => setMobileFocus('chat')}
@@ -172,8 +174,10 @@ export function ReportWorkspaceSplitShell({
           </button>
           <button
             type="button"
+            aria-pressed={mobileFocus === 'product'}
             className={cn(
-              'min-h-11 flex-1 rounded-md border px-3 text-sm font-medium',
+              'min-h-11 flex-1 rounded-md border px-3 text-sm font-medium transition-colors',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
               mobileFocus === 'product' ? 'border-brand bg-brand/10' : 'border-border'
             )}
             onClick={() => setMobileFocus('product')}

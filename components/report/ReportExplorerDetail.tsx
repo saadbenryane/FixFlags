@@ -134,7 +134,7 @@ export function FlagDetailPane({
           <h3
             ref={headingRef}
             tabIndex={-1}
-            className="min-w-0 flex-1 text-base font-semibold leading-snug text-balance outline-none sm:text-lg"
+            className="min-w-0 flex-1 text-lg font-semibold leading-snug tracking-heading text-balance outline-none sm:text-xl"
           >
             {flag.title}
           </h3>

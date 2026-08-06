@@ -12,23 +12,23 @@ export function FirstAuditPrompt() {
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <p className="meta-label text-muted-foreground">
           {FIRST_AUDIT_PROMPT.examplesLabel}
         </p>
-        <ul className="space-y-2">
+        <ul className="space-y-2.5">
           {FIRST_AUDIT_PROMPT.examples.map((item) => (
-            <li key={item.hint} className="flex items-center gap-2 text-sm text-muted-foreground">
-              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-hidden />
+            <li key={item.hint} className="flex items-center gap-2.5 text-sm text-muted-foreground">
+              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
               <span>
                 <span className="text-foreground font-medium">{item.label}</span>
-                <span className="ml-1.5 text-muted-foreground/70">{item.hint}</span>
+                <span className="ml-1.5 text-muted-foreground">{item.hint}</span>
               </span>
             </li>
           ))}
         </ul>
       </div>
 
-      <div className="border-t border-border pt-4">
+      <div className="border-t border-border/35 pt-4">
         <p className="text-sm text-muted-foreground">
           {FIRST_AUDIT_PROMPT.footerPrefix}{' '}
           <Link

@@ -42,6 +42,7 @@ export function ReportWorkspaceShell({
       variant="report"
       className={cn(
         compact ? 'space-y-4 pb-4 sm:pb-6' : 'space-y-5 py-5 sm:space-y-6 sm:py-6',
+        'motion-safe:animate-soft-reveal',
         className
       )}
     >
