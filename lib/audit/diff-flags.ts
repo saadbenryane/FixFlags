@@ -22,8 +22,30 @@ type FlagRow = {
 }
 
 function flagMatchKey(f: Pick<FlagRow, 'checkId' | 'problem' | 'rubric'>): string {
-  if (f.checkId) return `check:${f.checkId}`
-  return buildAiFlagMatchKey(f.problem, f.rubric)
+  return diffMatchKey(f)
+}
+
+/**
+ * Match key for diffing flags across reports. Per-page `::page:N` variants of
+ * the same deterministic check collapse onto one site-level key so page-order
+ * shifts do not make every variant look newly fixed/regressed and leak
+ * duplicate findings into the re-check diff.
+ */
+export function diffMatchKey(input: {
+  checkId: string | null
+  problem: string
+  rubric: string
+}): string {
+  if (input.checkId) return `check:${baseCheckIdForMatch(input.checkId)}`
+  return buildAiFlagMatchKey(input.problem, input.rubric)
+}
+
+/**
+ * Strip the per-page `::page:N` suffix before matching so a parent flag like
+ * `cta-dead-link::page:2` matches the re-check's `cta-dead-link::page:1`.
+ */
+function baseCheckIdForMatch(checkId: string): string {
+  return checkId.split('::page:')[0] ?? checkId
 }
 
 export async function diffFlagsAgainstParent(
@@ -49,6 +71,7 @@ export async function diffFlagsAgainstParent(
     data: { status: FlagStatus; resolvedInId?: string | null }
   }> = []
   const newlyFixed: Array<{ checkId: string | null; problem: string }> = []
+  const seenMonitoringIds = new Set<string>()
 
   for (const parentFlag of parentFlags) {
     const key = flagMatchKey(parentFlag)
@@ -72,10 +95,16 @@ export async function diffFlagsAgainstParent(
       stillFails: true,
     })
 
-    updates.push({
-      id: monitoringFlag.id,
-      data: { status },
-    })
+    // Several parent pages can share one base check (per-page ::page:N
+    // variants collapse onto the same monitoring flag). Update the monitoring
+    // flag once, and keep the strongest status for the parent rows.
+    if (!seenMonitoringIds.has(monitoringFlag.id)) {
+      seenMonitoringIds.add(monitoringFlag.id)
+      updates.push({
+        id: monitoringFlag.id,
+        data: { status },
+      })
+    }
     updates.push({
       id: parentFlag.id,
       data: {
@@ -191,8 +220,14 @@ export async function getFlagDiffSummary(
   const regressed: FlagDiffSummaryItem[] = []
   const newIssues: FlagDiffSummaryItem[] = []
 
+  const seenParentKeys = new Set<string>()
   for (const parentFlag of parentFlags) {
     const key = flagMatchKey(parentFlag)
+    // Only the first (highest-position) parent variant of a base check
+    // contributes to the summary so per-page ::page:N copies do not leak
+    // into the re-check diff as separate entries.
+    if (seenParentKeys.has(key)) continue
+    seenParentKeys.add(key)
     const monitoringFlag = monitoringByKey.get(key)
     const item: FlagDiffSummaryItem = {
       checkId: parentFlag.checkId,
@@ -237,15 +272,16 @@ export async function getFlagDiffSummary(
 
   for (const monitoringFlag of monitoringFlags) {
     const key = flagMatchKey(monitoringFlag)
-    if (!parentKeys.has(key)) {
-      newIssues.push({
-        checkId: monitoringFlag.checkId,
-        problem: monitoringFlag.problem,
-        rubric: monitoringFlag.rubric,
-        severity: monitoringFlag.severity,
-        status: monitoringFlag.status,
-      })
-    }
+    if (parentKeys.has(key)) continue
+    // The matching side is also keyed by base check, so a per-page variant of
+    // a parent check can never appear here as a brand-new issue.
+    newIssues.push({
+      checkId: monitoringFlag.checkId,
+      problem: monitoringFlag.problem,
+      rubric: monitoringFlag.rubric,
+      severity: monitoringFlag.severity,
+      status: monitoringFlag.status,
+    })
   }
 
   return { fixed, unchanged, regressed, newIssues }

@@ -30,7 +30,14 @@ export function runMobileUXQualityChecks(
   const viewportHeight = captureMetrics.mobileViewportHeight
 
   if (primaryCtaTop !== null && viewportHeight > 0) {
-    const ctaPositionRatio = primaryCtaTop / viewportHeight
+    // The metric is an absolute document position; the thumb-zone ratio is
+    // about the CTA's position in the initial viewport, so use the
+    // viewport-relative top.
+    const viewportTop = Math.max(
+      0,
+      primaryCtaTop - (captureMetrics.mobileScrollY ?? 0)
+    )
+    const ctaPositionRatio = viewportTop / viewportHeight
     const hardToReachTopThreshold = 0.2
 
     if (ctaPositionRatio >= 0 && ctaPositionRatio < hardToReachTopThreshold) {

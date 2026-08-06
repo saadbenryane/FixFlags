@@ -111,14 +111,18 @@ export function classifyCtaHref(
   try {
     const parsed = options.baseUrl ? new URL(raw, options.baseUrl) : new URL(raw)
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      // mailto:, tel:, sms: open an external app - intentional, working
+      // destinations, NOT dead/placeholder links. They are still not page
+      // navigations, so the flow scan must not try to click them.
+      const isIntentionalAction = NON_PAGE_PROTOCOLS.has(parsed.protocol)
       return {
         href: raw,
         resolvedHref: parsed.toString(),
         protocol: parsed.protocol,
-        isPlaceholder: NON_PAGE_PROTOCOLS.has(parsed.protocol),
+        isPlaceholder: !isIntentionalAction,
         isPageNavigation: false,
         isSamePageAnchor: false,
-        isActionable: false,
+        isActionable: isIntentionalAction,
       }
     }
 
@@ -207,6 +211,22 @@ export { CATEGORY_MAX }
 
 export function isDeadHref(href: string): boolean {
   return classifyCtaHref(href).isPlaceholder
+}
+
+/**
+ * True when the href intentionally opens an external app (mail, phone, SMS)
+ * instead of navigating the page. Such CTAs are real and should never be
+ * flagged as dead, but the flow scan must not select them as page-navigation
+ * candidates.
+ */
+export function isNonPageActionHref(href: string | null | undefined): boolean {
+  if (!href) return false
+  try {
+    const protocol = new URL(href).protocol
+    return protocol.endsWith(':') && NON_PAGE_PROTOCOLS.has(protocol)
+  } catch {
+    return false
+  }
 }
 
 export function isSameSiteOrigin(originA: string, originB: string): boolean {

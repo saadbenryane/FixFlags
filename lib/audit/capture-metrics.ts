@@ -7,6 +7,10 @@ export interface CaptureMetrics {
   competingPrimaryCtaCount: number
   competingPrimaryCtaLabels: string[]
   mobileViewportHeight: number
+  /** Absolute document position of the primary CTA (scrollY + rect.top). */
+  mobileScrollY: number
+  /** Full document height at measurement time (used as a plausibility bound). */
+  mobileDocumentHeight: number
   /** True when skeleton/spinner/aria-busy is still visible after load. */
   stuckLoadingIndicator: boolean
   stuckLoadingLabel: string | null
@@ -321,13 +325,24 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
     const bestTop = selected?.top ?? null
     const bestText = selected?.text ?? null
     const competingLabels = [...competingCtas]
+    // The candidate `top` is viewport-relative (used for above-the-fold
+    // selection). The persisted metric must be the absolute document scroll
+    // depth: a CTA below the fold is reported as its true position on the
+    // page, independent of any scroll state at measurement time.
+    const scrollY = window.scrollY || 0
+    const documentHeight =
+      document.documentElement.scrollHeight || document.body.scrollHeight || 0
+    const absoluteBestTop =
+      bestTop == null ? null : Math.max(0, Math.round(bestTop + scrollY))
 
     return {
-      mobilePrimaryCtaTopPx: bestTop,
+      mobilePrimaryCtaTopPx: absoluteBestTop,
       mobilePrimaryCtaText: bestText,
       competingPrimaryCtaCount: competingLabels.length,
       competingPrimaryCtaLabels: competingLabels.slice(0, 6),
       mobileViewportHeight: window.innerHeight,
+      mobileScrollY: Math.round(scrollY),
+      mobileDocumentHeight: Math.round(documentHeight),
       stuckLoadingIndicator,
       stuckLoadingLabel,
       uniqueFontFamilies: fontSet.size,

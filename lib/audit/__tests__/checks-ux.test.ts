@@ -101,6 +101,8 @@ function captureMetrics(overrides: Partial<CaptureMetrics> = {}): CaptureMetrics
     competingPrimaryCtaCount: 1,
     competingPrimaryCtaLabels: ['Get started free'],
     mobileViewportHeight: 812,
+    mobileScrollY: 0,
+    mobileDocumentHeight: 4000,
     stuckLoadingIndicator: false,
     stuckLoadingLabel: null,
     uniqueFontFamilies: 2,

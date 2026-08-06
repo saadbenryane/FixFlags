@@ -136,6 +136,8 @@ function evaluateNonHtmlFixture() {
       mobilePrimaryCtaTopPx: layoutCase.mobilePrimaryCtaTopPx,
       mobilePrimaryCtaText: layoutCase.mobilePrimaryCtaText,
       mobileViewportHeight: layoutCase.mobileViewportHeight,
+      mobileScrollY: 0,
+      mobileDocumentHeight: 12000,
       competingPrimaryCtaCount: 0,
       competingPrimaryCtaLabels: [],
       stuckLoadingIndicator: false,

@@ -37,6 +37,17 @@ export type FlowScanStatus =
   | 'skipped'
   | 'timeout'
 
+/**
+ * Why a CTA click could not be performed. Lets checks distinguish a probe
+ * artifact (element never existed / vanished mid-scan) from a genuine
+ * user-facing unclickable state (covered by an overlay, disabled control).
+ */
+export type FlowClickFailure =
+  | 'element_missing'
+  | 'not_visible'
+  | 'interaction_error'
+  | 'timeout'
+
 export interface FlowScanResult {
   status: FlowScanStatus
   steps: FlowScanStep[]
@@ -56,6 +67,10 @@ export interface FlowScanResult {
   destinationUX?: DestinationUXQuality
   /** When click failed because another element covered the CTA. */
   overlayBlocker?: OverlayBlockerInfo | null
+  /** Classified reason the click probe failed (unclickable/dead_end paths). */
+  clickFailure?: FlowClickFailure
+  /** Raw error message from the failed click, truncated for evidence. */
+  clickError?: string | null
 }
 
 export interface RunFlowScanOptions {
@@ -106,6 +121,36 @@ async function fetchDestinationTrust(
   } catch {
     return undefined
   }
+}
+
+/**
+ * Resolve the click target with one waitForSelector retry so a transient DOM
+ * race (SPA re-render between CTA discovery and click) does not get reported
+ * as a genuine unclickable CTA. Classifies the failure so checks can decide
+ * whether it is a probe artifact or a real user-facing issue.
+ */
+async function resolveClickTarget(
+  page: Page,
+  selector: string
+): Promise<{
+  target: import('playwright').ElementHandle | null
+  failure: FlowClickFailure | null
+}> {
+  try {
+    await page.waitForSelector(selector, { state: 'visible', timeout: 2_500 })
+  } catch {
+    return { target: null, failure: 'element_missing' }
+  }
+  const handle = await page.$(selector)
+  if (!handle) {
+    return { target: null, failure: 'element_missing' }
+  }
+  const visible = await handle.isVisible().catch(() => false)
+  if (!visible) {
+    await handle.dispose().catch(() => {})
+    return { target: null, failure: 'not_visible' }
+  }
+  return { target: handle, failure: null }
 }
 
 async function runFlowScanWithinBudget(
@@ -160,7 +205,8 @@ async function runFlowScanWithinBudget(
       }
     }, selector)
 
-    const clickTarget = await page.$(selector)
+    const resolved = await resolveClickTarget(page, selector)
+    const clickTarget = resolved.target
     if (!clickTarget) {
       const overlayBlocker = await detectOverlayAtPoint(page, selector)
       return {
@@ -168,14 +214,20 @@ async function runFlowScanWithinBudget(
         steps,
         finalUrl: page.url(),
         overlayBlocker,
+        clickFailure: resolved.failure ?? 'element_missing',
         ...ctaMeta,
       }
     }
 
     if (skipNavigationWait) {
-      await clickTarget.click()
-      clicked = true
-      await new Promise((r) => setTimeout(r, 800))
+      try {
+        await clickTarget.click()
+        clicked = true
+        await new Promise((r) => setTimeout(r, 800))
+      } catch (err) {
+        await clickTarget.dispose().catch(() => {})
+        throw err
+      }
     } else {
       const navigationPromise = page
         .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: FLOW_CLICK_TIMEOUT_MS })
@@ -200,11 +252,15 @@ async function runFlowScanWithinBudget(
   } catch (err) {
     logger.error('Flow CTA click failed', err)
     const overlayBlocker = !clicked ? await detectOverlayAtPoint(page, selector) : null
+    const clickError =
+      err instanceof Error ? err.message.slice(0, 200) : String(err).slice(0, 200)
     return {
       status: clicked ? 'dead_end' : 'unclickable',
       steps,
       finalUrl: page.url(),
       overlayBlocker,
+      clickFailure: clicked ? undefined : 'interaction_error',
+      clickError: clicked ? undefined : clickError || null,
       ...ctaMeta,
     }
   }

@@ -113,4 +113,45 @@ describe('buildFixList', () => {
     ])
     expect(list.items[0]?.evidence).toContain('Seen on 2 scanned pages')
   })
+
+  it('collapses profilium-shaped 5-page per-page variants into one fix per check', () => {
+    // Regression: prod audit cms6ffu550001rr206gadzk72 showed the same finding
+    // repeated as cta-dead-link, ::page:1, ::page:2, ::page:3, ::page:4.
+    const pages = [
+      'https://app.profilium.co/',
+      'https://app.profilium.co/pricing',
+      'https://app.profilium.co/features',
+      'https://app.profilium.co/about',
+      'https://app.profilium.co/contact',
+    ]
+    const flags = pages.flatMap((pageUrl, index) =>
+      ['cta-dead-link', 'cta-below-fold-mobile', 'title-too-short', 'description-missing'].map(
+        (checkId, checkIndex) => ({
+          id: `${checkId}-${index}`,
+          checkId: index === 0 ? checkId : `${checkId}::page:${index}`,
+          rubric: 'MESSAGE' as const,
+          severity: (checkIndex < 2 ? 'CRITICAL' : 'IMPORTANT') as 'CRITICAL' | 'IMPORTANT',
+          impactTag: 'CONVERSION' as const,
+          problem: `Problem for ${checkId}`,
+          evidence: `Evidence for ${checkId} on page ${index}`,
+          whyItMatters: 'Impact',
+          fix: `Fix ${checkId}`,
+          pageUrl,
+          confidence: 0.9,
+          source: 'DETERMINISTIC' as const,
+        })
+      )
+    )
+
+    const list = buildFixList({ flags, promptAccess: 'all' })
+
+    expect(list.totalCount).toBe(4)
+    const byCheck = new Map(list.items.map((item) => [item.checkId, item]))
+    for (const checkId of ['cta-dead-link', 'cta-below-fold-mobile', 'title-too-short', 'description-missing']) {
+      const item = byCheck.get(checkId)
+      expect(item, `missing consolidated ${checkId}`).toBeDefined()
+      expect(item?.occurrenceCount).toBe(5)
+      expect(item?.pageUrls).toHaveLength(5)
+    }
+  })
 })

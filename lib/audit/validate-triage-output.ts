@@ -7,6 +7,14 @@ import {
   assertValidLaunchChecklist,
 } from './judge-utils'
 
+/**
+ * AI triage flags are a single LLM read over screenshots + page text, so a
+ * CRITICAL claim must clear a higher bar than a rule-based deterministic
+ * finding. A CRITICAL severity with confidence below this threshold is
+ * downgraded to IMPORTANT instead of outranking corroborated evidence.
+ */
+const AI_CRITICAL_MIN_CONFIDENCE = 0.9
+
 const LAUNCH_GATE_CHECK_IDS: Record<string, string[]> = {
   https: ['no-https'],
   'social-preview': [
@@ -40,6 +48,17 @@ export function reconcileLaunchChecklist(
   }))
 }
 
+function enforceAiConfidenceGates(
+  newFlags: TriageOutput['newFlags']
+): TriageOutput['newFlags'] {
+  return newFlags.map((flag) => {
+    if (flag.severity === 'CRITICAL' && flag.confidence < AI_CRITICAL_MIN_CONFIDENCE) {
+      return { ...flag, severity: 'IMPORTANT' }
+    }
+    return flag
+  })
+}
+
 export function validateTriageOutput(
   output: TriageOutput,
   deterministicFlags: DeterministicFlag[]
@@ -50,7 +69,9 @@ export function validateTriageOutput(
 
   return {
     ...output,
-    newFlags: deduplicateTriageFlags(deterministicFlags, output.newFlags),
+    newFlags: enforceAiConfidenceGates(
+      deduplicateTriageFlags(deterministicFlags, output.newFlags)
+    ),
     launchChecklist: reconcileLaunchChecklist(output.launchChecklist, deterministicFlags),
   }
 }

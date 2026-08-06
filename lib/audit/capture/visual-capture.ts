@@ -29,6 +29,7 @@ export interface VisualCaptureResult {
 export interface VisualCaptureMetrics {
   perfScore?: number | null
   mobilePrimaryCtaTopPx?: number | null
+  mobileScrollY?: number | null
   competingPrimaryCtaCount?: number | null
   stuckLoadingIndicator?: boolean
   formFieldCount?: number | null
@@ -259,17 +260,22 @@ function enrichOverlayContext(
       ctx.value = metrics?.perfScore ?? undefined
       ctx.label = 'PageSpeed Score'
       break
-    case 'cta-below-fold-mobile':
+    case 'cta-below-fold-mobile': {
+      // The metric is an absolute document scroll depth; the overlay draws on
+      // the viewport screenshot, so convert back to viewport-relative.
+      const viewportTop =
+        metrics?.mobilePrimaryCtaTopPx != null && metrics.mobileScrollY != null
+          ? Math.max(0, metrics.mobilePrimaryCtaTopPx - metrics.mobileScrollY)
+          : null
       ctx.region = {
         x: 0.2,
-        y: metrics?.mobilePrimaryCtaTopPx
-          ? Math.min(0.95, metrics.mobilePrimaryCtaTopPx / (ctx.height || 800))
-          : 0.88,
+        y: viewportTop ? Math.min(0.95, viewportTop / (ctx.height || 800)) : 0.88,
         width: 0.6,
         height: 0.07,
       }
       ctx.label = 'CTA below fold'
       break
+    }
     case 'mobile-cta-thumb-zone':
       ctx.region = { x: 0.3, y: 0.65, width: 0.4, height: 0.06 }
       ctx.label = 'Thumb zone issue'

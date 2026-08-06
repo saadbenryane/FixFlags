@@ -1,5 +1,5 @@
 import * as cheerio from 'cheerio'
-import { isDeadHref, resolveSameOrigin, scoreCtaLink } from './link-scoring'
+import { isDeadHref, isNonPageActionHref, resolveSameOrigin, scoreCtaLink } from './link-scoring'
 
 export interface RawCtaElement {
   idx: number
@@ -28,7 +28,9 @@ export function scoreCtaCandidates(
 
   for (const item of elements) {
     const href = item.href ?? ''
-    if (isDeadHref(href) && item.tag !== 'button') continue
+    // mailto:/tel:/sms: links are intentional but never navigate the page, so
+    // the flow scan must not select them as a page-navigation CTA candidate.
+    if ((isDeadHref(href) || isNonPageActionHref(href)) && item.tag !== 'button') continue
 
     let score = scoreCtaLink(href, item.text)
     if (score === 0 && item.tag === 'button') {

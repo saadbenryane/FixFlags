@@ -214,16 +214,29 @@ export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
       )
       if (overlayFlags.length > 0) {
         findings.push(...overlayFlags)
+      } else if (result.clickFailure === 'element_missing') {
+        // The CTA candidate was discovered in the DOM but vanished before the
+        // click (SPA re-render / stale selector). This is a probe artifact, not
+        // a user-facing unclickable state - do not report CRITICAL on it.
+        break
       } else {
+        const failureDetail =
+          result.clickFailure === 'not_visible'
+            ? 'the element was not visible at click time'
+            : result.clickFailure === 'interaction_error' && result.clickError
+              ? `the browser rejected the click (${result.clickError})`
+              : result.clickFailure === 'timeout'
+                ? 'the click did not complete within the probe budget'
+                : 'the click action failed'
         findings.push({
           checkId: 'flow-cta-unclickable',
           rubric: 'EXPERIENCE',
           impactTag: 'CONVERSION',
           severity: 'CRITICAL',
           problem: 'Primary CTA could not be clicked',
-          evidence: `${ctaLabel} was detected but the click action failed or the element was not interactable.`,
+          evidence: `${ctaLabel} was detected but ${failureDetail}.`,
           fix: '1. Remove overlays, cookie banners, or disabled states that block the CTA\n2. Ensure the CTA has a valid href or click handler\n3. Test the click in Chrome DevTools on the production URL',
-          confidence: 0.95,
+          confidence: 0.85,
           source: 'DETERMINISTIC',
         })
       }

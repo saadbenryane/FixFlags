@@ -699,6 +699,8 @@ function healthyCaptureMetrics(
     competingPrimaryCtaCount: number
     competingPrimaryCtaLabels: string[]
     mobileViewportHeight: number
+    mobileScrollY: number
+    mobileDocumentHeight: number
     stuckLoadingIndicator: boolean
     stuckLoadingLabel: string | null
     uniqueFontFamilies: number
@@ -716,6 +718,8 @@ function healthyCaptureMetrics(
     competingPrimaryCtaCount: 1,
     competingPrimaryCtaLabels: ['Get started'],
     mobileViewportHeight: 812,
+    mobileScrollY: 0,
+    mobileDocumentHeight: 4000,
     stuckLoadingIndicator: false,
     stuckLoadingLabel: null,
     uniqueFontFamilies: 2,
