@@ -37,18 +37,21 @@ describe('ScoreHistoryChart', () => {
   })
 
   it('renders date labels for first and last points', () => {
-    render(
-      <ScoreHistoryChart
-        history={[
-          makePoint('a1', 60, 14),
-          makePoint('a2', 65, 0),
-        ]}
-      />
-    )
-    const svg = document.querySelector('svg')
-    expect(svg).toBeInTheDocument()
-    const texts = svg!.querySelectorAll('text')
-    expect(texts.length).toBeGreaterThanOrEqual(2)
+    // Labels moved out of the SVG into crisp HTML (bdf82dcf), so assert the
+    // rendered text rather than SVG <text> nodes.
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+    })
+    const history = [makePoint('a1', 60, 14), makePoint('a2', 65, 0)]
+    render(<ScoreHistoryChart history={history} />)
+    expect(screen.getByRole('img')).toBeInTheDocument()
+    expect(
+      screen.getByText(formatter.format(history[0].checkedAt))
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(formatter.format(history[1].checkedAt))
+    ).toBeInTheDocument()
   })
 
   it('handles all-same scores without error', () => {

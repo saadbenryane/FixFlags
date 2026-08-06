@@ -1,5 +1,6 @@
 import { Container } from '@/components/ui/container'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ScoreRingGauge } from '@/components/report/ScoreRingGauge'
 
 export default function DashboardLoading() {
   return (
@@ -36,7 +37,12 @@ export default function DashboardLoading() {
         <div className="grid sm:grid-cols-3">
           <div className="flex min-h-28 flex-col items-center justify-center gap-2 p-4">
             <Skeleton shimmer className="h-3 w-20 rounded-md" />
-            <Skeleton shimmer className="h-24 w-24 rounded-full" />
+            <ScoreRingGauge
+              score={null}
+              loading
+              ariaLabel="Loading release score"
+              className="mt-0.5"
+            />
           </div>
           <div className="min-h-28 border-t border-border/35 p-4 sm:border-l sm:border-t-0">
             <Skeleton shimmer className="h-3 w-24 rounded-md" />

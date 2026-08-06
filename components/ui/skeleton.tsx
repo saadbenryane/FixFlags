@@ -23,7 +23,7 @@ function Skeleton({
         className={cn(
           "rounded-md bg-muted",
           shimmer
-            ? "relative overflow-hidden motion-safe:after:absolute motion-safe:after:inset-0 motion-safe:after:animate-[ff-shimmer_1.8s_linear_infinite] motion-safe:after:bg-gradient-to-r motion-safe:after:from-transparent motion-safe:after:via-foreground/10 motion-safe:after:to-transparent"
+            ? "relative overflow-hidden motion-safe:after:absolute motion-safe:after:inset-0 motion-safe:after:animate-[ff-shimmer_2.4s_linear_infinite] motion-safe:after:bg-gradient-to-r motion-safe:after:from-transparent motion-safe:after:via-foreground/10 motion-safe:after:to-transparent"
             : "animate-pulse",
           className,
         )}

@@ -5,6 +5,17 @@ import { PIPELINE_PROGRESS } from '@/lib/audit/progress'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
+/**
+ * Calm indeterminate scan motion: one slow scale + opacity swell, so the ring
+ * reads as breathing rather than spinning. Gated motion-safe so reduced-motion
+ * users get a still ring. Colocated like SHIMMER_KEYFRAMES to keep keyframes
+ * out of the global Tailwind config.
+ */
+export const SCAN_BREATHE_KEYFRAMES = `@keyframes ff-scan-breathe {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.045); opacity: 0.88; }
+}`
+
 type ScoreRingGaugeSize = 'sm' | 'md'
 
 interface ScoreRingGaugeProps {
@@ -14,9 +25,12 @@ interface ScoreRingGaugeProps {
   loading?: boolean
   /**
    * Determinate scan progress (0-100). When provided during loading, the ring
-   * fills to this value and grows smoothly instead of spinning indeterminately.
+   * fills to this value and grows smoothly instead of breathing
+   * indeterminately.
    */
   progress?: number
+  /** Override the computed aria-label (e.g. dashboard shell placeholders). */
+  ariaLabel?: string
   className?: string
 }
 
@@ -28,7 +42,7 @@ const SIZE_CONFIG: Record<
   md: { box: 88, radius: 36, stroke: 3, scoreText: 'text-3xl' },
 }
 
-export function ScoreRingGauge({ score, size = 'md', loading = false, progress, className }: ScoreRingGaugeProps) {
+export function ScoreRingGauge({ score, size = 'md', loading = false, progress, ariaLabel, className }: ScoreRingGaugeProps) {
   const { box, radius, stroke, scoreText } = SIZE_CONFIG[size]
   const center = box / 2
   const circumference = 2 * Math.PI * radius
@@ -38,11 +52,12 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, progress, 
   const fillColor = score != null ? scoreToScanColor(score) : undefined
   const trackColor = 'hsl(var(--muted-foreground) / 0.18)'
   const isScanning = loading && score == null
-  // The QUEUED anchor (5) is not real progress — stay indeterminate (spinning)
+  // The QUEUED anchor (5) is not real progress — stay indeterminate (breathing)
   // until the server pushes a real milestone (CAPTURING+).
   const hasRealProgress =
     typeof progress === 'number' && progress > PIPELINE_PROGRESS.QUEUED
   const isDeterminate = isScanning && hasRealProgress
+  const breathe = isScanning && !isDeterminate
   const scanNormalized = Math.min(100, Math.max(0, progress ?? 0))
   const scanFilled = circumference * (scanNormalized / 100)
 
@@ -52,22 +67,25 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, progress, 
       style={{ width: box, height: box }}
       role="img"
       aria-label={
-        isScanning
+        ariaLabel ??
+        (isScanning
           ? isDeterminate
             ? AUDIT_PROGRESS.ariaScanningPercent(Math.round(scanNormalized))
             : AUDIT_PROGRESS.ariaScanning
           : score == null
             ? AUDIT_PROGRESS.ariaScoreUnavailable
-            : AUDIT_PROGRESS.ariaScore(score)
+            : AUDIT_PROGRESS.ariaScore(score))
       }
       aria-busy={isScanning || undefined}
     >
+      {breathe ? <style>{SCAN_BREATHE_KEYFRAMES}</style> : null}
       <svg
         width={box}
         height={box}
         className={cn(
-          'block',
-          isScanning && !isDeterminate && 'origin-center motion-safe:animate-[spin_3s_linear_infinite]'
+          'block origin-center',
+          breathe &&
+            'motion-safe:animate-[ff-scan-breathe_3.2s_ease-in-out_infinite]'
         )}
         aria-hidden
       >
@@ -95,8 +113,8 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, progress, 
             }
             transform={`rotate(-90 ${center} ${center})`}
             className={cn(
-              'motion-safe:animate-[pulse_2s_ease-in-out_infinite]',
-              isDeterminate && 'motion-safe:animate-none motion-safe:transition-[stroke-dasharray] motion-safe:duration-700 motion-safe:ease-out'
+              isDeterminate &&
+                'motion-safe:transition-[stroke-dasharray] motion-safe:duration-700 motion-safe:ease-out'
             )}
           />
         )}
@@ -120,7 +138,11 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, progress, 
       <div className="absolute inset-0 flex items-center justify-center">
         {isScanning ? (
           <span
-            className="motion-safe:animate-[pulse_2s_ease-in-out_infinite] text-sm font-medium tabular-nums text-muted-foreground"
+            className={cn(
+              'origin-center text-sm font-medium tabular-nums text-muted-foreground',
+              breathe &&
+                'motion-safe:animate-[ff-scan-breathe_3.2s_ease-in-out_infinite]'
+            )}
             aria-hidden
           >
             {isDeterminate ? `${Math.round(scanNormalized)}` : ''}
