@@ -91,13 +91,14 @@ vi.mock('@/lib/audit/metadata', () => ({
 import { runPage } from '@/lib/audit/pipeline/run-page'
 import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
+import { captureScreenshots } from '@/lib/audit/screenshot'
 
 describe('runPage production capture path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     prismaMock.auditPage.create.mockResolvedValue({ id: 'page-1' })
     prismaMock.auditPage.update.mockResolvedValue({})
-    prismaMock.audit.findUnique.mockResolvedValue({ projectId: null, userId: 'user-1' })
+    prismaMock.audit.findUnique.mockResolvedValue({ projectId: null, userId: 'user-1', parentId: null })
     captureMock.mockResolvedValue({
       desktopUrl: 'https://cdn/desktop.png',
       mobileUrl: 'https://cdn/mobile.png',
@@ -142,6 +143,71 @@ describe('runPage production capture path', () => {
     expect((logPipelineEvent as Mock).mock.calls.some((call) => call[1]?.event === 'slow_replay_completed')).toBe(
       true
     )
+  })
+
+  it('runs the flow walk on the primary page for a signed-in (full) audit', async () => {
+    const ctx = {
+      auditId: 'audit-1',
+      deadline: Date.now() + 120_000,
+      startedAt: new Date(),
+      pagespeedCalls: 0,
+      usage: { inputTokens: 0, outputTokens: 0, models: [] },
+      includeAi: false,
+    }
+
+    await runPage(ctx, {
+      url: 'https://example.com',
+      position: 0,
+      role: 'primary',
+      primary: true,
+    })
+
+    const captureOptions = (captureScreenshots as Mock).mock.calls[0][3] as {
+      runFlow?: boolean
+    }
+    expect(captureOptions.runFlow).toBe(true)
+  })
+
+  it('skips the flow walk and slow replay for an anonymous teaser scan', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({
+      projectId: null,
+      userId: null,
+      parentId: null,
+    })
+    const ctx = {
+      auditId: 'audit-1',
+      deadline: Date.now() + 120_000,
+      startedAt: new Date(),
+      pagespeedCalls: 0,
+      usage: { inputTokens: 0, outputTokens: 0, models: [] },
+      includeAi: false,
+    }
+
+    await runPage(ctx, {
+      url: 'https://example.com',
+      position: 0,
+      role: 'primary',
+      primary: true,
+    })
+
+    const captureOptions = (captureScreenshots as Mock).mock.calls[0][3] as {
+      runFlow?: boolean
+    }
+    expect(captureOptions.runFlow).toBe(false)
+    expect(slowReplayMock).not.toHaveBeenCalled()
+    expect(runSlowReplayChecks).not.toHaveBeenCalled()
+    expect(
+      (logPipelineEvent as Mock).mock.calls.some((call) => call[1]?.event === 'slow_replay_skipped_teaser')
+    ).toBe(true)
+    expect(
+      (logPipelineEvent as Mock).mock.calls.some((call) => call[1]?.event === 'flow_skipped_teaser')
+    ).toBe(true)
+    // The reduced pipeline still streams: checks-start progress anchor is written.
+    expect(
+      prismaMock.audit.update.mock.calls.some(
+        (call: unknown[]) => (call[0] as { data?: { progress?: number } }).data?.progress === 42
+      )
+    ).toBe(true)
   })
 
   it('skips slow replay when the audit deadline is too tight', async () => {

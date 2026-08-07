@@ -15,15 +15,18 @@ vi.mock('@/components/auth/AuthFlow', () => ({
   AuthFlow: ({
     nextPath,
     reportHostname,
+    initialEmail,
     onAuthenticated,
   }: {
     nextPath: string
     reportHostname?: string | null
+    initialEmail?: string
     onAuthenticated: () => Promise<void>
   }) => (
     <div>
       <span>{nextPath}</span>
       {reportHostname ? <span>{reportHostname}</span> : null}
+      {initialEmail ? <span data-testid="prefill-email">{initialEmail}</span> : null}
       <button type="button" onClick={() => void onAuthenticated()}>
         Complete auth
       </button>
@@ -36,6 +39,7 @@ import { ReportAuthGate } from '@/components/auth/ReportAuthGate'
 describe('ReportAuthGate', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
     claimAnonymous.mockResolvedValue({ user: { id: 'u1' } })
     useMe.mockReturnValue({ user: null, claimAnonymous })
   })
@@ -88,5 +92,21 @@ describe('ReportAuthGate', () => {
     useMe.mockReturnValue({ user: { id: 'u1' }, claimAnonymous })
     rerender(<ReportAuthGate auditId="audit-1" required />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('prefills the email field from client-side audit context', async () => {
+    localStorage.setItem('ff:email-hint', '  builder@example.com  ')
+    render(<ReportAuthGate auditId="audit-1" required />)
+    await waitFor(() =>
+      expect(screen.getByTestId('prefill-email')).toHaveTextContent('builder@example.com')
+    )
+  })
+
+  it('ignores an invalid email hint', async () => {
+    localStorage.setItem('ff:email-hint', 'not-an-email')
+    render(<ReportAuthGate auditId="audit-1" required />)
+    await waitFor(() =>
+      expect(screen.queryByTestId('prefill-email')).not.toBeInTheDocument()
+    )
   })
 })

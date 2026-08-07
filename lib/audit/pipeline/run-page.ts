@@ -29,6 +29,7 @@ import { runTriageStep } from './triage-step'
 import { isTriageProviderConfigured, type TriageResult } from '../judge-triage'
 import { parseTriageFailure } from './triage-failure'
 import { MIN_JUDGE_BUDGET_MS, SLOW_REPLAY_MIN_BUDGET_MS } from '../pipeline-config'
+import { resolveAuditPipelineMode, type AuditPipelineMode } from './mode'
 import { AuditDeadlineError } from '../pipeline-errors'
 import { detectTechnologies, inferIndustry } from '../tech-detect'
 import { persistTechnologyObservations } from '../technology-profile'
@@ -123,6 +124,17 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   const normalizedUrl = new URL(input.url).toString()
   assertDeadline(ctx, 'capturing')
 
+  // Anonymous teaser scans run the reduced pipeline: no flow walk and no
+  // slow-3G replay, so first value lands in ~60-90s. Re-checks (parentId),
+  // claimed audits, and signed-in checks keep the full pipeline. The mode is
+  // resolved once from the audit row at the primary page; secondary pages
+  // never run flow or slow replay regardless of mode.
+  const pipelineMode: AuditPipelineMode =
+    input.primary && input.position === 0
+      ? await resolveAuditPipelineMode(ctx.auditId)
+      : 'FULL'
+  const isTeaserScan = pipelineMode === 'TEASER'
+
   const page = await prisma.auditPage.create({
     data: {
       auditId: ctx.auditId,
@@ -143,13 +155,17 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
 
   await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'capture_started' })
   if (input.primary && input.position === 0) {
-    await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'flow_started' })
+    if (isTeaserScan) {
+      await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'flow_skipped_teaser' })
+    } else {
+      await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'flow_started' })
+    }
   }
   const captureStart = Date.now()
 
   const [captured, speed] = await Promise.all([
     captureScreenshots(normalizedUrl, ctx.auditId, `p${input.position}`, {
-      runFlow: input.primary && input.position === 0,
+      runFlow: input.primary && input.position === 0 && !isTeaserScan,
       scanAccess: ctx.scanAccess,
       flowDeadlineMs: Math.max(
         1,
@@ -169,7 +185,12 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     })
   }
 
-  if (
+  if (input.primary && input.position === 0 && isTeaserScan) {
+    await logPipelineEvent(ctx.auditId, {
+      stage: 'capturing',
+      event: 'slow_replay_skipped_teaser',
+    })
+  } else if (
     input.primary &&
     input.position === 0 &&
     ctx.deadline - Date.now() > SLOW_REPLAY_MIN_BUDGET_MS
@@ -391,6 +412,15 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
 
   assertDeadline(ctx, 'checking')
   await logPipelineEvent(ctx.auditId, { stage: 'checking', event: 'checks_started' })
+  if (input.primary) {
+    // Streaming anchor: from here the progressive report may show live
+    // findings as deterministic check modules complete (flags persist at
+    // CHECKS_DONE). Keeps the ring moving through the opaque CHECKING gap.
+    await prisma.audit.update({
+      where: { id: ctx.auditId },
+      data: { progress: PIPELINE_PROGRESS_SUBSTEP.CHECKS_STARTED },
+    })
+  }
   const checksStart = Date.now()
 
   const { flags: detFlags, failedModules } = await runAllChecks(

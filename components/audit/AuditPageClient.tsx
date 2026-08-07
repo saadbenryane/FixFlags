@@ -165,6 +165,29 @@ export function AuditPageClient({
     }
   }, [url, inProgress, isComplete, isFailed, initialAudit?.url])
 
+  // Anonymous teaser scans run the reduced pipeline (no journey walk, no
+  // slow replay). The status payload carries ownership, so the progressive
+  // shell can keep its stage narrative honest for teaser scans.
+  const ownership = useMemo(() => {
+    const payloadWithUser = statusPayload as
+      | (AuditStatusPayload & { userId?: string | null })
+      | undefined
+    if (payloadWithUser && typeof payloadWithUser.userId !== 'undefined') {
+      return { userId: payloadWithUser.userId, parentId: payloadWithUser.parentId ?? null }
+    }
+    const raw = initialAudit as Record<string, unknown> | null
+    if (raw && typeof raw.userId !== 'undefined') {
+      return {
+        userId: raw.userId as string | null,
+        parentId: (raw.parentId as string | null) ?? null,
+      }
+    }
+    return null
+  }, [statusPayload, initialAudit])
+  const isTeaser = ownership
+    ? ownership.userId === null && ownership.parentId === null
+    : false
+
   const progressiveProps = useMemo(() => {
     const raw = initialAudit as Record<string, unknown> | null
     const resolvedUrl = typeof statusPayload?.url === 'string'
@@ -224,13 +247,14 @@ export function AuditPageClient({
       technologyProfile: statusPayload?.technologyProfile,
       auditId: id,
       isOwner: Boolean(session?.user),
+      isTeaser,
     }
   }, [status, progress, statusPayload?.partialFlags,
       statusPayload?.screenshots, statusPayload?.rubrics, statusPayload?.actionTimeline,
       statusPayload?.productContract, statusPayload?.technologyProfile,
       statusPayload?.screenshotCapture, statusPayload?.url, statusPayload?.pageType,
       statusPayload?.verdict, statusPayload?.score,
-      initialAudit, workerIdle, id, session?.user])
+      initialAudit, workerIdle, id, session?.user, isTeaser])
 
   async function handleRetrySameAudit() {
     setRetryLoading(true)

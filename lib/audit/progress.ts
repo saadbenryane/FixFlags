@@ -18,6 +18,8 @@ export const PIPELINE_PROGRESS = {
 export const PIPELINE_PROGRESS_SUBSTEP = {
   /** Capture + PageSpeed finished, checks about to start. */
   CAPTURE_DONE: 32,
+  /** Deterministic checks started on the primary page; findings may stream from here. */
+  CHECKS_STARTED: 42,
   /** Deterministic checks finished on pages, journey about to start (or skip). */
   CHECKS_DONE: 45,
   /** Journey Review started (Pro+). */
@@ -25,3 +27,17 @@ export const PIPELINE_PROGRESS_SUBSTEP = {
   /** Journey Review finished; AI judge about to start. */
   JOURNEY_DONE: 65,
 } as const
+
+/**
+ * True when the progressive report may already show live deterministic
+ * findings (checks have started on the primary page). The reduced teaser
+ * pipeline streams exactly like the full pipeline from this anchor on, so
+ * anonymous first scans get the same live feedback as signed-in checks.
+ */
+export function streamingFlagsVisible(
+  status: string,
+  progress: number | null | undefined
+): boolean {
+  if (status !== 'CHECKING' && status !== 'JUDGING' && status !== 'FINALIZING') return false
+  return typeof progress === 'number' && progress >= PIPELINE_PROGRESS_SUBSTEP.CHECKS_STARTED
+}

@@ -32,6 +32,7 @@ export type FunnelEvent =
   | 'report_signup_cta_clicked'
   | 'report_auth_gate_viewed'
   | 'report_auth_method_selected'
+  | 'report_auth_email_form_opened'
   | 'report_auth_gate_completed'
   | 'report_claimed'
   | 'report_prompts_unlocked'
@@ -131,6 +132,7 @@ type EventParams = {
   }
   report_auth_gate_viewed: { audit_id?: string }
   report_auth_method_selected: { audit_id?: string; method?: string; mode?: string }
+  report_auth_email_form_opened: { audit_id?: string }
   report_auth_gate_completed: { audit_id?: string }
   report_claimed: { audit_id?: string }
   report_prompts_unlocked: { audit_id?: string; prompt_count?: number }

@@ -17,6 +17,8 @@ interface Props {
   from?: string
   mode?: 'signup' | 'signin'
   onMethodSelected?: (method: 'google' | 'github') => void
+  /** Hide the "or use email" divider (e.g. when the caller renders its own). */
+  hideDivider?: boolean
 }
 
 export function OAuthButtons({
@@ -28,6 +30,7 @@ export function OAuthButtons({
   from,
   mode = 'signup',
   onMethodSelected,
+  hideDivider,
 }: Props) {
   const [loading, setLoading] = useState<string | null>(null)
   const showGoogle = !!google
@@ -114,11 +117,13 @@ export function OAuthButtons({
           </Button>
         )}
       </div>
-      <div className="flex items-center gap-3">
-        <Separator className="flex-1" />
-        <span className="text-xs text-muted-foreground">{AUTH.oauth.separator}</span>
-        <Separator className="flex-1" />
-      </div>
+      {!hideDivider ? (
+        <div className="flex items-center gap-3">
+          <Separator className="flex-1" />
+          <span className="text-xs text-muted-foreground">{AUTH.oauth.separator}</span>
+          <Separator className="flex-1" />
+        </div>
+      ) : null}
     </>
   )
 }

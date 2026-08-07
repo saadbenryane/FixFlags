@@ -48,7 +48,6 @@ export function ScoreHistoryChart({
         className={className}
         role="img"
         aria-label={`Release score over ${history.length} scans: ${scores.join(', ')}`}
-        preserveAspectRatio="none"
       >
         <defs>
           <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">

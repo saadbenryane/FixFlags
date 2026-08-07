@@ -198,7 +198,10 @@ export function ReportWorkspaceSummary({
           {history.length > 0 ? (
             <ScoreHistoryChart
               history={history}
-              className={cn("mt-2.5 w-full", compact ? "h-16" : "h-20")}
+              className={cn(
+                "mt-2.5 w-full h-auto",
+                compact ? "aspect-[360/104]" : "aspect-[360/104]",
+              )}
             />
           ) : (
             <p className="mt-5 text-xs text-muted-foreground">

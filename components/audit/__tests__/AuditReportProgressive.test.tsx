@@ -199,4 +199,58 @@ describe('AuditReportProgressive', () => {
     expect(screen.getByRole('heading', { name: 'Made with' })).toBeInTheDocument()
     expect(screen.queryByLabelText('Reading technology signals')).not.toBeInTheDocument()
   })
+
+  it('shows a live findings strip while deterministic checks stream', () => {
+    render(
+      <AuditReportProgressive
+        status="CHECKING"
+        progress={45}
+        url={URL}
+        partialFlags={[
+          { id: 'f1', severity: 'CRITICAL', problem: 'CTA lacks an outcome', rubric: 'MESSAGE' },
+          { id: 'f2', severity: 'IMPORTANT', problem: 'Slow LCP on mobile', rubric: 'EXPERIENCE' },
+        ]}
+      />
+    )
+    expect(screen.getByText(/Found 2 issues so far/i)).toBeInTheDocument()
+    expect(screen.getByText(/Checks are still running/i)).toBeInTheDocument()
+    expect(screen.getAllByText('CTA lacks an outcome').length).toBeGreaterThan(0)
+  })
+
+  it('hides the live findings strip before checks start', () => {
+    render(
+      <AuditReportProgressive
+        status="CHECKING"
+        progress={40}
+        url={URL}
+        partialFlags={[{ id: 'f1', severity: 'CRITICAL', problem: 'C', rubric: 'MESSAGE' }]}
+      />
+    )
+    expect(screen.queryByText(/issues so far/i)).not.toBeInTheDocument()
+  })
+
+  it('keeps the stage narrative honest on teaser scans (no journey walk)', () => {
+    render(
+      <AuditReportProgressive
+        status="CHECKING"
+        progress={45}
+        url={URL}
+        isTeaser
+      />
+    )
+    expect(screen.getAllByText(/Starting AI review/).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Preparing journey review/)).not.toBeInTheDocument()
+  })
+
+  it('keeps the journey substep on full pipeline scans', () => {
+    render(
+      <AuditReportProgressive
+        status="CHECKING"
+        progress={45}
+        url={URL}
+        isTeaser={false}
+      />
+    )
+    expect(screen.getAllByText(/Preparing journey review/).length).toBeGreaterThan(0)
+  })
 })

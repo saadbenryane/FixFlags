@@ -368,7 +368,13 @@ export async function checkAndPlan(options: TaskQueueOptions & {
     userId: options.userId,
     parentId: options.parentId,
     clientId: options.clientId,
-    auditMode: options.auditMode ?? 'CRITICAL_PATH',
+    // Anonymous first scans are teasers: single-page reduced pipeline. The
+    // create path enforces the same subset; the contract layer makes the
+    // CLI/transport scan-stage selection explicit for anonymous callers.
+    auditMode:
+      options.userId === null && !options.parentId
+        ? 'SINGLE'
+        : (options.auditMode ?? 'CRITICAL_PATH'),
     delayMs: options.delayMs,
     attribution: options.attribution,
     scanAccess: options.scanAccess ?? null,

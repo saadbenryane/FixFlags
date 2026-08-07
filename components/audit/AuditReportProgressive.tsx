@@ -19,6 +19,10 @@ import type {
 } from '@/lib/audit/screenshot-types'
 import { resolveScreenshotPresentation } from '@/lib/audit/screenshot-types'
 import { getProgressPercent, getStagePresentation } from '@/lib/audit/progress-ui'
+import {
+  PIPELINE_PROGRESS_SUBSTEP,
+  streamingFlagsVisible,
+} from '@/lib/audit/progress'
 import { formatQueueWaitHint, REPORT_COPY } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import { getActiveAudit } from '@/lib/audit/active-audit'
@@ -82,6 +86,8 @@ interface AuditReportProgressiveProps {
   auditId?: string
   /** The signed-in user owns the in-flight scan. Owner-only chat and actions. */
   isOwner?: boolean
+  /** Anonymous teaser scan: reduced pipeline (no journey walk). */
+  isTeaser?: boolean
 }
 
 export function AuditReportProgressive({
@@ -102,6 +108,7 @@ export function AuditReportProgressive({
   sectionId = 'report-flags',
   auditId,
   isOwner = false,
+  isTeaser = false,
 }: AuditReportProgressiveProps) {
   const isFailed = status === 'FAILED'
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
@@ -109,6 +116,17 @@ export function AuditReportProgressive({
     () => getStagePresentation(status, progress),
     [status, progress]
   )
+
+  // The reduced teaser pipeline never walks a user journey, so the full
+  // pipeline's "Preparing journey review" substep would be a lie. Keep the
+  // stage narrative honest when checks finish on a teaser scan.
+  const stageDetail =
+    isTeaser &&
+    status === 'CHECKING' &&
+    progress >= PIPELINE_PROGRESS_SUBSTEP.CHECKS_DONE &&
+    progress < PIPELINE_PROGRESS_SUBSTEP.JOURNEY_START
+      ? 'Checks finished. Starting AI review…'
+      : stage.detail
 
   const targetProgress = getProgressPercent(progress, status)
   const [displayProgress, setDisplayProgress] = useState(targetProgress)
@@ -193,6 +211,25 @@ export function AuditReportProgressive({
   const showTimeline = actionTimeline.length > 0
   const showSticky = !isFailed
   const flagCount = explorerModel.flagCount
+
+  // Live findings stream: deterministic flags become visible as their check
+  // modules finish (persisted at CHECKS_DONE), so the progressive report shows
+  // real results instead of a blank list while checks are still running.
+  const showFindingsStream =
+    isLoading && streamingFlagsVisible(status, progress) && partialFlags.length > 0
+  const liveFindingsStrip = showFindingsStream ? (
+    <div
+      role="status"
+      aria-live="polite"
+      className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-card border border-border/60 bg-card/40 px-4 py-3 text-sm text-muted-foreground"
+    >
+      <span className="font-medium text-foreground">
+        Found {partialFlags.length} {partialFlags.length === 1 ? 'issue' : 'issues'} so far
+      </span>
+      <span aria-hidden="true">·</span>
+      <span>Checks are still running. New issues appear as they are confirmed.</span>
+    </div>
+  ) : null
   const workspace = buildReportWorkspaceModel({
     kind: 'progressive',
     explorer: explorerModel,
@@ -256,7 +293,7 @@ export function AuditReportProgressive({
         <ReportProgressBand
           model={workspace}
           scanProgress={isLoading ? displayProgress : undefined}
-          stageDetail={isLoading ? stage.detail : null}
+          stageDetail={isLoading ? stageDetail : null}
         />
       }
       stickyNav={
@@ -305,8 +342,9 @@ export function AuditReportProgressive({
                   aria-busy={isLoading}
                 >
                   <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-                    {isLoading ? `${stage.statusLine}. ${stage.detail}` : REPORT_COPY.sectionTitles.allFixes}
+                    {isLoading ? `${stage.statusLine}. ${stageDetail}` : REPORT_COPY.sectionTitles.allFixes}
                   </p>
+                  {liveFindingsStrip}
                   <ReportFixListHeader count={flagCount} />
                   <ExplorerErrorBoundary
                     fallback={
@@ -331,8 +369,9 @@ export function AuditReportProgressive({
           aria-busy={isLoading}
         >
           <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-            {isLoading ? `${stage.statusLine}. ${stage.detail}` : REPORT_COPY.sectionTitles.allFixes}
+            {isLoading ? `${stage.statusLine}. ${stageDetail}` : REPORT_COPY.sectionTitles.allFixes}
           </p>
+          {liveFindingsStrip}
           <ReportFixListHeader count={flagCount} />
           <ExplorerErrorBoundary
             fallback={

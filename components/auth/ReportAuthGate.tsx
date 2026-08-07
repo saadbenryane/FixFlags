@@ -17,6 +17,25 @@ import { useMe } from '@/hooks/useMe'
 import { trackEvent } from '@/lib/analytics/events'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
+/**
+ * Client-side seam for prefilling the email field at the report gate. Nothing
+ * writes this today; anonymous audit context (e.g. an email captured earlier
+ * in the funnel) can populate it later without touching lib/audit.
+ */
+const EMAIL_HINT_STORAGE_KEY = 'ff:email-hint'
+
+function readEmailHint(): string {
+  if (typeof window === 'undefined') return ''
+  try {
+    const raw = window.localStorage.getItem(EMAIL_HINT_STORAGE_KEY)
+    if (!raw) return ''
+    const trimmed = raw.trim()
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? trimmed : ''
+  } catch {
+    return ''
+  }
+}
+
 export function ReportAuthGate({
   auditId,
   required,
@@ -29,7 +48,14 @@ export function ReportAuthGate({
   const router = useRouter()
   const { user, claimAnonymous } = useMe({ load: false })
   const [claiming, setClaiming] = useState(false)
+  const [emailHint, setEmailHint] = useState('')
   const tracked = useRef(false)
+
+  // Read the email hint client-side after mount so SSR and hydration stay
+  // consistent (localStorage is only available in the browser).
+  useEffect(() => {
+    setEmailHint(readEmailHint())
+  }, [])
 
   useEffect(() => {
     if (!required || tracked.current) return
@@ -78,10 +104,11 @@ export function ReportAuthGate({
           <>
             <AuthFlow
               mode="signup"
-              presentation="report-dialog"
+              presentation="report-gate"
               nextPath={`/report/${auditId}`}
               from="report"
               auditId={auditId}
+              initialEmail={emailHint}
               reportHostname={hostname}
               onAuthenticated={handleAuthenticated}
             />

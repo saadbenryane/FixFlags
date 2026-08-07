@@ -261,6 +261,20 @@ test('anonymous check reaches a completed report and enforces the one-teaser bou
     const body = (await response.json().catch(() => null)) as { status?: string } | null
     return body?.status
   }, { timeout: 240_000 }).toBe('COMPLETED')
+
+  // Teaser scans run the reduced pipeline: the status payload streams
+  // deterministic findings and never records flow-walk or journey events.
+  const teaserStatus = await page.request.get(`/api/reports/${reportId}/status`)
+  const teaserBody = (await teaserStatus.json().catch(() => null)) as {
+    progress?: number
+    partialFlags?: unknown[]
+    actionTimeline?: Array<{ kind?: string }>
+  } | null
+  expect(Array.isArray(teaserBody?.partialFlags)).toBe(true)
+  const walkEvents = (teaserBody?.actionTimeline ?? []).filter(
+    (event) => event.kind === 'flow' || event.kind === 'journey'
+  )
+  expect(walkEvents).toHaveLength(0)
   await page.reload()
   const fixList = page.locator('#report-flags')
   await expect(fixList).toBeVisible()

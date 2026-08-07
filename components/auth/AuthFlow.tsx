@@ -3,15 +3,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Fingerprint, Loader2, Mail } from 'lucide-react'
+import { ChevronDown, Fingerprint, Loader2, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { authClient } from '@/lib/auth-client'
 import { AUTH } from '@/lib/marketing/copy/auth'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { IconInput } from '@/components/ui/icon-input'
 import { FormContainer } from '@/components/ui/form-field'
 import { PasswordInput } from '@/components/auth/PasswordInput'
 import { OAuthButtons } from '@/components/auth/OAuthButtons'
+import { Separator } from '@/components/ui/separator'
 import { AuthReportContext } from '@/components/auth/AuthReportContext'
 import { AuthValueProps } from '@/components/auth/AuthValueProps'
 import { AuthCard } from '@/components/auth/AuthCard'
@@ -24,7 +26,7 @@ import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
 import { trackEvent } from '@/lib/analytics/events'
 
 export type AuthFlowMode = 'signup' | 'signin'
-export type AuthFlowPresentation = 'page' | 'report-dialog'
+export type AuthFlowPresentation = 'page' | 'report-dialog' | 'report-gate'
 
 interface AuthFlowProps {
   mode: AuthFlowMode
@@ -61,14 +63,20 @@ export function AuthFlow({
   const route = useAuthRedirect()
   const router = useRouter()
   const oauth = useOAuthProviders()
-  const isDialog = presentation === 'report-dialog'
+  const isDialog = presentation === 'report-dialog' || presentation === 'report-gate'
+  // The report gate is the claim moment for an anonymous scan. SSO and passkey
+  // are the default actions there; the email/password form is the secondary
+  // path, collapsed behind the "or use email" toggle.
+  const isReportGate = presentation === 'report-gate'
   useRedirectIfAuthenticated({ disabled: isDialog })
 
   const [mode, setMode] = useState<AuthFlowMode>(initialMode)
   const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState<'email' | 'passkey' | null>(null)
+  const [showEmailForm, setShowEmailForm] = useState(false)
   const signupStartedRef = useRef(false)
+  const emailInputRef = useRef<HTMLInputElement>(null)
 
   const resolvedNext = nextPath ?? route.next
   const resolvedFrom = from ?? route.from
@@ -87,6 +95,34 @@ export function AuthFlow({
   useEffect(() => {
     setMode(initialMode)
   }, [initialMode, isDialog])
+
+  // If no SSO provider is available (discovery error or none configured), the
+  // email form must open on its own so the gate never hides its only path.
+  useEffect(() => {
+    if (!isReportGate) return
+    if (oauth.error || (!oauth.isLoading && !oauth.anyEnabled)) {
+      setShowEmailForm(true)
+    }
+  }, [isReportGate, oauth.anyEnabled, oauth.error, oauth.isLoading])
+
+  // Absorb a late-arriving email hint (the gate reads its audit context after
+  // mount) without clobbering anything the user already typed.
+  useEffect(() => {
+    if (initialEmail) setEmail((current) => current || initialEmail)
+  }, [initialEmail])
+
+  // Move focus into the email field when the secondary form opens.
+  useEffect(() => {
+    if (showEmailForm) emailInputRef.current?.focus()
+  }, [showEmailForm])
+
+  function toggleEmailForm() {
+    const next = !showEmailForm
+    setShowEmailForm(next)
+    if (isReportGate && next) {
+      trackEvent('report_auth_email_form_opened', { audit_id: auditId })
+    }
+  }
 
   function markStarted(method: string) {
     if (isDialog) {
@@ -206,6 +242,87 @@ export function AuthFlow({
       ? AUTH.signUp.subtitle
       : AUTH.signIn.subtitle
 
+  const emailForm = (
+    <FormContainer
+      onSubmit={handleEmailSubmit}
+      className="space-y-4"
+      aria-live="polite"
+    >
+      <IconInput
+        type="email"
+        name="email"
+        label={mode === 'signup' ? AUTH.signUp.emailLabel : AUTH.signIn.emailLabel}
+        icon={<Mail className="h-4 w-4" />}
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+        placeholder={
+          mode === 'signup'
+            ? AUTH.signUp.emailPlaceholder
+            : AUTH.signIn.emailPlaceholder
+        }
+        autoComplete="username webauthn"
+        required
+      />
+      <PasswordInput
+        label={
+          mode === 'signup' ? AUTH.signUp.passwordLabel : AUTH.signIn.passwordLabel
+        }
+        value={password}
+        onChange={setPassword}
+        showRequirements={mode === 'signup'}
+        autoComplete={mode === 'signup' ? 'new-password' : 'current-password webauthn'}
+      />
+      <p className="text-center text-xs text-muted-foreground">
+        By continuing, you agree to our{' '}
+        <Link href="/privacy" className="underline hover:text-foreground">
+          Privacy Policy
+        </Link>{' '}
+        and{' '}
+        <Link href="/terms" className="underline hover:text-foreground">
+          Terms of Service
+        </Link>
+        .
+      </p>
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={loading !== null}
+        loading={loading === 'email'}
+        loadingLabel={mode === 'signup' ? AUTH.signUp.cta : AUTH.signIn.cta}
+      >
+        {mode === 'signup' ? AUTH.signUp.cta : AUTH.signIn.cta}
+      </Button>
+      {mode === 'signin' ? (
+        <div className="flex flex-wrap items-center justify-center gap-x-4">
+          <Link
+            href="/forgot-password"
+            className="inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
+            {AUTH.signIn.forgotPassword}
+          </Link>
+          {!isReportGate ? (
+            <button
+              type="button"
+              disabled={loading !== null}
+              onClick={() => {
+                markStarted('passkey')
+                void handlePasskeySignIn()
+              }}
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50"
+            >
+              {loading === 'passkey' ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              ) : (
+                <Fingerprint className="h-3.5 w-3.5" aria-hidden />
+              )}
+              {AUTH.signIn.passkeyCta}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </FormContainer>
+  )
+
   const content = (
     <>
       {!isDialog && resolvedNext?.match(/^\/report\/[^/?#]+$/) ? (
@@ -230,6 +347,7 @@ export function AuthFlow({
           disabled={loading !== null}
           from={resolvedFrom ?? undefined}
           mode={mode}
+          hideDivider={isReportGate}
           onMethodSelected={markStarted}
         />
       ) : oauth.error ? (
@@ -250,82 +368,55 @@ export function AuthFlow({
         </div>
       ) : null}
 
-      <FormContainer
-        onSubmit={handleEmailSubmit}
-        className="space-y-4"
-        aria-live="polite"
-      >
-          <IconInput
-            type="email"
-            name="email"
-            label={mode === 'signup' ? AUTH.signUp.emailLabel : AUTH.signIn.emailLabel}
-            icon={<Mail className="h-4 w-4" />}
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder={
-              mode === 'signup'
-                ? AUTH.signUp.emailPlaceholder
-                : AUTH.signIn.emailPlaceholder
-            }
-            autoComplete="username webauthn"
-            required
-          />
-          <PasswordInput
-            label={
-              mode === 'signup' ? AUTH.signUp.passwordLabel : AUTH.signIn.passwordLabel
-            }
-            value={password}
-            onChange={setPassword}
-            showRequirements={mode === 'signup'}
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password webauthn'}
-          />
-          <p className="text-center text-xs text-muted-foreground">
-            By continuing, you agree to our{' '}
-            <Link href="/privacy" className="underline hover:text-foreground">
-              Privacy Policy
-            </Link>{' '}
-            and{' '}
-            <Link href="/terms" className="underline hover:text-foreground">
-              Terms of Service
-            </Link>
-            .
-          </p>
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={loading !== null}
-            loading={loading === 'email'}
-            loadingLabel={mode === 'signup' ? AUTH.signUp.cta : AUTH.signIn.cta}
-          >
-            {mode === 'signup' ? AUTH.signUp.cta : AUTH.signIn.cta}
-          </Button>
-          {mode === 'signin' ? (
-            <div className="flex flex-wrap items-center justify-center gap-x-4">
-              <Link
-                href="/forgot-password"
-                className="inline-flex min-h-11 items-center text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-              >
-                {AUTH.signIn.forgotPassword}
-              </Link>
-              <button
-                type="button"
-                disabled={loading !== null}
-                onClick={() => {
-                  markStarted('passkey')
-                  void handlePasskeySignIn()
-                }}
-                className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring disabled:opacity-50"
-              >
-                {loading === 'passkey' ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                ) : (
-                  <Fingerprint className="h-3.5 w-3.5" aria-hidden />
-                )}
-                {AUTH.signIn.passkeyCta}
-              </button>
-            </div>
+      {isReportGate ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={loading !== null}
+          loading={loading === 'passkey'}
+          loadingLabel={AUTH.signIn.passkeyCta}
+          onClick={() => {
+            markStarted('passkey')
+            void handlePasskeySignIn()
+          }}
+        >
+          {loading !== 'passkey' ? (
+            <Fingerprint className="h-4 w-4" aria-hidden />
           ) : null}
-      </FormContainer>
+          {AUTH.signIn.passkeyCta}
+        </Button>
+      ) : null}
+
+      {isReportGate ? (
+        <div className="space-y-4">
+          <button
+            type="button"
+            onClick={toggleEmailForm}
+            aria-expanded={showEmailForm}
+            aria-controls="report-gate-email-form"
+            className="group flex w-full items-center gap-3 py-1"
+          >
+            <Separator className="flex-1" />
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors duration-200 group-hover:text-foreground">
+              {AUTH.oauth.separator}
+              <ChevronDown
+                className={cn(
+                  'h-3.5 w-3.5 transition-transform duration-200',
+                  showEmailForm && 'rotate-180'
+                )}
+                aria-hidden
+              />
+            </span>
+            <Separator className="flex-1" />
+          </button>
+          {showEmailForm ? (
+            <div id="report-gate-email-form">{emailForm}</div>
+          ) : null}
+        </div>
+      ) : (
+        emailForm
+      )}
 
       <p className="text-center text-sm text-muted-foreground">
         {mode === 'signup' ? AUTH.signUp.footer : AUTH.signIn.footer}{' '}
