@@ -1,0 +1,57 @@
+{
+  "fetchedAt": "2026-08-06T10:35:51.494Z",
+  "sources": [
+    {
+      "sessionSource": "(direct)",
+      "sessions": 449
+    },
+    {
+      "sessionSource": "homepage",
+      "sessions": 38
+    },
+    {
+      "sessionSource": "(not set)",
+      "sessions": 14
+    },
+    {
+      "sessionSource": "accounts.google.ca",
+      "sessions": 12
+    },
+    {
+      "sessionSource": "google",
+      "sessions": 9
+    },
+    {
+      "sessionSource": "dashboard",
+      "sessions": 7
+    },
+    {
+      "sessionSource": "github.com",
+      "sessions": 6
+    },
+    {
+      "sessionSource": "post_signin",
+      "sessions": 5
+    },
+    {
+      "sessionSource": "chatgpt.com",
+      "sessions": 4
+    },
+    {
+      "sessionSource": "accounts.google.com",
+      "sessions": 3
+    },
+    {
+      "sessionSource": "ig",
+      "sessions": 3
+    },
+    {
+      "sessionSource": "bing",
+      "sessions": 1
+    },
+    {
+      "sessionSource": "m.facebook.com",
+      "sessions": 1
+    }
+  ]
+}

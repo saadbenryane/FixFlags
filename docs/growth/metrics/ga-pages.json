@@ -1,0 +1,273 @@
+{
+  "fetchedAt": "2026-08-06T10:35:51.494Z",
+  "pages": [
+    {
+      "pagePath": "/",
+      "screenPageViews": 246
+    },
+    {
+      "pagePath": "/pricing",
+      "screenPageViews": 73
+    },
+    {
+      "pagePath": "/how-it-works",
+      "screenPageViews": 64
+    },
+    {
+      "pagePath": "/samples",
+      "screenPageViews": 63
+    },
+    {
+      "pagePath": "/docs",
+      "screenPageViews": 46
+    },
+    {
+      "pagePath": "/docs/integrations",
+      "screenPageViews": 46
+    },
+    {
+      "pagePath": "/report/cms6ffu550001rr206gadzk72",
+      "screenPageViews": 22
+    },
+    {
+      "pagePath": "/dashboard",
+      "screenPageViews": 19
+    },
+    {
+      "pagePath": "/demo",
+      "screenPageViews": 16
+    },
+    {
+      "pagePath": "/demo/signup",
+      "screenPageViews": 12
+    },
+    {
+      "pagePath": "/report/cms86od6s00czrr20k4zccpf6",
+      "screenPageViews": 12
+    },
+    {
+      "pagePath": "/post-login",
+      "screenPageViews": 11
+    },
+    {
+      "pagePath": "/sign-up",
+      "screenPageViews": 10
+    },
+    {
+      "pagePath": "/help",
+      "screenPageViews": 9
+    },
+    {
+      "pagePath": "/report/cmsge4arh0001qd2076r7m9h4",
+      "screenPageViews": 9
+    },
+    {
+      "pagePath": "/sign-in",
+      "screenPageViews": 8
+    },
+    {
+      "pagePath": "/report/cms9m00ax00d1rr20x6s1hzxk",
+      "screenPageViews": 7
+    },
+    {
+      "pagePath": "/faq",
+      "screenPageViews": 6
+    },
+    {
+      "pagePath": "/report/cms7muqe600cnrr20uppcl6cz",
+      "screenPageViews": 6
+    },
+    {
+      "pagePath": "/report/cmrtl43w20001oq3v96g2xxp6",
+      "screenPageViews": 5
+    },
+    {
+      "pagePath": "/report/cms1whk7t002xte1zs2ayhk9y",
+      "screenPageViews": 5
+    },
+    {
+      "pagePath": "/changelog",
+      "screenPageViews": 4
+    },
+    {
+      "pagePath": "/admin",
+      "screenPageViews": 3
+    },
+    {
+      "pagePath": "/admin/feedback",
+      "screenPageViews": 3
+    },
+    {
+      "pagePath": "/cli/authorize",
+      "screenPageViews": 3
+    },
+    {
+      "pagePath": "/onboarding/plans",
+      "screenPageViews": 3
+    },
+    {
+      "pagePath": "/report/cmrw841nz003hmq3v3w8gevx9",
+      "screenPageViews": 3
+    },
+    {
+      "pagePath": "/report/cmrzlejat0076p43vvfa5lfn3",
+      "screenPageViews": 3
+    },
+    {
+      "pagePath": "/report/cms35et2v0003qp1ze7bwe98c",
+      "screenPageViews": 3
+    },
+    {
+      "pagePath": "/report/cms537tz80037qw1z0igg78qh",
+      "screenPageViews": 3
+    },
+    {
+      "pagePath": "/admin/leads",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/admin/leads/unimarg-website-nt1v8y8e5-kandarps-projects-0bbb50d1.vercel.app",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/admin/operating-plan",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/admin/users",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/billing",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/report/cmr1x9uls0001np3hygvznvfv",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/report/cmre8io300001lb3vm3r5fjzn",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/report/cmre8jq77001mlb3v0oqh0kry",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/report/cmrg8k1m60001s53vxfb98q0j",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/report/cmrgav0fz0001mq3vz1jrdtpt",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/report/cmrgif66z0001mc3vlbujv8qj",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/report/cmrug8rg00001mq3v49hk75i5",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/report/cms62l2d80001gn900elywy5k",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/settings",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/settings/api-keys",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/settings/integrations",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/admin/analytics",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/admin/audits",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/admin/audits/cmrug8rg00001mq3v49hk75i5",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/cedarpoint/specialoffers",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/dashboard/mcp-analytics",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/demo/v1",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/mcdonaldsohio",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/overgeorgia/pass-activation",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/report/cmrggy6d10001mv3v6prf9zbi",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/report/cmrgx464p000ymc3vrlnqyngm",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/report/cmrgylxbd001vmc3vj2usriop",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/report/cmrizxjhw0001mi3vhyogmxyn",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/report/cmrofkvat0001ry3vg9b2faz9",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/report/cmrpywi3m0001nn3vzt9du37c",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/report/cmrpyxou70012nn3vpwg2v85u",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/report/cmrvalz6e0039mq3vel8uqo6q",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/report/cmrwh1wtp003pmq3vhfjv6egd",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/report/cms1vhf0n000dte1ztbpewx71",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/report/cms2nowww0001o51zbn37gil9",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/report/cms535rck0031qw1zwijuogl0",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/sitemap.xml`",
+      "screenPageViews": 1
+    }
+  ]
+}

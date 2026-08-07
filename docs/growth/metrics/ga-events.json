@@ -1,0 +1,137 @@
+{
+  "fetchedAt": "2026-08-06T10:35:51.494Z",
+  "events": [
+    {
+      "eventName": "page_view",
+      "eventCount": 776
+    },
+    {
+      "eventName": "session_start",
+      "eventCount": 542
+    },
+    {
+      "eventName": "first_visit",
+      "eventCount": 456
+    },
+    {
+      "eventName": "user_engagement",
+      "eventCount": 163
+    },
+    {
+      "eventName": "scroll",
+      "eventCount": 86
+    },
+    {
+      "eventName": "landing_view",
+      "eventCount": 83
+    },
+    {
+      "eventName": "viewed_sample",
+      "eventCount": 71
+    },
+    {
+      "eventName": "form_start",
+      "eventCount": 29
+    },
+    {
+      "eventName": "viewed_report",
+      "eventCount": 29
+    },
+    {
+      "eventName": "started_audit",
+      "eventCount": 27
+    },
+    {
+      "eventName": "first_finding_viewed",
+      "eventCount": 25
+    },
+    {
+      "eventName": "audit_intent",
+      "eventCount": 23
+    },
+    {
+      "eventName": "viewed_pricing",
+      "eventCount": 18
+    },
+    {
+      "eventName": "audit_completed",
+      "eventCount": 13
+    },
+    {
+      "eventName": "signup_started",
+      "eventCount": 9
+    },
+    {
+      "eventName": "audit_limit_reached",
+      "eventCount": 5
+    },
+    {
+      "eventName": "marketing_page_view",
+      "eventCount": 5
+    },
+    {
+      "eventName": "report_auth_method_selected",
+      "eventCount": 4
+    },
+    {
+      "eventName": "audits_claimed",
+      "eventCount": 3
+    },
+    {
+      "eventName": "plan_picker_dismissed",
+      "eventCount": 3
+    },
+    {
+      "eventName": "plan_picker_viewed",
+      "eventCount": 3
+    },
+    {
+      "eventName": "report_auth_gate_viewed",
+      "eventCount": 3
+    },
+    {
+      "eventName": "scan_validation_failed",
+      "eventCount": 3
+    },
+    {
+      "eventName": "clicked_sample_cta",
+      "eventCount": 2
+    },
+    {
+      "eventName": "fix_prompt_copied",
+      "eventCount": 2
+    },
+    {
+      "eventName": "recheck_started",
+      "eventCount": 2
+    },
+    {
+      "eventName": "flag_detail_viewed",
+      "eventCount": 1
+    },
+    {
+      "eventName": "recheck_completed",
+      "eventCount": 1
+    },
+    {
+      "eventName": "remember_shown",
+      "eventCount": 1
+    },
+    {
+      "eventName": "report_progress_viewed",
+      "eventCount": 1
+    },
+    {
+      "eventName": "report_signup_cta_clicked",
+      "eventCount": 1
+    },
+    {
+      "eventName": "signed_up",
+      "eventCount": 1
+    },
+    {
+      "eventName": "started_checkout",
+      "eventCount": 1
+    }
+  ]
+}

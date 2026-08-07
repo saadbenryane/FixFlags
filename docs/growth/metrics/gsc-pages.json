@@ -1,0 +1,89 @@
+{
+  "fetchedAt": "2026-08-06T10:35:55.672Z",
+  "pages": [
+    {
+      "page": "https://fixflags.com/",
+      "clicks": 10,
+      "impressions": 86,
+      "ctr": 0.11627906976744186,
+      "position": 7.232558139534884
+    },
+    {
+      "page": "https://fixflags.com/#how-it-works",
+      "clicks": 0,
+      "impressions": 2,
+      "ctr": 0,
+      "position": 2
+    },
+    {
+      "page": "https://fixflags.com/#sample-review",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 4
+    },
+    {
+      "page": "https://fixflags.com/#what-it-checks",
+      "clicks": 0,
+      "impressions": 2,
+      "ctr": 0,
+      "position": 2
+    },
+    {
+      "page": "https://fixflags.com/changelog",
+      "clicks": 0,
+      "impressions": 2,
+      "ctr": 0,
+      "position": 2
+    },
+    {
+      "page": "https://fixflags.com/docs",
+      "clicks": 0,
+      "impressions": 2,
+      "ctr": 0,
+      "position": 3.5
+    },
+    {
+      "page": "https://fixflags.com/help",
+      "clicks": 0,
+      "impressions": 2,
+      "ctr": 0,
+      "position": 3.5
+    },
+    {
+      "page": "https://fixflags.com/how-it-works",
+      "clicks": 0,
+      "impressions": 5,
+      "ctr": 0,
+      "position": 3.6
+    },
+    {
+      "page": "https://fixflags.com/pricing",
+      "clicks": 0,
+      "impressions": 10,
+      "ctr": 0,
+      "position": 5
+    },
+    {
+      "page": "https://fixflags.com/roast",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 4
+    },
+    {
+      "page": "https://fixflags.com/samples",
+      "clicks": 0,
+      "impressions": 4,
+      "ctr": 0,
+      "position": 3.5
+    },
+    {
+      "page": "https://www.fixflags.com/pricing",
+      "clicks": 0,
+      "impressions": 4,
+      "ctr": 0,
+      "position": 40.5
+    }
+  ]
+}

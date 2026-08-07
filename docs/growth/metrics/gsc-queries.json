@@ -1,0 +1,54 @@
+{
+  "fetchedAt": "2026-08-06T10:35:55.672Z",
+  "queries": [
+    {
+      "query": "fixflags",
+      "clicks": 9,
+      "impressions": 56,
+      "ctr": 0.16071428571428573,
+      "position": 2.571428571428571
+    },
+    {
+      "query": "corflags",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 44
+    },
+    {
+      "query": "fix flags",
+      "clicks": 0,
+      "impressions": 2,
+      "ctr": 0,
+      "position": 4.5
+    },
+    {
+      "query": "fix your flags",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 43
+    },
+    {
+      "query": "fixflag",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 9
+    },
+    {
+      "query": "fixing flags",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 44
+    },
+    {
+      "query": "proformcp.com",
+      "clicks": 0,
+      "impressions": 2,
+      "ctr": 0,
+      "position": 71.5
+    }
+  ]
+}
