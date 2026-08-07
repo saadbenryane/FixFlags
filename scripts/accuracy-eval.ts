@@ -20,6 +20,8 @@ import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
 import { runLayoutChecks } from '@/lib/audit/checks/layout'
 import type { CaptureMetrics } from '@/lib/audit/capture-metrics'
 import { flowCheckIdForStatus } from '@/lib/audit/flow/flow-evidence'
+import { runFlowChecks } from '@/lib/audit/checks/flow'
+import type { FlowScanResult } from '@/lib/audit/flow/run-flow-scan'
 
 function countImportantFalseBlockers(flags: RankableFlag[], tier: AccuracyFixtureTier): number {
   if (tier === 'broken' || tier === 'control' || tier === 'structural') return 0
@@ -118,6 +120,18 @@ function evaluateNonHtmlFixture() {
       mobileViewportHeight: number
       expectedCheckIds: string[]
     }>
+    overlayCases?: Array<{
+      name: string
+      overlay: Parameters<typeof runOverlayBlockerChecks>[1]
+      expectedCheckId: string | null
+      expectedSeverity: 'CRITICAL' | 'IMPORTANT' | null
+    }>
+    flowScanCases?: Array<{
+      name: string
+      flowScan: FlowScanResult
+      expectedCheckId: string | null
+      expectedSeverity: 'CRITICAL' | 'IMPORTANT' | null
+    }>
   }
 
   const checkIds = [
@@ -154,6 +168,33 @@ function evaluateNonHtmlFixture() {
     if (actualLayout.join(',') !== expectedLayout.join(',')) {
       failures.push(
         `mobile layout "${layoutCase.name}" mismatch: expected ${expectedLayout.join(', ') || 'none'}, got ${actualLayout.join(', ') || 'none'}`
+      )
+    }
+  }
+
+  // Overlay decision freeze: partial coverage must downgrade (not vanish and
+  // not stay CRITICAL), full coverage stays CRITICAL, weak coverage is suppressed.
+  for (const overlayCase of fixture.overlayCases ?? []) {
+    const actualFlags = runOverlayBlockerChecks('cta', overlayCase.overlay, 'Start free')
+    const actualId = actualFlags[0]?.checkId ?? null
+    const actualSeverity = actualFlags[0]?.severity ?? null
+    if (actualId !== overlayCase.expectedCheckId || actualSeverity !== overlayCase.expectedSeverity) {
+      failures.push(
+        `overlay case "${overlayCase.name}" mismatch: expected ${overlayCase.expectedCheckId ?? 'none'} (${overlayCase.expectedSeverity ?? 'n/a'}), got ${actualId ?? 'none'} (${actualSeverity ?? 'n/a'})`
+      )
+    }
+  }
+
+  // Flow decision freeze: working-href unclickable downgrades to IMPORTANT,
+  // element_missing is a probe artifact (no flag), no working href stays CRITICAL.
+  for (const flowCase of fixture.flowScanCases ?? []) {
+    const actualFlag =
+      runFlowChecks(flowCase.flowScan).find((flag) => flag.checkId === 'flow-cta-unclickable') ?? null
+    const actualId = actualFlag?.checkId ?? null
+    const actualSeverity = actualFlag?.severity ?? null
+    if (actualId !== flowCase.expectedCheckId || actualSeverity !== flowCase.expectedSeverity) {
+      failures.push(
+        `flow scan case "${flowCase.name}" mismatch: expected ${flowCase.expectedCheckId ?? 'none'} (${flowCase.expectedSeverity ?? 'n/a'}), got ${actualId ?? 'none'} (${actualSeverity ?? 'n/a'})`
       )
     }
   }

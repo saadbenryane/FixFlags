@@ -47,6 +47,131 @@
     "text": "Join the waitlist",
     "zIndex": "9999"
   },
+  "overlayCases": [
+    {
+      "name": "partial coverage (0.5) downgraded to IMPORTANT",
+      "overlay": {
+        "tag": "div",
+        "id": "promo-banner",
+        "className": "fixed inset-x-0 bottom-0 z-40",
+        "role": null,
+        "text": "Get 20% off your first order",
+        "zIndex": "40",
+        "coverageFraction": 0.5,
+        "looksLikeOverlay": true,
+        "persisted": true
+      },
+      "expectedCheckId": "overlay-blocks-cta",
+      "expectedSeverity": "IMPORTANT"
+    },
+    {
+      "name": "full coverage stays CRITICAL (positive control)",
+      "overlay": {
+        "tag": "div",
+        "id": "signup-interstitial",
+        "className": "fixed inset-0 z-50",
+        "role": "dialog",
+        "text": "Create your account to continue",
+        "zIndex": "9999",
+        "coverageFraction": 1,
+        "looksLikeOverlay": true,
+        "persisted": true
+      },
+      "expectedCheckId": "overlay-blocks-cta",
+      "expectedSeverity": "CRITICAL"
+    },
+    {
+      "name": "weak coverage (0.2) suppressed",
+      "overlay": {
+        "tag": "div",
+        "id": "cookie-note",
+        "className": "fixed bottom-0 z-30",
+        "role": null,
+        "text": "We use cookies",
+        "zIndex": "30",
+        "coverageFraction": 0.2,
+        "looksLikeOverlay": true,
+        "persisted": true
+      },
+      "expectedCheckId": null,
+      "expectedSeverity": null
+    }
+  ],
+  "flowScanCases": [
+    {
+      "name": "working href + click failure downgraded to IMPORTANT",
+      "flowScan": {
+        "status": "unclickable",
+        "steps": [],
+        "finalUrl": "https://example.com/",
+        "ctaText": "Get started",
+        "ctaHref": "https://example.com/signup",
+        "clickFailure": "interaction_error",
+        "clickError": "Timeout 8000ms exceeded",
+        "overlayBlocker": null,
+        "obscuredBy": null
+      },
+      "expectedCheckId": "flow-cta-unclickable",
+      "expectedSeverity": "IMPORTANT"
+    },
+    {
+      "name": "plain content cover + working href stays IMPORTANT with cover evidence",
+      "flowScan": {
+        "status": "unclickable",
+        "steps": [],
+        "finalUrl": "https://example.com/",
+        "ctaText": "Private Inquiry",
+        "ctaHref": "https://example.com/contact",
+        "clickFailure": "interaction_error",
+        "clickError": "Timeout 8000ms exceeded",
+        "overlayBlocker": null,
+        "obscuredBy": {
+          "tag": "h2",
+          "id": null,
+          "className": "hero-subtitle",
+          "role": null,
+          "text": "Explore the best wineries",
+          "zIndex": "auto",
+          "coverageFraction": 0.4,
+          "looksLikeOverlay": false,
+          "persisted": true
+        }
+      },
+      "expectedCheckId": "flow-cta-unclickable",
+      "expectedSeverity": "IMPORTANT"
+    },
+    {
+      "name": "element_missing probe artifact suppressed",
+      "flowScan": {
+        "status": "unclickable",
+        "steps": [],
+        "finalUrl": "https://example.com/",
+        "ctaText": "Start free",
+        "ctaHref": "https://example.com/signup",
+        "clickFailure": "element_missing",
+        "overlayBlocker": null,
+        "obscuredBy": null
+      },
+      "expectedCheckId": null,
+      "expectedSeverity": null
+    },
+    {
+      "name": "no working href keeps CRITICAL",
+      "flowScan": {
+        "status": "unclickable",
+        "steps": [],
+        "finalUrl": "https://example.com/",
+        "ctaText": "Get started",
+        "ctaHref": "#",
+        "clickFailure": "interaction_error",
+        "clickError": "Timeout 8000ms exceeded",
+        "overlayBlocker": null,
+        "obscuredBy": null
+      },
+      "expectedCheckId": "flow-cta-unclickable",
+      "expectedSeverity": "CRITICAL"
+    }
+  ],
   "expectedCheckIds": [
     "api-engagement-unauthorized",
     "cls-critical",
