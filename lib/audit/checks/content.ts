@@ -57,14 +57,18 @@ export function runContentChecks(
     })
   }
 
-  if (meta.h1s.length > 0 && meta.h2s.length === 0) {
+  // Skip definitive "no H2" claims on sparse DOM samples (SPA shells / pre-hydration)
+  // where H1 may exist in the shell while section headings render later.
+  const pageTextLen = (meta.pageText ?? '').trim().length
+  const headingSampleComplete = pageTextLen >= 200
+  if (meta.h1s.length > 0 && meta.h2s.length === 0 && headingSampleComplete) {
     findings.push({
       checkId: 'heading-hierarchy-missing',
       rubric: 'MESSAGE',
       impactTag: 'CONVERSION',
       severity: 'POLISH',
       problem: 'Page has a headline but no section headings (H2)',
-      evidence: `H1: "${meta.h1s[0]}"; no H2 elements found`,
+      evidence: `H1: "${meta.h1s[0]}"; no H2 elements found in the captured DOM`,
       fix: '1. Add H2 headings for each major section (features, pricing, FAQ)\n2. Make H2s scannable and descriptive\n3. Maintain a logical heading hierarchy (H1 → H2 → H3)',
       confidence: 0.85,
       source: 'DETERMINISTIC',

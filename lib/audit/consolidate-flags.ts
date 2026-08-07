@@ -33,6 +33,8 @@ function selectRepresentative(
     : null
   if (demonstrated) return demonstrated
 
+  // Highest severity wins so a CRITICAL occurrence is never diluted by a POLISH
+  // sibling of the same check on another page. Confidence is the tie-break.
   return [...flags].sort((left, right) => {
     const severity =
       (SEVERITY_RANK[right.severity] ?? 0) - (SEVERITY_RANK[left.severity] ?? 0)

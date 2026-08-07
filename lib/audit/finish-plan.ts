@@ -1,4 +1,5 @@
 import type { ProductContract } from '@/lib/audit/product-contract'
+import { buildExpertFixPrompt } from '@/lib/audit/flag-copy'
 import {
   buildPlanModePrompt,
   rankFlagsByPriority,
@@ -85,7 +86,10 @@ function buildRankedFixes(input: PlanInput, limit: number): FinishPlan {
     const mayShowPrompt =
       input.promptAccess === 'all' ||
       (input.promptAccess === 'one' && !demonstratedPromptUsed && flag.id === demonstratedId)
-    const prompt = mayShowPrompt ? resolveFixPrompt(source) : null
+    // Expert-shaped prompt (Why / Evidence / Fix / Verify) so the anonymous
+    // demonstrated fix is agent-ready without an extra LLM call. Same path
+    // for signed-in full access so copy-paste quality stays consistent.
+    const prompt = mayShowPrompt && resolveFixPrompt(source) ? buildExpertFixPrompt(source) : null
     if (prompt && input.promptAccess === 'one') demonstratedPromptUsed = true
 
     return {

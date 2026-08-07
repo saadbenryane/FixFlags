@@ -1535,7 +1535,15 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'no-cta-detected': () =>
       checkIds(runContentChecks(healthyMeta({ ctaTexts: [] }))),
     'heading-hierarchy-missing': () =>
-      checkIds(runContentChecks(healthyMeta({ h1s: ['Ship faster'], h2s: [] }))),
+      checkIds(
+        runContentChecks(
+          healthyMeta({
+            h1s: ['Ship faster'],
+            h2s: [],
+            pageText: `${'Section body copy with enough length to prove the DOM sample is complete. '.repeat(5)}`,
+          })
+        )
+      ),
     'measurement-ga-gtm-posthog-missing': () =>
       checkIds(runMeasurementChecks(healthyMeta({ hasAnalytics: false }))),
     'form-missing-validation': () =>
@@ -2109,7 +2117,16 @@ describe('trigger matrix - one failing signal per checkId', () => {
     'trust-no-direct-contact': () =>
       checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'We make a product.', hasContactInfo: false, links: [] }))),
     'trust-no-internal-links': () =>
-      checkIds(runTrustPsychologyChecks(healthyMeta({ pageText: 'We make a product.', links: [], ctaTexts: ['Buy'] }))),
+      checkIds(
+        runTrustPsychologyChecks(
+          healthyMeta({
+            pageText:
+              'We make a product for teams that need a reliable way to ship software with clear navigation and internal paths.',
+            links: [{ href: 'https://external.com', text: 'Partner', rel: null }],
+            ctaTexts: ['Buy'],
+          })
+        )
+      ),
 
     // visual-hierarchy
     'hierarchy-competing-actions': () =>

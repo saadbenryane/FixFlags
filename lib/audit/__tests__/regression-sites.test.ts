@@ -87,7 +87,7 @@ describe('regression: clean-page.html', () => {
 describe('regression: broken-page.html', () => {
   testFixture(
     'broken-page.html',
-    18,
+    17,
     [
       { checkId: 'title-missing', severity: 'CRITICAL' },
       { checkId: 'description-missing', severity: 'IMPORTANT' },
@@ -98,7 +98,8 @@ describe('regression: broken-page.html', () => {
       { checkId: 'favicon-missing', severity: 'POLISH' },
       { checkId: 'h1-generic', severity: 'IMPORTANT' },
       { checkId: 'no-cta-detected', severity: 'IMPORTANT' },
-      { checkId: 'heading-hierarchy-missing', severity: 'POLISH' },
+      // heading-hierarchy-missing is intentionally suppressed on sparse DOM samples
+      // (this fixture is a short shell) to avoid false "no H2" claims.
       { checkId: 'form-missing-validation', severity: 'IMPORTANT' },
       { checkId: 'no-privacy-policy', severity: 'POLISH' },
       { checkId: 'no-contact-info', severity: 'POLISH' },

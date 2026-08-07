@@ -13,7 +13,9 @@ import { measurePostClickLoading, type PostClickMetrics } from './post-click-pro
 import { fetchAndParseMetadata } from '@/lib/audit/metadata'
 import { runDestinationUXProbes, type DestinationUXQuality } from './destination-ux-probes'
 import {
+  detectObscuringElementAtPoint,
   detectOverlayAtPoint,
+  dismissOpenDialogs,
   type OverlayBlockerInfo,
 } from '@/lib/audit/browser/overlay-probe'
 
@@ -67,6 +69,11 @@ export interface FlowScanResult {
   destinationUX?: DestinationUXQuality
   /** When click failed because another element covered the CTA. */
   overlayBlocker?: OverlayBlockerInfo | null
+  /**
+   * Any element covering the CTA center when the click failed, including plain
+   * content overlap (e.g. an H2 over a button). Used to explain partial blocks.
+   */
+  obscuredBy?: OverlayBlockerInfo | null
   /** Classified reason the click probe failed (unclickable/dead_end paths). */
   clickFailure?: FlowClickFailure
   /** Raw error message from the failed click, truncated for evidence. */
@@ -176,6 +183,10 @@ async function runFlowScanWithinBudget(
 
   const landingUrl = page.url()
   const multiStep = await runMultiStepProbes(page, landingUrl)
+  // Form/nav probes can leave auth or result dialogs open (dogfood: GradLoom
+  // "Show My Career Path" opens a Saved Career Paths modal). Dismiss residue
+  // before ranking/clicking the primary CTA so we do not self-inflict overlay FPs.
+  await dismissOpenDialogs(page)
 
   const candidates = await discoverFlowCtasWithFallback(page, pageUrl)
   const cta = rankCtaCandidate(candidates)
@@ -191,8 +202,16 @@ async function runFlowScanWithinBudget(
     multiStep,
   }
 
+  // Buttons with on-page handlers (no navigable href), hash links, new tabs, and
+  // intentional external CTAs must not race waitForNavigation - that race was
+  // reporting flow_click_timeout as CRITICAL unclickable on working same-page CTAs
+  // (dogfood: gradloom.app "See How It Works" button).
+  const href = cta.href ?? null
   const skipNavigationWait =
-    cta.opensInNewTab || isIntentionalExternalCta(origin, cta.href ?? null)
+    cta.opensInNewTab ||
+    isIntentionalExternalCta(origin, href) ||
+    !href ||
+    isSamePageHashHref(href)
   let clicked = false
   let clickResponseStatus: number | undefined
 
@@ -209,49 +228,52 @@ async function runFlowScanWithinBudget(
     const clickTarget = resolved.target
     if (!clickTarget) {
       const overlayBlocker = await detectOverlayAtPoint(page, selector)
+      const obscuredBy =
+        overlayBlocker ?? (await detectObscuringElementAtPoint(page, selector))
       return {
         status: 'unclickable',
         steps,
         finalUrl: page.url(),
         overlayBlocker,
+        obscuredBy,
         clickFailure: resolved.failure ?? 'element_missing',
         ...ctaMeta,
       }
     }
 
-    if (skipNavigationWait) {
-      try {
-        await clickTarget.click()
-        clicked = true
-        await new Promise((r) => setTimeout(r, 800))
-      } catch (err) {
-        await clickTarget.dispose().catch(() => {})
-        throw err
-      }
-    } else {
-      const navigationPromise = page
-        .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: FLOW_CLICK_TIMEOUT_MS })
-        .catch(() => null)
+    // Bound the Playwright click itself. For real navigable hrefs, arm
+    // waitForNavigation before the click so we do not miss the response.
+    const navigationPromise = skipNavigationWait
+      ? null
+      : page
+          .waitForNavigation({ waitUntil: 'domcontentloaded', timeout: FLOW_CLICK_TIMEOUT_MS })
+          .catch(() => null)
 
-      await Promise.race([
-        (async () => {
-          await clickTarget.click()
-          clicked = true
-          const response = await navigationPromise
-          if (response) {
-            clickResponseStatus = response.status()
-          } else {
-            await new Promise((r) => setTimeout(r, 1500))
-          }
-        })(),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('flow_click_timeout')), FLOW_CLICK_TIMEOUT_MS)
-        ),
-      ])
+    try {
+      await clickTarget.click({ timeout: FLOW_CLICK_TIMEOUT_MS })
+      clicked = true
+    } catch (err) {
+      await clickTarget.dispose().catch(() => {})
+      throw err
+    }
+
+    if (skipNavigationWait) {
+      await new Promise((r) => setTimeout(r, 800))
+    } else {
+      const response = await navigationPromise
+      if (response) {
+        clickResponseStatus = response.status()
+      } else {
+        await new Promise((r) => setTimeout(r, 1500))
+      }
     }
   } catch (err) {
     logger.error('Flow CTA click failed', err)
     const overlayBlocker = !clicked ? await detectOverlayAtPoint(page, selector) : null
+    const obscuredBy =
+      !clicked
+        ? overlayBlocker ?? (await detectObscuringElementAtPoint(page, selector))
+        : null
     const clickError =
       err instanceof Error ? err.message.slice(0, 200) : String(err).slice(0, 200)
     return {
@@ -259,6 +281,7 @@ async function runFlowScanWithinBudget(
       steps,
       finalUrl: page.url(),
       overlayBlocker,
+      obscuredBy,
       clickFailure: clicked ? undefined : 'interaction_error',
       clickError: clicked ? undefined : clickError || null,
       ...ctaMeta,

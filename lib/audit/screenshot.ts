@@ -409,10 +409,13 @@ async function captureDesktopWithFlow(
     result.technologyRuntimeMarkers = await readTechnologyRuntimeMarkers(page)
     result.html = await page.content()
 
-    // Run axe-core accessibility scan on the settled page.
+    // Run axe-core on the top document + same-origin frames only.
+    // Legacy mode disables cross-origin frame injection (YouTube/Calendly/etc.),
+    // which otherwise flags third-party player DOM as the site's own a11y debt.
     try {
       const axeResults = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag22aa'])
+        .setLegacyMode(true)
         .analyze()
       result.axeViolations = axeResults.violations as import('./checks/accessibility').AxeViolation[]
     } catch (err) {

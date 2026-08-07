@@ -1,5 +1,8 @@
 import type { OverlayBlockerInfo } from '../browser/overlay-probe'
-import { formatOverlayEvidence } from '../browser/overlay-probe'
+import {
+  formatOverlayEvidence,
+  severityForOverlayBlocker,
+} from '../browser/overlay-probe'
 import type { DeterministicFlag } from '../flag-types'
 import { registerCheck } from './registry'
 
@@ -29,6 +32,9 @@ export function runOverlayBlockerChecks(
 ): DeterministicFlag[] {
   if (!overlay) return []
 
+  const severity = severityForOverlayBlocker(overlay)
+  if (!severity) return []
+
   const checkId =
     target === 'nav'
       ? 'overlay-blocks-nav'
@@ -39,16 +45,24 @@ export function runOverlayBlockerChecks(
   const targetLabel =
     target === 'nav' ? 'primary navigation' : target === 'form' ? 'form controls' : 'primary CTA'
 
+  const coverageNote =
+    typeof overlay.coverageFraction === 'number' && overlay.coverageFraction < 0.85
+      ? ' Partial coverage - edges of the target may still be clickable.'
+      : ''
+
   return [
     {
       checkId,
       rubric: 'EXPERIENCE',
-      severity: 'CRITICAL',
+      severity,
       impactTag: 'CONVERSION',
-      problem: `Overlay blocks ${targetLabel}`,
-      evidence: `${formatOverlayEvidence(overlay)}${contextLabel ? ` · ${contextLabel}` : ''}`,
+      problem:
+        severity === 'CRITICAL'
+          ? `Overlay blocks ${targetLabel}`
+          : `Overlay partially covers ${targetLabel}`,
+      evidence: `${formatOverlayEvidence(overlay)}${contextLabel ? ` · ${contextLabel}` : ''}.${coverageNote}`,
       fix: `1. Ensure modals and sticky ads do not cover ${targetLabel} without a clear dismiss control.\n2. Lower z-index or relocate the overlay so primary actions stay clickable.\n3. Re-check the click path after the change.`,
-      confidence: 0.92,
+      confidence: severity === 'CRITICAL' ? 0.92 : 0.8,
       source: 'DETERMINISTIC',
     },
   ]

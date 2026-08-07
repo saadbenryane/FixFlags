@@ -5,7 +5,11 @@
     "module": "content.ts",
     "pattern": "Forms with all inputs disabled in static HTML (SSR placeholders)",
     "rootCause": "Next.js SSR renders form inputs with disabled attribute; JS enables them on hydration. Static HTML parser sees disabled inputs without validation attributes.",
-    "affectedSites": ["fixflags.com", "nextjs.org", "saadbenryane.com"],
+    "affectedSites": [
+      "fixflags.com",
+      "nextjs.org",
+      "saadbenryane.com"
+    ],
     "fixType": "suppression",
     "fixDescription": "metadata.ts skips forms where all inputs have disabled attribute (SSR placeholder forms)",
     "status": "fixed",
@@ -18,7 +22,11 @@
     "module": "messaging-clarity.ts",
     "pattern": "JARGON_PATTERNS includes B2B-common vocabulary (seamless, robust, scalable, innovative)",
     "rootCause": "Standard B2B positioning language treated as jargon. Single occurrence triggered POLISH; two triggered IMPORTANT.",
-    "affectedSites": ["stripe.com", "vercel.com", "linear.app"],
+    "affectedSites": [
+      "stripe.com",
+      "vercel.com",
+      "linear.app"
+    ],
     "fixType": "threshold",
     "fixDescription": "Moved B2B-common terms to separate set; require 3+ total jargon matches for IMPORTANT; skip when both audience and outcome are present",
     "status": "fixed",
@@ -31,7 +39,10 @@
     "module": "trust-psychology.ts",
     "pattern": "Superlative heading check fires on single leadership term (leading, trusted, proven)",
     "rootCause": "Leadership terms like 'leading' and 'trusted' are standard positioning language, not aggressive superlatives. A single heading match triggered IMPORTANT.",
-    "affectedSites": ["vercel.com", "stripe.com"],
+    "affectedSites": [
+      "vercel.com",
+      "stripe.com"
+    ],
     "fixType": "threshold",
     "fixDescription": "Added B2B_LEADERSHIP_TERMS set; leadership terms downgrade to POLISH; require 2+ leadership terms in headings for IMPORTANT; aggressive superlatives (best, fastest, #1) remain IMPORTANT",
     "status": "fixed",
@@ -44,7 +55,11 @@
     "module": "content.ts",
     "pattern": "categoryHeadlinePatterns includes 'with AI' and 'ship faster' at end of H1",
     "rootCause": "Legitimate AI builder headlines like 'Ship faster with AI' or 'Build with AI' are specific product positioning, not generic copy.",
-    "affectedSites": ["lovable.dev", "bolt.new", "v0.dev"],
+    "affectedSites": [
+      "lovable.dev",
+      "bolt.new",
+      "v0.dev"
+    ],
     "fixType": "regex",
     "fixDescription": "Removed 'with AI' and 'ship faster' from categoryHeadlinePatterns; added 'next-gen' as truly generic pattern",
     "status": "fixed",
@@ -57,7 +72,11 @@
     "module": "mobile-ux-quality.ts",
     "pattern": "weakPhrases includes 'start' and 'try' with startsWith matching",
     "rootCause": "startsWith('start') catches 'Get started' and 'Start building'; startsWith('try') catches 'Try free'. These are standard effective CTAs.",
-    "affectedSites": ["lovable.dev", "stripe.com", "vercel.com"],
+    "affectedSites": [
+      "lovable.dev",
+      "stripe.com",
+      "vercel.com"
+    ],
     "fixType": "threshold",
     "fixDescription": "Removed 'start' and 'try' from weakPhrases; changed single-word matches to exact match only",
     "status": "fixed",
@@ -70,7 +89,10 @@
     "module": "slop.ts",
     "pattern": "Template default phrases matched against body prose",
     "rootCause": "Old patterns matched 'start your company' or 'welcome to the future of...' in body text as template defaults.",
-    "affectedSites": ["nextjs.org", "vercel.com"],
+    "affectedSites": [
+      "nextjs.org",
+      "vercel.com"
+    ],
     "fixType": "gating",
     "fixDescription": "Template copy patterns only checked against headings/title, never body prose",
     "status": "fixed",
@@ -83,7 +105,10 @@
     "module": "slop.ts",
     "pattern": "Placeholder patterns matched on framework artifacts",
     "rootCause": "Short template tokens like {{ message }} or ${i} are framework artifacts, not real problems.",
-    "affectedSites": ["nextjs.org", "vercel.com"],
+    "affectedSites": [
+      "nextjs.org",
+      "vercel.com"
+    ],
     "fixType": "threshold",
     "fixDescription": "Require 2+ words separated by space, single word 8+ chars, or %VAR% with 3+ word-chars",
     "status": "fixed",
@@ -96,7 +121,10 @@
     "module": "trust.ts / accessibility.ts",
     "pattern": "Hidden DOM and template siblings counted toward links-no-text",
     "rootCause": "Links inside [hidden] subtrees and card stretch links with sibling headings were not properly excluded.",
-    "affectedSites": ["v0.dev", "lovable.dev"],
+    "affectedSites": [
+      "v0.dev",
+      "lovable.dev"
+    ],
     "fixType": "suppression",
     "fixDescription": "Exclude hidden DOM elements; card stretch links named by sibling headings",
     "status": "fixed",
@@ -109,7 +137,11 @@
     "module": "layout.ts",
     "pattern": "Empty sections in client-rendered SPAs flagged as ghost sections",
     "rootCause": "Static HTML parser sees empty sections that are populated by JavaScript on hydration.",
-    "affectedSites": ["vercel.com", "saadbenryane.com", "html5up.net"],
+    "affectedSites": [
+      "vercel.com",
+      "saadbenryane.com",
+      "html5up.net"
+    ],
     "fixType": "gating",
     "fixDescription": "Suppress on pages with <100 chars body text (SPA shells)",
     "status": "fixed",
@@ -122,10 +154,43 @@
     "module": "visual-polish.ts",
     "pattern": "Button border radius varies across different component libraries",
     "rootCause": "Sites using multiple UI libraries (e.g. Tailwind + embedded widgets) have different default radii.",
-    "affectedSites": ["saadbenryane.com", "html5up.net"],
+    "affectedSites": [
+      "saadbenryane.com",
+      "html5up.net"
+    ],
     "fixType": "wontfix",
     "fixDescription": "Legitimate design system variation; documented as known false positive",
     "status": "wontfix",
     "evidence": "saadbenryane.com uses Tailwind (8px) + embedded Cal.com widget (12px)"
+  },
+  {
+    "id": "fp-011",
+    "checkId": "flow-cta-unclickable",
+    "module": "run-flow-scan.ts",
+    "pattern": "Same-page button CTAs (empty href / onclick) raced waitForNavigation and timed out as unclickable",
+    "rootCause": "Flow click Promise.race bundled click+navigation; no-href hero buttons never navigate so probe reported CRITICAL unclickable",
+    "affectedSites": [
+      "gradloom.app"
+    ],
+    "fixType": "gating",
+    "fixDescription": "Skip navigation wait for empty/hash href and new-tab/external CTAs; bound Playwright click timeout separately from optional navigation wait",
+    "status": "fixed",
+    "evidence": "gradloom.app See How It Works button; trial click OK independently; audit cmshocwnl0001gpnbkc46agv7 flagged flow-cta-unclickable",
+    "fixedDate": "2026-08-06"
+  },
+  {
+    "id": "fp-012",
+    "checkId": "overlay-blocks-cta",
+    "module": "overlay-probe.ts / run-flow-scan.ts",
+    "pattern": "Multi-step form probe left auth/result dialog open covering primary CTA",
+    "rootCause": "Form submit on GradLoom opened Saved Career Paths radix dialog; primary CTA click then hit residual modal and fired overlay-blocks-cta CRITICAL",
+    "affectedSites": [
+      "gradloom.app"
+    ],
+    "fixType": "probe-cleanup",
+    "fixDescription": "dismissOpenDialogs() after multi-step probes before CTA discovery/click",
+    "status": "fixed",
+    "evidence": "audit cmshok45x0001gpqu79c2j8cm; standalone flow after fix status=success flags=[]",
+    "fixedDate": "2026-08-06"
   }
 ]

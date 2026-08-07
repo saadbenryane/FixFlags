@@ -46,7 +46,10 @@ describe('buildFixList', () => {
   it('keeps ranking stable while exposing exactly one demonstrated prompt', () => {
     const demonstrated = flags[2]
     const list = buildFixList({
-      flags: flags.map((item) => ({ ...item, fix: undefined })),
+      // Only the demonstrated flag keeps a usable fix body; others are gated.
+      flags: flags.map((item) =>
+        item.id === demonstrated.id ? item : { ...item, fix: undefined }
+      ),
       promptAccess: 'one',
       demonstratedFlag: demonstrated,
     })
@@ -58,7 +61,10 @@ describe('buildFixList', () => {
       'polish',
     ])
     expect(list.items.filter((item) => item.prompt)).toHaveLength(1)
-    expect(list.items.find((item) => item.id === demonstrated.id)?.prompt).toBe('Fix important-a')
+    const demonstratedPrompt = list.items.find((item) => item.id === demonstrated.id)?.prompt
+    expect(demonstratedPrompt).toMatch(/## Why/)
+    expect(demonstratedPrompt).toMatch(/## Fix/)
+    expect(demonstratedPrompt).toContain('Fix important-a')
     expect(list.copyPrompt).toBeNull()
   })
 

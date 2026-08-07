@@ -1,5 +1,41 @@
 import type { DeterministicFlag } from '../flag-types'
 
+/**
+ * Builder / PaaS managed hostnames where response headers like CSP/HSTS are not
+ * settable without a custom domain + reverse proxy. Findings here are POLISH
+ * with an explicit constraint note rather than CRITICAL conversion blockers.
+ */
+export const MANAGED_HOST_SUFFIXES = [
+  '.lovable.app',
+  '.lovableproject.com',
+  '.netlify.app',
+  '.vercel.app',
+  '.web.app',
+  '.firebaseapp.com',
+  '.pages.dev',
+  '.github.io',
+  '.herokuapp.com',
+  '.railway.app',
+  '.onrender.com',
+  '.fly.dev',
+  '.replit.app',
+  '.replit.dev',
+  '.bolt.new',
+  '.stackblitz.io',
+  '.webcontainer.io',
+] as const
+
+export function isManagedHostingHostname(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, '')
+  return MANAGED_HOST_SUFFIXES.some(
+    (suffix) => host === suffix.slice(1) || host.endsWith(suffix)
+  )
+}
+
+function managedHostConstraintNote(hostname: string): string {
+  return `Not settable on managed subdomain (${hostname}); requires custom domain + proxy config.`
+}
+
 function parseMaxAge(value: string): number | null {
   const match = value.match(/max-age\s*=\s*(\d+)/i)
   return match ? Number(match[1]) : null
@@ -21,6 +57,13 @@ export function runSecurityHeaderChecks(
 
   const findings: DeterministicFlag[] = []
   const isHttps = url.startsWith('https://')
+  let managedHostname: string | null = null
+  try {
+    const host = new URL(url).hostname
+    if (isManagedHostingHostname(host)) managedHostname = host
+  } catch {
+    managedHostname = null
+  }
   const csp = headers['content-security-policy'] ?? null
   const cspReportOnly = headers['content-security-policy-report-only'] ?? null
 
@@ -346,6 +389,8 @@ export function runSecurityHeaderChecks(
 
   // Consolidate multiple missing-header findings into a single POLISH finding
   // so they do not dominate the top-5 on every site that lacks standard headers.
+  // Managed hosts always consolidate (even 1–2 findings) and stay POLISH with
+  // an explicit "not settable without custom domain" note.
   const SECURITY_HEADER_IDS = new Set([
     'security-csp-missing',
     'security-csp-unsafe-inline',
@@ -369,8 +414,13 @@ export function runSecurityHeaderChecks(
     'security-x-permitted-cross-domain',
   ])
   const headerFindings = findings.filter((f) => SECURITY_HEADER_IDS.has(f.checkId))
-  if (headerFindings.length >= 3) {
+  const shouldConsolidate =
+    headerFindings.length >= 3 || (managedHostname != null && headerFindings.length >= 1)
+  if (shouldConsolidate) {
     const names = headerFindings.map((f) => f.problem.replace(/\.$/, '')).join('; ')
+    const managedNote = managedHostname
+      ? ` ${managedHostConstraintNote(managedHostname)}`
+      : ''
     return [
       {
         checkId: 'security-headers-missing',
@@ -378,12 +428,23 @@ export function runSecurityHeaderChecks(
         impactTag: 'TRUST' as const,
         severity: 'POLISH' as const,
         problem: `${headerFindings.length} security headers are missing or weak`,
-        evidence: `Missing: ${names}. These headers provide defense-in-depth against common web vulnerabilities.`,
-        fix: 'Add the following HTTP response headers: Content-Security-Policy, Strict-Transport-Security (max-age=31536000), X-Frame-Options: DENY, X-Content-Type-Options: nosniff. Start with restrictive defaults and relax as needed.',
+        evidence: `Missing: ${names}. These headers provide defense-in-depth against common web vulnerabilities.${managedNote}`,
+        fix: managedHostname
+          ? 'These headers usually cannot be set on a managed builder subdomain. Connect a custom domain and configure CSP/HSTS/Permissions-Policy on your DNS/proxy/CDN, or in the host platform\'s custom-header settings.'
+          : 'Add the following HTTP response headers: Content-Security-Policy, Strict-Transport-Security (max-age=31536000), X-Frame-Options: DENY, X-Content-Type-Options: nosniff. Start with restrictive defaults and relax as needed.',
         confidence: 1.0,
         source: 'DETERMINISTIC' as const,
       },
     ]
+  }
+
+  // Remaining single/double findings on managed hosts still must not escalate severity.
+  if (managedHostname) {
+    return findings.map((f) => ({
+      ...f,
+      severity: 'POLISH' as const,
+      evidence: `${f.evidence} ${managedHostConstraintNote(managedHostname)}`,
+    }))
   }
 
   return findings

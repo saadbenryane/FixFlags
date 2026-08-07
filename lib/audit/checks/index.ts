@@ -71,7 +71,7 @@ export async function runAllChecks(
     { name: 'security-headers', run: () => runSecurityHeaderChecks(url, responseHeaders ?? null) },
     { name: 'messaging-clarity', run: () => runMessagingClarityChecks(metadata) },
     { name: 'conversion-friction', run: () => runConversionFrictionChecks(metadata, purpose) },
-    { name: 'trust-psychology', run: () => runTrustPsychologyChecks(metadata, purpose) },
+    { name: 'trust-psychology', run: () => runTrustPsychologyChecks(metadata, purpose, url) },
   ]
 
   const bucketB: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [

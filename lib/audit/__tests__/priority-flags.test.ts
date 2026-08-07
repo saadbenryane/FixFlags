@@ -75,8 +75,28 @@ describe('priority-flags', () => {
       promptAccess: 'all',
     })
 
+    // Priority ordering: the CONVERSION flag outranks the SEO flag, so its
+    // expert-shaped prompt (## Why / ## Evidence / ## Fix / ## Scope) is the
+    // top copyable fix prompt.
     assert.equal(list.items[0]?.problem, 'Conversion polish')
-    assert.equal(list.items[0]?.prompt, 'Fix conversion polish')
+    assert.equal(
+      list.items[0]?.prompt,
+      [
+        'Conversion polish',
+        '',
+        '## Why',
+        'Conversion polish',
+        '',
+        '## Evidence',
+        'Conversion polish',
+        '',
+        '## Fix',
+        'Fix conversion polish',
+        '',
+        '## Scope',
+        'Focus on copy, text content, and messaging. Do not restructure layout or change visual styles. Keep all unrelated files, components, and sections unchanged.',
+      ].join('\n')
+    )
   })
 
   it('prefers the AI-crafted agentPrompt over the plain-English fix once both exist', () => {

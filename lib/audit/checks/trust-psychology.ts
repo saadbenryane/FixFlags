@@ -38,7 +38,18 @@ const DATA_SPECIFICITY = [
   /\b(feature|capability|function)\s*(s|ies)\b/i,
 ]
 
-function isInternalNavigationHref(href: string, pageHostname: string | null): boolean {
+/** Minimum body text before treating the DOM sample as complete enough for absence claims. */
+export const TRUST_DOM_SAMPLE_MIN_CHARS = 200
+
+/**
+ * Classify a href as same-site navigation.
+ * Relative paths count as internal even when pageHostname is unknown.
+ * Absolute URLs require a hostname (from canonical or page URL).
+ */
+export function isInternalNavigationHref(
+  href: string,
+  pageHostname: string | null
+): boolean {
   const value = href.trim()
   if (!value || value.startsWith('#')) return false
 
@@ -64,9 +75,25 @@ function isInternalNavigationHref(href: string, pageHostname: string | null): bo
   }
 }
 
+export function resolvePageHostname(
+  meta: Pick<PageMetadata, 'canonical'>,
+  pageUrl?: string | null
+): string | null {
+  for (const candidate of [meta.canonical, pageUrl]) {
+    if (!candidate) continue
+    try {
+      return new URL(candidate).hostname
+    } catch {
+      // try next
+    }
+  }
+  return null
+}
+
 export function runTrustPsychologyChecks(
   meta: PageMetadata,
-  purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] }
+  purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] },
+  pageUrl?: string | null
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   const productPage = isProductPage(purpose.purpose)
@@ -178,26 +205,31 @@ export function runTrustPsychologyChecks(
     })
   }
 
-  const pageHostname = (() => {
-    try {
-      return meta.canonical ? new URL(meta.canonical).hostname : null
-    } catch {
-      return null
-    }
-  })()
-
+  const pageHostname = resolvePageHostname(meta, pageUrl)
   const internalLinks = links.filter((l) => isInternalNavigationHref(l.href, pageHostname))
 
-  if (internalLinks.length < 2 && ctaTexts.length > 0) {
+  // Do not emit a definitive "0 internal links" claim on sparse SPA shells
+  // (empty anchor list + short body text) where navigation may not have hydrated.
+  const linkSampleIncomplete =
+    links.length === 0 && bodyText.length < TRUST_DOM_SAMPLE_MIN_CHARS
+
+  if (
+    !linkSampleIncomplete &&
+    internalLinks.length < 2 &&
+    ctaTexts.length > 0
+  ) {
     findings.push({
       checkId: 'trust-no-internal-links',
       rubric: 'EXPERIENCE',
       impactTag: 'TRUST',
       severity: 'POLISH',
       problem: 'Page has very few internal navigation links',
-      evidence: `Only ${internalLinks.length} internal link${internalLinks.length === 1 ? '' : 's'} found. Visitors may have no path to explore further.`,
+      evidence:
+        links.length === 0
+          ? `No navigable internal links were found in the captured DOM sample (${links.length} total anchors). Visitors may have no path to explore further.`
+          : `Only ${internalLinks.length} internal link${internalLinks.length === 1 ? '' : 's'} found among ${links.length} anchors. Visitors may have no path to explore further.`,
       fix: '1. Add navigation links to key pages (features, pricing, docs, blog)\n2. Ensure the header nav has at least 3-4 internal links\n3. Add contextual CTAs in the body that link to related pages\n4. Include a footer with site map links for discoverability',
-      confidence: 0.75,
+      confidence: links.length === 0 ? 0.6 : 0.75,
       source: 'DETERMINISTIC',
     })
   }

@@ -206,6 +206,8 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
     const candidates: CtaCandidate[] = []
     const competingCtas = new Set<string>()
 
+    // Top-document only: page.evaluate runs in the main frame, so cross-origin
+    // iframe content (YouTube player buttons, etc.) is never collected here.
     for (const el of document.querySelectorAll('a[href], button, [role="button"]')) {
       if (shouldSkipNavHeader(el)) continue
       const candidate = scoreCtaElement(el)

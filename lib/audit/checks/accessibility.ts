@@ -15,6 +15,35 @@ export interface AxeViolation {
   }>
 }
 
+/**
+ * Drop nodes whose axe target path points into an iframe/frame. Cross-origin
+ * player DOM (YouTube, Calendly, Stripe) is not the site's code; same-origin
+ * frames are still analyzed by axe when present in the top-level results.
+ */
+export function isIframeAxeTarget(target: string[] | undefined): boolean {
+  if (!target || target.length === 0) return false
+  return target.some((part) => {
+    const value = String(part).toLowerCase()
+    return (
+      value.includes('iframe') ||
+      value.includes('frame[') ||
+      value.startsWith('frame ') ||
+      /\bframe\b/.test(value)
+    )
+  })
+}
+
+export function filterOutIframeAxeViolations(
+  violations: AxeViolation[]
+): AxeViolation[] {
+  return violations
+    .map((violation) => ({
+      ...violation,
+      nodes: violation.nodes.filter((node) => !isIframeAxeTarget(node.target)),
+    }))
+    .filter((violation) => violation.nodes.length > 0)
+}
+
 /** Map axe-core impact levels to FixFlags severity. */
 function axeImpactToSeverity(impact: AxeViolation['impact']): string {
   switch (impact) {
@@ -101,10 +130,13 @@ export function runAccessibilityChecks(
 
   // --- axe-core results (primary signal) ---
   const axeUnavailable = axeViolations == null
-  if (!axeUnavailable && axeViolations.length > 0) {
+  const scopedAxeViolations = axeUnavailable
+    ? []
+    : filterOutIframeAxeViolations(axeViolations)
+  if (!axeUnavailable && scopedAxeViolations.length > 0) {
     const processedCheckIds = new Set<string>()
 
-    for (const violation of axeViolations) {
+    for (const violation of scopedAxeViolations) {
       const checkId = axeRuleToCheckId(violation.id)
 
       // Deduplicate by resolved check ID (e.g., multiple image-alt violations -> one flag)

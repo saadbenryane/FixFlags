@@ -3,6 +3,7 @@ import { isAuthUtilityLink } from '../flow/link-scoring'
 import { runPostClickFlowChecks } from './flow-post-click'
 import { runDestinationTrustChecks } from './flow-destination-trust'
 import { runFlowUXChecks } from './flow-ux'
+import { formatOverlayEvidence } from '../browser/overlay-probe'
 import { runOverlayBlockerChecks } from './overlay'
 import type { DeterministicFlag } from '../flag-types'
 import { registerCheck } from './registry'
@@ -77,6 +78,24 @@ function formatCtaEvidence(result: FlowScanResult): string {
   const label = result.ctaText ? `"${result.ctaText}"` : 'Primary CTA'
   const href = result.ctaHref ? ` (href="${result.ctaHref}")` : ''
   return `${label}${href}`
+}
+
+/** True when the CTA still exposes a navigable destination despite a failed click. */
+export function ctaHasWorkingHref(href: string | null | undefined): boolean {
+  if (!href) return false
+  const value = href.trim()
+  if (!value || value === '#' || value.startsWith('#')) return false
+  const scheme = value.match(/^([a-z][a-z0-9+.-]*):/i)?.[1]?.toLowerCase()
+  if (
+    scheme &&
+    scheme !== 'http' &&
+    scheme !== 'https' &&
+    scheme !== 'mailto' &&
+    scheme !== 'tel'
+  ) {
+    return false
+  }
+  return true
 }
 
 function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
@@ -220,6 +239,11 @@ export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
         // a user-facing unclickable state - do not report CRITICAL on it.
         break
       } else {
+        // Working href + center covered by plain content is a real UX issue, but
+        // the destination is still reachable (edges / sibling links). CRITICAL is
+        // reserved for CTAs with no navigable destination.
+        const hasWorkingHref = ctaHasWorkingHref(result.ctaHref)
+        const cover = result.obscuredBy
         const failureDetail =
           result.clickFailure === 'not_visible'
             ? 'the element was not visible at click time'
@@ -228,14 +252,29 @@ export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
               : result.clickFailure === 'timeout'
                 ? 'the click did not complete within the probe budget'
                 : 'the click action failed'
+        const coverEvidence = cover
+          ? `${formatOverlayEvidence(cover)} covers the center of ${ctaLabel}`
+          : null
+        const evidence = coverEvidence
+          ? hasWorkingHref
+            ? `${coverEvidence}. Destination href is still present; button edges or sibling controls may remain clickable.`
+            : `${coverEvidence}; ${failureDetail}.`
+          : hasWorkingHref
+            ? `${ctaLabel} was detected with a working href, but ${failureDetail}.`
+            : `${ctaLabel} was detected but ${failureDetail}.`
+
         findings.push({
           checkId: 'flow-cta-unclickable',
           rubric: 'EXPERIENCE',
           impactTag: 'CONVERSION',
-          severity: 'CRITICAL',
-          problem: 'Primary CTA could not be clicked',
-          evidence: `${ctaLabel} was detected but ${failureDetail}.`,
-          fix: '1. Remove overlays, cookie banners, or disabled states that block the CTA\n2. Ensure the CTA has a valid href or click handler\n3. Test the click in Chrome DevTools on the production URL',
+          severity: hasWorkingHref ? 'IMPORTANT' : 'CRITICAL',
+          problem: hasWorkingHref
+            ? 'Primary CTA click is blocked at its center'
+            : 'Primary CTA could not be clicked',
+          evidence,
+          fix: cover
+            ? `1. Identify what covers the CTA center (${cover.tag}${cover.className ? ` .${cover.className.split(/\s+/).slice(0, 2).join('.')}` : ''}) and fix stacking/layout so the button receives clicks\n2. Ensure the CTA has a valid href or click handler\n3. Test the click in Chrome DevTools on the production URL`
+            : '1. Remove overlays, cookie banners, or disabled states that block the CTA\n2. Ensure the CTA has a valid href or click handler\n3. Test the click in Chrome DevTools on the production URL',
           confidence: 0.85,
           source: 'DETERMINISTIC',
         })
