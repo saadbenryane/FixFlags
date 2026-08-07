@@ -18,6 +18,12 @@ export interface WaitlistRow {
   convertedAt: Date | null
   /** 1 = first 500 (25% off), 2 = next 500 (15% off), null = list price. */
   discountTier: number | null
+  /** Access cohort: 1 or 2 (or null past both caps). Snapshot at join. */
+  batch: number | null
+  /** Explicit access grant; checkout also accepts batch <= WAITLIST_OPEN_BATCH. */
+  accessGrantedAt: Date | null
+  /** Latest invite code issued to this member, when one exists. */
+  inviteCode: string | null
   founderOfferId: string | null
   auditsUsed: number
   auditsLimit: number
@@ -65,6 +71,8 @@ export async function listWaitlistRows(plan?: Plan): Promise<WaitlistRow[]> {
     },
   })
 
+  const inviteCodeByRow = await buildInviteCodeMap(entries)
+
   return entries.map((entry) => {
     const completedAudits = entry.user.audits.length
     const creditsExhausted =
@@ -82,6 +90,9 @@ export async function listWaitlistRows(plan?: Plan): Promise<WaitlistRow[]> {
       invitedAt: entry.invitedAt,
       convertedAt: entry.convertedAt,
       discountTier: entry.discountTier,
+      batch: entry.batch,
+      accessGrantedAt: entry.accessGrantedAt,
+      inviteCode: inviteCodeByRow.get(`${entry.userId}:${entry.plan}`) ?? null,
       founderOfferId: entry.founderOfferId,
       auditsUsed: entry.user.auditsUsed,
       auditsLimit: entry.user.auditsLimit,
@@ -97,6 +108,58 @@ export async function listWaitlistRows(plan?: Plan): Promise<WaitlistRow[]> {
   })
 }
 
+interface EntryWithUser {
+  id: string
+  userId: string
+  email: string | null
+  plan: Plan
+  user: { email: string }
+}
+
+/**
+ * Latest invite code per member, keyed by `${userId}:${plan}`. Pending invites
+ * match by invitee email; redeemed invites match by joined user.
+ */
+async function buildInviteCodeMap(
+  entries: EntryWithUser[]
+): Promise<Map<string, string>> {
+  if (entries.length === 0) return new Map()
+  const userIds = entries.map((entry) => entry.userId)
+  const emails = entries.map((entry) => (entry.email ?? entry.user.email).toLowerCase())
+
+  const invites = await prisma.waitlistInvite.findMany({
+    where: {
+      OR: [
+        { joinedUserId: { in: userIds } },
+        { inviteeEmail: { in: emails }, status: 'PENDING' },
+      ],
+    },
+    orderBy: { invitedAt: 'desc' },
+    select: {
+      inviteeEmail: true,
+      plan: true,
+      code: true,
+      status: true,
+      joinedUserId: true,
+    },
+  })
+
+  const map = new Map<string, string>()
+  for (const invite of invites) {
+    const key = invite.joinedUserId
+      ? `${invite.joinedUserId}:${invite.plan}`
+      : null
+    if (key && !map.has(key)) map.set(key, invite.code)
+  }
+  for (const invite of invites) {
+    if (!invite.joinedUserId && invite.status === 'PENDING') {
+      const key = `${invite.inviteeEmail.toLowerCase()}:${invite.plan}`
+      if (!map.has(key)) map.set(key, invite.code)
+    }
+  }
+  return map
+}
+
 export function waitlistRowsToCsv(rows: WaitlistRow[]): string {
   const headers = [
     'email',
@@ -107,6 +170,9 @@ export function waitlistRowsToCsv(rows: WaitlistRow[]): string {
     'source',
     'campaign',
     'discount_tier',
+    'batch',
+    'access_granted_at',
+    'invite_code',
     'invited_at',
     'converted_at',
     'audits_used',
@@ -125,6 +191,9 @@ export function waitlistRowsToCsv(rows: WaitlistRow[]): string {
       row.source ?? '',
       row.campaign ?? '',
       row.discountTier ?? '',
+      row.batch ?? '',
+      row.accessGrantedAt?.toISOString() ?? '',
+      row.inviteCode ?? '',
       row.invitedAt?.toISOString() ?? '',
       row.convertedAt?.toISOString() ?? '',
       String(row.auditsUsed),
@@ -147,4 +216,37 @@ export async function waitlistTierCounts(plan: Plan) {
     prisma.paidPlanWaitlistEntry.count({ where: { plan, discountTier: null } }),
   ])
   return { tier1, tier2, noTier }
+}
+
+/** How many members fall in each access batch for a plan (null = beyond caps). */
+export async function waitlistBatchCounts(plan: Plan) {
+  const [batch1, batch2, noBatch] = await Promise.all([
+    prisma.paidPlanWaitlistEntry.count({ where: { plan, batch: 1 } }),
+    prisma.paidPlanWaitlistEntry.count({ where: { plan, batch: 2 } }),
+    prisma.paidPlanWaitlistEntry.count({ where: { plan, batch: null } }),
+  ])
+  return { batch1, batch2, noBatch }
+}
+
+/**
+ * Release-state numbers per plan: granted (explicit accessGrantedAt), broken
+ * down by batch, plus converted. The open-batch indicator itself comes from
+ * WAITLIST_OPEN_BATCH (lib/billing/paid-open.ts) on the admin page.
+ */
+export async function waitlistGrantCounts(plan: Plan) {
+  const [granted, grantedBatch1, grantedBatch2, converted] = await Promise.all([
+    prisma.paidPlanWaitlistEntry.count({
+      where: { plan, accessGrantedAt: { not: null } },
+    }),
+    prisma.paidPlanWaitlistEntry.count({
+      where: { plan, batch: 1, accessGrantedAt: { not: null } },
+    }),
+    prisma.paidPlanWaitlistEntry.count({
+      where: { plan, batch: 2, accessGrantedAt: { not: null } },
+    }),
+    prisma.paidPlanWaitlistEntry.count({
+      where: { plan, convertedAt: { not: null } },
+    }),
+  ])
+  return { granted, grantedBatch1, grantedBatch2, converted }
 }

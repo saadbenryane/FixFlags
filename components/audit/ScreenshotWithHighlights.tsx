@@ -9,7 +9,7 @@ import {
   type Ref,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, CircleAlert } from 'lucide-react'
+import { CheckCircle2, CircleAlert, ImageOff, RotateCw } from 'lucide-react'
 import {
   mobileViewportSizeForHeight,
   viewportAspectStyle,
@@ -224,7 +224,7 @@ function PinOverlay({
         <button
           ref={pinRef}
           type="button"
-          className="flex min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          className="pointer-events-auto flex min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           aria-label={`Evidence: ${highlight.label}`}
           aria-expanded={open}
           aria-current={selected ? 'true' : undefined}
@@ -278,7 +278,7 @@ function PageEvidenceOverlay({
       <button
         ref={triggerRef}
         type="button"
-        className="absolute inset-0 cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset"
+        className="pointer-events-auto absolute inset-0 cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset"
         aria-label={`Evidence: ${highlight.label}`}
         aria-expanded={open}
         aria-current={selected ? 'true' : undefined}
@@ -476,7 +476,26 @@ function ScreenshotPanel({
 }) {
   const resolvedImageUrl = normalizeInternalScreenshotUrl(imageUrl)
   const [imgError, setImgError] = useState(false)
+  const [imgLoaded, setImgLoaded] = useState(false)
+  const [retryKey, setRetryKey] = useState(0)
   const [letterbox, setLetterbox] = useState<LetterboxLayout | undefined>()
+  const imgRef = useRef<HTMLImageElement>(null)
+
+  // Lazy-loaded captures can fail without dispatching an error event in some
+  // engines (complete + naturalWidth 0). Poll briefly so the fallback chain
+  // always resolves to an explicit error UI instead of a blank panel.
+  useEffect(() => {
+    const img = imgRef.current
+    if (img && img.complete && img.naturalWidth === 0) {
+      setImgError(true)
+      return
+    }
+    const settleTimer = window.setInterval(() => {
+      const el = imgRef.current
+      if (el && el.complete && el.naturalWidth === 0) setImgError(true)
+    }, 300)
+    return () => window.clearInterval(settleTimer)
+  }, [imgError, retryKey])
   const panelRef = useRef<HTMLDivElement>(null)
   const panelStyle: CSSProperties = size
     ? { width: size.width, height: size.height, maxHeight: size.height, flexShrink: 0 }
@@ -516,6 +535,9 @@ function ScreenshotPanel({
     const observer = new ResizeObserver(() => {
       const img = panel.querySelector('img')
       if (img?.naturalWidth) updateLetterbox(img)
+      // Lazy captures may silently fail when scrolled into view; surface the
+      // error state when the load settled with no decoded pixels.
+      if (img && img.complete && img.naturalWidth === 0) setImgError(true)
     })
     observer.observe(panel)
     return () => observer.disconnect()
@@ -563,24 +585,66 @@ function ScreenshotPanel({
         </div>
       ) : null}
       {imgError ? (
-        <div className="absolute inset-0 flex items-center justify-center text-xs text-muted-foreground">
-          Screenshot unavailable
+        <div
+          role="img"
+          aria-label={`${device} screenshot of ${host} could not be loaded`}
+          className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted/20 px-4 text-center"
+        >
+          <ImageOff className="h-5 w-5 text-muted-foreground" aria-hidden />
+          <div>
+            <p className="text-xs font-medium text-foreground">Screenshot unavailable</p>
+            <p className="mt-1 max-w-[16rem] text-2xs text-muted-foreground text-pretty">
+              The capture could not be loaded right now.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setImgError(false)
+              setImgLoaded(false)
+              setRetryKey((key) => key + 1)
+            }}
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-[var(--radius-control)] border border-border/60 bg-background px-3 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
+            <RotateCw className="h-3.5 w-3.5" aria-hidden />
+            Retry
+          </button>
         </div>
       ) : (
-        /* eslint-disable-next-line @next/next/no-img-element */
-        <img
-          src={resolvedImageUrl}
-          alt={`${device} screenshot of ${host}`}
-          width={1440}
-          height={900}
-          loading="lazy"
-          onLoad={(event) => updateLetterbox(event.currentTarget)}
-          onError={() => setImgError(true)}
-          className={cn(
-            'absolute inset-0 h-full w-full object-contain object-top transition-[filter] duration-300',
-            active && 'brightness-[0.92]'
+        <>
+          {!imgLoaded && (
+            <div
+              aria-hidden
+              className="absolute inset-0 flex items-center justify-center bg-muted/30"
+            >
+              <div className="h-6 w-6 animate-pulse rounded-full bg-muted-foreground/20 motion-reduce:animate-none" />
+            </div>
           )}
-        />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={imgRef}
+            key={retryKey}
+            src={
+              retryKey > 0
+                ? `${resolvedImageUrl}${resolvedImageUrl.includes('?') ? '&' : '?'}retry=${retryKey}`
+                : resolvedImageUrl
+            }
+            alt={`${device} screenshot of ${host}`}
+            width={1440}
+            height={900}
+            loading="lazy"
+            onLoad={(event) => {
+              setImgLoaded(true)
+              updateLetterbox(event.currentTarget)
+            }}
+            onError={() => setImgError(true)}
+            className={cn(
+              'absolute inset-0 h-full w-full object-contain object-top transition-[filter,opacity] duration-300',
+              !imgLoaded && 'opacity-0',
+              active && 'brightness-[0.92]'
+            )}
+          />
+        </>
       )}
       <div className="pointer-events-none absolute inset-0">
         <RegionLayer
@@ -591,16 +655,14 @@ function ScreenshotPanel({
         />
       </div>
       <div className="pointer-events-none absolute inset-0">
-        <div className="pointer-events-auto relative h-full w-full">
-          <InteractiveLayer
-            highlights={highlights}
-            device={device}
-            selectedFlagId={selectedFlagId}
-            onPinSelect={onPinSelect}
-            useMobileTooltip={useMobileTooltip}
-            layout={letterbox}
-          />
-        </div>
+        <InteractiveLayer
+          highlights={highlights}
+          device={device}
+          selectedFlagId={selectedFlagId}
+          onPinSelect={onPinSelect}
+          useMobileTooltip={useMobileTooltip}
+          layout={letterbox}
+        />
       </div>
     </div>
   )

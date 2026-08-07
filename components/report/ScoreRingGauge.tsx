@@ -52,7 +52,7 @@ export function ScoreRingGauge({ score, size = 'md', loading = false, progress, 
   const fillColor = score != null ? scoreToScanColor(score) : undefined
   const trackColor = 'hsl(var(--muted-foreground) / 0.18)'
   const isScanning = loading && score == null
-  // The QUEUED anchor (5) is not real progress — stay indeterminate (breathing)
+  // The QUEUED anchor (5) is not real progress - stay indeterminate (breathing)
   // until the server pushes a real milestone (CAPTURING+).
   const hasRealProgress =
     typeof progress === 'number' && progress > PIPELINE_PROGRESS.QUEUED

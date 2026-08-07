@@ -11,6 +11,7 @@ import { getAppUrl } from '@/lib/get-app-url'
 import { Plan } from '@prisma/client'
 import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { isPaidOpenServer } from '@/lib/billing/paid-open'
+import { hasPlanAccessGranted } from '@/lib/billing/waitlist'
 import {
   tierCheckoutDiscounts,
   type TierCheckoutPlan,
@@ -52,6 +53,20 @@ export async function POST(req: NextRequest) {
       return apiError('Paid checkout is not open yet. Join the waitlist on pricing.', 403, {
         code: 'PAID_CHECKOUT_CLOSED',
       })
+    }
+
+    // Batch gate: paid is open, but waitlist members need a released batch or
+    // an explicit access grant (invite redeem or admin grant). Users with no
+    // waitlist row are governed by the master switch alone (legacy behavior).
+    const hasAccess = await hasPlanAccessGranted(session.user.id, plan)
+    if (!hasAccess) {
+      const planLabel =
+        PLAN_DEFINITIONS[plan]?.label ?? (plan === 'TEAM' ? 'Studio' : 'Pro')
+      return apiError(
+        `${planLabel} opens in batches. Your batch has not been released yet, so checkout is not open for you. Join the waitlist to hold your spot.`,
+        403,
+        { code: 'BATCH_ACCESS_REQUIRED' }
+      )
     }
 
     const user = await prisma.user.findUnique({

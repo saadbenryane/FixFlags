@@ -72,7 +72,7 @@ export function WorkspacePlaybackStrip({
               className={cn(
                 'min-h-11 rounded-md px-2 text-xs font-medium transition-colors',
                 index === selected
-                  ? 'bg-brand text-brand-foreground'
+                  ? 'bg-[hsl(var(--brand-strong))] text-brand-foreground'
                   : 'bg-background text-muted-foreground hover:text-foreground'
               )}
               onClick={() => onSelectStep?.(index)}

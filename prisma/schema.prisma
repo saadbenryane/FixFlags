@@ -53,6 +53,9 @@ model User {
   assignedSupportSessions SupportSession[]             @relation("SupportSessionAgent")
   supportSessions         SupportSession[]             @relation("SupportSessionUser")
   twoFactors              TwoFactor[]
+  waitlistInvitesSent     WaitlistInvite[]             @relation("WaitlistInviter")
+  waitlistInvitesRedeemed WaitlistInvite[]             @relation("WaitlistInvitee")
+  waitlistLeads           WaitlistLead[]               @relation("WaitlistLeadClaimedUser")
 
   @@map("users")
 }
@@ -79,13 +82,85 @@ model PaidPlanWaitlistEntry {
   ///    * Email captured at join time. May differ from the account email (e.g. SSO
   ///    * private relay); the confirmation goes to this address.
   email          String?
+  /// *
+  ///    * Access cohort for the "first 500, then next 500" launch: 1 = first
+  ///    * WAITLIST_BATCH_SIZE joiners per plan, 2 = the next WAITLIST_BATCH_SIZE,
+  ///    * null = beyond both caps (list price, access once batches fully open).
+  ///    * Snapshot at join time under the same per-plan advisory lock as the
+  ///    * discount tier; never changes on re-join.
+  batch          Int?
+  /// *
+  ///    * Per-user access grant. Set when the member's batch is released (admin
+  ///    * bulk grant) or when an invite code is redeemed. Checkout also accepts
+  ///    * batch <= WAITLIST_OPEN_BATCH without an explicit grant.
+  accessGrantedAt DateTime?
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, plan])
   @@index([plan, joinedAt(sort: Desc)])
   @@index([plan, discountTier])
   @@index([invitedAt])
+  @@index([plan, batch])
+  @@index([accessGrantedAt])
   @@map("paid_plan_waitlist_entries")
+}
+
+/// *
+///    * One-time invite for a specific person: a unique short code plus a
+///    * /waitlist/<plan>?code=... share link. Redeeming the code creates (or
+///    * claims) the invitee's waitlist row with the invite's batch and an
+///    * immediate access grant. Codes are admin-generated for batch releases and
+///    * are not user-enterable promotion codes.
+model WaitlistInvite {
+  id            String               @id @default(cuid())
+  inviteeEmail  String
+  /// Null for system/bulk invites (admin batch release).
+  inviterUserId String?
+  plan          Plan
+  /// Access cohort the invitee joins (1 or 2). Null defers to join-order batch.
+  batch         Int?
+  status        WaitlistInviteStatus @default(PENDING)
+  /// 8-char URL-safe random code (base64url), unique.
+  code          String               @unique
+  invitedAt     DateTime             @default(now())
+  redeemedAt    DateTime?
+  joinedUserId  String?
+  inviter       User?                @relation("WaitlistInviter", fields: [inviterUserId], references: [id])
+  joinedUser    User?                @relation("WaitlistInvitee", fields: [joinedUserId], references: [id])
+
+  @@index([plan, batch])
+  @@index([inviteeEmail])
+  @@index([status])
+  @@map("waitlist_invites")
+}
+
+/// *
+///    * Email-only pre-account waitlist capture. A visitor without a session can
+///    * join with just an email; the row is claimed when the account signs up and
+///    * joins (attach on signup), carrying any invite-granted batch and access
+///    * grant onto the real PaidPlanWaitlistEntry.
+model WaitlistLead {
+  id              String             @id @default(cuid())
+  email           String
+  plan            Plan
+  /// Access cohort reserved by an invite redeem (null for plain joins: the
+  /// batch is assigned from join position when the entry is created).
+  batch           Int?
+  accessGrantedAt DateTime?
+  source          String?
+  campaign        String?
+  status          WaitlistLeadStatus @default(PENDING)
+  claimedUserId   String?
+  claimedAt       DateTime?
+  joinedAt        DateTime           @default(now())
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  claimedUser     User?              @relation("WaitlistLeadClaimedUser", fields: [claimedUserId], references: [id])
+
+  @@unique([email, plan])
+  @@index([plan, status])
+  @@index([plan, batch])
+  @@map("waitlist_leads")
 }
 
 /// *
@@ -1386,6 +1461,17 @@ enum NewsletterStatus {
   PENDING
   CONFIRMED
   UNSUBSCRIBED
+}
+
+enum WaitlistInviteStatus {
+  PENDING
+  JOINED
+  REVOKED
+}
+
+enum WaitlistLeadStatus {
+  PENDING
+  CLAIMED
 }
 
 enum LeadStatus {

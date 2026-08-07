@@ -309,7 +309,7 @@ program
   .description('Check a URL and return every ranked fix')
   .option('--wait', 'Wait for the completed check', true)
   .option('--no-wait', 'Return as soon as the check is queued')
-  .option('--plan', 'Also print the one-prompt fix plan with all fixes (default on)', true)
+  .option('--plan', 'Print the one-prompt fix plan with all fixes when your account has full access (default on)', true)
   .option('--single', 'Check only the given URL')
   .option('--limit <count>', 'Print only the first count fixes')
   .option('--full', 'Print complete fix prompts')

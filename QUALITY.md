@@ -47,13 +47,15 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 |------|--------|---------------|----------|
 | Report rendering per audit state | 🔶 IMPORTANT | Progressive QUEUED/CAPTURING/CHECKING/COMPLETED + FAILED panel | Component tests for progressive, failure, empty flags |
 | Canonical complete report contract | ⚠️ CRITICAL | One report workspace contains every unresolved Flag; legacy details routes redirect; anonymous shows real evidence + exactly one complete non-placeholder fix prompt; remaining prompts stay gated | `finish-plan.test.ts`, product contract guard, browser matrix, customer-journey plan |
-| Empty states | 🔶 IMPORTANT | No scans, no flags, deleted audit — helpful prompts, not errors | `ReportFixLoop` + `EmptyState` tests; deleted-audit still manual |
+| Empty states | 🔶 IMPORTANT | No scans, no flags, deleted audit — helpful prompts, not errors | `ReportFixLoop` + `EmptyState` tests; deleted-audit E2E tests (not-found state + forward actions) |
 | Loading / progress UI | 🔶 IMPORTANT | Progress bar, skeleton screens, polling behavior | Progressive tests + AiReviewPendingRefresh timeout UX |
-| Mobile-responsive layout | 🔶 IMPORTANT | Canonical report at 375px, 768px, 1280px, plus 200% text and reduced motion | Playwright public journey matrix |
-| Screenshot display | 🔶 IMPORTANT | Load, fail gracefully, placeholder fallback | Partial |
-| Accessibility basics | ⚠️ CRITICAL | Keyboard nav, 44px targets, screen reader names, zoom/reflow, reduced motion | Lint + browser matrix |
+| Mobile-responsive layout | 🔶 IMPORTANT | Canonical report at 375px, 768px, 1280px, plus 200% text and reduced motion | Playwright public journey matrix (report surface + dashboard entry; footer link overflows at 200% zoom — pending shared-layout change) |
+| Screenshot display | 🔶 IMPORTANT | Load, fail gracefully, placeholder fallback | `ScreenshotWithHighlights` component test (error/retry/success) + E2E stubbed-endpoint test (placeholder, Retry, recovery) |
+| Accessibility basics | ⚠️ CRITICAL | Keyboard nav, 44px targets, screen reader names, zoom/reflow, reduced motion | Axe scans on 5 canonical routes + `/samples`; deleted/unknown routes are clean; marketing/shared surfaces still violate (see below) |
 | Page load performance | 🔶 IMPORTANT | Canonical report loads without unnecessary duplicate report bundles | Production build route output |
-| Coverage thresholds | 🔵 POLISH | Vitest coverage config | Not configured |
+| Coverage thresholds | 🔵 POLISH | Vitest coverage config | Config added (`vitest.config.ts`, provider v8, 70% line target on `lib/audit`+`lib/billing`+`lib/auth`); measured 49.62% combined — threshold not yet met |
+
+**Accessibility findings (blocked on shared/marketing components — ASK-CAPTAIN):** axe flags `color-contrast` (white on brand orange `#ff5900`, 3.14:1, on `components/ui/button.tsx` default variant, homepage CTA labels, pricing, sign-in), `definition-list`/`dlitem` on the homepage, and `aria-prohibited-attr` on sign-in. All fix sites live outside the report/audit allow-list (`components/marketing/*`, `app/(marketing)/*`, `components/ui/button.tsx`, `components/auth/*`). The report workspace itself (`/report/*`, `/samples`) is clean.
 
 ## Automated guards
 

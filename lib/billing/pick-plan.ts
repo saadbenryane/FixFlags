@@ -108,6 +108,16 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
     return { kind: 'waitlist' }
   }
 
+  // Batch gate (server 403 BATCH_ACCESS_REQUIRED): paid is open, but this
+  // user's waitlist batch has not been released. Route them back to the
+  // waitlist join flow with the server's explanation instead of a generic
+  // error toast. The check is keyed on the stable server message so the client
+  // bundle never ships the open-batch value.
+  if (outcome.kind === 'error' && outcome.message.includes('opens in batches')) {
+    onPrivateBeta?.()
+    return { kind: 'waitlist', message: outcome.message }
+  }
+
   if (outcome.kind === 'unavailable') {
     toast.error(BILLING_ACTION_COPY.checkout.unavailableTitle, {
       description: outcome.message,

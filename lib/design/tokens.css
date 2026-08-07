@@ -20,6 +20,8 @@
   /* ── Brand orange (Flag #FF5A00) ── */
   --brand: 21 100% 50%;
   --brand-foreground: 0 0% 100%;
+  /* Darker orange for accessible small text/CTAs: 5.1:1 vs white (#c24400) */
+  --brand-strong: 21 100% 38%;
   --brand-hover: 21 100% 58%;
   --brand-muted: 21 100% 96%;
   --brand-border: 21 90% 88%;
