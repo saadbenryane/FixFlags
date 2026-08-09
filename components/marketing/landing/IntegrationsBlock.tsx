@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { CopyableCommand } from '@/components/marketing/landing/CopyableCommand'
 import { EditorIntegrationGrid } from '@/components/marketing/landing/EditorIntegrationGrid'
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
@@ -43,13 +44,16 @@ export function IntegrationsBlock() {
             </div>
 
             <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link
-                href={copy.mcpHref}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-control)] bg-brand px-4 text-sm font-semibold text-white transition-colors duration-150 hover:bg-brand/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              <Button
+                asChild
+                variant="brand"
+                className="px-4 text-sm font-semibold"
               >
-                {copy.mcpCta}
-                <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
-              </Link>
+                <Link href={copy.mcpHref}>
+                  {copy.mcpCta}
+                  <ArrowUpRight className="h-4 w-4" aria-hidden />
+                </Link>
+              </Button>
               <Link
                 href={copy.cliHref}
                 className="inline-flex min-h-11 items-center gap-1.5 rounded-[var(--radius-control)] px-3 text-sm font-semibold text-foreground transition-colors duration-150 hover:bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"

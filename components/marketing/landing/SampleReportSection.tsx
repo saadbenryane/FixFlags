@@ -205,7 +205,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
               <p className="font-mono text-3xs font-semibold uppercase tracking-[0.16em] text-background/45 sm:text-2xs">
                 {copy.trustSupportLabel}
               </p>
-              <dl className="flex flex-wrap gap-x-6 gap-y-3 sm:justify-end">
+              <div className="flex flex-wrap gap-x-6 gap-y-3 sm:justify-end">
                 {supportingMetrics.map((metric) => {
                   const Icon = metric.icon;
                   return (
@@ -215,18 +215,18 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                         strokeWidth={1.7}
                         aria-hidden
                       />
-                      <div className="flex flex-col">
+                      <dl className="flex flex-col">
                         <dt className="order-2 mt-0.5 text-2xs text-background/50">
                           {metric.label}
                         </dt>
                         <dd className="order-1 font-mono text-xs font-semibold tabular-nums text-background">
                           {metric.value}
                         </dd>
-                      </div>
+                      </dl>
                     </div>
                   );
                 })}
-              </dl>
+              </div>
             </div>
           </Container>
         </RevealOnView>

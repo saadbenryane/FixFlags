@@ -334,7 +334,7 @@ export function AuthFlow({
       ) : null}
 
       {oauth.isLoading ? (
-        <div className="space-y-2" aria-label={AUTH.reportGate.preparingOptions}>
+        <div className="space-y-2" role="status" aria-label={AUTH.reportGate.preparingOptions}>
           <div className="h-11 animate-pulse rounded-[var(--radius-control)] bg-muted" />
           <div className="h-11 animate-pulse rounded-[var(--radius-control)] bg-muted" />
         </div>

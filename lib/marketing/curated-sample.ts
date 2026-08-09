@@ -43,6 +43,8 @@ export type CuratedSampleAudit = {
     id: string
     score: number
     checkedAt: Date
+    kind: 'product-review' | 'update-review' | 'watch'
+    status: 'completed' | 'partial' | 'degraded' | 'failed'
   }>
   intentionalNotes?: string[]
   knownRisks?: string[]

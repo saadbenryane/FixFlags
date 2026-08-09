@@ -77,6 +77,8 @@ export interface SampleReportDisplay {
     id: string
     score: number
     checkedAt: Date
+    kind: 'product-review' | 'update-review' | 'watch'
+    status: 'completed' | 'partial' | 'degraded' | 'failed'
   }>
   flagCount: number
   desktopScreenshot: string | null
