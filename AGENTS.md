@@ -12,7 +12,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. A
 - Canonical report hierarchy: [knowledge/report-contract.md](knowledge/report-contract.md). Do not duplicate route or section order in skills.
 - Plans meter product reviews (new URLs and update reviews share the same credit pool). Customer copy uses **update review**; internal routes may still use `re-check`.
 - Stage: pre-revenue testing. Distribution has priority over additional product depth.
-- Shipped truth: [PRODUCT.md](PRODUCT.md). North star: [knowledge/vision.md](knowledge/vision.md).
+- Shipped truth: [PRODUCT.md](PRODUCT.md). North star and canonical loop: [knowledge/vision.md](knowledge/vision.md) (Signal → Understand → Prioritize → Fix → Verify → Learn; customer loop Check → Fix → Verify → Watch).
 - Product and technical vocabulary: [knowledge/README.md](knowledge/README.md).
 
 ## Task router
@@ -68,6 +68,9 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for setup, databases, deployment, and debug
 
 ## Critical product invariants
 
+- A review is an observation of the Product at a moment in time; the Product is the long-term object ([knowledge/vision.md](knowledge/vision.md)). Keep **SHIPPED / NEXT / VISION** separate — never claim vision-layer capabilities (Product Graph, global intelligence, "Fix it for me", multi-signal Flags) as shipped in product copy, docs, or reports.
+- FixFlags independence: never inject unsolicited prompts into users' Cursor, Claude Code, Lovable, or other AI tools; users control how fixes happen. Verification must be a fresh independent evaluation — the system that creates a change never declares its own work correct.
+- Decision filter: every major feature must improve understanding of a product or make that understanding more useful in improving it; otherwise question why it is being built.
 - Marketing copy has one source of truth: `lib/marketing/copy.ts`. Do not hardcode it in components.
 - The product exposes exactly three report rubrics: Message, Experience, Reach.
 - Customer-facing loop language lives in `lib/marketing/copy/terminology.ts`: product review, update review, deep review, Funnel, path. Internal code may still use `re-check`, `recheck`, and `monitoring` routes and analytics names.
@@ -118,6 +121,26 @@ FixFlags currently works directly on `main`.
 4. Read-only research may run concurrently. One owner controls each write scope.
 5. Create `.agents/handoffs/<task-id>.md` before leaving meaningful work incomplete.
 6. Use `.agents/sessions/` for substantial implementation or durable decisions, not transcripts or exhaustive command logs.
+
+## Goal sessions
+
+When working toward a multi-step outcome ("Game On" runs, completion plans), track it persistently:
+
+- **State:** the active goal lives in `.agents/GOAL.md` (gitignored): Condition, Proof commands, Constraints, turn Bound, and a **Turn log** (Turn | Work summary | Proof run | Verdict MET/PARTIAL/NOT MET | Reason).
+- **Detail:** the executable spec lives in `GOAL_BRIEF.md` (repo root) or a session doc; `.agents/GOAL.md` points at it.
+- **Discipline:** every turn records its proof run and an honest verdict. Append to **Achieved** only when every proof passes. Verdicts stay honest: NOT MET until the condition is truly met.
+- Template: `.agents/GOAL.md.example`.
+
+## Operating discipline
+
+- Never auto-add your agent name as a commit co-author.
+- Never manually modify auto-generated files (generated docs, lockfiles, guard reports). Fix the generator instead.
+- Long Markdown files: put each full sentence on its own line. Preserve normal Markdown structure, but avoid wrapping multiple sentences onto one physical line.
+- Technical decisions weigh quality, simplicity, robustness, and long-term maintainability over development cost.
+- Bug fixes start by reproducing the bug through the real path (E2E / browser) as the end user experiences it, then fix the real problem.
+- When testing the product, be picky and pixel-perfect. If something clearly looks off, even unrelated to the current change, fix it along the way.
+- Apply the same standard to engineering excellence: if you see a lint failure, test failure, or flake, fix it even if it is not caused by your current work.
+- Operator communication in plain English first; codes, UUIDs, and jargon only as footnotes.
 
 ## Token efficiency
 

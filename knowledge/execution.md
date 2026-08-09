@@ -20,7 +20,7 @@ Do not launch as “AI website auditing with N checks.” Long-term category is 
 
 Paste link → Check → Fix → Verify → Watch.
 
-Maps to Check → Fix → Verify → Watch. See [vision.md](./vision.md).
+Maps to the customer loop Check → Fix → Verify → Watch, the wedge expression of the canonical loop Signal → Understand → Prioritize → Fix → Verify → Learn. See [vision.md](./vision.md).
 
 ## Now (ordered)
 

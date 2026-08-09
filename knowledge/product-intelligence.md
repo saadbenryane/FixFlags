@@ -6,6 +6,12 @@
 
 Product Intelligence is the persistent, customer-specific understanding of one Product. The customer owns it. It should remain portable, inspectable, and usable outside FixFlags.
 
+## Review as observation; Product as the long-term object
+
+A scan/review is an observation of the Product at a moment in time. The Product is the long-term object ([vision.md](./vision.md)). Product Memory grows across observations: audits, update reviews, watch runs, Contract edits, and eventually non-scan signals.
+
+Direction: extend `Project.productIntelligence` toward the vision's Product Memory (expected behavior, journeys, decisions, what "good" means for this product). Normalize into tables only when query needs prove it; do not prematurely build a graph database if the relational model represents this cleanly.
+
 ## Relationship to Product Contract
 
 The **Product Contract** is the MVP seed of Product Intelligence: purpose, first-value journey, critical outcomes (inferred or user-edited).
@@ -69,6 +75,8 @@ Human-readable repository files may eventually project PI. Long-term internal re
 ## Flag as durable unit
 
 Reports, prompts, and scores are formats. The Flag is the durable finding unit. Strong Flags express product outcomes. See truth classes in [integrity-engine.md](./integrity-engine.md).
+
+A Flag may eventually originate from any signal source (scan, support conversation, user feedback, session behavior, analytics, deployment/regression, another agent or system). Only scan-originated Flag sources ship today; each new source is a future Flag origin ([vision.md](./vision.md)).
 
 ## Surfaces
 

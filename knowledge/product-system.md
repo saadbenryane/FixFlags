@@ -8,6 +8,12 @@
 
 The unit of value is not a scan, score, report, or issue. The unit of value is a verified fix.
 
+The customer loop above is the wedge expression of the canonical loop **Signal → Understand → Prioritize → Fix → Verify → Learn** ([vision.md](./vision.md)).
+
+## One intelligence, multiple surfaces
+
+Quick Check / Finish Check / Watch are the shipped product surfaces of one intelligence system. Audience packaging (Builders / Developers / Companies) is the same intelligence through different surfaces — never three disconnected products. See [vision.md](./vision.md) → Product packaging.
+
 ## Three products
 
 ### A. Quick Check

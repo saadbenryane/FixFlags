@@ -1,0 +1,29 @@
+# Goal state (example — copy to `.agents/GOAL.md` for an active run)
+
+> Active `.agents/GOAL.md` is gitignored. Commit this example only.
+> Detail briefs live in `GOAL_BRIEF.md` (repo root) or `.agents/sessions/`. This file tracks state and turn accountability.
+
+## Active goal
+
+| Field | Value |
+|-------|-------|
+| **Condition** | _(measurable end state: what must be true when done)_ |
+| **Proof** | _(exact commands that must exit 0; list substrate/prereq checks first, then E2E/gates)_ |
+| **Constraints** | _(paths that must not change, conventions, operator-only steps to report instead of attempt)_ |
+| **Bound** | _(optional: stop after N turns, or token budget)_ |
+| **Started** | YYYY-MM-DD |
+| **Status** | `active` |
+
+## Turn log
+
+| Turn | Work summary | Proof run | Verdict | Reason |
+|------|--------------|-----------|---------|--------|
+| 1 | _(what was done this turn)_ | _(commands run + result)_ | NOT MET | _(why the goal is not yet met)_ |
+
+## Achieved (session)
+
+_(Append a short summary only after every proof above passes; then clear the Active goal.)_
+
+## Superseded session context
+
+_(Optional: point to the previous goal/board record so history is preserved without rewriting it.)_

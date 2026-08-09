@@ -87,7 +87,7 @@ Paste your live URL. FixFlags tests the paths that matter, shows exactly where t
 
 **Core loop:** Check → Fix → Verify → Watch.
 
-**Vision loop:** Understand → Improve → Verify → Remember ([knowledge/vision.md](./knowledge/vision.md)).
+**Canonical loop:** Signal → Understand → Prioritize → Fix → Verify → Learn ([knowledge/vision.md](./knowledge/vision.md)). A review is an observation of the Product at a moment in time; the Product is the long-term object.
 
 **The unit of value is a verified fix.**
 

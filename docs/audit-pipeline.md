@@ -14,6 +14,8 @@ ai-review job (optional, gated):
 
 Triage runs **inline in the audit job** for every scan. Prescription runs in a **separate async job** after triage completes.
 
+An audit is an observation of the Product at a moment in time ([knowledge/vision.md](../knowledge/vision.md)). The Flag is the durable unit across observations; future signal sources (support, feedback, analytics, deployments) are intended to feed the same Flag model. Only the scan-originated Flag sources ship today.
+
 ## Audit modes
 
 | Mode | Enum | Behavior |

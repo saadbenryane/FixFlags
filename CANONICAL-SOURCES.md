@@ -45,7 +45,15 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Five execution risks | `knowledge/market.md` → Five Execution Risks |
 | Distribution strategy | `knowledge/market.md` → Distribution Strategy |
 | Studio channel | `knowledge/market.md` → Fastest Studio Channel |
-| Product vision and north-star system layers | `knowledge/vision.md` |
+| Product vision, north star, and brand hierarchy | `knowledge/vision.md` |
+| Canonical improvement loop (Signal → Understand → Prioritize → Fix → Verify → Learn) | `knowledge/vision.md` → Canonical improvement loop |
+| Flag as atomic object and signal sources | `knowledge/vision.md` → The Flag: atomic object of FixFlags |
+| Product Memory | `knowledge/vision.md` → Product Memory, `knowledge/product-intelligence.md` |
+| Product Graph | `knowledge/vision.md` → Product Graph |
+| Fix paths (show how / own agent / fix for me) | `knowledge/vision.md` → Fixing |
+| Product packaging (Builders / Developers / Companies) | `knowledge/vision.md` → Product packaging |
+| SHIPPED / NEXT / VISION separation | `knowledge/vision.md` → SHIPPED / NEXT / VISION |
+| Decision filter | `knowledge/vision.md` → Decision filter |
 | Product mechanics and moat | `knowledge/product.md` |
 | Product moat | `knowledge/product.md` → The Moat |
 | Product Contract (intent layer) | `knowledge/product.md` → Product Contract |

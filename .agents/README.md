@@ -9,6 +9,8 @@ This directory enables safe parallel work by multiple AI agents (Cursor, Claude 
 | Path | Purpose |
 |------|---------|
 | `BOARD.md` | Active task board — claim here before starting |
+| `GOAL.md` | Active goal state (gitignored): Condition, Proof, Constraints, turn Bound, Turn log with verdicts. Template: `GOAL.md.example`; detail briefs: `GOAL_BRIEF.md` (root) |
+| `GOAL.md.example` | Committed template for goal-state tracking |
 | `sessions/` | Implementation records for substantial work |
 | `handoffs/` | Handoff documents for incomplete work between agents |
 | `learnings/` | Validated project learnings (durable, not guesses). Active growth notes may live in `docs/growth/learnings.md` until promoted here. |

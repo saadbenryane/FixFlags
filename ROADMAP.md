@@ -105,6 +105,10 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 
 ## Next
 
+- **Product Memory evolution** — extend `Project.productIntelligence` toward the vision's Product Memory (expected behavior, important journeys, decisions, what "good" means) as usage proves out; reviews stay observations of the Product ([knowledge/vision.md](./knowledge/vision.md) → Product Memory).
+- **First non-scan signal source** — pick the first Flag origin beyond scans (feedback, support, or deployment) and add `signalSource` to the Flag model.
+- **Conversation and timeline** — evolve the workspace chat toward grounded Product Intelligence Q&A and the continuous product timeline (vision Experience; [docs/workspace-interface.md](./docs/workspace-interface.md)).
+- **GitHub-native "Fix it for me"** — branch/PR path with fresh independent FixFlags verification before human merge (vision Fixing trust model; extends `repo-fix-pr`).
 - **Repo signals into Fix list** — Optional repo connect feeds Implementation Integrity into the same prioritized list (entitlement expansion after thesis).
 - **CLI understand / finish / verify / status** — Cloud-backed first; local runtime later ([knowledge/open-source.md](./knowledge/open-source.md)).
 - **Evolution tracking** — Trend quality over time per Product / URL.
@@ -122,6 +126,10 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 - Authenticated journey architecture (staged)
 - Personas, testing modes, full session video (demand-triggered)
 - Platform-native `.fixflags` subdomain trick
+- Product Memory normalization into tables (only when query needs prove it)
+- Product Graph representation (conceptual model; relational first, no graph DB until insufficient)
+- Support conversations as Flag signals
+- User/voice signal sources (session behavior, analytics connectors)
 
 ## Shipped retention (was Next)
 
@@ -130,6 +138,8 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 ## Not planned
 
 - General coding agent / IDE / chatbot
+- Customer-support platform (another Zendesk)
+- Competing on generation ("a better Lovable")
 - Migrating UI rubrics to five integrity dimensions before thesis validation
 - Training shared models on customer Product Intelligence by default
 - Open-sourcing the Intelligence Network

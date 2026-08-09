@@ -116,9 +116,9 @@ These concepts change infrequently (years or never):
 
 - **The 25 foundational principles** (knowledge/foundations.md)
 - **The brand name** (FixFlags)
-- **The core loop** (Flag → Fix → Re-check)
+- **The customer loop** (Check → Fix → Verify → Watch) and **the canonical improvement loop** (Signal → Understand → Prioritize → Fix → Verify → Learn)
 - **The three rubrics** (Message, Experience, Reach)
-- **The product vision** (knowledge/product.md → Vision)
+- **The product vision** (knowledge/vision.md)
 - **The pricing philosophy** (knowledge/strategy.md → Pricing Philosophy)
 
 When these change, it is a major event. Document the change in DECISIONS.md.
@@ -163,7 +163,7 @@ Some knowledge is permanent:
 - **The thesis** (knowledge/foundations.md → The Thesis)
 - **The 25 foundational principles** (unless the thesis itself changes)
 - **The brand name** (FixFlags)
-- **The core loop** (Flag → Fix → Re-check)
+- **The customer loop** (Check → Fix → Verify → Watch) and **the canonical improvement loop** (Signal → Understand → Prioritize → Fix → Verify → Learn)
 - **The three rubrics** (Message, Experience, Reach)
 - **The independence principle** (knowledge/foundations.md → Independence)
 

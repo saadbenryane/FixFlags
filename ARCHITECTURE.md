@@ -245,6 +245,30 @@ Playwright Chromium via `lib/audit/screenshot.ts` + `lib/audit/browser/page-sess
 3. Triage degraded: COMPLETED with flags/screenshots and honest partial-AI message (see `docs/audit-pipeline.md`)
 4. Update reviews use product review credits on every plan (customer copy). Internal re-check route remains ungated by ownership only until billing enforcement ships.
 
+## Vision alignment and architecture review
+
+Vision evolution (2026-08): [knowledge/vision.md](./knowledge/vision.md). The Product is the long-term object, the Flag is the atomic unit, and the canonical loop is Signal → Understand → Prioritize → Fix → Verify → Learn. The customer wedge loop (Check → Fix → Verify → Watch) is unchanged and this architecture already supports it.
+
+Review of the current architecture against the vision direction. **Proposals only — no code changed by this review.** Prefer reversible evolution over a speculative rewrite.
+
+| Vision requirement | Current support | Smallest clean change (proposed) |
+|---|---|---|
+| Product as persistent first-class object | `Project` (`canonicalHost`, `isManaged`, `productIntelligence`) is the Product anchor | Keep `Project` as the anchor; extend `Project.productIntelligence`, do not add a new entity |
+| Review as observation/version | `Audit` + `parentId` for update reviews | Keep `Audit` as the observation record; every observation already links to its Project |
+| Flags across multiple signal sources | Flags originate from deterministic checks, AI, and journey today | Add a `signalSource` field to the Flag model when the first non-scan source ships |
+| Flag lifecycle/history | `FlagFeedback` (dismissals) | Add lifecycle state (open / acted / verified / closed) when the loop needs it |
+| Evidence provenance | `evidenceAnchors`, `networkFailures`, visual evidence on the flag | Keep evidence attached to the Flag; no migration now |
+| Product Memory | `Project.productIntelligence` JSON (Contract seed) | Grow the JSON schema; normalize into tables only when query needs prove it |
+| Conversation / timeline | Report chat + activity timeline | Build the timeline concept; do not create a second memory store |
+| Before/after verification | `diffFlagsAgainstParent` on update review | Reuse for every fix-verify flow |
+| Deployment linkage | Product watch (`watchInterval` / `watchNextRunAt`) + Railway webhook | Link Flags to deployments when watch reports regressions |
+| GitHub fixes/PRs | Studio repo scan + `repo-fix-pr` jobs | Extend to the GitHub-native "Fix it for me" trust model (branch/PR + independent verification) |
+| Future customer/user signals | Not collected | Treat each new signal as a new Flag origin; do not build a signal platform yet |
+| Agent/API access | MCP + CLI | Already aligned |
+| Private vs generalized learning | Growth graph is internal-only; customer PI is separate | Maintain the boundary; never merge ([product-intelligence.md](./knowledge/product-intelligence.md)) |
+
+Conclusion: no structural rewrite today. Evolve `Project` PI and the Flag model as the loop proves out; every review stays an observation of the Product.
+
 ## Technical invariants
 
 - No Prisma/Node imports on edge runtime (proxy.ts)

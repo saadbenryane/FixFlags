@@ -47,3 +47,6 @@ next-env.d.ts
 # generated agent evaluation reports
 /scripts/agent-evals/reports/*.json
 .agent-runs/
+
+# active goal state (template committed at .agents/GOAL.md.example)
+.agents/GOAL.md

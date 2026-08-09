@@ -154,6 +154,8 @@ When you need information about a topic, go to the canonical source:
 | Competitors | `knowledge/market.md` |
 | Customer segments | `knowledge/market.md` |
 | Product vision | `knowledge/vision.md` |
+| Product Memory | `knowledge/vision.md` → Product Memory, `knowledge/product-intelligence.md` |
+| Product Graph | `knowledge/vision.md` → Product Graph |
 | Product moat | `knowledge/product.md` |
 | Product Contract | `knowledge/product.md` |
 | Flag system | `knowledge/product.md` |
@@ -233,7 +235,7 @@ When you need information about a topic, go to the canonical source:
 
 - The 12 foundational principles (unless the thesis itself changes)
 - The brand name (FixFlags)
-- The core loop (Check → Fix → Verify → Watch)
+- The customer loop (Check → Fix → Verify → Watch) and the canonical improvement loop (Signal → Understand → Prioritize → Fix → Verify → Learn)
 - The three rubrics (Message, Experience, Reach)
 
 ### What Changes Rarely
