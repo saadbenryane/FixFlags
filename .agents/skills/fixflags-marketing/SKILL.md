@@ -49,7 +49,7 @@ Do not mix both readers in one hero or block.
 
 1. Logged-out primary action is the free check (`Review my site` → `/#audit`), not account creation.
 2. Account creation belongs after triage value.
-3. Live anonymous reports show evidence and exactly one demonstrated prompt; remaining prompts stay gated.
+3. Live anonymous reports show deterministic Agent progress and every confirmed Flag with evidence. Fix prompts, interactive Agent conversation, and Timeline require authentication.
 4. `/samples` is the canonical curated sample Finish Plan.
 5. Never present a curated sample as a live customer review.
 

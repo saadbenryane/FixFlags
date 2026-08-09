@@ -2506,3 +2506,11 @@ otherwise avoid running it in this repo.
 - Appetite/timeline for the "branch edits" / auto-PR feature — this is the
   biggest lever for the "10x value" goal but is a multi-week feature, not a
   quick win.
+## 2026-08-09 — Agent-led report workspace
+
+Shipped one FixFlags Agent transcript for deterministic scan updates, confirmed Flags, authenticated user messages, and metered model replies.
+Logged-out visitors now receive the progressive and completed evidence report while prompts, Timeline payloads, private history, Product Memory, and Canvas remain server-gated.
+Added scan-from-composer, cursor-paginated History, signed anonymous report claiming, atomic monthly chat allowances, and a private paid Canvas with strict evidence grounding, immutable versions, and provider usage records.
+Removed the separate Activity card, blocking anonymous report modal, obsolete per-report turn cap, and confirmed dead report workspace components.
+Verified a real anonymous review through completion at 375, 768, and 1280 pixels with no horizontal overflow, alongside the full repository, completeness, accuracy, database, build, worker, audit, and container gates.
+Credentialed release verification and production Free, Pro, and Studio journeys remain blocked on operator-provided release fixtures.

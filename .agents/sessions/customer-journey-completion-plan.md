@@ -4,7 +4,11 @@
 
 ## Verdict
 
-FixFlags’ **promise is clear** and the **scan loop is fast**. Brand/first impression is restored (`fix-live-images` on `main`). Remaining first-value gaps: anonymous Finish Plan evidence locked behind signup, and a Copy prompt control that can toast success while copying a gate string. Fix those in the access/persistence design. Do not paper over them with UI-only fallbacks.
+**Superseded access decision (2026-08-09):** anonymous visitors receive the Agent transcript and complete public-safe report evidence, but no fix prompt.
+Interactive chat, prompts, and Timeline require authentication.
+The current completion procedure lives in [`agent-workspace-completion.md`](./agent-workspace-completion.md).
+
+FixFlags’ **promise is clear** and the **scan loop is fast**. Brand/first impression is restored (`fix-live-images` on `main`). The original first-value gaps were anonymous evidence locked behind signup and a Copy control that could report success while copying a gate string. The Agent-led workspace resolves them by showing evidence publicly and omitting prompt controls until authentication.
 
 | Dimension | Status | Why |
 |-----------|--------|-----|
@@ -62,7 +66,7 @@ Shipped via board `fix-live-images` on `main` (`1d25ac1` and follow-ups). Confir
 Still verify on production after deploy:
 
 1. Finish Plan shows three titles + real evidence (not “Create a free account to see evidence…”)
-2. Exactly one Copy prompt copies a real editor-ready fix when a usable prompt exists
+2. Anonymous reports expose no Copy prompt; after authentication, every eligible Copy prompt copies real editor-ready content
 3. Other items gate prompts only
 4. Canonical report inspection shows evidence while the selected fix area remains gated
 5. After claim, remaining prompts unlock without refresh bugs

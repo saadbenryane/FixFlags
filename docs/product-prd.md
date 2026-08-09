@@ -131,7 +131,7 @@ Initial wedge: Lovable users, with broad builder support from day one.
 
 - URL-first entry for anonymous users.
 - Workspace opens immediately with honest progress (stages, partial Flags, capture placeholders).
-- Full report and complete controls unlock after account creation.
+- The progressive and completed Report, all confirmed Flags, screenshots, textual evidence, rubric results, and public-safe technology context remain visible while logged out.
 
 Account unlock includes:
 
@@ -142,7 +142,7 @@ Account unlock includes:
 - report history,
 - persistent product understanding.
 
-Anonymous wedge: one teaser scan. Evidence stays visible on the Finish Plan; exactly one complete demonstrated fix prompt; remaining prompts gated until claim. Public APIs must not leak gated prompts.
+Anonymous wedge: one teaser scan with the free programmatic Agent transcript and real Report evidence. Interactive chat, fix prompts, Timeline payloads, private history, Product Memory, update reviews, and Canvas stay gated. Public APIs must not leak those private fields.
 
 Authentication flows land on `/post-login` so anonymous audits are claimed before checkout or `next` navigation.
 
@@ -152,13 +152,12 @@ Authentication flows land on `/post-login` so anonymous audits are claimed befor
 
 Full spec: [workspace-interface.md](./workspace-interface.md).
 
-- **Left:** chat + activity (cheap router model, not judge pipeline).
-- **Right:** dominant browser panel with **Browser view** ↔ **Report view** toggle.
-- **Bottom:** playback strip for paths and step evidence.
+- **Left:** one FixFlags Agent transcript for deterministic scan messages, authenticated user messages, and metered model replies.
+- **Right:** dominant **Report** with authenticated **Timeline** and paid private **Canvas** modes.
+- The left panel has no redundant title. Its right-aligned toolbar contains History followed by New scan.
 - **Product review browser:** Playwright programmatic capture, screenshot-forward.
 - **Deep review browser:** agent-class autonomous navigation (journeys, funnel, path recording).
-- **Mobile:** full parity; Lovable-style Chat ↔ Product switch.
-- **Morph:** Browser view default during review; Report view default after complete for triage.
+- **Mobile:** Agent ↔ Report is the primary switch. Active reviews default to Agent and preserve the chosen tab through completion.
 
 ---
 
@@ -318,9 +317,10 @@ Internal route `/re-check` may persist until API migration.
 
 ## 23) In-app chat policy
 
-- Always on in left panel (live, completed, update review).
-- Cheap OpenRouter-class model; separate from judge/triage pipeline.
-- Hard cap or rate limit per session/plan.
+- Deterministic scan messages are always on, reconstructed from persisted audit facts, and consume no model tokens.
+- Interactive chat requires the authenticated report owner and uses provider-configured chat separately from judge/triage.
+- Monthly input-plus-output allowances are 25,000 on Free, 500,000 on Pro, and 2,000,000 on Studio.
+- Allowance is reserved atomically before a model request and reconciled against provider-reported usage.
 - Scope: Flag Q&A, steering, “what to fix first”, lightweight product corrections. Not general coding agent.
 - Degrade to canned actions if provider unavailable.
 
@@ -328,9 +328,9 @@ Internal route `/re-check` may persist until API migration.
 
 ## 24) Mobile parity
 
-Full feature parity on phone: start review, progress, chat, Fix list, Flag detail, evidence, path replay (adapted), update review + diff, account and billing.
+Full feature parity on phone: start review, Agent progress and chat, Report, Flag detail, evidence, authenticated Timeline, update review and diff, account, billing, and paid Canvas.
 
-Lovable-inspired Chat ↔ Product as primary view switch.
+Agent ↔ Report is the primary view switch.
 
 ---
 
@@ -508,16 +508,16 @@ Canonical interface table: [docs/workspace-interface.md](../docs/workspace-inter
 
 | Area | Shipped today | Target |
 |------|---------------|--------|
-| Workspace layout | Split chat + activity left; Browser ↔ Fix list toggle; playback strip | Same; full-screen path replay takeover |
-| Browser in UI | Screenshot replay in workspace browser panel; step scrub | Agent-class deep-review live browser |
-| In-app chat | Owner-only left panel; dedicated `CHAT_*` model; per-plan cap; canned degradation | Same |
+| Workspace layout | Unified Agent left; Report, authenticated Timeline, and paid Canvas right | Same |
+| Browser in UI | Authenticated Timeline screenshot replay and step scrub | Agent-class deep-review live browser |
+| In-app chat | Owner-only model chat plus free deterministic scan messages; monthly usage ledger | Same |
 | Product review capture | Playwright programmatic with workspace sync | Same |
 | Deep review | Journey capture in pipeline; funnel + path playback in workspace | Agent-class browser mode in workspace panel |
 | Customer metering | Product review + deep review quotas enforced in `lib/billing/plans.ts` and `lib/audit/usage.ts` | Same |
 | Update review billing | Metered product review credits; internal route `/re-check` | Public API rename to update-review (open) |
 | Pricing display | $69 / $199 in marketing and Stripe plans | Same |
 | Funnel + path UI | Funnel section + Replay path into workspace | Full session-style takeover replay |
-| Mobile | Chat ↔ Product tabs; adapted playback | Full-screen path replay |
+| Mobile | Agent ↔ Report tabs; authenticated adapted playback | Full-screen path replay |
 | Compare | Pro before/after compare after update review | Primary payoff surface |
 
 Shipped truth detail: [PRODUCT.md](../PRODUCT.md).
@@ -526,11 +526,9 @@ Shipped truth detail: [PRODUCT.md](../PRODUCT.md).
 
 ## 44) Open questions
 
-1. Mobile playback: bottom strip vs full-screen takeover?
-2. Mobile Chat ↔ Product: tabs vs swipe vs FAB drawer?
-3. Free deep review teaser: one journey playback vs summary-only?
-4. Browser takeover in first workspace release vs follow-on?
-5. When to migrate public API from `re-check` naming to `update-review`?
+1. When should full-screen Timeline playback be evaluated beyond the shipped adapted inline layout?
+2. When should browser takeover be considered after the Agent-led report workspace has production evidence?
+3. When should the public API migrate from `re-check` naming to `update-review`?
 
 ---
 

@@ -140,8 +140,15 @@ export async function GET(
     return NextResponse.json(
       {
         ...rest,
+        userId: canUsePrivateReportData ? rest.userId : undefined,
+        parentId: canUsePrivateReportData ? rest.parentId : undefined,
+        includeAi: canUsePrivateReportData ? rest.includeAi : undefined,
+        aiReviewAt: canUsePrivateReportData ? rest.aiReviewAt : undefined,
+        triageAt: canUsePrivateReportData ? rest.triageAt : undefined,
+        journeyReviewIncluded: canUsePrivateReportData ? rest.journeyReviewIncluded : undefined,
+        journeyReviewAt: canUsePrivateReportData ? rest.journeyReviewAt : undefined,
         status: effectiveStatus,
-        errorMsg: refreshed?.errorMsg ?? audit.errorMsg,
+        errorMsg: canUsePrivateReportData ? (refreshed?.errorMsg ?? audit.errorMsg) : undefined,
         failureCode: refreshed?.failureCode ?? audit.failureCode,
         screenshotCapture,
         pipelineVersion: audit.pipelineVersion ?? PIPELINE_VERSION,

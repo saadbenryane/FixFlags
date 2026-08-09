@@ -75,4 +75,17 @@ describe('monthly chat usage', () => {
     }))
     expect(allowance).toMatchObject({ used: 1_650, remaining: 23_350 })
   })
+
+  it('re-reads status after locking so an expired reservation is not finalized twice', async () => {
+    tx.chatUsageReservation.findUnique
+      .mockResolvedValueOnce({ period: { userId: 'u1', periodStart: period.periodStart } })
+      .mockResolvedValueOnce({
+        id: 'r1', periodId: 'p1', reservedTokens: 10_000, status: 'EXPIRED',
+        period: { ...period, reservedTokens: 0 },
+      })
+    const allowance = await finalizeChatUsage('r1', { inputTokens: 500, outputTokens: 100 })
+    expect(allowance.reserved).toBe(0)
+    expect(tx.chatUsageReservation.update).not.toHaveBeenCalled()
+    expect(tx.chatUsagePeriod.update).not.toHaveBeenCalled()
+  })
 })

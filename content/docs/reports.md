@@ -18,7 +18,8 @@ The score summarizes current release readiness. Use priority and evidence to cho
 
 Fix prompts are written for implementation. Copy one into your editor, keep the scope focused on that Flag, and review the change before deployment.
 
-The anonymous report demonstrates exactly one complete fix prompt. Claim the report to access the remaining gated prompts.
+The anonymous report shows every confirmed Flag and its evidence but no fix prompts.
+Create an account or sign in to claim the report and access eligible fix prompts.
 
 ## Update review and compare
 

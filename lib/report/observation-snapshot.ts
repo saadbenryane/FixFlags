@@ -7,12 +7,18 @@ import {
   historyPointFromAudit,
   type ReportWorkspaceModel,
 } from '@/lib/report/workspace-model'
+import { parseActionTimeline, type ActionTimelineEvent } from '@/lib/audit/action-timeline'
+import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
+import type { AgentMessage } from '@/lib/audit/agent-message'
+import { deriveScreenshotCaptureStatus, parseScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 
 export interface ObservationSnapshot {
   workspace: ReportWorkspaceModel
   url: string
   pageType: string | null
   screenshots: unknown[]
+  actionTimeline: ActionTimelineEvent[]
+  agentMessages: AgentMessage[]
 }
 
 /**
@@ -46,6 +52,11 @@ export async function loadObservationSnapshot(
 
   const flags = audit.flags
   const screenshots = audit.screenshots
+  const screenshotCapture = deriveScreenshotCaptureStatus(
+    audit.status,
+    screenshots,
+    parseScreenshotCaptureStatus(audit.performanceData),
+  )
 
   const explorer = buildLiveExplorerModel({
     url: audit.url,
@@ -85,5 +96,19 @@ export async function loadObservationSnapshot(
     url: audit.url,
     pageType: audit.pageType,
     screenshots,
+    actionTimeline: parseActionTimeline(audit.performanceData),
+    agentMessages: buildFixFlagsScanMessages({
+      id: audit.id,
+      status: audit.status,
+      progress: audit.progress,
+      startedAt: audit.startedAt,
+      completedAt: audit.completedAt,
+      reportCompleteness: audit.reportCompleteness,
+      failureCode: audit.failureCode,
+      journeyReviewIncluded: audit.journeyReviewIncluded,
+      journeyReviewAt: audit.journeyReviewAt,
+      screenshotCapture,
+      flags: flags.map((flag) => ({ id: flag.id, problem: flag.problem, rubric: flag.rubric })),
+    }),
   }
 }

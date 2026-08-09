@@ -1,5 +1,17 @@
 # GOAL_BRIEF — Complete Agent-Led Report Workspace
 
+## Execution status
+
+**Local implementation: complete. Release proof: blocked on named external fixtures.**
+
+P0 through P6 are implemented in the current working tree.
+The focused suites, TypeScript, database checks, completeness audit, accuracy evaluation, production application build, worker build, and a real anonymous scan at 375, 768, and 1280 pixels passed.
+A full local verification also completed 3,800 tests and a container build before Docker Desktop later developed an internal metadata I/O failure.
+
+P7 is the only remaining package.
+Follow the exact continuation and sign-off procedure in [`.agents/sessions/agent-workspace-completion.md`](.agents/sessions/agent-workspace-completion.md).
+Do not reopen P0 through P6 unless a P7 journey produces evidence of a defect.
+
 ## Condition
 
 Ship the approved Agent-led report workspace completely and honestly.

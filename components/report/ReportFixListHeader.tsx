@@ -12,7 +12,7 @@ export function ReportFixListHeader({ count }: { count: number }) {
       <SectionTitle>{REPORT_COPY.sectionTitles.allFixes}</SectionTitle>
       {count > 0 ? (
         <span className="font-mono text-xs tabular-nums text-muted-foreground">
-          {pluralize(count, 'fix')}
+          {pluralize(count, 'fix', 'fixes')}
         </span>
       ) : null}
     </div>

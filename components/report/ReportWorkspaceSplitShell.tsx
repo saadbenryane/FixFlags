@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { WorkspaceViewToggle, type WorkspacePanelView } from '@/components/report/WorkspaceViewToggle'
 import {
@@ -31,6 +31,9 @@ interface ReportWorkspaceSplitShellProps {
   steps: PlaybackStep[]
   /** Timeline and playback require an authenticated report owner. */
   canUseTimeline?: boolean
+  showCanvas?: boolean
+  canUseCanvas?: boolean
+  canvasPanel?: ReactNode
   className?: string
 }
 
@@ -48,14 +51,28 @@ export function ReportWorkspaceSplitShell({
   reportPanel,
   steps,
   canUseTimeline = true,
+  showCanvas = false,
+  canUseCanvas = false,
+  canvasPanel,
   className,
 }: ReportWorkspaceSplitShellProps) {
   const searchParams = useSearchParams()
+  const pathname = usePathname()
   const [view, setView] = useState<WorkspacePanelView>('report')
   const [mobileFocus, setMobileFocus] = useState<MobileFocus>(isActiveReview ? 'chat' : 'product')
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
 
   const stepParam = searchParams.get('step')
+
+  useEffect(() => {
+    const saved = window.sessionStorage.getItem(`fixflags:workspace-panel:${pathname}`)
+    if (saved === 'chat' || saved === 'product') setMobileFocus(saved)
+  }, [pathname])
+
+  const chooseMobileFocus = (next: MobileFocus) => {
+    setMobileFocus(next)
+    window.sessionStorage.setItem(`fixflags:workspace-panel:${pathname}`, next)
+  }
 
   useEffect(() => {
     if (!canUseTimeline || !stepParam || steps.length === 0) return
@@ -109,7 +126,23 @@ export function ReportWorkspaceSplitShell({
     ) : null
 
   const productContent =
-    view === 'browser' ? (
+    view === 'canvas' ? (
+      canUseCanvas ? (
+        canvasPanel ?? (
+          <WorkspacePanel className="flex min-h-[360px] items-center justify-center">
+            <p className="text-sm text-muted-foreground">{REPORT_COPY.workspace.canvas.start}</p>
+          </WorkspacePanel>
+        )
+      ) : (
+        <WorkspacePanel className="flex min-h-[360px] items-center justify-center">
+          <div className="max-w-sm space-y-4 text-center">
+            <p className="text-xl font-semibold text-foreground">{REPORT_COPY.workspace.canvas.lockedTitle}</p>
+            <p className="text-sm text-muted-foreground">{REPORT_COPY.workspace.canvas.lockedBody}</p>
+            <Button asChild><Link href="/pricing">{REPORT_COPY.workspace.canvas.upgrade}</Link></Button>
+          </div>
+        </WorkspacePanel>
+      )
+    ) : view === 'browser' ? (
       canUseTimeline ? (
         <WorkspaceBrowserPanel
           url={browserUrl}
@@ -121,12 +154,14 @@ export function ReportWorkspaceSplitShell({
       ) : (
         <WorkspacePanel className="flex min-h-[360px] items-center justify-center">
           <div className="max-w-sm space-y-4 text-center">
-            <p className="font-display text-xl font-semibold text-foreground">See how FixFlags checked the path</p>
+            <p className="text-xl font-semibold text-foreground">{REPORT_COPY.workspace.timelineGate.title}</p>
             <p className="text-sm text-muted-foreground">
-              Sign in to inspect the captured timeline and replay the evidence behind this report.
+              {REPORT_COPY.workspace.timelineGate.body}
             </p>
             <Button asChild>
-              <Link href="/sign-in">Sign in to view Timeline</Link>
+              <Link href={{ pathname: '/sign-in', query: { next: pathname } }}>
+                {REPORT_COPY.workspace.timelineGate.action}
+              </Link>
             </Button>
           </div>
         </WorkspacePanel>
@@ -135,7 +170,9 @@ export function ReportWorkspaceSplitShell({
       reportPanel
     )
 
-  const toggle = <WorkspaceViewToggle view={view} onChange={setView} />
+  const renderToggle = () => (
+    <WorkspaceViewToggle view={view} onChange={setView} showCanvas={showCanvas} />
+  )
 
   const playback =
     canUseTimeline && steps.length > 0 ? (
@@ -153,14 +190,14 @@ export function ReportWorkspaceSplitShell({
 
   const productColumn = (
     <div className="space-y-3">
-      {stepEvidence}
-      {productContent}
+      <Fragment key="step-evidence">{stepEvidence}</Fragment>
+      <Fragment key="product-content">{productContent}</Fragment>
     </div>
   )
 
   return (
     <div className={cn(REPORT_PLAYBACK_SCROLL_MT, 'space-y-3', className)}>
-      <div className="hidden items-center justify-between gap-3 lg:flex">{toggle}</div>
+      <div className="hidden items-center justify-between gap-3 lg:flex">{renderToggle()}</div>
 
       {showChatColumn ? (
         <div className="flex gap-2 lg:hidden">
@@ -172,7 +209,7 @@ export function ReportWorkspaceSplitShell({
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
               mobileFocus === 'chat' ? 'border-brand bg-brand/10' : 'border-border'
             )}
-            onClick={() => setMobileFocus('chat')}
+            onClick={() => chooseMobileFocus('chat')}
           >
             {REPORT_COPY.workspace.panels.chatTab}
           </button>
@@ -184,7 +221,7 @@ export function ReportWorkspaceSplitShell({
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
               mobileFocus === 'product' ? 'border-brand bg-brand/10' : 'border-border'
             )}
-            onClick={() => setMobileFocus('product')}
+            onClick={() => chooseMobileFocus('product')}
           >
             {REPORT_COPY.workspace.panels.productTab}
           </button>
@@ -207,10 +244,22 @@ export function ReportWorkspaceSplitShell({
 
       <div className="space-y-3 lg:hidden">
         {showChatColumn && mobileFocus === 'chat' ? (
-          leftColumn
+          <div className="space-y-3">
+            {leftColumn}
+            {isActiveReview ? (
+              <Button className="w-full" variant="outline" onClick={() => chooseMobileFocus('product')}>
+                {REPORT_COPY.workspace.panels.viewReport}
+              </Button>
+            ) : null}
+          </div>
         ) : (
           <div className="space-y-3">
-            <div className="flex justify-center">{toggle}</div>
+            {showChatColumn ? (
+              <Button variant="ghost" className="min-h-11" onClick={() => chooseMobileFocus('chat')}>
+                {REPORT_COPY.workspace.panels.backToAgent}
+              </Button>
+            ) : null}
+            <div className="flex justify-center">{renderToggle()}</div>
             {productColumn}
           </div>
         )}

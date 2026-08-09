@@ -127,6 +127,11 @@ export interface CanvasVersionRecord {
   instruction: string
   document: CanvasDocument
   sourceRefs: CanvasSourceReference[]
+  model: string | null
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheWriteTokens: number
   createdById: string
   createdAt: Date
 }
@@ -180,7 +185,9 @@ export interface CanvasRepository {
     createdById: string
   }): Promise<ReportCanvasRecord>
   getCanvas(id: string): Promise<ReportCanvasRecord | null>
+  listCanvases(input: { projectId: string; sourceAuditId?: string }): Promise<ReportCanvasRecord[]>
   listVersions(canvasId: string): Promise<CanvasVersionRecord[]>
+  getVersion(canvasId: string, version: number): Promise<CanvasVersionRecord | null>
   appendVersion(input: Omit<CanvasVersionRecord, 'version' | 'createdAt'>): Promise<CanvasVersionRecord>
   markFailed(canvasId: string): Promise<ReportCanvasRecord>
 }
@@ -188,6 +195,20 @@ export interface CanvasRepository {
 export interface CanvasGenerationResult {
   document: CanvasDocument
   sourceRefs: CanvasSourceReference[]
+  usage: CanvasGenerationUsage
+}
+
+export interface CanvasGenerationUsage {
+  model: string
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheWriteTokens: number
+}
+
+export interface CanvasProviderResult {
+  output: unknown
+  usage: CanvasGenerationUsage
 }
 
 export interface CanvasGenerator {
@@ -195,5 +216,5 @@ export interface CanvasGenerator {
     instruction: string
     evidence: CanvasEvidenceBundle
     previous?: CanvasDocument
-  }): Promise<unknown>
+  }): Promise<CanvasProviderResult>
 }

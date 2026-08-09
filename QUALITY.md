@@ -46,7 +46,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Risk | Rating | Required check | Evidence |
 |------|--------|---------------|----------|
 | Report rendering per audit state | 🔶 IMPORTANT | Progressive QUEUED/CAPTURING/CHECKING/COMPLETED + FAILED panel | Component tests for progressive, failure, empty flags |
-| Canonical complete report contract | ⚠️ CRITICAL | One report workspace contains every unresolved Flag; legacy details routes redirect; anonymous shows real evidence + exactly one complete non-placeholder fix prompt; remaining prompts stay gated | `finish-plan.test.ts`, product contract guard, browser matrix, customer-journey plan |
+| Canonical complete report contract | ⚠️ CRITICAL | One report workspace contains every unresolved Flag; legacy details routes redirect; anonymous shows real evidence and deterministic Agent updates while every fix prompt and Timeline payload remains absent until authentication | access serialization tests, product contract guard, browser matrix, Agent workspace completion plan |
 | Empty states | 🔶 IMPORTANT | No scans, no flags, deleted audit — helpful prompts, not errors | `ReportFixLoop` + `EmptyState` tests; deleted-audit E2E tests (not-found state + forward actions) |
 | Loading / progress UI | 🔶 IMPORTANT | Progress bar, skeleton screens, polling behavior | Progressive tests + AiReviewPendingRefresh timeout UX |
 | Mobile-responsive layout | 🔶 IMPORTANT | Canonical report at 375px, 768px, 1280px, plus 200% text and reduced motion | Playwright public journey matrix (report surface + dashboard entry; footer link overflows at 200% zoom — pending shared-layout change) |
@@ -94,7 +94,7 @@ Remaining hardening (not blocking): freeze screenshot/flow/PageSpeed modules int
 Until automated Touch-tier tests cover report chrome:
 
 1. `/report/[id]`: identity → optional diff → complete ranked Fix List → Contract/Memory → Journey/Flow/Timeline → previews/gates/actions → owner re-check.
-2. Anonymous report exposes every problem and evidence summary, exactly one real prompt, and one contextual signup moment for remaining prompts.
+2. Anonymous report exposes every problem, evidence summary, and deterministic Agent update, exposes no fix prompt or Timeline payload, and presents contextual authentication without replacing the report.
 3. `/report/[id]/details`, sample details, and share details redirect to their canonical surfaces after enforcing the same access contract.
 4. Progressive route shows captures and every verified Flag in the same ranked explorer; Contract/timeline are collapsible. COMPLETED holds the frame until refresh.
 5. `/samples` and loading shell never render an empty main area. Homepage and sample do not query production audit rows.

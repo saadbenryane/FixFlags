@@ -12,12 +12,12 @@ export async function generateGroundedCanvas(input: {
   evidence: CanvasEvidenceBundle
   previous?: CanvasGenerationResult['document']
 }): Promise<CanvasGenerationResult> {
-  const raw = await input.generator.generate({
+  const providerResult = await input.generator.generate({
     instruction: input.instruction,
     evidence: input.evidence,
     previous: input.previous,
   })
-  const document = validateCanvasDocument(raw, input.evidence)
+  const document = validateCanvasDocument(providerResult.output, input.evidence)
   const usedIds = new Set(document.blocks.flatMap((block) => block.sourceRefIds))
   for (const block of document.blocks) {
     if (block.type === 'evidence-gallery') block.items.forEach((item) => usedIds.add(item.captureRefId))
@@ -30,6 +30,6 @@ export async function generateGroundedCanvas(input: {
   return {
     document,
     sourceRefs: input.evidence.references.filter((reference) => usedIds.has(reference.id)),
+    usage: providerResult.usage,
   }
 }
-

@@ -44,6 +44,7 @@ import { wouldBlockNewCheckWithCredits, consumePurchasedCredit } from '@/lib/bil
 import { checkAnonymousAuditAllowed, incrementUsageOnCompleteForAudit } from '@/lib/audit/usage'
 import { getCheckUsage } from '@/lib/auth/permissions'
 import { cookies } from 'next/headers'
+import { createAnonymousClaim } from '@/lib/security/anonymous-claim'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -154,6 +155,7 @@ describe('checkAnonymousAuditAllowed', () => {
   const mockCookieGet = vi.fn()
 
   beforeEach(() => {
+    vi.stubEnv('BETTER_AUTH_SECRET', 'billing-runtime-test-secret')
     vi.mocked(cookies).mockResolvedValue({
       get: mockCookieGet,
     } as never)
@@ -173,7 +175,7 @@ describe('checkAnonymousAuditAllowed', () => {
   })
 
   it('allows when cookie has IDs but none are valid audits', async () => {
-    mockCookieGet.mockReturnValue({ value: '["dead-id"]' })
+    mockCookieGet.mockReturnValue({ value: createAnonymousClaim('dead-id') })
     mockAuditCount.mockResolvedValue(0)
     const result = await checkAnonymousAuditAllowed()
     expect(result).toEqual({ allowed: true })
@@ -181,7 +183,7 @@ describe('checkAnonymousAuditAllowed', () => {
 
   it('blocks when cookie has ID matching a valid anonymous audit', async () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
-    mockCookieGet.mockReturnValue({ value: '["real-id"]' })
+    mockCookieGet.mockReturnValue({ value: createAnonymousClaim('real-id') })
     mockAuditCount.mockResolvedValue(1)
     const result = await checkAnonymousAuditAllowed()
     expect(result.allowed).toBe(false)
@@ -190,13 +192,13 @@ describe('checkAnonymousAuditAllowed', () => {
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('counts only audits with userId: null from tracked cookie IDs', async () => {
+  it('counts only an anonymous audit matching the signed claim', async () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
-    mockCookieGet.mockReturnValue({ value: '["id1","id2","id3"]' })
-    mockAuditCount.mockResolvedValue(2)
+    mockCookieGet.mockReturnValue({ value: createAnonymousClaim('id1') })
+    mockAuditCount.mockResolvedValue(1)
     await checkAnonymousAuditAllowed()
     expect(mockAuditCount).toHaveBeenCalledWith({
-      where: { id: { in: ['id1', 'id2', 'id3'] }, userId: null },
+      where: { id: { in: ['id1'] }, userId: null },
     })
     delete process.env.DEV_SIMULATE_BILLING
   })

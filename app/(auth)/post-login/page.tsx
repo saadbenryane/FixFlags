@@ -12,6 +12,7 @@ import { trackEvent } from '@/lib/analytics/events'
 import { AUTH } from '@/lib/marketing/copy'
 import { useReportAuthContext } from '@/hooks/useReportAuthContext'
 import { PasskeyEnrollPrompt, shouldShowPasskeyEnroll } from '@/components/auth/PasskeyEnrollPrompt'
+import { runPostLoginClaimFlow } from '@/hooks/post-login-claim-flow'
 
 function PostLoginRedirect() {
   const { navigateAfterAuth, next, plan, from } = useAuthRedirect()
@@ -21,43 +22,48 @@ function PostLoginRedirect() {
   const isNewOauthUser = searchParams.get('signup') === '1'
   const trackedRef = useRef(false)
   const [showPasskeyEnroll, setShowPasskeyEnroll] = useState(false)
-  const passkeyEnrollChecked = useRef(false)
   const claimStarted = useRef(false)
 
   useEffect(() => {
     if (claimStarted.current) return
     claimStarted.current = true
-    void claimAnonymous({ showToast: true })
-  }, [claimAnonymous])
-
-  useEffect(() => {
-    if (isLoading || error || !user || passkeyEnrollChecked.current) return
-    passkeyEnrollChecked.current = true
-    void shouldShowPasskeyEnroll().then((show) => {
-      if (show) setShowPasskeyEnroll(true)
+    void runPostLoginClaimFlow({
+      claim: () => claimAnonymous({ showToast: true }),
+      shouldEnroll: shouldShowPasskeyEnroll,
+      showEnrollment: () => setShowPasskeyEnroll(true),
+      beforeNavigate: () => {
+        if (isNewOauthUser && user && !trackedRef.current) {
+          trackedRef.current = true
+          trackEvent('signed_up', {
+            method: 'oauth',
+            plan: plan ?? undefined,
+            email: user.email,
+            user_id: user.id,
+            from: from ?? undefined,
+          })
+        }
+      },
+      navigate: navigateAfterAuth,
     })
-  }, [isLoading, error, user])
-
-  useEffect(() => {
-    if (isLoading || error || !user) return
-    if (showPasskeyEnroll) return
-    if (isNewOauthUser && user && !trackedRef.current) {
-      trackedRef.current = true
-      trackEvent('signed_up', {
-        method: 'oauth',
-        plan: plan ?? undefined,
-        email: user.email,
-        user_id: user.id,
-        from: from ?? undefined,
-      })
-    }
-    void navigateAfterAuth()
-  }, [isLoading, error, isNewOauthUser, user, plan, from, navigateAfterAuth, showPasskeyEnroll])
+  }, [claimAnonymous, from, isNewOauthUser, navigateAfterAuth, plan, user])
 
   if (showPasskeyEnroll) {
     return (
       <div className="flex max-w-sm flex-col items-center gap-4 text-center">
-        <PasskeyEnrollPrompt onComplete={() => setShowPasskeyEnroll(false)} />
+        <PasskeyEnrollPrompt onComplete={() => {
+          setShowPasskeyEnroll(false)
+          if (isNewOauthUser && user && !trackedRef.current) {
+            trackedRef.current = true
+            trackEvent('signed_up', {
+              method: 'oauth',
+              plan: plan ?? undefined,
+              email: user.email,
+              user_id: user.id,
+              from: from ?? undefined,
+            })
+          }
+          void navigateAfterAuth()
+        }} />
       </div>
     )
   }

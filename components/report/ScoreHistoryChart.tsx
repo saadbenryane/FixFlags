@@ -3,6 +3,7 @@
 import { useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
+import { BRAND_HEX } from '@/lib/design/brand-spec'
 
 const BAR_WIDTH = 16
 const BAR_GAP = 12
@@ -10,7 +11,6 @@ const BAR_HEIGHT = 64
 const CHIP_HEIGHT = 20
 const CARET_SIZE = 8
 const MIN_TAP_TARGET = 44
-const GREEN_100 = '#22C55E'
 
 function getScoreOpacity(score: number | null): number {
   if (score === null) return 0
@@ -20,7 +20,7 @@ function getScoreOpacity(score: number | null): number {
 
 function getBarColor(score: number | null): string {
   if (score === null) return 'hsl(var(--border))'
-  if (score >= 100) return GREEN_100
+  if (score >= 100) return BRAND_HEX.success
   return 'hsl(var(--foreground))'
 }
 

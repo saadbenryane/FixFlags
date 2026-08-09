@@ -288,12 +288,8 @@ export async function loadReportRouteState(
       rubricRows,
       url: audit.url,
       contract: audit.productContract,
-      promptAccess: showDeterministicFixes
-        ? 'all'
-        : sampleFixFlag
-          ? 'one'
-          : 'none',
-      demonstratedFlag: sampleFixFlag,
+      promptAccess: showDeterministicFixes ? 'all' : 'none',
+      demonstratedFlag: showDeterministicFixes ? sampleFixFlag : null,
     })
     const flagsById = new Map(allFlags.map((flag) => [flag.id, flag]))
     const canonicalFlags = fixList.items.flatMap((item) => {

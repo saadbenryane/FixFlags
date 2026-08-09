@@ -100,16 +100,21 @@ describe('validateCanvasDocument', () => {
 
 describe('generateGroundedCanvas', () => {
   it('returns only evidence references actually used by the validated document', async () => {
-    const generator = { generate: vi.fn().mockResolvedValue(valid) }
+    const usage = { model: 'canvas-model', inputTokens: 100, outputTokens: 40, cacheReadTokens: 20, cacheWriteTokens: 5 }
+    const generator = { generate: vi.fn().mockResolvedValue({ output: valid, usage }) }
     const result = await generateGroundedCanvas({ generator, instruction: 'Summarize', evidence })
     expect(result.sourceRefs.map((reference) => reference.id)).toEqual([
       'audit:1', 'flag:1', 'capture:before', 'capture:after',
     ])
+    expect(result.usage).toEqual(usage)
     expect(generator.generate).toHaveBeenCalledWith({ instruction: 'Summarize', evidence, previous: undefined })
   })
 
   it('does not return invalid provider output', async () => {
-    const generator = { generate: vi.fn().mockResolvedValue({ ...valid, title: '<iframe />' }) }
+    const generator = { generate: vi.fn().mockResolvedValue({
+      output: { ...valid, title: '<iframe />' },
+      usage: { model: 'canvas-model', inputTokens: 100, outputTokens: 40, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    }) }
     await expect(generateGroundedCanvas({ generator, instruction: 'Summarize', evidence })).rejects.toThrow(CanvasValidationError)
   })
 })

@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db'
 import { resend } from '@/lib/email/client'
 import { WAITLIST_EMAILS } from '@/lib/email/templates'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
+import { BRAND_HEX } from '@/lib/design/brand-spec'
 import {
   generateWaitlistInvite,
   grantBatchAccess,
@@ -31,7 +32,7 @@ const INVITE_BODY = (joinUrl: string, name: string, planLabel: string) =>
   `${WAITLIST_EMAILS.invited(planLabel).html(name)}
   <p style="font-size: 14px; line-height: 1.6;">
     Your batch has been assigned. Use your personal link to unlock checkout:
-    <a href="${joinUrl}" style="color: #16a34a;">${joinUrl}</a>
+    <a href="${joinUrl}" style="color: ${BRAND_HEX.success};">${joinUrl}</a>
   </p>`
 
 export async function POST(

@@ -35,6 +35,9 @@ import {
   readAnonAuditIds,
   trackAnonymousAuditId,
 } from '@/lib/audit/usage'
+import { createAnonymousClaim } from '@/lib/security/anonymous-claim'
+
+process.env.BETTER_AUTH_SECRET = 'test-anonymous-claim-secret-at-least-32-chars'
 
 function passthroughTx() {
   prismaMock.$transaction.mockImplementation(
@@ -50,9 +53,9 @@ describe('readAnonAuditIds', () => {
     expect(readAnonAuditIds('"string"')).toEqual([])
   })
 
-  it('parses an id array and filters non-strings', () => {
-    expect(readAnonAuditIds('["a","b"]')).toEqual(['a', 'b'])
-    expect(readAnonAuditIds('["a",42,null]')).toEqual(['a'])
+  it('accepts only a valid signed claim', () => {
+    expect(readAnonAuditIds(createAnonymousClaim('a'))).toEqual(['a'])
+    expect(readAnonAuditIds('["a","b"]')).toEqual([])
   })
 })
 
@@ -68,7 +71,7 @@ describe('checkAnonymousAuditAllowed', () => {
   })
 
   it('blocks when a tracked teaser audit still exists', async () => {
-    cookieStore.get.mockReturnValue({ value: '["teaser-1"]' })
+    cookieStore.get.mockReturnValue({ value: createAnonymousClaim('teaser-1') })
     prismaMock.audit.count.mockResolvedValueOnce(1)
     const result = await checkAnonymousAuditAllowed()
     expect(result).toMatchObject({
@@ -83,7 +86,7 @@ describe('checkAnonymousAuditAllowed', () => {
   })
 
   it('allows again when the tracked audit no longer exists (stale cookie)', async () => {
-    cookieStore.get.mockReturnValue({ value: '["deleted-audit"]' })
+    cookieStore.get.mockReturnValue({ value: createAnonymousClaim('deleted-audit') })
     prismaMock.audit.count.mockResolvedValueOnce(0)
     await expect(checkAnonymousAuditAllowed()).resolves.toEqual({ allowed: true })
   })
@@ -107,7 +110,7 @@ describe('trackAnonymousAuditId', () => {
     await trackAnonymousAuditId('teaser-1')
     expect(cookieStore.set).toHaveBeenCalledWith(
       ANON_AUDIT_IDS_COOKIE,
-      JSON.stringify(['teaser-1']),
+      expect.stringMatching(/^[^.]+\.[^.]+$/),
       expect.objectContaining({ httpOnly: true, sameSite: 'lax', path: '/' })
     )
   })

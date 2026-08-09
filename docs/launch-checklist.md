@@ -7,7 +7,7 @@
 
 ## ASK-CAPTAIN (blocking before flip)
 
-1. **Price IDs point at the wrong amounts.** Verified via Stripe API (test mode, both active): `STRIPE_BUILDER_PRICE_ID` → **$29/mo** (docs claim $39 — docs stale), `STRIPE_TEAM_PRICE_ID` → **$99/mo** (docs claim $129 — docs stale). Launch targets are **$69 Pro / $199 Studio**. New test AND live prices must be created in the Stripe Dashboard (docs/stripe-setup.md "Target list prices").
+1. **Price IDs do not match the canonical shipped plan prices.** Verified via the Stripe API in test mode. Create matching test and live prices in the Stripe Dashboard before launch. See the current pricing table in [knowledge/strategy.md](../knowledge/strategy.md) and the operator steps in [stripe-setup.md](./stripe-setup.md).
 2. **No promotion codes exist yet.** All four `STRIPE_TIER*_PROMOTION_ID` vars are UNSET. The 4 coupons/codes (T1PRO25, T1STUDIO25, T2PRO15, T2STUDIO15) must be created in Dashboard (test first, mirror live) before the flip; set the promo IDs in env.
 3. **PLAN_RELEASE_DATE must be decided and must be ≤ launch day** (proposed 2026-09-01) — unset today means no discount window and no promotion applies at checkout. Verified in `discount-tiers.ts`: `isDiscountWindowActive()` requires `now ∈ [PLAN_RELEASE_DATE, +12 months)` — a future release date means **no discount is auto-applied even for tier-1 members** (list price). For test-mode verification before the chosen date, temporarily set a past date.
 4. **Anthropic fallback is not configured** on either service (`ANTHROPIC_API_KEY` UNSET; health: chain `openai,anthropic` but `aiConfiguredProviders: ["openai"]`). Not blocking — OpenAI is primary — but the fallback is inert without it.
@@ -28,9 +28,9 @@ Order matters: prices → promotion codes → env → live keys → verify. Test
 - Confirm ASK-CAPTAIN decisions #1, #2, #3, #6 before starting (prices, promos, release date, non-member behavior).
 
 ### Step 1 (a) — Prices in test AND live (Stripe Dashboard, manual) — **NEVER-AUTO / operator-executed**
-1. Create **Pro $69/mo** (recurring monthly) → new `STRIPE_BUILDER_PRICE_ID`; **Studio $199/mo** → new `STRIPE_TEAM_PRICE_ID`, in **test first**, then mirror in **live** (two separate price objects per mode).
-2. Current test IDs point at **$29/$99** (verified via Stripe API) and the documented legacy IDs were **$39/$129** (docs stale). Decide + flag which to retire: recommend archiving the $29/$99 test objects and the legacy $39/$129 docs line, then replacing the env values with the new $69/$199 IDs. Do not reuse old price objects for the new amounts.
-3. Credit packs $15/$30/$50 (`STRIPE_CREDIT_PACK_10/25/50_ID`) and expert review $500 (`STRIPE_EXPERT_REVIEW_PRICE_ID`) already exist in test — keep; mirror to live when first needed (not on the launch path).
+1. Create recurring Pro and Studio prices matching the canonical shipped table in [knowledge/strategy.md](../knowledge/strategy.md), then assign new `STRIPE_BUILDER_PRICE_ID` and `STRIPE_TEAM_PRICE_ID` values in test before mirroring them in live.
+2. Archive the mismatched test price objects and replace their environment values. Do not reuse old price objects for new amounts.
+3. Existing credit-pack and expert-review test objects are outside the launch path. Keep them and mirror them to live only when first needed.
 
 ### Step 2 (b) — Promotion codes in test AND live (Stripe Dashboard, manual) — **NEVER-AUTO / operator-executed**
 1. Create 4 **promotion codes** (internal coupon names per docs/stripe-setup.md):
@@ -113,10 +113,10 @@ Web service `QewOS` (all launch vars live here — billing env is read only by w
 | `STRIPE_SECRET_KEY` | SET | **`sk_test_`** prefix — switch to `sk_live_` at flip |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | SET | `pk_test_` prefix — switch to `pk_live_` at flip |
 | `STRIPE_WEBHOOK_SECRET` | SET | `whsec_` (test) — replace with live at flip |
-| `STRIPE_BUILDER_PRICE_ID` | SET | **$29/mo test price — must become $69** |
-| `STRIPE_TEAM_PRICE_ID` | SET | **$99/mo test price — must become $199** |
-| `STRIPE_CREDIT_PACK_10/25/50_ID` | SET | $15 / $30 / $50 test prices, active — OK |
-| `STRIPE_EXPERT_REVIEW_PRICE_ID` | SET | $500 test price, active (not on launch path) |
+| `STRIPE_BUILDER_PRICE_ID` | SET | Test price does not match [canonical shipped pricing](../knowledge/strategy.md) |
+| `STRIPE_TEAM_PRICE_ID` | SET | Test price does not match [canonical shipped pricing](../knowledge/strategy.md) |
+| `STRIPE_CREDIT_PACK_10/25/50_ID` | SET | Test prices active; outside the launch path |
+| `STRIPE_EXPERT_REVIEW_PRICE_ID` | SET | Test price active; outside the launch path |
 | `STRIPE_API_VERSION` | SET | `2025-02-24.acacia` |
 | `BILLING_REQUIRED` | SET | `true` (web only) |
 | `STRIPE_PAID_OPEN` | **UNSET** | defaults false → waitlist-only (correct pre-launch) |

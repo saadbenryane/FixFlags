@@ -106,6 +106,10 @@ describe('/api/reports/[id]/chat', () => {
     expect(body.available).toBe(true)
     expect(body.allowance).toMatchObject({ limit: 25_000, remaining: 25_000 })
     expect(body.history).toBeUndefined()
+    expect(prismaMock.reportChatMessage.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 40,
+    }))
   })
 
   it('POST rejects a signed-out user with 401', async () => {

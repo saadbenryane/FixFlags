@@ -121,12 +121,19 @@ export async function finalizeChatUsage(
   const inputTokens = Math.max(0, Math.trunc(usage.inputTokens))
   const outputTokens = Math.max(0, Math.trunc(usage.outputTokens))
   return prisma.$transaction(async (tx) => {
+    const identity = await tx.chatUsageReservation.findUnique({
+      where: { id: reservationId },
+      select: {
+        period: { select: { userId: true, periodStart: true } },
+      },
+    })
+    if (!identity) throw new Error('Chat usage reservation not found')
+    await lockUserPeriod(tx, identity.period.userId, identity.period.periodStart)
     const reservation = await tx.chatUsageReservation.findUnique({
       where: { id: reservationId },
       include: { period: true },
     })
     if (!reservation) throw new Error('Chat usage reservation not found')
-    await lockUserPeriod(tx, reservation.period.userId, reservation.period.periodStart)
     if (reservation.status !== 'RESERVED') return allowanceFromRow(reservation.period)
 
     await tx.chatUsageReservation.update({

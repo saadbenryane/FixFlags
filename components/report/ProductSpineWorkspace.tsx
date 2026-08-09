@@ -7,9 +7,12 @@ import {
 } from '@/components/report/ReportWorkspaceChrome'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
+import { ReportCanvasPanel } from '@/components/report/ReportCanvasPanel'
 import { ReportFixListHeader } from '@/components/report/ReportFixListHeader'
 import type { PlaybackStep } from '@/components/report/WorkspacePlaybackStrip'
 import type { AgentMessage } from '@/lib/audit/agent-message'
+import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
+import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import type { ReportWorkspaceHistoryPoint, ReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
@@ -19,6 +22,8 @@ type ObservationSnapshot = {
   url: string
   pageType: string | null
   screenshots: AuditScreenshot[]
+  actionTimeline: ActionTimelineEvent[]
+  agentMessages: AgentMessage[]
 }
 
 /** Convert a JSON-round-tripped model back to runtime Dates. */
@@ -59,6 +64,8 @@ export function ProductSpineWorkspace({
   screenshots,
   steps,
   agentMessages = [],
+  showCanvas = false,
+  canUseCanvas = false,
   canChat,
   reportPanel,
   className,
@@ -70,6 +77,8 @@ export function ProductSpineWorkspace({
   screenshots: AuditScreenshot[]
   steps: PlaybackStep[]
   agentMessages?: AgentMessage[]
+  showCanvas?: boolean
+  canUseCanvas?: boolean
   canChat?: boolean
   /** Current-report panel shown when no observation is selected. */
   reportPanel: ReactNode
@@ -108,6 +117,8 @@ export function ProductSpineWorkspace({
         url: payload.observation.url,
         pageType: payload.observation.pageType,
         screenshots: payload.observation.screenshots ?? [],
+        actionTimeline: payload.observation.actionTimeline ?? [],
+        agentMessages: payload.observation.agentMessages ?? [],
       })
     } catch (cause) {
       // Honest degradation: keep the report view, surface the failure.
@@ -122,6 +133,8 @@ export function ProductSpineWorkspace({
   const activeAuditId = observation?.workspace.identity.auditId ?? reportId
   const activeUrl = observation?.url ?? url
   const activeScreenshots = observation?.screenshots ?? screenshots
+  const activeSteps = observation ? buildPlaybackSteps(observation.actionTimeline) : steps
+  const activeAgentMessages = observation?.agentMessages ?? agentMessages
 
   const activeReportPanel = observation ? (
     <section id="report-flags" className="space-y-3">
@@ -164,19 +177,22 @@ export function ProductSpineWorkspace({
       <ReportWorkspaceSplitShell
         showChatColumn
         canUseTimeline={canChat}
+        showCanvas={showCanvas}
+        canUseCanvas={canUseCanvas}
+        canvasPanel={canUseCanvas ? <ReportCanvasPanel auditId={activeAuditId} /> : undefined}
         leftPanel={
           <WorkspaceChatPanel
             auditId={reportId}
             observationAuditId={activeAuditId}
             canChat={canChat}
-            agentMessages={agentMessages}
+            agentMessages={activeAgentMessages}
             reportUrl={activeUrl}
           />
         }
         browserUrl={activeUrl}
         browserScreenshots={activeScreenshots}
         reportPanel={activeReportPanel}
-        steps={steps}
+        steps={activeSteps}
       />
     </div>
   )

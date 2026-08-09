@@ -9,6 +9,7 @@ import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: () => null }),
+  usePathname: () => `/report/${AUDIT_ID}`,
 }))
 
 const URL = 'https://example.com'
@@ -39,7 +40,6 @@ describe('AuditReportProgressive', () => {
   it('shows the real queue-wait estimate while queued', () => {
     setActiveAudit({
       auditId: 'a1',
-      url: URL,
       queue: {
         state: 'waiting',
         jobsAhead: 2,
@@ -56,7 +56,6 @@ describe('AuditReportProgressive', () => {
   it('suppresses the queue hint for short waits', () => {
     setActiveAudit({
       auditId: 'a1',
-      url: URL,
       queue: {
         state: 'waiting',
         jobsAhead: 0,
@@ -103,7 +102,6 @@ describe('AuditReportProgressive', () => {
     render(
       <AuditReportProgressive
         auditId={AUDIT_ID}
-        isOwner
         isOwner
         status="CAPTURING"
         url={URL}
@@ -164,6 +162,7 @@ describe('AuditReportProgressive', () => {
     render(
       <AuditReportProgressive
         auditId={AUDIT_ID}
+        isOwner
         status="CAPTURING"
         url={URL}
         screenshots={[

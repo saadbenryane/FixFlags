@@ -113,6 +113,8 @@ export function WorkspaceChatPanel({
   const [scanUrl, setScanUrl] = useState('')
   const [scanError, setScanError] = useState<string | null>(null)
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
+  const [historyCursor, setHistoryCursor] = useState<string | null>(null)
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [historyListError, setHistoryListError] = useState<string | null>(null)
   const transcriptRef = useRef<HTMLDivElement>(null)
   const scanInputRef = useRef<HTMLInputElement>(null)
@@ -131,8 +133,9 @@ export function WorkspaceChatPanel({
       const response = await fetch(`/api/reports/${auditId}/chat${observationQuery}`)
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(typeof data?.error === 'string' ? data.error : chatCopy.unavailable)
-      const messages = Array.isArray(data?.messages)
-        ? data.messages
+      const rawMessages = Array.isArray(data?.agentMessages) ? data.agentMessages : data?.messages
+      const messages = Array.isArray(rawMessages)
+        ? rawMessages
             .filter((item: unknown): item is { id?: string; role: 'user' | 'assistant' | 'agent'; content: string } =>
               Boolean(item && typeof item === 'object' && 'role' in item && 'content' in item),
             )
@@ -276,7 +279,7 @@ export function WorkspaceChatPanel({
     const result = await startScanWithHandoff({
       url,
       body: { url, source: 'report' },
-      errorFallback: 'Could not start this review. Check the URL and try again.',
+      errorFallback: chatCopy.startError,
     })
     if (!result.ok) {
       setScanError(result.message)
@@ -284,16 +287,22 @@ export function WorkspaceChatPanel({
     }
   }
 
-  async function loadHistory() {
+  async function loadHistory(cursor?: string) {
     if (!canChat) return
+    if (historyLoading) return
+    setHistoryLoading(true)
     setHistoryListError(null)
     try {
-      const response = await fetch('/api/reports/history?limit=20')
+      const response = await fetch(cursor ? `/api/reports/history?cursor=${encodeURIComponent(cursor)}` : '/api/reports/history')
       const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(typeof data?.error === 'string' ? data.error : 'Could not load scan history.')
-      setHistoryItems(Array.isArray(data?.items) ? data.items : Array.isArray(data?.reports) ? data.reports : [])
+      if (!response.ok) throw new Error(typeof data?.error === 'string' ? data.error : chatCopy.historyError)
+      const items = Array.isArray(data?.items) ? data.items : Array.isArray(data?.reports) ? data.reports : []
+      setHistoryItems((current) => cursor ? [...current, ...items] : items)
+      setHistoryCursor(typeof data?.nextCursor === 'string' ? data.nextCursor : null)
     } catch (error) {
-      setHistoryListError(error instanceof Error ? error.message : 'Could not load scan history.')
+      setHistoryListError(error instanceof Error ? error.message : chatCopy.historyError)
+    } finally {
+      setHistoryLoading(false)
     }
   }
 
@@ -313,35 +322,35 @@ export function WorkspaceChatPanel({
             <Tooltip>
               <TooltipTrigger asChild>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Scan history">
+                  <Button variant="ghost" size="icon" aria-label={chatCopy.historyLabel}>
                     <History className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </SheetTrigger>
               </TooltipTrigger>
-              <TooltipContent>History</TooltipContent>
+              <TooltipContent>{chatCopy.historyTooltip}</TooltipContent>
             </Tooltip>
             <SheetContent side="left" className="w-full sm:max-w-md">
               <SheetHeader>
-                <SheetTitle>Scan history</SheetTitle>
-                <SheetDescription>Return to an earlier product review.</SheetDescription>
+                <SheetTitle>{chatCopy.historyLabel}</SheetTitle>
+                <SheetDescription>{chatCopy.historyDescription}</SheetDescription>
               </SheetHeader>
               <div className="mt-6 space-y-2 overflow-y-auto">
                 {!canChat ? (
                   <div className="space-y-4 rounded-card bg-muted/35 p-4">
                     <Link href={`/report/${auditId}`} className="block min-h-11 rounded-[var(--radius-control)] bg-background px-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
-                      <span className="block text-sm font-medium text-foreground">{reportUrl ? hostname(reportUrl) : 'Current scan'}</span>
-                      <span className="mt-1 block text-xs text-muted-foreground">Current browser session</span>
+                      <span className="block text-sm font-medium text-foreground">{reportUrl ? hostname(reportUrl) : chatCopy.currentScan}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">{chatCopy.currentSession}</span>
                     </Link>
-                    <p className="text-sm text-muted-foreground">Sign in to save this scan and see your review history.</p>
-                    <Button asChild className="w-full"><Link href={signInHref}>Sign in</Link></Button>
+                    <p className="text-sm text-muted-foreground">{chatCopy.saveHistory}</p>
+                    <Button asChild className="w-full"><Link href={signInHref}>{chatCopy.signIn}</Link></Button>
                   </div>
                 ) : historyListError ? (
                   <div className="space-y-3">
                     <p role="alert" className="text-sm text-destructive">{historyListError}</p>
-                    <Button variant="outline" onClick={() => void loadHistory()}>Try again</Button>
+                    <Button variant="outline" onClick={() => void loadHistory()}>{chatCopy.retry}</Button>
                   </div>
                 ) : historyItems.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Your completed and active scans will appear here.</p>
+                  <p className="text-sm text-muted-foreground">{chatCopy.historyEmpty}</p>
                 ) : historyItems.map((item) => (
                   <Link
                     key={item.id}
@@ -356,11 +365,21 @@ export function WorkspaceChatPanel({
                       <span className="font-mono text-2xs text-muted-foreground">{item.score ?? item.status}</span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {item.reviewKind === 'update_review' || item.parentId ? 'Update review' : 'Product review'}
+                      {item.reviewKind === 'update_review' || item.parentId ? chatCopy.updateReview : chatCopy.productReview}
                       {typeof item.unresolvedFlagCount === 'number' ? ` · ${item.unresolvedFlagCount} Flags` : ''}
                     </p>
                   </Link>
                 ))}
+                {canChat && historyCursor ? (
+                  <Button
+                    variant="outline"
+                    className="min-h-11 w-full"
+                    loading={historyLoading}
+                    onClick={() => void loadHistory(historyCursor)}
+                  >
+                    {chatCopy.historyMore}
+                  </Button>
+                ) : null}
               </div>
             </SheetContent>
           </Sheet>
@@ -370,7 +389,7 @@ export function WorkspaceChatPanel({
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="New scan"
+                aria-label={chatCopy.newScan}
                 onClick={() => {
                   setNewScan(true)
                   setScanError(null)
@@ -380,7 +399,7 @@ export function WorkspaceChatPanel({
                 <Plus className="h-4 w-4" aria-hidden="true" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>New scan</TooltipContent>
+            <TooltipContent>{chatCopy.newScan}</TooltipContent>
           </Tooltip>
         </div>
 
@@ -394,7 +413,7 @@ export function WorkspaceChatPanel({
         >
           {newScan ? (
             <p className="max-w-[92%] whitespace-pre-line leading-relaxed text-muted-foreground">
-              Paste the page you want me to review.
+              {chatCopy.newScanInstruction}
             </p>
           ) : null}
           {messages.map((message) => (
@@ -416,14 +435,14 @@ export function WorkspaceChatPanel({
                   href={`?flag=${encodeURIComponent(message.flagId)}#report-flags`}
                   className="mt-2 block min-h-11 py-2 text-sm font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                 >
-                  View Flag
+                  {chatCopy.viewFlag}
                 </Link>
               ) : null}
             </article>
           ))}
           {!newScan && messages.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {historyLoaded ? 'I’m preparing this review.' : 'Loading this conversation…'}
+              {historyLoaded ? chatCopy.preparing : chatCopy.loadingConversation}
             </p>
           ) : null}
         </div>
@@ -438,31 +457,31 @@ export function WorkspaceChatPanel({
                 ref={scanInputRef}
                 value={scanUrl}
                 onChange={(event) => setScanUrl(event.target.value)}
-                placeholder="Paste a URL to review"
-                aria-label="URL to review"
+                placeholder={chatCopy.startPlaceholder}
+                aria-label={chatCopy.startLabel}
                 disabled={loading}
               />
-              <Button type="submit" loading={loading} disabled={!scanUrl.trim()}>Start review</Button>
+              <Button type="submit" loading={loading} disabled={!scanUrl.trim()}>{chatCopy.startAction}</Button>
             </div>
             {scanError ? <p role="alert" className="text-xs text-destructive">{scanError}</p> : null}
             <button type="button" className="min-h-11 text-xs text-muted-foreground hover:text-foreground" onClick={() => setNewScan(false)}>
-              Back to this report
+              {chatCopy.returnToReport}
             </button>
           </form>
         ) : !canChat ? (
           <div className="space-y-3 border-t border-border/40 bg-muted/20 p-3">
-            <p className="text-xs text-muted-foreground">Sign in to ask about the Flags and fixes in this report.</p>
-            <Button asChild className="w-full"><Link href={signInHref}>Sign in to chat</Link></Button>
+            <p className="text-xs text-muted-foreground">{chatCopy.authBody}</p>
+            <Button asChild className="w-full"><Link href={signInHref}>{chatCopy.notSignedIn}</Link></Button>
           </div>
         ) : historyError ? (
           <div className="space-y-3 border-t border-border/40 p-3">
             <p role="alert" className="text-xs text-destructive">{historyError}</p>
-            <Button variant="outline" className="w-full" onClick={() => void loadConversation()}>Try again</Button>
+            <Button variant="outline" className="w-full" onClick={() => void loadConversation()}>{chatCopy.retry}</Button>
           </div>
         ) : meta.exhausted ? (
           <div className="space-y-3 border-t border-border/40 p-3">
-            <p className="text-xs text-muted-foreground">You’ve used this month’s Agent allowance. Your report and scan updates remain available.</p>
-            <Button asChild className="w-full"><Link href="/pricing">Upgrade to continue</Link></Button>
+            <p className="text-xs text-muted-foreground">{chatCopy.allowanceBody}</p>
+            <Button asChild className="w-full"><Link href="/pricing">{chatCopy.allowanceAction}</Link></Button>
           </div>
         ) : (
           <form
@@ -473,7 +492,7 @@ export function WorkspaceChatPanel({
               <Input
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder="Ask about this report"
+                placeholder={chatCopy.placeholder}
                 disabled={loading || !meta.available}
                 className="text-sm"
               />

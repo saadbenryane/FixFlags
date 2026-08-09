@@ -30,8 +30,6 @@ vi.mock('@/lib/audit/usage', async (importOriginal) => {
   return {
     ...actual,
     incrementUsageOnCompleteForAudit,
-    readAnonAuditIds: (raw: string | undefined) =>
-      raw ? raw.split(',').filter(Boolean) : [],
   }
 })
 vi.mock('@/lib/audit/ai-report-entitlement', () => ({ remainingAiReportCredits }))
@@ -39,12 +37,15 @@ vi.mock('@/lib/audit/enqueue-ai-review', () => ({ enqueueAiReview }))
 vi.mock('@/lib/auth/permissions', () => ({ hasUnlimitedScans }))
 import { claimAnonymousAudits } from '@/lib/audit/claim-anonymous'
 import { ANON_AUDIT_IDS_COOKIE } from '@/lib/audit/usage'
+import { createAnonymousClaim } from '@/lib/security/anonymous-claim'
+
+process.env.BETTER_AUTH_SECRET = 'test-anonymous-claim-secret-at-least-32-chars'
 
 describe('claimAnonymousAudits', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     prismaMock.$transaction.mockImplementation(async (operation) => operation(prismaMock))
-    cookieStore.get.mockReturnValue({ value: 'teaser-1' })
+    cookieStore.get.mockReturnValue({ value: createAnonymousClaim('teaser-1') })
     prismaMock.audit.findMany.mockResolvedValue([
       {
         id: 'teaser-1',
@@ -81,6 +82,12 @@ describe('claimAnonymousAudits', () => {
     cookieStore.get.mockReturnValue(undefined)
     const claimed = await claimAnonymousAudits('u1')
     expect(claimed).toBe(0)
+    expect(prismaMock.audit.findMany).not.toHaveBeenCalled()
+  })
+
+  it('does not claim a known audit id from an unsigned or tampered cookie', async () => {
+    cookieStore.get.mockReturnValue({ value: '["teaser-1"]' })
+    expect(await claimAnonymousAudits('u1')).toBe(0)
     expect(prismaMock.audit.findMany).not.toHaveBeenCalled()
   })
 

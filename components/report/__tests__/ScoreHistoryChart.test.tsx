@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
+import { BRAND_HEX } from '@/lib/design/brand-spec'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 
 function makePoint(
@@ -60,7 +61,7 @@ describe('ScoreHistoryChart', () => {
     const bar = screen.getByRole("button")
     expect(bar).toHaveAttribute('aria-label', expect.stringContaining('score 100'))
     const visualBar = bar.querySelector('.bar')
-    expect(visualBar).toHaveStyle({ backgroundColor: '#22C55E' })
+    expect(visualBar).toHaveStyle({ backgroundColor: BRAND_HEX.success })
   })
 
   it('shows score chip for scored bars', () => {

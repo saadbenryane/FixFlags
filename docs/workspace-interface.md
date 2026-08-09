@@ -26,7 +26,6 @@ flowchart TB
       ReportView[ReportView]
       CanvasView[CanvasView]
     end
-    Playback[Bottom_Playback]
   end
   Agent --- right
 ```
@@ -112,7 +111,8 @@ Full parity. No degraded subset.
 Active scans default to Agent without forcing a switch when the report completes.
 Timeline and Canvas remain secondary Product modes.
 
-**Playback on small screens:** bottom strip or full-screen takeover — layout choice is open (see [product-prd.md](./product-prd.md) open questions).
+**Playback on small screens:** authenticated Timeline uses the adapted inline playback layout.
+A full-screen takeover is a later enhancement, not an unresolved requirement for this workspace.
 
 **Patterns (reference, not clone):** device toggle above preview on desktop; live preview stays central; 44px targets; “Open on phone” / share preview link for testing captured URL on device.
 
@@ -142,14 +142,14 @@ Do not show **re-check** in customer UI.
 | Layout | Split workspace during live; report chrome after complete | Same |
 | Browser | Live captures in right panel; selected playback step renders that captured frame | Deep review (agent-class) live browser |
 | Playback | Scrub timeline + step markers; browser frame updates on select; activity click seeks; `?step=N` replay from Flag/Funnel evidence | Full session-style takeover replay |
-| Agent | Programmatic scan output and authenticated model chat currently render separately | One transcript; programmatic output is public-safe and free, model conversation is authenticated and metered monthly |
+| Agent | One transcript; programmatic output is public-safe and free, model conversation is authenticated and metered monthly | Same |
 | Funnel | Section + journey list + Replay path into the workspace browser | Same |
-| Mobile | Chat ↔ Product parity, adapted playback | Agent ↔ Report with Timeline/Canvas as secondary modes |
-| View toggle | Browser ↔ Fix list in the same workspace | Report public; Timeline authenticated; Canvas paid |
+| Mobile | Agent ↔ Report with Timeline and Canvas as secondary modes | Full-screen Timeline takeover may be evaluated later |
+| View toggle | Report public; Timeline authenticated; Canvas paid | Same |
 
 ## Resolved design questions
 
-1. Chat ↔ Product on mobile: **tab switch** (Lovable-style) shipped. Swipe/FAB remain open alternatives.
-2. Path replay layout: inline playback strip + step evidence shipped on all sizes; full-screen takeover remains open.
-3. Deep review teaser on Free (one journey playback vs summary-only) — open.
-4. Takeover (user controls browser) — follow-on, not first release.
+1. Agent ↔ Report on mobile uses a tab switch.
+2. Authenticated Timeline uses inline playback and step evidence on all sizes.
+3. Full-screen Timeline and browser takeover are follow-on ideas, not incomplete workspace requirements.
+4. Anonymous users receive no Timeline payload or journey playback.

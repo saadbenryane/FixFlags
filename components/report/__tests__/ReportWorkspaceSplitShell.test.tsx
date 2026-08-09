@@ -8,6 +8,7 @@ const searchParamsMock = { get: vi.fn<(name: string) => string | null>(() => nul
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => searchParamsMock,
+  usePathname: () => '/report/a1',
 }))
 
 const events: ActionTimelineEvent[] = [
@@ -44,6 +45,26 @@ beforeEach(() => {
 })
 
 describe('ReportWorkspaceSplitShell playback', () => {
+  it('keeps Timeline discoverable but locked without rendering playback for logged-out visitors', () => {
+    render(
+      <ReportWorkspaceSplitShell
+        leftPanel={<div>Agent</div>}
+        browserUrl="https://example.com"
+        reportPanel={<div>Report</div>}
+        steps={steps}
+        canUseTimeline={false}
+      />,
+    )
+
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
+    expect(screen.getAllByText('See how FixFlags checked the path').length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: 'Sign in to view Timeline' })[0]).toHaveAttribute(
+      'href',
+      '/sign-in?next=%2Freport%2Fa1',
+    )
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument()
+  })
+
   it('renders a scrub timeline with one step marker per captured step', () => {
     renderShell()
     const scrubs = screen.getAllByRole('slider')

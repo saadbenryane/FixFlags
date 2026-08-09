@@ -74,7 +74,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for setup, databases, deployment, and debug
 - Marketing copy has one source of truth: `lib/marketing/copy.ts`. Do not hardcode it in components.
 - The product exposes exactly three report rubrics: Message, Experience, Reach.
 - Customer-facing loop language lives in `lib/marketing/copy/terminology.ts`: product review, update review, deep review, Funnel, path. Internal code may still use `re-check`, `recheck`, and `monitoring` routes and analytics names.
-- The anonymous wedge is one teaser scan. Evidence stays visible on the Finish Plan; exactly one complete demonstrated fix prompt is shown; remaining prompts stay gated until claim. Public APIs must not leak gated prompts. Do not persist signup-gate strings as evidence or fix text.
+- The anonymous wedge is one teaser scan. Evidence and deterministic Agent updates stay visible; every fix prompt, interactive Agent request, and Timeline payload stays gated until claim. Public APIs must not leak gated prompts or playback data. Do not persist signup-gate strings as evidence or fix text.
 - Authentication flows land on `/post-login` so anonymous audits are claimed before checkout or `next` navigation.
 - Real product output is the proof surface. Do not invent testimonials, member counts, fake reports, or unsupported product claims.
 - Follow [SOUL.md](SOUL.md) and [docs/voice-and-copy.md](docs/voice-and-copy.md) for visible language. No em dashes or banned marketing filler.

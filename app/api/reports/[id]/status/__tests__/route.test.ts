@@ -148,6 +148,18 @@ describe('GET /api/reports/[id]/status', () => {
     expect(body.agentMessages.length).toBeGreaterThan(0)
     expect(body.actionTimeline).toEqual([])
     expect(body.productContract).toBeNull()
+    for (const privateField of [
+      'userId',
+      'parentId',
+      'includeAi',
+      'aiReviewAt',
+      'triageAt',
+      'journeyReviewIncluded',
+      'journeyReviewAt',
+      'errorMsg',
+    ]) {
+      expect(body).not.toHaveProperty(privateField)
+    }
   })
 
   it('keeps partialFlags on COMPLETED so the progressive hold frame stays populated', async () => {

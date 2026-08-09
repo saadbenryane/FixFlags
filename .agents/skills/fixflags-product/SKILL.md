@@ -31,7 +31,7 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 
 - The user loop is Flag → Fix → Re-check; re-checks are fresh, full, free, and diff against their parent.
 - Public rubrics are exactly Message, Experience, and Reach.
-- Anonymous users receive one teaser scan: real evidence on all Finish Plan items, exactly one complete demonstrated fix prompt, remaining prompts gated until claim (`PRODUCT.md`, `knowledge/report-contract.md`). Never persist signup-gate strings as flag evidence/fix.
+- Anonymous users receive one teaser scan with deterministic Agent updates and real evidence for every confirmed Flag. Every fix prompt, interactive Agent request, and Timeline payload stays gated until claim (`PRODUCT.md`, `knowledge/report-contract.md`). Never persist signup-gate strings as Flag evidence or fix text.
 - Authentication returns through `/post-login` so claim occurs before checkout or onward navigation.
 - HTTP, MCP, CLI, watch, and UI transports call shared task/application services; routes validate access and adapt responses.
 - Public boundaries remain `/api/checks` and `/api/reports/[id]/*`; do not add legacy audit routes.
@@ -51,7 +51,7 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 
 1. Trace `getGatedAuditForRequest` → `promptAccess` → Finish Plan → Copy UI → `/details` explorer.
 2. Assert live anon evidence is real page evidence, not `Create a free account to see evidence…`.
-3. Assert Copy prompt is absent or copies a real editor prompt; never toast success on a gate placeholder.
+3. Assert anonymous Copy controls are absent. After authentication, every eligible Copy action must copy a real editor prompt and never a gate placeholder.
 4. Keep marketing sample unlock on the sample path only (`isPublicMarketingSample` / `variant="sample"`).
 
 ## Do not ship

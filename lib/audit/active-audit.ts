@@ -9,7 +9,6 @@ function notifyActiveAuditChange(): void {
 
 export interface ActiveAuditSnapshot {
   auditId: string
-  url: string
   queue?: QueueStatus
 }
 
@@ -28,7 +27,9 @@ export function getActiveAudit(): ActiveAuditSnapshot | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY) ?? sessionStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    return JSON.parse(raw) as ActiveAuditSnapshot
+    const parsed = JSON.parse(raw) as Partial<ActiveAuditSnapshot> & { url?: unknown }
+    if (typeof parsed.auditId !== 'string') return null
+    return { auditId: parsed.auditId, queue: parsed.queue }
   } catch {
     return null
   }

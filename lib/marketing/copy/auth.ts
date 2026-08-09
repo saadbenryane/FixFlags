@@ -291,7 +291,7 @@ export const SHARE_COPY = {
 
 export const ANON_VALUE_STRIP = {
   headline: (n: number) => `${n} flag${n === 1 ? '' : 's'} found`,
-  body: 'Every Flag and its evidence are visible. One complete fix prompt is demonstrated above. Create a free account to see the remaining prompts, save this report, and run update reviews.',
+  body: 'Every Flag and its evidence are visible. Create a free account to get fix prompts, save this report, and run update reviews.',
   primaryCta: 'Create free account',
   secondaryCta: 'Sign in',
 } as const

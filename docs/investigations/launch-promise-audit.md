@@ -16,7 +16,7 @@ The product machinery is real and works end-to-end: capture → 22 deterministic
 4. **Anonymous failure recovery is a dead end.** The failure UI shows a retry button for everyone, but the retry API 403s for anonymous audits (`canManageAudit` requires `userId`, `lib/audit/access.ts:22`; enforced at `app/api/reports/[id]/retry/route.ts:25`).
 5. **The anonymous CLI/MCP path is half-broken**: it works only if the check completes inside the server's 50 s synchronous window; on slower audits the CLI's `waitForReport` calls `ff_get_report`, which is **not registered for anonymous** (`lib/mcp/tools/index.ts:20-21`), so the CLI dies with an "unknown tool" error instead of a useful fix list.
 
-The marketing copy itself is scrupulously honest ("One complete fix prompt is demonstrated above. Create a free account to see the remaining prompts", `lib/marketing/copy/auth.ts:294`) — the gap is between the *product promise* (one prompt with all fixes, plan-mode prompt, "fix prompts your agent runs") and what an anonymous visitor actually receives.
+This finding was superseded by the Agent-led report contract. Anonymous visitors now receive all confirmed Flags and evidence, while every fix prompt requires authentication. The canonical behavior lives in `knowledge/report-contract.md`.
 
 ---
 

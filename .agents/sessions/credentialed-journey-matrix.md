@@ -1,6 +1,6 @@
 # Credentialed journey matrix
 
-*Created: 2026-07-23. Updated: 2026-07-26. Release gate: all revenue-critical paths signed off before distribution scale.*
+*Created: 2026-07-23. Updated: 2026-08-09. Release gate: all revenue-critical paths signed off before distribution scale.*
 
 ## Release verification
 
@@ -23,7 +23,7 @@ Record command output here when credentials are provisioned.
 
 | Journey | Automated proof | Status | Notes |
 |---------|-----------------|--------|-------|
-| Anonymous wedge | Unit + `e2e/public-journeys.spec.ts` + local browser dogfood | Local Pass; deployed dogfood pending | The isolated production-like E2E submitted a real check, reached `COMPLETED` in 38.9 seconds, verified exactly one complete non-placeholder prompt, copied it, and proved the second-URL signup gate. `saadbenryane.com` audit `cms10xj8n0001gr82h9f3l989` also completed `FULL` in 155 seconds without restart. Claim flow remains part of the credentialed sandbox run. |
+| Anonymous Agent workspace | Unit + route boundaries + local browser dogfood | Local Pass; deployed dogfood pending | A real anonymous `example.com` review reached `COMPLETED` in 23 seconds with 18 Flags. Deterministic Agent updates and report evidence were visible at 375, 768, and 1280 pixels. Prompts and Timeline payloads were absent. Claim flow remains part of the credentialed sandbox run. |
 | Passkeys / 2FA / recovery | Unit tests + virtual WebAuthn and backup-code E2E | Implemented; sandbox run pending | Release fixture supplies the registered credential material and one disposable backup code. |
 | Billing / webhooks | Unit/handler tests + checkout/portal E2E | Implemented; sandbox run pending | Uses separate free and paid Stripe test users. Signed webhook lifecycle still relies on the existing handler tests plus operator Stripe dogfood. |
 | Re-check / diff / Remember | Unit + claim/re-check E2E | Implemented; sandbox run pending | Claims the anonymous report through `/post-login`, unlocks the Fix List, performs a fresh FULL re-check, and asserts diff and Remember UI. |
@@ -38,14 +38,14 @@ Record command output here when credentials are provisioned.
 Run on **one anonymous** and **one signed-in** journey before distribution:
 
 - [ ] `/report/[id]` hierarchy: identity → diff → complete ranked Fix List → Contract/Memory → Journey/Flow/Timeline → previews/gates/actions → re-check
-- [x] Anonymous: three summaries, exactly one **real** complete fix prompt (not a signup placeholder), one signup moment for remaining prompts (local production-like E2E)
-- [ ] Evidence visible on focused + details for anon; prompts gated except the demonstrated one
+- [x] Anonymous: deterministic Agent transcript, report scores, every confirmed Flag, screenshots, and textual evidence visible without a blocking modal
+- [x] Anonymous: fix prompts and Timeline payloads absent server-side; contextual sign-in actions preserve the report
 - [x] Production brand restored (`fix-live-images` / Phase 0)
 - [x] Unknown report and share tokens render explicit not-found/unavailable states (`e2e/public-journeys.spec.ts`)
 - [x] Progressive route: lightweight status UI renders immediately and advances through the canonical stages without loading the completed-report graph
 - [x] `/samples` and loading shell never empty (public E2E)
 - [ ] Password share: generic metadata, authorize, no view inflation, revoke
-- [x] Progressive report has no horizontal overflow at 320 / 375 / 768 / 1280px; Back navigation and invalid-input recovery work
+- [x] Progressive and completed Agent workspace has no horizontal overflow at 375 / 768 / 1280px; mobile Agent ↔ Report navigation preserves the current review
 - [x] Keyboard submission, reduced motion, 200% text, touch targets, theme switching, and responsive reflow pass in the isolated production E2E; deployed release smoke remains required
 
 ## Browser / pipeline truth (2026-07-23)

@@ -16,6 +16,7 @@ export function ActiveAuditBanner() {
   const { active, dismiss } = useActiveAudit()
   const pathname = usePathname()
   const [stillRunning, setStillRunning] = useState(true)
+  const [hostname, setHostname] = useState<string | null>(null)
   const isActiveReport = Boolean(active && pathname === `/report/${active.auditId}`)
 
   useEffect(() => {
@@ -27,6 +28,7 @@ export function ActiveAuditBanner() {
       setStillRunning(false)
       return
     }
+    setHostname(null)
     setStillRunning(true)
     const activeAudit = active
     let cancelled = false
@@ -48,7 +50,8 @@ export function ActiveAuditBanner() {
           return
         }
         if (response.ok) {
-          const data = await response.json() as { status?: string }
+          const data = await response.json() as { status?: string; url?: string }
+          if (typeof data.url === 'string') setHostname(auditHostname(data.url))
           if (data.status && TERMINAL_STATUSES.has(data.status)) {
             dismiss(activeAudit.auditId)
             setStillRunning(false)
@@ -72,8 +75,6 @@ export function ActiveAuditBanner() {
 
   if (!active || !stillRunning || isActiveReport) return null
 
-  const hostname = auditHostname(active.url)
-
   return (
     <div className="pointer-events-none px-3 pb-2 pt-0">
       <Container className="pointer-events-auto">
@@ -81,7 +82,7 @@ export function ActiveAuditBanner() {
           <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-brand" aria-hidden />
           <span>
             {AUDIT_PROGRESS.bannerScanning}{' '}
-            <span className="font-medium text-foreground">{hostname}</span>
+            <span className="font-medium text-foreground">{hostname ?? 'your page'}</span>
           </span>
           <Link
             href={`/report/${active.auditId}`}

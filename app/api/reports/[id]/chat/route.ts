@@ -20,6 +20,7 @@ import {
   type ChatFlagContext,
   type ChatVerifiedLearning,
 } from '@/lib/workspace/chat'
+import type { AgentMessage } from '@/lib/audit/agent-message'
 import {
   getChatAllowance,
   reserveChatUsage,
@@ -35,6 +36,26 @@ const schema = z.object({
 const MAX_CHAT_FLAGS = 15
 const MAX_HISTORY_MESSAGES = 40
 const MAX_PARENT_HOPS = 60
+
+function toConversationEnvelope(input: {
+  id: string
+  auditId: string
+  role: string
+  content: string
+  createdAt?: Date
+}): AgentMessage {
+  const isUser = input.role === 'user'
+  return {
+    id: `chat:${input.id}`,
+    sessionId: input.auditId,
+    auditId: input.auditId,
+    role: isUser ? 'user' : 'agent',
+    source: isUser ? 'user' : 'model',
+    kind: 'conversation',
+    content: input.content,
+    createdAt: input.createdAt?.toISOString(),
+  }
+}
 
 type AuditRow = {
   id: string
@@ -207,18 +228,22 @@ export async function GET(
       if ('error' in resolved) return resolved.error
     }
 
-    const messages = await prisma.reportChatMessage.findMany({
+    const messages = (await prisma.reportChatMessage.findMany({
       where: { auditId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: MAX_HISTORY_MESSAGES,
-      select: { role: true, content: true, createdAt: true },
-    })
+      select: { id: true, role: true, content: true, createdAt: true },
+    })).reverse()
     const allowance = await getChatAllowance(owned.user)
 
     return NextResponse.json({
       messages: messages.map((message) => ({
         role: message.role,
         content: message.content,
+      })),
+      agentMessages: messages.map((message) => toConversationEnvelope({
+        ...message,
+        auditId,
       })),
       available: isWorkspaceChatConfigured(),
       allowance,
@@ -319,7 +344,13 @@ export async function POST(
       ],
     })
 
-    return NextResponse.json({ reply, mode, allowance })
+    const agentMessage = toConversationEnvelope({
+      id: `${Date.now()}:agent`,
+      auditId,
+      role: 'assistant',
+      content: reply,
+    })
+    return NextResponse.json({ reply, agentMessage, mode, allowance })
   } catch (error) {
     if (error instanceof WorkspaceChatUnavailableError) {
       return apiError('Chat is temporarily unavailable. Try again.', 503, {

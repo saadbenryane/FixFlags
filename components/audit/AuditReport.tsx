@@ -65,6 +65,7 @@ import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSp
 import { ProductSpineWorkspace } from '@/components/report/ProductSpineWorkspace'
 import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
+import { ReportCanvasPanel } from '@/components/report/ReportCanvasPanel'
 import type { AgentMessage } from '@/lib/audit/agent-message'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
@@ -191,6 +192,7 @@ export function AuditReport({
 
   // Server strip is the only entitlement; never unlock via client sessionStorage.
   const fixPromptLocked = !showDeterministicFixes
+  const demonstratedFlag = isSample ? sampleFixFlag : fixPromptLocked ? null : sampleFixFlag
 
   const upgradeMoment =
     !isSample && isLoggedIn && !viewerIsPaid
@@ -209,8 +211,8 @@ export function AuditReport({
     previewMeta: audit.previewMeta,
     flagVisualEvidence: audit.flagVisualEvidence,
     productContract: audit.productContract ?? null,
-    promptAccess: fixPromptLocked ? (sampleFixFlag ? 'one' : 'none') : 'all',
-    demonstratedFlag: sampleFixFlag,
+    promptAccess: fixPromptLocked ? (demonstratedFlag ? 'one' : 'none') : 'all',
+    demonstratedFlag,
     fixList: audit.fixList,
   })
   const completedAt =
@@ -234,11 +236,11 @@ export function AuditReport({
     canRecheck: !isSample && isLoggedIn && isViewerOwner,
     canGiveFeedback: showFeedback,
     promptAccess: fixPromptLocked
-      ? sampleFixFlag
+      ? demonstratedFlag
         ? 'demonstrated'
         : 'none'
       : 'all',
-    demonstratedFlagId: sampleFixFlag?.id,
+    demonstratedFlagId: demonstratedFlag?.id,
     recheckOutcome: recheckDiff,
     degradedReason: triageDegraded ? failureCode : null,
   })
@@ -270,7 +272,7 @@ export function AuditReport({
         signUpHref={signUpHref}
         pages={pages}
         auditId={auditId}
-        demonstratedFlagId={sampleFixFlag?.id}
+        demonstratedFlagId={demonstratedFlag?.id}
       />
     ) : null
 
@@ -415,17 +417,22 @@ export function AuditReport({
               steps={buildPlaybackSteps(audit.actionTimeline ?? [])}
               canChat={isViewerOwner}
               agentMessages={agentMessages}
+              showCanvas={isLoggedIn && isViewerOwner}
+              canUseCanvas={viewerIsPaid && isViewerOwner}
               reportPanel={flagsSectionWithHeader}
             />
           ) : (
             <Suspense fallback={null}>
               <ReportWorkspaceSplitShell
                 showChatColumn
-                canUseTimeline={isViewerOwner}
+                canUseTimeline={canUseTimeline}
+                showCanvas={isLoggedIn && isViewerOwner}
+                canUseCanvas={viewerIsPaid && isViewerOwner}
+                canvasPanel={viewerIsPaid && isViewerOwner ? <ReportCanvasPanel auditId={auditId} /> : undefined}
                 leftPanel={
                   <WorkspaceChatPanel
                     auditId={auditId}
-                    canChat={isViewerOwner}
+                    canChat={canUseTimeline}
                     agentMessages={agentMessages}
                     reportUrl={audit.url}
                   />

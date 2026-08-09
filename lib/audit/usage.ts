@@ -4,6 +4,7 @@ import { hasUnlimitedScans, isDevUnlimitedScans } from '@/lib/auth/permissions'
 import type { UsageLimitResult } from '@/lib/audit/check-limit'
 import { consumePurchasedCredit } from '@/lib/billing/credits'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
+import { createAnonymousClaim, verifyAnonymousClaim } from '@/lib/security/anonymous-claim'
 
 export {
   isAtCheckLimit,
@@ -22,13 +23,8 @@ export const ANON_IP_SOFT_LIMIT = 1
 export const ANON_IP_SOFT_WINDOW_SECONDS = 60 * 60 * 24
 
 export function readAnonAuditIds(raw: string | undefined): string[] {
-  if (!raw) return []
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []
-  } catch {
-    return []
-  }
+  const claim = verifyAnonymousClaim(raw)
+  return claim ? [claim.auditId] : []
 }
 
 /**
@@ -79,7 +75,7 @@ export async function enforceAnonymousIpSoftCeiling(clientId: string): Promise<v
 /** Track the single anon teaser audit id (product gate is binary). */
 export async function trackAnonymousAuditId(auditId: string): Promise<void> {
   const cookieStore = await cookies()
-  cookieStore.set(ANON_AUDIT_IDS_COOKIE, JSON.stringify([auditId]), {
+  cookieStore.set(ANON_AUDIT_IDS_COOKIE, createAnonymousClaim(auditId), {
     httpOnly: true,
     maxAge: 60 * 60 * 24 * 30,
     sameSite: 'lax',

@@ -48,7 +48,7 @@ export function registerAnonCheckStatusTools(server: McpServer) {
       const outcome = await loadCompletedTaskOutcome(reportId, tool, {
         // 'one' derives the demonstrated flag and gates the plan-mode prompt;
         // marketing samples are fully public and keep their complete content.
-        promptAccess: isPublicMarketingSample(audit) ? 'all' : 'one',
+        promptAccess: isPublicMarketingSample(audit) ? 'all' : 'none',
       })
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(outcome) }],

@@ -138,6 +138,32 @@ export async function resolveIsPaidForAudit(
   return tier === 'paid'
 }
 
+export function redactCompletedPrivateReportData<T extends {
+  project: unknown
+  pages: unknown[]
+  journeyReviews: unknown[]
+  pipelineLog: unknown[]
+  watchInterval: unknown
+  triageAt: unknown
+  flowData: unknown
+  actionTimeline: unknown[]
+  productContract: unknown
+}>(input: T, canAccessPrivateReportData: boolean): T {
+  if (canAccessPrivateReportData) return input
+  return {
+    ...input,
+    project: null,
+    pages: [],
+    journeyReviews: [],
+    pipelineLog: [],
+    watchInterval: null,
+    triageAt: null,
+    flowData: null,
+    actionTimeline: [],
+    productContract: null,
+  }
+}
+
 /**
  * Resolve access and the minimum state needed to render an unfinished report.
  * Completed reports deliberately return only an access envelope; callers then
@@ -294,11 +320,13 @@ export async function getGatedAuditForRequest(id: string) {
   const verifiedLearnings = productIntelligence?.verifiedLearnings?.slice(0, 8) ?? []
   const intentionalNotes = productIntelligence?.intentionalNotes?.slice(0, 5) ?? []
   const knownRisks = productIntelligence?.knownRisks?.slice(0, 5) ?? []
-  const watchInterval = audit.project?.watchInterval === 'WEEKLY'
-    ? 'weekly'
-    : audit.project?.watchInterval === 'DAILY'
-      ? 'daily'
-      : null
+  const watchInterval = canAccessPrivateReportData
+    ? audit.project?.watchInterval === 'WEEKLY'
+      ? 'weekly'
+      : audit.project?.watchInterval === 'DAILY'
+        ? 'daily'
+        : null
+    : null
 
   const rubricSources = sanitizedRubrics.map((r) => ({
     name: r.name,
@@ -377,34 +405,46 @@ export async function getGatedAuditForRequest(id: string) {
     })),
   })
 
+  const privateProjection = redactCompletedPrivateReportData({
+    project: stripped.project,
+    pages: stripped.pages,
+    journeyReviews: stripped.journeyReviews,
+    pipelineLog: parsePipelineLog(audit.pipelineLog),
+    watchInterval,
+    triageAt: audit.triageAt,
+    flowData,
+    actionTimeline,
+    productContract,
+  }, canAccessPrivateReportData)
+
   return {
     kind: 'ok' as const,
     accessContext,
     audit: {
       ...stripped,
-      project: canAccessPrivateReportData ? stripped.project : null,
-      pages: canAccessPrivateReportData ? stripped.pages : [],
-      journeyReviews: canAccessPrivateReportData ? stripped.journeyReviews : [],
+      project: privateProjection.project,
+      pages: privateProjection.pages,
+      journeyReviews: privateProjection.journeyReviews,
       verdict: hasTriage || showPrescription ? stripped.verdict : null,
       pageJob: hasTriage || showPrescription ? stripped.pageJob : null,
       pageType: hasTriage || showPrescription ? stripped.pageType : null,
-      pipelineLog: parsePipelineLog(audit.pipelineLog),
+      pipelineLog: privateProjection.pipelineLog,
       screenshotCapture,
       launchReadiness,
       rubrics,
       shareStatus,
       pageSpeedCoverage,
       previewMeta,
-      flowData,
+      flowData: privateProjection.flowData,
       evidenceAnchors,
       flagVisualEvidence,
-      actionTimeline,
-      productContract,
+      actionTimeline: privateProjection.actionTimeline,
+      productContract: privateProjection.productContract,
       verifiedLearnings,
       intentionalNotes,
       knownRisks,
-      watchInterval,
-      triageAt: audit.triageAt,
+      watchInterval: privateProjection.watchInterval,
+      triageAt: privateProjection.triageAt,
       isLegacyDeterministic,
       rubricRows,
       technologyProfile,

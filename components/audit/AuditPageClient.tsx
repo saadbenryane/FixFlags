@@ -144,7 +144,7 @@ export function AuditPageClient({
     }
     const resolvedUrl = url ?? (typeof initialAudit?.url === 'string' ? initialAudit.url : undefined)
     if (inProgress && resolvedUrl) {
-      setActiveAudit({ auditId: id, url: resolvedUrl })
+      setActiveAudit({ auditId: id })
     }
   }, [id, inProgress, isComplete, isFailed, url, initialAudit?.url])
 

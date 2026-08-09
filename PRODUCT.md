@@ -119,15 +119,20 @@ Update reviews use the same product review credit pool as new URLs. Internal rou
 Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 
 ### First check and account claim
-- A homepage URL submission immediately opens the progressive report canvas. New anonymous scans place a required sign-up or sign-in dialog over an inert report until ownership is confirmed.
-- The dialog returns to the same report after email, OAuth, passkey, or two-factor authentication. Abandoning the flow returns home.
-- Anonymous API responses remain redacted for access safety. They never expose gated prompts, and access control never persists gate copy into Flag evidence or fix fields.
+- A homepage URL submission immediately opens the Agent-led progressive report workspace.
+- Anonymous visitors receive deterministic FixFlags Agent updates, the progressive and completed Report, all confirmed Flags, screenshots, and public-safe evidence without a blocking authentication overlay.
+- Interactive Agent chat, fix prompts, Timeline playback, private history, Product Memory, update reviews, Canvas, export, and restricted sharing remain server-gated.
+- Timeline stays discoverable as an inline sign-in state, and its event, URL, screenshot, and playback payload is absent from anonymous responses.
+- Authentication returns through `/post-login`, verifies the signed anonymous claim, claims the review, and only then restores the same workspace.
+- Anonymous API responses never expose gated prompts, and access control never persists gate copy into Flag evidence or fix fields.
 - A successful claim saves the report and makes every eligible fix prompt available, including when the claim happens before triage completes.
 - URLs captured on `Audit` and `Lead` for outbound (`/admin/leads`)
 
 ### Free (forever)
 - 3 product reviews lifetime (claimed teaser counts as 1; full report with fix prompts)
 - 1 deep review teaser (lifetime)
+- Interactive report Agent with 25,000 input-plus-output tokens per calendar month
+- Saved review history and authenticated Timeline playback
 - CTA flow test (automated click-through with before/after screenshots)
 - Preview cards (Google snippet + social link preview)
 - Fix prompts tuned for Cursor, Claude Code, Lovable, Bolt
@@ -135,6 +140,8 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 
 ### Pro ($69/mo) — `BUILDER` in schema
 - 25 product reviews and 4 deep reviews per month
+- 500,000 Agent chat tokens per calendar month
+- Private evidence-grounded visual Canvases with immutable versions
 - Before-and-after compare
 - MCP in supported builders
 - CLI and MCP
@@ -142,6 +149,7 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 
 ### Studio ($199/mo) — `TEAM` in schema
 - 80 product reviews and 10 deep reviews per month
+- 2,000,000 Agent chat tokens per calendar month across Studio projects
 - Everything in Pro
 - Up to 5 projects
 - GitHub repository scans
@@ -193,7 +201,7 @@ Full evidence rules: `knowledge/evidence-rules.md`.
 - Remember strip on report when Project has verified learnings; Contract edits merge without wiping memory
 - Project product watch (Pro/Studio): weekly/daily FULL re-check + regression email
 - Free tools: meta preview, placeholder copy detector
-- **Live progressive report:** URL submission immediately replaces the homepage with report geometry, then history-replaces the URL with `/report/{id}`. Desktop and mobile captures resolve independently, and the final Fix list layout appends Flags as they arrive. Contract and timeline evidence stay behind "How FixFlags is checking".
+- **Agent-led report workspace:** URL submission immediately opens `/report/{id}` with a title-free Agent panel and progressive Report. Persisted scan facts project into free deterministic Agent messages, confirmed Flags append once, and completion preserves the same transcript contract. Timeline is authenticated and Canvas is private to paid owners.
 - Dedicated audit worker runtime: web requests stay isolated from Playwright capture; unfinished reports use a lightweight access/status read before completed-report assembly
 - **Scoped Studio sharing:** token routes render directly without making the report public; password grants are signed, HttpOnly, revocable, expiring, and metadata-safe
 
