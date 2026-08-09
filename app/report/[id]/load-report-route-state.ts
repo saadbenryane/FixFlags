@@ -10,6 +10,7 @@ import { isAtCheckLimit } from '@/lib/audit/usage'
 import { isPublicMarketingSample } from '@/lib/audit/report-access'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { loadFinishPlanFlags } from '@/lib/audit/load-finish-plan-flags'
+import { historyPointFromAudit } from '@/lib/report/workspace-model'
 import { buildFixList } from '@/lib/audit/finish-plan'
 
 function topIssueFromFlags(
@@ -137,6 +138,7 @@ export async function loadReportRouteState(
           select: {
             id: true,
             parentId: true,
+            recheckTrigger: true,
             score: true,
             createdAt: true,
             completedAt: true,
@@ -164,18 +166,24 @@ export async function loadReportRouteState(
       }
     }
   }
+  // Keep no-score observations so degraded/partial captures show as hollow
+  // spine bars instead of vanishing from history.
   const scoreHistory = completedHistoryRows
-    .filter((row) => releaseIds.has(row.id) && row.score !== null)
+    .filter((row) => releaseIds.has(row.id))
     .sort(
       (left, right) =>
         (left.completedAt ?? left.createdAt).getTime() -
         (right.completedAt ?? right.createdAt).getTime()
     )
-    .map((row) => ({
-      id: row.id,
-      score: row.score!,
-      checkedAt: row.completedAt ?? row.createdAt,
-    }))
+    .map((row) =>
+      historyPointFromAudit({
+        id: row.id,
+        score: row.score,
+        checkedAt: row.completedAt ?? row.createdAt,
+        parentId: row.parentId,
+        recheckTrigger: row.recheckTrigger,
+      })
+    )
 
   const pending = user ? await getPendingCheckCount(user.id) : 0
   const effectiveLimit = user ? getEffectiveScanLimit(user) : 3

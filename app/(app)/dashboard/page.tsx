@@ -34,6 +34,7 @@ import { projectLimitForPlan } from "@/lib/billing/plans";
 import { loadFinishPlanFlags } from "@/lib/audit/load-finish-plan-flags";
 import { buildLiveExplorerModel } from "@/lib/report/explorer-model";
 import { buildDashboardWorkspaceModel } from "@/lib/report/workspace-adapters";
+import { historyPointFromAudit } from "@/lib/report/workspace-model";
 import { REPORT_COPY } from "@/lib/marketing/copy";
 import { parseProductContract } from "@/lib/audit/product-contract";
 
@@ -104,6 +105,7 @@ export default async function DashboardPage({
       select: {
         id: true,
         parentId: true,
+        recheckTrigger: true,
         score: true,
         createdAt: true,
         completedAt: true,
@@ -144,7 +146,9 @@ export default async function DashboardPage({
         (left.completedAt ?? left.createdAt).getTime() -
         (right.completedAt ?? right.createdAt).getTime(),
     );
-  const releaseHistory = releaseAudits.filter((audit) => audit.score !== null);
+  // Keep no-score observations in the spine so degraded/partial captures stay
+  // visible as hollow bars. The latest release drives the hub regardless.
+  const releaseHistory = releaseAudits;
   const currentReleaseId =
     releaseAudits[releaseAudits.length - 1]?.id ?? latestCompleted?.id ?? null;
   const currentRelease = currentReleaseId
@@ -252,11 +256,15 @@ export default async function DashboardPage({
           url: currentRelease.url,
           pageType: currentRelease.pageType,
           checkedAt: currentRelease.completedAt ?? currentRelease.createdAt,
-          history: releaseHistory.map((audit) => ({
-            id: audit.id,
-            score: audit.score!,
-            checkedAt: audit.completedAt ?? audit.createdAt,
-          })),
+          history: releaseHistory.map((audit) =>
+            historyPointFromAudit({
+              id: audit.id,
+              score: audit.score,
+              checkedAt: audit.completedAt ?? audit.createdAt,
+              parentId: audit.parentId,
+              recheckTrigger: audit.recheckTrigger,
+            })
+          ),
         });
       })()
     : null;

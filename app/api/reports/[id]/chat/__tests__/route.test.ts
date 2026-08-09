@@ -16,6 +16,7 @@ const requestClientId = vi.hoisted(() => vi.fn(() => 'test-client'))
 const buildCannedChatReply = vi.hoisted(() => vi.fn())
 const isWorkspaceChatConfigured = vi.hoisted(() => vi.fn())
 const runWorkspaceChat = vi.hoisted(() => vi.fn())
+const answerProductQuestion = vi.hoisted(() => vi.fn())
 const getEnv = vi.hoisted(() => vi.fn())
 const RateLimitError = vi.hoisted(() => class RateLimitError extends Error {
   retryAfter: number
@@ -33,6 +34,7 @@ vi.mock('@/lib/security/rate-limit', () => ({
   RateLimitError,
 }))
 vi.mock('@/lib/workspace/chat', () => ({
+  answerProductQuestion,
   buildCannedChatReply,
   isWorkspaceChatConfigured,
   runWorkspaceChat,
@@ -46,7 +48,12 @@ vi.mock('next/headers', () => ({
 import { GET, POST } from '@/app/api/reports/[id]/chat/route'
 
 function getReq() {
-  return { headers: new Headers(), json: async () => ({ message: 'What should I fix first?' }) } as unknown as NextRequest
+  return {
+    headers: new Headers(),
+    url: 'http://localhost/api/reports/report-1/chat',
+    nextUrl: { searchParams: new URLSearchParams() },
+    json: async () => ({ message: 'What should I fix first?' }),
+  } as unknown as NextRequest
 }
 
 const ownedAudit = {

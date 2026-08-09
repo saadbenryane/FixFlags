@@ -11,6 +11,12 @@ interface WorkspaceChatPanelProps {
   /** Owner-only chat. Non-owners get no chat panel at all. */
   canChat?: boolean
   className?: string
+  /**
+   * Ground chat answers on this spine observation instead of the report's own
+   * audit. Defaults to the report's own audit. Message history stays keyed to
+   * `auditId` so one conversation persists per report.
+   */
+  observationAuditId?: string | null
 }
 
 interface ChatMessage {
@@ -33,6 +39,7 @@ export function WorkspaceChatPanel({
   auditId,
   canChat = true,
   className,
+  observationAuditId,
 }: WorkspaceChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -43,7 +50,11 @@ export function WorkspaceChatPanel({
 
   useEffect(() => {
     let cancelled = false
-    fetch(`/api/reports/${auditId}/chat`)
+    const observationQuery =
+      observationAuditId && observationAuditId !== auditId
+        ? `?observationAuditId=${encodeURIComponent(observationAuditId)}`
+        : ''
+    fetch(`/api/reports/${auditId}/chat${observationQuery}`)
       .then((response) => response.json().catch(() => ({})))
       .then((data) => {
         if (cancelled) return
@@ -73,7 +84,7 @@ export function WorkspaceChatPanel({
     return () => {
       cancelled = true
     }
-  }, [auditId])
+  }, [auditId, observationAuditId])
 
   async function send(text: string) {
     const trimmed = text.trim()
@@ -90,7 +101,13 @@ export function WorkspaceChatPanel({
       const response = await fetch(`/api/reports/${auditId}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: trimmed }),
+        body: JSON.stringify({
+          message: trimmed,
+          observationAuditId:
+            observationAuditId && observationAuditId !== auditId
+              ? observationAuditId
+              : undefined,
+        }),
       })
       const data = (await response.json().catch(() => ({}))) as {
         reply?: string
@@ -155,7 +172,10 @@ export function WorkspaceChatPanel({
           messages.map((msg) => (
             <p
               key={msg.id}
-              className={msg.role === 'user' ? 'text-foreground' : 'text-muted-foreground'}
+              className={cn(
+                msg.role === 'user' ? 'text-foreground' : 'text-muted-foreground',
+                'whitespace-pre-line',
+              )}
             >
               <span className="font-medium">{msg.role === 'user' ? 'You' : 'FixFlags'}:</span>{' '}
               {msg.content}
