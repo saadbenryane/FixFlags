@@ -1,12 +1,24 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'vitest'
+import { describe, it, vi } from 'vitest'
+
+const prismaMock = vi.hoisted(() => ({
+  user: { findUnique: vi.fn() },
+}))
+
+vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
+
 import {
   canViewPrescriptionContent,
   canViewDeterministicFixes,
   canViewAiViaStudioPublicShare,
+  canViewPrescriptionContentForAudit,
+  canViewDeterministicFixesForAudit,
   isPublicMarketingSample,
   stripAiPrescriptionFromFlags,
   stripDeterministicFixesFromFlags,
+  stripAiPrescriptionFromRubrics,
+  stripDeterministicFixesFromRubrics,
+  stripLegacyDeterministicAudit,
   findHighestSeverityFlagWithFix,
 } from '@/lib/audit/report-access'
 
@@ -173,5 +185,191 @@ describe('report-access', () => {
       },
     ])
     assert.equal(picked?.problem, 'Det flag')
+  })
+
+  it('returns null when no flag carries a usable fix prompt', () => {
+    const picked = findHighestSeverityFlagWithFix([
+      { source: 'AI', severity: 'CRITICAL', problem: 'No fix at all' },
+      { source: 'DETERMINISTIC', severity: 'IMPORTANT', problem: 'placeholder', fix: 'Sign up' },
+    ])
+    assert.equal(picked, null)
+  })
+
+  it('prefers the highest severity among flags with fixes', () => {
+    const picked = findHighestSeverityFlagWithFix([
+      { source: 'AI', severity: 'POLISH', problem: 'polish', fix: 'Nudge spacing' },
+      { source: 'AI', severity: 'CRITICAL', problem: 'critical', fix: 'Fix the flow' },
+      { source: 'AI', severity: 'IMPORTANT', problem: 'important', fix: 'Rework CTA' },
+    ])
+    assert.equal(picked?.problem, 'critical')
+  })
+
+  it('strips prescription fields from rubrics and their flags', () => {
+    const stripped = stripAiPrescriptionFromRubrics([
+      {
+        summary: 'keep',
+        rubricPrompt: 'hidden',
+        cursorPrompt: 'hidden',
+        flags: [
+          { problem: 'flag a', agentPrompt: 'x', fix: 'keep fix' },
+        ],
+      },
+    ])
+    assert.equal(stripped[0]?.summary, 'keep')
+    assert.equal(stripped[0]?.rubricPrompt, null)
+    assert.equal(stripped[0]?.cursorPrompt, null)
+    assert.equal(stripped[0]?.flags?.[0]?.agentPrompt, null)
+    assert.equal(stripped[0]?.flags?.[0]?.fix, 'keep fix')
+  })
+
+  it('strips deterministic fixes from rubrics and keeps evidence', () => {
+    const stripped = stripDeterministicFixesFromRubrics([
+      {
+        rubricPrompt: 'x',
+        flags: [{ problem: 'flag a', fix: 'hidden', evidence: 'kept' }],
+      },
+    ])
+    assert.equal(stripped[0]?.rubricPrompt, null)
+    assert.equal(stripped[0]?.flags?.[0]?.fix, null)
+    assert.equal(stripped[0]?.flags?.[0]?.evidence, 'kept')
+  })
+
+  it('hides all AI fields on legacy deterministic-only audits', () => {
+    const stripped = stripLegacyDeterministicAudit({
+      verdict: 'should_have_ai',
+      pageJob: 'triage',
+      pageType: 'marketing',
+      launchReadiness: { score: 0.4 },
+      flags: [
+        { source: 'AI', problem: 'ai flag', agentPrompt: 'x', whyItMatters: 'why' },
+        { source: 'DETERMINISTIC', problem: 'det flag', fix: 'keep', whyItMatters: 'why' },
+      ],
+      rubrics: [
+        {
+          summary: 's',
+          rubricPrompt: 'p',
+          flags: [{ problem: 'rubric flag', agentPrompt: 'x' }],
+        },
+      ],
+    })
+    assert.equal(stripped.verdict, null)
+    assert.equal(stripped.pageJob, null)
+    assert.equal(stripped.pageType, null)
+    assert.equal(stripped.launchReadiness, null)
+    assert.equal(stripped.flags.length, 1)
+    assert.equal(stripped.flags[0]?.source, 'DETERMINISTIC')
+    assert.equal(stripped.flags[0]?.whyItMatters, null)
+    assert.equal(stripped.flags[0]?.fix, 'keep')
+    assert.equal(stripped.rubrics?.[0]?.rubricPrompt, '')
+    assert.equal(stripped.rubrics?.[0]?.flags?.[0]?.agentPrompt, null)
+  })
+})
+
+describe('report-access async resolution', () => {
+  const aiReviewAt = new Date('2026-01-01')
+
+  it('allows marketing samples without any viewer or owner lookup', async () => {
+    assert.equal(
+      await canViewPrescriptionContentForAudit(
+        { userId: null, aiReviewAt, isPublic: true },
+        null
+      ),
+      true
+    )
+    assert.equal(prismaMock.user.findUnique.mock.calls.length, 0)
+  })
+
+  it('allows the signed-in owner without a database lookup', async () => {
+    assert.equal(
+      await canViewPrescriptionContentForAudit(
+        { userId: 'owner-1', aiReviewAt, isPublic: false },
+        { id: 'owner-1' }
+      ),
+      true
+    )
+  })
+
+  it('allows AI content on a public share when the owner can share publicly', async () => {
+    prismaMock.user.findUnique.mockResolvedValueOnce({
+      id: 'owner-1',
+      role: 'user',
+      plan: 'TEAM',
+      subscriptionStatus: 'ACTIVE',
+    })
+    assert.equal(
+      await canViewPrescriptionContentForAudit(
+        { userId: 'owner-1', aiReviewAt, isPublic: true },
+        { id: 'stranger' }
+      ),
+      true
+    )
+  })
+
+  it('denies AI content on a public share when the owner is on a lower plan', async () => {
+    prismaMock.user.findUnique.mockResolvedValueOnce({
+      id: 'owner-1',
+      role: 'user',
+      plan: 'FREE',
+      subscriptionStatus: 'NONE',
+    })
+    assert.equal(
+      await canViewPrescriptionContentForAudit(
+        { userId: 'owner-1', aiReviewAt, isPublic: true },
+        { id: 'stranger' }
+      ),
+      false
+    )
+  })
+
+  it('denies AI content when the audit is not public or has no AI review', async () => {
+    assert.equal(
+      await canViewPrescriptionContentForAudit(
+        { userId: 'owner-1', aiReviewAt, isPublic: false },
+        { id: 'stranger' }
+      ),
+      false
+    )
+    assert.equal(
+      await canViewPrescriptionContentForAudit(
+        { userId: 'owner-1', aiReviewAt: null, isPublic: true },
+        { id: 'stranger' }
+      ),
+      false
+    )
+  })
+
+  it('denies AI content when the owner row is gone', async () => {
+    prismaMock.user.findUnique.mockResolvedValueOnce(null)
+    assert.equal(
+      await canViewPrescriptionContentForAudit(
+        { userId: 'owner-1', aiReviewAt, isPublic: true },
+        { id: 'stranger' }
+      ),
+      false
+    )
+  })
+
+  it('resolves deterministic fix access for owners and marketing samples', async () => {
+    assert.equal(
+      await canViewDeterministicFixesForAudit(
+        { userId: null, aiReviewAt, isPublic: true },
+        null
+      ),
+      true
+    )
+    assert.equal(
+      await canViewDeterministicFixesForAudit(
+        { userId: 'owner-1', aiReviewAt: null, isPublic: false },
+        { id: 'owner-1' }
+      ),
+      true
+    )
+    assert.equal(
+      await canViewDeterministicFixesForAudit(
+        { userId: 'owner-1', aiReviewAt: null, isPublic: true },
+        null
+      ),
+      false
+    )
   })
 })

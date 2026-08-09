@@ -192,6 +192,7 @@ export function countFlags(flags: RankableFlag[]): {
 
 /** Legacy signup-gate strings that were wrongly persisted as Flag evidence/fix. */
 export const LEGACY_LOCKED_PROMPT_TEXT = [
+  'Sign up',
   'Create a free account to see evidence and fix prompts.',
   'Sign up to see why this matters and get a fix prompt for your editor.',
   'Sign up to get the fix prompt.',

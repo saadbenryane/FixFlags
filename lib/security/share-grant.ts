@@ -50,7 +50,10 @@ export function verifyShareGrant(value: string | undefined): ShareGrantClaims | 
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null
 
   try {
-    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Partial<ShareGrantClaims>
+    const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Record<string, unknown>
+    const known = ['v', 'linkId', 'auditId', 'linkVersion', 'exp']
+    if (Object.keys(parsed).some((key) => !known.includes(key))) return null
+    const claims = parsed as Partial<ShareGrantClaims>
     if (
       claims.v !== 1 ||
       typeof claims.linkId !== 'string' ||

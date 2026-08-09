@@ -92,7 +92,10 @@ export async function listWaitlistRows(plan?: Plan): Promise<WaitlistRow[]> {
       discountTier: entry.discountTier,
       batch: entry.batch,
       accessGrantedAt: entry.accessGrantedAt,
-      inviteCode: inviteCodeByRow.get(`${entry.userId}:${entry.plan}`) ?? null,
+      inviteCode:
+        inviteCodeByRow.get(`${entry.userId}:${entry.plan}`) ??
+        inviteCodeByRow.get(`${(entry.email ?? entry.user.email).toLowerCase()}:${entry.plan}`) ??
+        null,
       founderOfferId: entry.founderOfferId,
       auditsUsed: entry.user.auditsUsed,
       auditsLimit: entry.user.auditsLimit,
