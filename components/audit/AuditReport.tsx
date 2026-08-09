@@ -62,6 +62,7 @@ import { ReportSignupCta } from '@/components/audit/ReportSignupCta'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
+import { ProductSpineWorkspace } from '@/components/report/ProductSpineWorkspace'
 import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
@@ -287,6 +288,9 @@ export function AuditReport({
       flagsNoFlagsSection
     )
 
+  const showProductSpineWorkspace =
+    !isSample && Boolean(auditId) && isViewerOwner && scoreHistory.length > 1;
+
   return (
     <ReportWorkspaceShell
       workspace={workspace}
@@ -356,7 +360,9 @@ export function AuditReport({
           </>
         ) : null
       }
-      progressBand={<ReportProgressBand model={workspace} />}
+      progressBand={
+        showProductSpineWorkspace ? null : <ReportProgressBand model={workspace} />
+      }
       stickyNav={
         !isSample ? (
           <div className="space-y-4">
@@ -395,17 +401,31 @@ export function AuditReport({
       }
       flagsSection={
         !isSample && auditId ? (
-          <Suspense fallback={null}>
-            <ReportWorkspaceSplitShell
-              showChatColumn={isViewerOwner}
-              leftPanel={<WorkspaceChatPanel auditId={auditId} canChat={isViewerOwner} />}
-              activityEvents={audit.actionTimeline ?? []}
-              browserUrl={audit.url}
-              browserScreenshots={audit.screenshots}
-              reportPanel={flagsSectionWithHeader}
+          showProductSpineWorkspace ? (
+            <ProductSpineWorkspace
+              reportId={auditId}
+              history={scoreHistory}
+              model={workspace}
+              url={audit.url}
+              screenshots={audit.screenshots ?? []}
               steps={buildPlaybackSteps(audit.actionTimeline ?? [])}
+              activityEvents={audit.actionTimeline ?? []}
+              canChat={isViewerOwner}
+              reportPanel={flagsSectionWithHeader}
             />
-          </Suspense>
+          ) : (
+            <Suspense fallback={null}>
+              <ReportWorkspaceSplitShell
+                showChatColumn={isViewerOwner}
+                leftPanel={<WorkspaceChatPanel auditId={auditId} canChat={isViewerOwner} />}
+                activityEvents={audit.actionTimeline ?? []}
+                browserUrl={audit.url}
+                browserScreenshots={audit.screenshots}
+                reportPanel={flagsSectionWithHeader}
+                steps={buildPlaybackSteps(audit.actionTimeline ?? [])}
+              />
+            </Suspense>
+          )
         ) : (
           flagsSectionWithHeader
         )

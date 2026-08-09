@@ -24,7 +24,7 @@ describe('report workspace model', () => {
     expect(noHistory.summary.history).toBeNull()
   })
 
-  it('orders persisted history and omits single-point trends', () => {
+  it('orders persisted history and keeps single observations visible', () => {
     const sample = buildCuratedSampleWorkspaceModel(
       buildSampleReportDisplay(getStaticSampleAudit())
     )
@@ -39,10 +39,13 @@ describe('report workspace model', () => {
           id: 'audit-1',
           score: 60,
           checkedAt: new Date('2026-07-28T10:00:00Z'),
+          kind: 'product-review',
+          status: 'completed',
         },
       ],
     })
-    expect(single.summary.history).toBeNull()
+    // A first observation still renders as one spine bar; nothing is hidden.
+    expect(single.summary.history?.map((point) => point.id)).toEqual(['audit-1'])
 
     const multiple = buildDashboardWorkspaceModel({
       explorer: sample.explorer,
@@ -54,11 +57,15 @@ describe('report workspace model', () => {
           id: 'audit-2',
           score: 80,
           checkedAt: new Date('2026-07-28T11:00:00Z'),
+          kind: 'update-review',
+          status: 'completed',
         },
         {
           id: 'audit-1',
           score: 60,
           checkedAt: new Date('2026-07-28T10:00:00Z'),
+          kind: 'product-review',
+          status: 'completed',
         },
       ],
     })

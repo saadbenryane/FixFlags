@@ -20,10 +20,14 @@ export type ReportWorkspaceStatus =
 
 export type ReportPromptAccess = 'none' | 'demonstrated' | 'all'
 
-export interface ReportWorkspaceHistoryPoint {
+export type ReportWorkspaceHistoryPoint = {
   id: string
-  score: number
+  score: number | null
   checkedAt: Date
+  /** Observation kind: 'product-review' | 'update-review' | 'watch' */
+  kind: 'product-review' | 'update-review' | 'watch'
+  /** Capture status for this observation */
+  status: 'completed' | 'partial' | 'degraded' | 'failed'
 }
 
 export interface ReportWorkspaceRubric {
@@ -136,10 +140,40 @@ export function buildWorkspaceRubrics(
 export function normalizeWorkspaceHistory(
   history: ReportWorkspaceHistoryPoint[] | undefined
 ): ReportWorkspaceHistoryPoint[] | null {
-  if (!history || history.length < 2) return null
+  if (!history || history.length === 0) return null
   return [...history].sort(
     (left, right) => left.checkedAt.getTime() - right.checkedAt.getTime()
   )
+}
+
+/**
+ * Turn a completed audit row into a spine history point.
+ * The observation kind is derived from real audit fields, never guessed:
+ * a root check is a product review, a WATCH-triggered re-check is a watch
+ * run, and any other re-check is an update review.
+ */
+export function historyPointFromAudit(row: {
+  id: string
+  score: number | null
+  checkedAt: Date
+  parentId: string | null
+  recheckTrigger: string | null
+}): ReportWorkspaceHistoryPoint {
+  const kind: ReportWorkspaceHistoryPoint['kind'] =
+    row.parentId == null
+      ? 'product-review'
+      : row.recheckTrigger === 'WATCH'
+        ? 'watch'
+        : 'update-review'
+  return {
+    id: row.id,
+    score: row.score,
+    checkedAt: row.checkedAt,
+    kind,
+    // Loaders pass completed rows only; partial/degraded/failed observations
+    // are honest future states, not faked present ones.
+    status: 'completed',
+  }
 }
 
 export function buildReportWorkspaceModel(

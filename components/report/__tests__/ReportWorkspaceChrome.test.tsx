@@ -78,7 +78,7 @@ describe('ReportWorkspaceSummary', () => {
         stageDetail="Preparing your review…"
       />
     )
-    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Scan progress' })).toBeInTheDocument()
     expect(screen.getByText('5%')).toBeInTheDocument()
     expect(
       screen.getAllByText('Preparing your review…').length

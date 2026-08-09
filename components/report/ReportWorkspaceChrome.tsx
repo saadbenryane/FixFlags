@@ -4,7 +4,10 @@ import { ScoreHistoryChart } from "@/components/report/ScoreHistoryChart";
 import { ScoreRingGauge } from "@/components/report/ScoreRingGauge";
 import { SHIMMER_KEYFRAMES } from "@/components/ui/skeleton";
 import { REPORT_COPY } from "@/lib/marketing/copy";
-import type { ReportWorkspaceModel } from "@/lib/report/workspace-model";
+import type {
+  ReportWorkspaceModel,
+  ReportWorkspaceHistoryPoint,
+} from "@/lib/report/workspace-model";
 import { cn } from "@/lib/utils";
 
 export function ReportWorkspaceOutcome({
@@ -47,6 +50,9 @@ export function ReportWorkspaceSummary({
   compact = false,
   scanProgress,
   stageDetail,
+  historyOverride,
+  selectedIndex,
+  onSelect,
 }: {
   model: ReportWorkspaceModel;
   className?: string;
@@ -56,23 +62,20 @@ export function ReportWorkspaceSummary({
   scanProgress?: number;
   /** Honest stage detail shown under the score ring during loading. */
   stageDetail?: string | null;
+  /** Product spine history shown instead of the model's own history. */
+  historyOverride?: ReportWorkspaceHistoryPoint[];
+  /** Selected spine observation index (owned by the parent workspace). */
+  selectedIndex?: number | null;
+  /** Spine selection callback (re-anchors the workspace to an observation). */
+  onSelect?: (index: number) => void;
 }) {
   const rubrics = model.summary.rubrics.map((rubric) => ({
     name: rubric.name,
     flagCount: rubric.flagCount,
     criticalCount: rubric.criticalCount,
   }));
-  const history =
-    model.summary.history ??
-    (model.summary.score != null && model.identity.checkedAt
-      ? [
-          {
-            id: model.identity.auditId ?? "current-scan",
-            score: model.summary.score,
-            checkedAt: model.identity.checkedAt,
-          },
-        ]
-      : []);
+  const history: ReportWorkspaceHistoryPoint[] =
+    historyOverride ?? model.summary.history ?? [];
   const firstCritical = model.explorer.flags.find(
     (flag) => flag.severity === "CRITICAL",
   );
@@ -202,6 +205,9 @@ export function ReportWorkspaceSummary({
                 "mt-2.5 w-full h-auto",
                 compact ? "aspect-[360/104]" : "aspect-[360/104]",
               )}
+              isLoading={model.context.loading}
+              selectedIndex={selectedIndex ?? null}
+              onSelect={onSelect}
             />
           ) : (
             <p className="mt-5 text-xs text-muted-foreground">
@@ -224,6 +230,7 @@ export function ReportWorkspaceSummary({
         <div
           className="border-t border-border/35 px-4 pb-4 pt-3 sm:px-5"
           role="status"
+          aria-label="Scan progress"
           aria-live="polite"
         >
           <style>{SHIMMER_KEYFRAMES}</style>
