@@ -320,3 +320,14 @@ The knowledge architecture has three layers:
 Every concept has one canonical source. Documents reference each other. Knowledge evolves. Obsolete knowledge is removed.
 
 This is the operating system of the project.
+
+## AI operating model
+
+The AI-native operating model for agents and team execution is canonical in `.agents/company/`; start at `.agents/company/README.md`.
+Related docs:
+- `.agents/company/ceo.md` — CEO loop, routing, rhythm, release gates, experiment outcomes, scorecard, escalation
+- `.agents/company/executives.md` — executive ownership, objective cadence, paid-model approvals
+- `.agents/company/worker-runtime.md` — worker task contract fields
+
+Do not duplicate operating policy here; reference the canonical files.
+

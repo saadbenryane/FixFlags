@@ -71,3 +71,13 @@ Prefer permanent prevention (in order): tests → types → scripts → CI → c
 ## Eval conventions
 
 See `.agents/evals/README.md` for eval definitions.
+
+## AI operating model
+
+Canonical company operating model: `.agents/company/README.md`. All operating policy lives there; this file references, not duplicates.
+
+- CEO strategy, routing, rhythm, gates, scorecard, dogfooding: `.agents/company/ceo.md`
+- Executive ownership, objectives, paid-model approvals: `.agents/company/executives.md`
+- Temporary worker task contracts: `.agents/company/worker-runtime.md`
+- Canonical cross-links from this directory: `.agents/BOARD.md`, `.agents/GOAL.md`, `knowledge/README.md`
+- All policy changes in this scope land only in `.agents/company/*` unless approved by the current goal owner.

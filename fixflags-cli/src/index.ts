@@ -105,19 +105,42 @@ function isJsonMode(
   const commandWithGlobals =
     command && typeof command.optsWithGlobals === 'function'
       ? command.optsWithGlobals()
-      : typeof (program as { optsWithGlobals?: () => { json?: boolean } }).optsWithGlobals === 'function'
-        ? (program as { optsWithGlobals: () => { json?: boolean } }).optsWithGlobals()
-        : program.opts()
+      : program.opts()
+  const programRawArgs = Array.isArray(program?.rawArgs) ? program.rawArgs : process.argv
   const jsonMode = Boolean(
     jsonOption ||
       commandWithGlobals?.json ||
       command?.rawArgs?.includes('--json') ||
       command?.parent?.rawArgs?.includes('--json') ||
-      (program as { rawArgs?: string[] }).rawArgs?.includes('--json') ||
+      programRawArgs.includes('--json') ||
       process.argv.includes('--json')
   )
 
   return jsonMode
+}
+
+function printServiceState(jsonMode: boolean): void {
+  const authenticated = hasConfiguredCredential()
+  const payload = {
+    schemaVersion: 1,
+    service: 'FixFlags',
+    api: API_BASE,
+    authenticated,
+    workflows: ['check <url>', 'recheck <reportId>', 'status <reportId>'],
+    next: authenticated
+      ? ['fixflags check <url>', 'fixflags --help']
+      : ['npx fixflags check <url>', 'fixflags login', 'fixflags init'],
+  }
+  if (jsonMode) console.log(JSON.stringify(payload, null, 2))
+  else {
+    console.log('service: FixFlags')
+    console.log(`api: ${payload.api}`)
+    console.log(`authenticated: ${authenticated ? 'yes' : 'no'}`)
+    console.log('workflows: 3')
+    for (const workflow of payload.workflows) console.log(`  ${workflow}`)
+    console.log('next:')
+    for (const item of payload.next) console.log(`  ${item}`)
+  }
 }
 
 const program = new Command()
@@ -128,28 +151,7 @@ program
   .version(CLI_VERSION)
   .option('--json', 'Print structured JSON')
   .action((options: { json?: boolean }) => {
-    const authenticated = hasConfiguredCredential()
-    const payload = {
-      schemaVersion: 1,
-      service: 'FixFlags',
-      api: API_BASE,
-      authenticated,
-      workflows: ['check <url>', 'recheck <reportId>', 'status <reportId>'],
-      next: authenticated
-        ? ['fixflags check <url>', 'fixflags --help']
-        : ['npx fixflags check <url>', 'fixflags login', 'fixflags init'],
-    }
-    const jsonMode = isJsonMode(options.json)
-    if (jsonMode) console.log(JSON.stringify(payload, null, 2))
-    else {
-      console.log('service: FixFlags')
-      console.log(`api: ${payload.api}`)
-      console.log(`authenticated: ${authenticated ? 'yes' : 'no'}`)
-      console.log('workflows: 3')
-      for (const workflow of payload.workflows) console.log(`  ${workflow}`)
-      console.log('next:')
-      for (const item of payload.next) console.log(`  ${item}`)
-    }
+    printServiceState(isJsonMode(options.json))
   })
 
 program
@@ -486,4 +488,10 @@ program
     }
   })
 
-program.parseAsync().catch(fail)
+if (process.argv.slice(2).length === 0) {
+  const jsonMode = isJsonMode(process.argv.includes('--json') ? true : undefined)
+  printServiceState(jsonMode)
+  process.exit(0)
+}
+
+program.parseAsync(process.argv).catch(fail)
