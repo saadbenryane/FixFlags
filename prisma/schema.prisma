@@ -48,6 +48,9 @@ model User {
   repoFixPrs              RepoFixPr[]
   repoScans               RepoScan[]
   reportChatMessages      ReportChatMessage[]
+  chatUsagePeriods        ChatUsagePeriod[]
+  createdCanvases         ReportCanvas[]               @relation("CanvasCreator")
+  canvasVersions          CanvasVersion[]              @relation("CanvasVersionCreator")
   sessions                Session[]
   subscriptionLifecycle   SubscriptionLifecycleEvent[]
   assignedSupportSessions SupportSession[]             @relation("SupportSessionAgent")
@@ -61,40 +64,40 @@ model User {
 }
 
 model PaidPlanWaitlistEntry {
-  id             String    @id @default(cuid())
-  userId         String
-  plan           Plan
-  joinedAt       DateTime  @default(now())
-  source         String?
-  campaign       String?
-  invitedAt      DateTime?
-  convertedAt    DateTime?
+  id              String    @id @default(cuid())
+  userId          String
+  plan            Plan
+  joinedAt        DateTime  @default(now())
+  source          String?
+  campaign        String?
+  invitedAt       DateTime?
+  convertedAt     DateTime?
   /// * Legacy: retired 40% founder offer reference. Kept for historical rows.
-  founderOfferId String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  founderOfferId  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   /// *
   ///    * Launch discount tier snapshot at join time, by join order per plan:
   ///    * 1 = first 500 (25% off), 2 = next 500 (15% off), null = list price.
   ///    * Assigned under a per-plan advisory lock; never changes on re-join.
-  discountTier   Int?
+  discountTier    Int?
   /// *
   ///    * Email captured at join time. May differ from the account email (e.g. SSO
   ///    * private relay); the confirmation goes to this address.
-  email          String?
+  email           String?
   /// *
   ///    * Access cohort for the "first 500, then next 500" launch: 1 = first
   ///    * WAITLIST_BATCH_SIZE joiners per plan, 2 = the next WAITLIST_BATCH_SIZE,
   ///    * null = beyond both caps (list price, access once batches fully open).
   ///    * Snapshot at join time under the same per-plan advisory lock as the
   ///    * discount tier; never changes on re-join.
-  batch          Int?
+  batch           Int?
   /// *
   ///    * Per-user access grant. Set when the member's batch is released (admin
   ///    * bulk grant) or when an invite code is redeemed. Checkout also accepts
   ///    * batch <= WAITLIST_OPEN_BATCH without an explicit grant.
   accessGrantedAt DateTime?
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, plan])
   @@index([plan, joinedAt(sort: Desc)])
@@ -436,6 +439,7 @@ model Project {
   ///    * Encrypted scan access (HTTP basic, cookies, headers) for preview/staging URLs.
   scanAccessEncrypted         String?
   audits                      Audit[]
+  canvases                    ReportCanvas[]
   user                        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, canonicalHost])
@@ -533,6 +537,7 @@ model Audit {
   rubrics                    ReportRubric[]
   screenshots                Screenshot[]
   shareLinks                 ShareLink[]
+  sourceCanvases             ReportCanvas[]
 
   @@index([userId])
   @@index([status])
@@ -543,6 +548,44 @@ model Audit {
   @@index([normalizedDomain])
   @@index([siteId])
   @@map("audits")
+}
+
+model ReportCanvas {
+  id             String          @id @default(cuid())
+  projectId      String
+  sourceAuditId  String
+  title          String
+  status         CanvasStatus    @default(GENERATING)
+  currentVersion Int             @default(0)
+  createdById    String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceAudit    Audit           @relation(fields: [sourceAuditId], references: [id], onDelete: Cascade)
+  createdBy      User            @relation("CanvasCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  versions       CanvasVersion[]
+
+  @@index([projectId, updatedAt(sort: Desc)])
+  @@index([sourceAuditId])
+  @@index([createdById])
+  @@map("report_canvases")
+}
+
+model CanvasVersion {
+  id          String       @id @default(cuid())
+  canvasId    String
+  version     Int
+  instruction String
+  document    Json
+  sourceRefs  Json
+  createdById String
+  createdAt   DateTime     @default(now())
+  canvas      ReportCanvas @relation(fields: [canvasId], references: [id], onDelete: Cascade)
+  createdBy   User         @relation("CanvasVersionCreator", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@unique([canvasId, version])
+  @@index([createdById])
+  @@map("canvas_versions")
 }
 
 model ReportChatMessage {
@@ -558,6 +601,41 @@ model ReportChatMessage {
   @@index([auditId, createdAt])
   @@index([userId])
   @@map("report_chat_messages")
+}
+
+model ChatUsagePeriod {
+  id             String                 @id @default(cuid())
+  userId         String
+  periodStart    DateTime
+  periodEnd      DateTime
+  limitTokens    Int
+  inputTokens    Int                    @default(0)
+  outputTokens   Int                    @default(0)
+  reservedTokens Int                    @default(0)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservations   ChatUsageReservation[]
+
+  @@unique([userId, periodStart])
+  @@index([periodEnd])
+  @@map("chat_usage_periods")
+}
+
+model ChatUsageReservation {
+  id             String          @id @default(cuid())
+  periodId       String
+  reservedTokens Int
+  inputTokens    Int             @default(0)
+  outputTokens   Int             @default(0)
+  status         String          @default("RESERVED")
+  createdAt      DateTime        @default(now())
+  expiresAt      DateTime
+  finalizedAt    DateTime?
+  period         ChatUsagePeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  @@index([periodId, status, expiresAt])
+  @@map("chat_usage_reservations")
 }
 
 model JourneyReview {
@@ -1552,4 +1630,10 @@ enum WatchNotificationStatus {
 enum MonitoringMode {
   FULL
   SUMMARY_ONLY
+}
+
+enum CanvasStatus {
+  GENERATING
+  READY
+  FAILED
 }

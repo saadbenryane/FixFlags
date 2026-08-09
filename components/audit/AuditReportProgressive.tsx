@@ -41,6 +41,7 @@ import { ReportFixListHeader } from '@/components/report/ReportFixListHeader'
 import { ReportVerdictBlockquote } from '@/components/report/ReportVerdictBlockquote'
 import { cn } from '@/lib/utils'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
+import type { AgentMessage } from '@/lib/audit/agent-message'
 
 /** Catches crashes in the explorer subtree so the scanning UI stays visible. */
 class ExplorerErrorBoundary extends Component<
@@ -88,6 +89,7 @@ interface AuditReportProgressiveProps {
   isOwner?: boolean
   /** Anonymous teaser scan: reduced pipeline (no journey walk). */
   isTeaser?: boolean
+  agentMessages?: AgentMessage[]
 }
 
 export function AuditReportProgressive({
@@ -109,6 +111,7 @@ export function AuditReportProgressive({
   auditId,
   isOwner = false,
   isTeaser = false,
+  agentMessages = [],
 }: AuditReportProgressiveProps) {
   const isFailed = status === 'FAILED'
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
@@ -329,9 +332,16 @@ export function AuditReportProgressive({
           <Suspense fallback={null}>
             <ReportWorkspaceSplitShell
               isActiveReview
-              showChatColumn={isOwner}
-              leftPanel={<WorkspaceChatPanel auditId={auditId} canChat={isOwner} />}
-              activityEvents={actionTimeline}
+              showChatColumn
+              canUseTimeline={isOwner}
+              leftPanel={
+                <WorkspaceChatPanel
+                  auditId={auditId}
+                  canChat={isOwner}
+                  agentMessages={agentMessages}
+                  reportUrl={url}
+                />
+              }
               browserUrl={url}
               browserScreenshots={screenshots}
               browserCaptureStatus={screenshotCapture}

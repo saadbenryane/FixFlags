@@ -1,100 +1,209 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import Link from 'next/link'
+import { History, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import type { AgentMessage } from '@/lib/audit/agent-message'
+import { startScanWithHandoff } from '@/lib/audit/start-scan-handoff'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
 interface WorkspaceChatPanelProps {
   auditId: string
-  /** Owner-only chat. Non-owners get no chat panel at all. */
+  /** Interactive model conversation requires the signed-in report owner. */
   canChat?: boolean
   className?: string
-  /**
-   * Ground chat answers on this spine observation instead of the report's own
-   * audit. Defaults to the report's own audit. Message history stays keyed to
-   * `auditId` so one conversation persists per report.
-   */
   observationAuditId?: string | null
-}
-
-interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
+  /** Deterministic scan messages share this transcript and consume no model usage. */
+  agentMessages?: AgentMessage[]
+  reportUrl?: string
 }
 
 interface ChatMeta {
   available: boolean
-  cap: number
-  userTurns: number
+  exhausted: boolean
+  limit: number | null
+  used: number
+  remaining: number | null
+  resetAt: string | null
+}
+
+interface HistoryItem {
+  id: string
+  url: string
+  status: string
+  score?: number | null
+  unresolvedFlagCount?: number | null
+  createdAt?: string | null
+  parentId?: string | null
+  reviewKind?: 'product_review' | 'update_review'
 }
 
 const chatCopy = REPORT_COPY.workspace.chat
 
-const QUICK_PROMPTS = [chatCopy.cannedExplain, chatCopy.cannedFirst]
+function conversationMessage(
+  auditId: string,
+  message: { id?: string; role: 'user' | 'assistant' | 'agent'; content: string },
+  index: number,
+): AgentMessage {
+  const isUser = message.role === 'user'
+  return {
+    id: message.id ?? `history:${auditId}:${index}`,
+    sessionId: auditId,
+    auditId,
+    role: isUser ? 'user' : 'agent',
+    source: isUser ? 'user' : 'model',
+    kind: 'conversation',
+    content: message.content,
+  }
+}
+
+function hostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
+
+function usageLabel(meta: ChatMeta): string | null {
+  if (meta.limit == null || meta.remaining == null) return null
+  const percent = meta.limit > 0 ? Math.max(0, Math.round((meta.remaining / meta.limit) * 100)) : 0
+  return `${percent}% left`
+}
 
 export function WorkspaceChatPanel({
   auditId,
   canChat = true,
   className,
   observationAuditId,
+  agentMessages = [],
+  reportUrl = '',
 }: WorkspaceChatPanelProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [conversation, setConversation] = useState<AgentMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [historyLoaded, setHistoryLoaded] = useState(false)
-  const [meta, setMeta] = useState<ChatMeta>({ available: true, cap: 20, userTurns: 0 })
-  const [capReached, setCapReached] = useState(false)
+  const [historyLoaded, setHistoryLoaded] = useState(!canChat)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const [meta, setMeta] = useState<ChatMeta>({
+    available: true,
+    exhausted: false,
+    limit: null,
+    used: 0,
+    remaining: null,
+    resetAt: null,
+  })
+  const [newScan, setNewScan] = useState(false)
+  const [scanUrl, setScanUrl] = useState('')
+  const [scanError, setScanError] = useState<string | null>(null)
+  const [historyItems, setHistoryItems] = useState<HistoryItem[]>([])
+  const [historyListError, setHistoryListError] = useState<string | null>(null)
+  const transcriptRef = useRef<HTMLDivElement>(null)
+  const scanInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    let cancelled = false
+  const signInHref = { pathname: '/sign-in', query: { next: `/report/${auditId}` } }
+
+  async function loadConversation() {
+    if (!canChat) return
+    setHistoryError(null)
+    setHistoryLoaded(false)
     const observationQuery =
       observationAuditId && observationAuditId !== auditId
         ? `?observationAuditId=${encodeURIComponent(observationAuditId)}`
         : ''
-    fetch(`/api/reports/${auditId}/chat${observationQuery}`)
-      .then((response) => response.json().catch(() => ({})))
-      .then((data) => {
-        if (cancelled) return
-        const history = Array.isArray(data?.messages)
-          ? (data.messages as { role: 'user' | 'assistant'; content: string }[]).map(
-              (message, index) => ({
-                id: `history-${index}`,
-                role: message.role,
-                content: message.content,
-              })
+    try {
+      const response = await fetch(`/api/reports/${auditId}/chat${observationQuery}`)
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(typeof data?.error === 'string' ? data.error : chatCopy.unavailable)
+      const messages = Array.isArray(data?.messages)
+        ? data.messages
+            .filter((item: unknown): item is { id?: string; role: 'user' | 'assistant' | 'agent'; content: string } =>
+              Boolean(item && typeof item === 'object' && 'role' in item && 'content' in item),
             )
-          : []
-        setMessages(history)
-        const userTurns = typeof data?.userTurns === 'number' ? data.userTurns : 0
-        const cap = typeof data?.cap === 'number' ? data.cap : 20
-        setMeta({
-          available: data?.available !== false,
-          cap,
-          userTurns,
-        })
-        setCapReached(userTurns >= cap)
+            .map((message: { id?: string; role: 'user' | 'assistant' | 'agent'; content: string }, index: number) =>
+              conversationMessage(auditId, message, index),
+            )
+        : []
+      setConversation(messages)
+      const usage = data?.usage ?? data?.allowance ?? {}
+      const limit = typeof usage.limit === 'number' ? usage.limit : null
+      const used = typeof usage.used === 'number' ? usage.used : 0
+      const remaining = typeof usage.remaining === 'number'
+        ? usage.remaining
+        : limit == null ? null : Math.max(0, limit - used)
+      setMeta({
+        available: data?.available !== false,
+        exhausted: data?.exhausted === true || (remaining != null && remaining <= 0),
+        limit,
+        used,
+        remaining,
+        resetAt: typeof usage.resetAt === 'string' ? usage.resetAt : null,
       })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setHistoryLoaded(true)
-      })
-    return () => {
-      cancelled = true
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : chatCopy.unavailable)
+    } finally {
+      setHistoryLoaded(true)
     }
-  }, [auditId, observationAuditId])
+  }
+
+  useEffect(() => {
+    void loadConversation()
+    // The callback deliberately reloads when the selected observation changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auditId, observationAuditId, canChat])
+
+  const messages = useMemo(() => {
+    const combined = [...agentMessages, ...conversation]
+    const seen = new Set<string>()
+    return combined.filter((message) => {
+      if (seen.has(message.id)) return false
+      seen.add(message.id)
+      return true
+    })
+  }, [agentMessages, conversation])
+
+  useEffect(() => {
+    const node = transcriptRef.current
+    if (!node) return
+    const nearBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 96
+    if (nearBottom) {
+      if (typeof node.scrollTo === 'function') {
+        node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' })
+      } else {
+        node.scrollTop = node.scrollHeight
+      }
+    }
+  }, [messages.length])
 
   async function send(text: string) {
     const trimmed = text.trim()
-    if (!trimmed || loading) return
-    const userMessage: ChatMessage = {
-      id: `local-${Date.now()}-user`,
+    if (!trimmed || loading || meta.exhausted) return
+    const localUser: AgentMessage = {
+      id: `local:${auditId}:${Date.now()}:user`,
+      sessionId: auditId,
+      auditId,
       role: 'user',
+      source: 'user',
+      kind: 'conversation',
       content: trimmed,
     }
-    setMessages((prev) => [...prev, userMessage])
+    setConversation((current) => [...current, localUser])
     setInput('')
     setLoading(true)
     try {
@@ -109,120 +218,273 @@ export function WorkspaceChatPanel({
               : undefined,
         }),
       })
-      const data = (await response.json().catch(() => ({}))) as {
-        reply?: string
-        error?: string
-        capReached?: boolean
-        cap?: number
-        userTurns?: number
+      const data = await response.json().catch(() => ({}))
+      if (response.status === 429 && data?.code === 'CHAT_ALLOWANCE_EXHAUSTED') {
+        setMeta((current) => ({ ...current, exhausted: true, remaining: 0 }))
+        return
       }
-      if (typeof data.userTurns === 'number') {
-        setMeta((current) => ({ ...current, userTurns: data.userTurns as number }))
+      if (!response.ok) throw new Error(typeof data?.error === 'string' ? data.error : chatCopy.unavailable)
+      const reply = data?.agentMessage?.content ?? data?.reply
+      if (typeof reply !== 'string' || !reply.trim()) throw new Error(chatCopy.replyFallback)
+      const modelMessage: AgentMessage = data?.agentMessage && typeof data.agentMessage.id === 'string'
+        ? data.agentMessage
+        : {
+            id: `local:${auditId}:${Date.now()}:agent`,
+            sessionId: auditId,
+            auditId,
+            role: 'agent',
+            source: 'model',
+            kind: 'conversation',
+            content: reply,
+          }
+      setConversation((current) => [...current, modelMessage])
+      const usage = data?.usage ?? data?.allowance
+      if (usage && typeof usage === 'object') {
+        setMeta((current) => ({
+          ...current,
+          limit: typeof usage.limit === 'number' ? usage.limit : current.limit,
+          used: typeof usage.used === 'number' ? usage.used : current.used,
+          remaining: typeof usage.remaining === 'number' ? usage.remaining : current.remaining,
+          resetAt: typeof usage.resetAt === 'string' ? usage.resetAt : current.resetAt,
+          exhausted: usage.exhausted === true || usage.remaining === 0,
+        }))
       }
-      if (data.capReached) {
-        setCapReached(true)
-        if (typeof data.cap === 'number') {
-          setMeta((current) => ({ ...current, cap: data.cap as number }))
-        }
-      }
-      const reply =
-        typeof data.reply === 'string'
-          ? data.reply
-          : typeof data.error === 'string'
-            ? data.error
-            : chatCopy.unavailable
-      setMessages((prev) => [
-        ...prev,
-        { id: `local-${Date.now()}-assistant`, role: 'assistant', content: reply },
-      ])
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { id: `local-${Date.now()}-assistant`, role: 'assistant', content: chatCopy.unavailable },
+    } catch (error) {
+      setConversation((current) => [
+        ...current,
+        {
+          id: `local:${auditId}:${Date.now()}:warning`,
+          sessionId: auditId,
+          auditId,
+          role: 'agent',
+          source: 'model',
+          kind: 'warning',
+          state: 'warning',
+          content: error instanceof Error ? error.message : chatCopy.unavailable,
+        },
       ])
     } finally {
       setLoading(false)
     }
   }
 
-  function handleSend() {
-    void send(input)
+  async function startScan() {
+    const url = scanUrl.trim()
+    if (!url || loading) return
+    setLoading(true)
+    setScanError(null)
+    const result = await startScanWithHandoff({
+      url,
+      body: { url, source: 'report' },
+      errorFallback: 'Could not start this review. Check the URL and try again.',
+    })
+    if (!result.ok) {
+      setScanError(result.message)
+      setLoading(false)
+    }
   }
 
-  if (!canChat) return null
+  async function loadHistory() {
+    if (!canChat) return
+    setHistoryListError(null)
+    try {
+      const response = await fetch('/api/reports/history?limit=20')
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(typeof data?.error === 'string' ? data.error : 'Could not load scan history.')
+      setHistoryItems(Array.isArray(data?.items) ? data.items : Array.isArray(data?.reports) ? data.reports : [])
+    } catch (error) {
+      setHistoryListError(error instanceof Error ? error.message : 'Could not load scan history.')
+    }
+  }
 
-  const liveChat = meta.available && !capReached
+  const remainingLabel = usageLabel(meta)
 
   return (
-    <div
-      className={cn('flex min-h-[200px] flex-col rounded-card border border-border bg-card/50', className)}
-    >
-      <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
-        <span className="text-xs font-semibold text-muted-foreground">{chatCopy.title}</span>
-        <span className="rounded-full bg-muted/50 px-2 py-0.5 text-2xs text-muted-foreground">
-          {meta.userTurns}/{meta.cap}
-        </span>
-      </div>
-      <div className="flex-1 space-y-2 overflow-y-auto p-3 text-sm">
-        {messages.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            {historyLoaded ? chatCopy.empty : chatCopy.unavailable}
-          </p>
-        ) : (
-          messages.map((msg) => (
-            <p
-              key={msg.id}
-              className={cn(
-                msg.role === 'user' ? 'text-foreground' : 'text-muted-foreground',
-                'whitespace-pre-line',
-              )}
-            >
-              <span className="font-medium">{msg.role === 'user' ? 'You' : 'FixFlags'}:</span>{' '}
-              {msg.content}
-            </p>
-          ))
+    <TooltipProvider>
+      <section
+        className={cn(
+          'flex min-h-[420px] max-h-[min(72dvh,760px)] flex-col overflow-hidden rounded-card bg-card/70 shadow-card glass-surface',
+          className,
         )}
-      </div>
+        aria-label="Agent"
+      >
+        <div className="flex min-h-14 items-center justify-end gap-1 border-b border-border/40 px-2">
+          <Sheet onOpenChange={(open) => { if (open) void loadHistory() }}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Scan history">
+                    <History className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </SheetTrigger>
+              </TooltipTrigger>
+              <TooltipContent>History</TooltipContent>
+            </Tooltip>
+            <SheetContent side="left" className="w-full sm:max-w-md">
+              <SheetHeader>
+                <SheetTitle>Scan history</SheetTitle>
+                <SheetDescription>Return to an earlier product review.</SheetDescription>
+              </SheetHeader>
+              <div className="mt-6 space-y-2 overflow-y-auto">
+                {!canChat ? (
+                  <div className="space-y-4 rounded-card bg-muted/35 p-4">
+                    <Link href={`/report/${auditId}`} className="block min-h-11 rounded-[var(--radius-control)] bg-background px-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+                      <span className="block text-sm font-medium text-foreground">{reportUrl ? hostname(reportUrl) : 'Current scan'}</span>
+                      <span className="mt-1 block text-xs text-muted-foreground">Current browser session</span>
+                    </Link>
+                    <p className="text-sm text-muted-foreground">Sign in to save this scan and see your review history.</p>
+                    <Button asChild className="w-full"><Link href={signInHref}>Sign in</Link></Button>
+                  </div>
+                ) : historyListError ? (
+                  <div className="space-y-3">
+                    <p role="alert" className="text-sm text-destructive">{historyListError}</p>
+                    <Button variant="outline" onClick={() => void loadHistory()}>Try again</Button>
+                  </div>
+                ) : historyItems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Your completed and active scans will appear here.</p>
+                ) : historyItems.map((item) => (
+                  <Link
+                    key={item.id}
+                    href={`/report/${item.id}`}
+                    className={cn(
+                      'block min-h-11 rounded-[var(--radius-control)] px-3 py-3 transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+                      item.id === auditId && 'bg-muted/45',
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="truncate text-sm font-medium text-foreground">{hostname(item.url)}</span>
+                      <span className="font-mono text-2xs text-muted-foreground">{item.score ?? item.status}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {item.reviewKind === 'update_review' || item.parentId ? 'Update review' : 'Product review'}
+                      {typeof item.unresolvedFlagCount === 'number' ? ` · ${item.unresolvedFlagCount} Flags` : ''}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </SheetContent>
+          </Sheet>
 
-      {liveChat ? (
-        <form
-          className="flex gap-2 border-t border-border p-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            handleSend()
-          }}
-        >
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={chatCopy.placeholder}
-            disabled={loading}
-            className="text-sm"
-          />
-          <Button type="submit" size="sm" loading={loading} disabled={!input.trim()}>
-            {chatCopy.send}
-          </Button>
-        </form>
-      ) : (
-        <div className="space-y-2 border-t border-border p-3">
-          <p className="text-xs text-muted-foreground">
-            {capReached ? chatCopy.capReached(meta.cap) : chatCopy.notConfigured}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {QUICK_PROMPTS.map((prompt) => (
-              <button
-                key={prompt}
-                type="button"
-                disabled={loading}
-                className="rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
-                onClick={() => void send(prompt)}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="New scan"
+                onClick={() => {
+                  setNewScan(true)
+                  setScanError(null)
+                  setTimeout(() => scanInputRef.current?.focus(), 0)
+                }}
               >
-                {prompt}
-              </button>
-            ))}
-          </div>
+                <Plus className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>New scan</TooltipContent>
+          </Tooltip>
         </div>
-      )}
-    </div>
+
+        <div
+          ref={transcriptRef}
+          className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 text-sm"
+          role="log"
+          aria-label="Agent messages"
+          aria-live="polite"
+          aria-relevant="additions"
+        >
+          {newScan ? (
+            <p className="max-w-[92%] whitespace-pre-line leading-relaxed text-muted-foreground">
+              Paste the page you want me to review.
+            </p>
+          ) : null}
+          {messages.map((message) => (
+            <article
+              key={message.id}
+              className={cn(
+                'max-w-[92%] whitespace-pre-line leading-relaxed',
+                message.role === 'user'
+                  ? 'ml-auto rounded-[var(--radius-control)] bg-muted/55 px-3 py-2 text-foreground'
+                  : message.kind === 'failure'
+                    ? 'text-destructive'
+                    : 'text-muted-foreground',
+              )}
+              data-source={message.source}
+            >
+              {message.content}
+              {message.flagId ? (
+                <Link
+                  href={`?flag=${encodeURIComponent(message.flagId)}#report-flags`}
+                  className="mt-2 block min-h-11 py-2 text-sm font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                >
+                  View Flag
+                </Link>
+              ) : null}
+            </article>
+          ))}
+          {!newScan && messages.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {historyLoaded ? 'I’m preparing this review.' : 'Loading this conversation…'}
+            </p>
+          ) : null}
+        </div>
+
+        {newScan ? (
+          <form
+            className="space-y-2 border-t border-border/40 p-3"
+            onSubmit={(event) => { event.preventDefault(); void startScan() }}
+          >
+            <div className="flex gap-2">
+              <Input
+                ref={scanInputRef}
+                value={scanUrl}
+                onChange={(event) => setScanUrl(event.target.value)}
+                placeholder="Paste a URL to review"
+                aria-label="URL to review"
+                disabled={loading}
+              />
+              <Button type="submit" loading={loading} disabled={!scanUrl.trim()}>Start review</Button>
+            </div>
+            {scanError ? <p role="alert" className="text-xs text-destructive">{scanError}</p> : null}
+            <button type="button" className="min-h-11 text-xs text-muted-foreground hover:text-foreground" onClick={() => setNewScan(false)}>
+              Back to this report
+            </button>
+          </form>
+        ) : !canChat ? (
+          <div className="space-y-3 border-t border-border/40 bg-muted/20 p-3">
+            <p className="text-xs text-muted-foreground">Sign in to ask about the Flags and fixes in this report.</p>
+            <Button asChild className="w-full"><Link href={signInHref}>Sign in to chat</Link></Button>
+          </div>
+        ) : historyError ? (
+          <div className="space-y-3 border-t border-border/40 p-3">
+            <p role="alert" className="text-xs text-destructive">{historyError}</p>
+            <Button variant="outline" className="w-full" onClick={() => void loadConversation()}>Try again</Button>
+          </div>
+        ) : meta.exhausted ? (
+          <div className="space-y-3 border-t border-border/40 p-3">
+            <p className="text-xs text-muted-foreground">You’ve used this month’s Agent allowance. Your report and scan updates remain available.</p>
+            <Button asChild className="w-full"><Link href="/pricing">Upgrade to continue</Link></Button>
+          </div>
+        ) : (
+          <form
+            className="space-y-2 border-t border-border/40 p-2"
+            onSubmit={(event) => { event.preventDefault(); void send(input) }}
+          >
+            <div className="flex gap-2">
+              <Input
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder="Ask about this report"
+                disabled={loading || !meta.available}
+                className="text-sm"
+              />
+              <Button type="submit" size="sm" loading={loading} disabled={!input.trim() || !meta.available}>
+                {chatCopy.send}
+              </Button>
+            </div>
+            {remainingLabel ? <p className="px-1 text-right font-mono text-2xs text-muted-foreground">{remainingLabel}</p> : null}
+          </form>
+        )}
+      </section>
+    </TooltipProvider>
   )
 }

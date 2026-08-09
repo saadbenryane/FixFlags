@@ -3,21 +3,27 @@ import type { NextRequest } from 'next/server'
 
 const prismaMock = vi.hoisted(() => ({
   audit: { findUnique: vi.fn() },
+  user: { findUnique: vi.fn() },
   reportChatMessage: {
     findMany: vi.fn(),
     count: vi.fn(),
     create: vi.fn(),
+    createMany: vi.fn(),
   },
   flag: { findMany: vi.fn() },
 }))
 const getSession = vi.hoisted(() => vi.fn())
 const enforceRateLimit = vi.hoisted(() => vi.fn())
 const requestClientId = vi.hoisted(() => vi.fn(() => 'test-client'))
-const buildCannedChatReply = vi.hoisted(() => vi.fn())
 const isWorkspaceChatConfigured = vi.hoisted(() => vi.fn())
 const runWorkspaceChat = vi.hoisted(() => vi.fn())
 const answerProductQuestion = vi.hoisted(() => vi.fn())
-const getEnv = vi.hoisted(() => vi.fn())
+const workspaceChatTokenUpperBound = vi.hoisted(() => vi.fn(() => 10_000))
+const WorkspaceChatUnavailableError = vi.hoisted(() => class WorkspaceChatUnavailableError extends Error {})
+const getChatAllowance = vi.hoisted(() => vi.fn())
+const reserveChatUsage = vi.hoisted(() => vi.fn())
+const finalizeChatUsage = vi.hoisted(() => vi.fn())
+const releaseChatUsage = vi.hoisted(() => vi.fn())
 const RateLimitError = vi.hoisted(() => class RateLimitError extends Error {
   retryAfter: number
   constructor(retryAfter: number) {
@@ -35,11 +41,17 @@ vi.mock('@/lib/security/rate-limit', () => ({
 }))
 vi.mock('@/lib/workspace/chat', () => ({
   answerProductQuestion,
-  buildCannedChatReply,
   isWorkspaceChatConfigured,
   runWorkspaceChat,
+  workspaceChatTokenUpperBound,
+  WorkspaceChatUnavailableError,
 }))
-vi.mock('@/lib/env', () => ({ getEnv }))
+vi.mock('@/lib/billing/chat-usage', () => ({
+  getChatAllowance,
+  reserveChatUsage,
+  finalizeChatUsage,
+  releaseChatUsage,
+}))
 vi.mock('next/headers', () => ({
   headers: async () => new Headers(),
   cookies: async () => ({ get: vi.fn() }),
@@ -71,16 +83,20 @@ describe('/api/reports/[id]/chat', () => {
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     enforceRateLimit.mockResolvedValue({ exceeded: false })
     prismaMock.audit.findUnique.mockResolvedValue(ownedAudit)
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: 'user-1', plan: 'FREE', role: 'user', subscriptionStatus: 'NONE',
+    })
     prismaMock.flag.findMany.mockResolvedValue([])
     prismaMock.reportChatMessage.count.mockResolvedValue(0)
     prismaMock.reportChatMessage.findMany.mockResolvedValue([historyMessage])
-    prismaMock.reportChatMessage.create.mockResolvedValue({})
-    getEnv.mockReturnValue({ CHAT_SESSION_CAP: '20' })
-    buildCannedChatReply.mockReturnValue('canned reply')
-    runWorkspaceChat.mockResolvedValue({ reply: 'llm reply', mode: 'llm' })
+    prismaMock.reportChatMessage.createMany.mockResolvedValue({ count: 2 })
+    getChatAllowance.mockResolvedValue({ limit: 25_000, used: 0, reserved: 0, remaining: 25_000, resetAt: '2026-09-01T00:00:00.000Z' })
+    reserveChatUsage.mockResolvedValue({ reservationId: 'r1', allowance: { limit: 25_000, used: 0, reserved: 10_000, remaining: 15_000, resetAt: '2026-09-01T00:00:00.000Z' } })
+    finalizeChatUsage.mockResolvedValue({ limit: 25_000, used: 120, reserved: 0, remaining: 24_880, resetAt: '2026-09-01T00:00:00.000Z' })
+    runWorkspaceChat.mockResolvedValue({ reply: 'llm reply', mode: 'llm', usage: { inputTokens: 100, outputTokens: 20 } })
   })
 
-  it('GET returns history, user turns, cap, and availability for the owner', async () => {
+  it('GET returns history, availability, and monthly allowance for the owner', async () => {
     isWorkspaceChatConfigured.mockReturnValue(true)
     prismaMock.reportChatMessage.count.mockResolvedValue(2)
     const res = await GET(getReq(), { params: Promise.resolve({ id: 'report-1' }) })
@@ -88,8 +104,7 @@ describe('/api/reports/[id]/chat', () => {
     const body = await res.json()
     expect(body.messages).toEqual([{ role: 'user', content: 'hi' }])
     expect(body.available).toBe(true)
-    expect(body.cap).toBe(20)
-    expect(body.userTurns).toBe(2)
+    expect(body.allowance).toMatchObject({ limit: 25_000, remaining: 25_000 })
     expect(body.history).toBeUndefined()
   })
 
@@ -107,14 +122,13 @@ describe('/api/reports/[id]/chat', () => {
     expect(prismaMock.reportChatMessage.create).not.toHaveBeenCalled()
   })
 
-  it('POST degrades to a canned reply when the per-plan user cap is reached', async () => {
-    getEnv.mockReturnValue({ CHAT_SESSION_CAP: '3' })
-    prismaMock.reportChatMessage.count.mockResolvedValue(3)
+  it('POST rejects an LLM request when the monthly allowance cannot be reserved', async () => {
+    reserveChatUsage.mockResolvedValue({ reservationId: null, allowance: { limit: 25_000, used: 25_000, reserved: 0, remaining: 0, resetAt: '2026-09-01T00:00:00.000Z' } })
     const res = await POST(getReq(), { params: Promise.resolve({ id: 'report-1' }) })
     const body = await res.json()
-    expect(res.status).toBe(200)
-    expect(body).toMatchObject({ reply: 'canned reply', mode: 'canned', capReached: true, cap: 3 })
-    expect(prismaMock.reportChatMessage.create).not.toHaveBeenCalled()
+    expect(res.status).toBe(429)
+    expect(body).toMatchObject({ code: 'CHAT_ALLOWANCE_EXHAUSTED', allowance: { remaining: 0 } })
+    expect(prismaMock.reportChatMessage.createMany).not.toHaveBeenCalled()
   })
 
   it('POST persists the exchange and returns the LLM reply when configured', async () => {
@@ -122,11 +136,22 @@ describe('/api/reports/[id]/chat', () => {
     const res = await POST(getReq(), { params: Promise.resolve({ id: 'report-1' }) })
     const body = await res.json()
     expect(res.status).toBe(200)
-    expect(body).toMatchObject({ reply: 'llm reply', mode: 'llm', cap: 20, userTurns: 1 })
-    expect(prismaMock.reportChatMessage.create).toHaveBeenCalledTimes(2)
-    expect(prismaMock.reportChatMessage.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ role: 'user', auditId: 'report-1' }) })
-    )
+    expect(body).toMatchObject({ reply: 'llm reply', mode: 'llm', allowance: { used: 120 } })
+    expect(reserveChatUsage).toHaveBeenCalledOnce()
+    expect(finalizeChatUsage).toHaveBeenCalledWith('r1', { inputTokens: 100, outputTokens: 20 })
+    expect(prismaMock.reportChatMessage.createMany).toHaveBeenCalledWith({ data: [
+      expect.objectContaining({ role: 'user', auditId: 'report-1' }),
+      expect.objectContaining({ role: 'assistant', auditId: 'report-1' }),
+    ] })
+  })
+
+  it('releases reserved usage and returns an explicit retry when chat fails', async () => {
+    runWorkspaceChat.mockRejectedValue(new WorkspaceChatUnavailableError())
+    const res = await POST(getReq(), { params: Promise.resolve({ id: 'report-1' }) })
+    expect(res.status).toBe(503)
+    expect(await res.json()).toMatchObject({ code: 'CHAT_UNAVAILABLE', action: 'retry' })
+    expect(releaseChatUsage).toHaveBeenCalledWith('r1')
+    expect(prismaMock.reportChatMessage.createMany).not.toHaveBeenCalled()
   })
 
   it('maps a Redis availability failure into a 429 retry response', async () => {

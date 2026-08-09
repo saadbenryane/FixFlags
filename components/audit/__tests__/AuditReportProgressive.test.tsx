@@ -99,19 +99,19 @@ describe('AuditReportProgressive', () => {
     expect(screen.queryByText('How FixFlags is checking')).not.toBeInTheDocument()
   })
 
-  it('shows action events in the workspace activity panel when an audit id is present', () => {
+  it('keeps raw action events out of the Agent transcript', () => {
     render(
       <AuditReportProgressive
         auditId={AUDIT_ID}
+        isOwner
         isOwner
         status="CAPTURING"
         url={URL}
         actionTimeline={[{ t: 500, kind: 'capture', label: 'Opened page' }]}
       />
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
-    expect(screen.getAllByText('Activity').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Opened page').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Activity')).not.toBeInTheDocument()
+    expect(screen.queryByText('Opened page')).not.toBeInTheDocument()
   })
 
   it('keeps the completed frame focused on all fixes with sticky wayfinding', () => {
@@ -172,6 +172,7 @@ describe('AuditReportProgressive', () => {
         screenshotCapture={{ desktop: 'ok', mobile: 'failed' }}
       />
     )
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
     expect(screen.getAllByAltText('Page screenshot').length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Screenshot could not be captured for this check/i).length).toBeGreaterThan(0)
   })

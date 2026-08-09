@@ -46,6 +46,7 @@ export interface AuditStatusPayload {
   actionTimeline?: import('@/lib/audit/action-timeline').ActionTimelineEvent[]
   productContract?: import('@/lib/audit/product-contract').ProductContract | null
   technologyProfile?: import('@/lib/audit/technology-profile').TechnologyProfile
+  agentMessages?: import('@/lib/audit/agent-message').AgentMessage[]
 }
 
 interface UseAuditPollingOptions {
@@ -90,6 +91,11 @@ export function progressivePayloadFingerprint(value: AuditStatusPayload): string
     actionTimeline: value.actionTimeline,
     productContract: value.productContract,
     technologyProfile: value.technologyProfile,
+    agentMessages: value.agentMessages?.map((message) => [
+      message.id,
+      message.state,
+      message.content,
+    ]),
   })
 }
 

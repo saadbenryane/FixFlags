@@ -65,6 +65,7 @@ import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSp
 import { ProductSpineWorkspace } from '@/components/report/ProductSpineWorkspace'
 import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
+import type { AgentMessage } from '@/lib/audit/agent-message'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
 
@@ -138,6 +139,7 @@ interface AuditReportProps {
   scoreHistory?: ReportWorkspaceHistoryPoint[]
   compareHref?: string | null
   sampleFixFlag?: RankableFlag | null
+  agentMessages?: AgentMessage[]
 }
 
 export function AuditReport({
@@ -169,19 +171,21 @@ export function AuditReport({
   scoreHistory = [],
   compareHref = null,
   sampleFixFlag = null,
+  agentMessages = [],
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const showFeedback = !isSample && isLoggedIn
+  const canUseTimeline = !isSample && isLoggedIn && isViewerOwner
   const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
-  const showJourney = pages.length > 1
-  const showJourneyReview = journeyReviews.length > 0
-  const showFlow = Boolean(audit.flowData)
+  const showJourney = canUseTimeline && pages.length > 1
+  const showJourneyReview = canUseTimeline && journeyReviews.length > 0
+  const showFlow = canUseTimeline && Boolean(audit.flowData)
   const showContract = Boolean(audit.productContract)
   const showRemember = Boolean(
-    auditId && (audit.verifiedLearnings?.length || audit.intentionalNotes?.length || audit.knownRisks?.length)
+    isViewerOwner && auditId && (audit.verifiedLearnings?.length || audit.intentionalNotes?.length || audit.knownRisks?.length)
   )
-  const showTimeline = (audit.actionTimeline?.length ?? 0) > 0
+  const showTimeline = canUseTimeline && (audit.actionTimeline?.length ?? 0) > 0
   const showPreviews = Boolean(audit.previewMeta)
   const showStack = Boolean(audit.technologyProfile)
 
@@ -409,16 +413,23 @@ export function AuditReport({
               url={audit.url}
               screenshots={audit.screenshots ?? []}
               steps={buildPlaybackSteps(audit.actionTimeline ?? [])}
-              activityEvents={audit.actionTimeline ?? []}
               canChat={isViewerOwner}
+              agentMessages={agentMessages}
               reportPanel={flagsSectionWithHeader}
             />
           ) : (
             <Suspense fallback={null}>
               <ReportWorkspaceSplitShell
-                showChatColumn={isViewerOwner}
-                leftPanel={<WorkspaceChatPanel auditId={auditId} canChat={isViewerOwner} />}
-                activityEvents={audit.actionTimeline ?? []}
+                showChatColumn
+                canUseTimeline={isViewerOwner}
+                leftPanel={
+                  <WorkspaceChatPanel
+                    auditId={auditId}
+                    canChat={isViewerOwner}
+                    agentMessages={agentMessages}
+                    reportUrl={audit.url}
+                  />
+                }
                 browserUrl={audit.url}
                 browserScreenshots={audit.screenshots}
                 reportPanel={flagsSectionWithHeader}

@@ -24,7 +24,6 @@ function renderShell(replayStep?: string) {
     <ReportWorkspaceSplitShell
       isActiveReview
       leftPanel={<div data-testid="chat">Chat</div>}
-      activityEvents={events}
       browserUrl="https://example.com"
       reportPanel={<div data-testid="report-panel">Fix list</div>}
       steps={steps}

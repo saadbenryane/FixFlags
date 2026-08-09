@@ -26,7 +26,6 @@ import {
 } from '@/lib/audit/active-audit'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { Heading, Muted } from '@/components/ui/typography'
-import { ReportAuthGate } from '@/components/auth/ReportAuthGate'
 
 /** Catches crashes in the progressive report view so the page doesn't go white. */
 class ProgressiveErrorBoundary extends Component<
@@ -59,7 +58,6 @@ interface Props {
   initialAudit?: Record<string, unknown> | null
   pollStatus?: boolean
   session?: { user: { id: string } } | null
-  requireAuthGate?: boolean
   atAuditLimit?: boolean
 }
 
@@ -83,7 +81,6 @@ export function AuditPageClient({
   initialAudit,
   pollStatus = true,
   session,
-  requireAuthGate = false,
   atAuditLimit: _atAuditLimit = false,
 }: Props) {
   void _atAuditLimit
@@ -245,6 +242,7 @@ export function AuditPageClient({
       actionTimeline: statusPayload?.actionTimeline ?? [],
       productContract: statusPayload?.productContract ?? null,
       technologyProfile: statusPayload?.technologyProfile,
+      agentMessages: statusPayload?.agentMessages ?? [],
       auditId: id,
       isOwner: Boolean(session?.user),
       isTeaser,
@@ -252,6 +250,7 @@ export function AuditPageClient({
   }, [status, progress, statusPayload?.partialFlags,
       statusPayload?.screenshots, statusPayload?.rubrics, statusPayload?.actionTimeline,
       statusPayload?.productContract, statusPayload?.technologyProfile,
+      statusPayload?.agentMessages,
       statusPayload?.screenshotCapture, statusPayload?.url, statusPayload?.pageType,
       statusPayload?.verdict, statusPayload?.score,
       initialAudit, workerIdle, id, session?.user, isTeaser])
@@ -323,25 +322,14 @@ export function AuditPageClient({
         <ReportViewedTracker
           auditId={id}
           isOwner={Boolean(session?.user)}
-          accessState={
-            requireAuthGate ? 'anonymous' : session?.user ? 'owner' : 'anonymous'
-          }
+          accessState={session?.user ? 'owner' : 'anonymous'}
         />
       ) : null}
-      <div
-        className={requireAuthGate ? 'pointer-events-none select-none blur-[3px]' : undefined}
-        aria-hidden={requireAuthGate || undefined}
-        inert={requireAuthGate ? true : undefined}
-      >
+      <div>
         <ProgressiveErrorBoundary onRetry={() => router.refresh()}>
           <AuditReportProgressive {...progressiveProps} />
         </ProgressiveErrorBoundary>
       </div>
-      <ReportAuthGate
-        auditId={id}
-        required={requireAuthGate}
-        reportUrl={progressiveProps.url}
-      />
     </AuditShell>
   )
 }

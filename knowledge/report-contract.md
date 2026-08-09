@@ -28,13 +28,26 @@ Sticky nav order matches DOM order: Top fixes → All fixes → Made with → Co
 
 **Report header copy:** "Your review" with unresolved count and checked scope. The progress band owns the release score.
 
-New anonymous scans are visually gated by a mandatory auth dialog over an inert report. Users can authenticate or return home, but cannot inspect the progressive or completed private report anonymously. Email claims and refreshes in place. OAuth, passkey, and two-factor routes claim through `/post-login` and return to the same report. Anonymous API serialization remains redacted: evidence must be real page evidence, prompt fields are removed, and gate strings are never persisted into Flag rows.
+New anonymous scans render the progressive and completed evidence report without a blocking authentication dialog.
+Anonymous viewers can inspect scores, all confirmed Flags, screenshots, textual evidence, public-safe technology context, and deterministic Agent scan messages.
+Fix prompts, interactive Agent conversation, Timeline and path replay payloads, private memory, history, update reviews, export, restricted sharing, and Canvas remain unavailable until their access requirement is met.
+Authentication is contextual and returns through `/post-login` so the anonymous report is claimed before the same workspace unlocks.
+Anonymous API serialization remains redacted: gated fields are omitted server-side, evidence remains real page evidence, and gate strings are never persisted into Flag rows.
 
 `/report/[id]/details` redirects to `/report/[id]`. Shared and sample detail URLs likewise redirect to their canonical report surfaces.
 
 ## Progressive report
 
-The homepage paints report geometry as soon as a valid URL is submitted. After `/api/checks` returns an ID, navigation history is replaced with `/report/[id]` without showing the background-check banner. Progressive UI uses the same `ReportWorkspaceShell` as the completed report. The progress band shows honest 0–100% pipeline progress and stage detail. Partial Flags stream into the same ranked explorer. Desktop and mobile capture placeholders resolve independently inside flag detail on mobile; the standalone capture pair stays on large screens only. Show honest status, early findings, and a layout-matched Made with skeleton that resolves to verified, empty, partial, or unavailable. Contract and Action Timeline stay inside collapsed “How FixFlags is checking” until the scan completes, then promote below the work zone. Keep the frame mounted until the completed server report replaces it.
+The homepage paints report geometry as soon as a valid URL is submitted.
+After `/api/checks` returns an ID, navigation history is replaced with `/report/[id]` without showing the background-check banner.
+Progressive UI uses the same `ReportWorkspaceShell` and Agent transcript as the completed report.
+The progress band shows honest 0–100% pipeline progress and stage detail.
+Deterministic Agent messages use the same UI message envelope as authenticated model conversation but consume no model tokens and are reconstructed from persisted scan facts.
+Partial Flags stream into the ranked explorer and appear once in the Agent transcript with a link to the matching report detail.
+Desktop and mobile capture placeholders resolve independently inside Flag detail on mobile; the standalone capture pair stays on large screens only.
+Show honest status, early findings, and a layout-matched Made with skeleton that resolves to verified, empty, partial, or unavailable.
+Timeline and path replay remain authenticated evidence surfaces and never supply raw activity labels as Agent claims.
+Keep the workspace and transcript mounted until the completed server report replaces progressive data.
 
 ## Samples and sharing
 
@@ -51,4 +64,5 @@ The homepage paints report geometry as soon as a valid URL is submitted. After `
 - Loading, empty, partial, failure, forbidden, expired, revoked, and deleted states are explicit.
 - Visible report chrome lives in `lib/marketing/copy.ts`.
 - Technology profiles expose sanitized evidence labels and evidence bands only. They never grade vendors or leak raw requests, headers, cookies, query strings, or private report existence.
-- Newly submitted private reports require authentication before evidence or prompts can be inspected. Anonymous APIs retain prompt redaction for defense in depth.
+- Newly submitted anonymous reports expose evidence but never prompts, Timeline payloads, private memory/history, update-review controls, export, restricted sharing, or Canvas data.
+- Programmatic Agent messages are stable, monotonic, derived from persisted facts, and excluded from model usage and persisted conversation rows.

@@ -5,21 +5,27 @@ import { auth } from '@/lib/auth'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { prisma } from '@/lib/db'
-import { getEnv } from '@/lib/env'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import type { FlagDiffSummaryItem } from '@/lib/audit/flag-types'
 import { loadProjectIntelligence } from '@/lib/audit/ensure-product-project'
 import { productNameFromUrl } from '@/lib/audit/product-intelligence'
 import {
   answerProductQuestion,
-  buildCannedChatReply,
   isWorkspaceChatConfigured,
   runWorkspaceChat,
+  workspaceChatTokenUpperBound,
+  WorkspaceChatUnavailableError,
   type ChatDiffItem,
   type ChatDiffSummary,
   type ChatFlagContext,
   type ChatVerifiedLearning,
 } from '@/lib/workspace/chat'
+import {
+  getChatAllowance,
+  reserveChatUsage,
+  finalizeChatUsage,
+  releaseChatUsage,
+} from '@/lib/billing/chat-usage'
 
 const schema = z.object({
   message: z.string().min(1).max(2000),
@@ -28,13 +34,7 @@ const schema = z.object({
 
 const MAX_CHAT_FLAGS = 15
 const MAX_HISTORY_MESSAGES = 40
-const CHAT_SESSION_CAP = 20
 const MAX_PARENT_HOPS = 60
-
-function chatSessionCap(): number {
-  const configured = Number(getEnv().CHAT_SESSION_CAP)
-  return configured > 0 ? configured : CHAT_SESSION_CAP
-}
 
 type AuditRow = {
   id: string
@@ -101,7 +101,12 @@ async function requireAuditOwner(auditId: string) {
   if (audit.userId !== session.user.id) {
     return { error: apiError('You can only chat on your own reports', 403) }
   }
-  return { session, audit }
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, plan: true, role: true, subscriptionStatus: true },
+  })
+  if (!user) return { error: apiError('Account not found', 401) }
+  return { session, audit, user }
 }
 
 /**
@@ -208,9 +213,7 @@ export async function GET(
       take: MAX_HISTORY_MESSAGES,
       select: { role: true, content: true, createdAt: true },
     })
-    const userTurns = await prisma.reportChatMessage.count({
-      where: { auditId, role: 'user' },
-    })
+    const allowance = await getChatAllowance(owned.user)
 
     return NextResponse.json({
       messages: messages.map((message) => ({
@@ -218,8 +221,7 @@ export async function GET(
         content: message.content,
       })),
       available: isWorkspaceChatConfigured(),
-      cap: chatSessionCap(),
-      userTurns,
+      allowance,
     })
   } catch (error) {
     return handleRouteError(error, 'Chat history unavailable')
@@ -265,28 +267,6 @@ export async function POST(
     }
 
     const { flags, diff, learnings, productName } = await loadObservationContext(observation)
-    const cap = chatSessionCap()
-    const userMessageCount = await prisma.reportChatMessage.count({
-      where: { auditId, role: 'user' },
-    })
-    if (userMessageCount >= cap) {
-      return NextResponse.json({
-        reply: buildCannedChatReply({ flags }),
-        mode: 'canned',
-        capReached: true,
-        cap,
-      })
-    }
-
-    await prisma.reportChatMessage.create({
-      data: {
-        auditId,
-        userId: owned.session.user.id,
-        role: 'user',
-        content: parsed.data.message,
-      },
-    })
-
     const productAnswer = answerProductQuestion({
       message: parsed.data.message,
       flags,
@@ -297,31 +277,56 @@ export async function POST(
 
     let reply: string
     let mode: 'llm' | 'canned'
+    let allowance = await getChatAllowance(owned.user)
+    let reservationId: string | null = null
     if (productAnswer) {
       reply = productAnswer.reply
       mode = 'canned'
     } else {
-      const result = await runWorkspaceChat({
+      const chatInput = {
         message: parsed.data.message,
         url: observation.url,
         status: observation.status,
         flags,
-      })
-      reply = result.reply
-      mode = result.mode
+      }
+      const reservation = await reserveChatUsage(
+        owned.user,
+        workspaceChatTokenUpperBound(chatInput)
+      )
+      allowance = reservation.allowance
+      reservationId = reservation.reservationId
+      if (!reservationId) {
+        return NextResponse.json(
+          { code: 'CHAT_ALLOWANCE_EXHAUSTED', allowance },
+          { status: 429 }
+        )
+      }
+      try {
+        const result = await runWorkspaceChat(chatInput)
+        reply = result.reply
+        mode = result.mode
+        allowance = await finalizeChatUsage(reservationId, result.usage)
+        reservationId = null
+      } finally {
+        if (reservationId) await releaseChatUsage(reservationId)
+      }
     }
 
-    await prisma.reportChatMessage.create({
-      data: {
-        auditId,
-        userId: owned.session.user.id,
-        role: 'assistant',
-        content: reply,
-      },
+    await prisma.reportChatMessage.createMany({
+      data: [
+        { auditId, userId: owned.session.user.id, role: 'user', content: parsed.data.message },
+        { auditId, userId: owned.session.user.id, role: 'assistant', content: reply },
+      ],
     })
 
-    return NextResponse.json({ reply, mode, cap, userTurns: userMessageCount + 1 })
+    return NextResponse.json({ reply, mode, allowance })
   } catch (error) {
+    if (error instanceof WorkspaceChatUnavailableError) {
+      return apiError('Chat is temporarily unavailable. Try again.', 503, {
+        code: 'CHAT_UNAVAILABLE',
+        action: 'retry',
+      })
+    }
     return handleRouteError(error, 'Chat unavailable')
   }
 }

@@ -145,11 +145,13 @@ describe('report-access', () => {
         source: 'DETERMINISTIC',
         problem: 'det flag',
         fix: 'hidden',
+        verificationRule: 'hidden verification',
         evidence: 'kept evidence',
         whyItMatters: 'kept why',
       },
     ])
     assert.equal(stripped[0]?.fix, null)
+    assert.equal(stripped[0]?.verificationRule, null)
     assert.equal(stripped[0]?.evidence, 'kept evidence')
     assert.equal(stripped[0]?.whyItMatters, 'kept why')
   })

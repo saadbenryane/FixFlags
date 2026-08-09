@@ -64,9 +64,6 @@ const envSchema = z.object({
   CHAT_MAX_TOKENS: z.string().optional(),
   CHAT_TIMEOUT_MS: z.string().optional(),
   CHAT_BASE_URL: z.string().url().optional(),
-  // Hard cap on free-form chat turns per report/plan. Reaching it degrades the
-  // panel to canned actions instead of more LLM calls.
-  CHAT_SESSION_CAP: z.string().optional(),
   JUDGE_TIMEOUT_MS: z.string().optional(),
   OPENAI_JUDGE_IMAGE_DETAIL: z.enum(['low', 'high', 'auto']).optional(),
   CRITICAL_PATH_CONCURRENCY: z.string().optional(),

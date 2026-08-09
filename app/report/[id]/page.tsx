@@ -84,18 +84,12 @@ export async function ReportRoute({ params, shareToken }: Props & { shareToken?:
     )
   }
   if (state.kind === 'progressive') {
-    const requireAuthGate =
-      !state.session &&
-      !shareToken &&
-      state.audit.userId === null &&
-      state.audit.isPublic !== true
     return (
       <AuditPageClient
         id={state.id}
         initialAudit={state.audit}
         pollStatus
         session={state.session}
-        requireAuthGate={requireAuthGate}
         atAuditLimit={state.atAuditLimit}
       />
     )

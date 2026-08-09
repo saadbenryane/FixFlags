@@ -59,6 +59,8 @@ const baseAudit = {
   aiReviewAt: null,
   triageAt: null,
   includeAi: true,
+  journeyReviewIncluded: false,
+  journeyReviewAt: null,
   performanceData: {
     actionTimeline: [{ t: 1000, kind: 'capture', label: 'Opened page' }],
   },
@@ -69,7 +71,10 @@ const baseAudit = {
     source: 'heuristic',
     inferredAt: new Date().toISOString(),
   },
-  screenshots: [],
+  screenshots: [
+    { device: 'DESKTOP', url: '/desktop.png', width: 1440, height: 900 },
+    { device: 'MOBILE', url: '/mobile.png', width: 390, height: 844 },
+  ],
   rubrics: [],
   flags: [
     {
@@ -122,6 +127,27 @@ describe('GET /api/reports/[id]/status', () => {
       }),
     ])
     expect(body.flagCount).toBe(1)
+    expect(body.agentMessages).toEqual([
+      expect.objectContaining({ id: 'scan:a1:preparing', source: 'scan', role: 'agent' }),
+      expect.objectContaining({ id: 'scan:a1:capturing' }),
+      expect.objectContaining({ id: 'scan:a1:checking' }),
+      expect.objectContaining({
+        id: 'scan:a1:flag:f1',
+        evidenceRef: { auditId: 'a1', flagId: 'f1' },
+      }),
+    ])
+    expect(body.agentMessages.some((item: { content: string }) => item.content === 'Opened page')).toBe(false)
+  })
+
+  it('keeps Agent updates public-safe while omitting Timeline and private contract data for anonymous reports', async () => {
+    resolveAuditAccess.mockResolvedValue('anonymous_teaser')
+
+    const response = await GET(getReq(), { params: Promise.resolve({ id: 'audit-1' }) })
+    const body = await response.json()
+
+    expect(body.agentMessages.length).toBeGreaterThan(0)
+    expect(body.actionTimeline).toEqual([])
+    expect(body.productContract).toBeNull()
   })
 
   it('keeps partialFlags on COMPLETED so the progressive hold frame stays populated', async () => {
@@ -141,5 +167,9 @@ describe('GET /api/reports/[id]/status', () => {
         source: 'DETERMINISTIC',
       }),
     ])
+    expect(body.agentMessages.at(-1)).toMatchObject({
+      id: 'scan:a1:complete',
+      kind: 'completion',
+    })
   })
 })

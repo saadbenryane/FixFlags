@@ -16,6 +16,7 @@ import { parseActionTimeline } from '@/lib/audit/action-timeline'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
 import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
+import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 
 const NON_TERMINAL = new Set(['QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING'])
 
@@ -109,8 +110,9 @@ export async function GET(
     const { flags: partialFlags, performanceData, productContract, ...rest } = audit
     // Timeline + contract are lightweight JSON parses; stream them during CHECKING
     // so progressive report chrome stays honest. Technology profile stays terminal-only.
-    const actionTimeline = parseActionTimeline(performanceData)
-    const contract = parseProductContract(productContract)
+    const canUsePrivateReportData = access === 'owner'
+    const actionTimeline = canUsePrivateReportData ? parseActionTimeline(performanceData) : []
+    const contract = canUsePrivateReportData ? parseProductContract(productContract) : null
     const technologyProfile = isTerminal
       ? await loadTechnologyProfile(id, {
           score: audit.score,
@@ -121,6 +123,19 @@ export async function GET(
           flags: audit.flags.map((flag) => ({ rubric: flag.rubric })),
         })
       : undefined
+    const agentMessages = buildFixFlagsScanMessages({
+      id,
+      status: effectiveStatus,
+      progress: audit.progress,
+      startedAt: audit.startedAt,
+      completedAt: audit.completedAt,
+      reportCompleteness: audit.reportCompleteness,
+      failureCode: refreshed?.failureCode ?? audit.failureCode,
+      journeyReviewIncluded: audit.journeyReviewIncluded,
+      journeyReviewAt: audit.journeyReviewAt,
+      screenshotCapture,
+      flags: showPartialFlags ? partialFlags : [],
+    })
 
     return NextResponse.json(
       {
@@ -133,6 +148,7 @@ export async function GET(
         flagCount,
         shareStatus,
         partialFlags: showPartialFlags ? partialFlags : undefined,
+        agentMessages,
         actionTimeline,
         productContract: contract,
         technologyProfile,

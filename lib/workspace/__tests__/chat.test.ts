@@ -31,11 +31,17 @@ async function loadWorkspaceChat(overrides?: {
     anthropic: overrides?.anthropic,
   }))
   const mod = await import('@/lib/workspace/chat')
-  return { runWorkspaceChat: mod.runWorkspaceChat }
+  return {
+    runWorkspaceChat: mod.runWorkspaceChat,
+    workspaceChatTokenUpperBound: mod.workspaceChatTokenUpperBound,
+  }
 }
 
 beforeEach(() => {
-  fakeCreate.mockReset().mockResolvedValue({ choices: [{ message: { content: 'Fix the critical flag first.' } }] })
+  fakeCreate.mockReset().mockResolvedValue({
+    choices: [{ message: { content: 'Fix the critical flag first.' } }],
+    usage: { prompt_tokens: 120, completion_tokens: 18 },
+  })
 })
 
 describe('runWorkspaceChat', () => {
@@ -45,7 +51,7 @@ describe('runWorkspaceChat', () => {
       anthropic: undefined,
     })
 
-    const { reply, mode } = await runWorkspaceChat({
+    const { reply, mode, usage } = await runWorkspaceChat({
       message: 'What should I fix first?',
       url: 'https://example.com',
       status: 'COMPLETED',
@@ -54,6 +60,7 @@ describe('runWorkspaceChat', () => {
 
     expect(reply).toBe('Fix the critical flag first.')
     expect(mode).toBe('llm')
+    expect(usage).toEqual({ inputTokens: 120, outputTokens: 18 })
     expect(fakeCreate).toHaveBeenCalledOnce()
 
     const call = fakeCreate.mock.calls[0]![0]
@@ -74,7 +81,19 @@ describe('runWorkspaceChat', () => {
     expect(systemMessage.content).toContain('rank by severity')
   })
 
-  it('degrades to a canned reply when the model returns empty', async () => {
+  it('computes a conservative UTF-8 token reservation bound', async () => {
+    const { workspaceChatTokenUpperBound } = await loadWorkspaceChat()
+    const ascii = workspaceChatTokenUpperBound({
+      message: 'hello', url: 'https://example.com', status: 'COMPLETED', flags,
+    })
+    const unicode = workspaceChatTokenUpperBound({
+      message: '👋'.repeat(100), url: 'https://example.com', status: 'COMPLETED', flags,
+    })
+    expect(ascii).toBeGreaterThan(600)
+    expect(unicode).toBeGreaterThan(ascii)
+  })
+
+  it('reports unavailable when the model returns empty', async () => {
     const { runWorkspaceChat } = await loadWorkspaceChat({
       openai: {
         chat: {
@@ -86,30 +105,26 @@ describe('runWorkspaceChat', () => {
       anthropic: undefined,
     })
 
-    const { reply } = await runWorkspaceChat({
+    await expect(runWorkspaceChat({
       message: 'Why does the report fail?',
       url: 'https://example.com',
       status: 'QUEUED',
       flags,
-    })
-    expect(reply).toContain('Start with the most important Flag')
-    expect(reply).toContain('Missing headline above the fold')
+    })).rejects.toThrow('Workspace chat is unavailable')
   })
 
-  it('degrades to a canned reply when no provider is configured', async () => {
+  it('reports unavailable when no provider is configured', async () => {
     const { runWorkspaceChat } = await loadWorkspaceChat({
       openai: undefined,
       anthropic: undefined,
     })
 
-    const { reply } = await runWorkspaceChat({
+    await expect(runWorkspaceChat({
       message: 'Explain this Flag',
       url: 'https://example.com',
       status: 'COMPLETED',
       flags,
-    })
-    expect(reply).toContain('Start with the most important Flag')
-    expect(reply).toContain('Fix: Add an H1 with the primary value proposition')
+    })).rejects.toThrow('Workspace chat is unavailable')
   })
 
   it('uses no-flag message when flags array is empty', async () => {

@@ -11,9 +11,9 @@ import {
   type ScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
 import type { loadReportRouteState } from './load-report-route-state'
-import { ReportAuthGate } from '@/components/auth/ReportAuthGate'
 import { ReportPromptsUnlockedTracker } from '@/components/report/ReportPromptsUnlockedTracker'
 import { ReportViewedTracker } from '@/components/analytics/ReportViewedTracker'
+import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 
 type CompletedState = Extract<
   Awaited<ReturnType<typeof loadReportRouteState>>,
@@ -75,6 +75,19 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       ? state.id
       : state.latestMonitoring?.id ?? null
     : null
+  const agentMessages = buildFixFlagsScanMessages({
+    id: state.id,
+    status: state.audit.status,
+    progress: state.audit.progress,
+    startedAt: state.audit.startedAt,
+    completedAt: state.audit.completedAt,
+    reportCompleteness: state.audit.reportCompleteness,
+    failureCode: state.audit.failureCode,
+    journeyReviewIncluded: state.audit.journeyReviewIncluded,
+    journeyReviewAt: state.audit.journeyReviewAt,
+    screenshotCapture: captureStatus,
+    flags: state.flags.map((flag) => ({ id: flag.id, problem: flag.problem, rubric: flag.rubric })),
+  })
   const toolbarActions = (
     <AuditPageActions
       auditId={state.id}
@@ -107,12 +120,6 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       toolbar
     />
   )
-  const requireAuthGate =
-    state.isAnonymous &&
-    !state.isMarketingSample &&
-    !state.shareToken &&
-    !state.audit.isPublic
-
   return (
     <AuditShell
       session={state.session}
@@ -126,15 +133,11 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
         auditId={state.id}
         isOwner={state.isOwner}
         accessState={
-          requireAuthGate ? 'anonymous' : state.isOwner ? 'owner' : state.isLoggedIn ? 'signed_in' : 'anonymous'
+          state.isOwner ? 'owner' : state.isLoggedIn ? 'signed_in' : 'anonymous'
         }
         surface={state.isMarketingSample ? 'sample' : state.shareToken ? 'shared' : 'focused'}
       />
-      <div
-        className={requireAuthGate ? 'pointer-events-none select-none blur-[3px]' : undefined}
-        aria-hidden={requireAuthGate || undefined}
-        inert={requireAuthGate ? true : undefined}
-      >
+      <div>
         <AuditReport
           audit={state.reportAudit}
           auditId={state.id}
@@ -171,15 +174,11 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
               : null
           }
           toolbarActions={toolbarActions}
+          agentMessages={agentMessages}
         />
         <McpFixNudge auditId={state.id} isPaid={state.viewerIsPaid} />
         <AiReviewPendingRefresh auditId={state.id} enabled={state.aiReviewPending} />
       </div>
-      <ReportAuthGate
-        auditId={state.id}
-        required={Boolean(requireAuthGate)}
-        reportUrl={state.audit.url}
-      />
       {state.isOwner && state.showPrescription && !state.aiReviewPending ? (
         <ReportPromptsUnlockedTracker
           auditId={state.id}

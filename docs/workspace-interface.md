@@ -14,31 +14,30 @@
 
 | Region | Purpose |
 |--------|---------|
-| **Left — Chat** | Persistent conversation with FixFlags: steering, Flag Q&A, “what to fix first”, lightweight product corrections. Activity stream may live here or above chat. Chat uses a cheap router model, not the judge pipeline. |
-| **Right — Browser** | Dominant panel. User toggles **Browser view** vs **Report view** in the same workspace (not a separate route). |
-| **Bottom — Playback** | Timeline/scrub strip for path replay and step evidence. Syncs with the browser when a path or Flag evidence is selected. FullStory-style scrub for deep review; step markers for product review. |
+| **Left — Agent** | One transcript for deterministic scan messages, confirmed Flag announcements, and authenticated report conversation. A title-free toolbar contains History followed by New scan. |
+| **Right — Product** | The public-safe Report is the default value surface. Authenticated users can switch to Timeline; paid users can switch to Canvas. |
 
 ```mermaid
 flowchart TB
   subgraph workspace [ReportWorkspace]
-    Chat[Left_Chat]
+    Agent[Left_Agent]
     subgraph right [Right_Toggle]
-      BrowserView[BrowserView]
+      TimelineView[TimelineView]
       ReportView[ReportView]
+      CanvasView[CanvasView]
     end
     Playback[Bottom_Playback]
   end
-  Chat --- right
-  right --- Playback
+  Agent --- right
 ```
 
 ---
 
 ## View modes (right panel toggle)
 
-### Browser view
+### Timeline view
 
-Shows the product as FixFlags experienced it.
+Shows the product as FixFlags experienced it and requires authentication.
 
 **Product review mode** — programmatic capture. Playwright-driven browser with screenshot-forward evidence (today’s pipeline). User sees live or stepped captures aligned to checks; not full agent autonomy.
 
@@ -46,7 +45,13 @@ Shows the product as FixFlags experienced it.
 
 ### Report view
 
-Today's **Fix list** toggle shows the ranked Fix list and Flag detail inside `#report-flags`. Progress band, Contract, Funnel, previews, and update review affordances stay in the canonical report column around the workspace split.
+Report is the default public-safe view and shows the ranked Fix list and Flag detail inside `#report-flags`.
+Prompt actions remain authenticated even when their evidence is public.
+
+### Canvas view
+
+Canvas is a paid, private, versioned visual artifact generated from an authorized evidence bundle.
+Canvas documents use validated FixFlags blocks and never execute model-generated HTML, JavaScript, CSS, or external requests.
 
 ---
 
@@ -54,8 +59,8 @@ Today's **Fix list** toggle shows the ranked Fix list and Flag detail inside `#r
 
 | Phase | Default right panel | Chrome |
 |-------|---------------------|--------|
-| **Active review** | Browser view (dominant) | Chat left; playback bottom when steps exist |
-| **After complete** | Report view for triage | User can switch back to Browser view for replay and evidence |
+| **Active review** | Report view | Agent left with deterministic scan messages; mobile defaults to Agent |
+| **After complete** | Report view | Agent remains mounted; authenticated Timeline and paid Canvas are secondary modes |
 
 ---
 
@@ -75,12 +80,17 @@ Today's **Fix list** toggle shows the ranked Fix list and Flag detail inside `#r
 
 ---
 
-## Chat policy
+## Agent policy
 
-- Chat is **owner-only**. The owner sees the panel on live, completed, and update review reports; shared viewers (password share) get no chat panel.
-- Scope: explain Flags, steer review, ask what to fix first, lightweight corrections to product understanding. Not a general coding agent.
+- Deterministic Agent scan messages are visible with the authorized anonymous evidence report and consume no model tokens.
+- Interactive Agent conversation is authenticated and scoped to the selected report session.
+- Programmatic and model responses use one message envelope and transcript while retaining internal source metadata for truth and accounting.
+- Scope: accept a URL through the canonical check path, explain Flags, answer what to fix first, and apply lightweight corrections to product understanding.
+- The Agent is not a general coding agent.
 - **Model:** cheapest viable chat model, configured separately from judge and triage. `CHAT_MODEL` / `CHAT_MAX_TOKENS` / `CHAT_TIMEOUT_MS` default to the cheapest model per provider; `CHAT_BASE_URL` routes chat through an OpenAI-compatible gateway (for example the opencode gateway) as the router equivalent.
-- Requirements: separate chat model config from judge/triage (shipped); hard cap per session/plan (`CHAT_SESSION_CAP`, default 20 user turns per report); degrade to canned actions (“Explain this Flag”, “What should I fix first?”) if the provider is unavailable. Canned replies are deterministic and grounded in the report’s own Flags.
+- Requirements: separate chat model config from judge/triage; monthly account usage measured from provider-reported input and output tokens; programmatic messages excluded from usage; explicit provider failure and retry states; deterministic actions grounded in report Flags remain available where no model is required.
+- The title-free Agent toolbar exposes History immediately left of New scan.
+- New scan switches the composer to URL mode and reuses `/api/checks`; it never creates a second scan pipeline.
 
 ---
 
@@ -98,7 +108,9 @@ Full parity. No degraded subset.
 | Run update review and see diff | Yes |
 | Account, billing, usage meters | Yes |
 
-**Primary switch:** Lovable-style **Chat ↔ Product** (tabs or bottom bar). Report view accessible without stripped features.
+**Primary switch:** **Agent ↔ Report**.
+Active scans default to Agent without forcing a switch when the report completes.
+Timeline and Canvas remain secondary Product modes.
 
 **Playback on small screens:** bottom strip or full-screen takeover — layout choice is open (see [product-prd.md](./product-prd.md) open questions).
 
@@ -130,10 +142,10 @@ Do not show **re-check** in customer UI.
 | Layout | Split workspace during live; report chrome after complete | Same |
 | Browser | Live captures in right panel; selected playback step renders that captured frame | Deep review (agent-class) live browser |
 | Playback | Scrub timeline + step markers; browser frame updates on select; activity click seeks; `?step=N` replay from Flag/Funnel evidence | Full session-style takeover replay |
-| Chat | In-app left panel, owner-only, dedicated `CHAT_*` model, per-plan cap, canned actions on outage | Same |
+| Agent | Programmatic scan output and authenticated model chat currently render separately | One transcript; programmatic output is public-safe and free, model conversation is authenticated and metered monthly |
 | Funnel | Section + journey list + Replay path into the workspace browser | Same |
-| Mobile | Chat ↔ Product parity, adapted playback | Full-screen path replay |
-| View toggle | Browser ↔ Fix list in the same workspace | Same |
+| Mobile | Chat ↔ Product parity, adapted playback | Agent ↔ Report with Timeline/Canvas as secondary modes |
+| View toggle | Browser ↔ Fix list in the same workspace | Report public; Timeline authenticated; Canvas paid |
 
 ## Resolved design questions
 

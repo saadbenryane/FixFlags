@@ -9,7 +9,7 @@ import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSp
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import { ReportFixListHeader } from '@/components/report/ReportFixListHeader'
 import type { PlaybackStep } from '@/components/report/WorkspacePlaybackStrip'
-import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
+import type { AgentMessage } from '@/lib/audit/agent-message'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import type { ReportWorkspaceHistoryPoint, ReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
@@ -58,7 +58,7 @@ export function ProductSpineWorkspace({
   url,
   screenshots,
   steps,
-  activityEvents,
+  agentMessages = [],
   canChat,
   reportPanel,
   className,
@@ -69,7 +69,7 @@ export function ProductSpineWorkspace({
   url: string
   screenshots: AuditScreenshot[]
   steps: PlaybackStep[]
-  activityEvents?: ActionTimelineEvent[]
+  agentMessages?: AgentMessage[]
   canChat?: boolean
   /** Current-report panel shown when no observation is selected. */
   reportPanel: ReactNode
@@ -162,11 +162,17 @@ export function ProductSpineWorkspace({
         </p>
       ) : null}
       <ReportWorkspaceSplitShell
-        showChatColumn={canChat}
+        showChatColumn
+        canUseTimeline={canChat}
         leftPanel={
-          <WorkspaceChatPanel auditId={activeAuditId} canChat={canChat} />
+          <WorkspaceChatPanel
+            auditId={reportId}
+            observationAuditId={activeAuditId}
+            canChat={canChat}
+            agentMessages={agentMessages}
+            reportUrl={activeUrl}
+          />
         }
-        activityEvents={activityEvents ?? []}
         browserUrl={activeUrl}
         browserScreenshots={activeScreenshots}
         reportPanel={activeReportPanel}

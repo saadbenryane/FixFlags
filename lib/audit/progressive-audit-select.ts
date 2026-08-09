@@ -21,6 +21,8 @@ export const progressiveAuditSelect = {
   aiReviewAt: true,
   triageAt: true,
   includeAi: true,
+  journeyReviewIncluded: true,
+  journeyReviewAt: true,
   performanceData: true,
   productContract: true,
   screenshots: {

@@ -18,6 +18,8 @@ export interface PlanDefinition {
   deepReviewLimit: number
   deepReviewLimitKind: 'monthly' | 'lifetime'
   deepReviewLimitLabel: string
+  /** Monthly input plus output token allowance for authenticated report chat. */
+  chatTokenLimit: number
   stripePriceId?: string
   projectLimit?: number
   features: readonly string[]
@@ -41,6 +43,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     deepReviewLimit: 1,
     deepReviewLimitKind: 'lifetime',
     deepReviewLimitLabel: '1 deep review teaser (lifetime)',
+    chatTokenLimit: 25_000,
     features: [
       '3 product reviews (lifetime) with full reports and fix prompts',
       '1 deep review teaser',
@@ -65,6 +68,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     deepReviewLimit: 4,
     deepReviewLimitKind: 'monthly',
     deepReviewLimitLabel: '4 deep reviews / month',
+    chatTokenLimit: 500_000,
     stripePriceId: envPriceId('STRIPE_BUILDER_PRICE_ID'),
     features: [
       '25 product reviews and 4 deep reviews per month',
@@ -90,6 +94,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     deepReviewLimit: 10,
     deepReviewLimitKind: 'monthly',
     deepReviewLimitLabel: '10 deep reviews / month',
+    chatTokenLimit: 2_000_000,
     stripePriceId: envPriceId('STRIPE_TEAM_PRICE_ID'),
     projectLimit: 5,
     features: [
@@ -130,6 +135,10 @@ export function scanLimitForPlan(plan: Plan): number {
 
 export function deepReviewLimitForPlan(plan: Plan): number {
   return PLAN_DEFINITIONS[plan].deepReviewLimit
+}
+
+export function chatTokenLimitForPlan(plan: Plan): number {
+  return PLAN_DEFINITIONS[plan].chatTokenLimit
 }
 
 /**

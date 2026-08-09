@@ -97,10 +97,33 @@ async function fetchAuditRow(id: string) {
 
 /** Remove large JSON blobs not used by the report UI. */
 export function stripInternalAuditFields<T extends Record<string, unknown>>(audit: T) {
-  const { htmlMetadata, performanceData, consoleErrors, ...rest } = audit
+  const {
+    htmlMetadata,
+    performanceData,
+    consoleErrors,
+    scanAccessEncrypted,
+    gclid,
+    fbclid,
+    leadSyncedAt,
+    referrer,
+    utmSource,
+    utmMedium,
+    utmCampaign,
+    failureMetadata,
+    ...rest
+  } = audit
   void htmlMetadata
   void performanceData
   void consoleErrors
+  void scanAccessEncrypted
+  void gclid
+  void fbclid
+  void leadSyncedAt
+  void referrer
+  void utmSource
+  void utmMedium
+  void utmCampaign
+  void failureMetadata
   return rest
 }
 
@@ -167,8 +190,8 @@ export async function getProgressiveAuditForRequest(id: string) {
     audit: {
       ...publicAudit,
       screenshotCapture,
-      actionTimeline: parseActionTimeline(performanceData),
-      productContract: parseProductContract(productContract),
+      actionTimeline: accessContext === 'owner' ? parseActionTimeline(performanceData) : [],
+      productContract: accessContext === 'owner' ? parseProductContract(productContract) : null,
     },
   }
 }
@@ -188,10 +211,8 @@ export async function getGatedAuditForRequest(id: string) {
   }
 
   const isPaid = await resolveIsPaidForAudit(audit)
-  const sharedFullAccess = accessContext === 'share_grant' || accessContext === 'studio_public'
-  const showPrescription = sharedFullAccess
-    ? Boolean(audit.aiReviewAt)
-    : await canViewPrescriptionContentForAudit(
+  const mayViewPrompts = accessContext === 'owner' || accessContext === 'marketing_sample'
+  const showPrescription = mayViewPrompts && await canViewPrescriptionContentForAudit(
     {
       userId: audit.userId,
       aiReviewAt: audit.aiReviewAt,
@@ -199,9 +220,7 @@ export async function getGatedAuditForRequest(id: string) {
     },
     session?.user
       )
-  const showDeterministicFixes = sharedFullAccess
-    ? true
-    : await canViewDeterministicFixesForAudit(
+  const showDeterministicFixes = mayViewPrompts && await canViewDeterministicFixesForAudit(
     {
       userId: audit.userId,
       aiReviewAt: audit.aiReviewAt,
@@ -247,6 +266,7 @@ export async function getGatedAuditForRequest(id: string) {
   }
 
   const stripped = stripInternalAuditFields({ ...audit, rubrics: sanitizedRubrics, flags: reportFlags })
+  const canAccessPrivateReportData = accessContext === 'owner'
   const launchReadiness =
     hasTriage || showPrescription ? parseLaunchReadiness(audit.launchReadiness) : null
   const pageSpeedCoverage = derivePageSpeedCoverage(
@@ -263,12 +283,14 @@ export async function getGatedAuditForRequest(id: string) {
   const previewMeta = parsePreviewMeta(audit.htmlMetadata, audit.url, {
     ogImageOk: !ogImageBroken,
   })
-  const flowData = parseFlowData(audit.flowData)
+  const flowData = canAccessPrivateReportData ? parseFlowData(audit.flowData) : null
   const evidenceAnchors = parseEvidenceAnchorsFromPerformanceData(audit.performanceData)
   const flagVisualEvidence = parseFlagVisualEvidence(audit.performanceData)
-  const actionTimeline = parseActionTimeline(audit.performanceData)
-  const productContract = parseProductContract(audit.productContract)
-  const productIntelligence = parseProductIntelligence(audit.project?.productIntelligence)
+  const actionTimeline = canAccessPrivateReportData ? parseActionTimeline(audit.performanceData) : []
+  const productContract = canAccessPrivateReportData ? parseProductContract(audit.productContract) : null
+  const productIntelligence = canAccessPrivateReportData
+    ? parseProductIntelligence(audit.project?.productIntelligence)
+    : null
   const verifiedLearnings = productIntelligence?.verifiedLearnings?.slice(0, 8) ?? []
   const intentionalNotes = productIntelligence?.intentionalNotes?.slice(0, 5) ?? []
   const knownRisks = productIntelligence?.knownRisks?.slice(0, 5) ?? []
@@ -330,7 +352,7 @@ export async function getGatedAuditForRequest(id: string) {
   )
 
   const sampleFixFlag =
-    !showDeterministicFixes && !isLegacyDeterministic
+    accessContext === 'marketing_sample' && !showDeterministicFixes && !isLegacyDeterministic
       ? findHighestSeverityFlagWithFix(
           rankFlagsByPriority(
             audit.flags.filter(
@@ -360,6 +382,9 @@ export async function getGatedAuditForRequest(id: string) {
     accessContext,
     audit: {
       ...stripped,
+      project: canAccessPrivateReportData ? stripped.project : null,
+      pages: canAccessPrivateReportData ? stripped.pages : [],
+      journeyReviews: canAccessPrivateReportData ? stripped.journeyReviews : [],
       verdict: hasTriage || showPrescription ? stripped.verdict : null,
       pageJob: hasTriage || showPrescription ? stripped.pageJob : null,
       pageType: hasTriage || showPrescription ? stripped.pageType : null,

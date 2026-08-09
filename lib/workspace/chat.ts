@@ -32,6 +32,12 @@ export function isWorkspaceChatConfigured(): boolean {
   return Boolean(getChatOpenAIClient())
 }
 
+export class WorkspaceChatUnavailableError extends Error {
+  constructor() {
+    super('Workspace chat is unavailable')
+  }
+}
+
 const MAX_CHAT_TOKENS = 600
 
 function buildPrompt(input: {
@@ -43,6 +49,22 @@ function buildPrompt(input: {
   return `Report URL: ${input.url}\nStatus: ${input.status}\n\nFlags on this report:\n${formatFlagContext(input.flags)}\n\nUser: ${input.message}`
 }
 
+/**
+ * A conservative provider-independent upper bound. BPE tokenizers cannot
+ * produce more tokens than the UTF-8 byte stream they encode; the response is
+ * separately hard-capped. Reserving this amount prevents concurrent requests
+ * from overspending an account before provider usage is known.
+ */
+export function workspaceChatTokenUpperBound(input: {
+  message: string
+  url: string
+  status: string
+  flags: ChatFlagContext[]
+}): number {
+  const bytes = new TextEncoder().encode(`${SYSTEM}\n${buildPrompt(input)}`).byteLength
+  return bytes + MAX_CHAT_TOKENS + 32
+}
+
 async function runOpenAIChat(
   client: OpenAIClient,
   input: {
@@ -51,7 +73,7 @@ async function runOpenAIChat(
     status: string
     flags: ChatFlagContext[]
   }
-): Promise<string> {
+): Promise<{ text: string; inputTokens: number; outputTokens: number }> {
   const cfg = getChatProviderConfig('openai', 15_000)
   const response = await client.chat.completions.create({
     model: cfg.model,
@@ -65,8 +87,12 @@ async function runOpenAIChat(
     ],
   })
 
-  const text = response.choices[0]?.message?.content?.trim()
-  return text || ''
+  const text = response.choices[0]?.message?.content?.trim() ?? ''
+  return {
+    text,
+    inputTokens: response.usage?.prompt_tokens ?? 0,
+    outputTokens: response.usage?.completion_tokens ?? 0,
+  }
 }
 
 export interface ChatFlagContext {
@@ -92,7 +118,7 @@ function formatFlagContext(flags: ChatFlagContext[]): string {
   return flags
     .map(
       (flag, index) =>
-        `${index + 1}. [${flag.rubric}] ${flag.problem}\n   Severity: ${flag.severity}\n   Evidence: ${flag.evidence.slice(0, 400)}\n   Fix: ${flag.fix.slice(0, 400)}`
+        `${index + 1}. [${flag.rubric}] ${flag.problem.slice(0, 400)}\n   Severity: ${flag.severity}\n   Evidence: ${flag.evidence.slice(0, 400)}\n   Fix: ${flag.fix.slice(0, 400)}`
     )
     .join('\n')
 }
@@ -580,18 +606,29 @@ export async function runWorkspaceChat(input: {
   url: string
   status: string
   flags: ChatFlagContext[]
-}): Promise<{ reply: string; mode: 'llm' | 'canned' }> {
+}): Promise<{
+  reply: string
+  mode: 'llm'
+  usage: { inputTokens: number; outputTokens: number }
+}> {
   const client = getChatOpenAIClient()
   if (!client) {
-    return { reply: buildCannedChatReply(input), mode: 'canned' }
+    throw new WorkspaceChatUnavailableError()
   }
 
   try {
-    const openAIText = await runOpenAIChat(client, input)
-    if (openAIText) return { reply: openAIText, mode: 'llm' }
-  } catch {
-    return { reply: buildCannedChatReply(input), mode: 'canned' }
+    const result = await runOpenAIChat(client, input)
+    if (result.text) {
+      return {
+        reply: result.text,
+        mode: 'llm',
+        usage: { inputTokens: result.inputTokens, outputTokens: result.outputTokens },
+      }
+    }
+  } catch (error) {
+    if (error instanceof WorkspaceChatUnavailableError) throw error
+    throw new WorkspaceChatUnavailableError()
   }
 
-  return { reply: buildCannedChatReply(input), mode: 'canned' }
+  throw new WorkspaceChatUnavailableError()
 }

@@ -83,6 +83,7 @@ type FlagLike = {
   whyItMatters?: string | null
   evidence?: string | null
   fix?: string | null
+  verificationRule?: string | null
   [key: string]: unknown
 }
 
@@ -119,6 +120,7 @@ export function stripDeterministicFixesFromFlags<T extends FlagLike>(flags: T[])
     lovablePrompt: null,
     boltPrompt: null,
     fix: null,
+    verificationRule: null,
   }))
 }
 
@@ -222,4 +224,3 @@ export function stripLegacyDeterministicAudit<T extends {
       : audit.rubrics,
   }
 }
-

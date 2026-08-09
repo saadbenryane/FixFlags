@@ -2,8 +2,8 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { WorkspaceViewToggle, type WorkspacePanelView } from '@/components/report/WorkspaceViewToggle'
-import { WorkspaceActivityPanel } from '@/components/report/WorkspaceActivityPanel'
 import {
   WorkspacePlaybackStrip,
   type PlaybackStep,
@@ -15,21 +15,22 @@ import type {
   AuditScreenshot,
   ScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
-import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 interface ReportWorkspaceSplitShellProps {
   isActiveReview?: boolean
   /** When false, hide the left chat/activity column (password-share viewers). */
   showChatColumn?: boolean
   leftPanel: ReactNode
-  activityEvents?: ActionTimelineEvent[]
   browserUrl: string
   browserScreenshots?: AuditScreenshot[]
   browserCaptureStatus?: ScreenshotCaptureStatus | null
   reportPanel: ReactNode
   steps: PlaybackStep[]
+  /** Timeline and playback require an authenticated report owner. */
+  canUseTimeline?: boolean
   className?: string
 }
 
@@ -41,23 +42,23 @@ export function ReportWorkspaceSplitShell({
   isActiveReview = false,
   showChatColumn = true,
   leftPanel,
-  activityEvents = [],
   browserUrl,
   browserScreenshots = [],
   browserCaptureStatus,
   reportPanel,
   steps,
+  canUseTimeline = true,
   className,
 }: ReportWorkspaceSplitShellProps) {
   const searchParams = useSearchParams()
-  const [view, setView] = useState<WorkspacePanelView>(isActiveReview ? 'browser' : 'report')
-  const [mobileFocus, setMobileFocus] = useState<MobileFocus>('product')
+  const [view, setView] = useState<WorkspacePanelView>('report')
+  const [mobileFocus, setMobileFocus] = useState<MobileFocus>(isActiveReview ? 'chat' : 'product')
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
 
   const stepParam = searchParams.get('step')
 
   useEffect(() => {
-    if (!stepParam || steps.length === 0) return
+    if (!canUseTimeline || !stepParam || steps.length === 0) return
     const requested = Number(stepParam)
     if (!Number.isInteger(requested)) return
     const index = requested - 1
@@ -67,17 +68,17 @@ export function ReportWorkspaceSplitShell({
     requestAnimationFrame(() => {
       document.getElementById('report-flags')?.scrollIntoView({ behavior: 'smooth' })
     })
-  }, [stepParam, steps.length])
+  }, [canUseTimeline, stepParam, steps.length])
 
   const activeStep = activeIndex != null ? (steps[activeIndex] ?? null) : null
-  const activeEventIndex = activeStep ? activeStep.eventIndex : null
-
   const selectStep = (index: number) => {
     setActiveIndex((current) => (current === index ? null : index))
+    setView('browser')
   }
 
   const scrubStep = (index: number) => {
     setActiveIndex(index)
+    setView('browser')
   }
 
   const stepEvidence =
@@ -109,29 +110,35 @@ export function ReportWorkspaceSplitShell({
 
   const productContent =
     view === 'browser' ? (
-      <WorkspaceBrowserPanel
-        url={browserUrl}
-        screenshots={browserScreenshots}
-        captureStatus={browserCaptureStatus}
-        activeStep={activeStep}
-        onCloseStep={activeStep ? () => setActiveIndex(null) : undefined}
-      />
+      canUseTimeline ? (
+        <WorkspaceBrowserPanel
+          url={browserUrl}
+          screenshots={browserScreenshots}
+          captureStatus={browserCaptureStatus}
+          activeStep={activeStep}
+          onCloseStep={activeStep ? () => setActiveIndex(null) : undefined}
+        />
+      ) : (
+        <WorkspacePanel className="flex min-h-[360px] items-center justify-center">
+          <div className="max-w-sm space-y-4 text-center">
+            <p className="font-display text-xl font-semibold text-foreground">See how FixFlags checked the path</p>
+            <p className="text-sm text-muted-foreground">
+              Sign in to inspect the captured timeline and replay the evidence behind this report.
+            </p>
+            <Button asChild>
+              <Link href="/sign-in">Sign in to view Timeline</Link>
+            </Button>
+          </div>
+        </WorkspacePanel>
+      )
     ) : (
       reportPanel
     )
 
   const toggle = <WorkspaceViewToggle view={view} onChange={setView} />
 
-  const activity = (
-    <WorkspaceActivityPanel
-      events={activityEvents}
-      highlightIndex={activeEventIndex}
-      onSelectEvent={selectStep}
-    />
-  )
-
   const playback =
-    steps.length > 0 ? (
+    canUseTimeline && steps.length > 0 ? (
       <WorkspacePlaybackStrip
         steps={steps}
         activeIndex={activeIndex}
@@ -141,10 +148,7 @@ export function ReportWorkspaceSplitShell({
     ) : null
 
   const leftColumn = showChatColumn ? (
-    <div className="space-y-3">
-      {activity}
-      {leftPanel}
-    </div>
+    <div>{leftPanel}</div>
   ) : null
 
   const productColumn = (
