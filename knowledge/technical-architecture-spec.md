@@ -60,7 +60,7 @@ When connected to a repository or deployment: read changed files, map files to r
 npx fixflags check
 ```
 
-The CLI should: detect the local product, read `fixflags.yml`, run cheap deterministic checks, start or connect to a preview URL, trigger a hosted Finish Check, return a concise result, exit nonzero only for confirmed blockers when enabled.
+The CLI should: detect the local product, read `fixflags.yml`, run cheap deterministic checks, start or connect to a preview URL, trigger a hosted Product Review, return a concise result, exit nonzero only for confirmed blockers when enabled.
 
 ### MCP
 

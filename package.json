@@ -83,6 +83,8 @@
     "lint:changed": "node scripts/validate.mjs lint-changed",
     "test:scripts": "node --test scripts/validate.test.mjs scripts/completeness-audit.test.mjs scripts/project-agent.test.mjs scripts/route-contract-registry.test.mjs scripts/route-boundary-smoke.test.mjs scripts/skill-validator.test.mjs",
     "agent": "node scripts/project-agent.mjs",
+    "agent:heartbeat": "node scripts/agent-heartbeat.mjs",
+    "agent:release-continuity": "node scripts/agent-release-continuity.mjs",
     "cli:status": "node scripts/fixflags-cli-status.mjs",
     "cli:registry-guard": "node scripts/verify-cli-registry.mjs",
     "test:agent": "node --test scripts/project-agent.test.mjs scripts/validate.test.mjs",

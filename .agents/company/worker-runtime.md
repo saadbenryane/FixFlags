@@ -26,7 +26,13 @@ Each worker receives a task contract with all fields below. A contract missing a
 ## Rules
 
 - Workers terminate after deliverables are posted and result capture is complete.
+- Workers producing executive/blocker judgments must return evidence file paths and raw artifact commands in the final report.
+- No decision is considered final until supported by a `.agents/sessions/*` artifact path.
 - No persistent state besides canonical outputs.
 - Durable learnings are promoted by the CEO into `.agents/learnings/` or canonical docs.
 - Unbounded or overlapping scope is refused.
 - Any spend or escalation outside the contract follows `ceo.md` gates and the founder decision format.
+- No launch or blocker judgment is made before a spawned worker posts evidence in `.agents/sessions/`.
+- Board scan must verify queued and blocked IDs with owners before any queue status classification.
+- Every output tag includes its evidence source before a judgment is rendered.
+- Chat-only decisions are forbidden; meaningful conclusions are filed in `.agents/sessions/*`.

@@ -1,6 +1,6 @@
 # Business Model
 
-*Last updated: 2026-08-01*
+*Last updated: 2026-08-10*
 
 FixFlags is Product QA for AI-built products. The business model supports the loop: Flag, Fix, Update review.
 
@@ -43,7 +43,7 @@ Pricing numbers: [`lib/marketing/copy/terminology.ts`](../lib/marketing/copy/ter
 - **Flat-rate subscription** for monthly product review and deep review quotas.
 - **Hard stop at cap** with upgrade CTA. Credit packs are a future paid overflow option.
 - **Annual discount:** Later (not at launch). Monthly only until retention justifies it.
-- **Founder cohort:** 12-month **40% Founder Discount** on Pro and Studio for launch waitlist cohort. One redemption per account. See [founder-offer.md](./founder-offer.md) and [gtm-launch-strategy.md](./gtm-launch-strategy.md).
+- **Launch cohort:** 12-month launch-tier discount on paid joins (first 500 positions per plan get 25% off, next 500 get 15% off). One-time offers are retired; see [docs/stripe-setup.md](./stripe-setup.md), [lib/billing/discount-tiers.ts](../lib/billing/discount-tiers.ts), and [gtm-launch-strategy.md](./gtm-launch-strategy.md).
 
 ## Pricing Tiers (Marketing target)
 

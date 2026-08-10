@@ -76,7 +76,7 @@ Each layer has a distinct home. Information belongs to the layer that matches it
 - knowledge/market.md contains market context, competitors, segments, risks, distribution.
 - knowledge/vision.md contains the north-star narrative and system layers.
 - knowledge/product.md contains the moat, Product Contract, Flag system, truth system, and repair specification.
-- knowledge/product-system.md contains Quick Check, Finish Check, Watch, activation, paywall, and priority tiers.
+- knowledge/product-system.md contains Product Review, Deep Review, Watch, activation, paywall, and priority tiers.
 - knowledge/user-journey.md contains personas, core user journey, conversion architecture, and required copy changes.
 - knowledge/strategy.md contains pricing philosophy, tier structure, revenue model, unit economics.
 - knowledge/growth.md contains growth engine, distribution strategy, defensibility, and metrics.
@@ -161,7 +161,7 @@ When you need information about a topic, go to the canonical source:
 | Flag system | `knowledge/product.md` |
 | Truth system | `knowledge/product.md` |
 | Three products | `knowledge/product-system.md` |
-| Quick Check, Finish Check, Watch | `knowledge/product-system.md` |
+| Product Review, Deep Review, Watch | `knowledge/product-system.md` |
 | Activation and paywall | `knowledge/product-system.md` |
 | User personas | `knowledge/user-journey.md` |
 | Core user journey | `knowledge/user-journey.md` |

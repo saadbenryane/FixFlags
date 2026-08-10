@@ -77,7 +77,7 @@ Shipped Flag anatomy, evidence classes, and severity discipline: [evidence-rules
 
 The loop never really ends. Every completed cycle should improve both the product and FixFlags' understanding of that product.
 
-The customer-facing wedge loop remains **Check → Fix → Verify → Watch** ([PRODUCT.md](../PRODUCT.md)): paste a URL, see real evidence, fix, update review, watch after every deploy. The canonical loop is the internal model that the wedge experience already implements in miniature and that the long-term system expands to every signal source.
+The customer-facing wedge loop remains **Product Review → Fix → Verify → Watch** ([PRODUCT.md](../PRODUCT.md)): paste a URL, see real evidence, fix, update review, watch after every deploy. The canonical loop is the internal model that the wedge experience already implements in miniature and that the long-term system expands to every signal source.
 
 ## Product philosophy
 

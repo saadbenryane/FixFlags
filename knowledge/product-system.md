@@ -1,204 +1,109 @@
 # Product System
 
-**Canonical home for the three FixFlags products: Quick Check, Finish Check, and Watch.** Shipped facts: [PRODUCT.md](../PRODUCT.md). Vision: [vision.md](./vision.md).
+**Canonical home for the three FixFlags surfaces:** Product Review, Deep Review, and Watch. Shipped facts are in [PRODUCT.md](../PRODUCT.md). Vision is in [vision.md](./vision.md).
 
 ## Core loop
 
-**Check → Fix → Verify → Watch**
+**Product Review → Fix → Verify → Watch**
 
-The unit of value is not a scan, score, report, or issue. The unit of value is a verified fix.
-
-The customer loop above is the wedge expression of the canonical loop **Signal → Understand → Prioritize → Fix → Verify → Learn** ([vision.md](./vision.md)).
+The unit of value is a verified fix. The public loop is:
+1. run a product review,
+2. apply the highest-priority evidence-backed fixes,
+3. prove fixes in a follow-up review (update review),
+4. keep recurring verification for important paths (Watch).
 
 ## One intelligence, multiple surfaces
 
-Quick Check / Finish Check / Watch are the shipped product surfaces of one intelligence system. Audience packaging (Builders / Developers / Companies) is the same intelligence through different surfaces — never three disconnected products. See [vision.md](./vision.md) → Product packaging.
+Product review, deep review, and watch share one Product Contract + Product Intelligence source.
+Audience packaging is contextual, not separate products.
 
-## Three products
+## Three products (shipped)
 
-### A. Quick Check
+### A. Product Review
 
-The free acquisition product.
+The free acquisition surface.
 
-**User promise:** See what you missed.
+**Input:** a public or staging URL. No account required before the first value appears.
 
-**Input:** A public or staging URL. No account required before first evidence appears.
+**What it gives:**
+- deterministic capture and structured checks,
+- a ranked `Flag` list,
+- public-safe evidence and screenshots,
+- scoped copy for immediate confidence,
+- one complete finding and the first progress proof before signup.
 
-**What Quick Check does:**
-- Reads the page and likely product purpose
-- Finds the main public routes
-- Builds a route and action map
-- Checks internal links and redirects
-- Checks visible buttons and forms
-- Reviews desktop and mobile
-- Captures console and network failures
-- Runs accessibility, metadata and performance checks
-- Identifies the likely primary action
-- Produces up to three prioritized Flags
+**What it does not include:**
+- authenticated flows,
+- full multi-journey depth,
+- long-form repository context,
+- historical comparison.
 
-**What Quick Check does not do:**
-- Authenticated navigation
-- Full application exploration
-- Multiple user roles
-- Real checkout
-- Destructive actions
-- Claims about actual customer behavior
-- Complete security review
+**After account creation:**
+- all confirmed Flags,
+- fix prompts,
+- one `update review` on the same URL,
+- history surfaces and authenticated report context.
 
-**Free result (before signup):**
-- The checked URL
-- Routes and actions checked
-- Devices checked
-- One full high-confidence Flag with complete evidence
-- Two additional Flag titles
-- A clear statement of the checked scope
+### B. Deep Review
 
-Then offer: **Save the Finish Plan**
+The paid depth surface for important customer paths.
 
-**After free account creation:**
-- All three Flags
-- Fix prompts
-- One re-check
-- Report history for that product
+**User promise:** run your important path(s) to completion and record what actually changed.
 
-**Success moment:** The user thinks "I did not notice that." Not "This generated a lot of recommendations."
+**What it includes:**
+- multiple paths / assertions,
+- multi-viewport replay,
+- separate deep review credits,
+- stronger confidence on friction and completion conditions,
+- stronger change attribution for builder handoff.
 
-### B. Finish Check
-
-The one-time paid product.
-
-**User promise:** Test what customers came to do.
-
-**Price:** $49 one-time (hypothesis to test against $29 and $79 variants).
-
-**Purchase moment:** After the free result.
-
-> Now test the paths that matter. Run three important journeys on desktop and mobile, get complete evidence, and re-check every fix for seven days.
-
-**Setup — the customer confirms:**
-- What the product does
-- Who it serves
-- The most important action
-- Up to three journeys
-- The success condition for each journey
-- Whether a test account is required
-- Areas FixFlags must not access
-- Allowed and forbidden actions
-
-**Example journeys:**
-- Create an account
-- Sign in
-- Complete onboarding
-- Create the first project
-- Book an appointment
-- Submit a lead form
-- Add an item and reach test checkout
-- Invite a test teammate
-- Generate a report
-- Recover from an error
-
-**Finish Check output:**
-- Journey results (Passed / Passed with friction / Blocked / Could not verify)
-- Complete evidence (replay, screenshots, route, browser and viewport, actions attempted, console and network events, success assertion, reproduction steps)
-- Finish Plan (ranked list of what to address first)
-- Builder-ready fix (copy prompt, open in builder, send through MCP, create GitHub issue, draft pull request when repo access exists)
-- Seven-day verification window (re-run same journeys after each fix; same environment, viewport, task, success assertion)
+**Metering model:** one or more deep reviews consume monthly deep review credits on Pro/Studio.
 
 ### C. Watch
 
-The recurring product.
+The recurring verification surface.
 
-**User promise:** Know when an important path breaks.
+**User promise:** know when important paths drift after deployment.
 
-**Trigger:** A production or preview deployment.
-
-**Watch remembers:**
-- Product purpose
-- Important journeys
-- Success assertions
-- Routes involved
-- Test accounts
-- Accepted Flags
-- Dismissed suggestions
-- Verified fixes
-- Previous evidence
-- Known unstable third-party dependencies
-
-**After a deployment, FixFlags:**
-1. Reads the deployment and repository change
-2. Determines which routes and journeys may be affected
-3. Runs deterministic checks on changed surfaces
-4. Re-runs affected saved journeys
-5. Compares the new result with the previous verified result
-6. Reports only new, reopened or materially changed Flags
-
-**Alert language:**
-- Avoid: "Your quality score dropped six points."
-- Use: "Account creation stopped completing on mobile after this deployment."
-
-**Watch outputs:**
-- Passed deployment
-- Confirmed regression
-- Changed behavior requiring review
-- Could not verify
-- New heuristic suggestion
-
-**Notification surfaces:**
-- Email
-- GitHub
-- Slack (later)
-- Builder through MCP
-- FixFlags dashboard
+**What it includes:**
+- deployment-triggered re-verification,
+- regression detection from saved paths,
+- changed/unchanged evidence summaries,
+- compact alerts + history visibility,
+- optional integrations as availability expands.
 
 ## Activation and paywall design
 
 ### Before signup
-Show enough to establish trust: what was checked, one complete finding, evidence, why it matters.
+Show enough to establish trust: what was checked, what changed, and one complete finding with evidence.
 
 ### Free-account gate
-Ask the user to create an account to: see all Flags, copy the fix prompt, save the report, re-check the result.
+Ask for account creation to unlock all Flags, fix prompts, update reviews, full history, and private memory.
 
 ### Paid gate
-Ask for payment when the user wants: authenticated testing, multiple journeys, replay, mobile and desktop journey checks, seven-day verification, continuous monitoring.
-
-Do not charge merely to reveal generic audit findings.
-
-### Natural upgrade copy
-
-After Quick Check:
-> **Now test what customers came to do.**
-> Run three important journeys and verify every fix for $49.
-
-After Finish Check:
-> **Keep these paths checked after every deploy.**
-> Turn on Watch for $39 per month.
+Paid plans are for authenticated depth and recurrence:
+- more product reviews,
+- more deep reviews,
+- compare and update workflows,
+- MCP and workspace continuity.
 
 ## Priority tiers
 
-| Priority | Product | Must include |
+| Priority | Surface | Must include |
 |----------|---------|-------------|
-| P0 | Conversion-ready Quick Check | Public URL submission, route discovery, link and action checks, desktop and mobile, console and network capture, metadata/a11y/performance checks, evidence-backed Flags, confidence levels, scope and coverage, one full result before signup, account creation, fix prompt, re-check, private report, payment for Finish Check |
-| P1 | Goal-based Finish Check | Product-purpose confirmation, goal selection, journey policy, explicit success assertions, bounded agent runner, replay, complete evidence, three journeys, mobile and desktop, seven-day re-checking, before-and-after verification |
-| P2 | Authenticated journeys | Encrypted test credentials, reusable isolated auth state, test inbox, safe data reset, role support, credential revocation, detailed audit log |
-| P3 | Watch | GitHub connection, deployment trigger, change mapping, saved journeys, affected-journey selection, regression detection, alerts, history |
-| P4 | Studio workflow | Multiple products, client links, shared comments, branded exports, project templates, team roles, handoff summary |
-| P5 | Real-user evidence | Sentry connector, PostHog connector, FullStory connector, evidence correlation, clear separation between simulated/observed/real-user evidence |
+| P0 | Product Review | Public URL submission, route/action checks, desktop+mobile, console/network capture, metadata/a11y/performance checks, evidence-backed Flags, scope transparency, one result before signup |
+| P1 | Deep Review | Progressively richer path testing, success assertions, deterministic/fallback behavior, replay, complete evidence, re-run and update review verification |
+| P2 | Authenticated depth | Test-account support, role-aware flows, safe credentials handling |
+| P3 | Watch | Deployment webhook path, affected-route prioritization, regression signaling, alert surface |
+| P4 | Studio workflow | multi-project context, client-ready evidence, project templates, team controls |
+| P5 | External evidence integration | structured correlation with external signals and real-user telemetry |
 
 ## What we will not build first
 
-- Native mobile testing
-- Enterprise test management
-- A full analytics suite
-- Session recording infrastructure
-- Security certification
-- Penetration testing
-- A large persona library
-- Multi-agent swarms
-- Automated production payments
-- Automated destructive actions
-- Arbitrary product-quality scores
-- A roadmap-writing AI product manager
-- An AI coding environment
-- A standalone source-code scanner
-- Hundreds of integrations
-- A public roast database without customer consent
+- Native mobile testing inside this core loop.
+- Enterprise test management suite.
+- Native product-analytics replacement.
+- Full session video platform.
+- Automated production payments.
+- Automated destructive actions.
+- Arbitrary “quality score first” product.

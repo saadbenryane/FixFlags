@@ -1,6 +1,6 @@
 # GTM launch metrics
 
-**Status:** Measurement definitions for hybrid launch + founder cohort (August 2026).
+**Status:** Measurement definitions for hybrid launch + launch-tier campaign (August 2026).
 
 **Strategy:** [gtm-launch-strategy.md](./gtm-launch-strategy.md)
 
@@ -16,9 +16,9 @@ flowchart LR
   C --> L[Loop_action]
   L --> WPro[Waitlist_Pro]
   L --> WStudio[Waitlist_Studio]
-  WPro --> I[Founder_invite]
+  WPro --> I[Waitlist_invite]
   WStudio --> I
-  I --> Pay[Checkout_founder]
+  I --> Pay[Checkout_paid]
   Pay --> Ret[Retention_30d]
 ```
 
@@ -31,7 +31,7 @@ flowchart LR
 | Loop action | Copy fix prompt or update review run | analytics events |
 | Waitlist Pro | `PaidPlanWaitlistEntry` plan `BUILDER` | DB |
 | Waitlist Studio | `PaidPlanWaitlistEntry` plan `TEAM` | DB |
-| Founder invite | `invitedAt` set on waitlist row | DB / admin |
+| Invite / batch grant | `invitedAt` set on waitlist row | DB / admin |
 | Checkout | `started_checkout` / `completed_checkout` | analytics + Stripe webhook |
 | Retention | Second review or active 30d post-pay | DB |
 
@@ -61,10 +61,10 @@ Do not use waitlist count alone.
 | `plan` | `BUILDER` or `TEAM` |
 | `joinedAt` | PH / campaign timing |
 | `source` | pricing, dashboard, plan_picker, product_hunt, etc. |
-| `campaign` | e.g. `founder_40_ph_2026` |
+| `campaign` | e.g. `launch_tier_2026` |
+| `discountTier` | 1 (25%), 2 (15%), or null |
 | `invitedAt` | Batch invite sent |
 | `convertedAt` | Paid subscription started |
-| `founderOfferId` | e.g. `founder_40_12m` |
 
 **Usage joins (segmentation):**
 
@@ -88,9 +88,9 @@ Do not use waitlist count alone.
 
 ## Stripe reporting
 
-- Coupon redemption count per `founder_pro_40_12m` / `founder_studio_40_12m`
-- MRR at discount vs list (Dashboard / exports)
-- Subscription metadata `offer_id`
+- Track list vs discount by `discountTier` / promotion codes.
+- Discount attribution by checkout metadata and `offer_id` migration checks.
+- MRR at discount vs list (Dashboard / exports).
 
 ---
 
@@ -98,4 +98,4 @@ Do not use waitlist count alone.
 
 | Date | Change |
 |------|--------|
-| 2026-08-01 | Initial funnel + waitlist metrics for GTM launch. |
+| 2026-08-04 | Replaced founder offer metrics with launch-tier funnel and discount-tier segmentation. |

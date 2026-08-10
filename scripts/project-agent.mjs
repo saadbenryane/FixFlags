@@ -73,7 +73,7 @@ export const contexts = {
   release: {
     description: 'Build and validate the production-like web, worker, database, and container release path.',
     files: ['Dockerfile', 'scripts/runtime-start.mjs', 'scripts/validate.mjs', 'lib/health/', 'DEVELOPMENT.md'],
-    commands: ['npm run agent -- eval release', 'npm run verify:release'],
+    commands: ['npm run agent:release-continuity', 'npm run agent -- eval release', 'npm run verify:release'],
   },
   growth: {
     description: 'Change scheduled acquisition, analytics artifacts, nurture, or growth reporting safely.',
@@ -121,16 +121,28 @@ export function getChangedFiles(cwd) {
   return output.split('\n').map((line) => line.slice(3).trim()).filter(Boolean).sort()
 }
 
+const OWNERSHIP_ACTIVE_STATUSES = new Set(['in-progress', 'review', 'blocked', 'queued', 'claimed', 'active', 'in_progress'])
+
 export function readOwnership(cwd) {
   const boardPath = path.join(cwd, '.agents/BOARD.md')
   if (!existsSync(boardPath)) return { state: 'missing', active: [] }
-  const active = readFileSync(boardPath, 'utf8')
-    .split('\n')
-    .filter((line) => /^\|[^-].*\|\s*(?:claimed|in_progress|active)\s*\|/i.test(line))
-    .map((line) => {
-      const cells = line.split('|').map((cell) => cell.trim()).filter(Boolean)
-      return { task: cells[0], status: cells[1], owner: cells[2] }
-    })
+
+  const active = []
+  for (const rawLine of readFileSync(boardPath, 'utf8').split('\n')) {
+    const line = rawLine.trim()
+    if (!line.startsWith('|') || !line.includes('|')) continue
+    if (line.includes('Task ID') || line.includes('| ----') || line.includes('| Owner |') || line.includes('| Status')) continue
+
+    const cells = line
+      .split('|')
+      .map((cell) => cell.trim())
+      .filter(Boolean)
+    if (cells.length < 3) continue
+    const status = cells[1]?.toLowerCase()
+    if (!OWNERSHIP_ACTIVE_STATUSES.has(status)) continue
+    active.push({ task: cells[0], status, owner: cells[2] || 'unassigned' })
+  }
+
   return { state: 'available', active }
 }
 
@@ -158,7 +170,7 @@ export function buildHome(cwd) {
 
   return {
     schemaVersion: 1,
-    project: 'qewos',
+    project: 'fixflags',
     state: { branch, changedFileCount: changedFiles.length, changedFiles, ownership },
     verification: { reason: plan.reason, commandCount: plan.commands.length },
     warnings,

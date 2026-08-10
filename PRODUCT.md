@@ -1,5 +1,17 @@
 # Product
 
+FixFlags is the independent Product Intelligence System for AI-built software. A user submits a URL and receives a Fix list across Message, Experience, and Reach, with fix prompts for their AI editor.
+
+**Critical system architecture principle:** 
+1. PiWeb (/Users/saadbenryane/Code/pi-web) is the **interface layer** used to manage agent sessions and development workflows. It is maintained via FirstMate for interface-related concerns.
+2. FixFlags (/Users/saadbenryane/Code/fixflags) is the **actual product** being developed and maintained.
+3. When working in PiWeb:
+   - Interface/session management issues → Route through FirstMate
+   - Product development work → Focus on FixFlags repository
+4. All agent activity in PiWeb serves FixFlags development - there is no separate "FixedFlex" entity.
+
+> **Note on PiWeb vs product work**: PiWeb is solely the interface layer used to manage agent sessions and is maintained by FirstMate. It is not part of the product suite. When working on PiWeb interface issues, route through FirstMate. All agent development ultimately serves the FixFlags product.
+
 *Verified facts about what FixFlags ships today. Not vision. Not strategy.*
 
 **Canonical sources:**
@@ -15,13 +27,13 @@
 
 FixFlags is the independent Product Intelligence System for AI-built software. Finish what your AI started.
 
-**Core loop:** Check → Fix → Verify → Watch.
+**Core loop:** Product Review → Fix → Verify → Watch.
 
 This file is **shipped truth only**.
 
 ## Users and their context
 
-- **AI-first founders and small teams** — shipping with Cursor, Claude Code, Lovable, Bolt. They move fast and discover issues after launch. Want a quick check before sharing a link.
+- **AI-first founders and small teams** — shipping with Cursor, Claude Code, Lovable, Bolt. They move fast and discover issues after launch. Want a Product Review before sharing a link.
 - **Agencies and studios** — building AI-assisted sites for clients. Need shareable reports and repo scanning.
 - **Later:** Product teams using AI coding internally (once team accounts, continuous verification, and CI/CD land).
 
@@ -37,7 +49,7 @@ They arrive through Product Hunt, social media, search, builder communities or a
 
 They are about to launch on Product Hunt, share publicly, start outreach, spend on acquisition, deliver work to a client, or invite the first real users.
 
-They buy a Finish Check.
+They buy paid Deep Reviews for stronger journey coverage.
 
 ### Primary recurring buyer: The freelancer or small agency shipping repeatedly
 
@@ -85,14 +97,14 @@ Paste your live URL. FixFlags tests the paths that matter, shows exactly where t
 
 ## Core loop
 
-**Core loop:** Check → Fix → Verify → Watch.
+**Core loop:** Product Review → Fix → Verify → Watch.
 
 **Canonical loop:** Signal → Understand → Prioritize → Fix → Verify → Learn ([knowledge/vision.md](./knowledge/vision.md)). A review is an observation of the Product at a moment in time; the Product is the long-term object.
 
 **The unit of value is a verified fix.**
 
 1. User pastes a URL.
-2. Quick Check runs: deterministic checks + AI review on the page.
+2. Product Review runs: deterministic checks + AI review on the page.
 3. User sees real evidence: "The signup button gives no visible response on mobile."
 4. User creates an account to save all Flags and fix prompts.
 5. User pastes fix prompts into their AI editor.
@@ -194,7 +206,7 @@ Full evidence rules: `knowledge/evidence-rules.md`.
 - Evidence-backed Made with profiles across reports, re-check diffs, API/CLI/MCP summaries, and access-safe `/madewith/[hostname]` pages
 - Sample size gate (`MIN_SAMPLE_SIZE` in `lib/graph/queries.ts`; target 20, temporarily 3 while seeding)
 - MCP integration for Cursor, Claude Code, Windsurf, Lovable, and Bolt; public tool names live in `lib/mcp/tool-manifest.ts`, register through modular handlers, and are checked by `npm run mcp:quality-gate`.
-- Public documentation at `/docs` covers the product loop, Finish Plans, editor setup, CLI, MCP, generated tool reference, and troubleshooting. The code-backed editor catalog is the source for homepage, footer, docs, preferences, setup, and API-key attribution. Production-smoke claims remain limited to verified integrations.
+- Public documentation at `/docs` covers the product loop, Finish List, editor setup, CLI, MCP, generated tool reference, and troubleshooting. The code-backed editor catalog is the source for homepage, footer, docs, preferences, setup, and API-key attribution. Production-smoke claims remain limited to verified integrations.
 - Project-scoped Product Intelligence persistence
 - Canonical `/report/[id]` workspace with identity, readiness, re-check results, and the complete ranked Flag explorer, governed by `knowledge/report-contract.md`
 - Fix list with every unresolved Flag and contract-aware ranking from one shared service across web, export, MCP, CLI, re-check, and sample
@@ -229,7 +241,7 @@ FixFlags must evaluate itself more rigorously than it evaluates customers.
 ## Launch gates
 
 Do not launch broadly until:
-- The public check regularly produces a useful result
+- The public Product Review regularly produces a useful result
 - The first evidence appears quickly
 - Critical findings are highly precise
 - One journey can be replayed reliably
@@ -237,7 +249,7 @@ Do not launch broadly until:
 - The re-check can prove a real before-and-after change
 - The report is visually shareable
 - Privacy and scope are obvious
-- The paid Finish Check can be purchased without a sales call
+- Paid Deep Reviews can be purchased without a sales call
 - At least ten people have already paid
 
 Five concrete checks from report evidence. Fix before shipping:
@@ -260,14 +272,14 @@ Five concrete checks from report evidence. Fix before shipping:
 
 - Does Studio Fix PR creation close enough sales, or do buyers still want white-label share branding?
 - Will free users convert to Pro before exhausting their 3 lifetime AI reports?
-- What re-check cadence builds the strongest Check → Fix → Verify → Watch habit?
-- Does the $49 Finish Check price point optimize for conversion against $29 and $79 variants?
-- Will 20% of Finish Check customers activate Watch for ongoing monitoring?
+- What re-check cadence builds the strongest Product Review → Fix → Verify → Watch habit?
+- Does current Deep Review pricing optimize for conversion against alternate price points?
+- Will 20% of paid Deep Review customers activate Watch for ongoing monitoring?
 
 ## Constraints
 
-- **Core loop above all.** Every feature must serve Check → Fix → Verify → Watch.
-- **Every feature must serve the core loop.** If it does not fit Check → Fix → Verify → Watch, it does not ship.
+- **Core loop above all.** Every feature must serve Product Review → Fix → Verify → Watch.
+- **Every feature must serve the core loop.** If it does not fit Product Review → Fix → Verify → Watch, it does not ship.
 - **Update reviews are metered** like new product reviews. Product watch-triggered runs do not consume the manual credit pool.
 - **Localhost and private networks are not supported.** Studio projects may store encrypted preview scan access (HTTP basic auth, cookies, headers) for public preview URLs.
-- **CI/CD:** Railway deployment webhook (`/api/webhooks/railway?apiKey=...&url=...`) enqueues Launch Checks after deploy. See `docs/railway-deploy-check.md`.
+- **CI/CD:** Railway deployment webhook (`/api/webhooks/railway?apiKey=...&url=...`) enqueues Product Reviews after deploy. See `docs/railway-deploy-check.md`.

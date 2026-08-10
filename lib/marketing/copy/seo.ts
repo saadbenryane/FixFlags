@@ -49,7 +49,7 @@ export const SEO = {
   docs: {
     title: 'FixFlags Documentation',
     description:
-      'Learn FixFlags product reviews, Finish Plans, editor integrations, CLI workflows, MCP tools, and update reviews.',
+      'Learn FixFlags product reviews, Fix lists, editor integrations, CLI workflows, MCP tools, and update reviews.',
   },
   changelog: {
     title: 'Changelog',

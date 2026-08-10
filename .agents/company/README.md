@@ -2,6 +2,11 @@
 
 Canonical index for the AI-native operating model. All policy lives here; other files reference, not duplicate.
 
+## Project location (local)
+
+- FixFlags repository: `/Users/saadbenryane/code/fixflags`
+- pi-web repository (separate project): `/Users/saadbenryane/Code/pi-web`
+
 ## File map
 
 | File | Scope |
@@ -9,6 +14,12 @@ Canonical index for the AI-native operating model. All policy lives here; other 
 | `ceo.md` | CEO strategy, operating loop, **asset-first creation**, **active objectives schema**, **budget ledger**, **model routing**, **modality-aware routing**, **autonomy budget**, **rhythm (event wakes, heartbeat, daily/weekly review)**, **experiment protocol with termination states**, **release gates**, **founder escalation format**, **lean scorecard**, **dogfooding loop and autonomy metrics**, **external actions governance** |
 | `executives.md` | Executive ownership boundaries + **objective setting/review cadence**, **paid model approvals**, **external action compliance review** |
 | `worker-runtime.md` | Temporary worker contract + **task contract fields** (scope, modality, model level, autonomy level, allowed budget, objective link, experiment link, required result capture) |
+| `customer-exec-ops.md` | FixFlags executive operating system: memory stack, worker personas, spawn contract, weekly heartbeat packet |
+| `customer-weekly-heartbeat.md` | CEO-ready FixFlags weekly heartbeat template (signals, objective progress, backlog pressure, decision need, owner) |
+| `customer-heartbeat-executor.md` | FixFlags heartbeat wake procedure, decision policy, verification, budget discipline |
+| `finance-exec-ops.md` | FixFlags Finance Executive contract: startup checks, finance-specific workers, monetization priorities, verification commands |
+| `heartbeat-cadence.md` | Continuous executive pulse contract and evidence cadence |
+| `worker-profiles.md` | Ready-to-issue worker profiles and dispatch contracts |
 
 ## Policy sections
 
@@ -38,9 +49,21 @@ Canonical index for the AI-native operating model. All policy lives here; other 
 
 ## Canonical integration
 
+- `npm run agent:heartbeat` is the operational readout for CEO/executive weekly checks.
+- `npm run agent:heartbeat -- --json` renders machine-readable heartbeat packets for scheduler/dispatch automation.
+- `npm run agent:release-continuity` runs the same board+goal readout plus lightweight continuity checks for local runtime, CLI/MCP, and optional cloud smoke.
+- `scripts/agent-heartbeat.mjs` renders board + objective status into a single actionable signal.
+
 - `.agents/README.md` points to this file as the operating model anchor.
 - `.agents/BOARD.md` records active task scope.
 - `.agents/GOAL.md` references the operating-state loop for executive work.
 - `knowledge/README.md` cross-references the agent operating model as canonical process.
 
 Keep this directory minimal and practical; avoid duplicating policy in unrelated files.
+
+## Hardening rules
+
+No launch or blocker judgment is made before a spawned worker posts evidence in `.agents/sessions/`.
+Board scan must verify queued and blocked IDs with owners before any queue status classification.
+Every output tag includes its evidence source before a judgment is rendered.
+Chat-only decisions are forbidden; meaningful conclusions are filed in `.agents/sessions/*`.

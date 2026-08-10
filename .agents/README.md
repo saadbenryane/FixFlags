@@ -12,6 +12,8 @@ This directory enables safe parallel work by multiple AI agents (Cursor, Claude 
 | `GOAL.md` | Active goal state (gitignored): Condition, Proof, Constraints, turn Bound, Turn log with verdicts. Template: `GOAL.md.example`; detail briefs: `GOAL_BRIEF.md` (root) |
 | `GOAL.md.example` | Committed template for goal-state tracking |
 | `sessions/` | Implementation records for substantial work |
+| `scripts/agent-heartbeat.mjs` | Executive heartbeat helper (board + goal status + backlog pressure) |
+| `company/` | Operating policy and temporary worker model |
 | `handoffs/` | Handoff documents for incomplete work between agents |
 | `learnings/` | Validated project learnings (durable, not guesses). Active growth notes may live in `docs/growth/learnings.md` until promoted here. |
 | `evals/` | Evaluation suites for quality verification |
@@ -27,6 +29,16 @@ This directory enables safe parallel work by multiple AI agents (Cursor, Claude 
 7. **Create a handoff** before leaving meaningful work incomplete.
 8. **Archive records** after useful knowledge is promoted into canonical docs, code, tests, or evals.
 9. **After a BOARD task that changes product behavior or docs:** update the relevant `.cursor/skills/*/SKILL.md` in the same change set (see skill index under `.cursor/skills/`).
+
+## Filesystem & operational helpers
+
+| Command | Use |
+|---------|------|
+| `npm run agent` | Compact live repository state and next actions |
+| `npm run agent:heartbeat` | Board/goals summary with actionable next owner and pressure readout |
+| `npm run agent:heartbeat -- --json` | Same heartbeat as machine-readable payload |
+| `npm run agent:release-continuity` | Runtime + CLI/MCP + cloud continuity plan/readout for release cadence |
+| `npm run agent:release-continuity -- --check --strict` | Run continuity checks and fail if any required gate fails |
 
 ## Skills
 

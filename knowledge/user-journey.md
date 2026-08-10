@@ -6,144 +6,97 @@
 
 ### Acquisition user: The AI builder preparing to share something real
 
-They built with Lovable, Cursor, Replit, Bolt, Claude Code, Codex, Windsurf, v0 or a combination of tools. They may be a solo founder, product manager building an MVP, designer who now ships code, developer building a side product, or freelancer preparing a client handoff.
+They built with Lovable, Cursor, Replit, Bolt, Claude Code, Codex, Windsurf, v0 or a combination of tools. They may be a solo founder, product manager building an MVP, designer turning into a shipping cadence, or freelancer preparing a client handoff.
 
 Their thought: "It works for me. What did I miss?"
 
-They arrive through Product Hunt, social media, search, builder communities or a shared FixFlags result.
+They arrive through the FixFlags review path: **Review my product** and one clear evidence-driven result.
 
-### One-time buyer: The builder approaching a launch, handoff or campaign
+### One-time buyer: The launch-minded builder
 
-They are about to launch on Product Hunt, share publicly, start outreach, spend on acquisition, deliver work to a client, or invite the first real users.
+They are about to launch on Product Hunt, share publicly, or show work to a customer.
 
-They buy a Finish Check.
+They typically run a paid **Deep Review** first.
 
 ### Primary recurring buyer: The freelancer or small agency shipping repeatedly
 
-Their money problem: manual review reduces margins, handoff problems damage trust, client-reported bugs create unplanned work, each project is built slightly differently, they need consistent evidence across projects.
+Their money problem is private QA, handoff risk, and missing objective evidence from repeated launches.
 
-They buy Studio.
+They adopt **Studio** for multi-project repetition, compare surfaces, and recurring review.
 
 ### Secondary recurring buyer: The small product team shipping weekly
 
-They need to know whether a deployment broke signup, checkout, onboarding, the core action, or an important client workflow.
+They need to know if deployment changes broke important paths.
 
-They buy Watch through Pro or Team plans.
+They adopt Watch through Pro or Studio.
 
-### Not the initial customer
+### Not the initial target
 
-FixFlags will not initially serve: enterprise QA departments, native mobile applications, complete test-suite replacement, regulated compliance certification, deep penetration testing, large internal enterprise systems, products requiring real-money transactions in tests, teams expecting guaranteed conversion improvement.
+FixFlags is not initially for enterprise QA departments, native mobile apps, full test-suite replacement, regulated security certification, deep penetration testing, or high-volume internal enterprise systems.
 
 ## Core user journey
 
 ### 1. Land
-The user immediately sees "Finish what your AI started." FixFlags tests the paths that matter, shows exactly where they fail, and gives your AI the fix. The URL field is the dominant interaction.
+The user sees: "Finish what your AI started."
+FixFlags runs checks on the paths that matter, shows what fails, and gives a focused fix path.
 
 ### 2. Paste
-The user enters a public URL. No signup wall appears.
+The user enters a public URL. No signup wall first.
 
-### 3. Watch useful progress
-Show concrete progress: mapping the public product, checking links and actions, testing mobile, looking for failed requests, reviewing the primary action. Avoid fake percentages and theatrical agent narration.
+### 3. Review
+The user sees concrete progress: route mapping, checks running, and surfaced friction before any polished marketing metrics.
 
-### 4. Reach the proof moment
-The first result should be a specific finding: "The signup button gives no visible response on mobile." This is far more persuasive than a score.
+### 4. Fix
+A meaningful finding appears first, with evidence and a fix prompt.
 
 ### 5. Create an account
-The user signs up to save all Flags, receive the fix prompt and re-check.
+The user saves the report to unlock authenticated fields: private memory, fix prompts, update review, and history.
 
-### 6. Take action
-The primary report CTA is: **Fix this**. The user chooses: copy prompt, open in builder, send through MCP, create issue.
+### 6. Verify
+After changes, the user runs an **update review** to prove the fix.
 
-### 7. Verify
-The report waits for the new deployment. Then: "Fixed. Account creation now completes on mobile. Verified against the same journey."
-
-### 8. Expand
-The next offer: "Test a complete customer journey." This leads to the paid Finish Check.
-
-### 9. Retain
-After the paid check: "Keep these journeys checked after every deploy." This leads to Watch.
+### 7. Expand
+The user chooses deeper work:
+- update review on additional flows,
+- Deep Review on paid plan,
+- Watch for recurring release verification.
 
 ## Conversion architecture
 
 ### Homepage structure
 
-1. **Hero** — "Finish what your AI started." URL field is dominant. No signup to start, private by default.
-2. **Proof moment** — Short real replay: "We gave FixFlags one job: create an account. The button did nothing on mobile." Show replay, evidence, fix, verified result.
-3. **Sample Finish Plan** — Lead with "1 blocker found" not "70/100 release readiness."
-4. **Three-step loop** — Check (test the live product), Fix (send evidence and fix to your AI), Verify (run the same path again).
-5. **Use cases** — Launching (check before people arrive), Shipping (check after product changes), Client work (show what was tested before handoff).
-6. **Builder integrations** — Show recognizable builder names without claiming native integrations that do not exist.
-7. **Pricing** — Lead with the one-time Finish Check. Subscriptions are for repeat use.
-8. **Trust** — Private by default, test scope, evidence levels, safe action policy, no false guarantees.
-9. **Final CTA** — "Check my product"
+1. **Hero** — "Finish what your AI started." URL field is dominant.
+2. **Evidence moment** — short replay proving a real finding.
+3. **Proof sample** — one meaningful result, not abstract scores.
+4. **Three-step loop** — Review, Fix, Verify.
+5. **Growth map** — who should add Deep Review and Watch next.
+6. **Builder integrations** — familiar tool names with realistic expectations.
+7. **Pricing** — clear plan entry and upgrade fit.
+8. **Trust** — anonymous report safety and private paid surfaces.
+9. **Final CTA** — "Review my product."
 
-### Copy rules
+## Required copy changes
 
-**Use:** Check, Path, Task, Blocked, Evidence, Fix, Verified, Changed.
+**Use:** Review, Fix, Flags, Update review, Watch, Evidence.
 
-**Avoid leading with:** Release readiness, Quality layer, Comprehensive audit, Product intelligence platform, Synthetic users, Autonomous QA, 150+ checks, AI-powered insights, Ship with confidence repeated everywhere.
+**Avoid leading with:** release readiness, "audits" as a noun, full-product check counts, and terms that imply complete code certainty.
 
-### Positioning
+## Required navigation and actions in copy
 
-**Tagline:** Finish what your AI started.
+- **Primary CTA:** Review my product
+- **Primary copy:** FixFlags checks paths your users will actually take and proves whether fixes worked.
+- **Action moment:** Paste your public URL. See what was checked, in order.
 
-**Homepage explanation:** FixFlags tests the paths that matter, shows exactly where they fail, and gives your AI the fix.
+## Tensions and trade-offs
 
-**Supporting line:** Paste your live URL. See what needs attention before customers, clients or traffic reach it.
+1. **Simple first, depth later**
+   - Default: one clear check and one clear next action.
+   - Depth: Deep Review and Watch for retained value.
 
-**Primary CTA:** Check my product
+2. **Trust over hype**
+   - Honest scope limits and gated private surfaces.
+   - No claims beyond evidence.
 
-**Input placeholder:** Paste your live URL
-
-**Trust line:** No signup to start · Private by default · First result in about a minute
-
-**Product category:** Use "AI product review" in explanatory copy. Use the following for search and intent pages: AI website QA, AI app testing, Vibe-coded app testing, Website quality check, Pre-launch website check, Lovable app testing, Replit app testing, Cursor app review. Do not force those terms into the hero.
-
-## Required changes in the current product
-
-### Keep
-- "Finish what your AI started."
-- Instant URL entry
-- No signup before initial value
-- Private reports
-- Screenshots and evidence
-- Message, Experience and Reach
-- Fix prompts
-- MCP
-- Re-check
-- Builder compatibility
-- Premium visual brand
-
-### Remove or rewrite
-- "Release readiness layer"
-- "AI gets you 80%. FixFlags gets you to 100%."
-- "Complete audit"
-- "Every dimension of release readiness"
-- "Trained on real product standards" until substantiated
-- Arbitrary readiness scores as the primary result
-- Check counts as the primary proof of value
-- Repeated "ship with confidence" language
-- "Your users will…" when only an AI agent was tested
-- Pricing based primarily on new URL checks
-
-### Replace the current hero with
-> Finish what your AI started.
-> FixFlags tests the paths that matter, shows exactly where they fail, and gives your AI the fix.
-> [Paste your live URL] [Check my product]
-> No signup to start · Private by default
-
-### Replace the report header with
-> Fix these before you share it
-> 1 blocker found in the paths we tested
-
-### Replace the score with
-Goal outcomes, Blockers, Observed friction, Checked scope.
-
-### Replace "Start your audit" with
-Check your product
-
-### Replace "We run a complete audit" with
-We check the live product
-
-### Replace "Get fixes. Ship." with
-Fix it. Check again.
+3. **Recurring value over one-and-done**
+   - Update review is the retention signal.
+   - Watch turns the loop into an ongoing workflow.

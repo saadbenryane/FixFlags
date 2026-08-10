@@ -38,6 +38,7 @@ interface ProjectRow {
   name: string
   url: string
   auditCount: number
+  isManaged: boolean
 }
 
 function filePathToSegments(file: File): string[] {
@@ -152,6 +153,9 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
   const limit = projectLimitForPlan(plan)
   const { confirm, confirmDialog } = useConfirm()
   const [projects, setProjects] = useState<ProjectRow[]>(initialProjects)
+  const managedProjectCount = projects.filter((project) => project.isManaged).length
+  const projectCreditsUsed = managedProjectCount
+  const projectCreditsRemaining = Math.max(0, limit - projectCreditsUsed)
   const [creating, setCreating] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [formError, setFormError] = useState('')
@@ -183,9 +187,20 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
         setFormError(error.message)
         return
       }
-      const project = (await res.json()) as { id: string; name: string; url: string }
+      const project = (await res.json()) as {
+        id: string
+        name: string
+        url: string
+        isManaged: boolean
+      }
       setProjects((current) => [
-        { id: project.id, name: project.name, url: project.url, auditCount: 0 },
+        {
+          id: project.id,
+          name: project.name,
+          url: project.url,
+          auditCount: 0,
+          isManaged: project.isManaged,
+        },
         ...current.filter((item) => item.id !== project.id),
       ])
       setName('')
@@ -311,7 +326,8 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
         <div>
           <SectionTitle>Projects</SectionTitle>
           <p className="text-xs text-muted-foreground">
-            {projects.length} / {limit} used. Assign reports from their report pages.
+            {projectCreditsUsed} / {limit} project credits used. ({projectCreditsRemaining} remaining)
+            Assign reports from their report pages.
           </p>
         </div>
         <DropdownMenu>
@@ -391,20 +407,22 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
                       {project.url} · {project.auditCount} report{project.auditCount !== 1 ? 's' : ''}
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => handleDelete(project)}
-                    disabled={deletingId === project.id}
-                    aria-label={`Delete ${project.name}`}
-                  >
-                    {deletingId === project.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
+                  {project.isManaged ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDelete(project)}
+                      disabled={deletingId === project.id}
+                      aria-label={`Delete ${project.name}`}
+                    >
+                      {deletingId === project.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  ) : null}
                 </CardContent>
               </Card>
               <ProjectScanAccessPanel projectId={project.id} projectUrl={project.url} />
@@ -413,7 +431,7 @@ export function ProjectsPanel({ plan, initialProjects }: Props) {
         </div>
       )}
 
-      {projects.length < limit && (
+      {managedProjectCount < limit && (
         <form onSubmit={handleCreate} className="space-y-3">
           <Surface variant="nested" className="space-y-3">
           <p className="text-sm font-medium flex items-center gap-2">

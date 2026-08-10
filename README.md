@@ -2,6 +2,12 @@
 
 The release readiness layer for AI-built products. Finish what your AI started: paste a URL, get Flags across Message, Experience, and Reach, with fix prompts for your AI editor.
 
+## About FixedFlex
+
+FixFlags is a product of **FixedFlex**, the parent product intelligence platform for AI-built software.
+
+> **Note on PiWeb:** PiWeb is solely the interface layer used to manage agent sessions (maintained by FirstMate). It is not part of the product suite. When working on PiWeb interface issues, route through FirstMate. All agent development ultimately serves FixedFlex, not PiWeb.
+
 ## Prerequisites
 
 - Node.js 20+
@@ -30,7 +36,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000), enter a public URL, and wait ~60s for results.
 
-**Report surfaces:** `/report/{id}` is the focused three-item Finish Plan. `/report/{id}/details` contains Product context, journey and flow evidence, the full Flag explorer, previews, gates, and advanced actions. See `knowledge/report-contract.md`.
+**Report surfaces:** `/report/{id}` is the focused three-part Fix list. `/report/{id}/details` contains Product context, journey and flow evidence, the full Flag explorer, previews, gates, and advanced actions. See `knowledge/report-contract.md`.
 
 **Screenshots (local dev):** Audits persist desktop and mobile viewport captures to `.data/screenshots/` and serve them at `/api/screenshots/{auditId}/{device}`. Set `NEXT_PUBLIC_APP_URL` (defaults to `http://localhost:3000` in `.env.example`). Production uploads to Cloudflare R2 instead.
 

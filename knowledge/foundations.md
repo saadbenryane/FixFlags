@@ -41,7 +41,7 @@ Independence is brand, architecture, and business model.
 8. **Progressive depth** — same truth; basic UX simple, advanced UX deep.
 9. **Precision over check count** — false blockers destroy trust.
 10. **Security is bounded** — never claim "your app is secure" from URL-only signals.
-11. **Wedge before platform** — Launch Check acquires; continuous verification retains.
+11. **Wedge before platform** — Public Product Review acquires; continuous verification retains.
 12. **Distribution before premature depth** — ship the loop; expand dimensions with demand.
 
 Longer historical research notes (confirmed / refined / rejected) remain below for agents doing market work.
@@ -64,7 +64,7 @@ Longer historical research notes (confirmed / refined / rejected) remain below f
 
 ### Refined
 
-- "QA for AI-built products" is too narrow as the long-term category; use Product Intelligence for strategy, keep Launch Check language for acquisition
+- "QA for AI-built products" is too narrow as the long-term category; use Product Intelligence for strategy, keep public Product Review language for acquisition
 - Report should lead with the ranked Fix list and journey evidence, not a score
 - Product intent must be captured before deep judgment
 - Security cannot be a simple readiness dimension

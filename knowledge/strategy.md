@@ -2,69 +2,47 @@
 
 **Canonical home for business model direction.** Live shipped pricing: [PRODUCT.md](../PRODUCT.md) and `lib/billing/plans.ts`. Vision: [vision.md](./vision.md).
 
-## Pricing (new — product/journey model)
-
-The new model sells products and journeys, not URL-check credits.
-
-| Product | Price | What it includes |
-|---------|-------|-----------------|
-| **Quick Check** (Free) | $0 | One active product, three public Quick Checks per month, one complete Flag before signup, three complete Flags with free account, fix prompts, one saved re-check, private report |
-| **Finish Check** (one-time) | $49 | One product, three important journeys, desktop and mobile, public or staging environment, test-account support, complete replay and evidence, full Finish Plan, builder-ready fixes, unlimited re-checks for seven days |
-| **Pro** (monthly) | $39/mo | One active product, five saved journeys, deployment-triggered checks, before-and-after history, GitHub integration, CLI and MCP, confirmed regression alerts, included monthly journey allowance, additional usage available |
-| **Studio** (monthly) | $129/mo | Up to ten active products, twenty-five saved journeys, client-ready reports, team access, project templates, GitHub and deployment integrations, branded exports, more included runs, priority support |
-
-**Pricing rule:** Do not sell "credits" in the primary interface. Customers should understand products, journeys, checks after deploy, and re-checks. Technical usage can exist behind fair limits.
-
-Adjacent tools currently range from low-cost browser access around $19 monthly, website-feedback products from roughly $39 monthly, AI testing products from $69 to $125 monthly and higher. The proposed FixFlags range is plausible but must be validated through actual purchases.
-
 ## Pricing (current — shipped)
 
 | Tier | Plan enum | Price | Product reviews | Deep reviews | Notes |
 |------|-----------|-------|-----------------|--------------|-------|
-| Free | `FREE` | $0 | 3 lifetime | 1 teaser (lifetime) | Update reviews metered |
+| Free | `FREE` | $0 | 3 lifetime | 1 teaser (lifetime) | Update reviews consume product-review credits |
 | Pro | `BUILDER` | $69/mo | 25/mo | 4/mo | Compare, MCP, product watch |
 | Studio | `TEAM` | $199/mo | 80/mo | 10/mo | Share links, projects, GitHub scans |
 
 Display name **Studio** maps to `TEAM`. Enforcement: `lib/billing/plans.ts`, `lib/audit/usage.ts`.
 
-Update reviews consume product review credits. Product watch-triggered re-checks skip the manual credit pool.
+Update reviews consume product-review credits. Product watch-triggered re-checks skip the manual credit pool.
 
-## Directional packaging (not in schema yet)
+## Directional packaging (implementation follow-on)
 
-Aligned with Product Intelligence layers. Do not market until built.
+Aligned with Product Intelligence layers but not a separate billing schema today.
 
-| Layer | Intent |
-|-------|--------|
-| **Free** | Public/local analysis, basic PI, limited projects, ranked Fix list, essential browser checks |
-| **Builder** | Deeper analysis, persistent PI, cloud-assisted reasoning, verification history, integrations, more usage |
-| **Team / Studio** | Shared PI, collaboration, multi-repo/env, agent coordination, release workflows, client workspaces |
-| **Enterprise** | Private deployment options, retention, SSO, audit logs, governance, org-wide PI |
+- **Free**: Public, local analysis plus ranked fixed findings and ranked one-time trial value.
+- **Builder**: Persistent Product Contract, deeper evidence history, more volume, and integrations.
+- **Team / Studio**: Multi-project collaboration, release workflow, project-level retention.
+- **Enterprise**: Later, if retention supports heavier workflow guarantees.
 
-Additional revenue (later): expert review, benchmarks, certification, agency tooling, API, intelligence reports, partners.
+Additional revenue (later): expert review, benchmarks, certification, agency tooling, API.
 
 ## Pricing philosophy
 
-- Price reflects preventing wasted development, reducing agent thrash, accelerating release readiness, and improving outcomes.
-- Entry price low enough to convert; raise after retention evidence.
-- Consequence and recurrence matter more than identity labels.
-- Deterministic checks before expensive AI; cache and incremental analysis. See vision Cost Efficiency.
+- Price reflects verified quality improvements, reduced churn risk, and verified fix outcomes.
+- Entry is low-friction; retention is tied to recurring assurance.
+- Do not over-index on pricing theater in the first value surface.
+- Deterministic checks before expensive AI and strict usage bounds keep margins viable.
 
 ## Unit economics
 
-Browser automation, screenshots, models, and storage create variable cost. Strict anon limits. Usage allowances on paid plans. Persistent PI should reduce repeated tokens and re-exploration.
+Browser automation, screenshots, models, and storage create variable cost. Strict limits protect margins.
 
-## Cost targets
+## Cost targets (naming only)
 
-- Quick Check: below $0.25
-- Finish Check: below $3
-- Normal Watch run with no issue: below $0.50
-- Deep authenticated check: below $5
-- Gross margin: above 80% across paid usage
+- Product Review: under a safe unit cost envelope.
+- Deep Review: under deeper run budget.
+- Watch run: under recurrence maintenance envelope.
+- Gross margin: above 80% across paid usage.
 
 ## Targets
 
 Near-term operating plan: [docs/year-1-operating-plan.md](../docs/year-1-operating-plan.md) (Studio naming). Long-term blend of builders + agencies/studios + teams; agencies carry disproportionate MRR.
-
-## Open math
-
-At $39/$129, Year-1 MRR targets require either more customers, a price increase, or a higher tier. GTM decision; docs do not invent a fix.

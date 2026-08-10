@@ -57,7 +57,7 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Product mechanics and moat | `knowledge/product.md` |
 | Product moat | `knowledge/product.md` → The Moat |
 | Product Contract (intent layer) | `knowledge/product.md` → Product Contract |
-| Two product surfaces (Launch Check vs Release Verification) | `knowledge/product.md` → Two Product Surfaces |
+| Three surfaces (Product Review / Deep Review / Watch) | `knowledge/product.md` → Report loop surfaces |
 | Report hierarchy | `knowledge/product.md` → Report Hierarchy |
 | Flag as durable unit | `knowledge/product.md` → The Flag as Durable Unit |
 | Truth system | `knowledge/product.md` → Truth System |
@@ -96,9 +96,9 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | User personas and conversion architecture | `knowledge/user-journey.md` |
 | Integrity Engine (five-dimension evaluation) | `knowledge/integrity-engine.md` |
 | Product Intelligence model and Product Contract | `knowledge/product-intelligence.md` |
-| Product surfaces (Quick Check / Finish Check / Watch) | `knowledge/product-system.md` |
+| Product surfaces (Product Review / Deep Review / Watch) | `knowledge/product-system.md` |
 | Evidence classes, severity, and Flag anatomy | `knowledge/evidence-rules.md` |
-| Fix List and Quick Plan artifact | `knowledge/finish-plan.md` |
+| Fix List artifact | `knowledge/finish-plan.md` |
 | Launch readiness and validation | `knowledge/launch-requirements.md` |
 | GTM launch strategy (hybrid free + paid waitlist) | `docs/gtm-launch-strategy.md` |
 | Launch discount tiers (25%/15% × 12mo from release) | `docs/stripe-setup.md`, `lib/billing/discount-tiers.ts`, `DECISIONS.md` (2026-08-04) |

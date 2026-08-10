@@ -6,14 +6,28 @@ Start with `npm run agent`. Use `npm run agent -- context <area>` for focused fi
 
 ## Product
 
-FixFlags is the independent Product Intelligence System for AI-built software. A user submits a URL and receives a Finish Plan across Message, Experience, and Reach, with fix prompts for their AI editor.
+FixFlags is the independent Product Intelligence System for AI-built software. A user submits a URL and receives a Fix list across Message, Experience, and Reach, with fix prompts for their AI editor.
 
 - Core loop: **Build → Review → Fix → Verify → Learn**.
 - Canonical report hierarchy: [knowledge/report-contract.md](knowledge/report-contract.md). Do not duplicate route or section order in skills.
 - Plans meter product reviews (new URLs and update reviews share the same credit pool). Customer copy uses **update review**; internal routes may still use `re-check`.
 - Stage: pre-revenue testing. Distribution has priority over additional product depth.
-- Shipped truth: [PRODUCT.md](PRODUCT.md). North star and canonical loop: [knowledge/vision.md](knowledge/vision.md) (Signal → Understand → Prioritize → Fix → Verify → Learn; customer loop Check → Fix → Verify → Watch).
+- Shipped truth: [PRODUCT.md](PRODUCT.md). North star and canonical loop: [knowledge/vision.md](knowledge/vision.md) (Signal → Understand → Prioritize → Fix → Verify → Learn; customer loop Product Review → Fix → Verify → Watch).
 - Product and technical vocabulary: [knowledge/README.md](knowledge/README.md).
+
+## Interface Layer Clarification
+
+**Critical system architecture principle:** 
+1. PiWeb (/Users/saadbenryane/Code/pi-web) is the **interface layer** used to manage agent sessions and development workflows. It is maintained via FirstMate for interface-related concerns.
+2. FixFlags (/Users/saadbenryane/Code/fixflags) is the **actual product** being developed and maintained.
+3. When working in PiWeb:
+   - Interface/session management issues → Route through FirstMate
+   - Product development work → Focus on FixFlags repository
+4. All agent activity in PiWeb serves FixFlags development - there is no separate "FixedFlex" entity.
+
+- For PiWeb interface/session issues: Contact FirstMate
+- For FixFlags product development: Work directly in this repository
+- The agent's purpose is FixFlags product advancement via PiWeb interface
 
 ## Task router
 
@@ -38,12 +52,14 @@ Do not read every linked document by default. Follow the task router and open de
 ## Operating loop
 
 1. Inspect `git status`, `npm run agent`, and `.agents/BOARD.md` before substantial writes.
-2. Identify the canonical source and existing implementation pattern.
-3. Make the smallest coherent change that achieves the user outcome.
-4. Run `npm run agent -- verify --dry-run` to select the appropriate checks.
-5. Verify the actual behavior and inspect artifacts, not only exit codes.
-6. Record durable, evidence-backed discoveries in `.agents/learnings/`; prefer prevention in tests, types, scripts, or CI.
-7. Report what changed, what passed, and what was not verified.
+2. For any product judgment (launch/weekly heartbeat/blockers), run `npm run agent:heartbeat -- --json` and treat the packet as source of truth.
+3. Spawn and wait for a worker report in `.agents/sessions/` before finalizing blocker or release conclusions.
+4. Identify the canonical source and existing implementation pattern.
+5. Make the smallest coherent change that achieves the user outcome.
+6. Run `npm run agent -- verify --dry-run` to select the appropriate checks.
+7. Verify the actual behavior and inspect artifacts, not only exit codes.
+8. Record durable, evidence-backed discoveries in `.agents/learnings/`; prefer prevention in tests, types, scripts, or CI.
+9. Report what changed, what passed, and what was not verified.
 
 ## Commands
 
@@ -56,6 +72,8 @@ Do not read every linked document by default. Follow the task router and open de
 | `npm run agent -- verify --full` | Run the full project gate |
 | `npm run agent -- eval <area>` | Run a focused real evaluation |
 | `npm run agent -- learn` | List validated project learnings |
+| `npm run agent:heartbeat` | Board/goals signal summary |
+| `npm run agent:release-continuity` | Runtime + CLI/MCP + cloud continuity pulse (plan mode by default) |
 | `npm run validate:quick` | Changed-file lint and typecheck |
 | `npm run validate:affected` | Changed-file tests and guards |
 | `npm run verify` | Full DB, code, test, build, and worker gate |
@@ -155,6 +173,7 @@ The agent's cost is dominated by reading, not writing. Optimize every turn for c
 ## Definition of done
 
 - The change matches the user outcome and canonical product intent.
+- For release/blocker/judgment statements, include evidence from `.agents/sessions/*` and `scripts/agent-heartbeat.mjs` packet output; avoid inference without evidence.
 - Relevant code, docs, current Git state, and task ownership were inspected.
 - `npm run agent -- verify` or an explicitly justified equivalent passed.
 - Behavior was exercised through its real path, including loading, empty, error, and responsive states when applicable.

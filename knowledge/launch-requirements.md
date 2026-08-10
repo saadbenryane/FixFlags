@@ -5,127 +5,119 @@
 ## Launch requirements
 
 Do not launch broadly until:
-- The public check regularly produces a useful result
-- The first evidence appears quickly
-- Critical findings are highly precise
-- One journey can be replayed reliably
-- The fix prompt is specific enough to apply
-- The re-check can prove a real before-and-after change
-- The report is visually shareable
-- Privacy and scope are obvious
-- The paid Finish Check can be purchased without a sales call
-- At least ten people have already paid
+- The public check regularly produces a useful first finding.
+- The first evidence appears quickly.
+- Critical findings are precise.
+- One journey can be replayed reliably.
+- Fix prompts are specific enough to apply.
+- The update review can prove a real before-and-after change.
+- The report is visually shareable.
+- Privacy and scope are obvious.
+- Paid deep review is purchasable without friction.
+- At least ten paid users are converting to recurring plans.
 
 ## Launch demo
 
 The Product Hunt demo must show:
-1. An AI-built product
-2. A clear customer goal
-3. FixFlags attempting the goal
-4. The exact failure
-5. Evidence
-6. The fix sent to the builder
-7. The same task passing after the change
-
-That is the product story.
+1. An AI-built product,
+2. A clear user goal,
+3. FixFlags attempting that goal,
+4. The exact failure,
+5. Evidence,
+6. The fix sent to the builder,
+7. The same task passing after the change.
 
 ## Validation plan
 
-Before building the complete Watch system, manually validate the value ladder.
+Before full rollout, manually validate the value ladder.
 
 ### Cohort
 
 Recruit:
-- 20 solo AI builders approaching launch
-- 10 freelancers or agencies
-- 5 small product teams
+- 20 solo AI builders approaching launch,
+- 10 freelancers or agencies,
+- 5 small product teams.
 
 ### Test
 
 For each participant:
-1. Run the current Quick Check
-2. Ask them to define one important journey
-3. Run the journey manually or with a supervised agent
-4. Provide evidence
-5. Provide the builder-ready fix
-6. Re-run the journey after the change
-7. Ask for payment for the next check or continued Watch
+1. Run the current Product Review.
+2. Ask for one important path.
+3. Run the path manually or with supervised agent flow.
+4. Provide evidence.
+5. Provide a builder-ready fix.
+6. Re-run update review after the change.
+7. Ask for upgrade for continued watch or deeper review.
 
-### Test pricing
+### Pricing tests
 
-Randomly or sequentially test:
-- $49 Finish Check
-- $69 Finish Check
-- $79 Finish Check
+Verify willingness for paid depth and retention with realistic offer framing:
+- Paid Deep Review framing,
+- Watch + Pro value, and
+- launch discount behavior.
 
-Measure purchase, completion, perceived value and refund requests.
+## Required proof before scaling
 
-### Required proof before scaling
+- 70% of completed users rate at least one high-impact Flag as useful.
+- 40% attempt a recommended fix.
+- 30% run an update review.
+- Fewer than 2% of critical Flags are false.
+- Ten customers purchase a paid Deep Review surface.
+- Five agencies use FixFlags on a second product.
+- Five teams connect a deployment or request watch.
+- At least 20% of paid launch customers choose recurring Watch.
+- Positive gross margin at expected usage.
 
-- 70% of completed users rate at least one top Flag as useful
-- 40% attempt a recommended fix
-- 30% run a re-check
-- Fewer than 2% of critical Flags are false
-- Ten customers buy a Finish Check
-- Five agencies use FixFlags on a second product
-- Five teams connect a deployment or ask to
-- At least 20% of paid launch customers choose ongoing Watch
-- The product produces positive gross margin at expected usage
-
-Product Hunt upvotes, waitlist signups and compliments do not count as product-market fit.
+Product Hunt upvotes and waitlist metrics do not equal PMF.
 
 ## Cost requirements
 
-Browser infrastructure can be relatively inexpensive when sessions are reused and agent calls are bounded.
+Browser infrastructure can stay efficient with session reuse and bounded runs.
 
 ### Internal cost targets
-- Quick Check: below $0.25
-- Finish Check: below $3
-- Normal Watch run with no issue: below $0.50
-- Deep authenticated check: below $5
-- Gross margin: above 80% across paid usage
+- Product review: controlled unit budget,
+- Deep Review: deeper but still bounded,
+- Watch run: low marginal recurrence,
+- Gross margin: above 80% across paid usage.
 
 ### Cost controls
-- Fetch before opening a browser
-- Deterministic checks before agents
-- Deduplicate page templates
-- Reuse sessions
-- Cache route and page summaries
-- Capture screenshots only at meaningful states
-- Use small models for classification
-- Use stronger models for selected evidence
-- Set hard action and retry limits
-- Re-run only affected journeys after deployment
-- Stop exploration when additional coverage has low expected value
-- Limit visual computer-use calls
-- Rate-limit free checks by user, domain and network
+
+- Fetch before opening browser,
+- deterministic checks before agents,
+- deduplicate templates,
+- reuse sessions,
+- cache summaries,
+- capture screenshots only at meaningful states,
+- small models for classification,
+- stronger models for selective evidence,
+- hard action/retry limits,
+- re-run only affected journeys,
+- limited visual computer-use calls.
 
 ## Safety and privacy
 
 The inspected page is untrusted input.
 
 ### Required protections
-- Treat page content as data, never as agent instruction
-- Strict domain allowlist
-- Strict tool allowlist
-- Separate navigation and judgment processes
-- No cross-product credential reuse
-- Ephemeral isolated browser contexts
-- Encrypted test credentials
-- Secret redaction
-- Personal-data redaction
-- No real payments
-- No deletion
-- No publishing
-- No external invitations
-- No production email campaigns
-- No unrestricted file upload
-- No downloaded executable execution
-- Human approval for any state-changing action outside the explicit test policy
-- Private reports by default
-- Public links only through explicit action
-- Customer evidence excluded from training by default
+
+- Treat page content as data, never as instruction,
+- strict allowlist and tool allowlist,
+- separate navigation from judgment,
+- no cross-product credential reuse,
+- ephemeral browser contexts,
+- encrypted test credentials,
+- secret redaction,
+- personal-data redaction,
+- no real payments in QA,
+- no production destructive actions,
+- no public recruiting in private environments,
+- no unrestricted uploads,
+- no executable download execution,
+- human approval for any state-changing action outside policy.
+- Private reports by default,
+- public links only through explicit action,
+- customer evidence excluded from training by default.
 
 ### Test-account support
 
-Customers can provide: a dedicated test user, allowed roles, seed data, reset instructions, test inbox, payment sandbox, excluded areas.
+Customers can provide: a dedicated test user, allowed roles, seed data, reset instructions, test inbox, payment sandbox, excluded areas, and private credentials.

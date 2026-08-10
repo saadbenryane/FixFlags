@@ -23,7 +23,7 @@ export async function GET() {
     await recordRateLimit({ scope: 'api-projects', identifier: clientId, limit: 30, windowSeconds: 60 })
 
   const projects = await prisma.project.findMany({
-    where: { userId: session.user.id, isManaged: true },
+    where: { userId: session.user.id },
     orderBy: { updatedAt: 'desc' },
     include: {
       _count: { select: { audits: true } },
@@ -36,6 +36,7 @@ export async function GET() {
         name: p.name,
         url: p.url,
         auditCount: p._count.audits,
+        isManaged: p.isManaged,
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
       }))

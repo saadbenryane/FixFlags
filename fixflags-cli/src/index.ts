@@ -94,12 +94,8 @@ function fail(error: unknown, json = false): void {
 
 function isJsonMode(
   jsonOption?: boolean,
-  command?: {
+  command?: Command & {
     optsWithGlobals?: () => { json?: boolean }
-    rawArgs?: string[]
-    parent?: {
-      rawArgs?: string[]
-    }
   }
 ): boolean {
   const commandWithGlobals =
@@ -186,7 +182,7 @@ program
 program
   .command('whoami')
   .description('Show the account used by the CLI')
-  .action(async (options: { json?: boolean }, command: { optsWithGlobals?: () => { json?: boolean } }) => {
+  .action(async (options: { json?: boolean }, command: Command) => {
     const jsonMode = isJsonMode(options.json, command)
     try {
       const apiKey = await getCredential()
@@ -332,7 +328,7 @@ program
           cookie?: string
           json?: boolean
         },
-        command: { optsWithGlobals?: () => { json?: boolean } }
+        command: Command
       ) => {
         const jsonMode = isJsonMode(options.json, command)
       const spinner = ora({
@@ -419,7 +415,7 @@ program
           full?: boolean
           json?: boolean
         },
-        command: { optsWithGlobals?: () => { json?: boolean } }
+        command: Command
       ) => {
         const jsonMode = isJsonMode(options.json, command)
       const spinner = ora({
@@ -473,7 +469,7 @@ program
 program
   .command('status <reportId>')
   .description('Get the current status of a check')
-    .action(async (reportId: string, options: { json?: boolean }, command: { optsWithGlobals?: () => { json?: boolean } }) => {
+    .action(async (reportId: string, options: { json?: boolean }, command: Command) => {
     const jsonMode = isJsonMode(options.json, command)
     try {
       const apiKey = await getCredential()

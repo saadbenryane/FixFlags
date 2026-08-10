@@ -58,11 +58,11 @@ Avoid leading acquisition with QA, auditing, or release readiness. Depth and cat
 | Manual QA | Expensive, slow, does not scale. No fix prompts. |
 | accessiBe | Accessibility only. No AI review of message or experience. |
 | Momentic, Checkly, Mabl, Virtuoso, Testim, Applitools | Autonomous test generation. FixFlags should not compete on "generate test cases faster." |
-| CodeRabbit, Greptile, Copilot code review | Pre-merge **code** gate. FixFlags is the post-deploy **product** gate (Launch Check). Complementary layers; not substitutes. Do not pursue CodeRabbit partnership as GTM. Compete for verification budget only by owning the live-product moment. |
+| CodeRabbit, Greptile, Copilot code review | Pre-merge **code** gate. FixFlags is the post-deploy **product** gate (public Product Review). Complementary layers; not substitutes. Do not pursue CodeRabbit partnership as GTM. Compete for verification budget only by owning the live-product moment. |
 
 ### Key insight
 
-URL-first autonomous testing is becoming a common pattern. The first moat cannot be "paste a URL." See `product.md` for the moat strategy. Direct war is Scout/Signo. CodeRabbit is adjacent. Retention requires recurring verify after Remember works, not one-shot launch checks alone.
+URL-first autonomous testing is becoming a common pattern. The first moat cannot be "paste a URL." See `product.md` for the moat strategy. Direct war is Scout/Signo. CodeRabbit is adjacent. Retention requires recurring verify after Remember works, not one-shot public reviews alone.
 
 ## Customer Segments
 

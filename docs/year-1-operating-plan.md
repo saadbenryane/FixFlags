@@ -23,7 +23,7 @@ Success is measured by recurring revenue, customer value, and product adoption r
 
 ## Customer Targets
 
-> **Tier names below match the live product** (`lib/billing/plans.ts`): `Free` ($0, not a paying tier), `Pro` ($39/mo), `Studio` ($129/mo). There is no "Builder" or "Team" tier in the schema — this section previously referenced names that don't exist in the product and has been corrected.
+> **Tier names below match the live product** (`lib/billing/plans.ts`): `Free` ($0), `Pro` (`BUILDER`, shipped at $69/mo), and `Studio` (`TEAM`, shipped at $199/mo).
 
 End of Year 1:
 
@@ -38,7 +38,7 @@ Monthly churn target:
 
 - Less than 5%
 
-> **Open math gap — flagging, not resolving:** at current pricing, 500 Pro + 100 Studio = **~$32,400 MRR**, roughly half the $50,000–60,000 Exit MRR target in the North Star above. Closing this gap requires one of: (a) a materially larger paying-customer count (~1,250–1,500 at today's Pro/Studio blend to reach $50k), (b) a price increase on Pro/Studio, or (c) a new higher-priced tier (e.g. a higher-priced Team tier above Studio). This is a pricing/GTM decision for the founder, not something this doc resolves on its own — the 600-customer and $50–60k MRR targets as currently stated are not simultaneously achievable under today's $39/$129 pricing.
+> **Math note:** at current launched pricing, 500 Pro + 100 Studio is approximately **~$54,400 MRR** before gross margin and churn effects; this remains aligned with the broader target and reinforces retention/mix discipline.
 
 ## Growth Funnel Targets
 
@@ -176,7 +176,7 @@ Review every week:
 **End of Q4**
 
 - 600+ paying customers
-- $50k+ MRR *(see the open math gap noted under Customer Targets — hitting both simultaneously at current pricing is not yet reconciled)*
+- $50k+ MRR (aligned planning target under shipped pricing assumptions; monitor in real cohort cohorts)
 - Profitable or near-profitable
 - Clear roadmap toward $2M+ ARR in Year 2
 

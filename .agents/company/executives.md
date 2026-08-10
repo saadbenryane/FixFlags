@@ -1,5 +1,11 @@
 # Executive Structure
 
+## Project coordinates
+
+- **FixFlags repo:** `/Users/saadbenryane/code/fixflags`
+- **pi-web project:** `/Users/saadbenryane/Code/pi-web`
+
+
 ## Product
 Owns scope, roadmap alignment, and release value. Owns user outcomes and priorities. Works closely with Growth and Customer.
 

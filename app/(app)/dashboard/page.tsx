@@ -90,12 +90,13 @@ export default async function DashboardPage({
     }),
     projectLimit > 0
       ? prisma.project.findMany({
-          where: { userId, isManaged: true },
+          where: { userId },
           orderBy: { updatedAt: "desc" },
           select: {
             id: true,
             name: true,
             url: true,
+            isManaged: true,
             _count: { select: { audits: true } },
           },
         })
@@ -361,6 +362,7 @@ export default async function DashboardPage({
               name: project.name,
               url: project.url,
               auditCount: project._count.audits,
+              isManaged: project.isManaged,
             }))}
           />
         </div>

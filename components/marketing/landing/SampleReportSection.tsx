@@ -167,7 +167,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                 </p>
               </div>
 
-              <dl className="grid grid-cols-3">
+              <div className="grid grid-cols-3">
                 {primaryMetrics.map((metric, index) => {
                   const Icon = metric.icon;
                   return (
@@ -179,7 +179,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                           "border-l border-background/15 pl-4 sm:pl-6",
                       )}
                     >
-                      <dt className="flex items-center gap-2 text-[0.6875rem] leading-tight text-background/55 sm:text-xs">
+                      <div className="flex items-center gap-2 text-[0.6875rem] leading-tight text-background/55 sm:text-xs">
                         <Icon
                           className={cn(
                             "hidden h-4 w-4 shrink-0 sm:block",
@@ -191,14 +191,14 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                           aria-hidden
                         />
                         {metric.label}
-                      </dt>
-                      <dd className="mt-2 font-mono text-2xl font-semibold tabular-nums tracking-tight text-background sm:text-3xl lg:text-4xl">
+                      </div>
+                      <div className="mt-2 font-mono text-2xl font-semibold tabular-nums tracking-tight text-background sm:text-3xl lg:text-4xl">
                         {metric.value}
-                      </dd>
+                      </div>
                     </div>
                   );
                 })}
-              </dl>
+              </div>
             </div>
 
             <div className="mt-8 flex flex-col gap-3 border-t border-background/15 pt-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
@@ -215,14 +215,14 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                         strokeWidth={1.7}
                         aria-hidden
                       />
-                      <dl className="flex flex-col">
-                        <dt className="order-2 mt-0.5 text-2xs text-background/50">
+                      <div className="flex flex-col">
+                        <span className="order-2 mt-0.5 text-2xs text-background/50">
                           {metric.label}
-                        </dt>
-                        <dd className="order-1 font-mono text-xs font-semibold tabular-nums text-background">
+                        </span>
+                        <span className="order-1 font-mono text-xs font-semibold tabular-nums text-background">
                           {metric.value}
-                        </dd>
-                      </dl>
+                        </span>
+                      </div>
                     </div>
                   );
                 })}

@@ -8,7 +8,7 @@ describe('project-agent', () => {
   it('builds a live home payload with explicit state', () => {
     const payload = buildHome(cwd)
     assert.equal(payload.schemaVersion, 1)
-    assert.equal(payload.project, 'qewos')
+    assert.equal(payload.project, 'fixflags')
     assert.equal(typeof payload.state.changedFileCount, 'number')
     assert.ok(Array.isArray(payload.recommendations))
     assert.ok(payload.next.length > 0)
