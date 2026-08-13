@@ -9,10 +9,25 @@ import { MetricCard } from '@/components/admin/MetricCard'
 import { startOf, pct } from '@/lib/admin/date-ranges'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { subscriptionMetrics } from '@/lib/analytics/subscription-metrics'
+import { calculateImprovementValueMetrics } from '@/lib/analytics/improvement-value-metrics'
 
 function planPriceUsd(plan: keyof typeof PLAN_DEFINITIONS): number {
   return Number(PLAN_DEFINITIONS[plan].price.replace(/[^0-9.]/g, '')) || 0
 }
+
+function formatHours(value: number | null): string {
+  return value === null ? 'N/A' : `${value.toFixed(1)}h`
+}
+
+const REJECTION_LABELS = {
+  WRONG: 'Wrong',
+  ALREADY_KNOWN: 'Already known',
+  LOW_IMPACT: 'Low impact',
+  POOR_TIMING: 'Poor timing',
+  TOO_COSTLY: 'Too costly',
+  WEAK_RECOMMENDATION: 'Weak recommendation',
+  MISUNDERSTOOD_PRODUCT_CONTEXT: 'Misunderstood Product context',
+} as const
 
 export default async function AdminAnalyticsPage() {
   const todayStart = startOf(0)
@@ -34,7 +49,7 @@ export default async function AdminAnalyticsPage() {
     anonAuditsMonth,
     anonCompletedMonth,
     anonUnlinkedLeads,
-    improvedAttemptsMonth,
+    improvementValueRows,
     watchedProducts,
     productsWithSecondCycle,
   ] = await Promise.all([
@@ -54,13 +69,36 @@ export default async function AdminAnalyticsPage() {
       where: { userId: null, status: 'COMPLETED', createdAt: { gte: monthAgo } },
     }),
     prisma.lead.count({ where: { linkedUserId: null } }),
-    prisma.improvementAttempt.findMany({
-      where: { outcome: 'IMPROVED', updatedAt: { gte: monthAgo } },
+    prisma.improvement.findMany({
+      where: { createdAt: { gte: monthAgo } },
       select: {
+        id: true,
+        projectId: true,
         createdAt: true,
-        updatedAt: true,
-        verificationAudit: {
-          select: { runCost: { select: { estimatedCostUsd: true } } },
+        acceptedAt: true,
+        rejectionReason: true,
+        project: { select: { createdAt: true } },
+        occurrences: {
+          select: {
+            audit: { select: { id: true, createdAt: true } },
+            flag: { select: { createdAt: true } },
+          },
+        },
+        attempts: {
+          select: {
+            createdAt: true,
+            outcome: true,
+            sourceAudit: {
+              select: { id: true, runCost: { select: { estimatedCostUsd: true } } },
+            },
+            verificationAudit: {
+              select: {
+                id: true,
+                completedAt: true,
+                runCost: { select: { estimatedCostUsd: true } },
+              },
+            },
+          },
         },
       },
     }),
@@ -139,23 +177,7 @@ export default async function AdminAnalyticsPage() {
 
   const loggedInAuditsMonth = Math.max(0, auditsMonth - anonAuditsMonth)
   const anonCompleteRate = pct(anonCompletedMonth, anonAuditsMonth)
-  const verifiedImprovementCount = improvedAttemptsMonth.length
-  const verificationCost = improvedAttemptsMonth.reduce(
-    (sum, attempt) =>
-      sum + Number(attempt.verificationAudit?.runCost?.estimatedCostUsd ?? 0),
-    0
-  )
-  const costPerVerifiedImprovement =
-    verifiedImprovementCount > 0 ? verificationCost / verifiedImprovementCount : null
-  const averageTimeToVerifiedHours =
-    verifiedImprovementCount > 0
-      ? improvedAttemptsMonth.reduce(
-          (sum, attempt) => sum + (attempt.updatedAt.getTime() - attempt.createdAt.getTime()),
-          0
-        ) /
-        verifiedImprovementCount /
-        3_600_000
-      : null
+  const improvementValue = calculateImprovementValueMetrics(improvementValueRows)
 
   const periodStats = [
     {
@@ -191,21 +213,62 @@ export default async function AdminAnalyticsPage() {
       </PageHeader>
 
       <section className="space-y-4">
-        <SectionTitle>Continuous improvement (last 30 days)</SectionTitle>
+        <SectionTitle>Customer value funnel (recommendations created in the last 30 days)</SectionTitle>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
-            label="Verified improvements"
-            value={verifiedImprovementCount.toLocaleString()}
+            label="Recommended"
+            value={improvementValue.recommended.toLocaleString()}
             variant="subtle"
           />
           <MetricCard
-            label="Cost per verified improvement"
-            value={costPerVerifiedImprovement === null ? 'N/A' : `$${costPerVerifiedImprovement.toFixed(2)}`}
+            label="Accepted"
+            value={improvementValue.accepted.toLocaleString()}
             variant="subtle"
           />
           <MetricCard
-            label="Time to verified outcome"
-            value={averageTimeToVerifiedHours === null ? 'N/A' : `${averageTimeToVerifiedHours.toFixed(1)}h`}
+            label="Attempted"
+            value={improvementValue.attempted.toLocaleString()}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Verified"
+            value={improvementValue.verified.toLocaleString()}
+            variant="subtle"
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            label="URL to first evidence"
+            value={formatHours(improvementValue.urlToFirstEvidenceHours)}
+            variant="subtle"
+          />
+          <MetricCard
+            label="URL to valuable recommendation"
+            value={formatHours(improvementValue.urlToValuableRecommendationHours)}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Recommendation to attempt"
+            value={formatHours(improvementValue.recommendationToAttemptHours)}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Product to verified improvement"
+            value={formatHours(improvementValue.productToVerifiedImprovementHours)}
+            variant="subtle"
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            label="Verified meaningful improvements / active Product"
+            value={improvementValue.verifiedMeaningfulImprovementsPerActiveProduct.toFixed(2)}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Cost / verified improvement"
+            value={improvementValue.costPerVerifiedImprovementUsd === null
+              ? 'N/A'
+              : `$${improvementValue.costPerVerifiedImprovementUsd.toFixed(2)}`}
             variant="subtle"
           />
           <MetricCard
@@ -214,7 +277,43 @@ export default async function AdminAnalyticsPage() {
             detail={<span className="text-xs text-muted-foreground">{watchedProducts} under Watch</span>}
             variant="subtle"
           />
+          <MetricCard
+            label="Improved outcomes"
+            value={improvementValue.outcomes.IMPROVED.toLocaleString()}
+            detail={<span className="text-xs text-muted-foreground">Outcome, not self-report</span>}
+            variant="subtle"
+          />
         </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader><CardTitle className="text-sm">Verification outcomes</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 gap-3 text-sm">
+              {Object.entries(improvementValue.outcomes).map(([label, count]) => (
+                <div key={label} className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">{label.toLowerCase()}</span>
+                  <span className="font-mono tabular-nums">{count}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-sm">Why recommendations were declined</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {Object.entries(improvementValue.rejections).map(([reason, count]) => (
+                <div key={reason} className="flex justify-between gap-3">
+                  <span className="text-muted-foreground">
+                    {REJECTION_LABELS[reason as keyof typeof REJECTION_LABELS]}
+                  </span>
+                  <span className="font-mono tabular-nums">{count}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+        <p className="max-w-4xl text-xs text-muted-foreground">
+          Recommended → Accepted → Attempted → Verified → Outcome is derived from durable Product records.
+          Feedback supports judgment analysis but does not count as proof of value.
+        </p>
       </section>
 
       <section className="space-y-4">

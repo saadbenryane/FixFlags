@@ -25,11 +25,13 @@ export const RECHECK_DIFF_COPY = {
 } as const
 
 export const FLAG_DISMISS_REASONS = [
-  { id: 'incorrect', label: 'Incorrect' },
-  { id: 'intentional', label: 'Intentional' },
-  { id: 'already_fixed', label: 'Already fixed' },
-  { id: 'low_priority', label: 'Low priority' },
-  { id: 'duplicate', label: 'Duplicate' },
+  { id: 'WRONG', label: 'Wrong' },
+  { id: 'ALREADY_KNOWN', label: 'Already known' },
+  { id: 'LOW_IMPACT', label: 'Low impact' },
+  { id: 'POOR_TIMING', label: 'Poor timing' },
+  { id: 'TOO_COSTLY', label: 'Too costly' },
+  { id: 'WEAK_RECOMMENDATION', label: 'Weak recommendation' },
+  { id: 'MISUNDERSTOOD_PRODUCT_CONTEXT', label: 'Misunderstood Product context' },
 ] as const
 
 export type FlagDismissReasonId = (typeof FLAG_DISMISS_REASONS)[number]['id']
@@ -38,8 +40,8 @@ export const FLAG_FEEDBACK_COPY = {
   thanksUp: 'Thanks for the feedback!',
   thanksDown: "Got it, we'll improve this.",
   saveFailed: 'Failed to save feedback',
-  dismissPrompt: 'Why are you dismissing this flag?',
-  dismissed: 'Flag dismissed.',
+  dismissPrompt: 'Why are you not acting on this recommendation?',
+  dismissed: 'Recommendation declined.',
 } as const
 
 export const FLOW_SCAN_STATUS = {

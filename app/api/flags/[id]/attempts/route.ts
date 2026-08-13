@@ -5,18 +5,28 @@ import { auth } from '@/lib/auth'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { recordFlagImprovementAttempt } from '@/lib/improvements/service'
+import { IMPROVEMENT_REJECTION_REASONS } from '@/lib/improvements/rejection-reasons'
 
 const schema = z.object({
   builder: z.string().trim().min(1).max(80),
-  action: z.enum(['HANDOFF', 'READY_TO_VERIFY', 'REJECT']),
+  action: z.enum(['ACCEPT', 'READY_TO_VERIFY', 'REJECT']),
   changeSummary: z.string().trim().min(1).max(2_000).optional(),
   deploymentReference: z.string().trim().max(500).optional(),
+  rejectionReason: z.enum(IMPROVEMENT_REJECTION_REASONS).optional(),
+  rejectionNote: z.string().trim().max(500).optional(),
 }).superRefine((value, context) => {
   if (value.action === 'READY_TO_VERIFY' && !value.changeSummary) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['changeSummary'],
       message: 'Describe the implemented change',
+    })
+  }
+  if (value.action === 'REJECT' && !value.rejectionReason) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['rejectionReason'],
+      message: 'Choose why this recommendation was rejected',
     })
   }
 })

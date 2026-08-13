@@ -487,7 +487,7 @@ Ready, Reviewing, Needs guidance, User control, Review complete, Report unlocked
 
 ## 40) Primary and supporting metrics
 
-**Primary:** verified improvements per active product.
+**Primary:** verified meaningful improvements per active Product.
 
 **Supporting:** review activation and completion, report open + evidence replay + fix preparation, takeover usage, fix export and verification completion, resolved findings and return retention.
 

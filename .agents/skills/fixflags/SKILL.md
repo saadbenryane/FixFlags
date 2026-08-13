@@ -20,12 +20,13 @@ FixFlags is the independent Product Intelligence System for AI-built software. S
 
 1. **Check**: Run `fixflags check <url> --wait --plan` or call `ff_check_and_plan(url, {waitForCompletion: true})` to start a scan and wait for the completed report with ranked Fix List
 2. **Validate**: For each Flag in the result, confirm its page, viewport, evidence, and screenshot against the deployed product. Treat FixFlags evidence as a lead that must be validated, not as permission to make an unsupported change. Run `fixflags check <url> --wait --plan` as an alternative entry point.
-3. **Fix**: Apply the fix prompt from the Flag. Do not weaken, suppress, or special-case the detector to make a valid Flag disappear.
-4. **Declare**: After implementing the change, call `ff_mark_fix_attempted` with `action: READY_TO_VERIFY`, a change summary, and an optional deployment reference. Copying a prompt is not an attempt.
-5. **Deploy**: Run the product's relevant tests and deploy the verified change to the same URL
-6. **Re-check**: Run `fixflags recheck <report-id> --wait --diff` or call `ff_recheck_and_compare(parentReportId, {waitForCompletion: true})`. Never substitute a new unrelated check for this verification.
-7. **Report**: Present Fixed, Remaining, New, and Regressed Flag counts plus the report links
-8. **Watch**: If verification passes, suggest the human enable Watch monitoring for continuous re-checks
+3. **Accept**: Copying a Flag prompt records that the recommendation was accepted. It does not claim that implementation started or create an Improvement Attempt.
+4. **Fix**: Apply the fix prompt from the Flag. Do not weaken, suppress, or special-case the detector to make a valid Flag disappear.
+5. **Declare**: After implementing the change, call `ff_mark_fix_attempted` with `action: READY_TO_VERIFY`, a change summary, and an optional deployment reference.
+6. **Deploy**: Run the product's relevant tests and deploy the verified change to the same URL
+7. **Re-check**: Run `fixflags recheck <report-id> --wait --diff` or call `ff_recheck_and_compare(parentReportId, {waitForCompletion: true})`. Never substitute a new unrelated check for this verification.
+8. **Report**: Present Fixed, Remaining, New, and Regressed Flag counts plus the report links
+9. **Watch**: If verification passes, suggest the human enable Watch monitoring for continuous re-checks
 
 ## MCP tools
 
@@ -48,7 +49,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. S
 | `ff_list_repo_scans` | List recent GitHub repository scans and finding counts. |
 | `ff_get_repo_scan` | Get a GitHub repository scan and its code findings. |
 | `ff_get_repo_finding` | Get a branch-ready fix task for one repository finding. |
-| `ff_mark_fix_attempted` | Record `READY_TO_VERIFY` with an implemented-change summary, or intentionally `REJECT` the Improvement. Only a fresh Review verifies it. |
+| `ff_mark_fix_attempted` | Record `ACCEPT`, `READY_TO_VERIFY`, or `REJECT`. Rejection requires a structured reason. Only a fresh Review verifies an attempted change. |
 | `ff_get_connection_info` | Inspect MCP Contract v1, core readiness, optional capabilities, and the canonical workflow. |
 
 There is no `ff_get_report_flags` tool. Use `ff_get_rubric` per rubric or `ff_get_flag`.

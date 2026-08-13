@@ -14,6 +14,7 @@ import {
 import { mutateProjectIntelligence } from '@/lib/audit/ensure-product-project'
 import { synthesizeProductSignals } from '@/lib/signals/judgment'
 import { assessVerificationCoverage } from '@/lib/improvements/verification-coverage'
+import type { ImprovementRejectionReason } from '@/lib/improvements/rejection-reasons'
 
 type ImprovementFlag = {
   id: string
@@ -179,6 +180,10 @@ export async function createImprovementAttempt(input: {
   if (!improvement) throw new Error('Improvement not found for Product')
 
   return prisma.$transaction(async (tx) => {
+    await tx.improvement.updateMany({
+      where: { id: improvement.id, acceptedAt: null },
+      data: { acceptedAt: new Date(), acceptedByChannel: input.builder },
+    })
     const existing = await tx.improvementAttempt.findFirst({
       where: {
         improvementId: improvement.id,
@@ -215,9 +220,11 @@ export async function recordFlagImprovementAttempt(input: {
   flagId: string
   userId: string
   builder: string
-  action: 'HANDOFF' | 'READY_TO_VERIFY' | 'REJECT'
+  action: 'ACCEPT' | 'READY_TO_VERIFY' | 'REJECT'
   changeSummary?: string
   deploymentReference?: string
+  rejectionReason?: ImprovementRejectionReason
+  rejectionNote?: string
 }) {
   const flag = await prisma.flag.findFirst({
     where: { id: input.flagId, audit: { userId: input.userId } },
@@ -249,7 +256,7 @@ export async function recordFlagImprovementAttempt(input: {
         successCondition:
           flag.verificationRule || `A fresh Product Review no longer observes: ${flag.problem}`,
         priority: 50,
-        status: 'ACCEPTED',
+        status: 'PROPOSED',
       },
       update: {},
       select: { id: true },
@@ -268,9 +275,15 @@ export async function recordFlagImprovementAttempt(input: {
   }
 
   if (input.action === 'REJECT') {
+    if (!input.rejectionReason) throw new Error('Choose why this recommendation was rejected')
     await prisma.improvement.update({
       where: { id: improvementId },
-      data: { status: 'REJECTED' },
+      data: {
+        status: 'REJECTED',
+        rejectionReason: input.rejectionReason,
+        rejectionNote: input.rejectionNote?.trim() || null,
+        rejectedAt: new Date(),
+      },
     })
     return {
       flagId: flag.id,
@@ -279,32 +292,28 @@ export async function recordFlagImprovementAttempt(input: {
       improvementId,
       attemptId: null,
       sourceReviewId: flag.audit.id,
+      rejectionReason: input.rejectionReason,
       nextAction: { type: 'NONE' as const },
     }
   }
 
-  if (input.action === 'HANDOFF') {
-    const attempt = await prisma.$transaction(async (tx) => {
-      const created = await tx.improvementAttempt.create({
-        data: {
-          improvementId,
-          sourceAuditId: flag.audit.id,
-          builder: input.builder,
-          handoffReference: `flag:${flag.id}`,
-        },
+  if (input.action === 'ACCEPT') {
+    await prisma.$transaction(async (tx) => {
+      await tx.improvement.updateMany({
+        where: { id: improvementId, acceptedAt: null },
+        data: { acceptedAt: new Date(), acceptedByChannel: input.builder },
       })
-      await tx.improvement.update({
-        where: { id: improvementId },
-        data: { status: 'IN_PROGRESS' },
+      await tx.improvement.updateMany({
+        where: { id: improvementId, status: { in: ['PROPOSED', 'ACCEPTED'] } },
+        data: { status: 'ACCEPTED' },
       })
-      return created
     })
     return {
       flagId: flag.id,
       action: input.action,
       productId: flag.audit.projectId,
       improvementId,
-      attemptId: attempt.id,
+      attemptId: null,
       sourceReviewId: flag.audit.id,
       nextAction: { type: 'IMPLEMENT' as const },
     }

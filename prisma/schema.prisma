@@ -482,7 +482,7 @@ model Audit {
   reportCompleteness         ReportCompleteness           @default(UNKNOWN)
   evidenceCoverage           Json?
   finalizedAt                DateTime?
-  improvementProjectedAt    DateTime?
+  improvementProjectedAt     DateTime?
   failureCode                String?
   failureStage               String?
   failureMetadata            Json?
@@ -979,7 +979,7 @@ model Flag {
 }
 
 model Improvement {
-  id                String                  @id @default(cuid())
+  id                String                      @id @default(cuid())
   projectId         String
   fingerprint       String
   title             String
@@ -988,17 +988,24 @@ model Improvement {
   recommendedChange String
   protectedScope    String?
   successCondition  String
-  priority          Int                     @default(0)
-  status            ImprovementStatus       @default(PROPOSED)
-  createdAt         DateTime                @default(now())
-  updatedAt         DateTime                @updatedAt
-  project           Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  priority          Int                         @default(0)
+  status            ImprovementStatus           @default(PROPOSED)
+  acceptedAt        DateTime?
+  acceptedByChannel String?
+  rejectionReason   ImprovementRejectionReason?
+  rejectionNote     String?
+  rejectedAt        DateTime?
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+  project           Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   occurrences       ImprovementOccurrence[]
   attempts          ImprovementAttempt[]
 
   @@unique([projectId, fingerprint])
   @@index([projectId, status, priority])
   @@index([projectId, updatedAt(sort: Desc)])
+  @@index([acceptedAt])
+  @@index([rejectionReason])
   @@map("improvements")
 }
 
@@ -1107,14 +1114,15 @@ model ProductSignal {
 }
 
 model FlagFeedback {
-  id           String   @id @default(cuid())
+  id           String                      @id @default(cuid())
   flagId       String
   userId       String?
   vote         Int
   comment      String?
-  createdAt    DateTime @default(now())
+  reason       ImprovementRejectionReason?
+  createdAt    DateTime                    @default(now())
   visitorToken String?
-  flag         Flag     @relation(fields: [flagId], references: [id], onDelete: Cascade)
+  flag         Flag                        @relation(fields: [flagId], references: [id], onDelete: Cascade)
 
   @@unique([flagId, userId])
   @@unique([flagId, visitorToken])
@@ -1662,6 +1670,16 @@ enum ImprovementStatus {
   REJECTED
   SUPERSEDED
   UNVERIFIED
+}
+
+enum ImprovementRejectionReason {
+  WRONG
+  ALREADY_KNOWN
+  LOW_IMPACT
+  POOR_TIMING
+  TOO_COSTLY
+  WEAK_RECOMMENDATION
+  MISUNDERSTOOD_PRODUCT_CONTEXT
 }
 
 enum ImprovementOccurrenceKind {

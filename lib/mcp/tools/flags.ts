@@ -21,6 +21,7 @@ import {
   mcpErrorOutputSchema,
   mcpStructuredResult,
 } from '@/lib/mcp/contract'
+import { IMPROVEMENT_REJECTION_REASONS } from '@/lib/improvements/rejection-reasons'
 
 export function registerFlagTools(server: McpServer, user: User) {
   server.tool(
@@ -338,14 +339,16 @@ export function registerFlagTools(server: McpServer, user: User) {
       description: MCP_TOOLS.markFixAttempted.desc,
       inputSchema: {
         flagId: z.string(),
-        action: z.enum(['READY_TO_VERIFY', 'REJECT']),
+        action: z.enum(['ACCEPT', 'READY_TO_VERIFY', 'REJECT']),
         changeSummary: z.string().trim().min(1).optional(),
         deploymentReference: z.string().trim().min(1).optional(),
+        rejectionReason: z.enum(IMPROVEMENT_REJECTION_REASONS).optional(),
+        rejectionNote: z.string().trim().min(1).optional(),
       },
       outputSchema: z.union([
         z.object({
           flagId: z.string(),
-          action: z.enum(['READY_TO_VERIFY', 'REJECT']),
+          action: z.enum(['ACCEPT', 'READY_TO_VERIFY', 'REJECT']),
           productId: z.string(),
           improvementId: z.string(),
           sourceReviewId: z.string(),
@@ -358,12 +361,25 @@ export function registerFlagTools(server: McpServer, user: User) {
         destructiveHint: false, idempotentHint: true, openWorldHint: false,
       },
     },
-    async ({ flagId, action, changeSummary, deploymentReference }) => {
+    async ({
+      flagId,
+      action,
+      changeSummary,
+      deploymentReference,
+      rejectionReason,
+      rejectionNote,
+    }) => {
       try {
         if (action === 'READY_TO_VERIFY' && !changeSummary) {
           throw Object.assign(
             new Error('changeSummary is required when a change is ready to verify'),
             { code: 'INVALID_INPUT', action: 'provide_change_summary' }
+          )
+        }
+        if (action === 'REJECT' && !rejectionReason) {
+          throw Object.assign(
+            new Error('rejectionReason is required when rejecting a recommendation'),
+            { code: 'INVALID_INPUT', action: 'choose_rejection_reason' }
           )
         }
         const { recordFlagImprovementAttempt } = await import('@/lib/improvements/service')
@@ -374,6 +390,8 @@ export function registerFlagTools(server: McpServer, user: User) {
           action,
           changeSummary,
           deploymentReference,
+          rejectionReason,
+          rejectionNote,
         })
         return mcpStructuredResult(result)
       } catch (error) {

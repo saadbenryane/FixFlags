@@ -6,13 +6,23 @@ import { headers } from 'next/headers'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { getOrCreateVisitorToken } from '@/lib/live-support/visitor-token'
+import {
+  IMPROVEMENT_REJECTION_REASONS,
+  normalizeImprovementRejectionReason,
+} from '@/lib/improvements/rejection-reasons'
+
+const LEGACY_FEEDBACK_REASONS = [
+  'incorrect',
+  'intentional',
+  'already_fixed',
+  'low_priority',
+  'duplicate',
+] as const
 
 const feedbackSchema = z.object({
   vote: z.number().min(-1).max(1),
   comment: z.string().max(500).optional(),
-  reason: z
-    .enum(['incorrect', 'intentional', 'already_fixed', 'low_priority', 'duplicate'])
-    .optional(),
+  reason: z.enum([...IMPROVEMENT_REJECTION_REASONS, ...LEGACY_FEEDBACK_REASONS]).optional(),
   dismiss: z.boolean().optional(),
 })
 
@@ -47,8 +57,9 @@ export async function POST(
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
     const visitorToken = await getOrCreateVisitorToken()
     const reasonLabel = parsed.data.reason
-      ? parsed.data.reason.replace(/_/g, ' ')
+      ? parsed.data.reason.toLowerCase().replace(/_/g, ' ')
       : null
+    const rejectionReason = normalizeImprovementRejectionReason(parsed.data.reason)
     const commentParts = [
       reasonLabel ? `Dismiss reason: ${reasonLabel}` : null,
       parsed.data.comment?.trim() || null,
@@ -63,11 +74,13 @@ export async function POST(
         userId: session?.user?.id ?? null,
         vote: parsed.data.vote,
         comment,
+        reason: rejectionReason,
       },
       update: {
         vote: parsed.data.vote,
         comment,
         userId: session?.user?.id ?? null,
+        reason: rejectionReason,
       },
     })
 
@@ -98,7 +111,12 @@ export async function POST(
         } else {
           await prisma.improvement.update({
             where: { id: occurrence.improvementId },
-            data: { status: parsed.data.reason === 'duplicate' ? 'SUPERSEDED' : 'REJECTED' },
+            data: {
+              status: parsed.data.reason === 'duplicate' ? 'SUPERSEDED' : 'REJECTED',
+              rejectionReason,
+              rejectionNote: parsed.data.comment?.trim() || null,
+              rejectedAt: new Date(),
+            },
           })
         }
       }

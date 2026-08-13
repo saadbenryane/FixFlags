@@ -102,7 +102,7 @@ export const MCP_TOOLS = {
   },
   markFixAttempted: {
     name: 'ff_mark_fix_attempted',
-    desc: 'Record a builder attempt for a Flag, or intentionally reject it. Only a fresh FixFlags Review can verify the result.',
+    desc: 'Accept a recommendation, record a change ready for verification, or reject it with a judgment reason. Only a fresh FixFlags Review can verify the result.',
     tier: 'core',
   },
   getConnectionInfo: {

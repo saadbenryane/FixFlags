@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   auditFindUnique: vi.fn(),
   flagFindMany: vi.fn(),
+  flagFindFirst: vi.fn(),
   improvementFindFirst: vi.fn(),
   improvementUpsert: vi.fn(),
   improvementUpdate: vi.fn(),
+  improvementUpdateMany: vi.fn(),
   occurrenceUpsert: vi.fn(),
   occurrenceFindMany: vi.fn(),
   attemptCreate: vi.fn(),
@@ -21,11 +23,12 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/db', () => ({
   prisma: {
     audit: { findUnique: mocks.auditFindUnique },
-    flag: { findMany: mocks.flagFindMany },
+    flag: { findMany: mocks.flagFindMany, findFirst: mocks.flagFindFirst },
     improvement: {
       findFirst: mocks.improvementFindFirst,
       upsert: mocks.improvementUpsert,
       update: mocks.improvementUpdate,
+      updateMany: mocks.improvementUpdateMany,
     },
     improvementOccurrence: {
       upsert: mocks.occurrenceUpsert,
@@ -63,6 +66,7 @@ import {
   createImprovementAttempt,
   improvementFingerprint,
   materializeAttentionForAudit,
+  recordFlagImprovementAttempt,
   reconcileImprovementVerification,
 } from './service'
 
@@ -99,12 +103,16 @@ beforeEach(() => {
           findFirst: mocks.attemptFindFirst,
           update: mocks.attemptUpdate,
         },
-        improvement: { update: mocks.improvementUpdate },
+        improvement: {
+          update: mocks.improvementUpdate,
+          updateMany: mocks.improvementUpdateMany,
+        },
       })
     }
     return Promise.all(input as Promise<unknown>[])
   })
   mocks.improvementUpdate.mockResolvedValue({})
+  mocks.improvementUpdateMany.mockResolvedValue({ count: 1 })
   mocks.attemptUpdate.mockResolvedValue({})
   mocks.attemptFindFirst.mockResolvedValue(null)
   mocks.occurrenceUpsert.mockResolvedValue({})
@@ -224,6 +232,10 @@ describe('createImprovementAttempt', () => {
       where: { id: 'improvement-1' },
       data: { status: 'READY_TO_VERIFY' },
     })
+    expect(mocks.improvementUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'improvement-1', acceptedAt: null },
+      data: { acceptedAt: expect.any(Date), acceptedByChannel: 'Codex' },
+    })
   })
 
   it('updates the one open attempt for the same Improvement and source Review', async () => {
@@ -249,6 +261,72 @@ describe('createImprovementAttempt', () => {
         changeSummary: 'Restored the signup action',
         deploymentReference: 'deploy-2',
       }),
+    })
+  })
+})
+
+describe('recordFlagImprovementAttempt', () => {
+  const ownedFlag = {
+    ...flag,
+    improvementOccurrence: { improvementId: 'improvement-1' },
+    audit: {
+      id: 'review-1',
+      projectId: 'product-1',
+      productContract: null,
+    },
+  }
+
+  it('records prompt acceptance without creating an Improvement Attempt', async () => {
+    mocks.flagFindFirst.mockResolvedValue(ownedFlag)
+
+    const result = await recordFlagImprovementAttempt({
+      flagId: 'flag-1',
+      userId: 'user-1',
+      builder: 'web',
+      action: 'ACCEPT',
+    })
+
+    expect(result).toMatchObject({
+      action: 'ACCEPT',
+      improvementId: 'improvement-1',
+      attemptId: null,
+      nextAction: { type: 'IMPLEMENT' },
+    })
+    expect(mocks.attemptCreate).not.toHaveBeenCalled()
+    expect(mocks.improvementUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'improvement-1', acceptedAt: null },
+      data: { acceptedAt: expect.any(Date), acceptedByChannel: 'web' },
+    })
+  })
+
+  it('requires and persists a structured rejection reason', async () => {
+    mocks.flagFindFirst.mockResolvedValue(ownedFlag)
+
+    await expect(recordFlagImprovementAttempt({
+      flagId: 'flag-1',
+      userId: 'user-1',
+      builder: 'MCP',
+      action: 'REJECT',
+    })).rejects.toThrow(/why this recommendation/i)
+
+    const result = await recordFlagImprovementAttempt({
+      flagId: 'flag-1',
+      userId: 'user-1',
+      builder: 'MCP',
+      action: 'REJECT',
+      rejectionReason: 'TOO_COSTLY',
+      rejectionNote: 'Needs a larger migration',
+    })
+
+    expect(result).toMatchObject({ action: 'REJECT', rejectionReason: 'TOO_COSTLY' })
+    expect(mocks.improvementUpdate).toHaveBeenCalledWith({
+      where: { id: 'improvement-1' },
+      data: {
+        status: 'REJECTED',
+        rejectionReason: 'TOO_COSTLY',
+        rejectionNote: 'Needs a larger migration',
+        rejectedAt: expect.any(Date),
+      },
     })
   })
 })

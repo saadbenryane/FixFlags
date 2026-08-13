@@ -36,7 +36,7 @@ describe('MCP SDK lifecycle', () => {
     })
     expect(attemptTool?.inputSchema).toMatchObject({
       properties: {
-        action: { enum: ['READY_TO_VERIFY', 'REJECT'] },
+        action: { enum: ['ACCEPT', 'READY_TO_VERIFY', 'REJECT'] },
         changeSummary: { type: 'string' },
         deploymentReference: { type: 'string' },
       },

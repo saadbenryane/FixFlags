@@ -9,7 +9,9 @@ Read `AGENTS.md` first. Canonical event types live in `lib/analytics/events.ts`.
 
 ## North-star
 
-% of completed scans where the user copies a fix and later re-checks.
+Verified meaningful improvements per active Product.
+The durable customer-value funnel is Recommended → Accepted → Attempted → Verified → Outcome.
+Feedback supports judgment analysis but is not proof of value.
 
 Growth thresholds and deferred work live in `ROADMAP.md` and the launch funnel handoff (`.agents/handoffs/launch-funnel-p2.md`); do not duplicate them here.
 
@@ -42,7 +44,9 @@ Growth thresholds and deferred work live in `ROADMAP.md` and the launch funnel h
 
 **Anon funnel stages (GA4):** `started_audit` (`is_logged_in: false`) → `viewed_report` → `report_signup_cta_clicked` → `signed_up` → `audits_claimed` → `fix_prompt_copied` → `recheck_*`.
 
-Measure focused and detailed report visits separately when adding a route-view event. The north-star remains copied fix followed by re-check, not time spent in the explorer. Report order is canonical in `knowledge/report-contract.md`.
+Measure focused and detailed report visits separately when adding a route-view event.
+Client events describe acquisition and interaction; Product, Improvement, Attempt, verification, and outcome records are the funnel source of truth.
+Report order is canonical in `knowledge/report-contract.md`.
 
 Before shipping funnel changes: every `FunnelEvent` union member must have a `trackEvent('…')` call site (or be removed from the union).
 
