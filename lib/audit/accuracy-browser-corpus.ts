@@ -11,6 +11,12 @@ export interface AccuracyBrowserTarget {
  */
 export const ACCURACY_BROWSER_TARGETS: AccuracyBrowserTarget[] = [
   {
+    url: 'https://fixflags.com/',
+    expectedPrimaryCtaText: 'Review my site',
+    expectedAbsentCheckIds: ['cta-below-fold-mobile'],
+    expectedInputsBelow16Count: 2,
+  },
+  {
     url: 'https://saadbenryane.com/',
     expectedPrimaryCtaText: 'Book a call',
     expectedAbsentCheckIds: ['cta-below-fold-mobile'],

@@ -4,6 +4,20 @@ Date: 2026-08-13
 
 Verdict: PARTIAL
 
+## Continuous production dogfood
+
+A fresh anonymous production Review of `https://fixflags.com` completed as report `cmsruffh1000bqa20cuqjsyon` with score 80, FULL evidence capture, and ten persisted Flags.
+Its raw verdict claimed the primary mobile call to action was not visible.
+That claim was unsupported by every persisted Flag and contradicted by the Review's own 375 × 812 screenshot, where both header and hero actions were visible.
+The independent rendered probe measured `Review my site` at 345px in an 812px viewport and emitted no `cta-below-fold-mobile` Flag.
+
+The candidate now anchors verdicts to the highest-priority Flag that survives validation and deduplication.
+The exact failure is a deterministic regression test and `fixflags.com` is part of the maintained rendered-browser accuracy corpus.
+Focused verdict and false-positive tests passed, TypeScript passed, and the live rendered probe passed.
+
+This improves judgment integrity but does not change the release verdict.
+The deployed site still runs `350d595`; the corrected candidate remains local until the credentialed release process passes.
+
 ## Candidate
 
 The release candidate now measures the durable customer-value funnel as Recommended → Accepted → Attempted → Verified → Outcome.

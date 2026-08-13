@@ -277,6 +277,28 @@ describe('AI triage confidence gate (CRITICAL needs corroboration-grade confiden
     const out = validateTriageOutput(triageWithFlag('CRITICAL', 0.95), deterministic)
     expect(out.newFlags[0]?.severity).toBe('CRITICAL')
   })
+
+  it('anchors an unsupported verdict to the highest-priority persisted evidence', () => {
+    const output = triageWithFlag('IMPORTANT', 0.95)
+    output.verdict =
+      'The primary call-to-action is not visible to mobile users, which severely impacts conversion potential.'
+    const out = validateTriageOutput(output, [
+      ...deterministic,
+      {
+        checkId: 'mobile-lcp-critical',
+        rubric: 'EXPERIENCE',
+        severity: 'CRITICAL',
+        problem: 'Mobile LCP is critically slow (5.5s)',
+        evidence: 'The measured mobile LCP is 5.5 seconds.',
+        fix: 'Reduce the largest contentful paint time.',
+        confidence: 1,
+        source: 'DETERMINISTIC',
+      },
+    ])
+
+    expect(out.verdict).toBe('Highest priority: Mobile LCP is critically slow (5.5s).')
+    expect(out.verdict).not.toContain('call-to-action')
+  })
 })
 
 describe('per-page ::page:N dedup in re-check diffs', () => {

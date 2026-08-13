@@ -6,6 +6,7 @@ import {
   assertRubricConsistency,
   assertValidLaunchChecklist,
 } from './judge-utils'
+import { groundedReportVerdict } from './verdict'
 
 /**
  * AI triage flags are a single LLM read over screenshots + page text, so a
@@ -67,11 +68,19 @@ export function validateTriageOutput(
   assertRubricConsistency(output.rubrics)
   assertValidLaunchChecklist(output.launchChecklist)
 
+  const newFlags = enforceAiConfidenceGates(
+    deduplicateTriageFlags(deterministicFlags, output.newFlags)
+  )
   return {
     ...output,
-    newFlags: enforceAiConfidenceGates(
-      deduplicateTriageFlags(deterministicFlags, output.newFlags)
+    // The verdict is a public judgment surface. Anchor it to the same highest-
+    // priority Flag that survives validation so an unsupported model claim can
+    // never contradict the persisted evidence.
+    verdict: groundedReportVerdict(
+      [...deterministicFlags, ...newFlags],
+      output.rubrics.map((rubric) => ({ name: rubric.name, grade: rubric.grade }))
     ),
+    newFlags,
     launchChecklist: reconcileLaunchChecklist(output.launchChecklist, deterministicFlags),
   }
 }

@@ -249,6 +249,77 @@ describe('persistTriageResults', () => {
 
     expect(mockTx.reportRubric.create).toHaveBeenCalledTimes(3)
     expect(mockTx.flag.createMany).not.toHaveBeenCalled()
+    const update = (mockTx.audit.update.mock.calls[0] as unknown[])[0] as {
+      data: { verdict: string }
+    }
+    expect(update.data.verdict).toBe(
+      'No supported priority issue was found in the captured evidence.'
+    )
+  })
+
+  it('grounds the stored verdict in a critical secondary-page Flag', async () => {
+    await persistTriageResults(
+      'audit-1',
+      makeTriageOutput({
+        verdict: 'The mobile CTA is hidden.',
+        newFlags: [
+          {
+            rubric: 'MESSAGE',
+            impactTag: 'CLARITY',
+            severity: 'IMPORTANT',
+            problem: 'Homepage headline is vague',
+            evidence: 'The headline does not name an outcome.',
+            whyItMatters: 'Visitors may not understand the offer.',
+            confidence: 0.8,
+            pageUrl: null,
+          },
+        ],
+      }),
+      [
+        makeDet({
+          checkId: 'flow-cta-unclickable::page:1',
+          rubric: 'EXPERIENCE',
+          severity: 'CRITICAL',
+          problem: 'Pricing signup action cannot be clicked',
+          pageUrl: 'https://example.com/pricing',
+        }),
+      ],
+      baseRubricScores()
+    )
+
+    const update = (mockTx.audit.update.mock.calls[0] as unknown[])[0] as {
+      data: { verdict: string }
+    }
+    expect(update.data.verdict).toContain('Pricing signup action cannot be clicked')
+    expect(update.data.verdict).not.toContain('mobile CTA')
+  })
+
+  it('includes preserved JOURNEY Flags in the stored verdict and rubric summary', async () => {
+    mockTx.flag.findMany.mockResolvedValue([
+      {
+        id: 'journey-1',
+        rubric: 'EXPERIENCE',
+        severity: 'CRITICAL',
+        problem: 'Signup journey cannot reach confirmation',
+        whyItMatters: 'New customers cannot finish creating an account.',
+        checkId: 'journey-signup-blocked',
+        impactTag: 'CONVERSION',
+        confidence: 1,
+      },
+    ])
+
+    await persistTriageResults('audit-1', makeTriageOutput(), [], baseRubricScores())
+
+    const update = (mockTx.audit.update.mock.calls[0] as unknown[])[0] as {
+      data: { verdict: string }
+    }
+    expect(update.data.verdict).toBe(
+      'Highest priority: Signup journey cannot reach confirmation. New customers cannot finish creating an account.'
+    )
+    const experience = mockTx.reportRubric.create.mock.calls
+      .map((call) => (call as unknown[])[0] as { data: { name: string; summary: string } })
+      .find((call) => call.data.name === 'EXPERIENCE')
+    expect(experience?.data.summary).toContain('Signup journey cannot reach confirmation')
   })
 
   it('merges deterministic flags with AI flags', async () => {
@@ -303,8 +374,26 @@ describe('persistTriageResults', () => {
 
   it('applies journey severity penalties to rubric scores', async () => {
     mockTx.flag.findMany.mockResolvedValue([
-      { rubric: 'EXPERIENCE', severity: 'CRITICAL' },
-      { rubric: 'EXPERIENCE', severity: 'IMPORTANT' },
+      {
+        id: 'journey-critical',
+        rubric: 'EXPERIENCE',
+        severity: 'CRITICAL',
+        problem: 'Checkout journey is blocked',
+        whyItMatters: 'Customers cannot complete payment.',
+        checkId: 'journey-checkout-blocked',
+        impactTag: 'REVENUE',
+        confidence: 1,
+      },
+      {
+        id: 'journey-important',
+        rubric: 'EXPERIENCE',
+        severity: 'IMPORTANT',
+        problem: 'Checkout feedback is unclear',
+        whyItMatters: 'Customers may retry payment unnecessarily.',
+        checkId: 'journey-checkout-feedback',
+        impactTag: 'FRICTION',
+        confidence: 1,
+      },
     ])
 
     await persistTriageResults('audit-1', makeTriageOutput(), [], baseRubricScores())

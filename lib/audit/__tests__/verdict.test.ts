@@ -36,7 +36,20 @@ describe('verdict helpers', () => {
         problem: 'The page stays blank on slow 3G',
         whyItMatters: 'Visitors cannot reach the primary action',
       }),
-      'Fix The page stays blank on slow 3G. Visitors cannot reach the primary action.'
+      'Highest priority: The page stays blank on slow 3G. Visitors cannot reach the primary action.'
+    )
+  })
+
+  it('does not preserve unsupported prose even when the verdict names the top Flag', () => {
+    assert.equal(
+      resolveReportVerdict(
+        'The page stays blank on slow 3G. The mobile CTA is also hidden.',
+        {
+          problem: 'The page stays blank on slow 3G',
+          whyItMatters: 'Visitors cannot reach the primary action',
+        }
+      ),
+      'Highest priority: The page stays blank on slow 3G. Visitors cannot reach the primary action.'
     )
   })
 })

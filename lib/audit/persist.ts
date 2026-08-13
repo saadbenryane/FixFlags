@@ -21,6 +21,8 @@ import { RUBRIC_ORDER } from './constants'
 import { PIPELINE_PROGRESS } from './progress'
 import { flagFingerprint } from './deduplicate'
 import type { DeterministicFlag, DeterministicFlagRow, AiFlagRow } from './flag-types'
+import { groundedReportVerdict, groundedRubricSummary } from './verdict'
+import { parseProductContract } from './product-contract'
 
 export type { DeterministicFlagRow, AiFlagRow } from './flag-types'
 
@@ -305,8 +307,27 @@ export async function persistTriageResults(
 
     const journeyFlags = await tx.flag.findMany({
       where: { auditId, source: 'JOURNEY' },
-      select: { rubric: true, severity: true },
+      select: {
+        id: true,
+        rubric: true,
+        severity: true,
+        problem: true,
+        whyItMatters: true,
+        checkId: true,
+        impactTag: true,
+        confidence: true,
+      },
     })
+    const auditContract = await tx.audit.findUnique({
+      where: { id: auditId },
+      select: { productContract: true },
+    })
+    const productContract = parseProductContract(auditContract?.productContract)
+    const judgmentFlags = [
+      ...deterministicFlags,
+      ...triageOutput.newFlags,
+      ...journeyFlags,
+    ]
     const journeyPenaltyByRubric: Partial<Record<RubricName, number>> = {}
     for (const flag of journeyFlags) {
       const rubricName = flag.rubric as RubricName
@@ -345,7 +366,12 @@ export async function persistTriageResults(
               finalScore === null ? statusFromGrade(finalGrade) : statusFromScore(finalScore),
             assessmentState: finalScore === null ? rubricData.assessmentState : 'ASSESSED',
             confidence: rubricData.confidence,
-            summary: rubricData.summary,
+            summary: groundedRubricSummary(
+              rubricName,
+              judgmentFlags,
+              finalGrade,
+              productContract
+            ),
             rubricPrompt: '',
             cursorPrompt: null,
             claudePrompt: null,
@@ -387,7 +413,11 @@ export async function persistTriageResults(
         progress: PIPELINE_PROGRESS.FINALIZING_PERSIST,
         pageJob: triageOutput.pageJob,
         pageType: triageOutput.pageType,
-        verdict: triageOutput.verdict,
+        verdict: groundedReportVerdict(
+          judgmentFlags,
+          RUBRIC_ORDER.map((name) => ({ name, grade: resolvedGrades[name] ?? null })),
+          productContract
+        ),
         score: overallScore,
         launchReadiness: {
           readiness: triageOutput.launchReadiness,
