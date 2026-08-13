@@ -360,7 +360,9 @@ test('accessibility: completed sample report has no axe violations', async ({ pa
   await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
   const results = await new AxeBuilder({ page: page as never }).analyze()
   expect(
-    results.violations.map((v) => `${v.id} (${v.impact}): ${v.nodes[0]?.target?.join(' ')}`)
+    results.violations.map((v) =>
+      `${v.id} (${v.impact}): ${v.nodes[0]?.target?.join(' ')} · ${v.nodes[0]?.failureSummary ?? 'no failure summary'}`
+    )
   ).toEqual([])
 })
 
@@ -381,7 +383,7 @@ test('accessibility: key marketing surfaces pass in light and dark at launch wid
         violations.push(
           ...results.violations.map(
             (violation) =>
-              `${route} ${colorScheme} ${width}px: ${violation.id} (${violation.impact}): ${violation.nodes[0]?.target?.join(' ')}`
+              `${route} ${colorScheme} ${width}px: ${violation.id} (${violation.impact}): ${violation.nodes[0]?.target?.join(' ')} · ${violation.nodes[0]?.failureSummary ?? 'no failure summary'}`
           )
         )
       }
@@ -442,8 +444,28 @@ for (const width of DENSITY_WIDTHS) {
       scrollWidth: document.documentElement.scrollWidth,
       reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     }))
+    const overflowing = await page.locator('body *').evaluateAll((elements) =>
+      elements
+        .map((element) => {
+          const box = element.getBoundingClientRect()
+          return {
+            tag: element.tagName.toLowerCase(),
+            className: element.getAttribute('class'),
+            text: element.textContent?.trim().slice(0, 80),
+            left: Math.round(box.left),
+            right: Math.round(box.right),
+            scrollWidth: element.scrollWidth,
+            clientWidth: element.clientWidth,
+          }
+        })
+        .filter((element) => element.left < -1 || element.right > document.documentElement.clientWidth + 1)
+        .slice(0, 12)
+    )
     expect(dimensions.reducedMotion).toBe(true)
-    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1)
+    expect(
+      dimensions.scrollWidth,
+      `Overflowing elements: ${JSON.stringify(overflowing)}`
+    ).toBeLessThanOrEqual(dimensions.clientWidth + 1)
   })
 }
 

@@ -986,7 +986,7 @@ export const REPORT_COPY = {
       sharedBody:
         "The link may have expired, been revoked, or no longer be eligible for sharing. Ask the owner for a new link.",
       returnHome: "Return home",
-      reviewSite: "Review my site",
+      reviewSite: "Review my product",
     },
     chat: {
       title: "Agent",

@@ -69,7 +69,7 @@ export function OAuthButtons({
           <Button
             type="button"
             variant="outline"
-            className="w-full"
+            className="h-auto min-h-11 w-full whitespace-normal px-3 py-2 text-center leading-snug"
             disabled={disabled || !!loading}
             loading={loading === 'google'}
             loadingLabel={AUTH.oauth.continueWithGoogle}
@@ -102,7 +102,7 @@ export function OAuthButtons({
           <Button
             type="button"
             variant="outline"
-            className="w-full"
+            className="h-auto min-h-11 w-full whitespace-normal px-3 py-2 text-center leading-snug"
             disabled={disabled || !!loading}
             loading={loading === 'github'}
             loadingLabel={AUTH.oauth.continueWithGitHub}
