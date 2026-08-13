@@ -339,6 +339,16 @@ test.describe('credentialed revenue journeys', () => {
     expect(report.reportId).toBe(reportId)
     const fixes = await mcpCall(request, apiKey, 'ff_get_all_fixes', { reportId })
     expect(Array.isArray(fixes.items)).toBe(true)
+    const firstFlagId = String((fixes.items as Array<{ id?: string }>)[0]?.id)
+    expect(firstFlagId).not.toBe('undefined')
+    const attempt = await mcpCall(request, apiKey, 'ff_mark_fix_attempted', {
+      flagId: firstFlagId,
+      action: 'READY_TO_VERIFY',
+      changeSummary: 'Credentialed release journey change ready for independent verification',
+      deploymentReference: 'release-matrix',
+    })
+    expect(attempt.sourceReviewId).toBe(reportId)
+    expect(attempt.attemptId).toBeTruthy()
     const recheck = await mcpCall(request, apiKey, 'ff_recheck_and_compare', { reportId })
     expect(recheck.parentReportId).toBe(reportId)
   })
@@ -360,10 +370,33 @@ test.describe('credentialed revenue journeys', () => {
     })
     const result = JSON.parse(checked.stdout) as {
       reportId: string
-      fixList: { items: unknown[] }
+      fixList: { items: Array<{ id?: string }> }
     }
     expect(result.reportId).toBeTruthy()
     expect(Array.isArray(result.fixList.items)).toBe(true)
+    const flagId = result.fixList.items[0]?.id
+    expect(flagId).toBeTruthy()
+
+    const attempted = await execFileAsync(
+      'node',
+      [
+        'fixflags-cli/bin/fixflags.js',
+        'attempt',
+        flagId!,
+        '--summary',
+        'Credentialed CLI change ready for independent verification',
+        '--deployment',
+        'release-matrix',
+        '--json',
+      ],
+      { cwd: process.cwd(), env, timeout: 60_000 }
+    )
+    const attempt = JSON.parse(attempted.stdout) as {
+      attemptId: string
+      sourceReviewId: string
+    }
+    expect(attempt.attemptId).toBeTruthy()
+    expect(attempt.sourceReviewId).toBe(result.reportId)
 
     const rechecked = await execFileAsync(
       'node',
