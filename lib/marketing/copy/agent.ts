@@ -4,7 +4,7 @@ export const AGENT_SCAN_COPY = {
   capturePartial: 'I captured part of the experience. The report will identify what is missing.',
   captureUnavailable: 'I couldn’t capture the page evidence.',
   checking: 'I’m checking Message, Experience, and Reach.',
-  journey: 'I’m reviewing the primary user journey.',
+  journey: 'I’m reviewing the primary Funnel path.',
   prioritizing: 'I’m prioritizing the confirmed Flags by impact.',
   finalizing: 'I’m preparing your report.',
   ready: 'Your report is ready.',

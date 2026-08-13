@@ -17,9 +17,14 @@ function walk(directory, files = []) {
 }
 
 function boundaryFor(file) {
+  if (file === 'app/api/mcp/route.ts') return 'mcp'
+  if (file === 'app/api/stripe/waitlist/route.ts') return 'public'
+  if (file === 'app/api/me/route.ts') return 'public'
+  if (file === 'app/api/support/sessions/route.ts') return 'public'
   if (file.includes('/admin/')) return 'admin'
   if (file.includes('/cron/') || file.includes('/email/welcome/')) return 'secret'
   if (file.includes('/webhooks/')) return 'webhook'
+  if (file.includes('/api/integrations/')) return 'session'
   if (
     file.includes('/health/') || file.endsWith('/health/route.ts') || file.includes('/badge/') ||
     file.includes('/share/') || file.includes('/screenshots/') || file.includes('/well-known/') ||

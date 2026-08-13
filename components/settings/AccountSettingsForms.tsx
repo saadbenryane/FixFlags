@@ -132,140 +132,140 @@ export function AccountSettingsForms({
       )}
 
       <Card className="border-0 p-5 shadow-card">
-      <form onSubmit={saveProfile} className="space-y-4">
-        <h2 className="text-base font-semibold">{ac.profileTitle}</h2>
-        <Field id="account-name" label={ac.nameLabel}>
-          {(fieldProps) => (
-            <Input
-              {...fieldProps}
-              name="name"
-              autoComplete="name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          )}
-        </Field>
-        <Button type="submit" disabled={busy !== null} loading={busy === 'profile'} loadingLabel={ac.saving}>
-          {ac.saveCta}
-        </Button>
-      </form>
+        <form onSubmit={saveProfile} className="space-y-4">
+          <h2 className="text-base font-semibold">{ac.profileTitle}</h2>
+          <Field id="account-name" label={ac.nameLabel}>
+            {(fieldProps) => (
+              <Input
+                {...fieldProps}
+                name="name"
+                autoComplete="name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            )}
+          </Field>
+          <Button type="submit" disabled={busy !== null} loading={busy === 'profile'} loadingLabel={ac.saving}>
+            {ac.saveCta}
+          </Button>
+        </form>
       </Card>
 
       <Card className="border-0 p-5 shadow-card">
-      <form onSubmit={changeEmail} className="space-y-4">
-        <div className="space-y-1">
-          <h2 className="text-base font-semibold">{ac.emailTitle}</h2>
-          <p className="text-sm text-muted-foreground">
-            {emailVerified ? ac.verified : ac.notVerified}
-          </p>
-        </div>
-        <Field id="account-email" label={ac.emailLabel}>
-          {(fieldProps) => (
-            <Input
-              {...fieldProps}
-              name="email"
-              type="email"
-              autoComplete="email"
-              value={newEmail}
-              onChange={(event) => setNewEmail(event.target.value)}
-            />
-          )}
-        </Field>
-        <div className="flex flex-wrap gap-3">
+        <form onSubmit={changeEmail} className="space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold">{ac.emailTitle}</h2>
+            <p className="text-sm text-muted-foreground">
+              {emailVerified ? ac.verified : ac.notVerified}
+            </p>
+          </div>
+          <Field id="account-email" label={ac.emailLabel}>
+            {(fieldProps) => (
+              <Input
+                {...fieldProps}
+                name="email"
+                type="email"
+                autoComplete="email"
+                value={newEmail}
+                onChange={(event) => setNewEmail(event.target.value)}
+              />
+            )}
+          </Field>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="submit"
+              disabled={busy !== null || newEmail === email}
+              loading={busy === 'email'}
+              loadingLabel={ac.changeEmailSending}
+            >
+              {ac.changeEmailCta}
+            </Button>
+            {!emailVerified && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={sendVerification}
+                disabled={busy !== null}
+                loading={busy === 'verify'}
+                loadingLabel={ac.verifySending}
+              >
+                {ac.verifyCta}
+              </Button>
+            )}
+          </div>
+        </form>
+      </Card>
+
+      <Card className="border-0 p-5 shadow-card">
+        <form onSubmit={changePassword} className="space-y-4">
+          <h2 className="text-base font-semibold">{ac.passwordTitle}</h2>
+          <Field id="current-password" label={ac.currentPasswordLabel} required>
+            {(fieldProps) => (
+              <Input
+                {...fieldProps}
+                name="currentPassword"
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                required
+              />
+            )}
+          </Field>
+          <Field id="new-password" label={ac.newPasswordLabel} required>
+            {(fieldProps) => (
+              <Input
+                {...fieldProps}
+                name="newPassword"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                required
+              />
+            )}
+          </Field>
           <Button
             type="submit"
-            disabled={busy !== null || newEmail === email}
-            loading={busy === 'email'}
-            loadingLabel={ac.changeEmailSending}
+            disabled={busy !== null}
+            loading={busy === 'password'}
+            loadingLabel={ac.changePasswordChanging}
           >
-            {ac.changeEmailCta}
+            {ac.changePasswordCta}
           </Button>
-          {!emailVerified && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={sendVerification}
-              disabled={busy !== null}
-              loading={busy === 'verify'}
-              loadingLabel={ac.verifySending}
-            >
-              {ac.verifyCta}
-            </Button>
-          )}
-        </div>
-      </form>
-      </Card>
-
-      <Card className="border-0 p-5 shadow-card">
-      <form onSubmit={changePassword} className="space-y-4">
-        <h2 className="text-base font-semibold">{ac.passwordTitle}</h2>
-        <Field id="current-password" label={ac.currentPasswordLabel} required>
-          {(fieldProps) => (
-            <Input
-              {...fieldProps}
-              name="currentPassword"
-              type="password"
-              autoComplete="current-password"
-              value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
-              required
-            />
-          )}
-        </Field>
-        <Field id="new-password" label={ac.newPasswordLabel} required>
-          {(fieldProps) => (
-            <Input
-              {...fieldProps}
-              name="newPassword"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-              required
-            />
-          )}
-        </Field>
-        <Button
-          type="submit"
-          disabled={busy !== null}
-          loading={busy === 'password'}
-          loadingLabel={ac.changePasswordChanging}
-        >
-          {ac.changePasswordCta}
-        </Button>
-      </form>
+        </form>
       </Card>
 
       <Card className="bg-destructive/5 p-5 ring-2 ring-destructive/20 shadow-card">
-      <form onSubmit={deleteAccount} className="space-y-4">
-        <div className="space-y-1">
-          <h2 className="text-base font-semibold text-destructive">{ac.deleteTitle}</h2>
-          <p className="text-sm text-muted-foreground">
-            {ac.deleteDescription}
-          </p>
-        </div>
-        <Field id="delete-password" label={ac.deletePasswordLabel}>
-          {(fieldProps) => (
-            <Input
-              {...fieldProps}
-              type="password"
-              autoComplete="current-password"
-              value={deletePassword}
-              onChange={(event) => setDeletePassword(event.target.value)}
-            />
-          )}
-        </Field>
-        <Button
-          type="submit"
-          variant="destructive"
-          disabled={busy !== null}
-          loading={busy === 'delete'}
-          loadingLabel={ac.deleteConfirming}
-        >
-          {ac.deleteCta}
-        </Button>
-      </form>
+        <form onSubmit={deleteAccount} className="space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold text-destructive">{ac.deleteTitle}</h2>
+            <p className="text-sm text-muted-foreground">
+              {ac.deleteDescription}
+            </p>
+          </div>
+          <Field id="delete-password" label={ac.deletePasswordLabel}>
+            {(fieldProps) => (
+              <Input
+                {...fieldProps}
+                type="password"
+                autoComplete="current-password"
+                value={deletePassword}
+                onChange={(event) => setDeletePassword(event.target.value)}
+              />
+            )}
+          </Field>
+          <Button
+            type="submit"
+            variant="destructive"
+            disabled={busy !== null}
+            loading={busy === 'delete'}
+            loadingLabel={ac.deleteConfirming}
+          >
+            {ac.deleteCta}
+          </Button>
+        </form>
       </Card>
     </div>
   )

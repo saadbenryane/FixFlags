@@ -1,4 +1,5 @@
-import { Surface } from '@/components/ui/surface'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 /**
  * Shared loading placeholder for the client-rendered settings pages
@@ -6,14 +7,26 @@ import { Surface } from '@/components/ui/surface'
  */
 export function SettingsSkeleton() {
   return (
-    <div className="space-y-6 animate-pulse" aria-hidden="true">
-      <div className="h-8 w-40 rounded bg-muted" />
-      <Surface variant="flat" className="h-24" />
-      <div className="space-y-2">
-        {Array.from({ length: 2 }).map((_, i) => (
-          <Surface key={i} variant="flat" className="h-14" />
-        ))}
-      </div>
+    <div className="space-y-6" aria-hidden="true">
+      <Skeleton className="h-8 w-40 rounded-md" />
+      <Card variant="subtle">
+        <CardContent className="space-y-3">
+          <Skeleton className="h-5 w-2/5 rounded-md" />
+          <Skeleton className="h-4 w-3/4 rounded-md" />
+          <Skeleton className="h-9 w-full rounded-card" />
+        </CardContent>
+      </Card>
+      <Card variant="subtle">
+        <CardHeader className="space-y-2">
+          <Skeleton className="h-5 w-32 rounded-md" />
+          <Skeleton className="h-4 w-2/3 rounded-md" />
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <Skeleton key={i} className="h-11 w-full rounded-card" />
+          ))}
+        </CardContent>
+      </Card>
     </div>
   )
 }

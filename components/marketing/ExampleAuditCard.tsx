@@ -76,7 +76,7 @@ export function ExampleAuditCard({ audit }: Props) {
               <li key={flag.id} className="flex items-start gap-2 text-sm">
                 <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
                 <span className="flex-1 text-foreground/90">{flag.problem}</span>
-                <span className="shrink-0 font-mono text-3xs uppercase text-muted-foreground">
+                <span className="shrink-0 font-mono text-xs uppercase text-muted-foreground">
                   {rubricLabel(rubricName)}
                 </span>
               </li>

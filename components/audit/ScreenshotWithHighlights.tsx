@@ -565,7 +565,7 @@ function ScreenshotPanel({
         resolvedComparisonState === 'affected' &&
           'ring-2 ring-destructive ring-offset-2 ring-offset-background',
         resolvedComparisonState === 'unaffected' &&
-          'ring-2 ring-emerald-600 ring-offset-2 ring-offset-background',
+          'ring-2 ring-success ring-offset-2 ring-offset-background',
         size ? 'shrink-0' : 'w-full',
         className
       )}
@@ -577,7 +577,7 @@ function ScreenshotPanel({
             'absolute left-2 top-2 z-overlay inline-flex min-h-7 items-center gap-1.5 rounded-md border bg-background/95 px-2 py-1 text-2xs font-medium shadow-sm backdrop-blur',
             resolvedComparisonState === 'affected'
               ? 'border-destructive/40 text-destructive'
-              : 'border-emerald-600/40 text-emerald-700 dark:text-emerald-400'
+              : 'border-success/40 text-success'
           )}
         >
           <ComparisonIcon className="h-3.5 w-3.5" aria-hidden />

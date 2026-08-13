@@ -22,6 +22,28 @@ export function collectRegisteredMcpToolKeys(source) {
     .map((match) => match[1])
 }
 
+const GENERATED_ARTIFACT_PATTERN = /(^|\/)(?:node_modules|dist|\.cache|coverage|\.next(?:-[^/]*)?|output|playwright-report|test-results)(?:\/|$)/
+
+export function collectTrackedGeneratedArtifacts(files) {
+  return files.filter((file) => GENERATED_ARTIFACT_PATTERN.test(file))
+}
+
+export function railwayUsesStrictReadiness(source) {
+  return /^healthcheckPath\s*=\s*["']\/api\/health\/ready["']\s*$/m.test(source)
+}
+
+export function criticalRouteBoundaryFailures(routes, maxLines = 160) {
+  const failures = []
+  for (const [file, source] of Object.entries(routes)) {
+    const lineCount = source.split(/\r?\n/).length
+    if (lineCount > maxLines) failures.push(`${file} exceeds ${maxLines} lines (${lineCount})`)
+    if (/(?:from\s+|import\s*\()["'](?:@\/lib\/db|@prisma\/client)["']/.test(source)) {
+      failures.push(`${file} imports persistence directly`)
+    }
+  }
+  return failures
+}
+
 function mcpRegistrationSource(root) {
   const toolDir = path.join(root, 'lib/mcp/tools')
   const moduleFiles = readdirSync(toolDir)
@@ -177,8 +199,21 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   )
 
   const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n')
-  const clutter = tracked.filter((file) => /(^|\/)node_modules\//.test(file) || /(^|\/)dist\//.test(file))
+  const clutter = collectTrackedGeneratedArtifacts(tracked)
   assert(clutter.length === 0, `Tracked generated dependencies/artifacts: ${clutter.slice(0, 5).join(', ')}`)
+  assert(
+    railwayUsesStrictReadiness(read(root, 'railway.toml')),
+    'Railway web deployment must gate on /api/health/ready',
+  )
+  const criticalRoutes = [
+    'app/api/reports/[id]/chat/route.ts',
+    'app/api/reports/[id]/share-links/route.ts',
+    'app/api/webhooks/stripe/route.ts',
+  ]
+  const criticalRouteFailures = criticalRouteBoundaryFailures(
+    Object.fromEntries(criticalRoutes.map((file) => [file, read(root, file)])),
+  )
+  for (const failure of criticalRouteFailures) assert(false, failure)
 
   const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], {
     cwd: root,

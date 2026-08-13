@@ -127,6 +127,7 @@ const config: Config = {
         sm: 'var(--radius-input)',
         md: 'var(--radius-inner)',
         lg: 'var(--radius-card)',
+        control: 'var(--radius-control)',
         card: 'var(--radius-card)',
         nested: 'var(--radius-nested-md)',
         'nested-lg': 'var(--radius-nested-lg)',

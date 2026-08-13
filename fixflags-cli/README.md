@@ -5,7 +5,7 @@ Product Intelligence for AI-built products. A thin, task-shaped client over the 
 ## Quick start
 
 ```bash
-# Check any URL — no account required
+# Check any URL and get a bounded Finish Plan — no account required
 npx fixflags check https://your-app.com
 
 # Connect to your account (optional, unlocks history and re-checks)
@@ -24,10 +24,13 @@ review or automation.
 ## Usage
 
 ```bash
-# Check a URL and return every ranked fix
+# Check a URL and return the highest-leverage Finish Plan
 fixflags check https://your-app.com --wait --plan
 
-# Print complete fix prompts instead of bounded previews
+# Return the complete ranked Fix List
+fixflags check https://your-app.com --all
+
+# Print complete prompt text instead of bounded previews
 fixflags check https://your-app.com --full
 
 # Queue without waiting, or check only the supplied page
@@ -54,7 +57,7 @@ fixflags whoami
 fixflags logout
 ```
 
-`check` waits by default, returns every unresolved fix, and exits non-zero when
+`check` waits by default, returns a one-to-three item Finish Plan, and exits non-zero when
 the completed report contains a critical Flag. `recheck` always performs a fresh capture and
 returns fixed, remaining, new, and regressed counts.
 
@@ -64,8 +67,7 @@ returns fixed, remaining, new, and regressed counts.
 - **Experience:** layout, mobile UX, accessibility, and broken interactions
 - **Reach:** SEO metadata, social previews, privacy policy, and analytics
 
-The default human-readable result bounds each fix prompt. Use `--full` for complete prompts or
-`--json` for structured automation.
+Use `--all` for every unresolved Flag, `--full` for complete prompt text, or `--json` for structured automation.
 
 ## MCP tools used
 

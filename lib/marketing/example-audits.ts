@@ -210,7 +210,7 @@ export const EXAMPLE_AUDITS: ExampleAudit[] = [
         evidence:
           'Desktop 1280x900: "Develop. Preview. Ship." describes actions, not the benefit.',
         whyItMatters:
-          'Outcome-driven headlines help visitors understand the benefit, not just the product category.',
+          'Outcome-driven headlines help visitors understand the benefit, not only the product category.',
         fix: 'Test headline variation: "Deploy your frontend in seconds, not hours."',
         agentPrompt:
           'Update the H1 in `.hero-section` to an outcome-driven variant.',

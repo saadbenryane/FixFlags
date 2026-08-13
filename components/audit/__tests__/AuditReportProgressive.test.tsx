@@ -239,10 +239,10 @@ describe('AuditReportProgressive', () => {
       />
     )
     expect(screen.getAllByText(/Starting AI review/).length).toBeGreaterThan(0)
-    expect(screen.queryByText(/Preparing journey review/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Preparing Funnel review/)).not.toBeInTheDocument()
   })
 
-  it('keeps the journey substep on full pipeline scans', () => {
+  it('keeps the Funnel substep on full pipeline scans', () => {
     render(
       <AuditReportProgressive
         status="CHECKING"
@@ -251,6 +251,6 @@ describe('AuditReportProgressive', () => {
         isTeaser={false}
       />
     )
-    expect(screen.getAllByText(/Preparing journey review/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Preparing Funnel review/).length).toBeGreaterThan(0)
   })
 })

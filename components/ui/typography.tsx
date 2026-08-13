@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 type HeadingLevel = 'h1' | 'h2' | 'h3' | 'h4'
 
 const headingStyles: Record<HeadingLevel, string> = {
-  h1: 'text-[2rem] sm:text-[2.5rem] md:text-[3rem] lg:text-[3.5rem]',
+  h1: 'text-3xl sm:text-4xl lg:text-5xl',
   h2: 'text-2xl sm:text-[1.75rem] md:text-[2rem]',
   h3: 'text-xl md:text-[1.25rem]',
   h4: 'text-lg md:text-xl',

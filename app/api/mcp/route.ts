@@ -43,6 +43,22 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
     }
     user = authContext.user
     apiKey = authContext.apiKey
+  } else if (credential.code === 'MISSING_API_KEY') {
+    return Response.json(
+      {
+        jsonrpc: '2.0',
+        error: {
+          code: -32001,
+          message: credential.message,
+          data: { code: credential.code, action: 'create_api_key' },
+        },
+        id: null,
+      },
+      {
+        status: 401,
+        headers: { 'WWW-Authenticate': 'Bearer realm="FixFlags"' },
+      }
+    )
   } else if (credential.code === 'INVALID_AUTHORIZATION' || credential.code === 'CONFLICTING_API_KEYS') {
     return Response.json(
       {

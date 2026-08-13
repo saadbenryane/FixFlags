@@ -5,9 +5,9 @@ export const HERO = {
   headlineDisplay: "Finish what your AI started",
   headlineAccentPeriod: true,
   subhead:
-    "AI builds your product. FixFlags runs Product QA on Message, Experience, and Reach, then gives your builder the next fix.",
-  primaryCta: "Review my product",
-  compactPrimaryCta: "Review product",
+    "Paste a URL. Get Flags across Message, Experience, and Reach, with evidence and the next fix for your builder.",
+  primaryCta: "Review my site",
+  compactPrimaryCta: "Review site",
   trySampleCta: "See a sample review",
   urlPlaceholder: "Paste your site or app URL",
   /** Honest product assurances only. No invented counts or testimonials. */
@@ -17,9 +17,7 @@ export const HERO = {
     { id: "private", label: "Your report is private", icon: "lock" as const },
   ],
   /** Product-true trust line only. No invented member counts or stock avatars. */
-  trustLine: "Trusted by builders shipping with AI",
-  founderTeaser:
-    "Pro and Studio open in batches. Join the waitlist for launch-tier pricing and automatic launch discounts.",
+  trustLine: "Works with Cursor, Claude Code, Lovable, Bolt, and more",
   scrollHint: "Scroll to discover",
 } as const;
 
@@ -141,7 +139,7 @@ export const FINAL_CTA = {
 
 export const MCP_SECTION = {
   headline: "Run product reviews from your editor",
-  body: "Connect via MCP so your agent finds Flags, fixes them, and runs update reviews without copy-pasting URLs.",
+  body: "Connect via MCP so your agent pulls Flags and fix prompts, then fixes and runs update reviews without copy-pasting URLs.",
   intro: "A typical prompt sequence looks like this:",
   closing: "Then run an update review to prove the improvement.",
   cta: "See MCP setup",
@@ -165,7 +163,7 @@ export const HOW_IT_WORKS_PAGE = {
     headlineAccentPeriod: true,
     subhead:
       "Run a live URL, review the Flags, copy the fix prompts, then run an update review.",
-    primaryCta: "Review my product",
+    primaryCta: "Review my site",
     primaryHref: "/#audit",
     secondaryCta: "Set up MCP",
     secondaryHref: "/docs/integrations#quick-start",
@@ -256,7 +254,7 @@ export const HOW_IT_WORKS_PAGE = {
     label: "Two ways to review",
     title: "Product review vs deep review",
     body:
-      "A product review is a fast programmatic pass with screenshot evidence across Message, Experience, and Reach. A deep review sends an agent-class browser through your journeys, maps the funnel, and records paths you can scrub and replay.",
+      "A product review is a fast programmatic pass with screenshot evidence across Message, Experience, and Reach. A deep review sends an agent-class browser through key paths, maps the Funnel, and records playback you can scrub.",
     productReview: {
       title: "Product review",
       body:
@@ -265,7 +263,7 @@ export const HOW_IT_WORKS_PAGE = {
     deepReview: {
       title: "Deep review",
       body:
-        "Agent-level browser exploration: multi-step journeys, funnel traversal, and path playback with a timeline synced to evidence. Like a power user session you can replay, not a score dump.",
+        "Agent-level browser exploration: multi-step paths, Funnel traversal, and playback with a timeline synced to evidence. Like a power user session you can replay, not a score dump.",
     },
     docsCta: "Read the deep review guide",
     docsHref: "/docs/deep-review",
@@ -309,7 +307,7 @@ Agent reports: "Experience has no Critical Flags. One Flag cleared."`,
   finalCta: {
     headline: "Close the AI gap on a live URL.",
     body: "Paste your site, get Flags with evidence and fix prompts, then run an update review to see what cleared.",
-    primaryCta: "Review my product",
+    primaryCta: "Review my site",
     primaryHref: "/#audit",
     secondaryCta: "Connect MCP",
     secondaryHref: "/docs/integrations#quick-start",
@@ -568,7 +566,7 @@ export const LANDING_PAGE = {
     headlineAccentPeriod: true,
     headline: "Three steps from review to fix to verified.",
     subhead:
-      "FixFlags analyzes your product, highlights what matters, and gives you clear fixes so you can publish when you are ready.",
+      "FixFlags analyzes your product, highlights what matters, and gives you clear fix prompts so you can publish when you are ready.",
     sampleLink: "Explore a full report",
     steps: [
       {
@@ -777,7 +775,7 @@ export const LANDING_PAGE = {
     headline: "Works in the editor you already use.",
     headlineDisplay: "Works in the editor you already use",
     headlineAccentPeriod: true,
-    body: "Copy a precise fix into any AI builder. On Pro, MCP lets your agent check, fix, and Update review without leaving the editor.",
+    body: "Copy a precise fix into any AI builder. On Pro, MCP lets your agent check, apply fixes, and Update review without leaving the editor.",
     mcpCta: "Set up MCP",
     mcpHref: "/docs/integrations#quick-start",
     cliCta: "CLI docs",
@@ -791,9 +789,9 @@ export const LANDING_PAGE = {
     headlineDisplay: "See exactly what AI misses",
     headlineAccentPeriod: true,
     headline: "See exactly what AI misses.",
-    body: "FixFlags reviews the live product the way users experience it, then turns every issue into a ranked, editor-ready fix.",
+    body: "FixFlags reviews the live product the way users experience it, then turns every Flag into a ranked, editor-ready fix prompt.",
     previewEyebrow: "Fix list",
-    previewTitle: "Every fix, ranked and ready",
+    previewTitle: "Every fix, ranked and ready to apply",
     previewBadge: "Screenshot evidence included",
     exploreCta: "Explore a full report",
     cta: "Explore a full report",
@@ -975,7 +973,7 @@ export const REPORT_COPY = {
       sharedBody:
         "The link may have expired, been revoked, or no longer be eligible for sharing. Ask the owner for a new link.",
       returnHome: "Return home",
-      reviewSite: "Review my product",
+      reviewSite: "Review my site",
     },
     chat: {
       title: "Agent",
@@ -1152,7 +1150,7 @@ export const REPORT_COPY = {
   },
   partialReport: {
     title: "Partial report",
-    body: "Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than being inferred.",
+    body: "Some optional evidence was unavailable. Unassessed rubrics are left unmeasured rather than inferred.",
   },
   failedChecks: {
     title: "Some checks could not run",
@@ -1197,7 +1195,7 @@ export const REPORT_COPY = {
     title: "Top fixes",
     loadingBody: "Ranked fix prompts appear as Flags are verified.",
     readyBody: (count: number) =>
-      `${count} ${count === 1 ? "Flag" : "Flags"} ranked by impact. Review every confirmed issue and its evidence.`,
+      `${count} ${count === 1 ? "Flag" : "Flags"} ranked by impact. Review every confirmed Flag and its evidence.`,
     copyCta: "Copy top fixes",
     copyLabel: "Top fixes prompt",
     previewToggle: "Preview prompt",

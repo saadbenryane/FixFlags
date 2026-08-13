@@ -60,7 +60,7 @@ function promptPreview(prompt: string | null | undefined, full: boolean): string
   return `${prompt.slice(0, PROMPT_PREVIEW_LENGTH)}\n[truncated, rerun with --full]`
 }
 
-function printPlan(plan: FinishPlan | undefined, full: boolean, limit?: number, label = 'All fixes'): void {
+function printPlan(plan: FinishPlan | undefined, full: boolean, limit?: number, label = 'Finish Plan'): void {
   const allItems = plan?.items ?? []
   const items = limit == null ? allItems : allItems.slice(0, limit)
   if (items.length === 0) {
@@ -304,10 +304,11 @@ function parseScanAccessFromCli(options: {
 
 program
   .command('check <url>')
-  .description('Check a URL and return every ranked fix')
+  .description('Check a URL and return the highest-leverage Finish Plan')
   .option('--wait', 'Wait for the completed check', true)
   .option('--no-wait', 'Return as soon as the check is queued')
-  .option('--plan', 'Print the one-prompt fix plan with all fixes when your account has full access (default on)', true)
+  .option('--plan', 'Print the bounded plan prompt when your account has prompt access (default on)', true)
+  .option('--all', 'Print the complete ranked Fix List instead of the Finish Plan')
   .option('--single', 'Check only the given URL')
   .option('--limit <count>', 'Print only the first count fixes')
   .option('--full', 'Print complete fix prompts')
@@ -320,6 +321,7 @@ program
         options: {
           wait: boolean
           plan?: boolean
+          all?: boolean
           single?: boolean
           limit?: string
           full?: boolean
@@ -350,7 +352,11 @@ program
         spinner.stop()
         const hasCritical = Boolean(result.rubrics?.some((rubric) => (rubric.criticalCount ?? 0) > 0))
         if (jsonMode) {
-          console.log(JSON.stringify(result, null, 2))
+          console.log(JSON.stringify({
+            ...result,
+            fixList: options.all ? result.fixList : undefined,
+            finishPlan: options.all ? undefined : result.finishPlan,
+          }, null, 2))
           if (hasCritical) process.exitCode = 1
           return
         }
@@ -374,11 +380,17 @@ program
         if (limit != null && (!Number.isInteger(limit) || limit < 1)) {
           throw new Error('--limit must be a positive integer')
         }
-        printPlan(result.fixList, Boolean(options.full), limit)
-        if (options.plan && result.fixList?.planPrompt) {
+        const selectedPlan = options.all ? result.fixList : result.finishPlan
+        printPlan(
+          selectedPlan,
+          Boolean(options.full),
+          limit,
+          options.all ? 'Complete Fix List' : 'Finish Plan'
+        )
+        if (options.plan && selectedPlan?.planPrompt) {
           console.log('')
           console.log(chalk.bold('Plan-mode prompt'))
-          console.log(promptPreview(result.fixList.planPrompt, Boolean(options.full)))
+          console.log(promptPreview(selectedPlan.planPrompt, Boolean(options.full)))
         }
         if (result.failedModules?.length) {
           console.log('')
@@ -403,6 +415,7 @@ program
   .option('--wait', 'Wait for the completed update review', true)
   .option('--no-wait', 'Return as soon as the update review is queued')
   .option('--diff', 'Show the verification diff', true)
+  .option('--all', 'Print the complete remaining Fix List instead of the next Finish Plan')
   .option('--limit <count>', 'Print only the first count remaining fixes')
   .option('--full', 'Print complete remaining fix prompts')
     .action(
@@ -411,6 +424,7 @@ program
         options: {
           wait: boolean
           diff?: boolean
+          all?: boolean
           limit?: string
           full?: boolean
           json?: boolean
@@ -433,7 +447,11 @@ program
         spinner.stop()
 
         if (jsonMode) {
-          console.log(JSON.stringify(result, null, 2))
+          console.log(JSON.stringify({
+            ...result,
+            nextFixList: options.all ? result.nextFixList : undefined,
+            nextFinishPlan: options.all ? undefined : result.nextFinishPlan,
+          }, null, 2))
           return
         }
         if (!options.wait) {
@@ -452,12 +470,18 @@ program
           console.log(`Regressed: ${result.diff.regressed}`)
         }
         console.log('')
-        if (result.nextFixList ?? result.nextFinishPlan) {
+        const selectedPlan = options.all ? result.nextFixList : result.nextFinishPlan
+        if (selectedPlan) {
           const limit = options.limit ? Number.parseInt(options.limit, 10) : undefined
           if (limit != null && (!Number.isInteger(limit) || limit < 1)) {
             throw new Error('--limit must be a positive integer')
           }
-          printPlan(result.nextFixList ?? result.nextFinishPlan, Boolean(options.full), limit)
+          printPlan(
+            selectedPlan,
+            Boolean(options.full),
+            limit,
+            options.all ? 'Complete Fix List' : 'Next Finish Plan'
+          )
         }
       } catch (error) {
         spinner.stop()

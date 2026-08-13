@@ -11,6 +11,7 @@ import {
 import { HomepageReportPreview } from "@/components/marketing/landing/HomepageReportPreview";
 import { RevealOnView } from "@/components/marketing/landing/RevealOnView";
 import { LandingSectionHeader } from "@/components/marketing/landing/LandingSectionHeader";
+import { MarketingEyebrow } from "@/components/marketing/MarketingEyebrow";
 import { rubricIcon } from "@/lib/rubric-icons";
 import {
   SampleSectionCta,
@@ -121,7 +122,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                           </span>
                         </span>
                         <span className="inline-flex shrink-0 items-center gap-2 pl-1">
-                          <span className="text-[0.6875rem] font-medium tabular-nums text-brand/70">
+                          <span className="text-xs font-medium tabular-nums text-[hsl(var(--brand-strong))] dark:text-brand">
                             {count} {count === 1 ? "Flag" : "Flags"}
                           </span>
                           <ChevronRight
@@ -156,9 +157,9 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
           >
             <div className="grid gap-8 lg:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.2fr)] lg:items-end lg:gap-12">
               <div className="max-w-lg">
-                <p className="font-mono text-3xs font-semibold uppercase tracking-[0.18em] text-brand sm:text-2xs">
+                <MarketingEyebrow dot={false} className="font-semibold">
                   {copy.trustLabel}
-                </p>
+                </MarketingEyebrow>
                 <h2 className="mt-3 font-display text-2xl font-semibold leading-heading tracking-display text-background sm:text-3xl">
                   {copy.trustHeadline}
                 </h2>
@@ -179,7 +180,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                           "border-l border-background/15 pl-4 sm:pl-6",
                       )}
                     >
-                      <div className="flex items-center gap-2 text-[0.6875rem] leading-tight text-background/55 sm:text-xs">
+                      <div className="flex items-center gap-2 text-2xs leading-tight text-background/55 sm:text-xs">
                         <Icon
                           className={cn(
                             "hidden h-4 w-4 shrink-0 sm:block",
@@ -202,7 +203,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
             </div>
 
             <div className="mt-8 flex flex-col gap-3 border-t border-background/15 pt-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-              <p className="font-mono text-3xs font-semibold uppercase tracking-[0.16em] text-background/45 sm:text-2xs">
+              <p className="font-mono text-xs font-semibold uppercase tracking-label text-background/70">
                 {copy.trustSupportLabel}
               </p>
               <div className="flex flex-wrap gap-x-6 gap-y-3 sm:justify-end">
@@ -216,7 +217,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                         aria-hidden
                       />
                       <div className="flex flex-col">
-                        <span className="order-2 mt-0.5 text-2xs text-background/50">
+                        <span className="order-2 mt-0.5 text-xs text-background/70">
                           {metric.label}
                         </span>
                         <span className="order-1 font-mono text-xs font-semibold tabular-nums text-background">

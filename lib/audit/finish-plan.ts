@@ -46,6 +46,13 @@ export interface FixList extends FinishPlan {
   totalCount: number
 }
 
+export const MAX_FINISH_PLAN_ITEMS = 3
+
+export interface FixArtifacts {
+  fixList: FixList
+  finishPlan: FinishPlan
+}
+
 /** Explicit export path for every prompt. This is not a Finish Plan. */
 export function buildAllFixPrompts(input: {
   flags: FixListFlag[]
@@ -67,17 +74,27 @@ type PlanInput = {
   contract?: ProductContract | null
   promptAccess: FinishPlanPromptAccess
   demonstratedFlag?: RankableFlag | null
+  limit?: number
 }
 
 function unresolvedFlags(flags: FixListFlag[]): FixListFlag[] {
   return flags.filter((flag) => flag.status !== 'FIXED' && flag.status !== 'IGNORED')
 }
 
-function buildRankedFixes(input: PlanInput, limit: number): FinishPlan {
+function buildRankedFixes(input: PlanInput): {
+  items: FinishPlanItem[]
+  rankedFlags: RankableFlag[]
+  visiblePromptCount: number
+} {
   const unresolved = consolidateFlagsByCheck(unresolvedFlags(input.flags), {
     demonstratedFlagId: input.demonstratedFlag?.id,
   })
-  const ranked = rankFlagsByPriority(unresolved, input.rubricRows ?? [], limit, input.contract ?? null)
+  const ranked = rankFlagsByPriority(
+    unresolved,
+    input.rubricRows ?? [],
+    unresolved.length,
+    input.contract ?? null
+  )
   const demonstratedId = input.demonstratedFlag?.id
   let demonstratedPromptUsed = false
 
@@ -121,16 +138,50 @@ function buildRankedFixes(input: PlanInput, limit: number): FinishPlan {
   })
 
   const visiblePromptCount = items.filter((item) => item.prompt).length
-  const copyPrompt =
-    input.promptAccess === 'all' && visiblePromptCount > 0
-      ? buildAllFixPrompts({
-          flags: input.flags,
-          url: input.url,
-          contract: input.contract ?? null,
-        })
-      : null
+  return {
+    items,
+    rankedFlags: ranked.map(({ flag }) => flag),
+    visiblePromptCount,
+  }
+}
 
-  return { items, copyPrompt, visiblePromptCount }
+function copyPromptFor(
+  input: PlanInput,
+  rankedFlags: RankableFlag[],
+  visiblePromptCount: number
+): string | null {
+  if (input.promptAccess !== 'all' || visiblePromptCount === 0) return null
+  return buildAllFixPrompts({
+    flags: rankedFlags,
+    url: input.url,
+    contract: input.contract ?? null,
+  })
+}
+
+/** Build the complete Fix List and bounded Finish Plan from one ranking pass. */
+export function buildFixArtifacts(input: PlanInput): FixArtifacts {
+  const ranked = buildRankedFixes(input)
+  const selectedCount = Math.min(
+    Math.max(input.limit ?? MAX_FINISH_PLAN_ITEMS, 1),
+    MAX_FINISH_PLAN_ITEMS
+  )
+  const finishItems = ranked.items.slice(0, selectedCount)
+  const finishFlags = ranked.rankedFlags.slice(0, selectedCount)
+  const finishVisiblePromptCount = finishItems.filter((item) => item.prompt).length
+
+  return {
+    fixList: {
+      items: ranked.items,
+      copyPrompt: copyPromptFor(input, ranked.rankedFlags, ranked.visiblePromptCount),
+      visiblePromptCount: ranked.visiblePromptCount,
+      totalCount: ranked.items.length,
+    },
+    finishPlan: {
+      items: finishItems,
+      copyPrompt: copyPromptFor(input, finishFlags, finishVisiblePromptCount),
+      visiblePromptCount: finishVisiblePromptCount,
+    },
+  }
 }
 
 /**
@@ -138,7 +189,10 @@ function buildRankedFixes(input: PlanInput, limit: number): FinishPlan {
  * anonymous reports can keep every problem and evidence summary visible.
  */
 export function buildFixList(input: PlanInput): FixList {
-  const totalCount = consolidateFlagsByCheck(unresolvedFlags(input.flags)).length
-  const plan = buildRankedFixes(input, totalCount)
-  return { ...plan, totalCount }
+  return buildFixArtifacts(input).fixList
+}
+
+/** Canonical highest-leverage one-to-three item Finish Plan. */
+export function buildFinishPlan(input: PlanInput): FinishPlan {
+  return buildFixArtifacts(input).finishPlan
 }

@@ -59,7 +59,7 @@ Preserve this order unless the canonical landing copy changes:
 
 1. Hero
 2. Sample report
-3. Check → Fix → Re-check loop
+3. Flag → Fix → Update review loop
 4. Message, Experience, and Reach dimensions
 5. Benefits and builder workflow
 6. MCP workflow

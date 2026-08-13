@@ -201,6 +201,50 @@ describe('POST /api/webhooks/stripe', () => {
     expect(mockApplyPlanLimits).not.toHaveBeenCalled()
   })
 
+  it('marks a same-payload replay discovered inside the transaction', async () => {
+    const body = JSON.stringify({ id: 'evt_race' })
+    const hash = await import('node:crypto').then((crypto) =>
+      crypto.createHash('sha256').update(body).digest('hex')
+    )
+    mockFindUniqueProcessed
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'evt_race', payloadHash: hash })
+    mockConstructEvent.mockReturnValue({
+      id: 'evt_race',
+      type: 'customer.subscription.updated',
+      data: { object: {} },
+    })
+
+    const res = await POST(makeRequest(body, signBody(body)))
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ received: true, replay: true })
+    expect(mockApplyPlanLimits).not.toHaveBeenCalled()
+    expect(mockCreateProcessed).not.toHaveBeenCalled()
+  })
+
+  it('rejects a mismatched payload discovered inside the transaction', async () => {
+    const body = JSON.stringify({ id: 'evt_race', value: 'current' })
+    const otherHash = await import('node:crypto').then((crypto) =>
+      crypto.createHash('sha256').update('different payload').digest('hex')
+    )
+    mockFindUniqueProcessed
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'evt_race', payloadHash: otherHash })
+    mockConstructEvent.mockReturnValue({
+      id: 'evt_race',
+      type: 'customer.subscription.updated',
+      data: { object: {} },
+    })
+
+    const res = await POST(makeRequest(body, signBody(body)))
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toEqual({ message: 'Payload hash mismatch' })
+    expect(mockApplyPlanLimits).not.toHaveBeenCalled()
+    expect(mockCreateProcessed).not.toHaveBeenCalled()
+  })
+
   it('syncs subscription created to BUILDER', async () => {
     const event = {
       id: 'evt_sub',

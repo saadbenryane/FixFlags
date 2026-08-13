@@ -8,8 +8,9 @@ Keep FixFlags moving on highest-leverage constraints with minimal churn.
 1. **Observe** — gather current state (BOARD, GOAL, repo health, unresolved constraints).
 2. **Understand** — identify root bottleneck and what is actually blocking progress.
 3. **Prioritize** — pick the highest-leverage constraint; do not multitask.
-4. **Delegate** — issue bounded temporary worker instructions to one owner at a time (task contract per `worker-runtime.md`).
-5. **Verify** — demand proof from files/commands, not assertions.
+4. **No estimates in execution prose** — no "weeks"/"months" estimates; use explicit phases and next concrete action.
+5. **Delegate** — issue bounded temporary worker instructions to one owner at a time (task contract per `worker-runtime.md`).
+6. **Verify** — demand proof from files/commands, not assertions.
 6. **Measure** — confirm impact before expanding scope.
 7. **Learn** — persist validated findings in docs, not chat history (asset-first).
 8. **Sleep** — pause when no meaningful leverage exists.

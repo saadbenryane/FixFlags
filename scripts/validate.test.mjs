@@ -99,6 +99,7 @@ describe('validate.mjs', () => {
       assert.ok(labels.includes('typecheck'))
       assert.ok(labels.includes('lint'))
       assert.ok(labels.includes('test:unit'))
+      assert.ok(labels.includes('test:coverage'))
       assert.ok(labels.includes('brand:hex-guard'))
       assert.ok(labels.includes('ui:drift-guard'))
       assert.ok(labels.includes('image:local-patterns-guard'))
@@ -133,6 +134,7 @@ describe('validate.mjs', () => {
       assert.ok(labels.includes('fresh-database'))
       assert.ok(labels.includes('deployed-smoke'))
       assert.ok(labels.includes('test:unit'))
+      assert.ok(labels.includes('test:coverage'))
       assert.deepEqual(
         buildPlan('release', []).commands.find((command) => command.label === 'test:e2e'),
         {

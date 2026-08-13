@@ -1,3 +1,4 @@
+import { MarketingEyebrow } from '@/components/marketing/MarketingEyebrow'
 import { Heading } from '@/components/ui/typography'
 import { cn } from '@/lib/utils'
 
@@ -49,15 +50,9 @@ export function LandingSectionHeader({
     >
       {showLabel && label ? (
         brandEyebrow ? (
-          <p
-            className={cn(
-              'inline-flex items-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-label text-brand sm:text-xs',
-              align === 'center' && 'justify-center'
-            )}
-          >
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
+          <MarketingEyebrow className={align === 'center' ? 'justify-center' : undefined}>
             {label}
-          </p>
+          </MarketingEyebrow>
         ) : (
           <p className="section-label">{label}</p>
         )

@@ -13,13 +13,7 @@ const env = { NODE_ENV: 'test' as const }
 
 export default defineConfig({
   test: {
-    // Coverage thresholds for the three core product surfaces. Run with
-    // `npm run test:unit -- --coverage`. Thresholds are intentionally
-    // advisory in local/CI `npm run test:unit` (coverage only runs when the
-    // flag is passed) so the standard gate stays green while the measured
-    // numbers close toward the targets. Baseline (server project, excluding
-    // the two WIP-owned failing test files): lines 49.6% overall — audit
-    // 50.9%, billing 65.9%, auth 68.9%.
+    // Enforced by `npm run test:coverage` in the full local and CI gates.
     coverage: {
       provider: 'v8',
       include: ['lib/audit/**', 'lib/billing/**', 'lib/auth/**'],

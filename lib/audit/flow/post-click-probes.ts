@@ -20,13 +20,14 @@ export async function measurePostClickLoading(
   let stuckLoading = false
   let stuckLoadingLabel: string | null = null
   let stuckLoadingSinceMs: number | null = null
+  let elapsed = Date.now() - started
 
-  while (Date.now() - started < deadlineMs) {
-    const elapsed = Date.now() - started
+  while (elapsed < deadlineMs) {
     const snapshot = await page.evaluate((loadingSel) => {
       ;(globalThis as unknown as { __name?: (fn: unknown, name?: string) => unknown }).__name ??= (fn) => fn
       const main = document.querySelector('main')
-      const text = (main?.innerText ?? document.body.innerText).replace(/\s+/g, ' ').trim()
+      const bodyText = document.body ? document.body.innerText : ''
+      const text = ((main?.innerText ?? bodyText) ?? '').replace(/\s+/g, ' ').trim()
       const hasContent = text.length > 20
 
       let stuck = false
@@ -67,6 +68,7 @@ export async function measurePostClickLoading(
     }
 
     await sleep(100)
+    elapsed = Date.now() - started
   }
 
   return {

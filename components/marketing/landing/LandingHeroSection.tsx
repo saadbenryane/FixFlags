@@ -1,6 +1,7 @@
 import { AuditInput } from "@/components/audit/AuditInput";
 import { AssuranceRow } from "@/components/marketing/landing/AssuranceRow";
 import { EditorToolMarks } from "@/components/marketing/landing/EditorToolMarks";
+import { MarketingEyebrow } from "@/components/marketing/MarketingEyebrow";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { Heading } from "@/components/ui/typography";
@@ -17,18 +18,12 @@ export function LandingHeroSection() {
         className="flex w-full flex-col px-4 sm:px-6 lg:px-12"
       >
         <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-4 text-center sm:gap-5 lg:pt-1">
-          <p className="inline-flex items-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.2em] text-brand sm:text-xs">
-            <span
-              className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
-              aria-hidden
-            />
-            {HERO.badge}
-          </p>
+          <MarketingEyebrow>{HERO.badge}</MarketingEyebrow>
 
           <div className="space-y-5 sm:space-y-6 lg:mt-2.5 lg:space-y-4">
             <Heading
               as="h1"
-              className="mx-auto max-w-[14ch] font-display text-[2.75rem] font-bold leading-[1.08] tracking-display [text-rendering:geometricPrecision] sm:text-[3.125rem] sm:leading-[1.08] lg:text-[4rem] lg:leading-none xl:text-[4.125rem]"
+              className="mx-auto max-w-[14ch] font-display text-4xl font-bold leading-display tracking-display [text-rendering:geometricPrecision] sm:text-5xl"
             >
               {HERO.headlineDisplay}
               {HERO.headlineAccentPeriod ? (
@@ -39,9 +34,6 @@ export function LandingHeroSection() {
             </Heading>
             <p className="mx-auto max-w-[42ch] text-[0.9375rem] leading-relaxed text-muted-foreground/95 text-pretty sm:max-w-xl sm:text-base lg:max-w-[34rem] lg:text-base lg:leading-relaxed">
               {HERO.subhead}
-            </p>
-            <p className="mx-auto max-w-xl text-sm leading-relaxed text-muted-foreground/90 text-pretty">
-              {HERO.founderTeaser}
             </p>
           </div>
 

@@ -27,7 +27,9 @@ const statusEmojis = {
 };
 
 /** @typedef {{id?: string, task: string, status: string, owner: string, scope: string, updated?: string}} BoardRow */
-/** @typedef {{activeRows: BoardRow[], counts: Record<string, number>}} ParsedBoard */
+/** @typedef {{type: string, message: string, row?: string}} HeartbeatWarning */
+/** @typedef {{activeRows: BoardRow[], counts: Record<string, number>, warnings: HeartbeatWarning[]}} ParsedBoard */
+/** @typedef {{status: string, lastTurn: string, condition: string, warning?: string}} ParsedGoal */
 
 function readFileSafe(filePath) {
   try {
@@ -44,8 +46,9 @@ function parseBoard(text) {
 
   const rows = [];
   const counts = {};
+  const warnings = [];
 
-  for (const rawLine of activeSection.split("\n")) {
+  for (const [index, rawLine] of activeSection.split("\n").entries()) {
     const line = rawLine.trim();
     if (!line.startsWith("|") || !line.includes(" | ")) continue;
     if (line.includes("Task ID") || line.includes("-----") || line.startsWith("| ----------------")) continue;
@@ -55,33 +58,60 @@ function parseBoard(text) {
       .map((c) => c.trim())
       .filter((c, i, a) => i !== 0 && i !== a.length - 1);
 
-    if (cols.length < 4) continue;
+    if (cols.length < 3) {
+      warnings.push({
+        type: "board_row_invalid",
+        message: "Skipping malformed board row (insufficient columns)",
+        row: line,
+      });
+      continue;
+    }
 
     const task = cols[0];
     const statusRaw = cols[1];
     const owner = cols[2];
     const scope = cols[4] ?? "n/a";
     const updated = cols.at(-1);
-    if (!statusOrder.includes(statusRaw)) continue;
+
+    if (!statusRaw || !statusOrder.includes(statusRaw.trim())) {
+      warnings.push({
+        type: "board_row_invalid",
+        message: `Skipping board row with unknown status "${statusRaw ?? 'n/a'}"`,
+        row: line,
+      });
+      continue;
+    }
 
     const status = statusRaw.trim();
     counts[status] = (counts[status] ?? 0) + 1;
     rows.push({
-      id: task.trim().split(/\s+/)[0],
+      id: (task ?? `row-${index + 1}`).trim().split(/\s+/)[0],
       task: task.trim(),
       status,
-      owner: owner.trim() || "unassigned",
-      scope: scope?.trim() || "n/a",
+      owner: (owner ?? "unassigned").trim() || "unassigned",
+      scope: (scope ?? "n/a").trim() || "n/a",
       updated: updated?.trim(),
     });
   }
 
-  return { activeRows: rows, counts };
+  return { activeRows: rows, counts, warnings };
 }
 
 function parseGoal(text) {
+  if (!text) {
+    return {
+      status: "unavailable",
+      condition: "unavailable",
+      lastTurn: "none",
+      warning: "GOAL.md is missing",
+    };
+  }
+
   const activeGoalSection = text.includes("## Active goal")
-    ? text.slice(text.indexOf("## Active goal"), text.includes("## Achieved") ? text.indexOf("## Achieved") : text.length)
+    ? text.slice(
+        text.indexOf("## Active goal"),
+        text.includes("## Achieved") ? text.indexOf("## Achieved") : text.length,
+      )
     : text;
 
   const statusMatch = activeGoalSection.match(/\| \*\*Status\*\* \|\s*([^|]+)\|/);
@@ -95,10 +125,15 @@ function parseGoal(text) {
   const rawLastTurn = parts.length >= 3 ? parts[2] : `${latestTurn}`;
   const lastTurn = rawLastTurn && rawLastTurn.length > 180 ? `${rawLastTurn.slice(0, 177).trim()}…` : rawLastTurn;
 
+  const status = statusMatch && statusMatch[1] ? statusMatch[1].trim() : "unavailable";
+  const condition = conditionMatch && conditionMatch[1] ? conditionMatch[1].trim() : "unavailable";
+  const warningMessage = status === "unavailable" || condition === "unavailable" ? "GOAL.md is missing Active goal status/condition" : undefined;
+
   return {
-    status: statusMatch && statusMatch[1] ? statusMatch[1].trim() : "unavailable",
+    status,
     lastTurn: lastTurn || "none",
-    condition: conditionMatch && conditionMatch[1] ? conditionMatch[1].trim() : "unavailable",
+    condition,
+    warning: warningMessage,
   };
 }
 
@@ -121,18 +156,72 @@ function chooseNextAction(rows) {
 
 /** Structured payload consumed by the pi-web heartbeat packet builder. */
 function buildJson({ board, goal, next }) {
+  const warnings = [
+    ...(board.warnings ?? []),
+    ...(goal.warning ? [{ type: "goal_readout", message: goal.warning }] : []),
+  ];
+
+  const fallbackReasons = [];
+  if (board.warnings && board.warnings.length > 0) {
+    for (const warning of board.warnings) {
+      fallbackReasons.push({
+        source: "board",
+        reason: warning.message,
+        line: warning.row || "unknown",
+      });
+    }
+  }
+  if (goal.warning) {
+    fallbackReasons.push({
+      source: "goal",
+      reason: goal.warning,
+      line: "active-goal-section",
+    });
+  }
+
+  const unresolvedWork = [];
+  const blockedRows = byStatus(board.activeRows, "blocked");
+  const queuedRows = byStatus(board.activeRows, "queued");
+  for (const row of [...blockedRows, ...queuedRows]) {
+    unresolvedWork.push({
+      id: row.id,
+      task: row.task,
+      status: row.status,
+      owner: row.owner,
+      scope: row.scope,
+      updated: row.updated,
+      actionHint: row.status === "blocked" ? "unblock" : "schedule",
+    });
+  }
+  if (unresolvedWork.length === 0 && (!blockedRows.length || !queuedRows.length)) {
+    unresolvedWork.push({
+      id: "none",
+      task: "no unresolved work",
+      status: "none",
+      owner: "none",
+      scope: "none",
+      updated: null,
+      actionHint: "none",
+      reason: "no blocked or queued tasks found",
+    });
+  }
+
   return {
     ok: true,
     generatedAt: new Date().toISOString(),
     board: {
       counts: board.counts,
-      blocked: byStatus(board.activeRows, "blocked"),
-      queued: byStatus(board.activeRows, "queued"),
+      blocked: blockedRows,
+      queued: queuedRows,
       inProgress: byStatus(board.activeRows, "in-progress"),
       review: byStatus(board.activeRows, "review"),
+      warnings: board.warnings,
     },
     goal,
     nextOwner: next ? { owner: next.owner, task: next.task, status: next.status } : null,
+    warnings,
+    fallbackReasons,
+    unresolvedWork,
   };
 }
 
@@ -173,6 +262,23 @@ function renderTier(tier, { board, goal, next }) {
     lines.push("\nNext owner actions (active):");
     for (const row of board.activeRows.filter((r) => r.status === "blocked" || r.status === "queued")) {
       lines.push(`  - ${row.task} [${row.status}] owner=${row.owner} updated=${row.updated || "?"}`);
+    }
+  }
+
+  const allWarnings = [];
+  if (board.warnings && board.warnings.length > 0) {
+    for (const warning of board.warnings) {
+      allWarnings.push({ ...warning, message: `board readout: ${warning.message}` });
+    }
+  }
+  if (goal.warning) {
+    allWarnings.push({ type: "goal_readout", message: `goal readout: ${goal.warning}` });
+  }
+
+  if (allWarnings.length > 0) {
+    lines.push("\nProvider notices:");
+    for (const warning of allWarnings) {
+      lines.push(`  - ${warning.message}`);
     }
   }
 

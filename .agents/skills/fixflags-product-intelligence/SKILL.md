@@ -27,7 +27,7 @@ Read `AGENTS.md` first. Generate volatile facts from code and repository command
 ## Hard rules
 
 1. **Core object is the Product**, not the audit URL alone.
-2. **Canonical loop:** Signal → Understand → Prioritize → Fix → Verify → Learn. Customer wedge loop: Check → Fix → Verify → Watch; wedge mechanics remain Flag → Fix → Update review.
+2. **Canonical loop:** Signal → Understand → Prioritize → Fix → Verify → Learn. Customer wedge loop: Product Review → Fix → Verify → Watch; wedge mechanics remain Flag → Fix → Update review.
 3. **Three rubrics only in UI/scoring** (Message / Experience / Reach). Five integrity dimensions are engine framework until DECISIONS change.
 4. **Customer PI ≠ growth graph.** `Project.productIntelligence` vs `lib/graph/` (`graph_*`).
 5. **Never claim unshipped layers** (local OSS runtime, enterprise isolation, Agent Integrity checks) in marketing copy.

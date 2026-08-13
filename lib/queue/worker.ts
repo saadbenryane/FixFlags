@@ -11,6 +11,7 @@ import { isNonRetryableAuditError } from '../audit/pipeline-errors'
 import { logger } from '../logger'
 import { WORKER_CONCURRENCY } from './estimate'
 import { getBrowserDiagnostics } from '../audit/screenshot'
+import { runBestEffort } from '../observability/best-effort'
 
 const HEARTBEAT_INTERVAL_MS = 20_000
 
@@ -23,12 +24,16 @@ function workerBrowserDiagnostics() {
 }
 
 export function startWorker() {
-  void touchWorkerHeartbeat(workerBrowserDiagnostics()).catch((err) => {
-    logger.error('Initial worker heartbeat failed', err)
-  })
+  void runBestEffort(
+    () => touchWorkerHeartbeat(workerBrowserDiagnostics()),
+    { operation: 'worker_heartbeat', logger, context: { phase: 'startup' } },
+  )
 
   const heartbeatTimer = setInterval(() => {
-    void touchWorkerHeartbeat(workerBrowserDiagnostics()).catch(() => {})
+    void runBestEffort(
+      () => touchWorkerHeartbeat(workerBrowserDiagnostics()),
+      { operation: 'worker_heartbeat', logger, context: { phase: 'idle' } },
+    )
   }, HEARTBEAT_INTERVAL_MS)
   heartbeatTimer.unref?.()
 
@@ -78,11 +83,7 @@ export function startWorker() {
       }
     },
     {
-      // ioredis.Redis instances are accepted by BullMQ at runtime but TS
-      // overload resolution resolves to QueueOptions|undefined which lacks
-      // `connection` -- the cast bridges the runtime/type-system gap safely.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      connection: createWorkerRedis() as any,
+      connection: createWorkerRedis(),
       concurrency: WORKER_CONCURRENCY,
       lockDuration: AUDIT_DEADLINE_MS + 30_000,
       // Replaying an active Playwright scan deletes and recaptures evidence,
@@ -93,7 +94,10 @@ export function startWorker() {
   )
 
   worker.on('completed', (job) => {
-    void touchWorkerHeartbeat(workerBrowserDiagnostics()).catch(() => {})
+    void runBestEffort(
+      () => touchWorkerHeartbeat(workerBrowserDiagnostics()),
+      { operation: 'worker_heartbeat', logger, context: { phase: 'completed', jobId: String(job.id) } },
+    )
     logger.info(`Audit job ${job.id} completed`, { auditId: job.data.auditId })
   })
 
@@ -147,7 +151,10 @@ export function startWorker() {
   })
 
   worker.on('stalled', (jobId) => {
-    void recordStalledJob().catch(() => {})
+    void runBestEffort(
+      recordStalledJob,
+      { operation: 'worker_stalled_metric', logger, context: { jobId } },
+    )
     logger.error(`Audit job ${jobId} stalled and will not be replayed`)
   })
 

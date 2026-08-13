@@ -131,6 +131,7 @@ export function ScoreHistoryChart({
     >
       <style>{`
         .spineContainer {
+          position: relative;
           display: flex;
           align-items: flex-end;
           gap: ${BAR_GAP}px;
@@ -206,7 +207,7 @@ export function ScoreHistoryChart({
           left: 50%;
           transform: translateX(-50%);
           font-family: var(--font-mono), 'JetBrains Mono', monospace;
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 600;
           font-variant-numeric: tabular-nums;
           line-height: ${CHIP_HEIGHT}px;
@@ -252,7 +253,7 @@ export function ScoreHistoryChart({
           left: 50%;
           transform: translateX(-50%);
           font-family: var(--font-mono), 'JetBrains Mono', monospace;
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 500;
           font-variant-numeric: tabular-nums;
           color: hsl(var(--muted-foreground));
@@ -267,14 +268,14 @@ export function ScoreHistoryChart({
         }
         .firstDate, .lastDate {
           position: absolute;
-          bottom: calc(100% + ${CHIP_HEIGHT + CARET_SIZE + 28}px);
+          bottom: 8px;
           font-family: var(--font-mono), 'JetBrains Mono', monospace;
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 500;
           font-variant-numeric: tabular-nums;
           color: hsl(var(--muted-foreground));
           white-space: nowrap;
-          opacity: 0.7;
+          opacity: 1;
         }
         .firstDate { left: ${BAR_GAP}px; }
         .lastDate { right: ${BAR_GAP}px; }
@@ -328,7 +329,12 @@ export function ScoreHistoryChart({
         }
       `}</style>
 
-      <div className="spineContainer" role="list" aria-label="Score history observations">
+      <div
+        className="spineContainer"
+        role="toolbar"
+        aria-label="Score history observations"
+        tabIndex={0}
+      >
         {history.map((point, index) => {
           const isActive = selectedIndex === index
           const score = point.score
@@ -342,7 +348,7 @@ export function ScoreHistoryChart({
             : `${getKindLabel(point.kind)}, ${formatDateLabel(point.checkedAt)}, ${getStatusLabel(point.status)}`
 
           return (
-            <div key={point.id} className="barWrapper" role="listitem">
+            <div key={point.id} className="barWrapper" role="presentation">
               <button
                 type="button"
                 className="tapTarget"
@@ -381,7 +387,7 @@ export function ScoreHistoryChart({
           )
         })}
         {isLoading && (
-          <div className="barWrapper" role="listitem">
+          <div className="barWrapper" role="presentation">
             <div
               className="tapTarget"
               role="img"

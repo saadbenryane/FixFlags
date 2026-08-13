@@ -124,10 +124,19 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
     apiUrl
   )
   assert.equal(checked.code, 0, checked.stderr)
-  assert.match(checked.stdout, /All fixes \(2\)/)
+  assert.match(checked.stdout, /Finish Plan \(1\)/)
   assert.match(checked.stdout, /CTA is vague/)
-  assert.match(checked.stdout, /Proof is missing/)
+  assert.doesNotMatch(checked.stdout, /Proof is missing/)
   assert.match(checked.stdout, /fixflags recheck report-1/)
+
+  const allFixes = await runCli(
+    ['check', 'https://example.com', '--wait', '--all'],
+    apiUrl
+  )
+  assert.equal(allFixes.code, 0, allFixes.stderr)
+  assert.match(allFixes.stdout, /Complete Fix List \(2\)/)
+  assert.match(allFixes.stdout, /CTA is vague/)
+  assert.match(allFixes.stdout, /Proof is missing/)
 
   const rechecked = await runCli(
     ['recheck', 'report-1', '--wait', '--diff'],
@@ -135,9 +144,10 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
   )
   assert.equal(rechecked.code, 0, rechecked.stderr)
   assert.match(rechecked.stdout, /Fixed: 1/)
-  assert.match(rechecked.stdout, /All fixes: 0 unresolved improvements/)
+  assert.match(rechecked.stdout, /Next Finish Plan: 0 unresolved improvements/)
 
   assert.deepEqual(tools, [
+    'ff_check_and_plan',
     'ff_check_and_plan',
     'ff_recheck_and_compare',
   ])

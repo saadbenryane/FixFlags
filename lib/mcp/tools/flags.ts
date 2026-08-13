@@ -236,7 +236,7 @@ export function registerFlagTools(server: McpServer, user: User) {
       limit: z.number().int().min(1).max(3).optional(),
       tool: z.enum(PROMPT_TOOL_KEYS).optional(),
     },
-    async ({ reportId, limit, tool }) => {
+    async ({ reportId, limit = 3, tool }) => {
       await assertMcpAccess(user)
       const audit = await prisma.audit.findUnique({
         where: { id: reportId },
@@ -250,9 +250,11 @@ export function registerFlagTools(server: McpServer, user: User) {
       if (audit.status !== 'COMPLETED') {
         throw new Error(`Report is ${audit.status}, not COMPLETED`)
       }
-      const outcome = await loadCompletedTaskOutcome(reportId, tool)
-      const plan = outcome.fixList
-      const items = plan?.items.slice(0, limit ?? plan.items.length) ?? []
+      const outcome = await loadCompletedTaskOutcome(reportId, tool, {
+        finishPlanLimit: limit,
+      })
+      const plan = outcome.finishPlan
+      const items = plan?.items ?? []
       return {
         content: [
           {

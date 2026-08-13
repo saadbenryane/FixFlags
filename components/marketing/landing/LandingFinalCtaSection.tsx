@@ -44,7 +44,7 @@ export function LandingFinalCtaSection() {
                 headline={FINAL_CTA.headlineDisplay}
                 accentPeriod={FINAL_CTA.headlineAccentPeriod}
                 subhead={FINAL_CTA.body}
-                className="max-w-[25rem] space-y-2 [&_h2]:max-w-[14rem] [&_h2]:!text-xl [&_h2]:!leading-[1.08] [&_p]:!text-[0.6875rem] [&_p]:!leading-relaxed lg:[&_p]:whitespace-nowrap"
+                className="max-w-[25rem] space-y-2 [&_h2]:max-w-[14rem] [&_h2]:!text-xl [&_h2]:!leading-display [&_p]:!text-2xs [&_p]:!leading-relaxed lg:[&_p]:whitespace-nowrap"
               />
             </div>
 

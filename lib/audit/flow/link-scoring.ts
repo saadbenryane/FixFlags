@@ -1,5 +1,5 @@
 /** Shared CTA / conversion-path link scoring for critical path and flow scan. */
-import { normalizeSiteHost } from '@/lib/utils/url-helpers'
+import { normalizeSiteHost, parseSiteHostname } from '@/lib/utils/url-helpers'
 export { normalizeSiteHost }
 
 const AUTH_UTILITY_PATTERN = /\b(login|log in|sign in|signin)\b/i
@@ -34,12 +34,8 @@ export function isAuthUtilityLink(href: string, text: string): boolean {
 
 /** Booking/scheduling links that legitimately leave the page (often in a new tab). */
 export function isExternalBookingHref(href: string): boolean {
-  try {
-    const host = new URL(href).hostname.toLowerCase()
-    return /calendly|calendar\.app|cal\.com|hubspot\.com|meetings\.|bookings\./.test(host)
-  } catch {
-    return false
-  }
+  const host = parseSiteHostname(href)
+  return /calendly|calendar\.app|cal\.com|hubspot\.com|meetings\.|bookings\./.test(host)
 }
 
 export function isIntentionalExternalCta(origin: string, href: string | null): boolean {

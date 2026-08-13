@@ -45,6 +45,7 @@ function dependencies(): WorkerRuntimeDependencies & {
     },
     logger: {
       info: () => {},
+      warn: () => {},
       error: () => {},
     },
   }
@@ -89,6 +90,28 @@ describe('standalone worker runtime', () => {
 
     await Promise.all([runtime.shutdown(1), runtime.shutdown(1)])
 
+    expect(deps.closeWorker).toHaveBeenCalledOnce()
+    expect(deps.exit).toHaveBeenCalledOnce()
+  })
+
+  it('records heartbeat cleanup failure and still closes resources once', async () => {
+    const deps = dependencies()
+    deps.clearHeartbeat = vi.fn(async () => {
+      deps.calls.push('heartbeat:clear')
+      throw new Error('redis unavailable')
+    })
+    deps.logger.warn = vi.fn()
+    const runtime = createWorkerRuntime(deps)
+    await runtime.start()
+
+    await Promise.all([runtime.shutdown(1), runtime.shutdown(1)])
+
+    expect(deps.logger.warn).toHaveBeenCalledWith('Best-effort operation failed', {
+      operation: 'worker_heartbeat_cleanup',
+      outcome: 'failure',
+      exitCode: 1,
+      error: 'redis unavailable',
+    })
     expect(deps.closeWorker).toHaveBeenCalledOnce()
     expect(deps.exit).toHaveBeenCalledOnce()
   })

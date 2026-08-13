@@ -54,7 +54,7 @@ describe('AuditInput scan handoff', () => {
     fireEvent.submit(input.closest('form')!)
 
     expect(await screen.findByText('Could not start this check.')).toBeInTheDocument()
-    const retryButton = screen.getByRole('button', { name: /Review my product/i })
+    const retryButton = screen.getByRole('button', { name: /Review my site/i })
     expect(retryButton).toBeEnabled()
     expect(startScanWithHandoff).toHaveBeenCalledOnce()
 

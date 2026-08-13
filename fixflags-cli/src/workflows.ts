@@ -35,7 +35,6 @@ export interface CheckResult {
     importantCount?: number
   }>
   fixList?: FixList
-  /** Legacy server compatibility. New responses use fixList. */
   finishPlan?: FinishPlan
   /** Deterministic check modules that threw; their findings were dropped. */
   failedModules?: string[]
@@ -52,7 +51,6 @@ export interface RecheckResult {
   status: string
   diff?: { fixed: number; remaining: number; newIssues: number; regressed: number } | null
   nextFixList?: FixList
-  /** Legacy server compatibility. New responses use nextFixList. */
   nextFinishPlan?: FinishPlan
   technologyProfile?: CheckResult['technologyProfile']
 }

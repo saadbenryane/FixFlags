@@ -7,7 +7,7 @@
 export const MCP_TOOLS = {
   checkAndPlan: {
     name: 'ff_check_and_plan',
-    desc: 'Check a deployed URL and return its canonical ranked Fix List. Validate the highest-ranked Flag against its evidence before changing product code.',
+    desc: 'Check a deployed URL and return its complete ranked Fix List plus a bounded Finish Plan. Validate each selected Flag against its evidence before changing product code.',
   },
   getCheckStatus: {
     name: 'ff_get_check_status',
@@ -39,11 +39,11 @@ export const MCP_TOOLS = {
   },
   getCurrentFinishPlan: {
     name: 'ff_get_current_finish_plan',
-    desc: 'Deprecated: get the legacy three-item quick plan.',
+    desc: 'Get the current one-to-three item Finish Plan and a prompt built only from those selected Flags.',
   },
   recheckAndCompare: {
     name: 'ff_recheck_and_compare',
-    desc: 'After testing and deploying a product fix, run a fresh Re-check from the original report and return Fixed, Remaining, New, and Regressed Flags plus the next Fix List.',
+    desc: 'After testing and deploying a product fix, run a fresh update review and return Fixed, Remaining, New, and Regressed Flags plus the complete Fix List and next Finish Plan.',
   },
   compare: {
     name: 'ff_compare',

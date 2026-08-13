@@ -1,7 +1,7 @@
 'use client'
 
+import { SegmentedControl } from '@/components/ui/segmented-control'
 import { REPORT_COPY } from '@/lib/marketing/copy'
-import { cn } from '@/lib/utils'
 
 export type WorkspacePanelView = 'browser' | 'report' | 'canvas'
 
@@ -24,31 +24,21 @@ export function WorkspaceViewToggle({
   className,
   showCanvas = false,
 }: WorkspaceViewToggleProps) {
+  const items = views
+    .filter((item) => item.id !== 'canvas' || showCanvas)
+    .map((item) => ({
+      value: item.id,
+      label: REPORT_COPY.workspace.panels[item.label],
+    }))
+
   return (
-    <div
-      className={cn(
-        'inline-flex rounded-card border border-border bg-muted/40 p-0.5 text-xs font-medium',
-        className,
-      )}
-      role="tablist"
+    <SegmentedControl
+      size="lg"
+      value={view}
+      onValueChange={(value) => onChange(value as WorkspacePanelView)}
+      items={items}
       aria-label={REPORT_COPY.workspace.panels.toggleLabel}
-    >
-      {views.filter((item) => item.id !== 'canvas' || showCanvas).map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          role="tab"
-          aria-selected={view === item.id}
-          className={cn(
-            'min-h-11 rounded-md px-3 py-1.5 transition-colors',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
-            view === item.id ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground',
-          )}
-          onClick={() => onChange(item.id)}
-        >
-          {REPORT_COPY.workspace.panels[item.label]}
-        </button>
-      ))}
-    </div>
+      className={className}
+    />
   )
 }

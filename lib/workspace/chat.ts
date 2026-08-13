@@ -123,33 +123,6 @@ function formatFlagContext(flags: ChatFlagContext[]): string {
     .join('\n')
 }
 
-const SEVERITY_ORDER: Record<string, number> = {
-  CRITICAL: 0,
-  HIGH: 1,
-  MEDIUM: 2,
-  LOW: 3,
-}
-
-/**
- * Deterministic canned reply built from the report's own Flags. Used when no
- * chat provider is configured or the model call fails, so chat degrades to
- * useful canned actions instead of a dead end.
- */
-export function buildCannedChatReply(input: { flags: ChatFlagContext[] }): string {
-  const flags = input.flags
-  if (flags.length === 0) {
-    return 'No Flags on this report yet. Open a Flag in the report for evidence and fix prompts.'
-  }
-  const top = [...flags].sort(
-    (a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9)
-  )[0]
-  return [
-    `Start with the most important Flag: ${top.problem}`,
-    `Evidence: ${top.evidence}`,
-    `Fix: ${top.fix}`,
-  ].join('\n\n')
-}
-
 /* ------------------------------------------------------------------ */
 /* Product-grounded deterministic answers                              */
 /*                                                                    */

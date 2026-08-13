@@ -16,11 +16,7 @@ function getAuditRedis(): Redis {
 export function getAuditQueue(): Queue {
   if (!_auditQueue) {
     _auditQueue = new Queue('audit', {
-      // ioredis.Redis instances are accepted by BullMQ at runtime but TS
-      // overload resolution resolves to QueueOptions|undefined which lacks
-      // `connection` -- the cast bridges the runtime/type-system gap safely.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      connection: getAuditRedis() as any,
+      connection: getAuditRedis(),
       defaultJobOptions: {
         attempts: 2,
         backoff: { type: 'fixed', delay: 10_000 },

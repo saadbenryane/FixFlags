@@ -44,7 +44,7 @@ export function RubricDimensionHeader({
     >
       <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', tint)} aria-hidden />
       <div className="min-w-0">
-        <p className={cn('font-semibold leading-none', tint, compact ? 'text-sm' : 'text-base')}>
+        <p className={cn('font-semibold leading-none text-foreground', compact ? 'text-sm' : 'text-base')}>
           {copy?.title ?? rubric}
         </p>
         {!compact && copy?.question && (
@@ -62,12 +62,11 @@ export function RubricPill({ rubric, label }: { rubric: string; label: string })
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-2xs font-semibold',
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-foreground',
         wash.wash,
-        rubricTint(rubric)
       )}
     >
-      <Icon className="h-3 w-3 shrink-0" aria-hidden />
+      <Icon className={cn('h-3 w-3 shrink-0', rubricTint(rubric))} aria-hidden />
       {label}
     </span>
   )

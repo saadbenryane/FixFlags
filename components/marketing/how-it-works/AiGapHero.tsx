@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react'
 import Image from 'next/image'
 import {
   AlertTriangle,
@@ -7,6 +6,7 @@ import {
   Shield,
   Sparkles,
 } from 'lucide-react'
+import { MarketingEyebrow } from '@/components/marketing/MarketingEyebrow'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Heading } from '@/components/ui/typography'
@@ -27,15 +27,6 @@ const STACK = {
   width: 490,
   height: 477,
 } as const
-
-function BrandDotEyebrow({ children }: { children: ReactNode }) {
-  return (
-    <p className="inline-flex items-center gap-2 font-mono text-xs font-medium uppercase tracking-label text-brand">
-      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
-      {children}
-    </p>
-  )
-}
 
 function AnnotationLeader({ brand }: { brand: boolean }) {
   return (
@@ -81,7 +72,7 @@ function AiGapStack() {
               <div className="min-w-0">
                 <p
                   className={cn(
-                    'font-mono text-[0.6875rem] font-semibold uppercase tracking-label',
+                    'font-mono text-2xs font-semibold uppercase tracking-label',
                     isBrand ? 'text-brand' : 'text-foreground'
                   )}
                 >
@@ -114,11 +105,11 @@ export function AiGapHero() {
       <Container variant="wide" className="space-y-10 lg:space-y-12">
         <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.22fr)] lg:gap-6 xl:gap-10">
           <div className="max-w-xl space-y-5 lg:max-w-none">
-            <BrandDotEyebrow>{hero.eyebrow}</BrandDotEyebrow>
+            <MarketingEyebrow>{hero.eyebrow}</MarketingEyebrow>
             <div className="space-y-4">
               <Heading
                 as="h1"
-                className="max-w-[18ch] font-display text-[2.25rem] leading-[1.08] sm:text-5xl lg:text-[3.15rem] xl:text-[3.4rem]"
+                className="max-w-[18ch] font-display text-4xl leading-display sm:text-5xl"
               >
                 {headlineWithoutPeriod}
                 {hero.headlineAccentPeriod ? (

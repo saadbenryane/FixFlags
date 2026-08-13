@@ -1,9 +1,12 @@
+import { runBestEffort } from '@/lib/observability/best-effort'
+
 export interface WorkerHandle {
   close(): Promise<unknown>
 }
 
 export interface WorkerRuntimeLogger {
   info(message: string): void
+  warn(message: string, details: Record<string, unknown>): void
   error(message: string, details?: unknown): void
 }
 
@@ -38,7 +41,11 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
     if (shuttingDown) return
     shuttingDown = true
     dependencies.logger.info('Worker shutting down')
-    await dependencies.clearHeartbeat().catch(() => {})
+    await runBestEffort(dependencies.clearHeartbeat, {
+      operation: 'worker_heartbeat_cleanup',
+      logger: dependencies.logger,
+      context: { exitCode },
+    })
     await dependencies.closeBrowser()
     await worker?.close()
     dependencies.exit(exitCode)

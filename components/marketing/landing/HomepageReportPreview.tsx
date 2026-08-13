@@ -111,7 +111,7 @@ export function HomepageReportPreview({
 
           <div className="mt-3.5 grid min-w-0 gap-3.5 md:grid-cols-[minmax(16rem,1.1fr)_minmax(14rem,0.9fr)]">
             <div className="min-w-0">
-              <div className="flex min-w-0 gap-1 overflow-x-auto border-b border-border/40 pb-2.5 scrollbar-none">
+              <div className="flex min-w-0 flex-wrap gap-1 border-b border-border/40 pb-2.5">
                 <span className="inline-flex min-h-8 shrink-0 items-center rounded-[var(--radius-control)] bg-foreground px-3 text-2xs font-medium text-background">
                   All Flags
                   <span className="ml-1.5 font-mono opacity-65">
@@ -164,7 +164,7 @@ export function HomepageReportPreview({
                       <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
                         {flag.title}
                       </span>
-                      <span className="hidden shrink-0 text-3xs font-medium text-muted-foreground xl:inline">
+                      <span className="hidden shrink-0 text-xs font-medium text-muted-foreground xl:inline">
                         {flag.rubricLabel}
                       </span>
                     </li>
@@ -199,7 +199,7 @@ export function HomepageReportPreview({
 
                 <div className="mt-4 space-y-3.5">
                   <div>
-                    <p className="text-3xs font-semibold uppercase tracking-label text-muted-foreground">
+                    <p className="text-xs font-semibold uppercase tracking-label text-muted-foreground">
                       Why it matters
                     </p>
                     <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-muted-foreground">
@@ -207,10 +207,10 @@ export function HomepageReportPreview({
                     </p>
                   </div>
                   <div>
-                    <p className="text-3xs font-semibold uppercase tracking-label text-muted-foreground">
+                    <p className="text-xs font-semibold uppercase tracking-label text-muted-foreground">
                       Fix prompt
                     </p>
-                    <p className="mt-1.5 line-clamp-4 rounded-[var(--radius-control)] bg-background px-3 py-2.5 font-mono text-[0.625rem] leading-relaxed text-foreground/80 ring-1 ring-border/45">
+                    <p className="mt-1.5 line-clamp-4 rounded-[var(--radius-control)] bg-background px-3 py-2.5 font-mono text-3xs leading-relaxed text-foreground/80 ring-1 ring-border/45">
                       {selectedFlag.fixPrompt}
                     </p>
                   </div>

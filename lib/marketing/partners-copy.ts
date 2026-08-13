@@ -13,14 +13,3 @@ export const PARTNERS_COPY = {
   cta: 'Apply for the expert program',
   email: 'hello@fixflags.com',
 } as const
-
-export function inferBuilderToolFromUrl(url: string): 'lovable' | 'bolt' | null {
-  try {
-    const host = new URL(url).hostname.toLowerCase()
-    if (host.includes('lovable') || host.endsWith('lovable.app')) return 'lovable'
-    if (host.includes('bolt') || host === 'bolt.new' || host.endsWith('.bolt.new')) return 'bolt'
-  } catch {
-    return null
-  }
-  return null
-}

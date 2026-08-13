@@ -215,7 +215,7 @@ export function buildSampleReportDisplay(
     flags: audit.flags,
     rubricRows: audit.rubricRows,
     url: audit.url,
-    promptAccess: 'all',
+    promptAccess: 'one',
   }).items.map((item) => item.id)
   const flagsById = new Map(audit.flags.map((flag) => [flag.id, flag]))
   const sorted = rankedIds.flatMap((id) => {

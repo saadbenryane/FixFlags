@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildFixList } from '@/lib/audit/finish-plan'
+import { buildFinishPlan, buildFixArtifacts, buildFixList } from '@/lib/audit/finish-plan'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 
 function flag(id: string, severity: string, prompt = `Fix ${id}`): RankableFlag {
@@ -41,6 +41,23 @@ describe('buildFixList', () => {
     expect(list.items[0]?.id).toBe('critical')
     expect(list.items.map((item) => item.id)).toContain('polish')
     expect(list.visiblePromptCount).toBe(4)
+  })
+
+  it('derives a bounded Finish Plan from the same complete ranking', () => {
+    const { fixList, finishPlan } = buildFixArtifacts({ flags, promptAccess: 'all' })
+
+    expect(fixList.items).toHaveLength(4)
+    expect(finishPlan.items).toHaveLength(3)
+    expect(finishPlan.items.map((item) => item.id)).toEqual(
+      fixList.items.slice(0, 3).map((item) => item.id)
+    )
+    expect(finishPlan.copyPrompt).toContain('Problem critical')
+    expect(finishPlan.copyPrompt).not.toContain('Problem polish')
+  })
+
+  it('caps explicit Finish Plan limits at three and keeps at least one item', () => {
+    expect(buildFinishPlan({ flags, promptAccess: 'all', limit: 99 }).items).toHaveLength(3)
+    expect(buildFinishPlan({ flags, promptAccess: 'all', limit: 0 }).items).toHaveLength(1)
   })
 
   it('keeps ranking stable while exposing exactly one demonstrated prompt', () => {

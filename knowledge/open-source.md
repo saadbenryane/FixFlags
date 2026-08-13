@@ -20,7 +20,7 @@ The open layer should work independently.
 
 ## Community skills (planned)
 
-Thin orchestration over MCP and CLI. Skills teach agents the Check → Fix → Verify loop; they do not ship the Integrity Engine.
+Thin orchestration over MCP and CLI. Skills teach agents the Product Review → Fix → Update review loop; they do not ship the Integrity Engine.
 
 | Layer | Location today | OSS target |
 |-------|----------------|------------|

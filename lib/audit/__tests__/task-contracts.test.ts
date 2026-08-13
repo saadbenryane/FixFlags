@@ -33,7 +33,11 @@ vi.mock('@/lib/audit/technology-profile', () => ({
   }),
 }))
 
-import { checkAndPlan, recheckAndCompare } from '@/lib/audit/task-contracts'
+import {
+  checkAndPlan,
+  loadCompletedTaskOutcome,
+  recheckAndCompare,
+} from '@/lib/audit/task-contracts'
 
 const user = {
   id: 'user-1',
@@ -113,6 +117,7 @@ describe('task contracts', () => {
     expect(outcome.score).toBe(82)
     expect(outcome.fixList?.items).toHaveLength(1)
     expect(outcome.fixList?.totalCount).toBe(1)
+    expect(outcome.finishPlan?.items).toHaveLength(1)
     expect(outcome.fixList?.items[0]?.fixPrompt).toMatch(/Rename the primary CTA/)
     expect(outcome.fixList?.items[0]).toMatchObject({
       rank: 1,
@@ -121,6 +126,34 @@ describe('task contracts', () => {
       selectedTool: 'universal',
       reportUrl: expect.stringContaining('/report/report-1'),
     })
+  })
+
+  it('keeps every unresolved Flag in the Fix List and only three in the Finish Plan', async () => {
+    const base = completedAudit()
+    mocks.auditFindUnique.mockResolvedValue({
+      ...base,
+      flags: [
+        ...base.flags,
+        ...['flag-2', 'flag-3', 'flag-4'].map((id, index) => ({
+          ...base.flags[0],
+          id,
+          checkId: id,
+          severity: index === 2 ? 'POLISH' : 'IMPORTANT',
+          problem: `Problem ${id}`,
+          agentPrompt: `Fix ${id}`,
+        })),
+      ],
+    })
+
+    const outcome = await loadCompletedTaskOutcome('report-1')
+
+    expect(outcome.fixList?.items).toHaveLength(4)
+    expect(outcome.fixList?.totalCount).toBe(4)
+    expect(outcome.finishPlan?.items).toHaveLength(3)
+    expect(outcome.finishPlan?.items.map((item) => item.flagId)).toEqual(
+      outcome.fixList?.items.slice(0, 3).map((item) => item.flagId)
+    )
+    expect(outcome.finishPlan?.planPrompt).not.toContain('Problem flag-4')
   })
 
   it('returns a typed polling action when checks run asynchronously', async () => {
@@ -198,12 +231,13 @@ describe('task contracts', () => {
     })
     expect(outcome.nextFixList?.items).toHaveLength(1)
     expect(outcome.nextFixList?.totalCount).toBe(1)
+    expect(outcome.nextFinishPlan?.items).toHaveLength(1)
     expect(mocks.startMonitoringAudit).toHaveBeenCalledWith('parent-1', user, {
       delayMs: undefined,
     })
   })
 
-  it('exposes only one demonstrated prompt to anonymous callers and never the plan prompt', async () => {
+  it('exposes no prompts or plan prompt to anonymous callers', async () => {
     const outcome = await checkAndPlan({
       url: 'https://example.com',
       userId: null,
@@ -214,9 +248,10 @@ describe('task contracts', () => {
     const prompts = outcome.fixList?.items
       .map((item) => item.fixPrompt)
       .filter((prompt): prompt is string => Boolean(prompt))
-    expect(prompts).toHaveLength(1)
-    expect(prompts?.[0]).toBe('Rename the primary CTA to describe the outcome.')
+    expect(prompts).toHaveLength(0)
     expect(outcome.fixList?.planPrompt).toBe('')
+    expect(outcome.finishPlan?.items.every((item) => item.fixPrompt === null)).toBe(true)
+    expect(outcome.finishPlan?.planPrompt).toBe('')
   })
 
   it('surfaces failedModules on the completed outcome', async () => {

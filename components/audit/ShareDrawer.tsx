@@ -235,7 +235,7 @@ export function ShareDrawer({
             </p>
           </div>
           <SheetClose asChild>
-            <Button variant="ghost" size="icon" className="h-[44px] w-[44px]">
+            <Button variant="ghost" size="icon" aria-label="Close">
               <X className="h-4 w-4" />
             </Button>
           </SheetClose>
@@ -421,9 +421,8 @@ export function ShareDrawer({
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-[44px] w-[44px]"
                                   onClick={() => handleRevoke(link.id)}
-                                  title="Revoke link"
+                                  aria-label="Revoke share link"
                                 >
                                   <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
                                 </Button>
@@ -465,11 +464,10 @@ export function ShareDrawer({
                               </Button>
                               <Button
                                 variant="ghost"
-                                size="sm"
-                                className="h-[44px] w-[44px] p-0"
+                                size="icon"
                                 asChild
                               >
-                                <a href={linkUrl} target="_blank" rel="noopener noreferrer">
+                                <a href={linkUrl} target="_blank" rel="noopener noreferrer" aria-label="Open shared report">
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </a>
                               </Button>

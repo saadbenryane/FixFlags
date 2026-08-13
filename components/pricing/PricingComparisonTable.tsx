@@ -114,7 +114,7 @@ export function PricingComparisonTable() {
                   <span
                     className={cn(
                       "block font-semibold",
-                      highlight && "text-brand",
+                      highlight && "marketing-accent-text",
                     )}
                   >
                     {plan.name}

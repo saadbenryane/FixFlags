@@ -48,6 +48,7 @@ import type { FlowData } from '@/lib/audit/flow-data'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
+import { resolveReportPromptProjection } from '@/lib/report/prompt-access'
 import { JourneyBar, type JourneyPage } from '@/components/audit/JourneyBar'
 import { FlowScanTimeline } from '@/components/audit/FlowScanTimeline'
 import { PreviewCards } from '@/components/audit/PreviewCards'
@@ -59,6 +60,7 @@ import { ProductContractCard } from '@/components/audit/ProductContractCard'
 import { ProductMemoryStrip } from '@/components/audit/ProductMemoryStrip'
 import { ProductWatchControls } from '@/components/audit/ProductWatchControls'
 import { ReportSignupCta } from '@/components/audit/ReportSignupCta'
+import { ReportAuthGateTracker } from '@/components/analytics/ReportAuthGateTracker'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
@@ -193,6 +195,9 @@ export function AuditReport({
   // Server strip is the only entitlement; never unlock via client sessionStorage.
   const fixPromptLocked = !showDeterministicFixes
   const demonstratedFlag = isSample ? sampleFixFlag : fixPromptLocked ? null : sampleFixFlag
+  const promptProjection = resolveReportPromptProjection(
+    isSample ? 'curated-sample' : fixPromptLocked ? 'live-anonymous' : 'owner'
+  )
 
   const upgradeMoment =
     !isSample && isLoggedIn && !viewerIsPaid
@@ -211,7 +216,7 @@ export function AuditReport({
     previewMeta: audit.previewMeta,
     flagVisualEvidence: audit.flagVisualEvidence,
     productContract: audit.productContract ?? null,
-    promptAccess: fixPromptLocked ? (demonstratedFlag ? 'one' : 'none') : 'all',
+    promptAccess: promptProjection.explorer,
     demonstratedFlag,
     fixList: audit.fixList,
   })
@@ -235,11 +240,7 @@ export function AuditReport({
     canShare: !isSample && isLoggedIn && isViewerOwner,
     canRecheck: !isSample && isLoggedIn && isViewerOwner,
     canGiveFeedback: showFeedback,
-    promptAccess: fixPromptLocked
-      ? demonstratedFlag
-        ? 'demonstrated'
-        : 'none'
-      : 'all',
+    promptAccess: promptProjection.workspace,
     demonstratedFlagId: demonstratedFlag?.id,
     recheckOutcome: recheckDiff,
     degradedReason: triageDegraded ? failureCode : null,
@@ -298,6 +299,7 @@ export function AuditReport({
     !isSample && Boolean(auditId) && isViewerOwner && scoreHistory.length > 1;
 
   return (
+    <>
     <ReportWorkspaceShell
       workspace={workspace}
       compact={isSample}
@@ -605,5 +607,9 @@ export function AuditReport({
         </div>
       }
     />
+    {!isSample && auditId ? (
+      <ReportAuthGateTracker auditId={auditId} gateShown={fixPromptLocked} />
+    ) : null}
+    </>
   )
 }

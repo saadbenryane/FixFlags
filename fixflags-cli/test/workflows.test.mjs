@@ -17,7 +17,7 @@ function caller(responses) {
   }
 }
 
-test('checkAndPlan prefers the complete fix list while retaining the legacy plan', async () => {
+test('checkAndPlan preserves distinct complete Fix List and bounded Finish Plan contracts', async () => {
   const mock = caller({
     ff_check_and_plan: {
       reportId: 'report-1',

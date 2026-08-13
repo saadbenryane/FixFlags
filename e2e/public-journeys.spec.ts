@@ -69,7 +69,9 @@ for (const width of widths) {
         .filter((element) => {
           const rect = element.getBoundingClientRect()
           const style = getComputedStyle(element)
-          return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && (rect.width < 44 || rect.height < 44)
+          // Chromium can report an exact 44px CSS target a fraction below 44px.
+          const minimumTarget = 43.99
+          return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && (rect.width < minimumTarget || rect.height < minimumTarget)
         })
         .map((element) => ({
           text: element.getAttribute('aria-label') || element.textContent?.trim().slice(0, 60),
@@ -111,6 +113,22 @@ test('legacy sample details redirects to the canonical report surface', async ({
   await page.goto('/samples/details')
   await expect(page).toHaveURL(/\/samples(?:\?flag=[^#]+)?$/)
   await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
+})
+
+test('curated sample demonstrates exactly one fix prompt', async ({ page }) => {
+  await page.goto('/samples')
+  const fixList = page.locator('#report-flags')
+  await expect(fixList).toBeVisible()
+
+  const flags = fixList.locator('button[aria-controls="selected-flag-detail"]')
+  const flagCount = await flags.count()
+  let promptCount = 0
+  for (let index = 0; index < flagCount; index += 1) {
+    await flags.nth(index).click()
+    promptCount += await fixList.getByRole('button', { name: /copy prompt/i }).count()
+  }
+
+  expect(promptCount).toBe(1)
 })
 
 test('canonical sample reflows at 200% text size and respects reduced motion', async ({ page }) => {
@@ -246,7 +264,7 @@ test('auth shell supports light and dark themes without reflow', async ({ page }
   expect(overflow).toBeLessThanOrEqual(1)
 })
 
-test('anonymous check reaches a completed report and enforces the one-teaser boundary', async ({ page }) => {
+test('anonymous check reaches a completed report without exposing fix prompts', async ({ page }) => {
   test.skip(process.env.E2E_FULL !== 'true', 'Set E2E_FULL=true for the queue-backed journey')
   test.setTimeout(240_000)
 
@@ -291,15 +309,8 @@ test('anonymous check reaches a completed report and enforces the one-teaser bou
       promptFlagIndexes.push(index)
     }
   }
-  expect(promptFlagIndexes).toHaveLength(1)
-  await flags.nth(promptFlagIndexes[0]!).click()
-  const copyButtons = fixList.getByRole('button', { name: /copy prompt/i })
-  await expect(copyButtons).toHaveCount(1)
-  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
-  await copyButtons.first().click()
-  const copiedPrompt = await page.evaluate(() => navigator.clipboard.readText())
-  expect(copiedPrompt.length).toBeGreaterThan(40)
-  expect(copiedPrompt).not.toMatch(/create (a free )?account|sign up/i)
+  expect(promptFlagIndexes).toHaveLength(0)
+  await expect(fixList.getByRole('button', { name: /copy prompt/i })).toHaveCount(0)
 
   await page.goto('/')
   await page.getByLabel('Website URL').first().fill('https://www.iana.org')
@@ -351,6 +362,33 @@ test('accessibility: completed sample report has no axe violations', async ({ pa
   expect(
     results.violations.map((v) => `${v.id} (${v.impact}): ${v.nodes[0]?.target?.join(' ')}`)
   ).toEqual([])
+})
+
+test('accessibility: key marketing surfaces pass in light and dark at launch widths', async ({ page }) => {
+  test.setTimeout(120_000)
+  const routes = ['/', '/pricing', '/samples'] as const
+  const schemes = ['light', 'dark'] as const
+  const violations: string[] = []
+
+  for (const width of [375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 900 })
+    for (const colorScheme of schemes) {
+      await page.emulateMedia({ colorScheme })
+      for (const route of routes) {
+        await page.goto(route)
+        await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+        const results = await new AxeBuilder({ page: page as never }).analyze()
+        violations.push(
+          ...results.violations.map(
+            (violation) =>
+              `${route} ${colorScheme} ${width}px: ${violation.id} (${violation.impact}): ${violation.nodes[0]?.target?.join(' ')}`
+          )
+        )
+      }
+    }
+  }
+
+  expect(violations).toEqual([])
 })
 
 // ---------------------------------------------------------------------------

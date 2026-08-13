@@ -100,21 +100,21 @@ export const ROAST_COPY = {
   taglines: {
     A: 'Ship it. This is ready for humans.',
     B: 'Solid foundation. A few tweaks and you are golden.',
-    C: 'Not bad, but your users will notice.',
+    C: 'Not bad. Some issues visitors notice.',
     D: 'Your site has feelings. Mostly pain.',
     F: 'We roasted your site so your users do not have to.',
     default: 'Every site has room to grow.',
   },
   rubricVerdicts: {
     MESSAGE: {
-      A: 'Clear, focused, conversion-ready.',
+      A: 'Clear, focused, and built to convert.',
       B: 'Good messaging. Minor clarity gaps.',
       C: 'Visitors understand what you do. Eventually.',
       D: 'Your headline is working against you.',
       F: 'Visitors have no idea what this is about.',
     },
     EXPERIENCE: {
-      A: 'Fast, accessible, and broken nothing.',
+      A: 'Fast, accessible, and free of dead ends.',
       B: 'Works well. A few rough edges.',
       C: 'It loads. That is about the nicest thing we can say.',
       D: 'Your users are leaving. We can see why.',
@@ -132,8 +132,8 @@ export const ROAST_COPY = {
 
 /** Canonical free-tier offer. Wire every surface from here; do not paraphrase. */
 export const OFFER = {
-  line: 'Free product review. See what\u2019s broken. Sign up when you want the fix prompts and update reviews.',
-  short: 'Free product review. See what\u2019s broken before you share the link.',
+  line: 'Free product review. See what needs attention. Sign up when you want fix prompts and update reviews.',
+  short: 'Free product review. See what needs attention before you share the link.',
   /** Privacy page / FAQ only. Do not render on marketing heroes. */
   privacy: 'We scan your live URL. We do not change your site or touch your code.',
   linkPrivacy:
@@ -213,7 +213,7 @@ export function rubricDescription(name: string): string {
     MESSAGE:
       'Does the page make sense and feel credible? Copy, headline, positioning, audience, benefits, social proof, and trust signals.',
     EXPERIENCE:
-      'Does the page work well for users? Design, layout, mobile, accessibility, speed, visual consistency, and broken interactions.',
+      'Does the page work well for users? Design, layout, mobile, accessibility, speed, visual consistency, and failed interactions.',
     REACH:
       'Can people find, share, and measure it? SEO, metadata, share previews, analytics, and conversion tracking.',
   }

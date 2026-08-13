@@ -59,13 +59,13 @@ export const PLANS = [
     price: PRICING_COPY.studioPrice,
     period: PRICING_COPY.studioPeriod,
     persona: "Agencies and multi-site teams",
-    outcome: "Finish many products, not just one",
+    outcome: "Finish many products, across teams and releases",
     audits: `${PRICING_COPY.studioProductReviewsPerMonth} product reviews / month`,
     features: [
       "Everything in Pro",
       `${PRICING_COPY.studioProductReviewsPerMonth} product reviews and ${PRICING_COPY.studioDeepReviewsPerMonth} deep reviews per month`,
       "Up to 5 projects",
-      "Client-ready public share links",
+      "Public share links for clients",
       "GitHub repository scans",
       "Draft Fix PRs from repository Flags (secrets auto-patch when possible)",
       "Daily product watch with regression email",
@@ -90,12 +90,12 @@ export const PRICING_FAQ = [
   {
     question: "What is a deep review?",
     answer:
-      "A deep review uses agent-level browser exploration: FixFlags navigates your journeys, maps the funnel, and records paths with scrubbable playback. It uses a separate monthly allowance from standard product reviews. See /docs/deep-review for the full comparison.",
+      "A deep review uses agent-level browser exploration: FixFlags navigates key paths, maps the Funnel, and records scrubbable playback. It uses a separate monthly allowance from standard product reviews. See /docs/deep-review for the full comparison.",
   },
   {
     question: "Do update reviews consume credits?",
     answer:
-      "Yes. An update review on a report you own uses one product review credit, the same as reviewing a new URL. Run another deep review only when you need full journey and funnel coverage again.",
+      "Yes. An update review on a report you own uses one product review credit, the same as reviewing a new URL. Run another deep review only when you need full path and Funnel coverage again.",
   },
   {
     question: "Are reports public or private?",
@@ -270,7 +270,7 @@ export const UPGRADE_MOMENTS = {
   },
   export_locked: {
     headline: "Proof exports are on Studio",
-    body: "Studio includes client-ready summaries with rubrics and top Flags.",
+    body: "Studio includes summaries your clients can open with rubrics and top Flags.",
     cta: "Upgrade to Studio",
     plan: "TEAM" as const,
   },

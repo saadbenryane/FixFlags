@@ -62,10 +62,10 @@ export function FooterNewsletter({ className }: { className?: string }) {
 
   return (
     <div className={cn('space-y-3', className)}>
-      <p className="font-mono text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-foreground/85">
+      <p className="font-mono text-3xs font-semibold uppercase tracking-label text-foreground/85">
         {title}
       </p>
-      <p className="max-w-[15rem] text-[0.625rem] leading-[1.55] text-muted-foreground">{blurb}</p>
+      <p className="max-w-[15rem] text-3xs leading-[1.55] text-muted-foreground">{blurb}</p>
       <form onSubmit={handleSubmit} className="space-y-2">
         <div className="space-y-2">
           <label htmlFor="footer-newsletter-email" className="sr-only">Email address</label>

@@ -309,7 +309,7 @@ Try it: fixflags.com
 ### 2 weeks before launch
 - [ ] Run FixFlags on 5-10 real AI-built sites
 - [ ] Screenshot the top flags from each (for content bank)
-- [ ] Record 3-4 GIFs of the core loop (Build → Review → Fix → Verify)
+- [ ] Record 3-4 GIFs of the core loop (Product Review → Fix → Verify → Watch)
 - [ ] Write maker comment for PH (above)
 - [ ] Prepare PH gallery images (6 images)
 - [ ] Find 5 YouTube creators and send outreach messages

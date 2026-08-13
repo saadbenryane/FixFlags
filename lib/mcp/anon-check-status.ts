@@ -27,10 +27,9 @@ export function registerAnonCheckStatusTools(server: McpServer) {
     }
   )
 
-  // Anonymous-safe read of ff_get_report. Serves the same teaser payload the
-  // web report route serves: every flag with evidence, at most one demonstrated
-  // fix prompt, and never the plan-mode prompt. Public marketing samples keep
-  // their full (already-public) sample content.
+  // Anonymous-safe read of ff_get_report. Live reports expose every Flag and
+  // its public evidence with no prompt or private plan payload. The curated
+  // marketing sample alone exposes one explicitly demonstrated prompt.
   server.tool(
     MCP_TOOLS.getReport.name,
     MCP_TOOLS.getReport.desc,
@@ -46,9 +45,7 @@ export function registerAnonCheckStatusTools(server: McpServer) {
       }
 
       const outcome = await loadCompletedTaskOutcome(reportId, tool, {
-        // 'one' derives the demonstrated flag and gates the plan-mode prompt;
-        // marketing samples are fully public and keep their complete content.
-        promptAccess: isPublicMarketingSample(audit) ? 'all' : 'none',
+        promptAccess: isPublicMarketingSample(audit) ? 'one' : 'none',
       })
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(outcome) }],

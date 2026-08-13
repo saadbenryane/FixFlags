@@ -47,7 +47,13 @@ export async function probeFormValidation(page: Page): Promise<FormProbeResult> 
         Array.from(form.querySelectorAll('button')).find(
           (btn) => !btn.getAttribute('type') || btn.getAttribute('type') === 'submit'
         )
-      if (!submit) continue
+      if (!submit) {
+        const fallbackLabel =
+          form.getAttribute('aria-label') ||
+          form.querySelector('button')?.textContent?.trim() ||
+          'signup form'
+        return { formValidation: 'broken', formLabel: fallbackLabel }
+      }
 
       form.setAttribute('data-fixflags-form-probe', String(fi))
 

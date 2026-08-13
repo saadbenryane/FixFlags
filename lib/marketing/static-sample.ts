@@ -21,7 +21,7 @@ const STATIC_FLAGS: RankableFlag[] = [
     evidence:
       `Desktop 1280x900: headline reads "${originalFixture.headline}". It is memorable but does not state the concrete monitoring outcome quickly.`,
     whyItMatters:
-      'Outcome-driven headlines help visitors understand what they gain, not just what the product is.',
+      'Outcome-driven headlines help visitors understand the gain before any feature detail.',
     fix: 'Lead with the outcome: who it is for and what they get after signing up.',
     agentPrompt:
       'Update the H1 to name the audience and outcome, for example: "Keep every desk plant alive without guessing." Keep it under 12 words at 1280px.',

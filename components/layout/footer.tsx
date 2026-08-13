@@ -38,7 +38,7 @@ export function Footer() {
           <FooterColumn title="Legal" links={LEGAL_LINKS} />
 
           <div className="col-span-2 space-y-3 lg:col-span-1">
-            <p className="font-mono text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-foreground/85">
+            <p className="font-mono text-3xs font-semibold uppercase tracking-label text-foreground/85">
               {buildersTitle}
             </p>
             <p className="max-w-[16rem] text-xs leading-[1.6] text-muted-foreground text-pretty">{buildersBody}</p>
@@ -47,7 +47,7 @@ export function Footer() {
                 <li key={editor.key}>
                   <Link
                     href={editorDocsHref(editor)}
-                    className="flex min-h-11 items-center gap-1.5 rounded-[var(--radius-control)] border border-border/65 bg-background px-2.5 text-[0.625rem] font-semibold text-foreground/80 shadow-sm transition-colors hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                    className="flex min-h-11 items-center gap-1.5 rounded-[var(--radius-control)] border border-border/65 bg-background px-2.5 text-3xs font-semibold text-foreground/80 shadow-sm transition-colors hover:border-border hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                   >
                     <EditorMark
                       name={editor.label}
@@ -60,7 +60,7 @@ export function Footer() {
             </ul>
             <Link
               href={buildersHref as Route}
-              className="inline-flex min-h-11 items-center text-[0.6875rem] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              className="inline-flex min-h-11 items-center text-2xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
               {buildersCta} <span aria-hidden>&nbsp;→</span>
             </Link>
@@ -69,10 +69,10 @@ export function Footer() {
 
         <div className="mt-10 grid grid-cols-2 gap-7 border-t border-border/55 pt-7 lg:mt-8 lg:grid-cols-[1.28fr_repeat(4,minmax(0,1fr))_1.55fr] lg:gap-0 lg:pt-8">
           <div className="col-span-2 space-y-2 lg:col-span-1 lg:pr-7">
-            <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
+            <p className="text-2xs leading-relaxed text-muted-foreground">
               © {new Date().getFullYear()} {BRAND.name}
             </p>
-            <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">{madeWith}</p>
+            <p className="text-2xs leading-relaxed text-muted-foreground">{madeWith}</p>
             <FooterThemeToggle />
           </div>
 
@@ -94,7 +94,7 @@ function FooterMetric({ id, value, label }: { id: keyof typeof METRIC_ICONS; val
     <div className="space-y-2 border-border/55 lg:border-l lg:px-6">
       <Icon className="h-5 w-5 text-brand" strokeWidth={1.75} aria-hidden />
       <p className="text-sm font-semibold tracking-heading text-foreground">{value}</p>
-      <p className="max-w-[9.5rem] text-[0.625rem] leading-[1.55] text-muted-foreground">{label}</p>
+      <p className="max-w-[9.5rem] text-3xs leading-[1.55] text-muted-foreground">{label}</p>
     </div>
   )
 }
@@ -102,7 +102,7 @@ function FooterMetric({ id, value, label }: { id: keyof typeof METRIC_ICONS; val
 function FooterColumn({ title, links }: { title: string; links: readonly { href: string; label: string }[] }) {
   return (
     <div>
-      <p className="mb-3 font-mono text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-foreground/85">
+      <p className="mb-3 font-mono text-3xs font-semibold uppercase tracking-label text-foreground/85">
         {title}
       </p>
       <ul>

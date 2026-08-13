@@ -70,6 +70,20 @@ function runReadout(cwd, args = []) {
   return execFileSync(process.execPath, [scriptPath, ...args], { cwd, encoding: "utf8" });
 }
 
+function runReadoutExpectFailure(cwd, args = []) {
+  try {
+    execFileSync(process.execPath, [scriptPath, ...args], {
+      cwd,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : `${error}`;
+    return { ok: false, message };
+  }
+}
+
 function withFixture(fn) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hb-readout-"));
   fs.mkdirSync(path.join(dir, ".agents"), { recursive: true });
@@ -92,6 +106,7 @@ withFixture((dir) => {
   assert(out.goal.status === "active" && out.goal.condition.includes("Something complete"), "json: goal status + condition");
   assert(out.goal.lastTurn.includes("Did a thing"), "json: last logged turn captured");
   assert(out.nextOwner && out.nextOwner.task === "task-two" && out.nextOwner.owner === "agent-b", "json: next owner = first blocked row");
+  assert(out.warnings.length === 0, "json: clean fixture produces no warnings");
 
   const human = runReadout(dir, ["--tier=weekly"]);
   assert(human.includes("🟡 in-progress: 1") && human.includes("🚫 blocked: 1"), "human: emoji counts");
@@ -103,10 +118,41 @@ withFixture((dir) => {
 });
 
 withFixture((dir) => {
-  fs.unlinkSync(path.join(dir, ".agents", "GOAL.md"));
+  const boardPath = path.join(dir, ".agents", "BOARD.md");
+  const malformedBoard = [
+    "# Task Board",
+    "",
+    "| Task ID               | Status      | Owner      | Branch/worktree | Scope         | Files/areas | Dependencies | Updated |",
+    "| --------------------- | ----------- | ---------- | --------------- | ------------- | ----------- | ------------ | ------- |",
+    "| task-two              | blocked     | agent-b    | main            | Scope B       | files-b     | dep-b        | 2026-08-09 |",
+    "| malformed-row-no-status",
+    "| task-one              | unknown     | agent-a    | main            | Scope A       | files-a     | none         | 2026-08-10 |",
+    "| task-three            | done        | agent-c    | main            | Scope C       | files-c     | none         | 2026-08-08 |",
+    "",
+    "## Completed",
+    "| Task ID      | Owner    | Scope | Completed |",
+    "| ------------ | -------- | ----- | --------- |",
+    "| old-task     | agent-x  | old   | 2026-07-01 |",
+  ].join("\n");
+
+  fs.writeFileSync(boardPath, malformedBoard, "utf8");
   const out = JSON.parse(runReadout(dir, ["--json"]));
-  assert(out.goal.status === "unavailable", "json: missing GOAL.md → explicit unavailable, not crash");
+  assert(out.board.counts["blocked"] === 1 && out.board.counts["done"] === 1, "json: malformed rows are ignored");
+  assert(Array.isArray(out.warnings) && out.warnings.length >= 1, "json: malformed/invalid rows are surfaced in warnings");
 });
 
+withFixture((dir) => {
+  fs.unlinkSync(path.join(dir, ".agents", "GOAL.md"));
+  const out = JSON.parse(runReadout(dir, ["--json"]));
+  assert(out.goal.status === "unavailable", "json: missing GOAL.md → explicit unavailable");
+  assert(out.goal.warning === "GOAL.md is missing", "json: missing GOAL.md warning present");
+});
+
+withFixture((dir) => {
+  fs.unlinkSync(path.join(dir, ".agents", "BOARD.md"));
+  const result = runReadoutExpectFailure(dir, ["--json"]);
+  assert(!result.ok, "json: missing BOARD.md exits with failure");
+  assert(typeof result.message === "string" && result.message.includes("Could not read .agents/BOARD.md"), "json: missing BOARD.md surfaces read error");
+});
 console.log(`\nagent-heartbeat: ${passed} passed, ${failed} failed`);
 process.exitCode = failed > 0 ? 1 : 0;

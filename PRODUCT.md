@@ -235,7 +235,7 @@ FixFlags must evaluate itself more rigorously than it evaluates customers.
 - No localhost or private network checks (preview tunnels and HTTP basic auth supported on Studio projects)
 - No team workspaces or white-label reports
 - Deployed Lovable/Bolt connector smoke, release credential proof, and production dogfood remain open; local MCP setup and API-key auth for those builders are shipped
-- The `fixflags` npm package is claimed. CLI `0.2.0-beta.1`, device authorization, credential-store login, editor init, and the public customer skill remain unshipped until the trusted-publishing release verifies the package in the registry
+- The public `fixflags` package is available through npm trusted publishing; registry `latest` is `1.0.4`. The corrected bounded Finish Plan and explicit `--all` behavior are prepared locally as `1.0.5` and remain unshipped until the tagged trusted-publisher release and production dogfood pass
 - Full `npm run verify` / `verify:release` still require a quiet tree plus designated RELEASE_* / R2 / smoke resources (see `.agents/handoffs/current-product-completion.md`)
 
 ## Launch gates

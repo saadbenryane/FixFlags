@@ -8,7 +8,7 @@ Start with `npm run agent`. Use `npm run agent -- context <area>` for focused fi
 
 FixFlags is the independent Product Intelligence System for AI-built software. A user submits a URL and receives a Fix list across Message, Experience, and Reach, with fix prompts for their AI editor.
 
-- Core loop: **Build → Review → Fix → Verify → Learn**.
+- Core loop: **Product Review → Fix → Verify → Watch** (customer wedge; internal canonical loop: Signal → Understand → Prioritize → Fix → Verify → Learn, [knowledge/vision.md](knowledge/vision.md)).
 - Canonical report hierarchy: [knowledge/report-contract.md](knowledge/report-contract.md). Do not duplicate route or section order in skills.
 - Plans meter product reviews (new URLs and update reviews share the same credit pool). Customer copy uses **update review**; internal routes may still use `re-check`.
 - Stage: pre-revenue testing. Distribution has priority over additional product depth.

@@ -102,7 +102,7 @@ export function RepoFindingCard({
               variant="ghost"
               size="icon"
               onClick={() => setExpanded(!expanded)}
-              className="h-[44px] w-[44px] text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground"
               aria-expanded={expanded}
               aria-label={expanded ? 'Collapse details' : 'Expand details'}
             >

@@ -1,6 +1,6 @@
-# Fix List and Quick Plan
+# Fix List and Finish Plan
 
-**Canonical home for the complete Fix List and legacy Quick Plan artifact.** Vision: [vision.md](./vision.md). Ranking implementation: `lib/audit/priority-flags.ts`. Evidence rules: [evidence-rules.md](./evidence-rules.md).
+**Canonical home for the complete Fix List and bounded Finish Plan.** Vision: [vision.md](./vision.md). Ranking implementation: `lib/audit/finish-plan.ts`. Evidence rules: [evidence-rules.md](./evidence-rules.md).
 
 ## Definition
 
@@ -13,8 +13,8 @@ The Fix List contains every unresolved Flag. It is prioritized, scoped, evidence
 | Concept | Role |
 |---------|------|
 | **Fix List** | Primary Improve artifact containing every ranked unresolved Flag |
-| Quick Plan | Deprecated three-item compatibility artifact |
-| `buildPlanModePrompt` | Agent export of the complete Fix List (plan-before-edit) |
+| **Finish Plan** | Highest-leverage one to three items derived from the same ranked Fix List |
+| All fix prompts | Separate authenticated export containing every eligible prompt; never labelled as a Finish Plan |
 | Product Contract / PI | Context that biases ranking and journey selection |
 
 Basic users should feel: **Let's finish your app.** Advanced users and agents get evidence, dependencies, verification, and implementation context inside fix prompts / MCP.
@@ -49,6 +49,7 @@ Full anatomy and examples: [evidence-rules.md](./evidence-rules.md).
 ## Quality bar
 
 - Every persisted unresolved Flag is present exactly once
+- Finish Plan contains one to three of the highest-ranked Fix List items
 - Ranking makes the next action clear without hiding lower-priority work
 - Tied to Product identity (Contract / PI) when available
 - Each item has problem, impact, fix path, verify path

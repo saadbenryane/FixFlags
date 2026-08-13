@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => {
     })),
     WORKER_CONCURRENCY: 2,
     AUDIT_DEADLINE_MS: 300_000,
-    logger: { info: vi.fn(), error: vi.fn() },
+    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   }
 })
 
@@ -235,6 +235,21 @@ describe('startWorker', () => {
     expect(mocks.touchWorkerHeartbeat).toHaveBeenCalledWith({
       browserOk: true,
       activeBrowserContexts: 0,
+    })
+  })
+
+  it('records an observable startup heartbeat failure', async () => {
+    mocks.touchWorkerHeartbeat.mockRejectedValueOnce(new Error('redis unavailable'))
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
+
+    await vi.waitFor(() => {
+      expect(mocks.logger.warn).toHaveBeenCalledWith('Best-effort operation failed', {
+        operation: 'worker_heartbeat',
+        outcome: 'failure',
+        phase: 'startup',
+        error: 'redis unavailable',
+      })
     })
   })
 
@@ -495,5 +510,22 @@ describe('stalled event handler', () => {
     expect(mocks.logger.error).toHaveBeenCalledWith(
       expect.stringContaining('stalled'),
     )
+  })
+
+  it('records stalled metric failures without rejecting the event handler', async () => {
+    const { startWorker } = await import('@/lib/queue/worker')
+    startWorker()
+    mocks.recordStalledJob.mockRejectedValueOnce(new Error('redis unavailable'))
+
+    await mocks.capturedListeners['stalled']('stalled-job-id')
+
+    await vi.waitFor(() => {
+      expect(mocks.logger.warn).toHaveBeenCalledWith('Best-effort operation failed', {
+        operation: 'worker_stalled_metric',
+        outcome: 'failure',
+        jobId: 'stalled-job-id',
+        error: 'redis unavailable',
+      })
+    })
   })
 })

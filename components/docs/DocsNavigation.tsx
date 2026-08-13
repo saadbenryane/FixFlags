@@ -13,7 +13,7 @@ export function DocsNavigation({ onNavigate }: { onNavigate?: () => void }) {
     <nav aria-label="Documentation" className="space-y-7">
       {DOCS_GROUPS.map((group) => (
         <section key={group}>
-          <h2 className="mb-2 px-3 font-mono text-[0.6875rem] font-semibold uppercase tracking-label text-muted-foreground">
+          <h2 className="mb-2 px-3 font-mono text-2xs font-semibold uppercase tracking-label text-muted-foreground">
             {group}
           </h2>
           <ul className="space-y-0.5">

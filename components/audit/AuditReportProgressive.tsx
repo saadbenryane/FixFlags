@@ -120,8 +120,8 @@ export function AuditReportProgressive({
     [status, progress]
   )
 
-  // The reduced teaser pipeline never walks a user journey, so the full
-  // pipeline's "Preparing journey review" substep would be a lie. Keep the
+  // The reduced teaser pipeline never walks a Funnel path, so the full
+  // pipeline's "Preparing Funnel review" substep would be a lie. Keep the
   // stage narrative honest when checks finish on a teaser scan.
   const stageDetail =
     isTeaser &&

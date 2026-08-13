@@ -118,6 +118,97 @@ describe('pickPlan', () => {
       } as PickPlanInput)
     ).resolves.toEqual({ kind: 'unavailable', message: 'checkout unavailable' })
   })
+
+  it('routes free plan to dashboard when no active report and no fallback', async () => {
+    const { getActiveAudit } = await import('@/lib/audit/active-audit')
+    ;(getActiveAudit as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue(null)
+
+    await expect(
+      pickPlan({
+        plan: 'FREE',
+        isLoggedIn: true,
+        respectActiveReport: true,
+      } as PickPlanInput)
+    ).resolves.toEqual({ kind: 'free_dashboard', url: '/dashboard' })
+  })
+
+  it('routes free plan to fallback dashboard when fallbackPath is not a report path', async () => {
+    const { getActiveAudit } = await import('@/lib/audit/active-audit')
+    ;(getActiveAudit as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue(null)
+
+    await expect(
+      pickPlan({
+        plan: 'FREE',
+        isLoggedIn: true,
+        fallbackPath: '/settings',
+        respectActiveReport: true,
+      } as PickPlanInput)
+    ).resolves.toEqual({ kind: 'free_dashboard', url: '/settings' })
+  })
+
+  it('returns error when checkout returns error', async () => {
+    const { requestPlanCheckout } = await import('@/lib/billing/client-checkout')
+    ;(requestPlanCheckout as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
+      kind: 'error',
+      message: 'checkout failed',
+    })
+
+    await expect(
+      pickPlan({
+        plan: 'BUILDER',
+        isLoggedIn: false,
+      } as PickPlanInput)
+    ).resolves.toEqual({ kind: 'error', message: 'checkout failed' })
+  })
+
+  it('returns error when checkout returns missing-destination', async () => {
+    const { requestPlanCheckout } = await import('@/lib/billing/client-checkout')
+    ;(requestPlanCheckout as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
+      kind: 'missing-destination',
+    })
+
+    await expect(
+      pickPlan({
+        plan: 'TEAM',
+        isLoggedIn: false,
+      } as PickPlanInput)
+    ).resolves.toMatchObject({ kind: 'error' })
+  })
+
+  it('routes to waitlist when checkout returns paid-checkout-closed', async () => {
+    const { requestPlanCheckout } = await import('@/lib/billing/client-checkout')
+    ;(requestPlanCheckout as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
+      kind: 'paid-checkout-closed',
+    })
+    const onPrivateBeta = vi.fn()
+
+    await expect(
+      pickPlan({
+        plan: 'BUILDER',
+        isLoggedIn: false,
+        onPrivateBeta,
+      } as PickPlanInput)
+    ).resolves.toEqual({ kind: 'waitlist' })
+    expect(onPrivateBeta).toHaveBeenCalled()
+  })
+
+  it('routes to waitlist with message when checkout returns batch gate error', async () => {
+    const { requestPlanCheckout } = await import('@/lib/billing/client-checkout')
+    ;(requestPlanCheckout as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
+      kind: 'error',
+      message: 'paid checkout opens in batches',
+    })
+    const onPrivateBeta = vi.fn()
+
+    await expect(
+      pickPlan({
+        plan: 'TEAM',
+        isLoggedIn: false,
+        onPrivateBeta,
+      } as PickPlanInput)
+    ).resolves.toEqual({ kind: 'waitlist', message: 'paid checkout opens in batches' })
+    expect(onPrivateBeta).toHaveBeenCalled()
+  })
 })
 
 describe('routerForPlanResult', () => {

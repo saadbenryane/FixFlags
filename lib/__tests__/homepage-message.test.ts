@@ -40,6 +40,7 @@ const BANNED_LANDING_PHRASES = [
   /\bleverage\b/i,
   /holistic/i,
   /seamless/i,
+  /\bjourneys?\b/i,
 ] as const
 
 function collectStrings(value: unknown, out: string[] = []): string[] {
@@ -106,7 +107,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('canonical terminology anchors stay aligned', () => {
-    assert.equal(HERO.primaryCta, 'Review my product')
+    assert.equal(HERO.primaryCta, 'Review my site')
     assert.equal(PLAN_DEFINITIONS.BUILDER.price, '$69')
     assert.equal(REPORT_COPY.sectionTitles.journey, 'Funnel')
     assert.equal(REPORT_COPY.recheck.label, 'Update review')
@@ -125,12 +126,13 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('hero subhead names Message, Experience, and Reach without repeating the headline', () => {
+  it('hero subhead leads with the URL action and names the report value', () => {
+    assert.match(HERO.subhead, /^Paste a URL\./i)
     assert.match(HERO.subhead, /message/i)
     assert.match(HERO.subhead, /experience/i)
     assert.match(HERO.subhead, /reach/i)
     assert.match(HERO.subhead, /fix/i)
-    assert.ok(HERO.subhead.split(/\s+/).length <= 40)
+    assert.ok(HERO.subhead.split(/\s+/).length <= 20)
     assert.ok(!HERO.subhead.toLowerCase().includes('finish what your ai started'))
   })
 
@@ -143,7 +145,9 @@ describe('homepage message guardrails', () => {
     assert.ok(HERO.assurances.some((a) => /under 60 seconds/i.test(a.label)))
     assert.ok(HERO.assurances.some((a) => /3 product reviews included/i.test(a.label)))
     assert.ok(HERO.assurances.some((a) => /private/i.test(a.label)))
-    assert.match(HERO.trustLine, /builders shipping with ai/i)
+    assert.match(HERO.trustLine, /Cursor/i)
+    assert.match(HERO.trustLine, /Claude Code/i)
+    assert.doesNotMatch(HERO.trustLine, /trusted by/i)
     assert.ok(!/\d{2,},\d{3}/.test(HERO.trustLine), `Invented count in trust line: ${HERO.trustLine}`)
     assert.match(HERO.scrollHint, /scroll to discover/i)
   })
@@ -152,7 +156,8 @@ describe('homepage message guardrails', () => {
     const { OFFER } = await import('@/lib/marketing/copy')
     assert.ok(!('trustBadges' in HERO))
     assert.match(OFFER.short, /free product review/i)
-    assert.match(OFFER.short, /what.?s broken/i)
+    assert.match(OFFER.short, /needs attention/i)
+    assert.doesNotMatch(OFFER.short, /broken|issues/i)
     assert.ok(!/read-only/i.test(OFFER.short))
     assert.ok(!/claim/i.test(OFFER.short))
     assert.ok(!/never modify/i.test(OFFER.short))
@@ -235,7 +240,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('primary CTA uses visitor-facing review language', () => {
-    assert.equal(HERO.primaryCta, 'Review my product')
+    assert.equal(HERO.primaryCta, 'Review my site')
     assert.ok(!/audit/i.test(HERO.primaryCta))
     assert.equal(FINAL_CTA.headlineDisplay, 'See what your release still needs')
     assert.ok(!/[.?]$/.test(FINAL_CTA.headlineDisplay))

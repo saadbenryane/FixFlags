@@ -69,6 +69,7 @@ export interface CheckAndPlanOutcome {
   verdict?: string | null
   rubrics?: TaskRubricSummary[]
   fixList?: TaskFixList
+  finishPlan?: TaskFinishPlan
   technologyProfile?: TechnologyProfile
   /** Deterministic check modules that threw; their findings were dropped. */
   failedModules?: string[]
@@ -108,6 +109,7 @@ export interface RecheckAndCompareOutcome {
     }
   } | null
   nextFixList?: TaskFixList
+  nextFinishPlan?: TaskFinishPlan
   technologyProfile?: TechnologyProfile
   nextAction?: TaskNextAction
   error?: TaskOutcomeError
@@ -174,12 +176,14 @@ export async function loadCompletedOutcome(
   reportId: string,
   tool: PromptToolKey = 'universal',
   promptAccess?: FinishPlanPromptAccess,
-  demonstratedFlag?: RankableFlag | null
+  demonstratedFlag?: RankableFlag | null,
+  finishPlanLimit?: number
 ): Promise<{
   score: number | null
   verdict: string | null
   rubrics: TaskRubricSummary[]
   fixList: TaskFixList
+  finishPlan: TaskFinishPlan
   technologyProfile: TechnologyProfile
   failedModules: string[]
 }> {
@@ -199,9 +203,8 @@ export async function loadCompletedOutcome(
   }
 
   const contract = parseProductContract(audit.productContract)
-  // Teaser parity: when access is 'one', the demonstrated flag (the single
-  // exposed prompt) is derived from the same ranking the web report uses, so
-  // every anonymous surface shows the same one prompt.
+  // The curated sample's demonstrated prompt uses the same ranking as the
+  // report. Live anonymous outcomes always pass promptAccess='none'.
   const resolvedDemonstratedFlag =
     demonstratedFlag ??
     (promptAccess === 'one'
@@ -222,8 +225,9 @@ export async function loadCompletedOutcome(
     contract,
     promptAccess: promptAccess ?? 'all',
     demonstratedFlag: resolvedDemonstratedFlag,
+    limit: finishPlanLimit,
   }
-  const [{ fixList }, technologyProfile] = await Promise.all([
+  const [{ fixList, finishPlan }, technologyProfile] = await Promise.all([
     buildUnifiedPlanBundle(planInput),
     loadTechnologyProfile(reportId, {
       score: audit.score,
@@ -272,13 +276,20 @@ export async function loadCompletedOutcome(
       planPrompt: fixList.copyPrompt ?? '',
       totalCount: fixList.totalCount,
     },
+    finishPlan: {
+      reportId,
+      url: audit.url,
+      items: toTaskItems(finishPlan.items, reportId, tool),
+      planPrompt: finishPlan.copyPrompt ?? '',
+    },
   }
 }
 
 export interface TaskOutcomeAccessOptions {
   promptAccess?: FinishPlanPromptAccess
-  /** Demonstrated flag for the anonymous teaser (the only prompt exposed). */
+  /** Demonstrated flag for the curated marketing sample only. */
   demonstratedFlag?: RankableFlag | null
+  finishPlanLimit?: number
 }
 
 export async function loadCompletedTaskOutcome(
@@ -289,6 +300,7 @@ export async function loadCompletedTaskOutcome(
   parentReportId?: string
   diff?: RecheckAndCompareOutcome['diff']
   nextFixList?: TaskFixList
+  nextFinishPlan?: TaskFinishPlan
 }> {
   const audit = await prisma.audit.findUnique({
     where: { id: reportId },
@@ -325,7 +337,8 @@ export async function loadCompletedTaskOutcome(
     reportId,
     tool,
     access?.promptAccess,
-    access?.demonstratedFlag
+    access?.demonstratedFlag,
+    access?.finishPlanLimit
   )
   if (!audit.parentId) {
     return { reportId, reportUrl: reportUrl(reportId), status: 'COMPLETED', ...completed }
@@ -350,6 +363,7 @@ export async function loadCompletedTaskOutcome(
       },
     },
     nextFixList: completed.fixList,
+    nextFinishPlan: completed.finishPlan,
     technologyProfile: completed.technologyProfile,
   }
 }
@@ -426,7 +440,7 @@ export async function checkAndPlan(options: TaskQueueOptions & {
     }
   }
   const anon = options.userId === null
-  const outcome = await loadCompletedOutcome(auditId, options.tool, anon ? 'one' : undefined)
+  const outcome = await loadCompletedOutcome(auditId, options.tool, anon ? 'none' : undefined)
   return { ...base, ...outcome }
 }
 
@@ -521,6 +535,7 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
       },
     },
     nextFixList: completed.fixList,
+    nextFinishPlan: completed.finishPlan,
     technologyProfile: completed.technologyProfile,
   }
 }

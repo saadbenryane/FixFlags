@@ -19,7 +19,7 @@ export const AUTH = {
     body: 'Get every fix prompt and keep this report for update reviews on the same URL.',
     backCta: 'Back to report',
     saving: (hostname?: string | null) => hostname ? `Saving ${hostname}` : 'Saving your report',
-    unlocking: 'Getting your fix list ready',
+    unlocking: 'Preparing your fix list',
     redirecting: 'Your report is saved. Taking you back to the fixes.',
     waiting: 'This will only take a moment.',
     saveError: 'Your account is ready, but we could not save your report yet.',
@@ -126,7 +126,7 @@ export const AUTH = {
     planStepsTitle: 'What happens next',
     planTitles: {
       BUILDER: 'You\u2019re signing up for Pro, with 25 product reviews and 4 deep reviews per month, compare, and MCP from day one',
-      TEAM: 'You\u2019re signing up for Studio, publish client-ready share links and organize across up to 5 projects',
+      TEAM: 'You\u2019re signing up for Studio, publish share links your clients can open and organize across up to 5 projects',
     },
     planSteps: [
       'Create your account',

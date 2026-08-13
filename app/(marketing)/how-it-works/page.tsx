@@ -101,17 +101,17 @@ export default function HowItWorksPage() {
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <Card variant="strong" className="p-5 sm:p-6">
-              <h3 className="text-lg font-semibold tracking-heading">
+              <Heading as="h3">
                 {reviewTypes.productReview.title}
-              </h3>
+              </Heading>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {reviewTypes.productReview.body}
               </p>
             </Card>
             <Card variant="strong" className="p-5 sm:p-6">
-              <h3 className="text-lg font-semibold tracking-heading">
+              <Heading as="h3">
                 {reviewTypes.deepReview.title}
-              </h3>
+              </Heading>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {reviewTypes.deepReview.body}
               </p>
@@ -153,7 +153,7 @@ export default function HowItWorksPage() {
                       {String(index + 1).padStart(2, '0')}
                     </span>
                   </div>
-                  <h3 className="text-lg font-semibold tracking-heading">{step.title}</h3>
+                  <Heading as="h3">{step.title}</Heading>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
                 </Card>
               )

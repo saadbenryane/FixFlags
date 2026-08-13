@@ -50,7 +50,7 @@ export function EditorToolMarks({
         <p
           className={cn(
             isHero
-              ? "font-mono text-[0.625rem] font-medium uppercase tracking-[0.16em] text-muted-foreground/85"
+              ? "font-mono text-xs font-medium uppercase tracking-label text-muted-foreground"
               : "text-sm font-medium text-muted-foreground",
           )}
         >
@@ -73,7 +73,7 @@ export function EditorToolMarks({
             className={cn(
               "flex items-center gap-1.5 font-semibold tracking-heading",
               isHero
-                ? "text-[0.75rem] tracking-normal text-foreground/75 [&_svg]:h-5 [&_svg]:w-5 [&_svg]:opacity-95"
+                ? "text-xs tracking-normal text-foreground/75 [&_svg]:h-5 [&_svg]:w-5 [&_svg]:opacity-95"
                 : "gap-2 text-sm text-foreground/65 [&_svg]:h-5 [&_svg]:w-5",
             )}
           >

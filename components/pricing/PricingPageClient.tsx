@@ -23,6 +23,7 @@ import { PricingCTAButton } from "@/components/pricing/PricingCTAButton";
 import { PricingComparisonTable } from "@/components/pricing/PricingComparisonTable";
 import { FaqSection } from "@/components/marketing/FaqSection";
 import { MarketingPageViewTracker } from "@/components/marketing/MarketingPageViewTracker";
+import { MarketingEyebrow } from "@/components/marketing/MarketingEyebrow";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { Surface } from "@/components/ui/surface";
@@ -60,13 +61,10 @@ export function PricingPageClient() {
       >
         <div className="grid items-center gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.72fr)] lg:gap-10">
           <div className="max-w-3xl">
-            <p className="inline-flex items-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-label text-brand sm:text-xs">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />
-              {PRICING.label}
-            </p>
+            <MarketingEyebrow>{PRICING.label}</MarketingEyebrow>
             <Heading
               as="h1"
-              className="mt-4 max-w-[17ch] font-display text-balance text-[2.75rem] font-bold leading-[1.03] tracking-display sm:text-[3.35rem] lg:text-[3.65rem]"
+              className="mt-4 max-w-[17ch] font-display text-balance text-4xl font-bold leading-display tracking-display sm:text-5xl"
             >
               {PRICING.headline}
             </Heading>
@@ -140,7 +138,7 @@ export function PricingPageClient() {
                         />
                       </span>
                       {plan.highlight ? (
-                        <span className="rounded-full bg-brand px-2.5 py-1 text-xs font-semibold text-brand-foreground">
+                        <span className="marketing-brand-badge rounded-full px-2.5 py-1 text-xs font-semibold">
                           Best for frequent checks
                         </span>
                       ) : null}

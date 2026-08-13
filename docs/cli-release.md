@@ -30,13 +30,12 @@ command, file, or shell history.
 The bootstrap version exists only to establish package ownership. Do not point
 `beta` or `latest` at it.
 
-## Beta release
+## Version release
 
 After the one-time claim and trusted-publisher setup:
 
 1. Confirm `npm run agent -- verify --full` passes on the release commit.
-2. Push the version tag matching the package version:
-   `fixflags-cli-v0.2.0-beta.1`.
+2. Choose a new immutable semver version that does not exist in the registry, update both package files, and push the matching `fixflags-cli-v<version>` tag.
 3. The workflow tests Node 22 on macOS, Linux, and Windows, checks package
    contents, clean-installs the tarball, publishes with OIDC trusted publishing,
    and
@@ -52,8 +51,9 @@ fixflags check https://fixflags.com --wait --plan
 fixflags recheck <original-report-id> --wait --diff
 ```
 
-Promote `beta` to `latest` only after CLI and MCP report IDs, consolidated Flag
-identities, counts, ranking, and Re-check diffs match the web report.
+Prereleases publish to `beta`; stable versions publish to `latest`.
+Do not reuse a published version or move `latest` to an unverified build.
+Call the release complete only after CLI and MCP report IDs, consolidated Flag identities, counts, ranking, Finish Plan, and update-review diffs match the web report.
 
 The QewOS repository stays private. npm trusted publishing supports private
 GitHub repositories, but npm provenance attestations require a public source

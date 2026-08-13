@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { BRAND } from '@/lib/marketing/copy'
+import { parseSiteHostname } from '@/lib/utils/url-helpers'
 
 const DAY_MS = 86_400_000
 
@@ -27,11 +28,7 @@ function roleLabel(role: string): string {
 
 function domainFrom(url: string | null | undefined): string {
   if (!url) return 'unknown'
-  try {
-    return new URL(url).hostname.replace(/^www\./, '')
-  } catch {
-    return url
-  }
+  return parseSiteHostname(url) || url
 }
 
 /**

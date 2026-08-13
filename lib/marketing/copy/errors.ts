@@ -31,7 +31,7 @@ export const AUDIT_ERRORS = {
     'This scan ran out of time before AI summary could finish. Deterministic checks and screenshots are shown below.',
   triageProviderNotConfigured:
     'AI summary is unavailable because no provider key is configured on the scanner. Deterministic checks and fix steps are shown below.',
-  partialReport: 'Some optional evidence was unavailable. Unassessed rubrics remain ungraded rather than being inferred.',
+  partialReport: 'Some optional evidence was unavailable. Unassessed rubrics are left unmeasured rather than inferred.',
   pageSpeedUnavailable: 'PageSpeed data was unavailable for this run.',
   urlRequired: 'Enter a URL like https://yoursite.com',
   urlMalformed: 'Enter a valid URL like https://yoursite.com',
@@ -120,9 +120,9 @@ export const AUDIT_PROGRESS = {
   /** Shown only when pipeline progress crosses the matching real substep anchor. */
   substeps: {
     CAPTURE_DONE: 'Capture finished. Starting deterministic checks…',
-    CHECKS_DONE: 'Checks finished. Preparing journey review…',
-    JOURNEY_START: 'Walking the primary user journey…',
-    JOURNEY_DONE: 'Journey finished. Starting AI review…',
+    CHECKS_DONE: 'Checks finished. Preparing Funnel review…',
+    JOURNEY_START: 'Walking the primary Funnel path…',
+    JOURNEY_DONE: 'Funnel review finished. Starting AI review…',
   },
   formatStageStep: (current: number, total: number, label: string) =>
     `Step ${current} of ${total} · ${label}`,

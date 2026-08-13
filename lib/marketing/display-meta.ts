@@ -1,6 +1,7 @@
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { SITE_URL } from '@/lib/marketing/copy'
 import type { SampleSource } from '@/lib/marketing/curated-sample'
+import { parseSiteHostname } from '@/lib/utils/url-helpers'
 
 import { DEMO_BRAND } from '@/lib/demo/brand'
 
@@ -31,13 +32,7 @@ export function getSampleSiteDisplay(auditUrl: string) {
     const hostname = parsed.hostname.toLowerCase().replace(/^www\./, '')
     const isLocal =
       LOCAL_HOSTS.has(hostname) || hostname.endsWith('.localhost')
-    const envHost = (() => {
-      try {
-        return new URL(SITE_URL).hostname.toLowerCase().replace(/^www\./, '')
-      } catch {
-        return MARKETING_HOST
-      }
-    })()
+    const envHost = parseSiteHostname(SITE_URL) || MARKETING_HOST
     const isSameHost =
       isLocal || hostname === MARKETING_HOST || hostname === envHost
     const isDemoFixture = isSameHost && isDemoFixturePath(parsed.pathname)

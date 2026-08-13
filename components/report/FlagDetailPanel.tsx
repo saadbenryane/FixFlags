@@ -51,7 +51,7 @@ function InlineSocialPreview({ preview, checkId }: { preview: PreviewMeta; check
           />
         ) : hasImage && !imageOk ? (
           <div className="flex aspect-[1.91/1] w-full flex-col items-center justify-center gap-1 bg-muted px-4 text-center text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Image URL is broken</span>
+            <span className="font-medium text-foreground">Image unavailable</span>
             <span className="text-xs">The og:image URL does not load</span>
           </div>
         ) : (

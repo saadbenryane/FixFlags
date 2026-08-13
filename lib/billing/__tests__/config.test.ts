@@ -6,6 +6,7 @@ import {
   validateStripeBillingEnv,
   STRIPE_ALL_ENV_KEYS,
 } from '@/lib/billing/config'
+import { envPriceId, envPriceUsd } from '@/lib/billing/env'
 
 const SAMPLE: Record<(typeof STRIPE_ALL_ENV_KEYS)[number], string> = {
   STRIPE_SECRET_KEY: 'sk_test_x',
@@ -59,5 +60,71 @@ describe('billing config', () => {
     vi.stubEnv('BILLING_REQUIRED', 'false')
     vi.stubEnv('NODE_ENV', 'production')
     expect(() => validateStripeBillingEnv()).not.toThrow()
+  })
+})
+
+describe('billing env helpers', () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs()
+    vi.stubEnv('STRIPE_BUILDER_PRICE_ID', '')
+    vi.stubEnv('STRIPE_TEAM_PRICE_ID', '')
+    vi.stubEnv('STRIPE_BUILDER_PRICE_USD', '')
+    vi.stubEnv('STRIPE_TEAM_PRICE_USD', '')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  describe('envPriceId', () => {
+    it('returns undefined for missing env var', () => {
+      expect(envPriceId('STRIPE_BUILDER_PRICE_ID')).toBeUndefined()
+    })
+
+    it('returns undefined for empty string env var', () => {
+      vi.stubEnv('STRIPE_BUILDER_PRICE_ID', '')
+      expect(envPriceId('STRIPE_BUILDER_PRICE_ID')).toBeUndefined()
+    })
+
+    it('returns the value when set', () => {
+      vi.stubEnv('STRIPE_BUILDER_PRICE_ID', 'price_builder_123')
+      expect(envPriceId('STRIPE_BUILDER_PRICE_ID')).toBe('price_builder_123')
+    })
+  })
+
+  describe('envPriceUsd', () => {
+    it('returns fallback for missing env var', () => {
+      expect(envPriceUsd('STRIPE_BUILDER_PRICE_USD', 29)).toBe(29)
+    })
+
+    it('returns fallback for empty string env var', () => {
+      vi.stubEnv('STRIPE_BUILDER_PRICE_USD', '')
+      expect(envPriceUsd('STRIPE_BUILDER_PRICE_USD', 29)).toBe(29)
+    })
+
+    it('returns fallback for non-numeric value', () => {
+      vi.stubEnv('STRIPE_BUILDER_PRICE_USD', 'not-a-number')
+      expect(envPriceUsd('STRIPE_BUILDER_PRICE_USD', 29)).toBe(29)
+    })
+
+    it('returns fallback for zero', () => {
+      vi.stubEnv('STRIPE_BUILDER_PRICE_USD', '0')
+      expect(envPriceUsd('STRIPE_BUILDER_PRICE_USD', 29)).toBe(29)
+    })
+
+    it('returns fallback for negative number', () => {
+      vi.stubEnv('STRIPE_BUILDER_PRICE_USD', '-5')
+      expect(envPriceUsd('STRIPE_BUILDER_PRICE_USD', 29)).toBe(29)
+    })
+
+    it('returns parsed value when valid', () => {
+      vi.stubEnv('STRIPE_BUILDER_PRICE_USD', '49')
+      expect(envPriceUsd('STRIPE_BUILDER_PRICE_USD', 29)).toBe(49)
+    })
+
+    it('returns parsed float value', () => {
+      vi.stubEnv('STRIPE_BUILDER_PRICE_USD', '29.99')
+      expect(envPriceUsd('STRIPE_BUILDER_PRICE_USD', 29)).toBe(29.99)
+    })
   })
 })

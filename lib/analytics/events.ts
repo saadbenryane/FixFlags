@@ -34,7 +34,6 @@ export type FunnelEvent =
   | 'report_auth_method_selected'
   | 'report_auth_email_form_opened'
   | 'report_auth_gate_completed'
-  | 'report_claimed'
   | 'report_prompts_unlocked'
   | 'audits_claimed'
   | 'product_contract_saved'
@@ -42,12 +41,10 @@ export type FunnelEvent =
   | 'managed_subscription'
   | 'share_link_created'
   | 'marketing_page_view'
-  | 'beta_interest_submitted'
   | 'waitlist_joined'
   | 'plan_picker_viewed'
   | 'plan_picker_picked'
   | 'plan_picker_dismissed'
-  | 'scan_limit_gate_signup_completed'
   | 'report_upgrade_gate_viewed'
   | 'report_progress_viewed'
   | 'sticky_nav_used'
@@ -134,7 +131,6 @@ type EventParams = {
   report_auth_method_selected: { audit_id?: string; method?: string; mode?: string }
   report_auth_email_form_opened: { audit_id?: string }
   report_auth_gate_completed: { audit_id?: string }
-  report_claimed: { audit_id?: string }
   report_prompts_unlocked: { audit_id?: string; prompt_count?: number }
   audits_claimed: { claimed_count: number }
   product_contract_saved: { audit_id?: string }
@@ -147,12 +143,10 @@ type EventParams = {
     utm_campaign?: string
     device?: string
   }
-  beta_interest_submitted: { plan?: string; email?: string }
   waitlist_joined: { plan: string; source?: string }
   plan_picker_viewed: { source?: string; current_plan?: string }
   plan_picker_picked: { plan: string; source?: string }
   plan_picker_dismissed: { source?: string }
-  scan_limit_gate_signup_completed: Record<string, never>
   report_upgrade_gate_viewed: { audit_id?: string }
   report_progress_viewed: {
     audit_id?: string

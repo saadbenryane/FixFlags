@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Body, Heading, Muted } from '@/components/ui/typography'
-import { cn } from '@/lib/utils'
+import { MarketingEyebrow } from '@/components/marketing/MarketingEyebrow'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 import { useMe } from '@/hooks/useMe'
 import { WAITLIST_PAGE, BILLING_ACTION_COPY } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
@@ -143,13 +144,10 @@ export function WaitlistLanding({ initialPlan }: WaitlistLandingProps) {
   return (
     <Section spacing="tight" className="relative overflow-hidden">
       <Container variant="marketing" className="mx-auto max-w-2xl px-4 py-14 sm:px-6 sm:py-20">
-        <p className="inline-flex items-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-label text-brand sm:text-xs">
-          <span className="h-1.5 w-1.5 rounded-full bg-brand" aria-hidden />
-          {WAITLIST_PAGE.eyebrow}
-        </p>
+        <MarketingEyebrow>{WAITLIST_PAGE.eyebrow}</MarketingEyebrow>
         <Heading
           as="h1"
-          className="mt-4 font-display text-balance text-[2.25rem] font-bold leading-[1.05] tracking-display sm:text-[2.75rem]"
+          className="mt-4 font-display text-balance text-4xl font-bold leading-display tracking-display sm:text-5xl"
         >
           {WAITLIST_PAGE.headline}
         </Heading>
@@ -157,40 +155,17 @@ export function WaitlistLanding({ initialPlan }: WaitlistLandingProps) {
           {WAITLIST_PAGE.subhead}
         </Body>
 
-        <div
-          role="tablist"
+        <SegmentedControl
+          size="md"
+          value={plan}
+          onValueChange={(value) => router.push(waitlistPathForPlan(value as CheckoutPlan) as Route)}
+          items={[
+            { value: 'BUILDER', label: WAITLIST_PAGE.planProLabel },
+            { value: 'TEAM', label: WAITLIST_PAGE.planStudioLabel },
+          ]}
           aria-label="Plan"
-          className="mt-8 inline-flex rounded-[var(--radius-control)] bg-muted/70 p-1"
-        >
-          <button
-            role="tab"
-            aria-selected={plan === 'BUILDER'}
-            type="button"
-            className={cn(
-              'rounded-[calc(var(--radius-control)-4px)] px-4 py-2 text-sm font-medium transition-colors',
-              plan === 'BUILDER'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-            onClick={() => router.push(waitlistPathForPlan('BUILDER') as Route)}
-          >
-            {WAITLIST_PAGE.planProLabel}
-          </button>
-          <button
-            role="tab"
-            aria-selected={plan === 'TEAM'}
-            type="button"
-            className={cn(
-              'rounded-[calc(var(--radius-control)-4px)] px-4 py-2 text-sm font-medium transition-colors',
-              plan === 'TEAM'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-            onClick={() => router.push(waitlistPathForPlan('TEAM') as Route)}
-          >
-            {WAITLIST_PAGE.planStudioLabel}
-          </button>
-        </div>
+          className="mt-8"
+        />
 
         <div className="mt-3 flex items-baseline gap-2 text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">{planLabel}</span>
@@ -237,7 +212,7 @@ export function WaitlistLanding({ initialPlan }: WaitlistLandingProps) {
                 {submitLabel}
               </Button>
             </div>
-            <Muted className="text-center text-3xs leading-snug">
+            <Muted className="text-center text-xs leading-snug">
               {WAITLIST_PAGE.signUpRequired}
             </Muted>
           </form>

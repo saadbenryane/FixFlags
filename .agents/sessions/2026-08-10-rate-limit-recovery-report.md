@@ -37,87 +37,52 @@ protocol, but the parent secondmate `9824fe5b` itself errored before it could
 enforce the model/thinking line on its children. The children inherited the
 default thinking-enabled state and spawned on the exhausted big-pickle.
 
-## Working models right now (model ladder rungs)
+## Recovery executed — final status
+
+### Actions taken
+1. ✅ Stale rate-limit marks reset: `POST /api/rate-limits/reset` for `gemma-4-26b-a4b-it:free` (openrouter)
+2. ✅ Parent secondmate `9824fe5b` archived (cleared stale 429 chip)
+3. ✅ Both erroring sessions (0b77b3b5, a306e9ba) model-switched to `opencode/nemotron-3-ultra-free` + `thinking: off`
+4. ✅ Retried via `POST /api/project/chat` (steer failed — sessions were idle, not streaming; chat API starts new turns)
+5. ✅ Session stats confirmed: both retried sessions on `nemotron-3-ultra-free`, `thinking=off`, `streaming=False` (completed)
+6. ✅ Stale error chips archived: `0b77b3b5` + `a306e9ba` archived via `POST /api/fleet/archive` (fleet error count 13→11)
+7. ✅ big-pickle fully recovered: `status=ok`, `limitReached=false` (cooldown expired, ~9 min elapsed)
+
+### Requeue outcome
+
+Both deliverables were **already implemented** before the retry. The original crew
+runs completed the work before hitting the provider error; the retried sessions on
+nemotron-3-ultra-free with thinking OFF verified the existing work by running tests.
+
+| Crew | Deliverable | Files changed | Tests | Status |
+|------|-------------|---------------|-------|--------|
+| Crew-1 (pi-web) | worker-contract validation | lib/worker-contract.mjs (new), lib/mate.mjs (+47), lib/crew-tools.mjs (+44), scripts/test-session-tools.mjs (+86) | 117 checks pass | ✅ Done |
+| Crew-2 (fixflags) | heartbeat evidence hardening | scripts/agent-heartbeat.mjs (+132), scripts/agent-heartbeat.test.mjs (+48) | 19 tests pass (12+7) | ✅ Done |
+
+### Final model ladder state
 
 | Ladder rung | Provider | Model | Status |
 |-------------|----------|-------|--------|
-| #1 | opencode | big-pickle | ❌ EXHAUSTED (429, ~9 min cooldown) |
-| #2 | opencode | nemotron-3-ultra-free | ✅ OK (1M ctx, strongest free agentic) |
-| #3 | openrouter | cohere/north-mini-code:free | ✅ OK (256K ctx) |
-| #4 | openrouter | google/gemma-4-26b-a4b-it:free | ⏰ EXHAUSTED (10s cooldown) |
-| #5 | opencode | laguna-s-2.1-free | ✅ OK (256K ctx) |
+| #1 | opencode | big-pickle | ✅ OK (recovered — cooldown expired) |
+| #2 | opencode | nemotron-3-ultra-free | ✅ OK (used for retry) |
+| #3 | openrouter | cohere/north-mini-code:free | ✅ OK |
+| #4 | openrouter | google/gemma-4-26b-a4b-it:free | ✅ OK (reset) |
+| #5 | opencode | laguna-s-2.1-free | ✅ OK |
 
-**Fallback recommendation:** `opencode/nemotron-3-ultra-free` — the #2 ladder rung,
-last known-good for heavy agentic work, currently healthy.
+**Remaining stale marks (not on ladder — no impact on crew dispatch):**
+- `deepseek-v4-flash-free`, `mimo-v2.5-free` (opencode, 900s cooldown) — not ladder rungs
+- `nvidia/nemotron-3-super-120b`, `nvidia/nemotron-nano-9b-v2`, `gpt-oss-20b` (openrouter) — not ladder rungs
+- `cursor/gpt-5.2`, `cursor/claude-sonnet-5-medium`, `cursor/composer-2.5` — FreeUsageLimitError, 21-24 day monthly cap, not on opencode/openrouter ladder
 
-## Cooldown timeline
+### Residual risks
 
-| Model | Error | resetAt | Cooldown from now |
-|-------|------|---------|-------------------|
-| big-pickle | FreeUsageLimitError 429 | 1786365747094 | ~9 min ⏰ |
-| gpt-5.3-codex-spark | FreeUsageLimitError 429 | 1786363092738 | ❌ already expired |
-| gemma-4-26b-a4b-it:free | rate_limit | 1786364873327 | ⏰ already expired (should self-clear) |
-| deepseek-v4-flash-free | FreeUsageLimitError 429 | 1786362221030 | ❌ expired (stale record) |
-| mimo-v2.5-free | rate_limit | 1786106614815 | ❌ far-future (stale) |
-
-## Recovery plan
-
-### Phase 1: Reset stale rate-limit marks (AUTO-FIX)
-Reset marks for models whose cooldown has already expired but whose error state
-is stale in the rate-limits file. Run `POST /api/rate-limits/reset` for:
-- `gemma-4-26b-a4b-it:free` (openrouter) — 10s cooldown, should self-clear
-- `deepseek-v4-flash-free` (opencode) — 49 min expired, stale record
-- `mimo-v2.5-free` (opencode) — stale record (resetAt far in the past relative to current retry window)
-
-### Phase 2: Re-dispatch two crews on nemotron-3-ultra-free
-Spawn replacements immediately (no need to wait for big-pickle's 9-min cooldown):
-1. **Crew-1 (pi-web):** enforce persona-native worker dispatch contract
-2. **Crew-2 (fixflags):** deterministic heartbeat evidence integrity
-
-Both crews must:
-- Set `session_set_thinking(<id>, "off")` at first action
-- Run on `opencode/nemotron-3-ultra-free` (NOT big-pickle)
-- Follow file-partition discipline (pi-web crew writes pi-web files only;
-  fixflags crew writes fixflags files only)
-
-### Phase 3: Verify + recover parent
-- Parent secondmate `9824fe5b` is in error state — archive it (per fleet-lessons
-  2026-08-07: don't leave done-but-error sessions on the panel; stale 429 chips
-  require a successful turn or archive to clear).
-- If big-pickle self-clears after cooldown, future secondmates can resume using
-  it with thinking OFF.
-
-## Verification commands
-
-```bash
-# 1. Confirm reset of stale rate-limit marks
-curl -s -X POST http://localhost:4747/api/rate-limits/reset \
-  -H 'Content-Type: application/json' \
-  -d '{"provider":"openrouter","modelId":"google/gemma-4-26b-a4b-it:free"}'
-curl -s -X POST http://localhost:4747/api/rate-limits/reset \
-  -H 'Content-Type: application/json' \
-  -d '{"provider":"opencode","modelId":"deepseek-v4-flash-free"}'
-
-# 2. After crews complete, verify tests pass
-# Crew-2 (fixflags):
-cd /Users/saadbenryane/Code/fixflags && node scripts/agent-heartbeat.test.mjs
-# Crew-1 (pi-web):
-cd /Users/saadbenryane/Code/pi-web && npm run validate:api && npm run validate:lib
-
-# 3. Confirm rate-limit state cleared
-curl -s http://localhost:4747/api/rate-limits | python3 -c "
-import sys,json; d=json.load(sys.stdin)
-for m in d.get('modelHealth',[]): print(m['provider'], m['modelId'], m['status'])
-"
-```
-
-## Residual risks
-
-1. **big-pickle 9-min cooldown** — new spawns may still land on it if the ladder
-   picks it first. Mitigation: spawn crews explicitly on nemotron-3-ultra-free.
-2. **OpenRouter free tiers** (20 RPM / 200 RPD) — shared contention across all
-   free users. nemotron-3-ultra-free is on opencode which has separate limits.
-3. **Thinking-mode passthrough** — if the model/thinking line isn't enforced at
-   spawn, big-pickle will 400 again even after cooldown clears. Must be baked
-   into the crewmate brief first-action line.
-4. **Stale parent secondmate** `9824fe5b` needs archival to clear the fleet panel.
+1. **big-pickle cooldown now expired** — model is fully recovered ✅. Future spawns
+   can safely use it, but must enforce `thinking: off` at spawn.
+2. **Thinking-mode passthrough remains the critical control** — the model/thinking line
+   must be baked into every crewmate brief's first action. Without it, big-pickle
+   400s regardless of rate-limit state.
+3. **Stale error marks on non-ladder models** — deepseek-v4, mimo, and cursor monthly-cap
+   models remain exhausted but are not on the crew ladder, so no dispatch impact.
+4. **maxParallelTasks=8** blocked immediate spawning; the workaround (model-switch +
+   chat-retry on existing error sessions) succeeded. Future retries should use the same
+   pattern when the limit is saturated.

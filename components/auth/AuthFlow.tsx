@@ -24,6 +24,7 @@ import {
 import { useOAuthProviders } from '@/hooks/useOAuthProviders'
 import { useRedirectIfAuthenticated } from '@/hooks/useRedirectIfAuthenticated'
 import { trackEvent } from '@/lib/analytics/events'
+import { runBestEffort } from '@/lib/observability/best-effort'
 
 export type AuthFlowMode = 'signup' | 'signin'
 export type AuthFlowPresentation = 'page' | 'report-dialog' | 'report-gate'
@@ -174,7 +175,17 @@ export function AuthFlow({
           toast.error(error.message || AUTH.signUp.error)
           return
         }
-        fetch('/api/email/welcome', { method: 'POST' }).catch(() => {})
+        void runBestEffort(
+          () => fetch('/api/email/welcome', { method: 'POST' }),
+          {
+            operation: 'welcome_email_request',
+            logger: {
+              warn(message, details) {
+                console.warn(message, details)
+              },
+            },
+          }
+        )
         trackEvent('signed_up', {
           method: 'email',
           plan: route.plan ?? undefined,
