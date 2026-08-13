@@ -318,7 +318,7 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
       from: FROM_EMAIL,
       to: child.user.email,
       subject: `Regression on ${host}: ${regressCount} issue${regressCount === 1 ? '' : 's'}`,
-      html: `<p>Hi${child.user.name ? ` ${child.user.name}` : ''},</p><p>Your FixFlags product watch found <strong>${regressCount}</strong> new or regressed issue${regressCount === 1 ? '' : 's'} on <strong>${host}</strong>.</p><p><a href="${SITE_URL}/report/${child.id}">Open the update review report</a></p><p>Cleared: ${summary.fixed.length} · Remaining: ${summary.unchanged.length} · New: ${summary.newIssues.length} · Regressed: ${summary.regressed.length}</p>`,
+      html: `<p>Hi${child.user.name ? ` ${child.user.name}` : ''},</p><p>Your FixFlags product watch found <strong>${regressCount}</strong> new or regressed issue${regressCount === 1 ? '' : 's'} on <strong>${host}</strong>.</p><p><a href="${SITE_URL}/report/${child.id}">Open the update review report</a></p><p>Cleared: ${summary.fixed.length} · Inconclusive: ${summary.inconclusive.length} · Remaining: ${summary.unchanged.length} · New: ${summary.newIssues.length} · Regressed: ${summary.regressed.length}</p>`,
     }, { idempotencyKey: `fixflags-watch-${child.id}-v1` })
     await prisma.audit.update({
       where: { id: childAuditId },

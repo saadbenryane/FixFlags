@@ -2,11 +2,15 @@ export type McpCaller = (tool: string, args: Record<string, unknown>) => Promise
 
 export interface FinishPlanItem {
   flagId?: string
+  improvementId?: string | null
   checkId?: string | null
   problem: string
   rubric: string
   severity: string
   impactTag?: string | null
+  recommendedChange?: string
+  protectedScope?: string | null
+  verification?: string | null
   fixPrompt?: string | null
 }
 
@@ -53,6 +57,29 @@ export interface RecheckResult {
   nextFixList?: FixList
   nextFinishPlan?: FinishPlan
   technologyProfile?: CheckResult['technologyProfile']
+  verificationReceipts?: Array<{
+    improvementId: string
+    improvement: string
+    attemptId: string
+    builder: string
+    testedCondition: string
+    outcome: 'IMPROVED' | 'UNCHANGED' | 'REGRESSED' | 'INCONCLUSIVE'
+    remainingRisk?: string | null
+  }>
+}
+
+export interface AttemptResult {
+  flagId: string
+  action: 'READY_TO_VERIFY'
+  productId: string
+  improvementId: string
+  attemptId: string
+  sourceReviewId: string
+  nextAction: {
+    type: 'RUN_UPDATE_REVIEW' | 'NONE'
+    reportId?: string
+    command?: string
+  }
 }
 
 interface WaitOptions {
@@ -89,6 +116,14 @@ function optionalNumber(value: unknown, field: string, tool: string): number | n
   return value
 }
 
+function optionalString(value: unknown, field: string, tool: string): string | undefined {
+  if (value === undefined || value === null) return undefined
+  if (typeof value !== 'string' || !value) {
+    throw new Error(`Malformed response from ${tool}: ${field} must be a non-empty string`)
+  }
+  return value
+}
+
 function parseFinishPlan(value: unknown, tool: string): FinishPlan | undefined {
   if (value === undefined) return undefined
   const plan = record(value, tool)
@@ -99,11 +134,25 @@ function parseFinishPlan(value: unknown, tool: string): FinishPlan | undefined {
     const item = record(raw, tool)
     return {
       flagId: typeof item.flagId === 'string' ? item.flagId : undefined,
+      improvementId:
+        typeof item.improvementId === 'string' || item.improvementId === null
+          ? item.improvementId
+          : undefined,
       checkId: typeof item.checkId === 'string' || item.checkId === null ? item.checkId : undefined,
       problem: requiredString(item.problem, `finishPlan.items[${index}].problem`, tool),
       rubric: requiredString(item.rubric, `finishPlan.items[${index}].rubric`, tool),
       severity: requiredString(item.severity, `finishPlan.items[${index}].severity`, tool),
       impactTag: typeof item.impactTag === 'string' || item.impactTag === null ? item.impactTag : undefined,
+      recommendedChange:
+        typeof item.recommendedChange === 'string' ? item.recommendedChange : undefined,
+      protectedScope:
+        typeof item.protectedScope === 'string' || item.protectedScope === null
+          ? item.protectedScope
+          : undefined,
+      verification:
+        typeof item.verification === 'string' || item.verification === null
+          ? item.verification
+          : undefined,
       fixPrompt: typeof item.fixPrompt === 'string' || item.fixPrompt === null ? item.fixPrompt : undefined,
     }
   })
@@ -219,6 +268,31 @@ function parseRecheck(value: unknown, tool: string, apiBase: string, fallbackPar
     nextFixList: parseFixList(outcome.nextFixList, tool),
     nextFinishPlan: parseFinishPlan(outcome.nextFinishPlan, tool),
     technologyProfile: parseTechnologyProfile(outcome.technologyProfile, tool),
+    verificationReceipts: Array.isArray(outcome.verificationReceipts)
+      ? outcome.verificationReceipts.map((raw, index) => {
+          const receipt = record(raw, tool)
+          const verificationOutcome = requiredString(
+            receipt.outcome,
+            `verificationReceipts[${index}].outcome`,
+            tool
+          )
+          if (!['IMPROVED', 'UNCHANGED', 'REGRESSED', 'INCONCLUSIVE'].includes(verificationOutcome)) {
+            throw new Error(`Malformed response from ${tool}: invalid verification outcome`)
+          }
+          return {
+            improvementId: requiredString(receipt.improvementId, `verificationReceipts[${index}].improvementId`, tool),
+            improvement: requiredString(receipt.improvement, `verificationReceipts[${index}].improvement`, tool),
+            attemptId: requiredString(receipt.attemptId, `verificationReceipts[${index}].attemptId`, tool),
+            builder: requiredString(receipt.builder, `verificationReceipts[${index}].builder`, tool),
+            testedCondition: requiredString(receipt.testedCondition, `verificationReceipts[${index}].testedCondition`, tool),
+            outcome: verificationOutcome as 'IMPROVED' | 'UNCHANGED' | 'REGRESSED' | 'INCONCLUSIVE',
+            remainingRisk:
+              typeof receipt.remainingRisk === 'string' || receipt.remainingRisk === null
+                ? receipt.remainingRisk
+                : undefined,
+          }
+        })
+      : undefined,
   }
 }
 
@@ -265,4 +339,45 @@ export async function recheckAndDiff(
     result = parseRecheck(await waitForReport(call, result.reportId, options), 'ff_get_report', apiBase, parentReportId)
   }
   return result
+}
+
+export async function markFixAttempted(
+  call: McpCaller,
+  flagId: string,
+  options: { changeSummary: string; deploymentReference?: string }
+): Promise<AttemptResult> {
+  const tool = 'ff_mark_fix_attempted'
+  const outcome = record(await call(tool, {
+    flagId,
+    action: 'READY_TO_VERIFY',
+    changeSummary: options.changeSummary,
+    ...(options.deploymentReference
+      ? { deploymentReference: options.deploymentReference }
+      : {}),
+  }), tool)
+  const action = requiredString(outcome.action, 'action', tool)
+  if (action !== 'READY_TO_VERIFY') {
+    throw new Error(`Malformed response from ${tool}: action must be READY_TO_VERIFY`)
+  }
+  const parsedNextAction = record(outcome.nextAction, tool)
+  const nextActionType = requiredString(parsedNextAction.type, 'nextAction.type', tool)
+  if (nextActionType !== 'RUN_UPDATE_REVIEW' && nextActionType !== 'NONE') {
+    throw new Error(
+      `Malformed response from ${tool}: nextAction.type must be RUN_UPDATE_REVIEW or NONE`
+    )
+  }
+
+  return {
+    flagId: requiredString(outcome.flagId, 'flagId', tool),
+    action,
+    productId: requiredString(outcome.productId, 'productId', tool),
+    improvementId: requiredString(outcome.improvementId, 'improvementId', tool),
+    attemptId: requiredString(outcome.attemptId, 'attemptId', tool),
+    sourceReviewId: requiredString(outcome.sourceReviewId, 'sourceReviewId', tool),
+    nextAction: {
+      type: nextActionType,
+      reportId: optionalString(parsedNextAction.reportId, 'nextAction.reportId', tool),
+      command: optionalString(parsedNextAction.command, 'nextAction.command', tool),
+    },
+  }
 }

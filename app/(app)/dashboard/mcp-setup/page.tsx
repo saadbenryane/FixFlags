@@ -26,6 +26,16 @@ import {
   getMcpEndpoint,
 } from '@/lib/integrations/editor-config'
 
+type SetupClient = EditorIntegrationKey | 'other'
+
+const OTHER_CLIENT = {
+  key: 'other' as const,
+  label: 'Other MCP client',
+  setupMode: 'hosted-connector' as const,
+  setupLocation: 'Your client’s custom MCP server settings',
+  apiKeyClient: 'other' as const,
+}
+
 function safeReturnTo(value: string | null): Route {
   return value?.startsWith('/docs/') ? (value as Route) : '/dashboard'
 }
@@ -38,7 +48,7 @@ export default function McpSetupWizard() {
   const [newKey, setNewKey] = useState<string | null>(null)
   const [creatingKey, setCreatingKey] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [editor, setEditor] = useState<EditorIntegrationKey | null>(null)
+  const [editor, setEditor] = useState<SetupClient | null>(null)
   const [keyError, setKeyError] = useState<string | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [connected, setConnected] = useState(false)
@@ -47,16 +57,17 @@ export default function McpSetupWizard() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const requested = params.get('builder')
-    if (isEditorIntegrationKey(requested)) setEditor(requested)
+    if (isEditorIntegrationKey(requested) || requested === 'other') setEditor(requested)
     setReturnTo(safeReturnTo(params.get('returnTo')))
   }, [])
 
   const selectedEditor = useMemo(
-    () => (editor ? getEditorIntegration(editor) : null),
+    () => (editor === 'other' ? OTHER_CLIENT : editor ? getEditorIntegration(editor) : null),
     [editor]
   )
 
   async function saveProfile(): Promise<boolean> {
+    if (editor === 'other') return true
     setSavingProfile(true)
     setProfileError(null)
     try {
@@ -195,6 +206,25 @@ export default function McpSetupWizard() {
                   </span>
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditor('other')
+                  setNewKey(null)
+                  setConnected(false)
+                }}
+                aria-pressed={editor === 'other'}
+                className={`min-h-14 rounded-[var(--radius-control)] px-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
+                  editor === 'other'
+                    ? 'bg-brand/10 text-foreground ring-1 ring-brand/30'
+                    : 'bg-muted/45 text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                <span className="inline-flex items-center gap-2.5">
+                  <McpToolMark toolKey="other" className="h-5 w-5 shrink-0 text-brand" />
+                  <span className="font-medium">Other MCP client</span>
+                </span>
+              </button>
             </div>
           </fieldset>
           <div className="flex items-center justify-between pt-2">
@@ -259,7 +289,15 @@ export default function McpSetupWizard() {
 
   const endpoint = getMcpEndpoint(SITE_URL)
   const configuration =
-    editor && newKey ? buildEditorMcpConfiguration(editor, SITE_URL, newKey) : null
+    editor && newKey
+      ? editor === 'other'
+        ? {
+            label: 'Custom MCP server',
+            location: OTHER_CLIENT.setupLocation,
+            value: `Name: FixFlags\nURL: ${endpoint}\nTransport: Streamable HTTP\nAuthorization: Bearer ${newKey}\n`,
+          }
+        : buildEditorMcpConfiguration(editor, SITE_URL, newKey)
+      : null
 
   return (
     <Container variant="narrow" className="space-y-8 py-8">

@@ -99,7 +99,7 @@ Paste your live URL. FixFlags tests the paths that matter, shows exactly where t
 
 **Core loop:** Product Review → Fix → Verify → Watch.
 
-**Canonical loop:** Signal → Understand → Prioritize → Fix → Verify → Learn ([knowledge/vision.md](./knowledge/vision.md)). A review is an observation of the Product at a moment in time; the Product is the long-term object.
+**Canonical loop:** Observe → Understand → Judge → Improve → Verify → Learn ([knowledge/vision.md](./knowledge/vision.md)). A review is an observation of the Product at a moment in time; the Product is the long-term object.
 
 **The unit of value is a verified fix.**
 
@@ -115,6 +115,27 @@ Paste your live URL. FixFlags tests the paths that matter, shows exactly where t
 10. User enables product watch (Pro/Studio) for deployment-triggered regression detection.
 
 Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
+
+### Durable Improvement cycle
+
+- Claimed Products lazily turn the worthwhile zero-to-three Finish Plan items into durable Product-scoped Improvements.
+- Equivalent Flags across Reviews link to the same Improvement by a stable Product-local fingerprint.
+- An Improvement records judgment, expected benefit, recommended change, protected scope, success condition, priority, lifecycle, occurrences, and builder attempts.
+- Copying an owned Flag prompt or calling `ff_mark_fix_attempted` records an Improvement Attempt instead of declaring the Flag fixed.
+- Only a fresh child Update Review can record `IMPROVED`, `UNCHANGED`, `REGRESSED`, or `INCONCLUSIVE`.
+- Verified Product Memory is written only from an `IMPROVED` attempt with Review and evidence provenance.
+- The Product dashboard leads with Attention now and allows the honest result that nothing important requires action.
+- MCP Product context and Finish Plan responses include Product Improvements; MCP and CLI update-review responses include independent verification receipts.
+
+### Minimal Product Signals
+
+- A Product with a completed Review can create an origin-bound browser Signal key.
+- `/fixflags.js` automatically observes route transitions, uncaught error types, and Core Web Vitals.
+- `FixFlags.goal(name)`, `FixFlags.outcome(name, status)`, and `FixFlags.release(version)` provide explicit named context.
+- `/api/products/[id]/signals` accepts strict replay-safe batches containing only allowed signal fields.
+- Routes are stored as pathnames without queries or fragments; anonymous session identifiers are hashed; input values, DOM text, identity, request bodies, and replay are not accepted.
+- Raw Product Signals expire after 30 days while derived Improvements and verified learning remain.
+- Product Signals remain `OBSERVED` evidence and never become Flags or confirmed causal claims automatically.
 
 ## What we ship
 

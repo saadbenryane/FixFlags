@@ -4,9 +4,13 @@ This is the canonical hierarchy for report code, copy, tests, documentation, and
 
 ## First-use loop
 
-FixFlags is one product: **paste URL → receive every unresolved Flag ranked by impact → copy fixes into an AI editor → re-check and prove the result**.
+FixFlags is one product: **paste URL → understand what deserves attention → send the worthwhile Improvement to a builder → run an Update review → independently verify and learn**.
 
-`buildUnifiedPlanBundle()` aggregates live and repository Flags once. `buildFixList()` then owns complete ranking, Product Contract bias, prompt availability, and anonymous redaction.
+`buildUnifiedPlanBundle()` aggregates live and repository Flags once.
+
+Its bounded Finish Plan supplies zero-to-three worthwhile candidates for durable Product Improvements.
+
+`buildFixList()` owns the complete supporting evidence list, Product Contract bias, prompt availability, and anonymous redaction.
 
 ## Canonical report
 
@@ -16,7 +20,7 @@ FixFlags is one product: **paste URL → receive every unresolved Flag ranked by
 2. Re-check result, when applicable
 3. Progress band (`#report-status`) with release score or scan percent, unresolved Flag count, Re-check history, and Message, Experience, Reach coverage
 4. Sticky section navigation when two or more sections exist
-5. Top fixes (`#report-top-fixes`) with the full ranked fix bundle, when Flags exist
+5. Attention now (`#report-top-fixes`) with at most three worthwhile Improvements, when action is justified
 6. Complete ranked fix list (`#report-flags`) with screenshot evidence and selected fix detail
 7. Made with (`#report-stack`), Product Contract (`#report-contract`), verified memory (`#report-remember`), when present
 8. Funnel, flow, and action timeline (`#report-funnel`)
@@ -24,7 +28,7 @@ FixFlags is one product: **paste URL → receive every unresolved Flag ranked by
 10. Owner re-check (`#report-recheck`)
 11. At most one contextual signup or upgrade moment
 
-Sticky nav order matches DOM order: Top fixes → All fixes → Made with → Contract → Remember → Funnel → Previews → Launch → Re-check.
+Sticky nav order matches DOM order: Attention now → All evidence → Made with → Contract → Remember → Funnel → Previews → Launch → Update review.
 
 **Report header copy:** "Your review" with unresolved count and checked scope. The progress band owns the release score.
 

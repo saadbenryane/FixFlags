@@ -440,6 +440,10 @@ model Project {
   scanAccessEncrypted         String?
   audits                      Audit[]
   canvases                    ReportCanvas[]
+  improvements                Improvement[]
+  releases                    ProductRelease[]
+  signalKeys                  ProductSignalKey[]
+  signals                     ProductSignal[]
   user                        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, canonicalHost])
@@ -478,6 +482,7 @@ model Audit {
   reportCompleteness         ReportCompleteness           @default(UNKNOWN)
   evidenceCoverage           Json?
   finalizedAt                DateTime?
+  improvementProjectedAt    DateTime?
   failureCode                String?
   failureStage               String?
   failureMetadata            Json?
@@ -538,6 +543,9 @@ model Audit {
   screenshots                Screenshot[]
   shareLinks                 ShareLink[]
   sourceCanvases             ReportCanvas[]
+  improvementOccurrences     ImprovementOccurrence[]
+  sourceImprovementAttempts  ImprovementAttempt[]         @relation("ImprovementSourceReview")
+  verificationAttempts       ImprovementAttempt[]         @relation("ImprovementVerificationReview")
 
   @@index([userId])
   @@index([status])
@@ -925,41 +933,42 @@ model Screenshot {
 }
 
 model Flag {
-  id               String          @id @default(cuid())
-  auditId          String
-  pageId           String?
-  rubricId         String?
-  source           FlagSource
-  rubric           String
-  impactTag        ImpactTag?
-  severity         Severity
-  problem          String
-  evidence         String
-  whyItMatters     String
-  fix              String
-  confidence       Float
-  agentPrompt      String?
-  cursorPrompt     String?
-  claudePrompt     String?
-  lovablePrompt    String?
-  boltPrompt       String?
-  verificationRule String?
-  checkId          String?
-  pageUrl          String?
-  fingerprint      String?
-  position         Int
-  status           FlagStatus      @default(OPEN)
-  resolvedInId     String?
-  createdAt        DateTime        @default(now())
-  issueId          String?
-  windsurfPrompt   String?
-  causeCertainty   CauseCertainty?
-  fixConfidence    FixConfidence?
-  feedback         FlagFeedback[]
-  audit            Audit           @relation(fields: [auditId], references: [id], onDelete: Cascade)
-  issue            Issue?          @relation(fields: [issueId], references: [id])
-  page             AuditPage?      @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  rubric_rel       ReportRubric?   @relation(fields: [rubricId], references: [id])
+  id                    String                 @id @default(cuid())
+  auditId               String
+  pageId                String?
+  rubricId              String?
+  source                FlagSource
+  rubric                String
+  impactTag             ImpactTag?
+  severity              Severity
+  problem               String
+  evidence              String
+  whyItMatters          String
+  fix                   String
+  confidence            Float
+  agentPrompt           String?
+  cursorPrompt          String?
+  claudePrompt          String?
+  lovablePrompt         String?
+  boltPrompt            String?
+  verificationRule      String?
+  checkId               String?
+  pageUrl               String?
+  fingerprint           String?
+  position              Int
+  status                FlagStatus             @default(OPEN)
+  resolvedInId          String?
+  createdAt             DateTime               @default(now())
+  issueId               String?
+  windsurfPrompt        String?
+  causeCertainty        CauseCertainty?
+  fixConfidence         FixConfidence?
+  feedback              FlagFeedback[]
+  improvementOccurrence ImprovementOccurrence?
+  audit                 Audit                  @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  issue                 Issue?                 @relation(fields: [issueId], references: [id])
+  page                  AuditPage?             @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  rubric_rel            ReportRubric?          @relation(fields: [rubricId], references: [id])
 
   @@index([auditId])
   @@index([auditId, checkId])
@@ -967,6 +976,134 @@ model Flag {
   @@index([auditId, fingerprint])
   @@index([issueId])
   @@map("flags")
+}
+
+model Improvement {
+  id                String                  @id @default(cuid())
+  projectId         String
+  fingerprint       String
+  title             String
+  judgment          String
+  expectedBenefit   String
+  recommendedChange String
+  protectedScope    String?
+  successCondition  String
+  priority          Int                     @default(0)
+  status            ImprovementStatus       @default(PROPOSED)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  project           Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  occurrences       ImprovementOccurrence[]
+  attempts          ImprovementAttempt[]
+
+  @@unique([projectId, fingerprint])
+  @@index([projectId, status, priority])
+  @@index([projectId, updatedAt(sort: Desc)])
+  @@map("improvements")
+}
+
+model ImprovementOccurrence {
+  id            String                    @id @default(cuid())
+  improvementId String
+  auditId       String
+  flagId        String                    @unique
+  kind          ImprovementOccurrenceKind
+  createdAt     DateTime                  @default(now())
+  improvement   Improvement               @relation(fields: [improvementId], references: [id], onDelete: Cascade)
+  audit         Audit                     @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  flag          Flag                      @relation(fields: [flagId], references: [id], onDelete: Cascade)
+
+  @@index([improvementId, createdAt])
+  @@index([auditId])
+  @@map("improvement_occurrences")
+}
+
+model ImprovementAttempt {
+  id                   String               @id @default(cuid())
+  improvementId        String
+  sourceAuditId        String
+  builder              String
+  handoffReference     String?
+  pullRequestReference String?
+  deploymentReference  String?
+  changeSummary        String?
+  verificationAuditId  String?
+  outcome              VerificationOutcome?
+  testedCondition      String?
+  comparable           Boolean?
+  verificationCoverage Json?
+  verificationReason   String?
+  evidenceReference    Json?
+  remainingRisk        String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  improvement          Improvement          @relation(fields: [improvementId], references: [id], onDelete: Cascade)
+  sourceAudit          Audit                @relation("ImprovementSourceReview", fields: [sourceAuditId], references: [id], onDelete: Cascade)
+  verificationAudit    Audit?               @relation("ImprovementVerificationReview", fields: [verificationAuditId], references: [id], onDelete: SetNull)
+
+  @@index([improvementId, createdAt(sort: Desc)])
+  @@index([sourceAuditId])
+  @@index([verificationAuditId])
+  @@map("improvement_attempts")
+}
+
+model ProductRelease {
+  id         String          @id @default(cuid())
+  projectId  String
+  source     String
+  externalId String
+  commitRef  String?
+  url        String?
+  deployedAt DateTime
+  createdAt  DateTime        @default(now())
+  project    Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  signals    ProductSignal[]
+
+  @@unique([projectId, source, externalId])
+  @@index([projectId, deployedAt(sort: Desc)])
+  @@map("product_releases")
+}
+
+model ProductSignalKey {
+  id            String    @id @default(cuid())
+  projectId     String
+  name          String
+  keyHash       String    @unique
+  prefix        String
+  lastFour      String
+  allowedOrigin String
+  lastUsedAt    DateTime?
+  revokedAt     DateTime?
+  createdAt     DateTime  @default(now())
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, revokedAt])
+  @@map("product_signal_keys")
+}
+
+model ProductSignal {
+  id           String            @id @default(cuid())
+  projectId    String
+  source       String
+  kind         ProductSignalKind
+  name         String
+  route        String?
+  sessionHash  String?
+  releaseId    String?
+  occurredAt   DateTime
+  numericValue Float?
+  provenance   Json
+  replayKey    String
+  expiresAt    DateTime
+  receivedAt   DateTime          @default(now())
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  release      ProductRelease?   @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, source, replayKey])
+  @@index([projectId, occurredAt(sort: Desc)])
+  @@index([expiresAt])
+  @@index([releaseId, occurredAt])
+  @@map("product_signals")
 }
 
 model FlagFeedback {
@@ -1514,6 +1651,40 @@ enum FlagStatus {
   FIXED
   IGNORED
   REGRESSED
+}
+
+enum ImprovementStatus {
+  PROPOSED
+  ACCEPTED
+  IN_PROGRESS
+  READY_TO_VERIFY
+  VERIFIED
+  REJECTED
+  SUPERSEDED
+  UNVERIFIED
+}
+
+enum ImprovementOccurrenceKind {
+  OBSERVED
+  CONFIRMED
+  CLEARED
+  REGRESSED
+}
+
+enum VerificationOutcome {
+  IMPROVED
+  UNCHANGED
+  REGRESSED
+  INCONCLUSIVE
+}
+
+enum ProductSignalKind {
+  NAVIGATION
+  ACTION
+  OUTCOME
+  ERROR
+  PERFORMANCE
+  DEPLOYMENT
 }
 
 enum FixConfidence {

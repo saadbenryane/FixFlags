@@ -203,6 +203,7 @@ export function FlagDetailPanel({
               toolPrompts={flag.toolPrompts}
               showToolSelector
               showCursorAction
+              flagId={flag.id}
               nested
               render="markdown"
             />

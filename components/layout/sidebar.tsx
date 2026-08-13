@@ -5,8 +5,7 @@ import type { Route } from 'next'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Gauge,
-  Cpu,
+  Boxes,
   Settings,
   KeyRound,
   GitBranch,
@@ -40,8 +39,7 @@ interface SidebarItem {
 }
 
 const PRIMARY_ITEMS: SidebarItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: Gauge },
-  { href: '/dashboard/mcp-analytics', label: 'MCP', icon: Cpu },
+  { href: '/dashboard', label: 'Products', icon: Boxes },
 ]
 
 const SECONDARY_ITEMS: SidebarItem[] = [

@@ -5,6 +5,7 @@ import { processDueProjectWatches, retryPendingWatchNotifications } from '@/lib/
 import { runIssueRollup } from '@/lib/growth/issue-rollup'
 import { runGscPull } from '@/lib/growth/gsc-pull'
 import { runGaPull } from '@/lib/growth/ga-pull'
+import { deleteExpiredProductSignals } from '@/lib/signals/product-signals'
 import { logger } from '@/lib/logger'
 
 const RECOVERY_INTERVAL_MS = 120_000 // ~2 min
@@ -21,6 +22,9 @@ const ROLLUP_LOCK_TTL_MS = 23 * 60 * 60 * 1000 // ...but only actually run ~once
 
 const ANALYTICS_INTERVAL_MS = 24 * 60 * 60 * 1000 // check every 24h
 const ANALYTICS_LOCK_TTL_MS = 25 * 60 * 60 * 1000 // ...but only actually run ~once/day
+
+const SIGNAL_RETENTION_INTERVAL_MS = 24 * 60 * 60 * 1000
+const SIGNAL_RETENTION_LOCK_TTL_MS = 25 * 60 * 60 * 1000
 
 let started = false
 
@@ -77,6 +81,19 @@ async function analyticsTick(): Promise<void> {
   }
 }
 
+async function signalRetentionTick(): Promise<void> {
+  if (!(await tryAcquireLock('product-signal-retention', SIGNAL_RETENTION_LOCK_TTL_MS))) return
+  try {
+    const deleted = await deleteExpiredProductSignals()
+    if (deleted > 0) logger.info('Expired Product Signals deleted', { deleted })
+  } catch (err) {
+    logger.error(
+      'Product Signal retention failed',
+      err instanceof Error ? err : new Error(String(err))
+    )
+  }
+}
+
 /**
  * Self-hosted scheduler for periodic jobs (stuck-audit recovery + nurture
  * emails + knowledge-graph issue rollup). Runs in every dedicated worker; a
@@ -112,6 +129,14 @@ export function startRecoveryScheduler(): void {
   initialAnalytics.unref?.()
   const analyticsTimer = setInterval(() => void analyticsTick(), ANALYTICS_INTERVAL_MS)
   analyticsTimer.unref?.()
+
+  const initialSignalRetention = setTimeout(() => void signalRetentionTick(), 150_000)
+  initialSignalRetention.unref?.()
+  const signalRetentionTimer = setInterval(
+    () => void signalRetentionTick(),
+    SIGNAL_RETENTION_INTERVAL_MS
+  )
+  signalRetentionTimer.unref?.()
 
   logger.info('Recovery scheduler started')
 }

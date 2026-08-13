@@ -34,6 +34,9 @@ export default async function AdminAnalyticsPage() {
     anonAuditsMonth,
     anonCompletedMonth,
     anonUnlinkedLeads,
+    improvedAttemptsMonth,
+    watchedProducts,
+    productsWithSecondCycle,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
@@ -51,6 +54,27 @@ export default async function AdminAnalyticsPage() {
       where: { userId: null, status: 'COMPLETED', createdAt: { gte: monthAgo } },
     }),
     prisma.lead.count({ where: { linkedUserId: null } }),
+    prisma.improvementAttempt.findMany({
+      where: { outcome: 'IMPROVED', updatedAt: { gte: monthAgo } },
+      select: {
+        createdAt: true,
+        updatedAt: true,
+        verificationAudit: {
+          select: { runCost: { select: { estimatedCostUsd: true } } },
+        },
+      },
+    }),
+    prisma.project.count({ where: { watchInterval: { not: null } } }),
+    prisma.project.count({
+      where: {
+        improvements: {
+          some: {
+            attempts: { some: { outcome: 'IMPROVED' } },
+          },
+        },
+        audits: { some: { parentId: { not: null }, status: 'COMPLETED' } },
+      },
+    }),
   ])
 
   const [
@@ -115,6 +139,23 @@ export default async function AdminAnalyticsPage() {
 
   const loggedInAuditsMonth = Math.max(0, auditsMonth - anonAuditsMonth)
   const anonCompleteRate = pct(anonCompletedMonth, anonAuditsMonth)
+  const verifiedImprovementCount = improvedAttemptsMonth.length
+  const verificationCost = improvedAttemptsMonth.reduce(
+    (sum, attempt) =>
+      sum + Number(attempt.verificationAudit?.runCost?.estimatedCostUsd ?? 0),
+    0
+  )
+  const costPerVerifiedImprovement =
+    verifiedImprovementCount > 0 ? verificationCost / verifiedImprovementCount : null
+  const averageTimeToVerifiedHours =
+    verifiedImprovementCount > 0
+      ? improvedAttemptsMonth.reduce(
+          (sum, attempt) => sum + (attempt.updatedAt.getTime() - attempt.createdAt.getTime()),
+          0
+        ) /
+        verifiedImprovementCount /
+        3_600_000
+      : null
 
   const periodStats = [
     {
@@ -148,6 +189,33 @@ export default async function AdminAnalyticsPage() {
           Open GA4 dashboard &rarr;
         </Link>
       </PageHeader>
+
+      <section className="space-y-4">
+        <SectionTitle>Continuous improvement (last 30 days)</SectionTitle>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            label="Verified improvements"
+            value={verifiedImprovementCount.toLocaleString()}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Cost per verified improvement"
+            value={costPerVerifiedImprovement === null ? 'N/A' : `$${costPerVerifiedImprovement.toFixed(2)}`}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Time to verified outcome"
+            value={averageTimeToVerifiedHours === null ? 'N/A' : `${averageTimeToVerifiedHours.toFixed(1)}h`}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Products with a second cycle"
+            value={productsWithSecondCycle.toLocaleString()}
+            detail={<span className="text-xs text-muted-foreground">{watchedProducts} under Watch</span>}
+            variant="subtle"
+          />
+        </div>
+      </section>
 
       <section className="space-y-4">
         <SectionTitle>Anonymous report conversion (last 30 days)</SectionTitle>

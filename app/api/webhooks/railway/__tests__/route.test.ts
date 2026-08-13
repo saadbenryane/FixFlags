@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 
 const mockValidateApiKey = vi.hoisted(() => vi.fn())
 const mockCheckAndPlan = vi.hoisted(() => vi.fn())
+const mockRecordProductReleaseForReview = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/mcp/tools', () => ({
   validateApiKey: mockValidateApiKey,
@@ -10,6 +11,10 @@ vi.mock('@/lib/mcp/tools', () => ({
 
 vi.mock('@/lib/audit/task-contracts', () => ({
   checkAndPlan: mockCheckAndPlan,
+}))
+
+vi.mock('@/lib/signals/product-signals', () => ({
+  recordProductReleaseForReview: mockRecordProductReleaseForReview,
 }))
 
 import { POST } from '@/app/api/webhooks/railway/route'
@@ -39,6 +44,7 @@ describe('POST /api/webhooks/railway', () => {
       reportUrl: 'https://fixflags.com/report/audit-1',
       status: 'QUEUED',
     })
+    mockRecordProductReleaseForReview.mockResolvedValue({ id: 'release-1' })
   })
 
   it('enqueues a check on deploy success with url and apiKey query params', async () => {
@@ -61,6 +67,13 @@ describe('POST /api/webhooks/railway', () => {
       waitForCompletion: false,
     })
     expect(json.reportId).toBe('audit-1')
+    expect(mockRecordProductReleaseForReview).toHaveBeenCalledWith({
+      auditId: 'audit-1',
+      source: 'railway',
+      externalId: 'dep-1',
+      commitRef: null,
+      url: 'https://my-app.up.railway.app',
+    })
   })
 
   it('returns 400 when check url is missing', async () => {

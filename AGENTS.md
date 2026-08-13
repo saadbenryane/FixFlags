@@ -8,11 +8,11 @@ Start with `npm run agent`. Use `npm run agent -- context <area>` for focused fi
 
 FixFlags is the independent Product Intelligence System for AI-built software. A user submits a URL and receives a Fix list across Message, Experience, and Reach, with fix prompts for their AI editor.
 
-- Core loop: **Product Review → Fix → Verify → Watch** (customer wedge; internal canonical loop: Signal → Understand → Prioritize → Fix → Verify → Learn, [knowledge/vision.md](knowledge/vision.md)).
+- Core loop: **Product Review → Fix → Verify → Watch** (customer wedge; internal canonical loop: Observe → Understand → Judge → Improve → Verify → Learn, [knowledge/vision.md](knowledge/vision.md)).
 - Canonical report hierarchy: [knowledge/report-contract.md](knowledge/report-contract.md). Do not duplicate route or section order in skills.
 - Plans meter product reviews (new URLs and update reviews share the same credit pool). Customer copy uses **update review**; internal routes may still use `re-check`.
 - Stage: pre-revenue testing. Distribution has priority over additional product depth.
-- Shipped truth: [PRODUCT.md](PRODUCT.md). North star and canonical loop: [knowledge/vision.md](knowledge/vision.md) (Signal → Understand → Prioritize → Fix → Verify → Learn; customer loop Product Review → Fix → Verify → Watch).
+- Shipped truth: [PRODUCT.md](PRODUCT.md). North star and canonical loop: [knowledge/vision.md](knowledge/vision.md) (Observe → Understand → Judge → Improve → Verify → Learn; customer loop Product Review → Fix → Verify → Watch).
 - Product and technical vocabulary: [knowledge/README.md](knowledge/README.md).
 
 ## Interface Layer Clarification
@@ -108,7 +108,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for setup, databases, deployment, and debug
 - Edge middleware must not import Prisma or Node-only modules.
 - Shared report behavior belongs in existing audit/report utilities, not duplicated component logic.
 - Check-to-plan and re-check-to-diff behavior belongs in `lib/audit/task-contracts.ts`; transports call one task-shaped outcome.
-- Public HTTP boundaries are `/api/checks` and `/api/reports/[id]/*`. Do not add `/api/audits` compatibility routes.
+- Public Review HTTP boundaries are `/api/checks` and `/api/reports/[id]/*`; privacy-bounded Product Signal ingestion is `/api/products/[id]/signals`. Do not add `/api/audits` compatibility routes or generic event APIs.
 - Do not keep off-by-default feature flags for unproven or unused code. If a feature is not wired into a product surface and has not shipped, remove it entirely rather than gating it behind a `USE_*` env flag. Re-add only when product need is demonstrated.
 
 Full pipeline behavior and report composition live in [docs/audit-pipeline.md](docs/audit-pipeline.md), [ARCHITECTURE.md](ARCHITECTURE.md), and [DESIGN.md](DESIGN.md).

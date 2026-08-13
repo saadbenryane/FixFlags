@@ -103,7 +103,7 @@ describe('Product Watch', () => {
       project: { watchInterval: 'WEEKLY' },
     })
     mocks.getFlagDiffSummary.mockResolvedValue({
-      fixed: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],
+      fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],
     })
     mocks.auditUpdateMany.mockResolvedValue({ count: 0 })
 
@@ -126,7 +126,7 @@ describe('Product Watch', () => {
       project: { watchInterval: 'WEEKLY' },
     })
     mocks.getFlagDiffSummary.mockResolvedValue({
-      fixed: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],
+      fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],
     })
 
     await notifyWatchRegression('parent-1', 'child-1')
@@ -155,7 +155,9 @@ describe('Product Watch', () => {
       user: { email: 'owner@example.com', name: 'Owner' },
       project: { watchInterval: 'WEEKLY' },
     })
-    mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [{ id: 'fixed' }], unchanged: [], newIssues: [], regressed: [] })
+    mocks.getFlagDiffSummary.mockResolvedValue({
+      fixed: [{ id: 'fixed' }], inconclusive: [], unchanged: [], newIssues: [], regressed: [],
+    })
 
     await notifyWatchRegression('parent-1', 'child-1')
 

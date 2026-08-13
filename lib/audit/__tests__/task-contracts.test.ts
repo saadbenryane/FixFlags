@@ -6,10 +6,16 @@ const mocks = vi.hoisted(() => ({
   startMonitoringAudit: vi.fn(),
   pollAuditUntilDone: vi.fn(),
   getFlagDiffSummary: vi.fn(),
+  occurrenceFindMany: vi.fn(),
+  attemptFindMany: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
-  prisma: { audit: { findUnique: mocks.auditFindUnique } },
+  prisma: {
+    audit: { findUnique: mocks.auditFindUnique },
+    improvementOccurrence: { findMany: mocks.occurrenceFindMany },
+    improvementAttempt: { findMany: mocks.attemptFindMany },
+  },
 }))
 vi.mock('@/lib/audit/create-audit', () => ({
   createAndEnqueueAudit: mocks.createAndEnqueueAudit,
@@ -98,8 +104,11 @@ describe('task contracts', () => {
       ok: true,
       result: { auditId: 'report-1', status: 'QUEUED' },
     })
+    mocks.occurrenceFindMany.mockResolvedValue([])
+    mocks.attemptFindMany.mockResolvedValue([])
     mocks.getFlagDiffSummary.mockResolvedValue({
       fixed: [{ id: 'fixed' }],
+      inconclusive: [],
       unchanged: [],
       newIssues: [],
       regressed: [],
@@ -219,11 +228,13 @@ describe('task contracts', () => {
 
     expect(outcome.diff).toEqual({
       fixed: 1,
+      inconclusive: 0,
       remaining: 0,
       newIssues: 0,
       regressed: 0,
       flags: {
         cleared: [{ id: 'fixed' }],
+        inconclusive: [],
         remaining: [],
         new: [],
         regressed: [],

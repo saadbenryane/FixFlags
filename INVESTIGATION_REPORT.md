@@ -139,6 +139,7 @@ Full pipeline stages, per-page behavior, and recovery are canonical in [docs/aud
 ```bash
 npx fixflags check <url> [--wait] [--plan] [--single] [--full] [--json]
 npx fixflags recheck <reportId> [--wait] [--diff] [--full] [--json]
+npx fixflags attempt <flagId> --summary <change> [--deployment <reference>] [--json]
 npx fixflags status <reportId> [--json]
 npx fixflags login [--with-token] [--insecure-storage]
 npx fixflags whoami [--json]
@@ -157,17 +158,18 @@ npx fixflags mcp  # Secure local bridge for editor MCP configs
 - `ff_plan_mode_prompt` — Agent-ready prompt with all fixes
 - `ff_get_product_context` — Product Contract + PI
 - `ff_start_repo_scan` / `ff_list_repo_scans` / `ff_get_repo_scan` / `ff_get_repo_finding` — Studio repo scanning
-- `ff_mark_fix_attempted` — Mark Flag fixed/ignored
+- `ff_mark_fix_attempted` — Record that a change is ready for independent verification, or reject an Improvement
+- `ff_get_connection_info` — Contract version, readiness, capabilities, and canonical workflow
 
 **Integration Flow:**
-1. CLI calls `/api/mcp` with JSON-RPC 2.0 + `x-api-key` (or stored credential)
+1. CLI calls `/api/mcp` with JSON-RPC 2.0 + Bearer authentication (or a stored credential)
 2. Server validates API key, executes tool handler
 3. Returns structured JSON → CLI renders human-readable or `--json` output
 4. `--wait` polls `ff_get_check_status` until `COMPLETED`
 
 ### 3.3 MCP Server (Editor Integration)
 
-**Public Surface:** 17 tools in `lib/mcp/tool-manifest.ts` (canonical registry)
+**Public Surface:** The versioned core and optional capabilities are generated from `lib/mcp/tool-manifest.ts`.
 
 **Editor Support:** Cursor, Claude Code, Windsurf, Lovable, Bolt, Replit, Codex, Devin, VS Code, other
 
@@ -374,7 +376,7 @@ npm run dev:all                   # App + worker
 | **Core Pipeline** | ✅ Shipped & Verified | 22 checks, AI triage/prescription, journey reviews, visual evidence |
 | **Report Workspace** | ✅ Shipped | Progressive + completed parity, split layout, playback strip |
 | **CLI** | ✅ Beta Functional | Thin MCP client, all core workflows, `--json` for automation |
-| **MCP Server** | ✅ Shipped | 17 tools, editor catalog, device auth bridge |
+| **MCP Server** | ✅ Shipped | Contract v1 core plus manifest-advertised optional capabilities, editor catalog, device auth bridge |
 | **Billing/Metering** | ✅ Enforced | Dual-pool, Stripe, update review metering |
 | **Auth/Security** | ✅ Hardened | better-auth, passkey 2FA, edge middleware, encrypted secrets |
 | **Accuracy** | ⚠️ Partial | HTML corpus + demo repair gates; pixel regression not frozen |

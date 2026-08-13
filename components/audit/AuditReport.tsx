@@ -532,6 +532,13 @@ export function AuditReport({
       }
       footerSections={
         <div id="report-recheck" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-6 sm:space-y-8')}>
+          {projectId && isViewerOwner ? (
+            <Button asChild variant="outline">
+              <Link href={`/products/${projectId}`}>
+                Return to Product
+              </Link>
+            </Button>
+          ) : null}
           {showMonitoringHint && isLoggedIn && isViewerOwner && (
             <Card className="space-y-3 p-5">
               <CardTitle className="text-sm">{REPORT_COPY.recheckHint.title}</CardTitle>

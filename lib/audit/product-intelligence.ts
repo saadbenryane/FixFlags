@@ -9,17 +9,26 @@ export interface ProductIntelligence {
   purpose: string
   firstValueJourney: string
   criticalOutcomes: string[]
+  importantJourneys?: string[]
+  successConditions?: string[]
   constraints?: string[]
   decisions?: { text: string; at: string }[]
   knownRisks?: string[]
   verifiedLearnings?: VerifiedLearning[]
   intentionalNotes?: string[]
+  sourceReliability?: Array<{
+    source: string
+    status: 'reliable' | 'degraded' | 'unknown'
+    lastObservedAt?: string
+  }>
   source: 'heuristic' | 'user' | 'merged'
   updatedAt: string
 }
 
 export interface VerifiedLearning {
   checkId?: string
+  improvementId?: string
+  attemptId?: string
   summary: string
   auditId: string
   at: string
@@ -65,6 +74,12 @@ export function parseProductIntelligence(data: unknown): ProductIntelligence | n
     purpose: raw.purpose,
     firstValueJourney: raw.firstValueJourney,
     criticalOutcomes: raw.criticalOutcomes.filter((o): o is string => typeof o === 'string'),
+    importantJourneys: Array.isArray(raw.importantJourneys)
+      ? raw.importantJourneys.filter((item): item is string => typeof item === 'string').slice(0, 20)
+      : undefined,
+    successConditions: Array.isArray(raw.successConditions)
+      ? raw.successConditions.filter((item): item is string => typeof item === 'string').slice(0, 20)
+      : undefined,
     constraints: Array.isArray(raw.constraints)
       ? raw.constraints.filter((o): o is string => typeof o === 'string')
       : undefined,
@@ -91,6 +106,20 @@ export function parseProductIntelligence(data: unknown): ProductIntelligence | n
       : undefined,
     intentionalNotes: Array.isArray(raw.intentionalNotes)
       ? raw.intentionalNotes.filter((o): o is string => typeof o === 'string').slice(0, MAX_INTENTIONAL)
+      : undefined,
+    sourceReliability: Array.isArray(raw.sourceReliability)
+      ? raw.sourceReliability
+          .filter(
+            (item): item is NonNullable<ProductIntelligence['sourceReliability']>[number] =>
+              !!item &&
+              typeof item === 'object' &&
+              typeof item.source === 'string' &&
+              (item.status === 'reliable' ||
+                item.status === 'degraded' ||
+                item.status === 'unknown') &&
+              (item.lastObservedAt === undefined || typeof item.lastObservedAt === 'string')
+          )
+          .slice(0, 20)
       : undefined,
     source,
     updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),

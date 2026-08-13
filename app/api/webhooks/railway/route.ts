@@ -7,7 +7,9 @@ import {
   isRailwayDeploySuccessEvent,
   parseRailwayWebhookPayload,
   resolveRailwayCheckUrl,
+  railwayDeploymentReference,
 } from '@/lib/webhooks/railway-deploy'
+import { recordProductReleaseForReview } from '@/lib/signals/product-signals'
 import {
   resolveWebhookApiKey,
   resolveWebhookCheckUrl,
@@ -52,6 +54,14 @@ export async function POST(req: NextRequest) {
       userId: authContext.user.id,
       auditMode: 'CRITICAL_PATH',
       waitForCompletion: false,
+    })
+    const deployment = railwayDeploymentReference(payload)
+    await recordProductReleaseForReview({
+      auditId: outcome.reportId,
+      source: 'railway',
+      externalId: deployment.externalId,
+      commitRef: deployment.commitRef,
+      url: checkUrl,
     })
 
     logger.info('railway deployment check enqueued', {

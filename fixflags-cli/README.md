@@ -8,7 +8,7 @@ Product Intelligence for AI-built products. A thin, task-shaped client over the 
 # Check any URL and get a bounded Finish Plan — no account required
 npx fixflags check https://your-app.com
 
-# Connect to your account (optional, unlocks history and re-checks)
+# Connect to your account (optional, unlocks history and update reviews)
 npx fixflags login
 npx fixflags init https://your-app.com
 ```
@@ -37,8 +37,11 @@ fixflags check https://your-app.com --full
 fixflags check https://your-app.com --no-wait
 fixflags check https://your-app.com --single
 
-# Run a fresh check and return the verification diff + next Fix list
+# Run a fresh update review and return the verification diff + next Fix List
 fixflags recheck <reportId> --wait --diff
+
+# After implementing a Flag, record the change as ready for independent verification
+fixflags attempt <flagId> --summary "Clarified the primary CTA" --deployment https://your-app.com
 
 # Protected preview deploys (Studio)
 fixflags check https://preview.up.railway.app --wait --basic-auth user:password
@@ -58,8 +61,10 @@ fixflags logout
 ```
 
 `check` waits by default, returns a one-to-three item Finish Plan, and exits non-zero when
-the completed report contains a critical Flag. `recheck` always performs a fresh capture and
-returns fixed, remaining, new, and regressed counts.
+the completed report contains a critical Flag.
+Copying a builder handoff does not create an attempt.
+Run `attempt` only after implementing a change; it records `READY_TO_VERIFY`, not a verified result.
+`recheck` always performs a fresh capture and returns improved, remaining, new, and regressed counts.
 
 ## What it checks
 

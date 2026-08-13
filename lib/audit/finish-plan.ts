@@ -21,6 +21,8 @@ export interface FinishPlanItem {
   problem: string
   evidence: string
   whyItMatters?: string | null
+  recommendedChange: string
+  protectedScope: string | null
   verificationRule?: string | null
   pageUrl?: string | null
   pageUrls: string[]
@@ -119,6 +121,10 @@ function buildRankedFixes(input: PlanInput): {
       problem: flag.problem,
       evidence: flag.evidence ?? '',
       whyItMatters: flag.whyItMatters,
+      recommendedChange: flag.fix ?? '',
+      protectedScope: input.contract?.criticalOutcomes.length
+        ? `Keep these Product outcomes unchanged: ${input.contract.criticalOutcomes.join('; ')}`
+        : null,
       verificationRule: flag.verificationRule,
       pageUrl: flag.pageUrl,
       pageUrls: flag.occurrencePageUrls,
@@ -165,8 +171,18 @@ export function buildFixArtifacts(input: PlanInput): FixArtifacts {
     Math.max(input.limit ?? MAX_FINISH_PLAN_ITEMS, 1),
     MAX_FINISH_PLAN_ITEMS
   )
-  const finishItems = ranked.items.slice(0, selectedCount)
-  const finishFlags = ranked.rankedFlags.slice(0, selectedCount)
+  const worthwhile = ranked.items.flatMap((item, index) => {
+    const flag = ranked.rankedFlags[index]
+    if (!flag) return []
+    if (
+      item.severity === 'POLISH' ||
+      (flag.confidence ?? 1) < 0.65 ||
+      item.recommendedChange.trim().length === 0
+    ) return []
+    return [{ item, flag }]
+  })
+  const finishItems = worthwhile.slice(0, selectedCount).map(({ item }) => item)
+  const finishFlags = worthwhile.slice(0, selectedCount).map(({ flag }) => flag)
   const finishVisiblePromptCount = finishItems.filter((item) => item.prompt).length
 
   return {

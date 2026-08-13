@@ -42,6 +42,9 @@ function fakeServer() {
       tool(name: string, _description: string, _schema: unknown, handler: ToolHandler) {
         handlers.set(name, handler)
       },
+      registerTool(name: string, _config: unknown, handler: ToolHandler) {
+        handlers.set(name, handler)
+      },
     },
   }
 }

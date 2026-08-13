@@ -6,14 +6,17 @@
 
 At any moment, FixFlags should answer: **What should we improve next?**
 
-The Fix List contains every unresolved Flag. It is prioritized, scoped, evidence-backed, contextual, actionable, verifiable, and continuously updated.
+The Fix List contains every unresolved Flag from a Review.
+
+The bounded worthwhile portion becomes Product Attention and lazily materializes durable Improvements for claimed Products.
 
 ## Relationship to shipped UI
 
 | Concept | Role |
 |---------|------|
-| **Fix List** | Primary Improve artifact containing every ranked unresolved Flag |
-| **Finish Plan** | Highest-leverage one to three items derived from the same ranked Fix List |
+| **Attention / Improvements** | Primary Improve artifact containing zero-to-three worthwhile Product-scoped actions |
+| **Fix List** | Complete supporting evidence containing every ranked unresolved Flag |
+| **Finish Plan** | Compatibility and transport projection of the same bounded Attention judgment |
 | All fix prompts | Separate authenticated export containing every eligible prompt; never labelled as a Finish Plan |
 | Product Contract / PI | Context that biases ranking and journey selection |
 
@@ -49,11 +52,11 @@ Full anatomy and examples: [evidence-rules.md](./evidence-rules.md).
 ## Quality bar
 
 - Every persisted unresolved Flag is present exactly once
-- Finish Plan contains one to three of the highest-ranked Fix List items
+- Attention contains zero-to-three worthwhile items; low-confidence imperfection may produce no recommendation
 - Ranking makes the next action clear without hiding lower-priority work
 - Tied to Product identity (Contract / PI) when available
 - Each item has problem, impact, fix path, verify path
-- Updated after re-check (cleared items leave verified learnings)
+- Updated after an Update review; only an improved pending attempt leaves a verified Product learning
 
 ## Ranking inputs (near-term)
 
@@ -71,4 +74,6 @@ Full anatomy and examples: [evidence-rules.md](./evidence-rules.md).
 
 ## Analytics (thesis)
 
-Instrument: Fix list view/copy, contract edit, recheck verified learning. See [execution.md](./execution.md).
+Measure: verified Improvements per active Product, accepted-to-improved rate, time to verified outcome, second completed cycles, watched Products, and cost per verified Improvement.
+
+See [execution.md](./execution.md).

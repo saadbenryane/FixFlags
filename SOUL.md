@@ -38,7 +38,7 @@ Sharp senior reviewer who has shipped messy launches. Not a consultant selling a
 
 ## Product principles
 
-1. **Product Review → Fix → Verify → Watch** — the core product loop. Every feature serves this or it does not ship. Internal canonical loop: Signal → Understand → Prioritize → Fix → Verify → Learn ([knowledge/vision.md](./knowledge/vision.md)).
+1. **Product Review → Fix → Verify → Watch** — the core product loop. Every feature serves this or it does not ship. Internal canonical loop: Observe → Understand → Judge → Improve → Verify → Learn ([knowledge/vision.md](./knowledge/vision.md)).
 2. **Evidence before opinion** — every flag has a screenshot, code reference, or measurable signal.
 3. **Finish Plan before backlog** — few highest-leverage improvements beat a long inventory.
 4. **Fix prompts are the delivery** — actionable paste-ready repairs for the builder's agent.

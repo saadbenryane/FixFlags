@@ -3,6 +3,12 @@
 @tailwind utilities;
 
 @layer base {
+  .font-variables {
+    --font-sans: "Inter Variable";
+    --font-display: "Inter Tight Variable";
+    --font-mono: "JetBrains Mono Variable";
+  }
+
   * {
     @apply border-border;
   }

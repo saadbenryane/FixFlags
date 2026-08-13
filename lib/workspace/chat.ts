@@ -45,8 +45,16 @@ function buildPrompt(input: {
   url: string
   status: string
   flags: ChatFlagContext[]
+  improvements?: ChatImprovementContext[]
+  signalContext?: Array<{ truthClass: 'OBSERVED'; summary: string }>
 }) {
-  return `Report URL: ${input.url}\nStatus: ${input.status}\n\nFlags on this report:\n${formatFlagContext(input.flags)}\n\nUser: ${input.message}`
+  const improvements = input.improvements?.length
+    ? input.improvements.map((item, index) => `${index + 1}. ${item.title}\n   State: ${item.status}\n   Judgment: ${item.judgment}\n   Improve: ${item.recommendedChange}\n   Verify: ${item.successCondition}`).join('\n')
+    : 'No durable Improvements currently require attention.'
+  const signals = input.signalContext?.length
+    ? input.signalContext.map((item) => `- [${item.truthClass}] ${item.summary}`).join('\n')
+    : 'No synthesized Product Signal context.'
+  return `Report URL: ${input.url}\nStatus: ${input.status}\n\nCurrent Product Improvements:\n${improvements}\n\nObserved Product context:\n${signals}\n\nFlags on the selected Review:\n${formatFlagContext(input.flags)}\n\nUser: ${input.message}`
 }
 
 /**
@@ -60,6 +68,8 @@ export function workspaceChatTokenUpperBound(input: {
   url: string
   status: string
   flags: ChatFlagContext[]
+  improvements?: ChatImprovementContext[]
+  signalContext?: Array<{ truthClass: 'OBSERVED'; summary: string }>
 }): number {
   const bytes = new TextEncoder().encode(`${SYSTEM}\n${buildPrompt(input)}`).byteLength
   return bytes + MAX_CHAT_TOKENS + 32
@@ -72,6 +82,8 @@ async function runOpenAIChat(
     url: string
     status: string
     flags: ChatFlagContext[]
+    improvements?: ChatImprovementContext[]
+    signalContext?: Array<{ truthClass: 'OBSERVED'; summary: string }>
   }
 ): Promise<{ text: string; inputTokens: number; outputTokens: number }> {
   const cfg = getChatProviderConfig('openai', 15_000)
@@ -108,10 +120,20 @@ export interface ChatFlagContext {
   position?: number
 }
 
-const SYSTEM = `You are FixFlags workspace chat. Help the builder understand Flags on their product review report.
-Stay concise. Do not invent findings. Suggest what to fix first when asked.
-You are not running a new scan. Only explain and steer based on the report context provided.
-When the user asks about a Flag, ground your answer in the report context: rank by severity, reference the evidence, and offer the matching fix prompt.`
+export interface ChatImprovementContext {
+  id: string
+  title: string
+  judgment: string
+  recommendedChange: string
+  successCondition: string
+  status: string
+  latestOutcome?: string | null
+}
+
+const SYSTEM = `You are the FixFlags Product Agent. Help the builder understand what deserves attention, why it matters, what to improve, and how FixFlags will verify it.
+Stay concise. Do not invent findings, progress, causality, or outcomes. Treat Product Signal context marked OBSERVED as correlation, never confirmation.
+You are not running a new Review and you cannot certify a builder's change. Only a fresh FixFlags Review can produce a verification outcome.
+Ground every answer in the supplied Product Improvements, selected Review Flags, verified learning, and source provenance.`
 
 function formatFlagContext(flags: ChatFlagContext[]): string {
   if (flags.length === 0) return 'No Flags on this report yet.'
@@ -165,6 +187,7 @@ export interface ChatProductQuestionInput {
   learnings: ChatVerifiedLearning[]
   /** Human hostname of the product, for example example.com. */
   productName?: string
+  improvements?: ChatImprovementContext[]
 }
 
 function normalizeMessage(message: string): string {
@@ -512,6 +535,19 @@ function buildUnresolvedReply(input: ChatProductQuestionInput): string {
 }
 
 function buildFixFirstReply(input: ChatProductQuestionInput): string {
+  const improvement = input.improvements?.find(
+    (item) => !['VERIFIED', 'REJECTED', 'SUPERSEDED'].includes(item.status)
+  )
+  if (improvement) {
+    return [
+      'Start with this Improvement:',
+      improvement.title,
+      `Why: ${improvement.judgment}`,
+      `Improve: ${improvement.recommendedChange}`,
+      `Verify: ${improvement.successCondition}`,
+      `State: ${improvement.status.replaceAll('_', ' ').toLowerCase()}`,
+    ].join('\n')
+  }
   const unresolved = input.flags.filter(
     (flag) => flag.status !== 'FIXED' && flag.status !== 'IGNORED'
   )
@@ -579,6 +615,8 @@ export async function runWorkspaceChat(input: {
   url: string
   status: string
   flags: ChatFlagContext[]
+  improvements?: ChatImprovementContext[]
+  signalContext?: Array<{ truthClass: 'OBSERVED'; summary: string }>
 }): Promise<{
   reply: string
   mode: 'llm'

@@ -20,7 +20,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. S
 1. **Check**: Run `fixflags check <url> --wait --plan` or call `ff_check_and_plan(url, {waitForCompletion: true})` to start a scan and wait for the completed report with ranked Fix List
 2. **Validate**: For each Flag in the result, confirm its page, viewport, evidence, and screenshot against the deployed product. Treat FixFlags evidence as a lead that must be validated, not as permission to make an unsupported change. Run `fixflags check <url> --wait --plan` as an alternative entry point.
 3. **Fix**: Apply the fix prompt from the Flag. Do not weaken, suppress, or special-case the detector to make a valid Flag disappear.
-4. **Mark**: Call `ff_mark_fix_attempted(flagId)` to record that a fix was attempted (with optional comment)
+4. **Declare**: After implementing the change, call `ff_mark_fix_attempted` with `action: READY_TO_VERIFY`, a change summary, and an optional deployment reference. Copying a prompt is not an attempt.
 5. **Deploy**: Run the product's relevant tests and deploy the verified change to the same URL
 6. **Re-check**: Run `fixflags recheck <report-id> --wait --diff` or call `ff_recheck_and_compare(parentReportId, {waitForCompletion: true})`. Never substitute a new unrelated check for this verification.
 7. **Report**: Present Fixed, Remaining, New, and Regressed Flag counts plus the report links
@@ -38,7 +38,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. S
 | `ff_plan_mode_prompt` | Get one plan-mode prompt containing every ranked fix. |
 | `ff_get_product_context` | Get Product Contract and Product Intelligence context for the report. |
 | `ff_get_all_fixes` | Get every unresolved Flag and fix prompt, ranked by launch impact. |
-| `ff_get_current_finish_plan` | **Deprecated.** Legacy three-item Quick Plan. Use `ff_get_all_fixes` or `ff_check_and_plan` instead. |
+| `ff_get_current_finish_plan` | Get the current bounded Finish Plan of up to three highest-leverage Improvements. |
 | `ff_recheck_and_compare` | After deploying a fix, run a fresh Re-check from the original report and return Fixed, Remaining, New, and Regressed Flags plus the next Fix List. Pass `waitForCompletion: true`. |
 | `ff_compare` | Compare two reports to see what improved, stayed the same, or regressed. |
 | `generate-fix-prompt` | Generate a custom fix prompt from a problem description. |
@@ -47,7 +47,8 @@ FixFlags is the independent Product Intelligence System for AI-built software. S
 | `ff_list_repo_scans` | List recent GitHub repository scans and finding counts. |
 | `ff_get_repo_scan` | Get a GitHub repository scan and its code findings. |
 | `ff_get_repo_finding` | Get a branch-ready fix task for one repository finding. |
-| `ff_mark_fix_attempted` | Mark a Flag as fixed or ignored with an optional comment. |
+| `ff_mark_fix_attempted` | Record `READY_TO_VERIFY` with an implemented-change summary, or intentionally `REJECT` the Improvement. Only a fresh Review verifies it. |
+| `ff_get_connection_info` | Inspect MCP Contract v1, core readiness, optional capabilities, and the canonical workflow. |
 
 There is no `ff_get_report_flags` tool. Use `ff_get_rubric` per rubric or `ff_get_flag`.
 
@@ -78,5 +79,5 @@ Do not expose FixFlags credentials in code, project files, command arguments, lo
 
 - FixFlags account with API access (Pro or Studio plan)
 - API key from https://fixflags.com/settings
-- MCP server configured in your editor (`https://fixflags.com/api/mcp` with `x-api-key`)
+- MCP server configured in your editor (`https://fixflags.com/api/mcp` with the generated Bearer credential)
 - Publicly accessible deployed URL (localhost not supported)

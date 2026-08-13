@@ -28,7 +28,7 @@ FixFlags integrates into OpenCode via MCP tools. The canonical skill reference i
 | `ff_list_repo_scans` | Recent repo scans |
 | `ff_get_repo_scan` | Repo scan + findings |
 | `ff_get_repo_finding` | Fix task for one finding |
-| `ff_mark_fix_attempted` | Mark a Flag as fixed/ignored |
+| `ff_mark_fix_attempted` | Record an implemented change as ready for independent verification, or reject it |
 
 ## Quick start
 

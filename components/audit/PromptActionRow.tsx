@@ -2,6 +2,7 @@
 
 import { Loader2, PlugZap } from 'lucide-react'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
+import { ReadyToVerifyButton } from '@/components/audit/ReadyToVerifyButton'
 import { Button } from '@/components/ui/button'
 import { useConnectBuilderMcp } from '@/lib/hooks/useConnectBuilderMcp'
 import { cn } from '@/lib/utils'
@@ -15,6 +16,7 @@ interface PromptActionRowProps {
   compact?: boolean
   tool?: string
   auditId?: string
+  flagId?: string
   surface?: ReportSurface
   accessState?: ReportAccessState
   itemPosition?: number
@@ -29,6 +31,7 @@ export function PromptActionRow({
   compact = false,
   tool,
   auditId,
+  flagId,
   surface,
   accessState,
   itemPosition,
@@ -61,11 +64,15 @@ export function PromptActionRow({
         compact={compact}
         tool={tool}
         auditId={auditId}
+        flagId={flagId}
         surface={surface}
         accessState={accessState}
         itemPosition={itemPosition}
         nextStep={nextStep}
       />
+      {flagId && accessState === 'owner' ? (
+        <ReadyToVerifyButton flagId={flagId} builder={tool || 'web'} compact={compact} />
+      ) : null}
     </div>
   )
 }

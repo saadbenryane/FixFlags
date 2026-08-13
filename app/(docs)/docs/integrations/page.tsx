@@ -4,6 +4,7 @@ import { DocsCodeBlock } from '@/components/docs/DocsCodeBlock'
 import { DocsConnectAction } from '@/components/docs/DocsConnectAction'
 import { DocsPageFrame } from '@/components/docs/DocsPageFrame'
 import { EditorIntegrationGrid } from '@/components/marketing/landing/EditorIntegrationGrid'
+import { Button } from '@/components/ui/button'
 import { buildDocsMetadata, getDocsPage } from '@/lib/docs/catalog'
 import { EDITOR_INTEGRATIONS } from '@/lib/integrations/editor-catalog'
 import {
@@ -27,7 +28,7 @@ export default function IntegrationsDocsPage() {
           <h2 className="font-serif text-3xl font-semibold tracking-display">Quick start</h2>
           <p className="mt-4 max-w-2xl leading-8 text-muted-foreground">
             Choose an editor below. The public example uses a placeholder. The authenticated
-            setup creates an editor-tagged key, reveals it once, and tests complete tool discovery.
+            setup creates a client-tagged key, reveals it once, and validates the versioned core.
           </p>
           <dl className="mt-6 grid gap-4 rounded-[var(--radius-card)] bg-muted/45 p-5 sm:grid-cols-2">
             <div>
@@ -98,13 +99,41 @@ export default function IntegrationsDocsPage() {
 
               <p className="mt-5 flex gap-2 text-sm leading-6 text-muted-foreground">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
-                Success means {editor.label} discovers every public FixFlags tool and can start
-                `ff_check_and_plan`.
+                Success means {editor.label} discovers the Contract v1 core and can start
+                `ff_check_and_plan`. Optional capabilities are advertised by `ff_get_connection_info`.
               </p>
               <DocsConnectAction editorKey={editor.key} />
             </section>
           )
         })}
+
+        <section id="other-mcp-client" className="scroll-mt-32 border-t border-border/60 pt-14">
+          <p className="font-mono text-xs font-semibold uppercase tracking-label text-brand">
+            Generic Streamable HTTP
+          </p>
+          <h2 className="mt-2 font-serif text-3xl font-semibold tracking-display">
+            Other MCP client
+          </h2>
+          <p className="mt-4 max-w-2xl leading-8 text-muted-foreground">
+            Use this path when your client is not listed above. Add the FixFlags endpoint as a
+            Streamable HTTP server, store the credential as a secret, and send it with the Bearer
+            authorization scheme.
+          </p>
+          <DocsCodeBlock
+            label="Generic MCP connection"
+            code={`Name: FixFlags\nURL: ${getMcpEndpoint()}\nTransport: Streamable HTTP\nAuthorization: Bearer ff_live_your_key_here\n`}
+          />
+          <p className="mt-5 flex gap-2 text-sm leading-6 text-muted-foreground">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" aria-hidden />
+            Validate the Contract v1 core with `ff_get_connection_info`. Additional tools are
+            optional capabilities and may be added without breaking the connection.
+          </p>
+          <Button asChild variant="brand" className="mt-6">
+            <Link href="/dashboard/mcp-setup?builder=other&returnTo=%2Fdocs%2Fintegrations%23other-mcp-client">
+              Connect another MCP client
+            </Link>
+          </Button>
+        </section>
 
         <section id="verify" className="scroll-mt-32 border-t border-border/60 pt-14">
           <h2 className="font-serif text-3xl font-semibold tracking-display">
@@ -112,7 +141,8 @@ export default function IntegrationsDocsPage() {
           </h2>
           <p className="mt-4 leading-8 text-muted-foreground">
             Restart the editor after changing its configuration, then use the setup wizard&apos;s
-            discovery test. A partial tool list is not a completed connection.
+            discovery test. The connection is ready when every Contract v1 core tool is present;
+            optional capabilities are reported separately.
           </p>
           <p className="mt-4">
             See the <Link className="font-medium text-link underline" href="/docs/mcp/tools">tool reference</Link>{' '}

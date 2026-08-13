@@ -16,6 +16,11 @@ import {
   resolveToolPrompt,
   type PromptToolKey,
 } from '@/lib/mcp/builders'
+import {
+  mcpCoreError,
+  mcpErrorOutputSchema,
+  mcpStructuredResult,
+} from '@/lib/mcp/contract'
 
 export function registerFlagTools(server: McpServer, user: User) {
   server.tool(
@@ -85,14 +90,25 @@ export function registerFlagTools(server: McpServer, user: User) {
     }
   )
 
-  server.tool(
+  server.registerTool(
     MCP_TOOLS.getFlag.name,
-    MCP_TOOLS.getFlag.desc,
     {
-      flagId: z.string(),
-      tool: z.enum(PROMPT_TOOL_KEYS).optional(),
+      description: MCP_TOOLS.getFlag.desc,
+      inputSchema: {
+        flagId: z.string(),
+        tool: z.enum(PROMPT_TOOL_KEYS).optional(),
+      },
+      outputSchema: z.union([
+        z.object({ id: z.string() }).passthrough(),
+        mcpErrorOutputSchema,
+      ]),
+      annotations: {
+        title: 'Get Flag evidence and fix prompt', readOnlyHint: true,
+        destructiveHint: false, idempotentHint: true, openWorldHint: false,
+      },
     },
     async ({ flagId, tool = 'universal' }) => {
+      try {
       const flag = await prisma.flag.findUnique({
         where: { id: flagId },
         include: { audit: { select: { userId: true, isPublic: true } } },
@@ -102,13 +118,14 @@ export function registerFlagTools(server: McpServer, user: User) {
 
       const safeFlag = sanitizeFlagForRead(flag)
 
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify(buildMcpFlagPayload(safeFlag as Parameters<typeof buildMcpFlagPayload>[0], tool)),
-          },
-        ],
+      return mcpStructuredResult(
+        buildMcpFlagPayload(
+          safeFlag as Parameters<typeof buildMcpFlagPayload>[0],
+          tool
+        ) as unknown as Record<string, unknown>
+      )
+      } catch (error) {
+        return mcpCoreError(error)
       }
     }
   )
@@ -202,7 +219,39 @@ export function registerFlagTools(server: McpServer, user: User) {
           isPublic: true,
           productContract: true,
           projectId: true,
-          project: { select: { productIntelligence: true, url: true, name: true } },
+          project: {
+            select: {
+              productIntelligence: true,
+              url: true,
+              name: true,
+              improvements: {
+                orderBy: [{ priority: 'desc' }, { updatedAt: 'desc' }],
+                include: {
+                  attempts: { orderBy: { createdAt: 'desc' }, take: 3 },
+                  occurrences: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 1,
+                    include: { flag: { select: { evidence: true } } },
+                  },
+                },
+              },
+              signals: {
+                where: {
+                  occurredAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+                },
+                orderBy: { occurredAt: 'desc' },
+                take: 500,
+                select: {
+                  kind: true,
+                  name: true,
+                  route: true,
+                  sessionHash: true,
+                  numericValue: true,
+                  release: { select: { externalId: true } },
+                },
+              },
+            },
+          },
         },
       })
       if (!audit) throw new Error('Report not found')
@@ -211,6 +260,7 @@ export function registerFlagTools(server: McpServer, user: User) {
       const { parseProductIntelligence } = await import('../../audit/product-intelligence')
       const contract = parseProductContract(audit.productContract)
       const intelligence = parseProductIntelligence(audit.project?.productIntelligence)
+      const { synthesizeProductSignals } = await import('@/lib/signals/judgment')
       return {
         content: [
           {
@@ -221,6 +271,15 @@ export function registerFlagTools(server: McpServer, user: User) {
               projectUrl: audit.project?.url ?? null,
               productContract: contract,
               productIntelligence: intelligence,
+              attention:
+                audit.project?.improvements
+                  .filter(
+                    (improvement) =>
+                      !['VERIFIED', 'REJECTED', 'SUPERSEDED'].includes(improvement.status)
+                  )
+                  .slice(0, 3) ?? [],
+              improvementHistory: audit.project?.improvements ?? [],
+              signalContext: synthesizeProductSignals(audit.project?.signals ?? []),
             }),
           },
         ],
@@ -273,49 +332,55 @@ export function registerFlagTools(server: McpServer, user: User) {
     }
   )
 
-  server.tool(
+  server.registerTool(
     MCP_TOOLS.markFixAttempted.name,
-    MCP_TOOLS.markFixAttempted.desc,
     {
-      flagId: z.string(),
-      status: z.enum(['FIXED', 'IGNORED']),
-      comment: z.string().optional(),
+      description: MCP_TOOLS.markFixAttempted.desc,
+      inputSchema: {
+        flagId: z.string(),
+        action: z.enum(['READY_TO_VERIFY', 'REJECT']),
+        changeSummary: z.string().trim().min(1).optional(),
+        deploymentReference: z.string().trim().min(1).optional(),
+      },
+      outputSchema: z.union([
+        z.object({
+          flagId: z.string(),
+          action: z.enum(['READY_TO_VERIFY', 'REJECT']),
+          productId: z.string(),
+          improvementId: z.string(),
+          sourceReviewId: z.string(),
+          nextAction: z.object({ type: z.string(), command: z.string().optional() }),
+        }).passthrough(),
+        mcpErrorOutputSchema,
+      ]),
+      annotations: {
+        title: 'Record Improvement decision', readOnlyHint: false,
+        destructiveHint: false, idempotentHint: true, openWorldHint: false,
+      },
     },
-    async ({ flagId, status, comment }) => {
-      const flag = await prisma.flag.findUnique({
-        where: { id: flagId },
-        include: { audit: { select: { userId: true, isPublic: true } } },
-      })
-      if (!flag) throw new Error('Flag not found')
-      await assertAuditAccess(flag.audit, user.id)
-
-      const updated = await prisma.flag.update({
-        where: { id: flagId },
-        data: { status },
-      })
-
-      if (comment) {
-        await prisma.flagFeedback.create({
-          data: {
-            flagId,
-            vote: status === 'FIXED' ? 1 : -1,
-            comment,
-          },
+    async ({ flagId, action, changeSummary, deploymentReference }) => {
+      try {
+        if (action === 'READY_TO_VERIFY' && !changeSummary) {
+          throw Object.assign(
+            new Error('changeSummary is required when a change is ready to verify'),
+            { code: 'INVALID_INPUT', action: 'provide_change_summary' }
+          )
+        }
+        const { recordFlagImprovementAttempt } = await import('@/lib/improvements/service')
+        const result = await recordFlagImprovementAttempt({
+          flagId,
+          userId: user.id,
+          builder: 'MCP',
+          action,
+          changeSummary,
+          deploymentReference,
         })
-      }
-
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: JSON.stringify({
-              flagId: updated.id,
-              status: updated.status,
-              previousStatus: flag.status,
-              comment: comment ?? null,
-            }),
-          },
-        ],
+        return mcpStructuredResult(result)
+      } catch (error) {
+        return mcpCoreError(error, {
+          code: 'IMPROVEMENT_ATTEMPT_FAILED',
+          action: 'review_flag_and_retry',
+        })
       }
     }
   )

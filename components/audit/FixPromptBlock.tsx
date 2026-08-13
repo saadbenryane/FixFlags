@@ -34,6 +34,7 @@ interface FixPromptBlockProps {
   /** Use concentric inner radius when nested inside a rounded-card shell */
   nested?: boolean
   auditId?: string
+  flagId?: string
   surface?: ReportSurface
   accessState?: ReportAccessState
   itemPosition?: number
@@ -138,6 +139,7 @@ export function FixPromptBlock({
   variant = 'terminal',
   nested = false,
   auditId,
+  flagId,
   surface,
   accessState,
   itemPosition,
@@ -202,6 +204,7 @@ export function FixPromptBlock({
                   prompt={displayPrompt}
                   iconOnly
                   tool={showToolSelector ? preferredTool : undefined}
+                  flagId={flagId}
                 />
               ) : null}
             </div>
@@ -250,6 +253,7 @@ export function FixPromptBlock({
                 compact
                 tool={showToolSelector ? preferredTool : undefined}
                 auditId={auditId}
+                flagId={flagId}
                 surface={surface}
                 accessState={accessState}
                 itemPosition={itemPosition}
@@ -282,6 +286,7 @@ export function FixPromptBlock({
               compact
               tool={showToolSelector ? preferredTool : undefined}
               auditId={auditId}
+              flagId={flagId}
               surface={surface}
               accessState={accessState}
               itemPosition={itemPosition}

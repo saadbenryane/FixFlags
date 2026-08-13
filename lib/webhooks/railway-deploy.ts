@@ -11,8 +11,10 @@ const railwayWebhookSchema = z
       .optional(),
     deployment: z
       .object({
+        id: z.string().optional(),
         status: z.string().optional(),
         url: z.string().url().optional(),
+        commitHash: z.string().optional(),
       })
       .optional(),
     service: z
@@ -37,6 +39,16 @@ export type RailwayWebhookPayload = z.infer<typeof railwayWebhookSchema>
 export function parseRailwayWebhookPayload(raw: unknown): RailwayWebhookPayload | null {
   const parsed = railwayWebhookSchema.safeParse(raw)
   return parsed.success ? parsed.data : null
+}
+
+export function railwayDeploymentReference(payload: RailwayWebhookPayload): {
+  externalId: string
+  commitRef: string | null
+} {
+  return {
+    externalId: payload.deployment?.id ?? `railway:${payload.type}`,
+    commitRef: payload.deployment?.commitHash ?? null,
+  }
 }
 
 /** True when Railway signals a successful deployment (ignore builds, failures, crashes). */

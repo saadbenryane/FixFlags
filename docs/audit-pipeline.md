@@ -14,7 +14,13 @@ ai-review job (optional, gated):
 
 Triage runs **inline in the audit job** for every scan. Prescription runs in a **separate async job** after triage completes.
 
-An audit is an observation of the Product at a moment in time ([knowledge/vision.md](../knowledge/vision.md)). The Flag is the durable unit across observations; future signal sources (support, feedback, analytics, deployments) are intended to feed the same Flag model. Only the scan-originated Flag sources ship today.
+An Audit is an immutable Review observation of the Product at a moment in time ([knowledge/vision.md](../knowledge/vision.md)).
+
+A Flag is a finding from one Review.
+
+A Product-scoped Improvement is the durable judgment and action object across Reviews.
+
+Product Signals and integrations add evidence; they do not become Flags or confirmed claims automatically.
 
 ## Audit modes
 
@@ -44,8 +50,11 @@ Manual re-check is the core loop habit. Implementation invariants:
 
 1. **Always `monitoringMode: FULL`** — `startMonitoringAudit` in `lib/audit/monitoring.ts` always enqueues FULL. App code never writes `SUMMARY_ONLY` (legacy Prisma enum value only).
 2. **Fresh capture** — `runAudit` deletes prior screenshots and audit pages, then re-captures from live URL (including parented re-checks). There is no skipCapture / copy-parent path.
-3. **No usage charge** — re-checks set `skipUsageCount: true`.
-4. **Flag diff on finalize** — when `audit.parentId` is set, finalize calls `diffFlagsAgainstParent` (`lib/audit/diff-flags.ts`) to mark child flags FIXED / REGRESSED / NEW vs the parent report.
+3. **Shared credit pool** — manual update Reviews consume one Product Review credit. Automated Watch-triggered Reviews set `skipUsageCount: true`.
+4. **Flag diff after durable completion** — when `audit.parentId` is set, the idempotent completion projection calls `diffFlagsAgainstParent` (`lib/audit/diff-flags.ts`) to mark child flags FIXED / REGRESSED / NEW vs the parent report.
+5. **Improvement verification** — the completion projection reconciles pending Improvement Attempts only when the Review is a fresh child of the attempted Review and the applicable page, evidence, and verifier completed comparably.
+6. **Inconclusive evidence is honest** — missing, partial, degraded, failed, or non-comparable verifier evidence records `INCONCLUSIVE`, leaves the Improvement unverified, and never writes Product Memory.
+7. **Verified learning** — Product Memory receives a learned fact only for an `IMPROVED` attempt with comparable before/after Review evidence and provenance.
 
 Screenshot base64 for prescription is loaded via `loadAuditScreenshotBase64` from the **current** audit's stored screenshots (`lib/audit/load-screenshot-base64.ts`).
 

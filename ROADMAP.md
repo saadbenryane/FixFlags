@@ -65,6 +65,15 @@ Product review, Deep review, Update review, Funnel, Path, Fix list — from `lib
 
 ## Now
 
+- **Durable continuous improvement loop** — Product-scoped Improvements connect bounded Attention, evidence occurrences, builder attempts, fresh update-review verification receipts, regressions, and provenance-bearing Product Memory.
+  *Signal:* URL-only Review produces zero to three worthwhile Improvements; a handoff creates an attempt; only a fresh child Review can produce `IMPROVED`, `UNCHANGED`, `REGRESSED`, or `INCONCLUSIVE`.
+
+- **Product workspace recentering** — Products lead with intended outcome, Attention now, action state, verification, Watch, and history; immutable reports remain evidence snapshots and public/shareable proof.
+  *Signal:* the dashboard leads with Product attention, MCP analytics is not primary navigation, and shared task contracts carry Improvement and verification context across web, MCP, and CLI.
+
+- **Minimal native Product Signals** — origin-bound browser context for navigation, named actions/outcomes, runtime errors, Core Web Vitals, and releases, with strict privacy and 30-day raw retention.
+  *Signal:* undeclared or sensitive fields are rejected; missing instrumentation never blocks URL Review; signals remain `OBSERVED` evidence until judgment uses them.
+
 - **Agent-led Report Workspace (release proof)** — Unified Agent transcript left; public-safe Report, authenticated Timeline, and paid Canvas right. Deterministic scan messages are free; authenticated model chat is metered monthly. Mobile uses Agent ↔ Report. Canon: [docs/workspace-interface.md](./docs/workspace-interface.md), [docs/product-prd.md](./docs/product-prd.md). Completion: [`.agents/sessions/agent-workspace-completion.md`](./.agents/sessions/agent-workspace-completion.md).
   *Signal:* paste URL → truthful Agent updates on phone and desktop → complete public evidence report → authenticate into the same workspace → chat, Timeline, and paid Canvas → update review.
 
@@ -106,9 +115,9 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 
 ## Next
 
-- **Product Memory evolution** — extend `Project.productIntelligence` toward the vision's Product Memory (expected behavior, important journeys, decisions, what "good" means) as usage proves out; reviews stay observations of the Product ([knowledge/vision.md](./knowledge/vision.md) → Product Memory).
-- **First non-scan signal source** — pick the first Flag origin beyond scans (feedback, support, or deployment) and add `signalSource` to the Flag model.
-- **Conversation and timeline** — evolve the workspace chat toward grounded Product Intelligence Q&A and the continuous product timeline (vision Experience; [docs/workspace-interface.md](./docs/workspace-interface.md)).
+- **Judgment quality** — use Product Contract, verified history, release linkage, frequency, affected outcomes, and source reliability to decide which zero-to-three Improvements deserve attention.
+- **Product history and Agent grounding** — present Review → judgment → attempt → deployment → independent verification → outcome → learning with source provenance, never a raw event stream.
+- **First external adapter** — add Sentry only after native error/release evidence proves a concrete judgment gap; add PostHog/Amplitude, Stripe, support, and GA/GSC one at a time after the preceding source changes a real decision.
 - **GitHub-native "Fix it for me"** — branch/PR path with fresh independent FixFlags verification before human merge (vision Fixing trust model; extends `repo-fix-pr`).
 - **Repo signals into Fix list** — Optional repo connect feeds Implementation Integrity into the same prioritized list (entitlement expansion after thesis).
 - **CLI understand / finish / verify / status** — Cloud-backed first; local runtime later ([knowledge/open-source.md](./knowledge/open-source.md)).
@@ -131,6 +140,10 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 - Product Graph representation (conceptual model; relational first, no graph DB until insufficient)
 - Support conversations as Flag signals
 - User/voice signal sources (session behavior, analytics connectors)
+- Generic analytics dashboards, funnels, cohorts, heatmaps, replay browsers, experiment management, and feature flags
+- Broad ingestion platforms or arbitrary event explorers
+- Team workspaces and enterprise governance
+- Pricing migration away from reviews before verified-improvement usage evidence exists
 
 ## Shipped retention (was Next)
 

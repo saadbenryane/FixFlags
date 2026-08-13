@@ -48,7 +48,9 @@ function allowanceFromRow(
 
 async function lockUserPeriod(tx: Prisma.TransactionClient, userId: string, periodStart: Date) {
   const key = `chat:${userId}:${periodStart.toISOString()}`
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`
+  // pg_advisory_xact_lock returns PostgreSQL `void`. Prisma attempts to
+  // deserialize SELECT result columns, so execute it as a statement instead.
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${key}))`
 }
 
 async function ensurePeriod(tx: Prisma.TransactionClient, user: ChatUsageUser, now: Date) {

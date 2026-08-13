@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { checkAndPlan, recheckAndDiff } from '../dist/workflows.js'
+import { checkAndPlan, markFixAttempted, recheckAndDiff } from '../dist/workflows.js'
 
 function caller(responses) {
   const calls = []
@@ -150,6 +150,67 @@ test('recheckAndDiff rejects a malformed authoritative outcome', async () => {
     /reportId must be a non-empty string/
   )
   assert.deepEqual(mock.calls.map((item) => item.tool), ['ff_recheck_and_compare'])
+})
+
+test('markFixAttempted records an explicit ready-to-verify declaration', async () => {
+  const mock = caller({
+    ff_mark_fix_attempted: {
+      flagId: 'flag-1',
+      action: 'READY_TO_VERIFY',
+      productId: 'product-1',
+      improvementId: 'improvement-1',
+      attemptId: 'attempt-1',
+      sourceReviewId: 'review-1',
+      nextAction: {
+        type: 'RUN_UPDATE_REVIEW',
+        reportId: 'review-1',
+        command: 'fixflags recheck review-1 --wait --diff',
+      },
+    },
+  })
+
+  const result = await markFixAttempted(mock.call, 'flag-1', {
+    changeSummary: 'Clarified the primary CTA.',
+    deploymentReference: 'https://example.com/releases/42',
+  })
+
+  assert.equal(result.attemptId, 'attempt-1')
+  assert.equal(result.nextAction.type, 'RUN_UPDATE_REVIEW')
+  assert.deepEqual(mock.calls, [{
+    tool: 'ff_mark_fix_attempted',
+    args: {
+      flagId: 'flag-1',
+      action: 'READY_TO_VERIFY',
+      changeSummary: 'Clarified the primary CTA.',
+      deploymentReference: 'https://example.com/releases/42',
+    },
+  }])
+})
+
+test('markFixAttempted rejects a response that claims verification', async () => {
+  const mock = caller({
+    ff_mark_fix_attempted: { flagId: 'flag-1', action: 'IMPROVED' },
+  })
+
+  await assert.rejects(
+    markFixAttempted(mock.call, 'flag-1', { changeSummary: 'Implemented the change.' }),
+    /action must be READY_TO_VERIFY/
+  )
+})
+
+test('markFixAttempted rejects an incomplete attempt receipt', async () => {
+  const mock = caller({
+    ff_mark_fix_attempted: {
+      flagId: 'flag-1',
+      action: 'READY_TO_VERIFY',
+      productId: 'product-1',
+    },
+  })
+
+  await assert.rejects(
+    markFixAttempted(mock.call, 'flag-1', { changeSummary: 'Implemented the change.' }),
+    /expected an object/
+  )
 })
 
 test('checkAndPlan surfaces failedModules from the completed report after the wait loop', async () => {

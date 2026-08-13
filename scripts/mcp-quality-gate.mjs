@@ -6,6 +6,7 @@ const DOCS = join(ROOT, 'lib/mcp/docs-content.ts')
 const MANIFEST = join(ROOT, 'lib/mcp/tool-manifest.ts')
 const TOOL_DIR = join(ROOT, 'lib/mcp/tools')
 const TASK_TOOLS = join(ROOT, 'lib/mcp/task-tools.ts')
+const CONTRACT_TOOLS = join(ROOT, 'lib/mcp/contract.ts')
 
 function read(path) {
   return readFileSync(path, 'utf8')
@@ -19,7 +20,7 @@ function collectManifest(source) {
 }
 
 function collectRegisteredToolKeys(source) {
-  return [...source.matchAll(/server\.tool\(\s*MCP_TOOLS\.([a-zA-Z0-9]+)\.name/g)]
+  return [...source.matchAll(/server\.(?:tool|registerTool)\(\s*MCP_TOOLS\.([a-zA-Z0-9]+)\.name/g)]
     .map((match) => match[1])
 }
 
@@ -28,6 +29,7 @@ function main() {
   const manifest = collectManifest(read(MANIFEST))
   const toolsSource = [
     read(TASK_TOOLS),
+    read(CONTRACT_TOOLS),
     ...readdirSync(TOOL_DIR)
       .filter((file) => file.endsWith('.ts'))
       .map((file) => read(join(TOOL_DIR, file))),
@@ -39,9 +41,6 @@ function main() {
   const errors = []
   if (!docs.includes("from '@/lib/mcp/tool-manifest'")) {
     errors.push('MCP documentation does not consume the canonical tool manifest')
-  }
-  if (manifest.size !== 18) {
-    errors.push(`Expected 18 tools in the MCP manifest, found ${manifest.size}`)
   }
   if (registered.length !== catalog.length) {
     errors.push(`Registration count (${registered.length}) diverges from catalog (${catalog.length})`)
@@ -63,9 +62,12 @@ function main() {
 
   const required = [
     'ff_check_and_plan',
+    'ff_get_check_status',
+    'ff_get_report',
+    'ff_get_flag',
+    'ff_mark_fix_attempted',
     'ff_recheck_and_compare',
-    'ff_get_product_context',
-    'generate-fix-prompt',
+    'ff_get_connection_info',
   ]
   for (const name of required) {
     if (!registeredSet.has(name)) errors.push(`Missing required registered MCP tool: ${name}`)
@@ -78,8 +80,7 @@ function main() {
     process.exit(1)
   }
 
-  console.log(`MCP quality gate passed (${registered.length} typed tools registered and cataloged).`)
-  console.log('Note: migrate to @modelcontextprotocol/server v2 when the stable release ships (2026-07-28 RC).')
+  console.log(`MCP quality gate passed (${registered.length} manifest-derived tools; versioned core present).`)
 }
 
 main()

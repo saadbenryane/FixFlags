@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const tx = vi.hoisted(() => ({
-  $queryRaw: vi.fn(),
+  $executeRaw: vi.fn(),
   chatUsagePeriod: { upsert: vi.fn(), update: vi.fn() },
   chatUsageReservation: {
     create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn(), aggregate: vi.fn(),
@@ -28,7 +28,7 @@ const period = {
 describe('monthly chat usage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    tx.$queryRaw.mockResolvedValue([])
+    tx.$executeRaw.mockResolvedValue(1)
     tx.chatUsagePeriod.upsert.mockResolvedValue(period)
     tx.chatUsageReservation.aggregate.mockResolvedValue({ _sum: { reservedTokens: null } })
   })
@@ -44,7 +44,7 @@ describe('monthly chat usage', () => {
     tx.chatUsageReservation.create.mockResolvedValue({ id: 'r1' })
     tx.chatUsagePeriod.update.mockResolvedValue({ ...period, reservedTokens: 10_000 })
     const result = await reserveChatUsage(user, 10_000, new Date('2026-08-09T00:00:00Z'))
-    expect(tx.$queryRaw).toHaveBeenCalledOnce()
+    expect(tx.$executeRaw).toHaveBeenCalledOnce()
     expect(tx.chatUsageReservation.create).toHaveBeenCalledWith({
       data: {
         periodId: 'p1', reservedTokens: 10_000,

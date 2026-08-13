@@ -60,6 +60,30 @@ describe('buildFixList', () => {
     expect(buildFinishPlan({ flags, promptAccess: 'all', limit: 0 }).items).toHaveLength(1)
   })
 
+  it('returns no Attention when current evidence is only imperfection or low confidence', () => {
+    const result = buildFixArtifacts({
+      flags: [
+        { ...flag('minor', 'POLISH'), confidence: 1 },
+        { ...flag('uncertain', 'IMPORTANT'), confidence: 0.4 },
+      ],
+      promptAccess: 'all',
+    })
+
+    expect(result.finishPlan.items).toEqual([])
+    expect(result.finishPlan.copyPrompt).toBeNull()
+    expect(result.fixList.items).toHaveLength(2)
+  })
+
+  it('keeps observations without a worthwhile change in the Fix List only', () => {
+    const result = buildFixArtifacts({
+      flags: [{ ...flag('judgment-only', 'CRITICAL'), fix: undefined }],
+      promptAccess: 'all',
+    })
+
+    expect(result.fixList.items).toHaveLength(1)
+    expect(result.finishPlan.items).toEqual([])
+  })
+
   it('keeps ranking stable while exposing exactly one demonstrated prompt', () => {
     const demonstrated = flags[2]
     const list = buildFixList({
@@ -134,7 +158,7 @@ describe('buildFixList', () => {
       'https://example.com/',
       'https://example.com/contact',
     ])
-    expect(list.items[0]?.evidence).toContain('Seen on 2 scanned pages')
+    expect(list.items[0]?.evidence).toContain('Seen in 2 Review observations')
   })
 
   it('collapses profilium-shaped 5-page per-page variants into one fix per check', () => {

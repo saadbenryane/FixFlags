@@ -2,6 +2,10 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { diffFlagsAgainstParent } from '@/lib/audit/diff-flags'
+import {
+  materializeAttentionForAudit,
+  reconcileImprovementVerification,
+} from '@/lib/improvements/service'
 import { incrementUsageOnCompleteForAudit } from '@/lib/audit/usage'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { upsertLeadFromAudit } from '@/lib/leads/upsert-from-audit'
@@ -32,6 +36,40 @@ type FinalizeBaseInput = {
     mobilePageSpeed: boolean
     flowScan?: boolean
   }
+}
+
+export async function persistImprovementCycle(
+  auditId: string,
+  parentId: string | null
+): Promise<void> {
+  const claimed = await prisma.audit.updateMany({
+    where: { id: auditId, status: 'COMPLETED', improvementProjectedAt: null },
+    data: { improvementProjectedAt: new Date() },
+  })
+  if (claimed.count === 0) return
+  try {
+    if (parentId) await diffFlagsAgainstParent(auditId, parentId)
+    await materializeAttentionForAudit(auditId)
+    if (parentId) {
+      await reconcileImprovementVerification({
+        parentAuditId: parentId,
+        verificationAuditId: auditId,
+      })
+    }
+  } catch (error) {
+    await prisma.audit.update({
+      where: { id: auditId },
+      data: { improvementProjectedAt: null },
+    })
+    throw error
+  }
+}
+
+async function completeImprovementProjection(
+  auditId: string,
+  parentId: string | null
+): Promise<void> {
+  await persistImprovementCycle(auditId, parentId)
 }
 
 /**
@@ -80,11 +118,6 @@ export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<voi
     phase: 'triage',
   })
 
-  if (audit.parentId) {
-    // Child already has fresh flags from FULL capture; diff vs parent only.
-    await diffFlagsAgainstParent(input.auditId, audit.parentId)
-  }
-
   const requiredComplete =
     input.evidence.desktopScreenshot &&
     input.evidence.metadata &&
@@ -114,6 +147,8 @@ export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<voi
       errorMsg: null,
     },
   })
+
+  await completeImprovementProjection(input.auditId, audit.parentId)
 
   if (audit.userId) {
     await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
@@ -185,10 +220,6 @@ export async function finalizeTriageDegraded(
     })
   }
 
-  if (audit.parentId) {
-    await diffFlagsAgainstParent(input.auditId, audit.parentId)
-  }
-
   const failureCode = triageFailureCode(input.reason)
   const verdict = triageDegradedVerdict(input.reason, Boolean(audit.userId))
 
@@ -217,6 +248,8 @@ export async function finalizeTriageDegraded(
       failureStage: 'judging',
     },
   })
+
+  await completeImprovementProjection(input.auditId, audit.parentId)
 
   if (audit.userId) {
     await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
@@ -260,10 +293,6 @@ export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
     phase: 'prescription',
   })
 
-  if (audit.parentId) {
-    await diffFlagsAgainstParent(input.auditId, audit.parentId)
-  }
-
   const requiredComplete =
     input.evidence.desktopScreenshot &&
     input.evidence.metadata &&
@@ -295,21 +324,11 @@ export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
     },
   })
 
+  // Triage completion owns the durable Product projection and usage. The
+  // prescription phase enriches prompts only and must not re-diff or re-verify.
   if (audit.userId && input.evidence.aiAssessment) {
     await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
   }
-
-  await upsertLeadFromAudit(input.auditId).catch((err) => {
-    logger.error('Lead upsert failed after audit finalize', err)
-  })
-
-  // Knowledge-graph: write the audit's findings into the internal graph so
-  // every new audit contributes to issue frequencies, benchmarks, and the
-  // public read models. Fire-and-forget - a graph failure must never block
-  // an audit from being marked COMPLETED for the user.
-  await persistAuditGraphSnapshot(input.auditId).catch((err) => {
-    logger.error('Knowledge-graph persist failed after audit finalize', err)
-  })
 }
 
 interface PartialFinalizeInput {
@@ -359,10 +378,6 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
     })
   }
 
-  if (audit.parentId) {
-    await diffFlagsAgainstParent(input.auditId, audit.parentId)
-  }
-
   const stubVerdict =
     audit.verdict ??
     'AI summary unavailable, deterministic checks and screenshots are shown below.'
@@ -391,6 +406,8 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
       failureStage: input.failureStage,
     },
   })
+
+  await completeImprovementProjection(input.auditId, audit.parentId)
 
   await upsertLeadFromAudit(input.auditId).catch((err) => {
     logger.error('Lead upsert failed after audit finalize', err)
@@ -460,6 +477,8 @@ export async function finalizeDeterministicOnly(
       errorMsg: null,
     },
   })
+
+  await completeImprovementProjection(input.auditId, null)
 
   await upsertLeadFromAudit(input.auditId).catch((err) => {
     logger.error('Lead upsert failed after deterministic finalize', err)

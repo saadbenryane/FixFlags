@@ -8,6 +8,7 @@ import { registerFlagTools } from './flags'
 import { registerCompareTools } from './compare'
 import { registerRepoScanTools } from './repo-scan'
 import { registerPromptGeneratorTools } from './prompt-generator'
+import { registerConnectionInfoTool } from '@/lib/mcp/contract'
 
 export { assertAuditAccess } from '@/lib/mcp/access'
 
@@ -16,6 +17,7 @@ export function registerAllTools(
   user: User | null,
   options?: { signal?: AbortSignal }
 ) {
+  registerConnectionInfoTool(server, Boolean(user))
   if (!user) {
     registerAnonymousTaskTools(server, options)
     registerAnonymousCheckStatusTools(server)

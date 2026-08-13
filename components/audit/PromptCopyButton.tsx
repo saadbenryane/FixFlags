@@ -20,6 +20,7 @@ interface Props {
   iconOnly?: boolean
   kind?: 'flag' | 'plan' | 'export'
   auditId?: string
+  flagId?: string
   tool?: string
   surface?: ReportSurface
   accessState?: ReportAccessState
@@ -35,6 +36,7 @@ export function PromptCopyButton({
   iconOnly = false,
   kind = 'flag',
   auditId,
+  flagId,
   tool,
   surface,
   accessState,
@@ -50,6 +52,16 @@ export function PromptCopyButton({
       return
     }
     await navigator.clipboard.writeText(safePrompt)
+    if (flagId && accessState === 'owner') {
+      const response = await fetch(`/api/flags/${flagId}/attempts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ builder: tool || 'web', action: 'HANDOFF' }),
+      })
+      if (!response.ok) {
+        toast.error('Prompt copied, but FixFlags could not record the handoff')
+      }
+    }
     trackEvent('fix_prompt_copied', {
       kind,
       audit_id: auditId,

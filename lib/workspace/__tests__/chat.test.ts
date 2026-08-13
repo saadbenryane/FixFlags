@@ -77,8 +77,8 @@ describe('runWorkspaceChat', () => {
     expect(userMessage.content).toContain('What should I fix first?')
 
     const systemMessage = call.messages.find((m: { role: string }) => m.role === 'system')
-    expect(systemMessage.content).toContain('FixFlags workspace chat')
-    expect(systemMessage.content).toContain('rank by severity')
+    expect(systemMessage.content).toContain('FixFlags Product Agent')
+    expect(systemMessage.content).toContain('cannot certify')
   })
 
   it('computes a conservative UTF-8 token reservation bound', async () => {

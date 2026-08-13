@@ -23,28 +23,10 @@ const VOLATILE_FACT = [
   /\b\d+\s+deterministic check modules?\b/i,
 ]
 
-// Canonical MCP tool names from lib/mcp/tool-manifest.ts
-// Non-deprecated tools that must appear in the canonical skill
-const MCP_TOOLS = [
-  'ff_check_and_plan',
-  'ff_get_check_status',
-  'ff_get_report',
-  'ff_get_rubric',
-  'ff_get_flag',
-  'ff_plan_mode_prompt',
-  'ff_get_product_context',
-  'ff_get_all_fixes',
-  'ff_get_current_finish_plan',
-  'ff_recheck_and_compare',
-  'ff_compare',
-  'generate-fix-prompt',
-  'ff_list_recent_audits',
-  'ff_start_repo_scan',
-  'ff_list_repo_scans',
-  'ff_get_repo_scan',
-  'ff_get_repo_finding',
-  'ff_mark_fix_attempted',
-]
+function collectMcpTools(root) {
+  const source = readFileSync(path.join(root, 'lib/mcp/tool-manifest.ts'), 'utf8')
+  return [...source.matchAll(/name:\s*['"]([a-z0-9_-]+)['"]/g)].map((match) => match[1])
+}
 
 // Skill files that must mention ff_mark_fix_attempted
 const SKILL_FILES_REQUIRING_MARK = [
@@ -79,6 +61,7 @@ export function validateSkills(root = process.cwd()) {
   const customerSkillsRoot = path.join(root, CUSTOMER_SKILLS_ROOT)
   const ideRoot = path.join(root, IDE_INTEGRATIONS_ROOT)
   const errors = []
+  const MCP_TOOLS = collectMcpTools(root)
 
   // === Canonical customer skill must exist ===
   const canonicalPath = path.join(customerSkillsRoot, 'fixflags', 'SKILL.md')
@@ -195,10 +178,6 @@ export function validateSkills(root = process.cwd()) {
         }
       }
 
-      // Check ff_get_current_finish_plan is marked deprecated when present
-      if (source.includes('ff_get_current_finish_plan') && !/(deprecated|Deprecated)/i.test(source)) {
-        errors.push(`${path.relative(root, file)}: ff_get_current_finish_plan must be marked deprecated`)
-      }
     }
 
     // Check ff_mark_fix_attempted appears in required skill files

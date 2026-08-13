@@ -30,7 +30,7 @@ The canonical skill reference is at `public/.well-known/skills/fixflags/SKILL.md
 | `ff_plan_mode_prompt` | Single plan-mode prompt for every ranked fix |
 | `ff_get_product_context` | Product Contract / Product Intelligence for the report |
 | `ff_get_all_fixes` | Every unresolved Flag + fix prompt, ranked by launch impact |
-| `ff_get_current_finish_plan` | **Deprecated** — use `ff_get_all_fixes` or `ff_check_and_plan` |
+| `ff_get_current_finish_plan` | Current bounded Finish Plan of up to three highest-leverage Improvements |
 | `ff_recheck_and_compare` | Re-check same URL (verify fixes). Pass `waitForCompletion: true`. |
 | `ff_compare` | Diff two reports |
 | `ff_list_recent_audits` | Recent audits |
@@ -39,7 +39,8 @@ The canonical skill reference is at `public/.well-known/skills/fixflags/SKILL.md
 | `ff_list_repo_scans` | List recent repo scans |
 | `ff_get_repo_scan` | Get a repo scan and findings |
 | `ff_get_repo_finding` | Get a branch-ready fix task for a finding |
-| `ff_mark_fix_attempted` | Mark a Flag as fixed or ignored with optional comment |
+| `ff_mark_fix_attempted` | Record an implemented change as ready for independent verification, or reject it intentionally |
+| `ff_get_connection_info` | Inspect Contract v1 core readiness, capabilities, and workflow |
 
 There is **no** `ff_get_report_flags` tool. Use `ff_get_rubric` per rubric or `ff_get_flag`.
 
@@ -49,7 +50,7 @@ There is **no** `ff_get_report_flags` tool. Use `ff_get_rubric` per rubric or `f
 2. Call `ff_check_and_plan` with `waitForCompletion: true`.
 3. Present its complete ranked Fix list by **Message**, **Experience**, **Reach**.
 4. Use context, rubric, or flag tools only when the user needs deeper evidence.
-5. Apply the fixes, call `ff_mark_fix_attempted` for each, then call `ff_recheck_and_compare` with `waitForCompletion: true`.
+5. Apply each selected fix, then call `ff_mark_fix_attempted` with `action: READY_TO_VERIFY` and a change summary. Deploy before calling `ff_recheck_and_compare` with `waitForCompletion: true`.
 6. Report Fixed / Remaining / New / Regressed.
 7. If verification passes, suggest enabling Watch for continuous monitoring.
 
@@ -62,7 +63,7 @@ For each Flag:
 
 ## Re-checks
 
-After applying fixes, call `ff_recheck_and_compare` (or `ff_check_and_plan` on the same URL). Re-checks are free and unlimited on owned reports. Verified clears update Product Intelligence.
+After deploying fixes, call `ff_recheck_and_compare` from the original report. Manual update Reviews use the Product Review credit pool; automated Watch Reviews do not. Only comparable update-Review evidence creates verified Product Intelligence.
 
 ## Modes
 

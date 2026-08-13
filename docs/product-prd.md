@@ -1,6 +1,6 @@
 # FixFlags product requirements
 
-**Status:** Canonical product PRD (August 2026). Merges live review direction, Product QA positioning, workspace interface intent, and intelligence thesis.
+**Status:** Canonical product PRD (August 2026). Defines FixFlags as the continuous improvement system for software.
 
 **Not in this document:** implementation phases, milestone ordering, or “what to build first.” Sequencing lives in [ROADMAP.md](../ROADMAP.md) and [knowledge/execution.md](../knowledge/execution.md). Shipped facts only: [PRODUCT.md](../PRODUCT.md).
 
@@ -10,7 +10,9 @@
 
 ## 1) Product vision
 
-FixFlags is a live product-review workspace where founders watch an independent AI product expert use their website, ask questions, inspect evidence, prepare fixes for their builder, and verify that the product improved.
+FixFlags is the continuous improvement system for software.
+
+It independently experiences a Product, judges what deserves attention, prepares evidence-grounded Improvements for the customer’s builder, verifies the result through a fresh Review, and learns what good means for that Product.
 
 The experience should feel familiar to users of Lovable and other AI builders:
 
@@ -28,7 +30,7 @@ North star and system layers: [knowledge/vision.md](../knowledge/vision.md).
 
 ## 2) Category and positioning
 
-**Category:** Product QA for AI-built software.
+**Category:** Continuous product improvement.
 
 **Tagline:** Finish what your AI started.
 
@@ -45,9 +47,9 @@ No scan type selection, agent configuration, project setup, or repository connec
 
 | We are | We are not |
 |--------|------------|
-| Synthetic expert QA with replayable evidence | FullStory (real user sessions) |
-| Independent product judgment outside the editor | Lighthouse-only score dumps |
-| Flags + fix prompts + verify loop | Chat spectacle without proof |
+| An independent Product judgment and verification system | A generic analytics, QA, testing, or replay suite |
+| URL-first product experience with replayable evidence | A Lighthouse-only score dump |
+| Durable Improvements with builder handoff and verified outcomes | A PostHog clone or disconnected feature collection |
 
 Direct peer war: Scout-class live product QA. CodeRabbit is adjacent (pre-merge code gate), not partner GTM.
 
@@ -59,15 +61,18 @@ Voice and banned phrases: [docs/voice-and-copy.md](./voice-and-copy.md), [lib/ma
 
 FixFlags is a live product-review workspace where users watch an AI product expert use their website, discuss what it sees, replay every important finding, send evidence-backed work to their builder, and verify that the product actually improved.
 
-**Core loop:**
+**Canonical loop:**
 
-1. Build (customer’s AI builder)
-2. Review (FixFlags)
-3. Fix (customer + agent)
-4. Verify (update review)
-5. Learn (Product Passport + global intelligence)
+1. Observe
+2. Understand
+3. Judge
+4. Improve
+5. Verify
+6. Learn
 
-Customer shorthand: **Flag → Fix → Update review**.
+Customer shorthand: **Product Review → Fix → Verify → Watch**.
+
+Product progression: **Look at my Product → Keep FixFlags watching → Connect more context**.
 
 Each cycle improves both the customer product and FixFlags judgment quality.
 
@@ -79,13 +84,17 @@ Canonical source: `lib/marketing/copy/terminology.ts`.
 
 | Customer term | Meaning |
 |---------------|---------|
-| Product QA | Category |
+| Product | The long-lived customer object |
 | Product review | One full pass on a URL: checks, report, fix prompts |
 | Update review | Re-run on the same URL after fixes (uses product review credit) |
 | Deep review | Journeys, funnel map, path playback with agent-class browsing |
 | Funnel | Report section listing journeys |
 | Path | Recorded journey unit for playback |
 | Flag | Confirmed finding with evidence |
+| Improvement | Durable Product-scoped judgment and worthwhile recommended action |
+| Improvement Attempt | Builder handoff or declared implementation awaiting independent verification |
+| Verification outcome | Improved, unchanged, regressed, or inconclusive result from a fresh Review |
+| Product Signal | Privacy-bounded observed context that is not a Flag or causal claim by default |
 
 **Banned in customer copy:** re-check, unlimited re-checks, new URL checks, journeys per month, polish pass/scan. Internal code may still use `re-check`, `audit`, `scan`, `monitoring`.
 
@@ -152,7 +161,7 @@ Authentication flows land on `/post-login` so anonymous audits are claimed befor
 
 Full spec: [workspace-interface.md](./workspace-interface.md).
 
-- **Left:** one FixFlags Agent transcript for deterministic scan messages, authenticated user messages, and metered model replies.
+- **Left:** one Product-scoped FixFlags Agent transcript grounded in current Improvements, Review evidence, verification, Product Memory, and provenance.
 - **Right:** dominant **Report** with authenticated **Timeline** and paid private **Canvas** modes.
 - The left panel has no redundant title. Its right-aligned toolbar contains History followed by New scan.
 - **Product review browser:** Playwright programmatic capture, screenshot-forward.
@@ -163,12 +172,13 @@ Full spec: [workspace-interface.md](./workspace-interface.md).
 
 ## 9) Workspace views (logical)
 
-All share the same review record:
+All share one Product, with a selected Review supplying observation context:
 
 - **Live** — observe active review and ask questions.
-- **Report** — prioritized verdict and complete results (Fix list primary after complete).
-- **Fixes** — prepare, export, and track builder work.
-- **History** — compare versions and outcomes across reviews.
+- **Attention** — zero-to-three Improvements that deserve action now.
+- **Report** — immutable observation and complete supporting evidence.
+- **Improve** — prepare, export, and track builder attempts.
+- **History** — Review, judgment, attempt, release, verification, outcome, and learning.
 
 ---
 

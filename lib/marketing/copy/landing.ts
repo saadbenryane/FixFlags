@@ -948,6 +948,19 @@ export const REPORT_COPY = {
     recheckCount: (count: number) =>
       `${count} completed ${count === 1 ? "Update review" : "Update reviews"}`,
     dashboard: {
+      title: 'Products',
+      attentionTitle: 'Attention now',
+      attentionBody: 'The highest-leverage improvements FixFlags can support with current evidence.',
+      noAttention: 'Nothing important requires action now.',
+      noAttentionBody: 'FixFlags will keep the complete evidence available and look again on the next Review.',
+      keepWatching: 'Keep FixFlags watching',
+      addProductContext: 'Add product context',
+      productContextBody: 'Add a small privacy-bounded browser snippet after FixFlags has reviewed the Product.',
+      productContextReady: 'Install this once on the reviewed origin. The write key is shown only now.',
+      copySnippet: 'Copy snippet',
+      observedContext: 'Observed product context',
+      verificationPending: 'Run an update review for independent verification.',
+      historyTitle: 'Improvement history',
       latestRelease: "Latest completed release",
       openReport: "Open report",
       topFlags: "Top ranked Flags",
@@ -960,7 +973,7 @@ export const REPORT_COPY = {
       reviewClearRelease: "Review the release",
       rechecks: (count: number) =>
         `${count} completed ${count === 1 ? 'Update review' : 'Update reviews'}`,
-      pageDescription: 'Review what changed, copy the right fix, then run an update review.',
+      pageDescription: 'See what deserves attention, improve it, and verify whether it worked.',
     },
     unavailableState: {
       identity: "FixFlags report",

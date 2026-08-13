@@ -1,4 +1,7 @@
 import type { RankableFlag } from './flag-types'
+import { baseCheckId, durableCheckId } from './flag-identity'
+
+export { baseCheckId, durableCheckId } from './flag-identity'
 
 const SEVERITY_RANK: Record<string, number> = {
   CRITICAL: 3,
@@ -9,10 +12,6 @@ const SEVERITY_RANK: Record<string, number> = {
 export interface ConsolidatedFlag extends RankableFlag {
   occurrenceCount: number
   occurrencePageUrls: string[]
-}
-
-export function baseCheckId(checkId: string | null | undefined): string | null {
-  return checkId?.split('::page:')[0] ?? null
 }
 
 function pageLabel(url: string): string {
@@ -57,7 +56,7 @@ function consolidateEvidence(flags: RankableFlag[], urls: string[]): string | un
   const pageSummary =
     urls.length > 0 ? urls.map(pageLabel).join(', ') : `${flags.length} occurrences`
   if (evidence.length === 1) {
-    return `${evidence[0]} Seen on ${flags.length} scanned pages: ${pageSummary}.`
+    return `${evidence[0]} Seen in ${flags.length} Review observations: ${pageSummary}.`
   }
 
   const byPage = flags
@@ -67,7 +66,7 @@ function consolidateEvidence(flags: RankableFlag[], urls: string[]): string | un
         `${flag.pageUrl ? pageLabel(flag.pageUrl) : 'site-wide'}: ${flag.evidence?.trim()}`
     )
     .join(' | ')
-  return `Seen on ${flags.length} scanned pages. ${byPage}`
+  return `Seen in ${flags.length} Review observations. ${byPage}`
 }
 
 /**
@@ -81,7 +80,7 @@ export function consolidateFlagsByCheck(
   const groups = new Map<string, RankableFlag[]>()
 
   for (const flag of flags) {
-    const checkId = baseCheckId(flag.checkId)
+    const checkId = durableCheckId(flag.checkId)
     const key = checkId ? `check:${checkId}` : `flag:${flag.id}`
     const group = groups.get(key)
     if (group) group.push(flag)

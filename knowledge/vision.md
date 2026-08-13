@@ -46,9 +46,9 @@ A review, scan, or report is an observation of the Product at a moment in time. 
 
 Every product has an intended identity and an actual current state. The distance between them creates unfinished work, drift, inconsistency, debt, UX failures, weak positioning, and broken journeys. FixFlags continuously reduces that distance.
 
-## The Flag: atomic object of FixFlags
+## Observations and durable improvement
 
-A Flag means:
+A Flag is an evidence-backed finding from one observation of the Product:
 
 > Something about this product is broken, confusing, missing, risky, underperforming, inconsistent, or could materially be better.
 
@@ -67,17 +67,29 @@ A Flag may eventually originate from:
 - another agent
 - another connected system
 
-All of these are signals. FixFlags turns signals into product understanding and action.
+All of these are observations.
+
+FixFlags turns observations into product understanding and judgment.
+
+When a judgment is worth acting on, it becomes a durable, Product-scoped **Improvement** that can connect equivalent findings across Reviews, implementation attempts, independent verification, regressions, and learned outcomes.
+
+The Improvement, not the report or raw event, is the durable unit of customer action.
 
 Shipped Flag anatomy, evidence classes, and severity discipline: [evidence-rules.md](./evidence-rules.md).
 
 ## Canonical improvement loop
 
-**SIGNAL → UNDERSTAND → PRIORITIZE → FIX → VERIFY → LEARN**
+**OBSERVE → UNDERSTAND → JUDGE → IMPROVE → VERIFY → LEARN**
 
 The loop never really ends. Every completed cycle should improve both the product and FixFlags' understanding of that product.
 
-The customer-facing wedge loop remains **Product Review → Fix → Verify → Watch** ([PRODUCT.md](../PRODUCT.md)): paste a URL, see real evidence, fix, update review, watch after every deploy. The canonical loop is the internal model that the wedge experience already implements in miniature and that the long-term system expands to every signal source.
+The customer-facing wedge loop remains **Product Review → Fix → Verify → Watch** ([PRODUCT.md](../PRODUCT.md)): paste a URL, see real evidence, fix, update review, watch after every deploy.
+
+The natural progression is **Look at my Product → Keep FixFlags watching → Connect more context**.
+
+The URL-first Review must prove judgment before FixFlags asks for instrumentation or integrations.
+
+The canonical loop is the internal model that the wedge experience already implements in miniature and that the long-term system expands to every evidence source.
 
 ## Product philosophy
 
@@ -126,7 +138,7 @@ The chat is not a generic assistant layered on top of a report. It is grounded i
 
 The timeline becomes the memory of the product:
 
-review → flag discovered → evidence → decision → fix → deployment → verification → outcome → regression → learning
+review → judgment → Improvement accepted → builder handoff → change or deployment → independent verification → outcome → learning
 
 Traditional reports can continue to exist for public examples, sharing, SEO, clients, and snapshots, but the authenticated product should move toward one continuous relationship with each Product.
 

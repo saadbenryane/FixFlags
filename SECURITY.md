@@ -78,6 +78,21 @@
 
 `lib/security/rate-limit.ts` uses Redis counters. On Redis connection failure it **fails open** (allows the request) so a Redis outage does not take the product offline. This is an intentional availability tradeoff, not a silent bug. Product quota gates (anon teaser, Free lifetime, plan limits) remain enforced in application code independent of Redis.
 
+Product Signal ingestion is the explicit exception.
+
+`/api/products/[id]/signals` fails closed when rate limiting is unavailable because an ingestion outage is safer than accepting an unbounded event stream.
+
+## Product Signal privacy boundary
+
+- Signal write keys are stored hashed, scoped to one Product, bound to one exact HTTP(S) origin, and revocable.
+- A completed Product Review is required before a key can be issued.
+- The ingestion schema rejects undeclared fields and accepts only navigation, named action/outcome, error type, bounded performance value, release, pathname, anonymous session token, event id, and timestamp.
+- Query strings, fragments, input values, form contents, DOM text, identity, headers, bodies, keystrokes, and replay data are not stored.
+- Anonymous session tokens are one-way hashed with Product scope before persistence.
+- Client event IDs have a Product/source uniqueness constraint for replay protection.
+- Raw signals carry a 30-day expiry and are deleted by the worker retention sweep.
+- Derived Improvements and verified learning keep Review and evidence provenance without retaining expired raw payloads.
+
 ## Dependency risks
 
 - Playwright: production Docker uses system Chromium (no browser download in image); local may use Playwright-managed browser

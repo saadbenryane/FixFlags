@@ -13,7 +13,9 @@ import {
   type ChatDiffSummary,
   type ChatFlagContext,
   type ChatVerifiedLearning,
+  type ChatImprovementContext,
 } from '@/lib/workspace/chat'
+import { synthesizeProductSignals, type SynthesizedSignalContext } from '@/lib/signals/judgment'
 import {
   finalizeChatUsage,
   getChatAllowance,
@@ -170,8 +172,10 @@ async function loadObservationContext(observation: AuditRow): Promise<{
   diff: ChatDiffSummary
   learnings: ChatVerifiedLearning[]
   productName: string
+  improvements: ChatImprovementContext[]
+  signalContext: SynthesizedSignalContext[]
 }> {
-  const [flags, diff, learnings] = await Promise.all([
+  const [flags, diff, learnings, productContext] = await Promise.all([
     loadFlagContext(observation.id),
     observation.parentId
       ? getFlagDiffSummary(observation.parentId, observation.id).then((summary) => ({
@@ -191,8 +195,51 @@ async function loadObservationContext(observation: AuditRow): Promise<{
           (intelligence) => intelligence?.verifiedLearnings ?? []
         )
       : Promise.resolve<ChatVerifiedLearning[]>([]),
+    observation.projectId
+      ? prisma.project.findUnique({
+          where: { id: observation.projectId },
+          select: {
+            improvements: {
+              orderBy: [{ priority: 'desc' }, { updatedAt: 'desc' }],
+              take: 10,
+              include: {
+                attempts: { orderBy: { createdAt: 'desc' }, take: 1 },
+              },
+            },
+            signals: {
+              where: { occurredAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+              orderBy: { occurredAt: 'desc' },
+              take: 500,
+              select: {
+                kind: true,
+                name: true,
+                route: true,
+                sessionHash: true,
+                numericValue: true,
+                release: { select: { externalId: true } },
+              },
+            },
+          },
+        })
+      : Promise.resolve(null),
   ])
-  return { flags, diff, learnings, productName: productNameFromUrl(observation.url) }
+  return {
+    flags,
+    diff,
+    learnings,
+    productName: productNameFromUrl(observation.url),
+    improvements:
+      productContext?.improvements.map((improvement) => ({
+        id: improvement.id,
+        title: improvement.title,
+        judgment: improvement.judgment,
+        recommendedChange: improvement.recommendedChange,
+        successCondition: improvement.successCondition,
+        status: improvement.status,
+        latestOutcome: improvement.attempts[0]?.outcome ?? null,
+      })) ?? [],
+    signalContext: synthesizeProductSignals(productContext?.signals ?? []),
+  }
 }
 
 export async function getReportChatHistory(input: {
@@ -242,13 +289,15 @@ export async function sendReportChatMessage(input: {
         userId: input.userId,
       })
 
-  const { flags, diff, learnings, productName } = await loadObservationContext(observation)
+  const { flags, diff, learnings, productName, improvements, signalContext } =
+    await loadObservationContext(observation)
   const productAnswer = answerProductQuestion({
     message: input.message,
     flags,
     diff,
     learnings,
     productName,
+    improvements,
   })
 
   let reply: string
@@ -264,6 +313,8 @@ export async function sendReportChatMessage(input: {
       url: observation.url,
       status: observation.status,
       flags,
+      improvements,
+      signalContext,
     }
     const reservation = await reserveChatUsage(
       owned.user,

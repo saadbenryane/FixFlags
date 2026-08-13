@@ -247,7 +247,7 @@ Playwright Chromium via `lib/audit/screenshot.ts` + `lib/audit/browser/page-sess
 
 ## Vision alignment and architecture review
 
-Vision evolution (2026-08): [knowledge/vision.md](./knowledge/vision.md). The Product is the long-term object, the Flag is the atomic unit, and the canonical loop is Signal → Understand → Prioritize → Fix → Verify → Learn. The customer wedge loop (Product Review → Fix → Verify → Watch) is unchanged and this architecture already supports it.
+Vision evolution (2026-08): [knowledge/vision.md](./knowledge/vision.md). The Product is the long-term object, Reviews and Flags are observations, Improvements are durable decisions, and the canonical loop is Observe → Understand → Judge → Improve → Verify → Learn. The customer wedge loop (Product Review → Fix → Verify → Watch) is unchanged.
 
 Review of the current architecture against the vision direction. **Proposals only — no code changed by this review.** Prefer reversible evolution over a speculative rewrite.
 
@@ -255,21 +255,24 @@ Review of the current architecture against the vision direction. **Proposals onl
 |---|---|---|
 | Product as persistent first-class object | `Project` (`canonicalHost`, `isManaged`, `productIntelligence`) is the Product anchor | Keep `Project` as the anchor; extend `Project.productIntelligence`, do not add a new entity |
 | Review as observation/version | `Audit` + `parentId` for update reviews | Keep `Audit` as the observation record; every observation already links to its Project |
-| Flags across multiple signal sources | Flags originate from deterministic checks, AI, and journey today | Add a `signalSource` field to the Flag model when the first non-scan source ships |
-| Flag lifecycle/history | `FlagFeedback` (dismissals) | Add lifecycle state (open / acted / verified / closed) when the loop needs it |
+| Evidence across multiple sources | Flags originate from Review checks, AI, and journeys; Product Signals are stored separately | Normalize each source into bounded provenance, then let judgment decide whether it supports an Improvement, warrants investigation, or is noise |
+| Durable improvement lifecycle/history | `FlagFeedback` and update-review Flag status provide observation-level history | Add Product-scoped Improvements, occurrences, attempts, and independent verification outcomes without rewriting Flags |
 | Evidence provenance | `evidenceAnchors`, `networkFailures`, visual evidence on the flag | Keep evidence attached to the Flag; no migration now |
-| Product Memory | `Project.productIntelligence` JSON (Contract seed) | Grow the JSON schema; normalize into tables only when query needs prove it |
+| Product Memory | `Project.productIntelligence` JSON (Contract seed) | Keep compact Contract and learned facts in JSON; normalize only high-query Improvement history |
 | Conversation / timeline | Report chat + activity timeline | Build the timeline concept; do not create a second memory store |
 | Before/after verification | `diffFlagsAgainstParent` on update review | Reuse for every fix-verify flow |
 | Deployment linkage | Product watch (`watchInterval` / `watchNextRunAt`) + Railway webhook | Link Flags to deployments when watch reports regressions |
 | GitHub fixes/PRs | Studio repo scan + `repo-fix-pr` jobs | Extend to the GitHub-native "Fix it for me" trust model (branch/PR + independent verification) |
-| Future customer/user signals | Not collected | Treat each new signal as a new Flag origin; do not build a signal platform yet |
+| Future customer/user signals | Not collected | Add a narrow privacy-bounded substrate; signals remain observations until judgment promotes them |
 | Agent/API access | MCP + CLI | Already aligned |
 | Private vs generalized learning | Growth graph is internal-only; customer PI is separate | Maintain the boundary; never merge ([product-intelligence.md](./knowledge/product-intelligence.md)) |
 
-Conclusion: no structural rewrite today. Evolve `Project` PI and the Flag model as the loop proves out; every review stays an observation of the Product.
+Conclusion: no structural rewrite. Evolve the existing relational system with a durable Improvement cycle first, then add only the Product Signals that improve judgment or verification.
 
 ## Technical invariants
+
+- Public Review boundaries are `/api/checks` and `/api/reports/[id]/*`; native browser context enters only through the origin-bound `/api/products/[id]/signals` contract.
+- Product Signals accept a fixed privacy-bounded schema and remain observations until Product judgment uses them.
 
 - No Prisma/Node imports on edge runtime (proxy.ts)
 - `serverExternalPackages`: playwright, @prisma/client, prisma, better-auth, bullmq, ioredis, @anthropic-ai/sdk, etc.

@@ -1,5 +1,8 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
+import '@fontsource-variable/inter/wght.css'
+import '@fontsource-variable/inter-tight/wght.css'
+import '@fontsource-variable/jetbrains-mono/wght.css'
 import { ConversionScripts } from '@/components/analytics/ConversionScripts'
 import '@/lib/design/tokens.css'
 import './globals.css'
@@ -54,7 +57,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      {/* Fonts are self-hosted via next/font - no Google Fonts preconnect. */}
+      {/* Fontsource assets are bundled into the build; no font network request is required. */}
       <link rel="preconnect" href="https://www.googletagmanager.com" />
       <link rel="preconnect" href="https://connect.facebook.net" />
       <body className={`${fontVariables} font-sans antialiased`}>

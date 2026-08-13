@@ -35,6 +35,7 @@ export interface TaskRubricSummary {
 export interface TaskFinishPlanItem {
   rank: number
   flagId: string
+  improvementId: string | null
   checkId: string | null
   problem: string
   rubric: string
@@ -42,6 +43,8 @@ export interface TaskFinishPlanItem {
   impactTag: string | null
   evidence: string
   rationale: string | null
+  recommendedChange: string
+  protectedScope: string | null
   verification: string | null
   pageUrl: string | null
   reportUrl: string
@@ -98,11 +101,13 @@ export interface RecheckAndCompareOutcome {
   status: string
   diff: {
     fixed: number
+    inconclusive: number
     remaining: number
     newIssues: number
     regressed: number
     flags: {
       cleared: FlagDiffSummaryItem[]
+      inconclusive: FlagDiffSummaryItem[]
       remaining: FlagDiffSummaryItem[]
       new: FlagDiffSummaryItem[]
       regressed: FlagDiffSummaryItem[]
@@ -111,8 +116,24 @@ export interface RecheckAndCompareOutcome {
   nextFixList?: TaskFixList
   nextFinishPlan?: TaskFinishPlan
   technologyProfile?: TechnologyProfile
+  verificationReceipts?: VerificationReceipt[]
   nextAction?: TaskNextAction
   error?: TaskOutcomeError
+}
+
+export interface VerificationReceipt {
+  improvementId: string
+  improvement: string
+  attemptId: string
+  builder: string
+  changeSummary: string | null
+  testedCondition: string
+  outcome: 'IMPROVED' | 'UNCHANGED' | 'REGRESSED' | 'INCONCLUSIVE'
+  comparable: boolean | null
+  verificationCoverage: unknown
+  verificationReason: string | null
+  evidenceReference: unknown
+  remainingRisk: string | null
 }
 
 interface TaskQueueOptions {
@@ -143,18 +164,22 @@ function toTaskItems(
     prompt: string | null
     evidence: string
     whyItMatters?: string | null
+    recommendedChange: string
+    protectedScope: string | null
     verificationRule?: string | null
     pageUrl?: string | null
     toolPrompts: Partial<Record<PromptToolKey, string | null | undefined>> | null
   }>,
   reportId: string,
-  tool: PromptToolKey
+  tool: PromptToolKey,
+  improvementIds: Map<string, string>
 ): TaskFinishPlanItem[] {
   return items.map((item, index) => {
     const selectedPrompt = resolveToolPrompt(item.toolPrompts ?? undefined, tool, item.prompt)
     return {
       rank: index + 1,
       flagId: item.id,
+      improvementId: improvementIds.get(item.id) ?? null,
       checkId: item.checkId ?? null,
       problem: item.problem,
       rubric: item.rubricName,
@@ -162,6 +187,8 @@ function toTaskItems(
       impactTag: item.impactTag ?? null,
       evidence: item.evidence,
       rationale: item.whyItMatters ?? null,
+      recommendedChange: item.recommendedChange,
+      protectedScope: item.protectedScope,
       verification: item.verificationRule ?? null,
       pageUrl: item.pageUrl ?? null,
       reportUrl: reportUrl(reportId),
@@ -262,6 +289,13 @@ export async function loadCompletedOutcome(
     criticalCount: rubric.criticalCount,
     importantCount: rubric.importantCount,
   }))
+  const occurrences = await prisma.improvementOccurrence.findMany({
+    where: { flagId: { in: fixList.items.map((item) => item.id) } },
+    select: { flagId: true, improvementId: true },
+  })
+  const improvementIds = new Map(
+    occurrences.map((occurrence) => [occurrence.flagId, occurrence.improvementId])
+  )
 
   return {
     score: audit.score,
@@ -272,14 +306,14 @@ export async function loadCompletedOutcome(
     fixList: {
       reportId,
       url: audit.url,
-      items: toTaskItems(fixList.items, reportId, tool),
+      items: toTaskItems(fixList.items, reportId, tool, improvementIds),
       planPrompt: fixList.copyPrompt ?? '',
       totalCount: fixList.totalCount,
     },
     finishPlan: {
       reportId,
       url: audit.url,
-      items: toTaskItems(finishPlan.items, reportId, tool),
+      items: toTaskItems(finishPlan.items, reportId, tool, improvementIds),
       planPrompt: finishPlan.copyPrompt ?? '',
     },
   }
@@ -301,6 +335,7 @@ export async function loadCompletedTaskOutcome(
   diff?: RecheckAndCompareOutcome['diff']
   nextFixList?: TaskFixList
   nextFinishPlan?: TaskFinishPlan
+  verificationReceipts?: VerificationReceipt[]
 }> {
   const audit = await prisma.audit.findUnique({
     where: { id: reportId },
@@ -343,7 +378,14 @@ export async function loadCompletedTaskOutcome(
   if (!audit.parentId) {
     return { reportId, reportUrl: reportUrl(reportId), status: 'COMPLETED', ...completed }
   }
-  const diff = await getFlagDiffSummary(audit.parentId, reportId)
+  const [diff, attempts] = await Promise.all([
+    getFlagDiffSummary(audit.parentId, reportId),
+    prisma.improvementAttempt.findMany({
+      where: { verificationAuditId: reportId, outcome: { not: null } },
+      include: { improvement: { select: { id: true, title: true } } },
+      orderBy: { updatedAt: 'desc' },
+    }),
+  ])
   return {
     reportId,
     reportUrl: reportUrl(reportId),
@@ -352,11 +394,13 @@ export async function loadCompletedTaskOutcome(
     parentReportId: audit.parentId,
     diff: {
       fixed: diff.fixed.length,
+      inconclusive: diff.inconclusive.length,
       remaining: diff.unchanged.length,
       newIssues: diff.newIssues.length,
       regressed: diff.regressed.length,
       flags: {
         cleared: diff.fixed,
+        inconclusive: diff.inconclusive,
         remaining: diff.unchanged,
         new: diff.newIssues,
         regressed: diff.regressed,
@@ -365,6 +409,24 @@ export async function loadCompletedTaskOutcome(
     nextFixList: completed.fixList,
     nextFinishPlan: completed.finishPlan,
     technologyProfile: completed.technologyProfile,
+    verificationReceipts: attempts.flatMap((attempt) =>
+      attempt.outcome && attempt.testedCondition
+        ? [{
+            improvementId: attempt.improvement.id,
+            improvement: attempt.improvement.title,
+            attemptId: attempt.id,
+            builder: attempt.builder,
+            changeSummary: attempt.changeSummary,
+            testedCondition: attempt.testedCondition,
+            outcome: attempt.outcome,
+            comparable: attempt.comparable,
+            verificationCoverage: attempt.verificationCoverage,
+            verificationReason: attempt.verificationReason,
+            evidenceReference: attempt.evidenceReference,
+            remainingRisk: attempt.remainingRisk,
+          }]
+        : []
+    ),
   }
 }
 
@@ -524,11 +586,13 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
     ...base,
     diff: {
       fixed: diff.fixed.length,
+      inconclusive: diff.inconclusive.length,
       remaining: diff.unchanged.length,
       newIssues: diff.newIssues.length,
       regressed: diff.regressed.length,
       flags: {
         cleared: diff.fixed,
+        inconclusive: diff.inconclusive,
         remaining: diff.unchanged,
         new: diff.newIssues,
         regressed: diff.regressed,

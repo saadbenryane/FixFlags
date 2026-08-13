@@ -17,6 +17,7 @@ import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 import { PROMPT_TOOL_KEYS } from '@/lib/mcp/builders'
 import { AuditUrlError } from '@/lib/audit/url'
 import { RateLimitError } from '@/lib/security/rate-limit'
+import { mcpStructuredResult } from '@/lib/mcp/contract'
 
 function taskError(error: unknown) {
   const typed = error as Error & { code?: string; action?: string; status?: number }
@@ -41,6 +42,15 @@ function taskError(error: unknown) {
 
   return {
     isError: true,
+    structuredContent: {
+      status: 'ERROR',
+      error: {
+        code,
+        message: typed.message || 'FixFlags could not complete this task.',
+        recoverable: code !== 'UNAUTHORIZED',
+        action,
+      },
+    },
     content: [{
       type: 'text' as const,
       text: JSON.stringify({
@@ -63,18 +73,13 @@ function taskResult(outcome: object, queue: {
   queue: QueueStatus
   rateLimitRetryAfter: number
 }) {
-  return {
-    content: [{
-      type: 'text' as const,
-      text: JSON.stringify({
-        ...outcome,
-        rateLimitRetryAfter: queue.rateLimitRetryAfter,
-        queued: queue.queued,
-        queueReason: queue.queueReason,
-        queue: queue.queue,
-      }),
-    }],
-  }
+  return mcpStructuredResult({
+    ...outcome,
+    rateLimitRetryAfter: queue.rateLimitRetryAfter,
+    queued: queue.queued,
+    queueReason: queue.queueReason,
+    queue: queue.queue,
+  })
 }
 
 export function registerTaskTools(
@@ -82,15 +87,25 @@ export function registerTaskTools(
   user: User,
   options?: { signal?: AbortSignal }
 ): void {
-  server.tool(
+  server.registerTool(
     MCP_TOOLS.checkAndPlan.name,
-    MCP_TOOLS.checkAndPlan.desc,
     {
-      url: z.string(),
-      waitForCompletion: z.boolean().optional().describe('Poll until complete (max 50s)'),
-      tool: z.enum(PROMPT_TOOL_KEYS).optional(),
-      mode: z.enum(['single', 'critical_path']).optional(),
-      scanAccess: scanAccessInputSchema.optional(),
+      description: MCP_TOOLS.checkAndPlan.desc,
+      inputSchema: {
+        url: z.string(),
+        waitForCompletion: z.boolean().optional().describe('Poll until complete (max 50s)'),
+        tool: z.enum(PROMPT_TOOL_KEYS).optional(),
+        mode: z.enum(['single', 'critical_path']).optional(),
+        scanAccess: scanAccessInputSchema.optional(),
+      },
+      outputSchema: z.object({ status: z.string().optional() }).passthrough(),
+      annotations: {
+        title: 'Run Product Review and plan',
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
     async ({ url, waitForCompletion, tool, mode, scanAccess }) => {
       try {
@@ -140,13 +155,23 @@ export function registerTaskTools(
     }
   )
 
-  server.tool(
+  server.registerTool(
     MCP_TOOLS.recheckAndCompare.name,
-    MCP_TOOLS.recheckAndCompare.desc,
     {
-      parentReportId: z.string(),
-      waitForCompletion: z.boolean().optional(),
-      tool: z.enum(PROMPT_TOOL_KEYS).optional(),
+      description: MCP_TOOLS.recheckAndCompare.desc,
+      inputSchema: {
+        parentReportId: z.string(),
+        waitForCompletion: z.boolean().optional(),
+        tool: z.enum(PROMPT_TOOL_KEYS).optional(),
+      },
+      outputSchema: z.object({ status: z.string().optional() }).passthrough(),
+      annotations: {
+        title: 'Run update Review and compare',
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
     },
     async ({ parentReportId, waitForCompletion, tool }) => {
       try {

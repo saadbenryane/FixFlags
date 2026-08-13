@@ -90,6 +90,11 @@ describe('diffMatchKey', () => {
 describe('getFlagDiffSummary', () => {
   beforeEach(() => {
     prismaMock.flag.findMany.mockReset()
+    prismaMock.audit.findUnique.mockReset()
+    prismaMock.audit.findUnique.mockResolvedValue({
+      status: 'COMPLETED',
+      reportCompleteness: 'FULL',
+    })
   })
 
   it('buckets fixed, unchanged, regressed, and new issues', async () => {
@@ -122,6 +127,7 @@ describe('getFlagDiffSummary', () => {
       ['d']
     )
     assert.deepEqual(summary.regressed, [])
+    assert.deepEqual(summary.inconclusive, [])
   })
 
   it('flags a severity increase as regressed', async () => {
@@ -161,10 +167,26 @@ describe('getFlagDiffSummary', () => {
     const summary = await getFlagDiffSummary('parent-audit', 'monitoring-audit')
     assert.deepEqual(summary, {
       fixed: [],
+      inconclusive: [],
       unchanged: [],
       regressed: [],
       newIssues: [],
     })
+  })
+
+  it('does not call a missing Flag fixed when the update Review is partial', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({
+      status: 'COMPLETED',
+      reportCompleteness: 'PARTIAL',
+    })
+    prismaMock.flag.findMany
+      .mockResolvedValueOnce([flag({ id: 'p1', checkId: 'a', status: 'OPEN' })])
+      .mockResolvedValueOnce([])
+
+    const summary = await getFlagDiffSummary('parent-audit', 'monitoring-audit')
+
+    expect(summary.fixed).toEqual([])
+    expect(summary.inconclusive).toHaveLength(1)
   })
 })
 
@@ -172,6 +194,10 @@ describe('diffFlagsAgainstParent', () => {
   beforeEach(() => {
     prismaMock.flag.findMany.mockReset()
     prismaMock.audit.findUnique.mockReset()
+    prismaMock.audit.findUnique.mockResolvedValue({
+      status: 'COMPLETED',
+      reportCompleteness: 'FULL',
+    })
     prismaMock.$transaction.mockReset()
     prismaMock.$transaction.mockImplementation(async (queries: unknown[]) =>
       Promise.all(queries as Promise<unknown>[])
@@ -191,7 +217,11 @@ describe('diffFlagsAgainstParent', () => {
         flag({ id: 'p1', checkId: 'dead-link', status: 'OPEN' }),
       ])
       .mockResolvedValueOnce([])
-    prismaMock.audit.findUnique.mockResolvedValue({ projectId: 'proj-1' })
+    prismaMock.audit.findUnique.mockResolvedValue({
+      projectId: 'proj-1',
+      status: 'COMPLETED',
+      reportCompleteness: 'FULL',
+    })
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
 
@@ -243,7 +273,7 @@ describe('diffFlagsAgainstParent', () => {
     assert.ok(updates.every((u) => u.data.status === 'REGRESSED'))
   })
 
-  it('appends verified learnings when flags are newly fixed', async () => {
+  it('does not turn a cleared Flag into Product Memory without an Improvement Attempt', async () => {
     prismaMock.flag.findMany
       .mockResolvedValueOnce([
         flag({ id: 'p1', checkId: 'a', status: 'OPEN' }),
@@ -256,11 +286,8 @@ describe('diffFlagsAgainstParent', () => {
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
 
-    expect(mutateProjectIntelligence).toHaveBeenCalledWith('proj-1', expect.any(Function))
-    // The mutation callback was executed by diffFlagsAgainstParent itself
-    expect(appendVerifiedLearning).toHaveBeenCalledTimes(1)
-    // IGNORED parent flags do not count as newly fixed learnings
-    expect((appendVerifiedLearning.mock.calls[0][1] as { checkId: string }).checkId).toBe('a')
+    expect(mutateProjectIntelligence).not.toHaveBeenCalled()
+    expect(appendVerifiedLearning).not.toHaveBeenCalled()
   })
 
   it('does not append learnings when the parent has no project', async () => {
@@ -287,12 +314,14 @@ describe('diffFlagsAgainstParent', () => {
     expect(mutateProjectIntelligence).not.toHaveBeenCalled()
   })
 
-  it('does not fail when watch regression notification errors', async () => {
+  it('surfaces watch persistence errors so the completion projection can retry', async () => {
     notifyWatchRegression.mockRejectedValue(new Error('email down'))
     prismaMock.flag.findMany.mockResolvedValue([])
     prismaMock.audit.findUnique.mockResolvedValue({ projectId: null })
 
-    await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
+    await expect(
+      diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
+    ).rejects.toThrow('email down')
     expect(notifyWatchRegression).toHaveBeenCalledWith('parent-audit', 'monitoring-audit')
   })
 })

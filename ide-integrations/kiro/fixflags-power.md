@@ -38,7 +38,7 @@ FixFlags is the QA layer for AI-built products. Scan any public web app across M
 | `ff_list_repo_scans` | Recent repo scans |
 | `ff_get_repo_scan` | Repo scan + findings |
 | `ff_get_repo_finding` | Fix task for one finding |
-| `ff_mark_fix_attempted` | Mark a Flag as fixed/ignored |
+| `ff_mark_fix_attempted` | Record an implemented change as ready for independent verification, or reject it |
 
 There is no `ff_get_report_flags` tool.
 
@@ -59,7 +59,7 @@ There is no `ff_get_report_flags` tool.
 
 ### Fix and re-check
 
-Apply fix prompts in the codebase, call `ff_mark_fix_attempted` for each Flag, then call `ff_recheck_and_compare` on the same URL. Re-checks are free and unlimited on owned reports. If verification passes, suggest enabling Watch for continuous monitoring.
+Apply fix prompts in the codebase, call `ff_mark_fix_attempted` with `action: READY_TO_VERIFY` and a change summary for each implemented Flag, deploy, then call `ff_recheck_and_compare` from the original report. Manual update Reviews share the Product Review credit pool; automated Watch Reviews do not. If independent verification passes, suggest enabling Watch.
 
 ## Notes
 

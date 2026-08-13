@@ -5,8 +5,11 @@ import { Prisma } from '@prisma/client'
 const mocks = vi.hoisted(() => ({
   auditFindUnique: vi.fn(),
   auditUpdate: vi.fn(),
+  auditUpdateMany: vi.fn(),
   persistAuditRunCost: vi.fn(),
   diffFlagsAgainstParent: vi.fn(),
+  materializeAttentionForAudit: vi.fn(),
+  reconcileImprovementVerification: vi.fn(),
   logPipelineEvent: vi.fn(),
   incrementUsageOnCompleteForAudit: vi.fn(),
   upsertLeadFromAudit: vi.fn(),
@@ -20,6 +23,7 @@ vi.mock('@/lib/db', () => ({
     audit: {
       findUnique: mocks.auditFindUnique,
       update: mocks.auditUpdate,
+      updateMany: mocks.auditUpdateMany,
     },
   },
 }))
@@ -30,6 +34,11 @@ vi.mock('@/lib/billing/costs', () => ({
 
 vi.mock('@/lib/audit/diff-flags', () => ({
   diffFlagsAgainstParent: mocks.diffFlagsAgainstParent,
+}))
+
+vi.mock('@/lib/improvements/service', () => ({
+  materializeAttentionForAudit: mocks.materializeAttentionForAudit,
+  reconcileImprovementVerification: mocks.reconcileImprovementVerification,
 }))
 
 vi.mock('@/lib/audit/pipeline-log', () => ({
@@ -57,6 +66,7 @@ vi.mock('@/lib/audit/pipeline/triage-failure', () => ({
 }))
 
 import {
+  persistImprovementCycle,
   persistAuditFailedModules,
   finalizeTriageAudit,
   finalizeTriageDegraded,
@@ -65,6 +75,34 @@ import {
   finalizeDeterministicOnly,
   persistFailedAuditCost,
 } from '../finalize'
+
+describe('persistImprovementCycle', () => {
+  beforeEach(() => resetMocks())
+
+  it('projects a completed Review once and skips retries after a successful claim', async () => {
+    mocks.auditUpdateMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 })
+
+    await persistImprovementCycle('audit-1', 'parent-1')
+    await persistImprovementCycle('audit-1', 'parent-1')
+
+    expect(mocks.diffFlagsAgainstParent).toHaveBeenCalledTimes(1)
+    expect(mocks.materializeAttentionForAudit).toHaveBeenCalledTimes(1)
+    expect(mocks.reconcileImprovementVerification).toHaveBeenCalledTimes(1)
+  })
+
+  it('releases the projection claim when a durable Product projection fails', async () => {
+    mocks.diffFlagsAgainstParent.mockRejectedValueOnce(new Error('projection failed'))
+
+    await expect(persistImprovementCycle('audit-1', 'parent-1')).rejects.toThrow(
+      'projection failed'
+    )
+
+    expect(mocks.auditUpdate).toHaveBeenCalledWith({
+      where: { id: 'audit-1' },
+      data: { improvementProjectedAt: null },
+    })
+  })
+})
 
 const BASE_INPUT = {
   auditId: 'audit-1',
@@ -104,8 +142,11 @@ function resetMocks(): void {
   }
   mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW })
   mocks.auditUpdate.mockResolvedValue({ id: 'audit-1' })
+  mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
   mocks.persistAuditRunCost.mockResolvedValue(undefined)
   mocks.diffFlagsAgainstParent.mockResolvedValue(undefined)
+  mocks.materializeAttentionForAudit.mockResolvedValue(undefined)
+  mocks.reconcileImprovementVerification.mockResolvedValue([])
   mocks.logPipelineEvent.mockResolvedValue(undefined)
   mocks.incrementUsageOnCompleteForAudit.mockResolvedValue(undefined)
   mocks.upsertLeadFromAudit.mockResolvedValue(undefined)

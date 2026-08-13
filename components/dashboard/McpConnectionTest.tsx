@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
-import { MCP_TOOL_DEFINITIONS } from '@/lib/mcp/tool-manifest'
+import { MCP_TOOLS, inspectMcpToolReadiness } from '@/lib/mcp/tool-manifest'
 
 interface Props {
   endpoint: string
@@ -19,6 +19,7 @@ type TestState = 'idle' | 'testing' | 'success' | 'error'
 export function McpConnectionTest({ endpoint, apiKey, onConnectedChange }: Props) {
   const [state, setState] = useState<TestState>('idle')
   const [toolCount, setToolCount] = useState(0)
+  const [optionalCount, setOptionalCount] = useState(0)
   const [errorMsg, setErrorMsg] = useState('')
 
   async function runTest() {
@@ -38,16 +39,19 @@ export function McpConnectionTest({ endpoint, apiKey, onConnectedChange }: Props
       client = new Client({ name: 'fixflags-connection-test', version: '1.0.0' })
       await client.connect(transport)
       const { tools } = await client.listTools()
-      const discovered = new Set(tools.map((tool) => tool.name))
-      const missing = MCP_TOOL_DEFINITIONS
-        .map((tool) => tool.name)
-        .filter((name) => !discovered.has(name))
-      if (missing.length > 0) {
+      const readiness = inspectMcpToolReadiness(tools.map((tool) => tool.name))
+      if (!readiness.ready) {
         throw new Error(
-          `Connected, but ${missing.length} FixFlags tools are unavailable. Try again before finishing setup.`
+          `Connected, but ${readiness.missingCore.length} Contract v1 core tools are unavailable. Try again before finishing setup.`
         )
       }
+      const connection = await client.callTool({ name: MCP_TOOLS.getConnectionInfo.name, arguments: {} })
+      const info = connection.structuredContent as { contractVersion?: unknown; ready?: unknown } | undefined
+      if (info?.contractVersion !== readiness.contractVersion || info.ready !== true) {
+        throw new Error('The server did not confirm Contract v1 readiness.')
+      }
       setToolCount(tools.length)
+      setOptionalCount(readiness.optional.filter((tool) => tool.available).length)
       setState('success')
       onConnectedChange?.(true)
     } catch (err) {
@@ -86,8 +90,8 @@ export function McpConnectionTest({ endpoint, apiKey, onConnectedChange }: Props
       {state === 'success' && (
         <Callout variant="success" title="Connected!" className="text-xs">
           <p>
-            {`Found all ${toolCount} FixFlags tools.`}{' '}
-            FixFlags is connected in your editor.
+            Contract v1 is ready. Found {toolCount} tools, including {optionalCount} optional{' '}
+            {optionalCount === 1 ? 'capability' : 'capabilities'}.
           </p>
         </Callout>
       )}

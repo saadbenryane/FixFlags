@@ -4,7 +4,13 @@ import { Command } from 'commander'
 import chalk from 'chalk'
 import ora from 'ora'
 import { readFileSync } from 'node:fs'
-import { checkAndPlan, recheckAndDiff, type FinishPlan, type McpCaller } from './workflows.js'
+import {
+  checkAndPlan,
+  markFixAttempted,
+  recheckAndDiff,
+  type FinishPlan,
+  type McpCaller,
+} from './workflows.js'
 import { API_BASE, getCredential, hasConfiguredCredential, removeCredential, requireApiKey } from './credentials.js'
 import { fetchIdentity, loginWithBrowser, loginWithToken, revokeCredential } from './auth.js'
 import { EDITORS, initializeFixFlags, type Editor } from './init.js'
@@ -73,8 +79,11 @@ function printPlan(plan: FinishPlan | undefined, full: boolean, limit?: number, 
     console.log('')
     console.log(`${chalk.bold(`${index + 1}.`)} ${chalk.red(item.severity)} · ${chalk.cyan(item.rubric)}`)
     console.log(item.problem)
+    if (item.recommendedChange) console.log(`${chalk.gray('Improve:')} ${item.recommendedChange}`)
+    if (item.protectedScope) console.log(`${chalk.gray('Protect:')} ${item.protectedScope}`)
+    if (item.verification) console.log(`${chalk.gray('Verify:')} ${item.verification}`)
     const prompt = promptPreview(item.fixPrompt, full)
-    if (prompt) console.log(`${chalk.gray('Fix:')}\n${prompt}`)
+    if (prompt) console.log(`${chalk.gray('Builder handoff:')}\n${prompt}`)
   }
 }
 
@@ -122,7 +131,12 @@ function printServiceState(jsonMode: boolean): void {
     service: 'FixFlags',
     api: API_BASE,
     authenticated,
-    workflows: ['check <url>', 'recheck <reportId>', 'status <reportId>'],
+    workflows: [
+      'check <url>',
+      'attempt <flagId> --summary <change>',
+      'recheck <reportId>',
+      'status <reportId>',
+    ],
     next: authenticated
       ? ['fixflags check <url>', 'fixflags --help']
       : ['npx fixflags check <url>', 'fixflags login', 'fixflags init'],
@@ -132,7 +146,7 @@ function printServiceState(jsonMode: boolean): void {
     console.log('service: FixFlags')
     console.log(`api: ${payload.api}`)
     console.log(`authenticated: ${authenticated ? 'yes' : 'no'}`)
-    console.log('workflows: 3')
+    console.log(`workflows: ${payload.workflows.length}`)
     for (const workflow of payload.workflows) console.log(`  ${workflow}`)
     console.log('next:')
     for (const item of payload.next) console.log(`  ${item}`)
@@ -410,6 +424,60 @@ program
   )
 
 program
+  .command('attempt <flagId>')
+  .description('Record an implemented change as ready for independent verification')
+  .requiredOption('--summary <change>', 'Describe the change that was implemented')
+  .option('--deployment <reference>', 'Deployment URL, version, commit, or other reference')
+  .action(
+    async (
+      flagId: string,
+      options: { summary: string; deployment?: string; json?: boolean },
+      command: Command
+    ) => {
+      const jsonMode = isJsonMode(options.json, command)
+      const spinner = ora({
+        text: 'Recording change for verification...',
+        isEnabled: !jsonMode,
+        isSilent: jsonMode,
+      }).start()
+      try {
+        const apiKey = await getCredential()
+        if (!apiKey) {
+          throw new Error(
+            'Recording an attempt requires authentication. Run fixflags login first, or set FIXFLAGS_API_KEY for CI.'
+          )
+        }
+        const summary = options.summary.trim()
+        if (!summary) throw new Error('--summary must describe the implemented change')
+        const deploymentReference = options.deployment?.trim() || undefined
+        const result = await markFixAttempted(createMcpCaller(apiKey), flagId, {
+          changeSummary: summary,
+          deploymentReference,
+        })
+        spinner.stop()
+
+        if (jsonMode) {
+          console.log(JSON.stringify(result, null, 2))
+          return
+        }
+
+        console.log(chalk.green('Change marked ready for independent verification.'))
+        console.log(`Flag: ${result.flagId}`)
+        console.log(`Product: ${result.productId}`)
+        console.log(`Improvement: ${result.improvementId}`)
+        console.log(`Attempt: ${result.attemptId}`)
+        console.log(`Source Review: ${result.sourceReviewId}`)
+        console.log(`Next action: ${result.nextAction.type}`)
+        if (result.nextAction.reportId) console.log(`Review: ${result.nextAction.reportId}`)
+        if (result.nextAction.command) console.log(chalk.gray(`Next: ${result.nextAction.command}`))
+      } catch (error) {
+        spinner.stop()
+        fail(error, jsonMode)
+      }
+    }
+  )
+
+program
   .command('recheck <reportId>')
   .description('Run a fresh update review and show what improved or regressed')
   .option('--wait', 'Wait for the completed update review', true)
@@ -464,10 +532,21 @@ program
         if (options.diff && result.diff) {
           console.log('')
           console.log(chalk.bold('Verification'))
-          console.log(`Fixed: ${result.diff.fixed}`)
+          console.log(`Improved: ${result.diff.fixed}`)
           console.log(`Remaining: ${result.diff.remaining}`)
           console.log(`New: ${result.diff.newIssues}`)
           console.log(`Regressed: ${result.diff.regressed}`)
+        }
+        if (result.verificationReceipts?.length) {
+          console.log('')
+          console.log(chalk.bold('Independent verification receipts'))
+          for (const receipt of result.verificationReceipts) {
+            console.log(`${receipt.outcome}: ${receipt.improvement}`)
+            console.log(`${chalk.gray('Tested:')} ${receipt.testedCondition}`)
+            if (receipt.remainingRisk) {
+              console.log(`${chalk.gray('Remaining risk:')} ${receipt.remainingRisk}`)
+            }
+          }
         }
         console.log('')
         const selectedPlan = options.all ? result.nextFixList : result.nextFinishPlan

@@ -79,6 +79,30 @@ export async function POST(
         data: { status: 'IGNORED' },
       })
 
+      const occurrence = await prisma.improvementOccurrence.findUnique({
+        where: { flagId },
+        select: { improvementId: true },
+      })
+      if (occurrence) {
+        if (parsed.data.reason === 'already_fixed') {
+          const { createImprovementAttempt } = await import('@/lib/improvements/service')
+          await createImprovementAttempt({
+            improvementId: occurrence.improvementId,
+            projectId: flag.audit.projectId!,
+            userId: session!.user.id,
+            sourceAuditId: flag.auditId,
+            builder: 'user-decision',
+            handoffReference: `flag:${flagId}`,
+            changeSummary: parsed.data.comment?.trim() || 'The owner reports this change is ready to verify.',
+          })
+        } else {
+          await prisma.improvement.update({
+            where: { id: occurrence.improvementId },
+            data: { status: parsed.data.reason === 'duplicate' ? 'SUPERSEDED' : 'REJECTED' },
+          })
+        }
+      }
+
       // Intentional / accept-for-now → Product Intelligence memory
       if (
         (parsed.data.reason === 'intentional' || parsed.data.reason === 'low_priority') &&

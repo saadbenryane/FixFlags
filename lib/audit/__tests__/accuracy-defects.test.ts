@@ -25,7 +25,7 @@ import {
   isManagedHostingHostname,
   runSecurityHeaderChecks,
 } from '@/lib/audit/checks/security-headers'
-import { consolidateFlagsByCheck, baseCheckId } from '@/lib/audit/consolidate-flags'
+import { consolidateFlagsByCheck, baseCheckId, durableCheckId } from '@/lib/audit/consolidate-flags'
 import { buildFixList } from '@/lib/audit/finish-plan'
 import type { RankableFlag } from '@/lib/audit/flag-types'
 import { healthyMeta } from './check-fixtures'
@@ -297,6 +297,27 @@ describe('cross-page consolidation', () => {
   it('baseCheckId strips ::page: suffixes', () => {
     expect(baseCheckId('security-headers-missing::page:2')).toBe('security-headers-missing')
     expect(baseCheckId('no-structured-data')).toBe('no-structured-data')
+  })
+
+  it('uses one durable identity for the same problem observed across journeys', () => {
+    expect(durableCheckId('journey-signup-hidden-cta')).toBe('journey-hidden-cta')
+    expect(durableCheckId('journey-pricing-evaluation-hidden-cta')).toBe(
+      'journey-hidden-cta'
+    )
+    const merged = consolidateFlagsByCheck([
+      rankable({
+        id: 'signup',
+        checkId: 'journey-signup-hidden-cta',
+        problem: 'No obvious primary CTA on first visit',
+      }),
+      rankable({
+        id: 'pricing',
+        checkId: 'journey-pricing-evaluation-hidden-cta',
+        problem: 'No obvious primary CTA on first visit',
+      }),
+    ])
+    expect(merged).toHaveLength(1)
+    expect(merged[0]?.occurrenceCount).toBe(2)
   })
 
   it('merges same-check flags across pages and keeps highest severity', () => {

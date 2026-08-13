@@ -4,11 +4,6 @@ import { resolveMonitoringFlagStatus } from '@/lib/audit/flag-status-resolution'
 import { severityRank } from '@/lib/utils'
 import type { FlagStatus, Severity } from '@prisma/client'
 import type { FlagDiffSummaryItem } from './flag-types'
-import {
-  appendVerifiedLearning,
-  productIntelligenceFromContract,
-} from '@/lib/audit/product-intelligence'
-import { mutateProjectIntelligence } from '@/lib/audit/ensure-product-project'
 
 export type { FlagDiffSummaryItem } from './flag-types'
 
@@ -61,16 +56,17 @@ export async function diffFlagsAgainstParent(
     }),
     prisma.audit.findUnique({
       where: { id: monitoringAuditId },
-      select: { projectId: true },
+      select: { status: true, reportCompleteness: true },
     }),
   ])
+  const comparableAbsence =
+    monitoringAudit?.status === 'COMPLETED' && monitoringAudit.reportCompleteness === 'FULL'
 
   const monitoringByKey = new Map(monitoringFlags.map((f) => [flagMatchKey(f), f]))
   const updates: Array<{
     id: string
     data: { status: FlagStatus; resolvedInId?: string | null }
   }> = []
-  const newlyFixed: Array<{ checkId: string | null; problem: string }> = []
   const seenMonitoringIds = new Set<string>()
 
   for (const parentFlag of parentFlags) {
@@ -78,12 +74,11 @@ export async function diffFlagsAgainstParent(
     const monitoringFlag = monitoringByKey.get(key)
 
     if (!monitoringFlag) {
-      updates.push({
-        id: parentFlag.id,
-        data: { status: 'FIXED', resolvedInId: monitoringAuditId },
-      })
-      if (parentFlag.status !== 'FIXED' && parentFlag.status !== 'IGNORED') {
-        newlyFixed.push({ checkId: parentFlag.checkId, problem: parentFlag.problem })
+      if (comparableAbsence) {
+        updates.push({
+          id: parentFlag.id,
+          data: { status: 'FIXED', resolvedInId: monitoringAuditId },
+        })
       }
       continue
     }
@@ -112,9 +107,6 @@ export async function diffFlagsAgainstParent(
         resolvedInId: status === 'FIXED' ? monitoringAuditId : null,
       },
     })
-    if (status === 'FIXED' && parentFlag.status !== 'FIXED') {
-      newlyFixed.push({ checkId: parentFlag.checkId, problem: parentFlag.problem })
-    }
   }
 
   if (updates.length > 0) {
@@ -125,37 +117,9 @@ export async function diffFlagsAgainstParent(
     )
   }
 
-  // Remember: append verified learnings to Project Product Intelligence
-  if (newlyFixed.length > 0 && monitoringAudit?.projectId) {
-    const parentAudit = await prisma.audit.findUnique({
-      where: { id: parentAuditId },
-      select: { productContract: true },
-    })
-    const { parseProductContract } = await import('@/lib/audit/product-contract')
-    const contract = parseProductContract(parentAudit?.productContract)
-    if (contract) {
-      await mutateProjectIntelligence(monitoringAudit.projectId, (current) => {
-        let pi = current ?? productIntelligenceFromContract(contract)
-      for (const fixed of newlyFixed.slice(0, 10)) {
-        pi = appendVerifiedLearning(pi, {
-          checkId: fixed.checkId ?? undefined,
-          summary: `Verified fixed: ${fixed.problem}`,
-          auditId: monitoringAuditId,
-          at: new Date().toISOString(),
-        })
-      }
-        return pi
-      })
-    }
-  }
-
   // Product watch: email only when this project is watched and regressions appear.
-  try {
-    const { notifyWatchRegression } = await import('@/lib/audit/project-watch')
-    await notifyWatchRegression(parentAuditId, monitoringAuditId)
-  } catch {
-    // Non-fatal
-  }
+  const { notifyWatchRegression } = await import('@/lib/audit/project-watch')
+  await notifyWatchRegression(parentAuditId, monitoringAuditId)
 }
 
 export type FlagDiffSummaryBucket = 'fixed' | 'unchanged' | 'regressed'
@@ -203,19 +167,27 @@ export async function getFlagDiffSummary(
   monitoringAuditId: string
 ): Promise<{
   fixed: FlagDiffSummaryItem[]
+  inconclusive: FlagDiffSummaryItem[]
   unchanged: FlagDiffSummaryItem[]
   regressed: FlagDiffSummaryItem[]
   newIssues: FlagDiffSummaryItem[]
 }> {
-  const [parentFlags, monitoringFlags] = await Promise.all([
+  const [parentFlags, monitoringFlags, monitoringAudit] = await Promise.all([
     prisma.flag.findMany({ where: { auditId: parentAuditId } }),
     prisma.flag.findMany({ where: { auditId: monitoringAuditId } }),
+    prisma.audit.findUnique({
+      where: { id: monitoringAuditId },
+      select: { status: true, reportCompleteness: true },
+    }),
   ])
+  const comparableAbsence =
+    monitoringAudit?.status === 'COMPLETED' && monitoringAudit.reportCompleteness === 'FULL'
 
   const monitoringByKey = new Map(monitoringFlags.map((f) => [flagMatchKey(f), f]))
   const parentKeys = new Set(parentFlags.map((f) => flagMatchKey(f)))
 
   const fixed: FlagDiffSummaryItem[] = []
+  const inconclusive: FlagDiffSummaryItem[] = []
   const unchanged: FlagDiffSummaryItem[] = []
   const regressed: FlagDiffSummaryItem[] = []
   const newIssues: FlagDiffSummaryItem[] = []
@@ -238,7 +210,8 @@ export async function getFlagDiffSummary(
     }
 
     if (!monitoringFlag) {
-      fixed.push(item)
+      if (comparableAbsence) fixed.push(item)
+      else inconclusive.push(item)
       continue
     }
 
@@ -284,5 +257,5 @@ export async function getFlagDiffSummary(
     })
   }
 
-  return { fixed, unchanged, regressed, newIssues }
+  return { fixed, inconclusive, unchanged, regressed, newIssues }
 }

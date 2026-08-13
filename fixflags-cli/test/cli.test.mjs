@@ -48,6 +48,7 @@ function runMcpBridge(request, apiUrl) {
 
 test('built CLI completes check and recheck task-shaped workflows', async (t) => {
   const tools = []
+  const calls = []
   const server = createServer((request, response) => {
     assert.match(request.headers.accept ?? '', /application\/json/)
     assert.match(request.headers.accept ?? '', /text\/event-stream/)
@@ -57,6 +58,7 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
       const rpc = JSON.parse(body)
       const tool = rpc.params.name
       tools.push(tool)
+      calls.push({ tool, args: rpc.params.arguments })
 
       const values = {
         ff_check_and_plan: {
@@ -103,6 +105,19 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
           nextFixList: { reportId: 'report-2', totalCount: 0, items: [] },
           nextFinishPlan: { reportId: 'report-2', items: [] },
         },
+        ff_mark_fix_attempted: {
+          flagId: 'flag-1',
+          action: 'READY_TO_VERIFY',
+          productId: 'product-1',
+          improvementId: 'improvement-1',
+          attemptId: 'attempt-1',
+          sourceReviewId: 'report-1',
+          nextAction: {
+            type: 'RUN_UPDATE_REVIEW',
+            reportId: 'report-1',
+            command: 'fixflags recheck report-1 --wait --diff',
+          },
+        },
       }
 
       response.writeHead(200, { 'content-type': 'application/json' })
@@ -138,19 +153,48 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
   assert.match(allFixes.stdout, /CTA is vague/)
   assert.match(allFixes.stdout, /Proof is missing/)
 
+  const attempted = await runCli(
+    [
+      'attempt',
+      'flag-1',
+      '--summary',
+      'Clarified the primary CTA.',
+      '--deployment',
+      'https://example.com/releases/42',
+    ],
+    apiUrl
+  )
+  assert.equal(attempted.code, 0, attempted.stderr)
+  assert.match(attempted.stdout, /ready for independent verification/)
+  assert.match(attempted.stdout, /Product: product-1/)
+  assert.match(attempted.stdout, /Improvement: improvement-1/)
+  assert.match(attempted.stdout, /Attempt: attempt-1/)
+  assert.match(attempted.stdout, /Source Review: report-1/)
+  assert.match(attempted.stdout, /Next action: RUN_UPDATE_REVIEW/)
+
   const rechecked = await runCli(
     ['recheck', 'report-1', '--wait', '--diff'],
     apiUrl
   )
   assert.equal(rechecked.code, 0, rechecked.stderr)
-  assert.match(rechecked.stdout, /Fixed: 1/)
+  assert.match(rechecked.stdout, /Improved: 1/)
   assert.match(rechecked.stdout, /Next Finish Plan: 0 unresolved improvements/)
 
   assert.deepEqual(tools, [
     'ff_check_and_plan',
     'ff_check_and_plan',
+    'ff_mark_fix_attempted',
     'ff_recheck_and_compare',
   ])
+  assert.deepEqual(calls[2], {
+    tool: 'ff_mark_fix_attempted',
+    args: {
+      flagId: 'flag-1',
+      action: 'READY_TO_VERIFY',
+      changeSummary: 'Clarified the primary CTA.',
+      deploymentReference: 'https://example.com/releases/42',
+    },
+  })
 })
 
 test('built CLI no-argument view is live, compact, and successful', async () => {
@@ -159,6 +203,7 @@ test('built CLI no-argument view is live, compact, and successful', async () => 
   assert.match(result.stdout, /service: FixFlags/)
   assert.match(result.stdout, /authenticated: yes/)
   assert.match(result.stdout, /check <url>/)
+  assert.match(result.stdout, /attempt <flagId>/)
   assert.doesNotMatch(result.stdout, /Usage:/)
 })
 

@@ -23,8 +23,11 @@ test('typed MCP manifest and registrations expose stable keys', () => {
 } as const`)
   assert.deepEqual([...manifest], [['checkAndPlan', 'ff_check_and_plan']])
   assert.deepEqual(
-    collectRegisteredMcpToolKeys('server.tool(MCP_TOOLS.checkAndPlan.name, MCP_TOOLS.checkAndPlan.desc, {})'),
-    ['checkAndPlan'],
+    collectRegisteredMcpToolKeys(`
+      server.tool(MCP_TOOLS.checkAndPlan.name, MCP_TOOLS.checkAndPlan.desc, {})
+      server.registerTool(MCP_TOOLS.getConnectionInfo.name, {})
+    `),
+    ['checkAndPlan', 'getConnectionInfo'],
   )
 })
 

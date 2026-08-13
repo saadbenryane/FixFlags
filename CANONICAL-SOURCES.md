@@ -46,7 +46,7 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Distribution strategy | `knowledge/market.md` → Distribution Strategy |
 | Studio channel | `knowledge/market.md` → Fastest Studio Channel |
 | Product vision, north star, and brand hierarchy | `knowledge/vision.md` |
-| Canonical improvement loop (Signal → Understand → Prioritize → Fix → Verify → Learn) | `knowledge/vision.md` → Canonical improvement loop |
+| Canonical improvement loop (Observe → Understand → Judge → Improve → Verify → Learn) | `knowledge/vision.md` → Canonical improvement loop |
 | Customer wedge loop (Product Review → Fix → Verify → Watch) | `PRODUCT.md` → Core loop, `knowledge/vision.md` → Canonical improvement loop |
 | Flag as atomic object and signal sources | `knowledge/vision.md` → The Flag: atomic object of FixFlags |
 | Product Memory | `knowledge/vision.md` → Product Memory, `knowledge/product-intelligence.md` |

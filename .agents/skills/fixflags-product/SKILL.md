@@ -19,6 +19,8 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 | Access and sharing | `lib/audit/report-access.ts`, `lib/security/share-grant.ts`, `SECURITY.md` |
 | Check/re-check task outcomes | `lib/audit/task-contracts.ts` |
 | Finish Plan (all surfaces) | `lib/audit/load-finish-plan-flags.ts`, `lib/audit/finish-plan.ts` |
+| Durable Product attention and verification | `lib/improvements/service.ts`, Prisma `Improvement*`, `/api/projects/[id]/improvements` |
+| Product Signals and releases | `lib/signals/`, `/api/products/[id]/signals`, `/fixflags.js` |
 | Preview scan access (Studio) | `lib/audit/scan-access.ts`, `app/api/projects/[id]/scan-access/route.ts` |
 | CI deploy checks | `app/api/webhooks/railway/route.ts`, `docs/railway-deploy-check.md` |
 | Product Contract and Remember | `lib/audit/product-contract.ts`, `lib/audit/product-intelligence.ts` |
