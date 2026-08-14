@@ -1,48 +1,89 @@
-import type { ImprovementRejectionReason, VerificationOutcome } from '@prisma/client'
+import type {
+  ImprovementCycleEventType,
+  ImprovementRejectionReason,
+  VerificationOutcome,
+} from '@prisma/client'
 
 type CostValue = number | string | { toNumber(): number } | null | undefined
 
-export type ImprovementValueRow = {
+export type ImprovementValueCycleRow = {
   id: string
   projectId: string
   createdAt: Date
-  acceptedAt: Date | null
-  rejectionReason: ImprovementRejectionReason | null
   project: { createdAt: Date }
-  occurrences: Array<{
-    audit: { id: string; createdAt: Date }
-    flag: { createdAt: Date }
-  }>
-  attempts: Array<{
+  occurrence: { flag: { createdAt: Date } } | null
+  sourceAudit: {
+    id: string
     createdAt: Date
-    outcome: VerificationOutcome | null
-    sourceAudit: { id: string; runCost: { estimatedCostUsd: CostValue } | null }
-    verificationAudit: {
+    runCost: { estimatedCostUsd: CostValue } | null
+    monitoringAudits?: Array<{
       id: string
-      completedAt: Date | null
       runCost: { estimatedCostUsd: CostValue } | null
+    }>
+  }
+  events: Array<{
+    type: ImprovementCycleEventType
+    occurredAt: Date
+    outcome: VerificationOutcome | null
+    rejectionReason: ImprovementRejectionReason | null
+    attempt: {
+      verificationAudit: {
+        id: string
+        completedAt: Date | null
+        runCost: { estimatedCostUsd: CostValue } | null
+      } | null
     } | null
   }>
 }
 
+export type DurationDistribution = {
+  n: number
+  medianHours: number
+  p75Hours: number
+  p90Hours: number
+} | null
+
 export type ImprovementValueMetrics = {
+  cohortSize: number
+  cohortOldestDays: number | null
+  matureCycleCount: number
+  generated: number
   recommended: number
   accepted: number
+  acceptedExplicit: number
+  acceptedInferred: number
   attempted: number
-  verified: number
+  outcomeIssued: number
+  improved: number
   outcomes: Record<VerificationOutcome, number>
   rejections: Record<ImprovementRejectionReason, number>
-  urlToFirstEvidenceHours: number | null
-  urlToValuableRecommendationHours: number | null
-  recommendationToAttemptHours: number | null
-  productToVerifiedImprovementHours: number | null
-  costPerVerifiedImprovementUsd: number | null
-  verifiedMeaningfulImprovementsPerActiveProduct: number
+  urlToFirstEvidence: DurationDistribution
+  recommendationToAcceptance: DurationDistribution
+  acceptanceToAttempt: DurationDistribution
+  attemptToOutcome: DurationDistribution
+  productToImproved: DurationDistribution
+  fullyLoadedReviewCostPerImprovedUsd: number | null
+  outcomeReviewCostPerOutcomeUsd: number | null
+  verifiedWorthwhileImprovementsPerActiveProduct: number
+  activeProductCount: number
+  productsWithSecondCycle: number
 }
 
-function averageHours(values: number[]): number | null {
+function percentile(sorted: number[], ratio: number): number {
+  const index = Math.min(sorted.length - 1, Math.ceil(sorted.length * ratio) - 1)
+  return sorted[Math.max(0, index)]
+}
+
+function durationDistribution(values: number[]): DurationDistribution {
   if (values.length === 0) return null
-  return values.reduce((sum, value) => sum + value, 0) / values.length / 3_600_000
+  const sorted = [...values].sort((a, b) => a - b)
+  const toHours = (value: number) => value / 3_600_000
+  return {
+    n: sorted.length,
+    medianHours: toHours(percentile(sorted, 0.5)),
+    p75Hours: toHours(percentile(sorted, 0.75)),
+    p90Hours: toHours(percentile(sorted, 0.9)),
+  }
 }
 
 function costNumber(value: CostValue): number {
@@ -52,9 +93,21 @@ function costNumber(value: CostValue): number {
   return value.toNumber()
 }
 
+function firstEvent(
+  row: ImprovementValueCycleRow,
+  types: ImprovementCycleEventType[],
+) {
+  return row.events
+    .filter((event) => types.includes(event.type))
+    .sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime())[0]
+}
+
 export function calculateImprovementValueMetrics(
-  rows: ImprovementValueRow[],
+  rows: ImprovementValueCycleRow[],
+  options: { activeProductCount: number; now?: Date; maturityDays?: number },
 ): ImprovementValueMetrics {
+  const now = options.now ?? new Date()
+  const maturityMs = (options.maturityDays ?? 7) * 24 * 3_600_000
   const outcomes: Record<VerificationOutcome, number> = {
     IMPROVED: 0,
     UNCHANGED: 0,
@@ -70,88 +123,140 @@ export function calculateImprovementValueMetrics(
     WEAK_RECOMMENDATION: 0,
     MISUNDERSTOOD_PRODUCT_CONTEXT: 0,
   }
-  const evidenceDurations = new Map<string, number>()
-  const acceptedDurations: number[] = []
-  const attemptDurations: number[] = []
-  const productVerifiedAt = new Map<string, { productCreatedAt: Date; verifiedAt: Date }>()
-  const billedAudits = new Map<string, number>()
+  const firstEvidenceDurations: number[] = []
+  const recommendationToAcceptance: number[] = []
+  const acceptanceToAttempt: number[] = []
+  const attemptToOutcome: number[] = []
+  const productToImproved: number[] = []
+  const allReviewCosts = new Map<string, number>()
+  const outcomeReviewCosts = new Map<string, number>()
+  const projectCycles = new Map<string, ImprovementValueCycleRow[]>()
+  let generated = 0
+  let recommended = 0
   let accepted = 0
+  let acceptedExplicit = 0
+  let acceptedInferred = 0
   let attempted = 0
-  let verified = 0
+  let outcomeIssued = 0
+  let improved = 0
+  let worthwhileImproved = 0
 
   for (const row of rows) {
-    if (row.acceptedAt) {
-      accepted += 1
-      const sourceCreatedAt = row.occurrences
-        .map((occurrence) => occurrence.audit.createdAt.getTime())
-        .sort((a, b) => a - b)[0]
-      if (sourceCreatedAt != null) acceptedDurations.push(row.acceptedAt.getTime() - sourceCreatedAt)
-    }
-    if (row.rejectionReason) rejections[row.rejectionReason] += 1
-
-    const firstAttempt = [...row.attempts].sort(
-      (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
-    )[0]
-    if (firstAttempt) {
-      attempted += 1
-      attemptDurations.push(firstAttempt.createdAt.getTime() - row.createdAt.getTime())
+    const cycles = projectCycles.get(row.projectId) ?? []
+    cycles.push(row)
+    projectCycles.set(row.projectId, cycles)
+    allReviewCosts.set(
+      row.sourceAudit.id,
+      costNumber(row.sourceAudit.runCost?.estimatedCostUsd),
+    )
+    for (const child of row.sourceAudit.monitoringAudits ?? []) {
+      allReviewCosts.set(child.id, costNumber(child.runCost?.estimatedCostUsd))
     }
 
-    if (row.attempts.some((attempt) => attempt.outcome && attempt.verificationAudit?.completedAt)) {
-      verified += 1
+    const generatedEvent = firstEvent(row, ['GENERATED'])
+    const recommendedEvent = firstEvent(row, ['RECOMMENDED'])
+    const explicitEvent = firstEvent(row, ['ACCEPTED_EXPLICIT'])
+    const inferredEvent = firstEvent(row, ['ACCEPTED_INFERRED'])
+    const acceptedEvent = [explicitEvent, inferredEvent]
+      .filter((event): event is NonNullable<typeof event> => Boolean(event))
+      .sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime())[0]
+    const attemptedEvent = firstEvent(row, ['ATTEMPTED'])
+    const outcomeEvent = firstEvent(row, ['OUTCOME_ISSUED'])
+    const improvedEvent = firstEvent(row, ['IMPROVED'])
+
+    if (generatedEvent) generated += 1
+    if (recommendedEvent) recommended += 1
+    if (explicitEvent) acceptedExplicit += 1
+    if (inferredEvent) acceptedInferred += 1
+    if (acceptedEvent) accepted += 1
+    if (attemptedEvent) attempted += 1
+    if (outcomeEvent) {
+      outcomeIssued += 1
+      if (outcomeEvent.outcome) outcomes[outcomeEvent.outcome] += 1
     }
-
-    for (const occurrence of row.occurrences) {
-      const duration = occurrence.flag.createdAt.getTime() - occurrence.audit.createdAt.getTime()
-      const current = evidenceDurations.get(occurrence.audit.id)
-      if (current == null || duration < current) evidenceDurations.set(occurrence.audit.id, duration)
-    }
-
-    for (const attempt of row.attempts) {
-      if (attempt.outcome) outcomes[attempt.outcome] += 1
-      if (attempt.outcome !== 'IMPROVED' || !attempt.verificationAudit?.completedAt) continue
-
-      const existing = productVerifiedAt.get(row.projectId)
-      if (!existing || attempt.verificationAudit.completedAt < existing.verifiedAt) {
-        productVerifiedAt.set(row.projectId, {
-          productCreatedAt: row.project.createdAt,
-          verifiedAt: attempt.verificationAudit.completedAt,
-        })
-      }
-      billedAudits.set(
-        attempt.sourceAudit.id,
-        costNumber(attempt.sourceAudit.runCost?.estimatedCostUsd),
+    if (improvedEvent) {
+      improved += 1
+      if (recommendedEvent && explicitEvent) worthwhileImproved += 1
+      productToImproved.push(
+        improvedEvent.occurredAt.getTime() - row.project.createdAt.getTime(),
       )
-      billedAudits.set(
-        attempt.verificationAudit.id,
-        costNumber(attempt.verificationAudit.runCost?.estimatedCostUsd),
+    }
+
+    for (const event of row.events) {
+      if (event.type === 'REJECTED' && event.rejectionReason) {
+        rejections[event.rejectionReason] += 1
+      }
+      const verificationAudit = event.attempt?.verificationAudit
+      if (!verificationAudit) continue
+      const cost = costNumber(verificationAudit.runCost?.estimatedCostUsd)
+      allReviewCosts.set(verificationAudit.id, cost)
+      if (event.type === 'OUTCOME_ISSUED') outcomeReviewCosts.set(verificationAudit.id, cost)
+    }
+
+    if (row.occurrence) {
+      firstEvidenceDurations.push(
+        row.occurrence.flag.createdAt.getTime() - row.sourceAudit.createdAt.getTime(),
+      )
+    }
+    if (recommendedEvent && acceptedEvent) {
+      recommendationToAcceptance.push(
+        acceptedEvent.occurredAt.getTime() - recommendedEvent.occurredAt.getTime(),
+      )
+    }
+    if (acceptedEvent && attemptedEvent) {
+      acceptanceToAttempt.push(
+        attemptedEvent.occurredAt.getTime() - acceptedEvent.occurredAt.getTime(),
+      )
+    }
+    if (attemptedEvent && outcomeEvent) {
+      attemptToOutcome.push(
+        outcomeEvent.occurredAt.getTime() - attemptedEvent.occurredAt.getTime(),
       )
     }
   }
 
-  const verifiedImprovementCount = outcomes.IMPROVED
-  const activeProducts = new Set(rows.map((row) => row.projectId)).size
-  const productVerifiedDurations = [...productVerifiedAt.values()].map(
-    ({ productCreatedAt, verifiedAt }) => verifiedAt.getTime() - productCreatedAt.getTime(),
-  )
+  const productsWithSecondCycle = [...projectCycles.values()].filter((cycles) => {
+    const ordered = [...cycles].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    return ordered.some((cycle, index) => {
+      if (index === 0) return false
+      return ordered.slice(0, index).some((earlier) => {
+        const outcome = firstEvent(earlier, ['OUTCOME_ISSUED'])
+        return outcome && cycle.createdAt > outcome.occurredAt
+      })
+    })
+  }).length
+  const oldest = rows.length > 0
+    ? Math.min(...rows.map((row) => row.createdAt.getTime()))
+    : null
 
   return {
-    recommended: rows.length,
+    cohortSize: rows.length,
+    cohortOldestDays: oldest === null ? null : (now.getTime() - oldest) / (24 * 3_600_000),
+    matureCycleCount: rows.filter((row) => now.getTime() - row.createdAt.getTime() >= maturityMs).length,
+    generated,
+    recommended,
     accepted,
+    acceptedExplicit,
+    acceptedInferred,
     attempted,
-    verified,
+    outcomeIssued,
+    improved,
     outcomes,
     rejections,
-    urlToFirstEvidenceHours: averageHours([...evidenceDurations.values()]),
-    urlToValuableRecommendationHours: averageHours(acceptedDurations),
-    recommendationToAttemptHours: averageHours(attemptDurations),
-    productToVerifiedImprovementHours: averageHours(productVerifiedDurations),
-    costPerVerifiedImprovementUsd:
-      verifiedImprovementCount > 0
-        ? [...billedAudits.values()].reduce((sum, cost) => sum + cost, 0) /
-          verifiedImprovementCount
-        : null,
-    verifiedMeaningfulImprovementsPerActiveProduct:
-      activeProducts > 0 ? verifiedImprovementCount / activeProducts : 0,
+    urlToFirstEvidence: durationDistribution(firstEvidenceDurations),
+    recommendationToAcceptance: durationDistribution(recommendationToAcceptance),
+    acceptanceToAttempt: durationDistribution(acceptanceToAttempt),
+    attemptToOutcome: durationDistribution(attemptToOutcome),
+    productToImproved: durationDistribution(productToImproved),
+    fullyLoadedReviewCostPerImprovedUsd: improved > 0
+      ? [...allReviewCosts.values()].reduce((sum, cost) => sum + cost, 0) / improved
+      : null,
+    outcomeReviewCostPerOutcomeUsd: outcomeIssued > 0
+      ? [...outcomeReviewCosts.values()].reduce((sum, cost) => sum + cost, 0) / outcomeIssued
+      : null,
+    verifiedWorthwhileImprovementsPerActiveProduct:
+      options.activeProductCount > 0 ? worthwhileImproved / options.activeProductCount : 0,
+    activeProductCount: options.activeProductCount,
+    productsWithSecondCycle,
   }
 }

@@ -1,8 +1,10 @@
 import type {
   AuditStatus,
   ImprovementStatus,
+  ProjectWatchInterval,
   ReportCompleteness,
   VerificationOutcome,
+  WatchNotificationStatus,
 } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import {
@@ -45,12 +47,15 @@ export type ProductAttentionItemDTO = {
   evidence: string | null
   rubric: string | null
   severity: string | null
+  sourceReviewId: string | null
+  sourceFlagId: string | null
   latestAttempt: ProductAttemptDTO | null
 }
 
 export type ProductAttemptDTO = {
   id: string
   sourceReviewId: string
+  sourceFlagId: string | null
   builder: string
   changeSummary: string | null
   deploymentReference: string | null
@@ -60,7 +65,39 @@ export type ProductAttemptDTO = {
   comparable: boolean | null
   verificationCoverage: unknown
   verificationReason: string | null
+  evidenceReference: unknown
   remainingRisk: string | null
+  createdAt: string
+}
+
+export type ProductWatchDTO = {
+  eligible: boolean
+  canDaily: boolean
+  interval: 'weekly' | 'daily' | null
+  nextRunAt: string | null
+  lastRunAt: string | null
+  lastAttemptAt: string | null
+  consecutiveFailures: number
+  lastError: string | null
+  latestReview: {
+    id: string
+    status: AuditStatus
+    createdAt: string
+    completedAt: string | null
+    regressionCount: number | null
+    notificationStatus: WatchNotificationStatus
+    notificationAttempts: number
+    notificationError: string | null
+  } | null
+}
+
+export type ProductSignalKeyDTO = {
+  id: string
+  name: string
+  prefix: string
+  lastFour: string
+  allowedOrigin: string
+  lastUsedAt: string | null
   createdAt: string
 }
 
@@ -69,6 +106,8 @@ export type ProductImprovementHistoryDTO = {
   title: string
   status: ImprovementStatus
   updatedAt: string
+  sourceReviewId: string | null
+  sourceFlagId: string | null
   attempts: ProductAttemptDTO[]
 }
 
@@ -82,7 +121,7 @@ export type ProductMemoryDTO = {
 
 export type ProductIntegrationDTO = {
   signalsEligible: boolean
-  activeSignalKeyCount: number
+  signalKeys: ProductSignalKeyDTO[]
   lastSignalAt: string | null
   observedContext: SynthesizedSignalContext[]
 }
@@ -94,9 +133,8 @@ export type ProductWorkspaceDTO = {
     url: string
     purpose: string | null
     watching: boolean
-    watchLastRunAt: string | null
-    watchLastError: string | null
   }
+  watch: ProductWatchDTO
   attention: ProductAttentionItemDTO[]
   attentionCount: number
   currentReview: ProductReviewSummaryDTO | null
@@ -114,7 +152,7 @@ export type ProductOverviewDTO = {
   purpose: string | null
   watching: boolean
   attentionCount: number
-  topAttention: Pick<ProductAttentionItemDTO, 'id' | 'title' | 'status'> | null
+  topAttention: Pick<ProductAttentionItemDTO, 'id' | 'title' | 'status' | 'severity'> | null
   latestReview: ProductReviewSummaryDTO | null
   latestVerification: {
     outcome: VerificationOutcome
@@ -132,6 +170,11 @@ type ReviewRow = {
   completedAt: Date | null
   errorMsg: string | null
   parentId: string | null
+  recheckTrigger: string | null
+  watchRegressionCount: number | null
+  watchNotificationStatus: WatchNotificationStatus
+  watchNotificationAttempts: number
+  watchNotificationLastError: string | null
   flags: Array<{ status: string }>
 }
 
@@ -163,12 +206,14 @@ function attemptSummary(attempt: {
   comparable: boolean | null
   verificationCoverage: unknown
   verificationReason: string | null
+  evidenceReference: unknown
   remainingRisk: string | null
   createdAt: Date
-}): ProductAttemptDTO {
+}, sourceFlagId: string | null = null): ProductAttemptDTO {
   return {
     id: attempt.id,
     sourceReviewId: attempt.sourceAuditId,
+    sourceFlagId,
     builder: attempt.builder,
     changeSummary: attempt.changeSummary,
     deploymentReference: attempt.deploymentReference,
@@ -178,6 +223,7 @@ function attemptSummary(attempt: {
     comparable: attempt.comparable,
     verificationCoverage: attempt.verificationCoverage,
     verificationReason: attempt.verificationReason,
+    evidenceReference: attempt.evidenceReference,
     remainingRisk: attempt.remainingRisk,
     createdAt: attempt.createdAt.toISOString(),
   }
@@ -192,6 +238,11 @@ const reviewSelect = {
   completedAt: true,
   errorMsg: true,
   parentId: true,
+  recheckTrigger: true,
+  watchRegressionCount: true,
+  watchNotificationStatus: true,
+  watchNotificationAttempts: true,
+  watchNotificationLastError: true,
   flags: { select: { status: true } },
 } as const
 
@@ -207,6 +258,7 @@ const attemptSelect = {
   comparable: true,
   verificationCoverage: true,
   verificationReason: true,
+  evidenceReference: true,
   remainingRisk: true,
   createdAt: true,
 } as const
@@ -233,6 +285,11 @@ export async function loadProductOverview(userId: string): Promise<ProductOvervi
           id: true,
           title: true,
           status: true,
+          occurrences: {
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            select: { flag: { select: { severity: true } } },
+          },
           attempts: {
             where: { outcome: { not: null } },
             orderBy: { updatedAt: 'desc' },
@@ -273,6 +330,7 @@ export async function loadProductOverview(userId: string): Promise<ProductOvervi
             id: attention[0].id,
             title: attention[0].title,
             status: attention[0].status,
+            severity: attention[0].occurrences[0]?.flag.severity ?? null,
           }
         : null,
       latestReview: product.audits[0] ? reviewSummary(product.audits[0]) : null,
@@ -292,7 +350,7 @@ export async function loadProductOverview(userId: string): Promise<ProductOvervi
 export async function loadProductWorkspace(
   productId: string,
   userId: string,
-  options: { signalsEligible: boolean }
+  options: { signalsEligible: boolean; canDailyWatch?: boolean }
 ): Promise<ProductWorkspaceDTO | null> {
   const product = await prisma.project.findFirst({
     where: { id: productId, userId },
@@ -303,6 +361,9 @@ export async function loadProductWorkspace(
       productIntelligence: true,
       watchInterval: true,
       watchLastRunAt: true,
+      watchNextRunAt: true,
+      watchLastAttemptAt: true,
+      watchConsecutiveFailures: true,
       watchLastError: true,
       audits: {
         orderBy: { createdAt: 'desc' },
@@ -324,6 +385,8 @@ export async function loadProductWorkspace(
             orderBy: { createdAt: 'desc' },
             take: 1,
             select: {
+              auditId: true,
+              flagId: true,
               flag: {
                 select: {
                   evidence: true,
@@ -342,7 +405,16 @@ export async function loadProductWorkspace(
       },
       signalKeys: {
         where: { revokedAt: null },
-        select: { id: true },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          prefix: true,
+          lastFour: true,
+          allowedOrigin: true,
+          lastUsedAt: true,
+          createdAt: true,
+        },
       },
       signals: {
         where: { occurredAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
@@ -379,10 +451,18 @@ export async function loadProductWorkspace(
     evidence: improvement.occurrences[0]?.flag.evidence ?? null,
     rubric: improvement.occurrences[0]?.flag.rubric ?? null,
     severity: improvement.occurrences[0]?.flag.severity ?? null,
+    sourceReviewId: improvement.occurrences[0]?.auditId ?? null,
+    sourceFlagId: improvement.occurrences[0]?.flagId ?? null,
     latestAttempt: improvement.attempts[0]
-      ? attemptSummary(improvement.attempts[0])
+      ? attemptSummary(
+          improvement.attempts[0],
+          improvement.occurrences.find(
+            (occurrence) => occurrence.auditId === improvement.attempts[0]?.sourceAuditId,
+          )?.flagId ?? null,
+        )
       : null,
   }))
+  const latestWatchReview = product.audits.find((review) => review.recheckTrigger === 'WATCH')
 
   return {
     product: {
@@ -391,8 +471,28 @@ export async function loadProductWorkspace(
       url: product.url,
       purpose: memory?.purpose ?? null,
       watching: product.watchInterval !== null,
-      watchLastRunAt: product.watchLastRunAt?.toISOString() ?? null,
-      watchLastError: product.watchLastError,
+    },
+    watch: {
+      eligible: options.signalsEligible,
+      canDaily: options.canDailyWatch ?? false,
+      interval: watchInterval(product.watchInterval),
+      nextRunAt: product.watchNextRunAt?.toISOString() ?? null,
+      lastRunAt: product.watchLastRunAt?.toISOString() ?? null,
+      lastAttemptAt: product.watchLastAttemptAt?.toISOString() ?? null,
+      consecutiveFailures: product.watchConsecutiveFailures,
+      lastError: product.watchLastError,
+      latestReview: latestWatchReview
+        ? {
+            id: latestWatchReview.id,
+            status: latestWatchReview.status,
+            createdAt: latestWatchReview.createdAt.toISOString(),
+            completedAt: latestWatchReview.completedAt?.toISOString() ?? null,
+            regressionCount: latestWatchReview.watchRegressionCount,
+            notificationStatus: latestWatchReview.watchNotificationStatus,
+            notificationAttempts: latestWatchReview.watchNotificationAttempts,
+            notificationError: latestWatchReview.watchNotificationLastError,
+          }
+        : null,
     },
     attention,
     attentionCount: attentionRows.length,
@@ -403,7 +503,14 @@ export async function loadProductWorkspace(
       title: improvement.title,
       status: improvement.status,
       updatedAt: improvement.updatedAt.toISOString(),
-      attempts: improvement.attempts.map(attemptSummary),
+      sourceReviewId: improvement.occurrences[0]?.auditId ?? null,
+      sourceFlagId: improvement.occurrences[0]?.flagId ?? null,
+      attempts: improvement.attempts.map((attempt) => attemptSummary(
+        attempt,
+        improvement.occurrences.find(
+          (occurrence) => occurrence.auditId === attempt.sourceAuditId,
+        )?.flagId ?? null,
+      )),
     })),
     memory: {
       purpose: memory?.purpose ?? null,
@@ -415,9 +522,19 @@ export async function loadProductWorkspace(
     reviewHistory: reviews,
     integrations: {
       signalsEligible: options.signalsEligible,
-      activeSignalKeyCount: product.signalKeys.length,
+      signalKeys: product.signalKeys.map((key) => ({
+        ...key,
+        lastUsedAt: key.lastUsedAt?.toISOString() ?? null,
+        createdAt: key.createdAt.toISOString(),
+      })),
       lastSignalAt: product.signals[0]?.occurredAt.toISOString() ?? null,
       observedContext: synthesizeProductSignals(product.signals),
     },
   }
+}
+
+function watchInterval(value: ProjectWatchInterval | null): 'weekly' | 'daily' | null {
+  if (value === 'WEEKLY') return 'weekly'
+  if (value === 'DAILY') return 'daily'
+  return null
 }

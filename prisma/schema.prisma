@@ -444,6 +444,7 @@ model Project {
   releases                    ProductRelease[]
   signalKeys                  ProductSignalKey[]
   signals                     ProductSignal[]
+  improvementCycles           ImprovementCycle[]
   user                        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, canonicalHost])
@@ -546,6 +547,8 @@ model Audit {
   improvementOccurrences     ImprovementOccurrence[]
   sourceImprovementAttempts  ImprovementAttempt[]         @relation("ImprovementSourceReview")
   verificationAttempts       ImprovementAttempt[]         @relation("ImprovementVerificationReview")
+  verifierExecutions         AuditVerifierExecution[]
+  sourceImprovementCycles    ImprovementCycle[]           @relation("ImprovementCycleSourceReview")
 
   @@index([userId])
   @@index([status])
@@ -1000,6 +1003,7 @@ model Improvement {
   project           Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
   occurrences       ImprovementOccurrence[]
   attempts          ImprovementAttempt[]
+  cycles            ImprovementCycle[]
 
   @@unique([projectId, fingerprint])
   @@index([projectId, status, priority])
@@ -1019,6 +1023,7 @@ model ImprovementOccurrence {
   improvement   Improvement               @relation(fields: [improvementId], references: [id], onDelete: Cascade)
   audit         Audit                     @relation(fields: [auditId], references: [id], onDelete: Cascade)
   flag          Flag                      @relation(fields: [flagId], references: [id], onDelete: Cascade)
+  cycles        ImprovementCycle[]
 
   @@index([improvementId, createdAt])
   @@index([auditId])
@@ -1026,7 +1031,7 @@ model ImprovementOccurrence {
 }
 
 model ImprovementAttempt {
-  id                   String               @id @default(cuid())
+  id                   String                  @id @default(cuid())
   improvementId        String
   sourceAuditId        String
   builder              String
@@ -1042,16 +1047,83 @@ model ImprovementAttempt {
   verificationReason   String?
   evidenceReference    Json?
   remainingRisk        String?
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
-  improvement          Improvement          @relation(fields: [improvementId], references: [id], onDelete: Cascade)
-  sourceAudit          Audit                @relation("ImprovementSourceReview", fields: [sourceAuditId], references: [id], onDelete: Cascade)
-  verificationAudit    Audit?               @relation("ImprovementVerificationReview", fields: [verificationAuditId], references: [id], onDelete: SetNull)
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  improvement          Improvement             @relation(fields: [improvementId], references: [id], onDelete: Cascade)
+  sourceAudit          Audit                   @relation("ImprovementSourceReview", fields: [sourceAuditId], references: [id], onDelete: Cascade)
+  verificationAudit    Audit?                  @relation("ImprovementVerificationReview", fields: [verificationAuditId], references: [id], onDelete: SetNull)
+  cycleEvents          ImprovementCycleEvent[]
 
   @@index([improvementId, createdAt(sort: Desc)])
   @@index([sourceAuditId])
   @@index([verificationAuditId])
   @@map("improvement_attempts")
+}
+
+model AuditVerifierExecution {
+  id                String                  @id @default(cuid())
+  auditId           String
+  targetKey         String
+  source            String
+  checkId           String?
+  pageUrl           String?
+  scopeKey          String                  @default("product")
+  status            VerifierExecutionStatus
+  evidenceReference Json?
+  detail            Json?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+  audit             Audit                   @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@unique([auditId, targetKey, scopeKey])
+  @@index([auditId, status])
+  @@map("audit_verifier_executions")
+}
+
+model ImprovementCycle {
+  id            String                  @id @default(cuid())
+  projectId     String
+  improvementId String
+  occurrenceId  String?
+  sourceAuditId String
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  project       Project                 @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  improvement   Improvement             @relation(fields: [improvementId], references: [id], onDelete: Cascade)
+  occurrence    ImprovementOccurrence?  @relation(fields: [occurrenceId], references: [id], onDelete: SetNull)
+  sourceAudit   Audit                   @relation("ImprovementCycleSourceReview", fields: [sourceAuditId], references: [id], onDelete: Cascade)
+  events        ImprovementCycleEvent[]
+
+  @@unique([improvementId, sourceAuditId])
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([sourceAuditId])
+  @@map("improvement_cycles")
+}
+
+model ImprovementCycleEvent {
+  id                  String                      @id @default(cuid())
+  cycleId             String
+  idempotencyKey      String
+  type                ImprovementCycleEventType
+  transport           String
+  client              String?
+  actor               String?
+  attemptId           String?
+  verificationAuditId String?
+  outcome             VerificationOutcome?
+  rejectionReason     ImprovementRejectionReason?
+  rejectionNote       String?
+  revisitAt           DateTime?
+  contextCorrection   Json?
+  occurredAt          DateTime                    @default(now())
+  cycle               ImprovementCycle            @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  attempt             ImprovementAttempt?         @relation(fields: [attemptId], references: [id], onDelete: SetNull)
+
+  @@unique([cycleId, idempotencyKey])
+  @@index([type, occurredAt])
+  @@index([verificationAuditId])
+  @@index([rejectionReason])
+  @@map("improvement_cycle_events")
 }
 
 model ProductRelease {
@@ -1694,6 +1766,25 @@ enum VerificationOutcome {
   UNCHANGED
   REGRESSED
   INCONCLUSIVE
+}
+
+enum VerifierExecutionStatus {
+  COMPLETED
+  FAILED
+  NOT_APPLICABLE
+}
+
+enum ImprovementCycleEventType {
+  GENERATED
+  RECOMMENDED
+  VIEWED
+  ACCEPTED_EXPLICIT
+  ACCEPTED_INFERRED
+  HANDOFF_COPIED
+  ATTEMPTED
+  REJECTED
+  OUTCOME_ISSUED
+  IMPROVED
 }
 
 enum ProductSignalKind {

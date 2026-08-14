@@ -56,6 +56,7 @@ describe('loadProductOverview', () => {
             id: 'improvement-a',
             title: 'Clarify the first action',
             status: 'READY_TO_VERIFY',
+            occurrences: [{ flag: { severity: 'IMPORTANT' } }],
             attempts: [],
           },
         ],
@@ -84,6 +85,7 @@ describe('loadProductOverview', () => {
             id: 'improvement-b',
             title: 'Restore checkout',
             status: 'VERIFIED',
+            occurrences: [],
             attempts: [{ outcome: 'IMPROVED', verificationAuditId: 'review-b', createdAt: now }],
           },
         ],
@@ -95,6 +97,7 @@ describe('loadProductOverview', () => {
     expect(products[0]).toMatchObject({
       id: 'product-a',
       attentionCount: 1,
+      topAttention: { id: 'improvement-a', severity: 'IMPORTANT' },
       latestReview: { id: 'review-a', score: 82, unresolvedCount: 1 },
       latestVerification: null,
     })
@@ -142,6 +145,9 @@ describe('loadProductWorkspace', () => {
       },
       watchInterval: 'WEEKLY',
       watchLastRunAt: now,
+      watchNextRunAt: now,
+      watchLastAttemptAt: now,
+      watchConsecutiveFailures: 0,
       watchLastError: null,
       audits: [
         {
@@ -153,6 +159,11 @@ describe('loadProductWorkspace', () => {
           completedAt: null,
           errorMsg: null,
           parentId: 'review-1',
+          recheckTrigger: 'WATCH',
+          watchRegressionCount: null,
+          watchNotificationStatus: 'PENDING',
+          watchNotificationAttempts: 0,
+          watchNotificationLastError: null,
           flags: [],
         },
         {
@@ -164,6 +175,11 @@ describe('loadProductWorkspace', () => {
           completedAt: now,
           errorMsg: null,
           parentId: null,
+          recheckTrigger: null,
+          watchRegressionCount: null,
+          watchNotificationStatus: 'NOT_APPLICABLE',
+          watchNotificationAttempts: 0,
+          watchNotificationLastError: null,
           flags: [{ status: 'OPEN' }, { status: 'FIXED' }],
         },
       ],
@@ -177,7 +193,18 @@ describe('loadProductWorkspace', () => {
           priority: 90,
           status: 'READY_TO_VERIFY',
           updatedAt: now,
-          occurrences: [{ flag: { evidence: 'CTA below the fold', rubric: 'MESSAGE', severity: 'IMPORTANT' } }],
+          occurrences: [
+            {
+              auditId: 'review-2',
+              flagId: 'flag-2',
+              flag: { evidence: 'CTA still below the fold', rubric: 'MESSAGE', severity: 'IMPORTANT' },
+            },
+            {
+              auditId: 'review-1',
+              flagId: 'flag-1',
+              flag: { evidence: 'CTA below the fold', rubric: 'MESSAGE', severity: 'IMPORTANT' },
+            },
+          ],
           attempts: [
             {
               id: 'attempt-1',
@@ -191,13 +218,22 @@ describe('loadProductWorkspace', () => {
               comparable: null,
               verificationCoverage: null,
               verificationReason: null,
+              evidenceReference: null,
               remainingRisk: null,
               createdAt: now,
             },
           ],
         },
       ],
-      signalKeys: [{ id: 'key-1' }],
+      signalKeys: [{
+        id: 'key-1',
+        name: 'Browser snippet',
+        prefix: 'ff_sig_test',
+        lastFour: 'last',
+        allowedOrigin: 'https://example.com',
+        lastUsedAt: now,
+        createdAt: now,
+      }],
       signals: [
         ...Array.from({ length: 3 }, (_, index) => ({
           kind: 'ERROR',
@@ -223,16 +259,23 @@ describe('loadProductWorkspace', () => {
       attention: [
         {
           id: 'improvement-1',
+          sourceReviewId: 'review-2',
+          sourceFlagId: 'flag-2',
           latestAttempt: {
             id: 'attempt-1',
             sourceReviewId: 'review-1',
+            sourceFlagId: 'flag-1',
             outcome: null,
           },
         },
       ],
       integrations: {
         signalsEligible: true,
-        activeSignalKeyCount: 1,
+        signalKeys: [expect.objectContaining({ id: 'key-1', lastUsedAt: now.toISOString() })],
+      },
+      watch: {
+        interval: 'weekly',
+        latestReview: expect.objectContaining({ id: 'review-running', notificationStatus: 'PENDING' }),
       },
     })
     expect(workspace?.integrations.observedContext[0]).toMatchObject({

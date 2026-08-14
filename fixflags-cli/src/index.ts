@@ -111,12 +111,15 @@ function isJsonMode(
     command && typeof command.optsWithGlobals === 'function'
       ? command.optsWithGlobals()
       : program.opts()
+  const commandWithRawArgs = command as
+    | (Command & { rawArgs?: string[]; parent?: Command & { rawArgs?: string[] } })
+    | undefined
   const programRawArgs = Array.isArray(program?.rawArgs) ? program.rawArgs : process.argv
   const jsonMode = Boolean(
     jsonOption ||
       commandWithGlobals?.json ||
-      command?.rawArgs?.includes('--json') ||
-      command?.parent?.rawArgs?.includes('--json') ||
+      commandWithRawArgs?.rawArgs?.includes('--json') ||
+      commandWithRawArgs?.parent?.rawArgs?.includes('--json') ||
       programRawArgs.includes('--json') ||
       process.argv.includes('--json')
   )

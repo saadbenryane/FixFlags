@@ -124,25 +124,17 @@ describe('validate.mjs', () => {
       assert.equal(plan.reason, 'shared validation config changed; using full validation')
     })
 
-    it('release mode extends full validation with browser and container checks', () => {
+    it('release mode delegates every evidence-bound stage to the receipt orchestrator', () => {
       const labels = buildPlan('release', []).commands.map((command) => command.label)
-      assert.ok(labels.includes('test:e2e'))
-      assert.ok(labels.includes('container:build'))
-      assert.ok(labels.includes('container:ready'))
-      assert.ok(labels.includes('release:preflight'))
-      assert.ok(labels.includes('clean-install'))
-      assert.ok(labels.includes('fresh-database'))
-      assert.ok(labels.includes('deployed-smoke'))
-      assert.ok(labels.includes('test:unit'))
-      assert.ok(labels.includes('test:coverage'))
-      assert.deepEqual(
-        buildPlan('release', []).commands.find((command) => command.label === 'test:e2e'),
-        {
-          label: 'test:e2e',
-          executable: 'npm',
-          args: ['run', 'test:e2e:release'],
-        }
-      )
+      assert.deepEqual(labels, [
+        'release:foundation', 'release:fixture-binding', 'release:credentialed-core',
+        'release:billing-open', 'release:billing-closed', 'release:external',
+        'release:deployed', 'release:registry-cli', 'release:production-dogfood',
+        'release:final',
+      ])
+      for (const item of buildPlan('release', []).commands.slice(0, -1)) {
+        assert.deepEqual(item.args.slice(0, 2), ['scripts/release-receipts.mjs', 'stage'])
+      }
     })
 
     it('ignores generated build and test artifacts', () => {

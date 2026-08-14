@@ -1,4 +1,5 @@
-import type { ReportCompleteness } from '@prisma/client'
+import type { Prisma, ReportCompleteness } from '@prisma/client'
+import { verifierScopeKey, verifierTargetKey } from './verifier-provenance'
 
 type EvidenceCoverage = {
   desktopScreenshot?: boolean
@@ -13,6 +14,10 @@ export type VerificationCoverage = {
   evidenceComparable: boolean
   relevantPageCovered: boolean
   verifierExecuted: boolean
+  verifierStatus: 'COMPLETED' | 'FAILED' | 'NOT_APPLICABLE' | 'MISSING'
+  targetKey: string | null
+  scopeKey: string
+  executionEvidenceReference: Prisma.JsonValue | null
   failedModules: string[]
   source: string
   pageUrl: string | null
@@ -55,12 +60,26 @@ export function assessVerificationCoverage(input: {
   pages: Array<{ url: string; status: string }>
   source: string
   checkId: string | null
+  fingerprint?: string | null
   pageUrl: string | null
+  verifierExecutions: Array<{
+    targetKey: string
+    scopeKey: string
+    status: 'COMPLETED' | 'FAILED' | 'NOT_APPLICABLE'
+    evidenceReference: Prisma.JsonValue | null
+  }>
 }): VerificationCoverageDecision {
   const failedModules = parseFailedModules(input.failedModules)
   const evidence = parseEvidenceCoverage(input.evidenceCoverage)
   const isAi = input.source === 'AI'
   const isJourney = input.checkId?.startsWith('journey-') ?? false
+  const targetKey = verifierTargetKey(input)
+  const scopeKey = verifierScopeKey(input.pageUrl)
+  const targetExecution = targetKey
+    ? input.verifierExecutions.find(
+        (execution) => execution.targetKey === targetKey && execution.scopeKey === scopeKey,
+      )
+    : undefined
   const completeReview =
     input.status === 'COMPLETED' && input.reportCompleteness === 'FULL'
   const evidenceComparable = Boolean(
@@ -72,17 +91,26 @@ export function assessVerificationCoverage(input: {
           page.status === 'COMPLETED' && normalizeUrl(page.url) === normalizeUrl(input.pageUrl!)
       )
     : input.pages.some((page) => page.status === 'COMPLETED')
-  const verifierExecuted = isJourney
+  const supportingVerifierCompleted = isJourney
     ? input.journeyReviewIncluded && Boolean(input.journeyReviewAt)
     : isAi
       ? Boolean(evidence.aiAssessment)
-      : failedModules.length === 0
+      : true
+  const verifierExecuted = Boolean(
+    targetExecution?.status === 'COMPLETED' &&
+    targetExecution.evidenceReference &&
+    supportingVerifierCompleted,
+  )
 
   const coverage: VerificationCoverage = {
     completeReview,
     evidenceComparable,
     relevantPageCovered,
     verifierExecuted,
+    verifierStatus: targetExecution?.status ?? 'MISSING',
+    targetKey,
+    scopeKey,
+    executionEvidenceReference: targetExecution?.evidenceReference ?? null,
     failedModules,
     source: input.source,
     pageUrl: input.pageUrl,
@@ -97,14 +125,29 @@ export function assessVerificationCoverage(input: {
   if (!relevantPageCovered) {
     return { comparable: false, reason: 'The update Review did not complete the affected page.', coverage }
   }
+  if (failedModules.length > 0) {
+    return {
+      comparable: false,
+      reason: `The update Review was degraded because these modules failed: ${failedModules.join(', ')}.`,
+      coverage,
+    }
+  }
   if (!verifierExecuted) {
     return {
       comparable: false,
-      reason: isJourney
-        ? 'The applicable journey verification did not complete.'
-        : failedModules.length > 0
-          ? `Deterministic verification was incomplete: ${failedModules.join(', ')}.`
-          : 'The applicable verifier did not complete.',
+      reason: targetExecution?.status === 'FAILED'
+        ? 'The exact applicable verifier failed.'
+        : targetExecution?.status === 'NOT_APPLICABLE'
+          ? 'The exact verifier was not applicable to the captured scope.'
+          : !targetExecution
+            ? 'The update Review has no positive execution record for the exact verifier and scope.'
+            : !targetExecution.evidenceReference
+              ? 'The exact verifier completed without a durable evidence reference.'
+              : isJourney
+                ? 'The applicable journey verification did not complete.'
+                : isAi
+                  ? 'The applicable AI assessment did not complete.'
+                  : 'The applicable verifier did not complete.',
       coverage,
     }
   }

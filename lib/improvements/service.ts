@@ -1,6 +1,7 @@
 import type {
   ImprovementOccurrenceKind,
   ImprovementStatus,
+  Prisma,
   VerificationOutcome,
 } from '@prisma/client'
 import { prisma } from '@/lib/db'
@@ -15,6 +16,7 @@ import { mutateProjectIntelligence } from '@/lib/audit/ensure-product-project'
 import { synthesizeProductSignals } from '@/lib/signals/judgment'
 import { assessVerificationCoverage } from '@/lib/improvements/verification-coverage'
 import type { ImprovementRejectionReason } from '@/lib/improvements/rejection-reasons'
+import { appendImprovementCycleEvent } from '@/lib/improvements/cycle-ledger'
 
 type ImprovementFlag = {
   id: string
@@ -137,7 +139,7 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
       (candidate) => improvementFingerprint(candidate) === fingerprint
     )
     for (const observedFlag of observedFlags) {
-      await prisma.improvementOccurrence.upsert({
+      const occurrence = await prisma.improvementOccurrence.upsert({
         where: { flagId: observedFlag.id },
         create: {
           improvementId: improvement.id,
@@ -151,6 +153,15 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
           kind: occurrenceKind(observedFlag.status),
         },
       })
+      await appendImprovementCycleEvent({
+        projectId: audit.projectId,
+        improvementId: improvement.id,
+        occurrenceId: occurrence.id,
+        sourceAuditId: auditId,
+        idempotencyKey: `generated:${observedFlag.id}`,
+        type: 'GENERATED',
+        transport: 'SYSTEM',
+      })
     }
   }
 }
@@ -161,6 +172,8 @@ export async function createImprovementAttempt(input: {
   userId: string
   sourceAuditId: string
   builder: string
+  client?: string
+  actor?: string
   handoffReference?: string
   pullRequestReference?: string
   deploymentReference?: string
@@ -180,7 +193,7 @@ export async function createImprovementAttempt(input: {
   if (!improvement) throw new Error('Improvement not found for Product')
 
   return prisma.$transaction(async (tx) => {
-    await tx.improvement.updateMany({
+    const accepted = await tx.improvement.updateMany({
       where: { id: improvement.id, acceptedAt: null },
       data: { acceptedAt: new Date(), acceptedByChannel: input.builder },
     })
@@ -212,6 +225,30 @@ export async function createImprovementAttempt(input: {
       where: { id: improvement.id },
       data: { status: 'READY_TO_VERIFY' },
     })
+    if (accepted.count > 0) {
+      await appendImprovementCycleEvent({
+        projectId: input.projectId,
+        improvementId: improvement.id,
+        sourceAuditId: input.sourceAuditId,
+        idempotencyKey: `accepted-ready-to-verify:${attempt.id}`,
+        type: 'ACCEPTED_EXPLICIT',
+        transport: input.builder,
+        client: input.client,
+        actor: input.actor,
+        attemptId: attempt.id,
+      }, tx)
+    }
+    await appendImprovementCycleEvent({
+      projectId: input.projectId,
+      improvementId: improvement.id,
+      sourceAuditId: input.sourceAuditId,
+      idempotencyKey: `attempted:${attempt.id}`,
+      type: 'ATTEMPTED',
+      transport: input.builder,
+      client: input.client,
+      actor: input.actor,
+      attemptId: attempt.id,
+    }, tx)
     return attempt
   })
 }
@@ -220,16 +257,20 @@ export async function recordFlagImprovementAttempt(input: {
   flagId: string
   userId: string
   builder: string
-  action: 'ACCEPT' | 'READY_TO_VERIFY' | 'REJECT'
+  client?: string
+  actor?: string
+  action: 'ACCEPT' | 'HANDOFF_COPIED' | 'READY_TO_VERIFY' | 'REJECT'
   changeSummary?: string
   deploymentReference?: string
   rejectionReason?: ImprovementRejectionReason
   rejectionNote?: string
+  rejectionRevisitAt?: Date
+  contextCorrection?: Prisma.InputJsonValue
 }) {
   const flag = await prisma.flag.findFirst({
     where: { id: input.flagId, audit: { userId: input.userId } },
     include: {
-      improvementOccurrence: { select: { improvementId: true } },
+      improvementOccurrence: { select: { id: true, improvementId: true } },
       audit: { select: { id: true, projectId: true, productContract: true } },
     },
   })
@@ -262,7 +303,7 @@ export async function recordFlagImprovementAttempt(input: {
       select: { id: true },
     })
     improvementId = improvement.id
-    await prisma.improvementOccurrence.upsert({
+    const occurrence = await prisma.improvementOccurrence.upsert({
       where: { flagId: flag.id },
       create: {
         improvementId,
@@ -272,18 +313,46 @@ export async function recordFlagImprovementAttempt(input: {
       },
       update: {},
     })
+    await appendImprovementCycleEvent({
+      projectId: flag.audit.projectId,
+      improvementId,
+      occurrenceId: occurrence.id,
+      sourceAuditId: flag.audit.id,
+      idempotencyKey: `generated:${flag.id}`,
+      type: 'GENERATED',
+      transport: input.builder,
+      client: input.client,
+      actor: input.actor,
+    })
   }
 
   if (input.action === 'REJECT') {
     if (!input.rejectionReason) throw new Error('Choose why this recommendation was rejected')
-    await prisma.improvement.update({
-      where: { id: improvementId },
-      data: {
-        status: 'REJECTED',
+    await prisma.$transaction(async (tx) => {
+      await tx.improvement.update({
+        where: { id: improvementId },
+        data: {
+          status: 'REJECTED',
+          rejectionReason: input.rejectionReason,
+          rejectionNote: input.rejectionNote?.trim() || null,
+          rejectedAt: new Date(),
+        },
+      })
+      await appendImprovementCycleEvent({
+        projectId: flag.audit.projectId!,
+        improvementId,
+        occurrenceId: flag.improvementOccurrence?.id,
+        sourceAuditId: flag.audit.id,
+        idempotencyKey: `rejected:${flag.id}:${input.rejectionReason}`,
+        type: 'REJECTED',
+        transport: input.builder,
+        client: input.client,
+        actor: input.actor,
         rejectionReason: input.rejectionReason,
         rejectionNote: input.rejectionNote?.trim() || null,
-        rejectedAt: new Date(),
-      },
+        revisitAt: input.rejectionRevisitAt,
+        contextCorrection: input.contextCorrection,
+      }, tx)
     })
     return {
       flagId: flag.id,
@@ -293,6 +362,29 @@ export async function recordFlagImprovementAttempt(input: {
       attemptId: null,
       sourceReviewId: flag.audit.id,
       rejectionReason: input.rejectionReason,
+      nextAction: { type: 'NONE' as const },
+    }
+  }
+
+  if (input.action === 'HANDOFF_COPIED') {
+    await appendImprovementCycleEvent({
+      projectId: flag.audit.projectId,
+      improvementId,
+      occurrenceId: flag.improvementOccurrence?.id,
+      sourceAuditId: flag.audit.id,
+      idempotencyKey: `handoff-copied:${flag.id}:${input.builder}`,
+      type: 'HANDOFF_COPIED',
+      transport: input.builder,
+      client: input.client,
+      actor: input.actor,
+    })
+    return {
+      flagId: flag.id,
+      action: input.action,
+      productId: flag.audit.projectId,
+      improvementId,
+      attemptId: null,
+      sourceReviewId: flag.audit.id,
       nextAction: { type: 'NONE' as const },
     }
   }
@@ -307,6 +399,17 @@ export async function recordFlagImprovementAttempt(input: {
         where: { id: improvementId, status: { in: ['PROPOSED', 'ACCEPTED'] } },
         data: { status: 'ACCEPTED' },
       })
+      await appendImprovementCycleEvent({
+        projectId: flag.audit.projectId!,
+        improvementId,
+        occurrenceId: flag.improvementOccurrence?.id,
+        sourceAuditId: flag.audit.id,
+        idempotencyKey: `accepted-explicit:${flag.id}`,
+        type: 'ACCEPTED_EXPLICIT',
+        transport: input.builder,
+        client: input.client,
+        actor: input.actor,
+      }, tx)
     })
     return {
       flagId: flag.id,
@@ -325,6 +428,8 @@ export async function recordFlagImprovementAttempt(input: {
     userId: input.userId,
     sourceAuditId: flag.audit.id,
     builder: input.builder,
+    client: input.client,
+    actor: input.actor,
     handoffReference: `flag:${flag.id}`,
     deploymentReference: input.deploymentReference,
     changeSummary: input.changeSummary ?? '',
@@ -424,6 +529,48 @@ export async function loadProductImprovementWorkspace(projectId: string, userId:
   }
 }
 
+/** Records the exact top recommendations delivered in an owned Product workspace. */
+export async function recordRecommendedImprovements(input: {
+  projectId: string
+  userId: string
+  improvementIds: string[]
+}) {
+  const owned = await prisma.project.findFirst({
+    where: { id: input.projectId, userId: input.userId },
+    select: { id: true },
+  })
+  if (!owned) throw new Error('Product not found')
+  const ids = [...new Set(input.improvementIds)].slice(0, 3)
+  if (ids.length === 0) return 0
+  const improvements = await prisma.improvement.findMany({
+    where: { id: { in: ids }, projectId: input.projectId },
+    select: {
+      id: true,
+      occurrences: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { id: true, auditId: true, flagId: true },
+      },
+    },
+  })
+  await Promise.all(improvements.map(async (improvement) => {
+    const occurrence = improvement.occurrences[0]
+    if (!occurrence) return
+    await appendImprovementCycleEvent({
+      projectId: input.projectId,
+      improvementId: improvement.id,
+      occurrenceId: occurrence.id,
+      sourceAuditId: occurrence.auditId,
+      idempotencyKey: `recommended:${occurrence.flagId}:product-workspace`,
+      type: 'RECOMMENDED',
+      transport: 'WEB',
+      client: 'product-workspace',
+      actor: input.userId,
+    })
+  }))
+  return improvements.length
+}
+
 type VerificationResult = {
   improvementId: string
   attemptId: string
@@ -459,6 +606,14 @@ export async function reconcileImprovementVerification(input: {
         journeyReviewIncluded: true,
         journeyReviewAt: true,
         pages: { select: { url: true, status: true } },
+        verifierExecutions: {
+          select: {
+            targetKey: true,
+            scopeKey: true,
+            status: true,
+            evidenceReference: true,
+          },
+        },
       },
     }),
     prisma.improvementOccurrence.findMany({
@@ -506,7 +661,9 @@ export async function reconcileImprovementVerification(input: {
       pages: verificationAudit.pages,
       source: occurrence.flag.source,
       checkId: occurrence.flag.checkId,
+      fingerprint: occurrence.flag.fingerprint,
       pageUrl: occurrence.flag.pageUrl,
+      verifierExecutions: verificationAudit.verifierExecutions,
     })
     const stableAiIdentity =
       occurrence.flag.source !== 'AI' || Boolean(occurrence.flag.fingerprint)
@@ -529,8 +686,8 @@ export async function reconcileImprovementVerification(input: {
       afterFlagId: current?.id ?? null,
     }
 
-    await prisma.$transaction([
-      prisma.improvementAttempt.update({
+    await prisma.$transaction(async (tx) => {
+      await tx.improvementAttempt.update({
         where: { id: attempt.id },
         data: {
           verificationAuditId: input.verificationAuditId,
@@ -547,26 +704,50 @@ export async function reconcileImprovementVerification(input: {
                 ? reason
                 : 'The independent Review still observed the targeted condition.',
         },
-      }),
-      prisma.improvement.update({
+      })
+      await tx.improvement.update({
         where: { id: occurrence.improvementId },
         data: { status },
-      }),
-      ...(current
-        ? [
-            prisma.improvementOccurrence.upsert({
-              where: { flagId: current.id },
-              create: {
-                improvementId: occurrence.improvementId,
-                auditId: input.verificationAuditId,
-                flagId: current.id,
-                kind: outcome === 'REGRESSED' ? 'REGRESSED' : 'CONFIRMED',
-              },
-              update: { kind: outcome === 'REGRESSED' ? 'REGRESSED' : 'CONFIRMED' },
-            }),
-          ]
-        : []),
-    ])
+      })
+      if (current) {
+        await tx.improvementOccurrence.upsert({
+          where: { flagId: current.id },
+          create: {
+            improvementId: occurrence.improvementId,
+            auditId: input.verificationAuditId,
+            flagId: current.id,
+            kind: outcome === 'REGRESSED' ? 'REGRESSED' : 'CONFIRMED',
+          },
+          update: { kind: outcome === 'REGRESSED' ? 'REGRESSED' : 'CONFIRMED' },
+        })
+      }
+      await appendImprovementCycleEvent({
+        projectId: verificationAudit.projectId!,
+        improvementId: occurrence.improvementId,
+        occurrenceId: occurrence.id,
+        sourceAuditId: input.parentAuditId,
+        idempotencyKey: `outcome:${attempt.id}:${input.verificationAuditId}`,
+        type: 'OUTCOME_ISSUED',
+        transport: 'SYSTEM',
+        attemptId: attempt.id,
+        verificationAuditId: input.verificationAuditId,
+        outcome,
+      }, tx)
+      if (outcome === 'IMPROVED') {
+        await appendImprovementCycleEvent({
+          projectId: verificationAudit.projectId!,
+          improvementId: occurrence.improvementId,
+          occurrenceId: occurrence.id,
+          sourceAuditId: input.parentAuditId,
+          idempotencyKey: `improved:${attempt.id}:${input.verificationAuditId}`,
+          type: 'IMPROVED',
+          transport: 'SYSTEM',
+          attemptId: attempt.id,
+          verificationAuditId: input.verificationAuditId,
+          outcome,
+        }, tx)
+      }
+    })
     results.push({
       improvementId: occurrence.improvementId,
       attemptId: attempt.id,

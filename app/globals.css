@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @layer base {
+  :root,
   .font-variables {
     --font-sans: "Inter Variable";
     --font-display: "Inter Tight Variable";

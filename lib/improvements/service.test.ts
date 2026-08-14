@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   flagFindMany: vi.fn(),
   flagFindFirst: vi.fn(),
   improvementFindFirst: vi.fn(),
+  improvementFindMany: vi.fn(),
   improvementUpsert: vi.fn(),
   improvementUpdate: vi.fn(),
   improvementUpdateMany: vi.fn(),
@@ -13,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   attemptCreate: vi.fn(),
   attemptFindFirst: vi.fn(),
   attemptUpdate: vi.fn(),
+  cycleUpsert: vi.fn(),
+  cycleEventUpsert: vi.fn(),
   projectFindFirst: vi.fn(),
   transaction: vi.fn(),
   buildUnifiedPlanBundle: vi.fn(),
@@ -26,6 +29,7 @@ vi.mock('@/lib/db', () => ({
     flag: { findMany: mocks.flagFindMany, findFirst: mocks.flagFindFirst },
     improvement: {
       findFirst: mocks.improvementFindFirst,
+      findMany: mocks.improvementFindMany,
       upsert: mocks.improvementUpsert,
       update: mocks.improvementUpdate,
       updateMany: mocks.improvementUpdateMany,
@@ -38,6 +42,8 @@ vi.mock('@/lib/db', () => ({
       create: mocks.attemptCreate,
       update: mocks.attemptUpdate,
     },
+    improvementCycle: { upsert: mocks.cycleUpsert },
+    improvementCycleEvent: { upsert: mocks.cycleEventUpsert },
     project: { findFirst: mocks.projectFindFirst },
     $transaction: mocks.transaction,
   },
@@ -67,6 +73,7 @@ import {
   improvementFingerprint,
   materializeAttentionForAudit,
   recordFlagImprovementAttempt,
+  recordRecommendedImprovements,
   reconcileImprovementVerification,
 } from './service'
 
@@ -107,6 +114,9 @@ beforeEach(() => {
           update: mocks.improvementUpdate,
           updateMany: mocks.improvementUpdateMany,
         },
+        improvementOccurrence: { upsert: mocks.occurrenceUpsert },
+        improvementCycle: { upsert: mocks.cycleUpsert },
+        improvementCycleEvent: { upsert: mocks.cycleEventUpsert },
       })
     }
     return Promise.all(input as Promise<unknown>[])
@@ -115,7 +125,9 @@ beforeEach(() => {
   mocks.improvementUpdateMany.mockResolvedValue({ count: 1 })
   mocks.attemptUpdate.mockResolvedValue({})
   mocks.attemptFindFirst.mockResolvedValue(null)
-  mocks.occurrenceUpsert.mockResolvedValue({})
+  mocks.occurrenceUpsert.mockResolvedValue({ id: 'occurrence-1' })
+  mocks.cycleUpsert.mockResolvedValue({ id: 'cycle-1' })
+  mocks.cycleEventUpsert.mockResolvedValue({ id: 'event-1' })
   mocks.appendVerifiedLearning.mockImplementation((memory, learning) => ({
     ...memory,
     verifiedLearnings: [learning],
@@ -268,7 +280,7 @@ describe('createImprovementAttempt', () => {
 describe('recordFlagImprovementAttempt', () => {
   const ownedFlag = {
     ...flag,
-    improvementOccurrence: { improvementId: 'improvement-1' },
+    improvementOccurrence: { id: 'occurrence-1', improvementId: 'improvement-1' },
     audit: {
       id: 'review-1',
       projectId: 'product-1',
@@ -276,7 +288,7 @@ describe('recordFlagImprovementAttempt', () => {
     },
   }
 
-  it('records prompt acceptance without creating an Improvement Attempt', async () => {
+  it('records explicit acceptance without creating an Improvement Attempt', async () => {
     mocks.flagFindFirst.mockResolvedValue(ownedFlag)
 
     const result = await recordFlagImprovementAttempt({
@@ -297,6 +309,24 @@ describe('recordFlagImprovementAttempt', () => {
       where: { id: 'improvement-1', acceptedAt: null },
       data: { acceptedAt: expect.any(Date), acceptedByChannel: 'web' },
     })
+  })
+
+  it('records prompt handoff without accepting or creating an attempt', async () => {
+    mocks.flagFindFirst.mockResolvedValue(ownedFlag)
+
+    const result = await recordFlagImprovementAttempt({
+      flagId: 'flag-1',
+      userId: 'user-1',
+      builder: 'web',
+      action: 'HANDOFF_COPIED',
+    })
+
+    expect(result).toMatchObject({ action: 'HANDOFF_COPIED', attemptId: null })
+    expect(mocks.improvementUpdateMany).not.toHaveBeenCalled()
+    expect(mocks.attemptCreate).not.toHaveBeenCalled()
+    expect(mocks.cycleEventUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ type: 'HANDOFF_COPIED' }),
+    }))
   })
 
   it('requires and persists a structured rejection reason', async () => {
@@ -328,6 +358,38 @@ describe('recordFlagImprovementAttempt', () => {
         rejectedAt: expect.any(Date),
       },
     })
+    expect(mocks.cycleEventUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({
+        type: 'REJECTED',
+        rejectionReason: 'TOO_COSTLY',
+        rejectionNote: 'Needs a larger migration',
+      }),
+    }))
+  })
+})
+
+describe('recordRecommendedImprovements', () => {
+  it('records only the owned top-three recommendations idempotently', async () => {
+    mocks.projectFindFirst.mockResolvedValue({ id: 'product-1' })
+    mocks.improvementFindMany.mockResolvedValue([
+      {
+        id: 'improvement-1',
+        occurrences: [{ id: 'occurrence-1', auditId: 'review-1', flagId: 'flag-1' }],
+      },
+    ])
+
+    await expect(recordRecommendedImprovements({
+      projectId: 'product-1',
+      userId: 'user-1',
+      improvementIds: ['improvement-1'],
+    })).resolves.toBe(1)
+
+    expect(mocks.cycleEventUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({
+        type: 'RECOMMENDED',
+        idempotencyKey: 'recommended:flag-1:product-workspace',
+      }),
+    }))
   })
 })
 
@@ -355,11 +417,18 @@ describe('reconcileImprovementVerification', () => {
       journeyReviewIncluded: false,
       journeyReviewAt: null,
       pages: [{ url: 'https://example.com', status: 'COMPLETED' }],
+      verifierExecutions: [{
+        targetKey: 'check:cta-dead-link',
+        scopeKey: 'page:https://example.com',
+        status: 'COMPLETED',
+        evidenceReference: { run: 'verification-1' },
+      }],
     })
     mocks.flagFindMany.mockResolvedValue([])
     mocks.occurrenceFindMany.mockResolvedValue([
       {
         improvementId: 'improvement-1',
+        id: 'occurrence-1',
         flagId: 'flag-1',
         flag,
         improvement: {
@@ -413,10 +482,12 @@ describe('reconcileImprovementVerification', () => {
       journeyReviewIncluded: false,
       journeyReviewAt: null,
       pages: [{ url: 'https://example.com', status: 'PARTIAL' }],
+      verifierExecutions: [],
     })
     mocks.flagFindMany.mockResolvedValue([])
     mocks.occurrenceFindMany.mockResolvedValue([{
       improvementId: 'improvement-1',
+      id: 'occurrence-1',
       flagId: 'flag-1',
       flag,
       improvement: {

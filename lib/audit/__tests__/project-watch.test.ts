@@ -4,12 +4,15 @@ const mocks = vi.hoisted(() => ({
   projectFindMany: vi.fn(),
   projectUpdate: vi.fn(),
   projectUpdateMany: vi.fn(),
+  projectFindFirst: vi.fn(),
+  userFindUnique: vi.fn(),
   auditFindFirst: vi.fn(),
   auditFindUnique: vi.fn(),
   auditUpdateMany: vi.fn(),
   auditUpdate: vi.fn(),
   startMonitoringAudit: vi.fn(),
   canAccessProductWatch: vi.fn(),
+  canSharePublicly: vi.fn(),
   getFlagDiffSummary: vi.fn(),
   sendEmail: vi.fn(),
 }))
@@ -18,9 +21,11 @@ vi.mock('@/lib/db', () => ({
   prisma: {
     project: {
       findMany: mocks.projectFindMany,
+      findFirst: mocks.projectFindFirst,
       update: mocks.projectUpdate,
       updateMany: mocks.projectUpdateMany,
     },
+    user: { findUnique: mocks.userFindUnique },
     audit: {
       findFirst: mocks.auditFindFirst,
       findUnique: mocks.auditFindUnique,
@@ -32,12 +37,16 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/audit/monitoring', () => ({ startMonitoringAudit: mocks.startMonitoringAudit }))
 vi.mock('@/lib/auth/entitlements', () => ({
   canAccessProductWatch: mocks.canAccessProductWatch,
-  canSharePublicly: vi.fn(() => true),
+  canSharePublicly: mocks.canSharePublicly,
 }))
 vi.mock('@/lib/audit/diff-flags', () => ({ getFlagDiffSummary: mocks.getFlagDiffSummary }))
 vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: mocks.sendEmail } } }))
 
-import { notifyWatchRegression, processDueProjectWatches } from '@/lib/audit/project-watch'
+import {
+  notifyWatchRegression,
+  processDueProjectWatches,
+  setProjectWatch,
+} from '@/lib/audit/project-watch'
 
 const project = {
   id: 'project-1',
@@ -51,12 +60,77 @@ const project = {
 describe('Product Watch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv('REDIS_URL', 'redis://watch.test')
+    vi.stubEnv('RESEND_API_KEY', 're_watch_test')
+    vi.stubEnv('RESEND_FROM_EMAIL', 'watch@example.test')
     mocks.projectFindMany.mockResolvedValue([project])
     mocks.projectUpdate.mockResolvedValue(project)
     mocks.projectUpdateMany.mockResolvedValue({ count: 1 })
     mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
     mocks.sendEmail.mockResolvedValue({ id: 'email-1' })
     mocks.canAccessProductWatch.mockReturnValue(true)
+    mocks.canSharePublicly.mockReturnValue(true)
+    mocks.projectFindFirst.mockResolvedValue({ id: 'project-1' })
+    mocks.userFindUnique.mockResolvedValue(project.user)
+  })
+
+  it('enables weekly Watch for an ordinary claimed Product on Pro', async () => {
+    const result = await setProjectWatch({
+      projectId: 'project-1',
+      userId: 'user-1',
+      interval: 'weekly',
+    })
+
+    expect(result).toEqual({ ok: true })
+    expect(mocks.projectUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'project-1' },
+      data: expect.objectContaining({ watchInterval: 'WEEKLY' }),
+    }))
+  })
+
+  it('requires Studio for daily Watch', async () => {
+    mocks.canSharePublicly.mockReturnValue(false)
+
+    const result = await setProjectWatch({
+      projectId: 'project-1',
+      userId: 'user-1',
+      interval: 'daily',
+    })
+
+    expect(result).toEqual({ ok: false, error: 'Daily watch requires Studio' })
+    expect(mocks.projectUpdate).not.toHaveBeenCalled()
+  })
+
+  it('denies Watch after entitlement loss', async () => {
+    mocks.canAccessProductWatch.mockReturnValue(false)
+
+    const result = await setProjectWatch({
+      projectId: 'project-1',
+      userId: 'user-1',
+      interval: 'weekly',
+    })
+
+    expect(result).toEqual({ ok: false, error: 'Product watch requires Pro or Studio' })
+    expect(mocks.projectUpdate).not.toHaveBeenCalled()
+  })
+
+  it('queries all due entitled Products, including unmanaged claimed Products', async () => {
+    mocks.auditFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'parent-1' })
+    mocks.startMonitoringAudit.mockResolvedValue({ ok: true, auditId: 'child-1' })
+
+    const result = await processDueProjectWatches()
+
+    expect(result).toEqual({ processed: 1, enqueued: 1, errors: 0 })
+    expect(mocks.projectFindMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.not.objectContaining({ isManaged: expect.anything() }),
+    }))
+    expect(mocks.startMonitoringAudit).toHaveBeenCalledWith(
+      'parent-1',
+      project.user,
+      { trigger: 'WATCH' }
+    )
   })
 
   it('does not enqueue an overlapping scheduled re-check', async () => {

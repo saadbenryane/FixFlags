@@ -9,14 +9,25 @@ import { MetricCard } from '@/components/admin/MetricCard'
 import { startOf, pct } from '@/lib/admin/date-ranges'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { subscriptionMetrics } from '@/lib/analytics/subscription-metrics'
-import { calculateImprovementValueMetrics } from '@/lib/analytics/improvement-value-metrics'
+import {
+  calculateImprovementValueMetrics,
+  type DurationDistribution,
+} from '@/lib/analytics/improvement-value-metrics'
 
 function planPriceUsd(plan: keyof typeof PLAN_DEFINITIONS): number {
   return Number(PLAN_DEFINITIONS[plan].price.replace(/[^0-9.]/g, '')) || 0
 }
 
-function formatHours(value: number | null): string {
-  return value === null ? 'N/A' : `${value.toFixed(1)}h`
+function formatDuration(value: DurationDistribution): string {
+  return value === null ? 'N/A' : `${value.medianHours.toFixed(1)}h median`
+}
+
+function durationDetail(value: DurationDistribution) {
+  return value === null ? undefined : (
+    <span className="text-xs text-muted-foreground">
+      n={value.n} · p75 {value.p75Hours.toFixed(1)}h · p90 {value.p90Hours.toFixed(1)}h
+    </span>
+  )
 }
 
 const REJECTION_LABELS = {
@@ -51,7 +62,7 @@ export default async function AdminAnalyticsPage() {
     anonUnlinkedLeads,
     improvementValueRows,
     watchedProducts,
-    productsWithSecondCycle,
+    activeProductCount,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
@@ -69,33 +80,43 @@ export default async function AdminAnalyticsPage() {
       where: { userId: null, status: 'COMPLETED', createdAt: { gte: monthAgo } },
     }),
     prisma.lead.count({ where: { linkedUserId: null } }),
-    prisma.improvement.findMany({
+    prisma.improvementCycle.findMany({
       where: { createdAt: { gte: monthAgo } },
       select: {
         id: true,
         projectId: true,
         createdAt: true,
-        acceptedAt: true,
-        rejectionReason: true,
         project: { select: { createdAt: true } },
-        occurrences: {
+        occurrence: { select: { flag: { select: { createdAt: true } } } },
+        sourceAudit: {
           select: {
-            audit: { select: { id: true, createdAt: true } },
-            flag: { select: { createdAt: true } },
-          },
-        },
-        attempts: {
-          select: {
+            id: true,
             createdAt: true,
-            outcome: true,
-            sourceAudit: {
-              select: { id: true, runCost: { select: { estimatedCostUsd: true } } },
-            },
-            verificationAudit: {
+            runCost: { select: { estimatedCostUsd: true } },
+            monitoringAudits: {
               select: {
                 id: true,
-                completedAt: true,
                 runCost: { select: { estimatedCostUsd: true } },
+              },
+            },
+          },
+        },
+        events: {
+          orderBy: { occurredAt: 'asc' },
+          select: {
+            type: true,
+            occurredAt: true,
+            outcome: true,
+            rejectionReason: true,
+            attempt: {
+              select: {
+                verificationAudit: {
+                  select: {
+                    id: true,
+                    completedAt: true,
+                    runCost: { select: { estimatedCostUsd: true } },
+                  },
+                },
               },
             },
           },
@@ -105,12 +126,7 @@ export default async function AdminAnalyticsPage() {
     prisma.project.count({ where: { watchInterval: { not: null } } }),
     prisma.project.count({
       where: {
-        improvements: {
-          some: {
-            attempts: { some: { outcome: 'IMPROVED' } },
-          },
-        },
-        audits: { some: { parentId: { not: null }, status: 'COMPLETED' } },
+        audits: { some: { status: 'COMPLETED', completedAt: { gte: monthAgo } } },
       },
     }),
   ])
@@ -177,7 +193,9 @@ export default async function AdminAnalyticsPage() {
 
   const loggedInAuditsMonth = Math.max(0, auditsMonth - anonAuditsMonth)
   const anonCompleteRate = pct(anonCompletedMonth, anonAuditsMonth)
-  const improvementValue = calculateImprovementValueMetrics(improvementValueRows)
+  const improvementValue = calculateImprovementValueMetrics(improvementValueRows, {
+    activeProductCount,
+  })
 
   const periodStats = [
     {
@@ -213,16 +231,18 @@ export default async function AdminAnalyticsPage() {
       </PageHeader>
 
       <section className="space-y-4">
-        <SectionTitle>Customer value funnel (recommendations created in the last 30 days)</SectionTitle>
+        <SectionTitle>Customer value cycle cohort (cycles created in the last 30 days)</SectionTitle>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
-            label="Recommended"
-            value={improvementValue.recommended.toLocaleString()}
+            label="Generated"
+            value={improvementValue.generated.toLocaleString()}
+            detail={<span className="text-xs text-muted-foreground">{improvementValue.recommended} delivered</span>}
             variant="subtle"
           />
           <MetricCard
             label="Accepted"
             value={improvementValue.accepted.toLocaleString()}
+            detail={<span className="text-xs text-muted-foreground">{improvementValue.acceptedExplicit} explicit · {improvementValue.acceptedInferred} inferred</span>}
             variant="subtle"
           />
           <MetricCard
@@ -231,55 +251,84 @@ export default async function AdminAnalyticsPage() {
             variant="subtle"
           />
           <MetricCard
-            label="Verified"
-            value={improvementValue.verified.toLocaleString()}
+            label="Outcome issued"
+            value={improvementValue.outcomeIssued.toLocaleString()}
+            detail={<span className="text-xs text-muted-foreground">{improvementValue.improved} improved</span>}
             variant="subtle"
           />
         </div>
+        <p className="text-xs text-muted-foreground">
+          Cohort n={improvementValue.cohortSize}; {improvementValue.matureCycleCount} cycles are at least seven days old.
+          Active Product means a Product with a completed Review in the last 30 days (n={improvementValue.activeProductCount}).
+        </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            label="Recommended"
+            value={improvementValue.recommended.toLocaleString()}
+            variant="subtle"
+          />
           <MetricCard
             label="URL to first evidence"
-            value={formatHours(improvementValue.urlToFirstEvidenceHours)}
+            value={formatDuration(improvementValue.urlToFirstEvidence)}
+            detail={durationDetail(improvementValue.urlToFirstEvidence)}
             variant="subtle"
           />
           <MetricCard
-            label="URL to valuable recommendation"
-            value={formatHours(improvementValue.urlToValuableRecommendationHours)}
+            label="Recommendation to acceptance"
+            value={formatDuration(improvementValue.recommendationToAcceptance)}
+            detail={durationDetail(improvementValue.recommendationToAcceptance)}
             variant="subtle"
           />
           <MetricCard
-            label="Recommendation to attempt"
-            value={formatHours(improvementValue.recommendationToAttemptHours)}
-            variant="subtle"
-          />
-          <MetricCard
-            label="Product to verified improvement"
-            value={formatHours(improvementValue.productToVerifiedImprovementHours)}
+            label="Acceptance to attempt"
+            value={formatDuration(improvementValue.acceptanceToAttempt)}
+            detail={durationDetail(improvementValue.acceptanceToAttempt)}
             variant="subtle"
           />
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
-            label="Verified meaningful improvements / active Product"
-            value={improvementValue.verifiedMeaningfulImprovementsPerActiveProduct.toFixed(2)}
+            label="Attempt to outcome"
+            value={formatDuration(improvementValue.attemptToOutcome)}
+            detail={durationDetail(improvementValue.attemptToOutcome)}
             variant="subtle"
           />
           <MetricCard
-            label="Cost / verified improvement"
-            value={improvementValue.costPerVerifiedImprovementUsd === null
-              ? 'N/A'
-              : `$${improvementValue.costPerVerifiedImprovementUsd.toFixed(2)}`}
+            label="Product to improved"
+            value={formatDuration(improvementValue.productToImproved)}
+            detail={durationDetail(improvementValue.productToImproved)}
             variant="subtle"
           />
+          <MetricCard
+            label="Verified worthwhile improvements / active Product"
+            value={improvementValue.verifiedWorthwhileImprovementsPerActiveProduct.toFixed(2)}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Fully loaded Review cost / improved"
+            value={improvementValue.fullyLoadedReviewCostPerImprovedUsd === null
+              ? 'N/A'
+              : `$${improvementValue.fullyLoadedReviewCostPerImprovedUsd.toFixed(2)}`}
+            variant="subtle"
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             label="Products with a second cycle"
-            value={productsWithSecondCycle.toLocaleString()}
+            value={improvementValue.productsWithSecondCycle.toLocaleString()}
             detail={<span className="text-xs text-muted-foreground">{watchedProducts} under Watch</span>}
             variant="subtle"
           />
           <MetricCard
+            label="Verification Review cost / outcome"
+            value={improvementValue.outcomeReviewCostPerOutcomeUsd === null
+              ? 'N/A'
+              : `$${improvementValue.outcomeReviewCostPerOutcomeUsd.toFixed(2)}`}
+            variant="subtle"
+          />
+          <MetricCard
             label="Improved outcomes"
-            value={improvementValue.outcomes.IMPROVED.toLocaleString()}
+            value={improvementValue.improved.toLocaleString()}
             detail={<span className="text-xs text-muted-foreground">Outcome, not self-report</span>}
             variant="subtle"
           />
@@ -311,8 +360,8 @@ export default async function AdminAnalyticsPage() {
           </Card>
         </div>
         <p className="max-w-4xl text-xs text-muted-foreground">
-          Recommended → Accepted → Attempted → Verified → Outcome is derived from durable Product records.
-          Feedback supports judgment analysis but does not count as proof of value.
+          Generated, delivered, accepted, attempted, outcome-issued, and improved are separate append-only events.
+          Prompt copy and Product Signals do not count as acceptance or verification.
         </p>
       </section>
 

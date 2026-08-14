@@ -69,7 +69,7 @@ consumers; restart the worker deliberately when worker code changes.
 | `npm run verify` | Full manifest: database checks, typecheck, source lint, guards, audits, tests, packaging, and builds |
 | `npm run verify:release` | Clean install, full manifest, browser journeys, Docker build, and deployed readiness probes |
 
-Release verification requires designated non-customer resources: `RELEASE_FRESH_DATABASE_URL`, `RELEASE_ALLOW_DATABASE_RESET=true`, `RELEASE_CONTAINER_ENV_FILE`, and `RELEASE_SMOKE_URL`. The database name must include `release` or `test`; the gate refuses to reset the normal `DATABASE_URL`.
+Release verification requires designated non-customer resources: `RELEASE_FRESH_DATABASE_URL`, `RELEASE_ALLOW_DATABASE_RESET=true`, `RELEASE_CONTAINER_ENV_FILE`, `RELEASE_SMOKE_URL`, and `E2E_BASE_URL`. `E2E_BASE_URL` must equal `RELEASE_SMOKE_URL`, so credentialed journeys cannot silently test a local or different deployment. The database name must include `release` or `test`; the gate refuses to reset the normal `DATABASE_URL`. The container environment file must be a regular file with mode `0600`.
 
 ### Demo / testing
 | Command | Purpose |

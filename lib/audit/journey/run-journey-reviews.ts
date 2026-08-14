@@ -10,6 +10,7 @@ import { parseActionTimeline, type ActionTimelineEvent } from '@/lib/audit/actio
 import { runNetworkEngagementChecks } from '@/lib/audit/checks/network-engagement'
 import { filterToolingPathFlags } from '@/lib/audit/tooling-path-filter'
 import { captureAccessibilityTree } from '@/lib/audit/browser/journey-safety'
+import { recordTargetedJourneyVerifierExecutions } from '@/lib/improvements/verifier-provenance'
 import { discoverJourneyLinks } from './discover'
 import { planJourney, isPlannerProviderConfigured } from './planner'
 import { evaluateJourney } from './evaluator'
@@ -391,6 +392,13 @@ export async function runJourneyReviewsForAudit(
       }
       const findings = await persistJourneyResult(auditId, result)
       findingCount += findings.length
+      if (result.status === 'COMPLETED') {
+        await recordTargetedJourneyVerifierExecutions({
+          auditId,
+          journeyType,
+          visitedUrls: result.steps.map((step) => step.url),
+        })
+      }
 
       if (journeyType === 'multi-step-funnel' && result.steps.length >= 3) {
         const evalGuard = aiGuard.canCall(4_000)

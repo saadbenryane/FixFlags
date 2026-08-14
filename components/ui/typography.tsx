@@ -105,9 +105,14 @@ export function LabelCaps({ className, ...props }: React.HTMLAttributes<HTMLSpan
 }
 
 /** In-page section heading (dashboard lists, admin groups) */
-export function SectionTitle({ className, children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+export function SectionTitle({
+  as: Tag = 'h2',
+  className,
+  children,
+  ...props
+}: React.HTMLAttributes<HTMLHeadingElement> & { as?: 'h2' | 'h3' }) {
   return (
-    <h2
+    <Tag
       className={cn(
         'text-sm font-semibold leading-heading tracking-heading text-foreground',
         className
@@ -115,6 +120,6 @@ export function SectionTitle({ className, children, ...props }: React.HTMLAttrib
       {...props}
     >
       {children}
-    </h2>
+    </Tag>
   )
 }

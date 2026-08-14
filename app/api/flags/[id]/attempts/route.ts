@@ -9,7 +9,7 @@ import { IMPROVEMENT_REJECTION_REASONS } from '@/lib/improvements/rejection-reas
 
 const schema = z.object({
   builder: z.string().trim().min(1).max(80),
-  action: z.enum(['ACCEPT', 'READY_TO_VERIFY', 'REJECT']),
+  action: z.enum(['ACCEPT', 'HANDOFF_COPIED', 'READY_TO_VERIFY', 'REJECT']),
   changeSummary: z.string().trim().min(1).max(2_000).optional(),
   deploymentReference: z.string().trim().max(500).optional(),
   rejectionReason: z.enum(IMPROVEMENT_REJECTION_REASONS).optional(),

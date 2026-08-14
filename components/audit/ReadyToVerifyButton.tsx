@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { toast } from 'sonner'
 import { CheckCircle2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
@@ -29,13 +30,20 @@ export function ReadyToVerifyButton({
   const [summary, setSummary] = useState('')
   const [deployment, setDeployment] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const summaryId = useId()
+  const deploymentId = useId()
+  const summaryErrorId = useId()
 
   async function submit() {
     const changeSummary = summary.trim()
     if (!changeSummary) {
-      toast.error('Describe the implemented change')
+      const message = 'Describe the implemented change'
+      setSummaryError(message)
+      toast.error(message)
       return
     }
+    setSummaryError(null)
     setSubmitting(true)
     try {
       const response = await fetch(`/api/flags/${flagId}/attempts`, {
@@ -78,36 +86,46 @@ export function ReadyToVerifyButton({
             This records your change, not a successful result. A fresh update Review decides whether it worked.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid gap-2 text-sm font-medium">
-            What changed?
+        <form noValidate onSubmit={(event) => { event.preventDefault(); void submit() }} className="space-y-4">
+          <div className="grid gap-2">
+            <Label htmlFor={summaryId}>What changed?</Label>
             <Textarea
+              id={summaryId}
               value={summary}
-              onChange={(event) => setSummary(event.target.value)}
+              onChange={(event) => {
+                setSummary(event.target.value)
+                if (event.target.value.trim()) setSummaryError(null)
+              }}
               maxLength={2000}
               required
+              aria-invalid={Boolean(summaryError)}
+              aria-describedby={summaryError ? summaryErrorId : undefined}
               placeholder="Restored the signup action and preserved existing account access."
             />
+            {summaryError ? <p id={summaryErrorId} role="alert" className="text-xs text-destructive">{summaryError}</p> : null}
           </div>
-          <div className="grid gap-2 text-sm font-medium">
-            Deployment reference <span className="font-normal text-muted-foreground">Optional</span>
+          <div className="grid gap-2">
+            <Label htmlFor={deploymentId}>
+              Deployment reference <span className="font-normal text-muted-foreground">Optional</span>
+            </Label>
             <Input
+              id={deploymentId}
               value={deployment}
               onChange={(event) => setDeployment(event.target.value)}
               maxLength={500}
               placeholder="Commit, pull request, or deployment URL"
             />
           </div>
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={submitting}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={submit} disabled={submitting || !summary.trim()}>
-            {submitting && <Loader2 className="animate-spin" aria-hidden />}
-            Mark ready
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting && <Loader2 className="animate-spin" aria-hidden />}
+              Mark ready
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

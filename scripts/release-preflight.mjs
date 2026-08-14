@@ -1,9 +1,35 @@
 #!/usr/bin/env node
 
-const required = [
+import { existsSync, lstatSync, statSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
+export const RELEASE_STAGES = [
+  'foundation',
+  'fixture-binding',
+  'credentialed-core',
+  'billing-open',
+  'billing-closed',
+  'external',
+  'deployed',
+  'registry-cli',
+  'production-dogfood',
+]
+
+export const FOUNDATION_INPUTS = [
   'RELEASE_FRESH_DATABASE_URL',
   'RELEASE_CONTAINER_ENV_FILE',
+]
+
+export const FIXTURE_BINDING_INPUTS = [
+  'RELEASE_E2E_TARGET',
+  'E2E_BASE_URL',
   'RELEASE_SMOKE_URL',
+  'RELEASE_FRESH_DATABASE_URL',
+  'RELEASE_FIXTURE_MANIFEST',
+]
+
+export const CREDENTIALED_CORE_INPUTS = [
+  'RELEASE_FIXTURE_MANIFEST',
   'E2E_AUDIT_URL',
   'E2E_SIGNUP_PASSWORD',
   'E2E_2FA_EMAIL',
@@ -20,6 +46,35 @@ const required = [
   'E2E_SHARE_OWNER_PASSWORD',
   'E2E_SHARE_REPORT_ID',
   'E2E_SHARE_PASSWORD',
+  'E2E_API_KEY',
+  'E2E_FREE_REPORT_ID',
+  'E2E_PRO_EMAIL',
+  'E2E_PRO_PASSWORD',
+  'E2E_PRO_REPORT_ID',
+  'E2E_STUDIO_EMAIL',
+  'E2E_STUDIO_PASSWORD',
+  'E2E_DEPLOYMENT_TRIGGER_URL',
+  'E2E_DEPLOYMENT_TRIGGER_TOKEN',
+]
+
+export const BILLING_OPEN_INPUTS = [
+  'RELEASE_FIXTURE_MANIFEST',
+  'E2E_ADMIN_EMAIL',
+  'E2E_ADMIN_PASSWORD',
+  'E2E_GATE_MEMBER_RELEASED_ENTRY_ID',
+  'E2E_GATE_MEMBER_BLOCKED_ENTRY_ID',
+  'E2E_STRIPE_SECRET_KEY',
+]
+
+export const BILLING_CLOSED_INPUTS = [
+  ...BILLING_OPEN_INPUTS,
+  'E2E_REVOKED_EMAIL',
+  'E2E_REVOKED_PASSWORD',
+  'E2E_REVOKED_REPORT_ID',
+]
+
+export const EXTERNAL_INPUTS = [
+  'RELEASE_FIXTURE_MANIFEST',
   'E2E_WATCH_EMAIL',
   'E2E_WATCH_PASSWORD',
   'E2E_WATCH_PROJECT_ID',
@@ -27,18 +82,182 @@ const required = [
   'E2E_GITHUB_EMAIL',
   'E2E_GITHUB_PASSWORD',
   'E2E_GITHUB_REPOSITORY',
+]
+
+export const DEPLOYED_INPUTS = ['RELEASE_SMOKE_URL']
+
+export const REGISTRY_CLI_INPUTS = [
+  'RELEASE_E2E_TARGET',
+  'E2E_BASE_URL',
+  'RELEASE_SMOKE_URL',
+  'E2E_AUDIT_URL',
   'E2E_API_KEY',
 ]
 
-const missing = required.filter((name) => !process.env[name]?.trim())
-if (process.env.RELEASE_ALLOW_DATABASE_RESET !== 'true') {
-  missing.push('RELEASE_ALLOW_DATABASE_RESET=true')
+export const PRODUCTION_DOGFOOD_INPUTS = [
+  'RELEASE_E2E_TARGET',
+  'E2E_BASE_URL',
+  'RELEASE_SMOKE_URL',
+  'E2E_API_KEY',
+  'PRODUCTION_DOGFOOD_IMPROVED_REPORT_ID',
+  'PRODUCTION_DOGFOOD_IMPROVED_IMPROVEMENT_ID',
+  'PRODUCTION_DOGFOOD_INCONCLUSIVE_REPORT_ID',
+  'PRODUCTION_DOGFOOD_INCONCLUSIVE_IMPROVEMENT_ID',
+  'PRODUCTION_DOGFOOD_PRODUCT_REPORT_ID',
+]
+
+const STAGE_INPUTS = {
+  foundation: FOUNDATION_INPUTS,
+  'fixture-binding': FIXTURE_BINDING_INPUTS,
+  'credentialed-core': CREDENTIALED_CORE_INPUTS,
+  'billing-open': BILLING_OPEN_INPUTS,
+  'billing-closed': BILLING_CLOSED_INPUTS,
+  external: EXTERNAL_INPUTS,
+  deployed: DEPLOYED_INPUTS,
+  'registry-cli': REGISTRY_CLI_INPUTS,
+  'production-dogfood': PRODUCTION_DOGFOOD_INPUTS,
 }
 
-if (missing.length > 0) {
-  console.error('Release verification is blocked. Missing sandbox inputs:')
-  for (const name of missing) console.error(`- ${name}`)
-  process.exit(1)
+export const REQUIRED_RELEASE_INPUTS = [
+  ...new Set(Object.values(STAGE_INPUTS).flat()),
+]
+
+function normalizedOrigin(name, value, issues) {
+  try {
+    const url = new URL(value)
+    if (url.protocol !== 'https:') issues.push(`${name} must use https`)
+    if (url.username || url.password || url.search || url.hash || url.pathname !== '/') {
+      issues.push(`${name} must be a clean origin without credentials, path, query, or fragment`)
+    }
+    return url.origin
+  } catch {
+    issues.push(`${name} must be a valid URL`)
+    return null
+  }
 }
 
-console.log('Release preflight passed: disposable database consent and sandbox fixtures are present.')
+export function canonicalDatabaseIdentity(value) {
+  const url = new URL(value)
+  if (!['postgres:', 'postgresql:'].includes(url.protocol)) {
+    throw new Error('database URL must use postgresql')
+  }
+  const database = decodeURIComponent(url.pathname.replace(/^\//, ''))
+  if (!database) throw new Error('database URL must name a database')
+  const port = url.port || '5432'
+  return `${url.hostname.toLowerCase()}:${port}/${database.toLowerCase()}`
+}
+
+function validateFoundation(env, issues, checkFile) {
+  if (env.RELEASE_ALLOW_DATABASE_RESET !== 'true') {
+    issues.push('Missing RELEASE_ALLOW_DATABASE_RESET=true')
+  }
+  if (env.RELEASE_FRESH_DATABASE_URL) {
+    try {
+      const identity = canonicalDatabaseIdentity(env.RELEASE_FRESH_DATABASE_URL)
+      const databaseName = identity.slice(identity.lastIndexOf('/') + 1)
+      if (!/(?:release|test)/.test(databaseName)) {
+        issues.push('RELEASE_FRESH_DATABASE_URL database name must include release or test')
+      }
+      if (
+        env.DATABASE_URL &&
+        identity === canonicalDatabaseIdentity(env.DATABASE_URL)
+      ) {
+        issues.push('RELEASE_FRESH_DATABASE_URL must not identify the DATABASE_URL database')
+      }
+    } catch (error) {
+      issues.push(
+        `RELEASE_FRESH_DATABASE_URL ${error instanceof Error ? error.message : 'must be valid'}`
+      )
+    }
+  }
+  if (!env.RELEASE_CONTAINER_ENV_FILE || !checkFile) return
+  if (!existsSync(env.RELEASE_CONTAINER_ENV_FILE)) {
+    issues.push('RELEASE_CONTAINER_ENV_FILE does not exist')
+    return
+  }
+  if (lstatSync(env.RELEASE_CONTAINER_ENV_FILE).isSymbolicLink()) {
+    issues.push('RELEASE_CONTAINER_ENV_FILE must not be a symbolic link')
+    return
+  }
+  const stat = statSync(env.RELEASE_CONTAINER_ENV_FILE)
+  if (!stat.isFile()) issues.push('RELEASE_CONTAINER_ENV_FILE must be a regular file')
+  if ((stat.mode & 0o077) !== 0) {
+    issues.push('RELEASE_CONTAINER_ENV_FILE must not be accessible by group/others (chmod 600)')
+  }
+}
+
+function validateTargetBinding(env, issues) {
+  if (env.RELEASE_E2E_TARGET !== 'remote') {
+    issues.push('RELEASE_E2E_TARGET must equal remote')
+  }
+  const smoke = env.RELEASE_SMOKE_URL
+    ? normalizedOrigin('RELEASE_SMOKE_URL', env.RELEASE_SMOKE_URL, issues)
+    : null
+  const e2e = env.E2E_BASE_URL
+    ? normalizedOrigin('E2E_BASE_URL', env.E2E_BASE_URL, issues)
+    : null
+  if (smoke && e2e && smoke !== e2e) {
+    issues.push('E2E_BASE_URL must equal RELEASE_SMOKE_URL')
+  }
+}
+
+export function validateReleasePreflight(
+  env,
+  options = {}
+) {
+  const stage = options.stage ?? 'foundation'
+  if (!RELEASE_STAGES.includes(stage)) {
+    return [`Unknown release stage: ${stage}`]
+  }
+  const typedStage = stage
+  const issues = STAGE_INPUTS[typedStage]
+    .filter((name) => !env[name]?.trim())
+    .map((name) => `Missing ${name}`)
+
+  if (typedStage === 'foundation') {
+    validateFoundation(env, issues, options.checkFile !== false)
+  }
+  if (typedStage === 'fixture-binding') {
+    validateTargetBinding(env, issues)
+  }
+  if (['registry-cli', 'production-dogfood'].includes(typedStage)) {
+    validateTargetBinding(env, issues)
+  }
+  if (typedStage === 'billing-open' && env.E2E_PAID_OPEN_EXPECTED !== 'true') {
+    issues.push('E2E_PAID_OPEN_EXPECTED must equal true for billing-open')
+  }
+  if (typedStage === 'billing-closed' && env.E2E_PAID_OPEN_EXPECTED !== 'false') {
+    issues.push('E2E_PAID_OPEN_EXPECTED must equal false for billing-closed')
+  }
+  if (['billing-open', 'billing-closed'].includes(typedStage) && env.E2E_STRIPE_SECRET_KEY) {
+    if (!env.E2E_STRIPE_SECRET_KEY.startsWith('sk_test_')) {
+      issues.push('E2E_STRIPE_SECRET_KEY must be a Stripe test-mode key')
+    }
+  }
+  if (typedStage === 'external' && env.E2E_WATCH_MAILBOX_ASSERT_URL) {
+    normalizedOrigin(
+      'E2E_WATCH_MAILBOX_ASSERT_URL',
+      env.E2E_WATCH_MAILBOX_ASSERT_URL,
+      issues
+    )
+  }
+  if (['deployed', 'production-dogfood'].includes(typedStage) && env.RELEASE_SMOKE_URL) {
+    normalizedOrigin('RELEASE_SMOKE_URL', env.RELEASE_SMOKE_URL, issues)
+  }
+  return issues
+}
+
+function main() {
+  const stageIndex = process.argv.indexOf('--stage')
+  const stage = stageIndex >= 0 ? process.argv[stageIndex + 1] : 'foundation'
+  const issues = validateReleasePreflight(process.env, { stage })
+  if (issues.length > 0) {
+    console.error('Release verification is blocked. Resolve these release-contract failures:')
+    for (const issue of issues) console.error(`- ${issue}`)
+    process.exitCode = 1
+    return
+  }
+  console.log(`Release ${stage} preflight passed.`)
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) main()

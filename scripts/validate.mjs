@@ -246,6 +246,7 @@ function changedLintCommand(files) {
 
 export function fullCommands() {
   return [
+    command('font:verify', 'npm', ['run', 'font:verify', '--', '--optional']),
     command('db:validate', 'npm', ['run', 'db:validate']),
     command('db:check', 'npm', ['run', 'db:check']),
     command('db:drift', 'npm', ['run', 'db:drift']),
@@ -275,15 +276,20 @@ export function fullCommands() {
 }
 
 export function releaseCommands() {
+  const stages = [
+    'foundation',
+    'fixture-binding',
+    'credentialed-core',
+    'billing-open',
+    'billing-closed',
+    'external',
+    'deployed',
+    'registry-cli',
+    'production-dogfood',
+  ]
   return [
-    command('release:preflight', 'node', ['scripts/release-preflight.mjs']),
-    command('clean-install', 'npm', ['ci']),
-    command('fresh-database', 'node', ['scripts/release-database.mjs']),
-    ...fullCommands(),
-    command('test:e2e', 'npm', ['run', 'test:e2e:release']),
-    command('container:build', 'docker', ['build', '-t', 'fixflags:release-check', '.']),
-    command('container:ready', 'node', ['scripts/container-smoke.mjs']),
-    command('deployed-smoke', 'npm', ['run', 'smoke:release']),
+    ...stages.map((stage) => command(`release:${stage}`, 'node', ['scripts/release-receipts.mjs', 'stage', stage])),
+    command('release:final', 'node', ['scripts/release-receipts.mjs', 'final']),
   ]
 }
 
@@ -390,6 +396,9 @@ function printPlan(plan) {
 }
 
 function runCommands(commands) {
+  if (mode === 'release') {
+    process.env.RELEASE_RUN_ID ??= `release-${Date.now()}`
+  }
   const initialRepositoryState = runGit([
     'status',
     '--porcelain=v1',

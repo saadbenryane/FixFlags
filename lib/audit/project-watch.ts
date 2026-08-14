@@ -50,12 +50,9 @@ export async function setProjectWatch(input: {
 }): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
   const project = await prisma.project.findFirst({
     where: { id: input.projectId, userId: input.userId },
-    select: { id: true, isManaged: true },
+    select: { id: true },
   })
-  if (!project) return { ok: false, error: 'Project not found' }
-  if (!project.isManaged && input.interval) {
-    return { ok: false, error: 'Promote this Product to a Studio Project first' }
-  }
+  if (!project) return { ok: false, error: 'Product not found' }
 
   const user = await prisma.user.findUnique({
     where: { id: input.userId },
@@ -121,7 +118,6 @@ export async function processDueProjectWatches(limit = 20): Promise<{
   const now = new Date()
   const due = await prisma.project.findMany({
     where: {
-      isManaged: true,
       watchInterval: { not: null },
       watchNextRunAt: { lte: now },
       OR: [{ watchLeaseUntil: null }, { watchLeaseUntil: { lt: now } }],

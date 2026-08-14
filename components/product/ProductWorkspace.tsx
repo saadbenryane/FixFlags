@@ -3,7 +3,6 @@ import type { Route } from 'next'
 import {
   ArrowLeft,
   ArrowRight,
-  CircleAlert,
   Clock3,
   ExternalLink,
   Eye,
@@ -11,16 +10,19 @@ import {
   History,
   Radio,
   ShieldCheck,
+  TriangleAlert,
 } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
+import { ProductWatchControls } from '@/components/audit/ProductWatchControls'
 import { ProductSignalsSetup } from '@/components/dashboard/ProductSignalsSetup'
+import { ImprovementReceipt } from '@/components/product/ImprovementReceipt'
+import { SeveritySignal } from '@/components/report/SeveritySignal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Surface } from '@/components/ui/surface'
 import { SectionTitle } from '@/components/ui/typography'
 import type {
-  ProductAttemptDTO,
   ProductReviewSummaryDTO,
   ProductWorkspaceDTO,
 } from '@/lib/products/workspace'
@@ -39,11 +41,6 @@ function reviewLabel(review: ProductReviewSummaryDTO): string {
   if (review.status !== 'COMPLETED') return 'In progress'
   if (review.reportCompleteness === 'PARTIAL') return 'Partial'
   return review.isUpdateReview ? 'Update review' : 'Product review'
-}
-
-function attemptLabel(attempt: ProductAttemptDTO): string {
-  if (!attempt.outcome) return 'Awaiting update review'
-  return attempt.outcome.toLowerCase().replaceAll('_', ' ')
 }
 
 export function ProductWorkspace({ workspace }: { workspace: ProductWorkspaceDTO }) {
@@ -164,7 +161,7 @@ export function ProductWorkspace({ workspace }: { workspace: ProductWorkspaceDTO
               <Surface key={item.id} variant="nested" className="flex h-full flex-col gap-3">
                 <div className="flex items-center justify-between gap-2">
                   <Badge variant="outline">Priority {index + 1}</Badge>
-                  {item.severity ? <span className="text-xs text-muted-foreground">{item.severity}</span> : null}
+                  {item.severity ? <SeveritySignal severity={item.severity} /> : null}
                 </div>
                 <div>
                   <h3 className="font-semibold">{item.title}</h3>
@@ -179,15 +176,16 @@ export function ProductWorkspace({ workspace }: { workspace: ProductWorkspaceDTO
                   <p><span className="font-medium">Improve:</span> {item.recommendedChange}</p>
                   <p><span className="font-medium">Verify:</span> {item.successCondition}</p>
                 </div>
-                {item.latestAttempt ? (
-                  <Badge variant="secondary" className="w-fit">
-                    {attemptLabel(item.latestAttempt)}
-                  </Badge>
-                ) : null}
-                {latestCompletedReview ? (
+                {item.sourceReviewId ? (
                   <Button asChild variant="outline" className="w-full">
-                    <Link href={`/report/${latestCompletedReview.id}#report-top-fixes` as Route}>
-                      Open Improvement
+                    <Link
+                      href={(
+                        item.sourceFlagId
+                          ? `/report/${item.sourceReviewId}?flag=${encodeURIComponent(item.sourceFlagId)}#report-flags`
+                          : `/report/${item.sourceReviewId}`
+                      ) as Route}
+                    >
+                      Open source evidence
                       <ArrowRight className="h-4 w-4" aria-hidden />
                     </Link>
                   </Button>
@@ -208,40 +206,23 @@ export function ProductWorkspace({ workspace }: { workspace: ProductWorkspaceDTO
         <div className="grid gap-4 lg:grid-cols-2">
           <Surface variant="elevated" className="space-y-4">
           <div>
-            <SectionTitle>Improvement history</SectionTitle>
+            <SectionTitle as="h3">Improvement history</SectionTitle>
             <p className="mt-1 text-sm text-muted-foreground">Attempts and independent verification receipts.</p>
           </div>
           {workspace.improvementHistory.some((improvement) => improvement.attempts.length > 0) ? (
             <div className="space-y-3">
               {workspace.improvementHistory
-                .filter((improvement) => improvement.attempts.length > 0)
+                .flatMap((improvement) => improvement.attempts.map((attempt) => ({ improvement, attempt })))
+                .sort((left, right) => right.attempt.createdAt.localeCompare(left.attempt.createdAt))
                 .slice(0, 8)
-                .map((improvement) => {
-                  const attempt = improvement.attempts[0]
-                  return (
-                    <div key={improvement.id} className="rounded-nested-md bg-muted/35 p-3">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <p className="text-sm font-medium">{improvement.title}</p>
-                        <Badge variant="outline">{attemptLabel(attempt)}</Badge>
-                      </div>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {attempt.changeSummary || 'A builder marked this Improvement ready to verify.'}
-                      </p>
-                      {attempt.verificationReason ? (
-                        <p className="mt-2 text-xs text-muted-foreground">{attempt.verificationReason}</p>
-                      ) : null}
-                      {attempt.verificationReviewId ? (
-                        <Link
-                          href={`/report/${attempt.verificationReviewId}` as Route}
-                          className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs font-medium text-link"
-                        >
-                          Open verification Review
-                          <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                        </Link>
-                      ) : null}
-                    </div>
-                  )
-                })}
+                .map(({ improvement, attempt }) => (
+                  <div key={attempt.id} className="space-y-2">
+                    <p className="text-sm font-medium">{improvement.title}</p>
+                    <ImprovementReceipt
+                      attempt={attempt}
+                    />
+                  </div>
+                ))}
             </div>
           ) : (
             <EmptyState
@@ -255,7 +236,7 @@ export function ProductWorkspace({ workspace }: { workspace: ProductWorkspaceDTO
 
           <Surface variant="elevated" className="space-y-4">
           <div>
-            <SectionTitle>Remember</SectionTitle>
+            <SectionTitle as="h3">Remember</SectionTitle>
             <p className="mt-1 text-sm text-muted-foreground">Only independently verified Product learnings appear here.</p>
           </div>
           {workspace.memory.verifiedLearnings.length > 0 ? (
@@ -285,7 +266,7 @@ export function ProductWorkspace({ workspace }: { workspace: ProductWorkspaceDTO
 
       <Surface variant="elevated" className="space-y-4">
         <div>
-          <SectionTitle>Review history</SectionTitle>
+          <SectionTitle as="h3">Review history</SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">Every observation of this Product, newest first.</p>
         </div>
         {workspace.reviewHistory.length > 0 ? (
@@ -332,24 +313,65 @@ export function ProductWorkspace({ workspace }: { workspace: ProductWorkspaceDTO
           <div className="flex items-start gap-3">
             <Eye className="mt-0.5 h-5 w-5 text-brand" aria-hidden />
             <div>
-              <SectionTitle>Watch</SectionTitle>
+              <SectionTitle as="h3">Watch</SectionTitle>
               <p className="mt-1 text-sm text-muted-foreground">
                 {product.watching
-                  ? `Watching for meaningful changes. Last checked ${dateLabel(product.watchLastRunAt)}.`
-                  : 'Turn on Watch from a completed Review to check this Product on its schedule.'}
+                  ? `Watching for meaningful changes. Last checked ${dateLabel(workspace.watch.lastRunAt)}.`
+                  : 'Choose a schedule after the first completed Review.'}
               </p>
             </div>
           </div>
-          {product.watchLastError ? (
+          {workspace.watch.lastError ? (
             <div role="alert" className="flex items-start gap-2 rounded-nested-md bg-destructive/10 p-3 text-sm text-destructive">
-              <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              <span>Watch needs attention: {product.watchLastError}</span>
+              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>Watch needs attention: {workspace.watch.lastError}</span>
             </div>
           ) : null}
           {latestCompletedReview ? (
-            <Button asChild variant="outline">
-              <Link href={`/report/${latestCompletedReview.id}#report-recheck` as Route}>Manage Watch</Link>
-            </Button>
+            <ProductWatchControls
+              projectId={product.id}
+              canWatch={workspace.watch.eligible}
+              canDaily={workspace.watch.canDaily}
+              initialInterval={workspace.watch.interval}
+              initialState={{
+                watchInterval: workspace.watch.interval,
+                watchNextRunAt: workspace.watch.nextRunAt,
+                watchLastRunAt: workspace.watch.lastRunAt,
+                watchLastAttemptAt: workspace.watch.lastAttemptAt,
+                watchConsecutiveFailures: workspace.watch.consecutiveFailures,
+                watchLastError: workspace.watch.lastError,
+              }}
+            />
+          ) : null}
+          {workspace.watch.latestReview ? (
+            <div className="rounded-nested-md bg-muted/35 p-3 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">
+                Latest Watch Review: {workspace.watch.latestReview.status === 'COMPLETED' ? 'Complete' : 'In progress'}
+              </p>
+              <p className="mt-1">
+                {workspace.watch.latestReview.regressionCount === null
+                  ? 'Meaningful changes are still being evaluated.'
+                  : workspace.watch.latestReview.regressionCount > 0
+                    ? `${workspace.watch.latestReview.regressionCount} new or regressed issue${workspace.watch.latestReview.regressionCount === 1 ? '' : 's'} found.`
+                    : 'No new or regressed issues found.'}
+              </p>
+              <p className="mt-1">
+                Notification: {workspace.watch.latestReview.notificationStatus.toLowerCase().replaceAll('_', ' ')}
+                {workspace.watch.latestReview.notificationAttempts > 0
+                  ? ` · ${workspace.watch.latestReview.notificationAttempts} attempt${workspace.watch.latestReview.notificationAttempts === 1 ? '' : 's'}`
+                  : ''}
+              </p>
+              {workspace.watch.latestReview.notificationError ? (
+                <p role="alert" className="mt-1 text-destructive">{workspace.watch.latestReview.notificationError}</p>
+              ) : null}
+              <Link
+                href={`/report/${workspace.watch.latestReview.id}` as Route}
+                className="mt-2 inline-flex min-h-11 items-center gap-1.5 font-medium text-link"
+              >
+                Open Watch Review
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </Link>
+            </div>
           ) : null}
         </Surface>
 
@@ -357,7 +379,7 @@ export function ProductWorkspace({ workspace }: { workspace: ProductWorkspaceDTO
           <div className="flex items-start gap-3">
             <Radio className="mt-0.5 h-5 w-5 text-brand" aria-hidden />
             <div>
-              <SectionTitle>Product context</SectionTitle>
+              <SectionTitle as="h3">Product context</SectionTitle>
               <p className="mt-1 text-sm text-muted-foreground">
                 Privacy-bounded browser Signals are observations. They add context but never verify a fix.
               </p>
@@ -374,12 +396,16 @@ export function ProductWorkspace({ workspace }: { workspace: ProductWorkspaceDTO
             </div>
           ) : null}
           <p className="text-xs text-muted-foreground">
-            {workspace.integrations.activeSignalKeyCount > 0
-              ? `${workspace.integrations.activeSignalKeyCount} active key${workspace.integrations.activeSignalKeyCount === 1 ? '' : 's'} · Last signal ${dateLabel(workspace.integrations.lastSignalAt)}`
+            {workspace.integrations.signalKeys.length > 0
+              ? `${workspace.integrations.signalKeys.length} active key${workspace.integrations.signalKeys.length === 1 ? '' : 's'} · Last accepted Signal ${dateLabel(workspace.integrations.lastSignalAt)}`
               : 'No browser Signal key installed.'}
           </p>
           {workspace.integrations.signalsEligible && latestCompletedReview ? (
-            <ProductSignalsSetup productId={product.id} productUrl={product.url} />
+            <ProductSignalsSetup
+              productId={product.id}
+              productUrl={product.url}
+              initialKeys={workspace.integrations.signalKeys}
+            />
           ) : (
             <p className="text-sm text-muted-foreground">
               {latestCompletedReview
@@ -390,7 +416,7 @@ export function ProductWorkspace({ workspace }: { workspace: ProductWorkspaceDTO
             <Button asChild variant="outline">
               <Link href="/settings/integrations">
                 <Github className="h-4 w-4" aria-hidden />
-                Manage GitHub integration
+                Manage account-wide GitHub integration
               </Link>
             </Button>
           </Surface>

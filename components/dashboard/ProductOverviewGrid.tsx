@@ -5,6 +5,7 @@ import {
   CircleAlert,
   Eye,
   FileSearch,
+  Flag,
   ShieldCheck,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -65,11 +66,16 @@ export function ProductOverviewGrid({ products }: { products: ProductOverviewDTO
               >
                 <div className="flex min-w-0 items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="truncate text-lg font-semibold tracking-heading">
+                    <h3 className="truncate text-lg font-semibold tracking-heading">
                       {product.name}
-                    </h2>
-                    <p className="mt-1 truncate text-sm text-muted-foreground">
-                      {product.purpose || product.url}
+                    </h3>
+                    {product.purpose ? (
+                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                        {product.purpose}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 truncate text-xs text-muted-foreground">
+                      {product.url}
                     </p>
                   </div>
                   {product.watching ? (
@@ -107,12 +113,21 @@ export function ProductOverviewGrid({ products }: { products: ProductOverviewDTO
                   ) : null}
                   {product.topAttention ? (
                     <div className="flex items-start gap-2 rounded-nested-md bg-brand-muted p-3">
-                      <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden />
+                      {product.topAttention.severity === 'CRITICAL' ? (
+                        <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden />
+                      ) : (
+                        <Flag className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden />
+                      )}
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-muted-foreground">Top priority</p>
                         <p className="mt-0.5 line-clamp-2 font-medium">
                           {product.topAttention.title}
                         </p>
+                        {product.topAttention.severity ? (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {product.topAttention.severity.toLowerCase()}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   ) : (

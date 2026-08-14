@@ -42,6 +42,7 @@ import {
 } from '../product-intelligence'
 import { loadProjectIntelligence, mutateProjectIntelligence } from '../ensure-product-project'
 import type { PipelineContext, PageRun } from './types'
+import { recordTargetedPageVerifierExecutions } from '@/lib/improvements/verifier-provenance'
 
 interface CaptureOutage {
   failureCode: string
@@ -476,6 +477,20 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
           : `${flag.checkId}::page:${input.position}`,
       pageUrl: normalizedUrl,
     }))
+
+  await recordTargetedPageVerifierExecutions({
+    auditId: ctx.auditId,
+    pageUrl: normalizedUrl,
+    primary: input.primary && input.position === 0,
+    failedModules,
+    flowCompleted: Boolean(flowResult),
+    availableTools: [
+      'html-parse',
+      'browser-capture',
+      ...(pagespeed?.desktop && pagespeed?.mobile ? ['pagespeed' as const] : []),
+      ...(flowResult ? ['flow-navigation' as const] : []),
+    ],
+  })
 
   await logPipelineEvent(ctx.auditId, {
     stage: 'checking',

@@ -21,9 +21,10 @@ interface ProductWatchControlsProps {
   canWatch: boolean
   canDaily?: boolean
   initialInterval?: Interval
+  initialState?: Partial<WatchState>
 }
 
-const initialState = (interval: Interval): WatchState => ({
+const buildInitialState = (interval: Interval, state?: Partial<WatchState>): WatchState => ({
   watchInterval: interval,
   watchNextRunAt: null,
   watchLastRunAt: null,
@@ -31,6 +32,7 @@ const initialState = (interval: Interval): WatchState => ({
   watchConsecutiveFailures: 0,
   watchLastError: null,
   readiness: { available: true, error: null },
+  ...state,
 })
 
 function formatDate(value: string | null): string {
@@ -43,9 +45,13 @@ export function ProductWatchControls({
   canWatch,
   canDaily = false,
   initialInterval = null,
+  initialState: suppliedInitialState,
 }: ProductWatchControlsProps) {
-  const [state, setState] = useState<WatchState>(() => initialState(initialInterval))
+  const [state, setState] = useState<WatchState>(() =>
+    buildInitialState(initialInterval, suppliedInitialState)
+  )
   const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!canWatch) return
@@ -54,9 +60,11 @@ export function ProductWatchControls({
       .then(async (response) => {
         if (!response.ok) throw new Error(PRODUCT_WATCH_COPY.loadFailed)
         setState(await response.json() as WatchState)
+        setLoadError(null)
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === 'AbortError') return
+        setLoadError(PRODUCT_WATCH_COPY.loadFailed)
         toast.error(PRODUCT_WATCH_COPY.loadFailed)
       })
     return () => controller.abort()
@@ -116,7 +124,7 @@ export function ProductWatchControls({
               aria-checked={state.watchInterval === option}
               disabled={saving || (option !== null && !state.readiness.available)}
               onClick={() => void save(option)}
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-checked:border-brand aria-checked:bg-brand aria-checked:text-brand-foreground"
+              className="min-h-11 min-w-11 rounded-full border border-border bg-card px-3 py-2 text-xs font-medium shadow-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-checked:border-brand aria-checked:bg-brand aria-checked:text-brand-foreground"
             >
               {label}
             </button>
@@ -126,6 +134,7 @@ export function ProductWatchControls({
       {!state.readiness.available ? (
         <p role="alert" className="text-xs text-destructive">{PRODUCT_WATCH_COPY.unavailable}</p>
       ) : null}
+      {loadError ? <p role="alert" className="text-xs text-destructive">{loadError}</p> : null}
       <dl className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-3">
         <div><dt>{PRODUCT_WATCH_COPY.nextRun}</dt><dd className="text-foreground">{formatDate(state.watchNextRunAt)}</dd></div>
         <div><dt>{PRODUCT_WATCH_COPY.lastRun}</dt><dd className="text-foreground">{formatDate(state.watchLastRunAt)}</dd></div>

@@ -56,10 +56,10 @@ export function PromptCopyButton({
       const response = await fetch(`/api/flags/${flagId}/attempts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ builder: tool || 'web', action: 'ACCEPT' }),
+        body: JSON.stringify({ builder: tool || 'web', action: 'HANDOFF_COPIED' }),
       })
       if (!response.ok) {
-        toast.error('Prompt copied, but FixFlags could not record that you accepted it')
+        toast.error('Prompt copied, but FixFlags could not record the handoff')
       }
     }
     trackEvent('fix_prompt_copied', {

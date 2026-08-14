@@ -15,6 +15,7 @@ const products: ProductOverviewDTO[] = [
       id: 'improvement-alpha',
       title: 'Clarify the signup action',
       status: 'READY_TO_VERIFY',
+      severity: 'IMPORTANT',
     },
     latestReview: {
       id: 'review-alpha',
@@ -58,7 +59,7 @@ const products: ProductOverviewDTO[] = [
 
 describe('ProductOverviewGrid', () => {
   it('presents each Product as its own navigable evidence context', () => {
-    render(<ProductOverviewGrid products={products} />)
+    const { container } = render(<ProductOverviewGrid products={products} />)
 
     expect(screen.getAllByRole('link', { name: /open product/i })).toEqual(
       expect.arrayContaining([
@@ -69,8 +70,11 @@ describe('ProductOverviewGrid', () => {
     )
     expect(screen.getByText('Clarify the signup action')).toBeInTheDocument()
     expect(screen.getByText(/Latest verification: inconclusive/)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: 'Alpha' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2, name: 'Beta' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: 'Alpha' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 3, name: 'Beta' })).toBeInTheDocument()
+    expect(screen.getByText('https://alpha.example')).toBeInTheDocument()
+    expect(container.querySelector('.lucide-circle-alert')).not.toBeInTheDocument()
+    expect(container.querySelector('.lucide-flag')).toBeInTheDocument()
   })
 
   it('renders the empty Product state without inventing account activity', () => {

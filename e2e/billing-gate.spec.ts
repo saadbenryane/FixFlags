@@ -4,11 +4,9 @@ import { expect, test, type APIRequestContext, type Browser, type Page } from '@
 // Billing batch-gate (test-mode) — waitlist join → checkout gate behavior.
 //
 // STATUS: BLOCKED in this session (no test-mode app + fixture env available).
-// The spec is fully written and typecheck-clean; every test skips itself with a
-// reason until the runner provides the env below. It does NOT run in the
-// standard `npm run test:e2e` or `npm run test:e2e:release` suites unless
-// E2E_BILLING_GATE=true is set (it is opt-in on purpose so the release gate is
-// not coupled to Stripe test fixtures).
+// The spec is fully written and typecheck-clean. Standard browser checks skip
+// it unless E2E_BILLING_GATE=true. The release command enables it and preflight
+// requires every fixture, so release verification cannot silently skip billing.
 //
 // What this spec verifies (shipped behavior, see docs/launch-checklist.md):
 //   1. Waitlist join assigns an access batch + discount tier snapshot (join
@@ -243,26 +241,24 @@ test.describe('billing batch gate (test mode, opt-in E2E_BILLING_GATE)', () => {
     }
   })
 
-  test('master switch off blocks everyone with 403 PAID_CHECKOUT_CLOSED', async ({ browser }) => {
-    test.skip(paidOpenExpected, 'Set E2E_PAID_OPEN_EXPECTED=false against an app with STRIPE_PAID_OPEN=false')
-    const member = await signedInRequest(browser, releasedEmail!, releasedPassword!)
-    try {
-      const { status, json } = await startCheckout(member.request)
-      expect(status).toBe(403)
-      expect(json.code).toBe('PAID_CHECKOUT_CLOSED')
-    } finally {
-      await member.close()
-    }
-  })
+  if (!paidOpenExpected) {
+    test('master switch off blocks everyone with 403 PAID_CHECKOUT_CLOSED', async ({ browser }) => {
+      const member = await signedInRequest(browser, releasedEmail!, releasedPassword!)
+      try {
+        const { status, json } = await startCheckout(member.request)
+        expect(status).toBe(403)
+        expect(json.code).toBe('PAID_CHECKOUT_CLOSED')
+      } finally {
+        await member.close()
+      }
+    })
+  }
 
   test('tier promotion auto-applies for a released tier-1 member (Stripe-verified)', async ({
     browser,
     request,
   }) => {
-    test.skip(
-      !stripeTestKey,
-      'E2E_STRIPE_SECRET_KEY (test mode) is required to read the Checkout Session back from the Stripe API'
-    )
+    expect(stripeTestKey, 'E2E_STRIPE_SECRET_KEY must pass release preflight').toMatch(/^sk_test_/)
     const member = await signedInRequest(browser, releasedEmail!, releasedPassword!)
     try {
       await adminAssignBatch(member.request, releasedEntryId!, 1)

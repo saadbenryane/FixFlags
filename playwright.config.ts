@@ -1,6 +1,16 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const externalBaseUrl = process.env.E2E_BASE_URL
+if (process.env.E2E_CREDENTIALED === 'true' && !externalBaseUrl) {
+  throw new Error('E2E_BASE_URL is required for credentialed release journeys')
+}
+if (
+  process.env.E2E_CREDENTIALED === 'true' &&
+  process.env.RELEASE_SMOKE_URL &&
+  new URL(externalBaseUrl!).origin !== new URL(process.env.RELEASE_SMOKE_URL).origin
+) {
+  throw new Error('E2E_BASE_URL must equal RELEASE_SMOKE_URL for credentialed release journeys')
+}
 const baseURL = externalBaseUrl ?? 'http://127.0.0.1:3107'
 const credentialedDatabaseUrl =
   process.env.E2E_CREDENTIALED === 'true' ? process.env.RELEASE_FRESH_DATABASE_URL : undefined
