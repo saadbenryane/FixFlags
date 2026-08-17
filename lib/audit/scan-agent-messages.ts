@@ -1,13 +1,66 @@
 import type { AgentMessage, AgentMessageKind, AgentMessageState } from '@/lib/audit/agent-message'
+import { compareFlagsByPriority } from '@/lib/audit/priority-flags'
 import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '@/lib/audit/progress'
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { getUserFacingAuditError } from '@/lib/audit/user-facing-errors'
 import { AGENT_SCAN_COPY } from '@/lib/marketing/copy'
+import { severityRank } from '@/lib/utils'
 
 export type ScanAgentFlag = {
   id: string
   problem: string
   rubric: string
+  severity?: string | null
+  checkId?: string | null
+  impactTag?: string | null
+}
+
+/** How many confirmed Flags the Agent names in the transcript. The rest stay in Report. */
+export const ANNOUNCED_FLAG_LIMIT = 3
+
+function announcementRank(flag: ScanAgentFlag): [number, number, number] {
+  const rubric = flag.rubric.toUpperCase()
+  const impact = (flag.impactTag ?? '').toUpperCase()
+  return [
+    severityRank(flag.severity ?? ''),
+    rubric === 'REACH' ? 1 : 0,
+    impact === 'SEO' ? 1 : 0,
+  ]
+}
+
+/**
+ * Choose the Flags the Agent should name. Uses customer-visible rank so a
+ * discovery-order SEO cluster cannot crowd out a Critical Experience Flag.
+ * Does not change Finish Plan ranking.
+ */
+export function selectAnnouncedFlags(flags: ScanAgentFlag[]): ScanAgentFlag[] {
+  return [...flags]
+    .sort((a, b) => {
+      const [aSeverity, aRubric, aSeo] = announcementRank(a)
+      const [bSeverity, bRubric, bSeo] = announcementRank(b)
+      if (aSeverity !== bSeverity) return aSeverity - bSeverity
+      if (aRubric !== bRubric) return aRubric - bRubric
+      if (aSeo !== bSeo) return aSeo - bSeo
+      return compareFlagsByPriority(
+        {
+          id: a.id,
+          rubric: a.rubric,
+          severity: a.severity ?? '',
+          problem: a.problem,
+          checkId: a.checkId ?? null,
+          impactTag: a.impactTag ?? null,
+        },
+        {
+          id: b.id,
+          rubric: b.rubric,
+          severity: b.severity ?? '',
+          problem: b.problem,
+          checkId: b.checkId ?? null,
+          impactTag: b.impactTag ?? null,
+        },
+      )
+    })
+    .slice(0, ANNOUNCED_FLAG_LIMIT)
 }
 
 export type FixFlagsScanSnapshot = {
@@ -129,7 +182,7 @@ export function buildFixFlagsScanMessages(snapshot: FixFlagsScanSnapshot): Agent
     }))
 
     const flags = snapshot.flags ?? []
-    for (const flag of flags.slice(0, 3)) {
+    for (const flag of selectAnnouncedFlags(flags)) {
       result.push(message(snapshot, {
         suffix: `flag:${flag.id}`,
         kind: 'flag',

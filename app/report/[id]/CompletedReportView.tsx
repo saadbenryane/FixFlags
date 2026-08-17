@@ -62,7 +62,14 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
     journeyReviewIncluded: state.audit.journeyReviewIncluded,
     journeyReviewAt: state.audit.journeyReviewAt,
     screenshotCapture: captureStatus,
-    flags: state.flags.map((flag) => ({ id: flag.id, problem: flag.problem, rubric: flag.rubric })),
+    flags: state.flags.map((flag) => ({
+      id: flag.id,
+      problem: flag.problem,
+      rubric: flag.rubric,
+      severity: flag.severity,
+      checkId: flag.checkId,
+      impactTag: flag.impactTag,
+    })),
   })
   const toolbarActions = (
     <AuditPageActions

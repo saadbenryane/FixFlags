@@ -108,7 +108,14 @@ export async function loadObservationSnapshot(
       journeyReviewIncluded: audit.journeyReviewIncluded,
       journeyReviewAt: audit.journeyReviewAt,
       screenshotCapture,
-      flags: flags.map((flag) => ({ id: flag.id, problem: flag.problem, rubric: flag.rubric })),
+      flags: flags.map((flag) => ({
+        id: flag.id,
+        problem: flag.problem,
+        rubric: flag.rubric,
+        severity: flag.severity,
+        checkId: flag.checkId,
+        impactTag: flag.impactTag,
+      })),
     }),
   }
 }

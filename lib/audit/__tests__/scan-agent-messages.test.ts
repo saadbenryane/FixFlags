@@ -46,6 +46,54 @@ describe('buildFixFlagsScanMessages', () => {
     expect(messages.map((item) => item.id)).not.toContain('scan:audit-1:journey')
   })
 
+  it('announces a Critical Experience Flag ahead of discovery-order SEO Flags', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      flags: [
+        {
+          id: 'seo-description',
+          problem: 'Meta description is missing',
+          rubric: 'REACH',
+          severity: 'IMPORTANT',
+          checkId: 'description-missing',
+          impactTag: 'SEO',
+        },
+        {
+          id: 'seo-og-image',
+          problem: 'og:image is missing, link previews show blank',
+          rubric: 'REACH',
+          severity: 'IMPORTANT',
+          checkId: 'og-image-missing',
+          impactTag: 'SEO',
+        },
+        {
+          id: 'seo-og-title',
+          problem: 'og:title is missing',
+          rubric: 'REACH',
+          severity: 'IMPORTANT',
+          checkId: 'og-title-missing',
+          impactTag: 'SEO',
+        },
+        {
+          id: 'cta-fold',
+          problem: 'Primary CTA is hidden below the fold on mobile',
+          rubric: 'EXPERIENCE',
+          severity: 'CRITICAL',
+          checkId: 'cta-below-fold',
+          impactTag: 'CONVERSION',
+        },
+      ],
+    })
+
+    const announced = messages.filter((item) => item.kind === 'flag')
+    expect(announced).toHaveLength(3)
+    expect(announced[0]).toMatchObject({ flagId: 'cta-fold' })
+    expect(announced.map((item) => item.flagId)).not.toContain('seo-og-title')
+    expect(messages.find((item) => item.id.endsWith(':additional-flags'))?.content).toContain(
+      '1 more Flag',
+    )
+  })
+
   it('curates large Flag sets instead of flooding the Agent transcript', () => {
     const messages = buildFixFlagsScanMessages({
       ...base,

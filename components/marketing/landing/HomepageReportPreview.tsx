@@ -93,7 +93,14 @@ export function HomepageReportPreview({ model }: { model: ReportWorkspaceModel }
         journeyReviewAt: phase >= 2 ? new Date(0) : null,
         flags:
           phase >= 3 && selectedFlag
-            ? [{ id: selectedFlag.id, problem: selectedFlag.title, rubric: selectedFlag.rubric }]
+            ? [{
+                id: selectedFlag.id,
+                problem: selectedFlag.title,
+                rubric: selectedFlag.rubric,
+                severity: selectedFlag.severity,
+                checkId: selectedFlag.checkId,
+                impactTag: selectedFlag.impactTag,
+              }]
             : [],
         reportCompleteness: 'FULL',
       }),

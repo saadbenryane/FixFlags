@@ -32,6 +32,9 @@ export default async function SamplesPage() {
       id: flag.id,
       problem: flag.problem,
       rubric: flag.rubric,
+      severity: flag.severity,
+      checkId: flag.checkId,
+      impactTag: flag.impactTag,
     })),
   })
 
