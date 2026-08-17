@@ -799,6 +799,20 @@ export const LANDING_PAGE = {
       void flagCount;
       return "Explore a full report";
     },
+    /** Curated replay of one review inside the living editor chrome. */
+    story: {
+      label: "FixFlags review story",
+      steps: [
+        "Experiencing the Product",
+        "Noticing what customers encounter",
+        "Connecting the observation to evidence",
+        "Surfacing a verified Flag",
+        "Recommending the improvement",
+      ] as const,
+      evidenceLabel: "Evidence",
+      improvementLabel: "Recommended improvement",
+      cta: "Explore the full report",
+    },
     rubricRows: [
       {
         id: "message",
@@ -904,6 +918,11 @@ export const REPORT_COPY = {
       `${percent}% · ${detail}`,
     flagsFoundSoFar: (count: number) =>
       `${count} ${count === 1 ? "Flag" : "Flags"} found so far`,
+    scan: {
+      working: "Working",
+      stepOf: (current: number, total: number) => `Step ${current} of ${total}`,
+      progressLabel: "Live progress",
+    },
     context: ({
       unresolved,
       checkedScope,
@@ -919,8 +938,7 @@ export const REPORT_COPY = {
       const preposition = checkedScope.includes("release") ? "in" : "on";
       return `${unresolvedLabel} ${preposition} ${checkedScope}.`;
     },
-    summaryLabel:
-      "Release score, unresolved Flags, score history, and rubric coverage",
+    summaryLabel: "Release score, unresolved Flags, and score history",
     releaseScore: "Release score",
     scoreUnavailable: "Score unavailable",
     unresolvedFlags: "Unresolved Flags",
@@ -928,23 +946,23 @@ export const REPORT_COPY = {
     criticalCount: (count: number) =>
       `${count} Critical ${count === 1 ? "Flag" : "Flags"}`,
     noCriticalFlags: "No Critical Flags",
-    rubricCriticalCount: (count: number) => `${count} critical`,
-    rubricFlagCount: (count: number, criticalCount: number) => {
-      const flagLabel = `${count} ${count === 1 ? "Flag" : "Flags"}`;
-      return criticalCount > 0
-        ? `${flagLabel} · ${criticalCount} critical`
-        : flagLabel;
-    },
     showCriticalFlags: (count: number) =>
       `Show ${count} Critical ${count === 1 ? "Flag" : "Flags"}`,
-    showRubricFlags: (rubric: string, count: number) =>
-      count > 0
-        ? `Show ${count} Critical ${count === 1 ? "Flag" : "Flags"} in ${rubric}`
-        : `Show all ${rubric} Flags`,
     history: "Score history",
-    scanCount: (count: number) => `${count} completed product reviews`,
     firstScan: "First completed product review",
     historyUnavailable: "History appears after the first completed product review.",
+    showRubricFlags: (label: string, criticalCount: number) =>
+      criticalCount > 0
+        ? `Show ${label} Flags, ${criticalCount} critical`
+        : `Show ${label} Flags`,
+    rubricFlagCount: (count: number, criticalCount: number) =>
+      criticalCount > 0
+        ? `${count} ${count === 1 ? "Flag" : "Flags"} · ${criticalCount} critical`
+        : `${count} ${count === 1 ? "Flag" : "Flags"}`,
+    scanCount: (count: number) => `${count} reviews`,
+    earlierObservation:
+      "Viewing an earlier review. Fix prompts and review context follow the current one.",
+    loadingObservation: "Loading that review…",
     recheckCount: (count: number) =>
       `${count} completed ${count === 1 ? "Update review" : "Update reviews"}`,
     dashboard: {
@@ -1046,16 +1064,28 @@ export const REPORT_COPY = {
       noScreenshot: "No screenshot was captured for this step.",
       empty: (url: string) =>
         `Browser evidence appears here as FixFlags captures ${url}.`,
+      /** Docked transport under the Product stage. */
+      transportLabel: "Preview controls",
+      liveCapture: "Live capture",
+      capturing: "Capturing the page",
+      noSteps: "Path replay appears after a deep review",
     },
     panels: {
       chatTab: "Agent",
       productTab: "Report",
+      productReality: "Product",
+      deviceToggleLabel: "Viewport",
+      desktopDevice: "Desktop",
+      mobileDevice: "Mobile",
+      inspectFindings: (count: number) =>
+        `Inspect ${count} ${count === 1 ? "Flag" : "Flags"}`,
       browserView: "Timeline",
       reportView: "Report",
       canvasView: "Canvas",
+      previewView: "Preview",
+      previewTab: "Preview",
       toggleLabel: "Workspace view",
-      viewReport: "View report",
-      backToAgent: "Back to Agent",
+      mobileTabsLabel: "Review panels",
     },
     canvas: {
       title: "Visual Canvas",
@@ -1116,7 +1146,7 @@ export const REPORT_COPY = {
   sampleFocused: {
     eyebrow: "Sample fix list",
     title: "See what FixFlags found",
-    body: "A reviewed PlantDad report with real evidence and one complete fix prompt.",
+    body: "A reviewed Launchpad report with real evidence and one complete fix prompt.",
     detailsCta: "View the sample report",
   },
   progressive: {
@@ -1230,17 +1260,9 @@ export const REPORT_COPY = {
     remember: "What we proved",
     rememberHint: "Verified on update review. Stays with this product across reviews.",
   },
-  stickyNav: {
-    topFixes: "Top fixes",
-    contract: "Contract",
-    remember: "Proved",
-    journey: "Funnel",
-    flow: "Flow",
-    timeline: "Timeline",
-    flags: "Fixes",
-    stack: "Stack",
-    previews: "Previews",
-    launch: "Launch",
+  reviewContext: {
+    title: "Review context",
+    hint: "Stack, contract, funnel, previews, launch gates",
   },
   explorer: {
     allPages: "All Pages",

@@ -1,8 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
-import {
-  WorkspacePlaybackStrip,
-} from '@/components/report/WorkspacePlaybackStrip'
+import { describe, it, expect } from 'vitest'
 import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 
@@ -61,48 +57,5 @@ describe('buildPlaybackSteps', () => {
     const steps = buildPlaybackSteps(events)
     expect(steps).toHaveLength(12)
     expect(steps[11].id).toBe('navigate-11')
-  })
-})
-
-describe('WorkspacePlaybackStrip', () => {
-  it('renders nothing when there are no steps', () => {
-    const { container } = render(
-      <WorkspacePlaybackStrip steps={[]} />
-    )
-    expect(container.firstChild).toBeNull()
-  })
-
-  it('renders the scrub range covering the full step set', () => {
-    render(<WorkspacePlaybackStrip steps={buildPlaybackSteps(fixtureEvents)} />)
-    const scrub = screen.getByRole('slider')
-    expect(scrub).toHaveAttribute('type', 'range')
-    expect(scrub).toHaveAttribute('min', '0')
-    expect(scrub).toHaveAttribute('max', String(fixtureEvents.length - 1))
-  })
-
-  it('marks the selected step and notifies on scrub', () => {
-    const onScrub = vi.fn()
-    render(
-      <WorkspacePlaybackStrip
-        steps={buildPlaybackSteps(fixtureEvents)}
-        activeIndex={1}
-        onScrub={onScrub}
-      />
-    )
-    expect(screen.getByRole('button', { name: /Step 2 · Click pricing/ })).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    )
-    fireEvent.change(screen.getByRole('slider'), { target: { value: '3' } })
-    expect(onScrub).toHaveBeenCalledWith(3)
-  })
-
-  it('selects a step marker on click', () => {
-    const onSelectStep = vi.fn()
-    render(
-      <WorkspacePlaybackStrip steps={buildPlaybackSteps(fixtureEvents)} onSelectStep={onSelectStep} />
-    )
-    fireEvent.click(screen.getByRole('button', { name: /Step 4 · Final page/ }))
-    expect(onSelectStep).toHaveBeenCalledWith(3)
   })
 })

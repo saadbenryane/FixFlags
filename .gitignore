@@ -50,3 +50,9 @@ next-env.d.ts
 
 # active goal state (template committed at .agents/GOAL.md.example)
 .agents/GOAL.md
+
+# local browser-proof screenshots and JSON readouts
+.agents/artifacts/
+
+# Archon live Work (operational — not branch-tracked)
+.archon/board.md

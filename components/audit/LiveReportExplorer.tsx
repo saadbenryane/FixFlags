@@ -34,7 +34,6 @@ export function LiveReportExplorer({
   return (
     <ReportExplorer
       model={model}
-      variant="live"
       showFeedback={showFeedback}
       aiLocked={aiLocked}
       aiEnhancementPending={aiEnhancementPending}

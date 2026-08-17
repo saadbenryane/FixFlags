@@ -22,6 +22,7 @@ import {
   normalizeInternalScreenshotUrl,
   type AuditScreenshot,
 } from '@/lib/audit/screenshot-types'
+import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '@/lib/audit/viewports'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
@@ -77,6 +78,35 @@ export interface ExplorerFlag {
   visualUrl?: string | null
   /** Derived truth label: Reproduced / Detected / Observed / Likely cause. */
   truthLabel: string
+}
+
+/**
+ * Project the model's captures back into the shared screenshot shape the
+ * browser panel consumes, so curated surfaces render captures through the
+ * same component as a live review.
+ */
+export function explorerScreenshots(model: {
+  desktopScreenshot: string | null
+  mobileScreenshot: string | null
+}): AuditScreenshot[] {
+  const captures: AuditScreenshot[] = []
+  if (model.desktopScreenshot) {
+    captures.push({
+      device: 'DESKTOP',
+      url: model.desktopScreenshot,
+      width: DESKTOP_VIEWPORT.width,
+      height: DESKTOP_VIEWPORT.height,
+    })
+  }
+  if (model.mobileScreenshot) {
+    captures.push({
+      device: 'MOBILE',
+      url: model.mobileScreenshot,
+      width: MOBILE_VIEWPORT.width,
+      height: MOBILE_VIEWPORT.height,
+    })
+  }
+  return captures
 }
 
 export interface ReportExplorerModel {

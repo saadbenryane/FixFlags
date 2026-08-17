@@ -14,12 +14,6 @@ export interface ScreenshotCaptureStatus {
   mobile: ScreenshotCaptureState
 }
 
-export type CapturePresentation =
-  | { state: 'pending' }
-  | { state: 'complete' }
-  | { state: 'partial'; failedDevices: ScreenshotDevice[] }
-  | { state: 'unavailable'; failureCode: 'SCREENSHOT_CAPTURE_FAILED' }
-
 export function normalizeInternalScreenshotUrl(url: string): string {
   if (url.startsWith('/api/screenshots/')) return url
 
@@ -66,29 +60,6 @@ export function resolveCapturePair(
     desktopState: frameState(desktopShot, captureStatus?.desktop),
     mobileState: frameState(mobileShot, captureStatus?.mobile),
   }
-}
-
-export function resolveScreenshotPresentation(
-  auditStatus: string,
-  screenshots: AuditScreenshot[],
-  captureStatus?: ScreenshotCaptureStatus | null
-): CapturePresentation {
-  const hasDesktop = screenshots.some((s) => s.device === 'DESKTOP')
-  const hasMobile = screenshots.some((s) => s.device === 'MOBILE')
-  const pastCapture = auditStatus !== 'QUEUED' && auditStatus !== 'CAPTURING'
-  const desktop = hasDesktop ? 'ok' : captureStatus?.desktop ?? (pastCapture ? 'failed' : 'pending')
-  const mobile = hasMobile ? 'ok' : captureStatus?.mobile ?? (pastCapture ? 'failed' : 'pending')
-
-  if (!pastCapture && (desktop === 'pending' || mobile === 'pending')) {
-    return { state: 'pending' }
-  }
-  if (desktop === 'ok' && mobile === 'ok') {
-    return { state: 'complete' }
-  }
-  if (desktop === 'ok') {
-    return { state: 'partial', failedDevices: ['MOBILE'] }
-  }
-  return { state: 'unavailable', failureCode: 'SCREENSHOT_CAPTURE_FAILED' }
 }
 
 export function parseScreenshotCaptureStatus(

@@ -30,7 +30,8 @@ export const originalFixture: DemoFixture = {
       images: [],
     },
   },
-  announcement: 'PlantDad 2.0 just dropped. Now with AI-powered soil analysis and personalized watering schedules.',
+  announcement:
+    'Launchpad 2.0 just dropped. Now with AI-generated release notes and automated pre-flight checks.',
   navLinks: [
     { label: 'Features', href: '#features' },
     { label: 'Pricing', href: '#pricing' },
@@ -38,33 +39,34 @@ export const originalFixture: DemoFixture = {
     { label: 'Docs', href: '#docs' },
     { label: 'About', href: '#about' },
   ],
-  headline: 'Your desk deserves a plant that does not give up on you',
+  headline: 'The launch platform for teams who move fast',
   subhead:
-    'PlantDad uses AI to monitor your plants, schedule watering, and send passive-aggressive reminders when you forget. Grow more, kill less.',
-  primaryCta: { label: 'Adopt a plant', href: '/demo/signup' },
+    'Launchpad turns your release into a checklist, watches every pre-flight check, and tells you when something is not ready. Ship more, break less.',
+  primaryCta: { label: 'Start a launch', href: '/demo/signup' },
   secondaryCta: { label: 'Watch demo', href: '#demo' },
   heroImageSrc: '/demo/hero-original.svg',
-  heroImageAlt: 'PlantDad dashboard showing plant health and watering schedule',
+  heroImageAlt: 'Launchpad dashboard showing release checklist and pre-flight status',
   featuresSectionTitle: '',
   features: [
     {
-      title: 'Smart soil sensors',
-      description: 'Lorem ipsum dolor sit amet, our AI tracks moisture, light, and nutrient levels in real time.',
+      title: 'Pre-flight checks',
+      description:
+        'Lorem ipsum dolor sit amet, our AI runs your release checks and reports status in real time.',
     },
     {
-      title: 'One-click watering',
-      description: 'Auto-water your plants with a single click. Never kill a succulent again.',
+      title: 'One-click rollout',
+      description: 'Roll out to production with a single click. Never ship a broken build again.',
     },
     {
-      title: 'Plant analytics',
-      description: 'Track growth rates, health scores, and survival streaks out of the box.',
+      title: 'Launch analytics',
+      description: 'Track release frequency, failure rates, and recovery time out of the box.',
     },
   ],
   footerLinks: [
     { label: 'Partner', href: 'https://example.com' },
     { label: 'Privacy', href: '#privacy' },
     { label: 'Terms', href: '#terms' },
-    { label: 'Contact', href: 'mailto:hello@plantdad-demo.app' },
+    { label: 'Contact', href: `mailto:${DEMO_BRAND.contactEmail}` },
   ],
   layout: {
     compactMobileNav: false,
@@ -82,22 +84,22 @@ export const originalFixture: DemoFixture = {
     smallInputFont: true,
   },
   socialProof: {
-    statLine: 'Trusted by 10,000+ plant parents who stopped killing their greenery',
+    statLine: 'Trusted by 10,000+ teams who stopped shipping broken releases',
     testimonials: [
       {
-        quote: 'PlantDad helped us keep our office plants alive through three consecutive founders.',
+        quote: 'Launchpad kept our releases on schedule through three consecutive rewrites.',
         author: 'Jane D.',
-        role: 'Office Manager, Startup Co.',
+        role: 'Engineering Manager, Startup Co.',
       },
     ],
   },
   form: {
-    heading: 'Adopt your first plant today',
+    heading: 'Start your first launch today',
     fields: [
       { name: 'name', type: 'text', label: 'Full name' },
       { name: 'email', type: 'email', label: 'Email address' },
       { name: 'plan', type: 'select', label: 'Plan', options: ['Starter', 'Pro', 'Enterprise'] },
     ],
-    submitLabel: 'Adopt a plant',
+    submitLabel: 'Start a launch',
   },
 }

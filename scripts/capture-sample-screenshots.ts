@@ -79,6 +79,8 @@ async function captureLocalScreenshots(targetUrl: string) {
       if (!response?.ok()) {
         throw new Error(`Capture returned HTTP ${response?.status() ?? 'unknown'}`)
       }
+      // The Next dev overlay is local tooling, never part of the demo product.
+      await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' })
       await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
       // Playwright supports png/jpeg; marketing samples keep .webp filenames (same as R2 copy path).
       const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))

@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 
 type BrowserFrameState = 'loading' | 'loaded' | 'failed'
 type Device = 'desktop' | 'mobile'
+type BrowserFrameChrome = 'browser' | 'none'
 
 interface Props {
   url?: string
@@ -22,6 +23,20 @@ interface Props {
   label?: string
   /** desktop = 1280×900, mobile = 375×812 (matches Playwright capture) */
   device?: Device
+  /**
+   * `browser` draws the illustrative browser bar for marketing and compare
+   * surfaces. `none` renders only the captured page, for the review editor
+   * where the Product pane header already carries identity and URL.
+   */
+  chrome?: BrowserFrameChrome
+  /**
+   * Fill the parent's height instead of deriving height from the device
+   * aspect ratio. The capture letterboxes inside a stage that never resizes
+   * when the viewer switches device.
+   */
+  fill?: boolean
+  /** Told to the viewer while the capture is still pending, over the skeleton. */
+  loadingLabel?: string
   /** Rendered inside the image viewport (0–1 coords relative to capture) */
   viewportOverlay?: ReactNode
   /** Ref on the screenshot viewport container (for height-matched mobile layout) */
@@ -38,6 +53,9 @@ export function BrowserFrame({
   className,
   label,
   device = 'desktop',
+  chrome = 'browser',
+  fill = false,
+  loadingLabel,
   viewportOverlay,
   viewportRef,
   viewportSize,
@@ -51,39 +69,59 @@ export function BrowserFrame({
 
   const displayUrl = url ? displayHostname(url) : 'Capturing page...'
 
-  const resolvedViewportStyle: CSSProperties = viewportSize
-    ? { height: viewportSize.height, width: viewportSize.width }
-    : viewportAspectStyle(device)
+  // In fill mode the parent owns the height, so no intrinsic sizing is applied.
+  const resolvedViewportStyle: CSSProperties | undefined = fill
+    ? undefined
+    : viewportSize
+      ? { height: viewportSize.height, width: viewportSize.width }
+      : viewportAspectStyle(device)
 
   return (
     <div
       className={cn(
-        'rounded-md bg-card shadow-card overflow-hidden',
-        viewportSize ? 'w-auto max-w-full shrink-0' : 'w-full',
+        'overflow-hidden',
+        chrome === 'browser' && 'rounded-md bg-card shadow-card',
+        fill
+          ? 'flex h-full min-h-0 w-full flex-col'
+          : viewportSize
+            ? 'w-auto max-w-full shrink-0'
+            : 'w-full',
         className
       )}
     >
-      <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b border-border/60">
-        <div className="flex gap-1 shrink-0">
-          <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
-          <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
-          <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
+      {chrome === 'browser' ? (
+        <div className="flex shrink-0 items-center gap-2 border-b border-border/60 bg-muted/50 px-3 py-2">
+          <div className="flex shrink-0 gap-1">
+            <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
+            <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
+            <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
+          </div>
+          <div className="min-w-0 flex-1 truncate rounded-md bg-background/80 px-2.5 py-1 text-2xs text-muted-foreground">
+            {displayUrl}
+          </div>
+          <span className="meta-label shrink-0 text-muted-foreground">
+            {resolvedLabel}
+          </span>
         </div>
-        <div className="flex-1 min-w-0 rounded-md bg-background/80 px-2.5 py-1 text-2xs text-muted-foreground truncate">
-          {displayUrl}
-        </div>
-        <span className="meta-label text-muted-foreground shrink-0">
-          {resolvedLabel}
-        </span>
-      </div>
+      ) : null}
 
       <div
         ref={viewportRef}
-        className="relative overflow-hidden bg-muted/30"
+        className={cn(
+          'relative overflow-hidden bg-muted/30',
+          fill && 'min-h-0 flex-1'
+        )}
         style={resolvedViewportStyle}
       >
         {resolvedState === 'loading' && (
-          <Skeleton className="absolute inset-0 rounded-none" />
+          <>
+            <Skeleton className="absolute inset-0 rounded-none" />
+            {loadingLabel ? (
+              <p className="absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-muted-foreground">
+                {loadingLabel}
+              </p>
+            ) : null}
+          </>
         )}
 
         {resolvedState === 'failed' && (
@@ -102,7 +140,7 @@ export function BrowserFrame({
             width={1440}
             height={900}
             loading="lazy"
-            className="absolute inset-0 h-full w-full object-contain object-top animate-fade-in-up"
+            className="absolute inset-0 h-full w-full object-contain object-center motion-safe:animate-capture-fade"
           />
         )}
 

@@ -24,7 +24,7 @@ export const SEO = {
   samples: {
     title: 'Sample Report',
     description:
-      'See a real FixFlags report of our PlantDad demo landing page: evidence-backed Flags with fix prompts.',
+      'See a real FixFlags report of our Launchpad demo landing page: evidence-backed Flags with fix prompts.',
   },
   examples: {
     title: 'Example Reports',

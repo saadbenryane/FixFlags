@@ -29,6 +29,21 @@ export function displayHostname(url: string): string {
 }
 
 /**
+ * Reviewed address for pane headers: hostname plus path, so a review of
+ * `fixflags.com/demo` never reads as a review of `fixflags.com`.
+ * Returns the raw input string on parse failure (safe for display).
+ */
+export function displaySiteAddress(url: string): string {
+  try {
+    const parsed = new URL(url)
+    const path = parsed.pathname.replace(/\/+$/, '')
+    return `${parsed.hostname.replace(/^www\./, '')}${path}`
+  } catch {
+    return url
+  }
+}
+
+/**
  * Normalize a hostname for storage or comparison: lowercase + strip www.
  * Accepts an already-extracted hostname string.
  */

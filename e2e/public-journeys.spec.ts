@@ -54,8 +54,10 @@ for (const width of widths) {
     await page.goto('/samples')
 
     await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
-    await expect(page.getByText(/PlantDad/i).first()).toBeVisible()
-    await expect(page.getByText(/fixflags\.com/i)).toHaveCount(0)
+    // The curated sample reviews the Launchpad demo, and the Product pane names
+    // the reviewed host now that the editor has no fake browser bar.
+    await expect(page.getByText(/Launchpad/i).first()).toBeVisible()
+    await expect(page.getByText('fixflags.com/demo').first()).toBeVisible()
 
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,

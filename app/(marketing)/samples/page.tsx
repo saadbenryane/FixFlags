@@ -1,20 +1,39 @@
 import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
-import { ReportWorkspace } from '@/components/report/ReportWorkspace'
-import { Button } from '@/components/ui/button'
+import { AuditReport } from '@/components/audit/AuditReport'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { getCuratedSampleAudit } from '@/lib/marketing/curated-sample'
 import { buildSampleReportDisplay } from '@/lib/marketing/sample-report-display'
-import { HERO, REPORT_COPY } from '@/lib/marketing/copy'
-import { buildCuratedSampleWorkspaceModel } from '@/lib/report/workspace-adapters'
-import Link from 'next/link'
+import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
+import { DEMO_BRAND } from '@/lib/demo/brand'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 
 export const metadata = buildPageMetadata('samples', '/samples')
 
 export default async function SamplesPage() {
-  const sample = await getCuratedSampleAudit()
-  const model = buildCuratedSampleWorkspaceModel(buildSampleReportDisplay(sample.audit))
+  const { audit } = await getCuratedSampleAudit()
+  const display = buildSampleReportDisplay(audit)
+  // The curated sample demonstrates exactly one fix prompt.
+  const sampleFixFlag =
+    audit.flags.find((flag) => flag.id === display.demonstratedFlagId) ?? null
+  // Deterministic transcript of the curated run. No scan is started here.
+  const agentMessages = buildFixFlagsScanMessages({
+    id: audit.id,
+    status: 'COMPLETED',
+    progress: 100,
+    startedAt: audit.startedAt,
+    completedAt: audit.completedAt,
+    reportCompleteness: audit.reportCompleteness,
+    screenshotCapture: audit.screenshotCapture,
+    journeyReviewIncluded: (audit.actionTimeline?.length ?? 0) > 0,
+    journeyReviewAt: audit.completedAt,
+    flags: audit.flags.map((flag) => ({
+      id: flag.id,
+      problem: flag.problem,
+      rubric: flag.rubric,
+    })),
+  })
 
   return (
     <Section spacing="report">
@@ -29,16 +48,19 @@ export default async function SamplesPage() {
             {REPORT_COPY.sampleFocused.body}
           </p>
         </header>
-        <ReportWorkspace
-          model={model}
-          actions={
-            <Button asChild variant="brand">
-              <Link href="/#audit">{HERO.primaryCta}</Link>
-            </Button>
-          }
-          signUpHref="/sign-up?from=sample"
-          className="rounded-card bg-background/80 p-4 shadow-glass-deep glass-surface sm:p-6"
-        />
+        <div className="h-[min(calc(100dvh-16rem),54rem)] overflow-hidden rounded-card bg-background shadow-glass-deep ring-1 ring-border/55">
+          <AuditReport
+            audit={audit}
+            variant="sample"
+            viewerIsPaid={false}
+            isLoggedIn={false}
+            isViewerOwner={false}
+            productName={DEMO_BRAND.displayLabel}
+            sampleFixFlag={sampleFixFlag}
+            scoreHistory={audit.scoreHistory}
+            agentMessages={agentMessages}
+          />
+        </div>
       </Container>
     </Section>
   )

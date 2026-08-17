@@ -20,17 +20,14 @@ import {
   type RubricFilter,
 } from '@/lib/report/explorer-filters'
 import type { JourneyPage } from '@/components/audit/JourneyBar'
-import { scrollToReportSection } from '@/lib/report/scroll-to-section'
+import { focusFlagDetail } from '@/lib/report/scroll-to-section'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import { trackEvent } from '@/lib/analytics/events'
 import { IMPACT_TAG_ORDER, SEVERITY_ORDER } from '@/lib/audit/constants'
 import { impactTagLabel, severityLabel, cn } from '@/lib/utils'
 
-type ExplorerVariant = 'hero' | 'live'
-
 interface ReportExplorerProps {
   model: ReportExplorerModel
-  variant?: ExplorerVariant
   className?: string
   initialFlagIndex?: number
   showFeedback?: boolean
@@ -44,20 +41,8 @@ interface ReportExplorerProps {
   demonstratedFlagId?: string
 }
 
-const VARIANT_CONFIG = {
-  hero: {
-    compact: true,
-    ownShell: true,
-  },
-  live: {
-    compact: false,
-    ownShell: true,
-  },
-} as const
-
 export function ReportExplorer({
   model,
-  variant = 'live',
   className,
   initialFlagIndex = 0,
   showFeedback = false,
@@ -69,7 +54,6 @@ export function ReportExplorer({
   auditId,
   demonstratedFlagId,
 }: ReportExplorerProps) {
-  const config = VARIANT_CONFIG[variant]
   const rootRef = useRef<HTMLDivElement>(null)
   const detailRef = useRef<HTMLDivElement>(null)
   const detailHeadingRef = useRef<HTMLHeadingElement>(null)
@@ -98,7 +82,9 @@ export function ReportExplorer({
     impact: string | null
     page: string | null
   }) => {
-    if (typeof window === 'undefined') return
+    // Marketing emulations have no live audit id. Writing ?flag= onto `/`
+    // hijacks the homepage URL while the curated story plays.
+    if (typeof window === 'undefined' || !auditId) return
     const url = new URL(window.location.href)
     const values = {
       flag: state.flag,
@@ -112,7 +98,7 @@ export function ReportExplorer({
       else url.searchParams.delete(key)
     }
     window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
-  }, [])
+  }, [auditId])
 
   const applyExplorerUrlState = useCallback((search: string) => {
     const params = new URLSearchParams(search)
@@ -186,13 +172,13 @@ export function ReportExplorer({
     'first_finding_viewed',
     auditId!,
     () => {
-      if (variant !== 'live' || model.flags.length === 0) return null
+      if (model.flags.length === 0) return null
       if (visibleDemonstratedFlagId && selectedFlagId !== visibleDemonstratedFlagId) return null
       const flag = model.flags.find((candidate) => candidate.id === selectedFlagId)
       if (!flag) return null
       return { check_id: flag.checkId ?? undefined, severity: flag.severity }
     },
-    [variant, model.flags, auditId, selectedFlagId, visibleDemonstratedFlagId],
+    [model.flags, auditId, selectedFlagId, visibleDemonstratedFlagId],
   )
 
   const rubricCounts = useMemo(
@@ -255,7 +241,7 @@ export function ReportExplorer({
   const currentFlag = filteredFlags[safeFlagIndex] ?? filteredFlags[0]
 
   useEffect(() => {
-    if (variant !== 'live' || !auditId || !currentFlag) return
+    if (!auditId || !currentFlag) return
     const storageKey = `fixflags:event:flag_detail_viewed:${auditId}:${currentFlag.id}`
     if (typeof window !== 'undefined' && window.sessionStorage.getItem(storageKey)) return
     if (typeof window !== 'undefined') window.sessionStorage.setItem(storageKey, '1')
@@ -267,7 +253,7 @@ export function ReportExplorer({
       surface: 'focused',
       item_position: model.flags.findIndex((flag) => flag.id === currentFlag.id) + 1 || undefined,
     })
-  }, [variant, auditId, currentFlag, model.flags])
+  }, [auditId, currentFlag, model.flags])
 
   const pageScopedFlags = filterExplorerFlags(model.flags, {
     rubricFilter: effectiveRubricFilter,
@@ -322,12 +308,9 @@ export function ReportExplorer({
         impact: impactFilter,
         page: pageFilter,
       })
-      if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches) {
-        requestAnimationFrame(() => {
-          scrollToReportSection('selected-flag-detail')
-          detailHeadingRef.current?.focus({ preventScroll: true })
-        })
-      }
+      requestAnimationFrame(() => {
+        focusFlagDetail(detailRef.current, detailHeadingRef.current)
+      })
     },
     [effectiveRubricFilter, filteredFlags, impactFilter, pageFilter, severityFilter, writeExplorerUrl]
   )
@@ -391,80 +374,87 @@ export function ReportExplorer({
     [filteredFlags]
   )
 
-  const scoreHeader = (
-    <div className="flex flex-wrap items-center gap-3 border-b border-border/30 pb-3.5">
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-        <RubricTabs
-          rubricFilter={effectiveRubricFilter}
-          onRubricChange={(rubric) => applyFilters({ rubric })}
-          counts={rubricCounts}
-          total={Object.values(rubricCounts).reduce((a, b) => a + b, 0)}
-        />
-      </div>
-    </div>
-  )
-
-  const secondaryFilters = (
-    <div className="space-y-2 lg:hidden">
-      <div className="flex flex-wrap gap-2">
-        <label className="sr-only" htmlFor="flag-severity-filter">Filter by severity</label>
-        <select
-          id="flag-severity-filter"
-          value={severityFilter ?? ''}
-          onChange={(event) => applyFilters({ severity: event.target.value || null })}
-          className="min-h-[44px] rounded-full border border-border/60 bg-background px-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-        >
-          <option value="">All severities</option>
-          {availableSeverities.map((severity) => (
-            <option key={severity} value={severity}>{severityLabel(severity)}</option>
-          ))}
-        </select>
-        <label className="sr-only" htmlFor="flag-impact-filter">Filter by impact</label>
-        <select
-          id="flag-impact-filter"
-          value={impactFilter ?? ''}
-          onChange={(event) => applyFilters({ impact: event.target.value || null })}
-          className="min-h-[44px] rounded-full border border-border/60 bg-background px-3 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-        >
-          <option value="">All impacts</option>
-          {availableImpacts.map((impact) => (
-            <option key={impact} value={impact}>{impactTagLabel(impact)}</option>
-          ))}
-        </select>
-      </div>
-      {hasPages ? (
-        <div className="flex flex-wrap gap-1.5">
-          <FilterPill
-            size="sm"
-            icon={Globe}
-            active={pageFilter === null}
-            onClick={() => applyFilters({ page: null })}
-          >
-            {REPORT_COPY.explorer.allPages} ({pageScopedFlags.length})
-          </FilterPill>
-          {pages.map((page) => {
-            const count = pageScopedFlags.filter((f) => (f.pageUrls ?? []).includes(page.url)).length
-            if (count === 0) return null
-            const label = pageFilterLabel(page.url, page.role)
-            return (
+  /**
+   * Every filter stays reachable at every pane width. The pane is narrower
+   * than the viewport, so hiding filters on "desktop" hid them exactly where
+   * the list is hardest to scan.
+   */
+  const filterBar = (
+    <div className="flex shrink-0 flex-col gap-2 border-b border-border/30 pb-3">
+      <RubricTabs
+        rubricFilter={effectiveRubricFilter}
+        onRubricChange={(rubric) => applyFilters({ rubric })}
+        counts={rubricCounts}
+        total={Object.values(rubricCounts).reduce((a, b) => a + b, 0)}
+      />
+      {availableSeverities.length > 1 || availableImpacts.length > 1 || hasPages ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {availableSeverities.length > 1 ? (
+            <>
+              <label className="sr-only" htmlFor="flag-severity-filter">Filter by severity</label>
+              <select
+                id="flag-severity-filter"
+                value={severityFilter ?? ''}
+                onChange={(event) => applyFilters({ severity: event.target.value || null })}
+                className="min-h-8 rounded-[var(--radius-control)] border border-border/60 bg-background px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              >
+                <option value="">All severities</option>
+                {availableSeverities.map((severity) => (
+                  <option key={severity} value={severity}>{severityLabel(severity)}</option>
+                ))}
+              </select>
+            </>
+          ) : null}
+          {availableImpacts.length > 1 ? (
+            <>
+              <label className="sr-only" htmlFor="flag-impact-filter">Filter by impact</label>
+              <select
+                id="flag-impact-filter"
+                value={impactFilter ?? ''}
+                onChange={(event) => applyFilters({ impact: event.target.value || null })}
+                className="min-h-8 rounded-[var(--radius-control)] border border-border/60 bg-background px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              >
+                <option value="">All impacts</option>
+                {availableImpacts.map((impact) => (
+                  <option key={impact} value={impact}>{impactTagLabel(impact)}</option>
+                ))}
+              </select>
+            </>
+          ) : null}
+          {hasPages ? (
+            <>
               <FilterPill
                 size="sm"
-                key={page.url}
-                active={pageFilter === page.url}
-                onClick={() => applyFilters({ page: pageFilter === page.url ? null : page.url })}
+                icon={Globe}
+                active={pageFilter === null}
+                onClick={() => applyFilters({ page: null })}
               >
-                {label} ({count})
+                {REPORT_COPY.explorer.allPages} ({pageScopedFlags.length})
               </FilterPill>
-            )
-          })}
+              {pages.map((page) => {
+                const count = pageScopedFlags.filter((f) => (f.pageUrls ?? []).includes(page.url)).length
+                if (count === 0) return null
+                const label = pageFilterLabel(page.url, page.role)
+                return (
+                  <FilterPill
+                    size="sm"
+                    key={page.url}
+                    active={pageFilter === page.url}
+                    onClick={() => applyFilters({ page: pageFilter === page.url ? null : page.url })}
+                  >
+                    {label} ({count})
+                  </FilterPill>
+                )
+              })}
+            </>
+          ) : null}
         </div>
       ) : null}
     </div>
   )
 
   const listPane = (
-    <div className="min-w-0 list-none space-y-3.5 lg:max-h-[calc(100vh-var(--header-offset)-5rem)] lg:overflow-y-auto lg:pr-2 scrollbar-thin [&_ul]:list-none [&_li]:list-none">
-      {secondaryFilters}
+    <div className="min-w-0 list-none @[40rem]/pane:min-h-0 @[40rem]/pane:overflow-y-auto @[40rem]/pane:pr-2 scrollbar-thin [&_ul]:list-none [&_li]:list-none">
       {flagCount === 0 ? (
         <p className="text-sm text-muted-foreground">
           {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noMatchFilter}
@@ -474,7 +464,6 @@ export function ReportExplorer({
           flags={fixLoopFlags}
           selectedFlagId={currentFlag?.id}
           onSelectFlag={goToFlag}
-          compact={config.compact}
           loading={loading}
         />
       )}
@@ -494,9 +483,7 @@ export function ReportExplorer({
         aiEnhancementPending={aiEnhancementPending}
         signUpHref={signUpHref}
         onSelectFlag={goToFlag}
-        compact={config.compact}
         demonstratedFlagId={visibleDemonstratedFlagId}
-        variant={variant}
         headingRef={detailHeadingRef}
       />
     ) : (
@@ -505,44 +492,27 @@ export function ReportExplorer({
       </p>
     )
 
-  const masterDetail = (
-    <div className="space-y-5">
-      {scoreHeader}
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(19rem,40%)_minmax(0,1fr)]">
-        {listPane}
-        <div
-          ref={detailRef}
-          id="selected-flag-detail"
-          aria-live="polite"
-          aria-atomic="true"
-          className={cn(
-            'min-w-0 scroll-mt-[var(--report-chrome-offset)] border-t border-border/30 pt-6',
-            'lg:sticky lg:top-[calc(var(--header-offset)+1rem)] lg:max-h-[calc(100vh-var(--header-offset)-2rem)] lg:overflow-y-auto lg:border-t-0 lg:pr-2 lg:pt-0 lg:self-start scrollbar-thin'
-          )}
-        >
-          {detailPane}
-        </div>
-      </div>
-    </div>
-  )
-
-  const shellClass = cn(
-    'overflow-clip rounded-card glass-surface shadow-card',
-    variant === 'hero' && 'shadow-raised',
-    className
-  )
-
   return (
     <div
       ref={rootRef}
       tabIndex={-1}
       role="region"
       aria-label={`Fix list with ${model.flags.length} flags`}
-      className={cn(config.ownShell ? shellClass : className)}
+      className={cn('flex h-full min-h-0 min-w-0 flex-col gap-3.5', className)}
     >
-      <div className={cn(variant === 'hero' ? 'bg-muted/10 p-4 sm:p-5' : 'p-4 sm:p-6')}>
-        <h2 className="sr-only">Flags</h2>
-        {masterDetail}
+      <h2 className="sr-only">Flags</h2>
+      {filterBar}
+      <div className="grid min-h-0 flex-1 gap-5 @[40rem]/pane:grid-cols-[minmax(13rem,32%)_minmax(0,1fr)]">
+        {listPane}
+        <div
+          ref={detailRef}
+          id="selected-flag-detail"
+          aria-live="polite"
+          aria-atomic="true"
+          className="min-w-0 border-t border-border/30 pt-5 scrollbar-thin @[40rem]/pane:min-h-0 @[40rem]/pane:overflow-y-auto @[40rem]/pane:border-t-0 @[40rem]/pane:pr-1 @[40rem]/pane:pt-0"
+        >
+          {detailPane}
+        </div>
       </div>
     </div>
   )

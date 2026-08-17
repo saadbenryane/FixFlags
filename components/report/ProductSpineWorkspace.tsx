@@ -2,14 +2,16 @@
 
 import { useState, type ReactNode } from 'react'
 import { ReportExplorer } from '@/components/report/ReportExplorer'
-import {
-  ReportWorkspaceSummary,
-} from '@/components/report/ReportWorkspaceChrome'
+import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import { ReportCanvasPanel } from '@/components/report/ReportCanvasPanel'
-import { ReportFixListHeader } from '@/components/report/ReportFixListHeader'
-import type { PlaybackStep } from '@/components/report/WorkspacePlaybackStrip'
+import {
+  REPORT_SECTION_SCROLL_MT,
+  WORKSPACE_REPORT_FRAME_CLASS,
+} from '@/components/report/workspace-geometry'
+import { REPORT_COPY } from '@/lib/marketing/copy'
+import type { PlaybackStep } from '@/lib/audit/playback-steps'
 import type { AgentMessage } from '@/lib/audit/agent-message'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
@@ -50,11 +52,8 @@ function rehydrateDates(workspace: ReportWorkspaceModel): ReportWorkspaceModel {
 }
 
 /**
- * The Product-centric workspace for an owner viewing a product with history.
- * One spine at the top lists every observation (product review, update
- * review, watch run). Selecting a bar re-anchors the whole workspace:
- * the summary, browser captures, fix list, and chat context all switch to
- * that moment in the product's history.
+ * Product history spine for owners with multiple observations.
+ * Owns the single full-bleed split shell; summary lives in Product Report mode.
  */
 export function ProductSpineWorkspace({
   reportId,
@@ -67,7 +66,11 @@ export function ProductSpineWorkspace({
   showCanvas = false,
   canUseCanvas = false,
   canChat,
-  reportPanel,
+  showChatColumn = true,
+  verdict,
+  frameExtras,
+  flagsSection,
+  belowFrame,
   className,
 }: {
   reportId: string
@@ -80,8 +83,15 @@ export function ProductSpineWorkspace({
   showCanvas?: boolean
   canUseCanvas?: boolean
   canChat?: boolean
-  /** Current-report panel shown when no observation is selected. */
-  reportPanel: ReactNode
+  showChatColumn?: boolean
+  /** Verdict line for the current observation. */
+  verdict?: string | null
+  /** Callouts and re-check outcome that sit between the bar and the list. */
+  frameExtras?: ReactNode
+  /** Fix explorer for the current observation. */
+  flagsSection: ReactNode
+  /** Polish pass, review context, and toolbar for the current observation. */
+  belowFrame?: ReactNode
   className?: string
 }) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(
@@ -97,7 +107,6 @@ export function ProductSpineWorkspace({
     if (!point) return
     setSelectedIndex(index)
 
-    // The newest observation is the report itself; no fetch needed.
     if (index === history.length - 1) {
       setObservation(null)
       setError(null)
@@ -121,7 +130,6 @@ export function ProductSpineWorkspace({
         agentMessages: payload.observation.agentMessages ?? [],
       })
     } catch (cause) {
-      // Honest degradation: keep the report view, surface the failure.
       setError(cause instanceof Error ? cause.message : 'Observation unavailable')
       setObservation(null)
     } finally {
@@ -136,46 +144,69 @@ export function ProductSpineWorkspace({
   const activeSteps = observation ? buildPlaybackSteps(observation.actionTimeline) : steps
   const activeAgentMessages = observation?.agentMessages ?? agentMessages
 
-  const activeReportPanel = observation ? (
-    <section id="report-flags" className="space-y-3">
-      <ReportFixListHeader count={observation.workspace.outcome.unresolvedCount} />
+  /**
+   * Every observation renders the same rows: outcome bar, then the fix list.
+   * Only the current observation carries polish pass and review context, so an
+   * earlier review never implies context it did not capture.
+   */
+  const activeFlagsSection = observation ? (
+    <section
+      id="report-flags"
+      className={cn(REPORT_SECTION_SCROLL_MT, 'flex min-h-0 flex-1 flex-col')}
+    >
       <ReportExplorer
         model={observation.workspace.explorer}
-        variant="live"
         aiLocked={false}
         auditId={observation.workspace.identity.auditId ?? undefined}
       />
     </section>
   ) : (
-    reportPanel
+    flagsSection
+  )
+
+  const spineReportPanel = (
+    <>
+      <div data-report-frame className={WORKSPACE_REPORT_FRAME_CLASS}>
+        <ReportOutcomeBar
+          model={activeModel}
+          verdict={observation ? null : verdict}
+          historyOverride={history}
+          selectedIndex={selectedIndex}
+          onSelect={(index) => void selectObservation(index)}
+        />
+        {observation ? (
+          <p className="shrink-0 rounded-card border border-border/45 bg-muted/20 px-4 py-2.5 text-xs text-muted-foreground">
+            {REPORT_COPY.workspace.earlierObservation}
+          </p>
+        ) : (
+          frameExtras
+        )}
+        {loading ? (
+          <p
+            role="status"
+            className="shrink-0 rounded-card border border-border/40 bg-muted/20 px-4 py-3 text-xs text-muted-foreground"
+          >
+            {REPORT_COPY.workspace.loadingObservation}
+          </p>
+        ) : null}
+        {error ? (
+          <p
+            role="status"
+            className="shrink-0 rounded-card border border-destructive/30 bg-destructive/5 px-4 py-3 text-xs text-destructive"
+          >
+            {error}
+          </p>
+        ) : null}
+        {activeFlagsSection}
+      </div>
+      {observation ? null : belowFrame}
+    </>
   )
 
   return (
-    <div className={cn('space-y-4', className)}>
-      <ReportWorkspaceSummary
-        model={activeModel}
-        historyOverride={history}
-        selectedIndex={selectedIndex}
-        onSelect={(index) => void selectObservation(index)}
-      />
-      {loading ? (
-        <p
-          role="status"
-          className="rounded-card border border-border/60 bg-muted/40 px-4 py-3 text-xs text-muted-foreground"
-        >
-          Loading observation…
-        </p>
-      ) : null}
-      {error ? (
-        <p
-          role="status"
-          className="rounded-card border border-destructive/30 bg-destructive/5 px-4 py-3 text-xs text-destructive"
-        >
-          {error}
-        </p>
-      ) : null}
+    <div className={cn('flex h-full min-h-0 flex-col', className)}>
       <ReportWorkspaceSplitShell
-        showChatColumn
+        showChatColumn={showChatColumn}
         canUseTimeline={canChat}
         showCanvas={showCanvas}
         canUseCanvas={canUseCanvas}
@@ -191,8 +222,9 @@ export function ProductSpineWorkspace({
         }
         browserUrl={activeUrl}
         browserScreenshots={activeScreenshots}
-        reportPanel={activeReportPanel}
+        reportPanel={spineReportPanel}
         steps={activeSteps}
+        className="h-full"
       />
     </div>
   )

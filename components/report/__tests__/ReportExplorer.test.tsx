@@ -106,7 +106,7 @@ describe('ReportExplorer anonymous teaser', () => {
     window.history.replaceState({}, '', '/report/a1?flag=locked&rubric=EXPERIENCE')
     render(
       <MeProvider initialUser={null}>
-        <ReportExplorer model={model} aiLocked />
+        <ReportExplorer model={model} aiLocked auditId="a1" />
       </MeProvider>
     )
     await waitFor(() => {
@@ -124,7 +124,7 @@ describe('ReportExplorer anonymous teaser', () => {
     window.history.replaceState({}, '', '/report/a1?flag=deleted')
     render(
       <MeProvider initialUser={null}>
-        <ReportExplorer model={model} aiLocked />
+        <ReportExplorer model={model} aiLocked auditId="a1" />
       </MeProvider>
     )
     await waitFor(() => {
@@ -136,6 +136,19 @@ describe('ReportExplorer anonymous teaser', () => {
     })
     expect(window.location.search).toContain('flag=locked')
     expect(window.location.search).not.toContain('deleted')
+  })
+
+  it('does not write explorer state onto the homepage URL without a live audit id', async () => {
+    window.history.replaceState({}, '', '/')
+    render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer model={model} />
+      </MeProvider>
+    )
+
+    await screen.findByRole('button', { name: /Locked first flag/ })
+    expect(window.location.pathname).toBe('/')
+    expect(window.location.search).toBe('')
   })
 
   it('reapplies explorer filter state from browser history navigation', async () => {
@@ -150,7 +163,7 @@ describe('ReportExplorer anonymous teaser', () => {
     window.history.replaceState({}, '', '/report/a1?flag=locked')
     render(
       <MeProvider initialUser={null}>
-        <ReportExplorer model={localModel} />
+        <ReportExplorer model={localModel} auditId="a1" />
       </MeProvider>
     )
 
@@ -164,6 +177,25 @@ describe('ReportExplorer anonymous teaser', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Another issue/ })).toHaveAttribute('aria-pressed', 'true')
     })
+  })
+
+  it('keeps every filter reachable at pane width instead of hiding them on large viewports', async () => {
+    const critical: ExplorerFlag = {
+      ...locked,
+      id: 'critical',
+      title: 'Critical flag',
+      severity: 'CRITICAL',
+      severityLabel: 'Critical Flag',
+      impactTag: 'TRUST',
+    }
+    render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer model={{ ...model, flags: [critical, demonstrated], flagCount: 2 }} />
+      </MeProvider>
+    )
+
+    expect(await screen.findByLabelText('Filter by severity')).toBeVisible()
+    expect(screen.getByLabelText('Filter by impact')).toBeVisible()
   })
 
   it('marks affected and unaffected captures without treating missing captures as healthy', async () => {

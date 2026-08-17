@@ -14,6 +14,7 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 | Shipped promise | `PRODUCT.md` |
 | Product direction | `knowledge/vision.md`, `ROADMAP.md` |
 | Report hierarchy | `knowledge/report-contract.md` |
+| Report workspace and active-review behavior | `docs/workspace-interface.md`, `DESIGN.md` (full-bleed living-review editor) |
 | Audit stages and recovery | `docs/audit-pipeline.md`, `lib/audit/` |
 | Plans and quotas | `lib/billing/plans.ts`, `lib/auth/entitlements.ts`, `lib/auth/permissions.ts` |
 | Access and sharing | `lib/audit/report-access.ts`, `lib/security/share-grant.ts`, `SECURITY.md` |
@@ -34,6 +35,7 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 - The user loop is Flag → Fix → Update review; update reviews are fresh, full, and diff against their parent (they meter against the product-review pool; watch-triggered re-checks skip the meter).
 - Public rubrics are exactly Message, Experience, and Reach.
 - Anonymous users receive one teaser scan with deterministic Agent updates and real evidence for every confirmed Flag. Every fix prompt, interactive Agent request, and Timeline payload stays gated until claim (`PRODUCT.md`, `knowledge/report-contract.md`). Never persist signup-gate strings as Flag evidence or fix text.
+- Active review UI follows the full-bleed living-review contract: Agent chat (bubbles + gate-on-send) on the left, Product reality on the right, no pane cards, flush viewport split, Preview-first Eye/FileText chrome with header Monitor/Smartphone icons while Preview is active, Report-first after completion inside the same shell with `ReportExplorer` master/detail, path-only docked transport, and customer-meaningful evidence-bound activity only. Route report UI changes through `docs/workspace-interface.md` and the design-system living-review checklist.
 - Authentication returns through `/post-login` so claim occurs before checkout or onward navigation.
 - HTTP, MCP, CLI, watch, and UI transports call shared task/application services; routes validate access and adapt responses.
 - Public boundaries remain `/api/checks` and `/api/reports/[id]/*`; do not add legacy audit routes.

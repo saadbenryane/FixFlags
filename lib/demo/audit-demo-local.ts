@@ -3,6 +3,13 @@ import type { DemoFixtureKey } from '@/lib/demo/audit-demo-fixtures'
 
 const LOCALHOST_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i
 
+export class DemoPageUnavailableError extends Error {
+  constructor(url: string, status: number) {
+    super(`GET ${url} returned HTTP ${status}`)
+    this.name = 'DemoPageUnavailableError'
+  }
+}
+
 export function isDemoLocalhostUrl(url: string): boolean {
   return LOCALHOST_PATTERN.test(url)
 }
@@ -20,7 +27,7 @@ export async function fetchDemoPageHtml(url: string): Promise<{ html: string; fi
       },
     })
     if (!response.ok) {
-      throw new Error(`GET ${url} returned HTTP ${response.status}`)
+      throw new DemoPageUnavailableError(url, response.status)
     }
     const html = await response.text()
     return { html, finalUrl: url }

@@ -36,7 +36,23 @@ afterEach(() => {
 })
 
 describe('WorkspaceChatPanel', () => {
-  it('shows deterministic Agent messages and contextual authentication without loading private chat', () => {
+  it('names the reviewed page including its path in the Agent header', () => {
+    render(
+      <WorkspaceChatPanel
+        auditId="a1"
+        canChat={false}
+        productName="Launchpad demo"
+        reportUrl="https://fixflags.com/demo"
+        agentMessages={scanMessages}
+      />,
+    )
+
+    expect(screen.getByText('Launchpad demo')).toBeInTheDocument()
+    expect(screen.getByText('fixflags.com/demo')).toBeInTheDocument()
+    expect(screen.queryByText('fixflags.com')).not.toBeInTheDocument()
+  })
+
+  it('shows deterministic Agent messages and a gate-on-send composer without loading private chat', () => {
     render(
       <WorkspaceChatPanel
         auditId="a1"
@@ -50,7 +66,8 @@ describe('WorkspaceChatPanel', () => {
     expect(screen.getByText('I’m preparing your review.')).toHaveAttribute('data-source', 'scan')
     expect(screen.getByText(/The headline is unclear/)).toHaveAttribute('data-source', 'scan')
     expect(screen.getByRole('link', { name: 'View Flag' })).toHaveAttribute('href', '?flag=f1#report-flags')
-    expect(screen.getByRole('link', { name: 'Sign in to chat' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign in to chat' })).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/Sign in to ask about the Flags/i)).toBeInTheDocument()
     expect(fetch).not.toHaveBeenCalled()
   })
 
@@ -83,9 +100,9 @@ describe('WorkspaceChatPanel', () => {
 
     await waitFor(() => expect(screen.getByText('Start with the headline.')).toBeInTheDocument())
     expect(screen.getByText('I’m preparing your review.')).toHaveAttribute('data-source', 'scan')
-    expect(screen.getByText('What should I fix first?')).toHaveAttribute('data-source', 'user')
     expect(screen.getByText('Start with the headline.')).toHaveAttribute('data-source', 'model')
     expect(screen.getByText('80% left')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Ask about this report')).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument()
   })
 })

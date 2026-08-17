@@ -4,12 +4,7 @@ import { AiReviewPendingRefresh } from '@/components/audit/AiReviewPendingRefres
 import { McpFixNudge } from '@/components/audit/McpFixNudge'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { isAdminUser } from '@/lib/auth/permissions'
-import {
-  normalizeInternalScreenshotUrl,
-  resolveScreenshotPresentation,
-  type AuditScreenshot,
-  type ScreenshotCaptureStatus,
-} from '@/lib/audit/screenshot-types'
+import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import type { loadReportRouteState } from './load-report-route-state'
 import { ReportPromptsUnlockedTracker } from '@/components/report/ReportPromptsUnlockedTracker'
 import { ReportViewedTracker } from '@/components/analytics/ReportViewedTracker'
@@ -19,19 +14,6 @@ type CompletedState = Extract<
   Awaited<ReturnType<typeof loadReportRouteState>>,
   { kind: 'completed' }
 >
-
-function parseScreenshots(value: unknown): AuditScreenshot[] {
-  if (!Array.isArray(value)) return []
-  return value
-    .filter((item): item is AuditScreenshot =>
-      item !== null && typeof item === 'object' && 'device' in item && 'url' in item
-    )
-    .map((item) => ({
-      ...item,
-      url: typeof item.url === 'string' ? normalizeInternalScreenshotUrl(item.url) : '',
-    }))
-    .filter((item) => item.url.length > 0)
-}
 
 function parseCaptureStatus(audit: unknown): ScreenshotCaptureStatus | undefined {
   if (typeof audit !== 'object' || audit === null) return undefined
@@ -63,13 +45,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
     findingsCount: review._count.findings,
     steps: review.steps,
   }))
-  const screenshots = parseScreenshots(state.audit.screenshots)
   const captureStatus = parseCaptureStatus(state.audit)
-  const capturePresentation = resolveScreenshotPresentation(
-    state.audit.status,
-    screenshots,
-    captureStatus
-  )
   const compareAuditId = state.canAccessCompareView
     ? state.audit.parentId
       ? state.id
@@ -123,6 +99,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
   return (
     <AuditShell
       session={state.session}
+      immersive
       showAdmin={
         state.user && state.session
           ? isAdminUser({ id: state.session.user.id, role: state.user.role })
@@ -156,7 +133,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
               : null
           }
           atAuditLimit={state.atAuditLimit}
-          capturePresentation={capturePresentation}
+          captureStatus={captureStatus}
           showPrescription={state.showPrescription}
           showDeterministicFixes={state.showDeterministicFixes}
           aiReviewPending={state.aiReviewPending}

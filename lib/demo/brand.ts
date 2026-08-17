@@ -1,7 +1,13 @@
-/** Fictional product used for hosted demo landing fixtures. */
+/**
+ * Fictional product used for the hosted demo landing fixtures.
+ * One name and one story everywhere: the fixture page, the curated sample,
+ * the homepage emulation, and the captured screenshots all read Launchpad.
+ */
 export const DEMO_BRAND = {
-  name: 'PlantDad',
-  tagline: 'Smart plant care for people who kill every plant they touch',
-  domainLabel: 'plantdad-demo.app',
-  displayLabel: 'PlantDad demo',
+  name: 'Launchpad',
+  tagline: 'Launch checklists that keep AI-built products from shipping broken',
+  domainLabel: 'fixflags.com/demo',
+  displayLabel: 'Launchpad demo',
+  sampleUrl: 'https://fixflags.com/demo',
+  contactEmail: 'hello@launchpad-demo.app',
 } as const

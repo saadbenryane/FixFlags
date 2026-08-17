@@ -1,7 +1,6 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import {
-  ANON_VALUE_STRIP,
   AUTH,
   BRAND,
   CHANGELOG_ENTRIES,
@@ -11,6 +10,7 @@ import {
   HERO,
   HOW_IT_WORKS_PAGE,
   LANDING_PAGE,
+  LOCKED_CONTENT_TEASER,
   MCP_SECTION,
   OUTPUT_LABELS,
   PLANS,
@@ -61,7 +61,6 @@ function collectStrings(value: unknown, out: string[] = []): string[] {
 const LANDING_MARKETING_STRINGS = [
   ...collectStrings(LANDING_PAGE),
   ...collectStrings(FINAL_CTA),
-  ...collectStrings(ANON_VALUE_STRIP),
 ]
 
 const CORE_LOOP_STRINGS = [
@@ -351,12 +350,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('anonymous report CTA avoids banned words', () => {
-    for (const line of [
-      ANON_VALUE_STRIP.headline(3),
-      ANON_VALUE_STRIP.body,
-      ANON_VALUE_STRIP.primaryCta,
-      ANON_VALUE_STRIP.secondaryCta,
-    ]) {
+    for (const line of collectStrings(LOCKED_CONTENT_TEASER)) {
       for (const pattern of BANNED_LANDING_PHRASES) {
         assert.ok(!pattern.test(line), `Banned phrase (${pattern}) in anonymous CTA: ${line}`)
       }
@@ -432,8 +426,8 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('samples SEO references PlantDad demo, not homepage dogfood', () => {
-    assert.match(SEO.samples.description, /PlantDad demo/i)
+  it('samples SEO references the Launchpad demo, not homepage dogfood', () => {
+    assert.match(SEO.samples.description, /Launchpad demo/i)
     assert.ok(!/our own homepage/i.test(SEO.samples.description))
   })
 })

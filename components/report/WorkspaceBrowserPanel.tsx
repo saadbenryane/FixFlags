@@ -3,27 +3,35 @@
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { resolveCapturePair } from '@/lib/audit/screenshot-types'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
-import type { PlaybackStep } from '@/components/report/WorkspacePlaybackStrip'
+import type { PlaybackStep } from '@/lib/audit/playback-steps'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
+
+export type PreviewDevice = 'desktop' | 'mobile'
 
 interface WorkspaceBrowserPanelProps {
   url: string
   screenshots?: AuditScreenshot[]
   /** Capture progress for the live view: pending/ok/failed per device. */
   captureStatus?: ScreenshotCaptureStatus | null
-  /** When a playback step is selected, the browser shows that step instead of the live captures. */
+  /** When a playback step is selected, the stage shows that step instead of the live capture. */
   activeStep?: PlaybackStep | null
-  onCloseStep?: () => void
+  /** Which viewport the stage presents. The Product header owns the control. */
+  device?: PreviewDevice
   className?: string
 }
 
+/**
+ * The Product stage: one captured page, letterboxed, filling its container.
+ * It owns no chrome and no controls, so switching device or step changes only
+ * the image inside a stage whose size never moves.
+ */
 export function WorkspaceBrowserPanel({
   url,
   screenshots = [],
   captureStatus,
   activeStep,
-  onCloseStep,
+  device = 'desktop',
   className,
 }: WorkspaceBrowserPanelProps) {
   const { desktop, mobile, desktopState, mobileState } = resolveCapturePair(
@@ -33,63 +41,51 @@ export function WorkspaceBrowserPanel({
 
   if (activeStep) {
     return (
-      <div className={cn('flex min-h-[240px] flex-col gap-3', className)}>
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-muted-foreground">
-            {REPORT_COPY.workspace.playback.stepNumber(
-              activeStep.eventIndex + 1
-            )}{' '}
-            · {activeStep.label}
-          </p>
-          {onCloseStep ? (
-            <button
-              type="button"
-              className="min-h-11 px-2 text-xs font-medium text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand hover:text-foreground"
-              onClick={onCloseStep}
-            >
-              {REPORT_COPY.workspace.playback.backToLive}
-            </button>
-          ) : null}
-        </div>
+      <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
         {activeStep.screenshot ? (
           <BrowserFrame
             label={activeStep.label}
             url={activeStep.url ?? url}
             imageUrl={activeStep.screenshot}
             device="desktop"
-            className="flex-1"
+            chrome="none"
+            fill
+            className="min-h-0 flex-1"
           />
         ) : (
-          <p className="rounded-card border border-border bg-card/50 p-4 text-sm text-muted-foreground">
-            {REPORT_COPY.workspace.playback.noScreenshot}
-          </p>
+          <div className="flex min-h-0 flex-1 items-center justify-center bg-muted/20 p-4">
+            <p className="text-sm text-muted-foreground">
+              {REPORT_COPY.workspace.playback.noScreenshot}
+            </p>
+          </div>
         )}
       </div>
     )
   }
 
+  const activeImage = device === 'mobile' ? mobile : desktop
+  const activeState = device === 'mobile' ? mobileState : desktopState
   const bothFailed = desktopState === 'failed' && mobileState === 'failed'
 
   return (
-    <div className={cn('flex min-h-[240px] flex-col gap-3', className)}>
+    <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
       <BrowserFrame
-        label="Desktop"
+        label={
+          device === 'mobile'
+            ? REPORT_COPY.workspace.panels.mobileDevice
+            : REPORT_COPY.workspace.panels.desktopDevice
+        }
         url={url}
-        imageUrl={desktop}
-        state={desktopState}
-        device="desktop"
-        className="flex-1"
-      />
-      <BrowserFrame
-        label="Mobile"
-        url={url}
-        imageUrl={mobile}
-        state={mobileState}
-        device="mobile"
-        className="max-w-xs"
+        imageUrl={activeImage}
+        state={activeState}
+        loadingLabel={REPORT_COPY.workspace.playback.capturing}
+        device={device}
+        chrome="none"
+        fill
+        className="min-h-0 flex-1"
       />
       {!desktop && !mobile && bothFailed ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="shrink-0 border-t border-border/40 px-4 py-2 text-sm text-muted-foreground">
           {REPORT_COPY.workspace.playback.empty(url)}
         </p>
       ) : null}

@@ -47,7 +47,6 @@ export type FunnelEvent =
   | 'plan_picker_dismissed'
   | 'report_upgrade_gate_viewed'
   | 'report_progress_viewed'
-  | 'sticky_nav_used'
   | 'polish_pass_copied'
   | 'flag_detail_viewed'
 
@@ -152,11 +151,6 @@ type EventParams = {
     audit_id?: string
     progress_percent?: number
     status?: string
-    surface?: ReportSurface
-  }
-  sticky_nav_used: {
-    section_id: string
-    audit_id?: string
     surface?: ReportSurface
   }
   polish_pass_copied: {

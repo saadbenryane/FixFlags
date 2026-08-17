@@ -15,24 +15,7 @@ export const SCREENSHOT_FRAME = {
   },
 } as const
 
-export const DESKTOP_FRAME_FLEX_CLASS = 'flex-1 min-w-0'
-
-export const DESKTOP_FRAME_GRID_CLASS = 'min-w-0'
-
 export const MOBILE_FRAME_WIDTH_CLASS = 'w-[240px] max-w-full shrink-0'
-
-/**
- * Side-by-side desktop + mobile frames (flex row) for audit surfaces.
- * Pair with `flex`. Do not include `flex` here or tailwind-merge will drop `hidden`.
- */
-export const SCREENSHOT_FRAMES_ROW_CLASS =
-  'w-full min-w-0 flex-row items-start gap-4 sm:gap-6'
-
-/**
- * Side-by-side desktop + mobile screenshot grid for marketing sample.
- */
-export const SCREENSHOT_FRAMES_GRID_CLASS =
-  'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-stretch gap-3 sm:gap-6'
 
 export function viewportAspectStyle(device: 'desktop' | 'mobile'): CSSProperties {
   const vp = device === 'mobile' ? MOBILE_VIEWPORT : DESKTOP_VIEWPORT

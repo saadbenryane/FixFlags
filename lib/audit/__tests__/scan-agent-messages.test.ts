@@ -46,6 +46,22 @@ describe('buildFixFlagsScanMessages', () => {
     expect(messages.map((item) => item.id)).not.toContain('scan:audit-1:journey')
   })
 
+  it('curates large Flag sets instead of flooding the Agent transcript', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      flags: Array.from({ length: 7 }, (_, index) => ({
+        id: `flag-${index + 1}`,
+        problem: `Grounded issue ${index + 1}`,
+        rubric: 'EXPERIENCE',
+      })),
+    })
+
+    expect(messages.filter((item) => item.kind === 'flag')).toHaveLength(3)
+    expect(messages.find((item) => item.id.endsWith(':additional-flags'))?.content).toContain(
+      '4 more Flags',
+    )
+  })
+
   it('announces an included journey only after its persisted anchor', () => {
     const before = buildFixFlagsScanMessages({
       ...base,

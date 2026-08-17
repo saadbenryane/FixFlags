@@ -4,57 +4,29 @@ import {
   deriveScreenshotCaptureStatus,
   normalizeInternalScreenshotUrl,
   parseScreenshotCaptureStatus,
-  resolveScreenshotPresentation,
+  resolveCapturePair,
 } from '@/lib/audit/screenshot-types'
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 
-describe('resolveScreenshotPresentation', () => {
-  it('keeps missing captures neutral while capture is pending', () => {
-    assert.deepEqual(
-      resolveScreenshotPresentation('CAPTURING', [], {
-        desktop: 'pending',
-        mobile: 'pending',
-      }),
-      { state: 'pending' }
-    )
+describe('resolveCapturePair', () => {
+  it('keeps a missing capture loading until its status says failed', () => {
+    const pair = resolveCapturePair([], { desktop: 'pending', mobile: 'failed' })
+    assert.equal(pair.desktopState, 'loading')
+    assert.equal(pair.mobileState, 'failed')
   })
 
-  it('marks unavailable only after capture has failed', () => {
-    assert.deepEqual(
-      resolveScreenshotPresentation('CHECKING', [], {
-        desktop: 'failed',
-        mobile: 'failed',
-      }),
-      {
-        state: 'unavailable',
-        failureCode: 'SCREENSHOT_CAPTURE_FAILED',
-      }
+  it('reports both devices loaded when evidence exists', () => {
+    const pair = resolveCapturePair(
+      [
+        { device: 'DESKTOP', url: '/d.webp', width: 1280, height: 900 },
+        { device: 'MOBILE', url: '/m.webp', width: 375, height: 812 },
+      ],
+      { desktop: 'ok', mobile: 'ok' }
     )
-  })
-
-  it('marks partial only after mobile explicitly failed', () => {
-    assert.deepEqual(
-      resolveScreenshotPresentation(
-        'CHECKING',
-        [{ device: 'DESKTOP', url: '/d.webp', width: 1280, height: 900 }],
-        { desktop: 'ok', mobile: 'failed' }
-      ),
-      { state: 'partial', failedDevices: ['MOBILE'] }
-    )
-  })
-
-  it('reports complete when both devices have evidence', () => {
-    assert.deepEqual(
-      resolveScreenshotPresentation(
-        'COMPLETED',
-        [
-          { device: 'DESKTOP', url: '/d.webp', width: 1280, height: 900 },
-          { device: 'MOBILE', url: '/m.webp', width: 375, height: 812 },
-        ],
-        null
-      ),
-      { state: 'complete' }
-    )
+    assert.equal(pair.desktopState, 'loaded')
+    assert.equal(pair.mobileState, 'loaded')
+    assert.equal(pair.desktop, '/d.webp')
+    assert.equal(pair.mobile, '/m.webp')
   })
 })
 

@@ -289,13 +289,6 @@ export const SHARE_COPY = {
   },
 } as const
 
-export const ANON_VALUE_STRIP = {
-  headline: (n: number) => `${n} flag${n === 1 ? '' : 's'} found`,
-  body: 'Every Flag and its evidence are visible. Create a free account to get fix prompts, save this report, and run update reviews.',
-  primaryCta: 'Create free account',
-  secondaryCta: 'Sign in',
-} as const
-
 export const LOCKED_INSPECTION = {
   headline: 'Sign in to inspect this Flag',
   body: 'This report includes evidence, screenshots, and fix prompts for every flag.',

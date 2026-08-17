@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { History, Plus } from 'lucide-react'
+import { ArrowUp, Flag, History, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ScanWorkingMark } from '@/components/report/ScanWorkingStatus'
 import {
   Sheet,
   SheetContent,
@@ -19,13 +20,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { WorkspaceTranscript } from '@/components/report/WorkspaceTranscript'
+import {
+  WORKSPACE_AGENT_HEADER_CLASS,
+  WORKSPACE_TRANSCRIPT_CLASS,
+} from '@/components/report/workspace-geometry'
 import type { AgentMessage } from '@/lib/audit/agent-message'
 import { startScanWithHandoff } from '@/lib/audit/start-scan-handoff'
 import { REPORT_COPY } from '@/lib/marketing/copy'
+import { displaySiteAddress } from '@/lib/utils/url-helpers'
 import { cn } from '@/lib/utils'
 
 interface WorkspaceChatPanelProps {
-  auditId: string
+  /** Absent on curated marketing samples, which have no live report route. */
+  auditId?: string
   /** Interactive model conversation requires the signed-in report owner. */
   canChat?: boolean
   className?: string
@@ -33,6 +41,10 @@ interface WorkspaceChatPanelProps {
   /** Deterministic scan messages share this transcript and consume no model usage. */
   agentMessages?: AgentMessage[]
   reportUrl?: string
+  /** Persisted Product name when available; hostname remains the honest fallback. */
+  productName?: string | null
+  /** While true, the Agent header Flag mark animates as the working signal. */
+  scanning?: boolean
 }
 
 interface ChatMeta {
@@ -74,14 +86,6 @@ function conversationMessage(
   }
 }
 
-function hostname(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '')
-  } catch {
-    return url
-  }
-}
-
 function usageLabel(meta: ChatMeta): string | null {
   if (meta.limit == null || meta.remaining == null) return null
   const percent = meta.limit > 0 ? Math.max(0, Math.round((meta.remaining / meta.limit) * 100)) : 0
@@ -90,12 +94,17 @@ function usageLabel(meta: ChatMeta): string | null {
 
 export function WorkspaceChatPanel({
   auditId,
-  canChat = true,
+  canChat: canChatProp = true,
   className,
   observationAuditId,
   agentMessages = [],
   reportUrl = '',
+  productName = null,
+  scanning = false,
 }: WorkspaceChatPanelProps) {
+  // A curated sample has no report route, so chat, history, and flag deep
+  // links stay off while the transcript still shows the deterministic run.
+  const canChat = canChatProp && Boolean(auditId)
   const [conversation, setConversation] = useState<AgentMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -119,18 +128,21 @@ export function WorkspaceChatPanel({
   const transcriptRef = useRef<HTMLDivElement>(null)
   const scanInputRef = useRef<HTMLInputElement>(null)
 
-  const signInHref = { pathname: '/sign-in', query: { next: `/report/${auditId}` } }
+  const signInHref = auditId
+    ? { pathname: '/sign-in', query: { next: `/report/${auditId}` } }
+    : { pathname: '/sign-in' }
 
   async function loadConversation() {
-    if (!canChat) return
+    const reportId = auditId
+    if (!canChat || !reportId) return
     setHistoryError(null)
     setHistoryLoaded(false)
     const observationQuery =
-      observationAuditId && observationAuditId !== auditId
+      observationAuditId && observationAuditId !== reportId
         ? `?observationAuditId=${encodeURIComponent(observationAuditId)}`
         : ''
     try {
-      const response = await fetch(`/api/reports/${auditId}/chat${observationQuery}`)
+      const response = await fetch(`/api/reports/${reportId}/chat${observationQuery}`)
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(typeof data?.error === 'string' ? data.error : chatCopy.unavailable)
       const rawMessages = Array.isArray(data?.agentMessages) ? data.agentMessages : data?.messages
@@ -140,7 +152,7 @@ export function WorkspaceChatPanel({
               Boolean(item && typeof item === 'object' && 'role' in item && 'content' in item),
             )
             .map((message: { id?: string; role: 'user' | 'assistant' | 'agent'; content: string }, index: number) =>
-              conversationMessage(auditId, message, index),
+              conversationMessage(reportId, message, index),
             )
         : []
       setConversation(messages)
@@ -194,13 +206,27 @@ export function WorkspaceChatPanel({
     }
   }, [messages.length])
 
+  function gateToSignIn() {
+    const href = auditId
+      ? `/sign-in?next=${encodeURIComponent(`/report/${auditId}`)}`
+      : '/sign-in'
+    window.location.assign(href)
+  }
+
   async function send(text: string) {
     const trimmed = text.trim()
-    if (!trimmed || loading || meta.exhausted) return
+    if (!trimmed || loading) return
+    // Anonymous and non-owner viewers see the composer, but submit only opens sign-in.
+    if (!canChat) {
+      gateToSignIn()
+      return
+    }
+    const reportId = auditId
+    if (!reportId || meta.exhausted) return
     const localUser: AgentMessage = {
-      id: `local:${auditId}:${Date.now()}:user`,
-      sessionId: auditId,
-      auditId,
+      id: `local:${reportId}:${Date.now()}:user`,
+      sessionId: reportId,
+      auditId: reportId,
       role: 'user',
       source: 'user',
       kind: 'conversation',
@@ -210,13 +236,13 @@ export function WorkspaceChatPanel({
     setInput('')
     setLoading(true)
     try {
-      const response = await fetch(`/api/reports/${auditId}/chat`, {
+      const response = await fetch(`/api/reports/${reportId}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: trimmed,
           observationAuditId:
-            observationAuditId && observationAuditId !== auditId
+            observationAuditId && observationAuditId !== reportId
               ? observationAuditId
               : undefined,
         }),
@@ -232,9 +258,9 @@ export function WorkspaceChatPanel({
       const modelMessage: AgentMessage = data?.agentMessage && typeof data.agentMessage.id === 'string'
         ? data.agentMessage
         : {
-            id: `local:${auditId}:${Date.now()}:agent`,
-            sessionId: auditId,
-            auditId,
+            id: `local:${reportId}:${Date.now()}:agent`,
+            sessionId: reportId,
+            auditId: reportId,
             role: 'agent',
             source: 'model',
             kind: 'conversation',
@@ -256,9 +282,9 @@ export function WorkspaceChatPanel({
       setConversation((current) => [
         ...current,
         {
-          id: `local:${auditId}:${Date.now()}:warning`,
-          sessionId: auditId,
-          auditId,
+          id: `local:${reportId}:${Date.now()}:warning`,
+          sessionId: reportId,
+          auditId: reportId,
           role: 'agent',
           source: 'model',
           kind: 'warning',
@@ -307,17 +333,36 @@ export function WorkspaceChatPanel({
   }
 
   const remainingLabel = usageLabel(meta)
+  const reportHost = reportUrl ? displaySiteAddress(reportUrl) : ''
+  const displayProductName = productName?.trim() || reportHost || chatCopy.currentScan
 
   return (
     <TooltipProvider>
       <section
         className={cn(
-          'flex min-h-[420px] max-h-[min(72dvh,760px)] flex-col overflow-hidden rounded-card bg-card/70 shadow-card glass-surface',
+          'flex h-full min-h-0 flex-col overflow-hidden border-r border-border/50 bg-background',
           className,
         )}
         aria-label="Agent"
       >
-        <div className="flex min-h-14 items-center justify-end gap-1 border-b border-border/40 px-2">
+        <div className={WORKSPACE_AGENT_HEADER_CLASS}>
+          {scanning ? (
+            <ScanWorkingMark className="h-9 w-9" />
+          ) : (
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/10 ring-1 ring-brand/20">
+              <Flag className="h-4 w-4 text-brand" aria-hidden />
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-foreground">
+              {displayProductName}
+            </p>
+            <p className="mt-0.5 truncate text-2xs text-muted-foreground">
+              {productName && reportHost && productName.trim() !== reportHost
+                ? reportHost
+                : 'FixFlags product review'}
+            </p>
+          </div>
           <Sheet onOpenChange={(open) => { if (open) void loadHistory() }}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -337,10 +382,12 @@ export function WorkspaceChatPanel({
               <div className="mt-6 space-y-2 overflow-y-auto">
                 {!canChat ? (
                   <div className="space-y-4 rounded-card bg-muted/35 p-4">
-                    <Link href={`/report/${auditId}`} className="block min-h-11 rounded-[var(--radius-control)] bg-background px-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
-                      <span className="block text-sm font-medium text-foreground">{reportUrl ? hostname(reportUrl) : chatCopy.currentScan}</span>
-                      <span className="mt-1 block text-xs text-muted-foreground">{chatCopy.currentSession}</span>
-                    </Link>
+                    {auditId ? (
+                      <Link href={`/report/${auditId}`} className="block min-h-11 rounded-[var(--radius-control)] bg-background px-3 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+                        <span className="block text-sm font-medium text-foreground">{reportUrl ? displaySiteAddress(reportUrl) : chatCopy.currentScan}</span>
+                        <span className="mt-1 block text-xs text-muted-foreground">{chatCopy.currentSession}</span>
+                      </Link>
+                    ) : null}
                     <p className="text-sm text-muted-foreground">{chatCopy.saveHistory}</p>
                     <Button asChild className="w-full"><Link href={signInHref}>{chatCopy.signIn}</Link></Button>
                   </div>
@@ -361,7 +408,7 @@ export function WorkspaceChatPanel({
                     )}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <span className="truncate text-sm font-medium text-foreground">{hostname(item.url)}</span>
+                      <span className="truncate text-sm font-medium text-foreground">{displaySiteAddress(item.url)}</span>
                       <span className="font-mono text-2xs text-muted-foreground">{item.score ?? item.status}</span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -405,7 +452,7 @@ export function WorkspaceChatPanel({
 
         <div
           ref={transcriptRef}
-          className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 text-sm"
+          className={WORKSPACE_TRANSCRIPT_CLASS}
           role="log"
           aria-label="Agent messages"
           aria-live="polite"
@@ -416,33 +463,10 @@ export function WorkspaceChatPanel({
               {chatCopy.newScanInstruction}
             </p>
           ) : null}
-          {messages.map((message) => (
-            <article
-              key={message.id}
-              className={cn(
-                'max-w-[92%] whitespace-pre-line leading-relaxed',
-                message.role === 'user'
-                  ? 'ml-auto rounded-[var(--radius-control)] bg-muted/55 px-3 py-2 text-foreground'
-                  : message.kind === 'failure'
-                    ? 'text-destructive'
-                    : 'text-muted-foreground',
-              )}
-              data-source={message.source}
-            >
-              {message.content}
-              {message.flagId ? (
-                <Link
-                  href={`?flag=${encodeURIComponent(message.flagId)}#report-flags`}
-                  className="mt-2 block min-h-11 py-2 text-sm font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-                >
-                  {chatCopy.viewFlag}
-                </Link>
-              ) : null}
-            </article>
-          ))}
+          <WorkspaceTranscript messages={messages} linkFlags={Boolean(auditId)} />
           {!newScan && messages.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {historyLoaded ? chatCopy.preparing : chatCopy.loadingConversation}
+              {historyLoaded || !canChat ? chatCopy.preparing : chatCopy.loadingConversation}
             </p>
           ) : null}
         </div>
@@ -468,39 +492,58 @@ export function WorkspaceChatPanel({
               {chatCopy.returnToReport}
             </button>
           </form>
-        ) : !canChat ? (
-          <div className="space-y-3 border-t border-border/40 bg-muted/20 p-3">
-            <p className="text-xs text-muted-foreground">{chatCopy.authBody}</p>
-            <Button asChild className="w-full"><Link href={signInHref}>{chatCopy.notSignedIn}</Link></Button>
-          </div>
-        ) : historyError ? (
+        ) : historyError && canChat ? (
           <div className="space-y-3 border-t border-border/40 p-3">
             <p role="alert" className="text-xs text-destructive">{historyError}</p>
             <Button variant="outline" className="w-full" onClick={() => void loadConversation()}>{chatCopy.retry}</Button>
           </div>
-        ) : meta.exhausted ? (
+        ) : meta.exhausted && canChat ? (
           <div className="space-y-3 border-t border-border/40 p-3">
             <p className="text-xs text-muted-foreground">{chatCopy.allowanceBody}</p>
             <Button asChild className="w-full"><Link href="/pricing">{chatCopy.allowanceAction}</Link></Button>
           </div>
         ) : (
           <form
-            className="space-y-2 border-t border-border/40 p-2"
+            className="border-t border-border/40 p-2"
             onSubmit={(event) => { event.preventDefault(); void send(input) }}
           >
-            <div className="flex gap-2">
+            {canChat ? (
+              <div className="mb-2 flex flex-wrap gap-1.5 px-1">
+                {[chatCopy.cannedFirst, chatCopy.cannedExplain].filter(Boolean).map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    className="rounded-[var(--radius-control)] bg-muted/55 px-2.5 py-1.5 text-2xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                    onClick={() => void send(chip)}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <div className="flex items-center gap-2">
               <Input
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder={chatCopy.placeholder}
-                disabled={loading || !meta.available}
-                className="text-sm"
+                placeholder={canChat ? chatCopy.placeholder : chatCopy.authBody}
+                disabled={loading || (canChat && !meta.available)}
+                className="min-h-11 flex-1 text-sm"
+                aria-label={chatCopy.placeholder}
               />
-              <Button type="submit" size="sm" loading={loading} disabled={!input.trim() || !meta.available}>
-                {chatCopy.send}
+              <Button
+                type="submit"
+                size="icon"
+                className="h-11 w-11 shrink-0"
+                loading={loading}
+                disabled={!input.trim() || (canChat && !meta.available)}
+                aria-label={canChat ? chatCopy.send : chatCopy.notSignedIn}
+              >
+                <ArrowUp className="h-4 w-4" aria-hidden />
               </Button>
             </div>
-            {remainingLabel ? <p className="px-1 text-right font-mono text-2xs text-muted-foreground">{remainingLabel}</p> : null}
+            {canChat && remainingLabel ? (
+              <p className="mt-1 px-1 text-right font-mono text-2xs text-muted-foreground">{remainingLabel}</p>
+            ) : null}
           </form>
         )}
       </section>

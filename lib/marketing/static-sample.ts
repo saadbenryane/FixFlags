@@ -7,8 +7,9 @@ import type { CuratedSampleAudit } from '@/lib/marketing/curated-sample'
 import { originalFixture } from '@/lib/demo/fixtures/original'
 import { DEMO_BRAND } from '@/lib/demo/brand'
 
-const SAMPLE_SCREENSHOT = '/demo/hero-original.svg'
-const SAMPLE_URL = 'https://plantdad-demo.app/demo'
+const SAMPLE_DESKTOP = '/samples/demo-original-desktop.webp'
+const SAMPLE_MOBILE = '/samples/demo-original-mobile.webp'
+const SAMPLE_URL = DEMO_BRAND.sampleUrl
 
 const STATIC_FLAGS: RankableFlag[] = [
   {
@@ -19,12 +20,12 @@ const STATIC_FLAGS: RankableFlag[] = [
     impactTag: 'CONVERSION',
     problem: 'Hero headline repeats the product category instead of the outcome',
     evidence:
-      `Desktop 1280x900: headline reads "${originalFixture.headline}". It is memorable but does not state the concrete monitoring outcome quickly.`,
+      `Desktop 1280x900: headline reads "${originalFixture.headline}". It names the category but not the concrete outcome a visitor gets.`,
     whyItMatters:
       'Outcome-driven headlines help visitors understand the gain before any feature detail.',
     fix: 'Lead with the outcome: who it is for and what they get after signing up.',
     agentPrompt:
-      'Update the H1 to name the audience and outcome, for example: "Keep every desk plant alive without guessing." Keep it under 12 words at 1280px.',
+      'Update the H1 to name the audience and outcome, for example: "Ship every release without a last-minute scramble." Keep it under 12 words at 1280px.',
     verificationRule: 'New headline fits single line at 1280px viewport width.',
     pageUrl: null,
   },
@@ -214,23 +215,23 @@ export function getStaticSampleAudit(): CuratedSampleAudit {
     screenshots: [
       {
         device: 'DESKTOP',
-        url: SAMPLE_SCREENSHOT,
+        url: SAMPLE_DESKTOP,
         width: 1280,
         height: 900,
       },
       {
         device: 'MOBILE',
-        url: SAMPLE_SCREENSHOT,
+        url: SAMPLE_MOBILE,
         width: 375,
         height: 812,
       },
     ],
     productContract: {
-      purpose: 'Help plant owners monitor health and keep their plants alive',
-      firstValueJourney: 'Understand the monitoring benefit, choose Adopt a plant, and reach signup',
+      purpose: 'Help product teams run every release as a checklist with automated pre-flight checks',
+      firstValueJourney: `Understand the release benefit, choose ${originalFixture.primaryCta.label}, and reach signup`,
       criticalOutcomes: [
         'The primary CTA is visible and opens signup',
-        'Visitors understand how PlantDad monitors plant health',
+        `Visitors understand how ${DEMO_BRAND.name} verifies a release before rollout`,
         'Shared links show a branded preview',
       ],
       inferredAt: '2026-06-10T14:30:00Z',
@@ -282,7 +283,7 @@ export function getStaticSampleAudit(): CuratedSampleAudit {
       },
     ],
     previewMeta: {
-      title: `${DEMO_BRAND.name} · Smart plant monitoring`,
+      title: `${DEMO_BRAND.name} · Release checklists for product teams`,
       description: originalFixture.subhead,
       ogTitle: DEMO_BRAND.name,
       ogDescription: originalFixture.subhead,
@@ -296,14 +297,32 @@ export function getStaticSampleAudit(): CuratedSampleAudit {
       ctaHref: originalFixture.primaryCta.href,
       finalUrl: `${SAMPLE_URL}/signup`,
       steps: [
-        { label: 'Landing page', screenshotUrl: SAMPLE_SCREENSHOT, url: SAMPLE_URL },
-        { label: 'Primary CTA', screenshotUrl: SAMPLE_SCREENSHOT, url: `${SAMPLE_URL}/signup` },
+        { label: 'Landing page', screenshotUrl: SAMPLE_DESKTOP, url: SAMPLE_URL },
+        { label: 'Primary CTA', screenshotUrl: SAMPLE_DESKTOP, url: `${SAMPLE_URL}/signup` },
       ],
     },
     actionTimeline: [
-      { t: 0, kind: 'navigate', label: `Opened the ${DEMO_BRAND.name} landing page`, url: SAMPLE_URL },
-      { t: 820, kind: 'capture', label: 'Captured desktop and mobile evidence', url: SAMPLE_URL },
-      { t: 1460, kind: 'click', label: `Clicked ${originalFixture.primaryCta.label}`, url: `${SAMPLE_URL}/signup` },
+      {
+        t: 0,
+        kind: 'navigate',
+        label: `Opened the ${DEMO_BRAND.name} landing page`,
+        url: SAMPLE_URL,
+        screenshot: SAMPLE_DESKTOP,
+      },
+      {
+        t: 820,
+        kind: 'capture',
+        label: 'Captured desktop and mobile evidence',
+        url: SAMPLE_URL,
+        screenshot: SAMPLE_MOBILE,
+      },
+      {
+        t: 1460,
+        kind: 'click',
+        label: `Clicked ${originalFixture.primaryCta.label}`,
+        url: `${SAMPLE_URL}/signup`,
+        screenshot: SAMPLE_DESKTOP,
+      },
     ],
   }
 }

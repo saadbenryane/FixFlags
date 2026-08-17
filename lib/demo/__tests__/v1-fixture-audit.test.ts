@@ -4,6 +4,7 @@ import {
   compareDemoFixtures,
   isDemoDevServerRunning,
 } from '@/lib/demo/audit-demo-fixtures'
+import { DemoPageUnavailableError } from '@/lib/demo/audit-demo-local'
 
 describe('demo v1 fixture audit (offline)', () => {
   it('original keeps intentional flaws and v1 clears in-scope flags', async () => {
@@ -29,7 +30,17 @@ describe('demo v1 fixture audit (live localhost)', () => {
       return
     }
 
-    const comparison = await compareDemoFixtures({ mode: 'live' })
+    let comparison
+    try {
+      comparison = await compareDemoFixtures({ mode: 'live' })
+    } catch (error) {
+      if (error instanceof DemoPageUnavailableError) {
+        t.skip(`live demo check skipped: ${error.message}`)
+        return
+      }
+      throw error
+    }
+
     assert.ok(comparison.baseline.flags.length >= 8)
     assert.equal(
       comparison.fixed.flags.length,

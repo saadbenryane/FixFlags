@@ -1,0 +1,375 @@
+
+> fixflags@0.1.0 predev
+> node scripts/kill-port.mjs && npm run doctor
+
+
+> fixflags@0.1.0 doctor
+> DOTENV_CONFIG_PATH=.env.local node scripts/doctor.mjs
+
+PASS environment: required values configured without obvious placeholders
+PASS PostgreSQL: reachable
+PASS Redis: reachable
+PASS Chromium: /Users/saadbenryane/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing
+PASS migrations: database schema current
+PASS worker: entry point and queue dependency ready
+
+> fixflags@0.1.0 dev
+> concurrently -k -n web,worker -c blue,green "npm run dev:web" "npm run worker"
+
+[web] 
+[web] > fixflags@0.1.0 dev:web
+[web] > FIXFLAGS_PROCESS_ROLE=web NODE_ENV=development next dev
+[web] 
+[worker] 
+[worker] > fixflags@0.1.0 worker
+[worker] > FIXFLAGS_PROCESS_ROLE=worker AUDIT_WORKER_CONCURRENCY=${AUDIT_WORKER_CONCURRENCY:-1} tsx worker/index.ts
+[worker] 
+[web]    ▲ Next.js 15.5.21
+[web]    - Local:        http://localhost:3000
+[web]    - Network:      http://192.168.1.28:3000
+[web]    - Environments: .env.local
+[web]    - Experiments (use with caution):
+[web]      · optimizePackageImports
+[web] 
+[web]  ✓ Starting...
+[worker] {"level":30,"time":1786947263478,"pid":66140,"hostname":"Saads-MacBook-Pro.local","msg":"Worker starting"}
+[worker] {"level":30,"time":1786947263778,"pid":66140,"hostname":"Saads-MacBook-Pro.local","msg":"Recovery scheduler started"}
+[worker] {"level":30,"time":1786947263778,"pid":66140,"hostname":"Saads-MacBook-Pro.local","msg":"Worker ready, listening for audit jobs"}
+[web]  ✓ Compiled /instrumentation in 144ms (151 modules)
+[web]  ✓ Ready in 1580ms
+[web]  ✓ Compiled /middleware in 67ms (117 modules)
+[web]  ○ Compiling / ...
+[web]  ✓ Compiled / in 2.3s (2125 modules)
+[web]  ✓ Compiled in 806ms (888 modules)
+[web]  GET / 200 in 3256ms
+[web]  ✓ Compiled in 321ms (888 modules)
+[web]  ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[web]  GET / 200 in 313ms
+[web]  ○ Compiling /api/me ...
+[web]  ✓ Compiled /api/me in 948ms (2524 modules)
+[web]  GET /api/me 200 in 1679ms
+[web]  GET / 200 in 376ms
+[web]  GET / 200 in 236ms
+[web]  GET /api/me 200 in 17ms
+[web]  ✓ Compiled in 265ms (888 modules)
+[web]  GET / 200 in 397ms
+[web]  GET / 200 in 243ms
+[web]  GET /api/me 200 in 22ms
+[web]  ✓ Compiled in 225ms (888 modules)
+[web]  GET / 200 in 363ms
+[web]  GET / 200 in 205ms
+[web]  GET /api/me 200 in 20ms
+[web]  ○ Compiling /samples ...
+[web]  ✓ Compiled /samples in 1524ms (2716 modules)
+[web]  GET /samples 200 in 2866ms
+[web]  GET / 200 in 730ms
+[web]  GET /api/me 200 in 121ms
+[web]  ✓ Compiled in 703ms (947 modules)
+[web]  GET /samples 200 in 604ms
+[web]  GET / 200 in 240ms
+[web]  ✓ Compiled in 237ms (947 modules)
+[web]  GET /samples 200 in 309ms
+[web]  GET / 200 in 186ms
+[web]  GET /api/me 200 in 18ms
+[web]  ✓ Compiled in 103ms (947 modules)
+[web]  GET / 200 in 67ms
+[web]  GET / 200 in 210ms
+[web]  GET /api/me 200 in 18ms
+[web]  ✓ Compiled in 212ms (947 modules)
+[web]  GET / 200 in 324ms
+[web]  GET / 200 in 183ms
+[web]  GET /api/me 200 in 16ms
+[web]  ✓ Compiled in 222ms (947 modules)
+[web]  GET / 200 in 405ms
+[web]  GET / 200 in 247ms
+[web]  GET /api/me 200 in 18ms
+[web]  ✓ Compiled in 310ms (947 modules)
+[web]  GET /samples 200 in 373ms
+[web]  GET / 200 in 179ms
+[web]  GET /api/me 200 in 16ms
+[web]  ✓ Compiled in 234ms (947 modules)
+[web]  GET /samples 200 in 345ms
+[web]  GET / 200 in 215ms
+[web]  GET /api/me 200 in 16ms
+[web]  ⨯ SyntaxError: Unexpected end of JSON input
+[web]     at JSON.parse (<anonymous>) {
+[web]   page: '/samples'
+[web] }
+[web]  ✓ Compiled in 254ms (947 modules)
+[web]  ○ Compiling /_error ...
+[web]  ✓ Compiled /_error in 690ms (3069 modules)
+[web]  GET / 200 in 751ms
+[web]  GET / 200 in 185ms
+[web]  GET / 200 in 64ms
+[web]  GET /samples 500 in 1327ms
+[web]  ✓ Compiled in 486ms (1106 modules)
+[web]  ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[web]  GET /samples 200 in 138ms
+[web]  GET /samples 200 in 250ms
+[web]  GET / 200 in 767ms
+[web]  GET /api/me 200 in 88ms
+[web]  ✓ Compiled in 146ms (1106 modules)
+[web]  GET /samples 200 in 125ms
+[web]  GET / 200 in 128ms
+[web]  ✓ Compiled in 193ms (1106 modules)
+[web]  GET /samples 200 in 152ms
+[web]  GET / 200 in 157ms
+[web]  GET / 200 in 170ms
+[web]  GET / 200 in 286ms
+[web]  GET /api/me 200 in 23ms
+[web]  ✓ Compiled in 282ms (1106 modules)
+[web]  GET / 200 in 561ms
+[web]  GET /samples 200 in 295ms
+[web]  GET / 200 in 326ms
+[web]  GET /api/me 200 in 22ms
+[web]  ✓ Compiled in 294ms (1106 modules)
+[web]  GET /samples 200 in 243ms
+[web]  GET / 200 in 450ms
+[web]  GET / 200 in 251ms
+[web]  GET /api/me 200 in 19ms
+[web]  ✓ Compiled in 332ms (1106 modules)
+[web]  GET /samples 200 in 469ms
+[web]  GET /samples 200 in 230ms
+[web]  GET / 200 in 244ms
+[web]  GET /api/me 200 in 16ms
+[web]  ✓ Compiled in 240ms (1106 modules)
+[web]  GET /samples 200 in 367ms
+[web]  GET /samples 200 in 221ms
+[web]  GET / 200 in 237ms
+[web]  GET /api/me 200 in 15ms
+[web]  ✓ Compiled in 227ms (1106 modules)
+[web]  GET /samples 200 in 396ms
+[web]  GET /samples 200 in 246ms
+[web]  GET / 200 in 266ms
+[web]  GET /api/me 200 in 17ms
+[web]  ✓ Compiled in 223ms (1106 modules)
+[web]  GET /samples 200 in 238ms
+[web]  GET / 200 in 407ms
+[web]  GET / 200 in 252ms
+[web]  GET /api/me 200 in 16ms
+[web]  ○ Compiling /api/checks ...
+[web]  ✓ Compiled /api/checks in 722ms (3107 modules)
+[web]  POST /api/checks 201 in 1017ms
+[web]  ○ Compiling /report/[id] ...
+[web]  ✓ Compiled /report/[id] in 1261ms (3314 modules)
+[web]  ✓ Compiled in 164ms (1175 modules)
+[web]  GET /samples 200 in 304ms
+[web]  GET / 200 in 308ms
+[web]  GET / 200 in 309ms
+[web]  GET /report/cmswvxc8v0001on19w937qwtl 200 in 3610ms
+[web]  ○ Compiling /api/reports/[id]/status ...
+[web]  ✓ Compiled /api/reports/[id]/status in 562ms (3330 modules)
+[web]  GET /api/me 200 in 722ms
+[web]  GET /report/cmswvxc8v0001on19w937qwtl 200 in 300ms
+[web]  GET /samples 200 in 323ms
+[web]  GET / 200 in 338ms
+[web]  ✓ Compiled in 142ms (1175 modules)
+[web]  GET /report/cmswvxc8v0001on19w937qwtl 200 in 194ms
+[web]  GET /samples 200 in 213ms
+[web]  GET / 200 in 222ms
+[web]  GET /api/reports/cmswvxc8v0001on19w937qwtl/status 200 in 1828ms
+[web]  ✓ Compiled in 129ms (1175 modules)
+[web]  GET /report/cmswvxc8v0001on19w937qwtl 200 in 178ms
+[web]  GET /samples 200 in 195ms
+[web]  GET / 200 in 203ms
+[web]  ✓ Compiled in 205ms (1175 modules)
+[web]  GET /report/cmswvxc8v0001on19w937qwtl 200 in 202ms
+[web]  GET /samples 200 in 233ms
+[web]  GET / 200 in 238ms
+[web]  GET /api/reports/cmswvxc8v0001on19w937qwtl/status 200 in 25ms
+[web]  ✓ Compiled /api/screenshots/[auditId]/[device] in 316ms (3318 modules)
+[web]  GET /api/screenshots/cmswvxc8v0001on19w937qwtl/mobile?page=p0 200 in 1405ms
+[web]  GET /api/screenshots/cmswvxc8v0001on19w937qwtl/desktop?page=p0 200 in 1411ms
+[web]  GET /api/reports/cmswvxc8v0001on19w937qwtl/status 200 in 37ms
+[web]  GET /api/reports/cmswvxc8v0001on19w937qwtl/status 200 in 27ms
+[worker] {"level":30,"time":1786950077281,"pid":66140,"hostname":"Saads-MacBook-Pro.local","auditId":"cmswvxc8v0001on19w937qwtl","provider":"openai","attempt":1,"msg":"triage succeeded"}
+[web]  GET /api/reports/cmswvxc8v0001on19w937qwtl/status 200 in 31ms
+[worker] {"level":30,"time":1786950079573,"pid":66140,"hostname":"Saads-MacBook-Pro.local","auditId":"cmswvxc8v0001on19w937qwtl","msg":"Audit job cmswvxc8v0001on19w937qwtl completed"}
+[web]  GET /api/reports/cmswvxc8v0001on19w937qwtl/status 200 in 40ms
+[web]  GET /report/cmswvxc8v0001on19w937qwtl 200 in 172ms
+[web]  ✓ Compiled in 190ms (1175 modules)
+[web]  GET /report/cmswvxc8v0001on19w937qwtl 200 in 223ms
+[web]  GET /samples 200 in 230ms
+[web]  GET / 200 in 236ms
+[web]  ✓ Compiled in 131ms (1175 modules)
+[web]  GET /samples 200 in 194ms
+[web]  GET /report/cmswvxc8v0001on19w937qwtl 200 in 190ms
+[web]  GET / 200 in 207ms
+[web]  ✓ Compiled in 162ms (1175 modules)
+[web]  GET /samples 200 in 185ms
+[web]  GET / 200 in 188ms
+[web]  ✓ Compiled in 1018ms (3320 modules)
+[web]  GET /samples 200 in 314ms
+[web]  GET / 200 in 317ms
+[web]  GET / 200 in 431ms
+[web]  GET / 200 in 311ms
+[web]  ✓ Compiled /api/me in 350ms (2143 modules)
+[web]  GET /api/me 200 in 482ms
+[web]  ✓ Compiled in 788ms (1175 modules)
+[web]  GET / 200 in 1182ms
+[web]  GET /samples 200 in 483ms
+[web]  GET / 200 in 495ms
+[web]  GET /api/me 200 in 26ms
+[web]  ✓ Compiled in 655ms (1175 modules)
+[web]  GET /samples 200 in 328ms
+[web]  GET / 200 in 783ms
+[web]  GET / 200 in 340ms
+[web]  GET /api/me 200 in 36ms
+[web]  ✓ Compiled in 389ms (1175 modules)
+[web]  GET /samples 200 in 540ms
+[web]  GET /samples 200 in 304ms
+[web]  GET / 200 in 328ms
+[web]  GET /api/me 200 in 28ms
+[web]  ✓ Compiled in 364ms (1175 modules)
+[web]  GET /samples 200 in 448ms
+[web]  GET /samples 200 in 256ms
+[web]  GET / 200 in 277ms
+[web]  GET /api/me 200 in 18ms
+[web]  ✓ Compiled in 276ms (1175 modules)
+[web]  GET /samples 200 in 402ms
+[web]  GET /samples 200 in 231ms
+[web]  GET / 200 in 247ms
+[web]  GET /api/me 200 in 16ms
+[web]  ✓ Compiled in 249ms (1175 modules)
+[web]  GET /samples 200 in 242ms
+[web]  GET / 200 in 428ms
+[web]  GET / 200 in 257ms
+[web]  GET /api/me 200 in 16ms
+[web]  ✓ Compiled /api/checks in 184ms (2153 modules)
+[web]  POST /api/checks 201 in 322ms
+[web]  GET /report/cmswvzqcv0003on19gjn3kk2l 200 in 430ms
+[web]  GET /api/me 200 in 34ms
+[web]  ✓ Compiled /api/reports/[id]/status in 380ms (3330 modules)
+[web] (node:66141) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 exit listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+[web] (Use `node --trace-warnings ...` to show where the warning was created)
+[web]  GET /api/reports/cmswvzqcv0003on19gjn3kk2l/status 200 in 533ms
+[web]  ✓ Compiled in 246ms (1175 modules)
+[web]  GET /report/cmswvzqcv0003on19gjn3kk2l 200 in 433ms
+[web]  GET /samples 200 in 561ms
+[web]  GET / 200 in 635ms
+[web]  GET /report/cmswvzqcv0003on19gjn3kk2l 200 in 194ms
+[web]  GET /samples 200 in 190ms
+[web]  GET / 200 in 109ms
+[web]  ✓ Compiled in 130ms (1175 modules)
+[web]  GET /report/cmswvzqcv0003on19gjn3kk2l 200 in 177ms
+[web]  GET /samples 200 in 196ms
+[web]  GET / 200 in 206ms
+[web]  ✓ Compiled in 129ms (1175 modules)
+[web]  GET /report/cmswvzqcv0003on19gjn3kk2l 200 in 188ms
+[web]  GET /samples 200 in 213ms
+[web]  GET / 200 in 234ms
+[web]  ✓ Compiled in 128ms (1175 modules)
+[web]  GET /report/cmswvzqcv0003on19gjn3kk2l 200 in 174ms
+[web]  GET /samples 200 in 195ms
+[web]  GET / 200 in 200ms
+[web]  GET /api/reports/cmswvzqcv0003on19gjn3kk2l/status 200 in 29ms
+[web]  ✓ Compiled /api/screenshots/[auditId]/[device] in 450ms (2157 modules)
+[web]  GET /api/screenshots/cmswvzqcv0003on19gjn3kk2l/mobile?page=p0 200 in 619ms
+[web]  GET /api/screenshots/cmswvzqcv0003on19gjn3kk2l/desktop?page=p0 200 in 624ms
+[web]  GET /api/reports/cmswvzqcv0003on19gjn3kk2l/status 200 in 43ms
+[worker] {"level":30,"time":1786950179229,"pid":66140,"hostname":"Saads-MacBook-Pro.local","auditId":"cmswvzqcv0003on19gjn3kk2l","provider":"openai","attempt":1,"msg":"triage succeeded"}
+[worker] {"level":30,"time":1786950181616,"pid":66140,"hostname":"Saads-MacBook-Pro.local","auditId":"cmswvzqcv0003on19gjn3kk2l","msg":"Audit job cmswvzqcv0003on19gjn3kk2l completed"}
+[web]  GET /api/reports/cmswvzqcv0003on19gjn3kk2l/status 200 in 46ms
+[web]  GET /report/cmswvzqcv0003on19gjn3kk2l 200 in 169ms
+[web]  ✓ Compiled in 151ms (1175 modules)
+[web]  GET /samples 200 in 221ms
+[web]  GET /report/cmswvzqcv0003on19gjn3kk2l 200 in 217ms
+[web]  GET / 200 in 225ms
+[web]  ✓ Compiled in 125ms (1175 modules)
+[web]  GET /samples 200 in 198ms
+[web]  GET /report/cmswvzqcv0003on19gjn3kk2l 200 in 192ms
+[web]  GET / 200 in 205ms
+[web]  ✓ Compiled in 126ms (1175 modules)
+[web]  GET /samples 200 in 128ms
+[web]  GET / 200 in 131ms
+[web]  ✓ Compiled in 633ms (3332 modules)
+[web]  GET /samples 200 in 278ms
+[web]  GET / 200 in 285ms
+[web]  GET / 200 in 363ms
+[web]  GET /api/me 200 in 85ms
+[web]  ✓ Compiled in 310ms (1175 modules)
+[web]  GET / 200 in 582ms
+[web]  GET /samples 200 in 293ms
+[web]  GET / 200 in 299ms
+[web]  GET /api/me 200 in 24ms
+[web]  ✓ Compiled in 314ms (1175 modules)
+[web]  GET /samples 200 in 510ms
+[web]  GET / 200 in 756ms
+[web]  GET / 200 in 561ms
+[web]  GET /api/me 200 in 26ms
+[web]  ✓ Compiled in 497ms (1175 modules)
+[web]  GET /samples 200 in 674ms
+[web]  GET /samples 200 in 370ms
+[web]  GET / 200 in 394ms
+[web]  GET /api/me 200 in 23ms
+[web]  GET /samples 200 in 297ms
+[web]  GET /api/me 200 in 58ms
+[web]  ✓ Compiled in 1656ms (1175 modules)
+[web]  GET /samples 200 in 188ms
+[web]  GET /samples 200 in 189ms
+[web]  GET / 200 in 209ms
+[web]  ✓ Compiled in 291ms (1175 modules)
+[web]  GET /samples 200 in 425ms
+[web]  GET /samples 200 in 239ms
+[web]  GET / 200 in 259ms
+[web]  GET /api/me 200 in 17ms
+[web]  ✓ Compiled in 249ms (1175 modules)
+[web]  GET /samples 200 in 242ms
+[web]  GET / 200 in 426ms
+[web]  GET / 200 in 248ms
+[web]  GET /api/me 200 in 15ms
+[web]  POST /api/checks 201 in 76ms
+[web]  GET /report/cmsww0r950005on19uu333x54 200 in 288ms
+[web]  GET /api/me 200 in 54ms
+[web]  GET /api/reports/cmsww0r950005on19uu333x54/status 200 in 55ms
+[web]  ✓ Compiled in 171ms (1175 modules)
+[web]  GET /report/cmsww0r950005on19uu333x54 200 in 177ms
+[web]  GET /samples 200 in 197ms
+[web]  GET / 200 in 204ms
+[web]  ✓ Compiled in 151ms (1175 modules)
+[web]  GET /report/cmsww0r950005on19uu333x54 200 in 182ms
+[web]  GET /samples 200 in 204ms
+[web]  GET / 200 in 209ms
+[web]  ✓ Compiled in 131ms (1175 modules)
+[web]  GET /report/cmsww0r950005on19uu333x54 200 in 177ms
+[web]  GET /samples 200 in 197ms
+[web]  GET / 200 in 204ms
+[web]  ✓ Compiled in 125ms (1175 modules)
+[web]  GET /report/cmsww0r950005on19uu333x54 200 in 167ms
+[web]  GET /samples 200 in 186ms
+[web]  GET / 200 in 192ms
+[web]  ✓ Compiled in 127ms (1175 modules)
+[web]  GET /report/cmsww0r950005on19uu333x54 200 in 174ms
+[web]  GET /samples 200 in 193ms
+[web]  GET / 200 in 200ms
+[web]  GET /api/reports/cmsww0r950005on19uu333x54/status 200 in 30ms
+[web]  GET /api/screenshots/cmsww0r950005on19uu333x54/desktop?page=p0 200 in 52ms
+[web]  GET /api/screenshots/cmsww0r950005on19uu333x54/mobile?page=p0 200 in 60ms
+[web]  GET /api/reports/cmsww0r950005on19uu333x54/status 200 in 27ms
+[worker] {"level":40,"time":1786950229476,"pid":66140,"hostname":"Saads-MacBook-Pro.local","auditId":"cmsww0r950005on19uu333x54","provider":"openai","attempt":1,"err":"Invalid AI assessment: launch checklist must contain exactly five checks","msg":"triage attempt failed"}
+[web]  GET /api/reports/cmsww0r950005on19uu333x54/status 200 in 25ms
+[web]  GET /api/reports/cmsww0r950005on19uu333x54/status 200 in 32ms
+[web]  GET /api/reports/cmsww0r950005on19uu333x54/status 200 in 32ms
+[web]  GET /api/reports/cmsww0r950005on19uu333x54/status 200 in 30ms
+[worker] {"level":30,"time":1786950242435,"pid":66140,"hostname":"Saads-MacBook-Pro.local","auditId":"cmsww0r950005on19uu333x54","provider":"openai","attempt":2,"msg":"triage succeeded"}
+[web]  GET /api/reports/cmsww0r950005on19uu333x54/status 200 in 28ms
+[worker] {"level":30,"time":1786950244757,"pid":66140,"hostname":"Saads-MacBook-Pro.local","auditId":"cmsww0r950005on19uu333x54","msg":"Audit job cmsww0r950005on19uu333x54 completed"}
+[web]  GET /api/reports/cmsww0r950005on19uu333x54/status 200 in 33ms
+[web]  GET /report/cmsww0r950005on19uu333x54 200 in 82ms
+[web]  ✓ Compiled in 178ms (1175 modules)
+[web]  GET /samples 200 in 203ms
+[web]  GET /report/cmsww0r950005on19uu333x54 200 in 196ms
+[web]  GET / 200 in 213ms
+[web]  ✓ Compiled in 132ms (1175 modules)
+[web]  GET /report/cmsww0r950005on19uu333x54 200 in 196ms
+[web]  GET /samples 200 in 205ms
+[web]  GET / 200 in 209ms
+[web]  ✓ Compiled in 134ms (1175 modules)
+[web]  GET /samples 200 in 170ms
+[web]  GET / 200 in 188ms
+[web]  ○ Compiling /demo ...
+[web]  ✓ Compiled /demo in 3.1s (3320 modules)
+[web]  GET /samples 200 in 582ms
+[web]  GET / 200 in 623ms
+[web]  GET / 200 in 241ms
+[web]  GET / 200 in 157ms

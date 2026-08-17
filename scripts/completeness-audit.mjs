@@ -150,7 +150,7 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
     )
   }
 
-  const toolbar = read(root, 'components/audit/ReportStickyToolbar.tsx')
+  const reportShell = read(root, 'components/audit/AuditReport.tsx')
   const reportSources = [
     'components/audit/AuditReport.tsx',
     'components/audit/AuditReportProgressive.tsx',
@@ -161,16 +161,25 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
     'components/audit/PreviewCards.tsx',
     'components/audit/LaunchGates.tsx',
   ].map((file) => read(root, file)).join('\n')
-  const sectionIds = [...toolbar.matchAll(/id:\s*['"]([^'"]+)['"]/g)].map((match) => match[1])
-  for (const sectionId of sectionIds) {
-    assert(reportSources.includes(`id="${sectionId}"`) || reportSources.includes(`id={${sectionId}`), `Sticky destination has no report section: ${sectionId}`)
+  // Every section the Review context disclosure claims to carry must exist.
+  const contextIds = [
+    ...(reportShell.match(/const REPORT_CONTEXT_SECTION_IDS = \[[^\]]+\]/s)?.[0] ?? '').matchAll(
+      /'([^']+)'/g,
+    ),
+  ].map((match) => match[1])
+  assert(contextIds.length > 0, 'AuditReport must declare REPORT_CONTEXT_SECTION_IDS')
+  for (const sectionId of contextIds) {
+    assert(
+      reportSources.includes(`id="${sectionId}"`) || reportSources.includes(`id={${sectionId}`),
+      `Review context lists a section that no report renders: ${sectionId}`,
+    )
   }
 
-  const shell = read(root, 'components/report/ReportWorkspaceShell.tsx')
+  // Report pane order: outcome bar → fix explorer → polish pass → context.
   assert(
-    shell.indexOf('{stickyNav}') < shell.indexOf('{polishPass}') &&
-      shell.indexOf('{polishPass}') < shell.indexOf('{flagsSection}'),
-    'ReportWorkspaceShell section order must be sticky → polish → flags',
+    reportShell.indexOf('<ReportOutcomeBar') < reportShell.indexOf('{flagsSection}') &&
+      reportShell.indexOf('{reportFrame}') < reportShell.indexOf('{belowFrame}'),
+    'Report pane order must be outcome bar → fix list → polish pass → review context',
   )
 
   assert(schema.includes('canonicalHost') && schema.includes('isManaged'), 'Product identity schema is missing canonicalHost/isManaged')
@@ -265,7 +274,7 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
       modelCount,
       mcpToolCount: manifest.size,
       editorCount: editorKeys.length,
-      sectionCount: sectionIds.length,
+      sectionCount: contextIds.length,
     },
   }
 }
@@ -276,6 +285,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     for (const failure of result.failures) console.error(`FAIL ${failure}`)
     process.exitCode = 1
   } else {
-    console.log(`PASS completeness audit: ${result.facts.modelCount} models, ${result.facts.mcpToolCount} MCP tools, ${result.facts.editorCount} editor integrations, ${result.facts.sectionCount} sticky destinations`)
+    console.log(`PASS completeness audit: ${result.facts.modelCount} models, ${result.facts.mcpToolCount} MCP tools, ${result.facts.editorCount} editor integrations, ${result.facts.sectionCount} review context sections`)
   }
 }

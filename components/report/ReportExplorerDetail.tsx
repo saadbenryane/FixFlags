@@ -13,7 +13,7 @@ import { FilterPill } from '@/components/ui/filter-pill'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import type { RubricFilter } from '@/lib/report/explorer-filters'
-import { cn, rubricLabel } from '@/lib/utils'
+import { rubricLabel } from '@/lib/utils'
 import { rubricIcon } from '@/lib/rubric-icons'
 
 export function RubricTabs({
@@ -102,9 +102,7 @@ export function FlagDetailPane({
   aiEnhancementPending,
   signUpHref,
   onSelectFlag,
-  compact = false,
   demonstratedFlagId,
-  variant = 'live',
   headingRef,
 }: {
   model: ReportExplorerModel
@@ -117,15 +115,12 @@ export function FlagDetailPane({
   aiEnhancementPending?: boolean
   signUpHref?: string
   onSelectFlag: (flagId: string) => void
-  compact?: boolean
   demonstratedFlagId?: string
-  variant?: 'hero' | 'live'
   headingRef?: RefObject<HTMLHeadingElement | null>
 }) {
   const showDesktop = Boolean(model.desktopScreenshot)
   const showMobile = Boolean(model.mobileScreenshot)
   const shareableFlag = isShareableCheck(flag.checkId)
-  const isHero = variant === 'hero'
 
   return (
     <div className="min-w-0">
@@ -134,7 +129,7 @@ export function FlagDetailPane({
           <h3
             ref={headingRef}
             tabIndex={-1}
-            className="min-w-0 flex-1 text-lg font-semibold leading-snug tracking-heading text-balance outline-none sm:text-xl"
+            className="min-w-0 flex-1 text-lg font-semibold leading-snug tracking-heading text-balance outline-none"
           >
             {flag.title}
           </h3>
@@ -145,31 +140,8 @@ export function FlagDetailPane({
         </div>
       </header>
 
-      <div className={cn(isHero && 'space-y-6', 'flex flex-col gap-5')}>
-        {!shareableFlag && !isHero && flag.evidence ? (
-          <div className="lg:hidden">
-            <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
-              {flag.truthLabel}
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-foreground text-pretty">{flag.evidence}</p>
-          </div>
-        ) : null}
-
-        {!shareableFlag && !isHero ? (
-          <ScreenshotWithHighlights
-            host={model.displayHost}
-            desktopScreenshot={model.desktopScreenshot}
-            mobileScreenshot={model.mobileScreenshot}
-            highlights={model.allHighlights}
-            selectedFlagId={flag.id}
-            onPinSelect={onSelectFlag}
-            showDesktop={showDesktop}
-            showMobile={showMobile}
-            affectedDevices={flag.affectedDevices}
-            className={cn(compact && 'lg:mb-0')}
-          />
-        ) : null}
-        {isHero && !shareableFlag ? (
+      <div className="flex flex-col gap-5">
+        {!shareableFlag ? (
           <ScreenshotWithHighlights
             host={model.displayHost}
             desktopScreenshot={model.desktopScreenshot}
@@ -183,16 +155,14 @@ export function FlagDetailPane({
           />
         ) : null}
 
-        <div className={cn(isHero && 'pt-2')}>
-          <FlagDetailPanel
-            flag={flag}
-            showFeedback={showFeedback}
-            aiLocked={aiLocked && flag.id !== demonstratedFlagId}
-            aiEnhancementPending={aiEnhancementPending}
-            signUpHref={signUpHref}
-            previewMeta={model.previewMeta}
-          />
-        </div>
+        <FlagDetailPanel
+          flag={flag}
+          showFeedback={showFeedback}
+          aiLocked={aiLocked && flag.id !== demonstratedFlagId}
+          aiEnhancementPending={aiEnhancementPending}
+          signUpHref={signUpHref}
+          previewMeta={model.previewMeta}
+        />
       </div>
     </div>
   )

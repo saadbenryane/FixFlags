@@ -1,16 +1,24 @@
 'use client'
 
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { WorkspaceViewToggle, type WorkspacePanelView } from '@/components/report/WorkspaceViewToggle'
+import type { PlaybackStep } from '@/lib/audit/playback-steps'
 import {
-  WorkspacePlaybackStrip,
-  type PlaybackStep,
-} from '@/components/report/WorkspacePlaybackStrip'
-import { WorkspaceBrowserPanel } from '@/components/report/WorkspaceBrowserPanel'
-import { WorkspacePanel } from '@/components/report/WorkspacePanel'
-import { BrowserFrame } from '@/components/audit/BrowserFrame'
+  WorkspaceBrowserPanel,
+  type PreviewDevice,
+} from '@/components/report/WorkspaceBrowserPanel'
+import { WorkspaceDeviceToggle } from '@/components/report/WorkspaceDeviceToggle'
+import { WorkspaceMobileTabs } from '@/components/report/WorkspaceMobileTabs'
+import { WorkspacePreviewTransport } from '@/components/report/WorkspacePreviewTransport'
+import { displaySiteAddress } from '@/lib/utils/url-helpers'
+import {
+  WORKSPACE_PANEL_HEADER_CLASS,
+  WORKSPACE_PANE_SCROLL_CLASS,
+  WORKSPACE_SPLIT_GRID_CLASS,
+  WORKSPACE_STAGE_CLASS,
+} from '@/components/report/workspace-geometry'
 import type {
   AuditScreenshot,
   ScreenshotCaptureStatus,
@@ -23,11 +31,19 @@ interface ReportWorkspaceSplitShellProps {
   isActiveReview?: boolean
   /** When false, hide the left chat/activity column (password-share viewers). */
   showChatColumn?: boolean
+  /**
+   * Active-review mode: the left panel reads as a working Agent, the desktop
+   * right panel toggles Report | Preview, and mobile switches Agent | Report |
+   * Preview with Agent as the default surface.
+   */
+  scanning?: boolean
   leftPanel: ReactNode
   browserUrl: string
   browserScreenshots?: AuditScreenshot[]
   browserCaptureStatus?: ScreenshotCaptureStatus | null
   reportPanel: ReactNode
+  /** Grounded Flags currently available while the live review progresses. */
+  findingCount?: number
   steps: PlaybackStep[]
   /** Timeline and playback require an authenticated report owner. */
   canUseTimeline?: boolean
@@ -37,6 +53,10 @@ interface ReportWorkspaceSplitShellProps {
   className?: string
 }
 
+/**
+ * Small screens show one column at a time. Which surface the Product column
+ * shows is still `view`, so mobile and desktop never diverge.
+ */
 type MobileFocus = 'chat' | 'product'
 
 export const REPORT_PLAYBACK_SCROLL_MT = 'scroll-mt-[var(--report-chrome-offset)]'
@@ -44,11 +64,13 @@ export const REPORT_PLAYBACK_SCROLL_MT = 'scroll-mt-[var(--report-chrome-offset)
 export function ReportWorkspaceSplitShell({
   isActiveReview = false,
   showChatColumn = true,
+  scanning = false,
   leftPanel,
   browserUrl,
   browserScreenshots = [],
   browserCaptureStatus,
   reportPanel,
+  findingCount = 0,
   steps,
   canUseTimeline = true,
   showCanvas = false,
@@ -58,15 +80,19 @@ export function ReportWorkspaceSplitShell({
 }: ReportWorkspaceSplitShellProps) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
-  const [view, setView] = useState<WorkspacePanelView>('report')
-  const [mobileFocus, setMobileFocus] = useState<MobileFocus>(isActiveReview ? 'chat' : 'product')
+  const [view, setView] = useState<WorkspacePanelView>(scanning ? 'browser' : 'report')
+  const [mobileFocus, setMobileFocus] = useState<MobileFocus>(
+    scanning || isActiveReview ? 'chat' : 'product'
+  )
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
+  const [device, setDevice] = useState<PreviewDevice>('desktop')
 
   const stepParam = searchParams.get('step')
 
   useEffect(() => {
     const saved = window.sessionStorage.getItem(`fixflags:workspace-panel:${pathname}`)
     if (saved === 'chat' || saved === 'product') setMobileFocus(saved)
+    if (saved === 'preview') setMobileFocus('product')
   }, [pathname])
 
   const chooseMobileFocus = (next: MobileFocus) => {
@@ -74,8 +100,13 @@ export function ReportWorkspaceSplitShell({
     window.sessionStorage.setItem(`fixflags:workspace-panel:${pathname}`, next)
   }
 
+  const chooseMobileView = (next: WorkspacePanelView) => {
+    setView(next)
+    chooseMobileFocus('product')
+  }
+
   useEffect(() => {
-    if (!canUseTimeline || !stepParam || steps.length === 0) return
+    if (scanning || !canUseTimeline || !stepParam || steps.length === 0) return
     const requested = Number(stepParam)
     if (!Number.isInteger(requested)) return
     const index = requested - 1
@@ -85,7 +116,7 @@ export function ReportWorkspaceSplitShell({
     requestAnimationFrame(() => {
       document.getElementById('report-flags')?.scrollIntoView({ behavior: 'smooth' })
     })
-  }, [canUseTimeline, stepParam, steps.length])
+  }, [scanning, canUseTimeline, stepParam, steps.length])
 
   const activeStep = activeIndex != null ? (steps[activeIndex] ?? null) : null
   const selectStep = (index: number) => {
@@ -98,172 +129,196 @@ export function ReportWorkspaceSplitShell({
     setView('browser')
   }
 
-  const stepEvidence =
-    activeStep && activeIndex != null && view === 'report' ? (
-      activeStep.screenshot ? (
-        <WorkspacePanel>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-muted-foreground">
-              {REPORT_COPY.workspace.playback.evidenceTitle(activeIndex + 1)}
-            </p>
-            <button
-              type="button"
-              className="min-h-11 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 rounded-md"
-              onClick={() => setActiveIndex(null)}
-            >
-              {REPORT_COPY.workspace.playback.closeEvidence}
-            </button>
-          </div>
-          <BrowserFrame
-            label={activeStep.label}
-            url={activeStep.url ?? browserUrl}
-            imageUrl={activeStep.screenshot}
-            device="desktop"
-            className="mt-2 max-h-[360px] overflow-hidden"
-          />
-        </WorkspacePanel>
-      ) : null
-    ) : null
+  const canReplay = !scanning && canUseTimeline
 
-  const productContent =
+  const previewStage = (
+    <WorkspaceBrowserPanel
+      url={browserUrl}
+      screenshots={browserScreenshots}
+      captureStatus={browserCaptureStatus}
+      activeStep={canReplay ? activeStep : null}
+      device={device}
+      className="h-full"
+    />
+  )
+
+  const previewTransport = (
+    <WorkspacePreviewTransport
+      steps={steps}
+      activeIndex={activeIndex}
+      onSelectStep={selectStep}
+      onScrub={scrubStep}
+      onBackToLive={() => setActiveIndex(null)}
+      canReplay={canReplay}
+      signInNext={canUseTimeline ? undefined : pathname}
+      scanning={scanning}
+    />
+  )
+
+  const scrollContent =
     view === 'canvas' ? (
       canUseCanvas ? (
         canvasPanel ?? (
-          <WorkspacePanel className="flex min-h-[360px] items-center justify-center">
+          <div className="flex min-h-[360px] items-center justify-center">
             <p className="text-sm text-muted-foreground">{REPORT_COPY.workspace.canvas.start}</p>
-          </WorkspacePanel>
+          </div>
         )
       ) : (
-        <WorkspacePanel className="flex min-h-[360px] items-center justify-center">
+        <div className="flex min-h-[360px] items-center justify-center">
           <div className="max-w-sm space-y-4 text-center">
             <p className="text-xl font-semibold text-foreground">{REPORT_COPY.workspace.canvas.lockedTitle}</p>
             <p className="text-sm text-muted-foreground">{REPORT_COPY.workspace.canvas.lockedBody}</p>
             <Button asChild><Link href="/pricing">{REPORT_COPY.workspace.canvas.upgrade}</Link></Button>
           </div>
-        </WorkspacePanel>
-      )
-    ) : view === 'browser' ? (
-      canUseTimeline ? (
-        <WorkspaceBrowserPanel
-          url={browserUrl}
-          screenshots={browserScreenshots}
-          captureStatus={browserCaptureStatus}
-          activeStep={activeStep}
-          onCloseStep={activeStep ? () => setActiveIndex(null) : undefined}
-        />
-      ) : (
-        <WorkspacePanel className="flex min-h-[360px] items-center justify-center">
-          <div className="max-w-sm space-y-4 text-center">
-            <p className="text-xl font-semibold text-foreground">{REPORT_COPY.workspace.timelineGate.title}</p>
-            <p className="text-sm text-muted-foreground">
-              {REPORT_COPY.workspace.timelineGate.body}
-            </p>
-            <Button asChild>
-              <Link href={{ pathname: '/sign-in', query: { next: pathname } }}>
-                {REPORT_COPY.workspace.timelineGate.action}
-              </Link>
-            </Button>
-          </div>
-        </WorkspacePanel>
+        </div>
       )
     ) : (
       reportPanel
     )
 
   const renderToggle = () => (
-    <WorkspaceViewToggle view={view} onChange={setView} showCanvas={showCanvas} />
+    <WorkspaceViewToggle
+      view={view}
+      onChange={setView}
+      showCanvas={showCanvas}
+      scanning={scanning}
+    />
   )
 
-  const playback =
-    canUseTimeline && steps.length > 0 ? (
-      <WorkspacePlaybackStrip
-        steps={steps}
-        activeIndex={activeIndex}
-        onSelectStep={selectStep}
-        onScrub={scrubStep}
-      />
-    ) : null
-
+  /**
+   * One instance of each column. Rendering the Product column twice (desktop
+   * grid plus mobile stack) duplicated every report section id, so anchors and
+   * container queries could resolve against the hidden copy.
+   */
   const leftColumn = showChatColumn ? (
-    <div>{leftPanel}</div>
+    <div
+      className={cn(
+        'h-full min-h-0 min-w-0',
+        mobileFocus === 'chat' ? 'block' : 'hidden',
+        'lg:block'
+      )}
+    >
+      {leftPanel}
+    </div>
   ) : null
 
+  /**
+   * One tab bar for the whole review. It carries the same surfaces as the
+   * desktop toggle, so nothing about the mobile shell changes when a scan
+   * finishes.
+   */
+  // Agent → Preview → Report → Canvas mirrors the desktop Preview-first order.
+  const mobileTabs = [
+    {
+      id: 'chat',
+      label: REPORT_COPY.workspace.panels.chatTab,
+      selected: mobileFocus === 'chat',
+      onSelect: () => chooseMobileFocus('chat'),
+    },
+    {
+      id: 'browser',
+      label: scanning
+        ? REPORT_COPY.workspace.panels.previewView
+        : REPORT_COPY.workspace.panels.browserView,
+      selected: mobileFocus === 'product' && view === 'browser',
+      onSelect: () => chooseMobileView('browser'),
+    },
+    {
+      id: 'report',
+      label: REPORT_COPY.workspace.panels.productTab,
+      selected: mobileFocus === 'product' && view === 'report',
+      onSelect: () => chooseMobileView('report'),
+    },
+    ...(showCanvas && !scanning
+      ? [
+          {
+            id: 'canvas',
+            label: REPORT_COPY.workspace.panels.canvasView,
+            selected: mobileFocus === 'product' && view === 'canvas',
+            onSelect: () => chooseMobileView('canvas'),
+          },
+        ]
+      : []),
+  ]
+
+  const productHeader = (
+    <div className={WORKSPACE_PANEL_HEADER_CLASS}>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-foreground">
+          {REPORT_COPY.workspace.panels.productReality}
+        </p>
+        <p className="truncate text-2xs text-muted-foreground">
+          {displaySiteAddress(browserUrl)}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
+        {/* Slot is reserved for the whole scan so the first Flag cannot shift the header. */}
+        {scanning && view === 'browser' ? (
+          <div className="hidden min-w-[10.5rem] justify-end sm:flex">
+            {findingCount > 0 ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setView('report')}
+                className="tabular-nums"
+              >
+                {REPORT_COPY.workspace.panels.inspectFindings(findingCount)}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+        {view === 'browser' ? (
+          <WorkspaceDeviceToggle device={device} onDeviceChange={setDevice} />
+        ) : null}
+        {/* Without a chat column there is no mobile tab bar, so the pane keeps the toggle. */}
+        <div className={showChatColumn ? 'hidden lg:block' : 'block'}>{renderToggle()}</div>
+      </div>
+    </div>
+  )
+
   const productColumn = (
-    <div className="space-y-3">
-      <Fragment key="step-evidence">{stepEvidence}</Fragment>
-      <Fragment key="product-content">{productContent}</Fragment>
+    <div
+      className={cn(
+        'h-full min-h-0 min-w-0 flex-col overflow-hidden bg-muted/10',
+        !showChatColumn || mobileFocus === 'product' ? 'flex' : 'hidden',
+        'lg:flex'
+      )}
+    >
+      {productHeader}
+      {view === 'browser' ? (
+        <>
+          <div className={WORKSPACE_STAGE_CLASS}>{previewStage}</div>
+          {previewTransport}
+        </>
+      ) : (
+        <div className={WORKSPACE_PANE_SCROLL_CLASS}>{scrollContent}</div>
+      )}
     </div>
   )
 
   return (
-    <div className={cn(REPORT_PLAYBACK_SCROLL_MT, 'space-y-3', className)}>
-      <div className="hidden items-center justify-between gap-3 lg:flex">{renderToggle()}</div>
-
+    <div
+      className={cn(
+        REPORT_PLAYBACK_SCROLL_MT,
+        'flex h-full min-h-0 flex-col',
+        className
+      )}
+    >
       {showChatColumn ? (
-        <div className="flex gap-2 lg:hidden">
-          <button
-            type="button"
-            aria-pressed={mobileFocus === 'chat'}
-            className={cn(
-              'min-h-11 flex-1 rounded-md border px-3 text-sm font-medium transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
-              mobileFocus === 'chat' ? 'border-brand bg-brand/10' : 'border-border'
-            )}
-            onClick={() => chooseMobileFocus('chat')}
-          >
-            {REPORT_COPY.workspace.panels.chatTab}
-          </button>
-          <button
-            type="button"
-            aria-pressed={mobileFocus === 'product'}
-            className={cn(
-              'min-h-11 flex-1 rounded-md border px-3 text-sm font-medium transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
-              mobileFocus === 'product' ? 'border-brand bg-brand/10' : 'border-border'
-            )}
-            onClick={() => chooseMobileFocus('product')}
-          >
-            {REPORT_COPY.workspace.panels.productTab}
-          </button>
-        </div>
+        <WorkspaceMobileTabs
+          label={REPORT_COPY.workspace.panels.mobileTabsLabel}
+          tabs={mobileTabs}
+        />
       ) : null}
 
       <div
         className={cn(
-          'hidden gap-4 lg:grid',
-          showChatColumn
-            ? 'lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]'
-            : 'lg:grid-cols-1'
+          'grid min-h-0 flex-1',
+          showChatColumn ? WORKSPACE_SPLIT_GRID_CLASS : 'lg:grid-cols-1'
         )}
       >
         {leftColumn}
         {productColumn}
-      </div>
-
-      {playback ? <div className="hidden lg:block">{playback}</div> : null}
-
-      <div className="space-y-3 lg:hidden">
-        {showChatColumn && mobileFocus === 'chat' ? (
-          <div className="space-y-3">
-            {leftColumn}
-            {isActiveReview ? (
-              <Button className="w-full" variant="outline" onClick={() => chooseMobileFocus('product')}>
-                {REPORT_COPY.workspace.panels.viewReport}
-              </Button>
-            ) : null}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {showChatColumn ? (
-              <Button variant="ghost" className="min-h-11" onClick={() => chooseMobileFocus('chat')}>
-                {REPORT_COPY.workspace.panels.backToAgent}
-              </Button>
-            ) : null}
-            <div className="flex justify-center">{renderToggle()}</div>
-            {productColumn}
-          </div>
-        )}
-        {playback}
       </div>
     </div>
   )

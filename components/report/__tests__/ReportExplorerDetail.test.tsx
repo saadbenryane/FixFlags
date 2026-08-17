@@ -91,19 +91,19 @@ describe('FlagDetailPane', () => {
     )
   })
 
-  it('renders with hero variant', () => {
+  it('renders the evidence line once, not one copy per breakpoint', () => {
+    const flagWithEvidence = { ...FIRST_FLAG, evidence: 'The hero says nothing about the outcome.' }
     renderWithProviders(
       <FlagDetailPane
         model={MODEL}
-        flag={FIRST_FLAG}
+        flag={flagWithEvidence}
         flagCount={MODEL.flags.length}
         onPrevious={vi.fn()}
         onNext={vi.fn()}
         onSelectFlag={vi.fn()}
-        variant="hero"
       />
     )
-    expect(screen.getByRole('heading', { name: FIRST_FLAG.title })).toBeInTheDocument()
+    expect(screen.getAllByText(flagWithEvidence.evidence)).toHaveLength(1)
   })
 
   it('disables navigation when only one flag', () => {

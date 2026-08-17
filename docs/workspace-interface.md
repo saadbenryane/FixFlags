@@ -14,20 +14,52 @@
 
 | Region | Purpose |
 |--------|---------|
-| **Left — Agent** | One transcript for deterministic scan messages, confirmed Flag announcements, and authenticated report conversation. A title-free toolbar contains History followed by New scan. |
-| **Right — Product** | The public-safe Report is the default value surface. Authenticated users can switch to Timeline; paid users can switch to Canvas. |
+| **Left — FixFlags understanding** | Product identity, customer-meaningful review activity, observations, confirmed Flag announcements, judgment, and authenticated report conversation. Technical execution logs and simulated reasoning never appear here. |
+| **Right — Product reality** | The live Product, interaction, and captured evidence while a review runs. The completed public-safe Report becomes the default after completion; authenticated users can switch to Timeline and paid users to Canvas. |
+
+**Editor chrome (locked):**
+
+- Full-bleed under thin site chrome: `h-[calc(100dvh-header)] w-full`. Do not inset the split in `Container variant="report"` / `max-w-6xl`.
+- No pane cards. Agent and Product columns are flat surfaces separated by a single vertical divider (`border-r`), not `rounded-card`, `shadow-card`, `glass-surface`, or pane rings.
+- Desktop grid: `minmax(280px, 32%)_minmax(0, 1fr)` with `gap-0`. Left is thinner than right. Both panes `min-h-0` with internal scroll.
+- Scanning and completed reviews share one continuous shell. Completed reports do not jump to a hero/summary document above the split; score, Flags, and actions live in Product Report mode.
+- Preview shows one `BrowserFrame` at a time. Do not stack desktop and mobile frames.
+- Homepage marketing preview emulates this same editor with curated sample evidence (`getCuratedSampleAudit` / static sample + `buildFixFlagsScanMessages`). Never call `/api/checks` from marketing. Demo identity is **Launchpad** / `fixflags.com/demo` with real `/samples/demo-original-*.webp` captures.
+
+**Product pane is a fixed three-row stage (locked):**
+
+| Row | Rule |
+|-----|------|
+| Header | Product name and the reviewed address including its path (`displaySiteAddress`). Preview-first view toggle with Eye / FileText icons. When Preview is active, Monitor / Smartphone device icons sit beside that toggle. Any mid-scan control occupies a reserved slot. |
+| Stage | `WORKSPACE_STAGE_CLASS` from [workspace-geometry.ts](../components/report/workspace-geometry.ts). It is a flex column with a small-screen floor, because a stacked pane has no definite parent height and an `h-full` capture inside a block stage measures zero. The capture letterboxes inside it with `object-contain object-center` and never sizes it. |
+| Transport | [WorkspacePreviewTransport](../components/report/WorkspacePreviewTransport.tsx), a `shrink-0 border-t` sibling of the stage, always the last row whenever Preview is active. Path scrub, step chips, and status only — device switching lives in the header. |
+
+- No browser chrome inside the editor. `BrowserFrame` renders `chrome="none"` and `fill` here; `chrome="browser"` is only for marketing and compare surfaces where no pane header carries the URL.
+- Switching Desktop to Mobile, selecting a playback step, or loading a capture changes only the letterboxed image. The stage container keeps identical geometry, and capture entry is opacity-only (`animate-capture-fade`).
+- The transport keeps one fixed height in every state and degrades honestly instead of disappearing: capture progress while scanning, scrub and step chips for entitled viewers, status plus the Timeline gate for anonymous and password-share viewers. No Timeline payload reaches a gated viewer.
+- Anything that streams in mid-scan reserves its space first: the findings strip holds its row from the moment findings can stream, and progress readouts use `tabular-nums` in a fixed-width slot.
+- The immersive shell carries no floating support bubble (`AuditShell` passes `showSupport={false}`). The Agent column is the chat surface, and a floating launcher would sit on top of the docked transport.
+- Agent column is chat: one Flag mark (animated `ScanWorkingMark` while scanning), bubble transcript, one-row composer with ArrowUp send. Anonymous viewers see the composer; submit gates to `/sign-in?next=…` and never posts chat. There is no "Working · N%" strip above the transcript.
+- Report mode uses `ReportExplorer` master/detail (list left, detail + `FixPromptBlock` right). Homepage and samples reuse that explorer; they do not hand-roll Flag cards.
+- Report mode is itself a three-row pane, mirroring Preview (see "Report mode anatomy" below).
+- Small screens use `WorkspaceMobileTabs` (Agent, Preview/Timeline, Report, Canvas) over one Product pane. Marketing emulations use the same bar so a stacked homepage card cannot bury the capture.
+- `/samples` fills its marketing card (`h-full`). The live report route is the only surface that uses `h-[calc(100dvh-3.5rem)]`.
 
 ```mermaid
 flowchart TB
-  subgraph workspace [ReportWorkspace]
-    Agent[Left_Agent]
-    subgraph right [Right_Toggle]
-      TimelineView[TimelineView]
-      ReportView[ReportView]
-      CanvasView[CanvasView]
+  subgraph shell [ImmersiveEditorShell]
+    Header[Slim_FixFlags_header]
+    subgraph split [FullBleedSplit]
+      Left[FixFlags_understanding]
+      Right[Product_reality]
     end
   end
-  Agent --- right
+  Left --> Identity[Name_plus_hostname]
+  Left --> Activity[Customer_meaningful_activity]
+  Left --> Judgment[Curated_Flags]
+  Right --> Mode[Preview_or_Report]
+  Right --> Device[Desktop_or_Mobile_toggle]
+  Right --> Surface[Single_frame_or_Fix_list]
 ```
 
 ---
@@ -47,6 +79,21 @@ Shows the product as FixFlags experienced it and requires authentication.
 Report is the default public-safe view and shows the ranked Fix list and Flag detail inside `#report-flags`.
 Prompt actions remain authenticated even when their evidence is public.
 
+**Report mode anatomy (locked):**
+
+| Row | Rule |
+|-----|------|
+| Outcome bar | [ReportOutcomeBar](../components/report/ReportOutcomeBar.tsx) is the only place the review states its outcome: score ring, unresolved count with the critical link, the verdict line clamped to two lines, score history when more than one observation exists, and determinate scan progress while a review runs. Nothing else in the pane repeats the count. |
+| Body | `data-report-frame` wraps the outcome bar and the explorer with `WORKSPACE_REPORT_FRAME_CLASS`. Above the split width the frame takes one pane height and the list and detail columns each scroll internally; below it the frame releases its height and the pane scrolls as one column. |
+| Review context | [ReportContextDisclosure](../components/report/ReportContextDisclosure.tsx) collects stack, contract, memory, funnel, previews, launch gates, feedback, and pipeline proof in one disclosure that is collapsed by default and auto-expands when a report anchor targets a section inside it. |
+
+**Pane-relative, never viewport-relative.**
+The explorer lives inside a pane whose width has nothing to do with the viewport, so `ReportExplorer` uses container queries (`@container/pane` from `WORKSPACE_PANE_SCROLL_CLASS`, `@[40rem]/pane:` for the master/detail split) and carries no `lg:` breakpoint, no `100vh` cap, no `--header-offset` sticky, and no `overflow-clip` shell.
+Severity, impact, and page filters are always visible, because hiding them at narrow viewports hid them exactly where the pane needed them.
+Anchors and `goToFlag` scroll the nearest scroll parent through [scroll-to-section.ts](../lib/report/scroll-to-section.ts), never the document.
+
+Guarded by [workspace-geometry.test.ts](../components/report/__tests__/workspace-geometry.test.ts), `npm run ui:drift-guard`, and `node scripts/report-pane-proof.mjs`.
+
 ### Canvas view
 
 Canvas is a paid, private, versioned visual artifact generated from an authorized evidence bundle.
@@ -58,8 +105,13 @@ Canvas documents use validated FixFlags blocks and never execute model-generated
 
 | Phase | Default right panel | Chrome |
 |-------|---------------------|--------|
-| **Active review** | Report view | Agent left with deterministic scan messages; mobile defaults to Agent |
+| **Active review** | Preview view | FixFlags understanding on the left; live Product and captured evidence on the right; mobile defaults to Agent |
 | **After complete** | Report view | Agent remains mounted; authenticated Timeline and paid Canvas are secondary modes |
+
+The workspace fills the available viewport beneath thin site chrome and has no marketing footer.
+During an active review, Product name and hostname live in the FixFlags pane instead of a separate report hero.
+Report and Preview controls belong to the Product pane header.
+Below-report context such as technology and Product Contract does not compete with the live Product while scanning.
 
 ---
 
@@ -67,7 +119,7 @@ Canvas documents use validated FixFlags blocks and never execute model-generated
 
 - **Funnel** — journeys listed inside the report map (same report, not a separate product area).
 - **Path** — opens from Funnel or Flag evidence; full session-style replay in the browser panel with scrub timeline and evidence continuity.
-- **Playback strip** — bottom of workspace; proves the finding without imagination. Target is replay-grade scrub in-product, not static screenshot galleries only.
+- **Transport** — docked at the bottom of the Product pane whenever Preview is active, on every width. It carries the scrub, step chips, and capture status. Device icons live in the Product header next to Preview. Target is replay-grade scrub in-product, not static screenshot galleries only.
 
 ---
 
@@ -107,14 +159,15 @@ Full parity. No degraded subset.
 | Run update review and see diff | Yes |
 | Account, billing, usage meters | Yes |
 
-**Primary switch:** **Agent ↔ Report**.
+**Primary switch:** one tab bar for the whole review — Agent, Preview/Timeline, Report, and Canvas when it is available.
+The same bar and the same Product pane serve a running scan and a completed report, so nothing about the mobile shell changes at completion.
 Active scans default to Agent without forcing a switch when the report completes.
-Timeline and Canvas remain secondary Product modes.
+Which surface the Product column shows is the same `view` state the desktop toggle sets, so the two never diverge.
 
 **Playback on small screens:** authenticated Timeline uses the adapted inline playback layout.
 A full-screen takeover is a later enhancement, not an unresolved requirement for this workspace.
 
-**Patterns (reference, not clone):** device toggle above preview on desktop; live preview stays central; 44px targets; “Open on phone” / share preview link for testing captured URL on device.
+**Patterns (reference, not clone):** device toggle in the docked transport; live preview stays central; 44px targets; “Open on phone” / share preview link for testing captured URL on device.
 
 ---
 
@@ -139,17 +192,17 @@ Do not show **re-check** in customer UI.
 
 | Area | Today | Target |
 |------|-------|--------|
-| Layout | Split workspace during live; report chrome after complete | Same |
-| Browser | Live captures in right panel; selected playback step renders that captured frame | Deep review (agent-class) live browser |
-| Playback | Scrub timeline + step markers; browser frame updates on select; activity click seeks; `?step=N` replay from Flag/Funnel evidence | Full session-style takeover replay |
+| Layout | Full-bleed flush split; no pane cards; same shell scan→complete | Same |
+| Browser | Constant stage, no fake chrome; selected playback step renders that captured frame | Deep review (agent-class) live browser |
+| Playback | Docked transport with Desktop\|Mobile, scrub, and step chips; browser stage updates on select; `?step=N` replay from Flag/Funnel evidence | Full session-style takeover replay |
 | Agent | One transcript; programmatic output is public-safe and free, model conversation is authenticated and metered monthly | Same |
 | Funnel | Section + journey list + Replay path into the workspace browser | Same |
-| Mobile | Agent ↔ Report with Timeline and Canvas as secondary modes | Full-screen Timeline takeover may be evaluated later |
-| View toggle | Report public; Timeline authenticated; Canvas paid | Same |
+| Mobile | One tab bar (Agent, Preview/Timeline, Report, Canvas) over the same Product pane, scanning and completed | Full-screen Timeline takeover may be evaluated later |
+| View toggle | Active review defaults to public Preview; completed review defaults to public Report; Timeline authenticated; Canvas paid | Same |
 
 ## Resolved design questions
 
-1. Agent ↔ Report on mobile uses a tab switch.
+1. Mobile uses one tab bar for Agent and every Product surface, identical while scanning and after completion.
 2. Authenticated Timeline uses inline playback and step evidence on all sizes.
 3. Full-screen Timeline and browser takeover are follow-on ideas, not incomplete workspace requirements.
 4. Anonymous users receive no Timeline payload or journey playback.

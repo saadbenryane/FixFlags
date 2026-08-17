@@ -25,6 +25,29 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 
 ## Report rules
 
+- Active and completed owner/anon reviews share one full-bleed living-review editor: flush split under thin site chrome, no marketing footer, no pane cards (`rounded-card` / `shadow-card` / `glass-surface` on Agent or Product columns). Separation is a single vertical divider.
+- Desktop grid stays `minmax(280px, 32%)_minmax(0, 1fr)` with `gap-0`. Do not wrap the workspace region in `Container variant="report"` / `max-w-6xl`.
+- Treat the panes as **FixFlags understanding** (identity, activity, observation, judgment, conversation) and **Product reality** (live experience, interaction, evidence). Never reduce them to generic chat and dashboard.
+- Active desktop reviews default to Preview; completed reviews default to Report. The Product-pane header owns that switch. Completed reports must not jump to a hero/summary document above the split.
+- The Product pane is three fixed rows: header (Product name + reviewed address via `displaySiteAddress` + Preview-first Eye/FileText toggle + Monitor/Smartphone device icons when Preview is active), stage (`WORKSPACE_STAGE_CLASS`), transport (`WorkspacePreviewTransport` path-only). Hard checks before you call Preview work done:
+  1. **No chrome in chrome.** Inside the editor `BrowserFrame` must be `chrome="none" fill`. Traffic lights and URL pills belong only to marketing and compare surfaces.
+  2. **Constant stage.** Switching Desktop to Mobile, selecting a step, or loading a capture must leave the stage container's classes and measured box identical. Captures letterbox with `object-contain object-center`; entry motion is opacity-only (`capture-fade`), never `fade-in-up`. Measure the capture, not only the stage: a stacked pane takes its height from the stage floor, so the stage must stay a flex column or an `h-full` capture inside it measures zero.
+  3. **Docked transport.** Whenever Preview is active the transport is the last row of the pane at every width, with one fixed height in every state. It never lives inside the scroll area and never disappears for anonymous, scanning, mobile, or zero-step cases. Device icons belong in the header, not the transport.
+  4. **Honest gating.** Gated viewers keep header device icons and the Timeline gate only. No step chips, no scrub, no step payload.
+  5. **Reserved space.** Anything that streams in mid-review (findings strip, progress readout, finding-count action) holds its slot from the start and uses `tabular-nums`.
+  6. **One mobile shell.** Small screens use a single tab bar (Agent, Preview/Timeline, Report, Canvas) over the same Product pane, driven by the same `view` state as the desktop toggle. The bar must not change shape when a scan completes, and the immersive shell carries no floating support bubble over the transport.
+  7. **Agent is chat.** One Flag mark (animated while scanning), bubble transcript, one-row ArrowUp composer. Anonymous submit gates to sign-in. No "Working · N%" strip. Homepage Report mode uses `ReportExplorer` master/detail + real `FixPromptBlock`, never a hand-rolled Flag card.
+- Report mode is three rows inside the same pane: `ReportOutcomeBar`, the `ReportExplorer` master/detail body, and the collapsed `ReportContextDisclosure`. The outcome bar and body live inside one `data-report-frame` using `WORKSPACE_REPORT_FRAME_CLASS`. Hard checks before you call Report work done:
+  1. **Pane-relative, never viewport-relative.** Container queries only (`@container/pane`, `@[40rem]/pane:`). No `lg:` breakpoint, `100vh` cap, `--header-offset` sticky, or `overflow-clip` inside the explorer. A 1280px viewport can still be a 527px pane.
+  2. **One outcome, stated once.** Score, unresolved count, Critical shortcut, verdict, and history live only in the outcome bar; the fix count lives only in the explorer. Clamp the verdict so the bar cannot push the fix list below the pane.
+  3. **Columns scroll, not the document.** In a wide pane the frame is exactly one pane height with each column `min-h-0 overflow-y-auto`; in a narrow pane the frame releases its height and the pane scrolls as one column. `goToFlag` and anchors scroll the nearest scroll parent.
+  4. **Filters always visible.** Rubric, severity, impact, and page filters stay in the bar at every pane width.
+  5. **Context is collapsed.** Stack, contract, memory, funnel, previews, launch gates, feedback, and pipeline proof sit in one disclosure that only opens by user action or a matching anchor.
+  6. **One of each.** One CTA per surface, one signup surface per gated area (`ReportPolishPass` aggregate plus compact per-flag lock lines), one recheck entry point, `rounded-card` on every in-pane box.
+  Guards: `npm run ui:drift-guard`, `components/report/__tests__/workspace-geometry.test.ts`, and `node scripts/report-pane-proof.mjs`.
+- Honest pending/failed states for the active device only.
+- Agent activity is customer-meaningful and evidence-bound. Never expose technical execution logs, simulated reasoning, or noisy stage churn.
+- Homepage playback must emulate the live editor visual language and tell one finite value story: experience Product → notice issue → show evidence → surface Flag → recommend improvement. Drive from curated sample + `buildFixFlagsScanMessages` only; never live `/api/checks`. Identity is Launchpad / `fixflags.com/demo` with real demo WebPs; the fixture page, curated Flags, and screenshots must all name Launchpad. Reduced motion shows the complete final state.
 - The focused report owns the Finish Plan and at most three fixes. The detailed report owns exploration, Journey, Flow, Timeline, previews, and secondary controls.
 - Progressive, focused, detailed, shared, and sample reports consume shared report/access models while retaining intentional density differences.
 - `ReportExplorer` is the only detailed flag browser. Rubric summaries link into it; they do not duplicate it.
@@ -34,13 +57,24 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 - Rubric score and Pass / Needs Attention / Blocked must not contradict; fix scoring or presentation at the shared model, not with per-page copy.
 - Customer-facing Flow/Timeline never shows `chrome-error://` or other browser-internal URLs.
 
+## Living-review checklist
+
+- [ ] No Agent/Product pane cards; full-width flush split; left thinner than right
+- [ ] Scanning Preview selected; Monitor/Smartphone icons in Product header; transport path-only
+- [ ] Completed stays in the same shell with Report selected
+- [ ] Homepage shows Launchpad / `fixflags.com/demo`, real demo captures, `ReportExplorer` in Report mode, emulated story (no network scan)
+- [ ] Agent: chat bubbles + gate-on-send composer; one Flag working mark; no Working percent strip
+- [ ] Report: outcome bar → explorer → collapsed context; fix list visible without scrolling; columns scroll inside the pane; filters present at every width
+- [ ] First-time comprehension: Product identity, current activity, observation→Flag, where to inspect evidence
+
 ## Workflow
 
 1. Identify the canonical view model, access state, and shared primitive before editing JSX.
 2. Exercise loading, empty, error, forbidden, partial, completed, shared, anonymous, owner, watched, and re-check states as applicable.
 3. Check 375, 768, and 1280px with no horizontal overflow, clipped actions, hydration failures, or console errors.
-4. Verify keyboard order, focus visibility, semantic names, heading order, 44px targets, dialog/sheet semantics, 200% reflow, reduced motion, and contrast.
-5. Run `npm run ui:drift-guard`, focused component tests, and `npm run agent -- eval ui`. Inspect browser artifacts when failures occur.
+4. For active reviews, verify a first-time user can identify the Product, current FixFlags activity, observed behavior, important finding state, and where to inspect Product evidence.
+5. Verify keyboard order, focus visibility, semantic names, heading order, 44px targets, dialog/sheet semantics, 200% reflow, reduced motion, and contrast.
+6. Run `npm run ui:drift-guard`, focused component tests, and `npm run agent -- eval ui`. Inspect browser artifacts when failures occur.
 
 ## Brand assets
 

@@ -1,5 +1,6 @@
 import type { Config } from 'tailwindcss'
 import tailwindcssAnimate from 'tailwindcss-animate'
+import tailwindcssContainerQueries from '@tailwindcss/container-queries'
 
 const config: Config = {
   darkMode: ['class'],
@@ -193,6 +194,11 @@ const config: Config = {
           from: { opacity: '0', transform: 'translateY(8px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
+        /** Opacity-only entry for captured evidence. Must never move layout. */
+        'capture-fade': {
+          from: { opacity: '0' },
+          to: { opacity: '1' },
+        },
         'scale-in': {
           from: { opacity: '0', transform: 'scale(0.95)' },
           to: { opacity: '1', transform: 'scale(1)' },
@@ -230,6 +236,7 @@ const config: Config = {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'fade-in-up': 'fade-in-up 0.4s ease-out',
+        'capture-fade': 'capture-fade 0.25s ease-out',
         'scale-in': 'scale-in 0.3s ease-out',
         'slide-up-fade': 'slide-up-fade 0.4s ease-out',
         'soft-reveal': 'soft-reveal 0.2s ease-out',
@@ -239,7 +246,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [tailwindcssAnimate],
+  plugins: [tailwindcssAnimate, tailwindcssContainerQueries],
 }
 
 export default config

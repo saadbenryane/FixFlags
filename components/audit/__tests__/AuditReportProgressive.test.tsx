@@ -4,7 +4,7 @@ import {
   AuditReportProgressive,
 } from '@/components/audit/AuditReportProgressive'
 import { setActiveAudit } from '@/lib/audit/active-audit'
-import { formatQueueWaitHint } from '@/lib/marketing/copy'
+import { formatQueueWaitHint, REPORT_COPY } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 
 vi.mock('next/navigation', () => ({
@@ -68,15 +68,20 @@ describe('AuditReportProgressive', () => {
     expect(screen.queryByText('Queued')).not.toBeInTheDocument()
   })
 
-  it('shows capturing progress with an honest pending score', () => {
-    render(<AuditReportProgressive status="CAPTURING" url={URL} />)
+  it('shows capturing progress with Preview selected and no Working percent strip', () => {
+    render(<AuditReportProgressive auditId={AUDIT_ID} status="CAPTURING" url={URL} />)
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/Step 2 of 5/i).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/Scanning/i).length).toBeGreaterThan(0)
-    expect(screen.getByLabelText('Top fixes')).toBeInTheDocument()
+    expect(screen.getAllByText('Product').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Working')).not.toBeInTheDocument()
+    expect(
+      screen.getAllByRole('tab', { name: 'Preview' }).some(
+        (tab) => tab.getAttribute('aria-selected') === 'true',
+      ),
+    ).toBe(true)
+    expect(screen.getAllByPlaceholderText(/Ask about this report|Sign in to ask/i).length).toBeGreaterThan(0)
   })
 
-  it('renders product contract when provided', () => {
+  it('keeps product contract out of the immersive scanning workspace', () => {
     render(
       <AuditReportProgressive
         status="CHECKING"
@@ -90,7 +95,7 @@ describe('AuditReportProgressive', () => {
         }}
       />
     )
-    expect(screen.getByText(/Help teams ship/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Help teams ship/i)).not.toBeInTheDocument()
   })
 
   it('hides the action timeline when there are no events', () => {
@@ -112,11 +117,25 @@ describe('AuditReportProgressive', () => {
     expect(screen.queryByText('Opened page')).not.toBeInTheDocument()
   })
 
-  it('keeps the completed frame focused on all fixes with sticky wayfinding', () => {
-    render(<AuditReportProgressive status="COMPLETED" url={URL} score={82} />)
+  it('renders the completed hold frame through the immersive split shell', () => {
+    render(<AuditReportProgressive auditId={AUDIT_ID} status="COMPLETED" url={URL} score={82} />)
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
-    expect(screen.getByRole('heading', { name: 'All fixes' })).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: 'Report sections' })).toBeInTheDocument()
+    // The hold frame carries the same three rows as the completed report:
+    // outcome bar, fix explorer, and the collapsed review context.
+    expect(
+      screen.getByRole('region', { name: REPORT_COPY.workspace.summaryLabel })
+    ).toBeInTheDocument()
+    expect(screen.getAllByText('Release score')).toHaveLength(1)
+    expect(screen.getByText(REPORT_COPY.reviewContext.title)).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Report sections' })).not.toBeInTheDocument()
+  })
+
+  it('requires an auditId to render a completed report', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(() =>
+      render(<AuditReportProgressive status="COMPLETED" url={URL} score={82} />),
+    ).toThrow(/requires an auditId/)
+    consoleError.mockRestore()
   })
 
   it('streams every partial flag into the same Fix list as they are found', async () => {
@@ -144,17 +163,43 @@ describe('AuditReportProgressive', () => {
     expect(screen.getAllByText(/Step \d+ of \d+/).length).toBeGreaterThan(0)
   })
 
-  it('shows an honest stage label instead of rotating activity copy', () => {
-    render(<AuditReportProgressive status="CAPTURING" url={URL} />)
-    expect(screen.getByText(/Scanning · Capturing screenshots/)).toBeInTheDocument()
-    expect(screen.getAllByText(/Desktop and mobile views/).length).toBeGreaterThan(0)
+  it('shows an honest stage label in the Agent transcript instead of a Working percent strip', () => {
+    render(
+      <AuditReportProgressive
+        auditId={AUDIT_ID}
+        status="CAPTURING"
+        url={URL}
+        agentMessages={[
+          {
+            id: 'scan:capturing',
+            sessionId: AUDIT_ID,
+            auditId: AUDIT_ID,
+            role: 'agent',
+            source: 'scan',
+            kind: 'progress',
+            state: 'active',
+            content: 'I’m opening the Product on desktop and mobile to see what customers see.',
+          },
+        ]}
+      />,
+    )
+    expect(screen.queryByText('Working')).not.toBeInTheDocument()
+    expect(
+      screen.getAllByText(/opening the Product on desktop and mobile/i).length,
+    ).toBeGreaterThan(0)
   })
 
   it('falls back to a skeleton frame while screenshots are pending', () => {
-    const { container } = render(<AuditReportProgressive status="CHECKING" url={URL} />)
+    const { container } = render(
+      <AuditReportProgressive auditId={AUDIT_ID} status="CHECKING" url={URL} />
+    )
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
-    expect(screen.getByLabelText('Reading technology signals')).toBeInTheDocument()
-    expect(screen.getByLabelText('Capturing page screenshot')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Reading technology signals')).not.toBeInTheDocument()
+    expect(
+      screen.getAllByRole('tab', { name: 'Preview' }).some(
+        (tab) => tab.getAttribute('aria-selected') === 'true',
+      ),
+    ).toBe(true)
     expect(container.querySelector('img')).toBeNull()
   })
 
@@ -171,12 +216,13 @@ describe('AuditReportProgressive', () => {
         screenshotCapture={{ desktop: 'ok', mobile: 'failed' }}
       />
     )
-    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Preview' })[0]!)
     expect(screen.getAllByAltText('Page screenshot').length).toBeGreaterThan(0)
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Mobile' })[0]!)
     expect(screen.getAllByText(/Screenshot could not be captured for this check/i).length).toBeGreaterThan(0)
   })
 
-  it('replaces the stack skeleton with verified progressive detections', () => {
+  it('keeps technology detections out of the immersive scanning workspace', () => {
     render(
       <AuditReportProgressive
         status="CHECKING"
@@ -196,7 +242,7 @@ describe('AuditReportProgressive', () => {
         }}
       />
     )
-    expect(screen.getByRole('heading', { name: 'Made with' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Made with' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Reading technology signals')).not.toBeInTheDocument()
   })
 

@@ -170,7 +170,7 @@ export function FlagDetailPanel({
   return (
     <div key={flag.id} className="space-y-3 animate-soft-reveal" aria-live="polite">
       {flag.evidence ? (
-        <div className="hidden rounded-[var(--radius-inner)] border border-border/40 bg-muted/15 px-4 py-3 lg:block">
+        <div className="rounded-[var(--radius-inner)] border border-border/40 bg-muted/15 px-4 py-3">
           <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
             {flag.truthLabel}
           </p>
@@ -194,6 +194,8 @@ export function FlagDetailPanel({
             <LockedContentTeaser
               label={LOCKED_CONTENT_TEASER.fixPromptLabel}
               signUpHref={signUpHref}
+              from="sample_fix"
+              compact
             />
           ) : aiEnhancementPending && !flag.fixPrompt ? (
             <p className="text-sm text-muted-foreground">Generating enhanced fix prompt.</p>

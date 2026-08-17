@@ -96,9 +96,18 @@ for (const removed of ['RubricsPanel', 'ReportMiniNav', 'CompletenessHeader']) {
   }
 }
 
-const stickyToolbar = readFileSync(join(ROOT, 'components/audit/ReportStickyToolbar.tsx'), 'utf8')
-if (/['"]Overview['"]/.test(stickyToolbar)) {
-  violations.push('components/audit/ReportStickyToolbar.tsx: Overview is not a report destination')
+// The Report pane measures the pane, never the viewport: no 100vh caps, no
+// page-header sticky offsets, no card shell fighting the pane.
+const explorer = readFileSync(join(ROOT, 'components/report/ReportExplorer.tsx'), 'utf8')
+for (const [pattern, reason] of [
+  [/100vh/, 'viewport height inside the Report pane (size against the pane)'],
+  [/sticky[^"']*--header-offset/, 'page-header sticky offset inside the Report pane'],
+  [/overflow-clip/, 'overflow-clip shell breaks pane scrolling'],
+  [/\blg:/, 'viewport breakpoint inside the Report pane (use @[..]/pane container queries)'],
+]) {
+  if (pattern.test(explorer)) {
+    violations.push(`components/report/ReportExplorer.tsx: ${reason}`)
+  }
 }
 
 if (violations.length) {

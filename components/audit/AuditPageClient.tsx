@@ -317,7 +317,7 @@ export function AuditPageClient({
 
   // In-progress and COMPLETED hold share the progressive frame until SSR swap.
   return (
-    <AuditShell session={session}>
+    <AuditShell session={session} immersive>
       {!isNotFound && !isForbidden && !isFailed ? (
         <ReportViewedTracker
           auditId={id}

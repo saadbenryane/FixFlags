@@ -128,13 +128,22 @@ export function buildFixFlagsScanMessages(snapshot: FixFlagsScanSnapshot): Agent
       content: AGENT_SCAN_COPY.checking,
     }))
 
-    for (const flag of snapshot.flags ?? []) {
+    const flags = snapshot.flags ?? []
+    for (const flag of flags.slice(0, 3)) {
       result.push(message(snapshot, {
         suffix: `flag:${flag.id}`,
         kind: 'flag',
         state: 'complete',
         content: AGENT_SCAN_COPY.confirmedFlag(flag.rubric, flag.problem),
         flagId: flag.id,
+      }))
+    }
+    if (flags.length > 3) {
+      result.push(message(snapshot, {
+        suffix: 'additional-flags',
+        kind: 'progress',
+        state: 'complete',
+        content: AGENT_SCAN_COPY.additionalFlags(flags.length - 3),
       }))
     }
   }

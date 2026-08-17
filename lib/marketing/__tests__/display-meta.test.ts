@@ -10,7 +10,7 @@ import {
 import { DEMO_BRAND } from '@/lib/demo/brand'
 
 describe('getSampleSiteDisplay', () => {
-  it('labels fixflags.com/demo as PlantDad demo fixture', () => {
+  it('labels fixflags.com/demo as the Launchpad demo fixture', () => {
     const site = getSampleSiteDisplay(DEFAULT_SAMPLE_AUDIT_URL)
     assert.equal(site.displayHost, DEMO_BRAND.displayLabel)
     assert.equal(site.contextTag, DEMO_FIXTURE_CONTEXT_TAG)
@@ -47,7 +47,7 @@ describe('sampleStatusLabel', () => {
       version: '2.1.0',
       completedAt: new Date('2026-06-20T12:00:00Z'),
     })
-    assert.match(label, /PlantDad demo fixture/)
+    assert.match(label, /Launchpad demo fixture/)
     assert.match(label, /Pipeline v2\.1\.0/)
     assert.match(label, /Jun 20, 2026/)
   })

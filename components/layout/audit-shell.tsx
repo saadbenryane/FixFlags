@@ -7,9 +7,17 @@ interface AuditShellProps {
   actions?: React.ReactNode
   session?: { user: { id: string; email?: string | null } } | null
   showAdmin?: boolean
+  /** Viewport-filling report workspace with thin chrome and no site footer. */
+  immersive?: boolean
 }
 
-export function AuditShell({ children, actions, session, showAdmin = false }: AuditShellProps) {
+export function AuditShell({
+  children,
+  actions,
+  session,
+  showAdmin = false,
+  immersive = false,
+}: AuditShellProps) {
   const variant = session ? 'app' : 'marketing'
 
   return (
@@ -17,6 +25,11 @@ export function AuditShell({ children, actions, session, showAdmin = false }: Au
       variant={variant}
       headerRight={variant === 'marketing' ? <MarketingHeaderAuth /> : undefined}
       showAdmin={showAdmin}
+      showFooter={!immersive}
+      showHeaderNavigation={!immersive}
+      // The immersive editor owns its own chat column, and a floating bubble
+      // would sit on top of the docked preview transport.
+      showSupport={!immersive}
       backdrop="minimal"
     >
       {actions && (

@@ -23,7 +23,6 @@ export type ReportFixLoopProps = {
   selectedFlagId?: string | null
   onSelectFlag?: (id: string) => void
   reportHref?: string
-  compact?: boolean
   /** Audit still running: empty-state copy prefers scanning language. */
   loading?: boolean
 }
@@ -114,13 +113,12 @@ export function ReportFixLoop({
   selectedFlagId,
   onSelectFlag,
   reportHref,
-  compact = false,
   loading = false,
 }: ReportFixLoopProps) {
   const interactive = flags.length > 0 && Boolean(onSelectFlag || reportHref)
 
   return (
-    <div className={cn(compact ? 'space-y-2' : 'space-y-2.5')}>
+    <div className="space-y-2.5">
       {interactive ? (
         <FlagList
           flags={flags}

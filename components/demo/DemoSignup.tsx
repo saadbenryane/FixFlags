@@ -105,7 +105,7 @@ export function DemoSignup({ fixture }: DemoSignupProps) {
             <div className="demo-footer-links">
               <a href="#privacy">Privacy</a>
               <a href="#terms">Terms</a>
-              <a href="mailto:hello@launchpad-demo.app">Contact</a>
+              <a href={`mailto:${DEMO_BRAND.contactEmail}`}>Contact</a>
             </div>
             <section id="privacy" className="demo-footer-anchor" aria-hidden="true" />
             <section id="terms" className="demo-footer-anchor" aria-hidden="true" />
