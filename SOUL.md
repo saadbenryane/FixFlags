@@ -18,10 +18,10 @@ After FixFlags: ship fast, run the checklist, fix before anyone notices, feel co
 
 The product should feel like a senior teammate who has seen dozens of launches and knows exactly what slips through:
 
-- **Safe** — someone is looking out for the messy details.
-- **Clear** — no jargon, no consultant-speak, just what is wrong and how to fix it.
-- **Respectful** — assumes you are capable and moving fast, not careless.
-- **Actionable** — every flag comes with a fix prompt you can paste and run.
+- **Safe**: someone is looking out for the messy details.
+- **Clear**: no jargon, no consultant-speak, just what is wrong and how to fix it.
+- **Respectful**: assumes you are capable and moving fast, not careless.
+- **Actionable**: every flag comes with a fix prompt you can paste and run.
 
 It should never feel: judging, pedantic, corporate, or like a compliance audit.
 
@@ -33,31 +33,31 @@ Sharp senior reviewer who has shipped messy launches. Not a consultant selling a
 
 - Calm under pressure. No fake urgency.
 - Specific before impressive. "The CTA text has low contrast against the background" before "Your site lacks visual hierarchy."
-- Honest about limits. "We check 22 things — here is what we found."
+- Honest about limits. "We check 22 things; here is what we found."
 - Direct but not harsh. "This image is missing alt text" not "You failed accessibility."
 
 ## Product principles
 
-1. **Product Review → Fix → Verify → Watch** — the core product loop. Every feature serves this or it does not ship. Internal canonical loop: Observe → Understand → Judge → Improve → Verify → Learn ([knowledge/vision.md](./knowledge/vision.md)).
-2. **Evidence before opinion** — every flag has a screenshot, code reference, or measurable signal.
-3. **Finish Plan before backlog** — few highest-leverage improvements beat a long inventory.
-4. **Fix prompts are the delivery** — actionable paste-ready repairs for the builder's agent.
-5. **Update review closes the loop** — each run after a fix uses a product review credit. Verification precedes confidence.
-6. **Distribution before premature depth** — more users matter more than more checks; expand with demand.
-7. **Calm before loud** — trust through accuracy, not marketing volume.
-8. **Human before technical** — flags describe user impact, not HTML violations.
-9. **Show what happened** — every important conclusion must point to an observable moment.
-10. **Test a job, not a fictional persona** — the task matters more than an invented identity.
-11. **Never hide uncertainty** — say "Could not verify" when it cannot prove success or failure.
-12. **Critical means confirmed** — a finding cannot be critical because a language model dislikes something.
-13. **Outside-in first** — test the product that customers can actually access.
-14. **Fix and verify in the same loop** — a recommendation without a re-check is incomplete.
-15. **Earn the right to run continuously** — do not ask for GitHub access before demonstrating value on a public URL.
-16. **Make scope visible** — the user must know exactly what was and was not checked.
+1. **Product Review → Fix → Verify → Watch**: the core product loop. Every feature serves this or it does not ship. Internal canonical loop: Observe → Understand → Judge → Improve → Verify → Learn ([knowledge/vision.md](./knowledge/vision.md)).
+2. **Evidence before opinion**: every flag has a screenshot, code reference, or measurable signal.
+3. **Finish Plan before backlog**: few highest-leverage improvements beat a long inventory.
+4. **Fix prompts are the delivery**: actionable paste-ready repairs for the builder's agent.
+5. **Update review closes the loop**: each run after a fix uses a product review credit. Verification precedes confidence.
+6. **Distribution before premature depth**: more users matter more than more checks; expand with demand.
+7. **Calm before loud**: trust through accuracy, not marketing volume.
+8. **Human before technical**: flags describe user impact, not HTML violations.
+9. **Show what happened**: every important conclusion must point to an observable moment.
+10. **Test a job, not a fictional persona**: the task matters more than an invented identity.
+11. **Never hide uncertainty**: say "Could not verify" when it cannot prove success or failure.
+12. **Critical means confirmed**: a finding cannot be critical because a language model dislikes something.
+13. **Outside-in first**: test the product that customers can actually access.
+14. **Fix and verify in the same loop**: a recommendation without an update review is incomplete.
+15. **Earn the right to run continuously**: do not ask for GitHub access before demonstrating value on a public URL.
+16. **Make scope visible**: the user must know exactly what was and was not checked.
 
 ## Brand promise
 
-FixFlags helps you finish AI-built products. Not perfect, not enterprise-grade — better than shipping without independent judgment. Paste your URL, see what a sharp reviewer would notice, get the Finish Plan and fix text, re-check, and keep Product Intelligence current.
+FixFlags helps you finish AI-built products. Not perfect, not enterprise-grade, but better than shipping without independent judgment. Paste your URL, see what a sharp reviewer would notice, get the Finish Plan and fix text, run an update review, and keep Product Intelligence current.
 
 **The unit of value is a verified fix.**
 
@@ -78,7 +78,7 @@ Priority order: Clear before clever · Calm before loud · Specific before impre
 | Homepage | Outcome-focused, direct | "Paste your site. We review the live page, show what visitors notice, and give fix prompts your builder can use." |
 | Report / Flags | Clinical, evidence-driven | "The primary CTA link scrolls to #features, which does not exist on the page." |
 | Fix prompts | Instructional, pasteable | "Replace `background-color: #fff` with a high-contrast value (minimum 4.5:1 ratio against the text color)." |
-| Error states | Apologetic but calm | "Something went wrong. Your report is still saved — try again." |
+| Error states | Apologetic but calm | "Something went wrong. Your report is still saved; try again." |
 | Upsells | Value-first, not urgent | "Upgrade to compare before and after. See your fix prompts side by side." |
 | Social / SEO | Plain, grounded | "FixFlags is the release readiness layer for AI-built products." |
 
@@ -104,7 +104,7 @@ Priority order: Clear before clever · Calm before loud · Specific before impre
 
 - "Flags" not "Findings" or "Issues"
 - "Rubrics" not "Categories" or "Areas"
-- "Re-check" not "Re-audit"
+- "Update review" not "Re-audit" (internal code may still use "re-check")
 - "Fix prompt" not "Action item" or "Recommendation"
 - Report summaries lead with Critical counts. Rubric statuses belong only where score semantics require them.
 
@@ -131,15 +131,15 @@ Before shipping prose longer than a sentence, score 1-10 on: directness, rhythm,
 | Speed vs. depth | Default to speed. Run deterministic checks fast, AI review follows. |
 | Free vs. paid | Free starts with Live Review, then unlocks full report context after account creation. Finish Check is $49 one-time. Pro unlocks volume and Watch. Never gate re-checks. |
 | Technical vs. accessible | Flags describe user impact. Technical detail is in expandable evidence. |
-| Generic vs. distinctive | Prefer distinctive. The orange, the soft control radius, the Inter Tight display — they make FixFlags recognizable, not generic SaaS. |
+| Generic vs. distinctive | Prefer distinctive. The orange, the soft control radius, the Inter Tight display, they make FixFlags recognizable, not generic SaaS. |
 
 ## Distinctive details
 
-- Flag Orange #FF5A00 — the color of attention, not warning
-- Inter Tight for headlines — sharp confidence, not startup boilerplate
-- Pill-shaped controls — friendly, approachable, not corporate
-- Glass cards with shadow depth — physical, grounded
-- Letter grades (A-F) — instantly readable, emotionally resonant
-- Three rubrics only — contained, not sprawling
-- Fix prompts as the output — not just a score, the next move
-- The re-check arrow — the loop visualized, not a static report
+- Flag Orange #FF5A00, the color of attention, not warning
+- Inter Tight for headlines, sharp confidence, not startup boilerplate
+- Pill-shaped controls, friendly, approachable, not corporate
+- Glass cards with shadow depth, physical, grounded
+- Letter grades (A-F), instantly readable, emotionally resonant
+- Three rubrics only, contained, not sprawling
+- Fix prompts as the output, not just a score, the next move
+- The update review arrow, the loop visualized, not a static report

@@ -57,4 +57,24 @@ describe('report quality eval: top-3 ranking', () => {
       }
     })
   }
+
+  it('does not lead Linear or Replit with an IMPORTANT HTML-only name Flag', async () => {
+    for (const file of ['linear-app.html', 'replit-com.html'] as const) {
+      const fixture = ACCURACY_HTML_FIXTURES.find((row) => row.file === file)
+      assert.ok(fixture, file)
+      const { flags } = await runAccuracyFixtureChecks(fixture)
+      const nameIds = new Set(['form-inputs-no-label', 'buttons-no-text', 'links-no-text'])
+      const importantName = flags.filter(
+        (flag) => nameIds.has(flag.checkId) && flag.severity === 'IMPORTANT'
+      )
+      assert.equal(
+        importantName.length,
+        0,
+        `${file} still ranks HTML-only name checks as IMPORTANT: ${importantName.map((f) => f.checkId).join(', ')}`
+      )
+      const top = rankFlagsByPriority(flags as RankableFlag[], [], 1)[0]?.flag
+      assert.ok(top)
+      assert.notEqual(top.severity, 'IMPORTANT', `${file} top Flag is still IMPORTANT ${top.checkId}`)
+    }
+  })
 })

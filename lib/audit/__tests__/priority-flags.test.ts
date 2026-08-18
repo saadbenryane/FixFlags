@@ -54,6 +54,57 @@ describe('priority-flags', () => {
     )
   })
 
+  it('ranks an Important Message Flag above Important Reach SEO at the same severity', () => {
+    const sorted = [
+      flag({
+        id: 'seo',
+        rubric: 'REACH',
+        severity: 'IMPORTANT',
+        impactTag: 'SEO',
+        checkId: 'description-missing',
+        problem: 'Meta description is missing',
+      }),
+      flag({
+        id: 'headline',
+        rubric: 'MESSAGE',
+        severity: 'IMPORTANT',
+        impactTag: 'CLARITY',
+        checkId: 'headline-unclear',
+        problem: 'The headline is unclear',
+      }),
+    ].sort(compareFlagsByPriority)
+
+    assert.deepEqual(
+      sorted.map((item) => item.id),
+      ['headline', 'seo']
+    )
+  })
+
+  it('keeps Critical SEO above Important Experience', () => {
+    const sorted = [
+      flag({
+        id: 'cta',
+        rubric: 'EXPERIENCE',
+        severity: 'IMPORTANT',
+        impactTag: 'CONVERSION',
+        problem: 'Primary CTA is weak',
+      }),
+      flag({
+        id: 'seo-critical',
+        rubric: 'REACH',
+        severity: 'CRITICAL',
+        impactTag: 'SEO',
+        checkId: 'noindex-meta',
+        problem: 'The page is blocked from search',
+      }),
+    ].sort(compareFlagsByPriority)
+
+    assert.deepEqual(
+      sorted.map((item) => item.id),
+      ['seo-critical', 'cta']
+    )
+  })
+
   it('uses explicit stable precedence for equally ranked search findings', () => {
     const sorted = [
       flag({ checkId: 'broken-internal-links', impactTag: 'SEO' }),

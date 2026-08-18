@@ -4,7 +4,6 @@ import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '@/lib/audit/progre
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { getUserFacingAuditError } from '@/lib/audit/user-facing-errors'
 import { AGENT_SCAN_COPY } from '@/lib/marketing/copy'
-import { severityRank } from '@/lib/utils'
 
 export type ScanAgentFlag = {
   id: string
@@ -18,48 +17,24 @@ export type ScanAgentFlag = {
 /** How many confirmed Flags the Agent names in the transcript. The rest stay in Report. */
 export const ANNOUNCED_FLAG_LIMIT = 3
 
-function announcementRank(flag: ScanAgentFlag): [number, number, number] {
-  const rubric = flag.rubric.toUpperCase()
-  const impact = (flag.impactTag ?? '').toUpperCase()
-  return [
-    severityRank(flag.severity ?? ''),
-    rubric === 'REACH' ? 1 : 0,
-    impact === 'SEO' ? 1 : 0,
-  ]
+function asRankable(flag: ScanAgentFlag) {
+  return {
+    id: flag.id,
+    rubric: flag.rubric,
+    severity: flag.severity ?? '',
+    problem: flag.problem,
+    checkId: flag.checkId ?? null,
+    impactTag: flag.impactTag ?? null,
+  }
 }
 
 /**
- * Choose the Flags the Agent should name. Uses customer-visible rank so a
- * discovery-order SEO cluster cannot crowd out a Critical Experience Flag.
- * Does not change Finish Plan ranking.
+ * Choose the Flags the Agent should name. Same comparator as Finish Plan
+ * and the Report list, so the first thing said is the first thing shown.
  */
 export function selectAnnouncedFlags(flags: ScanAgentFlag[]): ScanAgentFlag[] {
   return [...flags]
-    .sort((a, b) => {
-      const [aSeverity, aRubric, aSeo] = announcementRank(a)
-      const [bSeverity, bRubric, bSeo] = announcementRank(b)
-      if (aSeverity !== bSeverity) return aSeverity - bSeverity
-      if (aRubric !== bRubric) return aRubric - bRubric
-      if (aSeo !== bSeo) return aSeo - bSeo
-      return compareFlagsByPriority(
-        {
-          id: a.id,
-          rubric: a.rubric,
-          severity: a.severity ?? '',
-          problem: a.problem,
-          checkId: a.checkId ?? null,
-          impactTag: a.impactTag ?? null,
-        },
-        {
-          id: b.id,
-          rubric: b.rubric,
-          severity: b.severity ?? '',
-          problem: b.problem,
-          checkId: b.checkId ?? null,
-          impactTag: b.impactTag ?? null,
-        },
-      )
-    })
+    .sort((a, b) => compareFlagsByPriority(asRankable(a), asRankable(b)))
     .slice(0, ANNOUNCED_FLAG_LIMIT)
 }
 

@@ -165,6 +165,11 @@ export function runAccessibilityChecks(
     // --- Metadata-based fallback when axe-core results are unavailable ---
     // These checks provide baseline a11y coverage for offline/environments
     // where a live browser axe-core scan has not been performed.
+    //
+    // Accessible-name counts from static HTML are noisy on client-rendered
+    // sites (hero composers, icon chrome, logo walls). Keep them visible as
+    // POLISH. IMPORTANT/CRITICAL name findings require axe on a rendered page.
+    // Missing alt is more reliable from HTML, so that fallback stays IMPORTANT.
 
     if (meta.imagesWithoutAlt && meta.imagesWithoutAlt > 0) {
       findings.push({
@@ -185,11 +190,11 @@ export function runAccessibilityChecks(
         checkId: 'form-inputs-no-label',
         rubric: 'EXPERIENCE',
         impactTag: 'ACCESSIBILITY',
-        severity: 'IMPORTANT',
+        severity: 'POLISH',
         problem: `${meta.inputsWithoutLabel} form input(s) missing associated labels`,
-        evidence: `${meta.inputsWithoutLabel} inputs without label or aria-label`,
+        evidence: `${meta.inputsWithoutLabel} inputs without label or aria-label in the captured HTML. Confirm on the rendered page before treating this as a blocker.`,
         fix: '1. Add <label for="id"> to every visible input\n2. Or add aria-label to icon-only inputs\n3. Placeholder text is not a label replacement',
-        confidence: 0.85,
+        confidence: 0.7,
         source: 'DETERMINISTIC',
       })
     }
@@ -199,11 +204,11 @@ export function runAccessibilityChecks(
         checkId: 'buttons-no-text',
         rubric: 'EXPERIENCE',
         impactTag: 'ACCESSIBILITY',
-        severity: 'IMPORTANT',
+        severity: 'POLISH',
         problem: `${meta.buttonsWithoutText} button(s) missing accessible text`,
-        evidence: `${meta.buttonsWithoutText} buttons without visible text or aria-label`,
+        evidence: `${meta.buttonsWithoutText} buttons without visible text or aria-label in the captured HTML. Confirm on the rendered page before treating this as a blocker.`,
         fix: '1. Add visible text to icon-only buttons\n2. Or add aria-label describing the action\n3. Ensure button text is descriptive (not "click here")',
-        confidence: 0.85,
+        confidence: 0.7,
         source: 'DETERMINISTIC',
       })
     }
@@ -213,11 +218,11 @@ export function runAccessibilityChecks(
         checkId: 'links-no-text',
         rubric: 'EXPERIENCE',
         impactTag: 'ACCESSIBILITY',
-        severity: 'IMPORTANT',
+        severity: 'POLISH',
         problem: `${meta.linksWithoutText} link(s) missing accessible text`,
-        evidence: `${meta.linksWithoutText} links without visible text or aria-label`,
+        evidence: `${meta.linksWithoutText} links without visible text or aria-label in the captured HTML. Confirm on the rendered page before treating this as a blocker.`,
         fix: '1. Add visible text or aria-label to every link\n2. Icon links must have aria-label describing the destination\n3. Avoid empty <a> tags without any accessible name',
-        confidence: 0.85,
+        confidence: 0.7,
         source: 'DETERMINISTIC',
       })
     }

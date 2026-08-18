@@ -4,6 +4,7 @@ import {
   AI_SUMMARY_UNAVAILABLE_VERDICT,
   DETERMINISTIC_SCAN_VERDICT,
   displayVerdict,
+  groundedReportVerdict,
   isSystemVerdict,
   resolveReportVerdict,
 } from '@/lib/audit/verdict'
@@ -37,6 +38,32 @@ describe('verdict helpers', () => {
         whyItMatters: 'Visitors cannot reach the primary action',
       }),
       'Highest priority: The page stays blank on slow 3G. Visitors cannot reach the primary action.'
+    )
+  })
+
+  it('grounds Highest priority in an Important Message Flag over equally severe SEO', () => {
+    assert.equal(
+      groundedReportVerdict([
+        {
+          id: 'seo',
+          rubric: 'REACH',
+          severity: 'IMPORTANT',
+          impactTag: 'SEO',
+          checkId: 'description-missing',
+          problem: 'Meta description is missing',
+          whyItMatters: 'Search snippets stay generic.',
+        },
+        {
+          id: 'headline',
+          rubric: 'MESSAGE',
+          severity: 'IMPORTANT',
+          impactTag: 'CLARITY',
+          checkId: 'headline-unclear',
+          problem: 'The headline is unclear',
+          whyItMatters: 'Visitors cannot tell what the product does.',
+        },
+      ]),
+      'Highest priority: The headline is unclear. Visitors cannot tell what the product does.'
     )
   })
 

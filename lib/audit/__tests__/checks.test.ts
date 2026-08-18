@@ -216,6 +216,14 @@ describe('runAccessibilityChecks', () => {
     assert.ok(
       checkIds(runAccessibilityChecks(healthyMeta({ linksWithoutText: 1 }), null)).includes('links-no-text')
     )
+    const fallback = runAccessibilityChecks(
+      healthyMeta({ inputsWithoutLabel: 1, buttonsWithoutText: 1, linksWithoutText: 1 }),
+      null
+    )
+    for (const id of ['form-inputs-no-label', 'buttons-no-text', 'links-no-text'] as const) {
+      const flag = fallback.find((finding) => finding.checkId === id)
+      assert.equal(flag?.severity, 'POLISH', `${id} HTML fallback must stay POLISH`)
+    }
     assert.ok(
       checkIds(runAccessibilityChecks(healthyMeta({ iframesWithoutTitle: 1 }), null)).includes(
         'iframe-no-title'
@@ -256,6 +264,21 @@ describe('runAccessibilityChecks', () => {
 
   it('passes a healthy page', () => {
     assert.equal(runAccessibilityChecks(healthyMeta(), null).length, 0)
+  })
+
+  it('keeps axe-backed accessible-name violations at axe severity', () => {
+    const findings = runAccessibilityChecks(healthyMeta(), null, [
+      {
+        id: 'button-name',
+        impact: 'serious',
+        description: 'Buttons must have discernible text',
+        help: 'Buttons must have discernible text',
+        helpUrl: 'https://example.com',
+        nodes: [{ html: '<button></button>', target: ['button'], failureSummary: 'Fix button-name' }],
+      },
+    ])
+    const flag = findings.find((finding) => finding.checkId === 'buttons-no-text')
+    assert.equal(flag?.severity, 'IMPORTANT')
   })
 })
 

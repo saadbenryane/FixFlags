@@ -46,6 +46,32 @@ describe('buildFixFlagsScanMessages', () => {
     expect(messages.map((item) => item.id)).not.toContain('scan:audit-1:journey')
   })
 
+  it('announces an Important Message Flag ahead of equally severe SEO Flags', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      flags: [
+        {
+          id: 'seo-description',
+          problem: 'Meta description is missing',
+          rubric: 'REACH',
+          severity: 'IMPORTANT',
+          checkId: 'description-missing',
+          impactTag: 'SEO',
+        },
+        {
+          id: 'headline',
+          problem: 'The headline is unclear',
+          rubric: 'MESSAGE',
+          severity: 'IMPORTANT',
+          checkId: 'headline-unclear',
+          impactTag: 'CLARITY',
+        },
+      ],
+    })
+
+    expect(messages.filter((item) => item.kind === 'flag')[0]).toMatchObject({ flagId: 'headline' })
+  })
+
   it('announces a Critical Experience Flag ahead of discovery-order SEO Flags', () => {
     const messages = buildFixFlagsScanMessages({
       ...base,

@@ -119,6 +119,18 @@ function contractAlignmentBoost(
   return 1
 }
 
+/**
+ * Reach SEO / sharing / measurement hygiene is real, but it is not what a
+ * visitor notices first. Demote it after severity so a Critical meta-description
+ * Flag still beats an Important CTA Flag, while an Important headline Flag
+ * beats an Important og:image Flag.
+ */
+function customerVisibleDemotion(flag: RankableFlag): number {
+  const impact = (flag.impactTag ?? '').toUpperCase()
+  if (impact === 'SEO' || impact === 'SHARING' || impact === 'MEASUREMENT') return 1
+  return 0
+}
+
 function compareFlagPrioritySignals(
   a: RankableFlag,
   b: RankableFlag,
@@ -132,6 +144,9 @@ function compareFlagPrioritySignals(
 
   const severityDiff = severityRank(a.severity) - severityRank(b.severity)
   if (severityDiff !== 0) return severityDiff
+
+  const visibleDiff = customerVisibleDemotion(a) - customerVisibleDemotion(b)
+  if (visibleDiff !== 0) return visibleDiff
 
   const alignmentDiff =
     Math.min(contractAlignmentBoost(a, contract), corridorBoost(a)) -

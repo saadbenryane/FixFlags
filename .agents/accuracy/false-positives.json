@@ -192,5 +192,22 @@
     "status": "fixed",
     "evidence": "audit cmshok45x0001gpqu79c2j8cm; standalone flow after fix status=success flags=[]",
     "fixedDate": "2026-08-06"
+  },
+  {
+    "id": "fp-013",
+    "checkId": "form-inputs-no-label",
+    "module": "accessibility.ts",
+    "pattern": "HTML-only unlabeled-input / unnamed-button / unnamed-link counts emitted as IMPORTANT when axe did not run",
+    "rootCause": "Static HTML counts hero composers, tabindex=-1 chrome, and icon buttons as missing names. Customer-visible ranking then made those the top Flag on Linear, Replit, and Shopify.",
+    "affectedSites": [
+      "linear.app",
+      "replit.com",
+      "shopify.com"
+    ],
+    "fixType": "threshold",
+    "fixDescription": "HTML fallback name checks are POLISH. Axe-backed serious/critical name violations keep axe severity.",
+    "status": "fixed",
+    "evidence": "linear-app.html textarea tabindex=-1 placeholder composer; replit hero composer; shopify region-selector-close icon button",
+    "fixedDate": "2026-08-17"
   }
 ]
