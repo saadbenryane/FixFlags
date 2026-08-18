@@ -50,7 +50,7 @@ describe('workspace chrome primitives', () => {
       />
     )
 
-    expect(screen.getByLabelText('Preview controls')).toHaveClass('h-14')
+    expect(screen.getByLabelText('Preview controls')).toHaveClass('h-12')
     expect(screen.getByRole('link', { name: 'Sign in to view Timeline' })).toHaveAttribute(
       'href',
       '/sign-in?next=%2Freport%2Fa1'
@@ -76,7 +76,7 @@ describe('workspace chrome primitives', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Step 2 · Click start' }))
     expect(onSelectStep).toHaveBeenCalledWith(1)
-    fireEvent.change(screen.getByRole('slider'), { target: { value: '1' } })
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'ArrowRight' })
     expect(onScrub).toHaveBeenCalledWith(1)
     fireEvent.click(screen.getByRole('button', { name: REPORT_COPY.workspace.playback.backToLive }))
     expect(onBackToLive).toHaveBeenCalled()

@@ -4,8 +4,10 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { ArrowRight, Link2, Loader2 } from 'lucide-react'
 import { HERO, AUDIT_PROGRESS, AUDIT_ERRORS, OFFER } from '@/lib/marketing/copy'
+import { SCAN_LIMIT_GATE } from '@/lib/marketing/copy/auth'
 import { URL_PLACEHOLDER } from '@/lib/marketing/copy/brand'
 import { SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { cn } from '@/lib/utils'
@@ -15,6 +17,7 @@ import {
   startScanWithHandoff,
   trackStartedAudit,
 } from '@/lib/audit/start-scan-handoff'
+import { AuthFlow } from '@/components/auth/AuthFlow'
 
 const AUTOSTART_DONE_KEY = 'ff:autostart-url'
 
@@ -47,6 +50,8 @@ export function AuditInput({
   const [loading, setLoading] = useState(false)
   const [hydrated, setHydrated] = useState(false)
   const [urlError, setUrlError] = useState('')
+  const [authDialogOpen, setAuthDialogOpen] = useState(false)
+  const [pendingUrl, setPendingUrl] = useState('')
   const autoStartedRef = useRef(false)
   const resolvedPlacement = ctaPlacement ?? (variant === 'landing' ? 'hero' : undefined)
   const isLanding = variant === 'landing'
@@ -125,8 +130,15 @@ export function AuditInput({
       },
     })
     if (!result.ok) {
-      setUrlError(result.message)
-      setLoading(false)
+      if (result.code === 'AUTH_REQUIRED') {
+        setPendingUrl(normalized)
+        setAuthDialogOpen(true)
+        setLoading(false)
+        trackEvent('audit_limit_reached', { reason: 'anon_teaser_used' })
+      } else {
+        setUrlError(result.message)
+        setLoading(false)
+      }
     }
   }
 
@@ -162,6 +174,36 @@ export function AuditInput({
       return
     }
     router.push('/#sample-review')
+  }
+
+  async function handleAuthenticated() {
+    setAuthDialogOpen(false)
+    if (pendingUrl) {
+      setLoading(true)
+      setUrlError('')
+      const params = new URLSearchParams(window.location.search)
+      await startScanWithHandoff({
+        url: pendingUrl,
+        body: {
+          url: pendingUrl,
+          source: auditSource,
+          utmSource: params.get('utm_source') ?? undefined,
+          utmMedium: params.get('utm_medium') ?? undefined,
+          utmCampaign: params.get('utm_campaign') ?? undefined,
+          gclid: params.get('gclid') ?? undefined,
+          fbclid: params.get('fbclid') ?? undefined,
+        },
+        onStarted: () => {
+          trackStartedAudit({
+            source: auditSource,
+            isLoggedIn: true,
+            ctaPlacement: resolvedPlacement,
+            utmSource: params.get('utm_source'),
+            utmCampaign: params.get('utm_campaign'),
+          })
+        },
+      })
+    }
   }
 
   const describedBy = urlError ? errorId : undefined
@@ -306,6 +348,23 @@ export function AuditInput({
           </Button>
         </div>
       ) : null}
+
+      <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto overscroll-contain p-5 sm:p-6">
+          <DialogTitle className="sr-only">{SCAN_LIMIT_GATE.signup.title}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {SCAN_LIMIT_GATE.signup.body}
+          </DialogDescription>
+          <AuthFlow
+            mode="signup"
+            presentation="report-dialog"
+            from="scan-limit"
+            dialogTitle={SCAN_LIMIT_GATE.signup.title}
+            dialogSubtitle={SCAN_LIMIT_GATE.signup.body}
+            onAuthenticated={handleAuthenticated}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

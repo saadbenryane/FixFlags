@@ -135,7 +135,7 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://html5up.net',
     tier: 'structural',
     maxImportantFalseBlockers: 99,
-    expectedTop3: ['form-missing-validation', 'description-missing', 'messaging-headline-too-short'],
+    expectedTop3: ['form-missing-validation', 'description-missing', 'form-inputs-no-label'],
     knownFalsePositives: [
       'template-default-copy',
       'placeholder-copy-detected',

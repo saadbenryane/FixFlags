@@ -13,11 +13,11 @@ export const HERO = {
   /** Honest product assurances only. No invented counts or testimonials. */
   assurances: [
     { id: "speed", label: "Results in under 60 seconds", icon: "zap" as const },
-    { id: "teaser", label: "3 product reviews included", icon: "shield" as const },
+    { id: "teaser", label: "3 Free Reviews", icon: "shield" as const },
     { id: "private", label: "Your report is private", icon: "lock" as const },
   ],
   /** Product-true trust line only. No invented member counts or stock avatars. */
-  trustLine: "Works with Cursor, Claude Code, Lovable, Bolt, and more",
+  trustLine: "Works with your favourite vibe coding tools",
   scrollHint: "Scroll to discover",
 } as const;
 

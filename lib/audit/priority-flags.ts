@@ -37,6 +37,73 @@ function checkPriority(flag: RankableFlag): number {
   return CHECK_PRIORITY[checkId] ?? 99
 }
 
+function sourceReliabilityWeight(flag: RankableFlag): number {
+  const checkId = (flag.checkId ?? '').split('::page:')[0]
+  // Security-related checks are most reliable (deterministic, low false positive rate)
+  const securityPrefixes = [
+    'security-',
+    'no-https',
+    'no-privacy-policy',
+    'cookie-consent',
+    'console-errors',
+  ]
+  // Critical-path navigation and form checks are reliably deterministic
+  const criticalPathPrefixes = [
+    'flow-',
+    'journey-',
+    'scroll-',
+    'tap-targets',
+    'mobile-',
+    'form-',
+    'loading-',
+    'motion-',
+  ]
+  // SEO/sharing/measurement checks have more variable reliability
+  const variablePrefixes = [
+    'security-csp-' ,
+    'security-hsts-',
+    'security-frame-options-',
+    'security-content-type-options-',
+    'security-headers-missing',
+    'no-structured-data',
+    'sitemap-missing',
+    'robots-txt-missing',
+    'indexing-failure',
+    'soft-404',
+    'robots-blocked',
+    'noindex-meta',
+    'canonical-mismatch',
+    'visual-',
+    'messaging-',
+    'cta-focus',
+    'cta-dead-link',
+    'social-proof-unverifiable',
+    'placeholder-copy',
+    'template-default-copy',
+    'unreplaced-template-token',
+    'competing-ctas',
+    'hierarchy-',
+    'mobile-input-zoom',
+    'mobile-cta-thumb-zone',
+    'mobile-cta-weak-label',
+    'mobile-load-delay-content',
+    'perf-score-',
+    'lcp-',
+    'cls-',
+    'inp-',
+    'unused-js',
+    'unused-css',
+    'unoptimized-images',
+    'render-blocking',
+  ]
+
+  // Lower number = more reliable = higher priority
+  if (securityPrefixes.some((p) => checkId.startsWith(p))) return 0.8
+  if (criticalPathPrefixes.some((p) => checkId.startsWith(p))) return 0.9
+  if (variablePrefixes.some((p) => checkId === p || checkId.startsWith(p + '-'))) return 1.1
+  return 1.0
+}
+
 function impactRank(impactTag: string | null | undefined): number {
   return impactTag ? IMPACT_PRIORITY[impactTag] ?? 99 : 99
 }
@@ -53,6 +120,21 @@ function corridorBoost(flag: RankableFlag): number {
   // Secondary critical-path pages get ::page:N suffixes
   if (checkId.includes('::page:')) return 1
   return 2
+}
+
+function affectedOutcomesBoost(flag: RankableFlag, contract: ProductContract | null | undefined): number {
+  if (!contract) return 1
+  const hay = `${flag.problem} ${flag.whyItMatters ?? ''} ${flag.checkId ?? ''}`.toLowerCase()
+  const needles = [contract.purpose, contract.firstValueJourney, ...contract.criticalOutcomes]
+    .join(' ')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 3)
+
+  const hits = needles.filter((w) => hay.includes(w)).length
+  if (hits >= 2) return 0.8  // Strong alignment with critical outcomes
+  if (hits === 1) return 0.9  // Moderate alignment
+  return 1.0  // No alignment boost
 }
 
 // Checks that fire on nearly every site and do not represent high-leverage
@@ -134,7 +216,9 @@ function customerVisibleDemotion(flag: RankableFlag): number {
 function compareFlagPrioritySignals(
   a: RankableFlag,
   b: RankableFlag,
-  contract?: ProductContract | null
+  contract?: ProductContract | null,
+  frequencyA?: number,
+  frequencyB?: number
 ): number {
   const demotionDiff = reachHardeningDemotion(a) - reachHardeningDemotion(b)
   if (demotionDiff !== 0) return demotionDiff
@@ -149,15 +233,21 @@ function compareFlagPrioritySignals(
   if (visibleDiff !== 0) return visibleDiff
 
   const alignmentDiff =
-    Math.min(contractAlignmentBoost(a, contract), corridorBoost(a)) -
-    Math.min(contractAlignmentBoost(b, contract), corridorBoost(b))
+    Math.min(contractAlignmentBoost(a, contract), corridorBoost(a), affectedOutcomesBoost(a, contract)) -
+    Math.min(contractAlignmentBoost(b, contract), corridorBoost(b), affectedOutcomesBoost(b, contract))
   if (alignmentDiff !== 0) return alignmentDiff
+
+  const reliabilityDiff = sourceReliabilityWeight(a) - sourceReliabilityWeight(b)
+  if (reliabilityDiff !== 0) return reliabilityDiff
 
   const impactDiff = impactRank(a.impactTag) - impactRank(b.impactTag)
   if (impactDiff !== 0) return impactDiff
 
   const confidenceDiff = confidenceRank(b.confidence) - confidenceRank(a.confidence)
   if (confidenceDiff !== 0) return confidenceDiff
+
+  const freqDiff = (frequencyA ?? 0) - (frequencyB ?? 0)
+  if (freqDiff !== 0) return freqDiff
 
   const checkDiff = checkPriority(a) - checkPriority(b)
   if (checkDiff !== 0) return checkDiff
@@ -370,17 +460,25 @@ export function rankFlagsByPriority<TFlag extends RankableFlag>(
   flags: TFlag[],
   rubricRows: Array<{ name: string; grade: string | null }> = [],
   limit = 3,
-  contract?: ProductContract | null
+  contract?: ProductContract | null,
+  frequencyMap?: Map<string, number>
 ): Array<{ flag: TFlag; rubricName: string; rubricGrade: string | null }> {
   const gradeByRubric = new Map(rubricRows.map((row) => [row.name, row.grade]))
   const ranked = flags.map((flag) => ({
     flag,
     rubricName: flag.rubric,
     rubricGrade: gradeByRubric.get(flag.rubric) ?? null,
+    frequency: frequencyMap?.get(flag.checkId ?? '') ?? 0,
   }))
 
   ranked.sort((a, b) => {
-    const priorityDiff = compareFlagPrioritySignals(a.flag, b.flag, contract)
+    const priorityDiff = compareFlagPrioritySignals(
+      a.flag,
+      b.flag,
+      contract,
+      a.frequency,
+      b.frequency
+    )
     if (priorityDiff !== 0) return priorityDiff
 
     const gradeDiff = gradeRank(a.rubricGrade ?? '') - gradeRank(b.rubricGrade ?? '')
@@ -389,5 +487,9 @@ export function rankFlagsByPriority<TFlag extends RankableFlag>(
     return a.flag.problem.localeCompare(b.flag.problem)
   })
 
-  return ranked.slice(0, limit)
+  return ranked.slice(0, limit).map(({ flag, rubricName, rubricGrade }) => ({
+    flag,
+    rubricName,
+    rubricGrade,
+  }))
 }

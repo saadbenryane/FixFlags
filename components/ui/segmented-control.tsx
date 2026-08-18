@@ -22,13 +22,13 @@ export interface SegmentedControlProps {
 }
 
 const trackClasses = {
-  md: 'inline-flex rounded-control bg-muted/70 p-1',
-  lg: 'inline-flex rounded-card border border-border bg-muted/40 p-1 text-xs font-medium',
+  md: 'inline-flex rounded-control bg-muted/70 p-0.5',
+  lg: 'inline-flex rounded-card border border-border bg-muted/40 p-0.5 text-xs font-medium',
 } as const
 
 const itemClasses = {
-  md: 'min-h-11 rounded-[calc(var(--radius-control)-4px)] px-4 py-2 text-sm font-medium',
-  lg: 'min-h-11 min-w-11 rounded-[calc(var(--radius-card)-4px)] px-2.5 py-1.5',
+  md: 'min-h-9 rounded-[calc(var(--radius-control)-4px)] px-3 py-1 text-sm font-medium',
+  lg: 'min-h-9 min-w-9 rounded-[calc(var(--radius-card)-4px)] px-2 py-1',
 } as const
 
 export function SegmentedControl({

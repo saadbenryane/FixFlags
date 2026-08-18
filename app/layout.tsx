@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/inter-tight/wght.css'
@@ -12,6 +12,11 @@ import { DEFAULT_OG_IMAGE } from '@/lib/marketing/metadata'
 import { fontVariables } from '@/lib/design/fonts'
 
 const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION
+
+export const viewport: Viewport = {
+  maximumScale: 1,
+  userScalable: false,
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

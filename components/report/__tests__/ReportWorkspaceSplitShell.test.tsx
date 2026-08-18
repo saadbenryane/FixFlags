@@ -75,9 +75,10 @@ describe('ReportWorkspaceSplitShell playback', () => {
     const scrubs = screen.getAllByRole('slider')
     expect(scrubs.length).toBeGreaterThan(0)
     const scrub = scrubs[0]!
-    expect(scrub).toHaveAttribute('type', 'range')
-    expect(scrub).toHaveAttribute('min', '0')
-    expect(scrub).toHaveAttribute('max', String(steps.length - 1))
+    expect(scrub).toHaveAttribute('role', 'slider')
+    expect(scrub).toHaveAttribute('aria-valuemin', '0')
+    expect(scrub).toHaveAttribute('aria-valuemax', String(steps.length - 1))
+    expect(scrub).toHaveAttribute('aria-valuenow', '0')
     expect(stepButtons('Step 1 · Load homepage').length).toBeGreaterThan(0)
     expect(stepButtons('Step 2 · Click pricing').length).toBeGreaterThan(0)
   })
@@ -106,12 +107,11 @@ describe('ReportWorkspaceSplitShell playback', () => {
     expect(browserStepLabels().some((el) => el.textContent?.startsWith('Step 3'))).toBe(true)
   })
 
-  it('scrubbing the range selects the matching step', () => {
+  it('selecting a step via buttons selects the matching step', () => {
     renderShell()
     openTimeline()
 
-    const scrub = screen.getAllByRole('slider')[0]!
-    fireEvent.change(scrub, { target: { value: '2' } })
+    fireEvent.click(stepButtons('Step 3 · Submit form')[0]!)
 
     expect(stepButtons('Step 3 · Submit form')[0]).toHaveAttribute('aria-pressed', 'true')
   })
