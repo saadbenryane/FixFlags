@@ -344,7 +344,8 @@ async function captureDesktopWithFlow(
   runFlow: boolean,
   scanAccess?: ScanAccessConfig | null,
   flowDeadlineMs?: number,
-  deadline?: number
+  deadline?: number,
+  onInitialScreenshot?: (url: string) => void
 ): Promise<
   ViewportCapture & {
     flowResult: FlowScanResult | null
@@ -392,6 +393,7 @@ async function captureDesktopWithFlow(
     const initial = await readLoadSnapshot(page)
     const initialBuffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
     result.initialUrl = await uploadScreenshot(auditId, 'desktop', initialBuffer, initialPageKey(pageKey))
+    onInitialScreenshot?.(result.initialUrl)
 
     result.loadExperience = await waitForFinishedLoadState(
       page,
@@ -544,6 +546,7 @@ export async function captureScreenshots(
     scanAccess?: ScanAccessConfig | null
     flowDeadlineMs?: number
     deadline?: number
+    onInitialScreenshot?: (url: string) => void
   }
 ): Promise<ScreenshotResult> {
   await assertPublicAuditUrl(url)
@@ -563,7 +566,8 @@ export async function captureScreenshots(
       runFlow,
       scanAccess,
       options?.flowDeadlineMs,
-      options?.deadline
+      options?.deadline,
+      options?.onInitialScreenshot
     ),
     captureMobileViewport(
       b,

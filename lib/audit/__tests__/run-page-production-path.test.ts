@@ -145,7 +145,7 @@ describe('runPage production capture path', () => {
     )
   })
 
-  it('runs the flow walk on the primary page for a signed-in (full) audit', async () => {
+  it('defers the flow walk — capture runs without flow, flow runs after checks when budget allows', async () => {
     const ctx = {
       auditId: 'audit-1',
       deadline: Date.now() + 120_000,
@@ -165,7 +165,7 @@ describe('runPage production capture path', () => {
     const captureOptions = (captureScreenshots as Mock).mock.calls[0][3] as {
       runFlow?: boolean
     }
-    expect(captureOptions.runFlow).toBe(true)
+    expect(captureOptions.runFlow).toBe(false)
   })
 
   it('skips the flow walk and slow replay for an anonymous teaser scan', async () => {

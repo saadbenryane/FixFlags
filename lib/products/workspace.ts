@@ -7,6 +7,7 @@ import type {
   WatchNotificationStatus,
 } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { logger } from '@/lib/logger'
 import {
   parseProductIntelligence,
   type VerifiedLearning,
@@ -305,6 +306,16 @@ export async function loadProductOverview(userId: string): Promise<ProductOvervi
     },
   })
 
+  for (const product of products) {
+    if ((product as unknown as { userId: string }).userId !== userId) {
+      logger.error('SECURITY: loadProductOverview returned product owned by different user', {
+        requestedUserId: userId,
+        actualUserId: (product as unknown as { userId: string }).userId,
+        productId: product.id,
+      })
+    }
+  }
+
   return products.map((product) => {
     const memory = parseProductIntelligence(product.productIntelligence)
     const attention = product.improvements.filter((improvement) =>
@@ -406,9 +417,9 @@ export async function loadProductWorkspace(
       signalKeys: {
         where: { revokedAt: null },
         orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          name: true,
+select: {
+      id: true,
+      name: true,
           prefix: true,
           lastFour: true,
           allowedOrigin: true,

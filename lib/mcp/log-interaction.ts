@@ -4,6 +4,8 @@ export interface McpRequestSummary {
   auditIdFromParams: string | null
 }
 
+import { logger } from '@/lib/logger'
+
 export interface JsonRpcOutcome {
   success: boolean
   errorCode?: string
@@ -77,7 +79,8 @@ export function extractAuditIdFromToolResult(
   try {
     const parsed = JSON.parse(resultContent) as unknown
     return extractAuditIdFromArgs(asRecord(parsed))
-  } catch {
+  } catch (error) {
+    logger.warn('Failed to parse MCP interaction result JSON', { error: error instanceof Error ? error.message : String(error) })
     return null
   }
 }

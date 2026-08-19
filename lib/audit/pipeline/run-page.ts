@@ -1,5 +1,7 @@
 import { prisma } from '../../db'
 import { captureScreenshots, getAuditBrowser } from '../screenshot'
+import { createAuditPage } from '../browser/page-session'
+import { DESKTOP_CAPTURE_PROFILE } from '../browser/capture-profile'
 import type { PageCaptureFailure } from '../browser/page-capture'
 import { SiteOutageError } from '../pipeline-errors'
 import {
@@ -18,6 +20,7 @@ import { runFlowChecks } from '../checks/flow'
 import { runSlowReplayChecks } from '../checks/slow-replay'
 import { runNetworkEngagementChecks } from '../checks/network-engagement'
 import type { FlowScanResult } from '../flow/run-flow-scan'
+import { runFlowScan } from '../flow/run-flow-scan'
 import { runSlowReplay, type SlowReplayResult } from '../flow/slow-replay-probe'
 import { serializeFlowData } from '../flow/flow-url'
 import { persistDeterministicFlags } from '../persist'
@@ -159,20 +162,51 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     if (isTeaserScan) {
       await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'flow_skipped_teaser' })
     } else {
-      await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'flow_started' })
+      await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'flow_deferred' })
     }
   }
   const captureStart = Date.now()
 
+  const shouldRunFlow = input.primary && input.position === 0 && !isTeaserScan
+  const hasDeadlineBudgetForFlow =
+    input.primary && input.position === 0 && ctx.deadline - Date.now() > 60_000
+
+  let initialScreenshotPersisted = false
+  const onInitialScreenshot = input.primary
+    ? async (url: string) => {
+        if (initialScreenshotPersisted) return
+        initialScreenshotPersisted = true
+        try {
+          await prisma.screenshot.create({
+            data: {
+              auditId: ctx.auditId,
+              pageId: page.id,
+              device: 'DESKTOP',
+              url,
+              width: DESKTOP_VIEWPORT.width,
+              height: DESKTOP_VIEWPORT.height,
+            },
+          })
+          await prisma.audit.update({
+            where: { id: ctx.auditId },
+            data: { progress: PIPELINE_PROGRESS_SUBSTEP.CAPTURE_DONE },
+          })
+          await logPipelineEvent(ctx.auditId, {
+            stage: 'capturing',
+            event: 'initial_screenshot_persisted',
+          })
+        } catch {
+          // Non-fatal: screenshot will still be persisted in the main flow
+        }
+      }
+    : undefined
+
   const [captured, speed] = await Promise.all([
     captureScreenshots(normalizedUrl, ctx.auditId, `p${input.position}`, {
-      runFlow: input.primary && input.position === 0 && !isTeaserScan,
+      runFlow: false,
       scanAccess: ctx.scanAccess,
-      flowDeadlineMs: Math.max(
-        1,
-        Math.min(20_000, ctx.deadline - Date.now() - 15_000)
-      ),
       deadline: ctx.deadline,
+      onInitialScreenshot,
     }),
     fetchPageSpeedData(normalizedUrl, createDeadlineSignal(ctx.deadline)),
   ])
@@ -504,6 +538,66 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     await prisma.audit.update({
       where: { id: ctx.auditId },
       data: { progress: PIPELINE_PROGRESS_SUBSTEP.CHECKS_DONE },
+    })
+  }
+
+  // Deferred flow scan: run after checks complete if deadline budget allows.
+  // This moves ~20s of flow scanning out of the critical path so checks and
+  // triage start sooner. Flow flags merge into the flag array for triage.
+  if (shouldRunFlow && hasDeadlineBudgetForFlow && !captured.flowResult) {
+    await logPipelineEvent(ctx.auditId, { stage: 'checking', event: 'flow_started_deferred' })
+    if (input.primary) {
+      await prisma.audit.update({
+        where: { id: ctx.auditId },
+        data: { progress: PIPELINE_PROGRESS_SUBSTEP.FLOW_RUNNING },
+      })
+    }
+    const flowStart = Date.now()
+    try {
+      const browser = await getAuditBrowser()
+      const flowSession = await createAuditPage(browser, normalizedUrl, {
+        profile: DESKTOP_CAPTURE_PROFILE,
+        scanAccess: ctx.scanAccess,
+        journeySafe: true,
+        settle: false,
+        deadline: ctx.deadline,
+      })
+      const landingStep = {
+        label: 'Landing',
+        screenshotUrl: captured.desktopUrl ?? '',
+        url: normalizedUrl,
+      }
+      flowResult = await runFlowScan(flowSession.page, ctx.auditId, normalizedUrl, {
+        landingStep,
+        fetchHeaders: scanAccessToFetchHeaders(ctx.scanAccess),
+        deadlineMs: Math.max(1, Math.min(20_000, ctx.deadline - Date.now() - 15_000)),
+      })
+      flowSession.disposeNetwork()
+      await flowSession.page.close().catch(() => {})
+      await flowSession.page.context().close().catch(() => {})
+      await logPipelineEvent(ctx.auditId, {
+        stage: 'checking',
+        event: 'flow_completed_deferred',
+        durationMs: Date.now() - flowStart,
+      })
+      const flowFlags = runFlowChecks(flowResult).map((flag) => ({
+        ...flag,
+        pageUrl: normalizedUrl,
+      }))
+      if (flowFlags.length > 0) {
+        flags.push(...flowFlags)
+      }
+    } catch (err) {
+      await logPipelineEvent(ctx.auditId, {
+        stage: 'checking',
+        event: 'flow_failed_deferred',
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  } else if (shouldRunFlow && !hasDeadlineBudgetForFlow) {
+    await logPipelineEvent(ctx.auditId, {
+      stage: 'checking',
+      event: 'flow_skipped_deadline_deferred',
     })
   }
 

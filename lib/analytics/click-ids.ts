@@ -5,6 +5,7 @@
  * gclid = Google Ads click id, fbclid = Meta click id. Captured from the
  * landing URL on first visit and read at signup for attribution.
  */
+import { logger } from '@/lib/logger'
 export const CLICK_IDS_COOKIE = 'ff_click_ids'
 
 /** 90 days, in seconds. Matches Google's default gclid attribution window. */
@@ -23,7 +24,8 @@ export function parseClickIds(raw: string | undefined | null): ClickIds {
       gclid: typeof parsed.gclid === 'string' ? parsed.gclid : null,
       fbclid: typeof parsed.fbclid === 'string' ? parsed.fbclid : null,
     }
-  } catch {
+} catch (error) {
+    logger.warn('Failed to parse click-ids JSON', { raw: raw?.substring(0, 100), error: (error as Error).message })
     return { gclid: null, fbclid: null }
   }
 }

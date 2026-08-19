@@ -22,6 +22,8 @@ export const PIPELINE_PROGRESS_SUBSTEP = {
   CHECKS_STARTED: 42,
   /** Deterministic checks finished on pages, journey about to start (or skip). */
   CHECKS_DONE: 45,
+  /** Deferred flow scan running (primary page only, full pipeline). */
+  FLOW_RUNNING: 52,
   /** Journey Review started (Pro+). */
   JOURNEY_START: 48,
   /** Journey Review finished; AI judge about to start. */

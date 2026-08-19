@@ -1,5 +1,6 @@
 import type { ProductContract } from './product-contract'
 import { parseProductContract } from './product-contract'
+import { logger } from '@/lib/logger'
 
 /**
  * Persistent Product Intelligence for a customer Product (Project-scoped).
@@ -42,7 +43,8 @@ export function canonicalProductHost(url: string): string {
   try {
     const u = new URL(url)
     return u.hostname.replace(/^www\./i, '').toLowerCase()
-  } catch {
+  } catch (error) {
+    logger.warn('Failed to parse URL for canonicalProductHost', { url, error: error instanceof Error ? error.message : String(error) })
     return url.trim().replace(/^www\./i, '').toLowerCase()
   }
 }

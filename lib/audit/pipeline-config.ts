@@ -2,14 +2,14 @@
 export const PIPELINE_VERSION = '2.4.0'
 
 /**
- * Hard end-to-end deadline for a single audit run (ms). Real sites can spend
- * ~30s in PageSpeed plus screenshot capture and a 20s flow scan, so 90s was too
- * tight and force-failed legitimate runs ("took longer than expected"). 180s
- * leaves headroom while still capping genuinely stuck audits. The BullMQ job
- * lock (AUDIT_DEADLINE_MS + 30s) scales with this.
+ * End-to-end deadline for a single audit run (ms). Provides a safety net for
+ * genuinely stuck audits (e.g. worker crash, infinite loop). The pipeline is
+ * designed to complete well within this budget; on typical sites it finishes
+ * in 60-90s. Set extremely high to effectively disable the hard deadline;
+ * the recovery scheduler (STUCK_AUDIT_MINUTES) handles stuck audits instead.
  * Override via AUDIT_DEADLINE_MS env var.
  */
-export const AUDIT_DEADLINE_MS = Number(process.env.AUDIT_DEADLINE_MS ?? 180_000)
+export const AUDIT_DEADLINE_MS = Number(process.env.AUDIT_DEADLINE_MS ?? 600_000)
 
 /**
  * Budget reserved at the end of a run for persisting results and finalizing, so
