@@ -391,31 +391,36 @@ export function formatDisplayEvidence(checkId: string | null | undefined, eviden
 }
 
 export function buildExpertFixPrompt(flag: RankableFlag): string {
-  const why = resolveWhyItMatters(flag)
   const evidence = (flag.evidence ?? flag.problem).trim()
   const fix = normalizeFixBody(resolveFixPrompt(flag) ?? flag.problem)
   const verify = resolveVerificationRule(flag)
 
-  const rubricScope = flag.rubric === 'MESSAGE'
-    ? 'Focus on copy, text content, and messaging. Do not restructure layout or change visual styles.'
+  const constraint = flag.rubric === 'MESSAGE'
+    ? 'Do not restructure layout, change visual styles, or touch non-copy files.'
     : flag.rubric === 'EXPERIENCE'
-      ? 'Focus on layout, spacing, visual hierarchy, and usability. Do not rewrite marketing copy unless it directly affects usability.'
-      : 'Focus on metadata, SEO signals, and shareability. Do not change visible page content unless it affects social previews.'
+      ? 'Do not rewrite marketing copy unless it directly affects usability. Do not change unrelated components.'
+      : 'Do not change visible page content unless it affects social previews. Do not touch layout or copy.'
+
+  const severity = flag.severity === 'CRITICAL'
+    ? 'This is a critical issue that directly blocks conversions or trust.'
+    : flag.severity === 'IMPORTANT'
+      ? 'This is an important issue that degrades the product experience.'
+      : 'This is a polish issue that improves overall quality.'
 
   const lines = [
+    `## Goal`,
     flag.problem.trim(),
     '',
-    '## Why',
-    why,
+    '## Constraint',
+    `- ${constraint}`,
+    `- ${severity}`,
     '',
-    '## Evidence',
-    evidence,
+    '## Context',
+    `- Issue: ${flag.rubric} / ${flag.severity}`,
+    `- Evidence: ${evidence}`,
     '',
-    '## Fix',
+    '## Plan',
     fix,
-    '',
-    '## Scope',
-    `${rubricScope} Keep all unrelated files, components, and sections unchanged.`,
   ]
 
   if (verify) {

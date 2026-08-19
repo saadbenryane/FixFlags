@@ -103,8 +103,8 @@ describe('buildFixList', () => {
     ])
     expect(list.items.filter((item) => item.prompt)).toHaveLength(1)
     const demonstratedPrompt = list.items.find((item) => item.id === demonstrated.id)?.prompt
-    expect(demonstratedPrompt).toMatch(/## Why/)
-    expect(demonstratedPrompt).toMatch(/## Fix/)
+    expect(demonstratedPrompt).toMatch(/## Goal/)
+    expect(demonstratedPrompt).toMatch(/## Plan/)
     expect(demonstratedPrompt).toContain('Fix important-a')
     expect(list.copyPrompt).toBeNull()
   })

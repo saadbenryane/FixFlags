@@ -24,7 +24,7 @@ import { focusFlagDetail } from '@/lib/report/scroll-to-section'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import { trackEvent } from '@/lib/analytics/events'
 import { IMPACT_TAG_ORDER, SEVERITY_ORDER } from '@/lib/audit/constants'
-import { impactTagLabel, severityLabel, cn } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 
 interface ReportExplorerProps {
   model: ReportExplorerModel
@@ -262,12 +262,6 @@ export function ReportExplorer({
     impactFilter,
   })
   const hasPages = pages.length > 1
-  const availableSeverities = SEVERITY_ORDER.filter((severity) =>
-    model.flags.some((flag) => flag.severity === severity)
-  )
-  const availableImpacts = IMPACT_TAG_ORDER.filter((impact) =>
-    model.flags.some((flag) => flag.impactTag === impact)
-  )
 
   const showPrevious = useCallback(() => {
     if (flagCount <= 1) return
@@ -387,67 +381,31 @@ export function ReportExplorer({
         counts={rubricCounts}
         total={Object.values(rubricCounts).reduce((a, b) => a + b, 0)}
       />
-      {availableSeverities.length > 1 || availableImpacts.length > 1 || hasPages ? (
+      {hasPages ? (
         <div className="flex flex-wrap items-center gap-1.5">
-          {availableSeverities.length > 1 ? (
-            <>
-              <label className="sr-only" htmlFor="flag-severity-filter">Filter by severity</label>
-              <select
-                id="flag-severity-filter"
-                value={severityFilter ?? ''}
-                onChange={(event) => applyFilters({ severity: event.target.value || null })}
-                className="min-h-8 rounded-[var(--radius-control)] border border-border/60 bg-background px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-              >
-                <option value="">All severities</option>
-                {availableSeverities.map((severity) => (
-                  <option key={severity} value={severity}>{severityLabel(severity)}</option>
-                ))}
-              </select>
-            </>
-          ) : null}
-          {availableImpacts.length > 1 ? (
-            <>
-              <label className="sr-only" htmlFor="flag-impact-filter">Filter by impact</label>
-              <select
-                id="flag-impact-filter"
-                value={impactFilter ?? ''}
-                onChange={(event) => applyFilters({ impact: event.target.value || null })}
-                className="min-h-8 rounded-[var(--radius-control)] border border-border/60 bg-background px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-              >
-                <option value="">All impacts</option>
-                {availableImpacts.map((impact) => (
-                  <option key={impact} value={impact}>{impactTagLabel(impact)}</option>
-                ))}
-              </select>
-            </>
-          ) : null}
-          {hasPages ? (
-            <>
+          <FilterPill
+            size="sm"
+            icon={Globe}
+            active={pageFilter === null}
+            onClick={() => applyFilters({ page: null })}
+          >
+            {REPORT_COPY.explorer.allPages} ({pageScopedFlags.length})
+          </FilterPill>
+          {pages.map((page) => {
+            const count = pageScopedFlags.filter((f) => (f.pageUrls ?? []).includes(page.url)).length
+            if (count === 0) return null
+            const label = pageFilterLabel(page.url, page.role)
+            return (
               <FilterPill
                 size="sm"
-                icon={Globe}
-                active={pageFilter === null}
-                onClick={() => applyFilters({ page: null })}
+                key={page.url}
+                active={pageFilter === page.url}
+                onClick={() => applyFilters({ page: pageFilter === page.url ? null : page.url })}
               >
-                {REPORT_COPY.explorer.allPages} ({pageScopedFlags.length})
+                {label} ({count})
               </FilterPill>
-              {pages.map((page) => {
-                const count = pageScopedFlags.filter((f) => (f.pageUrls ?? []).includes(page.url)).length
-                if (count === 0) return null
-                const label = pageFilterLabel(page.url, page.role)
-                return (
-                  <FilterPill
-                    size="sm"
-                    key={page.url}
-                    active={pageFilter === page.url}
-                    onClick={() => applyFilters({ page: pageFilter === page.url ? null : page.url })}
-                  >
-                    {label} ({count})
-                  </FilterPill>
-                )
-              })}
-            </>
-          ) : null}
+            )
+          })}
         </div>
       ) : null}
     </div>

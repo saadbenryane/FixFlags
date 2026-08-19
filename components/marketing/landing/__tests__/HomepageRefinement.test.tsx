@@ -93,7 +93,6 @@ describe('homepage lean sections', () => {
       'aria-selected',
       'true'
     )
-    expect(screen.getByText('Unresolved Flags')).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Desktop' })).not.toBeInTheDocument()
   })
 
@@ -116,7 +115,7 @@ describe('homepage lean sections', () => {
         name: 'Report',
       })
     )
-    expect(await screen.findByText('Unresolved Flags')).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Desktop' })).not.toBeInTheDocument()
     expect(window.location.search).not.toMatch(/flag=/)
   })
 })

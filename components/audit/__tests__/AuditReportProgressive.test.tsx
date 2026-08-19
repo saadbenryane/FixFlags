@@ -125,7 +125,6 @@ describe('AuditReportProgressive', () => {
     expect(
       screen.getByRole('region', { name: REPORT_COPY.workspace.summaryLabel })
     ).toBeInTheDocument()
-    expect(screen.getAllByText('Release score')).toHaveLength(1)
     expect(screen.getByText(REPORT_COPY.reviewContext.title)).toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: 'Report sections' })).not.toBeInTheDocument()
   })

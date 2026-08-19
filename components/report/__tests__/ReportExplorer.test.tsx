@@ -179,7 +179,7 @@ describe('ReportExplorer anonymous teaser', () => {
     })
   })
 
-  it('keeps every filter reachable at pane width instead of hiding them on large viewports', async () => {
+  it('keeps rubric filters reachable at pane width instead of hiding them on large viewports', async () => {
     const critical: ExplorerFlag = {
       ...locked,
       id: 'critical',
@@ -194,8 +194,7 @@ describe('ReportExplorer anonymous teaser', () => {
       </MeProvider>
     )
 
-    expect(await screen.findByLabelText('Filter by severity')).toBeVisible()
-    expect(screen.getByLabelText('Filter by impact')).toBeVisible()
+    expect(await screen.findByText('All Flags')).toBeVisible()
   })
 
   it('marks affected and unaffected captures without treating missing captures as healthy', async () => {

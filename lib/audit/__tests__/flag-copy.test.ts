@@ -68,7 +68,7 @@ describe('flag-copy', () => {
     }
   })
 
-  it('builds self-contained expert fix prompts without screenshot preamble', () => {
+  it('builds plan-style expert fix prompts with Goal/Constraint/Context/Plan/Verify', () => {
     const flag = {
       id: '1',
       checkId: 'robots-blocks-indexing',
@@ -80,16 +80,16 @@ describe('flag-copy', () => {
       verificationRule: 'View page source; robots meta should not include noindex.',
     }
     const prompt = buildExpertFixPrompt(flag)
-    assert.match(prompt, /^Robots meta tag is blocking indexing/)
-    assert.match(prompt, /^## Why$/m)
-    assert.match(prompt, /## Evidence\nmeta name="robots"/)
-    assert.match(prompt, /## Fix\nRemove noindex/)
+    assert.match(prompt, /^## Goal$/m)
+    assert.match(prompt, /## Constraint/)
+    assert.match(prompt, /## Context/)
+    assert.match(prompt, /## Plan\nRemove noindex/)
     assert.match(prompt, /## Verify/)
     assert.doesNotMatch(prompt, /look at|screenshot|whole page/i)
     assert.ok(isCodeOrHeadCheck('robots-blocks-indexing'))
   })
 
-  it('normalizes legacy Goal/Observed/Expected essays into Fix body', () => {
+  it('normalizes legacy Goal/Observed/Expected essays into Plan body', () => {
     const flag = {
       id: '1',
       checkId: 'h1-generic',
@@ -113,16 +113,11 @@ describe('flag-copy', () => {
       verificationRule: 'Reload and read the hero H1.',
     }
     const prompt = buildExpertFixPrompt(flag)
-    assert.match(prompt, /## Fix\nRewrite the H1 to name the audience and outcome\./)
-    assert.doesNotMatch(prompt, /## Goal/)
-    assert.doesNotMatch(prompt, /## Observed/)
+    assert.match(prompt, /## Plan\nRewrite the H1 to name the audience and outcome\./)
+    assert.doesNotMatch(prompt, /## Why/)
   })
 
   it('prefers the AI-crafted agentPrompt over the plain-English fix once prescribed', () => {
-    // agentPrompt/cursorPrompt are the copy-paste-ready instructions for an AI
-    // coding tool (see lib/prompts/system-prompt.ts: "what users most often
-    // copy-paste into Cursor/Claude"); `fix` is a human-readable description
-    // and only the last-resort fallback for flags without a real agent prompt.
     const flag = {
       id: '1',
       checkId: 'h1-generic',
@@ -135,7 +130,7 @@ describe('flag-copy', () => {
     }
 
     assert.equal(resolveFixPrompt(flag), 'Rewrite the H1 in app/page.tsx to name the audience and the outcome.')
-    assert.match(buildExpertFixPrompt(flag), /## Fix\nRewrite the H1 in app\/page\.tsx/)
+    assert.match(buildExpertFixPrompt(flag), /## Plan\nRewrite the H1 in app\/page\.tsx/)
   })
 
   it('falls back to the plain fix text when no AI prompt has been prescribed yet', () => {
@@ -150,7 +145,7 @@ describe('flag-copy', () => {
     }
 
     assert.equal(resolveFixPrompt(flag), '1. Rewrite the H1 around the user outcome')
-    assert.match(buildExpertFixPrompt(flag), /## Fix\n1\. Rewrite the H1/)
+    assert.match(buildExpertFixPrompt(flag), /## Plan\n1\. Rewrite the H1/)
   })
 
   it('falls back when fix text is blank', () => {

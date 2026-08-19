@@ -127,25 +127,25 @@ describe('priority-flags', () => {
     })
 
     // Priority ordering: the CONVERSION flag outranks the SEO flag, so its
-    // expert-shaped prompt (## Why / ## Evidence / ## Fix / ## Scope) is the
+    // plan-shaped prompt (## Goal / ## Constraint / ## Context / ## Plan) is the
     // top copyable fix prompt.
     assert.equal(list.items[0]?.problem, 'Conversion polish')
     assert.equal(
       list.items[0]?.prompt,
       [
+        '## Goal',
         'Conversion polish',
         '',
-        '## Why',
-        'Conversion polish',
+        '## Constraint',
+        '- Do not restructure layout, change visual styles, or touch non-copy files.',
+        '- This is a polish issue that improves overall quality.',
         '',
-        '## Evidence',
-        'Conversion polish',
+        '## Context',
+        '- Issue: MESSAGE / POLISH',
+        '- Evidence: Conversion polish',
         '',
-        '## Fix',
+        '## Plan',
         'Fix conversion polish',
-        '',
-        '## Scope',
-        'Focus on copy, text content, and messaging. Do not restructure layout or change visual styles. Keep all unrelated files, components, and sections unchanged.',
       ].join('\n')
     )
   })

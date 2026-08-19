@@ -12,24 +12,16 @@ function buildModel(): ReportWorkspaceModel {
 }
 
 describe('ReportOutcomeBar', () => {
-  it('states the outcome once: score, unresolved count, and verdict', () => {
+  it('renders score ring and critical badge without redundant labels', () => {
     const model = buildModel()
     render(<ReportOutcomeBar model={model} verdict="The hero never names the outcome." />)
 
     expect(
-      screen.getByRole('region', { name: REPORT_COPY.workspace.summaryLabel })
+      screen.getByRole('region', { name: REPORT_COPY.workspace.summaryLabel }),
     ).toBeInTheDocument()
-    expect(screen.getAllByText(REPORT_COPY.workspace.releaseScore)).toHaveLength(1)
-    expect(screen.getAllByText(REPORT_COPY.workspace.unresolvedFlags)).toHaveLength(1)
-    expect(
-      screen.getAllByText(String(model.outcome.unresolvedCount))
-    ).toHaveLength(1)
+    expect(screen.queryByText(REPORT_COPY.workspace.releaseScore)).not.toBeInTheDocument()
+    expect(screen.queryByText(REPORT_COPY.workspace.unresolvedFlags)).not.toBeInTheDocument()
     expect(screen.getByText('The hero never names the outcome.')).toBeInTheDocument()
-  })
-
-  it('does not repeat the rubric counts the explorer filters already own', () => {
-    render(<ReportOutcomeBar model={buildModel()} />)
-    expect(screen.queryByRole('link', { name: /Show all Message Flags/i })).not.toBeInTheDocument()
   })
 
   it('links to the first Critical Flag when the review found one', () => {
@@ -38,7 +30,7 @@ describe('ReportOutcomeBar', () => {
     expect(
       screen.getByRole('link', {
         name: REPORT_COPY.workspace.showCriticalFlags(model.outcome.criticalCount),
-      })
+      }),
     ).toHaveAttribute('href', expect.stringContaining('severity=CRITICAL'))
   })
 
@@ -46,7 +38,7 @@ describe('ReportOutcomeBar', () => {
     const model = buildModel()
     model.summary.history = []
     render(<ReportOutcomeBar model={model} />)
-    expect(screen.queryByText(REPORT_COPY.workspace.history)).not.toBeInTheDocument()
+    expect(screen.queryByRole('toolbar', { name: 'Score history observations' })).not.toBeInTheDocument()
   })
 
   it('reports honest progress while the review is still running', () => {
