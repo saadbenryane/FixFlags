@@ -3,7 +3,6 @@ import {
   fireMetaPixelEvent,
   getGoogleAdsSignupLabel,
 } from '@/lib/analytics/ad-conversions'
-import { logger } from '@/lib/logger'
 import { ensureGtagStub, isGaConfigured } from '@/lib/analytics/gtag'
 
 /**
@@ -202,7 +201,10 @@ export function trackEvent<T extends FunnelEvent>(
   try {
     window.gtag!('event', event, eventParams)
   } catch (error) {
-    logger.warn('Failed to send analytics event', { event, error: error instanceof Error ? error.message : String(error) })
+    console.warn('Failed to send analytics event', {
+      event,
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 
   if (event === 'signed_up') {
