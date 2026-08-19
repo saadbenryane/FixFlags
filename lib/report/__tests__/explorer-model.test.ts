@@ -19,6 +19,15 @@ describe('explorer-model', () => {
           evidence: 'Headline is vague.',
           whyItMatters: 'Visitors bounce.',
           fix: 'Rewrite headline.',
+          evidenceTargets: [
+            {
+              kind: 'element',
+              source: 'measured',
+              device: 'desktop',
+              rect: { x: 0.1, y: 0.2, width: 0.4, height: 0.08 },
+              label: 'Headline',
+            },
+          ],
         },
         {
           id: 'f2',
@@ -29,6 +38,15 @@ describe('explorer-model', () => {
           evidence: 'Button at 900px.',
           whyItMatters: 'Mobile users miss CTA.',
           fix: 'Move CTA up.',
+          evidenceTargets: [
+            {
+              kind: 'element',
+              source: 'measured',
+              device: 'mobile',
+              rect: { x: 0.2, y: 0.7, width: 0.5, height: 0.07 },
+              label: 'Call to action',
+            },
+          ],
         },
       ],
       screenshots: [

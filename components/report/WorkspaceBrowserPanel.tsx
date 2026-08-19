@@ -4,6 +4,7 @@ import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/scree
 import { resolveCapturePair } from '@/lib/audit/screenshot-types'
 import { BrowserFrame } from '@/components/audit/BrowserFrame'
 import type { PlaybackStep } from '@/lib/audit/playback-steps'
+import type { EvidenceHighlight } from '@/lib/audit/evidence-highlights'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
@@ -18,6 +19,7 @@ interface WorkspaceBrowserPanelProps {
   activeStep?: PlaybackStep | null
   /** Which viewport the stage presents. The Product header owns the control. */
   device?: PreviewDevice
+  evidenceHighlight?: EvidenceHighlight | null
   className?: string
 }
 
@@ -32,6 +34,7 @@ export function WorkspaceBrowserPanel({
   captureStatus,
   activeStep,
   device = 'desktop',
+  evidenceHighlight = null,
   className,
 }: WorkspaceBrowserPanelProps) {
   const { desktop, mobile, desktopState, mobileState } = resolveCapturePair(
@@ -82,6 +85,7 @@ export function WorkspaceBrowserPanel({
         device={device}
         chrome="none"
         fill
+        evidenceHighlight={evidenceHighlight}
         className="min-h-0 flex-1"
       />
       {!desktop && !mobile && bothFailed ? (

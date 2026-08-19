@@ -10,6 +10,7 @@ import {
   formatDisplayEvidence,
   buildExpertFixPrompt,
 } from '@/lib/audit/flag-copy'
+import { parseEvidenceTargets } from '@/lib/audit/evidence-targets'
 
 /** Normalized evidence region on a screenshot (0–1). */
 export interface EvidenceHighlight {
@@ -26,6 +27,7 @@ export interface EvidenceHighlight {
   detail: string
   severity: string
   visualTarget: string
+  measured: boolean
 }
 
 export function preferredDeviceForFlag(flag: RankableFlag): 'desktop' | 'mobile' {
@@ -59,14 +61,22 @@ export function buildEvidenceHighlightsForFlag(
   index: number,
   anchorMap?: EvidenceAnchorMap
 ): EvidenceHighlight[] {
+  const visualDetail = formatFlagEvidence(flag)
+  const measured = highlightsFromTargets(flag, index, visualDetail)
+  if (measured.length > 0) return measured
+
+  // Curated sample fixtures may still supply measured Launchpad anchors.
+  // Live Flags without evidenceTargets must not receive a guessed box.
+  if (!anchorMap) return []
+
   const key = flag.checkId ?? flag.id
   const preferred = preferredDeviceForFlag(flag)
   const devices = flag.checkId ? devicesForCheck(flag.checkId) : [preferred]
   const highlights: EvidenceHighlight[] = []
-  const visualDetail = formatFlagEvidence(flag)
 
   for (const device of devices) {
     const anchor = lookupAnchor(flag, device, anchorMap)
+    if (!anchor) continue
     const region = anchorToRegion(key, anchor)
     highlights.push({
       id: `${flag.id}-${device}`,
@@ -82,28 +92,74 @@ export function buildEvidenceHighlightsForFlag(
       detail: visualDetail,
       severity: flag.severity,
       visualTarget: flag.checkId ? visualTargetLabel(flag.checkId) : 'Flagged area',
+      measured: region.scope === 'page' || Boolean(anchor.width && anchor.height),
     })
   }
 
-  if (highlights.length > 0) return highlights
+  return highlights
+}
 
-  return [
-    {
-      id: `${flag.id}-fallback`,
+function highlightsFromTargets(
+  flag: RankableFlag,
+  index: number,
+  visualDetail: string
+): EvidenceHighlight[] {
+  const targets = parseEvidenceTargets(flag.evidenceTargets)
+  return targets.map((target) => {
+    if (target.kind === 'page') {
+      return {
+        id: `${flag.id}-${target.device}`,
+        flagId: flag.id,
+        flagIndex: index,
+        device: target.device,
+        scope: 'page' as const,
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        label: flag.problem,
+        detail: visualDetail,
+        severity: flag.severity,
+        visualTarget: target.label,
+        measured: true,
+      }
+    }
+    const rect = target.rect
+    if (!rect) {
+      return {
+        id: `${flag.id}-${target.device}`,
+        flagId: flag.id,
+        flagIndex: index,
+        device: target.device,
+        scope: 'page' as const,
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        label: flag.problem,
+        detail: visualDetail,
+        severity: flag.severity,
+        visualTarget: target.label,
+        measured: true,
+      }
+    }
+    return {
+      id: `${flag.id}-${target.device}`,
       flagId: flag.id,
       flagIndex: index,
-      device: preferred,
-      scope: 'page' as const,
-      x: 0,
-      y: 0,
-      width: 1,
-      height: 1,
+      device: target.device,
+      scope: 'element' as const,
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height,
       label: flag.problem,
-      detail: `${visualDetail} Approximate area. Exact element could not be pinned on the capture.`,
+      detail: visualDetail,
       severity: flag.severity,
-      visualTarget: flag.checkId ? visualTargetLabel(flag.checkId) : 'Flagged area',
-    },
-  ]
+      visualTarget: target.label,
+      measured: true,
+    }
+  })
 }
 
 export function buildAllEvidenceHighlights(

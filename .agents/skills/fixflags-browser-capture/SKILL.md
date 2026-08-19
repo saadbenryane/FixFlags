@@ -35,6 +35,7 @@ finalize-from-outcome.ts → visual evidence (graceful)
 | Journey | `lib/audit/journey/run-journey-reviews.ts`, `run-template.ts` |
 | Network / forms | `lib/audit/browser/network-monitor.ts`, `journey-safety.ts` |
 | Visual evidence | `lib/audit/capture/visual-capture.ts`, `persist-visual-evidence.ts` |
+| Evidence overlay | `lib/audit/evidence-targets.ts` (harvest after screenshot + axe; persist on `Flag.evidenceTargets`) |
 | Production path | `lib/audit/pipeline/run-page.ts` |
 
 ## Invariants
@@ -45,6 +46,7 @@ finalize-from-outcome.ts → visual evidence (graceful)
 - Slow replay runs on primary page when `deadline - now > SLOW_REPLAY_MIN_BUDGET_MS` (30s).
 - Flow/journey/visual failures are swallowed; audit continues with honest degradation.
 - `tooling-path-filter.ts` suppresses playwright-mcp `/tmp` artifact false positives.
+- Overlay rectangles are harvested on the capture page immediately after the viewport screenshot. Never re-open the URL with generic CSS to guess a box. If the element was not measured, persist no element target.
 
 ## Verification
 
@@ -63,3 +65,4 @@ npm run audit:capabilities
 - Marking `experience-slow-replay` live without `run-page.ts` wiring
 - Letting visual evidence or journey failures fail the audit job
 - Using `deterministic-audit.ts` as the production entry (offline/demo probes only)
+- Drawing a highlight from `ELEMENT_REGION_PRESETS` or a second-pass selector guess (`.demo-cta-primary`, `main`)

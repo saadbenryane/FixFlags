@@ -1,6 +1,8 @@
 'use client'
 
-import type { CSSProperties, ReactNode, Ref } from 'react'
+import { useState, type CSSProperties, type ReactNode, type Ref } from 'react'
+import type { EvidenceHighlight } from '@/lib/audit/evidence-highlights'
+import { EvidenceChip, EvidenceSpotlight, useLetterboxLayout } from '@/components/audit/EvidenceSpotlight'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   viewportAspectStyle,
@@ -39,6 +41,8 @@ interface Props {
   loadingLabel?: string
   /** Rendered inside the image viewport (0–1 coords relative to capture) */
   viewportOverlay?: ReactNode
+  /** Measured Flag overlay for the current capture. */
+  evidenceHighlight?: EvidenceHighlight | null
   /** Ref on the screenshot viewport container (for height-matched mobile layout) */
   viewportRef?: Ref<HTMLDivElement>
   /** Fixed viewport dimensions (overrides aspect-ratio sizing) */
@@ -57,6 +61,7 @@ export function BrowserFrame({
   fill = false,
   loadingLabel,
   viewportOverlay,
+  evidenceHighlight = null,
   viewportRef,
   viewportSize,
 }: Props) {
@@ -68,6 +73,9 @@ export function BrowserFrame({
   const resolvedImageUrl = imageUrl ? normalizeInternalScreenshotUrl(imageUrl) : null
 
   const displayUrl = url ? displayHostname(url) : 'Capturing page...'
+  const [overlayHost, setOverlayHost] = useState<HTMLDivElement | null>(null)
+  const [overlayImage, setOverlayImage] = useState<HTMLImageElement | null>(null)
+  const letterbox = useLetterboxLayout(overlayHost, overlayImage)
 
   // In fill mode the parent owns the height, so no intrinsic sizing is applied.
   const resolvedViewportStyle: CSSProperties | undefined = fill
@@ -106,7 +114,11 @@ export function BrowserFrame({
       ) : null}
 
       <div
-        ref={viewportRef}
+        ref={(node) => {
+          setOverlayHost(node)
+          if (typeof viewportRef === 'function') viewportRef(node)
+          else if (viewportRef && 'current' in viewportRef) viewportRef.current = node
+        }}
         className={cn(
           'relative overflow-hidden bg-muted/30',
           fill && 'min-h-0 flex-1'
@@ -135,6 +147,7 @@ export function BrowserFrame({
         {resolvedState === 'loaded' && resolvedImageUrl && (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
+            ref={setOverlayImage}
             src={resolvedImageUrl}
             alt={alt}
             width={1440}
@@ -143,6 +156,13 @@ export function BrowserFrame({
             className="absolute inset-0 h-full w-full object-contain object-center motion-safe:animate-capture-fade"
           />
         )}
+
+        {resolvedState === 'loaded' && resolvedImageUrl && evidenceHighlight ? (
+          <>
+            <EvidenceSpotlight highlight={evidenceHighlight} layout={letterbox} />
+            <EvidenceChip highlight={evidenceHighlight} />
+          </>
+        ) : null}
 
         {resolvedState === 'loaded' && resolvedImageUrl && viewportOverlay && (
           <div className="pointer-events-none absolute inset-0">

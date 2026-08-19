@@ -26,6 +26,11 @@ import type { NetworkFailureRecord } from './browser/network-monitor'
 import type { TechnologyResourceRecord } from './browser/network-monitor'
 import type { FormProbeResult } from './browser/journey-safety'
 import { createActionTimeline, type ActionTimelineEvent } from './action-timeline'
+import {
+  axeTargetsFromViolations,
+  harvestEvidenceOnPage,
+  type HarvestedEvidence,
+} from './evidence-targets'
 
 let browser: Browser | null = null
 
@@ -142,6 +147,7 @@ export interface ScreenshotResult {
   actionTimeline?: ActionTimelineEvent[]
   formProbe?: FormProbeResult | null
   axeViolations?: import('./checks/accessibility').AxeViolation[]
+  evidenceHarvest?: HarvestedEvidence[]
 }
 
 interface ViewportCapture {
@@ -158,6 +164,7 @@ interface ViewportCapture {
   technologyResourcesTruncated?: boolean
   technologyRuntimeMarkers?: string[]
   axeViolations?: import('./checks/accessibility').AxeViolation[]
+  evidenceHarvest?: HarvestedEvidence
 }
 
 const TECHNOLOGY_RUNTIME_MARKERS = [
@@ -433,6 +440,16 @@ async function captureDesktopWithFlow(
       url: page.url(),
     })
 
+    try {
+      result.evidenceHarvest = await harvestEvidenceOnPage(
+        page,
+        'desktop',
+        axeTargetsFromViolations(result.axeViolations)
+      ) ?? undefined
+    } catch (err) {
+      logger.warn('Desktop evidence harvest skipped', err)
+    }
+
     if (runFlow) {
       try {
         const landingStep = {
@@ -522,6 +539,12 @@ async function captureMobileViewport(
     const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
     result.base64 = buffer.toString('base64')
     result.url = await uploadScreenshot(auditId, 'mobile', buffer, pageKey)
+
+    try {
+      result.evidenceHarvest = await harvestEvidenceOnPage(page, 'mobile') ?? undefined
+    } catch (err) {
+      logger.warn('Mobile evidence harvest skipped', err)
+    }
 
     try {
       result.captureMetrics = await measureMobileLayout(page)
@@ -635,6 +658,9 @@ export async function captureScreenshots(
     actionTimeline: desktop.actionTimeline ?? [],
     formProbe: desktop.formProbe ?? null,
     axeViolations: desktop.axeViolations ?? [],
+    evidenceHarvest: [desktop.evidenceHarvest, mobile.evidenceHarvest].filter(
+      (harvest): harvest is HarvestedEvidence => Boolean(harvest)
+    ),
   }
 }
 

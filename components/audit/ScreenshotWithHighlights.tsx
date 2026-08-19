@@ -19,10 +19,10 @@ import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import {
   computeLetterboxLayout,
   highlightCenter,
-  mapHighlightToLetterbox,
   normalizedPercent,
   type LetterboxLayout,
 } from '@/lib/audit/highlight-geometry'
+import { EvidenceChip, EvidenceSpotlight } from '@/components/audit/EvidenceSpotlight'
 import { cn } from '@/lib/utils'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 
@@ -343,47 +343,11 @@ function EvidenceRegionGlow({
   selected?: boolean
   layout?: LetterboxLayout
 }) {
-  const isCritical = highlight.severity === 'CRITICAL'
-  const isPage = highlight.scope === 'page'
-  const rect = layout ? mapHighlightToLetterbox(highlight, layout) : highlight
-
-  if (isPage) {
-    return (
-      <div
-        className={cn(
-          'pointer-events-none absolute inset-0 rounded-[5px] transition-opacity duration-300',
-          selected ? 'opacity-100' : 'opacity-0',
-          'bg-brand/5'
-        )}
-        aria-hidden={!selected}
-      />
-    )
+  if (!selected) return null
+  if (highlight.scope !== 'element' || !highlight.measured) {
+    return <EvidenceChip highlight={highlight} />
   }
-
-  return (
-    <div
-      className={cn(
-        'pointer-events-none absolute rounded-[5px] transition-opacity duration-300',
-        selected ? 'opacity-100' : 'opacity-0',
-        isCritical
-          ? cn(
-              'ring-[3px] ring-destructive',
-              'bg-destructive/10 shadow-[0_0_0_1px_hsl(var(--destructive)/0.38),0_0_0_5px_hsl(var(--destructive)/0.12),0_12px_34px_hsl(var(--destructive)/0.28)]'
-            )
-          : cn(
-              'ring-[3px] ring-brand',
-              'bg-brand/10 shadow-[0_0_0_1px_hsl(var(--brand)/0.34),0_0_0_5px_hsl(var(--brand)/0.12),0_12px_34px_hsl(var(--peach-glow)/0.32)]'
-            )
-      )}
-      style={{
-        left: normalizedPercent(rect.x),
-        top: normalizedPercent(rect.y),
-        width: normalizedPercent(rect.width),
-        height: normalizedPercent(rect.height),
-      }}
-      aria-hidden={!selected}
-    />
-  )
+  return <EvidenceSpotlight highlight={highlight} layout={layout} selected />
 }
 
 function RegionLayer({
@@ -503,11 +467,6 @@ function ScreenshotPanel({
 
   const active = highlights.some((h) => h.device === device && h.flagId === selectedFlagId)
 
-  const selectedPageHighlight = highlights.find(
-    (h) => h.device === device && h.flagId === selectedFlagId && h.scope === 'page'
-  )
-  const pageBorderCritical = selectedPageHighlight?.severity === 'CRITICAL'
-  const pageBorderSelected = Boolean(selectedPageHighlight)
   const resolvedComparisonState = imgError ? 'neutral' : comparisonState
   const comparisonLabel =
     resolvedComparisonState === 'affected'
@@ -559,9 +518,6 @@ function ScreenshotPanel({
       ref={setRefs}
       className={cn(
         'relative overflow-hidden rounded-md bg-muted/30 shadow-card',
-        pageBorderSelected && 'border-[3px]',
-        pageBorderSelected && pageBorderCritical && 'border-destructive',
-        pageBorderSelected && !pageBorderCritical && 'border-brand',
         resolvedComparisonState === 'affected' &&
           'ring-2 ring-destructive ring-offset-2 ring-offset-background',
         resolvedComparisonState === 'unaffected' &&
@@ -639,7 +595,7 @@ function ScreenshotPanel({
             }}
             onError={() => setImgError(true)}
             className={cn(
-              'absolute inset-0 h-full w-full object-contain object-top transition-[filter,opacity] duration-300',
+              'absolute inset-0 h-full w-full object-contain object-center transition-[filter,opacity] duration-300',
               !imgLoaded && 'opacity-0',
               active && 'brightness-[0.92]'
             )}

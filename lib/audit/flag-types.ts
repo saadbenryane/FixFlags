@@ -9,6 +9,8 @@
  * They construct from FlagData/RankableFlag via mapper functions.
  */
 
+import type { EvidenceTarget } from '@/lib/audit/evidence-targets'
+
 /** Tool-specific fix prompts, shared between Flag and ReportRubric models. */
 export interface AgentPrompts {
   agentPrompt: string | null
@@ -86,6 +88,7 @@ export interface DeterministicFlag {
   source: 'DETERMINISTIC'
   impactTag?: string | null
   pageUrl?: string
+  evidenceTargets?: EvidenceTarget[]
 }
 
 /**
@@ -101,6 +104,7 @@ export type DeterministicFlagRow = Omit<FlagData, 'severity' | 'impactTag'> & {
   checkId: string
   severity: import('@prisma/client').Severity
   impactTag: import('@prisma/client').ImpactTag | null
+  evidenceTargets?: import('@prisma/client').Prisma.InputJsonValue
 }
 
 /**
@@ -114,6 +118,7 @@ export type AiFlagRow = Omit<FlagData, 'severity' | 'impactTag'> & {
   checkId: null
   severity: import('@prisma/client').Severity
   impactTag: import('@prisma/client').ImpactTag | null
+  evidenceTargets?: import('@prisma/client').Prisma.InputJsonValue
 }
 
 /**
@@ -142,6 +147,7 @@ export type RankableFlag = Pick<FlagData, 'id' | 'rubric' | 'severity' | 'proble
     causeCertainty?: CauseCertainty | null
     fixConfidence?: FixConfidence | null
     status?: string | null
+    evidenceTargets?: unknown
   }
 
 /**

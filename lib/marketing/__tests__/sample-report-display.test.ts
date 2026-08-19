@@ -94,6 +94,7 @@ describe('buildSampleReportDisplay', () => {
   it('emits per-device evidence highlights when anchors exist for both', () => {
     const report = buildSampleReportDisplay(
       baseAudit({
+        id: 'curated-sample-v1',
         flags: [
           {
             id: 'flag-message-1',
@@ -136,6 +137,7 @@ describe('buildSampleReportDisplay', () => {
   it('buildAllEvidenceHighlights merges flags', () => {
     const report = buildSampleReportDisplay(
       baseAudit({
+        id: 'curated-sample-v1',
         flags: [
           {
             id: 'flag-message-1',

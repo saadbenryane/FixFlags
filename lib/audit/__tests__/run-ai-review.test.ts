@@ -186,7 +186,6 @@ describe('runAiReview', () => {
       data: { status: 'JUDGING', progress: expect.any(Number), includeAi: true },
     })
     expect(mocks.mergePrescriptionResults).toHaveBeenCalledWith('a1', PRESCRIPTION.output)
-    expect(mocks.tryResolveEvidenceAnchorsForAudit).toHaveBeenCalled()
     expect(mocks.finalizeAudit).toHaveBeenCalledWith(expect.objectContaining({ auditId: 'a1' }))
   })
 

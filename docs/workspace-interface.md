@@ -24,6 +24,7 @@
 - Desktop grid: `minmax(280px, 32%)_minmax(0, 1fr)` with `gap-0`. Left is thinner than right. Both panes `min-h-0` with internal scroll.
 - Scanning and completed reviews share one continuous shell. Completed reports do not jump to a hero/summary document above the split; score, Flags, and actions live in Product Report mode.
 - Preview shows one `BrowserFrame` at a time. Do not stack desktop and mobile frames.
+- Selecting a Flag overlays the measured evidence target on that capture. The overlay uses `EvidenceSpotlight` and must not change stage size. Page-scope and unmeasured Flags show `EvidenceChip` instead of a box.
 - Homepage marketing preview emulates this same editor with curated sample evidence (`getCuratedSampleAudit` / static sample + `buildFixFlagsScanMessages`). Never call `/api/checks` from marketing. Demo identity is **Launchpad** / `fixflags.com/demo` with real `/samples/demo-original-*.webp` captures.
 
 **Product pane is a fixed three-row stage (locked):**

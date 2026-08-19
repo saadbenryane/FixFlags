@@ -20,6 +20,12 @@ manual review that scripts cannot fully prove.
 - Confirm Message, Experience, and Reach remain the only customer-facing
   report rubrics.
 
+## Evidence overlay
+
+- Live Flag highlights must come from `Flag.evidenceTargets` measured at capture time.
+- A missing measurement is a chip, not a preset hero rectangle.
+- Product Preview uses `EvidenceSpotlight` / `EvidenceChip`. Stage geometry must not change.
+
 ## Interface behavior
 
 - Exercise loading, empty, partial, error, forbidden, completed, and Re-check

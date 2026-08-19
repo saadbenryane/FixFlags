@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/db'
 import { mergePrescriptionResults, flagKeyForRow } from './persist'
-import { tryResolveEvidenceAnchorsForAudit } from './persist-evidence-anchors'
 import { finalizeAudit } from './finalize'
 import { PIPELINE_PROGRESS } from './progress'
 import { JudgeContractError } from './validate-judge-output'
@@ -122,17 +121,6 @@ export async function runAiReview(auditId: string): Promise<void> {
 
   await logPipelineEvent(auditId, { stage: 'finalizing', event: 'prescription_persist' })
   await mergePrescriptionResults(auditId, prescription.output)
-  await tryResolveEvidenceAnchorsForAudit(
-    auditId,
-    audit.url,
-    audit.flags
-      .filter((flag) => flag.checkId)
-      .map((flag) => ({
-        checkId: flag.checkId!,
-        problem: flag.problem,
-        evidence: flag.evidence,
-      }))
-  )
 
   await finalizeAudit({
     auditId,

@@ -18,6 +18,8 @@ An Audit is an immutable Review observation of the Product at a moment in time (
 
 A Flag is a finding from one Review.
 
+Overlay rectangles live on `Flag.evidenceTargets`. They are harvested on the capture page immediately after the viewport screenshot. Finalize must not re-open the URL to guess a box.
+
 A Product-scoped Improvement is the durable judgment and action object across Reviews.
 
 Product Signals and integrations add evidence; they do not become Flags or confirmed claims automatically.

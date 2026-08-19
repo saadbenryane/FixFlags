@@ -96,6 +96,7 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 - `active:scale-[0.98]` on buttons for press feedback
 - `prefers-reduced-motion` respected globally — no motion if user prefers reduced
 - Entry animations: `fade-in-up` (0.4s), `scale-in` (0.3s), `soft-reveal` (0.2s), `capture-fade` (0.25s, opacity only, for captured evidence that must not move layout)
+- Flag overlay on Preview is an inspect spotlight on a capture-time rectangle. Page-scope and unmeasured Flags use a chip. Never paint a guessed hero box.
 - List/accordion: `accordion-down/up` (0.2s)
 - No `transition: all`. Be specific about what animates.
 - Marketing uses a quiet static canvas with restrained section tints.

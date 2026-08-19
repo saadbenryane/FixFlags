@@ -263,7 +263,6 @@ describe('finalizeFromOutcome', () => {
       pageRuns: [pageRun({ flowResult: flow })],
       startedAt: new Date(),
     })
-    expect(tryResolveEvidenceAnchorsForAudit).toHaveBeenCalled()
     expect(mergeFlowCtaEvidenceAnchors).toHaveBeenCalledWith('audit-1', flow)
   })
 })

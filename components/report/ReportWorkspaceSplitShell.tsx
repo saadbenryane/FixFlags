@@ -26,6 +26,7 @@ import type {
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { PreviewEvidenceProvider, usePreviewEvidence } from '@/components/report/preview-evidence-context'
 
 interface ReportWorkspaceSplitShellProps {
   isActiveReview?: boolean
@@ -61,7 +62,15 @@ type MobileFocus = 'chat' | 'product'
 
 export const REPORT_PLAYBACK_SCROLL_MT = 'scroll-mt-[var(--report-chrome-offset)]'
 
-export function ReportWorkspaceSplitShell({
+export function ReportWorkspaceSplitShell(props: ReportWorkspaceSplitShellProps) {
+  return (
+    <PreviewEvidenceProvider>
+      <ReportWorkspaceSplitShellInner {...props} />
+    </PreviewEvidenceProvider>
+  )
+}
+
+function ReportWorkspaceSplitShellInner({
   isActiveReview = false,
   showChatColumn = true,
   scanning = false,
@@ -86,6 +95,11 @@ export function ReportWorkspaceSplitShell({
   )
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [device, setDevice] = useState<PreviewDevice>('desktop')
+  const previewEvidence = usePreviewEvidence()
+  const selectedHighlight =
+    previewEvidence.highlights.find((highlight) => highlight.device === device) ??
+    previewEvidence.highlights[0] ??
+    null
 
   const stepParam = searchParams.get('step')
 
@@ -104,6 +118,13 @@ export function ReportWorkspaceSplitShell({
     setView(next)
     chooseMobileFocus('product')
   }
+
+  useEffect(() => {
+    const measured = previewEvidence.highlights.find(
+      (highlight) => highlight.scope === 'element' && highlight.measured
+    )
+    if (measured) setDevice(measured.device)
+  }, [previewEvidence.selectedFlagId, previewEvidence.highlights])
 
   useEffect(() => {
     if (scanning || !canUseTimeline || !stepParam || steps.length === 0) return
@@ -138,6 +159,7 @@ export function ReportWorkspaceSplitShell({
       captureStatus={browserCaptureStatus}
       activeStep={canReplay ? activeStep : null}
       device={device}
+      evidenceHighlight={activeStep ? null : selectedHighlight}
       className="h-full"
     />
   )

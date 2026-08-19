@@ -25,6 +25,7 @@ import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import { trackEvent } from '@/lib/analytics/events'
 import { IMPACT_TAG_ORDER, SEVERITY_ORDER } from '@/lib/audit/constants'
 import { cn } from '@/lib/utils'
+import { usePreviewEvidence } from '@/components/report/preview-evidence-context'
 
 interface ReportExplorerProps {
   model: ReportExplorerModel
@@ -72,6 +73,7 @@ export function ReportExplorer({
   const [selectedFlagId, setSelectedFlagId] = useState<string | null>(
     model.flags[initialIndex]?.id ?? null
   )
+  const { setSelection } = usePreviewEvidence()
   const demonstratedSelectionApplied = useRef(false)
   const urlStateLoaded = useRef(false)
 
@@ -167,6 +169,15 @@ export function ReportExplorer({
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
   }, [applyExplorerUrlState])
+
+  useEffect(() => {
+    setSelection({
+      flagId: selectedFlagId,
+      highlights: selectedFlagId
+        ? model.allHighlights.filter((highlight) => highlight.flagId === selectedFlagId)
+        : [],
+    })
+  }, [model.allHighlights, selectedFlagId, setSelection])
 
   useOneShotEvent(
     'first_finding_viewed',

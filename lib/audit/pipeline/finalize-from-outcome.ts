@@ -1,10 +1,7 @@
 import { prisma } from '@/lib/db'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { persistTriageResults } from '@/lib/audit/persist'
-import {
-  tryResolveEvidenceAnchorsForAudit,
-  mergeFlowCtaEvidenceAnchors,
-} from '@/lib/audit/persist-evidence-anchors'
+import { mergeFlowCtaEvidenceAnchors } from '@/lib/audit/persist-evidence-anchors'
 import { tryCaptureVisualEvidenceForAudit } from '@/lib/audit/persist-visual-evidence'
 import {
   finalizeTriageAudit,
@@ -80,7 +77,6 @@ async function persistEvidenceAnchors(
         rubric: f.rubric,
       })),
   ]
-  await tryResolveEvidenceAnchorsForAudit(auditId, auditUrl, allFlags)
   const primaryFlow = pageRuns.find((page) => page.flowResult)?.flowResult
   if (primaryFlow) {
     await mergeFlowCtaEvidenceAnchors(auditId, primaryFlow)

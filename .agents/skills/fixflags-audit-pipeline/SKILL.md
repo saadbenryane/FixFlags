@@ -39,7 +39,8 @@ Audit COMPLETED, score/verdict OK, no fix prompts?
 | Orchestrator | `lib/audit/runner.ts` |
 | Per-page | `lib/audit/pipeline/run-page.ts` |
 | Outcome routing | `lib/audit/pipeline/outcome.ts`, `finalize-from-outcome.ts` |
-| Evidence anchors | `lib/audit/persist-evidence-anchors.ts` |
+| Evidence overlay | `lib/audit/evidence-targets.ts` harvest + `Flag.evidenceTargets`. Do not re-navigate to guess boxes. |
+| Legacy sample anchors | `lib/audit/persist-evidence-anchors.ts` (Launchpad fixture only) |
 | Visual evidence | `lib/audit/capture/*`, `lib/audit/persist-visual-evidence.ts` (graceful; must not fail audit) |
 | Browser | Playwright (`lib/audit/browser/page-session.ts`, `lib/audit/screenshot.ts`) |
 | Network / form / overlay | `lib/audit/browser/network-monitor.ts`, `journey-safety.ts`, overlay helpers |

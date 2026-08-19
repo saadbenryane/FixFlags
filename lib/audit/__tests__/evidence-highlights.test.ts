@@ -17,22 +17,51 @@ describe('evidence-highlights', () => {
     evidence: 'Headline reads a category label, not an outcome.',
   }
 
-  it('builds preset element highlights without anchors', () => {
+  it('does not invent a box when the Flag was not measured', () => {
     const highlights = buildEvidenceHighlightsForFlag(flag, 0)
-    assert.ok(highlights.length >= 1)
-    assert.equal(highlights[0]?.scope, 'element')
-    assert.equal(highlights[0]?.flagId, 'flag-1')
-    assert.match(highlights[0]?.visualTarget ?? '', /Hero headline/i)
+    assert.equal(highlights.length, 0)
   })
 
-  it('uses page scope for metadata checks', () => {
+  it('uses measured evidence targets when present', () => {
+    const highlights = buildEvidenceHighlightsForFlag(
+      {
+        ...flag,
+        evidenceTargets: [
+          {
+            kind: 'element',
+            source: 'measured',
+            device: 'desktop',
+            rect: { x: 0.1, y: 0.2, width: 0.3, height: 0.08 },
+            label: 'Headline',
+          },
+        ],
+      },
+      0
+    )
+    assert.equal(highlights.length, 1)
+    assert.equal(highlights[0]?.scope, 'element')
+    assert.equal(highlights[0]?.measured, true)
+    assert.equal(highlights[0]?.x, 0.1)
+    assert.equal(highlights[0]?.y, 0.2)
+  })
+
+  it('uses page scope for measured metadata checks', () => {
     const metaFlag = {
       ...flag,
       checkId: 'description-missing',
       rubric: 'REACH',
+      evidenceTargets: [
+        {
+          kind: 'page' as const,
+          source: 'measured' as const,
+          device: 'desktop' as const,
+          label: 'This issue is in the page head, not a visible element',
+        },
+      ],
     }
     const highlights = buildEvidenceHighlightsForFlag(metaFlag, 0)
     assert.equal(highlights[0]?.scope, 'page')
+    assert.equal(highlights[0]?.measured, true)
   })
 
   it('formats evidence and fix prompts with expert copy', () => {

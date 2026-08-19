@@ -1135,6 +1135,8 @@ export const REPORT_COPY = {
     statusPendingLabel: "Status pending",
     affectedViewport: (device: "desktop" | "mobile") => `Flagged on ${device}`,
     unaffectedViewport: "Not detected for this Flag",
+    unmeasuredElement: "Exact element was not pinned on this capture",
+    pageScopeEvidence: "This issue is not a visible element on the page",
   },
   lovableBolt: {
     heroTitle: "Paste this into Lovable or Bolt",

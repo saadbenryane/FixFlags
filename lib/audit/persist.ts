@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import {
+  Prisma,
   RubricName,
   Severity,
   RubricGrade,
@@ -63,6 +64,10 @@ export function buildDeterministicFlagRow(
     pageUrl: flag.pageUrl ?? null,
     fingerprint: flagFingerprint(flag),
     position: i,
+    evidenceTargets:
+      flag.evidenceTargets && flag.evidenceTargets.length > 0
+        ? (JSON.parse(JSON.stringify(flag.evidenceTargets)) as Prisma.InputJsonValue)
+        : undefined,
   }
 }
 

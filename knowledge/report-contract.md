@@ -64,6 +64,7 @@ Keep the workspace and transcript mounted until the completed server report repl
 - The primary report renders every persisted unresolved Flag without truncation.
 - Interactive report targets are at least 44px and keyboard operable.
 - Per-Flag capture comparisons show affected viewports in red, available unaffected viewports in green, and missing or failed captures neutrally. Every state includes text and an icon.
+- Screenshot overlays use measured `Flag.evidenceTargets` or an explicit page-scope chip. Unmeasured Flags do not receive a guessed rectangle.
 - `CircleAlert` is reserved for Critical Flags. Important and Polish remain available as accessible text.
 - Loading, empty, partial, failure, forbidden, expired, revoked, and deleted states are explicit.
 - Visible report chrome lives in `lib/marketing/copy.ts`.

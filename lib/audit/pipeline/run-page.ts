@@ -46,6 +46,11 @@ import {
 import { loadProjectIntelligence, mutateProjectIntelligence } from '../ensure-product-project'
 import type { PipelineContext, PageRun } from './types'
 import { recordTargetedPageVerifierExecutions } from '@/lib/improvements/verifier-provenance'
+import {
+  attachEvidenceTargets,
+  flowExtraFromAnchor,
+} from '@/lib/audit/evidence-targets'
+import { flowCheckIdForStatus } from '@/lib/audit/flow/flow-evidence'
 
 interface CaptureOutage {
   failureCode: string
@@ -600,6 +605,20 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       event: 'flow_skipped_deadline_deferred',
     })
   }
+
+  const harvests = screenshots?.evidenceHarvest ?? []
+  const flowCheckId = flowResult ? flowCheckIdForStatus(flowResult.status) : null
+  const flowExtra = flowExtraFromAnchor(
+    flowCheckId,
+    'desktop',
+    flowResult?.ctaAnchor ?? null
+  )
+  const flagsWithTargets = attachEvidenceTargets(
+    flags,
+    harvests,
+    flowExtra ? [flowExtra] : []
+  )
+  flags.splice(0, flags.length, ...flagsWithTargets)
 
   const partialRubricScores = computeRubricScores(
     flags,
