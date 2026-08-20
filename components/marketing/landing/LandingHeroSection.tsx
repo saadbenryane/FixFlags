@@ -45,7 +45,7 @@ export function LandingHeroSection() {
               variant="landing"
               idSuffix="-hero"
               ctaPlacement="hero"
-              showLandingExtras={false}
+              showLandingExtras
             />
           </div>
 

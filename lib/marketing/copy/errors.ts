@@ -121,6 +121,7 @@ export const AUDIT_PROGRESS = {
   substeps: {
     CAPTURE_DONE: 'Capture finished. Starting deterministic checks…',
     CHECKS_DONE: 'Checks finished. Preparing Funnel review…',
+    FLOW_RUNNING: 'Reviewing the primary customer path…',
     JOURNEY_START: 'Walking the primary Funnel path…',
     JOURNEY_DONE: 'Funnel review finished. Starting AI review…',
   },

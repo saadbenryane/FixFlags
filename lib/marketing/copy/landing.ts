@@ -5,7 +5,7 @@ export const HERO = {
   headlineDisplay: "Finish what your AI started",
   headlineAccentPeriod: true,
   subhead:
-    "Paste a URL. Get Flags across Message, Experience, and Reach, with evidence and the next fix for your builder.",
+    "See exactly what to fix before anyone else sees your site. Message, Experience, and Reach Flags with evidence and fix prompts.",
   primaryCta: "Review my site",
   compactPrimaryCta: "Review site",
   trySampleCta: "See a sample review",

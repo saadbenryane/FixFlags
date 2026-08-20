@@ -135,6 +135,8 @@ export function AuditReportProgressive({
     process.env.NODE_ENV === 'development' && status === 'QUEUED' && easeTick >= 12
 
   const [queueWaitSeconds, setQueueWaitSeconds] = useState<number | undefined>()
+  const [showCompletionBadge, setShowCompletionBadge] = useState(false)
+  const wasLoadingRef = useRef(isLoading)
 
   useEffect(() => {
     if (status !== 'QUEUED') {
@@ -168,6 +170,18 @@ export function AuditReportProgressive({
   useEffect(() => {
     if (status === 'COMPLETED') setDisplayProgress(100)
   }, [status])
+
+  // Show a brief "Review complete" badge when the scan transitions from loading
+  // to completed, then fade it out after 3 seconds.
+  useEffect(() => {
+    if (wasLoadingRef.current && !isLoading && status === 'COMPLETED') {
+      setShowCompletionBadge(true)
+      const timer = setTimeout(() => setShowCompletionBadge(false), 3000)
+      wasLoadingRef.current = isLoading
+      return () => clearTimeout(timer)
+    }
+    wasLoadingRef.current = isLoading
+  }, [isLoading, status])
 
   const userVerdict = displayVerdict(verdict ?? null)
 
@@ -217,11 +231,11 @@ export function AuditReportProgressive({
     >
       <span className="font-medium tabular-nums text-foreground">
         {partialFlags.length > 0
-          ? `Found ${partialFlags.length} ${partialFlags.length === 1 ? 'issue' : 'issues'} so far`
-          : 'No issues confirmed yet'}
+          ? `Found ${partialFlags.length} ${partialFlags.length === 1 ? 'Flag' : 'Flags'} so far`
+          : 'No Flags confirmed yet'}
       </span>
       <span aria-hidden="true">·</span>
-      <span>Checks are still running. New issues appear as they are confirmed.</span>
+      <span>Checks are still running. New Flags appear as they are confirmed.</span>
     </div>
   ) : null
   const workspace = buildReportWorkspaceModel({
@@ -412,6 +426,16 @@ export function AuditReportProgressive({
               browserCaptureStatus={screenshotCapture}
               reportPanel={
                 <>
+                  {showCompletionBadge && (
+                    <div
+                      role="status"
+                      aria-live="polite"
+                      className="mb-3 flex items-center gap-2 rounded-card border border-success/20 bg-success/5 px-3 py-2 text-sm text-success motion-safe:animate-soft-reveal"
+                    >
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
+                      Review complete
+                    </div>
+                  )}
                   <div data-report-frame className={WORKSPACE_REPORT_FRAME_CLASS}>
                     <ReportOutcomeBar model={workspace} verdict={userVerdict} />
                     <section

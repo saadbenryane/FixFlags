@@ -257,7 +257,7 @@ describe('AuditReportProgressive', () => {
         ]}
       />
     )
-    expect(screen.getByText(/Found 2 issues so far/i)).toBeInTheDocument()
+    expect(screen.getByText(/Found 2 Flags so far/i)).toBeInTheDocument()
     expect(screen.getByText(/Checks are still running/i)).toBeInTheDocument()
     expect(screen.getAllByText('CTA lacks an outcome').length).toBeGreaterThan(0)
   })
@@ -271,7 +271,7 @@ describe('AuditReportProgressive', () => {
         partialFlags={[{ id: 'f1', severity: 'CRITICAL', problem: 'C', rubric: 'MESSAGE' }]}
       />
     )
-    expect(screen.queryByText(/issues so far/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Flags so far/i)).not.toBeInTheDocument()
   })
 
   it('keeps the stage narrative honest on teaser scans (no journey walk)', () => {
