@@ -2,14 +2,14 @@
 export const PIPELINE_VERSION = '2.4.0'
 
 /**
- * End-to-end deadline for a single audit run (ms). Provides a safety net for
- * genuinely stuck audits (e.g. worker crash, infinite loop). The pipeline is
- * designed to complete well within this budget; on typical sites it finishes
- * in 60-90s. Set extremely high to effectively disable the hard deadline;
- * the recovery scheduler (STUCK_AUDIT_MINUTES) handles stuck audits instead.
+ * End-to-end deadline for a single audit run (ms). Real sites can spend
+ * ~30s in PageSpeed plus screenshot capture and a 20s flow scan, plus
+ * deterministic checks (~5s) and AI triage (~45-60s). 300s leaves generous
+ * headroom while still eventually capping stuck audits. The BullMQ job
+ * lock (AUDIT_DEADLINE_MS + 30s) scales with this.
  * Override via AUDIT_DEADLINE_MS env var.
  */
-export const AUDIT_DEADLINE_MS = Number(process.env.AUDIT_DEADLINE_MS ?? 600_000)
+export const AUDIT_DEADLINE_MS = Number(process.env.AUDIT_DEADLINE_MS ?? 300_000)
 
 /**
  * Budget reserved at the end of a run for persisting results and finalizing, so
@@ -31,4 +31,4 @@ export const MIN_JUDGE_BUDGET_MS = Number(process.env.MIN_JUDGE_BUDGET_MS ?? 25_
 export const SLOW_REPLAY_MIN_BUDGET_MS = Number(process.env.SLOW_REPLAY_MIN_BUDGET_MS ?? 30_000)
 
 /** Cron threshold before an in-progress audit is considered stuck. Override via STUCK_AUDIT_MINUTES env var. */
-export const STUCK_AUDIT_MINUTES = Number(process.env.STUCK_AUDIT_MINUTES ?? 15)
+export const STUCK_AUDIT_MINUTES = Number(process.env.STUCK_AUDIT_MINUTES ?? 20)
