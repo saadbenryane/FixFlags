@@ -1,6 +1,7 @@
 import { IntegrationsBlock } from '@/components/marketing/landing/IntegrationsBlock'
 import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
 import { LandingHeroSection } from '@/components/marketing/landing/LandingHeroSection'
+import { LandingHowItWorksSection } from '@/components/marketing/landing/LandingHowItWorksSection'
 import { LandingViewTracker } from '@/components/marketing/landing/LandingViewTracker'
 import { SampleReportSection } from '@/components/marketing/landing/SampleReportSection'
 import { getCuratedSampleAudit } from '@/lib/marketing/curated-sample'
@@ -17,6 +18,7 @@ export default async function HomePage() {
       <LandingViewTracker />
       <LandingHeroSection />
       <SampleReportSection audit={sample.audit} />
+      <LandingHowItWorksSection />
       <IntegrationsBlock />
       <LandingFinalCtaSection />
     </>

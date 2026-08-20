@@ -132,9 +132,9 @@ export const DIFFERENTIATION = {
 } as const;
 
 export const FINAL_CTA = {
-  headlineDisplay: "See what your release still needs",
+  headlineDisplay: "Paste a URL. See what to fix.",
   headlineAccentPeriod: true,
-  body: "Free product review. Paste your site or app URL and get your FixFlags report.",
+  body: "Free product review. Your report is private.",
 } as const;
 
 export const MCP_SECTION = {

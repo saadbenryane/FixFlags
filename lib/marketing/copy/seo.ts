@@ -2,7 +2,7 @@ import { PRICING_COPY } from './terminology'
 
 export const SEO = {
   home: {
-    title: 'FixFlags - Product QA before you publish',
+    title: 'FixFlags - Catch what your AI missed before launch',
     description:
       'Your AI says it\u2019s done. Paste a URL and FixFlags runs Product QA for Message, Experience, and Reach Flags. Fix prompts for Cursor, Claude, Lovable, Bolt, and Devin. Free product review.',
   },
