@@ -211,8 +211,8 @@ describe('sanitizeAuditErrorMessage', () => {
 // ── Pipeline config constants ────────────────────────────────────
 
 describe('pipeline config constants', () => {
-  it('AUDIT_DEADLINE_MS is 3 minutes', () => {
-    assert.equal(AUDIT_DEADLINE_MS, 180_000)
+  it('AUDIT_DEADLINE_MS is 5 minutes', () => {
+    assert.equal(AUDIT_DEADLINE_MS, 300_000)
   })
 
   it('MIN_JUDGE_BUDGET_MS is 25 seconds', () => {
@@ -228,8 +228,8 @@ describe('pipeline config constants', () => {
     assert.ok(MIN_JUDGE_BUDGET_MS + FINALIZE_RESERVE_MS < AUDIT_DEADLINE_MS)
   })
 
-  it('STUCK_AUDIT_MINUTES is 15', () => {
-    assert.equal(STUCK_AUDIT_MINUTES, 15)
+  it('STUCK_AUDIT_MINUTES is 20', () => {
+    assert.equal(STUCK_AUDIT_MINUTES, 20)
   })
 
   it('STUCK_AUDIT_MINUTES in milliseconds exceeds AUDIT_DEADLINE_MS', () => {
