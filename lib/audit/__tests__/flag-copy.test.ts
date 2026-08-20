@@ -113,8 +113,8 @@ describe('flag-copy', () => {
       verificationRule: 'Reload and read the hero H1.',
     }
     const prompt = buildExpertFixPrompt(flag)
+    assert.match(prompt, /## Why it matters/)
     assert.match(prompt, /## Plan\nRewrite the H1 to name the audience and outcome\./)
-    assert.doesNotMatch(prompt, /## Why/)
   })
 
   it('prefers the AI-crafted agentPrompt over the plain-English fix once prescribed', () => {

@@ -144,6 +144,9 @@ describe('priority-flags', () => {
         '- Issue: MESSAGE / POLISH',
         '- Evidence: Conversion polish',
         '',
+        '## Why it matters',
+        '- Conversion polish',
+        '',
         '## Plan',
         'Fix conversion polish',
       ].join('\n')

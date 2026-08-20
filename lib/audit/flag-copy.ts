@@ -407,6 +407,8 @@ export function buildExpertFixPrompt(flag: RankableFlag): string {
       ? 'This is an important issue that degrades the product experience.'
       : 'This is a polish issue that improves overall quality.'
 
+  const why = resolveWhyItMatters(flag)
+
   const lines = [
     `## Goal`,
     flag.problem.trim(),
@@ -418,6 +420,9 @@ export function buildExpertFixPrompt(flag: RankableFlag): string {
     '## Context',
     `- Issue: ${flag.rubric} / ${flag.severity}`,
     `- Evidence: ${evidence}`,
+    '',
+    '## Why it matters',
+    `- ${why}`,
     '',
     '## Plan',
     fix,

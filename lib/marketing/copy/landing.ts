@@ -946,6 +946,8 @@ export const REPORT_COPY = {
     criticalCount: (count: number) =>
       `${count} Critical ${count === 1 ? "Flag" : "Flags"}`,
     noCriticalFlags: "No Critical Flags",
+    nextStepHint:
+      "Start with the top Flag below. Copy its fix prompt, paste it into your editor, then run an update review.",
     showCriticalFlags: (count: number) =>
       `Show ${count} Critical ${count === 1 ? "Flag" : "Flags"}`,
     history: "Score history",

@@ -108,6 +108,12 @@ export function ReportOutcomeBar({
           </p>
         ) : null}
 
+        {!loading && model.outcome.unresolvedCount > 0 ? (
+          <p className="w-full text-2xs leading-relaxed text-muted-foreground/80 @[46rem]/pane:w-auto @[46rem]/pane:border-l @[46rem]/pane:pl-5">
+            {REPORT_COPY.workspace.nextStepHint}
+          </p>
+        ) : null}
+
         {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
       </div>
 
