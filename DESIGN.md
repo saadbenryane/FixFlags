@@ -97,6 +97,7 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 - Glass surfaces: `glass-shadow` with subtle border inset.
 - Borders on inputs, tables, and outlined controls. Cards prefer shadows.
 - Sections separated by `bg-muted/35`, not `border-y`.
+- Marketing surfaces group content with whitespace, surface tone, and type hierarchy before strokes. Do not use divider lines between marketing rows, metrics, or narrative steps. Keep borders for controls and functional data boundaries only.
 - Floating action offset: `--floating-action-offset` (1.25rem).
 
 ## Motion

@@ -40,7 +40,7 @@ export const NURTURE_EMAILS = {
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
   <p>You signed up for ${BRAND.name} yesterday. Your ${PRICING_COPY.freeProductReviewsLifetime} product reviews are still waiting.</p>
-  <p>Paste any public URL. You will get Flags with evidence and a fix prompt for each one. The whole thing takes about 60 seconds.</p>
+  <p>Paste any public URL. You will get ranked Flags with evidence and a fix prompt for each one.</p>
   <p><a href="${SITE_URL}" style="${ctaStyle}">Paste a URL</a></p>
 `),
   },

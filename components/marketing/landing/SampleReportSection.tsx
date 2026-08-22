@@ -6,7 +6,6 @@ import {
   RefreshCw,
   ScanSearch,
   ShieldCheck,
-  Timer,
 } from "lucide-react";
 import { HomepageReportPreview } from "@/components/marketing/landing/HomepageReportPreview";
 import { RevealOnView } from "@/components/marketing/landing/RevealOnView";
@@ -50,9 +49,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
     ...copy.trustMetrics.map((metric) => ({
       ...metric,
       icon:
-        metric.id === "speed"
-          ? Timer
-          : metric.id === "recheck"
+        metric.id === "recheck"
             ? RefreshCw
             : metric.id === "private"
               ? LockKeyhole
@@ -60,8 +57,8 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
     })),
   ];
 
-  const primaryMetrics = metrics.slice(0, 3);
-  const supportingMetrics = metrics.slice(3);
+  const primaryMetrics = metrics.slice(0, 2);
+  const supportingMetrics = metrics.slice(2);
 
   return (
     <>
@@ -89,7 +86,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
                 className="max-w-md space-y-4 sm:space-y-5"
               />
 
-              <ul className="flex flex-col divide-y divide-border/45">
+              <ul className="flex flex-col gap-1.5">
                 {copy.rubricRows.map((row) => {
                   const Icon = rubricIcon(row.icon);
                   const count = report.flags.filter(
@@ -148,80 +145,107 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
 
       <Section
         spacing="compact"
-        className="overflow-hidden bg-foreground text-background"
+        className="relative overflow-hidden bg-foreground text-background"
       >
         <RevealOnView>
           <Container
             variant="marketing"
-            className="px-4 py-6 sm:px-6 sm:py-8 lg:px-12 lg:py-10"
+            className="px-4 py-14 sm:px-6 sm:py-16 lg:px-12 lg:py-20"
           >
-            <div className="grid gap-8 lg:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.2fr)] lg:items-end lg:gap-12">
-              <div className="max-w-lg">
-                <MarketingEyebrow dot={false} className="font-semibold">
-                  {copy.trustLabel}
-                </MarketingEyebrow>
-                <h2 className="mt-3 font-display text-2xl font-semibold leading-heading tracking-display text-background sm:text-3xl">
-                  {copy.trustHeadline}
-                </h2>
-                <p className="mt-3 text-sm leading-relaxed text-background/62 text-pretty">
+            <div className="grid gap-10 lg:grid-cols-[minmax(18rem,0.72fr)_minmax(0,1.28fr)] lg:items-stretch lg:gap-16">
+              <div className="flex max-w-xl flex-col justify-between">
+                <div>
+                  <MarketingEyebrow
+                    dot={false}
+                    className="font-semibold text-brand"
+                  >
+                    {copy.trustLabel}
+                  </MarketingEyebrow>
+                  <h2 className="mt-5 max-w-[12ch] font-display text-3xl font-semibold leading-[1.06] tracking-display text-background text-balance sm:text-4xl lg:text-5xl">
+                    {copy.trustHeadline}
+                  </h2>
+                </div>
+                <p className="mt-7 max-w-md text-base leading-relaxed text-background/65 text-pretty">
                   {copy.trustBody}
                 </p>
               </div>
 
-              <div className="grid grid-cols-3">
+              <div className="grid gap-3 sm:min-h-[19rem] sm:grid-cols-[1.18fr_0.82fr]">
                 {primaryMetrics.map((metric, index) => {
                   const Icon = metric.icon;
                   return (
                     <div
                       key={metric.id}
                       className={cn(
-                        "min-w-0 py-1",
-                        index > 0 &&
-                          "border-l border-background/15 pl-4 sm:pl-6",
+                        "group relative flex min-w-0 flex-col justify-between rounded-[var(--radius-inner)] bg-background/[0.055] p-6 sm:p-7",
+                        index === 0 && "min-h-[16rem] sm:min-h-0",
+                        index > 0 && "min-h-[13rem] sm:min-h-0",
                       )}
                     >
-                      <div className="flex items-center gap-2 text-2xs leading-tight text-background/55 sm:text-xs">
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-xs font-medium leading-tight text-background/55">
+                          {metric.label}
+                        </span>
                         <Icon
                           className={cn(
-                            "hidden h-4 w-4 shrink-0 sm:block",
+                            "h-5 w-5 shrink-0",
                             metric.id === "flags"
                               ? "text-brand"
-                              : "text-background/70",
+                              : "text-background/45",
                           )}
-                          strokeWidth={1.7}
+                          strokeWidth={1.65}
                           aria-hidden
                         />
-                        {metric.label}
                       </div>
-                      <div className="mt-2 font-mono text-2xl font-semibold tabular-nums tracking-tight text-background sm:text-3xl lg:text-4xl">
+                      <div
+                        className={cn(
+                          "mt-8 font-mono font-semibold tabular-nums tracking-[-0.055em] text-background",
+                          index === 0
+                            ? "text-6xl sm:text-7xl lg:text-[5.5rem]"
+                            : "text-5xl sm:text-6xl",
+                        )}
+                      >
                         {metric.value}
                       </div>
+                      {index === 0 ? (
+                        <div
+                          className="mt-7 h-1 w-14 rounded-full bg-brand"
+                          aria-hidden
+                        />
+                      ) : null}
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            <div className="mt-8 flex flex-col gap-3 border-t border-background/15 pt-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-              <p className="font-mono text-xs font-semibold uppercase tracking-label text-background/70">
+            <div className="mt-10 grid gap-5 rounded-card bg-background/[0.035] p-5 sm:grid-cols-[minmax(11rem,0.55fr)_minmax(0,1.45fr)] sm:items-center sm:gap-8 sm:p-6">
+              <p className="font-mono text-xs font-semibold uppercase tracking-label text-background/60">
                 {copy.trustSupportLabel}
               </p>
-              <div className="flex flex-wrap gap-x-6 gap-y-3 sm:justify-end">
-                {supportingMetrics.map((metric) => {
+              <div className="grid gap-4 sm:grid-cols-3 sm:gap-0">
+                {supportingMetrics.map((metric, index) => {
                   const Icon = metric.icon;
                   return (
-                    <div key={metric.id} className="flex items-center gap-2.5">
+                    <div
+                      key={metric.id}
+                      className={cn(
+                        "flex items-start gap-3",
+                        index > 0 && "sm:pl-6",
+                        index < supportingMetrics.length - 1 && "sm:pr-6",
+                      )}
+                    >
                       <Icon
-                        className="h-4 w-4 shrink-0 text-brand"
+                        className="mt-0.5 h-4 w-4 shrink-0 text-brand"
                         strokeWidth={1.7}
                         aria-hidden
                       />
-                      <div className="flex flex-col">
-                        <span className="order-2 mt-0.5 text-xs text-background/70">
-                          {metric.label}
-                        </span>
-                        <span className="order-1 font-mono text-xs font-semibold tabular-nums text-background">
+                      <div className="min-w-0">
+                        <span className="block font-mono text-sm font-semibold tabular-nums text-background">
                           {metric.value}
+                        </span>
+                        <span className="mt-1 block text-xs leading-snug text-background/58">
+                          {metric.label}
                         </span>
                       </div>
                     </div>

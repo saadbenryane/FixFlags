@@ -1,6 +1,6 @@
 import type { Route } from 'next'
 import Link from 'next/link'
-import { Clock3, LockKeyhole, RefreshCcw, ShieldCheck } from 'lucide-react'
+import { LockKeyhole, RefreshCcw, ShieldCheck } from 'lucide-react'
 import { EditorMark } from '@/components/brand/EditorMarks'
 import { Logo } from '@/components/brand/Logo'
 import { FooterNewsletter } from '@/components/layout/FooterNewsletter'
@@ -13,7 +13,6 @@ import { HOMEPAGE_EDITOR_INTEGRATIONS, editorDocsHref } from '@/lib/integrations
 const FOOTER_EDITOR_MARKS = HOMEPAGE_EDITOR_INTEGRATIONS
 
 const METRIC_ICONS = {
-  speed: Clock3,
   recheck: RefreshCcw,
   private: LockKeyhole,
   teaser: ShieldCheck,

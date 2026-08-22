@@ -31,6 +31,8 @@ const BANNED_LANDING_PHRASES = [
   /ship tonight/i,
   /fix my live site/i,
   /start in 60 seconds/i,
+  /under 60 seconds/i,
+  /about 60 seconds/i,
   /\bunlock\b/i,
   /\b10x\b/i,
   /game-changing/i,
@@ -141,7 +143,7 @@ describe('homepage message guardrails', () => {
       assert.ok(!/\d{2,},\d{3}/.test(item.label), `Invented count: ${item.label}`)
       assert.ok(!/builders? reviewed/i.test(item.label), `Fake social proof: ${item.label}`)
     }
-    assert.ok(HERO.assurances.some((a) => /under 60 seconds/i.test(a.label)))
+    assert.ok(HERO.assurances.some((a) => /live product/i.test(a.label)))
     assert.ok(HERO.assurances.some((a) => /3 Free Reviews/i.test(a.label)))
     assert.ok(HERO.assurances.some((a) => /private/i.test(a.label)))
     assert.match(HERO.trustLine, /favourite/i)
@@ -266,7 +268,7 @@ describe('homepage message guardrails', () => {
 
   it('how it works section has 3-step loop copy', () => {
     assert.ok(!('problemBar' in LANDING_PAGE.howItWorks))
-    assert.match(LANDING_PAGE.howItWorks.headline, /three steps/i)
+    assert.match(LANDING_PAGE.howItWorks.headline, /review.*fix.*prove/i)
     assert.ok(LANDING_PAGE.howItWorks.subhead.length > 0)
     assert.equal(LANDING_PAGE.howItWorks.sampleLink, LANDING_PAGE.sampleReport.cta)
     assert.equal(LANDING_PAGE.howItWorks.steps.length, 3)
@@ -275,7 +277,7 @@ describe('homepage message guardrails', () => {
   it('how it works steps keep product-true rubrics without decorative artwork contracts', () => {
     assert.deepEqual(
       LANDING_PAGE.howItWorks.steps.map((s) => s.title),
-      ['Start your product review', 'We review the live product', 'Fix it. Review again.']
+      ['Paste your live URL', 'See what deserves attention', 'Fix it. Prove it.']
     )
     const scan = LANDING_PAGE.howItWorks.steps[1]!
     assert.match(scan.body, /Message, Experience, and Reach/i)
@@ -364,7 +366,7 @@ describe('homepage message guardrails', () => {
     assert.match(LANDING_PAGE.sampleReport.body, /live product/i)
     assert.match(LANDING_PAGE.sampleReport.body, /editor-ready fix/i)
     assert.ok(!/\d{2,},\d{3}/.test(LANDING_PAGE.sampleReport.body))
-    assert.equal(LANDING_PAGE.sampleReport.trustMetrics.length, 4)
+    assert.equal(LANDING_PAGE.sampleReport.trustMetrics.length, 3)
     for (const metric of LANDING_PAGE.sampleReport.trustMetrics) {
       assert.ok(!/\d{2,},\d{3}/.test(metric.value), `Invented count: ${metric.value}`)
       assert.ok(!/manual review/i.test(metric.label), `Unsupported claim: ${metric.label}`)
@@ -376,14 +378,14 @@ describe('homepage message guardrails', () => {
   it('landing page exposes three-rubric check story', () => {
     assert.equal(
       LANDING_PAGE.checkDimensions.headlineDisplay,
-      'Three rubrics. One clear fix list'
+      'Three questions behind every product review'
     )
     assert.deepEqual(
       LANDING_PAGE.checkDimensions.cards.map((c) => c.title),
       ['Message', 'Experience', 'Reach']
     )
     assert.match(LANDING_PAGE.checkDimensions.cards[0].question, /understand and care/i)
-    assert.match(LANDING_PAGE.howItWorks.headline, /three steps/i)
+    assert.match(LANDING_PAGE.howItWorks.headline, /review.*fix.*prove/i)
     assert.match(LANDING_PAGE.sampleReport.body, /editor-ready fix/i)
     assert.match(LANDING_PAGE.logoCloud.label, /works where you build/i)
     assert.deepEqual(HOMEPAGE_EDITOR_INTEGRATIONS.map((editor) => editor.label), [

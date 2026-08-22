@@ -12,7 +12,7 @@ export const HERO = {
   urlPlaceholder: "Paste your site or app URL",
   /** Honest product assurances only. No invented counts or testimonials. */
   assurances: [
-    { id: "speed", label: "Results in under 60 seconds", icon: "zap" as const },
+    { id: "evidence", label: "Evidence from the live product", icon: "shield" as const },
     { id: "teaser", label: "3 Free Reviews", icon: "shield" as const },
     { id: "private", label: "Your report is private", icon: "lock" as const },
   ],
@@ -321,12 +321,12 @@ export const LANDING_PAGE = {
     disclaimer: "",
   },
   checkDimensions: {
-    label: "Built to cover what matters",
-    headlineDisplay: "Three rubrics. One clear fix list",
+    label: "What FixFlags reviews",
+    headlineDisplay: "Three questions behind every product review",
     headlineAccentPeriod: true,
-    headline: "Three rubrics. One clear fix list.",
+    headline: "Three questions behind every product review.",
     subhead:
-      "FixFlags checks Message, Experience, and Reach, then ranks the Flags that need your attention.",
+      "What people understand, what they can do, and how they find and share the product.",
     allChecksTab: "All checks",
     topIssuesTitle: "Top Flags",
     viewAllIssues: "View all Flags",
@@ -562,27 +562,27 @@ export const LANDING_PAGE = {
   },
   howItWorks: {
     label: "How it works",
-    headlineDisplay: "Three steps from review to fix to verified",
+    headlineDisplay: "Review. Fix. Prove it",
     headlineAccentPeriod: true,
-    headline: "Three steps from review to fix to verified.",
+    headline: "Review. Fix. Prove it.",
     subhead:
-      "FixFlags analyzes your product, highlights what matters, and gives you clear fix prompts so you can publish when you are ready.",
+      "Paste your live URL. See what matters, copy the fix, then run an update review.",
     sampleLink: "Explore a full report",
     steps: [
       {
         step: 1,
-        title: "Start your product review",
-        body: "Paste the live URL you want FixFlags to review.",
+        title: "Paste your live URL",
+        body: "FixFlags reviews the product at the URL you share.",
       },
       {
         step: 2,
-        title: "We review the live product",
-        body: "We review your product across Message, Experience, and Reach.",
+        title: "See what deserves attention",
+        body: "Get ranked Flags across Message, Experience, and Reach.",
       },
       {
         step: 3,
-        title: "Fix it. Review again.",
-        body: "Apply the fixes with our prompts, then run an update review to confirm you are ready.",
+        title: "Fix it. Prove it.",
+        body: "Copy the fix into your editor, then run an update review.",
       },
     ] as const,
     demo: {
@@ -592,14 +592,14 @@ export const LANDING_PAGE = {
       hostname: "yourproduct.com",
       status: "Ready to update review",
       priorityLabel: "Prioritized Flag",
-      evidenceLabel: "Evidence captured from the live page",
+      evidenceLabel: "Evidence from the live product",
       promptTitle: "Fix prompt",
-      promptStatus: "Ready for your AI editor",
+      promptStatus: "Fix prompt for your editor",
       copyAction: "Copy",
       copyAriaLabel: "Copy example fix prompt",
       prompt:
         "Update the primary action so it appears in the first mobile viewport. Keep the current visual hierarchy, then verify at 375px and 430px before publishing.",
-      recheckLabel: "Update review verifies the same path",
+      recheckLabel: "Fresh evidence verifies the result",
     },
   },
   reportExamples: {
@@ -833,45 +833,39 @@ export const LANDING_PAGE = {
         icon: "reach" as const,
       },
     ] as const,
-    trustLabel: "Every report is built on real product signals",
-    trustHeadline: "Proof you can act on, not another vanity score.",
+    trustLabel: "Built from the live product",
+    trustHeadline: "Proof for the fixes that matter.",
     trustBody:
-      "FixFlags reviews the live product, ranks what matters, and stays with you through every update review.",
+      "Each Flag shows what happened, why it matters, and what to send to your editor.",
     trustSupportLabel: "Built for the whole fix loop",
     issuesLabel: (count: number) => `${count} Flags in the sample review`,
     checksLabel: (count: number) =>
       `${count} checks across Message, Experience, and Reach`,
     checksMetric: (count: number) => ({
       value: `${count}+`,
-      label: "check points",
+      label: "product checks",
     }),
     issuesMetric: (count: number) => ({
       value: String(count),
-      label: "Flags found",
+      label: "Flags in this sample",
     }),
     trustMetrics: [
       {
-        id: "speed",
-        value: "<60s",
-        label: "typical review time",
-        icon: "zap" as const,
-      },
-      {
         id: "recheck",
-        value: "Prove",
-        label: "fixes with update reviews",
+        value: "Update review",
+        label: "fresh evidence after the fix",
         icon: "refresh" as const,
       },
       {
         id: "private",
         value: "Private",
-        label: "only you can see",
+        label: "owned reports stay private",
         icon: "lock" as const,
       },
       {
         id: "teaser",
         value: "3 reviews",
-        label: "lifetime on Free",
+        label: "included on Free",
         icon: "users" as const,
       },
     ] as const,

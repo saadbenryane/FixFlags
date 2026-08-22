@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { IntegrationsBlock } from '@/components/marketing/landing/IntegrationsBlock'
+import { LandingHowItWorksSection } from '@/components/marketing/landing/LandingHowItWorksSection'
+import { LandingRubricsSection } from '@/components/marketing/landing/LandingRubricsSection'
 import { SampleReportSection } from '@/components/marketing/landing/SampleReportSection'
 import { WORKSPACE_SPLIT_GRID_CLASS } from '@/components/report/workspace-geometry'
 
@@ -36,6 +38,34 @@ afterAll(() => {
 })
 
 describe('homepage lean sections', () => {
+  it('explains Message, Experience, and Reach through customer questions', () => {
+    render(<LandingRubricsSection />)
+
+    expect(
+      screen.getByRole('heading', { name: 'Three questions behind every product review' })
+    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Can people understand and care in five seconds?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Can people use it without friction?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Can people find and share it?' })).toBeInTheDocument()
+    expect(screen.getAllByText('Example Flag')).toHaveLength(3)
+  })
+
+  it('presents How it works as one connected review workflow', () => {
+    render(<LandingHowItWorksSection />)
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Review. Fix. Prove it',
+      })
+    ).toBeInTheDocument()
+    expect(screen.getByText('FixFlags report')).toBeInTheDocument()
+    expect(screen.getByRole('list')).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
+    expect(screen.getByText('Evidence from the live product')).toBeInTheDocument()
+    expect(screen.getByText('Fix prompt for your editor')).toBeInTheDocument()
+    expect(screen.getByText('Fresh evidence verifies the result')).toBeInTheDocument()
+  })
+
   it('shows the compact integrations block with MCP and CLI links', () => {
     render(<IntegrationsBlock />)
 

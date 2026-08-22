@@ -139,7 +139,7 @@ export const PRICING = {
   subhead: `${OFFER.line} Upgrade for more product reviews, deep reviews, compare, and MCP.`,
   trustBadge: "Product reviews and deep reviews on every paid plan",
   assurances: [
-    "Results in under 60 seconds",
+    "Evidence from the live product",
     "No credit card for Free",
     "Your reports stay private",
   ] as const,
