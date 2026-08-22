@@ -113,7 +113,6 @@ export interface ReportExplorerModel {
   displayHost: string
   pageType: string | null
   score: number | null
-  verdict: string | null
   flagCount: number
   /** All ranked flags bundled for one editor session. Null when prompts are gated. */
   polishPassPrompt: string | null
@@ -181,7 +180,6 @@ export function buildLiveExplorerModel(input: {
   url: string
   pageType: string | null
   score: number | null
-  verdict: string | null
   flags: RankableFlag[]
   screenshots?: AuditScreenshot[]
   rubricRows: Array<{ name: string; score: number | null; grade?: string | null }>
@@ -240,7 +238,6 @@ export function buildLiveExplorerModel(input: {
     displayHost,
     pageType: input.pageType,
     score: input.score,
-    verdict: input.verdict,
     flagCount: sorted.length,
     polishPassPrompt: fixList.copyPrompt,
     desktopScreenshot: desktop,
@@ -276,7 +273,6 @@ export function buildPartialExplorerModel(input: {
   url: string
   pageType?: string | null
   score?: number | null
-  verdict?: string | null
   flags: PartialExplorerFlag[]
   screenshots?: AuditScreenshot[]
   rubrics?: Array<{ name: string; score: number | null; grade?: string | null }>
@@ -299,7 +295,6 @@ export function buildPartialExplorerModel(input: {
     url: input.url,
     pageType: input.pageType ?? null,
     score: input.score ?? null,
-    verdict: input.verdict ?? null,
     flags: rankableFlags,
     screenshots: input.screenshots,
     rubricRows,
@@ -341,7 +336,6 @@ export function buildSampleExplorerModel(
     displayHost: report.displayHost,
     pageType: report.pageType,
     score: report.score,
-    verdict: report.verdict,
     flagCount: report.flagCount,
     polishPassPrompt: null,
     desktopScreenshot: report.desktopScreenshot,

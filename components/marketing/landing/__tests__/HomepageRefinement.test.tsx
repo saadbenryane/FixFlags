@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { IntegrationsBlock } from '@/components/marketing/landing/IntegrationsBlock'
 import { SampleReportSection } from '@/components/marketing/landing/SampleReportSection'
@@ -117,5 +117,23 @@ describe('homepage lean sections', () => {
     )
     expect(screen.queryByRole('tab', { name: 'Desktop' })).not.toBeInTheDocument()
     expect(window.location.search).not.toMatch(/flag=/)
+  })
+
+  it('lets the repository sample replay its curated Timeline in the canonical workspace', async () => {
+    render(<SampleReportSection />)
+
+    fireEvent.click(
+      within(screen.getByRole('tablist', { name: 'Review panels' })).getByRole('tab', {
+        name: 'Report',
+      })
+    )
+    await waitFor(() => {
+      expect(screen.getAllByRole('tab', { name: 'Timeline' })).not.toHaveLength(0)
+    })
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0])
+
+    expect(screen.getByRole('slider', { name: 'Scrub through the review path' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Agent' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Scan history' })).not.toBeInTheDocument()
   })
 })

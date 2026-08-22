@@ -15,6 +15,7 @@ import type { CuratedSampleAudit } from '@/lib/marketing/curated-sample'
 
 function baseAudit(overrides: Partial<CuratedSampleAudit> = {}): CuratedSampleAudit {
   return {
+    accessContext: 'repository_sample',
     id: 'audit-1',
     url: 'https://example.com',
     pageJob: null,
@@ -95,6 +96,14 @@ describe('buildSampleReportDisplay', () => {
     const report = buildSampleReportDisplay(
       baseAudit({
         id: 'curated-sample-v1',
+        performanceData: {
+          evidenceAnchors: {
+            'h1-generic': {
+              desktop: { x: 0.4, y: 0.3, width: 0.4, height: 0.14, scope: 'element' },
+              mobile: { x: 0.5, y: 0.8, width: 0.9, height: 0.12, scope: 'element' },
+            },
+          },
+        },
         flags: [
           {
             id: 'flag-message-1',
@@ -138,6 +147,16 @@ describe('buildSampleReportDisplay', () => {
     const report = buildSampleReportDisplay(
       baseAudit({
         id: 'curated-sample-v1',
+        performanceData: {
+          evidenceAnchors: {
+            'h1-generic': {
+              mobile: { x: 0.5, y: 0.8, width: 0.9, height: 0.12, scope: 'element' },
+            },
+            'tap-targets-small': {
+              mobile: { x: 0.4, y: 0.2, width: 0.4, height: 0.1, scope: 'element' },
+            },
+          },
+        },
         flags: [
           {
             id: 'flag-message-1',
@@ -180,7 +199,7 @@ describe('buildSampleReportDisplay', () => {
     )
 
     const merged = buildAllEvidenceHighlights(report.flags)
-    assert.ok(merged.length >= 3)
+    assert.equal(merged.length, 2)
     assert.ok(merged.some((h) => h.flagId === 'flag-message-1'))
     assert.ok(merged.some((h) => h.flagId === 'flag-experience-1'))
     assert.ok(report.flags[0].affectedDevices.includes('mobile'))

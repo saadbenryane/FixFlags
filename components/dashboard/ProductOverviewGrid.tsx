@@ -1,19 +1,13 @@
 import Link from 'next/link'
 import type { Route } from 'next'
-import {
-  ArrowRight,
-  CircleAlert,
-  Eye,
-  FileSearch,
-  Flag,
-  ShieldCheck,
-} from 'lucide-react'
+import { ArrowRight, CircleAlert, Eye, FileSearch, Flag } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Surface } from '@/components/ui/surface'
 import { SectionTitle } from '@/components/ui/typography'
 import type { ProductOverviewDTO } from '@/lib/products/workspace'
+import { presentProductReview } from '@/lib/products/review-state'
 
 function reviewDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', {
@@ -23,17 +17,11 @@ function reviewDate(value: string): string {
   })
 }
 
-function reviewState(review: ProductOverviewDTO['latestReview']) {
-  if (!review) return { label: 'No review yet', tone: 'secondary' as const }
-  if (review.status === 'FAILED') return { label: 'Review failed', tone: 'destructive' as const }
-  if (review.status !== 'COMPLETED') return { label: 'Review in progress', tone: 'secondary' as const }
-  if (review.reportCompleteness === 'PARTIAL') {
-    return { label: 'Partial review', tone: 'outline' as const }
-  }
-  return { label: 'Review complete', tone: 'outline' as const }
-}
-
-export function ProductOverviewGrid({ products }: { products: ProductOverviewDTO[] }) {
+export function ProductOverviewGrid({
+  products,
+}: {
+  products: ProductOverviewDTO[]
+}) {
   return (
     <section aria-labelledby="products-heading" className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -57,7 +45,7 @@ export function ProductOverviewGrid({ products }: { products: ProductOverviewDTO
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {products.map((product) => {
-            const state = reviewState(product.latestReview)
+            const state = presentProductReview(product.latestManualReview)
             return (
               <Surface
                 key={product.id}
@@ -86,40 +74,54 @@ export function ProductOverviewGrid({ products }: { products: ProductOverviewDTO
                   ) : null}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-nested-md bg-muted/40 p-3">
-                    <p className="text-xs text-muted-foreground">Attention</p>
-                    <p className="mt-1 font-mono text-2xl font-semibold tabular-nums">
-                      {product.attentionCount}
-                    </p>
+                <div className="space-y-3 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-nested-md bg-muted/30 p-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Latest Review
+                      </p>
+                      <Badge variant={state.tone} className="mt-1.5">
+                        {state.label}
+                      </Badge>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Score</p>
+                      <p className="mt-1 font-mono text-base font-semibold tabular-nums">
+                        {state.score}
+                      </p>
+                    </div>
                   </div>
-                  <div className="rounded-nested-md bg-muted/40 p-3">
-                    <p className="text-xs text-muted-foreground">Latest score</p>
-                    <p className="mt-1 font-mono text-2xl font-semibold tabular-nums">
-                      {product.latestReview?.score ?? '-'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-muted-foreground">Current review</span>
-                    <Badge variant={state.tone}>{state.label}</Badge>
-                  </div>
-                  {product.latestReview ? (
+                  {product.latestManualReview ? (
                     <p className="text-xs text-muted-foreground">
-                      Reviewed {reviewDate(product.latestReview.completedAt || product.latestReview.createdAt)}
+                      {product.latestManualReview.completedAt
+                        ? 'Reviewed'
+                        : 'Started'}{' '}
+                      {reviewDate(
+                        product.latestManualReview.completedAt ||
+                          product.latestManualReview.createdAt,
+                      )}
                     </p>
                   ) : null}
                   {product.topAttention ? (
                     <div className="flex items-start gap-2 rounded-nested-md bg-brand-muted p-3">
                       {product.topAttention.severity === 'CRITICAL' ? (
-                        <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden />
+                        <CircleAlert
+                          className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
+                          aria-hidden
+                        />
                       ) : (
-                        <Flag className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden />
+                        <Flag
+                          className="mt-0.5 h-4 w-4 shrink-0 text-brand"
+                          aria-hidden
+                        />
                       )}
                       <div className="min-w-0">
-                        <p className="text-xs font-medium text-muted-foreground">Top priority</p>
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {product.attentionCount} open{' '}
+                          {product.attentionCount === 1
+                            ? 'Improvement'
+                            : 'Improvements'}
+                        </p>
                         <p className="mt-0.5 line-clamp-2 font-medium">
                           {product.topAttention.title}
                         </p>
@@ -131,20 +133,20 @@ export function ProductOverviewGrid({ products }: { products: ProductOverviewDTO
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 rounded-nested-md bg-success-muted p-3">
-                      <ShieldCheck className="h-4 w-4 shrink-0 text-success" aria-hidden />
-                      <p className="text-sm">No current Improvement needs attention.</p>
+                    <div className="rounded-nested-md border border-border/50 p-3">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Attention
+                      </p>
+                      <p className="mt-1 text-sm">
+                        {!product.latestManualReview
+                          ? 'No Review evidence yet.'
+                          : product.latestManualReview.status === 'FAILED'
+                            ? 'The latest Review did not finish.'
+                            : product.latestManualReview.status !== 'COMPLETED'
+                              ? 'Review in progress. New Attention will appear when it finishes.'
+                              : '0 open Improvements in the latest completed Review.'}
+                      </p>
                     </div>
-                  )}
-                  {product.latestVerification ? (
-                    <p className="line-clamp-2 text-xs text-muted-foreground">
-                      Latest verification: {product.latestVerification.outcome.toLowerCase()} ·{' '}
-                      {product.latestVerification.improvementTitle}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      No independently verified Improvement yet.
-                    </p>
                   )}
                 </div>
 

@@ -2,6 +2,21 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import type { AgentMessage } from '@/lib/audit/agent-message'
+import type { ReportWorkspaceCapabilities } from '@/lib/report/workspace-model'
+
+function capabilities(canChat: boolean): ReportWorkspaceCapabilities {
+  return {
+    promptAccess: 'none',
+    canCopyPrompts: false,
+    canReplayTimeline: false,
+    canChat,
+    canUseCanvas: false,
+    canShare: false,
+    canRecheck: false,
+    canGiveFeedback: false,
+    demonstratedFlagId: null,
+  }
+}
 
 const scanMessages: AgentMessage[] = [
   {
@@ -40,7 +55,8 @@ describe('WorkspaceChatPanel', () => {
     render(
       <WorkspaceChatPanel
         auditId="a1"
-        canChat={false}
+        capabilities={capabilities(false)}
+        gateReason="owner"
         productName="Launchpad demo"
         reportUrl="https://fixflags.com/demo"
         agentMessages={scanMessages}
@@ -56,7 +72,8 @@ describe('WorkspaceChatPanel', () => {
     render(
       <WorkspaceChatPanel
         auditId="a1"
-        canChat={false}
+        capabilities={capabilities(false)}
+        gateReason="sign-in"
         reportUrl="https://example.com"
         agentMessages={scanMessages}
       />,
@@ -72,7 +89,14 @@ describe('WorkspaceChatPanel', () => {
   })
 
   it('uses a title-free toolbar and enters URL mode without creating a scan', () => {
-    render(<WorkspaceChatPanel auditId="a1" canChat={false} agentMessages={scanMessages} />)
+    render(
+      <WorkspaceChatPanel
+        auditId="a1"
+        capabilities={capabilities(false)}
+        gateReason="sign-in"
+        agentMessages={scanMessages}
+      />,
+    )
 
     expect(screen.getByRole('button', { name: 'Scan history' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'New scan' }))
@@ -96,7 +120,14 @@ describe('WorkspaceChatPanel', () => {
       }),
     } as Response)
 
-    render(<WorkspaceChatPanel auditId="a1" canChat agentMessages={scanMessages} />)
+    render(
+      <WorkspaceChatPanel
+        auditId="a1"
+        capabilities={capabilities(true)}
+        gateReason="owner"
+        agentMessages={scanMessages}
+      />,
+    )
 
     await waitFor(() => expect(screen.getByText('Start with the headline.')).toBeInTheDocument())
     expect(screen.getByText('I’m preparing your review.')).toHaveAttribute('data-source', 'scan')
@@ -104,5 +135,21 @@ describe('WorkspaceChatPanel', () => {
     expect(screen.getByText('80% left')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Ask about this report')).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument()
+  })
+
+  it('keeps non-owner chat read-only without pretending sign-in grants access', () => {
+    render(
+      <WorkspaceChatPanel
+        auditId="a1"
+        capabilities={capabilities(false)}
+        gateReason="owner"
+        reportUrl="https://example.com"
+        agentMessages={scanMessages}
+      />,
+    )
+
+    expect(screen.getByPlaceholderText('You can only chat on your own reports')).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Sign in to chat' })).not.toBeInTheDocument()
+    expect(fetch).not.toHaveBeenCalled()
   })
 })

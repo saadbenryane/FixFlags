@@ -516,12 +516,13 @@ function ScreenshotPanel({
   return (
     <div
       ref={setRefs}
+      data-comparison-state={resolvedComparisonState}
       className={cn(
         'relative overflow-hidden rounded-md bg-muted/30 shadow-card',
         resolvedComparisonState === 'affected' &&
-          'ring-2 ring-destructive ring-offset-2 ring-offset-background',
+          'ring-2 ring-inset ring-destructive',
         resolvedComparisonState === 'unaffected' &&
-          'ring-2 ring-success ring-offset-2 ring-offset-background',
+          'ring-2 ring-inset ring-success',
         size ? 'shrink-0' : 'w-full',
         className
       )}

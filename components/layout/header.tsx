@@ -96,11 +96,20 @@ export function Header({
         >
           <div className={cn('flex min-w-0 items-center gap-3', isMarketing && 'translate-y-px')}>
             <span className="sm:hidden">
-              <Logo
-                variant="lockup"
-                size="sm"
-                href={logoHref ?? defaultLogoHref}
-              />
+              <span className="max-[419px]:hidden">
+                <Logo
+                  variant="lockup"
+                  size="sm"
+                  href={logoHref ?? defaultLogoHref}
+                />
+              </span>
+              <span className="hidden max-[419px]:block">
+                <Logo
+                  variant="mark"
+                  size="sm"
+                  href={logoHref ?? defaultLogoHref}
+                />
+              </span>
             </span>
             <span className="hidden sm:block">
               <Logo

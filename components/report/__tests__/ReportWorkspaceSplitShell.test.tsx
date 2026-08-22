@@ -1,10 +1,32 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
 import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
+import type { ReportWorkspaceCapabilities } from '@/lib/report/workspace-model'
 
-const searchParamsMock = { get: vi.fn<(name: string) => string | null>(() => null) }
+const searchParamValues = new Map<string, string>()
+const searchParamsMock = {
+  get: vi.fn<(name: string) => string | null>((name) => searchParamValues.get(name) ?? null),
+  toString: vi.fn(() => new URLSearchParams([...searchParamValues.entries()]).toString()),
+}
+
+function capabilities(
+  overrides: Partial<ReportWorkspaceCapabilities> = {},
+): ReportWorkspaceCapabilities {
+  return {
+    promptAccess: 'none',
+    canCopyPrompts: false,
+    canReplayTimeline: true,
+    canChat: false,
+    canUseCanvas: false,
+    canShare: false,
+    canRecheck: false,
+    canGiveFeedback: false,
+    demonstratedFlagId: null,
+    ...overrides,
+  }
+}
 
 vi.mock('next/navigation', () => ({
   useSearchParams: () => searchParamsMock,
@@ -19,15 +41,19 @@ const events: ActionTimelineEvent[] = [
 
 const steps = buildPlaybackSteps(events)
 
-function renderShell(replayStep?: string) {
-  searchParamsMock.get.mockReturnValue(replayStep ?? null)
+function renderShell(replayStep?: string, view?: 'timeline' | 'report' | 'canvas') {
+  searchParamValues.clear()
+  if (replayStep) searchParamValues.set('step', replayStep)
+  if (view) searchParamValues.set('view', view)
   return render(
     <ReportWorkspaceSplitShell
       isActiveReview
       leftPanel={<div data-testid="chat">Chat</div>}
       browserUrl="https://example.com"
+      reportHeader={<div>Score 72</div>}
       reportPanel={<div data-testid="report-panel">Fix list</div>}
       steps={steps}
+      capabilities={capabilities()}
     />
   )
 }
@@ -45,6 +71,8 @@ function browserStepLabels() {
 }
 
 beforeEach(() => {
+  window.history.replaceState({}, '', '/report/a1')
+  searchParamValues.clear()
   searchParamsMock.get.mockClear()
 })
 
@@ -56,7 +84,8 @@ describe('ReportWorkspaceSplitShell playback', () => {
         browserUrl="https://example.com"
         reportPanel={<div>Report</div>}
         steps={steps}
-        canUseTimeline={false}
+        capabilities={capabilities({ canReplayTimeline: false })}
+        timelineGateActionHref="/sign-in?next=%2Freport%2Fa1"
       />,
     )
 
@@ -160,6 +189,7 @@ describe('ReportWorkspaceSplitShell product stage', () => {
         browserUrl="https://fixflags.com/demo"
         reportPanel={<div>Report</div>}
         steps={steps}
+        capabilities={capabilities()}
       />,
     )
 
@@ -194,7 +224,8 @@ describe('ReportWorkspaceSplitShell product stage', () => {
         browserUrl="https://example.com"
         reportPanel={<div>Report</div>}
         steps={steps}
-        canUseTimeline={false}
+        capabilities={capabilities({ canReplayTimeline: false })}
+        timelineGateActionHref="/sign-in?next=%2Freport%2Fa1"
       />,
     )
 
@@ -217,6 +248,25 @@ describe('ReportWorkspaceSplitShell product stage', () => {
     )
     expect(tabs.indexOf('Timeline')).toBeLessThan(tabs.indexOf('Report'))
   })
+
+  it('puts Score in the fixed Report header and restores URL-backed sibling views', async () => {
+    const { container } = renderShell()
+
+    await waitFor(() => {
+      expect(container.querySelector('[data-workspace-ready="true"]')).toBeInTheDocument()
+    })
+    expect(screen.getByText('Score 72')).toBeInTheDocument()
+    expect(screen.getByLabelText('Product example.com')).toBeInTheDocument()
+    expect(screen.queryByText('Product')).not.toBeInTheDocument()
+
+    openTimeline()
+    expect(window.location.search).toContain('view=timeline')
+    expect(screen.getByText('Product')).toBeInTheDocument()
+
+    window.history.pushState({}, '', '/report/a1?view=report')
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    await waitFor(() => expect(screen.getByText('Score 72')).toBeInTheDocument())
+  })
 })
 
 describe('ReportWorkspaceSplitShell scanning', () => {
@@ -229,6 +279,7 @@ describe('ReportWorkspaceSplitShell scanning', () => {
         browserUrl="https://example.com"
         reportPanel={<div data-testid="report-panel">Fix list</div>}
         steps={steps}
+        capabilities={capabilities()}
       />
     )
   }
@@ -245,6 +296,34 @@ describe('ReportWorkspaceSplitShell scanning', () => {
         (tab) => tab.getAttribute('aria-selected') === 'true',
       ),
     ).toBe(true)
+  })
+
+  it('exposes native sibling-view destinations and WAI tab relationships', () => {
+    renderShell()
+
+    const reportTab = screen.getAllByRole('tab', { name: 'Report' })[0]!
+    const timelineTab = screen.getAllByRole('tab', { name: 'Timeline' })[0]!
+    expect(reportTab).toHaveAttribute('href', '/report/a1?view=report')
+    expect(timelineTab).toHaveAttribute('href', '/report/a1?view=timeline')
+    expect(reportTab).toHaveAttribute('aria-controls')
+    expect(document.getElementById(reportTab.getAttribute('aria-controls')!)).toHaveAttribute(
+      'role',
+      'tabpanel',
+    )
+  })
+
+  it('moves and activates URL-backed tabs with Arrow, Home, and End keys', () => {
+    renderShell()
+
+    const reportTab = screen.getAllByRole('tab', { name: 'Report' })[0]!
+    reportTab.focus()
+    fireEvent.keyDown(reportTab, { key: 'ArrowLeft' })
+    expect(screen.getAllByRole('tab', { name: 'Timeline' })[0]).toHaveFocus()
+    expect(window.location.search).toContain('view=timeline')
+
+    fireEvent.keyDown(screen.getAllByRole('tab', { name: 'Timeline' })[0]!, { key: 'End' })
+    expect(screen.getAllByRole('tab', { name: 'Report' })[0]).toHaveFocus()
+    expect(window.location.search).toContain('view=report')
   })
 
   it('defaults to the Agent surface while scanning and switches to Preview', () => {

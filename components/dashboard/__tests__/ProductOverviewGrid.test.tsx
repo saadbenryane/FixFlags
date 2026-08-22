@@ -17,8 +17,9 @@ const products: ProductOverviewDTO[] = [
       status: 'READY_TO_VERIFY',
       severity: 'IMPORTANT',
     },
-    latestReview: {
+    latestManualReview: {
       id: 'review-alpha',
+      kind: 'PRODUCT_REVIEW',
       status: 'COMPLETED',
       score: 82,
       reportCompleteness: 'FULL',
@@ -26,9 +27,7 @@ const products: ProductOverviewDTO[] = [
       createdAt: '2026-08-13T00:00:00.000Z',
       completedAt: '2026-08-13T00:01:00.000Z',
       failureMessage: null,
-      isUpdateReview: false,
     },
-    latestVerification: null,
   },
   {
     id: 'product-beta',
@@ -38,8 +37,9 @@ const products: ProductOverviewDTO[] = [
     watching: false,
     attentionCount: 0,
     topAttention: null,
-    latestReview: {
+    latestManualReview: {
       id: 'review-beta',
+      kind: 'UPDATE_REVIEW',
       status: 'COMPLETED',
       score: 44,
       reportCompleteness: 'PARTIAL',
@@ -47,12 +47,6 @@ const products: ProductOverviewDTO[] = [
       createdAt: '2026-08-12T00:00:00.000Z',
       completedAt: '2026-08-12T00:01:00.000Z',
       failureMessage: null,
-      isUpdateReview: true,
-    },
-    latestVerification: {
-      outcome: 'INCONCLUSIVE',
-      improvementTitle: 'Restore checkout',
-      verificationReviewId: 'review-beta',
     },
   },
 ]
@@ -66,15 +60,50 @@ describe('ProductOverviewGrid', () => {
         expect.objectContaining({
           pathname: '/products/product-alpha',
         }),
-      ])
+      ]),
     )
     expect(screen.getByText('Clarify the signup action')).toBeInTheDocument()
-    expect(screen.getByText(/Latest verification: inconclusive/)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 3, name: 'Alpha' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 3, name: 'Beta' })).toBeInTheDocument()
+    expect(
+      screen.getByText('0 open Improvements in the latest completed Review.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'Alpha' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'Beta' }),
+    ).toBeInTheDocument()
     expect(screen.getByText('https://alpha.example')).toBeInTheDocument()
-    expect(container.querySelector('.lucide-circle-alert')).not.toBeInTheDocument()
+    expect(
+      container.querySelector('.lucide-circle-alert'),
+    ).not.toBeInTheDocument()
     expect(container.querySelector('.lucide-flag')).toBeInTheDocument()
+    expect(screen.queryByText('-')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/No independently verified/),
+    ).not.toBeInTheDocument()
+  })
+
+  it('does not show success or a fake score while a Review is pending', () => {
+    render(
+      <ProductOverviewGrid
+        products={[
+          {
+            ...products[1],
+            latestManualReview: {
+              ...products[1].latestManualReview!,
+              status: 'CHECKING',
+              score: null,
+              completedAt: null,
+            },
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('Checking evidence')).toBeInTheDocument()
+    expect(screen.getByText('Pending')).toBeInTheDocument()
+    expect(screen.getByText(/Review in progress/)).toBeInTheDocument()
+    expect(screen.queryByText(/0 open Improvements/)).not.toBeInTheDocument()
   })
 
   it('renders the empty Product state without inventing account activity', () => {

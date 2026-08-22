@@ -12,8 +12,10 @@ import {
 
 const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
+  $executeRaw: vi.fn(),
   audit: {
     create: vi.fn(),
+    findFirst: vi.fn(),
     findUnique: vi.fn(),
     count: vi.fn(),
     update: vi.fn(),
@@ -95,7 +97,8 @@ describe('createAndEnqueueAudit', () => {
     prismaMock.$transaction.mockImplementation(async (op: (tx: typeof prismaMock) => Promise<{ id: string }>) => {
       return op(prismaMock)
     })
-    prismaMock.audit.create.mockResolvedValue({ id: 'audit-1' })
+    prismaMock.audit.create.mockResolvedValue({ id: 'audit-1', parentId: null })
+    prismaMock.audit.findFirst.mockResolvedValue(null)
     prismaMock.audit.update.mockResolvedValue({})
     prismaMock.user.findUnique.mockResolvedValue(signedInUser())
     queueAdd.mockResolvedValue({ id: 'job-1' })
@@ -110,7 +113,12 @@ describe('createAndEnqueueAudit', () => {
   it('creates a reduced single-page teaser for anonymous visitors and tracks the cookie', async () => {
     const result = await createAndEnqueueAudit({ url: AUDIT_URL })
 
-    expect(result).toEqual({ auditId: 'audit-1', status: 'QUEUED' })
+    expect(result).toEqual({
+      auditId: 'audit-1',
+      status: 'QUEUED',
+      reused: false,
+      parentId: null,
+    })
     expect(prismaMock.$transaction).not.toHaveBeenCalled()
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -128,7 +136,7 @@ describe('createAndEnqueueAudit', () => {
         journeyReviewIncluded: false,
         watchNotificationStatus: 'NOT_APPLICABLE',
       }),
-      select: { id: true },
+      select: { id: true, parentId: true },
     })
     expect(trackAnonymousAuditId).toHaveBeenCalledWith('audit-1')
     expect(queueAdd).toHaveBeenCalledWith(
@@ -170,9 +178,14 @@ describe('createAndEnqueueAudit', () => {
 
     const result = await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
 
-    expect(result).toEqual({ auditId: 'audit-1', status: 'QUEUED' })
+    expect(result).toEqual({
+      auditId: 'audit-1',
+      status: 'QUEUED',
+      reused: false,
+      parentId: null,
+    })
     expect(ensureProductProject).toHaveBeenCalledWith('user-1', AUDIT_URL)
-      expect(prismaMock.audit.create).toHaveBeenCalledWith({
+    expect(prismaMock.audit.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           userId: 'user-1',
           projectId: 'project-1',
@@ -188,9 +201,39 @@ describe('createAndEnqueueAudit', () => {
           scanAccessEncrypted: null,
           url: AUDIT_URL,
         }),
-        select: { id: true },
-      })
+      select: { id: true, parentId: true },
+    })
+    expect(prismaMock.$executeRaw).toHaveBeenCalledTimes(1)
     expect(trackAnonymousAuditId).not.toHaveBeenCalled()
+  })
+
+  it('resumes the active manual Product Review without charging or enqueueing again', async () => {
+    prismaMock.audit.findFirst.mockResolvedValueOnce({
+      id: 'active-review',
+      status: 'CHECKING',
+      parentId: 'actual-parent',
+    })
+
+    const result = await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+
+    expect(result).toEqual({
+      auditId: 'active-review',
+      status: 'CHECKING',
+      reused: true,
+      parentId: 'actual-parent',
+    })
+    expect(prismaMock.audit.findFirst).toHaveBeenCalledWith({
+      where: {
+        projectId: 'project-1',
+        status: { notIn: ['COMPLETED', 'FAILED'] },
+        OR: [{ recheckTrigger: null }, { recheckTrigger: 'MANUAL' }],
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, status: true, parentId: true },
+    })
+    expect(wouldBlockNewCheckWithCredits).not.toHaveBeenCalled()
+    expect(prismaMock.audit.create).not.toHaveBeenCalled()
+    expect(queueAdd).not.toHaveBeenCalled()
   })
 
   it('drops journey review for a user whose deep-review quota is exhausted', async () => {
@@ -206,7 +249,7 @@ describe('createAndEnqueueAudit', () => {
     )
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ journeyReviewIncluded: false }),
-      select: { id: true },
+      select: { id: true, parentId: true },
     })
   })
 
@@ -245,13 +288,40 @@ describe('createAndEnqueueAudit', () => {
     )
   })
 
-  it('skips the limit transaction entirely for skipUsageCount re-checks', async () => {
+  it('keeps non-Watch skipUsageCount retries inside the manual Review lock', async () => {
     await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', skipUsageCount: true })
+
+    expect(prismaMock.$transaction).toHaveBeenCalledTimes(1)
+    expect(wouldBlockNewCheckWithCredits).not.toHaveBeenCalled()
+    expect(prismaMock.audit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ userId: 'user-1', skipUsageCount: true }),
+      select: { id: true, parentId: true },
+    })
+  })
+
+  it('keeps Watch creation outside the manual Review lock', async () => {
+    prismaMock.audit.findUnique
+      .mockResolvedValueOnce({
+        id: 'parent-1',
+        userId: 'user-1',
+        status: 'COMPLETED',
+      })
+      .mockResolvedValueOnce({
+        projectId: 'project-1',
+        scanAccessEncrypted: null,
+      })
+    await createAndEnqueueAudit({
+      url: AUDIT_URL,
+      userId: 'user-1',
+      parentId: 'parent-1',
+      recheckTrigger: 'WATCH',
+      skipUsageCount: true,
+    })
 
     expect(prismaMock.$transaction).not.toHaveBeenCalled()
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ userId: 'user-1', skipUsageCount: true }),
-      select: { id: true },
+      data: expect.objectContaining({ recheckTrigger: 'WATCH', skipUsageCount: true }),
+      select: { id: true, parentId: true },
     })
   })
 
@@ -316,7 +386,7 @@ describe('createAndEnqueueAudit', () => {
         monitoringMode: 'FULL',
         auditMode: 'CRITICAL_PATH',
       }),
-      select: { id: true },
+      select: { id: true, parentId: true },
     })
   })
 
@@ -341,7 +411,7 @@ describe('createAndEnqueueAudit', () => {
         recheckTrigger: 'MANUAL',
         watchNotificationStatus: 'NOT_APPLICABLE',
       }),
-      select: { id: true },
+      select: { id: true, parentId: true },
     })
   })
 
@@ -410,7 +480,7 @@ describe('createAndEnqueueAudit', () => {
         gclid: null,
         fbclid: null,
       }),
-      select: { id: true },
+      select: { id: true, parentId: true },
     })
   })
 
@@ -444,7 +514,12 @@ describe('createAndEnqueueAudit', () => {
 
     const result = await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
 
-    expect(result).toEqual({ auditId: 'audit-1', status: 'QUEUED' })
+    expect(result).toEqual({
+      auditId: 'audit-1',
+      status: 'QUEUED',
+      reused: false,
+      parentId: null,
+    })
     expect(calls).toBe(3)
   })
 

@@ -30,12 +30,17 @@ import { startScanWithHandoff } from '@/lib/audit/start-scan-handoff'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { displaySiteAddress } from '@/lib/utils/url-helpers'
 import { cn } from '@/lib/utils'
+import type { ReportWorkspaceCapabilities } from '@/lib/report/workspace-model'
+
+export type WorkspaceChatGateReason = 'sign-in' | 'owner'
 
 interface WorkspaceChatPanelProps {
   /** Absent on curated marketing samples, which have no live report route. */
   auditId?: string
-  /** Interactive model conversation requires the signed-in report owner. */
-  canChat?: boolean
+  /** Canonical workspace access decision. Chat never re-derives ownership. */
+  capabilities: ReportWorkspaceCapabilities
+  /** Explains a locked composer without pretending sign-in grants ownership. */
+  gateReason: WorkspaceChatGateReason
   className?: string
   observationAuditId?: string | null
   /** Deterministic scan messages share this transcript and consume no model usage. */
@@ -45,6 +50,8 @@ interface WorkspaceChatPanelProps {
   productName?: string | null
   /** While true, the Agent header Flag mark animates as the working signal. */
   scanning?: boolean
+  /** Curated homepage playback uses the same panel without live account tools. */
+  showToolbarActions?: boolean
 }
 
 interface ChatMeta {
@@ -94,17 +101,19 @@ function usageLabel(meta: ChatMeta): string | null {
 
 export function WorkspaceChatPanel({
   auditId,
-  canChat: canChatProp = true,
+  capabilities,
+  gateReason,
   className,
   observationAuditId,
   agentMessages = [],
   reportUrl = '',
   productName = null,
   scanning = false,
+  showToolbarActions = true,
 }: WorkspaceChatPanelProps) {
   // A curated sample has no report route, so chat, history, and flag deep
   // links stay off while the transcript still shows the deterministic run.
-  const canChat = canChatProp && Boolean(auditId)
+  const canChat = capabilities.canChat && Boolean(auditId)
   const [conversation, setConversation] = useState<AgentMessage[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -216,9 +225,10 @@ export function WorkspaceChatPanel({
   async function send(text: string) {
     const trimmed = text.trim()
     if (!trimmed || loading) return
-    // Anonymous and non-owner viewers see the composer, but submit only opens sign-in.
+    // Anonymous owners may claim the report. Other viewers stay read-only
+    // because signing in cannot grant ownership of somebody else's Review.
     if (!canChat) {
-      gateToSignIn()
+      if (gateReason === 'sign-in') gateToSignIn()
       return
     }
     const reportId = auditId
@@ -363,7 +373,9 @@ export function WorkspaceChatPanel({
                 : 'FixFlags product review'}
             </p>
           </div>
-          <Sheet onOpenChange={(open) => { if (open) void loadHistory() }}>
+          {showToolbarActions ? (
+            <>
+              <Sheet onOpenChange={(open) => { if (open) void loadHistory() }}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <SheetTrigger asChild>
@@ -388,8 +400,12 @@ export function WorkspaceChatPanel({
                         <span className="mt-1 block text-xs text-muted-foreground">{chatCopy.currentSession}</span>
                       </Link>
                     ) : null}
-                    <p className="text-sm text-muted-foreground">{chatCopy.saveHistory}</p>
-                    <Button asChild className="w-full"><Link href={signInHref}>{chatCopy.signIn}</Link></Button>
+                    <p className="text-sm text-muted-foreground">
+                      {gateReason === 'sign-in' ? chatCopy.saveHistory : chatCopy.notOwner}
+                    </p>
+                    {gateReason === 'sign-in' ? (
+                      <Button asChild className="w-full"><Link href={signInHref}>{chatCopy.signIn}</Link></Button>
+                    ) : null}
                   </div>
                 ) : historyListError ? (
                   <div className="space-y-3">
@@ -429,25 +445,27 @@ export function WorkspaceChatPanel({
                 ) : null}
               </div>
             </SheetContent>
-          </Sheet>
+              </Sheet>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={chatCopy.newScan}
-                onClick={() => {
-                  setNewScan(true)
-                  setScanError(null)
-                  setTimeout(() => scanInputRef.current?.focus(), 0)
-                }}
-              >
-                <Plus className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>{chatCopy.newScan}</TooltipContent>
-          </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={chatCopy.newScan}
+                    onClick={() => {
+                      setNewScan(true)
+                      setScanError(null)
+                      setTimeout(() => scanInputRef.current?.focus(), 0)
+                    }}
+                  >
+                    <Plus className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{chatCopy.newScan}</TooltipContent>
+              </Tooltip>
+            </>
+          ) : null}
         </div>
 
         <div
@@ -476,7 +494,7 @@ export function WorkspaceChatPanel({
             className="space-y-2 border-t border-border/40 p-3"
             onSubmit={(event) => { event.preventDefault(); void startScan() }}
           >
-            <div className="flex gap-2">
+            <div className="flex min-w-0 gap-2">
               <Input
                 ref={scanInputRef}
                 value={scanUrl}
@@ -484,6 +502,7 @@ export function WorkspaceChatPanel({
                 placeholder={chatCopy.startPlaceholder}
                 aria-label={chatCopy.startLabel}
                 disabled={loading}
+                className="min-w-0 w-auto flex-1"
               />
               <Button type="submit" loading={loading} disabled={!scanUrl.trim()}>{chatCopy.startAction}</Button>
             </div>
@@ -521,13 +540,23 @@ export function WorkspaceChatPanel({
                 ))}
               </div>
             ) : null}
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <Input
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                placeholder={canChat ? chatCopy.placeholder : chatCopy.authBody}
-                disabled={loading || (canChat && !meta.available)}
-                className="min-h-11 flex-1 text-sm"
+                placeholder={
+                  canChat
+                    ? chatCopy.placeholder
+                    : gateReason === 'sign-in'
+                      ? chatCopy.authBody
+                      : chatCopy.notOwner
+                }
+                disabled={
+                  loading ||
+                  (canChat && !meta.available) ||
+                  (!canChat && gateReason === 'owner')
+                }
+                className="min-h-11 min-w-0 w-auto flex-1 text-sm"
                 aria-label={chatCopy.placeholder}
               />
               <Button
@@ -535,8 +564,18 @@ export function WorkspaceChatPanel({
                 size="icon"
                 className="h-11 w-11 shrink-0"
                 loading={loading}
-                disabled={!input.trim() || (canChat && !meta.available)}
-                aria-label={canChat ? chatCopy.send : chatCopy.notSignedIn}
+                disabled={
+                  !input.trim() ||
+                  (canChat && !meta.available) ||
+                  (!canChat && gateReason === 'owner')
+                }
+                aria-label={
+                  canChat
+                    ? chatCopy.send
+                    : gateReason === 'sign-in'
+                      ? chatCopy.notSignedIn
+                      : chatCopy.notOwner
+                }
               >
                 <ArrowUp className="h-4 w-4" aria-hidden />
               </Button>

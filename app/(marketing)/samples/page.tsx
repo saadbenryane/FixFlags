@@ -3,16 +3,38 @@ import { AuditReport } from '@/components/audit/AuditReport'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
-import { getCuratedSampleAudit } from '@/lib/marketing/curated-sample'
+import {
+  getCuratedSampleAudit,
+  UnknownCuratedObservationError,
+} from '@/lib/marketing/curated-sample'
 import { buildSampleReportDisplay } from '@/lib/marketing/sample-report-display'
 import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 import { DEMO_BRAND } from '@/lib/demo/brand'
 import { REPORT_COPY } from '@/lib/marketing/copy'
+import { notFound } from 'next/navigation'
 
 export const metadata = buildPageMetadata('samples', '/samples')
 
-export default async function SamplesPage() {
-  const { audit } = await getCuratedSampleAudit()
+interface SamplesPageProps {
+  searchParams?: Promise<{
+    observation?: string | string[]
+  }>
+}
+
+export default async function SamplesPage({ searchParams }: SamplesPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined
+  if (Array.isArray(resolvedSearchParams?.observation)) notFound()
+  const requestedObservation =
+    typeof resolvedSearchParams?.observation === 'string'
+      ? resolvedSearchParams.observation
+      : null
+  let audit: Awaited<ReturnType<typeof getCuratedSampleAudit>>['audit']
+  try {
+    ;({ audit } = await getCuratedSampleAudit(requestedObservation))
+  } catch (error) {
+    if (error instanceof UnknownCuratedObservationError) notFound()
+    throw error
+  }
   const display = buildSampleReportDisplay(audit)
   // The curated sample demonstrates exactly one fix prompt.
   const sampleFixFlag =
@@ -54,10 +76,10 @@ export default async function SamplesPage() {
         <div className="h-[min(calc(100dvh-16rem),54rem)] overflow-hidden rounded-card bg-background shadow-glass-deep ring-1 ring-border/55">
           <AuditReport
             audit={audit}
+            observationId={audit.id}
             variant="sample"
             viewerIsPaid={false}
             isLoggedIn={false}
-            isViewerOwner={false}
             productName={DEMO_BRAND.displayLabel}
             sampleFixFlag={sampleFixFlag}
             scoreHistory={audit.scoreHistory}

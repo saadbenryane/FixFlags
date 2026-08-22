@@ -5,7 +5,7 @@ export const HERO = {
   headlineDisplay: "Finish what your AI started",
   headlineAccentPeriod: true,
   subhead:
-    "See exactly what to fix before anyone else sees your site. Message, Experience, and Reach Flags with evidence and fix prompts.",
+    "See what to fix before anyone else sees your site. Message, Experience, and Reach Flags with evidence and fix prompts.",
   primaryCta: "Review my site",
   compactPrimaryCta: "Review site",
   trySampleCta: "See a sample review",
@@ -132,7 +132,7 @@ export const DIFFERENTIATION = {
 } as const;
 
 export const FINAL_CTA = {
-  headlineDisplay: "Paste a URL. See what to fix.",
+  headlineDisplay: "Paste a URL. See what to fix",
   headlineAccentPeriod: true,
   body: "Free product review. Your report is private.",
 } as const;
@@ -938,35 +938,10 @@ export const REPORT_COPY = {
       const preposition = checkedScope.includes("release") ? "in" : "on";
       return `${unresolvedLabel} ${preposition} ${checkedScope}.`;
     },
-    summaryLabel: "Release score, unresolved Flags, and score history",
-    releaseScore: "Release score",
-    scoreUnavailable: "Score unavailable",
-    unresolvedFlags: "Unresolved Flags",
-    criticalFlags: "Critical Flags",
-    criticalCount: (count: number) =>
-      `${count} Critical ${count === 1 ? "Flag" : "Flags"}`,
-    noCriticalFlags: "No Critical Flags",
-    nextStepHint:
-      "Start with the top Flag below. Copy its fix prompt, paste it into your editor, then run an update review.",
-    showCriticalFlags: (count: number) =>
-      `Show ${count} Critical ${count === 1 ? "Flag" : "Flags"}`,
-    history: "Score history",
-    firstScan: "First completed product review",
-    historyUnavailable: "History appears after the first completed product review.",
-    showRubricFlags: (label: string, criticalCount: number) =>
-      criticalCount > 0
-        ? `Show ${label} Flags, ${criticalCount} critical`
-        : `Show ${label} Flags`,
-    rubricFlagCount: (count: number, criticalCount: number) =>
-      criticalCount > 0
-        ? `${count} ${count === 1 ? "Flag" : "Flags"} · ${criticalCount} critical`
-        : `${count} ${count === 1 ? "Flag" : "Flags"}`,
-    scanCount: (count: number) => `${count} reviews`,
-    earlierObservation:
-      "Viewing an earlier review. Fix prompts and review context follow the current one.",
-    loadingObservation: "Loading that review…",
-    recheckCount: (count: number) =>
-      `${count} completed ${count === 1 ? "Update review" : "Update reviews"}`,
+    summaryLabel: "Review score and history",
+    scoreLabel: "Score",
+    scorePending: "pending",
+    scoreUnavailable: "unavailable",
     dashboard: {
       title: 'Products',
       attentionTitle: 'Attention now',

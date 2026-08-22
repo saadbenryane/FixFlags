@@ -8,8 +8,8 @@ import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
 import { ReportContextDisclosure } from '@/components/report/ReportContextDisclosure'
 import {
   REPORT_SECTION_SCROLL_MT,
-  WORKSPACE_REPORT_FRAME_CLASS,
 } from '@/components/report/workspace-geometry'
+import { ReportPane } from '@/components/report/ReportPane'
 import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
 import { ProductContractCard } from '@/components/audit/ProductContractCard'
 import type {
@@ -24,7 +24,6 @@ import {
 import { formatQueueWaitHint, REPORT_COPY } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import { getActiveAudit } from '@/lib/audit/active-audit'
-import { displayVerdict } from '@/lib/audit/verdict'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
@@ -38,6 +37,7 @@ import { ReportPolishPass } from '@/components/report/ReportPolishPass'
 import { cn } from '@/lib/utils'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import type { AgentMessage } from '@/lib/audit/agent-message'
+import type { AuditAccessContext } from '@/lib/audit/access'
 
 /** Catches crashes in the explorer subtree so the scanning UI stays visible. */
 class ExplorerErrorBoundary extends Component<
@@ -61,7 +61,6 @@ interface AuditReportProgressiveProps {
   status?: string
   url?: string
   pageType?: string | null
-  verdict?: string | null
   score?: number | null
   progress?: number
   rubrics?: Array<{ name: string; grade: string | null; score: number | null; status?: string | null }>
@@ -81,8 +80,8 @@ interface AuditReportProgressiveProps {
   technologyProfile?: TechnologyProfile
   sectionId?: string
   auditId?: string
-  /** The signed-in user owns the in-flight scan. Owner-only chat and actions. */
-  isOwner?: boolean
+  /** Exact server access decision. Missing envelopes fail closed. */
+  accessContext?: Exclude<AuditAccessContext, 'denied'> | null
   /** Anonymous teaser scan: reduced pipeline (no journey walk). */
   isTeaser?: boolean
   agentMessages?: AgentMessage[]
@@ -92,7 +91,6 @@ export function AuditReportProgressive({
   status = 'QUEUED',
   url = '',
   pageType = null,
-  verdict = null,
   score = null,
   progress = 0,
   rubrics = [],
@@ -105,10 +103,16 @@ export function AuditReportProgressive({
   technologyProfile,
   sectionId = 'report-flags',
   auditId,
-  isOwner = false,
+  accessContext = null,
   isTeaser = false,
   agentMessages = [],
 }: AuditReportProgressiveProps) {
+  const isOwnerAccess = accessContext === 'owner'
+  const canClaimAccess = accessContext === 'anonymous_teaser'
+  const timelineGateActionHref = canClaimAccess && auditId
+    ? `/sign-in?next=${encodeURIComponent(`/report/${auditId}`)}`
+    : undefined
+  const chatGateReason = canClaimAccess ? 'sign-in' : 'owner'
   const isFailed = status === 'FAILED'
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
   const stage = useMemo(
@@ -183,8 +187,6 @@ export function AuditReportProgressive({
     wasLoadingRef.current = isLoading
   }, [isLoading, status])
 
-  const userVerdict = displayVerdict(verdict ?? null)
-
   const prevFlagsRef = useRef(partialFlags)
   const prevScreenshotsRef = useRef(screenshots)
   const prevRubricsRef = useRef(rubrics)
@@ -206,14 +208,13 @@ export function AuditReportProgressive({
       url,
       pageType,
       score,
-      verdict,
       flags: partialFlags,
       screenshots,
       rubrics,
     })
     prevModelRef.current = model
     return model
-  }, [url, pageType, score, verdict, partialFlags, screenshots, rubrics])
+  }, [url, pageType, score, partialFlags, screenshots, rubrics])
 
   const showContract = Boolean(productContract)
   const flagCount = explorerModel.flagCount
@@ -241,12 +242,21 @@ export function AuditReportProgressive({
   const workspace = buildReportWorkspaceModel({
     kind: 'progressive',
     explorer: explorerModel,
+    auditId,
     url,
     pageType,
-    status: isFailed ? 'failed' : 'checking',
+    status: isFailed ? 'failed' : isLoading ? 'checking' : 'completed',
     loading: isLoading,
-    checkedScope: 'the submitted page',
-    promptAccess: 'none',
+    capabilities: {
+      promptAccess: 'none',
+      canReplayTimeline: isOwnerAccess,
+      canChat: isOwnerAccess && Boolean(auditId),
+      canUseCanvas: false,
+      canShare: false,
+      canRecheck: false,
+      canGiveFeedback: false,
+      demonstratedFlagId: null,
+    },
   })
   const polishPassPrompt =
     explorerModel.polishPassPrompt ??
@@ -272,42 +282,47 @@ export function AuditReportProgressive({
   const progressStatusLine = `${stage.statusLine}. ${stageDetail}`
 
   /**
-   * A running review has no outcome yet, so the pane leads with the streaming
-   * findings and gives the rest of its height to the fix list. The outcome bar
-   * only appears once the review can state a score.
+   * A running Review has no final score yet. The compact header stays mounted
+   * with honest progress while the pane gives its height to streaming Flags.
    */
   const scanReportPanel = (
-    <>
-      <div data-report-frame className={WORKSPACE_REPORT_FRAME_CLASS}>
-        <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-          {isLoading ? progressStatusLine : REPORT_COPY.sectionTitles.allFixes}
-        </p>
-        {liveFindingsStrip}
-        <section
-          id={sectionId}
-          className={cn(REPORT_SECTION_SCROLL_MT, 'flex min-h-0 flex-1 flex-col')}
-          aria-busy={isLoading}
-        >
-          <ExplorerErrorBoundary
-            fallback={
-              <div className="space-y-3 py-4">
-                <Skeleton shimmer className="h-4 w-3/4" />
-                <Skeleton shimmer className="h-4 w-1/2" />
-                <Skeleton shimmer className="h-4 w-2/3" />
-              </div>
-            }
+    <ReportPane
+        beforeExplorer={
+          <>
+            <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+              {isLoading ? progressStatusLine : REPORT_COPY.sectionTitles.allFixes}
+            </p>
+            {liveFindingsStrip}
+          </>
+        }
+        explorer={
+          <section
+            id={sectionId}
+            className={cn(REPORT_SECTION_SCROLL_MT, 'flex min-h-0 flex-1 flex-col')}
+            aria-busy={isLoading}
           >
-            <LiveReportExplorer model={explorerModel} loading={isLoading} />
-          </ExplorerErrorBoundary>
-        </section>
-      </div>
-      <ReportPolishPass
-        flagCount={flagCount}
-        prompt={polishPassPrompt}
-        loading={isLoading && flagCount === 0}
-        className="mt-3"
+            <ExplorerErrorBoundary
+              fallback={
+                <div className="space-y-3 py-4">
+                  <Skeleton shimmer className="h-4 w-3/4" />
+                  <Skeleton shimmer className="h-4 w-1/2" />
+                  <Skeleton shimmer className="h-4 w-2/3" />
+                </div>
+              }
+            >
+              <LiveReportExplorer model={explorerModel} loading={isLoading} />
+            </ExplorerErrorBoundary>
+          </section>
+        }
+        afterFrame={
+          <ReportPolishPass
+            flagCount={flagCount}
+            prompt={polishPassPrompt}
+            loading={isLoading && flagCount === 0}
+            className="mt-3"
+          />
+        }
       />
-    </>
   )
 
   const scanWorkspace = auditId ? (
@@ -315,12 +330,20 @@ export function AuditReportProgressive({
       <ReportWorkspaceSplitShell
         isActiveReview
         scanning
-        showChatColumn
-        canUseTimeline={isOwner}
+        capabilities={workspace.capabilities}
+        timelineGateActionHref={timelineGateActionHref}
+        reportHeader={
+          <ReportOutcomeBar
+            model={workspace}
+            scanProgress={displayProgress}
+            stageDetail={stageDetail}
+          />
+        }
         leftPanel={
           <WorkspaceChatPanel
             auditId={auditId}
-            canChat={isOwner}
+            capabilities={workspace.capabilities}
+            gateReason={chatGateReason}
             agentMessages={agentMessages}
             reportUrl={url}
             scanning
@@ -411,12 +434,14 @@ export function AuditReportProgressive({
           <Suspense fallback={null}>
             <ReportWorkspaceSplitShell
               isActiveReview
-              showChatColumn
-              canUseTimeline={isOwner}
+              capabilities={workspace.capabilities}
+              timelineGateActionHref={timelineGateActionHref}
+              reportHeader={<ReportOutcomeBar model={workspace} />}
               leftPanel={
                 <WorkspaceChatPanel
                   auditId={auditId}
-                  canChat={isOwner}
+                  capabilities={workspace.capabilities}
+                  gateReason={chatGateReason}
                   agentMessages={agentMessages}
                   reportUrl={url}
                 />
@@ -436,36 +461,41 @@ export function AuditReportProgressive({
                       Review complete
                     </div>
                   )}
-                  <div data-report-frame className={WORKSPACE_REPORT_FRAME_CLASS}>
-                    <ReportOutcomeBar model={workspace} verdict={userVerdict} />
-                    <section
-                      id={sectionId}
-                      className={cn(REPORT_SECTION_SCROLL_MT, 'flex min-h-0 flex-1 flex-col')}
-                    >
-                      <ExplorerErrorBoundary
-                        fallback={
-                          <div className="space-y-3 py-4">
-                            <Skeleton shimmer className="h-4 w-3/4" />
-                            <Skeleton shimmer className="h-4 w-1/2" />
-                          </div>
-                        }
+                  <ReportPane
+                    explorer={
+                      <section
+                        id={sectionId}
+                        className={cn(REPORT_SECTION_SCROLL_MT, 'flex min-h-0 flex-1 flex-col')}
                       >
-                        <LiveReportExplorer model={explorerModel} loading={false} />
-                      </ExplorerErrorBoundary>
-                    </section>
-                  </div>
-                  <ReportPolishPass
-                    flagCount={flagCount}
-                    prompt={polishPassPrompt}
-                    loading={false}
-                    className="mt-3"
+                        <ExplorerErrorBoundary
+                          fallback={
+                            <div className="space-y-3 py-4">
+                              <Skeleton shimmer className="h-4 w-3/4" />
+                              <Skeleton shimmer className="h-4 w-1/2" />
+                            </div>
+                          }
+                        >
+                          <LiveReportExplorer model={explorerModel} loading={false} />
+                        </ExplorerErrorBoundary>
+                      </section>
+                    }
+                    afterFrame={
+                      <>
+                        <ReportPolishPass
+                          flagCount={flagCount}
+                          prompt={polishPassPrompt}
+                          loading={false}
+                          className="mt-3"
+                        />
+                        <ReportContextDisclosure
+                          sectionIds={['report-stack', 'report-contract']}
+                          className="mt-3"
+                        >
+                          {contextSections}
+                        </ReportContextDisclosure>
+                      </>
+                    }
                   />
-                  <ReportContextDisclosure
-                    sectionIds={['report-stack', 'report-contract']}
-                    className="mt-3"
-                  >
-                    {contextSections}
-                  </ReportContextDisclosure>
                 </>
               }
               steps={buildPlaybackSteps(actionTimeline)}

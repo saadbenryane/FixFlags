@@ -95,10 +95,12 @@ export interface TaskOutcomeError {
 }
 
 export interface RecheckAndCompareOutcome {
-  parentReportId: string
+  /** The parent persisted on the returned Review. Null when a first Review was resumed. */
+  parentReportId: string | null
   reportId: string
   reportUrl: string
   status: string
+  reused: boolean
   diff: {
     fixed: number
     inconclusive: number
@@ -526,6 +528,7 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
   }
 
   const reportId = started.result.auditId
+  const comparisonParentId = started.result.parentAuditId
   let status: string = started.result.status
   let timedOut = false
   if (options.waitForCompletion) {
@@ -539,10 +542,11 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
   }
 
   const base = {
-    parentReportId: options.parentReportId,
+    parentReportId: comparisonParentId,
     reportId,
     reportUrl: reportUrl(reportId),
     status,
+    reused: started.result.reused,
     diff: null,
   }
   if (status === 'FAILED') {
@@ -578,10 +582,17 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
     }
   }
 
-  const [completed, diff] = await Promise.all([
-    loadCompletedOutcome(reportId, options.tool),
-    getFlagDiffSummary(options.parentReportId, reportId),
-  ])
+  const completed = await loadCompletedOutcome(reportId, options.tool)
+  if (!comparisonParentId) {
+    return {
+      ...base,
+      nextFixList: completed.fixList,
+      nextFinishPlan: completed.finishPlan,
+      technologyProfile: completed.technologyProfile,
+    }
+  }
+
+  const diff = await getFlagDiffSummary(comparisonParentId, reportId)
   return {
     ...base,
     diff: {

@@ -2,25 +2,21 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, ArrowUp } from 'lucide-react'
-import {
-  LivingReviewEmulation,
-  type LivingReviewDevice,
-  type LivingReviewView,
-} from '@/components/report/LivingReviewEmulation'
+import { ArrowRight } from 'lucide-react'
+import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
+import type { PreviewDevice } from '@/components/report/WorkspaceBrowserPanel'
+import type { WorkspacePanelView } from '@/components/report/WorkspaceViewTabs'
 import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
 import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
-import { WORKSPACE_REPORT_FRAME_CLASS } from '@/components/report/workspace-geometry'
-import { WorkspaceTranscript } from '@/components/report/WorkspaceTranscript'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { ReportPane } from '@/components/report/ReportPane'
+import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 import { DEMO_BRAND } from '@/lib/demo/brand'
 import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 import { explorerScreenshots } from '@/lib/report/explorer-model'
 import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
-import { HERO, LANDING_PAGE, REPORT_COPY } from '@/lib/marketing/copy'
+import { HERO, LANDING_PAGE } from '@/lib/marketing/copy'
 import { MeProvider } from '@/hooks/useMe'
 
 const STORY_DURATIONS = [2600, 3000, 3200, 3600, 7000] as const
@@ -28,7 +24,6 @@ const STORY_PROGRESS = [24, 46, 62, 82, 100] as const
 const LAST_PHASE = STORY_DURATIONS.length - 1
 
 const story = LANDING_PAGE.sampleReport.story
-const chatCopy = REPORT_COPY.workspace.chat
 
 /**
  * Marketing frame keeps its rounded card. The fixed editor height stops the
@@ -53,10 +48,9 @@ function storyStatus(phase: number): string {
 export function HomepageReportPreview({ model }: { model: ReportWorkspaceModel }) {
   const [phase, setPhase] = useState(0)
   const [playing, setPlaying] = useState(true)
-  const [chosenView, setChosenView] = useState<LivingReviewView | null>(null)
-  const [chosenDevice, setChosenDevice] = useState<LivingReviewDevice | null>(null)
+  const [chosenView, setChosenView] = useState<WorkspacePanelView | null>(null)
+  const [chosenDevice, setChosenDevice] = useState<PreviewDevice | null>(null)
   const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null)
-  const [composerDraft, setComposerDraft] = useState('')
 
   const selectedFlag =
     model.explorer.flags.find((flag) => flag.id === model.capabilities.demonstratedFlagId) ??
@@ -109,8 +103,8 @@ export function HomepageReportPreview({ model }: { model: ReportWorkspaceModel }
 
   const screenshots = useMemo(() => explorerScreenshots(model.explorer), [model.explorer])
 
-  const storyView: LivingReviewView = phase >= 3 ? 'report' : 'browser'
-  const storyDevice: LivingReviewDevice =
+  const storyView: WorkspacePanelView = phase >= 3 ? 'report' : 'browser'
+  const storyDevice: PreviewDevice =
     phase >= 2 && selectedFlag?.affectedDevices.includes('mobile') ? 'mobile' : 'desktop'
   const view = chosenView ?? storyView
   const device = chosenDevice ?? storyDevice
@@ -124,23 +118,24 @@ export function HomepageReportPreview({ model }: { model: ReportWorkspaceModel }
   }
 
   return (
-    <LivingReviewEmulation
-      label={story.label}
-      productName={DEMO_BRAND.displayLabel}
-      productHost={DEMO_BRAND.domainLabel}
+    <ReportWorkspaceSplitShell
+      ariaLabel={story.label}
       browserUrl={model.identity.url ?? DEMO_BRAND.sampleUrl}
-      screenshots={screenshots}
-      device={device}
+      browserScreenshots={screenshots}
+      controlledDevice={device}
       onDeviceChange={(next) => {
         takeOver()
         setChosenDevice(next)
       }}
-      view={view}
+      controlledView={view}
       onViewChange={(next) => {
         takeOver()
         setChosenView(next)
       }}
-      capturing={capturing}
+      syncViewToUrl={false}
+      initialMobileFocus="product"
+      scanning={capturing}
+      capabilities={model.capabilities}
       steps={steps}
       activeStepIndex={activeStepIndex}
       onSelectStep={(index) => {
@@ -155,38 +150,16 @@ export function HomepageReportPreview({ model }: { model: ReportWorkspaceModel }
       }}
       onBackToLive={() => setActiveStepIndex(null)}
       className={STORY_FRAME_CLASS}
-      transcript={<WorkspaceTranscript messages={messages} linkFlags={false} />}
-      composer={
-        <form
-          className="border-t border-border/40 p-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            takeOver()
-            window.location.assign('/sign-in?next=%2Fsamples')
-          }}
-        >
-          <div className="flex items-center gap-2">
-            <Input
-              value={composerDraft}
-              onChange={(event) => {
-                takeOver()
-                setComposerDraft(event.target.value)
-              }}
-              placeholder={chatCopy.authBody}
-              className="min-h-11 flex-1 text-sm"
-              aria-label={chatCopy.placeholder}
-            />
-            <Button
-              type="submit"
-              size="icon"
-              className="h-11 w-11 shrink-0"
-              disabled={!composerDraft.trim()}
-              aria-label={chatCopy.notSignedIn}
-            >
-              <ArrowUp className="h-4 w-4" aria-hidden />
-            </Button>
-          </div>
-        </form>
+      leftPanel={
+        <WorkspaceChatPanel
+          capabilities={model.capabilities}
+          gateReason="owner"
+          agentMessages={messages}
+          reportUrl={model.identity.url ?? DEMO_BRAND.sampleUrl}
+          productName={DEMO_BRAND.displayLabel}
+          scanning={capturing}
+          showToolbarActions={false}
+        />
       }
       previewOverlay={
         phase === 2 && selectedFlag && playing ? (
@@ -200,19 +173,21 @@ export function HomepageReportPreview({ model }: { model: ReportWorkspaceModel }
           </div>
         ) : null
       }
+      reportHeader={<ReportOutcomeBar model={model} />}
       reportPanel={
         <MeProvider initialUser={null}>
-          <div data-report-frame className={WORKSPACE_REPORT_FRAME_CLASS}>
-            <ReportOutcomeBar model={model} />
-            <section id="report-flags" className="flex min-h-0 flex-1 flex-col">
-              <LiveReportExplorer
-                model={model.explorer}
-                aiLocked
-                demonstratedFlagId={model.capabilities.demonstratedFlagId ?? undefined}
-                signUpHref="/sign-in?next=%2Fsamples"
-              />
-            </section>
-          </div>
+          <ReportPane
+            explorer={
+              <section id="report-flags" className="flex min-h-0 flex-1 flex-col">
+                <LiveReportExplorer
+                  model={model.explorer}
+                  aiLocked
+                  demonstratedFlagId={model.capabilities.demonstratedFlagId ?? undefined}
+                  signUpHref="/sign-in?next=%2Fsamples"
+                />
+              </section>
+            }
+          />
         </MeProvider>
       }
       footer={

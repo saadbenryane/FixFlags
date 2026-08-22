@@ -5,7 +5,7 @@
  * - rounded-xl / rounded-lg on panel-like shells (border + bg/padding combos)
  * - arbitrary micro font sizes (use text-2xs/text-3xs or .section-label/.meta-label)
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const ROOT = process.cwd()
@@ -94,6 +94,75 @@ for (const removed of ['RubricsPanel', 'ReportMiniNav', 'CompletenessHeader']) {
   if (reportShell.includes(removed)) {
     violations.push(`components/audit/AuditReport.tsx: removed report chrome ${removed} returned`)
   }
+}
+
+for (const removedPath of [
+  'components/report/ProductSpineWorkspace.tsx',
+  'components/report/LivingReviewEmulation.tsx',
+  'components/report/ScoreRingGauge.tsx',
+  'components/report/ScanTimeline.tsx',
+  'lib/report/observation-snapshot.ts',
+  'app/api/reports/[id]/observation/route.ts',
+]) {
+  if (existsSync(join(ROOT, removedPath))) {
+    violations.push(`${removedPath}: obsolete parallel Review architecture returned`)
+  }
+}
+
+if (!reportShell.includes('<ReportPane')) {
+  violations.push('components/audit/AuditReport.tsx: completed reports must use ReportPane')
+}
+if (reportShell.includes('canUseTimeline')) {
+  violations.push('components/audit/AuditReport.tsx: Timeline permission is still conflated')
+}
+
+const outcomeHeader = readFileSync(join(ROOT, 'components/report/ReportOutcomeBar.tsx'), 'utf8')
+for (const [pattern, reason] of [
+  [/ScoreRingGauge/, 'circular score gauge returned'],
+  [/nextStepHint|Start with the top Flag/, 'duplicated next-step instruction returned'],
+  [/criticalCount|showCriticalFlags/, 'duplicated Critical shortcut returned'],
+]) {
+  if (pattern.test(outcomeHeader)) {
+    violations.push(`components/report/ReportOutcomeBar.tsx: ${reason}`)
+  }
+}
+
+const homepagePreview = readFileSync(
+  join(ROOT, 'components/marketing/landing/HomepageReportPreview.tsx'),
+  'utf8'
+)
+if (!homepagePreview.includes('ReportWorkspaceSplitShell')) {
+  violations.push('components/marketing/landing/HomepageReportPreview.tsx: homepage forked the Review shell')
+}
+
+const sampleRoute = readFileSync(join(ROOT, 'app/(marketing)/samples/page.tsx'), 'utf8')
+if (!sampleRoute.includes('UnknownCuratedObservationError') || !sampleRoute.includes('notFound()')) {
+  violations.push('app/(marketing)/samples/page.tsx: unknown curated observations must fail closed')
+}
+
+const workspaceAdapters = readFileSync(join(ROOT, 'lib/report/workspace-adapters.ts'), 'utf8')
+for (const required of [
+  'canReplayTimeline: true',
+  'canChat: false',
+  'canUseCanvas: false',
+  "promptAccess: 'demonstrated'",
+]) {
+  if (!workspaceAdapters.includes(required)) {
+    violations.push(`lib/report/workspace-adapters.ts: curated sample capability drift (${required})`)
+  }
+}
+
+const sampleDisplay = readFileSync(join(ROOT, 'lib/marketing/sample-report-display.ts'), 'utf8')
+if (/audit\.id\s*===\s*['"]curated-sample/.test(sampleDisplay)) {
+  violations.push('lib/marketing/sample-report-display.ts: evidence anchors are coupled to one observation')
+}
+
+const captureScript = readFileSync(join(ROOT, 'scripts/capture-sample-screenshots.ts'), 'utf8')
+if (
+  !/const publicDirectory = `\/samples\/observations\/\$\{definition\.id\}`/.test(captureScript) ||
+  !captureScript.includes('.webp(')
+) {
+  violations.push('scripts/capture-sample-screenshots.ts: versioned real-WebP sample generation drifted')
 }
 
 // The Report pane measures the pane, never the viewport: no 100vh caps, no

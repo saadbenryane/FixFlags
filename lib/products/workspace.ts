@@ -2,6 +2,7 @@ import type {
   AuditStatus,
   ImprovementStatus,
   ProjectWatchInterval,
+  RecheckTrigger,
   ReportCompleteness,
   VerificationOutcome,
   WatchNotificationStatus,
@@ -25,8 +26,13 @@ const ACTIVE_IMPROVEMENT_STATUSES: ImprovementStatus[] = [
   'UNVERIFIED',
 ]
 
+export const PRODUCT_HISTORY_PAGE_SIZE = 20
+
+export type ReviewKind = 'PRODUCT_REVIEW' | 'UPDATE_REVIEW' | 'WATCH'
+
 export type ProductReviewSummaryDTO = {
   id: string
+  kind: ReviewKind
   status: AuditStatus
   score: number | null
   reportCompleteness: ReportCompleteness
@@ -34,7 +40,14 @@ export type ProductReviewSummaryDTO = {
   createdAt: string
   completedAt: string | null
   failureMessage: string | null
-  isUpdateReview: boolean
+}
+
+export type ProductWatchReviewDTO = ProductReviewSummaryDTO & {
+  kind: 'WATCH'
+  regressionCount: number | null
+  notificationStatus: WatchNotificationStatus
+  notificationAttempts: number
+  notificationError: string | null
 }
 
 export type ProductAttentionItemDTO = {
@@ -50,7 +63,6 @@ export type ProductAttentionItemDTO = {
   severity: string | null
   sourceReviewId: string | null
   sourceFlagId: string | null
-  latestAttempt: ProductAttemptDTO | null
 }
 
 export type ProductAttemptDTO = {
@@ -80,16 +92,6 @@ export type ProductWatchDTO = {
   lastAttemptAt: string | null
   consecutiveFailures: number
   lastError: string | null
-  latestReview: {
-    id: string
-    status: AuditStatus
-    createdAt: string
-    completedAt: string | null
-    regressionCount: number | null
-    notificationStatus: WatchNotificationStatus
-    notificationAttempts: number
-    notificationError: string | null
-  } | null
 }
 
 export type ProductSignalKeyDTO = {
@@ -102,29 +104,42 @@ export type ProductSignalKeyDTO = {
   createdAt: string
 }
 
-export type ProductImprovementHistoryDTO = {
-  id: string
-  title: string
-  status: ImprovementStatus
-  updatedAt: string
-  sourceReviewId: string | null
-  sourceFlagId: string | null
-  attempts: ProductAttemptDTO[]
-}
-
-export type ProductMemoryDTO = {
-  purpose: string | null
-  firstValueJourney: string | null
-  verifiedLearnings: VerifiedLearning[]
-  knownRisks: string[]
-  intentionalNotes: string[]
-}
-
 export type ProductIntegrationDTO = {
   signalsEligible: boolean
   signalKeys: ProductSignalKeyDTO[]
   lastSignalAt: string | null
   observedContext: SynthesizedSignalContext[]
+}
+
+export type ProductHistoryCursorDTO = {
+  at: string
+  id: string
+}
+
+export type ProductHistoryEventDTO =
+  | {
+      kind: 'review'
+      at: string
+      id: string
+      review: ProductReviewSummaryDTO
+    }
+  | {
+      kind: 'attempt'
+      at: string
+      id: string
+      improvementTitle: string
+      attempt: ProductAttemptDTO
+    }
+  | {
+      kind: 'learning'
+      at: string
+      id: string
+      learning: VerifiedLearning
+    }
+
+export type ProductHistoryPageDTO = {
+  events: ProductHistoryEventDTO[]
+  nextCursor: ProductHistoryCursorDTO | null
 }
 
 export type ProductWorkspaceDTO = {
@@ -138,11 +153,11 @@ export type ProductWorkspaceDTO = {
   watch: ProductWatchDTO
   attention: ProductAttentionItemDTO[]
   attentionCount: number
-  currentReview: ProductReviewSummaryDTO | null
-  latestCompletedReview: ProductReviewSummaryDTO | null
-  improvementHistory: ProductImprovementHistoryDTO[]
-  memory: ProductMemoryDTO
-  reviewHistory: ProductReviewSummaryDTO[]
+  activeManualReview: ProductReviewSummaryDTO | null
+  latestManualReview: ProductReviewSummaryDTO | null
+  latestCompletedManualReview: ProductReviewSummaryDTO | null
+  latestWatchReview: ProductWatchReviewDTO | null
+  history: ProductHistoryPageDTO
   integrations: ProductIntegrationDTO
 }
 
@@ -153,13 +168,11 @@ export type ProductOverviewDTO = {
   purpose: string | null
   watching: boolean
   attentionCount: number
-  topAttention: Pick<ProductAttentionItemDTO, 'id' | 'title' | 'status' | 'severity'> | null
-  latestReview: ProductReviewSummaryDTO | null
-  latestVerification: {
-    outcome: VerificationOutcome
-    improvementTitle: string
-    verificationReviewId: string | null
-  } | null
+  topAttention: Pick<
+    ProductAttentionItemDTO,
+    'id' | 'title' | 'status' | 'severity'
+  > | null
+  latestManualReview: ProductReviewSummaryDTO | null
 }
 
 type ReviewRow = {
@@ -171,7 +184,7 @@ type ReviewRow = {
   completedAt: Date | null
   errorMsg: string | null
   parentId: string | null
-  recheckTrigger: string | null
+  recheckTrigger: RecheckTrigger | null
   watchRegressionCount: number | null
   watchNotificationStatus: WatchNotificationStatus
   watchNotificationAttempts: number
@@ -179,24 +192,9 @@ type ReviewRow = {
   flags: Array<{ status: string }>
 }
 
-function reviewSummary(review: ReviewRow): ProductReviewSummaryDTO {
-  return {
-    id: review.id,
-    status: review.status,
-    score: review.score,
-    reportCompleteness: review.reportCompleteness,
-    unresolvedCount: review.flags.filter(
-      (flag) => flag.status === 'OPEN' || flag.status === 'REGRESSED'
-    ).length,
-    createdAt: review.createdAt.toISOString(),
-    completedAt: review.completedAt?.toISOString() ?? null,
-    failureMessage: review.errorMsg,
-    isUpdateReview: review.parentId !== null,
-  }
-}
-
-function attemptSummary(attempt: {
+type AttemptRow = {
   id: string
+  improvementId: string
   sourceAuditId: string
   builder: string
   changeSummary: string | null
@@ -210,11 +208,62 @@ function attemptSummary(attempt: {
   evidenceReference: unknown
   remainingRisk: string | null
   createdAt: Date
-}, sourceFlagId: string | null = null): ProductAttemptDTO {
+  improvement: { title: string }
+}
+
+const HISTORY_PREFIXES = ['review:', 'attempt:', 'learning:'] as const
+
+function reviewKind(
+  review: Pick<ReviewRow, 'parentId' | 'recheckTrigger'>,
+): ReviewKind {
+  if (review.recheckTrigger === 'WATCH') return 'WATCH'
+  return review.parentId ? 'UPDATE_REVIEW' : 'PRODUCT_REVIEW'
+}
+
+function reviewSummary(review: ReviewRow): ProductReviewSummaryDTO {
+  return {
+    id: review.id,
+    kind: reviewKind(review),
+    status: review.status,
+    score: review.score,
+    reportCompleteness: review.reportCompleteness,
+    unresolvedCount: review.flags.filter(
+      (flag) => flag.status === 'OPEN' || flag.status === 'REGRESSED',
+    ).length,
+    createdAt: review.createdAt.toISOString(),
+    completedAt: review.completedAt?.toISOString() ?? null,
+    failureMessage: review.errorMsg,
+  }
+}
+
+function watchReviewSummary(review: ReviewRow): ProductWatchReviewDTO {
+  return {
+    ...reviewSummary(review),
+    kind: 'WATCH',
+    regressionCount: review.watchRegressionCount,
+    notificationStatus: review.watchNotificationStatus,
+    notificationAttempts: review.watchNotificationAttempts,
+    notificationError: review.watchNotificationLastError,
+  }
+}
+
+function evidenceBeforeFlagId(value: unknown): string | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const beforeFlagId = (value as { beforeFlagId?: unknown }).beforeFlagId
+  return typeof beforeFlagId === 'string' && beforeFlagId.length > 0
+    ? beforeFlagId
+    : null
+}
+
+function attemptSummary(
+  attempt: AttemptRow,
+  sourceFlagId: string | null,
+): ProductAttemptDTO {
   return {
     id: attempt.id,
     sourceReviewId: attempt.sourceAuditId,
-    sourceFlagId,
+    sourceFlagId:
+      evidenceBeforeFlagId(attempt.evidenceReference) ?? sourceFlagId,
     builder: attempt.builder,
     changeSummary: attempt.changeSummary,
     deploymentReference: attempt.deploymentReference,
@@ -249,6 +298,7 @@ const reviewSelect = {
 
 const attemptSelect = {
   id: true,
+  improvementId: true,
   sourceAuditId: true,
   builder: true,
   changeSummary: true,
@@ -262,44 +312,121 @@ const attemptSelect = {
   evidenceReference: true,
   remainingRisk: true,
   createdAt: true,
+  improvement: { select: { title: true } },
 } as const
 
-/** Account-level Product cards. Every Review and outcome stays scoped to its Product. */
-export async function loadProductOverview(userId: string): Promise<ProductOverviewDTO[]> {
+function manualReviewWhere() {
+  return {
+    OR: [{ recheckTrigger: null }, { recheckTrigger: 'MANUAL' as const }],
+  }
+}
+
+function stableLearningId(learning: VerifiedLearning): string {
+  const identity =
+    learning.attemptId ??
+    learning.improvementId ??
+    learning.checkId ??
+    learning.summary
+  let hash = 2166136261
+  for (const character of identity) {
+    hash ^= character.charCodeAt(0)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `learning:${learning.auditId}:${(hash >>> 0).toString(36)}`
+}
+
+export function parseProductHistoryCursor(
+  value: string | undefined,
+): ProductHistoryCursorDTO | null {
+  if (!value || value.length > 500) return null
+  const separatorIndex = value.indexOf('|')
+  if (separatorIndex <= 0 || separatorIndex === value.length - 1) return null
+  const atValue = value.slice(0, separatorIndex)
+  const idValue = value.slice(separatorIndex + 1)
+  if (!atValue || !idValue || idValue.length > 300) return null
+  if (!HISTORY_PREFIXES.some((prefix) => idValue.startsWith(prefix)))
+    return null
+  const at = new Date(atValue)
+  if (Number.isNaN(at.getTime())) return null
+  return { at: at.toISOString(), id: idValue }
+}
+
+export function serializeProductHistoryCursor(
+  cursor: ProductHistoryCursorDTO,
+): string {
+  return `${cursor.at}|${cursor.id}`
+}
+
+function historyDateWhere(
+  prefix: 'review:' | 'attempt:',
+  cursor: ProductHistoryCursorDTO | null,
+) {
+  if (!cursor) return {}
+  const at = new Date(cursor.at)
+  const cursorPrefix = HISTORY_PREFIXES.find((candidate) =>
+    cursor.id.startsWith(candidate),
+  )
+  if (!cursorPrefix) return {}
+  const prefixOrder = prefix.localeCompare(cursorPrefix)
+  if (prefixOrder < 0) return { createdAt: { lte: at } }
+  if (prefixOrder > 0) return { createdAt: { lt: at } }
+  return {
+    OR: [
+      { createdAt: { lt: at } },
+      { createdAt: at, id: { lt: cursor.id.slice(prefix.length) } },
+    ],
+  }
+}
+
+function compareHistoryEvents(
+  left: ProductHistoryEventDTO,
+  right: ProductHistoryEventDTO,
+): number {
+  const dateOrder = right.at.localeCompare(left.at)
+  return dateOrder || right.id.localeCompare(left.id)
+}
+
+function eventIsBeforeCursor(
+  event: ProductHistoryEventDTO,
+  cursor: ProductHistoryCursorDTO | null,
+): boolean {
+  if (!cursor) return true
+  return (
+    event.at < cursor.at || (event.at === cursor.at && event.id < cursor.id)
+  )
+}
+
+/** Account-level Product cards. Every manual Review and Attention item stays scoped to its Product. */
+export async function loadProductOverview(
+  userId: string,
+): Promise<ProductOverviewDTO[]> {
   const products = await prisma.project.findMany({
     where: { userId },
     orderBy: { updatedAt: 'desc' },
     select: {
       id: true,
+      userId: true,
       name: true,
       url: true,
       productIntelligence: true,
       watchInterval: true,
       audits: {
-        orderBy: { createdAt: 'desc' },
+        where: manualReviewWhere(),
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: 1,
         select: reviewSelect,
       },
       improvements: {
+        where: { status: { in: ACTIVE_IMPROVEMENT_STATUSES } },
         orderBy: [{ priority: 'desc' }, { updatedAt: 'desc' }],
         select: {
           id: true,
           title: true,
           status: true,
           occurrences: {
-            orderBy: { createdAt: 'desc' },
-            take: 20,
-            select: { flag: { select: { severity: true } } },
-          },
-          attempts: {
-            where: { outcome: { not: null } },
-            orderBy: { updatedAt: 'desc' },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
             take: 1,
-            select: {
-              outcome: true,
-              verificationAuditId: true,
-              createdAt: true,
-            },
+            select: { flag: { select: { severity: true } } },
           },
         },
       },
@@ -307,52 +434,39 @@ export async function loadProductOverview(userId: string): Promise<ProductOvervi
   })
 
   for (const product of products) {
-    if ((product as unknown as { userId: string }).userId !== userId) {
-      logger.error('SECURITY: loadProductOverview returned product owned by different user', {
-        requestedUserId: userId,
-        actualUserId: (product as unknown as { userId: string }).userId,
-        productId: product.id,
-      })
+    if (product.userId !== userId) {
+      logger.error(
+        'SECURITY: loadProductOverview returned product owned by different user',
+        {
+          requestedUserId: userId,
+          actualUserId: product.userId,
+          productId: product.id,
+        },
+      )
     }
   }
 
   return products.map((product) => {
     const memory = parseProductIntelligence(product.productIntelligence)
-    const attention = product.improvements.filter((improvement) =>
-      ACTIVE_IMPROVEMENT_STATUSES.includes(improvement.status)
-    )
-    const latestVerified = product.improvements
-      .flatMap((improvement) =>
-        improvement.attempts
-          .filter((attempt) => attempt.outcome !== null)
-          .map((attempt) => ({ improvement, attempt }))
-      )
-      .sort((left, right) => right.attempt.createdAt.getTime() - left.attempt.createdAt.getTime())[0]
-
     return {
       id: product.id,
       name: product.name,
       url: product.url,
       purpose: memory?.purpose ?? null,
       watching: product.watchInterval !== null,
-      attentionCount: attention.length,
-      topAttention: attention[0]
+      attentionCount: product.improvements.length,
+      topAttention: product.improvements[0]
         ? {
-            id: attention[0].id,
-            title: attention[0].title,
-            status: attention[0].status,
-            severity: attention[0].occurrences[0]?.flag.severity ?? null,
+            id: product.improvements[0].id,
+            title: product.improvements[0].title,
+            status: product.improvements[0].status,
+            severity:
+              product.improvements[0].occurrences[0]?.flag.severity ?? null,
           }
         : null,
-      latestReview: product.audits[0] ? reviewSummary(product.audits[0]) : null,
-      latestVerification:
-        latestVerified?.attempt.outcome
-          ? {
-              outcome: latestVerified.attempt.outcome,
-              improvementTitle: latestVerified.improvement.title,
-              verificationReviewId: latestVerified.attempt.verificationAuditId,
-            }
-          : null,
+      latestManualReview: product.audits[0]
+        ? reviewSummary(product.audits[0])
+        : null,
     }
   })
 }
@@ -361,7 +475,11 @@ export async function loadProductOverview(userId: string): Promise<ProductOvervi
 export async function loadProductWorkspace(
   productId: string,
   userId: string,
-  options: { signalsEligible: boolean; canDailyWatch?: boolean }
+  options: {
+    signalsEligible: boolean
+    canDailyWatch?: boolean
+    historyCursor?: ProductHistoryCursorDTO | null
+  },
 ): Promise<ProductWorkspaceDTO | null> {
   const product = await prisma.project.findFirst({
     where: { id: productId, userId },
@@ -376,12 +494,8 @@ export async function loadProductWorkspace(
       watchLastAttemptAt: true,
       watchConsecutiveFailures: true,
       watchLastError: true,
-      audits: {
-        orderBy: { createdAt: 'desc' },
-        take: 20,
-        select: reviewSelect,
-      },
       improvements: {
+        where: { status: { in: ACTIVE_IMPROVEMENT_STATUSES } },
         orderBy: [{ priority: 'desc' }, { updatedAt: 'desc' }],
         select: {
           id: true,
@@ -391,9 +505,8 @@ export async function loadProductWorkspace(
           successCondition: true,
           priority: true,
           status: true,
-          updatedAt: true,
           occurrences: {
-            orderBy: { createdAt: 'desc' },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
             take: 1,
             select: {
               auditId: true,
@@ -407,19 +520,14 @@ export async function loadProductWorkspace(
               },
             },
           },
-          attempts: {
-            orderBy: { createdAt: 'desc' },
-            take: 10,
-            select: attemptSelect,
-          },
         },
       },
       signalKeys: {
         where: { revokedAt: null },
         orderBy: { createdAt: 'desc' },
-select: {
-      id: true,
-      name: true,
+        select: {
+          id: true,
+          name: true,
           prefix: true,
           lastFour: true,
           allowedOrigin: true,
@@ -428,7 +536,9 @@ select: {
         },
       },
       signals: {
-        where: { occurredAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+        where: {
+          occurredAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
         orderBy: { occurredAt: 'desc' },
         take: 500,
         select: {
@@ -446,12 +556,133 @@ select: {
 
   if (!product) return null
 
+  const historyCursor = options.historyCursor ?? null
+  const [
+    activeManualReviewRow,
+    latestManualReviewRow,
+    latestCompletedManualReviewRow,
+    latestWatchReviewRow,
+    historyReviewRows,
+    historyAttemptRows,
+  ] = await Promise.all([
+    prisma.audit.findFirst({
+      where: {
+        projectId: product.id,
+        status: { notIn: ['COMPLETED', 'FAILED'] },
+        ...manualReviewWhere(),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: reviewSelect,
+    }),
+    prisma.audit.findFirst({
+      where: { projectId: product.id, ...manualReviewWhere() },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: reviewSelect,
+    }),
+    prisma.audit.findFirst({
+      where: {
+        projectId: product.id,
+        status: 'COMPLETED',
+        ...manualReviewWhere(),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: reviewSelect,
+    }),
+    prisma.audit.findFirst({
+      where: { projectId: product.id, recheckTrigger: 'WATCH' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: reviewSelect,
+    }),
+    prisma.audit.findMany({
+      where: {
+        projectId: product.id,
+        ...historyDateWhere('review:', historyCursor),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: PRODUCT_HISTORY_PAGE_SIZE + 1,
+      select: reviewSelect,
+    }),
+    prisma.improvementAttempt.findMany({
+      where: {
+        improvement: { projectId: product.id },
+        ...historyDateWhere('attempt:', historyCursor),
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: PRODUCT_HISTORY_PAGE_SIZE + 1,
+      select: attemptSelect,
+    }),
+  ])
+
+  const sourceReviewIds = [
+    ...new Set(historyAttemptRows.map((attempt) => attempt.sourceAuditId)),
+  ]
+  const sourceOccurrences =
+    sourceReviewIds.length > 0
+      ? await prisma.improvementOccurrence.findMany({
+          where: {
+            improvement: { projectId: product.id },
+            auditId: { in: sourceReviewIds },
+          },
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          select: {
+            improvementId: true,
+            auditId: true,
+            flagId: true,
+          },
+        })
+      : []
+  const sourceFlagIds = new Map<string, string>()
+  for (const occurrence of sourceOccurrences) {
+    const key = `${occurrence.improvementId}:${occurrence.auditId}`
+    if (!sourceFlagIds.has(key)) sourceFlagIds.set(key, occurrence.flagId)
+  }
+
   const memory = parseProductIntelligence(product.productIntelligence)
-  const reviews = product.audits.map(reviewSummary)
-  const attentionRows = product.improvements.filter((improvement) =>
-    ACTIVE_IMPROVEMENT_STATUSES.includes(improvement.status)
+  const reviewEvents = historyReviewRows.map(
+    (review): ProductHistoryEventDTO => ({
+      kind: 'review',
+      at: review.createdAt.toISOString(),
+      id: `review:${review.id}`,
+      review: reviewSummary(review),
+    }),
   )
-  const attention = attentionRows.slice(0, 3).map((improvement) => ({
+  const attemptEvents = historyAttemptRows.map(
+    (attempt): ProductHistoryEventDTO => ({
+      kind: 'attempt',
+      at: attempt.createdAt.toISOString(),
+      id: `attempt:${attempt.id}`,
+      improvementTitle: attempt.improvement.title,
+      attempt: attemptSummary(
+        attempt,
+        sourceFlagIds.get(
+          `${attempt.improvementId}:${attempt.sourceAuditId}`,
+        ) ?? null,
+      ),
+    }),
+  )
+  const learningEvents = (memory?.verifiedLearnings ?? []).map(
+    (learning): ProductHistoryEventDTO => ({
+      kind: 'learning',
+      at: learning.at,
+      id: stableLearningId(learning),
+      learning,
+    }),
+  )
+  const historyCandidates = [
+    ...reviewEvents,
+    ...attemptEvents,
+    ...learningEvents,
+  ]
+    .filter((event) => eventIsBeforeCursor(event, historyCursor))
+    .sort(compareHistoryEvents)
+  const historyEvents = historyCandidates.slice(0, PRODUCT_HISTORY_PAGE_SIZE)
+  const lastHistoryEvent = historyEvents.at(-1)
+  const nextCursor =
+    historyCandidates.length > PRODUCT_HISTORY_PAGE_SIZE && lastHistoryEvent
+      ? { at: lastHistoryEvent.at, id: lastHistoryEvent.id }
+      : null
+
+  const attention = product.improvements.slice(0, 3).map((improvement) => ({
     id: improvement.id,
     title: improvement.title,
     judgment: improvement.judgment,
@@ -464,16 +695,7 @@ select: {
     severity: improvement.occurrences[0]?.flag.severity ?? null,
     sourceReviewId: improvement.occurrences[0]?.auditId ?? null,
     sourceFlagId: improvement.occurrences[0]?.flagId ?? null,
-    latestAttempt: improvement.attempts[0]
-      ? attemptSummary(
-          improvement.attempts[0],
-          improvement.occurrences.find(
-            (occurrence) => occurrence.auditId === improvement.attempts[0]?.sourceAuditId,
-          )?.flagId ?? null,
-        )
-      : null,
   }))
-  const latestWatchReview = product.audits.find((review) => review.recheckTrigger === 'WATCH')
 
   return {
     product: {
@@ -492,45 +714,25 @@ select: {
       lastAttemptAt: product.watchLastAttemptAt?.toISOString() ?? null,
       consecutiveFailures: product.watchConsecutiveFailures,
       lastError: product.watchLastError,
-      latestReview: latestWatchReview
-        ? {
-            id: latestWatchReview.id,
-            status: latestWatchReview.status,
-            createdAt: latestWatchReview.createdAt.toISOString(),
-            completedAt: latestWatchReview.completedAt?.toISOString() ?? null,
-            regressionCount: latestWatchReview.watchRegressionCount,
-            notificationStatus: latestWatchReview.watchNotificationStatus,
-            notificationAttempts: latestWatchReview.watchNotificationAttempts,
-            notificationError: latestWatchReview.watchNotificationLastError,
-          }
-        : null,
     },
     attention,
-    attentionCount: attentionRows.length,
-    currentReview: reviews[0] ?? null,
-    latestCompletedReview: reviews.find((review) => review.status === 'COMPLETED') ?? null,
-    improvementHistory: product.improvements.map((improvement) => ({
-      id: improvement.id,
-      title: improvement.title,
-      status: improvement.status,
-      updatedAt: improvement.updatedAt.toISOString(),
-      sourceReviewId: improvement.occurrences[0]?.auditId ?? null,
-      sourceFlagId: improvement.occurrences[0]?.flagId ?? null,
-      attempts: improvement.attempts.map((attempt) => attemptSummary(
-        attempt,
-        improvement.occurrences.find(
-          (occurrence) => occurrence.auditId === attempt.sourceAuditId,
-        )?.flagId ?? null,
-      )),
-    })),
-    memory: {
-      purpose: memory?.purpose ?? null,
-      firstValueJourney: memory?.firstValueJourney ?? null,
-      verifiedLearnings: memory?.verifiedLearnings ?? [],
-      knownRisks: memory?.knownRisks ?? [],
-      intentionalNotes: memory?.intentionalNotes ?? [],
+    attentionCount: product.improvements.length,
+    activeManualReview: activeManualReviewRow
+      ? reviewSummary(activeManualReviewRow)
+      : null,
+    latestManualReview: latestManualReviewRow
+      ? reviewSummary(latestManualReviewRow)
+      : null,
+    latestCompletedManualReview: latestCompletedManualReviewRow
+      ? reviewSummary(latestCompletedManualReviewRow)
+      : null,
+    latestWatchReview: latestWatchReviewRow
+      ? watchReviewSummary(latestWatchReviewRow)
+      : null,
+    history: {
+      events: historyEvents,
+      nextCursor,
     },
-    reviewHistory: reviews,
     integrations: {
       signalsEligible: options.signalsEligible,
       signalKeys: product.signalKeys.map((key) => ({
@@ -544,7 +746,9 @@ select: {
   }
 }
 
-function watchInterval(value: ProjectWatchInterval | null): 'weekly' | 'daily' | null {
+function watchInterval(
+  value: ProjectWatchInterval | null,
+): 'weekly' | 'daily' | null {
   if (value === 'WEEKLY') return 'weekly'
   if (value === 'DAILY') return 'daily'
   return null

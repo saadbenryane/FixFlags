@@ -58,6 +58,7 @@ describe('POST /api/reports/[id]/re-check', () => {
       reportId: 'child-1',
       reportUrl: 'https://fixflags.com/report/child-1',
       status: 'QUEUED',
+      reused: false,
       diff: null,
     })
   })
@@ -83,11 +84,35 @@ describe('POST /api/reports/[id]/re-check', () => {
       reportId: 'child-1',
       reportUrl: 'https://fixflags.com/report/child-1',
       status: 'QUEUED',
+      reused: false,
+      parentReportId: 'parent-1',
     })
     expect(recheckAndCompare).toHaveBeenCalledWith({
       parentReportId: 'parent-1',
       user: expect.objectContaining({ id: 'u1' }),
       delayMs: 0,
+    })
+  })
+
+  it('returns the active Review without claiming a new resource', async () => {
+    recheckAndCompare.mockResolvedValueOnce({
+      parentReportId: null,
+      reportId: 'active-review',
+      reportUrl: 'https://fixflags.com/report/active-review',
+      status: 'CHECKING',
+      reused: true,
+      diff: null,
+    })
+
+    const res = await POST(postReq(), { params: Promise.resolve({ id: 'parent-1' }) })
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual({
+      reportId: 'active-review',
+      reportUrl: 'https://fixflags.com/report/active-review',
+      status: 'CHECKING',
+      reused: true,
+      parentReportId: null,
     })
   })
 

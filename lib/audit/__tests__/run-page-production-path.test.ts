@@ -145,7 +145,7 @@ describe('runPage production capture path', () => {
     )
   })
 
-  it('defers the flow walk — capture runs without flow, flow runs after checks when budget allows', async () => {
+  it('defers the flow walk: capture runs without flow, flow runs after checks when budget allows', async () => {
     const ctx = {
       auditId: 'audit-1',
       deadline: Date.now() + 120_000,

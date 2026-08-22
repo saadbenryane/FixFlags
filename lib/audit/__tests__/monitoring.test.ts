@@ -67,13 +67,26 @@ describe('startMonitoringAudit', () => {
       status: 'COMPLETED',
       url: 'https://example.com',
     })
-    createAndEnqueueAudit.mockResolvedValue({ auditId: 'child-1', status: 'QUEUED' })
+    createAndEnqueueAudit.mockResolvedValue({
+      auditId: 'child-1',
+      status: 'QUEUED',
+      reused: false,
+      parentId: 'parent-1',
+    })
   })
 
   it('enqueues a FULL fresh capture re-check (not SUMMARY_ONLY)', async () => {
     const user = { id: 'u1' } as User
     const outcome = await startMonitoringAudit('parent-1', user)
     assert.equal(outcome.ok, true)
+    if (outcome.ok) {
+      expect(outcome.result).toEqual({
+        auditId: 'child-1',
+        status: 'QUEUED',
+        reused: false,
+        parentAuditId: 'parent-1',
+      })
+    }
     expect(createAndEnqueueAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://example.com',

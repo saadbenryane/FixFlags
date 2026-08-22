@@ -49,8 +49,10 @@ export async function POST(
         reportId: outcome.reportId,
         reportUrl: outcome.reportUrl,
         status: outcome.status,
+        reused: outcome.reused,
+        parentReportId: outcome.parentReportId,
       },
-      { status: 201 }
+      { status: outcome.reused ? 200 : 201 }
     )
   } catch (err) {
     const taskError = err as Error & { status?: number; code?: string; action?: string }

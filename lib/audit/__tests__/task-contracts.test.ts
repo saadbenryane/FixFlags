@@ -97,12 +97,22 @@ function completedAudit() {
 describe('task contracts', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.createAndEnqueueAudit.mockResolvedValue({ auditId: 'report-1', status: 'QUEUED' })
+    mocks.createAndEnqueueAudit.mockResolvedValue({
+      auditId: 'report-1',
+      status: 'QUEUED',
+      reused: false,
+      parentId: null,
+    })
     mocks.pollAuditUntilDone.mockResolvedValue({ status: 'COMPLETED', timedOut: false })
     mocks.auditFindUnique.mockResolvedValue(completedAudit())
     mocks.startMonitoringAudit.mockResolvedValue({
       ok: true,
-      result: { auditId: 'report-1', status: 'QUEUED' },
+      result: {
+        auditId: 'report-1',
+        status: 'QUEUED',
+        reused: false,
+        parentAuditId: 'parent-1',
+      },
     })
     mocks.occurrenceFindMany.mockResolvedValue([])
     mocks.attemptFindMany.mockResolvedValue([])
@@ -243,9 +253,60 @@ describe('task contracts', () => {
     expect(outcome.nextFixList?.items).toHaveLength(1)
     expect(outcome.nextFixList?.totalCount).toBe(1)
     expect(outcome.nextFinishPlan?.items).toHaveLength(1)
+    expect(outcome.parentReportId).toBe('parent-1')
+    expect(outcome.reused).toBe(false)
     expect(mocks.startMonitoringAudit).toHaveBeenCalledWith('parent-1', user, {
       delayMs: undefined,
     })
+  })
+
+  it('uses the returned Review parent when an active update Review is reused', async () => {
+    mocks.startMonitoringAudit.mockResolvedValueOnce({
+      ok: true,
+      result: {
+        auditId: 'report-1',
+        status: 'QUEUED',
+        reused: true,
+        parentAuditId: 'actual-parent',
+      },
+    })
+
+    const outcome = await recheckAndCompare({
+      parentReportId: 'requested-parent',
+      user,
+      waitForCompletion: true,
+    })
+
+    expect(outcome.parentReportId).toBe('actual-parent')
+    expect(outcome.reused).toBe(true)
+    expect(mocks.getFlagDiffSummary).toHaveBeenCalledWith('actual-parent', 'report-1')
+    expect(mocks.getFlagDiffSummary).not.toHaveBeenCalledWith('requested-parent', 'report-1')
+  })
+
+  it('resumes an active first Review without fabricating a comparison', async () => {
+    mocks.startMonitoringAudit.mockResolvedValueOnce({
+      ok: true,
+      result: {
+        auditId: 'report-1',
+        status: 'QUEUED',
+        reused: true,
+        parentAuditId: null,
+      },
+    })
+
+    const outcome = await recheckAndCompare({
+      parentReportId: 'requested-parent',
+      user,
+      waitForCompletion: true,
+    })
+
+    expect(outcome).toMatchObject({
+      parentReportId: null,
+      reportId: 'report-1',
+      reused: true,
+      diff: null,
+    })
+    expect(mocks.getFlagDiffSummary).not.toHaveBeenCalled()
   })
 
   it('exposes no prompts or plan prompt to anonymous callers', async () => {

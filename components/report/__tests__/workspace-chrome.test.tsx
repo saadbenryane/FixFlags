@@ -19,9 +19,9 @@ describe('workspace chrome primitives', () => {
       <WorkspaceMobileTabs
         label={REPORT_COPY.workspace.panels.mobileTabsLabel}
         tabs={[
-          { id: 'chat', label: 'Agent', selected: false, onSelect },
-          { id: 'browser', label: 'Preview', selected: true, onSelect },
-          { id: 'report', label: 'Report', selected: false, onSelect },
+          { id: 'chat', controls: 'agent-panel', label: 'Agent', selected: false, onSelect },
+          { id: 'browser', controls: 'product-panel', href: '?view=timeline', label: 'Preview', selected: true, onSelect },
+          { id: 'report', controls: 'product-panel', href: '?view=report', label: 'Report', selected: false, onSelect },
         ]}
       />
     )
@@ -46,7 +46,7 @@ describe('workspace chrome primitives', () => {
       <WorkspacePreviewTransport
         steps={steps}
         canReplay={false}
-        signInNext="/report/a1"
+        gateActionHref="/sign-in?next=%2Freport%2Fa1"
       />
     )
 

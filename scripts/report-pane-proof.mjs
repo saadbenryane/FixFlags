@@ -2,7 +2,7 @@
 /**
  * Browser proof for the Report pane redesign.
  * Opens Report mode on the homepage emulation, /samples, and an optional live
- * report at three widths, then asserts the pane anatomy: one outcome bar, the
+ * report at three widths, then asserts the pane anatomy: one compact Score header, the
  * fix list reachable without scrolling, list and detail scrolling inside the
  * pane, and Review context collapsed by default.
  *
@@ -20,30 +20,31 @@ const live = process.argv[3] === '--live'
 const reportPath = live ? null : process.argv[3] ?? null
 const liveTarget = live ? process.argv[4] ?? 'https://example.com' : null
 const outDir = '.agents/artifacts/report-pane'
-const widths = [375, 768, 1280]
+const widths = [320, 375, 768, 1280]
+
+async function settleLayout(page) {
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+}
 
 async function openReportMode(page) {
-  const tabs = page.getByRole('tab', { name: 'Report' })
-  // The toggle renders server-side but only responds once React hydrates, so a
-  // single click can land on inert markup. Retry until Report actually opens.
-  await tabs.first().waitFor({ state: 'visible', timeout: 60000 })
+  await page.locator('[data-workspace-ready="true"]').first().waitFor({ state: 'visible', timeout: 60000 })
+  const visibleReportTab = page
+    .locator('[role="tab"]:visible')
+    .filter({ hasText: /^Report$/ })
+    .first()
+  await visibleReportTab.waitFor({ state: 'visible', timeout: 60000 })
   const explorer = page.locator('[role="region"][aria-label^="Fix list with"]').first()
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const count = await tabs.count()
-    for (let i = 0; i < count; i += 1) {
-      const tab = tabs.nth(i)
-      if (await tab.isVisible()) await tab.click({ force: true })
-    }
-    if (await explorer.isVisible().catch(() => false)) return true
-    await page.waitForTimeout(1500)
+  if ((await visibleReportTab.getAttribute('aria-selected')) !== 'true') {
+    await visibleReportTab.click()
   }
-  return await explorer.isVisible().catch(() => false)
+  await explorer.waitFor({ state: 'visible', timeout: 60000 })
+  return true
 }
 
 async function measurePane(page) {
   return page.evaluate(() => {
     const visible = (node) => node.getBoundingClientRect().height > 0
-    const bar = Array.from(document.querySelectorAll('#report-status')).filter(visible)
+    const scoreHeaders = Array.from(document.querySelectorAll('#report-status')).filter(visible)
     const explorer = Array.from(
       document.querySelectorAll('[role="region"][aria-label^="Fix list with"]')
     ).filter(visible)
@@ -58,12 +59,25 @@ async function measurePane(page) {
     const scrolls = (node) =>
       node ? ['auto', 'scroll'].includes(getComputedStyle(node).overflowY) : false
     const frame = explorer[0]?.closest('[data-report-frame]') ?? null
+    const comparisonFrames = Array.from(
+      explorer[0]?.querySelectorAll('[data-comparison-state="affected"], [data-comparison-state="unaffected"]') ?? []
+    ).filter(visible)
     const paneRect = pane?.getBoundingClientRect() ?? null
     const listRect = list?.getBoundingClientRect() ?? null
     const frameRect = frame?.getBoundingClientRect() ?? null
 
     return {
-      outcomeBars: bar.length,
+      scoreHeaders: scoreHeaders.length,
+      hasVisibleScoreLabel: scoreHeaders.some((header) =>
+        Array.from(header.querySelectorAll('*')).some(
+          (node) => node.childElementCount === 0 && node.textContent?.trim() === 'Score' && visible(node)
+        )
+      ),
+      hasLegacyScoreGauge: scoreHeaders.some((node) => Boolean(node.querySelector('svg circle'))),
+      comparisonFrameCount: comparisonFrames.length,
+      comparisonBordersInset: comparisonFrames.length > 0 && comparisonFrames.every((node) =>
+        getComputedStyle(node).boxShadow.includes('inset')
+      ),
       explorers: explorer.length,
       duplicateIds,
       // 40rem is the container breakpoint where the explorer becomes master/detail.
@@ -101,7 +115,7 @@ async function proveLiveReview(browser) {
 
   const input = page.getByLabel('Website URL').first()
   await input.waitFor({ state: 'visible', timeout: 20000 })
-  for (let i = 0; i < 60 && !(await input.isEnabled()); i += 1) await page.waitForTimeout(100)
+  await page.waitForFunction((field) => field instanceof HTMLInputElement && !field.disabled, await input.elementHandle())
   await input.fill(liveTarget)
   await page.getByRole('button', { name: 'Review my site' }).first().click()
   await page.waitForURL(/\/report\//, { timeout: 60000 })
@@ -116,13 +130,12 @@ async function proveLiveReview(browser) {
         .locator('details:visible')
         .first()
         .waitFor({ state: 'visible', timeout: 300000 })
-      await page.waitForTimeout(1500)
     }
     for (const width of widths) {
       await page.setViewportSize({ width, height: 900 })
-      await page.waitForTimeout(800)
+      await settleLayout(page)
       const openedTab = await openReportMode(page).catch(() => false)
-      await page.waitForTimeout(500)
+      await settleLayout(page)
       rows.push({ target: 'live', width, phase, openedTab, ...(await measurePane(page)) })
       await page.screenshot({ path: `${outDir}/live-${phase}-${width}.png` })
     }
@@ -135,71 +148,90 @@ async function proveLiveReview(browser) {
 async function run() {
   await mkdir(outDir, { recursive: true })
   const browser = await chromium.launch()
-  const results = []
+  try {
+    const results = []
 
-  const targets = [
-    { name: 'home', path: '/' },
-    { name: 'samples', path: '/samples' },
-  ]
-  if (reportPath) targets.push({ name: 'report', path: reportPath })
+    const targets = [
+      { name: 'home', path: '/' },
+      { name: 'samples', path: '/samples' },
+    ]
+    if (reportPath) targets.push({ name: 'report', path: reportPath })
 
-  for (const target of targets) {
-    for (const width of widths) {
-      const page = await browser.newPage({ viewport: { width, height: 900 } })
-      // A cold dev route can take longer than Playwright's default to compile.
-      page.setDefaultTimeout(60000)
-      // Marketing pages keep polling and animating, so idle never arrives;
-      // the Report tab and explorer waits below are the real readiness signal.
-      await page.goto(`${base}${target.path}`, { waitUntil: 'domcontentloaded' })
-      await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' })
-      await page.waitForTimeout(1200)
-      const openedTab = await openReportMode(page)
-      await page.waitForTimeout(600)
+    for (const target of targets) {
+      for (const width of widths) {
+        console.log(`proving ${target.name}@${width}`)
+        const page = await browser.newPage({ viewport: { width, height: 900 } })
+        try {
+          // A cold dev route can take longer than Playwright's default to compile.
+          page.setDefaultTimeout(60000)
+          // Marketing pages keep polling and animating, so idle never arrives;
+          // the Report tab and explorer waits below are the real readiness signal.
+          const destination = new URL(target.path, base)
+          destination.searchParams.set('view', 'report')
+          await page.goto(destination.toString(), { waitUntil: 'domcontentloaded' })
+          await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' })
+          const openedTab = await openReportMode(page)
+          await settleLayout(page)
 
-      const measurement = await measurePane(page)
-      results.push({ target: target.name, width, phase: 'static', openedTab, ...measurement })
-      await page.screenshot({ path: `${outDir}/${target.name}-${width}.png`, fullPage: false })
-      await page.close()
+          const measurement = await measurePane(page)
+          results.push({ target: target.name, width, phase: 'static', openedTab, ...measurement })
+          await page.screenshot({ path: `${outDir}/${target.name}-${width}.png`, fullPage: false })
+        } finally {
+          await page.close()
+        }
+      }
     }
-  }
 
-  if (live) results.push(...(await proveLiveReview(browser)))
+    if (live) results.push(...(await proveLiveReview(browser)))
 
-  await browser.close()
-  await writeFile(`${outDir}/proof.json`, `${JSON.stringify(results, null, 2)}\n`)
+    await writeFile(`${outDir}/proof.json`, `${JSON.stringify(results, null, 2)}\n`)
 
-  const failures = []
-  for (const row of results) {
-    const at = `${row.target}@${row.width}${row.phase === 'static' ? '' : ` (${row.phase})`}`
-    // A scan can reach a width before its first Flag is confirmed, so the
-    // explorer is only required once the review has something to rank.
-    if (row.phase === 'scanning' ? row.explorers > 1 : row.explorers !== 1) {
-      failures.push(`${at}: expected one fix explorer, saw ${row.explorers}`)
+    const failures = []
+    for (const row of results) {
+      const at = `${row.target}@${row.width}${row.phase === 'static' ? '' : ` (${row.phase})`}`
+      // A scan can reach a width before its first Flag is confirmed, so the
+      // explorer is only required once the review has something to rank.
+      if (row.phase === 'scanning' ? row.explorers > 1 : row.explorers !== 1) {
+        failures.push(`${at}: expected one fix explorer, saw ${row.explorers}`)
+      }
+      if (row.phase !== 'scanning' && row.scoreHeaders !== 1) {
+        failures.push(`${at}: expected one Score header, saw ${row.scoreHeaders}`)
+      }
+      if (row.scoreHeaders > 0 && !row.hasVisibleScoreLabel) {
+        failures.push(`${at}: Score header has no visible Score label`)
+      }
+      if (row.hasLegacyScoreGauge) failures.push(`${at}: circular score gauge returned`)
+      if (row.comparisonFrameCount === 0) {
+        failures.push(`${at}: no comparison frame was inspected`)
+      } else if (row.comparisonBordersInset === false) {
+        failures.push(`${at}: comparison border is external and can be clipped`)
+      }
+      if (row.contextOpen) failures.push(`${at}: review context is expanded by default`)
+      if (row.duplicateIds?.length) {
+        failures.push(`${at}: duplicated report ids ${row.duplicateIds.join(', ')}`)
+      }
+      if (row.listWithinFirstScreen === false) {
+        failures.push(`${at}: fix list starts below the visible pane`)
+      }
+      // Wide panes split into two independently scrolling columns; narrow panes
+      // stack and scroll as one pane, so only the split case must scroll inside.
+      if (row.splitMode && !row.detailScrolls) {
+        failures.push(`${at}: detail column does not scroll inside the pane`)
+      }
+      if (row.splitMode && row.frameFitsPane === false) {
+        failures.push(`${at}: report frame overflows the pane instead of scrolling by column`)
+      }
     }
-    if (row.outcomeBars > 1) failures.push(`${at}: ${row.outcomeBars} outcome bars`)
-    if (row.contextOpen) failures.push(`${at}: review context is expanded by default`)
-    if (row.duplicateIds?.length) {
-      failures.push(`${at}: duplicated report ids ${row.duplicateIds.join(', ')}`)
-    }
-    if (row.listWithinFirstScreen === false) {
-      failures.push(`${at}: fix list starts below the visible pane`)
-    }
-    // Wide panes split into two independently scrolling columns; narrow panes
-    // stack and scroll as one pane, so only the split case must scroll inside.
-    if (row.splitMode && !row.detailScrolls) {
-      failures.push(`${at}: detail column does not scroll inside the pane`)
-    }
-    if (row.splitMode && row.frameFitsPane === false) {
-      failures.push(`${at}: report frame overflows the pane instead of scrolling by column`)
-    }
-  }
 
-  console.log(JSON.stringify(results, null, 2))
-  if (failures.length) {
-    console.error(`\nReport pane proof failed:\n${failures.map((f) => `  ${f}`).join('\n')}`)
-    process.exitCode = 1
-  } else {
-    console.log('\nReport pane proof passed.')
+    console.log(JSON.stringify(results, null, 2))
+    if (failures.length) {
+      console.error(`\nReport pane proof failed:\n${failures.map((f) => `  ${f}`).join('\n')}`)
+      process.exitCode = 1
+    } else {
+      console.log('\nReport pane proof passed.')
+    }
+  } finally {
+    await browser.close()
   }
 }
 

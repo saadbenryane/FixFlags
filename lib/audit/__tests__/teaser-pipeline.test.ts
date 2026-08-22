@@ -14,9 +14,10 @@ import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 
 const { prismaMock, queueAddMock, gates } = vi.hoisted(() => ({
   prismaMock: {
-    audit: { findUnique: vi.fn(), create: vi.fn(), count: vi.fn() },
+    audit: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), count: vi.fn() },
     user: { findUnique: vi.fn() },
     project: { findUnique: vi.fn() },
+    $executeRaw: vi.fn(),
     $transaction: vi.fn(async (arg: unknown) => {
       if (typeof arg === 'function') return (arg as (tx: unknown) => unknown)(prismaMock)
       if (Array.isArray(arg)) return Promise.all(arg)
@@ -74,7 +75,8 @@ function createdAuditData(): Record<string, unknown> {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  prismaMock.audit.create.mockResolvedValue({ id: 'audit-new' })
+  prismaMock.audit.create.mockResolvedValue({ id: 'audit-new', parentId: null })
+  prismaMock.audit.findFirst.mockResolvedValue(null)
   prismaMock.audit.count.mockResolvedValue(0)
   prismaMock.user.findUnique.mockResolvedValue({
     id: 'user-1',

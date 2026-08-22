@@ -1,165 +1,133 @@
-/**
- * Capture marketing sample screenshots into public/samples/.
- * Run: npx tsx scripts/capture-sample-screenshots.ts
- *
- * Defaults to the demo fixture URL (fixflags.com/demo).
- */
-import fs from 'fs/promises'
-import path from 'path'
-import { chromium } from 'playwright'
-import { closeBrowser, captureScreenshots } from '../lib/audit/screenshot'
+/** Generate the immutable, repository-owned curated sample bundle. */
+import { createHash } from 'node:crypto'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { chromium, type Browser } from 'playwright'
+import sharp from 'sharp'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../lib/audit/viewports'
-import { getLocalScreenshotPath } from '../lib/storage/screenshots'
-import { DEFAULT_SAMPLE_AUDIT_URL } from '../lib/marketing/display-meta'
+import { resolveEvidenceAnchorsWithBrowser } from '../lib/marketing/resolve-evidence-anchors'
+import { getStaticSampleCaptureDefinitions } from '../lib/marketing/static-sample'
 
-const AUDIT_ID = 'sample-demo-capture'
-const CAPTURE_URL =
-  process.env.SAMPLE_CAPTURE_URL ??
-  process.env.SAMPLE_AUDIT_URL ??
-  DEFAULT_SAMPLE_AUDIT_URL
-
-const SETTLE_MS = 1500
+const BASE_URL = process.env.SAMPLE_CAPTURE_BASE_URL ?? 'http://127.0.0.1:3000'
 const TIMEOUT_MS = 30_000
-const OUT_DIR = path.join(process.cwd(), 'public', 'samples')
+const MANIFEST_PATH = path.join(process.cwd(), 'lib', 'marketing', 'sample-evidence-anchors.json')
 
-function captureBasename(rawUrl: string): string {
-  try {
-    const pathname = new URL(rawUrl).pathname.replace(/\/$/, '') || '/'
-    if (pathname === '/demo/v1') return 'demo-v1'
-    if (pathname === '/demo') return 'demo-original'
-    return 'demo-original'
-  } catch {
-    return 'demo-original'
-  }
+function sha256(buffer: Buffer | string): string {
+  return createHash('sha256').update(buffer).digest('hex')
 }
 
-function outputFilesForUrl(rawUrl: string) {
-  const basename = captureBasename(rawUrl)
-  return {
-    basename,
-    desktop: path.join(OUT_DIR, `${basename}-desktop.webp`),
-    mobile: path.join(OUT_DIR, `${basename}-mobile.webp`),
-  }
+async function waitForStableDocument(page: import('playwright').Page): Promise<void> {
+  await page.waitForLoadState('domcontentloaded')
+  await page.waitForFunction(
+    async () => {
+      const images = Array.from(document.images)
+      await Promise.all(images.map((image) => image.decode().catch(() => undefined)))
+      await document.fonts.ready
+      return document.readyState !== 'loading' && images.every((image) => image.complete)
+    },
+    undefined,
+    { timeout: TIMEOUT_MS }
+  )
+  await page.evaluate(() => window.scrollTo(0, 0))
 }
 
-function isLocalCaptureUrl(raw: string): boolean {
-  try {
-    const hostname = new URL(raw.trim()).hostname.toLowerCase()
-    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.localhost')
-  } catch {
-    return false
-  }
-}
-
-async function captureLocalScreenshots(targetUrl: string) {
-  const outputFiles = outputFilesForUrl(targetUrl)
-  const browser = await chromium.launch({
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-    headless: true,
+async function capture(
+  browser: Browser,
+  url: string,
+  outputPath: string,
+  viewport: { width: number; height: number },
+  mobile: boolean
+) {
+  const context = await browser.newContext({
+    viewport,
+    isMobile: mobile,
+    deviceScaleFactor: 1,
+    reducedMotion: 'reduce',
   })
-
-  async function captureViewport(
-    outputPath: string,
-    width: number,
-    height: number,
-    isMobile?: boolean,
-    deviceScaleFactor?: number
-  ) {
-    const context = await browser.newContext({
-      viewport: { width, height },
-      isMobile: Boolean(isMobile),
-      deviceScaleFactor: deviceScaleFactor ?? 1,
-    })
-    const page = await context.newPage()
-    try {
-      const response = await page.goto(targetUrl, {
-        waitUntil: 'domcontentloaded',
-        timeout: TIMEOUT_MS,
-      })
-      if (!response?.ok()) {
-        throw new Error(`Capture returned HTTP ${response?.status() ?? 'unknown'}`)
-      }
-      // The Next dev overlay is local tooling, never part of the demo product.
-      await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' })
-      await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
-      // Playwright supports png/jpeg; marketing samples keep .webp filenames (same as R2 copy path).
-      const buffer = Buffer.from(await page.screenshot({ type: 'png', fullPage: false }))
-      await fs.writeFile(outputPath, buffer)
-      return true
-    } finally {
-      await page.close().catch(() => {})
-      await context.close().catch(() => {})
-    }
-  }
-
+  const page = await context.newPage()
   try {
-    await fs.mkdir(OUT_DIR, { recursive: true })
-    const [desktopOk, mobileOk] = await Promise.all([
-      captureViewport(
-        outputFiles.desktop,
-        DESKTOP_VIEWPORT.width,
-        DESKTOP_VIEWPORT.height
-      ),
-      captureViewport(
-        outputFiles.mobile,
-        MOBILE_VIEWPORT.width,
-        MOBILE_VIEWPORT.height,
-        true,
-        MOBILE_VIEWPORT.deviceScaleFactor
-      ),
-    ])
-    return { desktopOk, mobileOk, outputFiles }
+    const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: TIMEOUT_MS })
+    if (!response?.ok()) throw new Error(`${url} returned HTTP ${response?.status() ?? 'unknown'}`)
+    await page.addStyleTag({
+      content: 'nextjs-portal{display:none!important}*,*::before,*::after{animation:none!important;transition:none!important}',
+    })
+    await waitForStableDocument(page)
+    const png = await page.screenshot({ type: 'png', fullPage: false })
+    const webp = await sharp(png).webp({ quality: 92 }).toBuffer()
+    await fs.mkdir(path.dirname(outputPath), { recursive: true })
+    await fs.writeFile(outputPath, webp)
+    return { sha256: sha256(webp), documentSha256: sha256(await page.content()) }
   } finally {
-    await browser.close()
+    await context.close()
   }
 }
 
 async function main() {
-  const target = new URL(CAPTURE_URL).toString()
-  const outputFiles = outputFilesForUrl(target)
-  console.log(`Capturing ${target} → ${outputFiles.basename}-*.webp...`)
-
-  if (isLocalCaptureUrl(target)) {
-    const local = await captureLocalScreenshots(target)
-    if (!local.desktopOk) {
-      throw new Error('Desktop capture failed')
-    }
-    if (!local.mobileOk) {
-      console.warn(`Mobile capture failed, ${local.outputFiles.basename}-mobile.webp not updated`)
-    }
-    console.log('Sample screenshots written to', OUT_DIR)
-    return
+  const base = new URL(BASE_URL)
+  if (!['localhost', '127.0.0.1'].includes(base.hostname)) {
+    throw new Error('Curated sample generation only accepts a local repository server')
   }
+  const definitions = getStaticSampleCaptureDefinitions()
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  })
+  const observations: Record<string, unknown> = {}
 
-  process.env.NEXT_PUBLIC_APP_URL =
-    process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3001'
-
-  const result = await captureScreenshots(target, AUDIT_ID)
-  if (!result.desktopUrl) {
-    throw new Error('Desktop capture failed')
-  }
-  if (!result.mobileUrl) {
-    console.warn(`Mobile capture failed, ${outputFiles.basename}-mobile.webp not updated`)
-  }
-  await closeBrowser()
-
-  await fs.mkdir(OUT_DIR, { recursive: true })
-  await fs.copyFile(getLocalScreenshotPath(AUDIT_ID, 'desktop'), outputFiles.desktop)
-
-  const mobilePath = getLocalScreenshotPath(AUDIT_ID, 'mobile')
   try {
-    await fs.access(mobilePath)
-    await fs.copyFile(mobilePath, outputFiles.mobile)
-  } catch {
-    console.warn(`Mobile screenshot file missing, ${outputFiles.basename}-mobile.webp not updated`)
+    for (const definition of definitions) {
+      const url = new URL(definition.sourcePath, base).toString()
+      const publicDirectory = `/samples/observations/${definition.id}`
+      const desktopPath = `${publicDirectory}/desktop.webp`
+      const mobilePath = `${publicDirectory}/mobile.webp`
+      const desktop = await capture(
+        browser,
+        url,
+        path.join(process.cwd(), 'public', desktopPath),
+        DESKTOP_VIEWPORT,
+        false
+      )
+      const mobile = await capture(
+        browser,
+        url,
+        path.join(process.cwd(), 'public', mobilePath),
+        { width: MOBILE_VIEWPORT.width, height: MOBILE_VIEWPORT.height },
+        true
+      )
+      const anchors = await resolveEvidenceAnchorsWithBrowser(browser, {
+        url,
+        targets: definition.anchorTargets,
+      })
+      observations[definition.id] = {
+        revision: definition.revision,
+        sourcePath: definition.sourcePath,
+        reviewedAt: definition.completedAt,
+        documentSha256: desktop.documentSha256,
+        score: definition.score,
+        flagIds: definition.flagIds,
+        timeline: definition.timeline,
+        captures: {
+          desktop: { path: desktopPath, sha256: desktop.sha256, width: DESKTOP_VIEWPORT.width, height: DESKTOP_VIEWPORT.height },
+          mobile: { path: mobilePath, sha256: mobile.sha256, width: MOBILE_VIEWPORT.width, height: MOBILE_VIEWPORT.height },
+        },
+        anchors,
+      }
+      process.stdout.write(`captured ${definition.id} from ${definition.sourcePath}\n`)
+    }
+  } finally {
+    await browser.close()
   }
 
-  console.log('Sample screenshots written to', OUT_DIR)
+  const manifest = {
+    schemaVersion: 1,
+    generatedBy: 'scripts/capture-sample-screenshots.ts',
+    observations,
+  }
+  await fs.writeFile(MANIFEST_PATH, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
+  process.stdout.write(`wrote ${definitions.length} complete curated observations\n`)
 }
 
-main()
-  .catch((err) => {
-    console.error(err)
-    process.exit(1)
-  })
-  .finally(() => closeBrowser())
+main().catch((error) => {
+  console.error(error)
+  process.exitCode = 1
+})

@@ -155,7 +155,8 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 - A homepage URL submission immediately opens the Agent-led progressive report workspace.
 - Anonymous visitors receive deterministic FixFlags Agent updates, the progressive and completed Report, all confirmed Flags, screenshots, and public-safe evidence without a blocking authentication overlay.
 - Interactive Agent chat, fix prompts, Timeline playback, private history, Product Memory, update reviews, Canvas, export, and restricted sharing remain server-gated.
-- Timeline stays discoverable as an inline sign-in state, and its event, URL, screenshot, and playback payload is absent from anonymous responses.
+- Timeline stays discoverable as an inline sign-in state on live reports, and its event, URL, screenshot, and playback payload is absent from anonymous live-report responses.
+- Repository-owned curated samples expose only their versioned static Timeline fixtures.
 - Authentication returns through `/post-login`, verifies the signed anonymous claim, claims the review, and only then restores the same workspace.
 - Anonymous API responses never expose gated prompts, and access control never persists gate copy into Flag evidence or fix fields.
 - A successful claim saves the report and makes every eligible fix prompt available, including when the claim happens before triage completes.

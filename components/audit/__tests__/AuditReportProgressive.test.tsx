@@ -69,7 +69,14 @@ describe('AuditReportProgressive', () => {
   })
 
   it('shows capturing progress with Preview selected and no Working percent strip', () => {
-    render(<AuditReportProgressive auditId={AUDIT_ID} status="CAPTURING" url={URL} />)
+    render(
+      <AuditReportProgressive
+        auditId={AUDIT_ID}
+        accessContext="anonymous_teaser"
+        status="CAPTURING"
+        url={URL}
+      />,
+    )
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Product').length).toBeGreaterThan(0)
     expect(screen.queryByText('Working')).not.toBeInTheDocument()
@@ -107,7 +114,7 @@ describe('AuditReportProgressive', () => {
     render(
       <AuditReportProgressive
         auditId={AUDIT_ID}
-        isOwner
+        accessContext="owner"
         status="CAPTURING"
         url={URL}
         actionTimeline={[{ t: 500, kind: 'capture', label: 'Opened page' }]}
@@ -206,7 +213,7 @@ describe('AuditReportProgressive', () => {
     render(
       <AuditReportProgressive
         auditId={AUDIT_ID}
-        isOwner
+        accessContext="owner"
         status="CAPTURING"
         url={URL}
         screenshots={[
@@ -297,5 +304,54 @@ describe('AuditReportProgressive', () => {
       />
     )
     expect(screen.getAllByText(/Preparing Funnel review/).length).toBeGreaterThan(0)
+  })
+
+  it('replays Timeline only for an owner progressive envelope', () => {
+    render(
+      <AuditReportProgressive
+        auditId={AUDIT_ID}
+        accessContext="owner"
+        status="COMPLETED"
+        url={URL}
+        actionTimeline={[{ t: 500, kind: 'capture', label: 'Opened page' }]}
+      />,
+    )
+
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
+    expect(screen.getAllByRole('slider').length).toBeGreaterThan(0)
+  })
+
+  it('keeps a live marketing-sample envelope read-only with no sign-in claim action', () => {
+    render(
+      <AuditReportProgressive
+        auditId={AUDIT_ID}
+        accessContext="marketing_sample"
+        status="COMPLETED"
+        url={URL}
+        actionTimeline={[{ t: 500, kind: 'capture', label: 'Opened page' }]}
+      />,
+    )
+
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Sign in to view Timeline' })).not.toBeInTheDocument()
+    expect(screen.getByPlaceholderText('You can only chat on your own reports')).toBeDisabled()
+  })
+
+  it('offers report claim only to the anonymous teaser context', () => {
+    render(
+      <AuditReportProgressive
+        auditId={AUDIT_ID}
+        accessContext="anonymous_teaser"
+        status="COMPLETED"
+        url={URL}
+      />,
+    )
+
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
+    expect(screen.getByRole('link', { name: 'Sign in to view Timeline' })).toHaveAttribute(
+      'href',
+      '/sign-in?next=%2Freport%2Faudit-progressive-test',
+    )
   })
 })

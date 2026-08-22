@@ -13,6 +13,96 @@ import { loadFinishPlanFlags } from '@/lib/audit/load-finish-plan-flags'
 import { historyPointFromAudit } from '@/lib/report/workspace-model'
 import { buildFixList } from '@/lib/audit/finish-plan'
 
+const MAX_REVIEW_HISTORY_HOPS = 60
+
+const completedHistorySelect = {
+  id: true,
+  userId: true,
+  projectId: true,
+  parentId: true,
+  recheckTrigger: true,
+  score: true,
+  status: true,
+  createdAt: true,
+  completedAt: true,
+} as const
+
+type CompletedHistoryRow = {
+  id: string
+  userId: string | null
+  projectId: string | null
+  parentId: string | null
+  recheckTrigger: string | null
+  score: number | null
+  status: string
+  createdAt: Date
+  completedAt: Date | null
+}
+
+/**
+ * Load only Reviews belonging to this Product. Project-backed Reviews use the
+ * durable Product identity; legacy rows walk their bounded parent tree instead
+ * of scanning an account-wide history window.
+ */
+export async function loadCompletedReviewHistoryRows(input: {
+  auditId: string
+  userId: string
+  projectId: string | null
+}): Promise<CompletedHistoryRow[]> {
+  if (input.projectId) {
+    return prisma.audit.findMany({
+      where: {
+        projectId: input.projectId,
+        userId: input.userId,
+        status: 'COMPLETED',
+      },
+      select: completedHistorySelect,
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    })
+  }
+
+  const rows = new Map<string, CompletedHistoryRow>()
+  let cursorId: string | null = input.auditId
+  let rootId = input.auditId
+  let hops = 0
+
+  while (cursorId && hops < MAX_REVIEW_HISTORY_HOPS) {
+    const row: CompletedHistoryRow | null = await prisma.audit.findUnique({
+      where: { id: cursorId },
+      select: completedHistorySelect,
+    })
+    if (!row || row.userId !== input.userId) break
+    if (row.status === 'COMPLETED') rows.set(row.id, row)
+    rootId = row.id
+    cursorId = row.parentId
+    hops += 1
+  }
+
+  let frontier = [rootId]
+  hops = 0
+  while (frontier.length > 0 && hops < MAX_REVIEW_HISTORY_HOPS) {
+    const children: CompletedHistoryRow[] = await prisma.audit.findMany({
+      where: {
+        parentId: { in: frontier },
+        userId: input.userId,
+        status: 'COMPLETED',
+      },
+      select: completedHistorySelect,
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    })
+    const next: string[] = []
+    for (const row of children) {
+      if (rows.has(row.id)) continue
+      rows.set(row.id, row)
+      next.push(row.id)
+    }
+    frontier = next
+    hops += 1
+  }
+
+  return [...rows.values()]
+}
+
 function topIssueFromFlags(
   flags: Array<{ severity: string; problem: string }>
 ): string | undefined {
@@ -68,7 +158,10 @@ export async function loadReportRouteState(
     return {
       kind: 'progressive' as const,
       id,
-      audit: progressive.audit,
+      audit: {
+        ...progressive.audit,
+        accessContext: progressive.accessContext,
+      },
       session: progressive.session,
       atAuditLimit: progressiveAtAuditLimit,
     }
@@ -133,43 +226,16 @@ export async function loadReportRouteState(
       ? getFlagDiffSummary(audit.parentId, id)
       : Promise.resolve(null),
     isOwner && audit.userId
-      ? prisma.audit.findMany({
-          where: { userId: audit.userId, status: 'COMPLETED' },
-          select: {
-            id: true,
-            parentId: true,
-            recheckTrigger: true,
-            score: true,
-            createdAt: true,
-            completedAt: true,
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 500,
+      ? loadCompletedReviewHistoryRows({
+          auditId: id,
+          userId: audit.userId,
+          projectId: audit.projectId,
         })
       : Promise.resolve([]),
   ])
-  const auditById = new Map(completedHistoryRows.map((row) => [row.id, row]))
-  let releaseRootId = id
-  let releaseCursor = auditById.get(id)
-  while (releaseCursor?.parentId && auditById.has(releaseCursor.parentId)) {
-    releaseRootId = releaseCursor.parentId
-    releaseCursor = auditById.get(releaseCursor.parentId)
-  }
-  const releaseIds = new Set([releaseRootId])
-  let releaseExpanded = true
-  while (releaseExpanded) {
-    releaseExpanded = false
-    for (const row of completedHistoryRows) {
-      if (row.parentId && releaseIds.has(row.parentId) && !releaseIds.has(row.id)) {
-        releaseIds.add(row.id)
-        releaseExpanded = true
-      }
-    }
-  }
   // Keep no-score observations so degraded/partial captures show as hollow
   // spine bars instead of vanishing from history.
   const scoreHistory = completedHistoryRows
-    .filter((row) => releaseIds.has(row.id))
     .sort(
       (left, right) =>
         (left.completedAt ?? left.createdAt).getTime() -
@@ -312,6 +378,7 @@ export async function loadReportRouteState(
     const topIssue = topIssueFromFlags(canonicalFlags)
 
     const reportAudit = {
+      accessContext,
       pageType: audit.pageType,
       verdict: audit.verdict,
       score: audit.score,
@@ -378,5 +445,13 @@ export async function loadReportRouteState(
   // The lightweight read observed COMPLETED. If the row changed underneath the
   // completed loader, render its latest state rather than assembling a partial
   // completed report.
-  return { kind: 'progressive' as const, id, audit, session }
+  return {
+    kind: 'progressive' as const,
+    id,
+    audit: {
+      ...audit,
+      accessContext,
+    },
+    session,
+  }
 }

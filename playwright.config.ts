@@ -14,6 +14,7 @@ if (
 const baseURL = externalBaseUrl ?? 'http://127.0.0.1:3107'
 const credentialedDatabaseUrl =
   process.env.E2E_CREDENTIALED === 'true' ? process.env.RELEASE_FRESH_DATABASE_URL : undefined
+const reportCrossBrowser = process.env.E2E_REPORT_CROSS_BROWSER === 'true'
 
 const localRuntimeEnv = {
   FIXFLAGS_ALLOW_DEGRADED_LOCAL: 'true',
@@ -38,7 +39,15 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    ...(reportCrossBrowser
+      ? [
+          { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+          { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+        ]
+      : []),
+  ],
   webServer: externalBaseUrl
     ? undefined
     : {

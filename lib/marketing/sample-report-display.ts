@@ -7,7 +7,6 @@ import type { DeterministicFlag } from '@/lib/audit/checks'
 import { calculateOverallScore, gradeFromScore as productionGradeFromScore } from '@/lib/audit/scoring'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { CuratedSampleAudit } from '@/lib/marketing/curated-sample'
-import sampleEvidenceAnchors from '@/lib/marketing/sample-evidence-anchors.json'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import {
   buildPipelineSteps,
@@ -75,6 +74,7 @@ export interface SampleReportDisplay {
   completedAt: Date | null
   scoreHistory: Array<{
     id: string
+    href: string
     score: number
     checkedAt: Date
     kind: 'product-review' | 'update-review' | 'watch'
@@ -156,14 +156,8 @@ export function resolveDisplayScores(audit: CuratedSampleAudit): {
   return { overall, rubrics }
 }
 
-const STATIC_ANCHORS = sampleEvidenceAnchors as EvidenceAnchorMap
-
 function resolveSampleAnchors(audit: CuratedSampleAudit): EvidenceAnchorMap {
-  const live = parseEvidenceAnchorsFromPerformanceData(audit.performanceData)
-  if (live && Object.keys(live).length > 0) return live
-  // Static pin map is only valid for the curated fixture screenshots.
-  if (audit.id === 'curated-sample-v1') return STATIC_ANCHORS
-  return {}
+  return parseEvidenceAnchorsFromPerformanceData(audit.performanceData) ?? {}
 }
 
 function buildEvidenceHighlights(

@@ -6,6 +6,8 @@ import { buildAttribution } from '@/lib/leads/attribution'
 export interface MonitoringResult {
   auditId: string
   status: AuditStatus
+  reused: boolean
+  parentAuditId: string | null
 }
 
 export interface StartMonitoringOptions {
@@ -52,7 +54,7 @@ export async function startMonitoringAudit(
   // Manual owner update reviews consume product-review credits; watch-triggered runs skip.
   const skipUsage = (options.trigger ?? 'MANUAL') === 'WATCH'
 
-  const { auditId, status } = await createAndEnqueueAudit({
+  const { auditId, status, reused, parentId: parentAuditId } = await createAndEnqueueAudit({
     url: parent!.url,
     userId: user.id,
     parentId,
@@ -68,6 +70,6 @@ export async function startMonitoringAudit(
 
   return {
     ok: true,
-    result: { auditId, status },
+    result: { auditId, status, reused, parentAuditId },
   }
 }

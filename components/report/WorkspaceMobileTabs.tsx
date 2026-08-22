@@ -1,5 +1,8 @@
 'use client'
 
+import { useRef, type KeyboardEvent } from 'react'
+import type { Route } from 'next'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 export interface WorkspaceMobileTab {
@@ -7,6 +10,8 @@ export interface WorkspaceMobileTab {
   label: string
   selected: boolean
   onSelect: () => void
+  controls: string
+  href?: string
 }
 
 /**
@@ -20,28 +25,83 @@ export function WorkspaceMobileTabs({
   tabs: WorkspaceMobileTab[]
   label: string
 }) {
+  const tabRefs = useRef<Array<HTMLElement | null>>([])
+
+  const moveFocus = (currentIndex: number, key: string) => {
+    let nextIndex = currentIndex
+    if (key === 'Home') nextIndex = 0
+    if (key === 'End') nextIndex = tabs.length - 1
+    if (key === 'ArrowRight' || key === 'ArrowDown') {
+      nextIndex = (currentIndex + 1) % tabs.length
+    }
+    if (key === 'ArrowLeft' || key === 'ArrowUp') {
+      nextIndex = (currentIndex - 1 + tabs.length) % tabs.length
+    }
+    const next = tabs[nextIndex]
+    if (!next) return
+    tabRefs.current[nextIndex]?.focus()
+    next.onSelect()
+  }
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>, index: number) => {
+    if (
+      event.key !== 'ArrowRight' &&
+      event.key !== 'ArrowLeft' &&
+      event.key !== 'ArrowDown' &&
+      event.key !== 'ArrowUp' &&
+      event.key !== 'Home' &&
+      event.key !== 'End'
+    ) return
+    event.preventDefault()
+    moveFocus(index, event.key)
+  }
+
   return (
     <div
-      className="flex shrink-0 gap-0 border-b border-border/40 lg:hidden"
+      className="flex w-full min-w-0 max-w-full shrink-0 gap-0 overflow-x-auto border-b border-border/40 lg:hidden"
       role="tablist"
       aria-label={label}
     >
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          type="button"
-          role="tab"
-          aria-selected={tab.selected}
-          className={cn(
-            'min-h-11 flex-1 px-3 text-sm font-medium transition-colors',
+      {tabs.map((tab, index) => {
+        const tabProps = {
+          id: tab.id,
+          role: 'tab',
+          'aria-selected': tab.selected,
+          'aria-controls': tab.controls,
+          tabIndex: tab.selected ? 0 : -1,
+          className: cn(
+            'min-h-11 min-w-0 flex-1 px-1.5 text-center text-xs font-medium leading-tight transition-colors [overflow-wrap:anywhere] sm:px-3 sm:text-sm',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
             tab.selected ? 'border-b-2 border-brand text-foreground' : 'text-muted-foreground'
-          )}
-          onClick={tab.onSelect}
-        >
-          {tab.label}
-        </button>
-      ))}
+          ),
+          onKeyDown: (event: KeyboardEvent<HTMLElement>) => handleKeyDown(event, index),
+        } as const
+
+        return tab.href ? (
+          <Link
+            key={tab.id}
+            {...tabProps}
+            ref={(node) => { tabRefs.current[index] = node }}
+            href={tab.href as Route}
+            onClick={(event) => {
+              event.preventDefault()
+              tab.onSelect()
+            }}
+          >
+            {tab.label}
+          </Link>
+        ) : (
+          <button
+            key={tab.id}
+            {...tabProps}
+            ref={(node) => { tabRefs.current[index] = node }}
+            type="button"
+            onClick={tab.onSelect}
+          >
+            {tab.label}
+          </button>
+        )
+      })}
     </div>
   )
 }

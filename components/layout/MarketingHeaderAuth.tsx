@@ -42,7 +42,7 @@ export function MarketingHeaderAuth({
         <div className="flex items-center gap-1 sm:gap-2">
           <Link
             href="/sign-in"
-            className="inline-flex min-h-11 items-center px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground sm:px-3"
+            className="inline-flex min-h-11 items-center px-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground max-[419px]:hidden sm:px-3"
           >
             Log in
           </Link>
@@ -50,7 +50,7 @@ export function MarketingHeaderAuth({
             variant="brand"
             size="sm"
             asChild
-            className="rounded-[var(--radius-control)] px-4 font-semibold"
+            className="rounded-[var(--radius-control)] px-4 font-semibold max-[419px]:px-2"
           >
             <Link href="/#audit" aria-label={HERO.primaryCta}>
               <span className="max-[419px]:hidden">{HERO.primaryCta}</span>

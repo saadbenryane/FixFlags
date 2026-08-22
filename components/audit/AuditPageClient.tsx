@@ -26,6 +26,7 @@ import {
 } from '@/lib/audit/active-audit'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { Heading, Muted } from '@/components/ui/typography'
+import type { AuditAccessContext } from '@/lib/audit/access'
 
 /** Catches crashes in the progressive report view so the page doesn't go white. */
 class ProgressiveErrorBoundary extends Component<
@@ -62,6 +63,15 @@ interface Props {
 }
 
 type PartialFlag = NonNullable<AuditStatusPayload['partialFlags']>[number]
+type ViewableAuditAccessContext = Exclude<AuditAccessContext, 'denied'>
+
+function isViewableAuditAccessContext(value: unknown): value is ViewableAuditAccessContext {
+  return value === 'owner' ||
+    value === 'anonymous_teaser' ||
+    value === 'marketing_sample' ||
+    value === 'studio_public' ||
+    value === 'share_grant'
+}
 
 function isAuditScreenshot(val: unknown): val is AuditScreenshot {
   return val !== null && typeof val === 'object' && 'device' in val
@@ -162,28 +172,13 @@ export function AuditPageClient({
     }
   }, [url, inProgress, isComplete, isFailed, initialAudit?.url])
 
-  // Anonymous teaser scans run the reduced pipeline (no journey walk, no
-  // slow replay). The status payload carries ownership, so the progressive
-  // shell can keep its stage narrative honest for teaser scans.
-  const ownership = useMemo(() => {
-    const payloadWithUser = statusPayload as
-      | (AuditStatusPayload & { userId?: string | null })
-      | undefined
-    if (payloadWithUser && typeof payloadWithUser.userId !== 'undefined') {
-      return { userId: payloadWithUser.userId, parentId: payloadWithUser.parentId ?? null }
-    }
-    const raw = initialAudit as Record<string, unknown> | null
-    if (raw && typeof raw.userId !== 'undefined') {
-      return {
-        userId: raw.userId as string | null,
-        parentId: (raw.parentId as string | null) ?? null,
-      }
-    }
-    return null
-  }, [statusPayload, initialAudit])
-  const isTeaser = ownership
-    ? ownership.userId === null && ownership.parentId === null
-    : false
+  // The server resolves ownership/share/sample context once. Progressive UI
+  // consumes that exact decision and fails closed when the envelope is absent.
+  const rawAccessContext = initialAudit?.accessContext
+  const accessContext = isViewableAuditAccessContext(rawAccessContext)
+    ? rawAccessContext
+    : null
+  const isTeaser = accessContext === 'anonymous_teaser'
 
   const progressiveProps = useMemo(() => {
     const raw = initialAudit as Record<string, unknown> | null
@@ -222,11 +217,6 @@ export function AuditPageClient({
         : typeof raw?.pageType === 'string'
           ? raw.pageType
           : null,
-      verdict: typeof statusPayload?.verdict === 'string'
-        ? statusPayload.verdict
-        : typeof raw?.verdict === 'string'
-          ? raw.verdict
-          : null,
       score: typeof statusPayload?.score === 'number'
         ? statusPayload.score
         : typeof raw?.score === 'number'
@@ -244,7 +234,7 @@ export function AuditPageClient({
       technologyProfile: statusPayload?.technologyProfile,
       agentMessages: statusPayload?.agentMessages ?? [],
       auditId: id,
-      isOwner: Boolean(session?.user),
+      accessContext,
       isTeaser,
     }
   }, [status, progress, statusPayload?.partialFlags,
@@ -252,8 +242,8 @@ export function AuditPageClient({
       statusPayload?.productContract, statusPayload?.technologyProfile,
       statusPayload?.agentMessages,
       statusPayload?.screenshotCapture, statusPayload?.url, statusPayload?.pageType,
-      statusPayload?.verdict, statusPayload?.score,
-      initialAudit, workerIdle, id, session?.user, isTeaser])
+      statusPayload?.score,
+      initialAudit, workerIdle, id, accessContext, isTeaser])
 
   async function handleRetrySameAudit() {
     setRetryLoading(true)
@@ -321,8 +311,14 @@ export function AuditPageClient({
       {!isNotFound && !isForbidden && !isFailed ? (
         <ReportViewedTracker
           auditId={id}
-          isOwner={Boolean(session?.user)}
-          accessState={session?.user ? 'owner' : 'anonymous'}
+          isOwner={accessContext === 'owner'}
+          accessState={
+            accessContext === 'owner'
+              ? 'owner'
+              : session?.user
+                ? 'signed_in'
+                : 'anonymous'
+          }
         />
       ) : null}
       <div>

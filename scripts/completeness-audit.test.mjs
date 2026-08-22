@@ -6,12 +6,28 @@ import {
   collectRegisteredMcpToolKeys,
   collectTrackedGeneratedArtifacts,
   criticalRouteBoundaryFailures,
+  curatedSampleBundleFailures,
+  reportPaneCompositionIsCanonical,
   railwayUsesStrictReadiness,
   runCompletenessAudit,
 } from './completeness-audit.mjs'
 
 test('collectMcpTools extracts registered names without prose references', () => {
   assert.deepEqual(collectMcpTools("server.tool(\n 'ff_one', x)\n// ff_fake\nserver.tool('generate-two', y)"), ['ff_one', 'generate-two'])
+})
+
+test('Report pane composition guard follows composition rather than source declaration order', () => {
+  const source = `
+    const belowFrame = (<><ReportPolishPass /><ReportContextDisclosure /></>)
+    const livingReportPanel = (<ReportPane beforeExplorer={frameExtras} explorer={flagsSection} afterFrame={belowFrame} />)
+    return <ReportWorkspaceSplitShell reportHeader={<ReportOutcomeBar model={workspace} />} reportPanel={livingReportPanel} />
+  `
+  assert.equal(reportPaneCompositionIsCanonical(source), true)
+  assert.equal(reportPaneCompositionIsCanonical(source.replace('<ReportPolishPass />', '')), false)
+})
+
+test('repository sample bundle has complete distinct hashed captures', () => {
+  assert.deepEqual(curatedSampleBundleFailures(process.cwd()), [])
 })
 
 test('typed MCP manifest and registrations expose stable keys', () => {

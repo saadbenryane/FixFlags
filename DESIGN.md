@@ -56,11 +56,17 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 | Altitude | Surface | Score treatment |
 |----------|---------|-----------------|
 | Identity | Product pane header and `WorkspaceChatPanel` | Product name with hostname fallback, reviewed address, and current review activity. No score. |
-| Outcome | `ReportOutcomeBar` (Row A of the Report pane) | Release score ring, unresolved Flags with the Critical subset, verdict line, score history, and scan progress while a review runs |
-| Working triage | `ReportExplorer` (Row B) | Rubric, severity, impact, and page filters; the score lives only in the outcome bar above |
+| Review status | `ReportOutcomeBar` (fixed Report header) | Visible `Score N`, honest pending/unavailable state, chronological full-Review history, and scan progress while a review runs |
+| Working triage | `ReportExplorer` (Report body) | Complete ranked Flag list plus rubric, severity, impact, and page filters; Critical Flags lead through canonical ranking rather than a duplicate shortcut |
 | Review context | `ReportContextDisclosure` (Row C) | No score. Collapsed report-level context, expanded by anchor. |
 
-The outcome bar is the single place the review states its outcome, not a second scoring system. The score ring uses the canonical report score. The unresolved total is the complete ranked Fix list count; its Critical subset opens the first Critical Flag. Each rubric filter shows its complete Flag count, keeps the Critical subset visible when present, and opens that rubric or its first Critical Flag. Score history plots persisted completed scans in chronological order and shows the current scan as a single-point baseline before a Re-check exists. Do not repeat Pass, Needs Attention, Blocked, or share-readiness labels beside severity counts. When shareStatus is `fix_before_sharing`, ShareDrawer may show one warning line. Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
+The compact Review header is the single score surface.
+It uses the canonical report score and a visible `Score` label, never a circular gauge, verdict excerpt, unresolved total, Critical shortcut, or next-step instruction.
+Each history point has a complete Review destination, chronological placement, a 44px target, and an accessible label containing Review number, kind, date, and score or status.
+The explorer owns the complete ranked Fix list count and every Flag navigation action.
+Do not repeat Pass, Needs Attention, Blocked, or share-readiness labels beside severity counts.
+When shareStatus is `fix_before_sharing`, ShareDrawer may show one warning line.
+Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
 
 **Made with:** One compact glass disclosure sits before the complete Fix list. The collapsed state shows at most four detected technologies; expansion groups the stack and exposes short sanitized evidence labels. Confidence is “Verified” or “Strong signal,” never a vendor score. Empty, legacy, partial, unavailable, and same-detector re-check diff states are explicit. Use Lucide category icons, not remote logos.
 
@@ -70,7 +76,11 @@ The outcome bar is the single place the review states its outcome, not a second 
 
 **Product stage and transport:** The Product pane is three fixed rows: header, stage, transport. Small screens reach every surface through one Preview-first tab bar that does not change when a scan completes. The header carries the Product name, reviewed address (`displaySiteAddress`), Preview-first Eye/FileText toggle, and Monitor/Smartphone device icons when Preview is active. The stage uses `WORKSPACE_STAGE_CLASS` and letterboxes with `object-contain object-center`. The transport is path scrub and step chips only. The immersive shell carries no floating support bubble. `BrowserFrame` renders `chrome="none"` inside the editor; `chrome="browser"` belongs only to marketing and compare surfaces.
 
-**Report pane:** Report mode mirrors the stage as three rows: `ReportOutcomeBar`, the `ReportExplorer` master/detail body with real `FixPromptBlock` copy, and the collapsed `ReportContextDisclosure`. The outcome bar and body sit inside one `data-report-frame` element using `WORKSPACE_REPORT_FRAME_CLASS`, so a wide pane gives the frame exactly one pane height and each column scrolls itself, while a narrow pane releases that height and scrolls as one column. Everything inside the pane is pane-relative: container queries (`@container/pane`, `@[40rem]/pane:`), never `lg:`, `100vh`, `--header-offset` sticky, or `overflow-clip`. Filters stay visible at every pane width, and `goToFlag` scrolls the nearest scroll parent instead of the document. Guards: `npm run ui:drift-guard` and `node scripts/report-pane-proof.mjs`.
+**Report pane:** Report mode uses a fixed compact `ReportOutcomeBar` header, then the shared `ReportPane` composition with `ReportExplorer` master/detail and the collapsed `ReportContextDisclosure` below it.
+Only the explorer body sits inside `data-report-frame` using `WORKSPACE_REPORT_FRAME_CLASS`, so a wide pane gives the body exactly one pane height and each column scrolls itself, while a narrow pane releases that height and scrolls as one column.
+Everything inside the pane is pane-relative: container queries (`@container/pane`, `@[40rem]/pane:`), never `lg:`, `100vh`, `--header-offset` sticky, or `overflow-clip`.
+Filters stay visible at every pane width, and `goToFlag` scrolls the nearest scroll parent instead of the document.
+Guards: `npm run ui:drift-guard` and `node scripts/report-pane-proof.mjs`.
 
 See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/brand-spec.ts` for non-CSS consumers.
 
@@ -151,11 +161,17 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 
 ## States
 
-Report information architecture is defined once in [`knowledge/report-contract.md`](./knowledge/report-contract.md). The canonical report is one calm, dense-enough workspace: outcome bar, then a ranked master/detail Fix list containing every unresolved Flag, then collapsed review context. Identity belongs to the Product pane header, not to a report hero. Each column scrolls itself in a wide pane; a narrow pane stacks the list above the selected detail.
+Report information architecture is defined once in [`knowledge/report-contract.md`](./knowledge/report-contract.md).
+The canonical report is one calm, dense-enough workspace: compact Score/history header, then a ranked master/detail Fix list containing every unresolved Flag, then collapsed review context.
+Identity belongs to the Agent activity and Product Preview surfaces, not to a duplicate Report title row.
+Each column scrolls itself in a wide pane; a narrow pane stacks the list above the selected detail.
 
 `ReportWorkspaceModel` composes the canonical `ReportExplorerModel` with identity, unresolved and Critical counts, rubric coverage, real Re-check history, and capabilities. Completed, progressive, curated sample, shared, Re-check, and homepage proof surfaces project this same model. Density changes spacing and available actions, never ranking, evidence, access policy, or scoring semantics.
 
-The outcome bar owns the release score, complete unresolved count, Critical shortcut, verdict line, and chronological score history; the explorer owns the per-rubric filters and the fix count, so neither repeats the other. Public curated samples expose the complete ranked list and exactly one demonstrated prompt.
+The compact header owns only Score, full-Review history, and active scan progress.
+The explorer owns ranking, per-rubric filters, the Fix count, evidence, and fix detail.
+Public curated samples expose the complete ranked list, exactly one demonstrated prompt, and repository-owned static Timeline playback.
+Their history contains only complete generated observation bundles. Each bundle binds a repository revision and source path to capture hashes, document hash, date, score, Flags, Timeline, and evidence anchors; incomplete or reused comparison captures are a release failure.
 
 Every interactive element must define: rest, hover, focus, active, disabled.
 

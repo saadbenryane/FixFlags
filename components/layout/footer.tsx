@@ -101,18 +101,18 @@ function FooterMetric({ id, value, label }: { id: keyof typeof METRIC_ICONS; val
 
 function FooterColumn({ title, links }: { title: string; links: readonly { href: string; label: string }[] }) {
   return (
-    <div>
+    <div className="min-w-0">
       <p className="mb-3 font-mono text-3xs font-semibold uppercase tracking-label text-foreground/85">
         {title}
       </p>
-      <ul>
+      <ul className="min-w-0">
         {links.map((link) => (
           <li key={`${link.href}-${link.label}`}>
             <Link
               href={link.href as Route}
-              className="inline-flex min-h-11 min-w-11 items-center text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              className="inline-flex min-h-11 min-w-11 max-w-full items-center text-xs leading-tight text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
-              {link.label}
+              <span className="min-w-0 [overflow-wrap:anywhere]">{link.label}</span>
             </Link>
           </li>
         ))}

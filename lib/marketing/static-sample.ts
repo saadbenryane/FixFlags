@@ -1,289 +1,358 @@
+import sampleBundleJson from '@/lib/marketing/sample-evidence-anchors.json'
+import { computeRubricScores } from '@/lib/audit/checks/rubric-scoring'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/audit/rubric'
 import { calculateOverallScore, gradeFromScore, statusFromScore } from '@/lib/audit/scoring'
+import type { DeterministicFlag } from '@/lib/audit/flag-types'
 import type { ReportRubricRow } from '@/lib/audit/build-report-shape'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { CuratedSampleAudit } from '@/lib/marketing/curated-sample'
+import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { originalFixture } from '@/lib/demo/fixtures/original'
 import { DEMO_BRAND } from '@/lib/demo/brand'
 
-const SAMPLE_DESKTOP = '/samples/demo-original-desktop.webp'
-const SAMPLE_MOBILE = '/samples/demo-original-mobile.webp'
 const SAMPLE_URL = DEMO_BRAND.sampleUrl
 
-const STATIC_FLAGS: RankableFlag[] = [
+export const LATEST_STATIC_SAMPLE_OBSERVATION_ID = 'curated-sample-v1'
+
+type SampleRubricScores = Record<'MESSAGE' | 'EXPERIENCE' | 'REACH', number>
+
+type StaticObservationDefinition = {
+  id: string
+  revision: string
+  sourcePath: '/demo' | '/demo/v1'
+  completedAt: string
+  parentId: string | null
+  kind: 'product-review' | 'update-review'
+  verdict: string
+  flags: readonly RankableFlag[]
+}
+
+export type StaticSampleCaptureDefinition = Pick<
+  StaticObservationDefinition,
+  'id' | 'revision' | 'sourcePath' | 'completedAt'
+> & {
+  score: number
+  flagIds: string[]
+  timeline: string[]
+  anchorTargets: Array<{ checkId: string; problem: string; evidence: string }>
+}
+
+type SampleCaptureManifestEntry = {
+  revision: string
+  sourcePath: string
+  reviewedAt: string
+  documentSha256: string
+  score: number
+  flagIds: string[]
+  timeline: string[]
+  captures: {
+    desktop: { path: string; sha256: string; width: number; height: number }
+    mobile: { path: string; sha256: string; width: number; height: number }
+  }
+  anchors: EvidenceAnchorMap
+}
+
+type SampleCaptureManifest = {
+  schemaVersion: number
+  generatedBy: string
+  observations: Record<string, SampleCaptureManifestEntry>
+}
+
+const ORIGINAL_FLAGS: readonly RankableFlag[] = [
   {
-    id: 'flag-message-1',
-    checkId: 'h1-generic',
-    rubric: 'MESSAGE',
-    severity: 'IMPORTANT',
-    impactTag: 'CONVERSION',
-    problem: 'Hero headline repeats the product category instead of the outcome',
-    evidence:
-      `Desktop 1280x900: headline reads "${originalFixture.headline}". It names the category but not the concrete outcome a visitor gets.`,
-    whyItMatters:
-      'Outcome-driven headlines help visitors understand the gain before any feature detail.',
-    fix: 'Lead with the outcome: who it is for and what they get after signing up.',
-    agentPrompt:
-      'Update the H1 to name the audience and outcome, for example: "Ship every release without a last-minute scramble." Keep it under 12 words at 1280px.',
-    verificationRule: 'New headline fits single line at 1280px viewport width.',
-    pageUrl: null,
-  },
-  {
-    id: 'flag-experience-1',
+    id: 'flag-experience-mobile-cta',
     checkId: 'cta-below-fold-mobile',
     rubric: 'EXPERIENCE',
     severity: 'CRITICAL',
     impactTag: 'CONVERSION',
     problem: 'Primary CTA is hidden below the fold on mobile',
-    evidence:
-      'Mobile viewport 375x812: hero image pushes CTA below the fold. Button hidden without scrolling.',
-    whyItMatters:
-      'At 375x812, the primary CTA starts below the first screen, so mobile visitors may never see how to sign up.',
-    fix: 'Reduce hero image height to 40vh on mobile. Stack CTA within the first 700px of page height.',
-    agentPrompt:
-      'Add media query for max-width: 375px. Set hero image to 40vh max-height. Stack headline, subhead, and CTA vertically so CTA appears within first 700px.',
-    verificationRule: 'Chrome DevTools at 375x812: CTA button visible without scrolling.',
+    evidence: 'At 375×812, the primary CTA is below the first viewport and requires scrolling.',
+    whyItMatters: 'Mobile visitors cannot see the main next step when the page first opens.',
+    fix: 'Reduce the mobile hero height and place the primary CTA in the first viewport.',
+    agentPrompt: 'At 375px, reduce the hero media height and keep the primary CTA visible within the first 812px.',
+    verificationRule: 'At 375×812, the primary CTA is visible without scrolling.',
     pageUrl: null,
   },
   {
-    id: 'flag-experience-2',
-    checkId: 'tap-targets-small',
-    rubric: 'EXPERIENCE',
+    id: 'flag-message-headline',
+    checkId: 'h1-generic',
+    rubric: 'MESSAGE',
     severity: 'IMPORTANT',
-    impactTag: 'ACCESSIBILITY',
-    problem: 'Navigation menu consumes 35% of viewport height on mobile',
-    evidence:
-      'Mobile 375x812: nav bar + announcement banner ~280px total before content starts.',
-    whyItMatters:
-      'Nav bar + announcement banner consume ~280px before content on an 812px viewport.',
-    fix: 'Collapse announcement banner on mobile. Reduce nav padding. Use hamburger menu if nav links > 3.',
-    agentPrompt:
-      'At 375px breakpoint, hide secondary nav links behind hamburger toggle. Reduce announcement banner to 32px.',
-    verificationRule: 'Nav (incl announcement) is max 56px total at 375px viewport.',
+    impactTag: 'CLARITY',
+    problem: 'Hero headline describes the category instead of the outcome',
+    evidence: `The H1 reads “${originalFixture.headline},” but does not name the outcome a customer gets.`,
+    whyItMatters: 'Visitors have to infer why the product is useful.',
+    fix: 'Name the audience and the concrete release outcome in the H1.',
+    agentPrompt: 'Replace the H1 with a concise audience-and-outcome statement while keeping it readable at 375px and 1280px.',
+    verificationRule: 'The H1 names a concrete customer outcome and remains readable at both captured widths.',
     pageUrl: null,
   },
   {
-    id: 'flag-reach-1',
-    checkId: 'og-image-missing',
+    id: 'flag-message-placeholder',
+    checkId: 'placeholder-copy-detected',
+    rubric: 'MESSAGE',
+    severity: 'IMPORTANT',
+    impactTag: 'CLARITY',
+    problem: 'Feature copy contains placeholder language',
+    evidence: `The first feature description starts with “${originalFixture.features[0]?.description ?? 'Lorem ipsum'}”.`,
+    whyItMatters: 'Placeholder copy prevents visitors from evaluating the feature.',
+    fix: 'Replace placeholder language with a specific pre-flight-check outcome.',
+    agentPrompt: 'Replace the first feature description with a specific customer outcome and remove all placeholder wording.',
+    verificationRule: 'No placeholder wording remains in the rendered feature section.',
+    pageUrl: null,
+  },
+  {
+    id: 'flag-reach-robots',
+    checkId: 'robots-blocks-indexing',
     rubric: 'REACH',
-    severity: 'IMPORTANT',
-    impactTag: 'SHARING',
-    problem: 'Missing og:image, link previews show blank cards',
-    evidence:
-      'HTML head has no og:image meta tag. Desktop 1280x900: no preview card in social embeds.',
-    whyItMatters:
-      'Shared links show blank preview cards on Slack, Twitter, and WhatsApp without og:image.',
-    fix: 'Add og:image meta tag pointing to a 1200x630 brand card.',
-    agentPrompt:
-      'Add openGraph metadata with images: [{ url: \'/og-image.png\', width: 1200, height: 630 }]. Generate a 1200x630 brand card with logo + page title.',
-    verificationRule: 'Twitter Card Validator shows image + title + description.',
+    severity: 'CRITICAL',
+    impactTag: 'SEO',
+    problem: 'The page asks search engines not to index it',
+    evidence: 'The repository fixture renders robots metadata with index and follow disabled.',
+    whyItMatters: 'A noindex directive prevents the public page from appearing in search results.',
+    fix: 'Allow indexing and following on the public launch page.',
+    agentPrompt: 'Change the public page robots metadata to allow index and follow, then inspect the rendered head.',
+    verificationRule: 'The rendered robots metadata permits indexing and following.',
     pageUrl: null,
   },
   {
-    id: 'flag-reach-2',
+    id: 'flag-reach-description',
     checkId: 'description-missing',
     rubric: 'REACH',
     severity: 'IMPORTANT',
     impactTag: 'SEO',
-    problem: 'No meta description on the page',
-    evidence: 'HTML head lacks meta description tag. Google shows auto-generated snippets.',
-    whyItMatters:
-      'Missing meta description lets search engines generate snippets that may not match your value proposition.',
-    fix: 'Add meta description (120-158 chars) with value proposition.',
-    agentPrompt:
-      'In metadata export, add `description` with your value proposition. Keep under 160 characters.',
-    verificationRule: 'Page source shows meta description tag with 120-158 chars.',
+    problem: 'The page has no meta description',
+    evidence: 'The repository fixture metadata has an empty description.',
+    whyItMatters: 'Search engines must invent a result snippet when the page supplies no description.',
+    fix: 'Add a concise description of the release-checklist outcome.',
+    agentPrompt: 'Add a unique 120–158 character metadata description that states the product outcome.',
+    verificationRule: 'The rendered head contains one non-empty meta description.',
     pageUrl: null,
   },
   {
-    id: 'flag-experience-3',
-    checkId: 'render-blocking',
-    rubric: 'EXPERIENCE',
-    severity: 'POLISH',
-    impactTag: null,
-    problem: 'Third-party analytics adds measurable render delay',
-    evidence:
-      'Scripts loaded from analytics and font providers. Combined blocking time ~80ms on desktop 1280x900.',
-    whyItMatters: 'Blocking scripts delay first paint and push interactive content later.',
-    fix: 'Defer or async-load non-critical third-party scripts.',
-    agentPrompt:
-      'Find script tags loading analytics and font providers. Add `async` or `defer` to non-critical scripts.',
-    verificationRule: 'Run Lighthouse. Main-thread blocking time should be under 30ms.',
+    id: 'flag-reach-social-image',
+    checkId: 'og-image-missing',
+    rubric: 'REACH',
+    severity: 'IMPORTANT',
+    impactTag: 'SHARING',
+    problem: 'Shared links have no Open Graph image',
+    evidence: 'The repository fixture Open Graph metadata declares an empty images list.',
+    whyItMatters: 'Shared links cannot show a branded visual preview.',
+    fix: 'Add a 1200×630 Open Graph image with meaningful alt text.',
+    agentPrompt: 'Add a 1200×630 Open Graph image to page metadata and verify the rendered og:image tag.',
+    verificationRule: 'The rendered head contains an accessible og:image that resolves successfully.',
     pageUrl: null,
   },
   {
-    id: 'flag-reach-3',
-    checkId: 'favicon-missing',
+    id: 'flag-reach-canonical',
+    checkId: 'canonical-missing',
     rubric: 'REACH',
     severity: 'POLISH',
-    impactTag: null,
-    problem: 'No favicon linked in the page head',
-    evidence:
-      'HTML head has no favicon link. Browser tab shows a generic document icon on desktop and mobile.',
-    whyItMatters:
-      'A missing favicon makes the site look unfinished in browser tabs and bookmarks.',
-    fix: 'Add a favicon.ico or PNG favicon link in the document head.',
-    agentPrompt:
-      'Add `<link rel="icon" href="/favicon.ico" sizes="any" />` to the site metadata or layout head.',
-    verificationRule: 'Browser tab shows brand icon after hard refresh.',
+    impactTag: 'SEO',
+    problem: 'No canonical URL is declared',
+    evidence: 'The repository fixture metadata does not declare a canonical URL.',
+    whyItMatters: 'A canonical URL helps search engines consolidate duplicate page variants.',
+    fix: 'Declare the public demo URL as canonical.',
+    agentPrompt: 'Add the public demo URL to metadata alternates.canonical and inspect the rendered link element.',
+    verificationRule: 'The rendered head contains exactly one canonical link.',
     pageUrl: null,
   },
 ]
 
-const RUBRIC_SCORES = {
-  MESSAGE: 82,
-  EXPERIENCE: 62,
-  REACH: 65,
-} as const
+const STATIC_OBSERVATIONS: readonly StaticObservationDefinition[] = [
+  {
+    id: 'curated-sample-v0',
+    revision: 'demo-v1-fixed',
+    sourcePath: '/demo/v1',
+    completedAt: '2026-06-09T14:30:00Z',
+    parentId: null,
+    kind: 'product-review',
+    verdict: 'The fixed repository demo has no curated Flags in this Review.',
+    flags: [],
+  },
+  {
+    id: LATEST_STATIC_SAMPLE_OBSERVATION_ID,
+    revision: 'demo-original-regression',
+    sourcePath: '/demo',
+    completedAt: '2026-06-10T14:30:00Z',
+    parentId: 'curated-sample-v0',
+    kind: 'update-review',
+    verdict: 'A deliberate repository demo rollback exposes mobile conversion, message, and discovery regressions.',
+    flags: ORIGINAL_FLAGS,
+  },
+]
 
-const STATIC_RUBRIC_ROWS: ReportRubricRow[] = (
-  [
-    {
-      id: 'rubric-message',
-      name: 'MESSAGE' as const,
-      summary:
-        'CTA is visible above the fold on desktop, but the headline does not identify the audience or a concrete outcome.',
-    },
-    {
-      id: 'rubric-experience',
-      name: 'EXPERIENCE' as const,
-      summary:
-        'CTA below fold at 375px viewport. Tap targets meet minimum size. Third-party scripts add render delay.',
-    },
-    {
-      id: 'rubric-reach',
-      name: 'REACH' as const,
-      summary:
-        'og:image missing. Link previews show blank cards on social platforms. Heading hierarchy is good.',
-    },
-  ] as const
-).map((row) => {
-  const score = RUBRIC_SCORES[row.name]
+const OBSERVATION_BY_ID = new Map(STATIC_OBSERVATIONS.map((item) => [item.id, item]))
+
+function deterministic(flag: RankableFlag): DeterministicFlag {
   return {
-    ...row,
-    score,
-    grade: gradeFromScore(score),
-    status: statusFromScore(score),
-    flags: STATIC_FLAGS.filter((f) => f.rubric === row.name),
+    checkId: flag.checkId ?? flag.id,
+    rubric: flag.rubric,
+    severity: flag.severity,
+    problem: flag.problem,
+    evidence: flag.evidence ?? '',
+    fix: flag.fix ?? '',
+    confidence: flag.confidence ?? 0.9,
+    source: 'DETERMINISTIC',
+    impactTag: flag.impactTag,
+    pageUrl: flag.pageUrl ?? undefined,
   }
-})
+}
 
-export function getStaticSampleAudit(): CuratedSampleAudit {
-  const rubricSources = STATIC_RUBRIC_ROWS.map((r) => ({
-    name: r.name,
-    grade: r.grade,
-    score: r.score,
-    flags: r.flags.map((f) => ({ severity: f.severity })),
+function scoresFor(flags: readonly RankableFlag[]): SampleRubricScores {
+  return computeRubricScores(flags.map(deterministic), null, null, {
+    pageSpeedAvailable: { desktop: false, mobile: false },
+  })
+}
+
+function timelineLabels(definition: StaticObservationDefinition): string[] {
+  return [
+    `Opened repository revision ${definition.revision}`,
+    'Captured desktop and mobile evidence',
+    definition.flags.length > 0 ? 'Ranked the evidence-backed Flags' : 'Confirmed no curated Flags',
+  ]
+}
+
+export function getStaticSampleCaptureDefinitions(): StaticSampleCaptureDefinition[] {
+  return STATIC_OBSERVATIONS.map((definition) => ({
+    id: definition.id,
+    revision: definition.revision,
+    sourcePath: definition.sourcePath,
+    completedAt: definition.completedAt,
+    score: calculateOverallScore(scoresFor(definition.flags)) ?? 0,
+    flagIds: definition.flags.map((flag) => flag.id),
+    timeline: timelineLabels(definition),
+    anchorTargets: definition.flags.map((flag) => ({
+      checkId: flag.checkId ?? flag.id,
+      problem: flag.problem,
+      evidence: flag.evidence ?? '',
+    })),
   }))
-  const rubrics = computeRubricsFromRows(rubricSources, STATIC_FLAGS)
-  const shareStatus = computeShareStatusFromRubrics(rubricSources, STATIC_FLAGS)
-  const overall =
-    calculateOverallScore({
-      MESSAGE: RUBRIC_SCORES.MESSAGE,
-      EXPERIENCE: RUBRIC_SCORES.EXPERIENCE,
-      REACH: RUBRIC_SCORES.REACH,
-    }) ?? 70
+}
+
+export function getStaticSampleObservationIds(): readonly string[] {
+  return STATIC_OBSERVATIONS.map((observation) => observation.id)
+}
+
+function manifest(): SampleCaptureManifest {
+  return sampleBundleJson as unknown as SampleCaptureManifest
+}
+
+function completeBundle(definition: StaticObservationDefinition): SampleCaptureManifestEntry {
+  const entry = manifest().observations?.[definition.id]
+  const score = calculateOverallScore(scoresFor(definition.flags)) ?? 0
+  const expectedTimeline = timelineLabels(definition)
+  if (
+    manifest().schemaVersion !== 1 ||
+    !entry ||
+    entry.revision !== definition.revision ||
+    entry.sourcePath !== definition.sourcePath ||
+    entry.reviewedAt !== definition.completedAt ||
+    entry.score !== score ||
+    entry.documentSha256.length !== 64 ||
+    JSON.stringify(entry.flagIds) !== JSON.stringify(definition.flags.map((flag) => flag.id)) ||
+    JSON.stringify(entry.timeline) !== JSON.stringify(expectedTimeline) ||
+    !entry.captures.desktop.path ||
+    !entry.captures.mobile.path ||
+    entry.captures.desktop.sha256.length !== 64 ||
+    entry.captures.mobile.sha256.length !== 64
+  ) {
+    throw new Error(`Curated sample observation ${definition.id} is incomplete or stale`)
+  }
+  return JSON.parse(JSON.stringify(entry)) as SampleCaptureManifestEntry
+}
+
+function cloneFlag(flag: RankableFlag): RankableFlag {
+  return { ...flag }
+}
+
+function buildRubricRows(scores: SampleRubricScores, flags: RankableFlag[]): ReportRubricRow[] {
+  const summaries = {
+    MESSAGE: flags.some((flag) => flag.rubric === 'MESSAGE') ? 'The promise needs a more concrete outcome.' : 'No curated message Flags in this Review.',
+    EXPERIENCE: flags.some((flag) => flag.rubric === 'EXPERIENCE') ? 'The primary CTA is below the first mobile viewport.' : 'No curated experience Flags in this Review.',
+    REACH: flags.some((flag) => flag.rubric === 'REACH') ? 'Indexing and sharing metadata need attention.' : 'No curated reach Flags in this Review.',
+  } as const
+  return (['MESSAGE', 'EXPERIENCE', 'REACH'] as const).map((name) => ({
+    id: `rubric-${name.toLowerCase()}`,
+    name,
+    summary: summaries[name],
+    score: scores[name],
+    grade: gradeFromScore(scores[name]),
+    status: statusFromScore(scores[name]),
+    flags: flags.filter((flag) => flag.rubric === name),
+  }))
+}
+
+function historyPoints() {
+  return STATIC_OBSERVATIONS.map((definition) => ({
+    id: definition.id,
+    href: `/samples?observation=${encodeURIComponent(definition.id)}&view=report`,
+    score: calculateOverallScore(scoresFor(definition.flags)) ?? 0,
+    checkedAt: new Date(definition.completedAt),
+    kind: definition.kind,
+    status: 'completed' as const,
+  }))
+}
+
+function buildStaticSampleAudit(definition: StaticObservationDefinition): CuratedSampleAudit {
+  const bundle = completeBundle(definition)
+  const flags = definition.flags.map(cloneFlag)
+  const scores = scoresFor(flags)
+  const rubricRows = buildRubricRows(scores, flags)
+  const rubricSources = rubricRows.map((row) => ({
+    name: row.name,
+    grade: row.grade,
+    score: row.score,
+    flags: row.flags.map((flag) => ({ severity: flag.severity })),
+  }))
+  const completedAt = new Date(definition.completedAt)
+  const createdAt = new Date(completedAt.getTime() - 60_000)
+  const sourceUrl = `${new URL(SAMPLE_URL).origin}${definition.sourcePath}`
+  const [opened, captured, judged] = bundle.timeline
 
   return {
-    id: 'curated-sample-v1',
+    accessContext: 'repository_sample',
+    id: definition.id,
     url: SAMPLE_URL,
-    pageJob: 'Demo fixture',
+    pageJob: 'Repository demo fixture',
     pageType: 'Demo fixture',
-    score: overall,
-    verdict:
-      'Solid foundation with gaps in mobile hero layout, vague messaging, and social preview metadata.',
-    completedAt: new Date('2026-06-10T14:30:00Z'),
-    createdAt: new Date('2026-06-10T14:29:00Z'),
+    score: bundle.score,
+    verdict: definition.verdict,
+    completedAt,
+    createdAt,
+    parentId: definition.parentId,
     pipelineVersion: PIPELINE_VERSION,
     reportCompleteness: 'FULL',
-    startedAt: new Date('2026-06-10T14:29:00Z'),
-    rubrics,
-    rubricRows: STATIC_RUBRIC_ROWS,
-    flags: STATIC_FLAGS,
-    shareStatus,
+    startedAt: createdAt,
+    evidenceCoverage: { desktopPageSpeed: false, mobilePageSpeed: false },
+    performanceData: { evidenceAnchors: bundle.anchors, sampleBundleRevision: bundle.revision, documentSha256: bundle.documentSha256 },
+    rubrics: computeRubricsFromRows(rubricSources, flags),
+    rubricRows,
+    flags,
+    shareStatus: computeShareStatusFromRubrics(rubricSources, flags),
     launchReadiness: {
-      readiness: 'fix_first',
+      readiness: flags.length > 0 ? 'fix_first' : 'safe',
       checklist: [
-        { id: 'https', label: 'HTTPS enabled', passed: true },
-        { id: 'social-preview', label: 'Social preview image (og:image)', passed: false },
-        { id: 'mobile-cta', label: 'Primary CTA visible on mobile', passed: false },
-        { id: 'console-errors', label: 'No critical console errors', passed: true },
-        { id: 'privacy-contact', label: 'Privacy policy and contact info linked', passed: true },
+        { id: 'capture', label: 'Repository captures generated', passed: true },
+        { id: 'curated-flags', label: 'Curated Flags resolved', passed: true },
       ],
     },
     screenshots: [
-      {
-        device: 'DESKTOP',
-        url: SAMPLE_DESKTOP,
-        width: 1280,
-        height: 900,
-      },
-      {
-        device: 'MOBILE',
-        url: SAMPLE_MOBILE,
-        width: 375,
-        height: 812,
-      },
+      { device: 'DESKTOP', url: bundle.captures.desktop.path, width: bundle.captures.desktop.width, height: bundle.captures.desktop.height },
+      { device: 'MOBILE', url: bundle.captures.mobile.path, width: bundle.captures.mobile.width, height: bundle.captures.mobile.height },
     ],
     productContract: {
       purpose: 'Help product teams run every release as a checklist with automated pre-flight checks',
       firstValueJourney: `Understand the release benefit, choose ${originalFixture.primaryCta.label}, and reach signup`,
-      criticalOutcomes: [
-        'The primary CTA is visible and opens signup',
-        `Visitors understand how ${DEMO_BRAND.name} verifies a release before rollout`,
-        'Shared links show a branded preview',
-      ],
-      inferredAt: '2026-06-10T14:30:00Z',
+      criticalOutcomes: ['The primary CTA is visible and opens signup', 'Visitors understand the release outcome', 'Shared links show a branded preview'],
+      inferredAt: definition.completedAt,
       source: 'heuristic',
     },
-    verifiedLearnings: [
-      {
-        checkId: 'cta-visible-desktop',
-        summary: 'The primary CTA remains visible above the fold at 1280px.',
-        auditId: 'curated-sample-v0',
-        at: '2026-06-09T14:30:00Z',
-      },
-    ],
-    scoreHistory: [
-      {
-        id: 'curated-sample-v0',
-        score: 61,
-        checkedAt: new Date('2026-06-02T14:30:00Z'),
-        kind: 'product-review',
-        status: 'completed',
-      },
-      {
-        id: 'curated-sample-v0-1',
-        score: 64,
-        checkedAt: new Date('2026-06-04T14:30:00Z'),
-        kind: 'update-review',
-        status: 'completed',
-      },
-      {
-        id: 'curated-sample-v0-2',
-        score: 63,
-        checkedAt: new Date('2026-06-06T14:30:00Z'),
-        kind: 'update-review',
-        status: 'completed',
-      },
-      {
-        id: 'curated-sample-v0-3',
-        score: 67,
-        checkedAt: new Date('2026-06-08T14:30:00Z'),
-        kind: 'update-review',
-        status: 'completed',
-      },
-      {
-        id: 'curated-sample-v1',
-        score: overall,
-        checkedAt: new Date('2026-06-10T14:30:00Z'),
-        kind: 'update-review',
-        status: 'completed',
-      },
-    ],
+    verifiedLearnings: [],
+    scoreHistory: historyPoints(),
     previewMeta: {
-      title: `${DEMO_BRAND.name} · Release checklists for product teams`,
+      title: `${DEMO_BRAND.name} · Repository demo`,
       description: originalFixture.subhead,
       ogTitle: DEMO_BRAND.name,
       ogDescription: originalFixture.subhead,
@@ -297,32 +366,28 @@ export function getStaticSampleAudit(): CuratedSampleAudit {
       ctaHref: originalFixture.primaryCta.href,
       finalUrl: `${SAMPLE_URL}/signup`,
       steps: [
-        { label: 'Landing page', screenshotUrl: SAMPLE_DESKTOP, url: SAMPLE_URL },
-        { label: 'Primary CTA', screenshotUrl: SAMPLE_DESKTOP, url: `${SAMPLE_URL}/signup` },
+        { label: opened, screenshotUrl: bundle.captures.desktop.path, url: sourceUrl },
+        { label: captured, screenshotUrl: bundle.captures.mobile.path, url: sourceUrl },
       ],
     },
     actionTimeline: [
-      {
-        t: 0,
-        kind: 'navigate',
-        label: `Opened the ${DEMO_BRAND.name} landing page`,
-        url: SAMPLE_URL,
-        screenshot: SAMPLE_DESKTOP,
-      },
-      {
-        t: 820,
-        kind: 'capture',
-        label: 'Captured desktop and mobile evidence',
-        url: SAMPLE_URL,
-        screenshot: SAMPLE_MOBILE,
-      },
-      {
-        t: 1460,
-        kind: 'click',
-        label: `Clicked ${originalFixture.primaryCta.label}`,
-        url: `${SAMPLE_URL}/signup`,
-        screenshot: SAMPLE_DESKTOP,
-      },
+      { t: 0, kind: 'navigate', label: opened, url: sourceUrl, screenshot: bundle.captures.desktop.path },
+      { t: 820, kind: 'capture', label: captured, url: sourceUrl, screenshot: bundle.captures.mobile.path },
+      { t: 1460, kind: 'click', label: judged, url: sourceUrl, screenshot: bundle.captures.desktop.path },
+    ],
+    intentionalNotes: [
+      'Repository-owned curated fixture. It does not represent a production customer Review.',
+      `Captured from immutable repository revision ${bundle.revision} at ${definition.sourcePath}.`,
     ],
   }
+}
+
+/** Resolve a complete repository-owned observation. Explicit unknown IDs fail closed. */
+export function getStaticSampleAudit(observationId?: string | null): CuratedSampleAudit {
+  const definition =
+    observationId === undefined || observationId === null
+      ? OBSERVATION_BY_ID.get(LATEST_STATIC_SAMPLE_OBSERVATION_ID)
+      : OBSERVATION_BY_ID.get(observationId)
+  if (!definition) throw new Error(`Unknown curated sample observation: ${observationId ?? 'latest'}`)
+  return buildStaticSampleAudit(definition)
 }

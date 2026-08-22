@@ -139,28 +139,36 @@ describe('GET /api/reports/[id]/status', () => {
     expect(body.agentMessages.some((item: { content: string }) => item.content === 'Opened page')).toBe(false)
   })
 
-  it('keeps Agent updates public-safe while omitting Timeline and private contract data for anonymous reports', async () => {
-    resolveAuditAccess.mockResolvedValue('anonymous_teaser')
+  it.each([
+    'anonymous_teaser',
+    'marketing_sample',
+    'studio_public',
+    'share_grant',
+  ])(
+    'keeps Agent updates public-safe while omitting Timeline and private data for %s access',
+    async (access) => {
+      resolveAuditAccess.mockResolvedValue(access)
 
-    const response = await GET(getReq(), { params: Promise.resolve({ id: 'audit-1' }) })
-    const body = await response.json()
+      const response = await GET(getReq(), { params: Promise.resolve({ id: 'audit-1' }) })
+      const body = await response.json()
 
-    expect(body.agentMessages.length).toBeGreaterThan(0)
-    expect(body.actionTimeline).toEqual([])
-    expect(body.productContract).toBeNull()
-    for (const privateField of [
-      'userId',
-      'parentId',
-      'includeAi',
-      'aiReviewAt',
-      'triageAt',
-      'journeyReviewIncluded',
-      'journeyReviewAt',
-      'errorMsg',
-    ]) {
-      expect(body).not.toHaveProperty(privateField)
+      expect(body.agentMessages.length).toBeGreaterThan(0)
+      expect(body.actionTimeline).toEqual([])
+      expect(body.productContract).toBeNull()
+      for (const privateField of [
+        'userId',
+        'parentId',
+        'includeAi',
+        'aiReviewAt',
+        'triageAt',
+        'journeyReviewIncluded',
+        'journeyReviewAt',
+        'errorMsg',
+      ]) {
+        expect(body).not.toHaveProperty(privateField)
+      }
     }
-  })
+  )
 
   it('keeps partialFlags on COMPLETED so the progressive hold frame stays populated', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({

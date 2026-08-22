@@ -6,6 +6,7 @@ describe('isNavActive', () => {
   it('matches exact routes for dashboard and admin root', () => {
     assert.equal(isNavActive('/dashboard', '/dashboard'), true)
     assert.equal(isNavActive('/dashboard/settings', '/dashboard'), false)
+    assert.equal(isNavActive('/products/product-1', '/dashboard'), true)
     assert.equal(isNavActive('/admin', '/admin'), true)
     assert.equal(isNavActive('/admin/users', '/admin'), false)
   })

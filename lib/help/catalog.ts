@@ -125,7 +125,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Critical Flags subtract more than Important Flags, which subtract more than Polish Flags. The report summary shows the total Critical count and a Critical count for each rubric. Select a count to open the matching Flag. The overall score weights Experience highest, then Message, then Reach. Experience may also include PageSpeed when available.',
+        text: 'Critical Flags subtract more than Important Flags, which subtract more than Polish Flags. The compact Review header shows the Score and links to complete earlier Reviews. Critical Flags lead the ranked Fix list, where filters open the matching evidence and fix detail. The overall score weights Experience highest, then Message, then Reach. Experience may also include PageSpeed when available.',
       },
       {
         type: 'h2',

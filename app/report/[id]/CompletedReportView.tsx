@@ -128,7 +128,6 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           viewerIsPaid={state.viewerIsPaid}
           viewerPlan={state.user?.plan ?? 'FREE'}
           isLoggedIn={state.isLoggedIn}
-          isViewerOwner={state.isOwner}
           variant={state.isMarketingSample ? 'sample' : 'default'}
           showMonitoringHint={state.isLoggedIn && state.isOwner}
           projectId={state.audit.projectId}

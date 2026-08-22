@@ -21,6 +21,21 @@ function renderPanel() {
 }
 
 describe('ScreenshotWithHighlights fallback chain', () => {
+  it('draws comparison state inside the capture so scrollports cannot clip it', () => {
+    render(
+      <ScreenshotWithHighlights
+        host={HOST}
+        desktopScreenshot={URL_DESKTOP}
+        mobileScreenshot={null}
+        highlights={HIGHLIGHTS}
+        affectedDevices={['desktop']}
+      />
+    )
+
+    expect(document.querySelector('.ring-inset.ring-destructive')).not.toBeNull()
+    expect(document.querySelector('.ring-offset-2')).toBeNull()
+  })
+
   it('renders a loading placeholder before the image resolves', () => {
     renderPanel()
     // The placeholder is aria-hidden but present while the img is hidden.

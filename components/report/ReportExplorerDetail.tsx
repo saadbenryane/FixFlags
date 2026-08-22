@@ -46,7 +46,7 @@ export function RubricTabs({
           icon={tab.icon}
           active={rubricFilter === tab.id}
           onClick={() => onRubricChange(tab.id)}
-          className="rounded-[var(--radius-control)] px-3 text-xs"
+          className="min-h-11 rounded-[var(--radius-control)] px-3 text-xs"
         >
           {tab.label}
           <span className="ml-1.5 font-mono text-2xs tabular-nums opacity-70">{tab.count}</span>

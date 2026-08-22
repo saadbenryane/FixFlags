@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
@@ -40,6 +41,73 @@ export function criticalRouteBoundaryFailures(routes, maxLines = 160) {
     if (/(?:from\s+|import\s*\()["'](?:@\/lib\/db|@prisma\/client)["']/.test(source)) {
       failures.push(`${file} imports persistence directly`)
     }
+  }
+  return failures
+}
+
+export function reportPaneCompositionIsCanonical(source) {
+  return (
+    /const belowFrame\s*=\s*\([\s\S]*?<ReportPolishPass[\s\S]*?<ReportContextDisclosure/.test(source) &&
+    /const livingReportPanel\s*=\s*\([\s\S]*?<ReportPane[\s\S]*?beforeExplorer=\{frameExtras\}[\s\S]*?explorer=\{flagsSection\}[\s\S]*?afterFrame=\{belowFrame\}[\s\S]*?\/>/.test(source) &&
+    /reportHeader=\{<ReportOutcomeBar\s+model=\{workspace\}\s*\/>\}/.test(source) &&
+    /reportPanel=\{livingReportPanel\}/.test(source)
+  )
+}
+
+export function curatedSampleBundleFailures(root) {
+  const failures = []
+  const manifestPath = path.join(root, 'lib/marketing/sample-evidence-anchors.json')
+  let manifest
+  try {
+    manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+  } catch {
+    return ['Curated sample capture manifest is missing or invalid JSON']
+  }
+  if (manifest.schemaVersion !== 1) failures.push('Curated sample capture manifest schemaVersion must be 1')
+  if (manifest.generatedBy !== 'scripts/capture-sample-screenshots.ts') {
+    failures.push('Curated sample capture manifest must name its repository generator')
+  }
+  const observations = Object.entries(manifest.observations ?? {})
+  if (observations.length === 0) failures.push('Curated sample capture manifest has no observations')
+  const hashesByDevice = { desktop: new Set(), mobile: new Set() }
+  for (const [id, observation] of observations) {
+    for (const field of ['revision', 'sourcePath', 'reviewedAt', 'documentSha256']) {
+      if (typeof observation[field] !== 'string' || observation[field].length === 0) {
+        failures.push(`${id} is missing ${field}`)
+      }
+    }
+    if (!Array.isArray(observation.flagIds) || !Array.isArray(observation.timeline) || observation.timeline.length === 0) {
+      failures.push(`${id} is missing complete Flag or Timeline data`)
+    }
+    if (typeof observation.score !== 'number' || !observation.anchors || typeof observation.anchors !== 'object') {
+      failures.push(`${id} is missing score or evidence-anchor data`)
+    }
+    for (const device of ['desktop', 'mobile']) {
+      const capture = observation.captures?.[device]
+      const capturePath = capture?.path?.replace(/^\//, '')
+      const absolute = capturePath ? path.join(root, 'public', capturePath.replace(/^samples\//, 'samples/')) : ''
+      if (!capturePath || !absolute || !existsSync(absolute)) {
+        failures.push(`${id} is missing its ${device} capture`)
+        continue
+      }
+      const actualHash = createHash('sha256').update(readFileSync(absolute)).digest('hex')
+      if (actualHash !== capture.sha256) failures.push(`${id} ${device} capture hash does not match the manifest`)
+      if (!Number.isInteger(capture.width) || !Number.isInteger(capture.height)) {
+        failures.push(`${id} ${device} capture dimensions are missing`)
+      }
+      hashesByDevice[device].add(capture.sha256)
+    }
+  }
+  if (observations.length > 1) {
+    for (const device of ['desktop', 'mobile']) {
+      if (hashesByDevice[device].size !== observations.length) {
+        failures.push(`Published sample observations reuse a materially identical ${device} capture`)
+      }
+    }
+  }
+  const sampleRoute = read(root, 'app/(marketing)/samples/page.tsx')
+  if (!sampleRoute.includes('UnknownCuratedObservationError') || !sampleRoute.includes('notFound()')) {
+    failures.push('Explicit unknown sample observations must fail closed with notFound')
   }
   return failures
 }
@@ -175,12 +243,12 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
     )
   }
 
-  // Report pane order: outcome bar → fix explorer → polish pass → context.
+  // Report pane order: outcome header → shared pane/explorer → polish pass → context.
   assert(
-    reportShell.indexOf('<ReportOutcomeBar') < reportShell.indexOf('{flagsSection}') &&
-      reportShell.indexOf('{reportFrame}') < reportShell.indexOf('{belowFrame}'),
+    reportPaneCompositionIsCanonical(reportShell),
     'Report pane order must be outcome bar → fix list → polish pass → review context',
   )
+  for (const failure of curatedSampleBundleFailures(root)) assert(false, failure)
 
   assert(schema.includes('canonicalHost') && schema.includes('isManaged'), 'Product identity schema is missing canonicalHost/isManaged')
   assert(schema.includes('productIntelligenceRevision'), 'Product Intelligence revision is missing')

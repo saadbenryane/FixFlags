@@ -50,6 +50,10 @@ export interface CreateAuditOptions {
 export interface CreateAuditResult {
   auditId: string
   status: AuditStatus
+  /** True when an existing foreground/manual Review was resumed. */
+  reused: boolean
+  /** The parent persisted on the returned Review. Comparison code must use this value. */
+  parentId: string | null
 }
 
 export class AuditLimitError extends Error {
@@ -229,8 +233,14 @@ export async function createAndEnqueueAudit(
       : {}),
   }
 
-  let audit: { id: string }
-  if (userId && !options.skipUsageCount) {
+  let audit: {
+    id: string
+    status: AuditStatus
+    reused: boolean
+    parentId: string | null
+  }
+  const isWatchReview = options.recheckTrigger === 'WATCH'
+  if (userId && !isWatchReview) {
     let conflicts = 0
     while (true) {
       try {
@@ -239,7 +249,39 @@ export async function createAndEnqueueAudit(
             const user = await tx.user.findUnique({ where: { id: userId } })
             if (!user) throw new Error('User not found')
 
-            if (!hasUnlimitedScans(user) && !isAdminUser(user)) {
+            if (projectId) {
+              await tx.$executeRaw`
+                SELECT pg_advisory_xact_lock(
+                  hashtextextended(${`fixflags:manual-review:${projectId}`}, 0)
+                )
+              `
+            }
+
+            // A Product has one foreground/manual Review at a time. This lives
+            // in the serializable creation boundary so repeated clicks and
+            // concurrent transports resume the same Review without spending a
+            // second credit or enqueueing duplicate work. Watch runs use their
+            // own lease and are intentionally excluded.
+            const activeManualReview = projectId
+              ? await tx.audit.findFirst({
+                  where: {
+                    projectId,
+                    status: { notIn: ['COMPLETED', 'FAILED'] },
+                    OR: [{ recheckTrigger: null }, { recheckTrigger: 'MANUAL' }],
+                  },
+                  orderBy: { createdAt: 'desc' },
+                  select: { id: true, status: true, parentId: true },
+                })
+              : null
+            if (activeManualReview) {
+              return { ...activeManualReview, reused: true }
+            }
+
+            if (
+              !options.skipUsageCount &&
+              !hasUnlimitedScans(user) &&
+              !isAdminUser(user)
+            ) {
               const limit = getEffectiveScanLimit(user)
               if (!isUnlimitedScanLimit(limit)) {
                 const pending = await tx.audit.count({
@@ -272,7 +314,16 @@ export async function createAndEnqueueAudit(
               }
             }
 
-            return tx.audit.create({ data, select: { id: true } })
+            const created = await tx.audit.create({
+              data,
+              select: { id: true, parentId: true },
+            })
+            return {
+              id: created.id,
+              status: 'QUEUED' as const,
+              reused: false,
+              parentId: created.parentId,
+            }
           },
           { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
         )
@@ -290,7 +341,25 @@ export async function createAndEnqueueAudit(
       }
     }
   } else {
-    audit = await prisma.audit.create({ data, select: { id: true } })
+    const created = await prisma.audit.create({
+      data,
+      select: { id: true, parentId: true },
+    })
+    audit = {
+      id: created.id,
+      status: 'QUEUED',
+      reused: false,
+      parentId: created.parentId,
+    }
+  }
+
+  if (audit.reused) {
+    return {
+      auditId: audit.id,
+      status: audit.status,
+      reused: true,
+      parentId: audit.parentId,
+    }
   }
 
   if (!userId) {
@@ -322,5 +391,10 @@ export async function createAndEnqueueAudit(
     throw error
   }
 
-  return { auditId: audit.id, status: 'QUEUED' }
+  return {
+    auditId: audit.id,
+    status: audit.status,
+    reused: false,
+    parentId: audit.parentId,
+  }
 }

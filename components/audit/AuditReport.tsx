@@ -6,8 +6,8 @@ import { ReportContextDisclosure } from '@/components/report/ReportContextDisclo
 import { ReportPolishPass } from '@/components/report/ReportPolishPass'
 import {
   REPORT_SECTION_SCROLL_MT,
-  WORKSPACE_REPORT_FRAME_CLASS,
 } from '@/components/report/workspace-geometry'
+import { ReportPane } from '@/components/report/ReportPane'
 const LiveReportExplorer = dynamic(
   () => import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
 )
@@ -19,7 +19,6 @@ import { Play } from 'lucide-react'
 import { UPSELLS, REPORT_COPY, HERO, AUDIT_ERRORS } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
-import { displayVerdict, resolveReportVerdict } from '@/lib/audit/verdict'
 import { triageUnavailableBody } from '@/lib/audit/triage-unavailable'
 import type {
   AuditScreenshot,
@@ -58,13 +57,13 @@ import { ReportAuthGateTracker } from '@/components/analytics/ReportAuthGateTrac
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
-import { ProductSpineWorkspace } from '@/components/report/ProductSpineWorkspace'
 import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import { ReportCanvasPanel } from '@/components/report/ReportCanvasPanel'
 import type { AgentMessage } from '@/lib/audit/agent-message'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
+import type { AuditAccessContext } from '@/lib/audit/access'
 
 /** Sections carried by the Review context disclosure, so anchors can open it. */
 const REPORT_CONTEXT_SECTION_IDS = [
@@ -89,8 +88,9 @@ interface RubricRow {
 
 interface AuditReportProps {
   audit: {
+    /** Exact validated access decision. Repository fixtures opt in explicitly. */
+    accessContext: Exclude<AuditAccessContext, 'denied'> | 'repository_sample'
     pageType: string | null
-    verdict: string | null
     score: number | null
     url: string
     screenshots?: AuditScreenshot[]
@@ -121,10 +121,11 @@ interface AuditReportProps {
     fixList?: FixList
   }
   auditId?: string
+  /** Immutable curated observation identity. Never treated as a live audit id. */
+  observationId?: string
   viewerIsPaid: boolean
   viewerPlan?: string
   isLoggedIn: boolean
-  isViewerOwner?: boolean
   variant?: 'default' | 'sample'
   showMonitoringHint?: boolean
   projectId?: string | null
@@ -156,10 +157,10 @@ interface AuditReportProps {
 export function AuditReport({
   audit,
   auditId,
+  observationId,
   viewerIsPaid,
   viewerPlan = 'FREE',
   isLoggedIn,
-  isViewerOwner = true,
   variant = 'default',
   showMonitoringHint = false,
   projectId = null,
@@ -186,18 +187,16 @@ export function AuditReport({
   productName = null,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
-  const showFeedback = !isSample && isLoggedIn
-  const canUseTimeline = !isSample && isLoggedIn && isViewerOwner
+  const isRepositorySample = isSample && audit.accessContext === 'repository_sample'
+  const isOwnerAccess = audit.accessContext === 'owner'
+  const canClaimAccess = audit.accessContext === 'anonymous_teaser'
   const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
+  const timelineGateActionHref = canClaimAccess && auditId
+    ? `/sign-in?next=${encodeURIComponent(`/report/${auditId}`)}`
+    : undefined
+  const chatGateReason = canClaimAccess ? 'sign-in' : 'owner'
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
-  const showJourney = canUseTimeline && pages.length > 1
-  const showJourneyReview = canUseTimeline && journeyReviews.length > 0
-  const showFlow = canUseTimeline && Boolean(audit.flowData)
   const showContract = Boolean(audit.productContract)
-  const showRemember = Boolean(
-    isViewerOwner && auditId && (audit.verifiedLearnings?.length || audit.intentionalNotes?.length || audit.knownRisks?.length)
-  )
-  const showTimeline = canUseTimeline && (audit.actionTimeline?.length ?? 0) > 0
   const showPreviews = Boolean(audit.previewMeta)
 
   // Server strip is the only entitlement; never unlock via client sessionStorage.
@@ -216,7 +215,6 @@ export function AuditReport({
     url: audit.url,
     pageType: audit.pageType,
     score: audit.score,
-    verdict: audit.verdict,
     flags: audit.flags,
     screenshots: audit.screenshots,
     rubricRows: audit.rubricRows,
@@ -238,31 +236,39 @@ export function AuditReport({
   const workspace = buildReportWorkspaceModel({
     kind: isSample ? 'sample' : 'completed',
     explorer: explorerModel,
-    auditId,
+    auditId: auditId ?? observationId,
     url: audit.url,
     pageType: audit.pageType,
     checkedAt: completedAt,
     status: isPartialReport ? 'partial' : triageDegraded ? 'degraded' : 'completed',
     history: scoreHistory,
-    checkedScope: pages.length > 1 ? `${pages.length} pages` : 'the submitted page',
-    canShare: !isSample && isLoggedIn && isViewerOwner,
-    canRecheck: !isSample && isLoggedIn && isViewerOwner,
-    canGiveFeedback: showFeedback,
-    promptAccess: promptProjection.workspace,
-    demonstratedFlagId: demonstratedFlag?.id,
-    recheckOutcome: recheckDiff,
-    degradedReason: triageDegraded ? failureCode : null,
+    capabilities: {
+      promptAccess: promptProjection.workspace,
+      canReplayTimeline: isRepositorySample || isOwnerAccess,
+      canChat: !isSample && isLoggedIn && isOwnerAccess && Boolean(auditId),
+      canUseCanvas: !isSample && viewerIsPaid && isOwnerAccess,
+      canShare: !isSample && isLoggedIn && isOwnerAccess,
+      canRecheck: !isSample && isLoggedIn && isOwnerAccess,
+      canGiveFeedback: !isSample && isLoggedIn && isOwnerAccess,
+      demonstratedFlagId: demonstratedFlag?.id ?? null,
+    },
   })
+  const showFeedback = workspace.capabilities.canGiveFeedback
+  const showJourney = workspace.capabilities.canReplayTimeline && pages.length > 1
+  const showJourneyReview = workspace.capabilities.canReplayTimeline && journeyReviews.length > 0
+  const showFlow = workspace.capabilities.canReplayTimeline && Boolean(audit.flowData)
+  const showRemember = Boolean(
+    workspace.capabilities.canRecheck &&
+    auditId &&
+    (audit.verifiedLearnings?.length || audit.intentionalNotes?.length || audit.knownRisks?.length)
+  )
+  const showTimeline =
+    workspace.capabilities.canReplayTimeline && (audit.actionTimeline?.length ?? 0) > 0
   const unresolvedFlagCount = workspace.outcome.unresolvedCount
   const polishPassPrompt =
     explorerModel.polishPassPrompt ??
     explorerModel.flags.find((flag) => flag.hasFixPrompt)?.copyFixPrompt ??
     null
-  const userVerdict = resolveReportVerdict(
-    displayVerdict(audit.verdict ?? null),
-    explorerModel.flags[0]
-  )
-
   const showStatusCallouts =
     !isSample &&
     (aiReviewPending ||
@@ -301,9 +307,6 @@ export function AuditReport({
       </section>
     )
 
-  const showProductSpineWorkspace =
-    !isSample && Boolean(auditId) && isViewerOwner && scoreHistory.length > 1
-  const showChatColumn = isSample || isViewerOwner || !isLoggedIn
   const playbackSteps = buildPlaybackSteps(audit.actionTimeline ?? [])
 
   const statusCallouts =
@@ -324,7 +327,7 @@ export function AuditReport({
             auditId={auditId}
             failureCode={failureCode}
             isLoggedIn={isLoggedIn}
-            canRetry={isLoggedIn && isViewerOwner}
+            canRetry={workspace.capabilities.canRecheck}
             signUpHref={signUpHref}
           />
         ) : null}
@@ -364,14 +367,6 @@ export function AuditReport({
     </>
   )
 
-  const reportFrame = (
-    <div data-report-frame className={WORKSPACE_REPORT_FRAME_CLASS}>
-      <ReportOutcomeBar model={workspace} verdict={userVerdict} />
-      {frameExtras}
-      {flagsSection}
-    </div>
-  )
-
   const contextSections = (
     <>
       {!isSample && audit.technologyProfile ? (
@@ -384,7 +379,7 @@ export function AuditReport({
           <ProductContractCard
             contract={audit.productContract}
             auditId={auditId}
-            canEdit={isLoggedIn && isViewerOwner}
+            canEdit={workspace.capabilities.canRecheck}
           />
         </div>
       ) : null}
@@ -402,7 +397,13 @@ export function AuditReport({
             <div className="flex items-center justify-between gap-3">
               <SectionTitle>{REPORT_COPY.sectionTitles.timelineCompleted}</SectionTitle>
               <Link
-                href={`?step=1#report-flags`}
+                href={
+                  isSample && observationId
+                    ? `/samples?observation=${encodeURIComponent(observationId)}&view=timeline&step=1#report-flags`
+                    : auditId
+                      ? `/report/${encodeURIComponent(auditId)}?view=timeline&step=1#report-flags`
+                      : '?view=timeline&step=1#report-flags'
+                }
                 className="inline-flex items-center gap-1.5 rounded-sm text-xs font-medium text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
               >
                 <Play className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -433,12 +434,12 @@ export function AuditReport({
         </div>
       ) : null}
       <div id="report-recheck" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-5')}>
-        {projectId && isViewerOwner ? (
+        {projectId && workspace.capabilities.canRecheck ? (
           <Button asChild variant="outline">
             <Link href={`/products/${projectId}`}>Return to Product</Link>
           </Button>
         ) : null}
-        {showMonitoringHint && isLoggedIn && isViewerOwner && projectId ? (
+        {showMonitoringHint && workspace.capabilities.canRecheck && projectId ? (
           <div className="space-y-3 rounded-card border border-border/50 bg-muted/15 p-5">
             <p className="text-sm font-semibold">{REPORT_COPY.recheckHint.title}</p>
             <ProductWatchControls
@@ -468,7 +469,7 @@ export function AuditReport({
             </p>
           </div>
         ) : null}
-        {!isSample && !isViewerOwner ? (
+        {!isSample && !workspace.capabilities.canRecheck ? (
           <p className="text-center text-sm text-muted-foreground">
             <Link href="/#audit" className="text-link font-medium underline-offset-2 hover:underline">
               {REPORT_COPY.runYourOwnAudit}
@@ -488,7 +489,9 @@ export function AuditReport({
             auditId={auditId}
           />
         ) : null}
-        {!isSample && auditId ? <ReportFeedback auditId={auditId} /> : null}
+        {workspace.capabilities.canGiveFeedback && auditId ? (
+          <ReportFeedback auditId={auditId} />
+        ) : null}
         {!isSample ? (
           <AuditPipelineProof
             pipelineVersion={audit.pipelineVersion}
@@ -528,10 +531,11 @@ export function AuditReport({
   )
 
   const livingReportPanel = (
-    <>
-      {reportFrame}
-      {belowFrame}
-    </>
+    <ReportPane
+      beforeExplorer={frameExtras}
+      explorer={flagsSection}
+      afterFrame={belowFrame}
+    />
   )
 
   if (auditId) {
@@ -546,51 +550,32 @@ export function AuditReport({
           )}
         >
           <Suspense fallback={null}>
-            {showProductSpineWorkspace ? (
-              <ProductSpineWorkspace
-                reportId={auditId}
-                history={scoreHistory}
-                model={workspace}
-                url={audit.url}
-                screenshots={audit.screenshots ?? []}
-                steps={playbackSteps}
-                canChat={canUseTimeline}
-                agentMessages={agentMessages}
-                showCanvas={isLoggedIn && isViewerOwner}
-                canUseCanvas={viewerIsPaid && isViewerOwner}
-                showChatColumn={showChatColumn}
-                verdict={userVerdict}
-                frameExtras={frameExtras}
-                flagsSection={flagsSection}
-                belowFrame={belowFrame}
-                className="h-full"
-              />
-            ) : (
-              <ReportWorkspaceSplitShell
-                showChatColumn={showChatColumn}
-                canUseTimeline={canUseTimeline}
-                showCanvas={isLoggedIn && isViewerOwner}
-                canUseCanvas={viewerIsPaid && isViewerOwner}
-                canvasPanel={
-                  viewerIsPaid && isViewerOwner ? <ReportCanvasPanel auditId={auditId} /> : undefined
-                }
-                leftPanel={
-                  <WorkspaceChatPanel
-                    auditId={auditId}
-                    canChat={canUseTimeline}
-                    agentMessages={agentMessages}
-                    reportUrl={audit.url}
-                    productName={productName}
-                  />
-                }
-                browserUrl={audit.url}
-                browserScreenshots={audit.screenshots}
-                browserCaptureStatus={captureStatus}
-                reportPanel={livingReportPanel}
-                steps={playbackSteps}
-                className="h-full"
-              />
-            )}
+            <ReportWorkspaceSplitShell
+              capabilities={workspace.capabilities}
+              timelineGateActionHref={timelineGateActionHref}
+              reportHeader={<ReportOutcomeBar model={workspace} />}
+              canvasPanel={
+                workspace.capabilities.canUseCanvas
+                  ? <ReportCanvasPanel auditId={auditId} />
+                  : undefined
+              }
+              leftPanel={
+                <WorkspaceChatPanel
+                  auditId={auditId}
+                  capabilities={workspace.capabilities}
+                  gateReason={chatGateReason}
+                  agentMessages={agentMessages}
+                  reportUrl={audit.url}
+                  productName={productName}
+                />
+              }
+              browserUrl={audit.url}
+              browserScreenshots={audit.screenshots}
+              browserCaptureStatus={captureStatus}
+              reportPanel={livingReportPanel}
+              steps={playbackSteps}
+              className="h-full"
+            />
           </Suspense>
         </div>
         <ReportAuthGateTracker auditId={auditId} gateShown={fixPromptLocked} />
@@ -603,13 +588,12 @@ export function AuditReport({
     <div className="flex h-full min-h-[32rem] min-w-0 flex-col">
       <Suspense fallback={null}>
         <ReportWorkspaceSplitShell
-          showChatColumn
-          canUseTimeline={false}
-          showCanvas={false}
-          canUseCanvas={false}
+          capabilities={workspace.capabilities}
+          reportHeader={<ReportOutcomeBar model={workspace} />}
           leftPanel={
             <WorkspaceChatPanel
-              canChat={false}
+              capabilities={workspace.capabilities}
+              gateReason="owner"
               agentMessages={agentMessages}
               reportUrl={audit.url}
               productName={productName}

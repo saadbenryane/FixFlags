@@ -20,8 +20,27 @@ export type ReportWorkspaceStatus =
 
 export type ReportPromptAccess = 'none' | 'demonstrated' | 'all'
 
+export interface ReportWorkspaceCapabilities {
+  promptAccess: ReportPromptAccess
+  canCopyPrompts: boolean
+  canReplayTimeline: boolean
+  canChat: boolean
+  canUseCanvas: boolean
+  canShare: boolean
+  canRecheck: boolean
+  canGiveFeedback: boolean
+  demonstratedFlagId: string | null
+}
+
+export type ReportWorkspaceCapabilityInput = Omit<
+  ReportWorkspaceCapabilities,
+  'canCopyPrompts'
+>
+
 export type ReportWorkspaceHistoryPoint = {
   id: string
+  /** Canonical destination for the complete Review. */
+  href: string
   score: number | null
   checkedAt: Date
   /** Observation kind: 'product-review' | 'update-review' | 'watch' */
@@ -52,8 +71,6 @@ export interface ReportWorkspaceModel {
   }
   outcome: {
     unresolvedCount: number
-    criticalCount: number
-    checkedScope: string | null
   }
   summary: {
     score: number | null
@@ -61,19 +78,10 @@ export interface ReportWorkspaceModel {
     history: ReportWorkspaceHistoryPoint[] | null
   }
   explorer: ReportExplorerModel
-  capabilities: {
-    promptAccess: ReportPromptAccess
-    canCopyPrompts: boolean
-    canShare: boolean
-    canRecheck: boolean
-    canGiveFeedback: boolean
-    demonstratedFlagId: string | null
-  }
+  capabilities: ReportWorkspaceCapabilities
   context: {
     kind: ReportWorkspaceKind
     loading: boolean
-    recheckOutcome: unknown | null
-    degradedReason: string | null
   }
 }
 
@@ -87,14 +95,7 @@ export interface BuildReportWorkspaceModelInput {
   status?: ReportWorkspaceStatus
   loading?: boolean
   history?: ReportWorkspaceHistoryPoint[]
-  checkedScope?: string | null
-  canShare?: boolean
-  canRecheck?: boolean
-  canGiveFeedback?: boolean
-  promptAccess?: ReportPromptAccess
-  demonstratedFlagId?: string | null
-  recheckOutcome?: unknown | null
-  degradedReason?: string | null
+  capabilities: ReportWorkspaceCapabilityInput
 }
 
 function scoreRowFor(
@@ -154,6 +155,7 @@ export function normalizeWorkspaceHistory(
  */
 export function historyPointFromAudit(row: {
   id: string
+  href?: string
   score: number | null
   checkedAt: Date
   parentId: string | null
@@ -167,6 +169,7 @@ export function historyPointFromAudit(row: {
         : 'update-review'
   return {
     id: row.id,
+    href: row.href ?? `/report/${encodeURIComponent(row.id)}?view=report`,
     score: row.score,
     checkedAt: row.checkedAt,
     kind,
@@ -182,10 +185,7 @@ export function buildReportWorkspaceModel(
   const rubrics = buildWorkspaceRubrics(input.explorer)
   const url = input.url ?? null
   const status = input.status ?? (input.loading ? 'checking' : 'completed')
-  const criticalCount = input.explorer.flags.filter(
-    (flag) => flag.severity === 'CRITICAL'
-  ).length
-  const promptAccess = input.promptAccess ?? 'all'
+  const promptAccess = input.capabilities.promptAccess
 
   return {
     identity: {
@@ -199,8 +199,6 @@ export function buildReportWorkspaceModel(
     },
     outcome: {
       unresolvedCount: input.explorer.flagCount,
-      criticalCount,
-      checkedScope: input.checkedScope ?? null,
     },
     summary: {
       score: input.explorer.score,
@@ -213,16 +211,17 @@ export function buildReportWorkspaceModel(
       canCopyPrompts:
         promptAccess !== 'none' &&
         input.explorer.flags.some((flag) => flag.hasFixPrompt),
-      canShare: input.canShare ?? false,
-      canRecheck: input.canRecheck ?? false,
-      canGiveFeedback: input.canGiveFeedback ?? false,
-      demonstratedFlagId: input.demonstratedFlagId ?? null,
+      canReplayTimeline: input.capabilities.canReplayTimeline,
+      canChat: input.capabilities.canChat,
+      canUseCanvas: input.capabilities.canUseCanvas,
+      canShare: input.capabilities.canShare,
+      canRecheck: input.capabilities.canRecheck,
+      canGiveFeedback: input.capabilities.canGiveFeedback,
+      demonstratedFlagId: input.capabilities.demonstratedFlagId,
     },
     context: {
       kind: input.kind,
       loading: input.loading ?? false,
-      recheckOutcome: input.recheckOutcome ?? null,
-      degradedReason: input.degradedReason ?? null,
     },
   }
 }

@@ -31,11 +31,11 @@ export function LaunchGates({ checklist }: Props) {
       </div>
       <ul className="grid gap-2 sm:grid-cols-2">
         {items.map((item) => (
-          <li key={item.id}>
+          <li key={item.id} className="min-w-0">
             <Surface
               variant="flat"
               className={cn(
-                'flex items-start gap-2 text-sm',
+                'flex max-w-full min-w-0 items-start gap-2 text-sm',
                 item.passed
                   ? 'bg-grade-A/5 text-foreground'
                   : 'bg-grade-F/5 text-foreground'
@@ -46,7 +46,7 @@ export function LaunchGates({ checklist }: Props) {
               ) : (
                 <X className="mt-0.5 h-4 w-4 shrink-0 text-grade-F" aria-hidden />
               )}
-              <span>{item.label}</span>
+              <span className="min-w-0 [overflow-wrap:anywhere]">{item.label}</span>
             </Surface>
           </li>
         ))}

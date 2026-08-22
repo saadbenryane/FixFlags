@@ -53,11 +53,12 @@ for (const width of widths) {
     page.on('pageerror', (error) => errors.push(error.message))
     await page.goto('/samples')
 
+    await expect(page.locator('[data-workspace-ready="true"]')).toBeVisible({ timeout: 60_000 })
     await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
     // The curated sample reviews the Launchpad demo, and the Product pane names
     // the reviewed host now that the editor has no fake browser bar.
     await expect(page.getByText(/Launchpad/i).first()).toBeVisible()
-    await expect(page.getByText('fixflags.com/demo').first()).toBeVisible()
+    await expect(page.getByLabel('Product fixflags.com/demo')).toBeVisible()
 
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,

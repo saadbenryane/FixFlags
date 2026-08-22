@@ -15,7 +15,7 @@
 | Region | Purpose |
 |--------|---------|
 | **Left — FixFlags understanding** | Product identity, customer-meaningful review activity, observations, confirmed Flag announcements, judgment, and authenticated report conversation. Technical execution logs and simulated reasoning never appear here. |
-| **Right — Product reality** | The live Product, interaction, and captured evidence while a review runs. The completed public-safe Report becomes the default after completion; authenticated users can switch to Timeline and paid users to Canvas. |
+| **Right — Product reality and Review** | The live Product, interaction, and captured evidence while a review runs. The completed public-safe Report becomes the default after completion; authorized viewers switch among URL-backed Timeline, Report, and Canvas siblings. |
 
 **Editor chrome (locked):**
 
@@ -25,7 +25,7 @@
 - Scanning and completed reviews share one continuous shell. Completed reports do not jump to a hero/summary document above the split; score, Flags, and actions live in Product Report mode.
 - Preview shows one `BrowserFrame` at a time. Do not stack desktop and mobile frames.
 - Selecting a Flag overlays the measured evidence target on that capture. The overlay uses `EvidenceSpotlight` and must not change stage size. Page-scope and unmeasured Flags show `EvidenceChip` instead of a box.
-- Homepage marketing preview emulates this same editor with curated sample evidence (`getCuratedSampleAudit` / static sample + `buildFixFlagsScanMessages`). Never call `/api/checks` from marketing. Demo identity is **Launchpad** / `fixflags.com/demo` with real `/samples/demo-original-*.webp` captures.
+- Homepage marketing preview emulates this same editor with curated sample evidence (`getCuratedSampleAudit` / static sample + `buildFixFlagsScanMessages`). Never call `/api/checks` from marketing. Demo identity is **Launchpad** / `fixflags.com/demo`. Every published observation owns distinct generated captures under `/samples/observations/<observation-id>/` plus revision, source path, hashes, date, score, Flags, Timeline, and evidence anchors in the checked-in capture manifest.
 
 **Product pane is a fixed three-row stage (locked):**
 
@@ -37,7 +37,9 @@
 
 - No browser chrome inside the editor. `BrowserFrame` renders `chrome="none"` and `fill` here; `chrome="browser"` is only for marketing and compare surfaces where no pane header carries the URL.
 - Switching Desktop to Mobile, selecting a playback step, or loading a capture changes only the letterboxed image. The stage container keeps identical geometry, and capture entry is opacity-only (`animate-capture-fade`).
-- The transport keeps one fixed height in every state and degrades honestly instead of disappearing: capture progress while scanning, scrub and step chips for entitled viewers, status plus the Timeline gate for anonymous and password-share viewers. No Timeline payload reaches a gated viewer.
+- The transport keeps one fixed height in every state and degrades honestly instead of disappearing: capture progress while scanning, scrub and step chips for entitled viewers, status plus the Timeline gate for anonymous and password-share viewers.
+  No live Timeline payload reaches a gated viewer.
+  Repository-owned curated samples may replay their static versioned Timeline fixtures publicly.
 - Anything that streams in mid-scan reserves its space first: the findings strip holds its row from the moment findings can stream, and progress readouts use `tabular-nums` in a fixed-width slot.
 - The immersive shell carries no floating support bubble (`AuditShell` passes `showSupport={false}`). The Agent column is the chat surface, and a floating launcher would sit on top of the docked transport.
 - Agent column is chat: one Flag mark (animated `ScanWorkingMark` while scanning), bubble transcript, one-row composer with ArrowUp send. Anonymous viewers see the composer; submit gates to `/sign-in?next=…` and never posts chat. There is no "Working · N%" strip above the transcript.
@@ -45,6 +47,7 @@
 - Report mode is itself a three-row pane, mirroring Preview (see "Report mode anatomy" below).
 - Small screens use `WorkspaceMobileTabs` (Agent, Preview/Timeline, Report, Canvas) over one Product pane. Marketing emulations use the same bar so a stacked homepage card cannot bury the capture.
 - `/samples` fills its marketing card (`h-full`). The live report route is the only surface that uses `h-[calc(100dvh-3.5rem)]`.
+- An absent `observation` selects the current curated Review. An explicit unpublished ID returns not found; it never substitutes a different Review or queries production.
 
 ```mermaid
 flowchart TB
@@ -69,7 +72,8 @@ flowchart TB
 
 ### Timeline view
 
-Shows the product as FixFlags experienced it and requires authentication.
+Shows the product as FixFlags experienced it.
+Live reports require owner authorization; repository-owned curated samples use public static playback.
 
 **Product review mode** — programmatic capture. Playwright-driven browser with screenshot-forward evidence (today’s pipeline). User sees live or stepped captures aligned to checks; not full agent autonomy.
 
@@ -84,8 +88,8 @@ Prompt actions remain authenticated even when their evidence is public.
 
 | Row | Rule |
 |-----|------|
-| Outcome bar | [ReportOutcomeBar](../components/report/ReportOutcomeBar.tsx) is the only place the review states its outcome: score ring, unresolved count with the critical link, the verdict line clamped to two lines, score history when more than one observation exists, and determinate scan progress while a review runs. Nothing else in the pane repeats the count. |
-| Body | `data-report-frame` wraps the outcome bar and the explorer with `WORKSPACE_REPORT_FRAME_CLASS`. Above the split width the frame takes one pane height and the list and detail columns each scroll internally; below it the frame releases its height and the pane scrolls as one column. |
+| Review header | [ReportOutcomeBar](../components/report/ReportOutcomeBar.tsx) is the fixed compact header and owns only visible Score, honest pending/unavailable state, full-Review history, and determinate scan progress. It contains no gauge, verdict excerpt, Critical shortcut, or next-step prose. |
+| Body | [ReportPane](../components/report/ReportPane.tsx) wraps the explorer with `data-report-frame` and `WORKSPACE_REPORT_FRAME_CLASS`. Above the split width the frame takes one pane height and the list and detail columns each scroll internally; below it the frame releases its height and the pane scrolls as one column. |
 | Review context | [ReportContextDisclosure](../components/report/ReportContextDisclosure.tsx) collects stack, contract, memory, funnel, previews, launch gates, feedback, and pipeline proof in one disclosure that is collapsed by default and auto-expands when a report anchor targets a section inside it. |
 
 **Pane-relative, never viewport-relative.**
@@ -199,11 +203,12 @@ Do not show **re-check** in customer UI.
 | Agent | One transcript; programmatic output is public-safe and free, model conversation is authenticated and metered monthly | Same |
 | Funnel | Section + journey list + Replay path into the workspace browser | Same |
 | Mobile | One tab bar (Agent, Preview/Timeline, Report, Canvas) over the same Product pane, scanning and completed | Full-screen Timeline takeover may be evaluated later |
-| View toggle | Active review defaults to public Preview; completed review defaults to public Report; Timeline authenticated; Canvas paid | Same |
+| View toggle | Active review defaults to Preview; completed review defaults to Report; live Timeline owner-authorized; static sample Timeline public; Canvas paid | Same |
 
 ## Resolved design questions
 
 1. Mobile uses one tab bar for Agent and every Product surface, identical while scanning and after completion.
 2. Authenticated Timeline uses inline playback and step evidence on all sizes.
 3. Full-screen Timeline and browser takeover are follow-on ideas, not incomplete workspace requirements.
-4. Anonymous users receive no Timeline payload or journey playback.
+4. Anonymous live-report and non-owner viewers receive no Timeline payload or journey playback.
+5. Repository-owned samples may expose only complete, versioned static Timeline fixtures.

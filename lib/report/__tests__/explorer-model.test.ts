@@ -8,7 +8,6 @@ describe('explorer-model', () => {
       url: 'https://example.com',
       pageType: 'Landing page',
       score: 72,
-      verdict: 'Needs work before launch.',
       flags: [
         {
           id: 'f1',
@@ -75,7 +74,6 @@ describe('explorer-model', () => {
       url: 'https://example.com',
       pageType: 'Landing page',
       score: 72,
-      verdict: 'Needs work.',
       flags: [
         {
           id: 'f1',
@@ -109,7 +107,6 @@ describe('explorer-model', () => {
       url: 'https://example.com',
       pageType: 'Landing page',
       score: 61,
-      verdict: 'Several fixes remain.',
       promptAccess: 'one',
       demonstratedFlag: {
         id: 'f2',
@@ -196,7 +193,6 @@ describe('explorer-model', () => {
       url: 'https://example.com',
       pageType: 'Landing page',
       score: 68,
-      verdict: 'Needs focused improvements.',
       flags: [
         {
           id: 'seo-polish',

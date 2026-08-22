@@ -96,7 +96,7 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
   'axe-list-structure':
     'Run axe DevTools; ensure list elements contain only li elements and script/supporting elements.',
   'axe-meta-viewport':
-    'Run axe DevTools; ensure the viewport meta tag disables user scaling for accessibility.',
+    'Run axe DevTools; ensure the viewport meta tag allows user scaling for accessibility.',
   'h1-missing': 'DevTools Elements, confirm exactly one visible H1 on the page.',
   'h1-multiple': 'DevTools Elements, confirm only one H1; secondary headings should be H2/H3.',
   'no-structured-data':

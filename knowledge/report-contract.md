@@ -16,25 +16,21 @@ Its bounded Finish Plan supplies zero-to-three worthwhile candidates for durable
 
 `/report/[id]` is the default destination:
 
-1. Compact identity row with hostname, URL, status, and actions
+1. Compact Review header (`#report-status`) with a visible score or honest pending/unavailable state and chronological full-Review history
 2. Re-check result, when applicable
-3. Progress band (`#report-status`) with release score or scan percent, unresolved Flag count, Re-check history, and Message, Experience, Reach coverage
-4. Sticky section navigation when two or more sections exist
-5. Attention now (`#report-top-fixes`) with at most three worthwhile Improvements, when action is justified
-6. Complete ranked fix list (`#report-flags`) with screenshot evidence and selected fix detail
-7. Made with (`#report-stack`), Product Contract (`#report-contract`), verified memory (`#report-remember`), when present
-8. Funnel, flow, and action timeline (`#report-funnel`)
-9. Share and search previews, launch gates, watch, sharing, export, project, and MCP controls
-10. Owner re-check (`#report-recheck`)
-11. At most one contextual signup or upgrade moment
+3. Complete ranked Fix list (`#report-flags`) with filters, screenshot evidence, selected detail, and canonical Critical-first ranking
+4. Made with (`#report-stack`), Product Contract (`#report-contract`), verified memory (`#report-remember`), when present
+5. Funnel, flow, and action timeline (`#report-funnel`)
+6. Share and search previews, launch gates, watch, sharing, export, project, and MCP controls
+7. Owner update review (`#report-recheck`)
+8. At most one contextual signup or upgrade moment
 
-Sticky nav order matches DOM order: Attention now → All evidence → Made with → Contract → Remember → Funnel → Previews → Launch → Update review.
-
-**Report header copy:** "Your review" with unresolved count and checked scope. The progress band owns the release score.
+The compact header does not repeat Product identity, verdict copy, the Critical count, or instructions already expressed by the ranked Fix list.
+Every history point is a native link to a complete Review, and `?view=timeline|report|canvas` is the canonical sibling-view state.
 
 New anonymous scans render the progressive and completed evidence report without a blocking authentication dialog.
 Anonymous viewers can inspect scores, all confirmed Flags, screenshots, textual evidence, public-safe technology context, and deterministic Agent scan messages.
-Fix prompts, interactive Agent conversation, Timeline and path replay payloads, private memory, history, update reviews, export, restricted sharing, and Canvas remain unavailable until their access requirement is met.
+Fix prompts, interactive Agent conversation, live Timeline and path replay payloads, private memory, private history, update reviews, export, restricted sharing, and Canvas remain unavailable until their access requirement is met.
 Authentication is contextual and returns through `/post-login` so the anonymous report is claimed before the same workspace unlocks.
 Anonymous API serialization remains redacted: gated fields are omitted server-side, evidence remains real page evidence, and gate strings are never persisted into Flag rows.
 
@@ -50,13 +46,16 @@ Deterministic Agent messages use the same UI message envelope as authenticated m
 Partial Flags stream into the ranked explorer and appear once in the Agent transcript with a link to the matching report detail.
 Desktop and mobile capture placeholders resolve independently inside Flag detail on mobile; the standalone capture pair stays on large screens only.
 Show honest status, early findings, and a layout-matched Made with skeleton that resolves to verified, empty, partial, or unavailable.
-Timeline and path replay remain authenticated evidence surfaces and never supply raw activity labels as Agent claims.
+Live Timeline and path replay remain authenticated evidence surfaces and never supply raw activity labels as Agent claims.
 Keep the workspace and transcript mounted until the completed server report replaces progressive data.
 
 ## Samples and sharing
 
 - Homepage: complete curated fix list with selected evidence and one editor-ready fix.
-- `/samples`: complete, versioned curated snapshot. `/samples/details` redirects to it. Marketing rendering never queries production audit rows.
+- `/samples`: complete, versioned curated observations selected by `?observation=`, each with its own Flags, captures, score, and repository-owned static Timeline.
+  Every visible history point resolves to one immutable observation.
+  An absent selector opens the current curated Review; an explicit unknown selector returns not found.
+  Public sample playback is the only anonymous Timeline exception and never queries production audit rows.
 - `/share/[token]` is the direct token surface; `/share/[token]/details` redirects after enforcing the same grant. Token access never mutates `Audit.isPublic`. Password access uses a scoped signed HttpOnly grant and protected metadata stays generic.
 
 ## Acceptance checks
@@ -69,5 +68,6 @@ Keep the workspace and transcript mounted until the completed server report repl
 - Loading, empty, partial, failure, forbidden, expired, revoked, and deleted states are explicit.
 - Visible report chrome lives in `lib/marketing/copy.ts`.
 - Technology profiles expose sanitized evidence labels and evidence bands only. They never grade vendors or leak raw requests, headers, cookies, query strings, or private report existence.
-- Newly submitted anonymous reports expose evidence but never prompts, Timeline payloads, private memory/history, update-review controls, export, restricted sharing, or Canvas data.
+- Newly submitted anonymous and non-owner live reports expose evidence but never prompts, Timeline payloads, private memory/history, update-review controls, export, restricted sharing, or Canvas data.
+- Repository-owned curated samples may expose only their static versioned Timeline payloads; this exception does not authorize live report playback.
 - Programmatic Agent messages are stable, monotonic, derived from persisted facts, and excluded from model usage and persisted conversation rows.

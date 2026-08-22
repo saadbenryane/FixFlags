@@ -125,8 +125,8 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('hero subhead leads with the URL action and names the report value', () => {
-    assert.match(HERO.subhead, /^Paste a URL\./i)
+  it('hero subhead leads with the report value and names the three rubrics', () => {
+    assert.match(HERO.subhead, /^See what to fix/i)
     assert.match(HERO.subhead, /message/i)
     assert.match(HERO.subhead, /experience/i)
     assert.match(HERO.subhead, /reach/i)
@@ -240,7 +240,7 @@ describe('homepage message guardrails', () => {
   it('primary CTA uses visitor-facing review language', () => {
     assert.equal(HERO.primaryCta, 'Review my site')
     assert.ok(!/audit/i.test(HERO.primaryCta))
-    assert.equal(FINAL_CTA.headlineDisplay, 'See what your release still needs')
+    assert.equal(FINAL_CTA.headlineDisplay, 'Paste a URL. See what to fix')
     assert.ok(!/[.?]$/.test(FINAL_CTA.headlineDisplay))
     assert.equal(FINAL_CTA.headlineAccentPeriod, true)
   })
@@ -370,7 +370,7 @@ describe('homepage message guardrails', () => {
       assert.ok(!/manual review/i.test(metric.label), `Unsupported claim: ${metric.label}`)
     }
     assert.equal(REPORT_COPY.workspace.heading, 'Your review')
-    assert.equal(REPORT_COPY.workspace.criticalFlags, 'Critical Flags')
+    assert.equal(REPORT_COPY.workspace.summaryLabel, 'Review score and history')
   })
 
   it('landing page exposes three-rubric check story', () => {

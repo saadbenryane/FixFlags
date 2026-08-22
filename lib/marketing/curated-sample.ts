@@ -11,7 +11,15 @@ import type { RankableFlag } from '@/lib/audit/priority-flags'
 /** Marketing sample provenance. The public sample is a repository-owned snapshot. */
 export type SampleSource = 'curated'
 
+export class UnknownCuratedObservationError extends Error {
+  constructor(public readonly observationId: string) {
+    super(`Unknown curated sample observation: ${observationId}`)
+    this.name = 'UnknownCuratedObservationError'
+  }
+}
+
 export type CuratedSampleAudit = {
+  accessContext: 'repository_sample'
   id: string
   url: string
   pageJob: string | null
@@ -41,6 +49,7 @@ export type CuratedSampleAudit = {
   verifiedLearnings?: import('@/lib/audit/product-intelligence').VerifiedLearning[]
   scoreHistory?: Array<{
     id: string
+    href: string
     score: number
     checkedAt: Date
     kind: 'product-review' | 'update-review' | 'watch'
@@ -76,9 +85,24 @@ export function isEligibleMarketingSample(audit: SampleEligibilityInput): boolea
   )
 }
 
-async function loadVersionedSnapshot(): Promise<SampleResult> {
+async function loadVersionedSnapshot(
+  observationId?: string | null
+): Promise<SampleResult> {
   const { getStaticSampleAudit } = await import('@/lib/marketing/static-sample')
-  const audit = getStaticSampleAudit()
+  let audit: CuratedSampleAudit
+  try {
+    audit = getStaticSampleAudit(observationId)
+  } catch (error) {
+    if (
+      observationId !== undefined &&
+      observationId !== null &&
+      error instanceof Error &&
+      error.message === `Unknown curated sample observation: ${observationId}`
+    ) {
+      throw new UnknownCuratedObservationError(observationId)
+    }
+    throw error
+  }
   return {
     audit,
     source: 'curated',
@@ -87,9 +111,11 @@ async function loadVersionedSnapshot(): Promise<SampleResult> {
   }
 }
 
-export async function getCuratedSampleAudit(): Promise<SampleResult> {
+export async function getCuratedSampleAudit(
+  observationId?: string | null
+): Promise<SampleResult> {
   // Marketing rendering is deterministic. This versioned snapshot is generated
   // from the completed LaunchPad demo audit and reviewed with the sample tests.
   // Production audit rows never affect homepage output or availability.
-  return loadVersionedSnapshot()
+  return loadVersionedSnapshot(observationId)
 }

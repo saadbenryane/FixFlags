@@ -36,16 +36,17 @@ export const WORKSPACE_TRANSCRIPT_CLASS =
  * on a 1280px screen must lay out like a 700px surface.
  */
 export const WORKSPACE_PANE_SCROLL_CLASS =
-  '@container/pane min-h-0 flex-1 overflow-y-auto p-3 sm:p-4'
+  '@container/pane flex min-h-0 flex-1 flex-col overflow-y-auto p-3 sm:p-4'
 
 /** Pane width at which the Report list and detail sit side by side. */
 export const WORKSPACE_REPORT_SPLIT_CONTAINER = '40rem'
 
 /**
- * Report frame: the outcome bar plus the fix explorer occupy exactly one pane
- * height, so the list is always reachable without scrolling. Review context
- * follows the frame as a sibling and scrolls the pane. Below the split width
- * the frame releases its height and the pane scrolls as one column.
+ * Report frame: the fix explorer occupies exactly one pane height beneath the
+ * fixed Score/history header, so the list is always reachable without
+ * scrolling. Review context follows the frame as a sibling and scrolls the
+ * pane. Below the split width the frame releases its height and the pane
+ * scrolls as one column.
  */
 export const WORKSPACE_REPORT_FRAME_CLASS =
   'flex min-h-[26rem] flex-col gap-3 @[40rem]/pane:h-full @[40rem]/pane:min-h-[24rem]'

@@ -14,8 +14,8 @@ import { fontVariables } from '@/lib/design/fonts'
 const googleSiteVerification = process.env.GOOGLE_SITE_VERIFICATION
 
 export const viewport: Viewport = {
-  maximumScale: 1,
-  userScalable: false,
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export const metadata: Metadata = {

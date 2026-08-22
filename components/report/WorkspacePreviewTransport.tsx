@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useRef, type PointerEvent as ReactPointerEvent } from 'react'
+import type { Route } from 'next'
 import Link from 'next/link'
 import type { PlaybackStep } from '@/lib/audit/playback-steps'
 import { REPORT_COPY } from '@/lib/marketing/copy'
@@ -14,8 +15,8 @@ interface WorkspacePreviewTransportProps {
   onBackToLive?: () => void
   /** Timeline payload is owner-only. Gated viewers get status, never steps. */
   canReplay?: boolean
-  /** Path to return to after signing in. Offered only to gated viewers. */
-  signInNext?: string
+  /** Optional claim action. Non-owner/share viewers remain honestly read-only. */
+  gateActionHref?: string
   scanning?: boolean
   /** Curated emulations state their own capture status instead of an entitlement one. */
   statusLabel?: string
@@ -37,7 +38,7 @@ export function WorkspacePreviewTransport({
   onScrub,
   onBackToLive,
   canReplay = false,
-  signInNext,
+  gateActionHref,
   scanning = false,
   statusLabel,
   className,
@@ -187,9 +188,9 @@ export function WorkspacePreviewTransport({
             {REPORT_COPY.workspace.playback.backToLive}
           </button>
         ) : null}
-        {!canReplay && signInNext ? (
+        {!canReplay && gateActionHref ? (
           <Link
-            href={{ pathname: '/sign-in', query: { next: signInNext } }}
+            href={gateActionHref as Route}
             className="text-2xs font-medium text-link underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             {REPORT_COPY.workspace.timelineGate.action}

@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
 import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 
@@ -8,11 +8,18 @@ function makePoint(
   score: number | null,
   kind: ReportWorkspaceHistoryPoint['kind'] = 'product-review',
   status: ReportWorkspaceHistoryPoint['status'] = 'completed',
-  daysAgo = 0
+  daysAgo = 0,
 ): ReportWorkspaceHistoryPoint {
-  const d = new Date('2026-07-28T10:00:00Z')
-  d.setDate(d.getDate() - daysAgo)
-  return { id, score, checkedAt: d, kind, status }
+  const checkedAt = new Date('2026-07-28T10:00:00Z')
+  checkedAt.setUTCDate(checkedAt.getUTCDate() - daysAgo)
+  return {
+    id,
+    href: `/report/${id}?view=report`,
+    score,
+    checkedAt,
+    kind,
+    status,
+  }
 }
 
 describe('ScoreHistoryChart', () => {
@@ -25,104 +32,79 @@ describe('ScoreHistoryChart', () => {
     )
   })
 
-  it('renders one bar per observation', () => {
-    render(
-      <ScoreHistoryChart
-        history={[
-          makePoint('a1', 60, 'product-review', 'completed', 7),
-          makePoint('a2', 65, 'update-review', 'completed', 3),
-          makePoint('a3', 70, 'watch', 'completed', 0),
-        ]}
-      />,
-    )
-    expect(screen.getAllByRole('button')).toHaveLength(3)
-  })
-
-  it('includes score in aria-label', () => {
-    render(<ScoreHistoryChart history={[makePoint('a1', 65)]} />)
-    expect(screen.getByRole('button')).toHaveAttribute(
-      'aria-label',
-      expect.stringContaining('score 65'),
-    )
-  })
-
-  it('includes kind label in aria-label', () => {
+  it('renders one native destination link per Review', () => {
     const history = [
       makePoint('a1', 60, 'product-review', 'completed', 7),
       makePoint('a2', 65, 'update-review', 'completed', 3),
       makePoint('a3', 70, 'watch', 'completed', 0),
     ]
     render(<ScoreHistoryChart history={history} />)
-    const bars = screen.getAllByRole('button')
-    expect(bars[0]).toHaveAttribute('aria-label', expect.stringContaining('Product review'))
-    expect(bars[1]).toHaveAttribute('aria-label', expect.stringContaining('Update review'))
-    expect(bars[2]).toHaveAttribute('aria-label', expect.stringContaining('Watch run'))
-  })
 
-  it('calls onSelect when bar is clicked', () => {
-    const onSelect = vi.fn()
-    const history = [
-      makePoint('a1', 60, 'product-review', 'completed', 7),
-      makePoint('a2', 65, 'update-review', 'completed', 0),
-    ]
-    render(<ScoreHistoryChart history={history} onSelect={onSelect} />)
-    fireEvent.click(screen.getAllByRole('button')[1])
-    expect(onSelect).toHaveBeenCalledWith(1)
-  })
-
-  it('supports keyboard navigation with arrow keys', () => {
-    const onSelect = vi.fn()
-    const history = [
-      makePoint('a1', 60, 'product-review', 'completed', 7),
-      makePoint('a2', 65, 'update-review', 'completed', 3),
-      makePoint('a3', 70, 'watch', 'completed', 0),
-    ]
-    render(<ScoreHistoryChart history={history} onSelect={onSelect} selectedIndex={1} />)
-    const bars = screen.getAllByRole('button')
-    fireEvent.keyDown(bars[1], { key: 'ArrowRight' })
-    expect(onSelect).toHaveBeenCalledWith(2)
-    fireEvent.keyDown(bars[1], { key: 'ArrowLeft' })
-    expect(onSelect).toHaveBeenCalledWith(0)
-    fireEvent.keyDown(bars[1], { key: 'Home' })
-    expect(onSelect).toHaveBeenCalledWith(0)
-    fireEvent.keyDown(bars[1], { key: 'End' })
-    expect(onSelect).toHaveBeenCalledWith(2)
-  })
-
-  it('shows aria-current on selected bar only', () => {
-    const history = [
-      makePoint('a1', 60, 'product-review', 'completed', 7),
-      makePoint('a2', 65, 'update-review', 'completed', 0),
-    ]
-    render(<ScoreHistoryChart history={history} selectedIndex={1} />)
-    const bars = screen.getAllByRole('button')
-    expect(bars[1]).toHaveAttribute('aria-current', 'true')
-    expect(bars[0]).not.toHaveAttribute('aria-current')
-  })
-
-  it('shows screen reader announcement on selection', () => {
-    const history = [
-      makePoint('a1', 60, 'product-review', 'completed', 7),
-      makePoint('a2', 65, 'update-review', 'completed', 0),
-    ]
-    render(<ScoreHistoryChart history={history} selectedIndex={1} />)
-    const srOnly = screen.getByRole('status', { hidden: true })
-    expect(srOnly).toHaveTextContent(/Update review/)
-    expect(srOnly).toHaveTextContent(/score 65/)
-  })
-
-  it('shows loading bar when isLoading is true', () => {
-    const history = [makePoint('a1', 65, 'product-review', 'completed', 0)]
-    render(<ScoreHistoryChart history={history} isLoading />)
-    expect(screen.getAllByRole('button')).toHaveLength(1)
-    expect(screen.getByRole('img', { name: 'Live scan in progress' })).toBeInTheDocument()
-  })
-
-  it('handles no-score observations with reduced opacity bar', () => {
-    render(
-      <ScoreHistoryChart history={[makePoint('a1', null, 'product-review', 'partial', 0)]} />,
+    const links = screen.getAllByRole('link')
+    expect(links).toHaveLength(3)
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(
+      history.map((point) => point.href),
     )
-    const bar = screen.getByRole('button')
-    expect(bar).toHaveAttribute('aria-label', expect.stringContaining('Partial capture'))
+    expect(screen.queryByRole('toolbar')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
+  it('gives every link an ordinal, kind, date, status, and rounded score', () => {
+    const history = [
+      makePoint('a1', 60.4, 'product-review', 'completed', 7),
+      makePoint('a2', 65, 'update-review', 'partial', 3),
+      makePoint('a3', 70, 'watch', 'degraded', 0),
+    ]
+    render(<ScoreHistoryChart history={history} />)
+
+    const links = screen.getAllByRole('link')
+    expect(links[0]).toHaveAccessibleName(
+      'Review 1 of 3, Product review, Jul 21, 2026, Completed, score 60',
+    )
+    expect(links[1]).toHaveAccessibleName(
+      'Review 2 of 3, Update review, Jul 25, 2026, Partial capture, score 65',
+    )
+    expect(links[2]).toHaveAccessibleName(
+      'Review 3 of 3, Watch run, Jul 28, 2026, Degraded capture, score 70',
+    )
+  })
+
+  it('marks only the current audit link as the current page', () => {
+    const history = [
+      makePoint('a1', 60, 'product-review', 'completed', 7),
+      makePoint('a2', 65, 'update-review', 'completed', 0),
+    ]
+    render(<ScoreHistoryChart history={history} currentAuditId="a2" />)
+
+    const links = screen.getAllByRole('link')
+    expect(links[1]).toHaveAttribute('aria-current', 'page')
+    expect(links[0]).not.toHaveAttribute('aria-current')
+  })
+
+  it('provides a 44px target around each dense visual bar', () => {
+    render(<ScoreHistoryChart history={[makePoint('a1', 65)]} />)
+    expect(screen.getByRole('link')).toHaveClass('min-h-11', 'min-w-11')
+  })
+
+  it('announces a live Review without fabricating a history destination', () => {
+    render(
+      <ScoreHistoryChart
+        history={[makePoint('a1', 65, 'product-review', 'completed', 0)]}
+        isLoading
+      />,
+    )
+    expect(screen.getAllByRole('link')).toHaveLength(1)
+    expect(screen.getByRole('status')).toHaveTextContent('Live review in progress')
+  })
+
+  it('describes no-score Reviews with their honest status', () => {
+    render(
+      <ScoreHistoryChart
+        history={[makePoint('a1', null, 'product-review', 'failed', 0)]}
+      />,
+    )
+    expect(screen.getByRole('link')).toHaveAccessibleName(
+      expect.stringMatching(/Failed capture, score unavailable/),
+    )
   })
 })

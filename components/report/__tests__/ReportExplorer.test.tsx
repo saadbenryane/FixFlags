@@ -58,7 +58,6 @@ const model: ReportExplorerModel = {
   displayHost: 'example.com',
   pageType: 'Landing',
   score: 70,
-  verdict: null,
   flagCount: 2,
   polishPassPrompt: null,
   desktopScreenshot: null,
