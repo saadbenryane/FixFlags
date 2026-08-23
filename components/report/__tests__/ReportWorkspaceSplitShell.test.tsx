@@ -65,14 +65,6 @@ function openTimeline() {
   fireEvent.click((preview ?? timeline)!)
 }
 
-function stepButtons(label: string) {
-  return screen.getAllByRole('button', { name: label })
-}
-
-function browserStepLabels() {
-  return screen.getAllByText(/Step \d · .+/, { selector: 'p' })
-}
-
 beforeEach(() => {
   window.history.replaceState({}, '', '/report/a1')
   searchParamValues.clear()
