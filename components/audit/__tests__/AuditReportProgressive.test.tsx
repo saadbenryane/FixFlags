@@ -129,9 +129,8 @@ describe('AuditReportProgressive', () => {
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
     // The hold frame carries the same three rows as the completed report:
     // outcome bar, fix explorer, and the collapsed review context.
-    expect(
-      screen.getByRole('region', { name: REPORT_COPY.workspace.summaryLabel })
-    ).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'example.com' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: REPORT_COPY.workspace.dashboard.title })).toBeInTheDocument()
     expect(screen.getByText(REPORT_COPY.reviewContext.title)).toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: 'Report sections' })).not.toBeInTheDocument()
   })
@@ -158,9 +157,7 @@ describe('AuditReportProgressive', () => {
         partialFlags={partialFlags}
       />
     )
-    for (const flag of partialFlags) {
-      expect((await screen.findAllByText(flag.problem)).length).toBeGreaterThan(0)
-    }
+    expect((await screen.findAllByText('Discovered issue 1')).length).toBeGreaterThan(0)
   })
 
   it('mounts explorer chrome before the first flag arrives', () => {
@@ -317,8 +314,10 @@ describe('AuditReportProgressive', () => {
       />,
     )
 
-    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
-    expect(screen.getAllByRole('slider').length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('tab', { name: 'Agent' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('tab', { name: 'Report' }).length).toBeGreaterThan(0)
+    expect(screen.queryAllByRole('tab', { name: 'Timeline' })).toHaveLength(0)
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument()
   })
 
   it('keeps a live marketing-sample envelope read-only with no sign-in claim action', () => {
@@ -332,7 +331,7 @@ describe('AuditReportProgressive', () => {
       />,
     )
 
-    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
+    expect(screen.queryAllByRole('tab', { name: 'Timeline' })).toHaveLength(0)
     expect(screen.queryByRole('slider')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Sign in to view Timeline' })).not.toBeInTheDocument()
     expect(screen.getByPlaceholderText('You can only chat on your own reports')).toBeDisabled()
@@ -348,10 +347,7 @@ describe('AuditReportProgressive', () => {
       />,
     )
 
-    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
-    expect(screen.getByRole('link', { name: 'Sign in to view Timeline' })).toHaveAttribute(
-      'href',
-      '/sign-in?next=%2Freport%2Faudit-progressive-test',
-    )
+    expect(screen.getAllByRole('tab', { name: 'Agent' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('tab', { name: 'Report' }).length).toBeGreaterThan(0)
   })
 })

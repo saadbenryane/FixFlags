@@ -71,44 +71,20 @@ function buildModel(): ReportWorkspaceModel {
 }
 
 describe('ReportOutcomeBar', () => {
-  it('shows one compact, rounded Score value without duplicated outcome copy', () => {
-    const model = buildModel()
-    model.summary.score = 69.6
-    render(<ReportOutcomeBar model={model} />)
+  it('shows only the report name and a way back to the reports list', () => {
+    render(<ReportOutcomeBar model={buildModel()} />)
 
-    expect(
-      screen.getByRole('region', { name: REPORT_COPY.workspace.summaryLabel }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('Score')).toBeVisible()
-    expect(screen.getByLabelText('Score 70')).toBeInTheDocument()
-    expect(screen.getByText('70')).toHaveClass('tabular-nums')
-    expect(screen.queryByText(/Critical Flag/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Highest priority/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Start with the top Flag/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'example.com' })).toBeInTheDocument()
+    expect(screen.getByText('example.com')).toBeVisible()
+    expect(screen.getByRole('link', { name: REPORT_COPY.workspace.dashboard.title })).toHaveAttribute(
+      'href',
+      '/dashboard',
+    )
+    expect(screen.queryByText('Score')).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Review history' })).not.toBeInTheDocument()
   })
 
-  it('renders chronological Review links and marks the current audit by ID', () => {
-    const model = buildModel()
-    render(<ReportOutcomeBar model={model} />)
-
-    const history = screen.getByRole('navigation', { name: 'Review history' })
-    const links = screen.getAllByRole('link')
-    expect(history).toBeInTheDocument()
-    expect(links).toHaveLength(2)
-    expect(links[1]).toHaveAttribute('href', '/report/review-2?view=report')
-    expect(links[1]).toHaveAttribute('aria-current', 'page')
-  })
-
-  it('keeps a single Review visible as real history', () => {
-    const model = buildModel()
-    model.summary.history = model.summary.history?.slice(-1) ?? null
-    render(<ReportOutcomeBar model={model} />)
-
-    expect(screen.getByRole('navigation', { name: 'Review history' })).toBeInTheDocument()
-    expect(screen.getAllByRole('link')).toHaveLength(1)
-  })
-
-  it('shows Score pending and announces honest progress while scanning', () => {
+  it('announces honest progress while scanning without restoring Score', () => {
     const model = buildModel()
     model.context.loading = true
     model.summary.score = null
@@ -120,28 +96,9 @@ describe('ReportOutcomeBar', () => {
       />,
     )
 
-    expect(screen.getByLabelText('Score pending')).toBeInTheDocument()
-    expect(screen.getByText('pending')).toHaveClass('tabular-nums')
+    expect(screen.queryByLabelText('Score pending')).not.toBeInTheDocument()
     expect(screen.getByRole('status', { name: 'Scan progress' })).toHaveTextContent(
       'Checking Message35%',
     )
-  })
-
-  it('shows Score unavailable instead of a dash when no score exists', () => {
-    const model = buildModel()
-    model.context.loading = false
-    model.summary.score = null
-    render(<ReportOutcomeBar model={model} />)
-
-    expect(screen.getByLabelText('Score unavailable')).toBeInTheDocument()
-    expect(screen.getByText('unavailable')).toBeVisible()
-    expect(screen.queryByText('-')).not.toBeInTheDocument()
-  })
-
-  it('keeps optional actions beside the score and history', () => {
-    render(
-      <ReportOutcomeBar model={buildModel()} actions={<button type="button">Share</button>} />,
-    )
-    expect(screen.getByRole('button', { name: 'Share' })).toBeVisible()
   })
 })

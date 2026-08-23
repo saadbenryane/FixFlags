@@ -442,12 +442,7 @@ function ReportWorkspaceSplitShellInner({
     >
       <div className="min-w-0 flex-1">
         {view === 'report' && reportHeader ? (
-          <div className="flex min-w-0 max-w-full flex-col gap-1 overflow-hidden">
-            <p className="truncate text-2xs text-muted-foreground" aria-label={`Product ${productAddress}`}>
-              {productAddress}
-            </p>
-            <div className="min-w-0 max-w-full">{reportHeader}</div>
-          </div>
+          <div className="min-w-0 max-w-full">{reportHeader}</div>
         ) : (
           <>
             <p className="text-sm font-semibold text-foreground">
@@ -459,6 +454,7 @@ function ReportWorkspaceSplitShellInner({
           </>
         )}
       </div>
+      {view === 'report' && reportHeader ? null : (
       <div className="flex shrink-0 items-center gap-1.5">
         {/* Slot is reserved for the whole scan so the first Flag cannot shift the header. */}
         {scanning && view === 'browser' ? (
@@ -480,6 +476,7 @@ function ReportWorkspaceSplitShellInner({
         ) : null}
         <div className="hidden lg:block">{renderToggle()}</div>
       </div>
+      )}
     </div>
   )
 

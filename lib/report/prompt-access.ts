@@ -15,6 +15,7 @@ export function resolveReportPromptProjection(
   }
 
   if (audience === 'live-anonymous') {
+    // Logged-out live viewers may copy the demonstrated top/category agent prompt.
     return { explorer: 'one', workspace: 'demonstrated' }
   }
 

@@ -24,6 +24,8 @@ interface SiteShellProps {
    * static minimal grid. Anonymous work surfaces also pass `minimal`.
    */
   backdrop?: 'full' | 'minimal' | 'off'
+  /** Immersive report: no site header, sidebar, or footer chrome. */
+  showChrome?: boolean
 }
 
 export function SiteShell({
@@ -38,6 +40,7 @@ export function SiteShell({
   showHeaderNavigation = true,
   showSupport,
   backdrop,
+  showChrome = true,
 }: SiteShellProps) {
   const supportEnabled = showSupport ?? variant !== 'admin'
   const hasSidebar = variant === 'app'
@@ -48,7 +51,11 @@ export function SiteShell({
     <div className="relative min-h-screen flex flex-col">
       {resolvedBackdrop !== 'off' && <GlobalMeshBackdrop fixed intensity={resolvedBackdrop} />}
       <div className="relative z-0 flex min-h-screen flex-col">
-        {hasSidebar ? (
+        {!showChrome ? (
+          <main id="main-content" className="flex-1" tabIndex={-1}>
+            {children}
+          </main>
+        ) : hasSidebar ? (
           <div className="flex flex-1">
             <DesktopSidebar showAdmin={showAdmin} />
             <div className="flex min-w-0 flex-1 flex-col md:pl-16">

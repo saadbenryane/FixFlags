@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ReportExplorer } from '@/components/report/ReportExplorer'
+import { AGENT_COPY_LEAD } from '@/lib/audit/priority-flags'
 import { MeProvider } from '@/hooks/useMe'
 import type {
   ExplorerFlag,
@@ -40,7 +41,7 @@ function flag(
     whyItMatters: 'Visitors need a usable action.',
     evidence: 'Observed on the tested page.',
     fixPrompt: hasFixPrompt ? 'Render the CTA in the initial HTML.' : '',
-    copyFixPrompt: hasFixPrompt ? 'Render the CTA in the initial HTML.' : '',
+    copyFixPrompt: hasFixPrompt ? `${AGENT_COPY_LEAD}\n\n1. Render the CTA in the initial HTML.` : '',
     toolPrompts: {},
     verificationRule: null,
     affectedDevices: ['desktop'],
@@ -59,7 +60,7 @@ const model: ReportExplorerModel = {
   pageType: 'Landing',
   score: 70,
   flagCount: 2,
-  polishPassPrompt: null,
+  polishPassPrompt: `${AGENT_COPY_LEAD}\n\n1. Render the CTA in the initial HTML.`,
   desktopScreenshot: null,
   mobileScreenshot: null,
   rubricScores: [
@@ -97,7 +98,7 @@ describe('ReportExplorer anonymous teaser', () => {
         })
       ).toHaveAttribute('aria-pressed', 'true')
     })
-    expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Copy prompt' }).length).toBeGreaterThan(0)
     expect(screen.queryByText(/Create a free account to get the fix prompt/i)).not.toBeInTheDocument()
   })
 
@@ -193,7 +194,7 @@ describe('ReportExplorer anonymous teaser', () => {
       </MeProvider>
     )
 
-    expect(await screen.findByText('All Flags')).toBeVisible()
+    expect((await screen.findAllByText('Experience')).length).toBeGreaterThan(0)
   })
 
   it('marks affected and unaffected captures without treating missing captures as healthy', async () => {

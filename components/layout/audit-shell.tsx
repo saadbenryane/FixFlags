@@ -27,6 +27,7 @@ export function AuditShell({
       showAdmin={showAdmin}
       showFooter={!immersive}
       showHeaderNavigation={!immersive}
+      showChrome={!immersive}
       // The immersive editor owns its own chat column, and a floating bubble
       // would sit on top of the docked preview transport.
       showSupport={!immersive}

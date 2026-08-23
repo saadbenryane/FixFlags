@@ -1,35 +1,27 @@
-import type { ReactNode } from 'react'
-import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
+import Link from 'next/link'
 import { SHIMMER_KEYFRAMES } from '@/components/ui/skeleton'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
 
 /**
- * Compact Review header. This is the single place the Review presents its
- * current score, chronological Review history, and honest scan progress.
+ * Report header: name and a way back to the reports list.
+ * Completeness sits with the category tabs, not as a Score hero.
  */
 export function ReportOutcomeBar({
   model,
   scanProgress,
   stageDetail,
-  actions,
   className,
 }: {
   model: ReportWorkspaceModel
   scanProgress?: number
   stageDetail?: string | null
-  actions?: ReactNode
+  actions?: React.ReactNode
   className?: string
 }) {
   const loading = model.context.loading
-  const score = model.summary.score
-  const scoreLabel = score === null
-    ? loading
-      ? REPORT_COPY.workspace.scorePending
-      : REPORT_COPY.workspace.scoreUnavailable
-    : String(Math.round(score))
-  const history = model.summary.history ?? []
+  const name = model.identity.displayHost || REPORT_COPY.workspace.identityFallback
   const progress = typeof scanProgress === 'number'
     ? Math.min(100, Math.max(0, Math.round(scanProgress)))
     : null
@@ -37,37 +29,22 @@ export function ReportOutcomeBar({
   return (
     <section
       id="report-status"
-      aria-label={REPORT_COPY.workspace.summaryLabel}
+      aria-label={name}
       className={cn(
         'w-full shrink-0 scroll-mt-[var(--report-chrome-offset)]',
         className,
       )}
     >
       <div className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 py-1">
-        {actions ? (
-          <div className="flex flex-wrap items-center gap-2">{actions}</div>
-        ) : null}
-
-        <div
-          className="flex shrink-0 items-baseline gap-2"
-          aria-label={`${REPORT_COPY.workspace.scoreLabel} ${scoreLabel}`}
+        <Link
+          href="/dashboard"
+          className="text-xs font-medium text-muted-foreground hover:text-foreground"
         >
-          <span className="text-xs font-medium text-muted-foreground">
-            {REPORT_COPY.workspace.scoreLabel}
-          </span>
-          <span className="font-mono text-sm font-medium leading-none tabular-nums text-muted-foreground">
-            {scoreLabel}
-          </span>
-        </div>
-
-        {history.length > 0 || loading ? (
-          <ScoreHistoryChart
-            history={history}
-            currentAuditId={model.identity.auditId}
-            className="min-w-0 flex-1"
-            isLoading={loading}
-          />
-        ) : null}
+          {REPORT_COPY.workspace.dashboard.title}
+        </Link>
+        <p className="min-w-0 truncate text-sm font-semibold text-foreground">
+          {name}
+        </p>
       </div>
 
       {loading ? (

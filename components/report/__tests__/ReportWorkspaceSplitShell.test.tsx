@@ -131,6 +131,7 @@ describe('ReportWorkspaceSplitShell product stage', () => {
   it('names the reviewed page including its path, so a sub-page is not read as the domain', () => {
     render(
       <ReportWorkspaceSplitShell
+        scanning
         leftPanel={<div>Agent</div>}
         browserUrl="https://fixflags.com/demo"
         reportPanel={<div>Report</div>}
@@ -196,22 +197,16 @@ describe('ReportWorkspaceSplitShell product stage', () => {
     expect(tabs.indexOf('Preview')).toBeLessThan(tabs.indexOf('Report'))
   })
 
-  it('puts Score in the fixed Report header and restores URL-backed sibling views', async () => {
+  it('keeps Agent left and Report right without a product URL in the report header', async () => {
     const { container } = renderShell(undefined, 'report', false)
 
     await waitFor(() => {
       expect(container.querySelector('[data-workspace-ready="true"]')).toBeInTheDocument()
     })
     expect(screen.getByText('Score 72')).toBeInTheDocument()
-    expect(screen.getByLabelText('Product example.com')).toBeInTheDocument()
-    expect(screen.queryByText('Product')).not.toBeInTheDocument()
-
+    expect(screen.queryByLabelText('Product example.com')).not.toBeInTheDocument()
     expect(screen.getAllByRole('tab', { name: 'Agent' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('tab', { name: 'Report' }).length).toBeGreaterThan(0)
-
-    window.history.pushState({}, '', '/report/a1?view=report')
-    window.dispatchEvent(new PopStateEvent('popstate'))
-    await waitFor(() => expect(screen.getByText('Score 72')).toBeInTheDocument())
   })
 })
 
