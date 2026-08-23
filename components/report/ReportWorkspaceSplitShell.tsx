@@ -129,6 +129,7 @@ function ReportWorkspaceSplitShellInner({
   const desktopTabsId = `${shellId}-view-tab`
   const showCanvas = capabilities.canUseCanvas
   const canReplayTimeline = capabilities.canReplayTimeline
+  const hidePreviewPane = !scanning
   const requestedView = searchParams?.get('view') ?? null
   const viewFromUrl = useCallback((): WorkspacePanelView | null => {
     if (requestedView === 'timeline') return 'browser'
@@ -137,10 +138,15 @@ function ReportWorkspaceSplitShellInner({
     return null
   }, [requestedView, scanning, showCanvas])
   const [internalView, setInternalView] = useState<WorkspacePanelView>(
-    () => viewFromUrl() ?? (scanning ? 'browser' : 'report')
+    () => {
+      const fromUrl = viewFromUrl()
+      if (fromUrl === 'browser' && !scanning) return 'report'
+      return fromUrl ?? (scanning ? 'browser' : 'report')
+    }
   )
   const [hydrated, setHydrated] = useState(false)
-  const view = controlledView ?? internalView
+  const rawView = controlledView ?? internalView
+  const view = !scanning && rawView === 'browser' ? 'report' : rawView
   const [mobileFocus, setMobileFocus] = useState<MobileFocus>(
     initialMobileFocus ?? (scanning || isActiveReview ? 'chat' : 'product')
   )
@@ -200,7 +206,7 @@ function ReportWorkspaceSplitShellInner({
   useEffect(() => {
     if (!syncViewToUrl || controlledView !== undefined) return
     const next = viewFromUrl()
-    if (next) setInternalView(next)
+    if (next) setInternalView(next === 'browser' && !scanning ? 'report' : next)
   }, [controlledView, syncViewToUrl, viewFromUrl])
 
   useEffect(() => {
@@ -254,7 +260,7 @@ function ReportWorkspaceSplitShellInner({
   }, [controlledDevice, onDeviceChange, previewEvidence.selectedFlagId, previewEvidence.highlights])
 
   useEffect(() => {
-    if (scanning || !canReplayTimeline || !stepParam || steps.length === 0) return
+    if (scanning || hidePreviewPane || !canReplayTimeline || !stepParam || steps.length === 0) return
     const requested = Number(stepParam)
     if (!Number.isInteger(requested)) return
     const index = requested - 1
@@ -352,6 +358,7 @@ function ReportWorkspaceSplitShellInner({
       panelId={productPanelId}
       idPrefix={desktopTabsId}
       scanning={scanning}
+      hideBrowserView={hidePreviewPane}
     />
   )
 
@@ -389,16 +396,20 @@ function ReportWorkspaceSplitShellInner({
       onSelect: () => chooseMobileFocus('chat'),
       controls: agentPanelId,
     },
-    {
-      id: `${mobileTabsId}-browser`,
-      label: scanning
-        ? REPORT_COPY.workspace.panels.previewView
-        : REPORT_COPY.workspace.panels.browserView,
-      selected: mobileFocus === 'product' && view === 'browser',
-      onSelect: () => chooseMobileView('browser'),
-      controls: productPanelId,
-      href: hrefForView('browser'),
-    },
+    ...(hidePreviewPane
+      ? []
+      : [
+          {
+            id: `${mobileTabsId}-browser`,
+            label: scanning
+              ? REPORT_COPY.workspace.panels.previewView
+              : REPORT_COPY.workspace.panels.browserView,
+            selected: mobileFocus === 'product' && view === 'browser',
+            onSelect: () => chooseMobileView('browser'),
+            controls: productPanelId,
+            href: hrefForView('browser'),
+          },
+        ]),
     {
       id: `${mobileTabsId}-report`,
       label: REPORT_COPY.workspace.panels.productTab,

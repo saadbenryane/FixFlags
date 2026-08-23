@@ -15,7 +15,7 @@ export function resolveReportPromptProjection(
   }
 
   if (audience === 'live-anonymous') {
-    return { explorer: 'none', workspace: 'none' }
+    return { explorer: 'one', workspace: 'demonstrated' }
   }
 
   return { explorer: 'all', workspace: 'all' }

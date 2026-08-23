@@ -4,6 +4,7 @@ import { Suspense, type ReactNode } from 'react'
 import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
 import { ReportContextDisclosure } from '@/components/report/ReportContextDisclosure'
 import { ReportPolishPass } from '@/components/report/ReportPolishPass'
+import { KeepReportEmail } from '@/components/report/KeepReportEmail'
 import {
   REPORT_SECTION_SCROLL_MT,
 } from '@/components/report/workspace-geometry'
@@ -201,7 +202,7 @@ export function AuditReport({
 
   // Server strip is the only entitlement; never unlock via client sessionStorage.
   const fixPromptLocked = !showDeterministicFixes
-  const demonstratedFlag = isSample ? sampleFixFlag : fixPromptLocked ? null : sampleFixFlag
+  const demonstratedFlag = sampleFixFlag
   const promptProjection = resolveReportPromptProjection(
     isSample ? 'curated-sample' : fixPromptLocked ? 'live-anonymous' : 'owner'
   )
@@ -434,6 +435,7 @@ export function AuditReport({
         </div>
       ) : null}
       <div id="report-recheck" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-5')}>
+        {!isSample && auditId ? <KeepReportEmail auditId={auditId} /> : null}
         {projectId && workspace.capabilities.canRecheck ? (
           <Button asChild variant="outline">
             <Link href={`/products/${projectId}`}>Return to Product</Link>

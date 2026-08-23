@@ -1,6 +1,7 @@
 'use client'
 
-import { Wrench } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronDown, Wrench } from 'lucide-react'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { SeveritySignal } from '@/components/report/SeveritySignal'
@@ -116,16 +117,45 @@ export function ReportFixLoop({
   loading = false,
 }: ReportFixLoopProps) {
   const interactive = flags.length > 0 && Boolean(onSelectFlag || reportHref)
+  const primaryFlags = flags.filter((flag) => flag.rubric !== 'REACH')
+  const reachFlags = flags.filter((flag) => flag.rubric === 'REACH')
+  const [reachOpen, setReachOpen] = useState(false)
 
   return (
     <div className="space-y-2.5">
       {interactive ? (
-        <FlagList
-          flags={flags}
-          selectedFlagId={selectedFlagId}
-          onSelectFlag={onSelectFlag}
-          reportHref={reportHref}
-        />
+        <>
+          <FlagList
+            flags={primaryFlags.length > 0 ? primaryFlags : flags}
+            selectedFlagId={selectedFlagId}
+            onSelectFlag={onSelectFlag}
+            reportHref={reportHref}
+          />
+          {reachFlags.length > 0 && primaryFlags.length > 0 ? (
+            <div>
+              <button
+                type="button"
+                className="flex min-h-11 w-full items-center justify-between rounded-[var(--radius-control)] px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted/45"
+                aria-expanded={reachOpen}
+                onClick={() => setReachOpen((open) => !open)}
+              >
+                <span>More checks</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="font-mono text-2xs tabular-nums">{reachFlags.length}</span>
+                  <ChevronDown className={reachOpen ? 'h-3.5 w-3.5 rotate-180' : 'h-3.5 w-3.5'} aria-hidden />
+                </span>
+              </button>
+              {reachOpen ? (
+                <FlagList
+                  flags={reachFlags}
+                  selectedFlagId={selectedFlagId}
+                  onSelectFlag={onSelectFlag}
+                  reportHref={reportHref}
+                />
+              ) : null}
+            </div>
+          ) : null}
+        </>
       ) : (
         <p className="px-1 py-2 text-xs text-muted-foreground">
           {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noFlagsNice}

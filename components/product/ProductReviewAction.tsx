@@ -8,6 +8,7 @@ import { AuditInput } from '@/components/audit/AuditInput'
 import { Button } from '@/components/ui/button'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import type { ProductReviewSummaryDTO } from '@/lib/products/workspace'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 
 type ProductReviewActionProps = {
   productUrl: string
@@ -95,7 +96,7 @@ export function ProductReviewAction({
       const result = (await response.json()) as { reportId?: unknown }
       if (typeof result.reportId !== 'string' || result.reportId.length === 0) {
         setError(
-          'The update review started, but FixFlags could not open it. Try again.',
+          'Recheck started, but FixFlags could not open it. Try again.',
         )
         setBusy(false)
         return
@@ -105,7 +106,7 @@ export function ProductReviewAction({
         `/report/${encodeURIComponent(result.reportId)}?view=timeline`,
       )
     } catch {
-      setError('FixFlags could not start the update review. Try again.')
+      setError(REPORT_COPY.recheck.error)
       setBusy(false)
     }
   }
@@ -114,12 +115,12 @@ export function ProductReviewAction({
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <p className="font-medium">
-          {retrying ? 'Try update review again' : 'Ready for an update review?'}
+          {retrying ? 'Try Recheck again' : 'Ready to Recheck?'}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           {retrying
             ? 'The latest attempt did not finish. Start a fresh comparison from the last completed Review.'
-            : 'Run a fresh Review after deploying a change to compare the Product with the last completed Review.'}
+            : REPORT_COPY.recheck.helper}
         </p>
         {error ? (
           <p
@@ -142,11 +143,11 @@ export function ProductReviewAction({
           type="button"
           onClick={startUpdateReview}
           loading={busy}
-          loadingLabel="Starting update review"
+          loadingLabel="Starting Recheck"
           aria-describedby={error ? 'product-review-action-error' : undefined}
         >
           <RefreshCw aria-hidden />
-          {retrying ? 'Try update review again' : 'Run update review'}
+          {retrying ? 'Try Recheck again' : REPORT_COPY.recheck.label}
           <ArrowRight aria-hidden />
         </Button>
       </div>

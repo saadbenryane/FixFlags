@@ -1127,8 +1127,19 @@ export const REPORT_COPY = {
     preparingFixList: "Preparing your fix list…",
   },
   recheck: {
-    label: "Update review",
-    error: "Could not start the update review. Try again.",
+    label: "Recheck",
+    helper: "See if these Flags are still open.",
+    error: "Could not start Recheck. Try again.",
+  },
+  keepReport: {
+    title: "Keep this report",
+    helper: "We will tell you if these Flags are still open.",
+    emailLabel: "Email",
+    emailPlaceholder: "you@company.com",
+    action: "Keep this report",
+    saving: "Saving",
+    saved: "We will tell you if these Flags are still open.",
+    error: "Could not save that email. Try again.",
   },
   launchGates: {
     title: "Launch gates",

@@ -111,7 +111,7 @@ describe('homepage message guardrails', () => {
     assert.equal(HERO.primaryCta, 'Review my site')
     assert.equal(PLAN_DEFINITIONS.BUILDER.price, '$69')
     assert.equal(REPORT_COPY.sectionTitles.journey, 'Funnel')
-    assert.equal(REPORT_COPY.recheck.label, 'Update review')
+    assert.equal(REPORT_COPY.recheck.label, 'Recheck')
   })
 
   it('hero headline names the finish-the-loop moment after AI builds', () => {
@@ -199,8 +199,9 @@ describe('homepage message guardrails', () => {
     assert.equal(OUTPUT_LABELS.nextStep, 'Paste into editor → publish → update review.')
   })
 
-  it('report copy names the core-loop action as update review', () => {
-    assert.equal(REPORT_COPY.recheck.label, 'Update review')
+  it('report copy names the completed-report action as Recheck', () => {
+    assert.equal(REPORT_COPY.recheck.label, 'Recheck')
+    assert.equal(REPORT_COPY.recheck.helper, 'See if these Flags are still open.')
     assert.match(REPORT_COPY.recheckHint.title, /prove your fixes worked/i)
     assert.match(REPORT_COPY.recheckHint.bodySuffix, /Flags cleared/i)
   })

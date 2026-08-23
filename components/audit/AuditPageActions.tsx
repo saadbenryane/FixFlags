@@ -131,6 +131,9 @@ export function AuditPageActions({
           {REPORT_COPY.recheck.label}
         </Button>
       )}
+      {showRecheck ? (
+        <p className="w-full text-xs text-muted-foreground sm:w-auto">{REPORT_COPY.recheck.helper}</p>
+      ) : null}
     </>
   )
 }

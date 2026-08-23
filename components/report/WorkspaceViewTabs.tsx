@@ -43,8 +43,10 @@ export function WorkspaceViewTabs({
   idPrefix,
   className,
   scanning = false,
-}: WorkspaceViewTabsProps) {
+  hideBrowserView = false,
+}: WorkspaceViewTabsProps & { hideBrowserView?: boolean }) {
   const items = views
+    .filter((item) => item.id !== 'browser' || !hideBrowserView)
     .filter((item) => item.id !== 'canvas' || (!scanning && capabilities.canUseCanvas))
     .map((item) => {
       const text =

@@ -9,10 +9,10 @@ describe('report prompt access', () => {
     })
   })
 
-  it('gates every prompt in a live anonymous report', () => {
+  it('unlocks the demonstrated top prompt in a live anonymous report', () => {
     expect(resolveReportPromptProjection('live-anonymous')).toEqual({
-      explorer: 'none',
-      workspace: 'none',
+      explorer: 'one',
+      workspace: 'demonstrated',
     })
   })
 

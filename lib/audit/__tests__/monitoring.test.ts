@@ -5,7 +5,7 @@ import type { User } from '@prisma/client'
 const { createAndEnqueueAudit, prismaMock } = vi.hoisted(() => ({
   createAndEnqueueAudit: vi.fn(),
   prismaMock: {
-    audit: { findUnique: vi.fn() },
+    audit: { findUnique: vi.fn(), count: vi.fn() },
   },
 }))
 
@@ -67,6 +67,7 @@ describe('startMonitoringAudit', () => {
       status: 'COMPLETED',
       url: 'https://example.com',
     })
+    prismaMock.audit.count.mockResolvedValue(0)
     createAndEnqueueAudit.mockResolvedValue({
       auditId: 'child-1',
       status: 'QUEUED',
@@ -92,8 +93,19 @@ describe('startMonitoringAudit', () => {
         url: 'https://example.com',
         userId: 'u1',
         parentId: 'parent-1',
-        skipUsageCount: false,
+        skipUsageCount: true,
         monitoringMode: 'FULL',
+      })
+    )
+  })
+
+  it('meters a later manual Recheck on the same URL', async () => {
+    prismaMock.audit.count.mockResolvedValue(1)
+    const user = { id: 'u1' } as User
+    await startMonitoringAudit('parent-1', user)
+    expect(createAndEnqueueAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skipUsageCount: false,
       })
     )
   })

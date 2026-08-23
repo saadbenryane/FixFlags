@@ -119,7 +119,7 @@ describe('ProductReviewAction', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /run update review/i }))
+    fireEvent.click(screen.getByRole('button', { name: /recheck/i }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -135,7 +135,7 @@ describe('ProductReviewAction', () => {
       )
     })
     expect(
-      screen.getByRole('button', { name: 'Starting update review' }),
+      screen.getByRole('button', { name: 'Starting Recheck' }),
     ).toHaveAttribute('aria-busy', 'true')
   })
 
@@ -163,7 +163,7 @@ describe('ProductReviewAction', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /run update review/i }))
+    fireEvent.click(screen.getByRole('button', { name: /recheck/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'A Product Review is already in progress.',

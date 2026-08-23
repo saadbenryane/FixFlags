@@ -51,8 +51,20 @@ export async function startMonitoringAudit(
     return validation
   }
 
-  // Manual owner update reviews consume product-review credits; watch-triggered runs skip.
-  const skipUsage = (options.trigger ?? 'MANUAL') === 'WATCH'
+  const trigger = options.trigger ?? 'MANUAL'
+  const priorManualRecheck =
+    trigger === 'WATCH'
+      ? 0
+      : await prisma.audit.count({
+          where: {
+            userId: user.id,
+            parentId: { not: null },
+            url: parent!.url,
+            OR: [{ recheckTrigger: null }, { recheckTrigger: 'MANUAL' }],
+          },
+        })
+  // Watch-triggered runs skip the meter. First manual Recheck on this URL also skips.
+  const skipUsage = trigger === 'WATCH' || priorManualRecheck === 0
 
   const { auditId, status, reused, parentId: parentAuditId } = await createAndEnqueueAudit({
     url: parent!.url,

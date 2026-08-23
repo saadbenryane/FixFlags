@@ -41,13 +41,14 @@ const events: ActionTimelineEvent[] = [
 
 const steps = buildPlaybackSteps(events)
 
-function renderShell(replayStep?: string, view?: 'timeline' | 'report' | 'canvas') {
+function renderShell(replayStep?: string, view?: 'timeline' | 'report' | 'canvas', scanning = true) {
   searchParamValues.clear()
   if (replayStep) searchParamValues.set('step', replayStep)
   if (view) searchParamValues.set('view', view)
   return render(
     <ReportWorkspaceSplitShell
       isActiveReview
+      scanning={scanning}
       leftPanel={<div data-testid="chat">Chat</div>}
       browserUrl="https://example.com"
       reportHeader={<div>Score 72</div>}
@@ -59,7 +60,9 @@ function renderShell(replayStep?: string, view?: 'timeline' | 'report' | 'canvas
 }
 
 function openTimeline() {
-  fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
+  const preview = screen.queryAllByRole('tab', { name: 'Preview' })[0]
+  const timeline = screen.queryAllByRole('tab', { name: 'Timeline' })[0]
+  fireEvent.click((preview ?? timeline)!)
 }
 
 function stepButtons(label: string) {
@@ -77,7 +80,7 @@ beforeEach(() => {
 })
 
 describe('ReportWorkspaceSplitShell playback', () => {
-  it('keeps Timeline discoverable but locked without rendering playback for logged-out visitors', () => {
+  it('hides the preview pane on a completed report', () => {
     render(
       <ReportWorkspaceSplitShell
         leftPanel={<div>Agent</div>}
@@ -89,67 +92,18 @@ describe('ReportWorkspaceSplitShell playback', () => {
       />,
     )
 
-    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
-    expect(screen.getAllByText('See how FixFlags checked the path').length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('link', { name: 'Sign in to view Timeline' })[0]).toHaveAttribute(
-      'href',
-      '/sign-in?next=%2Freport%2Fa1',
-    )
+    expect(screen.queryAllByRole('tab', { name: 'Timeline' })).toHaveLength(0)
+    expect(screen.queryAllByRole('tab', { name: 'Preview' })).toHaveLength(0)
+    expect(screen.getAllByRole('tab', { name: 'Report' }).length).toBeGreaterThan(0)
     expect(screen.queryByRole('slider')).not.toBeInTheDocument()
   })
 
-  it('renders a scrub timeline with one step marker per captured step', () => {
-    renderShell()
-    openTimeline()
-    const scrubs = screen.getAllByRole('slider')
-    expect(scrubs.length).toBeGreaterThan(0)
-    const scrub = scrubs[0]!
-    expect(scrub).toHaveAttribute('role', 'slider')
-    expect(scrub).toHaveAttribute('aria-valuemin', '0')
-    expect(scrub).toHaveAttribute('aria-valuemax', String(steps.length - 1))
-    expect(scrub).toHaveAttribute('aria-valuenow', '0')
-    expect(stepButtons('Step 1 · Load homepage').length).toBeGreaterThan(0)
-    expect(stepButtons('Step 2 · Click pricing').length).toBeGreaterThan(0)
-  })
-
-  it('selecting a step updates the browser panel and highlights the activity row', () => {
-    renderShell()
-    openTimeline()
-
-    fireEvent.click(stepButtons('Step 2 · Click pricing')[0]!)
-
-    expect(stepButtons('Step 2 · Click pricing')[0]).toHaveAttribute('aria-pressed', 'true')
-    expect(browserStepLabels().some((el) => el.textContent?.startsWith('Step 2'))).toBe(true)
-    expect(screen.getAllByText('Back to live').length).toBeGreaterThan(0)
-    expect(
-      screen.getAllByRole('button', { name: /Click pricing/i })[0]
-    ).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  it('clicking an activity row seeks playback to the matching step', () => {
-    renderShell()
-    openTimeline()
-
-    fireEvent.click(screen.getAllByRole('button', { name: /Submit form/i })[0]!)
-
-    expect(stepButtons('Step 3 · Submit form')[0]).toHaveAttribute('aria-pressed', 'true')
-    expect(browserStepLabels().some((el) => el.textContent?.startsWith('Step 3'))).toBe(true)
-  })
-
-  it('selecting a step via buttons selects the matching step', () => {
-    renderShell()
-    openTimeline()
-
-    fireEvent.click(stepButtons('Step 3 · Submit form')[0]!)
-
-    expect(stepButtons('Step 3 · Submit form')[0]).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  it('honors a ?step= replay param by selecting that step and showing the browser', () => {
-    renderShell('2')
-
-    expect(stepButtons('Step 2 · Click pricing')[0]).toHaveAttribute('aria-pressed', 'true')
-    expect(browserStepLabels().some((el) => el.textContent?.startsWith('Step 2'))).toBe(true)
+  it('keeps the completed report on Report without a preview pane', () => {
+    renderShell(undefined, undefined, false)
+    expect(screen.getByTestId('report-panel')).toBeInTheDocument()
+    expect(screen.queryAllByRole('tab', { name: 'Timeline' })).toHaveLength(0)
+    expect(screen.queryAllByRole('tab', { name: 'Preview' })).toHaveLength(0)
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument()
   })
 })
 
@@ -217,19 +171,20 @@ describe('ReportWorkspaceSplitShell product stage', () => {
     expect(stage(container)!.className).toBe(before)
   })
 
-  it('gives anonymous viewers the device control in the Product header and the Timeline gate but no step payload', () => {
+  it('gives scanning viewers the device control in the Product header and the Timeline gate but no step payload', () => {
     const { container } = render(
       <ReportWorkspaceSplitShell
         leftPanel={<div>Agent</div>}
         browserUrl="https://example.com"
         reportPanel={<div>Report</div>}
         steps={steps}
+        scanning
         capabilities={capabilities({ canReplayTimeline: false })}
         timelineGateActionHref="/sign-in?next=%2Freport%2Fa1"
       />,
     )
 
-    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Preview' })[0]!)
 
     expect(transport(container)).not.toBeNull()
     expect(screen.getAllByRole('tab', { name: 'Mobile' }).length).toBeGreaterThan(0)
@@ -246,11 +201,11 @@ describe('ReportWorkspaceSplitShell product stage', () => {
     const tabs = Array.from(toggle.querySelectorAll('[role="tab"]')).map(
       (tab) => tab.getAttribute('aria-label')
     )
-    expect(tabs.indexOf('Timeline')).toBeLessThan(tabs.indexOf('Report'))
+    expect(tabs.indexOf('Preview')).toBeLessThan(tabs.indexOf('Report'))
   })
 
   it('puts Score in the fixed Report header and restores URL-backed sibling views', async () => {
-    const { container } = renderShell()
+    const { container } = renderShell(undefined, 'report', false)
 
     await waitFor(() => {
       expect(container.querySelector('[data-workspace-ready="true"]')).toBeInTheDocument()
@@ -259,9 +214,8 @@ describe('ReportWorkspaceSplitShell product stage', () => {
     expect(screen.getByLabelText('Product example.com')).toBeInTheDocument()
     expect(screen.queryByText('Product')).not.toBeInTheDocument()
 
-    openTimeline()
-    expect(window.location.search).toContain('view=timeline')
-    expect(screen.getByText('Product')).toBeInTheDocument()
+    expect(screen.queryAllByRole('tab', { name: 'Timeline' })).toHaveLength(0)
+    expect(screen.getAllByRole('tab', { name: 'Report' }).length).toBeGreaterThan(0)
 
     window.history.pushState({}, '', '/report/a1?view=report')
     window.dispatchEvent(new PopStateEvent('popstate'))
@@ -302,9 +256,9 @@ describe('ReportWorkspaceSplitShell scanning', () => {
     renderShell()
 
     const reportTab = screen.getAllByRole('tab', { name: 'Report' })[0]!
-    const timelineTab = screen.getAllByRole('tab', { name: 'Timeline' })[0]!
+    const previewTab = screen.getAllByRole('tab', { name: 'Preview' })[0]!
     expect(reportTab).toHaveAttribute('href', '/report/a1?view=report')
-    expect(timelineTab).toHaveAttribute('href', '/report/a1?view=timeline')
+    expect(previewTab).toHaveAttribute('href', '/report/a1?view=timeline')
     expect(reportTab).toHaveAttribute('aria-controls')
     expect(document.getElementById(reportTab.getAttribute('aria-controls')!)).toHaveAttribute(
       'role',
@@ -318,10 +272,10 @@ describe('ReportWorkspaceSplitShell scanning', () => {
     const reportTab = screen.getAllByRole('tab', { name: 'Report' })[0]!
     reportTab.focus()
     fireEvent.keyDown(reportTab, { key: 'ArrowLeft' })
-    expect(screen.getAllByRole('tab', { name: 'Timeline' })[0]).toHaveFocus()
+    expect(screen.getAllByRole('tab', { name: 'Preview' })[0]).toHaveFocus()
     expect(window.location.search).toContain('view=timeline')
 
-    fireEvent.keyDown(screen.getAllByRole('tab', { name: 'Timeline' })[0]!, { key: 'End' })
+    fireEvent.keyDown(screen.getAllByRole('tab', { name: 'Preview' })[0]!, { key: 'End' })
     expect(screen.getAllByRole('tab', { name: 'Report' })[0]).toHaveFocus()
     expect(window.location.search).toContain('view=report')
   })
