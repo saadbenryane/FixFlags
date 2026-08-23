@@ -44,6 +44,9 @@ function categoryAgentPrompt(
   flags: ReportExplorerModel['flags'],
   fallback: string | null,
 ): string {
+  if (fallback?.startsWith(AGENT_COPY_LEAD)) return fallback
+  const shared = flags.find((flag) => flag.copyFixPrompt.startsWith(AGENT_COPY_LEAD))?.copyFixPrompt
+  if (shared) return shared
   const rankable = flags.flatMap((flag) => {
     const agent = flag.toolPrompts.universal
     if (agent && !agent.startsWith(AGENT_COPY_LEAD)) {
@@ -58,14 +61,9 @@ function categoryAgentPrompt(
     }
     return []
   })
-  const built = rankable.length
+  return rankable.length
     ? buildPlanModePrompt(rankable, { limit: rankable.length })
     : ''
-  if (built) return built
-  const shared = flags.find((flag) => flag.copyFixPrompt.startsWith(AGENT_COPY_LEAD))?.copyFixPrompt
-  if (shared) return shared
-  if (fallback?.startsWith(AGENT_COPY_LEAD)) return fallback
-  return ''
 }
 
 interface ReportExplorerProps {

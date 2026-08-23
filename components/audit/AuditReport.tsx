@@ -12,6 +12,7 @@ import { ReportPane } from '@/components/report/ReportPane'
 const LiveReportExplorer = dynamic(
   () => import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
 )
+import { AuditPageActions } from '@/components/audit/AuditPageActions'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { TriageUnavailableCallout } from '@/components/audit/TriageUnavailableCallout'
@@ -251,7 +252,7 @@ export function AuditReport({
       canChat: !isSample && isLoggedIn && isOwnerAccess && Boolean(auditId),
       canUseCanvas: !isSample && viewerIsPaid && isOwnerAccess,
       canShare: !isSample && isLoggedIn && isOwnerAccess,
-      canRecheck: !isSample && ((isLoggedIn && isOwnerAccess) || claimedAnonymous),
+      canRecheck: isSample || ((isLoggedIn && isOwnerAccess) || claimedAnonymous),
       canGiveFeedback: !isSample && isLoggedIn && isOwnerAccess,
       demonstratedFlagId: demonstratedFlag?.id ?? null,
     },
@@ -568,6 +569,22 @@ export function AuditReport({
                         </Link>
                       </Button>
                       {toolbarActions}
+                      {!toolbarActions && workspace.capabilities.canRecheck && (auditId || observationId) ? (
+                        <AuditPageActions
+                          auditId={auditId ?? observationId ?? ''}
+                          url={audit.url}
+                          score={audit.score ?? null}
+                          rubrics={[]}
+                          isPaid={viewerIsPaid}
+                          isLoggedIn={isLoggedIn}
+                          isOwner={isOwnerAccess}
+                          isAnonymous={!isLoggedIn}
+                          isPublic
+                          toolbar
+                          recheckOnly
+                          claimedAnonymous={claimedAnonymous}
+                        />
+                      ) : null}
                     </>
                   }
                 />
@@ -611,11 +628,28 @@ export function AuditReport({
             <ReportOutcomeBar
               model={workspace}
               actions={
-                <Button asChild variant="ghost" size="sm">
-                  <Link href="#report-flags">
-                    {REPORT_COPY.workspace.panels.inspectFindings(unresolvedFlagCount)}
-                  </Link>
-                </Button>
+                <>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link href="#report-flags">
+                      {REPORT_COPY.workspace.panels.inspectFindings(unresolvedFlagCount)}
+                    </Link>
+                  </Button>
+                  {workspace.capabilities.canRecheck && observationId ? (
+                    <AuditPageActions
+                      auditId={observationId}
+                      url={audit.url}
+                      score={audit.score ?? null}
+                      rubrics={[]}
+                      isPaid={false}
+                      isLoggedIn={false}
+                      isOwner={false}
+                      isAnonymous
+                      isPublic
+                      toolbar
+                      recheckOnly
+                    />
+                  ) : null}
+                </>
               }
             />
           }

@@ -101,4 +101,14 @@ describe('ReportOutcomeBar', () => {
       'Checking Message35%',
     )
   })
+
+  it("renders the existing Recheck control when provided", () => {
+    render(
+      <ReportOutcomeBar
+        model={buildModel()}
+        actions={<button type="button">Recheck</button>}
+      />,
+    )
+    expect(screen.getByRole("button", { name: "Recheck" })).toBeVisible()
+  })
 })

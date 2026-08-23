@@ -42,6 +42,7 @@ interface Props {
   showFixPrompts?: boolean
   toolbar?: boolean
   claimedAnonymous?: boolean
+  recheckOnly?: boolean
 }
 
 export function AuditPageActions({
@@ -64,13 +65,13 @@ export function AuditPageActions({
   shareStatus,
   showFixPrompts = false,
   toolbar = false,
-  claimedAnonymous = false,
+  recheckOnly = false,
 }: Props) {
   const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
   const [recheckLoading, setRecheckLoading] = useState(false)
 
-  const showRecheck = (isLoggedIn && isOwner) || (isAnonymous && claimedAnonymous)
+  const showRecheck = (isLoggedIn && isOwner) || isAnonymous
 
   async function handleRecheck() {
     setRecheckLoading(true)
@@ -105,7 +106,7 @@ export function AuditPageActions({
           {REPORT_COPY.recheck.label}
         </Button>
       )}
-      {compareAuditId && (
+      {!recheckOnly && compareAuditId && (
         <Button variant="outline" size="sm" asChild>
           <Link href={`/compare/${compareAuditId}`}>
             <ArrowLeftRight className="h-4 w-4 mr-2" />
@@ -113,6 +114,7 @@ export function AuditPageActions({
           </Link>
         </Button>
       )}
+      {!recheckOnly ? (
       <ShareDrawer
         auditId={auditId}
         score={score}
@@ -125,6 +127,8 @@ export function AuditPageActions({
         shareStatus={shareStatus}
         onPublicChange={setIsPublic}
       />
+      ) : null}
+      {!recheckOnly ? (
       <ExportMenu
         auditId={auditId}
         url={url}
@@ -136,7 +140,8 @@ export function AuditPageActions({
         canExportSummary={canExportSummary}
         showFixPrompts={showFixPrompts}
       />
-      {!toolbar && isPaid && <CopyMcpCommand auditId={auditId} />}
+      ) : null}
+      {!recheckOnly && !toolbar && isPaid && <CopyMcpCommand auditId={auditId} />}
       {showRecheck ? (
         <p className="w-full text-xs text-muted-foreground sm:w-auto">{REPORT_COPY.recheck.helper}</p>
       ) : null}

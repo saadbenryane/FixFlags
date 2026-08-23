@@ -12,6 +12,7 @@ export function ReportOutcomeBar({
   model,
   scanProgress,
   stageDetail,
+  actions,
   className,
 }: {
   model: ReportWorkspaceModel
@@ -45,6 +46,9 @@ export function ReportOutcomeBar({
         <p className="min-w-0 truncate text-sm font-semibold text-foreground">
           {name}
         </p>
+        {actions ? (
+          <div className="ml-auto flex min-w-0 flex-wrap items-center gap-2">{actions}</div>
+        ) : null}
       </div>
 
       {loading ? (

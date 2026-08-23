@@ -87,7 +87,7 @@ describe('Report workspace adapters', () => {
       canChat: false,
       canUseCanvas: false,
       canShare: false,
-      canRecheck: false,
+      canRecheck: true,
       canGiveFeedback: false,
       promptAccess: 'demonstrated',
       demonstratedFlagId: report.demonstratedFlagId,
