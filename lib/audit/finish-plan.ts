@@ -153,12 +153,14 @@ function buildRankedFixes(input: PlanInput): {
 
 function copyPromptFor(
   input: PlanInput,
-  rankedFlags: RankableFlag[],
-  visiblePromptCount = 1
+  rankedFlags: RankableFlag[]
 ): string | null {
   if (input.promptAccess === 'none') return null
-  void visiblePromptCount
-  const prompt = buildPlanModePrompt(rankedFlags, {
+  const flags =
+    input.promptAccess === 'one'
+      ? rankedFlags.filter((flag) => flag.id === input.demonstratedFlag?.id)
+      : rankedFlags
+  const prompt = buildPlanModePrompt(flags, {
     url: input.url,
     contract: input.contract ?? null,
   })
