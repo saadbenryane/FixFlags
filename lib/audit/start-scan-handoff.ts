@@ -13,6 +13,8 @@ type StartScanOptions = {
   /** Analytics after success. */
   onStarted?: (data: Record<string, unknown>) => void
   errorFallback?: string
+  /** Recheck stays on the report they started from. */
+  stayOnPage?: boolean
 }
 
 export type CreateCheckResult =
@@ -58,10 +60,9 @@ export async function startScanWithHandoff(
     options.onStarted?.(data)
 
     if (reportId) {
-      // The report becomes the owner of active-audit state after it mounts.
-      // Keeping creation stateless prevents the homepage resume banner from
-      // becoming a competing foreground handoff.
-      window.location.replace(`/report/${reportId}`)
+      if (!options.stayOnPage) {
+        window.location.replace(`/report/${reportId}`)
+      }
       return { ok: true, reportId }
     }
 

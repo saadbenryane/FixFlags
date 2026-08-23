@@ -101,6 +101,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       shareStatus={state.reportAudit.shareStatus}
       showFixPrompts={state.showDeterministicFixes}
       toolbar
+      claimedAnonymous={state.claimedAnonymous}
     />
   )
   return (
@@ -158,6 +159,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           }
           toolbarActions={toolbarActions}
           agentMessages={agentMessages}
+          claimedAnonymous={state.claimedAnonymous}
         />
         <McpFixNudge auditId={state.id} isPaid={state.viewerIsPaid} />
         <AiReviewPendingRefresh auditId={state.id} enabled={state.aiReviewPending} />

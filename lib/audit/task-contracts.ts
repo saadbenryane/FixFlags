@@ -510,10 +510,14 @@ export async function checkAndPlan(options: TaskQueueOptions & {
 
 export async function recheckAndCompare(options: TaskQueueOptions & {
   parentReportId: string
-  user: User
+  user: User | null
+  claimedAnonymous?: boolean
+  clientId?: string
 }): Promise<RecheckAndCompareOutcome> {
   const started = await startMonitoringAudit(options.parentReportId, options.user, {
     delayMs: options.delayMs,
+    claimedAnonymous: options.claimedAnonymous,
+    clientId: options.clientId,
   })
   if (!started.ok) {
     const error = new Error(started.error) as Error & {

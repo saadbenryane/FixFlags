@@ -1,6 +1,6 @@
 import { resend } from '@/lib/email/client'
 import { prisma } from '@/lib/db'
-import { NURTURE_EMAILS, NEWSLETTER_EMAIL, type NurtureEmailType } from './templates'
+import { NURTURE_EMAILS, NEWSLETTER_EMAIL, KEEP_REPORT_EMAIL, type NurtureEmailType } from './templates'
 import { BRAND } from '@/lib/marketing/copy'
 
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
@@ -79,6 +79,31 @@ export async function sendNewsletterConfirmation(
       html: NEWSLETTER_EMAIL.html(),
     })
 
+    if (error) throw new Error(error.message)
+    return { sent: true }
+  } catch (error) {
+    return {
+      sent: false,
+      reason: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
+export async function sendKeepReportEmail(
+  email: string,
+  reportUrl: string
+): Promise<{ sent: boolean; reason?: string }> {
+  if (!resend) {
+    return { sent: false, reason: 'RESEND_API_KEY not configured' }
+  }
+
+  try {
+    const { error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: KEEP_REPORT_EMAIL.subject,
+      html: KEEP_REPORT_EMAIL.html(reportUrl),
+    })
     if (error) throw new Error(error.message)
     return { sent: true }
   } catch (error) {

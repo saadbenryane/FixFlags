@@ -326,6 +326,7 @@ describe('createAndEnqueueAudit', () => {
   })
 
   it('requires sign-in to continue from an existing report', async () => {
+    prismaMock.audit.findUnique.mockResolvedValueOnce({ id: 'parent-1', userId: 'user-1', status: 'COMPLETED' })
     await expect(
       createAndEnqueueAudit({ url: AUDIT_URL, parentId: 'parent-1' })
     ).rejects.toMatchObject({ name: 'ParentAuditError', status: 401 })

@@ -21,7 +21,7 @@ import { validateMonitoringParent, startMonitoringAudit } from '@/lib/audit/moni
 
 describe('validateMonitoringParent', () => {
   it('rejects missing parent', () => {
-    const result = validateMonitoringParent(null, 'u1')
+    const result = validateMonitoringParent(null, { userId: 'u1' })
     assert.equal(result.ok, false)
     if (!result.ok) assert.equal(result.status, 404)
   })
@@ -29,7 +29,7 @@ describe('validateMonitoringParent', () => {
   it('rejects wrong owner', () => {
     const result = validateMonitoringParent(
       { userId: 'other', status: 'COMPLETED' },
-      'u1'
+      { userId: 'u1' }
     )
     assert.equal(result.ok, false)
     if (!result.ok) {
@@ -41,7 +41,7 @@ describe('validateMonitoringParent', () => {
   it('rejects incomplete parent', () => {
     const result = validateMonitoringParent(
       { userId: 'u1', status: 'QUEUED' },
-      'u1'
+      { userId: 'u1' }
     )
     assert.equal(result.ok, false)
     if (!result.ok) {
@@ -50,10 +50,27 @@ describe('validateMonitoringParent', () => {
     }
   })
 
+  it('accepts claimed anonymous parent', () => {
+    const result = validateMonitoringParent(
+      { userId: null, status: 'COMPLETED' },
+      { userId: null, claimedAnonymous: true }
+    )
+    assert.equal(result.ok, true)
+  })
+
+  it('rejects anonymous parent without claim', () => {
+    const result = validateMonitoringParent(
+      { userId: null, status: 'COMPLETED' },
+      { userId: null, claimedAnonymous: false }
+    )
+    assert.equal(result.ok, false)
+    if (!result.ok) assert.equal(result.status, 403)
+  })
+
   it('accepts completed owned parent', () => {
     const result = validateMonitoringParent(
       { userId: 'u1', status: 'COMPLETED' },
-      'u1'
+      { userId: 'u1' }
     )
     assert.equal(result.ok, true)
   })

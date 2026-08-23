@@ -153,6 +153,7 @@ interface AuditReportProps {
   agentMessages?: AgentMessage[]
   /** Persisted or curated Product name; the hostname stays the fallback. */
   productName?: string | null
+  claimedAnonymous?: boolean
 }
 
 export function AuditReport({
@@ -186,6 +187,7 @@ export function AuditReport({
   sampleFixFlag = null,
   agentMessages = [],
   productName = null,
+  claimedAnonymous = false,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const isRepositorySample = isSample && audit.accessContext === 'repository_sample'
@@ -249,7 +251,7 @@ export function AuditReport({
       canChat: !isSample && isLoggedIn && isOwnerAccess && Boolean(auditId),
       canUseCanvas: !isSample && viewerIsPaid && isOwnerAccess,
       canShare: !isSample && isLoggedIn && isOwnerAccess,
-      canRecheck: !isSample && isLoggedIn && isOwnerAccess,
+      canRecheck: !isSample && ((isLoggedIn && isOwnerAccess) || claimedAnonymous),
       canGiveFeedback: !isSample && isLoggedIn && isOwnerAccess,
       demonstratedFlagId: demonstratedFlag?.id ?? null,
     },
@@ -526,8 +528,8 @@ export function AuditReport({
       >
         {contextSections}
       </ReportContextDisclosure>
-      {toolbarActions ?? actions ? (
-        <div className="mt-3 flex flex-wrap gap-2">{toolbarActions ?? actions}</div>
+      {actions && !toolbarActions ? (
+        <div className="mt-3 flex flex-wrap gap-2">{actions}</div>
       ) : null}
     </>
   )
@@ -555,7 +557,21 @@ export function AuditReport({
             <ReportWorkspaceSplitShell
               capabilities={workspace.capabilities}
               timelineGateActionHref={timelineGateActionHref}
-              reportHeader={<ReportOutcomeBar model={workspace} />}
+              reportHeader={
+                <ReportOutcomeBar
+                  model={workspace}
+                  actions={
+                    <>
+                      <Button asChild variant="ghost" size="sm">
+                        <Link href="#report-flags">
+                          {REPORT_COPY.workspace.panels.inspectFindings(unresolvedFlagCount)}
+                        </Link>
+                      </Button>
+                      {toolbarActions}
+                    </>
+                  }
+                />
+              }
               canvasPanel={
                 workspace.capabilities.canUseCanvas
                   ? <ReportCanvasPanel auditId={auditId} />
@@ -569,6 +585,7 @@ export function AuditReport({
                   agentMessages={agentMessages}
                   reportUrl={audit.url}
                   productName={productName}
+                  surface="timeline"
                 />
               }
               browserUrl={audit.url}
@@ -591,7 +608,18 @@ export function AuditReport({
       <Suspense fallback={null}>
         <ReportWorkspaceSplitShell
           capabilities={workspace.capabilities}
-          reportHeader={<ReportOutcomeBar model={workspace} />}
+          reportHeader={
+            <ReportOutcomeBar
+              model={workspace}
+              actions={
+                <Button asChild variant="ghost" size="sm">
+                  <Link href="#report-flags">
+                    {REPORT_COPY.workspace.panels.inspectFindings(unresolvedFlagCount)}
+                  </Link>
+                </Button>
+              }
+            />
+          }
           leftPanel={
             <WorkspaceChatPanel
               capabilities={workspace.capabilities}
@@ -599,6 +627,7 @@ export function AuditReport({
               agentMessages={agentMessages}
               reportUrl={audit.url}
               productName={productName}
+              surface="timeline"
             />
           }
           browserUrl={audit.url}

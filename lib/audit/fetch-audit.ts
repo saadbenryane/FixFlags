@@ -131,6 +131,23 @@ export async function resolveSessionUser() {
   return auth.api.getSession({ headers: await headers() }).catch(() => null)
 }
 
+const MAX_ATTACHED_CHILD_HOPS = 20
+
+/** Follow the newest attached Recheck so a bookmarked parent URL still opens this work. */
+export async function resolveLatestAttachedWorkId(id: string): Promise<string> {
+  let current = id
+  for (let hop = 0; hop < MAX_ATTACHED_CHILD_HOPS; hop += 1) {
+    const child = await prisma.audit.findFirst({
+      where: { parentId: current },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { id: true },
+    })
+    if (!child) return current
+    current = child.id
+  }
+  return current
+}
+
 export async function resolveIsPaidForAudit(
   audit: { userId: string | null; isPublic: boolean }
 ): Promise<boolean> {
@@ -170,7 +187,7 @@ export function redactCompletedPrivateReportData<T extends {
  * opt into the heavier completed-report graph.
  */
 export async function getProgressiveAuditForRequest(id: string) {
-  const [session, audit] = await Promise.all([
+  const [session, requested] = await Promise.all([
     resolveSessionUser(),
     prisma.audit.findUnique({
       where: { id },
@@ -178,11 +195,20 @@ export async function getProgressiveAuditForRequest(id: string) {
     }),
   ])
 
-  if (!audit) return { kind: 'not_found' as const }
+  if (!requested) return { kind: 'not_found' as const }
 
   const shareGrant = (await cookies()).get(SHARE_GRANT_COOKIE)?.value
-  const accessContext = await resolveAuditAccess(audit, session?.user, shareGrant)
+  const accessContext = await resolveAuditAccess(requested, session?.user, shareGrant)
   if (accessContext === 'denied') return { kind: 'forbidden' as const }
+
+  const workId = await resolveLatestAttachedWorkId(id)
+  const audit = workId === id
+    ? requested
+    : await prisma.audit.findUnique({
+        where: { id: workId },
+        select: progressiveAuditSelect,
+      })
+  if (!audit) return { kind: 'not_found' as const }
 
   if (audit.status === 'COMPLETED') {
     return {
@@ -224,18 +250,23 @@ export async function getProgressiveAuditForRequest(id: string) {
 
 export async function getGatedAuditForRequest(id: string) {
   const session = await resolveSessionUser()
-  const audit = await fetchAuditRow(id)
+  const requested = await fetchAuditRow(id)
 
-  if (!audit) {
+  if (!requested) {
     return { kind: 'not_found' as const }
   }
 
   const shareGrant = (await cookies()).get(SHARE_GRANT_COOKIE)?.value
-  const accessContext = await resolveAuditAccess(audit, session?.user, shareGrant)
+  const accessContext = await resolveAuditAccess(requested, session?.user, shareGrant)
   if (accessContext === 'denied') {
     return { kind: 'forbidden' as const }
   }
 
+  const workId = await resolveLatestAttachedWorkId(id)
+  const audit = workId === id ? requested : await fetchAuditRow(workId)
+  if (!audit) {
+    return { kind: 'not_found' as const }
+  }
   const isPaid = await resolveIsPaidForAudit(audit)
   const mayViewPrompts = accessContext === 'owner' || accessContext === 'marketing_sample'
   const showPrescription = mayViewPrompts && await canViewPrescriptionContentForAudit(

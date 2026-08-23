@@ -1138,8 +1138,8 @@ export const REPORT_COPY = {
     emailPlaceholder: "you@company.com",
     action: "Keep this report",
     saving: "Saving",
-    saved: "We will tell you if these Flags are still open.",
-    error: "Could not save that email. Try again.",
+    saved: "We emailed you the report link. We will tell you if these Flags are still open.",
+    error: "Could not send that email. Try again.",
   },
   launchGates: {
     title: "Launch gates",

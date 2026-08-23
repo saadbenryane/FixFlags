@@ -148,7 +148,7 @@ function ReportWorkspaceSplitShellInner({
   const rawView = controlledView ?? internalView
   const view = !scanning && rawView === 'browser' ? 'report' : rawView
   const [mobileFocus, setMobileFocus] = useState<MobileFocus>(
-    initialMobileFocus ?? (scanning || isActiveReview ? 'chat' : 'product')
+    initialMobileFocus ?? (scanning || isActiveReview ? 'chat' : 'chat')
   )
   const [internalActiveIndex, setInternalActiveIndex] = useState<number | null>(null)
   const activeIndex = controlledActiveStepIndex !== undefined
@@ -391,7 +391,9 @@ function ReportWorkspaceSplitShellInner({
   const mobileTabs = [
     {
       id: `${mobileTabsId}-chat`,
-      label: REPORT_COPY.workspace.panels.chatTab,
+      label: scanning
+        ? REPORT_COPY.workspace.panels.chatTab
+        : REPORT_COPY.workspace.panels.browserView,
       selected: mobileFocus === 'chat',
       onSelect: () => chooseMobileFocus('chat'),
       controls: agentPanelId,

@@ -4,6 +4,8 @@ import { prisma } from '@/lib/db'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { getGatedAuditForRequest } from '@/lib/audit/fetch-audit'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { sendKeepReportEmail } from '@/lib/email/send'
+import { SITE_URL } from '@/lib/marketing/copy'
 
 const bodySchema = z.object({
   email: z.string().trim().email('Enter a valid email address'),
@@ -41,6 +43,13 @@ export async function POST(
 
     const email = parsed.data.email.toLowerCase()
     const source = `report-keep:${id}`.slice(0, 64)
+    const reportUrl = `${SITE_URL}/report/${encodeURIComponent(id)}`
+    const sent = await sendKeepReportEmail(email, reportUrl)
+    if (!sent.sent) {
+      return apiError('Could not send the keep email. Try again.', 503, {
+        code: 'EMAIL_SEND_FAILED',
+      })
+    }
 
     await prisma.newsletterSubscriber.upsert({
       where: { email },

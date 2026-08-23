@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { cookies } from 'next/headers'
 import {
   getGatedAuditForRequest,
   getProgressiveAuditForRequest,
@@ -6,7 +7,7 @@ import {
 import { prisma } from '@/lib/db'
 import { getEntitlements, canAccessCompare, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } from '@/lib/auth/permissions'
-import { isAtCheckLimit } from '@/lib/audit/usage'
+import { isAtCheckLimit, ANON_AUDIT_IDS_COOKIE, readAnonAuditIds } from '@/lib/audit/usage'
 import { isPublicMarketingSample } from '@/lib/audit/report-access'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { loadFinishPlanFlags } from '@/lib/audit/load-finish-plan-flags'
@@ -155,6 +156,9 @@ export async function loadReportRouteState(
       !isUnlimitedScanLimit(progressiveEffectiveLimit) &&
       isAtCheckLimit(progressiveUser.auditsUsed, progressivePending, progressiveEffectiveLimit)
 
+    const progressiveClaimedIds = readAnonAuditIds(
+      (await cookies()).get(ANON_AUDIT_IDS_COOKIE)?.value
+    )
     return {
       kind: 'progressive' as const,
       id,
@@ -164,6 +168,7 @@ export async function loadReportRouteState(
       },
       session: progressive.session,
       atAuditLimit: progressiveAtAuditLimit,
+      claimedAnonymous: progressiveClaimedIds.includes(id),
     }
   }
 
@@ -191,6 +196,10 @@ export async function loadReportRouteState(
   } = result
   const isOwner = accessContext === 'owner'
   const isAnonymous = audit.userId === null
+  const claimedIds = readAnonAuditIds((await cookies()).get(ANON_AUDIT_IDS_COOKIE)?.value)
+  const claimedAnonymous =
+    isAnonymous &&
+    (claimedIds.includes(id) || (audit.parentId != null && claimedIds.includes(audit.parentId)))
   const isMarketingSample = isPublicMarketingSample({
     userId: audit.userId,
     aiReviewAt: audit.aiReviewAt,
@@ -421,6 +430,7 @@ export async function loadReportRouteState(
       isLoggedIn,
       isOwner,
       isAnonymous,
+      claimedAnonymous,
       isMarketingSample,
       showPrescription,
       showDeterministicFixes,

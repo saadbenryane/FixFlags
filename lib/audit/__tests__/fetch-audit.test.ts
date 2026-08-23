@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/db', () => ({
-  prisma: { audit: { findUnique: mocks.findUnique } },
+  prisma: { audit: { findUnique: mocks.findUnique, findFirst: vi.fn().mockResolvedValue(null) } },
 }))
 
 vi.mock('@/lib/auth', () => ({

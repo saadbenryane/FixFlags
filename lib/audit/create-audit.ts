@@ -99,10 +99,6 @@ async function assertParentAuditAllowed(
   parentId: string,
   userId: string | null | undefined
 ): Promise<void> {
-  if (!userId) {
-    throw new ParentAuditError('Sign in to continue from an existing report', 401)
-  }
-
   const parent = await prisma.audit.findUnique({
     where: { id: parentId },
     select: { id: true, userId: true, status: true },
@@ -111,11 +107,17 @@ async function assertParentAuditAllowed(
   if (!parent) {
     throw new ParentAuditError('Parent report not found', 404)
   }
-  if (parent.userId !== userId) {
-    throw new ParentAuditError('You can only continue from your own reports', 403)
-  }
   if (parent.status !== 'COMPLETED') {
     throw new ParentAuditError('You can only continue from a completed report', 400)
+  }
+  if (!userId) {
+    if (parent.userId !== null) {
+      throw new ParentAuditError('Sign in to continue from an existing report', 401)
+    }
+    return
+  }
+  if (parent.userId !== userId) {
+    throw new ParentAuditError('You can only continue from your own reports', 403)
   }
 }
 
@@ -155,7 +157,8 @@ export async function createAndEnqueueAudit(
   }
 
   // Anonymous teaser gate lives here so every create path (checks, roast, score) shares it.
-  if (!userId) {
+  // Parented Recheck from the same claimed session is not a new teaser.
+  if (!userId && !options.parentId) {
     const anonCheck = await checkAnonymousAuditAllowed()
     if (!anonCheck.allowed) {
       throw new AuditLimitError(anonCheck.code ?? 'AUTH_REQUIRED', {
@@ -362,7 +365,7 @@ export async function createAndEnqueueAudit(
     }
   }
 
-  if (!userId) {
+  if (!userId && !options.parentId) {
     await trackAnonymousAuditId(audit.id)
   }
 

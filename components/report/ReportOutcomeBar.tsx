@@ -44,6 +44,10 @@ export function ReportOutcomeBar({
       )}
     >
       <div className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 py-1">
+        {actions ? (
+          <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        ) : null}
+
         <div
           className="flex shrink-0 items-baseline gap-2"
           aria-label={`${REPORT_COPY.workspace.scoreLabel} ${scoreLabel}`}
@@ -63,10 +67,6 @@ export function ReportOutcomeBar({
             className="min-w-0 flex-1"
             isLoading={loading}
           />
-        ) : null}
-
-        {actions ? (
-          <div className="ml-auto flex flex-wrap items-center gap-2">{actions}</div>
         ) : null}
       </div>
 

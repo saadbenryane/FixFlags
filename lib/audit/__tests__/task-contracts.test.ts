@@ -257,6 +257,8 @@ describe('task contracts', () => {
     expect(outcome.reused).toBe(false)
     expect(mocks.startMonitoringAudit).toHaveBeenCalledWith('parent-1', user, {
       delayMs: undefined,
+      claimedAnonymous: undefined,
+      clientId: undefined,
     })
   })
 

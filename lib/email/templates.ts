@@ -121,4 +121,14 @@ export const NEWSLETTER_EMAIL = {
 `),
 } as const
 
+export const KEEP_REPORT_EMAIL = {
+  subject: 'Your FixFlags report',
+  html: (reportUrl: string) =>
+    layout(`
+  <p>Here is the report you asked us to keep.</p>
+  <p><a href="${reportUrl}" style="${ctaStyle}">Open your report</a></p>
+  <p>We will tell you if these Flags are still open.</p>
+`),
+} as const
+
 export type NurtureEmailType = keyof typeof NURTURE_EMAILS

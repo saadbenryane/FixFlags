@@ -13,18 +13,23 @@ export interface MonitoringResult {
 export interface StartMonitoringOptions {
   delayMs?: number
   trigger?: RecheckTrigger
+  clientId?: string
+  claimedAnonymous?: boolean
 }
 
 export function validateMonitoringParent(
   parent: { userId: string | null; status: string } | null,
-  userId: string
+  actor: { userId: string | null; claimedAnonymous?: boolean }
 ):
   | { ok: true }
   | { ok: false; status: number; error: string } {
   if (!parent) {
     return { ok: false, status: 404, error: 'Audit not found' }
   }
-  if (parent.userId !== userId) {
+  const signedInOwner = Boolean(actor.userId) && parent.userId === actor.userId
+  const anonymousOwner =
+    parent.userId === null && Boolean(actor.claimedAnonymous)
+  if (!signedInOwner && !anonymousOwner) {
     return { ok: false, status: 403, error: 'You can only re-check your own reports' }
   }
   if (parent.status !== 'COMPLETED') {
@@ -35,7 +40,7 @@ export function validateMonitoringParent(
 
 export async function startMonitoringAudit(
   parentId: string,
-  user: User,
+  user: User | null,
   options: StartMonitoringOptions = {}
 ): Promise<
   | { ok: true; result: MonitoringResult }
@@ -46,14 +51,17 @@ export async function startMonitoringAudit(
     select: { userId: true, status: true, url: true },
   })
 
-  const validation = validateMonitoringParent(parent, user.id)
+  const validation = validateMonitoringParent(parent, {
+    userId: user?.id ?? null,
+    claimedAnonymous: Boolean(options.claimedAnonymous) && parent?.userId === null,
+  })
   if (!validation.ok) {
     return validation
   }
 
   const trigger = options.trigger ?? 'MANUAL'
   const priorManualRecheck =
-    trigger === 'WATCH'
+    !user || trigger === 'WATCH'
       ? 0
       : await prisma.audit.count({
           where: {
@@ -63,17 +71,17 @@ export async function startMonitoringAudit(
             OR: [{ recheckTrigger: null }, { recheckTrigger: 'MANUAL' }],
           },
         })
-  // Watch-triggered runs skip the meter. First manual Recheck on this URL also skips.
-  const skipUsage = trigger === 'WATCH' || priorManualRecheck === 0
+  const skipUsage = !user || trigger === 'WATCH' || priorManualRecheck === 0
 
   const { auditId, status, reused, parentId: parentAuditId } = await createAndEnqueueAudit({
     url: parent!.url,
-    userId: user.id,
+    userId: user?.id ?? null,
     parentId,
     skipUsageCount: skipUsage,
     monitoringMode: 'FULL',
     recheckTrigger: options.trigger ?? 'MANUAL',
     delayMs: options.delayMs,
+    clientId: options.clientId,
     attribution: buildAttribution({
       url: parent!.url,
       source: 'DASHBOARD',

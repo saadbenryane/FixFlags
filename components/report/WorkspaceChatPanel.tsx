@@ -50,6 +50,8 @@ interface WorkspaceChatPanelProps {
   productName?: string | null
   /** While true, the Agent header Flag mark animates as the working signal. */
   scanning?: boolean
+  /** Completed reports use Timeline, not Agent chat, as the default left rail. */
+  surface?: 'agent' | 'timeline'
   /** Curated homepage playback uses the same panel without live account tools. */
   showToolbarActions?: boolean
 }
@@ -109,6 +111,7 @@ export function WorkspaceChatPanel({
   reportUrl = '',
   productName = null,
   scanning = false,
+  surface = 'agent',
   showToolbarActions = true,
 }: WorkspaceChatPanelProps) {
   // A curated sample has no report route, so chat, history, and flag deep
@@ -353,7 +356,7 @@ export function WorkspaceChatPanel({
           'flex h-full min-h-0 flex-col overflow-hidden border-r border-border/50 bg-background',
           className,
         )}
-        aria-label="Agent"
+        aria-label={surface === 'timeline' ? REPORT_COPY.workspace.panels.browserView : 'Agent'}
       >
         <div className={WORKSPACE_AGENT_HEADER_CLASS}>
           {scanning ? (
@@ -521,7 +524,7 @@ export function WorkspaceChatPanel({
             <p className="text-xs text-muted-foreground">{chatCopy.allowanceBody}</p>
             <Button asChild className="w-full"><Link href="/pricing">{chatCopy.allowanceAction}</Link></Button>
           </div>
-        ) : (
+        ) : surface === 'timeline' ? null : (
           <form
             className="border-t border-border/40 p-2"
             onSubmit={(event) => { event.preventDefault(); void send(input) }}

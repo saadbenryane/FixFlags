@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -40,6 +41,7 @@ interface Props {
   shareStatus?: string
   showFixPrompts?: boolean
   toolbar?: boolean
+  claimedAnonymous?: boolean
 }
 
 export function AuditPageActions({
@@ -62,11 +64,13 @@ export function AuditPageActions({
   shareStatus,
   showFixPrompts = false,
   toolbar = false,
+  claimedAnonymous = false,
 }: Props) {
+  const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
   const [recheckLoading, setRecheckLoading] = useState(false)
 
-  const showRecheck = isLoggedIn && isOwner
+  const showRecheck = (isLoggedIn && isOwner) || (isAnonymous && claimedAnonymous)
 
   async function handleRecheck() {
     setRecheckLoading(true)
@@ -76,11 +80,13 @@ export function AuditPageActions({
         endpoint: `/api/reports/${auditId}/re-check`,
         body: {},
         errorFallback: REPORT_COPY.recheck.error,
+        stayOnPage: true,
         onStarted: () => {
           trackEvent('recheck_started', { audit_id: auditId })
         },
       })
       if (!result.ok) toast.error(result.message)
+      else router.refresh()
     } finally {
       setRecheckLoading(false)
     }
@@ -88,6 +94,17 @@ export function AuditPageActions({
 
   return (
     <>
+      {showRecheck && (
+        <Button
+          size="sm"
+          onClick={handleRecheck}
+          loading={recheckLoading}
+          loadingLabel={REPORT_COPY.recheck.label}
+        >
+          <RefreshCw className="h-4 w-4 mr-2" />
+          {REPORT_COPY.recheck.label}
+        </Button>
+      )}
       {compareAuditId && (
         <Button variant="outline" size="sm" asChild>
           <Link href={`/compare/${compareAuditId}`}>
@@ -120,17 +137,6 @@ export function AuditPageActions({
         showFixPrompts={showFixPrompts}
       />
       {!toolbar && isPaid && <CopyMcpCommand auditId={auditId} />}
-      {showRecheck && (
-        <Button
-          size="sm"
-          onClick={handleRecheck}
-          loading={recheckLoading}
-          loadingLabel={REPORT_COPY.recheck.label}
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          {REPORT_COPY.recheck.label}
-        </Button>
-      )}
       {showRecheck ? (
         <p className="w-full text-xs text-muted-foreground sm:w-auto">{REPORT_COPY.recheck.helper}</p>
       ) : null}

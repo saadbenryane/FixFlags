@@ -19,6 +19,7 @@ vi.mock('@/lib/db', () => ({
     },
   },
 }))
+vi.mock('next/headers', () => ({ cookies: async () => ({ get: () => undefined }) }))
 vi.mock('next/navigation', () => ({
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND')
@@ -61,6 +62,7 @@ describe('loadReportRouteState progressive handoff', () => {
       audit: { ...audit, accessContext: 'owner' },
       session,
       atAuditLimit: false,
+      claimedAnonymous: false,
     })
     expect(getGatedAuditForRequest).not.toHaveBeenCalled()
   })

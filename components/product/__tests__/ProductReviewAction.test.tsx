@@ -106,7 +106,7 @@ describe('ProductReviewAction', () => {
   it('starts an update review from the latest completed Review and opens the returned Review', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ reportId: 'review-child', status: 'QUEUED' }),
+      json: async () => ({ reportId: 'review-completed', status: 'QUEUED' }),
     })
     vi.stubGlobal('fetch', fetchMock)
 
@@ -131,7 +131,7 @@ describe('ProductReviewAction', () => {
         },
       )
       expect(routerPush).toHaveBeenCalledWith(
-        '/report/review-child?view=timeline',
+        '/report/review-completed',
       )
     })
     expect(

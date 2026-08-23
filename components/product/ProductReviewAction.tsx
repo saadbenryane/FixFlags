@@ -94,16 +94,12 @@ export function ProductReviewAction({
       }
 
       const result = (await response.json()) as { reportId?: unknown }
-      if (typeof result.reportId !== 'string' || result.reportId.length === 0) {
-        setError(
-          'Recheck started, but FixFlags could not open it. Try again.',
-        )
-        setBusy(false)
-        return
-      }
-
+      const stayId =
+        typeof result.reportId === 'string' && result.reportId.length > 0
+          ? result.reportId
+          : baselineReviewId
       router.push(
-        `/report/${encodeURIComponent(result.reportId)}?view=timeline`,
+        `/report/${encodeURIComponent(stayId)}`,
       )
     } catch {
       setError(REPORT_COPY.recheck.error)

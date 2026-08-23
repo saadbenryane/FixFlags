@@ -92,7 +92,7 @@ describe('ReportWorkspaceSplitShell playback', () => {
       />,
     )
 
-    expect(screen.queryAllByRole('tab', { name: 'Timeline' })).toHaveLength(0)
+    expect(screen.getAllByRole('tab', { name: 'Timeline' }).length).toBeGreaterThan(0)
     expect(screen.queryAllByRole('tab', { name: 'Preview' })).toHaveLength(0)
     expect(screen.getAllByRole('tab', { name: 'Report' }).length).toBeGreaterThan(0)
     expect(screen.queryByRole('slider')).not.toBeInTheDocument()
@@ -101,7 +101,7 @@ describe('ReportWorkspaceSplitShell playback', () => {
   it('keeps the completed report on Report without a preview pane', () => {
     renderShell(undefined, undefined, false)
     expect(screen.getByTestId('report-panel')).toBeInTheDocument()
-    expect(screen.queryAllByRole('tab', { name: 'Timeline' })).toHaveLength(0)
+    expect(screen.getAllByRole('tab', { name: 'Timeline' }).length).toBeGreaterThan(0)
     expect(screen.queryAllByRole('tab', { name: 'Preview' })).toHaveLength(0)
     expect(screen.queryByRole('slider')).not.toBeInTheDocument()
   })
@@ -214,7 +214,7 @@ describe('ReportWorkspaceSplitShell product stage', () => {
     expect(screen.getByLabelText('Product example.com')).toBeInTheDocument()
     expect(screen.queryByText('Product')).not.toBeInTheDocument()
 
-    expect(screen.queryAllByRole('tab', { name: 'Timeline' })).toHaveLength(0)
+    expect(screen.getAllByRole('tab', { name: 'Timeline' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('tab', { name: 'Report' }).length).toBeGreaterThan(0)
 
     window.history.pushState({}, '', '/report/a1?view=report')
