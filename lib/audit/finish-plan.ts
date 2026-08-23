@@ -159,6 +159,7 @@ function copyPromptFor(
   const prompt = buildPlanModePrompt(rankedFlags, {
     url: input.url,
     contract: input.contract ?? null,
+    limit: rankedFlags.length,
   })
   return prompt || null
 }

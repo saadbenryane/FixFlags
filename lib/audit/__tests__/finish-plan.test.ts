@@ -108,6 +108,10 @@ describe('buildFixList', () => {
     expect(list.copyPrompt).toMatch(/1\. /);
     expect(list.copyPrompt).toMatch(/2\. /);
     expect(list.copyPrompt).toContain('Problem critical')
+    expect(list.copyPrompt).toContain('Problem important-b')
+    expect(list.copyPrompt).toContain('Problem polish')
+    expect(list.copyPrompt).toMatch(/3\. /);
+    expect(list.copyPrompt).toMatch(/4\. /)
   })
 
   it('redacts every prompt when access is none', () => {
