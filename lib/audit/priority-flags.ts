@@ -389,8 +389,12 @@ export function resolveFixConfidence(flag: RankableFlag): FixConfidence {
   return 'MEDIUM'
 }
 
+/** First line of every copyable agent prompt. Do not paraphrase. */
+export const AGENT_COPY_LEAD =
+  "Make a plan to fix these issues, then implement them in this product."
+
 /**
- * Build a structured goal-loop prompt with 3 phases (Research → Plan → Fix).
+ * Copyable agent prompt: instruction first, then the ranked issues.
  * Defaults to the deprecated Quick Plan (up to three highest-leverage issues). Explicit all-prompt
  * exports use buildAllFixPrompts instead of changing this contract.
  */
@@ -406,50 +410,19 @@ export function buildPlanModePrompt(
   const ranked = rankFlagsByPriority(flags, [], limit, options.contract).map((r) => r.flag)
 
   const items: string[] = []
-  const byConfidence: Record<string, number> = { HIGH: 0, MEDIUM: 0, LOW: 0 }
   for (const flag of ranked) {
     const prompt = resolveFixPrompt(flag)
     if (!prompt) continue
     const confidence = resolveFixConfidence(flag)
-    byConfidence[confidence]++
     const tag = `[${flag.severity} · ${titleCaseRubric(flag.rubric)} · ${confidence}]`
     const lines = [`${items.length + 1}. ${tag} ${flag.problem}`]
     if (flag.evidence?.trim()) lines.push(`   Evidence: ${flag.evidence.trim()}`)
-    lines.push(`   Fix: ${prompt.replace(/\n/g, '\n   ')}`)
-    items.push(lines.join('\n'))
+    lines.push(`   Fix: ${prompt.replace(/\n/g, "\n   ")}`)
+    items.push(lines.join("\n"))
   }
-  if (items.length === 0) return ''
+  if (items.length === 0) return ""
 
-  const site = options.url?.trim()
-  const target = site ? ` of ${site}` : ''
-  const count = items.length
-  const noun = count === 1 ? 'issue' : 'issues'
-  const highCount = byConfidence.HIGH
-  const mediumCount = byConfidence.MEDIUM
-  const lowCount = byConfidence.LOW
-
-  const header = [
-    `## Mission`,
-    `Fix all ${count} ${noun} for${target}. Architecture stays the same; only fix the specific issues listed below. After each fix, deploy and verify.`,
-    '',
-    '## Confidence keys',
-    `- HIGH (${highCount}): Deterministic check, one-line change, low regression risk. Safe to apply.`,
-    `- MEDIUM (${mediumCount}): Requires understanding context or spans multiple lines. Review the diff.`,
-    `- LOW (${lowCount}): Significant refactor or copy rewrite. Human review strongly recommended before merging.`,
-    '',
-    '## Phase 1: Research (read-only)',
-    'For each issue, open the relevant file(s) and confirm the problem exists. Name each file you inspect. Do not change any files yet.',
-    '',
-    '## Phase 2: Plan',
-    'Group related issues by file or component. Order the work by user impact, starting with anything that blocks a visitor. Note any dependencies between fixes. Call out anything ambiguous or risky. Then wait for my go-ahead before editing.',
-    '',
-    '## Phase 3: Fix (one issue at a time)',
-    'Fix HIGH-confidence issues first. After each fix: deploy and verify the issue is resolved. If a fix does not clear on an update review, backtrack to the previous state and try an alternative approach. Flag any fix that requires more than 2 attempts for human review.',
-    '',
-    `Issues (ordered by priority):`,
-  ].join('\n')
-
-  return `${header}\n\n${items.join('\n\n')}`
+  return `${AGENT_COPY_LEAD}\n\n${items.join("\n\n")}`
 }
 
 export function countFixPrompts(flags: RankableFlag[]): number {

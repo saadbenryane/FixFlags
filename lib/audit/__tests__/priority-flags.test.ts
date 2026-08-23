@@ -221,7 +221,7 @@ describe('priority-flags', () => {
     assert.equal(buildPlanModePrompt([flag({ id: 'a', fix: undefined })], { url: 'https://x.com' }), '')
   })
 
-  it('buildPlanModePrompt wraps ranked fixes in plan-mode instructions with confidence keys', () => {
+  it('buildPlanModePrompt is an agent prompt then the ranked issues', () => {
     const result = buildPlanModePrompt(
       [
         flag({ id: 'a', severity: 'POLISH', rubric: 'REACH', problem: 'Low', agentPrompt: 'Fix low', confidence: 0.4 }),
@@ -229,14 +229,10 @@ describe('priority-flags', () => {
       ],
       { url: 'https://acme.com' }
     )
-    // goal-loop structure + target url + issue count
-    assert.match(result, /## Mission/)
-    assert.match(result, /https:\/\/acme\.com/)
-    assert.match(result, /2 issues/)
-    // confidence keys section
-    assert.match(result, /Confidence keys/)
+    assert.equal(result.split('\n', 1)[0], 'Make a plan to fix these issues, then implement them in this product.')
+    assert.equal(result.includes('https://acme.com'), false)
+    assert.equal(result.includes('## Mission'), false)
     assert.match(result, /HIGH/)
-    // CRITICAL is ranked before POLISH, and evidence + fix are included
     assert.ok(result.indexOf('Blocker') < result.indexOf('Low'))
     assert.match(result, /\[CRITICAL · Message · HIGH\] Blocker/)
     assert.match(result, /Evidence: CTA is dead/)
@@ -245,9 +241,10 @@ describe('priority-flags', () => {
     assert.equal(result.includes('\u2014'), false)
   })
 
-  it('buildPlanModePrompt omits the target phrase when no url is given', () => {
+  it('buildPlanModePrompt does not mention a second product when no url is given', () => {
     const result = buildPlanModePrompt([flag({ id: 'a', problem: 'Thing', agentPrompt: 'Fix thing' })])
-    assert.match(result, /Fix all 1 issue/)
+    assert.equal(result.split('\n', 1)[0], 'Make a plan to fix these issues, then implement them in this product.')
+    assert.match(result, /Thing/)
     assert.equal(result.includes(' of '), false)
   })
 
@@ -259,7 +256,7 @@ describe('priority-flags', () => {
       flag({ id: '4', severity: 'POLISH', problem: 'D', agentPrompt: 'Fix D' }),
     ]
     const result = buildPlanModePrompt(flags, { url: 'https://x.com' })
-    assert.match(result, /3 issues/)
+    assert.equal(result.split('\n', 1)[0], 'Make a plan to fix these issues, then implement them in this product.')
     assert.match(result, /Fix A/)
     assert.match(result, /Fix B/)
     assert.match(result, /Fix C/)
@@ -274,7 +271,7 @@ describe('priority-flags', () => {
       flag({ id: '4', severity: 'POLISH', problem: 'D', agentPrompt: 'Fix D' }),
     ]
     const result = buildAllFixPrompts({ flags })
-    assert.match(result, /4 issues/)
+    assert.match(result, /^Make a plan to fix these issues, then implement them in this product\./)
     assert.match(result, /Fix D/)
   })
 

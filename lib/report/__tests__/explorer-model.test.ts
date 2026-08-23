@@ -66,7 +66,8 @@ describe('explorer-model', () => {
     assert.ok(model.allHighlights.length >= 2)
     assert.match(model.flags[0]?.evidence ?? '', /900px|Button/)
     assert.match(model.flags[0]?.fixPrompt ?? '', /^## Goal$/m)
-    assert.equal(model.flags[0]?.copyFixPrompt, model.flags[0]?.fixPrompt)
+    assert.match(model.flags[0]?.copyFixPrompt ?? '', /^Make a plan to fix these issues, then implement them in this product\./)
+    assert.match(model.flags[0]?.copyFixPrompt ?? '', /CTA below fold/)
   })
 
   it('maps flagVisualEvidence gif/overlay onto visualUrl', () => {

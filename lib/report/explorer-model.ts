@@ -5,6 +5,7 @@ import {
 } from '@/lib/audit/flag-copy'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import {
+  buildPlanModePrompt,
   resolveFixPrompt,
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
@@ -134,7 +135,7 @@ function mapLiveFlag(
   }
 ): ExplorerFlag {
   const fixPrompt = mayShowPrompt ? buildExpertFixPrompt(flag) : ''
-  const copyFixPrompt = fixPrompt
+  const copyFixPrompt = mayShowPrompt ? buildPlanModePrompt([flag], { limit: 1 }) : ''
   const sourceFix = resolveFixPrompt(flag)
   const visual = flag.checkId ? visualByCheckId?.[flag.checkId] : undefined
   const visualUrl = visual?.gifUrl || visual?.overlayUrl || null
@@ -314,7 +315,22 @@ function mapSampleFlag(flag: SampleFlagDisplay, mayShowPrompt: boolean): Explore
     whyItMatters: flag.whyItMatters,
     evidence: flag.evidence,
     fixPrompt: mayShowPrompt ? flag.fixPrompt : '',
-    copyFixPrompt: mayShowPrompt ? flag.fixPrompt : '',
+    copyFixPrompt: mayShowPrompt
+      ? buildPlanModePrompt(
+          [
+            {
+              id: flag.id,
+              checkId: null,
+              rubric: flag.rubric,
+              severity: flag.severity,
+              problem: flag.title,
+              evidence: flag.evidence,
+              fix: flag.fixPrompt,
+            },
+          ],
+          { limit: 1 }
+        )
+      : '',
     toolPrompts: {},
     verificationRule: flag.verificationRule,
     affectedDevices: flag.affectedDevices,
