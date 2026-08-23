@@ -165,7 +165,11 @@ describe('explorer-model', () => {
       ['f2']
     )
     assert.equal(model.flags.find((flag) => flag.id === 'f1')?.fixPrompt, '')
-    assert.equal(model.flags.find((flag) => flag.id === 'f3')?.copyFixPrompt, '')
+    const messageCopy = model.flags.find((flag) => flag.id === 'f1')?.copyFixPrompt ?? ''
+    assert.match(messageCopy, /^Make a plan to fix these issues, then implement them in this product\./)
+    assert.match(messageCopy, /CTA below fold/)
+    assert.equal(model.flags.find((flag) => flag.id === 'f3')?.copyFixPrompt, messageCopy)
+    assert.match(model.polishPassPrompt ?? '', /^Make a plan to fix these issues, then implement them in this product\./)
   })
 
   it('builds partial explorer model when flags exist', () => {

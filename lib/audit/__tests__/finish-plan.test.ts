@@ -106,7 +106,8 @@ describe('buildFixList', () => {
     expect(demonstratedPrompt).toMatch(/## Goal/)
     expect(demonstratedPrompt).toMatch(/## Plan/)
     expect(demonstratedPrompt).toContain('Fix important-a')
-    expect(list.copyPrompt).toBeNull()
+    expect(list.copyPrompt).toMatch(/^Make a plan to fix these issues, then implement them in this product\./)
+    expect(list.copyPrompt).toContain('Problem important-a')
   })
 
   it('redacts every prompt when access is none', () => {

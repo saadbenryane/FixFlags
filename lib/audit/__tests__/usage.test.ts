@@ -114,6 +114,17 @@ describe('trackAnonymousAuditId', () => {
       expect.objectContaining({ httpOnly: true, sameSite: 'lax', path: '/' })
     )
   })
+
+  it('scopes the claim cookie to www and apex of the product host', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://fixflags.com')
+    await trackAnonymousAuditId('teaser-1')
+    expect(cookieStore.set).toHaveBeenCalledWith(
+      ANON_AUDIT_IDS_COOKIE,
+      expect.any(String),
+      expect.objectContaining({ domain: '.fixflags.com', path: '/' })
+    )
+    vi.unstubAllEnvs()
+  })
 })
 
 describe('incrementUsageOnCompleteForAudit', () => {

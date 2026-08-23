@@ -132,10 +132,13 @@ function mapLiveFlag(
   occurrences: { pageUrls: string[]; count: number } = {
     pageUrls: flag.pageUrl ? [flag.pageUrl] : [],
     count: 1,
-  }
+  },
+  copyBundle = ''
 ): ExplorerFlag {
   const fixPrompt = mayShowPrompt ? buildExpertFixPrompt(flag) : ''
-  const copyFixPrompt = mayShowPrompt ? buildPlanModePrompt([flag], { limit: 1 }) : ''
+  const copyFixPrompt =
+    copyBundle ||
+    (mayShowPrompt ? buildPlanModePrompt([flag], { limit: 1 }) : '')
   const sourceFix = resolveFixPrompt(flag)
   const visual = flag.checkId ? visualByCheckId?.[flag.checkId] : undefined
   const visualUrl = visual?.gifUrl || visual?.overlayUrl || null
@@ -249,7 +252,8 @@ export function buildLiveExplorerModel(input: {
         flag,
         input.flagVisualEvidence,
         promptVisibleById.get(flag.id) ?? false,
-        { pageUrls: item.pageUrls, count: item.occurrenceCount }
+        { pageUrls: item.pageUrls, count: item.occurrenceCount },
+        fixList.copyPrompt ?? ''
       )
     ),
     allHighlights: buildAllEvidenceHighlights(

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { isWwwApexPair, siteHostname } from '@/lib/http/site-host'
 
 function isProtectedPath(pathname: string): boolean {
   return pathname.startsWith('/admin/') || pathname.startsWith('/settings/')
@@ -42,6 +43,19 @@ function buildCsp(): string {
 }
 
 export async function middleware(request: NextRequest) {
+  const canonicalHost = siteHostname()
+  const requestHost = request.nextUrl.hostname
+  if (
+    canonicalHost &&
+    requestHost !== canonicalHost &&
+    isWwwApexPair(requestHost, canonicalHost)
+  ) {
+    const url = request.nextUrl.clone()
+    url.hostname = canonicalHost
+    url.protocol = new URL(process.env.NEXT_PUBLIC_APP_URL || process.env.BETTER_AUTH_URL || request.url).protocol
+    return NextResponse.redirect(url, 308)
+  }
+
   const requestHeaders = new Headers(request.headers)
   const pathname = request.nextUrl.pathname + request.nextUrl.search
   requestHeaders.set('x-pathname', pathname)

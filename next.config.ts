@@ -1,4 +1,14 @@
 import type { NextConfig } from 'next'
+import { execSync } from 'node:child_process'
+
+function localGitSha(): string | undefined {
+  try {
+    const sha = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim()
+    return sha || undefined
+  } catch {
+    return undefined
+  }
+}
 
 // OAuth provider availability is resolved at runtime via GET /api/auth/providers
 // (see hooks/useOAuthProviders), not baked in at build time. Build-time gating
@@ -6,6 +16,13 @@ import type { NextConfig } from 'next'
 // present at `next build`, only as runtime env on the deployed service.
 
 const nextConfig: NextConfig = {
+  env: {
+    GIT_COMMIT_SHA:
+      process.env.GIT_COMMIT_SHA ||
+      process.env.RAILWAY_GIT_COMMIT_SHA ||
+      localGitSha() ||
+      '',
+  },
   // Lets concurrent verification use an isolated output directory without
   // racing a developer's active `.next` process.
   distDir: process.env.NEXT_DIST_DIR ?? '.next',

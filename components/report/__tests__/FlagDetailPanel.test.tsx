@@ -48,6 +48,22 @@ describe('FlagDetailPanel', () => {
     expect(screen.getByText('Add an Open Graph image meta tag.')).toBeInTheDocument()
   })
 
+
+  it('offers a copyable agent plan prompt on a Message flag', () => {
+    renderWithProviders(
+      <FlagDetailPanel
+        flag={makeFlag({
+          rubric: 'MESSAGE',
+          hasFixPrompt: false,
+          fixPrompt: '',
+          copyFixPrompt:
+            'Make a plan to fix these issues, then implement them in this product.\n\n1. [IMPORTANT · Message · HIGH] Generic headline',
+        })}
+      />
+    )
+    expect(screen.getByRole('button', { name: /copy prompt/i })).toBeInTheDocument()
+  })
+
   it('shows locked teaser when aiLocked', () => {
     renderWithProviders(<FlagDetailPanel flag={makeFlag()} aiLocked />)
     expect(screen.getByText(/Create a free account/i)).toBeInTheDocument()

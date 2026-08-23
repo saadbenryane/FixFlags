@@ -154,14 +154,15 @@ function buildRankedFixes(input: PlanInput): {
 function copyPromptFor(
   input: PlanInput,
   rankedFlags: RankableFlag[],
-  visiblePromptCount: number
+  visiblePromptCount = 1
 ): string | null {
-  if (input.promptAccess !== 'all' || visiblePromptCount === 0) return null
-  return buildAllFixPrompts({
-    flags: rankedFlags,
+  if (input.promptAccess === 'none') return null
+  void visiblePromptCount
+  const prompt = buildPlanModePrompt(rankedFlags, {
     url: input.url,
     contract: input.contract ?? null,
   })
+  return prompt || null
 }
 
 /** Build the complete Fix List and bounded Finish Plan from one ranking pass. */
@@ -188,13 +189,13 @@ export function buildFixArtifacts(input: PlanInput): FixArtifacts {
   return {
     fixList: {
       items: ranked.items,
-      copyPrompt: copyPromptFor(input, ranked.rankedFlags, ranked.visiblePromptCount),
+      copyPrompt: copyPromptFor(input, ranked.rankedFlags),
       visiblePromptCount: ranked.visiblePromptCount,
       totalCount: ranked.items.length,
     },
     finishPlan: {
       items: finishItems,
-      copyPrompt: copyPromptFor(input, finishFlags, finishVisiblePromptCount),
+      copyPrompt: copyPromptFor(input, finishFlags),
       visiblePromptCount: finishVisiblePromptCount,
     },
   }

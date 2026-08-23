@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { ExternalLink, Share2, Wrench, type LucideIcon } from 'lucide-react'
 import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
+import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { FlagFeedback } from '@/components/audit/FlagFeedback'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import { SeveritySignal } from '@/components/report/SeveritySignal'
@@ -184,24 +185,30 @@ export function FlagDetailPanel({
 
       <FlagEvidenceMeta flag={flag} />
 
-      {(flag.hasFixPrompt || aiLocked) && (
+      {(flag.hasFixPrompt || aiLocked || flag.copyFixPrompt) && (
         <section className="space-y-2.5">
           <div className="flex items-center gap-2">
             <Wrench className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             <h4 className="text-sm font-medium text-foreground">Fix</h4>
           </div>
           {aiLocked ? (
-            <LockedContentTeaser
-              label={LOCKED_CONTENT_TEASER.fixPromptLabel}
-              signUpHref={signUpHref}
-              from="sample_fix"
-              compact
-            />
+            <div className="space-y-2">
+              <LockedContentTeaser
+                label={LOCKED_CONTENT_TEASER.fixPromptLabel}
+                signUpHref={signUpHref}
+                from="sample_fix"
+                compact
+              />
+              {flag.copyFixPrompt ? (
+                <PromptCopyButton prompt={flag.copyFixPrompt} compact />
+              ) : null}
+            </div>
           ) : aiEnhancementPending && !flag.fixPrompt ? (
             <p className="text-sm text-muted-foreground">Generating enhanced fix prompt.</p>
-          ) : (
+          ) : flag.hasFixPrompt ? (
             <FixPromptBlock
               prompt={flag.fixPrompt}
+              copyPrompt={flag.copyFixPrompt || undefined}
               toolPrompts={flag.toolPrompts}
               showToolSelector
               showCursorAction
@@ -209,7 +216,9 @@ export function FlagDetailPanel({
               nested
               render="markdown"
             />
-          )}
+          ) : flag.copyFixPrompt ? (
+            <PromptCopyButton prompt={flag.copyFixPrompt} compact />
+          ) : null}
         </section>
       )}
 

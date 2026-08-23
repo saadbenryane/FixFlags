@@ -5,6 +5,7 @@ import type { UsageLimitResult } from '@/lib/audit/check-limit'
 import { consumePurchasedCredit } from '@/lib/billing/credits'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { createAnonymousClaim, verifyAnonymousClaim } from '@/lib/security/anonymous-claim'
+import { sharedCookieDomain } from '@/lib/http/site-host'
 
 export {
   isAtCheckLimit,
@@ -75,11 +76,13 @@ export async function enforceAnonymousIpSoftCeiling(clientId: string): Promise<v
 /** Track the single anon teaser audit id (product gate is binary). */
 export async function trackAnonymousAuditId(auditId: string): Promise<void> {
   const cookieStore = await cookies()
+  const domain = sharedCookieDomain()
   cookieStore.set(ANON_AUDIT_IDS_COOKIE, createAnonymousClaim(auditId), {
     httpOnly: true,
     maxAge: 60 * 60 * 24 * 30,
     sameSite: 'lax',
     path: '/',
+    ...(domain ? { domain } : {}),
   })
 }
 

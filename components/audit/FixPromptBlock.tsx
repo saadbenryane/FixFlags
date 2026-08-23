@@ -20,6 +20,8 @@ import type { ReportAccessState, ReportSurface } from '@/lib/analytics/events'
 
 interface FixPromptBlockProps {
   prompt: string
+  /** Clipboard text. When set, Copy uses this instead of the displayed prompt. */
+  copyPrompt?: string
   toolPrompts?: Partial<Record<PromptToolKey, string | null | undefined>>
   label?: string
   finding?: string | null
@@ -126,6 +128,7 @@ function PromptBody({
 
 export function FixPromptBlock({
   prompt,
+  copyPrompt,
   toolPrompts,
   label = OUTPUT_LABELS.fixPrompt,
   finding,
@@ -155,6 +158,7 @@ export function FixPromptBlock({
     : prompt
   const promptUnavailable = resolvedPrompt == null
   const displayPrompt = resolvedPrompt ?? ''
+  const clipboardPrompt = (copyPrompt && copyPrompt.trim()) ? copyPrompt : displayPrompt
 
   const shellRadius =
     nested && variant === 'compact' ? 'rounded-[var(--radius-inner)]' : nested ? 'rounded-nested-lg' : 'rounded-card'
@@ -201,7 +205,7 @@ export function FixPromptBlock({
               ) : null}
               {!promptUnavailable ? (
                 <PromptCopyButton
-                  prompt={displayPrompt}
+                  prompt={clipboardPrompt}
                   iconOnly
                   tool={showToolSelector ? preferredTool : undefined}
                   flagId={flagId}
@@ -243,12 +247,12 @@ export function FixPromptBlock({
               No validated prompt is available for this builder. Choose another builder.
             </p>
           ) : (
-            <PromptBody prompt={displayPrompt} label={label} rows={rows} clamp={clamp} />
+            <PromptBody prompt={clipboardPrompt} label={label} rows={rows} clamp={clamp} />
           )}
           {!promptUnavailable ? (
             <div className="flex justify-end gap-2 border-t border-terminal-border/60 px-3 py-2">
               <PromptActionRow
-                prompt={displayPrompt}
+                prompt={clipboardPrompt}
                 showCursorAction={showCursorAction}
                 compact
                 tool={showToolSelector ? preferredTool : undefined}
@@ -281,7 +285,7 @@ export function FixPromptBlock({
         headerRight={
           promptUnavailable ? null : (
             <PromptActionRow
-              prompt={displayPrompt}
+              prompt={clipboardPrompt}
               showCursorAction={showCursorAction}
               compact
               tool={showToolSelector ? preferredTool : undefined}
@@ -300,7 +304,7 @@ export function FixPromptBlock({
             No validated prompt is available for this builder. Choose another builder.
           </p>
         ) : (
-          <PromptBody prompt={displayPrompt} label={label} rows={rows} clamp={clamp} />
+          <PromptBody prompt={clipboardPrompt} label={label} rows={rows} clamp={clamp} />
         )}
       </TerminalShell>
       {showNextStep ? (
