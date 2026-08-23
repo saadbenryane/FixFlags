@@ -87,10 +87,7 @@ describe('buildFixList', () => {
   it('keeps ranking stable while exposing exactly one demonstrated prompt', () => {
     const demonstrated = flags[2]
     const list = buildFixList({
-      // Only the demonstrated flag keeps a usable fix body; others are gated.
-      flags: flags.map((item) =>
-        item.id === demonstrated.id ? item : { ...item, fix: undefined }
-      ),
+      flags,
       promptAccess: 'one',
       demonstratedFlag: demonstrated,
     })
@@ -108,6 +105,9 @@ describe('buildFixList', () => {
     expect(demonstratedPrompt).toContain('Fix important-a')
     expect(list.copyPrompt).toMatch(/^Make a plan to fix these issues, then implement them in this product\./)
     expect(list.copyPrompt).toContain('Problem important-a')
+    expect(list.copyPrompt).toMatch(/1\. /);
+    expect(list.copyPrompt).toMatch(/2\. /);
+    expect(list.copyPrompt).toContain('Problem critical')
   })
 
   it('redacts every prompt when access is none', () => {

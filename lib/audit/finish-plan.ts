@@ -156,11 +156,7 @@ function copyPromptFor(
   rankedFlags: RankableFlag[]
 ): string | null {
   if (input.promptAccess === 'none') return null
-  const flags =
-    input.promptAccess === 'one'
-      ? rankedFlags.filter((flag) => flag.id === input.demonstratedFlag?.id)
-      : rankedFlags
-  const prompt = buildPlanModePrompt(flags, {
+  const prompt = buildPlanModePrompt(rankedFlags, {
     url: input.url,
     contract: input.contract ?? null,
   })
