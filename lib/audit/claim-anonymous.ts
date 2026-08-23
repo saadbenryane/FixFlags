@@ -1,10 +1,9 @@
-import { cookies } from 'next/headers'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import {
-  ANON_AUDIT_IDS_COOKIE,
+  clearAnonymousAuditCookie,
   incrementUsageOnCompleteForAudit,
-  readAnonAuditIds,
+  readClaimedAnonymousIds,
 } from '@/lib/audit/usage'
 import { remainingAiReportCredits } from '@/lib/audit/ai-report-entitlement'
 import { enqueueAiReview } from '@/lib/audit/enqueue-ai-review'
@@ -50,8 +49,7 @@ async function unlockClaimedAudit(audit: {
 }
 
 export async function claimAnonymousAudits(userId: string): Promise<number> {
-  const cookieStore = await cookies()
-  const ids = readAnonAuditIds(cookieStore.get(ANON_AUDIT_IDS_COOKIE)?.value)
+  const ids = await readClaimedAnonymousIds()
   if (ids.length === 0) return 0
 
   const audits = await prisma.$transaction(
@@ -121,7 +119,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
   )
 
   if (audits.length === 0) {
-    cookieStore.delete(ANON_AUDIT_IDS_COOKIE)
+    await clearAnonymousAuditCookie()
     return 0
   }
 
@@ -156,6 +154,6 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
 
   // Delete only after every critical stage succeeds. Ownership, usage, and
   // enqueue operations are idempotent, so a queue failure can safely retry.
-  cookieStore.delete(ANON_AUDIT_IDS_COOKIE)
+  await clearAnonymousAuditCookie()
   return audits.length
 }

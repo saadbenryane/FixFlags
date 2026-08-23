@@ -19,7 +19,7 @@ export const OUTPUT_LABELS = {
   whatYouGet: 'Sample output',
   fixPrompt: 'Fix prompt',
   seeFullSample: 'See full sample report',
-  nextStep: 'Paste into editor → publish → update review.',
+  nextStep: 'Paste into editor → publish → Recheck.',
 } as const
 
 export const URL_PLACEHOLDER = 'https://yoursite.com'

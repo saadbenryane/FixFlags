@@ -210,7 +210,7 @@ describe('ProductWorkspace', () => {
     expect(screen.queryByText('-')).not.toBeInTheDocument()
     expect(
       screen.getByText(
-        /from the latest completed Product Review while the current update review runs/i,
+        /from the latest completed Product Review while the current Recheck runs/i,
       ),
     ).toBeInTheDocument()
     expect(

@@ -11,8 +11,8 @@ export const CUSTOMER_TERMS = {
   compactPrimaryCta: 'Review site',
   productReview: 'product review',
   productReviews: 'product reviews',
-  updateReview: 'update review',
-  updateReviews: 'update reviews',
+  updateReview: 'Recheck',
+  updateReviews: 'Rechecks',
   deepReview: 'deep review',
   deepReviews: 'deep reviews',
   funnel: 'Funnel',
@@ -35,7 +35,7 @@ export const PRICING_COPY = {
   studioDeepReviewsPerMonth: 10,
 } as const
 
-export const CORE_LOOP_LABEL = 'Flag → Fix → Update review'
+export const CORE_LOOP_LABEL = 'Flag → Fix → Recheck'
 
 /** Regex patterns that must not appear in customer-facing copy surfaces. */
 export const BANNED_CUSTOMER_PHRASES = [

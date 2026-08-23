@@ -196,7 +196,7 @@ describe('homepage message guardrails', () => {
 
   it('OUTPUT_LABELS fix prompt label and next step are defined', () => {
     assert.equal(OUTPUT_LABELS.fixPrompt, 'Fix prompt')
-    assert.equal(OUTPUT_LABELS.nextStep, 'Paste into editor → publish → update review.')
+    assert.equal(OUTPUT_LABELS.nextStep, 'Paste into editor → publish → Recheck.')
   })
 
   it('report copy names the completed-report action as Recheck', () => {
@@ -206,14 +206,15 @@ describe('homepage message guardrails', () => {
     assert.match(REPORT_COPY.recheckHint.bodySuffix, /Flags cleared/i)
   })
 
-  it('core-loop copy consistently uses update review', () => {
-    assert.ok(CORE_LOOP_STRINGS.some((line) => /update review/i.test(line)))
+  it('core-loop copy consistently uses Recheck', () => {
+    assert.ok(CORE_LOOP_STRINGS.some((line) => /\bRecheck\b/.test(line)))
     for (const line of CORE_LOOP_STRINGS) {
       assert.doesNotMatch(line, /\bmonitor(?:ed|ing|s)?\b/i)
       assert.doesNotMatch(line, /\bre-?scan\b/i)
-      assert.doesNotMatch(line, /\bre-?checks?\b/i)
+      assert.doesNotMatch(line, /\bre-checks?\b/i)
+      assert.doesNotMatch(line, /update review/i)
     }
-    assert.match(LANDING_PAGE.howItWorks.steps.at(-1)?.body ?? '', /update review/i)
+    assert.match(LANDING_PAGE.howItWorks.steps.at(-1)?.body ?? '', /\bRecheck\b/)
   })
 
   it('pricing sells product reviews and deep reviews without unlimited re-check', () => {

@@ -223,7 +223,7 @@ test.describe('credentialed revenue journeys', () => {
       .count()
     expect(claimedPromptCount).toBeGreaterThan(1)
 
-    await page.getByRole('button', { name: 'Update review', exact: true }).click()
+    await page.getByRole('button', { name: 'Recheck', exact: true }).click()
     await page.waitForURL((url) => url.pathname.startsWith('/report/') && !url.pathname.endsWith(reportId), {
       timeout: 30_000,
     })

@@ -42,7 +42,7 @@ function dateLabel(value: string | null): string {
 
 function reviewTypeLabel(review: ProductReviewSummaryDTO): string {
   if (review.kind === 'WATCH') return 'Watch review'
-  return review.kind === 'UPDATE_REVIEW' ? 'Update review' : 'Product review'
+  return review.kind === 'UPDATE_REVIEW' ? 'Recheck' : 'Product review'
 }
 
 export function ProductWorkspace({
@@ -463,7 +463,7 @@ function AttentionSection({
           <SectionTitle id="attention-heading">Attention now</SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">
             {attentionIsPrior
-              ? 'From the latest completed Product Review while the current update review runs.'
+              ? 'From the latest completed Product Review while the current Recheck runs.'
               : 'Up to three worthwhile Improvements supported by the latest completed Review.'}
           </p>
         </div>
@@ -492,7 +492,7 @@ function AttentionSection({
             title="The latest Product Review did not finish"
             description={
               latestCompletedManualReview
-                ? 'There was no open Attention in the last completed Review. Try the update review again for current evidence.'
+                ? 'There was no open Attention in the last completed Review. Recheck again for current evidence.'
                 : 'Try the Product Review again to establish current evidence.'
             }
           />

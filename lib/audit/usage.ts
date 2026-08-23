@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { hasUnlimitedScans, isDevUnlimitedScans } from '@/lib/auth/permissions'
 import type { UsageLimitResult } from '@/lib/audit/check-limit'
@@ -6,6 +6,11 @@ import { consumePurchasedCredit } from '@/lib/billing/credits'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { createAnonymousClaim, verifyAnonymousClaim } from '@/lib/security/anonymous-claim'
 import { sharedCookieDomain } from '@/lib/http/site-host'
+
+type CookieReader = {
+  get: (name: string) => { value: string } | undefined
+  getAll?: () => Array<{ name: string; value: string }>
+}
 
 export {
   isAtCheckLimit,
@@ -28,6 +33,46 @@ export function readAnonAuditIds(raw: string | undefined): string[] {
   return claim ? [claim.auditId] : []
 }
 
+/** Prefer a valid signed claim when www/apex left both a host-only and Domain cookie. */
+export function readAnonAuditIdsFromStore(store: CookieReader): string[] {
+  const values: string[] = []
+  const listed = typeof store.getAll === 'function' ? store.getAll() ?? [] : []
+  for (const cookie of listed) {
+    if (cookie.name === ANON_AUDIT_IDS_COOKIE && cookie.value) values.push(cookie.value)
+  }
+  if (values.length === 0) {
+    const one = store.get(ANON_AUDIT_IDS_COOKIE)?.value
+    if (one) values.push(one)
+  }
+  for (const value of values) {
+    const ids = readAnonAuditIds(value)
+    if (ids.length > 0) return ids
+  }
+  return []
+}
+
+export async function readClaimedAnonymousIds(): Promise<string[]> {
+  return readAnonAuditIdsFromStore(await cookies())
+}
+
+export function claimsAnonymousReport(
+  claimedIds: string[],
+  reportId: string,
+  parentId?: string | null
+): boolean {
+  return claimedIds.includes(reportId) || (parentId != null && claimedIds.includes(parentId))
+}
+
+async function requestHostname(): Promise<string | null> {
+  try {
+    const headerStore = await headers()
+    const raw = headerStore.get('x-forwarded-host') ?? headerStore.get('host')
+    return raw?.split(',')[0]?.trim().split(':')[0] ?? null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Anonymous users get one free scan (the "teaser"). After they've used it, any
  * further scan requires a free account, which also provides the AI fix prompts.
@@ -35,8 +80,7 @@ export function readAnonAuditIds(raw: string | undefined): string[] {
 export async function checkAnonymousAuditAllowed(): Promise<UsageLimitResult> {
   if (isDevUnlimitedScans()) return { allowed: true }
 
-  const cookieStore = await cookies()
-  const ids = readAnonAuditIds(cookieStore.get(ANON_AUDIT_IDS_COOKIE)?.value)
+  const ids = await readClaimedAnonymousIds()
   if (ids.length > 0) {
     // Confirm at least one tracked audit still exists so a stale/garbage cookie
     // can't permanently lock a first-time visitor.
@@ -76,14 +120,45 @@ export async function enforceAnonymousIpSoftCeiling(clientId: string): Promise<v
 /** Track the single anon teaser audit id (product gate is binary). */
 export async function trackAnonymousAuditId(auditId: string): Promise<void> {
   const cookieStore = await cookies()
-  const domain = sharedCookieDomain()
-  cookieStore.set(ANON_AUDIT_IDS_COOKIE, createAnonymousClaim(auditId), {
+  const domain = sharedCookieDomain(undefined, await requestHostname())
+  const secure = process.env.NODE_ENV === 'production'
+  const value = createAnonymousClaim(auditId)
+  const base = {
     httpOnly: true,
     maxAge: 60 * 60 * 24 * 30,
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
     path: '/',
+    secure,
+  }
+  // Drop a leftover host-only cookie so it cannot shadow the shared Domain claim.
+  if (domain) {
+    cookieStore.set(ANON_AUDIT_IDS_COOKIE, '', {
+      httpOnly: true,
+      maxAge: 0,
+      sameSite: 'lax',
+      path: '/',
+      secure,
+    })
+  }
+  cookieStore.set(ANON_AUDIT_IDS_COOKIE, value, {
+    ...base,
     ...(domain ? { domain } : {}),
   })
+}
+
+export async function clearAnonymousAuditCookie(): Promise<void> {
+  const cookieStore = await cookies()
+  const domain = sharedCookieDomain(undefined, await requestHostname())
+  cookieStore.delete(ANON_AUDIT_IDS_COOKIE)
+  if (domain) {
+    cookieStore.set(ANON_AUDIT_IDS_COOKIE, '', {
+      httpOnly: true,
+      maxAge: 0,
+      sameSite: 'lax',
+      path: '/',
+      domain,
+    })
+  }
 }
 
 /**

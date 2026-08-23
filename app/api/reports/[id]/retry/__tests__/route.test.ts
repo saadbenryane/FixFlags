@@ -8,7 +8,7 @@ const resolveSessionUser = vi.hoisted(() => vi.fn())
 const canManageAudit = vi.hoisted(() => vi.fn())
 const canRetryAnonymousAudit = vi.hoisted(() => vi.fn())
 const retryAudit = vi.hoisted(() => vi.fn())
-const readAnonAuditIds = vi.hoisted(() => vi.fn())
+const readClaimedAnonymousIds = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/audit/fetch-audit', () => ({ resolveSessionUser }))
@@ -16,7 +16,7 @@ vi.mock('@/lib/audit/access', () => ({ canManageAudit, canRetryAnonymousAudit })
 vi.mock('@/lib/audit/retry-audit', () => ({ retryAudit }))
 vi.mock('@/lib/audit/usage', () => ({
   ANON_AUDIT_IDS_COOKIE: 'ff_anon_report_ids',
-  readAnonAuditIds,
+  readClaimedAnonymousIds,
 }))
 vi.mock('next/headers', () => ({
   headers: async () => new Headers(),
@@ -53,7 +53,7 @@ describe('POST /api/reports/[id]/retry', () => {
     resolveSessionUser.mockResolvedValue({ user: { id: 'u1' } })
     canManageAudit.mockReturnValue(true)
     canRetryAnonymousAudit.mockReturnValue(false)
-    readAnonAuditIds.mockReturnValue(['anon-1'])
+    readClaimedAnonymousIds.mockResolvedValue(['anon-1'])
   })
 
   it('returns 404 when the report does not exist', async () => {

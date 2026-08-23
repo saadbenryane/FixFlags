@@ -5,8 +5,8 @@ import { canManageAudit, canRetryAnonymousAudit } from '@/lib/audit/access'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import { retryAudit } from '@/lib/audit/retry-audit'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
-import { ANON_AUDIT_IDS_COOKIE, readAnonAuditIds } from '@/lib/audit/usage'
-import { cookies, headers } from 'next/headers'
+import { readClaimedAnonymousIds } from '@/lib/audit/usage'
+import { headers } from 'next/headers'
 
 export async function POST(
   _req: NextRequest,
@@ -15,8 +15,7 @@ export async function POST(
   try {
     const { id } = await params
     const session = await resolveSessionUser()
-    const cookieStore = await cookies()
-    const anonAuditIds = readAnonAuditIds(cookieStore.get(ANON_AUDIT_IDS_COOKIE)?.value)
+    const anonAuditIds = await readClaimedAnonymousIds()
 
     const clientId = requestClientId(await headers())
     await enforceRateLimit({ scope: 'audit-retry', identifier: `${session?.user?.id ?? clientId}:${clientId}`, limit: 10, windowSeconds: 60 })

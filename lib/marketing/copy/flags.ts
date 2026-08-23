@@ -1,27 +1,27 @@
 export const FLAG_STATUS_LABELS = {
   OPEN: { label: 'Open', description: 'Not fixed yet' },
-  FIXED: { label: 'Fixed', description: 'Cleared on an update review' },
+  FIXED: { label: 'Fixed', description: 'Cleared on Recheck' },
   IGNORED: { label: 'Ignored', description: 'Acknowledged and skipped' },
   REGRESSED: { label: 'Regressed', description: 'Same Flag, worse than before' },
 } as const
 
 export const RECHECK_DIFF_COPY = {
-  title: 'Prove your fixes with an update review',
+  title: 'Prove your fixes with Recheck',
   celebrationTitle: (n: number) => (n === 1 ? '1 flag cleared' : `${n} flags cleared`),
-  celebrationBody: 'Your update review confirms the fixes. Keep going on what is still open.',
+  celebrationBody: 'Recheck confirms the fixes. Keep going on what is still open.',
   nextFixHint: 'Next up',
   cleared: 'Fixed',
   remaining: 'Still open',
   newIssues: 'New',
   regressed: 'Regressed',
-  empty: 'No flag changes on this update review.',
+  empty: 'No flag changes on this Recheck.',
   compareCta: 'Open full before/after',
   compareProHint: 'Want side-by-side screenshots?',
   compareProCta: 'See Pro compare',
   outcomesHint:
     'Outcomes: Fixed, still open, unchanged severity, regressed, or unable to verify.',
   compareProGateDescription:
-    'Before/after comparison is available on Pro. Update reviews use product review credits.',
+    'Before/after comparison is available on Pro. Rechecks use product review credits.',
 } as const
 
 export const FLAG_DISMISS_REASONS = [

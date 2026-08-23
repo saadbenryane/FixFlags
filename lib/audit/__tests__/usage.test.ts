@@ -15,12 +15,17 @@ const prismaMock = vi.hoisted(() => ({
 const cookieStore = vi.hoisted(() => ({
   get: vi.fn(),
   set: vi.fn(),
+  getAll: vi.fn(() => []),
+  delete: vi.fn(),
+}))
+const headerStore = vi.hoisted(() => ({
+  get: vi.fn(() => null),
 }))
 const consumePurchasedCredit = vi.hoisted(() => vi.fn())
 const enforceRateLimit = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
-vi.mock('next/headers', () => ({ cookies: async () => cookieStore }))
+vi.mock('next/headers', () => ({ cookies: async () => cookieStore, headers: async () => headerStore }))
 vi.mock('@/lib/billing/credits', () => ({ consumePurchasedCredit }))
 vi.mock('@/lib/security/rate-limit', () => ({ enforceRateLimit }))
 
@@ -33,6 +38,8 @@ import {
   incrementDeepReviewOnCompleteForAudit,
   incrementUsageOnCompleteForAudit,
   readAnonAuditIds,
+  readAnonAuditIdsFromStore,
+  claimsAnonymousReport,
   trackAnonymousAuditId,
 } from '@/lib/audit/usage'
 import { createAnonymousClaim } from '@/lib/security/anonymous-claim'
@@ -56,6 +63,25 @@ describe('readAnonAuditIds', () => {
   it('accepts only a valid signed claim', () => {
     expect(readAnonAuditIds(createAnonymousClaim('a'))).toEqual(['a'])
     expect(readAnonAuditIds('["a","b"]')).toEqual([])
+  })
+
+  it('skips a stale host-only value when a signed Domain cookie is also present', () => {
+    const signed = createAnonymousClaim('teaser-1')
+    expect(
+      readAnonAuditIdsFromStore({
+        get: () => ({ value: '["stale"]' }),
+        getAll: () => [
+          { name: 'ff_anon_report_ids', value: '["stale"]' },
+          { name: 'ff_anon_report_ids', value: signed },
+        ],
+      })
+    ).toEqual(['teaser-1'])
+  })
+
+  it('treats parent and child report ids as the same anonymous session', () => {
+    expect(claimsAnonymousReport(['parent-1'], 'parent-1')).toBe(true)
+    expect(claimsAnonymousReport(['parent-1'], 'child-1', 'parent-1')).toBe(true)
+    expect(claimsAnonymousReport(['parent-1'], 'other', null)).toBe(false)
   })
 })
 
@@ -123,7 +149,27 @@ describe('trackAnonymousAuditId', () => {
       expect.any(String),
       expect.objectContaining({ domain: '.fixflags.com', path: '/' })
     )
+    expect(cookieStore.set).toHaveBeenCalledWith(
+      ANON_AUDIT_IDS_COOKIE,
+      '',
+      expect.objectContaining({ maxAge: 0, path: '/' })
+    )
     vi.unstubAllEnvs()
+  })
+
+  it('scopes the claim from the request Host when APP_URL is Railway', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://fixflags-prod.up.railway.app')
+    headerStore.get.mockImplementation((name: string) =>
+      name === 'host' ? 'www.fixflags.com' : null
+    )
+    await trackAnonymousAuditId('teaser-1')
+    expect(cookieStore.set).toHaveBeenCalledWith(
+      ANON_AUDIT_IDS_COOKIE,
+      expect.any(String),
+      expect.objectContaining({ domain: '.fixflags.com', path: '/' })
+    )
+    vi.unstubAllEnvs()
+    headerStore.get.mockReturnValue(null)
   })
 })
 

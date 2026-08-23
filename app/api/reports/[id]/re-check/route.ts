@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { cookies, headers } from 'next/headers'
+import { headers } from 'next/headers'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { recheckAndCompare } from '@/lib/audit/task-contracts'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { RateLimitError, recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { prisma } from '@/lib/db'
-import { ANON_AUDIT_IDS_COOKIE, readAnonAuditIds } from '@/lib/audit/usage'
+import { claimsAnonymousReport, readClaimedAnonymousIds } from '@/lib/audit/usage'
 
 export async function POST(
   req: NextRequest,
@@ -16,9 +16,8 @@ export async function POST(
     const { id: parentId } = await params
 
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-    const cookieStore = await cookies()
-    const claimedIds = readAnonAuditIds(cookieStore.get(ANON_AUDIT_IDS_COOKIE)?.value)
-    const claimedAnonymous = claimedIds.includes(parentId)
+    const claimedIds = await readClaimedAnonymousIds()
+    const claimedAnonymous = claimsAnonymousReport(claimedIds, parentId)
 
     const user = session?.user
       ? await prisma.user.findUnique({ where: { id: session.user.id } })
@@ -32,8 +31,7 @@ export async function POST(
       select: { userId: true, parentId: true },
     })
     const claimsParent =
-      claimedAnonymous ||
-      (parent?.parentId != null && claimedIds.includes(parent.parentId))
+      claimedAnonymous || claimsAnonymousReport(claimedIds, parentId, parent?.parentId)
 
     if (!user && !claimsParent) {
       return apiError('You can only re-check a report from the same session that created it', 403)

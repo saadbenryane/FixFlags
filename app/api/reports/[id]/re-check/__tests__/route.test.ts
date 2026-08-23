@@ -27,9 +27,16 @@ vi.mock('next/headers', () => ({
   headers: async () => new Headers(),
   cookies: async () => ({ get: () => undefined }),
 }))
+const readClaimedAnonymousIds = vi.hoisted(() => vi.fn(async () => []))
+const claimsAnonymousReport = vi.hoisted(() =>
+  vi.fn((ids: string[], reportId: string, parentId?: string | null) =>
+    ids.includes(reportId) || (parentId != null && ids.includes(parentId))
+  )
+)
 vi.mock('@/lib/audit/usage', () => ({
   ANON_AUDIT_IDS_COOKIE: 'ff_anon_report_ids',
-  readAnonAuditIds: () => [],
+  readClaimedAnonymousIds,
+  claimsAnonymousReport,
 }))
 vi.mock('@/lib/security/rate-limit', () => ({
   recordRateLimit,
@@ -140,5 +147,19 @@ describe('POST /api/reports/[id]/re-check', () => {
     )
     const res = await POST(postReq(), { params: Promise.resolve({ id: 'parent-1' }) })
     expect(res.status).toBe(403)
+  })
+
+  it('starts a Recheck when the anonymous claim cookie matches the parent', async () => {
+    getSession.mockResolvedValue(null)
+    prismaMock.user.findUnique.mockResolvedValue(null)
+    readClaimedAnonymousIds.mockResolvedValueOnce(['parent-1'])
+    const res = await POST(postReq(), { params: Promise.resolve({ id: 'parent-1' }) })
+    expect(res.status).toBe(201)
+    expect(recheckAndCompare).toHaveBeenCalledWith(
+      expect.objectContaining({
+        parentReportId: 'parent-1',
+        claimedAnonymous: true,
+      })
+    )
   })
 })
