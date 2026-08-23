@@ -585,7 +585,6 @@ export function AuditReport({
                   agentMessages={agentMessages}
                   reportUrl={audit.url}
                   productName={productName}
-                  surface="timeline"
                 />
               }
               browserUrl={audit.url}
@@ -627,7 +626,6 @@ export function AuditReport({
               agentMessages={agentMessages}
               reportUrl={audit.url}
               productName={productName}
-              surface="timeline"
             />
           }
           browserUrl={audit.url}

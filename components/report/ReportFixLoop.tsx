@@ -139,7 +139,7 @@ export function ReportFixLoop({
                 aria-expanded={reachOpen}
                 onClick={() => setReachOpen((open) => !open)}
               >
-                <span>More checks</span>
+                <span>{REPORT_COPY.explorer.moreChecks}</span>
                 <span className="flex items-center gap-1.5">
                   <span className="font-mono text-2xs tabular-nums">{reachFlags.length}</span>
                   <ChevronDown className={reachOpen ? 'h-3.5 w-3.5 rotate-180' : 'h-3.5 w-3.5'} aria-hidden />

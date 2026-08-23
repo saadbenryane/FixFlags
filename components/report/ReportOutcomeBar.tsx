@@ -55,7 +55,7 @@ export function ReportOutcomeBar({
           <span className="text-xs font-medium text-muted-foreground">
             {REPORT_COPY.workspace.scoreLabel}
           </span>
-          <span className="font-mono text-xl font-semibold leading-none tabular-nums text-foreground">
+          <span className="font-mono text-sm font-medium leading-none tabular-nums text-muted-foreground">
             {scoreLabel}
           </span>
         </div>

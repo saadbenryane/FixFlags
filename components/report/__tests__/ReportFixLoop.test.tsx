@@ -36,4 +36,31 @@ describe('ReportFixLoop empty / loading states', () => {
     expect(flag).toHaveAttribute('aria-pressed', 'true')
     expect(flag).toHaveAttribute('aria-controls', 'selected-flag-detail')
   })
+  
+
+  it('collapses Reach Flags under More checks', () => {
+    render(
+      <ReportFixLoop
+        onSelectFlag={() => undefined}
+        flags={[
+          {
+            id: 'flag-1',
+            title: 'Clarify the primary action',
+            rubric: 'MESSAGE',
+            severity: 'IMPORTANT',
+          },
+          {
+            id: 'flag-2',
+            title: 'Missing Open Graph title',
+            rubric: 'REACH',
+            severity: 'NICE_TO_HAVE',
+          },
+        ]}
+      />
+    )
+
+    expect(screen.getByText(REPORT_COPY.explorer.moreChecks)).toBeInTheDocument()
+    expect(screen.queryByText('Missing Open Graph title')).not.toBeInTheDocument()
+  })
+
 })

@@ -1132,13 +1132,13 @@ export const REPORT_COPY = {
     error: "Could not start Recheck. Try again.",
   },
   keepReport: {
-    title: "Keep this report",
-    helper: "We will tell you if these Flags are still open.",
+    title: "Email me this report",
+    helper: "Send the link.",
     emailLabel: "Email",
     emailPlaceholder: "you@company.com",
-    action: "Keep this report",
-    saving: "Saving",
-    saved: "We emailed you the report link. We will tell you if these Flags are still open.",
+    action: "Email me this report",
+    saving: "Sending",
+    saved: "We emailed you the report link.",
     error: "Could not send that email. Try again.",
   },
   launchGates: {
@@ -1255,6 +1255,7 @@ export const REPORT_COPY = {
     selectFlag: "Select a flag to see evidence and the fix prompt.",
     flagsAppear: "Flags appear here as the review finishes.",
     noFlagsNice: "No flags. Nice work.",
+    moreChecks: "More checks",
   },
   runYourOwnAudit: "Check your site",
 } as const;

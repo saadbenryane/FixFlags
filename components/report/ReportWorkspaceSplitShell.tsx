@@ -391,9 +391,7 @@ function ReportWorkspaceSplitShellInner({
   const mobileTabs = [
     {
       id: `${mobileTabsId}-chat`,
-      label: scanning
-        ? REPORT_COPY.workspace.panels.chatTab
-        : REPORT_COPY.workspace.panels.browserView,
+      label: REPORT_COPY.workspace.panels.chatTab,
       selected: mobileFocus === 'chat',
       onSelect: () => chooseMobileFocus('chat'),
       controls: agentPanelId,

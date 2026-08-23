@@ -125,9 +125,8 @@ export const KEEP_REPORT_EMAIL = {
   subject: 'Your FixFlags report',
   html: (reportUrl: string) =>
     layout(`
-  <p>Here is the report you asked us to keep.</p>
+  <p>Here is the report you asked us to email.</p>
   <p><a href="${reportUrl}" style="${ctaStyle}">Open your report</a></p>
-  <p>We will tell you if these Flags are still open.</p>
 `),
 } as const
 
