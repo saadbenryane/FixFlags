@@ -6,7 +6,6 @@ import { recheckAndCompare } from '@/lib/audit/task-contracts'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { RateLimitError, recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { prisma } from '@/lib/db'
-import { claimsAnonymousReport, readClaimedAnonymousIds } from '@/lib/audit/usage'
 
 export async function POST(
   req: NextRequest,
@@ -16,32 +15,20 @@ export async function POST(
     const { id: parentId } = await params
 
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-    const claimedIds = await readClaimedAnonymousIds()
-    const claimedAnonymous = claimsAnonymousReport(claimedIds, parentId)
-
-    const user = session?.user
-      ? await prisma.user.findUnique({ where: { id: session.user.id } })
-      : null
-    if (session?.user && !user) {
-      return apiError('User not found', 404)
+    if (!session?.user?.id) {
+      return apiError('Sign in to run an update review', 401, { code: 'AUTH_REQUIRED' })
     }
 
-    const parent = await prisma.audit.findUnique({
-      where: { id: parentId },
-      select: { userId: true, parentId: true },
-    })
-    const claimsParent =
-      claimedAnonymous || claimsAnonymousReport(claimedIds, parentId, parent?.parentId)
-
-    if (!user && !claimsParent) {
-      return apiError('You can only re-check a report from the same session that created it', 403)
+    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+    if (!user) {
+      return apiError('User not found', 404)
     }
 
     const clientId = requestClientId(req.headers)
     const [recheckLimit, workerEstimate] = await Promise.all([
       recordRateLimit({
         scope: 'report-recheck',
-        identifier: user?.id ?? clientId,
+        identifier: user.id,
         limit: 20,
         windowSeconds: 3600,
         onRedisDown: 'reject',
@@ -59,7 +46,6 @@ export async function POST(
       parentReportId: parentId,
       user,
       delayMs: queue.delayMs,
-      claimedAnonymous: Boolean(!user && claimsParent),
       clientId,
     })
 

@@ -15,13 +15,12 @@ Read only what the task needs:
 - Positioning: `knowledge/vision.md`.
 - Sample or report promises: `knowledge/report-contract.md`.
 - Entitlements: the fixflags-product skill and shipped billing code.
-- Deeper frameworks, research methods, channel guidance, and templates: `references/marketing-playbook.md`.
 
 ## Procedure
 
 1. Choose one reader and trigger moment: an AI shipper preparing to share a build, or a site owner diagnosing weak conversion.
 2. State audience, job, promise, proof, and path in that order.
-3. Lead with customer verbs and real output: evidence, Flags, fix prompts, and Re-check proof.
+3. Lead with customer verbs and real output: evidence, Flags, fix prompts, and update-review receipts.
 4. Resolve every feature, quota, timing, integration, and support claim against shipped code or measured evidence.
 5. Put visible copy in typed modules exported through `lib/marketing/copy.ts`; do not hardcode it in components.
 6. Check that artwork containing illustrative text follows the generated-art manifest and product terminology.
@@ -31,7 +30,7 @@ Read only what the task needs:
 
 | Reader | Trigger | Lead promise | Proof |
 |---|---|---|---|
-| AI shipper | Before launch, demo, or sharing an AI-built product | Catch release gaps and get editor-ready fixes | Curated sample, evidence, fix prompt, Re-check |
+| AI shipper | Before launch, demo, or sharing an AI-built product | Catch release gaps and get fixes to paste into the builder | Curated sample, evidence, fix prompt, update review |
 | Site owner | Traffic exists but conversion or trust is weak | See what is costing signups and what to fix first | Their URL, prioritized evidence, verified improvement |
 
 Do not mix both readers in one hero or block.
@@ -42,15 +41,16 @@ Do not mix both readers in one hero or block.
 - Use short sentences and customer verbs.
 - No em dashes, fake urgency, unsupported superlatives, invented social proof, or vague AI/platform filler.
 - Name the mechanism and boundary.
-- Use `Re-check` in user-facing copy. `Monitoring` remains internal unless Product Watch is the named surface.
+- Use `Update review` and `Update reviews` in user-facing copy. Internal routes, analytics, enums, and the compatibility CLI command may retain `re-check` or `recheck`.
+- Copying a fix prompt is a handoff. Only an `IMPROVED` receipt from a fresh completed update review may say an Improvement is verified or improved.
 - Use `Message`, `Experience`, and `Reach` as the only report rubrics.
 
 ## First-value contract
 
 1. Logged-out primary action is the free check (`Review my site` → `/#audit`), not account creation.
 2. Account creation belongs after triage value.
-3. Live anonymous reports show deterministic Agent progress and every confirmed Flag with evidence. Fix prompts, interactive Agent conversation, and Timeline require authentication.
-4. `/samples` is the canonical curated sample Finish Plan.
+3. Live anonymous reports show deterministic Agent progress and every confirmed Flag with evidence. They expose zero prompts, copy controls, Timeline payload, update-review actions, or lifecycle mutations.
+4. `/samples` is the canonical curated workspace. It exposes the complete ranked Fix list, exactly one demonstrated per-Flag prompt, its versioned static Timeline, no aggregate Finish Plan prompt, and no update-review action.
 5. Never present a curated sample as a live customer review.
 
 ## Homepage contract
@@ -70,9 +70,10 @@ Primary illustrations are generated compositions. Do not replace approved artwor
 
 ## Entitlement language
 
-- Free includes three new URL checks.
-- Re-checks on owned reports are free and unlimited.
-- Pro includes 25 new URL checks per month.
+- Free includes three lifetime product reviews.
+- Every signed-in manual update review uses one product-review credit.
+- Watch-triggered reviews are the only non-manual path that skips product-review usage.
+- Pro includes 25 product reviews per month, shared by new URLs and manual update reviews.
 - Do not say "unlimited checks" or hardcode volatile prices and quotas in this skill.
 
 ## Avoid

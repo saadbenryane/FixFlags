@@ -12,6 +12,7 @@ function capabilities(canChat: boolean): ReportWorkspaceCapabilities {
     canChat,
     canUseCanvas: false,
     canShare: false,
+    canExport: false,
     canRecheck: false,
     canGiveFeedback: false,
     demonstratedFlagId: null,
@@ -98,8 +99,8 @@ describe('WorkspaceChatPanel', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'Scan history' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'New scan' }))
+    expect(screen.getByRole('button', { name: 'Review history' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'New review' }))
 
     expect(screen.getByLabelText('URL to review')).toHaveAttribute('placeholder', 'Paste a URL to review')
     expect(screen.getByRole('button', { name: 'Start review' })).toBeDisabled()

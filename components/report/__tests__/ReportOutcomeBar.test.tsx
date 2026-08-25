@@ -59,6 +59,7 @@ function buildModel(): ReportWorkspaceModel {
       canChat: false,
       canUseCanvas: false,
       canShare: false,
+      canExport: false,
       canRecheck: false,
       canGiveFeedback: false,
       demonstratedFlagId: null,
@@ -71,20 +72,17 @@ function buildModel(): ReportWorkspaceModel {
 }
 
 describe('ReportOutcomeBar', () => {
-  it('shows only the report name and a way back to the reports list', () => {
+  it('shows the score and chronological Review history without Product identity', () => {
     render(<ReportOutcomeBar model={buildModel()} />)
 
-    expect(screen.getByRole('region', { name: 'example.com' })).toBeInTheDocument()
-    expect(screen.getByText('example.com')).toBeVisible()
-    expect(screen.getByRole('link', { name: REPORT_COPY.workspace.dashboard.title })).toHaveAttribute(
-      'href',
-      '/dashboard',
-    )
-    expect(screen.queryByText('Score')).not.toBeInTheDocument()
-    expect(screen.queryByRole('navigation', { name: 'Review history' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: REPORT_COPY.workspace.summaryLabel })).toBeInTheDocument()
+    expect(screen.getByLabelText('Score 70')).toBeVisible()
+    expect(screen.getByRole('navigation', { name: 'Review history' })).toBeInTheDocument()
+    expect(screen.getAllByRole('link')).toHaveLength(2)
+    expect(screen.queryByText('example.com')).not.toBeInTheDocument()
   })
 
-  it('announces honest progress while scanning without restoring Score', () => {
+  it('announces honest progress and a pending Score while scanning', () => {
     const model = buildModel()
     model.context.loading = true
     model.summary.score = null
@@ -96,19 +94,19 @@ describe('ReportOutcomeBar', () => {
       />,
     )
 
-    expect(screen.queryByLabelText('Score pending')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Score pending')).toBeInTheDocument()
     expect(screen.getByRole('status', { name: 'Scan progress' })).toHaveTextContent(
       'Checking Message35%',
     )
   })
 
-  it("renders the existing Recheck control when provided", () => {
-    render(
-      <ReportOutcomeBar
-        model={buildModel()}
-        actions={<button type="button">Recheck</button>}
-      />,
-    )
-    expect(screen.getByRole("button", { name: "Recheck" })).toBeVisible()
+  it('shows an honest unavailable Score without inventing history', () => {
+    const model = buildModel()
+    model.summary.score = null
+    model.summary.history = null
+    render(<ReportOutcomeBar model={model} />)
+
+    expect(screen.getByLabelText('Score unavailable')).toBeVisible()
+    expect(screen.queryByRole('navigation', { name: 'Review history' })).not.toBeInTheDocument()
   })
 })

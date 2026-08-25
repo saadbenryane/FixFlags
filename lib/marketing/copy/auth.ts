@@ -200,7 +200,7 @@ export const AUTH = {
   valueProps: [
     { icon: 'history' as const, text: 'Report history saved to your account' },
     { icon: 'reports' as const, text: 'Re-open reports and copy fix prompts anytime' },
-    { icon: 'recheck' as const, text: 'Run update reviews after fixes to see what cleared' },
+    { icon: 'recheck' as const, text: 'Run update reviews after fixes to see what changed' },
   ],
   passkeyErrors: {
     cancelled: 'Passkey sign-in was cancelled or failed. Try another method.',
@@ -212,7 +212,7 @@ export const AUTH = {
     loadError: 'Could not load your account.',
     claimError: 'Could not save your report to this account.',
     claimSuccess: (n: number) => `Saved ${n} report${n !== 1 ? 's' : ''} to your account`,
-    claimFailure: 'Could not save your scan to this account. Refresh and try again.',
+    claimFailure: 'Could not save your review to this account. Refresh and try again.',
   },
   passkeyEnroll: {
     title: 'Sign in faster next time',

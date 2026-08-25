@@ -3,16 +3,17 @@ import dynamic from 'next/dynamic'
 import { Suspense, type ReactNode } from 'react'
 import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
 import { ReportContextDisclosure } from '@/components/report/ReportContextDisclosure'
-import { ReportPolishPass } from '@/components/report/ReportPolishPass'
+import { ReportFinishPlan } from '@/components/report/ReportFinishPlan'
 import { KeepReportEmail } from '@/components/report/KeepReportEmail'
 import {
   REPORT_SECTION_SCROLL_MT,
 } from '@/components/report/workspace-geometry'
 import { ReportPane } from '@/components/report/ReportPane'
+import { VerificationReceiptsSection } from '@/components/report/VerificationReceiptsSection'
+import type { ProductAttemptDTO } from '@/lib/products/workspace'
 const LiveReportExplorer = dynamic(
   () => import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
 )
-import { AuditPageActions } from '@/components/audit/AuditPageActions'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { TriageUnavailableCallout } from '@/components/audit/TriageUnavailableCallout'
@@ -148,13 +149,13 @@ interface AuditReportProps {
   pages?: JourneyPage[]
   journeyReviews?: JourneyReviewSummary[]
   recheckDiff?: RecheckDiffSummary | null
+  verificationReceipts?: ProductAttemptDTO[]
   scoreHistory?: ReportWorkspaceHistoryPoint[]
   compareHref?: string | null
   sampleFixFlag?: RankableFlag | null
   agentMessages?: AgentMessage[]
   /** Persisted or curated Product name; the hostname stays the fallback. */
   productName?: string | null
-  claimedAnonymous?: boolean
 }
 
 export function AuditReport({
@@ -183,12 +184,12 @@ export function AuditReport({
   pages = [],
   journeyReviews = [],
   recheckDiff = null,
+  verificationReceipts = [],
   scoreHistory = [],
   compareHref = null,
   sampleFixFlag = null,
   agentMessages = [],
   productName = null,
-  claimedAnonymous = false,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
   const isRepositorySample = isSample && audit.accessContext === 'repository_sample'
@@ -207,7 +208,7 @@ export function AuditReport({
   const fixPromptLocked = !showDeterministicFixes
   const demonstratedFlag = sampleFixFlag
   const promptProjection = resolveReportPromptProjection(
-    isSample ? 'curated-sample' : fixPromptLocked ? 'live-anonymous' : 'owner'
+    isRepositorySample ? 'curated-sample' : isOwnerAccess ? 'owner' : 'live-anonymous'
   )
 
   const upgradeMoment =
@@ -252,7 +253,8 @@ export function AuditReport({
       canChat: !isSample && isLoggedIn && isOwnerAccess && Boolean(auditId),
       canUseCanvas: !isSample && viewerIsPaid && isOwnerAccess,
       canShare: !isSample && isLoggedIn && isOwnerAccess,
-      canRecheck: isSample || ((isLoggedIn && isOwnerAccess) || claimedAnonymous),
+      canExport: !isSample && isLoggedIn && isOwnerAccess,
+      canRecheck: !isSample && isLoggedIn && isOwnerAccess,
       canGiveFeedback: !isSample && isLoggedIn && isOwnerAccess,
       demonstratedFlagId: demonstratedFlag?.id ?? null,
     },
@@ -292,6 +294,11 @@ export function AuditReport({
         pages={pages}
         auditId={auditId}
         demonstratedFlagId={demonstratedFlag?.id}
+        ownerActionContext={
+          auditId && isLoggedIn && isOwnerAccess && !isSample
+            ? { auditId, surface: 'focused', accessState: 'owner' }
+            : undefined
+        }
       />
     ) : null
 
@@ -368,6 +375,9 @@ export function AuditReport({
           <RecheckDiffStrip summary={recheckDiff} compareHref={compareHref} />
         </>
       ) : null}
+      {!isSample && verificationReceipts.length > 0 ? (
+        <VerificationReceiptsSection receipts={verificationReceipts} />
+      ) : null}
     </>
   )
 
@@ -438,6 +448,12 @@ export function AuditReport({
         </div>
       ) : null}
       <div id="report-recheck" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-5')}>
+        {!isSample && workspace.capabilities.canExport && toolbarActions ? (
+          <div className="flex flex-wrap gap-2">{toolbarActions}</div>
+        ) : null}
+        {!isSample && workspace.capabilities.canRecheck && actions ? (
+          <div className="flex flex-wrap gap-2">{actions}</div>
+        ) : null}
         {!isSample && auditId ? <KeepReportEmail auditId={auditId} /> : null}
         {projectId && workspace.capabilities.canRecheck ? (
           <Button asChild variant="outline">
@@ -512,7 +528,7 @@ export function AuditReport({
   const belowFrame = (
     <>
       {!isSample && unresolvedFlagCount > 0 ? (
-        <ReportPolishPass
+        <ReportFinishPlan
           flagCount={unresolvedFlagCount}
           prompt={polishPassPrompt}
           locked={fixPromptLocked && !polishPassPrompt}
@@ -529,9 +545,6 @@ export function AuditReport({
       >
         {contextSections}
       </ReportContextDisclosure>
-      {actions && !toolbarActions ? (
-        <div className="mt-3 flex flex-wrap gap-2">{actions}</div>
-      ) : null}
     </>
   )
 
@@ -558,37 +571,7 @@ export function AuditReport({
             <ReportWorkspaceSplitShell
               capabilities={workspace.capabilities}
               timelineGateActionHref={timelineGateActionHref}
-              reportHeader={
-                <ReportOutcomeBar
-                  model={workspace}
-                  actions={
-                    <>
-                      <Button asChild variant="ghost" size="sm">
-                        <Link href="#report-flags">
-                          {REPORT_COPY.workspace.panels.inspectFindings(unresolvedFlagCount)}
-                        </Link>
-                      </Button>
-                      {toolbarActions}
-                      {!toolbarActions && workspace.capabilities.canRecheck && (auditId || observationId) ? (
-                        <AuditPageActions
-                          auditId={auditId ?? observationId ?? ''}
-                          url={audit.url}
-                          score={audit.score ?? null}
-                          rubrics={[]}
-                          isPaid={viewerIsPaid}
-                          isLoggedIn={isLoggedIn}
-                          isOwner={isOwnerAccess}
-                          isAnonymous={!isLoggedIn}
-                          isPublic
-                          toolbar
-                          recheckOnly
-                          claimedAnonymous={claimedAnonymous}
-                        />
-                      ) : null}
-                    </>
-                  }
-                />
-              }
+              reportHeader={<ReportOutcomeBar model={workspace} />}
               canvasPanel={
                 workspace.capabilities.canUseCanvas
                   ? <ReportCanvasPanel auditId={auditId} />
@@ -624,35 +607,7 @@ export function AuditReport({
       <Suspense fallback={null}>
         <ReportWorkspaceSplitShell
           capabilities={workspace.capabilities}
-          reportHeader={
-            <ReportOutcomeBar
-              model={workspace}
-              actions={
-                <>
-                  <Button asChild variant="ghost" size="sm">
-                    <Link href="#report-flags">
-                      {REPORT_COPY.workspace.panels.inspectFindings(unresolvedFlagCount)}
-                    </Link>
-                  </Button>
-                  {workspace.capabilities.canRecheck && observationId ? (
-                    <AuditPageActions
-                      auditId={observationId}
-                      url={audit.url}
-                      score={audit.score ?? null}
-                      rubrics={[]}
-                      isPaid={false}
-                      isLoggedIn={false}
-                      isOwner={false}
-                      isAnonymous
-                      isPublic
-                      toolbar
-                      recheckOnly
-                    />
-                  ) : null}
-                </>
-              }
-            />
-          }
+          reportHeader={<ReportOutcomeBar model={workspace} />}
           leftPanel={
             <WorkspaceChatPanel
               capabilities={workspace.capabilities}

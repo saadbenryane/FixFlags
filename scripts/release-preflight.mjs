@@ -22,13 +22,14 @@ export const FOUNDATION_INPUTS = [
 
 export const FIXTURE_BINDING_INPUTS = [
   'RELEASE_E2E_TARGET',
-  'E2E_BASE_URL',
-  'RELEASE_SMOKE_URL',
+  'RELEASE_ENV_URL',
   'RELEASE_FRESH_DATABASE_URL',
   'RELEASE_FIXTURE_MANIFEST',
 ]
 
 export const CREDENTIALED_CORE_INPUTS = [
+  'RELEASE_ENV_URL',
+  'RELEASE_ENV_API_KEY',
   'RELEASE_FIXTURE_MANIFEST',
   'E2E_AUDIT_URL',
   'E2E_SIGNUP_PASSWORD',
@@ -46,7 +47,6 @@ export const CREDENTIALED_CORE_INPUTS = [
   'E2E_SHARE_OWNER_PASSWORD',
   'E2E_SHARE_REPORT_ID',
   'E2E_SHARE_PASSWORD',
-  'E2E_API_KEY',
   'E2E_FREE_REPORT_ID',
   'E2E_PRO_EMAIL',
   'E2E_PRO_PASSWORD',
@@ -58,6 +58,8 @@ export const CREDENTIALED_CORE_INPUTS = [
 ]
 
 export const BILLING_OPEN_INPUTS = [
+  'RELEASE_ENV_URL',
+  'RELEASE_ENV_API_KEY',
   'RELEASE_FIXTURE_MANIFEST',
   'E2E_ADMIN_EMAIL',
   'E2E_ADMIN_PASSWORD',
@@ -74,6 +76,8 @@ export const BILLING_CLOSED_INPUTS = [
 ]
 
 export const EXTERNAL_INPUTS = [
+  'RELEASE_ENV_URL',
+  'RELEASE_ENV_API_KEY',
   'RELEASE_FIXTURE_MANIFEST',
   'E2E_WATCH_EMAIL',
   'E2E_WATCH_PASSWORD',
@@ -84,21 +88,17 @@ export const EXTERNAL_INPUTS = [
   'E2E_GITHUB_REPOSITORY',
 ]
 
-export const DEPLOYED_INPUTS = ['RELEASE_SMOKE_URL']
+export const DEPLOYED_INPUTS = ['PRODUCTION_URL']
 
 export const REGISTRY_CLI_INPUTS = [
-  'RELEASE_E2E_TARGET',
-  'E2E_BASE_URL',
-  'RELEASE_SMOKE_URL',
+  'PRODUCTION_URL',
+  'PRODUCTION_API_KEY',
   'E2E_AUDIT_URL',
-  'E2E_API_KEY',
 ]
 
 export const PRODUCTION_DOGFOOD_INPUTS = [
-  'RELEASE_E2E_TARGET',
-  'E2E_BASE_URL',
-  'RELEASE_SMOKE_URL',
-  'E2E_API_KEY',
+  'PRODUCTION_URL',
+  'PRODUCTION_API_KEY',
   'PRODUCTION_DOGFOOD_IMPROVED_REPORT_ID',
   'PRODUCTION_DOGFOOD_IMPROVED_IMPROVEMENT_ID',
   'PRODUCTION_DOGFOOD_INCONCLUSIVE_REPORT_ID',
@@ -186,18 +186,41 @@ function validateFoundation(env, issues, checkFile) {
   }
 }
 
-function validateTargetBinding(env, issues) {
+function validateReleaseOrigin(env, issues) {
+  const release = env.RELEASE_ENV_URL
+    ? normalizedOrigin('RELEASE_ENV_URL', env.RELEASE_ENV_URL, issues)
+    : null
+  if (release && ['fixflags.com', 'www.fixflags.com'].includes(new URL(release).hostname)) {
+    issues.push('RELEASE_ENV_URL must not target the canonical production origin')
+  }
+}
+
+function validateReleaseEnvironmentBinding(env, issues) {
   if (env.RELEASE_E2E_TARGET !== 'remote') {
     issues.push('RELEASE_E2E_TARGET must equal remote')
   }
-  const smoke = env.RELEASE_SMOKE_URL
-    ? normalizedOrigin('RELEASE_SMOKE_URL', env.RELEASE_SMOKE_URL, issues)
+  validateReleaseOrigin(env, issues)
+}
+
+function validateProductionBinding(env, issues) {
+  const production = env.PRODUCTION_URL
+    ? normalizedOrigin('PRODUCTION_URL', env.PRODUCTION_URL, issues)
     : null
-  const e2e = env.E2E_BASE_URL
-    ? normalizedOrigin('E2E_BASE_URL', env.E2E_BASE_URL, issues)
+  if (production && !['fixflags.com', 'www.fixflags.com'].includes(new URL(production).hostname)) {
+    issues.push('PRODUCTION_URL must target the canonical production origin')
+  }
+  const release = env.RELEASE_ENV_URL
+    ? normalizedOrigin('RELEASE_ENV_URL', env.RELEASE_ENV_URL, issues)
     : null
-  if (smoke && e2e && smoke !== e2e) {
-    issues.push('E2E_BASE_URL must equal RELEASE_SMOKE_URL')
+  if (production && release && production === release) {
+    issues.push('PRODUCTION_URL must not equal RELEASE_ENV_URL')
+  }
+  if (
+    env.PRODUCTION_API_KEY &&
+    env.RELEASE_ENV_API_KEY &&
+    env.PRODUCTION_API_KEY === env.RELEASE_ENV_API_KEY
+  ) {
+    issues.push('PRODUCTION_API_KEY must not equal RELEASE_ENV_API_KEY')
   }
 }
 
@@ -218,10 +241,13 @@ export function validateReleasePreflight(
     validateFoundation(env, issues, options.checkFile !== false)
   }
   if (typedStage === 'fixture-binding') {
-    validateTargetBinding(env, issues)
+    validateReleaseEnvironmentBinding(env, issues)
   }
-  if (['registry-cli', 'production-dogfood'].includes(typedStage)) {
-    validateTargetBinding(env, issues)
+  if (['credentialed-core', 'billing-open', 'billing-closed', 'external'].includes(typedStage)) {
+    validateReleaseOrigin(env, issues)
+  }
+  if (['deployed', 'registry-cli', 'production-dogfood'].includes(typedStage)) {
+    validateProductionBinding(env, issues)
   }
   if (typedStage === 'billing-open' && env.E2E_PAID_OPEN_EXPECTED !== 'true') {
     issues.push('E2E_PAID_OPEN_EXPECTED must equal true for billing-open')
@@ -240,9 +266,6 @@ export function validateReleasePreflight(
       env.E2E_WATCH_MAILBOX_ASSERT_URL,
       issues
     )
-  }
-  if (['deployed', 'production-dogfood'].includes(typedStage) && env.RELEASE_SMOKE_URL) {
-    normalizedOrigin('RELEASE_SMOKE_URL', env.RELEASE_SMOKE_URL, issues)
   }
   return issues
 }

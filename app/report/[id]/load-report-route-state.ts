@@ -6,12 +6,13 @@ import {
 import { prisma } from '@/lib/db'
 import { getEntitlements, canAccessCompare, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } from '@/lib/auth/permissions'
-import { isAtCheckLimit, claimsAnonymousReport, readClaimedAnonymousIds } from '@/lib/audit/usage'
+import { isAtCheckLimit } from '@/lib/audit/usage'
 import { isPublicMarketingSample } from '@/lib/audit/report-access'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { loadFinishPlanFlags } from '@/lib/audit/load-finish-plan-flags'
 import { historyPointFromAudit } from '@/lib/report/workspace-model'
 import { buildFixList } from '@/lib/audit/finish-plan'
+import { loadVerificationReceiptsForReview } from '@/lib/products/workspace'
 
 const MAX_REVIEW_HISTORY_HOPS = 60
 
@@ -155,7 +156,6 @@ export async function loadReportRouteState(
       !isUnlimitedScanLimit(progressiveEffectiveLimit) &&
       isAtCheckLimit(progressiveUser.auditsUsed, progressivePending, progressiveEffectiveLimit)
 
-    const progressiveClaimedIds = await readClaimedAnonymousIds()
     return {
       kind: 'progressive' as const,
       id,
@@ -165,11 +165,6 @@ export async function loadReportRouteState(
       },
       session: progressive.session,
       atAuditLimit: progressiveAtAuditLimit,
-      claimedAnonymous: claimsAnonymousReport(
-        progressiveClaimedIds,
-        id,
-        progressive.audit.parentId ?? null
-      ),
     }
   }
 
@@ -196,17 +191,19 @@ export async function loadReportRouteState(
     sampleFixFlag,
   } = result
   const isOwner = accessContext === 'owner'
-  const isAnonymous = audit.userId === null
-  const claimedIds = await readClaimedAnonymousIds()
-  const claimedAnonymous =
-    isAnonymous && claimsAnonymousReport(claimedIds, id, audit.parentId)
   const isMarketingSample = isPublicMarketingSample({
     userId: audit.userId,
     aiReviewAt: audit.aiReviewAt,
     isPublic: audit.isPublic,
   })
 
-  const [user, latestMonitoring, recheckDiff, completedHistoryRows] = await Promise.all([
+  const [
+    user,
+    latestMonitoring,
+    recheckDiff,
+    completedHistoryRows,
+    verificationReceipts,
+  ] = await Promise.all([
     session?.user
       ? prisma.user.findUnique({
           where: { id: session.user.id },
@@ -240,6 +237,9 @@ export async function loadReportRouteState(
           userId: audit.userId,
           projectId: audit.projectId,
         })
+      : Promise.resolve([]),
+    isOwner && audit.userId && audit.status === 'COMPLETED' && Boolean(audit.parentId)
+      ? loadVerificationReceiptsForReview(id, audit.userId)
       : Promise.resolve([]),
   ])
   // Keep no-score observations so degraded/partial captures show as hollow
@@ -429,8 +429,6 @@ export async function loadReportRouteState(
       user,
       isLoggedIn,
       isOwner,
-      isAnonymous,
-      claimedAnonymous,
       isMarketingSample,
       showPrescription,
       showDeterministicFixes,
@@ -440,6 +438,7 @@ export async function loadReportRouteState(
       sampleFixFlag: sampleFixFlag as typeof flags[number] | null,
       latestMonitoring,
       recheckDiff,
+      verificationReceipts,
       scoreHistory,
       atAuditLimit,
       entitlements,

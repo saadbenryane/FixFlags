@@ -27,7 +27,7 @@ function getKindLabel(kind: ReportWorkspaceHistoryPoint['kind']): string {
     case 'product-review':
       return 'Product review'
     case 'update-review':
-      return 'Recheck'
+      return 'Update review'
     case 'watch':
       return 'Watch run'
   }

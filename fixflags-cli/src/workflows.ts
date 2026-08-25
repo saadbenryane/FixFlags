@@ -53,7 +53,14 @@ export interface RecheckResult {
   reportId: string
   reportUrl: string
   status: string
-  diff?: { fixed: number; remaining: number; newIssues: number; regressed: number } | null
+  diff?: {
+    fixed: number
+    noLongerObserved: number
+    inconclusive: number
+    remaining: number
+    newIssues: number
+    regressed: number
+  } | null
   nextFixList?: FixList
   nextFinishPlan?: FinishPlan
   technologyProfile?: CheckResult['technologyProfile']
@@ -253,7 +260,14 @@ function parseDiff(value: unknown, tool: string): RecheckResult['diff'] {
     if (parsed === undefined || parsed === null) throw new Error(`Malformed response from ${tool}: diff.${field} is required`)
     return parsed
   }
-  return { fixed: number('fixed'), remaining: number('remaining'), newIssues: number('newIssues'), regressed: number('regressed') }
+  return {
+    fixed: number('fixed'),
+    noLongerObserved: number('noLongerObserved'),
+    inconclusive: number('inconclusive'),
+    remaining: number('remaining'),
+    newIssues: number('newIssues'),
+    regressed: number('regressed'),
+  }
 }
 
 function parseRecheck(value: unknown, tool: string, apiBase: string, fallbackParent: string): RecheckResult {

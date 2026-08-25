@@ -69,7 +69,15 @@ consumers; restart the worker deliberately when worker code changes.
 | `npm run verify` | Full manifest: database checks, typecheck, source lint, guards, audits, tests, packaging, and builds |
 | `npm run verify:release` | Clean install, full manifest, browser journeys, Docker build, and deployed readiness probes |
 
-Release verification requires designated non-customer resources: `RELEASE_FRESH_DATABASE_URL`, `RELEASE_ALLOW_DATABASE_RESET=true`, `RELEASE_CONTAINER_ENV_FILE`, `RELEASE_SMOKE_URL`, and `E2E_BASE_URL`. `E2E_BASE_URL` must equal `RELEASE_SMOKE_URL`, so credentialed journeys cannot silently test a local or different deployment. The database name must include `release` or `test`; the gate refuses to reset the normal `DATABASE_URL`. The container environment file must be a regular file with mode `0600`.
+Release verification requires designated non-customer resources: `RELEASE_FRESH_DATABASE_URL`, `RELEASE_ALLOW_DATABASE_RESET=true`, `RELEASE_CONTAINER_ENV_FILE`, `RELEASE_ENV_URL`, and `RELEASE_ENV_API_KEY`.
+Credentialed fixtures and their manifest are permitted only in release-environment stages.
+The fixture-binding stage first requires `/api/health` to report the exact candidate SHA, then provisions fixtures.
+Production stages use only `PRODUCTION_URL` and `PRODUCTION_API_KEY`; they never hydrate the release fixture manifest.
+The release and production origins and API keys must be distinct.
+The database name must include `release` or `test`; the gate refuses to reset the normal `DATABASE_URL`.
+The container environment file and fixture manifest must be regular files with mode `0600`.
+Before production proof, enable Railway Wait for CI for both web and worker.
+The deployment receipt requires every GitHub check to pass, a successful post-CI Railway transition for web and worker on the exact SHA, and `/api/health` to report that same SHA.
 
 ### Demo / testing
 | Command | Purpose |

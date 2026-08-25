@@ -42,11 +42,12 @@ export async function persistImprovementCycle(
   auditId: string,
   parentId: string | null
 ): Promise<void> {
-  const claimed = await prisma.audit.updateMany({
-    where: { id: auditId, status: 'COMPLETED', improvementProjectedAt: null },
-    data: { improvementProjectedAt: new Date() },
+  const audit = await prisma.audit.findUnique({
+    where: { id: auditId },
+    select: { improvementProjectedAt: true },
   })
-  if (claimed.count === 0) return
+  if (!audit || audit.improvementProjectedAt) return
+
   try {
     if (parentId) await diffFlagsAgainstParent(auditId, parentId)
     await materializeAttentionForAudit(auditId)
@@ -56,10 +57,20 @@ export async function persistImprovementCycle(
         verificationAuditId: auditId,
       })
     }
+    // improvementProjectedAt is a completion receipt, not a lease. Write it
+    // only after every idempotent projection step succeeds so a process crash
+    // leaves the Review recoverable by the scheduler.
+    await prisma.audit.updateMany({
+      where: { id: auditId, status: 'COMPLETED', improvementProjectedAt: null },
+      data: { improvementProjectedAt: new Date() },
+    })
   } catch (error) {
-    await prisma.audit.update({
-      where: { id: auditId },
-      data: { improvementProjectedAt: null },
+    await logPipelineEvent(auditId, {
+      stage: 'completed',
+      event: 'improvement_projection_failed',
+      error: error instanceof Error ? error.message : String(error),
+    }).catch((logError) => {
+      logger.error('Improvement projection failure could not be logged', logError)
     })
     throw error
   }
@@ -148,11 +159,11 @@ export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<voi
     },
   })
 
-  await completeImprovementProjection(input.auditId, audit.parentId)
-
   if (audit.userId) {
     await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
   }
+
+  await completeImprovementProjection(input.auditId, audit.parentId)
 
   await upsertLeadFromAudit(input.auditId).catch((err) => {
     logger.error('Lead upsert failed after triage finalize', err)
@@ -249,11 +260,11 @@ export async function finalizeTriageDegraded(
     },
   })
 
-  await completeImprovementProjection(input.auditId, audit.parentId)
-
   if (audit.userId) {
     await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
   }
+
+  await completeImprovementProjection(input.auditId, audit.parentId)
 
   await upsertLeadFromAudit(input.auditId).catch((err) => {
     logger.error('Lead upsert failed after triage degraded finalize', err)
@@ -406,6 +417,10 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
       failureStage: input.failureStage,
     },
   })
+
+  if (audit.userId) {
+    await incrementUsageOnCompleteForAudit(input.auditId, audit.userId)
+  }
 
   await completeImprovementProjection(input.auditId, audit.parentId)
 

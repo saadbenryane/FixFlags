@@ -50,6 +50,7 @@ const lockedCapabilities = {
   canChat: false,
   canUseCanvas: false,
   canShare: false,
+  canExport: false,
   canRecheck: false,
   canGiveFeedback: false,
   demonstratedFlagId: null,

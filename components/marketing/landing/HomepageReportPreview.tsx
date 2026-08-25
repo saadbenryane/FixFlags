@@ -1,8 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
 import type { PreviewDevice } from '@/components/report/WorkspaceBrowserPanel'
 import type { WorkspacePanelView } from '@/components/report/WorkspaceViewTabs'
@@ -16,7 +14,7 @@ import { DEMO_BRAND } from '@/lib/demo/brand'
 import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 import { explorerScreenshots } from '@/lib/report/explorer-model'
 import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
-import { HERO, LANDING_PAGE } from '@/lib/marketing/copy'
+import { LANDING_PAGE } from '@/lib/marketing/copy'
 import { MeProvider } from '@/hooks/useMe'
 
 const STORY_DURATIONS = [2600, 3000, 3200, 3600, 7000] as const
@@ -45,7 +43,11 @@ function storyStatus(phase: number): string {
  * never starts a real scan. The first toggle click hands control to the
  * visitor and settles the replay on the completed review.
  */
-export function HomepageReportPreview({ model }: { model: ReportWorkspaceModel }) {
+export function HomepageReportPreview({
+  model,
+}: {
+  model: ReportWorkspaceModel
+}) {
   const [phase, setPhase] = useState(0)
   const [playing, setPlaying] = useState(true)
   const [chosenView, setChosenView] = useState<WorkspacePanelView | null>(null)
@@ -53,7 +55,9 @@ export function HomepageReportPreview({ model }: { model: ReportWorkspaceModel }
   const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null)
 
   const selectedFlag =
-    model.explorer.flags.find((flag) => flag.id === model.capabilities.demonstratedFlagId) ??
+    model.explorer.flags.find(
+      (flag) => flag.id === model.capabilities.demonstratedFlagId,
+    ) ??
     model.explorer.flags.find((flag) => flag.severity === 'CRITICAL') ??
     model.explorer.flags[0]
 
@@ -87,25 +91,32 @@ export function HomepageReportPreview({ model }: { model: ReportWorkspaceModel }
         journeyReviewAt: phase >= 2 ? new Date(0) : null,
         flags:
           phase >= 3 && selectedFlag
-            ? [{
-                id: selectedFlag.id,
-                problem: selectedFlag.title,
-                rubric: selectedFlag.rubric,
-                severity: selectedFlag.severity,
-                checkId: selectedFlag.checkId,
-                impactTag: selectedFlag.impactTag,
-              }]
+            ? [
+                {
+                  id: selectedFlag.id,
+                  problem: selectedFlag.title,
+                  rubric: selectedFlag.rubric,
+                  severity: selectedFlag.severity,
+                  checkId: selectedFlag.checkId,
+                  impactTag: selectedFlag.impactTag,
+                },
+              ]
             : [],
         reportCompleteness: 'FULL',
       }),
     [phase, selectedFlag],
   )
 
-  const screenshots = useMemo(() => explorerScreenshots(model.explorer), [model.explorer])
+  const screenshots = useMemo(
+    () => explorerScreenshots(model.explorer),
+    [model.explorer],
+  )
 
   const storyView: WorkspacePanelView = phase >= 3 ? 'report' : 'browser'
   const storyDevice: PreviewDevice =
-    phase >= 2 && selectedFlag?.affectedDevices.includes('mobile') ? 'mobile' : 'desktop'
+    phase >= 2 && selectedFlag?.affectedDevices.includes('mobile')
+      ? 'mobile'
+      : 'desktop'
   const view = chosenView ?? storyView
   const device = chosenDevice ?? storyDevice
   const capturing = phase < LAST_PHASE && playing
@@ -178,26 +189,22 @@ export function HomepageReportPreview({ model }: { model: ReportWorkspaceModel }
         <MeProvider initialUser={null}>
           <ReportPane
             explorer={
-              <section id="report-flags" className="flex min-h-0 flex-1 flex-col">
+              <section
+                id="report-flags"
+                className="flex min-h-0 flex-1 flex-col"
+              >
                 <LiveReportExplorer
                   model={model.explorer}
                   aiLocked
-                  demonstratedFlagId={model.capabilities.demonstratedFlagId ?? undefined}
+                  demonstratedFlagId={
+                    model.capabilities.demonstratedFlagId ?? undefined
+                  }
                   signUpHref="/sign-in?next=%2Fsamples"
                 />
               </section>
             }
           />
         </MeProvider>
-      }
-      footer={
-        <Link
-          href="/#audit"
-          className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-control)] bg-foreground px-4 text-xs font-semibold text-background shadow-raised transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-        >
-          {HERO.primaryCta}
-          <ArrowRight className="h-4 w-4" aria-hidden />
-        </Link>
       }
     />
   )

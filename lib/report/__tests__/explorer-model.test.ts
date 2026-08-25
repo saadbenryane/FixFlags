@@ -103,7 +103,7 @@ describe('explorer-model', () => {
     assert.equal(model.flags[0]?.visualUrl, 'https://cdn.example.com/cta.gif')
   })
 
-  it('keeps every anonymous Flag and its evidence while exposing exactly one prompt', () => {
+  it('keeps every curated-sample Flag and its evidence while exposing exactly one prompt', () => {
     const model = buildLiveExplorerModel({
       url: 'https://example.com',
       pageType: 'Landing page',
@@ -165,11 +165,42 @@ describe('explorer-model', () => {
       ['f2']
     )
     assert.equal(model.flags.find((flag) => flag.id === 'f1')?.fixPrompt, '')
-    const messageCopy = model.flags.find((flag) => flag.id === 'f1')?.copyFixPrompt ?? ''
-    assert.match(messageCopy, /^Make a plan to fix these issues, then implement them in this product\./)
-    assert.match(messageCopy, /CTA below fold/)
-    assert.equal(model.flags.find((flag) => flag.id === 'f3')?.copyFixPrompt, messageCopy)
-    assert.match(model.polishPassPrompt ?? '', /^Make a plan to fix these issues, then implement them in this product\./)
+    assert.equal(model.flags.find((flag) => flag.id === 'f1')?.copyFixPrompt, '')
+    assert.equal(model.flags.find((flag) => flag.id === 'f3')?.copyFixPrompt, '')
+    assert.match(
+      model.flags.find((flag) => flag.id === 'f2')?.copyFixPrompt ?? '',
+      /CTA below fold/,
+    )
+    assert.equal(model.polishPassPrompt, null)
+  })
+
+  it('keeps live anonymous evidence while redacting every prompt and aggregate plan', () => {
+    const model = buildLiveExplorerModel({
+      url: 'https://example.com',
+      pageType: 'Landing page',
+      score: 61,
+      promptAccess: 'none',
+      flags: [
+        {
+          id: 'f1',
+          checkId: 'h1-generic',
+          rubric: 'MESSAGE',
+          severity: 'IMPORTANT',
+          problem: 'Generic headline',
+          evidence: 'The H1 names a category but no outcome.',
+          fix: 'Name the outcome.',
+          agentPrompt: 'Rewrite the headline around the user outcome.',
+        },
+      ],
+      rubricRows: [{ name: 'MESSAGE', score: 65, grade: 'D' }],
+    })
+
+    assert.equal(model.flags.length, 1)
+    assert.match(model.flags[0]?.evidence ?? '', /category but no outcome/)
+    assert.equal(model.flags[0]?.hasFixPrompt, false)
+    assert.equal(model.flags[0]?.fixPrompt, '')
+    assert.equal(model.flags[0]?.copyFixPrompt, '')
+    assert.equal(model.polishPassPrompt, null)
   })
 
   it('builds partial explorer model when flags exist', () => {

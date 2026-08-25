@@ -17,22 +17,39 @@ Its bounded Finish Plan supplies zero-to-three worthwhile candidates for durable
 `/report/[id]` is the default destination:
 
 1. Compact Review header (`#report-status`) with a visible score or honest pending/unavailable state and chronological full-Review history
-2. Re-check result, when applicable
+2. Update-review result, when present
 3. Complete ranked Fix list (`#report-flags`) with filters, screenshot evidence, selected detail, and canonical Critical-first ranking
-4. Made with (`#report-stack`), Product Contract (`#report-contract`), verified memory (`#report-remember`), when present
-5. Funnel, flow, and action timeline (`#report-funnel`)
-6. Share and search previews, launch gates, watch, sharing, export, project, and MCP controls
-7. Owner update review (`#report-recheck`)
-8. At most one contextual signup or upgrade moment
+4. “What to fix next” Finish Plan with zero-to-three worthwhile Improvements
+5. Collapsed evidence and Product context: Made with (`#report-stack`), Product Contract (`#report-contract`), and verified Product Memory (`#report-remember`), when present
+6. Funnel, flow, Timeline, previews, sharing, Watch, export, project, MCP, and owner update-review controls
+7. At most one contextual signup or upgrade moment
 
 The compact header does not repeat Product identity, verdict copy, the Critical count, or instructions already expressed by the ranked Fix list.
 Every history point is a native link to a complete Review, and `?view=timeline|report|canvas` is the canonical sibling-view state.
+Active desktop reviews default to Preview, active mobile reviews default to Agent, and completed reviews default to Report on every width.
+Completed Timeline remains a sibling view only when the workspace capability permits it.
 
 New anonymous scans render the progressive and completed evidence report without a blocking authentication dialog.
 Anonymous viewers can inspect scores, all confirmed Flags, screenshots, textual evidence, public-safe technology context, and deterministic Agent scan messages.
 Fix prompts, interactive Agent conversation, live Timeline and path replay payloads, private memory, private history, update reviews, export, restricted sharing, and Canvas remain unavailable until their access requirement is met.
 Authentication is contextual and returns through `/post-login` so the anonymous report is claimed before the same workspace unlocks.
 Anonymous API serialization remains redacted: gated fields are omitted server-side, evidence remains real page evidence, and gate strings are never persisted into Flag rows.
+
+Prompt and action projection is centralized by access capability:
+
+- Authenticated owners receive every eligible per-Flag prompt and the aggregate Finish Plan.
+- Repository-owned curated samples expose exactly one demonstrated per-Flag prompt and no aggregate Finish Plan prompt.
+- Anonymous live-report viewers, non-owners, and shared-report viewers receive zero prompts and no copy controls.
+- Static samples never expose update-review or lifecycle mutation actions.
+
+Copying an owner prompt is a handoff, not verification.
+It records one idempotent `HANDOFF_COPIED` event.
+“Ready to verify” records an Improvement Attempt, but only a fresh completed child Update Review can determine the result.
+The web report, MCP, and CLI use the same strict verification receipts.
+Only receipt outcome `IMPROVED` may say an Improvement is verified or improved and write verified Product Memory.
+`INCONCLUSIVE`, `UNCHANGED`, and `REGRESSED` must preserve coverage, evidence, and remaining risk.
+A Flag absent from a raw child review is “No longer observed in this review,” not verified.
+Partial or degraded reviews never create verified Product Memory.
 
 `/report/[id]/details` redirects to `/report/[id]`. Shared and sample detail URLs likewise redirect to their canonical report surfaces.
 
@@ -52,7 +69,7 @@ Keep the workspace and transcript mounted until the completed server report repl
 ## Samples and sharing
 
 - Homepage: complete curated fix list with selected evidence and one editor-ready fix.
-- `/samples`: complete, versioned curated observations selected by `?observation=`, each with its own Flags, captures, score, and repository-owned static Timeline.
+- `/samples`: complete, versioned curated observations selected by `?observation=`, each with its own Flags, captures, score, exactly one demonstrated per-Flag prompt, and repository-owned static Timeline.
   Every visible history point resolves to one immutable observation.
   An absent selector opens the current curated Review; an explicit unknown selector returns not found.
   Public sample playback is the only anonymous Timeline exception and never queries production audit rows.

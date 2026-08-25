@@ -10,6 +10,7 @@ import {
   IMPROVEMENT_REJECTION_REASONS,
   normalizeImprovementRejectionReason,
 } from '@/lib/improvements/rejection-reasons'
+import { recordOwnerFlagFeedbackDecision } from '@/lib/improvements/service'
 
 const LEGACY_FEEDBACK_REASONS = [
   'incorrect',
@@ -40,10 +41,7 @@ export async function POST(
       where: { id: flagId },
       select: {
         id: true,
-        auditId: true,
-        problem: true,
-        checkId: true,
-        audit: { select: { userId: true, projectId: true, url: true } },
+        audit: { select: { userId: true } },
       },
     })
     if (!flag) return apiError('Flag not found', 404, { code: 'NOT_FOUND' })
@@ -87,89 +85,12 @@ export async function POST(
     const isOwner =
       Boolean(session?.user?.id) && flag.audit.userId === session?.user?.id
     if (parsed.data.dismiss && parsed.data.reason && isOwner) {
-      await prisma.flag.update({
-        where: { id: flagId },
-        data: { status: 'IGNORED' },
+      await recordOwnerFlagFeedbackDecision({
+        flagId,
+        userId: session!.user.id,
+        reason: parsed.data.reason,
+        note: parsed.data.comment,
       })
-
-      const occurrence = await prisma.improvementOccurrence.findUnique({
-        where: { flagId },
-        select: { improvementId: true },
-      })
-      if (occurrence) {
-        if (parsed.data.reason === 'already_fixed') {
-          const { createImprovementAttempt } = await import('@/lib/improvements/service')
-          await createImprovementAttempt({
-            improvementId: occurrence.improvementId,
-            projectId: flag.audit.projectId!,
-            userId: session!.user.id,
-            sourceAuditId: flag.auditId,
-            builder: 'user-decision',
-            handoffReference: `flag:${flagId}`,
-            changeSummary: parsed.data.comment?.trim() || 'The owner reports this change is ready to verify.',
-          })
-        } else {
-          await prisma.improvement.update({
-            where: { id: occurrence.improvementId },
-            data: {
-              status: parsed.data.reason === 'duplicate' ? 'SUPERSEDED' : 'REJECTED',
-              rejectionReason,
-              rejectionNote: parsed.data.comment?.trim() || null,
-              rejectedAt: new Date(),
-            },
-          })
-        }
-      }
-
-      // Intentional / accept-for-now → Product Intelligence memory
-      if (
-        (parsed.data.reason === 'intentional' || parsed.data.reason === 'low_priority') &&
-        flag.audit.userId
-      ) {
-        const { ensureProductProject, mutateProjectIntelligence } =
-          await import('@/lib/audit/ensure-product-project')
-        const {
-          appendIntentionalNote,
-          appendKnownRisk,
-          mergeContractIntoProductIntelligence,
-          productIntelligenceFromContract,
-        } = await import('@/lib/audit/product-intelligence')
-        const { parseProductContract } = await import('@/lib/audit/product-contract')
-
-        let projectId = flag.audit.projectId
-        if (!projectId) {
-          const project = await ensureProductProject(flag.audit.userId, flag.audit.url)
-          projectId = project.id
-          await prisma.audit.update({
-            where: { id: flag.auditId },
-            data: { projectId },
-          })
-        }
-
-        const audit = await prisma.audit.findUnique({
-          where: { id: flag.auditId },
-          select: { productContract: true },
-        })
-        const contract = parseProductContract(audit?.productContract)
-        const fallback = contract
-          ? mergeContractIntoProductIntelligence(null, contract)
-          : productIntelligenceFromContract({
-              purpose: 'Help visitors get value from this product',
-              firstValueJourney: 'Complete the primary journey',
-              criticalOutcomes: ['Primary outcomes work'],
-              inferredAt: new Date().toISOString(),
-              source: 'heuristic',
-            })
-        const note = parsed.data.comment?.trim()
-          ? `${flag.problem} - ${parsed.data.comment.trim()}`
-          : flag.problem
-        await mutateProjectIntelligence(projectId, (current) => {
-          const pi = current ?? fallback
-          return parsed.data.reason === 'low_priority'
-            ? appendKnownRisk(pi, note)
-            : appendIntentionalNote(pi, note)
-        })
-      }
     }
 
     return NextResponse.json(feedback)

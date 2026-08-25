@@ -10,8 +10,10 @@ function validEnv(overrides = {}) {
     RELEASE_FRESH_DATABASE_URL: 'postgresql://release:test@db.test/fixflags_release?sslmode=require',
     RELEASE_CONTAINER_ENV_FILE: '/tmp/release-container.env',
     RELEASE_FIXTURE_MANIFEST: '/tmp/release-fixtures.json',
-    RELEASE_SMOKE_URL: 'https://release.fixflags.test',
-    E2E_BASE_URL: 'https://release.fixflags.test',
+    RELEASE_ENV_URL: 'https://release.fixflags.test',
+    RELEASE_ENV_API_KEY: 'ff_release_fixture',
+    PRODUCTION_URL: 'https://fixflags.com',
+    PRODUCTION_API_KEY: 'ff_production_fixture',
     E2E_STRIPE_SECRET_KEY: 'sk_test_release_fixture',
     E2E_PAID_OPEN_EXPECTED: 'true',
     ...overrides,
@@ -31,9 +33,23 @@ describe('release preflight contract', () => {
     assert.ok(issues.some((issue) => issue.includes('must not identify')))
   })
 
-  it('binds fixture target origins exactly', () => {
-    const issues = validateReleasePreflight(validEnv({ E2E_BASE_URL: 'https://other.fixflags.test' }), { checkFile: false, stage: 'fixture-binding' })
-    assert.ok(issues.some((issue) => issue.includes('must equal RELEASE_SMOKE_URL')))
+  it('keeps release fixtures off the canonical production origin', () => {
+    const issues = validateReleasePreflight(validEnv({ RELEASE_ENV_URL: 'https://fixflags.com' }), { checkFile: false, stage: 'fixture-binding' })
+    assert.ok(issues.some((issue) => issue.includes('must not target the canonical production origin')))
+  })
+
+  it('requires a distinct canonical production target and credential', () => {
+    assert.deepEqual(validateReleasePreflight(validEnv(), { checkFile: false, stage: 'registry-cli' }), [])
+    assert.ok(validateReleasePreflight(validEnv({ PRODUCTION_URL: 'https://preview.fixflags.test' }), { checkFile: false, stage: 'registry-cli' }).some((issue) => issue.includes('canonical production origin')))
+    assert.ok(validateReleasePreflight(validEnv({ PRODUCTION_API_KEY: 'same', RELEASE_ENV_API_KEY: 'same' }), { checkFile: false, stage: 'registry-cli' }).some((issue) => issue.includes('must not equal RELEASE_ENV_API_KEY')))
+  })
+
+  it('does not accept the legacy shared smoke variables in place of separated targets', () => {
+    const env = validEnv({ RELEASE_SMOKE_URL: 'https://release.fixflags.test', E2E_BASE_URL: 'https://release.fixflags.test' })
+    delete env.RELEASE_ENV_URL
+    assert.ok(validateReleasePreflight(env, { checkFile: false, stage: 'fixture-binding' }).some((issue) => issue === 'Missing RELEASE_ENV_URL'))
+    delete env.PRODUCTION_URL
+    assert.ok(validateReleasePreflight(env, { checkFile: false, stage: 'deployed' }).some((issue) => issue === 'Missing PRODUCTION_URL'))
   })
 
   it('keeps unrelated credential requirements out of foundation', () => {

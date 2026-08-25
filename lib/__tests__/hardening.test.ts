@@ -137,12 +137,6 @@ describe('plan limits', () => {
   })
 })
 
-describe('monitoring quota semantics', () => {
-  it('monitoring skips monthly audit usage via skipUsageCount', () => {
-    assert.equal({ skipUsageCount: true }.skipUsageCount, true)
-  })
-})
-
 describe('canAccessCompare', () => {
   const freeUser = {
     id: 'u1',

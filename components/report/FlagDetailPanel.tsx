@@ -14,6 +14,13 @@ import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { displayHostname, truncatePreview } from '@/lib/audit/preview-meta'
 import { impactTagIcon } from '@/lib/rubric-icons'
 import { impactTagLabel } from '@/lib/utils'
+import type { ReportAccessState, ReportSurface } from '@/lib/analytics/events'
+
+export interface ReportOwnerActionContext {
+  auditId: string
+  surface: ReportSurface
+  accessState: Extract<ReportAccessState, 'owner'>
+}
 
 /** Check IDs where the issue is about social/shareable previews. */
 const SHAREABLE_CHECK_IDS = new Set([
@@ -158,6 +165,7 @@ export function FlagDetailPanel({
   aiEnhancementPending = false,
   signUpHref,
   previewMeta,
+  ownerActionContext,
 }: {
   flag: ExplorerFlag
   showFeedback?: boolean
@@ -165,6 +173,7 @@ export function FlagDetailPanel({
   aiEnhancementPending?: boolean
   signUpHref?: string
   previewMeta?: PreviewMeta | null
+  ownerActionContext?: ReportOwnerActionContext
 }) {
   const showShareablePreview = isShareableCheck(flag.checkId) && previewMeta
 
@@ -212,7 +221,10 @@ export function FlagDetailPanel({
               toolPrompts={flag.toolPrompts}
               showToolSelector
               showCursorAction
+              auditId={ownerActionContext?.auditId}
               flagId={flag.id}
+              surface={ownerActionContext?.surface}
+              accessState={ownerActionContext?.accessState}
               nested
               render="markdown"
             />

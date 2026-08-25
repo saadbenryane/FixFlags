@@ -55,10 +55,12 @@ for (const width of widths) {
 
     await expect(page.locator('[data-workspace-ready="true"]')).toBeVisible({ timeout: 60_000 })
     await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
-    // The curated sample reviews the Launchpad demo, and the Product pane names
-    // the reviewed host now that the editor has no fake browser bar.
+    // Identity lives once in Agent; the Report header owns only Score/history.
     await expect(page.getByText(/Launchpad/i).first()).toBeVisible()
-    await expect(page.getByLabel('Product fixflags.com/demo')).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Review score and history' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Report' }).first()).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: 'Timeline' }).first()).toBeVisible()
+    await expect(page.getByLabel('Product fixflags.com/demo')).toHaveCount(0)
 
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
@@ -88,11 +90,13 @@ for (const width of widths) {
 
 for (const width of [320, 375]) {
   test(`mobile header and Flag selection remain responsive at ${width}px`, async ({ page }) => {
+    test.setTimeout(60_000)
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/samples')
+    await expect(page.locator('[data-workspace-ready="true"]')).toBeVisible({ timeout: 60_000 })
 
-    const header = page.locator('header').first()
-    const logo = header.locator('a[href="/"]').first()
+    const header = page.getByRole('banner')
+    const logo = header.getByRole('link', { name: 'FixFlags' })
     const review = header.getByRole('link', { name: 'Review my site' })
     await expect(logo).toBeVisible()
     await expect(review).toBeVisible()
@@ -104,8 +108,12 @@ for (const width of [320, 375]) {
     expect(reviewBox).not.toBeNull()
     expect(logoBox!.x + logoBox!.width).toBeLessThanOrEqual(reviewBox!.x)
 
-    const flags = page.locator('button[aria-controls="selected-flag-detail"]')
-    await expect(flags).toHaveCount(7)
+    const fixList = page.getByRole('region', { name: 'Fix list with 7 flags' })
+    const messageFilter = fixList.getByRole('button', { name: 'Message 2' })
+    await messageFilter.click()
+    await expect(messageFilter).toHaveAttribute('aria-pressed', 'true')
+    const flags = fixList.locator('button[aria-controls="selected-flag-detail"]')
+    await expect(flags).toHaveCount(2)
     await flags.nth(1).click()
     await expect(flags.nth(1)).toHaveAttribute('aria-pressed', 'true')
     await expect(page.locator('#selected-flag-detail h3[tabindex="-1"]')).toBeFocused()
@@ -132,7 +140,36 @@ test('curated sample demonstrates exactly one fix prompt', async ({ page }) => {
   }
 
   expect(promptCount).toBe(1)
+  await expect(page.getByRole('button', { name: 'Ready to verify' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /update review|recheck/i })).toHaveCount(0)
+  await expect(page.getByText(/Make a plan to fix these issues, then implement them in this product/)).toHaveCount(0)
 })
+
+for (const { width, tablistName } of [
+  { width: 375, tablistName: 'Review panels' },
+  { width: 1280, tablistName: 'Workspace view' },
+]) {
+  test(`canonical sample tabs support keyboard navigation at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/samples')
+    await expect(page.locator('[data-workspace-ready="true"]')).toBeVisible({ timeout: 60_000 })
+
+    const tabs = page.getByRole('tablist', { name: tablistName })
+    const report = tabs.getByRole('tab', { name: 'Report' })
+    const timeline = tabs.getByRole('tab', { name: 'Timeline' })
+    await expect(report).toHaveAttribute('aria-selected', 'true')
+    await report.focus()
+    await page.keyboard.press('ArrowLeft')
+    await expect(timeline).toBeFocused()
+    await expect(timeline).toHaveAttribute('aria-selected', 'true')
+    await expect(page).toHaveURL(/view=timeline/)
+
+    await page.keyboard.press('ArrowRight')
+    await expect(report).toBeFocused()
+    await expect(report).toHaveAttribute('aria-selected', 'true')
+    await expect(page).toHaveURL(/view=report/)
+  })
+}
 
 test('canonical sample reflows at 200% text size and respects reduced motion', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 })
@@ -481,7 +518,7 @@ test('screenshot failure shows a placeholder with a working retry', async ({ pag
   // Register before navigation so the stub covers every fetch of the asset.
   // The spec disables the browser HTTP cache, so every request reaches this
   // route and aborts as a network failure (guaranteed img error event).
-  await page.route('**/demo/hero-original.svg', (route) => route.abort())
+  await page.route('**/samples/observations/**', (route) => route.abort())
   await page.goto('/samples')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await expect(page.locator('#selected-flag-detail')).toBeVisible()
@@ -495,7 +532,7 @@ test('screenshot failure shows a placeholder with a working retry', async ({ pag
 
   // Un-stub the endpoint and retry every failed panel: each recovery removes
   // its Retry button, so re-query inside the loop.
-  await page.unroute('**/demo/hero-original.svg')
+  await page.unroute('**/samples/observations/**')
   for (;;) {
     const retryButton = page.getByRole('button', { name: 'Retry' }).first()
     if ((await retryButton.count()) === 0) break
@@ -504,5 +541,5 @@ test('screenshot failure shows a placeholder with a working retry', async ({ pag
   await expect(page.getByText('Screenshot unavailable')).toHaveCount(0, {
     timeout: 15_000,
   })
-  await expect(page.locator('img[src*="hero-original.svg"]').first()).toBeVisible()
+  await expect(page.locator('img[src*="/samples/observations/"]').first()).toBeVisible()
 })

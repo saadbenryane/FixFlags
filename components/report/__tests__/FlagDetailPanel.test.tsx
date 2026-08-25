@@ -46,6 +46,22 @@ describe('FlagDetailPanel', () => {
   it('renders the fix prompt when flag has one', () => {
     renderWithProviders(<FlagDetailPanel flag={makeFlag()} />)
     expect(screen.getByText('Add an Open Graph image meta tag.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ready to verify' })).not.toBeInTheDocument()
+  })
+
+  it('enables owner lifecycle actions only with explicit owner report context', () => {
+    renderWithProviders(
+      <FlagDetailPanel
+        flag={makeFlag()}
+        ownerActionContext={{
+          auditId: 'audit-1',
+          surface: 'focused',
+          accessState: 'owner',
+        }}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: 'Ready to verify' })).toBeInTheDocument()
   })
 
 

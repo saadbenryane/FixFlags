@@ -1,7 +1,7 @@
 import type { Route } from 'next'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { CheckCircle2, AlertTriangle, CircleDot, Plus } from 'lucide-react'
+import { AlertTriangle, CircleDot, HelpCircle, Plus } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Callout } from '@/components/ui/callout'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ import type { FlagDiffSummaryItem } from '@/lib/audit/flag-types'
 
 export type RecheckDiffSummary = {
   fixed: FlagDiffSummaryItem[]
+  inconclusive: FlagDiffSummaryItem[]
   unchanged: FlagDiffSummaryItem[]
   regressed: FlagDiffSummaryItem[]
   newIssues: FlagDiffSummaryItem[]
@@ -24,13 +25,13 @@ interface Props {
 }
 
 /**
- * Free-tier proof strip on a child re-check report: Cleared / Remaining / New.
+ * Before/after observation strip on a child update Review.
  * Pro compare stays the rich before/after; this is the honest habit loop for Free.
  */
 export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
-  const { fixed, unchanged, regressed, newIssues } = summary
+  const { fixed, inconclusive, unchanged, regressed, newIssues } = summary
   const total =
-    fixed.length + unchanged.length + regressed.length + newIssues.length
+    fixed.length + inconclusive.length + unchanged.length + regressed.length + newIssues.length
   if (total === 0) return null
 
   return (
@@ -69,12 +70,12 @@ export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         <Stat
           label={RECHECK_DIFF_COPY.cleared}
           count={fixed.length}
-          icon={<CheckCircle2 className="h-3.5 w-3.5 text-success" aria-hidden />}
-          tone="success"
+          icon={<CircleDot className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />}
+          tone="neutral"
         />
         <Stat
           label={RECHECK_DIFF_COPY.remaining}
@@ -95,6 +96,13 @@ export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
           tone="danger"
           hint={FLAG_STATUS_LABELS.REGRESSED.description}
         />
+        <Stat
+          label={RECHECK_DIFF_COPY.inconclusive}
+          count={inconclusive.length}
+          icon={<HelpCircle className="h-3.5 w-3.5 text-warning" aria-hidden />}
+          tone="warning"
+          hint={RECHECK_DIFF_COPY.inconclusiveBody(inconclusive.length)}
+        />
       </div>
 
       {fixed.length > 0 && unchanged.length > 0 ? (
@@ -103,9 +111,9 @@ export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
             {RECHECK_DIFF_COPY.nextFixHint}
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-[var(--radius-inner)] bg-success/5 p-3">
-              <p className="text-xs text-success">Cleared</p>
-              <p className="mt-1 text-sm font-medium line-through text-muted-foreground">
+            <div className="rounded-[var(--radius-inner)] bg-muted/40 p-3">
+              <p className="text-xs text-muted-foreground">{RECHECK_DIFF_COPY.cleared}</p>
+              <p className="mt-1 text-sm font-medium text-muted-foreground">
                 {fixed[0].problem}
               </p>
             </div>
@@ -119,9 +127,11 @@ export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
 
       {fixed.length > 0 ? (
         <Callout
-          variant="success"
+          variant="neutral"
           title={
-            fixed.length === 1 ? '1 Flag fixed' : `${fixed.length} Flags fixed`
+            fixed.length === 1
+              ? '1 Flag no longer observed'
+              : `${fixed.length} Flags no longer observed`
           }
         >
           <ul className="space-y-1.5">
@@ -130,15 +140,15 @@ export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
                 key={`${item.checkId ?? item.problem}-${i}`}
                 className="flex items-start gap-2 text-sm"
               >
-                <CheckCircle2
-                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-success"
+                <CircleDot
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
                   aria-hidden
                 />
                 <span>
                   <span className="text-muted-foreground">
                     {rubricLabel(item.rubric)} ·{' '}
                   </span>
-                  <span className="line-through text-muted-foreground">
+                  <span className="text-muted-foreground">
                     {item.problem}
                   </span>
                 </span>
@@ -146,10 +156,15 @@ export function RecheckDiffStrip({ summary, compareHref, className }: Props) {
             ))}
             {fixed.length > 5 ? (
               <li className="text-xs text-muted-foreground">
-                +{fixed.length - 5} more fixed
+                +{fixed.length - 5} more not observed
               </li>
             ) : null}
           </ul>
+        </Callout>
+      ) : null}
+      {inconclusive.length > 0 ? (
+        <Callout variant="warning" title={RECHECK_DIFF_COPY.inconclusive}>
+          {RECHECK_DIFF_COPY.inconclusiveBody(inconclusive.length)}
         </Callout>
       ) : null}
       <p className="text-xs text-muted-foreground">{RECHECK_DIFF_COPY.outcomesHint}</p>
@@ -167,7 +182,7 @@ function Stat({
   label: string
   count: number
   icon: ReactNode
-  tone: 'success' | 'neutral' | 'info' | 'danger'
+  tone: 'success' | 'neutral' | 'info' | 'danger' | 'warning'
   hint?: string
 }) {
   return (
@@ -176,6 +191,7 @@ function Stat({
         'border-0 p-3 shadow-card',
         tone === 'success' && count > 0 && 'bg-success/5',
         tone === 'danger' && count > 0 && 'bg-destructive/5',
+        tone === 'warning' && count > 0 && 'bg-warning/5',
         tone === 'info' && count > 0 && 'bg-brand/5',
         tone === 'neutral' && 'bg-muted/30'
       )}

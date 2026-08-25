@@ -19,7 +19,7 @@ const cookieStore = vi.hoisted(() => ({
   delete: vi.fn(),
 }))
 const headerStore = vi.hoisted(() => ({
-  get: vi.fn(() => null),
+  get: vi.fn<(name: string) => string | null>(() => null),
 }))
 const consumePurchasedCredit = vi.hoisted(() => vi.fn())
 const enforceRateLimit = vi.hoisted(() => vi.fn())

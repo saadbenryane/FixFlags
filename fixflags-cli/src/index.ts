@@ -536,6 +536,8 @@ program
           console.log('')
           console.log(chalk.bold('Verification'))
           console.log(`Improved: ${result.diff.fixed}`)
+          console.log(`No longer observed: ${result.diff.noLongerObserved}`)
+          console.log(`Inconclusive: ${result.diff.inconclusive}`)
           console.log(`Remaining: ${result.diff.remaining}`)
           console.log(`New: ${result.diff.newIssues}`)
           console.log(`Regressed: ${result.diff.regressed}`)

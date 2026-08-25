@@ -39,7 +39,7 @@ export function readReleaseFixtureConfig(env = process.env): ReleaseFixtureConfi
     if (!value) throw new Error(`${name} is required`)
     return value
   }
-  const targetOrigin = assertNonProductionReleaseTarget(required('E2E_BASE_URL'))
+  const targetOrigin = assertNonProductionReleaseTarget(required('RELEASE_ENV_URL'))
   const gitSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
   return {
     runId: required('RELEASE_RUN_ID'),

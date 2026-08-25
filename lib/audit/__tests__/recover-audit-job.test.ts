@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   jobRemove: vi.fn(),
   readWorkerHeartbeat: vi.fn(),
   logPipelineEvent: vi.fn(),
+  persistImprovementCycle: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -37,11 +38,16 @@ vi.mock('@/lib/audit/pipeline-log', () => ({
   logPipelineEvent: mocks.logPipelineEvent,
 }))
 
+vi.mock('@/lib/audit/finalize', () => ({
+  persistImprovementCycle: mocks.persistImprovementCycle,
+}))
+
 import {
   isAuditPastDeadline,
   isWorkerDownGiveUp,
   isQueuedPastDeadline,
   recoverAuditJobOnPoll,
+  recoverCompletedImprovementProjections,
   recoverStuckAuditOnCron,
   runStuckAuditRecoverySweep,
   WORKER_DEAD_RECOVERY_SECONDS,
@@ -70,6 +76,7 @@ function resetMocks(): void {
   mocks.queueGetJob.mockResolvedValue(null)
   mocks.readWorkerHeartbeat.mockResolvedValue({ alive: true })
   mocks.logPipelineEvent.mockResolvedValue(undefined)
+  mocks.persistImprovementCycle.mockResolvedValue(undefined)
   mocks.auditFindMany.mockResolvedValue([])
   mocks.auditUpdate.mockResolvedValue({})
 }
@@ -320,6 +327,47 @@ describe('runStuckAuditRecoverySweep', () => {
     const result = await runStuckAuditRecoverySweep()
     assert.deepEqual(result, { requeued: 0, failed: 0, checked: 0 })
     expect(mocks.auditFindMany).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('recoverCompletedImprovementProjections', () => {
+  beforeEach(() => resetMocks())
+  afterEach(() => vi.restoreAllMocks())
+
+  it('retries a bounded batch through the canonical idempotent projector', async () => {
+    mocks.auditFindMany.mockResolvedValue([
+      { id: 'completed-1', parentId: null },
+      { id: 'completed-2', parentId: 'parent-1' },
+    ])
+
+    const result = await recoverCompletedImprovementProjections()
+
+    expect(mocks.auditFindMany).toHaveBeenCalledWith({
+      where: { status: 'COMPLETED', improvementProjectedAt: null },
+      orderBy: { completedAt: 'asc' },
+      take: 25,
+      select: { id: true, parentId: true },
+    })
+    expect(mocks.persistImprovementCycle).toHaveBeenNthCalledWith(1, 'completed-1', null)
+    expect(mocks.persistImprovementCycle).toHaveBeenNthCalledWith(2, 'completed-2', 'parent-1')
+    expect(result).toEqual({ projected: 2, failed: 0, checked: 2 })
+  })
+
+  it('counts a failed projection and continues the batch', async () => {
+    mocks.auditFindMany.mockResolvedValue([
+      { id: 'completed-1', parentId: null },
+      { id: 'completed-2', parentId: null },
+    ])
+    mocks.persistImprovementCycle
+      .mockRejectedValueOnce(new Error('fault after COMPLETED'))
+      .mockResolvedValueOnce(undefined)
+
+    await expect(recoverCompletedImprovementProjections()).resolves.toEqual({
+      projected: 1,
+      failed: 1,
+      checked: 2,
+    })
+    expect(mocks.persistImprovementCycle).toHaveBeenCalledTimes(2)
   })
 })
 

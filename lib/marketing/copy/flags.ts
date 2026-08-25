@@ -1,27 +1,32 @@
 export const FLAG_STATUS_LABELS = {
   OPEN: { label: 'Open', description: 'Not fixed yet' },
-  FIXED: { label: 'Fixed', description: 'Cleared on Recheck' },
+  FIXED: { label: 'No longer observed', description: 'Not observed in this update review' },
   IGNORED: { label: 'Ignored', description: 'Acknowledged and skipped' },
   REGRESSED: { label: 'Regressed', description: 'Same Flag, worse than before' },
 } as const
 
 export const RECHECK_DIFF_COPY = {
-  title: 'Prove your fixes with Recheck',
-  celebrationTitle: (n: number) => (n === 1 ? '1 flag cleared' : `${n} flags cleared`),
-  celebrationBody: 'Recheck confirms the fixes. Keep going on what is still open.',
+  title: 'See what changed in this update review',
+  celebrationTitle: (n: number) =>
+    n === 1 ? '1 Flag no longer observed' : `${n} Flags no longer observed`,
+  celebrationBody:
+    'This review did not observe these Flags. Verification receipts show whether an attempted Improvement worked.',
   nextFixHint: 'Next up',
-  cleared: 'Fixed',
+  cleared: 'No longer observed',
   remaining: 'Still open',
   newIssues: 'New',
   regressed: 'Regressed',
-  empty: 'No flag changes on this Recheck.',
+  inconclusive: 'Inconclusive',
+  inconclusiveBody: (count: number) =>
+    `${count} ${count === 1 ? 'Flag has' : 'Flags have'} insufficient comparable coverage. Inspect the verification receipt for coverage and remaining risk.`,
+  empty: 'No Flag changes in this update review.',
   compareCta: 'Open full before/after',
   compareProHint: 'Want side-by-side screenshots?',
   compareProCta: 'See Pro compare',
   outcomesHint:
-    'Outcomes: Fixed, still open, unchanged severity, regressed, or unable to verify.',
+    'Outcomes: no longer observed, still open, unchanged severity, regressed, or inconclusive.',
   compareProGateDescription:
-    'Before/after comparison is available on Pro. Rechecks use product review credits.',
+    'Before/after comparison is available on Pro. Update reviews use product review credits.',
 } as const
 
 export const FLAG_DISMISS_REASONS = [

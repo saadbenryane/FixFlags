@@ -15,8 +15,9 @@ export function resolveReportPromptProjection(
   }
 
   if (audience === 'live-anonymous') {
-    // Logged-out live viewers may copy the demonstrated top/category agent prompt.
-    return { explorer: 'one', workspace: 'demonstrated' }
+    // Live report data is server-redacted. A repository-owned sample is the
+    // only anonymous surface allowed to demonstrate a fix prompt.
+    return { explorer: 'none', workspace: 'none' }
   }
 
   return { explorer: 'all', workspace: 'all' }

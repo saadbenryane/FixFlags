@@ -5,7 +5,7 @@ import type { User } from '@prisma/client'
 const { createAndEnqueueAudit, prismaMock } = vi.hoisted(() => ({
   createAndEnqueueAudit: vi.fn(),
   prismaMock: {
-    audit: { findUnique: vi.fn(), count: vi.fn() },
+    audit: { findUnique: vi.fn() },
   },
 }))
 
@@ -50,21 +50,25 @@ describe('validateMonitoringParent', () => {
     }
   })
 
-  it('accepts claimed anonymous parent', () => {
+  it('requires sign-in even when an anonymous session claimed the parent', () => {
     const result = validateMonitoringParent(
       { userId: null, status: 'COMPLETED' },
-      { userId: null, claimedAnonymous: true }
+      { userId: null }
     )
-    assert.equal(result.ok, true)
+    assert.equal(result.ok, false)
+    if (!result.ok) {
+      assert.equal(result.status, 401)
+      assert.equal(result.error, 'Sign in to run an update review')
+    }
   })
 
   it('rejects anonymous parent without claim', () => {
     const result = validateMonitoringParent(
       { userId: null, status: 'COMPLETED' },
-      { userId: null, claimedAnonymous: false }
+      { userId: null }
     )
     assert.equal(result.ok, false)
-    if (!result.ok) assert.equal(result.status, 403)
+    if (!result.ok) assert.equal(result.status, 401)
   })
 
   it('accepts completed owned parent', () => {
@@ -84,7 +88,6 @@ describe('startMonitoringAudit', () => {
       status: 'COMPLETED',
       url: 'https://example.com',
     })
-    prismaMock.audit.count.mockResolvedValue(0)
     createAndEnqueueAudit.mockResolvedValue({
       auditId: 'child-1',
       status: 'QUEUED',
@@ -110,19 +113,29 @@ describe('startMonitoringAudit', () => {
         url: 'https://example.com',
         userId: 'u1',
         parentId: 'parent-1',
-        skipUsageCount: true,
+        skipUsageCount: false,
         monitoringMode: 'FULL',
       })
     )
   })
 
-  it('meters a later manual Recheck on the same URL', async () => {
-    prismaMock.audit.count.mockResolvedValue(1)
+  it('meters every manual Update review, including the first', async () => {
     const user = { id: 'u1' } as User
     await startMonitoringAudit('parent-1', user)
     expect(createAndEnqueueAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         skipUsageCount: false,
+      })
+    )
+  })
+
+  it('skips Product Review usage only for Watch-triggered reviews', async () => {
+    const user = { id: 'u1' } as User
+    await startMonitoringAudit('parent-1', user, { trigger: 'WATCH' })
+    expect(createAndEnqueueAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recheckTrigger: 'WATCH',
+        skipUsageCount: true,
       })
     )
   })

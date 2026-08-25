@@ -33,16 +33,12 @@ interface Props {
   isPaid: boolean
   isLoggedIn: boolean
   isOwner: boolean
-  isAnonymous: boolean
   isPublic: boolean
   compareAuditId?: string | null
   canExportSummary?: boolean
   canSharePublicly?: boolean
   shareStatus?: string
   showFixPrompts?: boolean
-  toolbar?: boolean
-  claimedAnonymous?: boolean
-  recheckOnly?: boolean
 }
 
 export function AuditPageActions({
@@ -57,21 +53,18 @@ export function AuditPageActions({
   isPaid,
   isLoggedIn,
   isOwner,
-  isAnonymous,
   isPublic: initialIsPublic,
   compareAuditId,
   canExportSummary = false,
   canSharePublicly = false,
   shareStatus,
   showFixPrompts = false,
-  toolbar = false,
-  recheckOnly = false,
 }: Props) {
   const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
   const [recheckLoading, setRecheckLoading] = useState(false)
 
-  const showRecheck = (isLoggedIn && isOwner) || isAnonymous
+  if (!isLoggedIn || !isOwner) return null
 
   async function handleRecheck() {
     setRecheckLoading(true)
@@ -95,18 +88,16 @@ export function AuditPageActions({
 
   return (
     <>
-      {showRecheck && (
-        <Button
-          size="sm"
-          onClick={handleRecheck}
-          loading={recheckLoading}
-          loadingLabel={REPORT_COPY.recheck.label}
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          {REPORT_COPY.recheck.label}
-        </Button>
-      )}
-      {!recheckOnly && compareAuditId && (
+      <Button
+        size="sm"
+        onClick={handleRecheck}
+        loading={recheckLoading}
+        loadingLabel={REPORT_COPY.recheck.label}
+      >
+        <RefreshCw className="h-4 w-4 mr-2" />
+        {REPORT_COPY.recheck.label}
+      </Button>
+      {compareAuditId && (
         <Button variant="outline" size="sm" asChild>
           <Link href={`/compare/${compareAuditId}`}>
             <ArrowLeftRight className="h-4 w-4 mr-2" />
@@ -114,7 +105,6 @@ export function AuditPageActions({
           </Link>
         </Button>
       )}
-      {!recheckOnly ? (
       <ShareDrawer
         auditId={auditId}
         score={score}
@@ -122,13 +112,11 @@ export function AuditPageActions({
         isLoggedIn={isLoggedIn}
         isOwner={isOwner}
         isPublic={isPublic}
-        isAnonymous={isAnonymous}
+        isAnonymous={false}
         canPublicShare={canSharePublicly}
         shareStatus={shareStatus}
         onPublicChange={setIsPublic}
       />
-      ) : null}
-      {!recheckOnly ? (
       <ExportMenu
         auditId={auditId}
         url={url}
@@ -140,11 +128,8 @@ export function AuditPageActions({
         canExportSummary={canExportSummary}
         showFixPrompts={showFixPrompts}
       />
-      ) : null}
-      {!recheckOnly && !toolbar && isPaid && <CopyMcpCommand auditId={auditId} />}
-      {showRecheck ? (
-        <p className="w-full text-xs text-muted-foreground sm:w-auto">{REPORT_COPY.recheck.helper}</p>
-      ) : null}
+      {isPaid && isOwner ? <CopyMcpCommand auditId={auditId} /> : null}
+      <p className="w-full text-xs text-muted-foreground sm:w-auto">{REPORT_COPY.recheck.helper}</p>
     </>
   )
 }

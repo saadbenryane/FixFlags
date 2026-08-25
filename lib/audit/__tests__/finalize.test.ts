@@ -79,28 +79,49 @@ import {
 describe('persistImprovementCycle', () => {
   beforeEach(() => resetMocks())
 
-  it('projects a completed Review once and skips retries after a successful claim', async () => {
-    mocks.auditUpdateMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 })
+  it('projects a completed Review and writes the completion receipt last', async () => {
+    mocks.auditFindUnique.mockResolvedValue({
+      status: 'COMPLETED',
+      improvementProjectedAt: null,
+    })
 
-    await persistImprovementCycle('audit-1', 'parent-1')
     await persistImprovementCycle('audit-1', 'parent-1')
 
     expect(mocks.diffFlagsAgainstParent).toHaveBeenCalledTimes(1)
     expect(mocks.materializeAttentionForAudit).toHaveBeenCalledTimes(1)
     expect(mocks.reconcileImprovementVerification).toHaveBeenCalledTimes(1)
+    expect(mocks.auditUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'audit-1', status: 'COMPLETED', improvementProjectedAt: null },
+      data: { improvementProjectedAt: expect.any(Date) },
+    })
   })
 
-  it('releases the projection claim when a durable Product projection fails', async () => {
+  it('leaves the projection receipt empty when durable Product projection fails', async () => {
+    mocks.auditFindUnique.mockResolvedValue({
+      status: 'COMPLETED',
+      improvementProjectedAt: null,
+    })
     mocks.diffFlagsAgainstParent.mockRejectedValueOnce(new Error('projection failed'))
 
     await expect(persistImprovementCycle('audit-1', 'parent-1')).rejects.toThrow(
       'projection failed'
     )
 
-    expect(mocks.auditUpdate).toHaveBeenCalledWith({
-      where: { id: 'audit-1' },
-      data: { improvementProjectedAt: null },
+    expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
+    expect(mocks.logPipelineEvent).toHaveBeenCalledWith('audit-1',
+      expect.objectContaining({ event: 'improvement_projection_failed' }))
+  })
+
+  it('does not replay a completed projection receipt', async () => {
+    mocks.auditFindUnique.mockResolvedValue({
+      status: 'COMPLETED',
+      improvementProjectedAt: new Date(),
     })
+
+    await persistImprovementCycle('audit-1', 'parent-1')
+
+    expect(mocks.diffFlagsAgainstParent).not.toHaveBeenCalled()
+    expect(mocks.materializeAttentionForAudit).not.toHaveBeenCalled()
   })
 })
 
@@ -229,6 +250,15 @@ describe('finalizeTriageAudit', () => {
     mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, parentId: 'parent-1' })
     await finalizeTriageAudit(BASE_INPUT)
     expect(mocks.diffFlagsAgainstParent).toHaveBeenCalledWith('audit-1', 'parent-1')
+  })
+
+  it('meters the completed Review before a recoverable Product projection failure', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, parentId: 'parent-1' })
+    mocks.diffFlagsAgainstParent.mockRejectedValueOnce(new Error('projection failed'))
+
+    await expect(finalizeTriageAudit(BASE_INPUT)).rejects.toThrow('projection failed')
+
+    expect(mocks.incrementUsageOnCompleteForAudit).toHaveBeenCalledWith('audit-1', 'user-1')
   })
 
   it('throws when required evidence is missing', async () => {
@@ -439,6 +469,7 @@ describe('finalizePartialAudit', () => {
     mocks.auditFindUnique.mockResolvedValue({ ...AUDIT_ROW, parentId: 'parent-1' })
     await finalizePartialAudit(partialInput)
     expect(mocks.diffFlagsAgainstParent).toHaveBeenCalledWith('audit-1', 'parent-1')
+    expect(mocks.incrementUsageOnCompleteForAudit).toHaveBeenCalledWith('audit-1', 'user-1')
   })
 })
 

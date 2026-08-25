@@ -84,7 +84,7 @@ export const SEO = {
   partners: {
     title: 'Expert program',
     description:
-      'FixFlags Verified Delivery for Lovable, Bolt, and MVP studios. Catch Flags before client handoff.',
+      'FixFlags delivery reviews for Lovable, Bolt, and MVP studios. Catch Flags before client handoff.',
   },
   roast: {
     title: 'Website Roast – FixFlags',

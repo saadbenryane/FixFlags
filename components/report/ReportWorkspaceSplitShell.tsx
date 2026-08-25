@@ -92,7 +92,6 @@ export function ReportWorkspaceSplitShell(props: ReportWorkspaceSplitShellProps)
 
 function ReportWorkspaceSplitShellInner({
   ariaLabel,
-  isActiveReview = false,
   scanning = false,
   leftPanel,
   browserUrl,
@@ -129,26 +128,26 @@ function ReportWorkspaceSplitShellInner({
   const desktopTabsId = `${shellId}-view-tab`
   const showCanvas = capabilities.canUseCanvas
   const canReplayTimeline = capabilities.canReplayTimeline
-  const hidePreviewPane = !scanning
+  const browserViewAvailable = scanning || canReplayTimeline
+  const hidePreviewPane = !browserViewAvailable
   const requestedView = searchParams?.get('view') ?? null
   const viewFromUrl = useCallback((): WorkspacePanelView | null => {
-    if (requestedView === 'timeline') return 'browser'
+    if (requestedView === 'timeline' && browserViewAvailable) return 'browser'
     if (requestedView === 'report') return 'report'
     if (requestedView === 'canvas' && showCanvas && !scanning) return 'canvas'
     return null
-  }, [requestedView, scanning, showCanvas])
+  }, [browserViewAvailable, requestedView, scanning, showCanvas])
   const [internalView, setInternalView] = useState<WorkspacePanelView>(
     () => {
       const fromUrl = viewFromUrl()
-      if (fromUrl === 'browser' && !scanning) return 'report'
       return fromUrl ?? (scanning ? 'browser' : 'report')
     }
   )
   const [hydrated, setHydrated] = useState(false)
   const rawView = controlledView ?? internalView
-  const view = !scanning && rawView === 'browser' ? 'report' : rawView
+  const view = rawView === 'browser' && !browserViewAvailable ? 'report' : rawView
   const [mobileFocus, setMobileFocus] = useState<MobileFocus>(
-    initialMobileFocus ?? (scanning || isActiveReview ? 'chat' : 'chat')
+    initialMobileFocus ?? (scanning ? 'chat' : 'product')
   )
   const [internalActiveIndex, setInternalActiveIndex] = useState<number | null>(null)
   const activeIndex = controlledActiveStepIndex !== undefined
@@ -165,10 +164,11 @@ function ReportWorkspaceSplitShellInner({
   const stepParam = searchParams?.get('step') ?? null
 
   useEffect(() => {
+    if (!scanning) return
     const saved = window.sessionStorage.getItem(`fixflags:workspace-panel:${resolvedPathname}`)
     if (saved === 'chat' || saved === 'product') setMobileFocus(saved)
     if (saved === 'preview') setMobileFocus('product')
-  }, [resolvedPathname])
+  }, [resolvedPathname, scanning])
 
   const chooseMobileFocus = (next: MobileFocus) => {
     setMobileFocus(next)
@@ -206,7 +206,7 @@ function ReportWorkspaceSplitShellInner({
   useEffect(() => {
     if (!syncViewToUrl || controlledView !== undefined) return
     const next = viewFromUrl()
-    if (next) setInternalView(next === 'browser' && !scanning ? 'report' : next)
+    if (next) setInternalView(next)
   }, [controlledView, syncViewToUrl, viewFromUrl])
 
   useEffect(() => {
@@ -244,11 +244,11 @@ function ReportWorkspaceSplitShellInner({
             : scanning
               ? 'browser'
               : 'report'
-      setInternalView(next)
+      setInternalView(next === 'browser' && !browserViewAvailable ? 'report' : next)
     }
     window.addEventListener('popstate', restoreView)
     return () => window.removeEventListener('popstate', restoreView)
-  }, [controlledView, scanning, showCanvas, syncViewToUrl])
+  }, [browserViewAvailable, controlledView, scanning, showCanvas, syncViewToUrl])
 
   useEffect(() => {
     const measured = previewEvidence.highlights.find(
@@ -260,7 +260,7 @@ function ReportWorkspaceSplitShellInner({
   }, [controlledDevice, onDeviceChange, previewEvidence.selectedFlagId, previewEvidence.highlights])
 
   useEffect(() => {
-    if (scanning || hidePreviewPane || !canReplayTimeline || !stepParam || steps.length === 0) return
+    if (scanning || !canReplayTimeline || !stepParam || steps.length === 0) return
     const requested = Number(stepParam)
     if (!Number.isInteger(requested)) return
     const index = requested - 1
@@ -454,7 +454,6 @@ function ReportWorkspaceSplitShellInner({
           </>
         )}
       </div>
-      {view === 'report' && reportHeader ? null : (
       <div className="flex shrink-0 items-center gap-1.5">
         {/* Slot is reserved for the whole scan so the first Flag cannot shift the header. */}
         {scanning && view === 'browser' ? (
@@ -476,7 +475,6 @@ function ReportWorkspaceSplitShellInner({
         ) : null}
         <div className="hidden lg:block">{renderToggle()}</div>
       </div>
-      )}
     </div>
   )
 

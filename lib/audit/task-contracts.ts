@@ -5,7 +5,7 @@ import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 import { startMonitoringAudit } from '@/lib/audit/monitoring'
 import { pollAuditUntilDone } from '@/lib/audit/poll-audit'
 import { computeRubricsFromRows } from '@/lib/audit/rubric'
-import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
+import { diffMatchKey, getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { findHighestSeverityFlagWithFix } from '@/lib/audit/report-access'
 import { rankFlagsByPriority } from '@/lib/audit/priority-flags'
@@ -103,12 +103,14 @@ export interface RecheckAndCompareOutcome {
   reused: boolean
   diff: {
     fixed: number
+    noLongerObserved: number
     inconclusive: number
     remaining: number
     newIssues: number
     regressed: number
     flags: {
       cleared: FlagDiffSummaryItem[]
+      noLongerObserved: FlagDiffSummaryItem[]
       inconclusive: FlagDiffSummaryItem[]
       remaining: FlagDiffSummaryItem[]
       new: FlagDiffSummaryItem[]
@@ -384,10 +386,37 @@ export async function loadCompletedTaskOutcome(
     getFlagDiffSummary(audit.parentId, reportId),
     prisma.improvementAttempt.findMany({
       where: { verificationAuditId: reportId, outcome: { not: null } },
-      include: { improvement: { select: { id: true, title: true } } },
+      include: {
+        improvement: {
+          select: {
+            id: true,
+            title: true,
+            occurrences: {
+              where: { auditId: audit.parentId },
+              select: {
+                flag: {
+                  select: { checkId: true, problem: true, rubric: true },
+                },
+              },
+            },
+          },
+        },
+      },
       orderBy: { updatedAt: 'desc' },
     }),
   ])
+  const independentlyImprovedKeys = new Set(
+    attempts
+      .filter((attempt) => attempt.outcome === 'IMPROVED')
+      .flatMap((attempt) => attempt.improvement.occurrences)
+      .map((occurrence) => diffMatchKey(occurrence.flag))
+  )
+  const independentlyImproved = diff.fixed.filter((flag) =>
+    independentlyImprovedKeys.has(diffMatchKey(flag))
+  )
+  const noLongerObserved = diff.fixed.filter((flag) =>
+    !independentlyImprovedKeys.has(diffMatchKey(flag))
+  )
   return {
     reportId,
     reportUrl: reportUrl(reportId),
@@ -395,13 +424,15 @@ export async function loadCompletedTaskOutcome(
     ...completed,
     parentReportId: audit.parentId,
     diff: {
-      fixed: diff.fixed.length,
+      fixed: independentlyImproved.length,
+      noLongerObserved: noLongerObserved.length,
       inconclusive: diff.inconclusive.length,
       remaining: diff.unchanged.length,
       newIssues: diff.newIssues.length,
       regressed: diff.regressed.length,
       flags: {
-        cleared: diff.fixed,
+        cleared: independentlyImproved,
+        noLongerObserved,
         inconclusive: diff.inconclusive,
         remaining: diff.unchanged,
         new: diff.newIssues,
@@ -510,13 +541,11 @@ export async function checkAndPlan(options: TaskQueueOptions & {
 
 export async function recheckAndCompare(options: TaskQueueOptions & {
   parentReportId: string
-  user: User | null
-  claimedAnonymous?: boolean
+  user: User
   clientId?: string
 }): Promise<RecheckAndCompareOutcome> {
   const started = await startMonitoringAudit(options.parentReportId, options.user, {
     delayMs: options.delayMs,
-    claimedAnonymous: options.claimedAnonymous,
     clientId: options.clientId,
   })
   if (!started.ok) {
@@ -586,35 +615,17 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
     }
   }
 
-  const completed = await loadCompletedOutcome(reportId, options.tool)
-  if (!comparisonParentId) {
-    return {
-      ...base,
-      nextFixList: completed.fixList,
-      nextFinishPlan: completed.finishPlan,
-      technologyProfile: completed.technologyProfile,
-    }
-  }
-
-  const diff = await getFlagDiffSummary(comparisonParentId, reportId)
+  // Use the same persisted child assembler as ff_get_report. The synchronous
+  // path must never invent a smaller response that omits receipts or diverges
+  // from the later polling path.
+  const completed = await loadCompletedTaskOutcome(reportId, options.tool)
   return {
     ...base,
-    diff: {
-      fixed: diff.fixed.length,
-      inconclusive: diff.inconclusive.length,
-      remaining: diff.unchanged.length,
-      newIssues: diff.newIssues.length,
-      regressed: diff.regressed.length,
-      flags: {
-        cleared: diff.fixed,
-        inconclusive: diff.inconclusive,
-        remaining: diff.unchanged,
-        new: diff.newIssues,
-        regressed: diff.regressed,
-      },
-    },
-    nextFixList: completed.fixList,
-    nextFinishPlan: completed.finishPlan,
+    parentReportId: completed.parentReportId ?? comparisonParentId,
+    diff: completed.diff ?? null,
+    nextFixList: completed.nextFixList ?? completed.fixList,
+    nextFinishPlan: completed.nextFinishPlan ?? completed.finishPlan,
     technologyProfile: completed.technologyProfile,
+    verificationReceipts: completed.verificationReceipts,
   }
 }

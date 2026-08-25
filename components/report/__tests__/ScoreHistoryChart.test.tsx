@@ -62,7 +62,7 @@ describe('ScoreHistoryChart', () => {
       'Review 1 of 3, Product review, Jul 21, 2026, Completed, score 60',
     )
     expect(links[1]).toHaveAccessibleName(
-      'Review 2 of 3, Recheck, Jul 25, 2026, Partial capture, score 65',
+      'Review 2 of 3, Update review, Jul 25, 2026, Partial capture, score 65',
     )
     expect(links[2]).toHaveAccessibleName(
       'Review 3 of 3, Watch run, Jul 28, 2026, Degraded capture, score 70',

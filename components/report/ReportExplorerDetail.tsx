@@ -7,6 +7,7 @@ import {
   FlagDetailPanel,
   FlagMetaPills,
   isShareableCheck,
+  type ReportOwnerActionContext,
 } from '@/components/report/FlagDetailPanel'
 import { Button } from '@/components/ui/button'
 import { FilterPill } from '@/components/ui/filter-pill'
@@ -103,6 +104,7 @@ export function FlagDetailPane({
   signUpHref,
   onSelectFlag,
   demonstratedFlagId,
+  ownerActionContext,
   headingRef,
 }: {
   model: ReportExplorerModel
@@ -116,6 +118,7 @@ export function FlagDetailPane({
   signUpHref?: string
   onSelectFlag: (flagId: string) => void
   demonstratedFlagId?: string
+  ownerActionContext?: ReportOwnerActionContext
   headingRef?: RefObject<HTMLHeadingElement | null>
 }) {
   const showDesktop = Boolean(model.desktopScreenshot)
@@ -162,6 +165,7 @@ export function FlagDetailPane({
           aiEnhancementPending={aiEnhancementPending}
           signUpHref={signUpHref}
           previewMeta={model.previewMeta}
+          ownerActionContext={ownerActionContext}
         />
       </div>
     </div>

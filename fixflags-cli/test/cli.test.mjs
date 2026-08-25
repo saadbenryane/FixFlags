@@ -101,7 +101,14 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
           reportId: 'report-2',
           reportUrl: 'http://example.test/report/report-2',
           status: 'COMPLETED',
-          diff: { fixed: 1, remaining: 0, newIssues: 0, regressed: 0 },
+          diff: {
+            fixed: 1,
+            noLongerObserved: 1,
+            inconclusive: 0,
+            remaining: 0,
+            newIssues: 0,
+            regressed: 0,
+          },
           nextFixList: { reportId: 'report-2', totalCount: 0, items: [] },
           nextFinishPlan: { reportId: 'report-2', items: [] },
         },
@@ -178,6 +185,8 @@ test('built CLI completes check and recheck task-shaped workflows', async (t) =>
   )
   assert.equal(rechecked.code, 0, rechecked.stderr)
   assert.match(rechecked.stdout, /Improved: 1/)
+  assert.match(rechecked.stdout, /No longer observed: 1/)
+  assert.match(rechecked.stdout, /Inconclusive: 0/)
   assert.match(rechecked.stdout, /Next Finish Plan: 0 unresolved improvements/)
 
   assert.deepEqual(tools, [

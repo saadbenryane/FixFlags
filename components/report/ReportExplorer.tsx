@@ -6,9 +6,7 @@ import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportF
 import {
   FlagDetailPane,
 } from '@/components/report/ReportExplorerDetail'
-import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { FilterPill } from '@/components/ui/filter-pill'
-import { AGENT_COPY_LEAD, buildPlanModePrompt } from '@/lib/audit/priority-flags'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { rubricIcon } from '@/lib/rubric-icons'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
@@ -27,6 +25,7 @@ import { trackEvent } from '@/lib/analytics/events'
 import { IMPACT_TAG_ORDER, RUBRIC_ORDER, SEVERITY_ORDER, type RubricName } from '@/lib/audit/constants'
 import { cn, rubricLabel } from '@/lib/utils'
 import { usePreviewEvidence } from '@/components/report/preview-evidence-context'
+import type { ReportOwnerActionContext } from '@/components/report/FlagDetailPanel'
 
 function firstCategory(counts: Record<RubricName, number>): RubricName {
   return RUBRIC_ORDER.find((rubric) => counts[rubric] > 0) ?? 'MESSAGE'
@@ -38,32 +37,6 @@ function resolveCategory(
 ): RubricName {
   if (current !== 'ALL' && counts[current] > 0) return current
   return firstCategory(counts)
-}
-
-function categoryAgentPrompt(
-  flags: ReportExplorerModel['flags'],
-  fallback: string | null,
-): string {
-  if (fallback?.startsWith(AGENT_COPY_LEAD)) return fallback
-  const shared = flags.find((flag) => flag.copyFixPrompt.startsWith(AGENT_COPY_LEAD))?.copyFixPrompt
-  if (shared) return shared
-  const rankable = flags.flatMap((flag) => {
-    const agent = flag.toolPrompts.universal
-    if (agent && !agent.startsWith(AGENT_COPY_LEAD)) {
-      return [{
-        id: flag.id,
-        problem: flag.title,
-        rubric: flag.rubric,
-        severity: flag.severity,
-        evidence: flag.evidence,
-        agentPrompt: agent,
-      }]
-    }
-    return []
-  })
-  return rankable.length
-    ? buildPlanModePrompt(rankable, { limit: rankable.length })
-    : ''
 }
 
 interface ReportExplorerProps {
@@ -79,6 +52,7 @@ interface ReportExplorerProps {
   /** Optional audit id for funnel analytics on live reports. */
   auditId?: string
   demonstratedFlagId?: string
+  ownerActionContext?: ReportOwnerActionContext
 }
 
 export function ReportExplorer({
@@ -93,19 +67,26 @@ export function ReportExplorer({
   loading = false,
   auditId,
   demonstratedFlagId,
+  ownerActionContext,
 }: ReportExplorerProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const detailRef = useRef<HTMLDivElement>(null)
   const detailHeadingRef = useRef<HTMLHeadingElement>(null)
+  const visibleDemonstratedFlagId =
+    demonstratedFlagId ??
+    (aiLocked ? model.flags.find((flag) => flag.hasFixPrompt)?.id : undefined)
+  const demonstratedRubric = model.flags.find(
+    (flag) => flag.id === visibleDemonstratedFlagId,
+  )?.rubric
+  const defaultRubric: RubricName = RUBRIC_ORDER.includes(demonstratedRubric as RubricName)
+    ? demonstratedRubric as RubricName
+    : firstCategory(countFlagsByRubric(model.flags))
   const [rubricFilter, setRubricFilter] = useState<RubricFilter>(
-    () => firstCategory(countFlagsByRubric(model.flags)),
+    defaultRubric,
   )
   const [pageFilter, setPageFilter] = useState<string | null>(null)
   const [severityFilter, setSeverityFilter] = useState<string | null>(null)
   const [impactFilter, setImpactFilter] = useState<string | null>(null)
-  const visibleDemonstratedFlagId =
-    demonstratedFlagId ??
-    (aiLocked ? model.flags.find((flag) => flag.hasFixPrompt)?.id : undefined)
   const initialIndex = initialExplorerFlagIndex(
     model.flags,
     initialFlagIndex,
@@ -151,7 +132,7 @@ export function ReportExplorer({
       requestedRubric === 'EXPERIENCE' ||
       requestedRubric === 'REACH'
         ? requestedRubric
-        : firstCategory(countFlagsByRubric(model.flags))
+        : defaultRubric
     const requestedSeverity = params.get('severity')
     const nextSeverity = SEVERITY_ORDER.includes(
       requestedSeverity as (typeof SEVERITY_ORDER)[number]
@@ -194,7 +175,7 @@ export function ReportExplorer({
       impact: nextImpact,
       page: nextPage,
     })
-  }, [model.flags, pages, visibleDemonstratedFlagId, writeExplorerUrl])
+  }, [defaultRubric, model.flags, pages, visibleDemonstratedFlagId, writeExplorerUrl])
 
   useEffect(() => {
     if (urlStateLoaded.current || typeof window === 'undefined') return
@@ -425,8 +406,6 @@ export function ReportExplorer({
    * than the viewport, so hiding filters on "desktop" hid them exactly where
    * the list is hardest to scan.
    */
-  const categoryPrompt = categoryAgentPrompt(filteredFlags, model.polishPassPrompt)
-
   const filterBar = (
     <div className="flex shrink-0 flex-col gap-2 border-b border-border/30 pb-3">
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -515,6 +494,7 @@ export function ReportExplorer({
         signUpHref={signUpHref}
         onSelectFlag={goToFlag}
         demonstratedFlagId={visibleDemonstratedFlagId}
+        ownerActionContext={ownerActionContext}
         headingRef={detailHeadingRef}
       />
     ) : (
@@ -533,17 +513,6 @@ export function ReportExplorer({
     >
       <h2 className="sr-only">Flags</h2>
       {filterBar}
-      {categoryPrompt ? (
-        <div className="shrink-0 space-y-2 border-b border-border/30 pb-3">
-          <pre className="whitespace-pre-wrap text-sm text-foreground/90">{categoryPrompt}</pre>
-          <PromptCopyButton
-            prompt={categoryPrompt}
-            kind="plan"
-            auditId={auditId}
-            accessState={aiLocked ? 'anonymous' : 'owner'}
-          />
-        </div>
-      ) : null}
       <div className="grid min-h-0 flex-1 gap-5 @[40rem]/pane:grid-cols-[minmax(13rem,32%)_minmax(0,1fr)]">
         {listPane}
         <div

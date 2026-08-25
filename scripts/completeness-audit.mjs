@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import ts from 'typescript'
 
 const DEFAULT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const read = (root, file) => readFileSync(path.join(root, file), 'utf8')
@@ -45,13 +46,126 @@ export function criticalRouteBoundaryFailures(routes, maxLines = 160) {
   return failures
 }
 
-export function reportPaneCompositionIsCanonical(source) {
-  return (
-    /const belowFrame\s*=\s*\([\s\S]*?<ReportPolishPass[\s\S]*?<ReportContextDisclosure/.test(source) &&
-    /const livingReportPanel\s*=\s*\([\s\S]*?<ReportPane[\s\S]*?beforeExplorer=\{frameExtras\}[\s\S]*?explorer=\{flagsSection\}[\s\S]*?afterFrame=\{belowFrame\}[\s\S]*?\/>/.test(source) &&
-    /reportHeader=\{<ReportOutcomeBar\s+model=\{workspace\}\s*\/>\}/.test(source) &&
-    /reportPanel=\{livingReportPanel\}/.test(source)
+function parseTsx(source) {
+  const sourceFile = ts.createSourceFile(
+    'AuditReport.tsx',
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
   )
+  return sourceFile.parseDiagnostics.length === 0 ? sourceFile : null
+}
+
+function jsxTagName(node) {
+  if (ts.isJsxSelfClosingElement(node)) return node.tagName.getText()
+  if (ts.isJsxElement(node)) return node.openingElement.tagName.getText()
+  return null
+}
+
+function collectDescendants(node, predicate) {
+  const matches = []
+  const visit = (child) => {
+    if (predicate(child)) matches.push(child)
+    ts.forEachChild(child, visit)
+  }
+  visit(node)
+  return matches
+}
+
+function jsxAttributes(node) {
+  if (ts.isJsxSelfClosingElement(node)) return node.attributes.properties
+  if (ts.isJsxElement(node)) return node.openingElement.attributes.properties
+  return []
+}
+
+function getJsxAttribute(node, name) {
+  return jsxAttributes(node).find(
+    (attribute) => ts.isJsxAttribute(attribute) && attribute.name.getText() === name,
+  )
+}
+
+function jsxAttributeExpression(node, name) {
+  const attribute = getJsxAttribute(node, name)
+  return attribute && ts.isJsxExpression(attribute.initializer)
+    ? attribute.initializer.expression ?? null
+    : null
+}
+
+function buildVariableInitializers(sourceFile) {
+  const variables = new Map()
+  for (const declaration of collectDescendants(sourceFile, ts.isVariableDeclaration)) {
+    if (ts.isIdentifier(declaration.name) && declaration.initializer) {
+      variables.set(declaration.name.text, declaration.initializer)
+    }
+  }
+  return variables
+}
+
+function resolveExpression(expression, variables, seen = new Set()) {
+  let current = expression
+  while (current && ts.isParenthesizedExpression(current)) current = current.expression
+  if (!current || !ts.isIdentifier(current) || seen.has(current.text)) return current
+  const initializer = variables.get(current.text)
+  if (!initializer) return current
+  seen.add(current.text)
+  return resolveExpression(initializer, variables, seen)
+}
+
+function hasLiteralId(node, expected) {
+  return collectDescendants(node, (child) => {
+    if (!ts.isJsxAttribute(child) || child.name.getText() !== 'id') return false
+    return ts.isStringLiteral(child.initializer) && child.initializer.text === expected
+  }).length > 0
+}
+
+function containsComponent(node, name) {
+  return collectDescendants(node, (child) => jsxTagName(child) === name)
+}
+
+/**
+ * Inspect the rendered dependency graph, not a particular JSX spelling:
+ * every workspace shell must resolve to ReportOutcomeBar + ReportPane; the
+ * pane must resolve to the complete Fix list followed by Finish Plan and the
+ * collapsed Review context.
+ */
+export function reportPaneCompositionIsCanonical(source) {
+  const sourceFile = parseTsx(source)
+  if (!sourceFile) return false
+  const variables = buildVariableInitializers(sourceFile)
+  const shells = collectDescendants(
+    sourceFile,
+    (node) => jsxTagName(node) === 'ReportWorkspaceSplitShell',
+  )
+  if (shells.length === 0) return false
+
+  return shells.every((shell) => {
+    const header = resolveExpression(jsxAttributeExpression(shell, 'reportHeader'), variables)
+    const panel = resolveExpression(jsxAttributeExpression(shell, 'reportPanel'), variables)
+    if (!header || !panel) return false
+
+    const outcomeBars = containsComponent(header, 'ReportOutcomeBar')
+    if (outcomeBars.length !== 1) return false
+    const outcomeModel = jsxAttributeExpression(outcomeBars[0], 'model')
+    if (!outcomeModel || !ts.isIdentifier(outcomeModel) || outcomeModel.text !== 'workspace') {
+      return false
+    }
+
+    const panes = containsComponent(panel, 'ReportPane')
+    if (panes.length !== 1) return false
+    const pane = panes[0]
+    const explorer = resolveExpression(jsxAttributeExpression(pane, 'explorer'), variables)
+    const afterFrame = resolveExpression(jsxAttributeExpression(pane, 'afterFrame'), variables)
+    if (!explorer || !afterFrame || !hasLiteralId(explorer, 'report-flags')) return false
+
+    const finishPlans = containsComponent(afterFrame, 'ReportFinishPlan')
+    const disclosures = containsComponent(afterFrame, 'ReportContextDisclosure')
+    return (
+      finishPlans.length === 1 &&
+      disclosures.length === 1 &&
+      finishPlans[0].getStart(sourceFile) < disclosures[0].getStart(sourceFile)
+    )
+  })
 }
 
 export function curatedSampleBundleFailures(root) {
@@ -222,7 +336,7 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   const reportSources = [
     'components/audit/AuditReport.tsx',
     'components/audit/AuditReportProgressive.tsx',
-    'components/report/ReportPolishPass.tsx',
+    'components/report/ReportFinishPlan.tsx',
     'components/audit/ProductMemoryStrip.tsx',
     'components/audit/RecheckDiffStrip.tsx',
     'components/audit/FlowScanTimeline.tsx',
@@ -243,10 +357,10 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
     )
   }
 
-  // Report pane order: outcome header → shared pane/explorer → polish pass → context.
+  // Report pane order: outcome header → shared pane/explorer → Finish Plan → context.
   assert(
     reportPaneCompositionIsCanonical(reportShell),
-    'Report pane order must be outcome bar → fix list → polish pass → review context',
+    'Report pane order must be outcome bar → fix list → Finish Plan → review context',
   )
   for (const failure of curatedSampleBundleFailures(root)) assert(false, failure)
 

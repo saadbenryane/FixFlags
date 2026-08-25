@@ -7,6 +7,10 @@ on:
         description: 'Version to promote (e.g., 1.0.0)'
         required: true
         type: string
+      candidate_sha:
+        description: 'Full Git SHA that published this candidate'
+        required: true
+        type: string
 
 permissions:
   id-token: write
@@ -19,11 +23,36 @@ jobs:
     environment: npm
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.candidate_sha }}
       - uses: actions/setup-node@v6
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
       - name: Install OIDC-capable npm
         run: npm install --global npm@latest
+      - name: Match requested version to the release candidate
+        shell: bash
+        run: |
+          PACKAGE_VERSION="$(node -p "require('./fixflags-cli/package.json').version")"
+          test "${{ github.event.inputs.version }}" = "${PACKAGE_VERSION}"
+          test "${PACKAGE_VERSION}" = "1.0.5"
+      - name: Verify exact candidate before promotion
+        run: node scripts/verify-cli-registry.mjs --version "${{ github.event.inputs.version }}" --tag candidate --clean-install
+        env:
+          RELEASE_EXPECTED_GIT_SHA: ${{ github.event.inputs.candidate_sha }}
       - name: Promote to latest
         run: npm dist-tag add fixflags@${{ github.event.inputs.version }} latest
+      - name: Write exact promotion receipt
+        run: node scripts/cli-promotion-receipt.mjs
+        env:
+          RELEASE_CLI_VERSION: ${{ github.event.inputs.version }}
+          RELEASE_EXPECTED_GIT_SHA: ${{ github.event.inputs.candidate_sha }}
+          RELEASE_PROMOTION_RECEIPT_FILE: promotion-receipt.json
+      - name: Upload promotion receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixflags-${{ github.event.inputs.version }}-promotion-receipt
+          path: promotion-receipt.json
+          if-no-files-found: error
+          retention-days: 90

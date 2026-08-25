@@ -471,7 +471,8 @@ export function WorkspaceChatPanel({
         <div
           ref={transcriptRef}
           className={WORKSPACE_TRANSCRIPT_CLASS}
-          role="log"
+          role="tabpanel"
+          tabIndex={0}
           aria-label="Agent messages"
           aria-live="polite"
           aria-relevant="additions"

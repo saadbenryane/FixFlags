@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import type { Route } from 'next'
-import { ArrowRight, CircleX, Clock3, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CircleDot, CircleX, Clock3, ShieldCheck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ProductAttemptDTO } from '@/lib/products/workspace'
 
 type Coverage = {
@@ -28,8 +29,8 @@ function objectValue<T>(value: unknown): T | null {
 }
 
 function outcomeLabel(attempt: ProductAttemptDTO): string {
-  if (!attempt.outcome) return 'Awaiting update Review'
-  return attempt.outcome.charAt(0) + attempt.outcome.slice(1).toLowerCase()
+  if (!attempt.outcome) return 'Awaiting update review'
+  return REPORT_COPY.verificationReceipts.outcomes[attempt.outcome]
 }
 
 function OutcomeIcon({ attempt }: { attempt: ProductAttemptDTO }) {
@@ -38,7 +39,13 @@ function OutcomeIcon({ attempt }: { attempt: ProductAttemptDTO }) {
   if (attempt.outcome === 'IMPROVED') {
     return <ShieldCheck className="h-4 w-4 text-success" aria-hidden />
   }
-  return <CircleX className="h-4 w-4 text-destructive" aria-hidden />
+  if (attempt.outcome === 'REGRESSED') {
+    return <CircleX className="h-4 w-4 text-destructive" aria-hidden />
+  }
+  if (attempt.outcome === 'INCONCLUSIVE') {
+    return <AlertTriangle className="h-4 w-4 text-warning" aria-hidden />
+  }
+  return <CircleDot className="h-4 w-4 text-muted-foreground" aria-hidden />
 }
 
 export function ImprovementReceipt({

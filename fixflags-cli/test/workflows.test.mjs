@@ -122,7 +122,14 @@ test('recheckAndDiff uses the combined monitoring response without extra calls',
           { problem: 'Mobile spacing remains tight', rubric: 'EXPERIENCE', severity: 'POLISH', fixPrompt: 'Increase spacing.' },
         ],
       },
-      diff: { fixed: 2, remaining: 1, newIssues: 0, regressed: 0 },
+      diff: {
+        fixed: 1,
+        noLongerObserved: 1,
+        inconclusive: 0,
+        remaining: 1,
+        newIssues: 0,
+        regressed: 0,
+      },
       nextFinishPlan: {
         reportId: 'child-1',
         items: [{ problem: 'Proof remains weak', rubric: 'MESSAGE', severity: 'IMPORTANT', fixPrompt: 'Add product evidence.' }],
@@ -134,7 +141,14 @@ test('recheckAndDiff uses the combined monitoring response without extra calls',
     wait: true,
   })
 
-  assert.deepEqual(result.diff, { fixed: 2, remaining: 1, newIssues: 0, regressed: 0 })
+  assert.deepEqual(result.diff, {
+    fixed: 1,
+    noLongerObserved: 1,
+    inconclusive: 0,
+    remaining: 1,
+    newIssues: 0,
+    regressed: 0,
+  })
   assert.equal(result.nextFixList.items.length, 2)
   assert.equal(result.nextFinishPlan.items.length, 1)
   assert.deepEqual(mock.calls.map((item) => item.tool), ['ff_recheck_and_compare'])

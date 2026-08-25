@@ -26,7 +26,8 @@ vi.mock('@/lib/audit/monitoring', () => ({
 vi.mock('@/lib/audit/poll-audit', () => ({
   pollAuditUntilDone: mocks.pollAuditUntilDone,
 }))
-vi.mock('@/lib/audit/diff-flags', () => ({
+vi.mock('@/lib/audit/diff-flags', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/audit/diff-flags')>()),
   getFlagDiffSummary: mocks.getFlagDiffSummary,
 }))
 vi.mock('@/lib/audit/technology-profile', () => ({
@@ -55,6 +56,7 @@ const user = {
 function completedAudit() {
   return {
     id: 'report-1',
+    parentId: 'parent-1',
     url: 'https://example.com/',
     status: 'COMPLETED',
     score: 82,
@@ -117,7 +119,13 @@ describe('task contracts', () => {
     mocks.occurrenceFindMany.mockResolvedValue([])
     mocks.attemptFindMany.mockResolvedValue([])
     mocks.getFlagDiffSummary.mockResolvedValue({
-      fixed: [{ id: 'fixed' }],
+      fixed: [{
+        checkId: 'cta-specificity',
+        problem: 'The CTA is vague',
+        rubric: 'MESSAGE',
+        severity: 'IMPORTANT',
+        status: 'FIXED',
+      }],
       inconclusive: [],
       unchanged: [],
       newIssues: [],
@@ -237,13 +245,21 @@ describe('task contracts', () => {
     })
 
     expect(outcome.diff).toEqual({
-      fixed: 1,
+      fixed: 0,
+      noLongerObserved: 1,
       inconclusive: 0,
       remaining: 0,
       newIssues: 0,
       regressed: 0,
       flags: {
-        cleared: [{ id: 'fixed' }],
+        cleared: [],
+        noLongerObserved: [{
+          checkId: 'cta-specificity',
+          problem: 'The CTA is vague',
+          rubric: 'MESSAGE',
+          severity: 'IMPORTANT',
+          status: 'FIXED',
+        }],
         inconclusive: [],
         remaining: [],
         new: [],
@@ -257,9 +273,48 @@ describe('task contracts', () => {
     expect(outcome.reused).toBe(false)
     expect(mocks.startMonitoringAudit).toHaveBeenCalledWith('parent-1', user, {
       delayMs: undefined,
-      claimedAnonymous: undefined,
       clientId: undefined,
     })
+  })
+
+  it('returns the same verification receipts as the completed report poll', async () => {
+    mocks.attemptFindMany.mockResolvedValue([{
+      id: 'attempt-1',
+      builder: 'Codex',
+      changeSummary: 'Named the primary action',
+      testedCondition: 'The CTA names the outcome.',
+      outcome: 'IMPROVED',
+      comparable: true,
+      verificationCoverage: { verifierExecuted: true },
+      verificationReason: 'The exact verifier completed.',
+      evidenceReference: { afterAuditId: 'report-1' },
+      remainingRisk: null,
+      improvement: {
+        id: 'improvement-1',
+        title: 'The CTA is vague',
+        occurrences: [{
+          flag: {
+            checkId: 'cta-specificity',
+            problem: 'The CTA is vague',
+            rubric: 'MESSAGE',
+          },
+        }],
+      },
+    }])
+
+    const synchronous = await recheckAndCompare({
+      parentReportId: 'parent-1',
+      user,
+      waitForCompletion: true,
+    })
+    const polled = await loadCompletedTaskOutcome('report-1')
+
+    expect(synchronous.diff).toEqual(polled.diff)
+    expect(synchronous.nextFixList).toEqual(polled.nextFixList)
+    expect(synchronous.nextFinishPlan).toEqual(polled.nextFinishPlan)
+    expect(synchronous.technologyProfile).toEqual(polled.technologyProfile)
+    expect(synchronous.verificationReceipts).toEqual(polled.verificationReceipts)
+    expect(synchronous.diff).toMatchObject({ fixed: 1, noLongerObserved: 0 })
   })
 
   it('uses the returned Review parent when an active update Review is reused', async () => {
@@ -271,6 +326,10 @@ describe('task contracts', () => {
         reused: true,
         parentAuditId: 'actual-parent',
       },
+    })
+    mocks.auditFindUnique.mockResolvedValue({
+      ...completedAudit(),
+      parentId: 'actual-parent',
     })
 
     const outcome = await recheckAndCompare({
@@ -294,6 +353,10 @@ describe('task contracts', () => {
         reused: true,
         parentAuditId: null,
       },
+    })
+    mocks.auditFindUnique.mockResolvedValue({
+      ...completedAudit(),
+      parentId: null,
     })
 
     const outcome = await recheckAndCompare({

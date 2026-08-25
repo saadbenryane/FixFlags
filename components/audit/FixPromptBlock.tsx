@@ -9,7 +9,6 @@ import {
   usePreferredTool,
   type PromptToolKey,
 } from '@/components/audit/PromptToolSelector'
-import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { TerminalShell } from '@/components/ui/terminal-shell'
 import { Button } from '@/components/ui/button'
 import { OUTPUT_LABELS } from '@/lib/marketing/copy'
@@ -204,11 +203,16 @@ export function FixPromptBlock({
                 </Button>
               ) : null}
               {!promptUnavailable ? (
-                <PromptCopyButton
+                <PromptActionRow
                   prompt={clipboardPrompt}
-                  iconOnly
+                  compact
                   tool={showToolSelector ? preferredTool : undefined}
+                  auditId={auditId}
                   flagId={flagId}
+                  surface={surface}
+                  accessState={accessState}
+                  itemPosition={itemPosition}
+                  nextStep={copyNextStep}
                 />
               ) : null}
             </div>

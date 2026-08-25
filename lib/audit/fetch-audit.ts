@@ -6,7 +6,6 @@ import { SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
 import {
   canViewPrescriptionContentForAudit,
   canViewDeterministicFixesForAudit,
-  findHighestSeverityFlagWithFix,
   stripAiPrescriptionFromRubrics,
   stripAiPrescriptionFromFlags,
   stripDeterministicFixesFromRubrics,
@@ -27,7 +26,6 @@ import { parseFlagVisualEvidence } from '@/lib/audit/persist-visual-evidence'
 import { parseActionTimeline } from '@/lib/audit/action-timeline'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { parseProductIntelligence } from '@/lib/audit/product-intelligence'
-import { rankFlagsByPriority } from '@/lib/audit/priority-flags'
 import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
 import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
 
@@ -268,7 +266,7 @@ export async function getGatedAuditForRequest(id: string) {
     return { kind: 'not_found' as const }
   }
   const isPaid = await resolveIsPaidForAudit(audit)
-  const mayViewPrompts = accessContext === 'owner' || accessContext === 'marketing_sample'
+  const mayViewPrompts = accessContext === 'owner'
   const showPrescription = mayViewPrompts && await canViewPrescriptionContentForAudit(
     {
       userId: audit.userId,
@@ -410,20 +408,10 @@ export async function getGatedAuditForRequest(id: string) {
     storedCapture
   )
 
-  const rankedOpenFlags = rankFlagsByPriority(
-    audit.flags.filter((flag) => flag.status !== 'FIXED' && flag.status !== 'IGNORED'),
-    audit.rubrics,
-    audit.flags.length,
-    productContract
-  ).map(({ flag }) => flag)
-  const sampleFixFlag =
-    !showDeterministicFixes && !isLegacyDeterministic
-      ? findHighestSeverityFlagWithFix(
-          accessContext === 'marketing_sample'
-            ? rankedOpenFlags
-            : rankedOpenFlags.filter((flag) => flag.rubric === 'MESSAGE')
-        )
-      : null
+  // Repository-owned samples are assembled from a versioned fixture outside
+  // this live-report boundary. Live anonymous, public, and shared reports
+  // never receive a demonstrated prompt payload.
+  const sampleFixFlag = null
 
   const technologyProfile = await loadTechnologyProfile(audit.id, {
     score: audit.score,

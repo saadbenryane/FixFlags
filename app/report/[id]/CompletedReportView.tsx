@@ -1,7 +1,6 @@
 import { AuditPageActions } from '@/components/audit/AuditPageActions'
 import { AuditReport } from '@/components/audit/AuditReport'
 import { AiReviewPendingRefresh } from '@/components/audit/AiReviewPendingRefresh'
-import { McpFixNudge } from '@/components/audit/McpFixNudge'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { isAdminUser } from '@/lib/auth/permissions'
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
@@ -93,15 +92,12 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       isPaid={state.viewerIsPaid}
       isLoggedIn={state.isLoggedIn}
       isOwner={state.isOwner}
-      isAnonymous={state.isAnonymous}
       isPublic={state.audit.isPublic}
       compareAuditId={compareAuditId}
       canExportSummary={state.entitlements?.canExportSummary ?? false}
       canSharePublicly={state.entitlements?.canSharePublicly ?? false}
       shareStatus={state.reportAudit.shareStatus}
       showFixPrompts={state.showDeterministicFixes}
-      toolbar
-      claimedAnonymous={state.claimedAnonymous}
     />
   )
   return (
@@ -150,6 +146,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           pages={journeyPages}
           journeyReviews={journeyReviews}
           recheckDiff={state.recheckDiff}
+          verificationReceipts={state.verificationReceipts}
           scoreHistory={state.scoreHistory}
           sampleFixFlag={state.sampleFixFlag}
           compareHref={
@@ -159,9 +156,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           }
           toolbarActions={toolbarActions}
           agentMessages={agentMessages}
-          claimedAnonymous={state.claimedAnonymous}
         />
-        <McpFixNudge auditId={state.id} isPaid={state.viewerIsPaid} />
         <AiReviewPendingRefresh auditId={state.id} enabled={state.aiReviewPending} />
       </div>
       {state.isOwner && state.showPrescription && !state.aiReviewPending ? (

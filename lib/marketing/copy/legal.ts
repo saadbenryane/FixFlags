@@ -59,7 +59,7 @@ export const PRIVACY_SECTIONS = {
   reportAccess: {
     title: 'Report access',
     body:
-      'Studio plans can create public share links. Separate public pages on FixFlags are for discovery; they are not your private audit.',
+      'Studio plans can create public share links. Separate public pages on FixFlags are for discovery; they are not your owned report.',
   },
   thirdParties: {
     title: 'Third parties',

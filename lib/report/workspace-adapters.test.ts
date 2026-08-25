@@ -39,6 +39,7 @@ describe('Report workspace adapters', () => {
           canChat: true,
           canUseCanvas: true,
           canShare: true,
+          canExport: true,
           canRecheck: true,
           canGiveFeedback: true,
           promptAccess: 'demonstrated',
@@ -55,6 +56,7 @@ describe('Report workspace adapters', () => {
           canChat: true,
           canUseCanvas: false,
           canShare: false,
+          canExport: false,
           canRecheck: false,
           canGiveFeedback: false,
           promptAccess: 'demonstrated',
@@ -70,6 +72,7 @@ describe('Report workspace adapters', () => {
           canChat: false,
           canUseCanvas: false,
           canShare: false,
+          canExport: false,
           canRecheck: false,
           canGiveFeedback: false,
           promptAccess: 'demonstrated',
@@ -87,11 +90,16 @@ describe('Report workspace adapters', () => {
       canChat: false,
       canUseCanvas: false,
       canShare: false,
-      canRecheck: true,
+      canExport: false,
+      canRecheck: false,
       canGiveFeedback: false,
       promptAccess: 'demonstrated',
       demonstratedFlagId: report.demonstratedFlagId,
     })
+    expect(sample.explorer.flags.filter((flag) => flag.hasFixPrompt).map((flag) => flag.id)).toEqual(
+      [report.demonstratedFlagId],
+    )
+    expect(sample.explorer.polishPassPrompt).toBeNull()
     expect(variants[2]?.capabilities).toMatchObject({
       canReplayTimeline: false,
       canChat: false,

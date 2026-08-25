@@ -93,7 +93,7 @@ FixFlags reduces that uncertainty with observable evidence.
 
 ## Promise
 
-Paste your live URL. FixFlags tests the paths that matter, shows exactly where they fail, and gives your AI the fix. Re-check after you ship. Watch after every deploy.
+Paste your live URL. FixFlags tests the paths that matter, shows exactly where they fail, and gives your AI the fix. Run an update review after you ship. Watch after every deploy.
 
 ## Core loop
 
@@ -121,9 +121,12 @@ Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
 - Claimed Products lazily turn the worthwhile zero-to-three Finish Plan items into durable Product-scoped Improvements.
 - Equivalent Flags across Reviews link to the same Improvement by a stable Product-local fingerprint.
 - An Improvement records judgment, expected benefit, recommended change, protected scope, success condition, priority, lifecycle, occurrences, and builder attempts.
-- Copying an owned Flag prompt or calling `ff_mark_fix_attempted` records an Improvement Attempt instead of declaring the Flag fixed.
+- Copying an owned Flag prompt records one idempotent `HANDOFF_COPIED` event and never declares the Flag fixed or verified.
+- Marking an owned Improvement ready or calling `ff_mark_fix_attempted` records an Improvement Attempt.
 - Only a fresh child Update Review can record `IMPROVED`, `UNCHANGED`, `REGRESSED`, or `INCONCLUSIVE`.
 - Verified Product Memory is written only from an `IMPROVED` attempt with Review and evidence provenance.
+- Raw absence is presented as “No longer observed in this review.”
+- Partial or degraded child Reviews never create verified Product Memory.
 - The Product dashboard leads with Attention now and allows the honest result that nothing important requires action.
 - MCP Product context and Finish Plan responses include Product Improvements; MCP and CLI update-review responses include independent verification receipts.
 
@@ -148,6 +151,8 @@ Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
 | **Studio** (`TEAM`) | $199/mo | 80/month | 10/month |
 
 Update reviews use the same product review credit pool as new URLs. Internal route `/re-check` remains for API compatibility.
+Every signed-in manual update review consumes exactly one product-review credit.
+Watch-triggered reviews are the only non-manual path that skips product-review usage.
 
 Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 
@@ -157,6 +162,7 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 - Interactive Agent chat, fix prompts, Timeline playback, private history, Product Memory, update reviews, Canvas, export, and restricted sharing remain server-gated.
 - Timeline stays discoverable as an inline sign-in state on live reports, and its event, URL, screenshot, and playback payload is absent from anonymous live-report responses.
 - Repository-owned curated samples expose only their versioned static Timeline fixtures.
+- Repository-owned curated samples expose exactly one demonstrated fix prompt and no aggregate Finish Plan prompt.
 - Authentication returns through `/post-login`, verifies the signed anonymous claim, claims the review, and only then restores the same workspace.
 - Anonymous API responses never expose gated prompts, and access control never persists gate copy into Flag evidence or fix fields.
 - A successful claim saves the report and makes every eligible fix prompt available, including when the claim happens before triage completes.
@@ -225,15 +231,15 @@ Full evidence rules: `knowledge/evidence-rules.md`.
 - Unit tests: run `npm run test:unit` (count measured per run; do not hardcode).
 - Stuck-audit recovery (15 min timeout window, self-hosted scheduler)
 - Knowledge graph Phase 1 in production (growth graph; separate from customer Product Intelligence)
-- Evidence-backed Made with profiles across reports, re-check diffs, API/CLI/MCP summaries, and access-safe `/madewith/[hostname]` pages
+- Evidence-backed Made with profiles across reports, update-review diffs, API/CLI/MCP summaries, and access-safe `/madewith/[hostname]` pages
 - Sample size gate (`MIN_SAMPLE_SIZE` in `lib/graph/queries.ts`; target 20, temporarily 3 while seeding)
 - MCP integration for Cursor, Claude Code, Windsurf, Lovable, and Bolt; public tool names live in `lib/mcp/tool-manifest.ts`, register through modular handlers, and are checked by `npm run mcp:quality-gate`.
-- Public documentation at `/docs` covers the product loop, Finish List, editor setup, CLI, MCP, generated tool reference, and troubleshooting. The code-backed editor catalog is the source for homepage, footer, docs, preferences, setup, and API-key attribution. Production-smoke claims remain limited to verified integrations.
+- Public documentation at `/docs` covers the product loop, complete Fix list, bounded Finish Plan, editor setup, CLI, MCP, generated tool reference, and troubleshooting. The code-backed editor catalog is the source for homepage, footer, docs, preferences, setup, and API-key attribution. Production-smoke claims remain limited to verified integrations.
 - Project-scoped Product Intelligence persistence
-- Canonical `/report/[id]` workspace with identity, readiness, re-check results, and the complete ranked Flag explorer, governed by `knowledge/report-contract.md`
-- Fix list with every unresolved Flag and contract-aware ranking from one shared service across web, export, MCP, CLI, re-check, and sample
+- Canonical `/report/[id]` workspace with identity, update-review results, the complete ranked Flag explorer, and the bounded Finish Plan, governed by `knowledge/report-contract.md`
+- Fix list with every unresolved Flag and contract-aware ranking from one shared service across web, export, MCP, CLI, update review, and sample
 - Remember strip on report when Project has verified learnings; Contract edits merge without wiping memory
-- Project product watch (Pro/Studio): weekly/daily FULL re-check + regression email
+- Project product watch (Pro/Studio): weekly/daily full review plus regression email, without manual product-review usage
 - Free tools: meta preview, placeholder copy detector
 - **Agent-led report workspace:** URL submission immediately opens `/report/{id}` with a title-free Agent panel and progressive Report. Persisted scan facts project into free deterministic Agent messages, confirmed Flags append once, and completion preserves the same transcript contract. Timeline is authenticated and Canvas is private to paid owners.
 - Dedicated audit worker runtime: web requests stay isolated from Playwright capture; unfinished reports use a lightweight access/status read before completed-report assembly
@@ -244,7 +250,7 @@ Full evidence rules: `knowledge/evidence-rules.md`.
 FixFlags must evaluate itself more rigorously than it evaluates customers.
 
 - Seeded benchmark with at least 100 controlled web products containing known problems
-- Measures: detection recall, precision, severity accuracy, goal-completion accuracy, reproduction success, fix usefulness, re-check accuracy, cost per useful Flag, cost per verified fix
+- Measures: detection recall, precision, severity accuracy, goal-completion accuracy, reproduction success, fix usefulness, update-review accuracy, cost per useful Flag, cost per verified fix
 - Critical Flag policy: failure must reproduce, success assertion must be explicit, evidence must be saved, finding must survive deterministic review, run must not contain known infrastructure failure
 - Human calibration: regularly sample confirmed/dismissed Flags, suggestions, failed journeys
 - No composite score at launch: do not lead with a 0-100 score until stable, interpretable and correlated with validated outcomes
@@ -268,7 +274,7 @@ Do not launch broadly until:
 - Critical findings are highly precise
 - One journey can be replayed reliably
 - The fix prompt is specific enough to apply
-- The re-check can prove a real before-and-after change
+- An update review can produce a real before-and-after result and strict verification receipt
 - The report is visually shareable
 - Privacy and scope are obvious
 - Paid Deep Reviews can be purchased without a sales call
@@ -294,7 +300,7 @@ Five concrete checks from report evidence. Fix before shipping:
 
 - Does Studio Fix PR creation close enough sales, or do buyers still want white-label share branding?
 - Will free users convert to Pro before exhausting their 3 lifetime AI reports?
-- What re-check cadence builds the strongest Product Review → Fix → Verify → Watch habit?
+- What update-review cadence builds the strongest Product Review → Fix → Verify → Watch habit?
 - Does current Deep Review pricing optimize for conversion against alternate price points?
 - Will 20% of paid Deep Review customers activate Watch for ongoing monitoring?
 

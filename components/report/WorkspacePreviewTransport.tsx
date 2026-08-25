@@ -86,6 +86,7 @@ export function WorkspacePreviewTransport({
 
   return (
     <div
+      role="group"
       aria-label={REPORT_COPY.workspace.playback.transportLabel}
       className={cn(
         TRANSPORT_HEIGHT_CLASS,

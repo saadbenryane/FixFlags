@@ -27,17 +27,6 @@ vi.mock('next/headers', () => ({
   headers: async () => new Headers(),
   cookies: async () => ({ get: () => undefined }),
 }))
-const readClaimedAnonymousIds = vi.hoisted(() => vi.fn(async () => []))
-const claimsAnonymousReport = vi.hoisted(() =>
-  vi.fn((ids: string[], reportId: string, parentId?: string | null) =>
-    ids.includes(reportId) || (parentId != null && ids.includes(parentId))
-  )
-)
-vi.mock('@/lib/audit/usage', () => ({
-  ANON_AUDIT_IDS_COOKIE: 'ff_anon_report_ids',
-  readClaimedAnonymousIds,
-  claimsAnonymousReport,
-}))
 vi.mock('@/lib/security/rate-limit', () => ({
   recordRateLimit,
   requestClientId: () => 'client-1',
@@ -81,10 +70,11 @@ describe('POST /api/reports/[id]/re-check', () => {
     })
   })
 
-  it('returns 403 when there is no session and no anonymous claim', async () => {
+  it('requires authentication before starting an update review', async () => {
     getSession.mockResolvedValue(null)
     const res = await POST(postReq(), { params: Promise.resolve({ id: 'parent-1' }) })
-    expect(res.status).toBe(403)
+    expect(res.status).toBe(401)
+    await expect(res.json()).resolves.toMatchObject({ code: 'AUTH_REQUIRED' })
     expect(recheckAndCompare).not.toHaveBeenCalled()
   })
 
@@ -110,7 +100,6 @@ describe('POST /api/reports/[id]/re-check', () => {
       parentReportId: 'parent-1',
       user: expect.objectContaining({ id: 'u1' }),
       delayMs: 0,
-      claimedAnonymous: false,
       clientId: 'client-1',
     })
   })
@@ -149,17 +138,11 @@ describe('POST /api/reports/[id]/re-check', () => {
     expect(res.status).toBe(403)
   })
 
-  it('starts a Recheck when the anonymous claim cookie matches the parent', async () => {
+  it('does not let an anonymous report claim bypass authentication', async () => {
     getSession.mockResolvedValue(null)
-    prismaMock.user.findUnique.mockResolvedValue(null)
-    readClaimedAnonymousIds.mockResolvedValueOnce(['parent-1'])
     const res = await POST(postReq(), { params: Promise.resolve({ id: 'parent-1' }) })
-    expect(res.status).toBe(201)
-    expect(recheckAndCompare).toHaveBeenCalledWith(
-      expect.objectContaining({
-        parentReportId: 'parent-1',
-        claimedAnonymous: true,
-      })
-    )
+    expect(res.status).toBe(401)
+    await expect(res.json()).resolves.toMatchObject({ code: 'AUTH_REQUIRED' })
+    expect(recheckAndCompare).not.toHaveBeenCalled()
   })
 })

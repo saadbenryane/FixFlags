@@ -5,12 +5,19 @@ import { chmodSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from '
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { REQUIRED_RELEASE_JOURNEYS } from './release-journeys.mjs'
-import { assertCleanReleaseCandidate, expectedReleaseArtifactLabels, expectedReleaseCommandLabels, hydrateReleaseFixtureEnvironment, inspectPlaywrightJourneys, releaseStageCommands, requireStageJourneys, runReleaseStage, validateFinalReceiptObjects } from './release-receipts.mjs'
+import { assertCleanReleaseCandidate, buildReceiptContext, expectedReleaseArtifactLabels, expectedReleaseCommandLabels, hydrateReleaseFixtureEnvironment, inspectPlaywrightJourneys, RELEASE_CLI_VERSION, releaseStageCommands, requireStageJourneys, runReleaseStage, validateFinalReceiptObjects } from './release-receipts.mjs'
 
 const SHA = 'a'.repeat(40)
 function temp() { return mkdtempSync(path.join(tmpdir(), 'fixflags-release-')) }
 function baseEnv(overrides = {}) {
-  return { RELEASE_RUN_ID: 'run-1', RELEASE_SMOKE_URL: 'https://release.fixflags.test', E2E_BASE_URL: 'https://release.fixflags.test', ...overrides }
+  return {
+    RELEASE_RUN_ID: 'run-1',
+    RELEASE_ENV_URL: 'https://release.fixflags.test',
+    RELEASE_ENV_API_KEY: 'ff_release_test',
+    PRODUCTION_URL: 'https://fixflags.com',
+    PRODUCTION_API_KEY: 'ff_production_test',
+    ...overrides,
+  }
 }
 function report(ids, status = 'passed') {
   return { suites: [{ specs: ids.map((id) => ({ title: `[journey:${id}] proof`, tests: [{ results: [{ status }] }] })) }] }
@@ -22,9 +29,26 @@ function receipt(stage, overrides = {}) {
     stage,
     status: 'PASS',
     gitSha: SHA,
-    targetOrigin: stage === 'foundation' ? null : 'https://release.fixflags.test',
-    databaseIdentityHash: ['foundation', 'fixture-binding'].includes(stage) ? 'db-hash' : null,
+    targetOrigin: stage === 'foundation'
+      ? null
+      : ['deployed', 'registry-cli', 'production-dogfood'].includes(stage)
+        ? 'https://fixflags.com'
+        : 'https://release.fixflags.test',
+    databaseIdentityHash: ['foundation', 'fixture-binding', 'credentialed-core', 'billing-open', 'billing-closed', 'external'].includes(stage) ? 'db-hash' : null,
+    apiKeyIdentityHash: ['credentialed-core', 'billing-open', 'billing-closed', 'external'].includes(stage)
+      ? 'e'.repeat(64)
+      : ['registry-cli', 'production-dogfood'].includes(stage)
+        ? 'f'.repeat(64)
+        : null,
     containerImageDigest: stage === 'foundation' ? `sha256:${'d'.repeat(64)}` : undefined,
+    releaseEnvironmentRevision: stage === 'fixture-binding' ? SHA : undefined,
+    cli: stage === 'registry-cli' ? {
+      packageName: 'fixflags',
+      version: RELEASE_CLI_VERSION,
+      tag: 'candidate',
+      installedVersion: RELEASE_CLI_VERSION,
+      gitSha: SHA,
+    } : undefined,
     journeys: [],
     commands: expectedReleaseCommandLabels(stage).map((label) => ({ label, exitCode: 0, durationMs: 1 })),
     artifacts: expectedReleaseArtifactLabels(stage).map((label) => ({ label, sha256: 'c'.repeat(64) })),
@@ -60,7 +84,7 @@ describe('release evidence receipts', () => {
 
   it('forces Git HEAD instead of RELEASE_GIT_SHA and never serializes secrets', () => {
     const workingDirectory = temp()
-    const env = baseEnv({ RELEASE_GIT_SHA: 'b'.repeat(40), E2E_API_KEY: 'ff_live_secret' })
+    const env = baseEnv({ RELEASE_GIT_SHA: 'b'.repeat(40), PRODUCTION_API_KEY: 'ff_live_secret' })
     const value = runReleaseStage('deployed', env, { workingDirectory, gitSha: SHA, repositoryStatus: '', commands: [], executor: () => ({ status: 0 }) })
     assert.equal(value.gitSha, SHA)
     assert.ok(!JSON.stringify(value).includes('ff_live_secret'))
@@ -78,6 +102,15 @@ describe('release evidence receipts', () => {
     assert.doesNotMatch(core, /billing-webhook-active/)
     assert.match(billing, /billing-webhook-active/)
     assert.deepEqual(expectedReleaseCommandLabels('registry-cli'), ['registry-package', 'credentialed-journeys'])
+    assert.deepEqual(releaseStageCommands('registry-cli')[0][2], [
+      'scripts/verify-cli-registry.mjs',
+      '--version',
+      RELEASE_CLI_VERSION,
+      '--tag',
+      'candidate',
+      '--clean-install',
+    ])
+    assert.deepEqual(expectedReleaseArtifactLabels('registry-cli'), ['cli-registry-evidence', 'playwright-report'])
     assert.deepEqual(expectedReleaseCommandLabels('deployed'), ['deployment-attestation', 'deployed-smoke'])
     assert.deepEqual(expectedReleaseCommandLabels('production-dogfood'), ['production-smoke', 'production-fix-verify-watch'])
   })
@@ -89,7 +122,80 @@ describe('release evidence receipts', () => {
     chmodSync(manifestPath, 0o600)
     const hydrated = hydrateReleaseFixtureEnvironment({ RELEASE_FIXTURE_MANIFEST: manifestPath })
     assert.equal(hydrated.E2E_PRO_EMAIL, 'pro@example.test')
-    assert.equal(hydrated.E2E_API_KEY, 'ff_secret')
+    assert.equal(hydrated.RELEASE_ENV_API_KEY, 'ff_secret')
+  })
+
+  it('attests the exact release-environment revision before provisioning fixtures', () => {
+    const workingDirectory = temp()
+    const manifestPath = path.join(workingDirectory, 'fixtures.json')
+    const commandOrder = []
+    const fixtureEnv = baseEnv({
+      RELEASE_E2E_TARGET: 'remote',
+      RELEASE_FRESH_DATABASE_URL: 'postgresql://release:test@db.test/fixflags_release',
+      RELEASE_FIXTURE_MANIFEST: manifestPath,
+    })
+    const databaseIdentityHash = buildReceiptContext('fixture-binding', fixtureEnv, { gitSha: SHA }).databaseIdentityHash
+    const value = runReleaseStage('fixture-binding', fixtureEnv, {
+      workingDirectory,
+      gitSha: SHA,
+      repositoryStatus: '',
+      executor: (_executable, args, commandEnv) => {
+        commandOrder.push(args[0])
+        if (args.includes('scripts/release-revision-attestation.mjs')) {
+          writeFileSync(commandEnv.RELEASE_REVISION_EVIDENCE_FILE, JSON.stringify({
+            schemaVersion: 1,
+            targetOrigin: 'https://release.fixflags.test',
+            expectedGitSha: SHA,
+            runningCommit: SHA,
+          }))
+        } else {
+          writeFileSync(manifestPath, JSON.stringify({
+            schemaVersion: 1,
+            runId: 'run-1',
+            gitSha: SHA,
+            targetOrigin: 'https://release.fixflags.test',
+            databaseIdentityHash,
+            fixtures: {},
+          }), { mode: 0o600 })
+          chmodSync(manifestPath, 0o600)
+        }
+        return { status: 0 }
+      },
+    })
+    assert.equal(value.status, 'PASS')
+    assert.deepEqual(commandOrder, ['scripts/release-revision-attestation.mjs', 'tsx'])
+    assert.equal(value.releaseEnvironmentRevision, SHA)
+  })
+
+  it('records candidate-tag, clean-install, and production CLI journey evidence', () => {
+    const workingDirectory = temp()
+    const directory = path.join(workingDirectory, 'test-results', 'release', 'run-1')
+    mkdirSync(directory, { recursive: true })
+    const value = runReleaseStage('registry-cli', baseEnv({ E2E_AUDIT_URL: 'https://fixflags.com' }), {
+      workingDirectory,
+      gitSha: SHA,
+      repositoryStatus: '',
+      executor: (_executable, args, commandEnv) => {
+        if (args.includes('scripts/verify-cli-registry.mjs')) {
+          writeFileSync(commandEnv.RELEASE_CLI_REGISTRY_EVIDENCE_FILE, JSON.stringify({
+            schemaVersion: 1,
+            packageName: 'fixflags',
+            version: RELEASE_CLI_VERSION,
+            tag: 'candidate',
+            installedVersion: RELEASE_CLI_VERSION,
+            integrity: 'sha512-proof',
+            gitSha: SHA,
+          }))
+        } else {
+          writeFileSync(path.join(directory, 'playwright.json'), JSON.stringify(report(['cli-registry-loop'])))
+        }
+        return { status: 0 }
+      },
+    })
+    assert.equal(value.status, 'PASS')
+    assert.equal(value.cli.version, RELEASE_CLI_VERSION)
+    assert.equal(value.cli.tag, 'candidate')
+    assert.equal(value.targetOrigin, 'https://fixflags.com')
   })
 
   it('injects forced HEAD and records attested deployed commit evidence', () => {
@@ -103,16 +209,16 @@ describe('release evidence receipts', () => {
         observedEnv = commandEnv
         if (args.includes('scripts/release-deployment-attestation.mjs')) {
           writeFileSync(commandEnv.RELEASE_DEPLOYMENT_EVIDENCE_FILE, JSON.stringify({
-            schemaVersion: 1,
+            schemaVersion: 2,
             gitSha: SHA,
-            ci: { status: 'SUCCESS', checks: [{ name: 'verify', completedAt: new Date().toISOString() }] },
+            ci: { status: 'SUCCESS', completedAt: '2026-08-25T20:00:00.000Z', checks: [{ name: 'verify', completedAt: '2026-08-25T20:00:00.000Z' }] },
             services: [
-              { role: 'web', state: 'SUCCESS', gitSha: SHA, deploymentId: 'web-1' },
-              { role: 'worker', state: 'SUCCESS', gitSha: SHA, deploymentId: 'worker-1' },
+              { role: 'web', state: 'SUCCESS', gitSha: SHA, deploymentId: 'web-1', transitionedAt: '2026-08-25T20:01:00.000Z' },
+              { role: 'worker', state: 'SUCCESS', gitSha: SHA, deploymentId: 'worker-1', transitionedAt: '2026-08-25T20:02:00.000Z' },
             ],
           }))
         } else {
-          writeFileSync(commandEnv.RELEASE_SMOKE_EVIDENCE_FILE, JSON.stringify({ targetOrigin: baseEnv().RELEASE_SMOKE_URL, expectedCommit: SHA, runningCommit: SHA, routeCount: 42 }))
+          writeFileSync(commandEnv.RELEASE_SMOKE_EVIDENCE_FILE, JSON.stringify({ targetOrigin: baseEnv().PRODUCTION_URL, expectedCommit: SHA, runningCommit: SHA, routeCount: 42 }))
         }
         return { status: 0 }
       },
@@ -123,6 +229,38 @@ describe('release evidence receipts', () => {
     assert.equal(value.deployed.routeCount, 42)
     assert.equal(value.deployed.ci.status, 'SUCCESS')
     assert.deepEqual(value.deployed.services.map((service) => service.role), ['web', 'worker'])
+  })
+
+  it('never hydrates release fixture manifests into production stages', () => {
+    const workingDirectory = temp()
+    let observedEnv
+    const value = runReleaseStage('deployed', baseEnv({ RELEASE_FIXTURE_MANIFEST: path.join(workingDirectory, 'missing-release-fixtures.json') }), {
+      workingDirectory,
+      gitSha: SHA,
+      repositoryStatus: '',
+      executor: (_executable, args, commandEnv) => {
+        observedEnv = commandEnv
+        if (args.includes('scripts/release-deployment-attestation.mjs')) {
+          writeFileSync(commandEnv.RELEASE_DEPLOYMENT_EVIDENCE_FILE, JSON.stringify({
+            schemaVersion: 2,
+            gitSha: SHA,
+            ci: { status: 'SUCCESS', completedAt: '2026-08-25T20:00:00.000Z', checks: [{ name: 'verify', completedAt: '2026-08-25T20:00:00.000Z' }] },
+            services: [
+              { role: 'web', state: 'SUCCESS', gitSha: SHA, transitionedAt: '2026-08-25T20:01:00.000Z' },
+              { role: 'worker', state: 'SUCCESS', gitSha: SHA, transitionedAt: '2026-08-25T20:02:00.000Z' },
+            ],
+          }))
+        } else {
+          writeFileSync(commandEnv.RELEASE_SMOKE_EVIDENCE_FILE, JSON.stringify({ targetOrigin: 'https://fixflags.com', expectedCommit: SHA, runningCommit: SHA, routeCount: 42 }))
+        }
+        return { status: 0 }
+      },
+    })
+    assert.equal(value.status, 'PASS')
+    assert.equal(observedEnv.E2E_BASE_URL, 'https://fixflags.com')
+    assert.equal(observedEnv.E2E_API_KEY, 'ff_production_test')
+    assert.equal(observedEnv.RELEASE_FIXTURE_MANIFEST, undefined)
+    assert.equal(observedEnv.RELEASE_ENV_API_KEY, undefined)
   })
 
   it('records missing proof as BLOCKED', () => {
@@ -162,6 +300,14 @@ describe('release evidence receipts', () => {
     )
     assert.throws(() => validateFinalReceiptObjects(all.map((value, index) => index === 1 ? { ...value, runId: 'other' } : value), SHA), /mixed run IDs/)
     assert.throws(() => validateFinalReceiptObjects(all, 'b'.repeat(40)), /current Git HEAD/)
+    assert.throws(
+      () => validateFinalReceiptObjects(separated.map((value) =>
+        value.stage === 'registry-cli' || value.stage === 'production-dogfood'
+          ? { ...value, apiKeyIdentityHash: 'e'.repeat(64) }
+          : value,
+      ), SHA),
+      /same API key identity/,
+    )
   })
 
   it('rejects manually minted command evidence and exposes no record-PASS command', () => {

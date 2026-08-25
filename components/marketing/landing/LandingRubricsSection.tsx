@@ -37,24 +37,30 @@ export function LandingRubricsSection() {
                       {rubric.title}
                     </span>
                   </div>
-                <h3 className="mt-4 max-w-[14ch] font-display text-2xl font-semibold leading-heading tracking-heading text-foreground text-balance">
-                  {rubric.question}
-                </h3>
-                <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
-                  {rubric.panelBody}
-                </p>
+                  <h3 className="mt-4 max-w-[16ch] font-display text-2xl font-semibold leading-heading tracking-heading text-foreground text-balance">
+                    {rubric.question}
+                  </h3>
+                  <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
+                    {rubric.panelBody}
+                  </p>
 
-                <div className="mt-7 rounded-[var(--radius-inner)] bg-background/80 p-5 shadow-[var(--shadow-glass-subtle)]">
-                  <p className="font-mono text-2xs font-semibold uppercase tracking-label text-[hsl(var(--brand-strong))] dark:text-brand">
-                    {copy.exampleFindingLabel}
-                  </p>
-                  <p className="mt-3 text-sm font-semibold leading-snug text-foreground text-pretty">
-                    {rubric.proofExample.finding}
-                  </p>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground text-pretty">
-                    {rubric.proofExample.evidence}
-                  </p>
-                </div>
+                  <ul
+                    className="mt-6 space-y-3"
+                    aria-label={`${rubric.title} checks`}
+                  >
+                    {rubric.checks.map((check) => (
+                      <li
+                        key={check}
+                        className="flex items-start gap-3 text-sm leading-relaxed text-foreground/85"
+                      >
+                        <span
+                          className="mt-[0.55rem] h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
+                          aria-hidden
+                        />
+                        <span>{check}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </article>
               </RevealOnView>
             );

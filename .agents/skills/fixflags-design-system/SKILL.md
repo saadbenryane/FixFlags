@@ -26,6 +26,7 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 ## Report rules
 
 - Active and completed owner/anon reviews share one full-bleed living-review editor: flush split under thin site chrome, no marketing footer, no pane cards (`rounded-card` / `shadow-card` / `glass-surface` on Agent or Product columns). Separation is a single vertical divider.
+- Active desktop defaults to Preview, active mobile defaults to Agent, and completed reviews default to Report on every width. Completed Timeline remains a sibling only when the workspace capability permits it.
 - Desktop grid stays `minmax(280px, 32%)_minmax(0, 1fr)` with `gap-0`. Do not wrap the workspace region in `Container variant="report"` / `max-w-6xl`.
 - Treat the panes as **FixFlags understanding** (identity, activity, observation, judgment, conversation) and **Product reality** (live experience, interaction, evidence). Never reduce them to generic chat and dashboard.
 - Active desktop reviews default to Preview; completed reviews default to Report. The Product-pane header owns that switch. Completed reports must not jump to a hero/summary document above the split.
@@ -44,17 +45,19 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
   3. **Columns scroll, not the document.** In a wide pane the frame is exactly one pane height with each column `min-h-0 overflow-y-auto`; in a narrow pane the frame releases its height and the pane scrolls as one column. `goToFlag` and anchors scroll the nearest scroll parent.
   4. **Filters always visible.** Rubric, severity, impact, and page filters stay in the bar at every pane width.
   5. **Context is collapsed.** Stack, contract, memory, funnel, previews, launch gates, feedback, and pipeline proof sit in one disclosure that only opens by user action or a matching anchor.
-  6. **One of each.** One CTA per surface, one signup surface per gated area (`ReportPolishPass` aggregate plus compact per-flag lock lines), one recheck entry point, `rounded-card` on every in-pane box.
+  6. **One of each.** One CTA per surface, at most one contextual signup or upgrade moment, one owner update-review entry point, and `rounded-card` on every in-pane box. The canonical aggregate surface is `ReportFinishPlan`.
   Guards: `npm run ui:drift-guard`, `components/report/__tests__/workspace-geometry.test.ts`, and `node scripts/report-pane-proof.mjs`.
 - Honest pending/failed states for the active device only.
 - Agent activity is customer-meaningful and evidence-bound. Never expose technical execution logs, simulated reasoning, or noisy stage churn.
 - Homepage playback must emulate the live editor visual language and tell one finite value story: experience Product → notice issue → show evidence → surface Flag → recommend improvement. Drive from curated sample + `buildFixFlagsScanMessages` only; never live `/api/checks`. Identity is Launchpad / `fixflags.com/demo`. Publish a history point only when the generator binds its repository revision and source path to distinct real WebPs, capture and document hashes, date, score, Flags, Timeline, and evidence anchors. An explicit unknown sample observation returns not found. Reduced motion shows the complete final state.
-- The focused report owns the Finish Plan and at most three fixes. The detailed report owns exploration, Journey, Flow, Timeline, previews, and secondary controls.
+- The canonical detailed workspace owns the complete ranked Fix list and the bounded zero-to-three Finish Plan. Funnel, Flow, Timeline, previews, and secondary controls remain subordinate context or sibling capabilities.
 - Progressive, focused, detailed, shared, and sample reports consume shared report/access models while retaining intentional density differences.
 - `ReportExplorer` is the only detailed flag browser. Rubric summaries link into it; they do not duplicate it.
 - Evidence remains device-specific. Never show a healthy twin viewport as filler.
 - Sample evidence must identify itself as a curated fixture and keep URL, brand, screenshots, copy, and metadata consistent.
-- Live anonymous: show real evidence; lock prompts except the one demonstrated fix. Never toast "Copied!" for a signup placeholder.
+- Live anonymous, shared, and non-owner reports show real evidence but zero prompts, copy controls, update-review actions, lifecycle mutations, or Timeline payload.
+- Repository-owned curated samples may expose exactly one demonstrated per-Flag prompt and their versioned static Timeline. They expose no aggregate Finish Plan prompt or update-review action.
+- Copying an owner prompt records a handoff. Only a strict `IMPROVED` receipt may present an Improvement as verified or write verified Product Memory.
 - Rubric score and Pass / Needs Attention / Blocked must not contradict; fix scoring or presentation at the shared model, not with per-page copy.
 - Customer-facing Flow/Timeline never shows `chrome-error://` or other browser-internal URLs.
 
@@ -71,7 +74,7 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 ## Workflow
 
 1. Identify the canonical view model, access state, and shared primitive before editing JSX.
-2. Exercise loading, empty, error, forbidden, partial, completed, shared, anonymous, owner, watched, and re-check states as applicable.
+2. Exercise loading, empty, error, forbidden, partial, completed, shared, anonymous, owner, watched, and update-review states as applicable.
 3. Check 375, 768, and 1280px with no horizontal overflow, clipped actions, hydration failures, or console errors.
 4. For active reviews, verify a first-time user can identify the Product, current FixFlags activity, observed behavior, important finding state, and where to inspect Product evidence.
 5. Verify keyboard order, focus visibility, semantic names, heading order, 44px targets, dialog/sheet semantics, 200% reflow, reduced motion, and contrast.

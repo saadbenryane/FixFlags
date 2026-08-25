@@ -315,6 +315,54 @@ const attemptSelect = {
   improvement: { select: { title: true } },
 } as const
 
+/**
+ * Owner-bounded receipts attached to one completed verification Review.
+ * The same durable attempt projection powers Product history and the child
+ * Review, so the web surface cannot disagree with MCP or CLI outcomes.
+ */
+export async function loadVerificationReceiptsForReview(
+  reviewId: string,
+  userId: string,
+): Promise<ProductAttemptDTO[]> {
+  const attempts = await prisma.improvementAttempt.findMany({
+    where: {
+      verificationAuditId: reviewId,
+      improvement: { project: { userId } },
+    },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: attemptSelect,
+  })
+
+  if (attempts.length === 0) return []
+
+  const sourceReviewIds = [...new Set(attempts.map((attempt) => attempt.sourceAuditId))]
+  const sourceOccurrences = await prisma.improvementOccurrence.findMany({
+    where: {
+      improvement: { project: { userId } },
+      auditId: { in: sourceReviewIds },
+      improvementId: { in: attempts.map((attempt) => attempt.improvementId) },
+    },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: {
+      improvementId: true,
+      auditId: true,
+      flagId: true,
+    },
+  })
+  const sourceFlagIds = new Map<string, string>()
+  for (const occurrence of sourceOccurrences) {
+    const key = `${occurrence.improvementId}:${occurrence.auditId}`
+    if (!sourceFlagIds.has(key)) sourceFlagIds.set(key, occurrence.flagId)
+  }
+
+  return attempts.map((attempt) =>
+    attemptSummary(
+      attempt,
+      sourceFlagIds.get(`${attempt.improvementId}:${attempt.sourceAuditId}`) ?? null,
+    ),
+  )
+}
+
 function manualReviewWhere() {
   return {
     OR: [{ recheckTrigger: null }, { recheckTrigger: 'MANUAL' as const }],

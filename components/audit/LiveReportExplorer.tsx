@@ -3,6 +3,7 @@
 import { ReportExplorer } from '@/components/report/ReportExplorer'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import type { JourneyPage } from '@/components/audit/JourneyBar'
+import type { ReportOwnerActionContext } from '@/components/report/FlagDetailPanel'
 
 interface LiveReportExplorerProps {
   model: ReportExplorerModel
@@ -15,6 +16,7 @@ interface LiveReportExplorerProps {
   loading?: boolean
   auditId?: string
   demonstratedFlagId?: string
+  ownerActionContext?: ReportOwnerActionContext
 }
 
 export function LiveReportExplorer({
@@ -28,6 +30,7 @@ export function LiveReportExplorer({
   loading = false,
   auditId,
   demonstratedFlagId,
+  ownerActionContext,
 }: LiveReportExplorerProps) {
   if (model.flags.length === 0 && !loading) return null
 
@@ -43,6 +46,7 @@ export function LiveReportExplorer({
       loading={loading}
       auditId={auditId}
       demonstratedFlagId={demonstratedFlagId}
+      ownerActionContext={ownerActionContext}
     />
   )
 }

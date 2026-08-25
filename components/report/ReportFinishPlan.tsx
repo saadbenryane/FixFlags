@@ -10,7 +10,7 @@ import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ReportAccessState, ReportSurface } from '@/lib/analytics/events'
 import { cn } from '@/lib/utils'
 
-interface ReportPolishPassProps {
+interface ReportFinishPlanProps {
   flagCount: number
   prompt: string | null
   loading?: boolean
@@ -23,7 +23,7 @@ interface ReportPolishPassProps {
   className?: string
 }
 
-export function ReportPolishPass({
+export function ReportFinishPlan({
   flagCount,
   prompt,
   loading = false,
@@ -34,9 +34,9 @@ export function ReportPolishPass({
   surface = 'focused',
   accessState,
   className,
-}: ReportPolishPassProps) {
+}: ReportFinishPlanProps) {
   const [previewOpen, setPreviewOpen] = useState(false)
-  const copy = REPORT_COPY.topFixes
+  const copy = REPORT_COPY.finishPlan
   const hasPrompt = Boolean(prompt?.trim())
   const showLocked = locked && !hasPrompt
   const showGenerating = generating && !hasPrompt && !loading
@@ -47,7 +47,7 @@ export function ReportPolishPass({
 
   return (
     <section
-      id="report-top-fixes"
+      id="report-finish-plan"
       aria-label={copy.title}
       className={cn(
         'scroll-mt-[var(--report-chrome-offset)] overflow-hidden rounded-card bg-card/80 shadow-card glass-surface',

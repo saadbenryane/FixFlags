@@ -9,15 +9,40 @@ import { REQUIRED_RELEASE_JOURNEYS, JOURNEYS_BY_STAGE } from './release-journeys
 import { canonicalDatabaseIdentity, RELEASE_STAGES, validateReleasePreflight } from './release-preflight.mjs'
 
 export const REQUIRED_RECEIPT_STAGES = [...RELEASE_STAGES]
-const RELEASE_ENV_STAGES = new Set([
+export const RELEASE_ENV_STAGES = new Set([
   'fixture-binding',
   'credentialed-core',
   'billing-open',
   'billing-closed',
   'external',
 ])
-const PRODUCTION_STAGES = new Set(['deployed', 'registry-cli', 'production-dogfood'])
+export const PRODUCTION_STAGES = new Set(['deployed', 'registry-cli', 'production-dogfood'])
+export const RELEASE_CLI_VERSION = '1.0.5'
 const TERMINAL_STATUSES = new Set(['passed', 'failed', 'timedOut', 'skipped', 'interrupted'])
+const RELEASE_FIXTURE_ENV_KEYS = new Set([
+  'RELEASE_FIXTURE_MANIFEST',
+  'RELEASE_ENV_URL',
+  'RELEASE_ENV_API_KEY',
+  'RELEASE_FRESH_DATABASE_URL',
+  'E2E_BILLING_FREE_EMAIL',
+  'E2E_BILLING_FREE_PASSWORD',
+  'E2E_FREE_REPORT_ID',
+  'E2E_BILLING_PAID_EMAIL',
+  'E2E_BILLING_PAID_PASSWORD',
+  'E2E_PRO_EMAIL',
+  'E2E_PRO_PASSWORD',
+  'E2E_PRO_REPORT_ID',
+  'E2E_STUDIO_EMAIL',
+  'E2E_STUDIO_PASSWORD',
+  'E2E_SHARE_OWNER_EMAIL',
+  'E2E_SHARE_OWNER_PASSWORD',
+  'E2E_SHARE_REPORT_ID',
+  'E2E_WATCH_EMAIL',
+  'E2E_WATCH_PASSWORD',
+  'E2E_WATCH_PROJECT_ID',
+  'E2E_GATE_MEMBER_RELEASED_ENTRY_ID',
+  'E2E_GATE_MEMBER_BLOCKED_ENTRY_ID',
+])
 
 function safeRunId(value) {
   if (!value || !/^[a-zA-Z0-9._-]+$/.test(value)) {
@@ -80,7 +105,7 @@ export function hydrateReleaseFixtureEnvironment(env) {
     E2E_PRO_EMAIL: fixtures.pro?.email,
     E2E_PRO_PASSWORD: fixtures.pro?.password,
     E2E_PRO_REPORT_ID: fixtures.pro?.reportId,
-    E2E_API_KEY: fixtures.pro?.apiKey,
+    RELEASE_ENV_API_KEY: fixtures.pro?.apiKey,
     E2E_STUDIO_EMAIL: fixtures.studio?.email,
     E2E_STUDIO_PASSWORD: fixtures.studio?.password,
     E2E_SHARE_OWNER_EMAIL: fixtures.share?.email,
@@ -152,12 +177,25 @@ export function releaseStageCommands(stage) {
     ]
   }
   if (stage === 'fixture-binding') {
-    return [['provision-fixtures', 'npx', ['tsx', 'scripts/provision-release-fixtures.ts']]]
+    return [
+      ['release-env-revision', 'node', ['scripts/release-revision-attestation.mjs']],
+      ['provision-fixtures', 'npx', ['tsx', 'scripts/provision-release-fixtures.ts']],
+    ]
   }
   if (JOURNEYS_BY_STAGE[stage]) {
     const grep = (JOURNEYS_BY_STAGE[stage] ?? []).map((id) => `\\[journey:${id}\\]`).join('|')
     const journeyCommand = ['credentialed-journeys', 'npm', ['run', 'test:e2e:release', '--', '--grep', grep]]
-    if (stage === 'registry-cli') return [['registry-package', 'npm', ['run', 'cli:registry-guard']], journeyCommand]
+    if (stage === 'registry-cli') return [
+      ['registry-package', 'node', [
+        'scripts/verify-cli-registry.mjs',
+        '--version',
+        RELEASE_CLI_VERSION,
+        '--tag',
+        'candidate',
+        '--clean-install',
+      ]],
+      journeyCommand,
+    ]
     return [journeyCommand]
   }
   if (stage === 'deployed') return [
@@ -185,7 +223,8 @@ function fileHash(file) {
 }
 
 export function expectedReleaseArtifactLabels(stage) {
-  if (stage === 'fixture-binding') return ['fixture-manifest']
+  if (stage === 'fixture-binding') return ['release-env-revision', 'fixture-manifest']
+  if (stage === 'registry-cli') return ['cli-registry-evidence', 'playwright-report']
   if (JOURNEYS_BY_STAGE[stage]) return ['playwright-report']
   if (stage === 'deployed') return ['deployment-attestation', 'smoke-evidence']
   if (stage === 'production-dogfood') return ['dogfood-evidence', 'smoke-evidence']
@@ -221,18 +260,28 @@ export function buildReceiptContext(stage, env, options = {}) {
   const gitSha = options.gitSha ?? currentGitSha()
   const targetOrigin = stage === 'foundation'
     ? null
-    : cleanOrigin(PRODUCTION_STAGES.has(stage)
-      ? env.RELEASE_SMOKE_URL
-      : env.E2E_BASE_URL || env.RELEASE_SMOKE_URL)
-  const databaseIdentityHash = env.RELEASE_FRESH_DATABASE_URL
+    : cleanOrigin(PRODUCTION_STAGES.has(stage) ? env.PRODUCTION_URL : env.RELEASE_ENV_URL)
+  const databaseIdentityHash = (stage === 'foundation' || RELEASE_ENV_STAGES.has(stage)) && env.RELEASE_FRESH_DATABASE_URL
     ? createHash('sha256').update(canonicalDatabaseIdentity(env.RELEASE_FRESH_DATABASE_URL)).digest('hex')
     : null
-  return { gitSha, targetOrigin, databaseIdentityHash }
+  const apiKey = PRODUCTION_STAGES.has(stage)
+    ? env.PRODUCTION_API_KEY
+    : RELEASE_ENV_STAGES.has(stage) && stage !== 'fixture-binding'
+      ? env.RELEASE_ENV_API_KEY
+      : null
+  const apiKeyIdentityHash = apiKey
+    ? createHash('sha256').update(apiKey).digest('hex')
+    : null
+  return { gitSha, targetOrigin, databaseIdentityHash, apiKeyIdentityHash }
 }
 
 export function runReleaseStage(stage, env = process.env, options = {}) {
   const workingDirectory = options.workingDirectory ?? process.cwd()
-  try { if (stage !== 'fixture-binding' && stage !== 'foundation') env = hydrateReleaseFixtureEnvironment(env) }
+  try {
+    if (RELEASE_ENV_STAGES.has(stage) && stage !== 'fixture-binding') {
+      env = hydrateReleaseFixtureEnvironment(env)
+    }
+  }
   catch (error) {
     const runId = safeRunId(env.RELEASE_RUN_ID)
     const now = (options.now?.() ?? new Date()).toISOString()
@@ -266,13 +315,38 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
       receiptDirectory(env, workingDirectory),
       `${stage}-evidence.json`,
     )
+    const revisionEvidenceFile = path.join(
+      receiptDirectory(env, workingDirectory),
+      `${stage}-revision.json`,
+    )
+    const cliRegistryEvidenceFile = path.join(
+      receiptDirectory(env, workingDirectory),
+      `${stage}-registry.json`,
+    )
+    const targetEnv = RELEASE_ENV_STAGES.has(stage)
+      ? {
+          E2E_BASE_URL: env.RELEASE_ENV_URL,
+          E2E_API_KEY: env.RELEASE_ENV_API_KEY,
+        }
+      : PRODUCTION_STAGES.has(stage)
+        ? {
+            E2E_BASE_URL: env.PRODUCTION_URL,
+            E2E_API_KEY: env.PRODUCTION_API_KEY,
+          }
+        : {}
+    const commandBaseEnv = PRODUCTION_STAGES.has(stage)
+      ? Object.fromEntries(Object.entries(env).filter(([name]) => !RELEASE_FIXTURE_ENV_KEYS.has(name)))
+      : env
     const stageEnv = {
-      ...env,
+      ...commandBaseEnv,
+      ...targetEnv,
       RELEASE_JOURNEY_STAGE: stage,
       RELEASE_EXPECTED_GIT_SHA: context.gitSha,
       RELEASE_SMOKE_EVIDENCE_FILE: evidenceFile,
       RELEASE_DEPLOYMENT_EVIDENCE_FILE: deploymentEvidenceFile,
       RELEASE_DOGFOOD_EVIDENCE_FILE: dogfoodEvidenceFile,
+      RELEASE_REVISION_EVIDENCE_FILE: revisionEvidenceFile,
+      RELEASE_CLI_REGISTRY_EVIDENCE_FILE: cliRegistryEvidenceFile,
     }
     const executor = options.executor ?? ((executable, args, commandEnv) => spawnSync(executable, args, { cwd: workingDirectory, env: commandEnv, stdio: 'inherit' }))
     for (const [label, executable, args] of (options.commands ?? releaseStageCommands(stage))) {
@@ -307,7 +381,21 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
       }
       context.dogfood.runningCommit = evidence.runningCommit
     }
-    if (stage !== 'foundation' && env.RELEASE_FIXTURE_MANIFEST) validateFixtureManifest(env, context)
+    if (RELEASE_ENV_STAGES.has(stage) && env.RELEASE_FIXTURE_MANIFEST) {
+      validateFixtureManifest(env, context)
+    }
+    if (stage === 'fixture-binding') {
+      const revision = JSON.parse(readFileSync(revisionEvidenceFile, 'utf8'))
+      if (
+        revision.schemaVersion !== 1 ||
+        revision.targetOrigin !== context.targetOrigin ||
+        revision.expectedGitSha !== context.gitSha ||
+        revision.runningCommit !== context.gitSha
+      ) {
+        throw new Error('Release environment revision attestation mismatch')
+      }
+      context.releaseEnvironmentRevision = revision.runningCommit
+    }
     if (stage === 'foundation') {
       context.containerImageDigest = options.containerImageDigest ?? execFileSync(
         'docker',
@@ -325,14 +413,20 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
         throw new Error('Deployed smoke revision mismatch')
       }
       const deployment = JSON.parse(readFileSync(deploymentEvidenceFile, 'utf8'))
-      if (deployment.schemaVersion !== 1 || deployment.gitSha !== context.gitSha) {
+      if (deployment.schemaVersion !== 2 || deployment.gitSha !== context.gitSha) {
         throw new Error('Deployment attestation revision mismatch')
       }
       if (deployment.ci?.status !== 'SUCCESS') throw new Error('Candidate CI was not successful')
       const roles = new Map((deployment.services ?? []).map((service) => [service.role, service]))
       for (const role of ['web', 'worker']) {
         const service = roles.get(role)
-        if (!service || service.state !== 'SUCCESS' || service.gitSha !== context.gitSha) {
+        if (
+          !service ||
+          service.state !== 'SUCCESS' ||
+          service.gitSha !== context.gitSha ||
+          !service.transitionedAt ||
+          Date.parse(service.transitionedAt) <= Date.parse(deployment.ci.completedAt)
+        ) {
           throw new Error(`${role} deployment attestation is missing or invalid`)
         }
       }
@@ -343,12 +437,37 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
         services: deployment.services,
       }
     }
+    if (stage === 'registry-cli') {
+      const registry = JSON.parse(readFileSync(cliRegistryEvidenceFile, 'utf8'))
+      if (
+        registry.schemaVersion !== 1 ||
+        registry.packageName !== 'fixflags' ||
+        registry.version !== RELEASE_CLI_VERSION ||
+        registry.tag !== 'candidate' ||
+        registry.installedVersion !== RELEASE_CLI_VERSION ||
+        registry.gitSha !== context.gitSha
+      ) {
+        throw new Error('Candidate CLI registry evidence is incomplete')
+      }
+      context.cli = {
+        packageName: registry.packageName,
+        version: registry.version,
+        tag: registry.tag,
+        installedVersion: registry.installedVersion,
+        integrity: registry.integrity,
+        gitSha: registry.gitSha,
+      }
+    }
     const artifactFiles = []
     if (stage === 'fixture-binding') {
+      artifactFiles.push(['release-env-revision', revisionEvidenceFile])
       artifactFiles.push(['fixture-manifest', path.resolve(env.RELEASE_FIXTURE_MANIFEST)])
     }
     if (JOURNEYS_BY_STAGE[stage]) {
       artifactFiles.push(['playwright-report', playwrightReportPath(env, workingDirectory)])
+    }
+    if (stage === 'registry-cli') {
+      artifactFiles.push(['cli-registry-evidence', cliRegistryEvidenceFile])
     }
     if (['deployed', 'production-dogfood'].includes(stage)) {
       artifactFiles.push(['smoke-evidence', evidenceFile])
@@ -404,8 +523,29 @@ export function validateFinalReceiptObjects(receipts, expectedGitSha) {
     if ((receipt.artifacts ?? []).some((item) => !/^[a-f0-9]{64}$/.test(item.sha256))) {
       throw new Error(`${stage} release receipt contains an invalid artifact hash`)
     }
+    if (
+      (['credentialed-core', 'billing-open', 'billing-closed', 'external', 'registry-cli', 'production-dogfood'].includes(stage)) &&
+      !/^[a-f0-9]{64}$/.test(receipt.apiKeyIdentityHash ?? '')
+    ) {
+      throw new Error(`${stage} release receipt has no valid API key identity`)
+    }
     if (stage === 'foundation' && !/^sha256:[a-f0-9]{64}$/.test(receipt.containerImageDigest ?? '')) {
       throw new Error('foundation release receipt has no valid container image digest')
+    }
+    if (stage === 'fixture-binding' && receipt.releaseEnvironmentRevision !== receipt.gitSha) {
+      throw new Error('fixture-binding release receipt has no exact revision attestation')
+    }
+    if (
+      stage === 'registry-cli' &&
+      (
+        receipt.cli?.packageName !== 'fixflags' ||
+        receipt.cli?.version !== RELEASE_CLI_VERSION ||
+        receipt.cli?.tag !== 'candidate' ||
+        receipt.cli?.installedVersion !== RELEASE_CLI_VERSION ||
+        receipt.cli?.gitSha !== receipt.gitSha
+      )
+    ) {
+      throw new Error('registry-cli release receipt has no exact candidate proof')
     }
     const allowedJourneys = new Set(JOURNEYS_BY_STAGE[stage] ?? [])
     if ((receipt.journeys ?? []).some((journey) => !allowedJourneys.has(journey.id))) {
@@ -428,8 +568,24 @@ export function validateFinalReceiptObjects(receipts, expectedGitSha) {
     .map((receipt) => receipt.targetOrigin)
     .filter(Boolean))
   if (productionOrigins.size !== 1) throw new Error('Production receipts have mixed target origins')
+  if ([...releaseOrigins][0] === [...productionOrigins][0]) {
+    throw new Error('Release environment and production receipts target the same origin')
+  }
   const databaseIdentities = new Set(receipts.map((receipt) => receipt.databaseIdentityHash).filter(Boolean))
   if (databaseIdentities.size !== 1) throw new Error('Release receipts have mixed database identities')
+  const releaseApiKeyIdentities = new Set(receipts
+    .filter((receipt) => RELEASE_ENV_STAGES.has(receipt.stage) && receipt.stage !== 'fixture-binding')
+    .map((receipt) => receipt.apiKeyIdentityHash)
+    .filter(Boolean))
+  if (releaseApiKeyIdentities.size !== 1) throw new Error('Release-environment receipts have mixed API key identities')
+  const productionApiKeyIdentities = new Set(receipts
+    .filter((receipt) => PRODUCTION_STAGES.has(receipt.stage) && receipt.stage !== 'deployed')
+    .map((receipt) => receipt.apiKeyIdentityHash)
+    .filter(Boolean))
+  if (productionApiKeyIdentities.size !== 1) throw new Error('Production receipts have mixed API key identities')
+  if ([...releaseApiKeyIdentities][0] === [...productionApiKeyIdentities][0]) {
+    throw new Error('Release environment and production receipts use the same API key identity')
+  }
   const journeys = new Map(receipts.flatMap((receipt) => receipt.journeys ?? []).map((journey) => [journey.id, journey.status]))
   for (const id of REQUIRED_RELEASE_JOURNEYS) {
     if (journeys.get(id) !== 'PASS') throw new Error(`Missing PASS evidence for release journey: ${id}`)

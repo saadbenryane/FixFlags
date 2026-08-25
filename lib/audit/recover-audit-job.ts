@@ -4,6 +4,8 @@ import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { AUDIT_DEADLINE_MS, STUCK_AUDIT_MINUTES } from '@/lib/audit/pipeline-config'
 import { resolveStuckAuditRecovery, stuckAuditCutoff } from '@/lib/audit/stuck-audit-recovery'
+import { persistImprovementCycle } from '@/lib/audit/finalize'
+import { logger } from '@/lib/logger'
 
 /** Re-enqueue when worker heartbeat is dead and job has waited this long. */
 export const WORKER_DEAD_RECOVERY_SECONDS = 90
@@ -23,6 +25,7 @@ export const WORKER_DOWN_GIVEUP_SECONDS = 180
  * clobbered into FAILED by a poll firing at the exact same moment.
  */
 export const POLL_FORCE_FAIL_GRACE_MS = 15_000
+export const IMPROVEMENT_PROJECTION_RECOVERY_LIMIT = 25
 
 const WORKER_DOWN_MESSAGE =
   'The scanner is temporarily unavailable. Try again in a few minutes.'
@@ -288,6 +291,45 @@ export interface StuckAuditSweepResult {
   requeued: number
   failed: number
   checked: number
+}
+
+export interface ImprovementProjectionRecoveryResult {
+  projected: number
+  failed: number
+  checked: number
+}
+
+/**
+ * Resume bounded durable Product projections that were interrupted after the
+ * Review reached COMPLETED. Projection services and ledger writes are
+ * idempotent, so both immediate runner retry and this scheduler use the same
+ * boundary without fabricating a second lifecycle event.
+ */
+export async function recoverCompletedImprovementProjections(
+  limit = IMPROVEMENT_PROJECTION_RECOVERY_LIMIT
+): Promise<ImprovementProjectionRecoveryResult> {
+  const audits = await prisma.audit.findMany({
+    where: { status: 'COMPLETED', improvementProjectedAt: null },
+    orderBy: { completedAt: 'asc' },
+    take: Math.max(1, Math.min(limit, IMPROVEMENT_PROJECTION_RECOVERY_LIMIT)),
+    select: { id: true, parentId: true },
+  })
+
+  let projected = 0
+  let failed = 0
+  for (const audit of audits) {
+    try {
+      await persistImprovementCycle(audit.id, audit.parentId)
+      projected++
+    } catch (error) {
+      failed++
+      logger.error('Improvement projection recovery failed', {
+        auditId: audit.id,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+  return { projected, failed, checked: audits.length }
 }
 
 /**

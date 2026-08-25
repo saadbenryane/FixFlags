@@ -1,6 +1,14 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { IntegrationsBlock } from '@/components/marketing/landing/IntegrationsBlock'
+import { Footer } from '@/components/layout/footer'
+import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
 import { LandingHowItWorksSection } from '@/components/marketing/landing/LandingHowItWorksSection'
 import { LandingRubricsSection } from '@/components/marketing/landing/LandingRubricsSection'
 import { SampleReportSection } from '@/components/marketing/landing/SampleReportSection'
@@ -18,7 +26,7 @@ beforeAll(() => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
-    }))
+    })),
   )
   vi.stubGlobal(
     'IntersectionObserver',
@@ -29,7 +37,7 @@ beforeAll(() => {
       takeRecords() {
         return []
       }
-    }
+    },
   )
 })
 
@@ -42,12 +50,35 @@ describe('homepage lean sections', () => {
     render(<LandingRubricsSection />)
 
     expect(
-      screen.getByRole('heading', { name: 'See your product through your users’ eyes' })
+      screen.getByRole('heading', {
+        name: 'See your product through your users’ eyes',
+      }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Do people understand what you offer?' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Can people use it without getting stuck?' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Can people find and share it?' })).toBeInTheDocument()
-    expect(screen.getAllByText('Example Flag')).toHaveLength(3)
+    expect(
+      screen.getByRole('heading', {
+        name: 'Do people understand what this is and why it matters?',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
+        name: 'Can people do what they came to do?',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
+        name: 'Can people find it and share it clearly?',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('list', { name: 'Message checks' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('list', { name: 'Experience checks' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('list', { name: 'Reach checks' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Example Flag')).not.toBeInTheDocument()
   })
 
   it('presents How it works as one connected review workflow', () => {
@@ -55,28 +86,72 @@ describe('homepage lean sections', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Check your product. Fix the issues. Check again',
-      })
+        name: 'Find the issues. Fix them. See what improved',
+      }),
     ).toBeInTheDocument()
-    expect(screen.getByText('FixFlags review')).toBeInTheDocument()
     expect(screen.getByRole('list')).toBeInTheDocument()
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
-    expect(screen.getByText('Screenshots and details from the page')).toBeInTheDocument()
-    expect(screen.getByText('A fix to paste into your AI editor')).toBeInTheDocument()
-    expect(screen.getByText('A fresh review shows what improved')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Review the live product' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Fix the most important Flag' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Run an update review' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('FixFlags review')).not.toBeInTheDocument()
   })
 
   it('shows the compact integrations block with MCP and CLI links', () => {
     render(<IntegrationsBlock />)
 
-    expect(screen.getByText((content) => content.includes('Works in the editor you already use'))).toBeInTheDocument()
+    expect(
+      screen.getByText((content) =>
+        content.includes('Start with copy and paste'),
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/run an update review after you publish/i),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Set up MCP' })).toHaveAttribute(
       'href',
-      '/docs/integrations#quick-start'
+      '/docs/integrations#quick-start',
     )
-    expect(screen.getByRole('link', { name: 'CLI docs' })).toHaveAttribute('href', '/docs/cli')
-    expect(screen.getAllByRole('link', { name: /integration guide/i })).toHaveLength(8)
+    expect(screen.getByRole('link', { name: 'CLI docs' })).toHaveAttribute(
+      'href',
+      '/docs/cli',
+    )
+    expect(
+      screen.getAllByRole('link', { name: /integration guide/i }),
+    ).toHaveLength(8)
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
+  })
+
+  it('keeps repeated assurances and sample metrics out of the final CTA and footer', () => {
+    const { container } = render(
+      <>
+        <LandingFinalCtaSection />
+        <Footer />
+      </>,
+    )
+
+    const finalCta = container.querySelector('#final-cta')
+    const footer = container.querySelector('footer')
+    expect(finalCta).not.toBeNull()
+    expect(footer).not.toBeNull()
+    expect(
+      within(finalCta as HTMLElement).queryByText('Evidence from your live site'),
+    ).not.toBeInTheDocument()
+    expect(
+      within(finalCta as HTMLElement).queryByText('3 reviews included free'),
+    ).not.toBeInTheDocument()
+    expect(
+      within(footer as HTMLElement).queryByText('Fix prompt'),
+    ).not.toBeInTheDocument()
+    expect(
+      within(footer as HTMLElement).queryByText('Update review'),
+    ).not.toBeInTheDocument()
   })
 
   it('renders the shared-model Product review story instead of a flattened screenshot', () => {
@@ -90,20 +165,29 @@ describe('homepage lean sections', () => {
     expect(screen.getByRole('tab', { name: 'Agent' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Desktop' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Mobile' })).toBeInTheDocument()
-    expect(screen.getByText(/opening the Product on desktop and mobile/i)).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Page screenshot' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Review my site' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Explore a full report/i })).toHaveAttribute(
-      'href',
-      '/samples',
-    )
-    expect(screen.getByText('199+')).toBeInTheDocument()
     expect(
-      screen.queryByAltText(/Generated FixFlags sample Finish Plan/i)
+      screen.getByText(/opening the Product on desktop and mobile/i),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: 'Page screenshot' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'Review my site' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getAllByRole('link', { name: /Explore a full report/i }),
+    ).toHaveLength(1)
+    expect(
+      screen.getByRole('link', { name: /Explore a full report/i }),
+    ).toHaveAttribute('href', '/samples')
+    expect(screen.queryByText('199+')).not.toBeInTheDocument()
+    expect(screen.queryByText('Flags in this sample')).not.toBeInTheDocument()
+    expect(
+      screen.queryByAltText(/Generated FixFlags sample Finish Plan/i),
     ).not.toBeInTheDocument()
 
     const grid = Array.from(story.querySelectorAll('div')).find((node) =>
-      node.className.includes(WORKSPACE_SPLIT_GRID_CLASS)
+      node.className.includes(WORKSPACE_SPLIT_GRID_CLASS),
     )
     expect(grid).toBeDefined()
   })
@@ -112,18 +196,18 @@ describe('homepage lean sections', () => {
     render(<SampleReportSection />)
 
     const mobileTabs = screen.getByRole('tablist', { name: 'Review panels' })
-    expect(within(mobileTabs).getByRole('tab', { name: 'Preview' })).toHaveAttribute(
-      'aria-selected',
-      'true'
-    )
+    expect(
+      within(mobileTabs).getByRole('tab', { name: 'Preview' }),
+    ).toHaveAttribute('aria-selected', 'true')
 
     fireEvent.click(within(mobileTabs).getByRole('tab', { name: 'Report' }))
 
-    expect(within(mobileTabs).getByRole('tab', { name: 'Report' })).toHaveAttribute(
-      'aria-selected',
-      'true'
-    )
-    expect(screen.queryByRole('tab', { name: 'Desktop' })).not.toBeInTheDocument()
+    expect(
+      within(mobileTabs).getByRole('tab', { name: 'Report' }),
+    ).toHaveAttribute('aria-selected', 'true')
+    expect(
+      screen.queryByRole('tab', { name: 'Desktop' }),
+    ).not.toBeInTheDocument()
   })
 
   it('shows the complete value story without timed motion for reduced-motion users', async () => {
@@ -141,11 +225,16 @@ describe('homepage lean sections', () => {
     render(<SampleReportSection />)
 
     fireEvent.click(
-      within(screen.getByRole('tablist', { name: 'Review panels' })).getByRole('tab', {
-        name: 'Report',
-      })
+      within(screen.getByRole('tablist', { name: 'Review panels' })).getByRole(
+        'tab',
+        {
+          name: 'Report',
+        },
+      ),
     )
-    expect(screen.queryByRole('tab', { name: 'Desktop' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('tab', { name: 'Desktop' }),
+    ).not.toBeInTheDocument()
     expect(window.location.search).not.toMatch(/flag=/)
   })
 
@@ -153,17 +242,26 @@ describe('homepage lean sections', () => {
     render(<SampleReportSection />)
 
     fireEvent.click(
-      within(screen.getByRole('tablist', { name: 'Review panels' })).getByRole('tab', {
-        name: 'Report',
-      })
+      within(screen.getByRole('tablist', { name: 'Review panels' })).getByRole(
+        'tab',
+        {
+          name: 'Report',
+        },
+      ),
     )
     await waitFor(() => {
-      expect(screen.getAllByRole('tab', { name: 'Timeline' })).not.toHaveLength(0)
+      expect(screen.getAllByRole('tab', { name: 'Timeline' })).not.toHaveLength(
+        0,
+      )
     })
     fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0])
 
-    expect(screen.getByRole('slider', { name: 'Scrub through the review path' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('slider', { name: 'Scrub through the review path' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Agent' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Scan history' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Scan history' }),
+    ).not.toBeInTheDocument()
   })
 })

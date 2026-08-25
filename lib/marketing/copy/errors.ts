@@ -11,7 +11,7 @@ export const AUDIT_ERRORS = {
   pollErrorTitle: 'Could not load report',
   pollErrorBody: 'Something went wrong while loading this report. Try again in a moment.',
   timeout:
-    'The scan took longer than expected. This can happen with slow-loading sites. Try again, or try a different page on the site.',
+    'The review took longer than expected. This can happen with slow-loading sites. Try again, or try a different page on the site.',
   generic:
     "We couldn't complete this check. The site may be unreachable or blocking automated visits.",
   scannerUnavailable:
@@ -28,7 +28,7 @@ export const AUDIT_ERRORS = {
   triageDegradedSignedIn:
     'Automated checks are complete. AI summary was unavailable for this run. Deterministic flags and screenshots are shown below.',
   triageDegradedTimeout:
-    'This scan ran out of time before AI summary could finish. Deterministic checks and screenshots are shown below.',
+    'This review ran out of time before the AI summary could finish. Deterministic checks and screenshots are shown below.',
   triageProviderNotConfigured:
     'AI summary is unavailable because no provider key is configured on the scanner. Deterministic checks and fix steps are shown below.',
   partialReport: 'Some optional evidence was unavailable. Unassessed rubrics are left unmeasured rather than inferred.',
@@ -37,8 +37,8 @@ export const AUDIT_ERRORS = {
   urlMalformed: 'Enter a valid URL like https://yoursite.com',
   urlScheme: 'Only http:// and https:// URLs can be checked',
   urlLocalhost: 'FixFlags can only check publicly accessible URLs',
-  scanErrorTitle: 'Something went wrong during scanning',
-  scanErrorBody: 'The scan encountered an unexpected error. Try again.',
+  scanErrorTitle: 'Something went wrong during the review',
+  scanErrorBody: 'The review encountered an unexpected error. Try again.',
 } as const
 
 export const SYSTEM_COPY = {
@@ -56,7 +56,7 @@ export const SYSTEM_COPY = {
     criticalTitle: 'Something went wrong',
     criticalBody: 'A critical error occurred. Try again or refresh the page.',
     billingPortal: 'Could not open billing. Try again.',
-    retryAudit: 'Could not retry the audit. Try again.',
+    retryAudit: 'Could not retry the review. Try again.',
     root: {
       title: 'This page could not be loaded',
       body: 'Your data was not changed. Try again or return to the dashboard.',
@@ -101,13 +101,13 @@ export const SYSTEM_COPY = {
 } as const
 
 export const AUDIT_PROGRESS = {
-  inProgress: 'Scanning your site...',
-  submitLoading: 'Scanning…',
-  bannerScanning: 'Scanning',
+  inProgress: 'Reviewing your site...',
+  submitLoading: 'Reviewing…',
+  bannerScanning: 'Reviewing',
   workerQueuedWarningDev:
     'Report is still preparing. In local dev, run npm run dev:all so the worker processes jobs.',
   workerQueuedWarningProd:
-    'Scan workers are restarting. Your report will continue automatically.',
+    'Review workers are restarting. Your report will continue automatically.',
   workerBacklogWarningProd:
     'Still preparing your report. It will continue shortly.',
   stages: [
@@ -127,9 +127,9 @@ export const AUDIT_PROGRESS = {
   },
   formatStageStep: (current: number, total: number, label: string) =>
     `Step ${current} of ${total} · ${label}`,
-  scanningBadge: (label: string) => `Scanning · ${label}`,
-  ariaScanning: 'Scanning',
-  ariaScanningPercent: (percent: number) => `Scanning, ${percent} percent`,
+  scanningBadge: (label: string) => `Reviewing · ${label}`,
+  ariaScanning: 'Reviewing',
+  ariaScanningPercent: (percent: number) => `Reviewing, ${percent} percent`,
   ariaScore: (score: number) => `Score ${score} percent`,
   ariaScoreUnavailable: 'Score unavailable',
   scoreNa: 'N/A',
@@ -137,9 +137,9 @@ export const AUDIT_PROGRESS = {
 
 export function formatQueueWaitHint(seconds: number): string {
   if (seconds >= 60) {
-    return `About ${Math.ceil(seconds / 60)} min before the scan starts.`
+    return `About ${Math.ceil(seconds / 60)} min before the review starts.`
   }
-  return `About ${Math.max(1, Math.round(seconds))}s before the scan starts.`
+  return `About ${Math.max(1, Math.round(seconds))}s before the review starts.`
 }
 
 export function formatQueuePosition(position: number): string {

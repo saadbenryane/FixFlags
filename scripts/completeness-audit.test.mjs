@@ -16,14 +16,54 @@ test('collectMcpTools extracts registered names without prose references', () =>
   assert.deepEqual(collectMcpTools("server.tool(\n 'ff_one', x)\n// ff_fake\nserver.tool('generate-two', y)"), ['ff_one', 'generate-two'])
 })
 
-test('Report pane composition guard follows composition rather than source declaration order', () => {
+test('Report pane composition guard follows resolved component structure', () => {
   const source = `
-    const belowFrame = (<><ReportPolishPass /><ReportContextDisclosure /></>)
-    const livingReportPanel = (<ReportPane beforeExplorer={frameExtras} explorer={flagsSection} afterFrame={belowFrame} />)
-    return <ReportWorkspaceSplitShell reportHeader={<ReportOutcomeBar model={workspace} />} reportPanel={livingReportPanel} />
+    const flagsSection = condition
+      ? <section className="whatever" id="report-flags"><LiveReportExplorer /></section>
+      : <section id="report-flags" />
+    const belowFrame = (
+      <>
+        <ReportFinishPlan className="mt-3" />
+        <ReportContextDisclosure sectionIds={ids} />
+      </>
+    )
+    const livingReportPanel = (
+      <ReportPane
+        afterFrame={belowFrame}
+        explorer={flagsSection}
+        beforeExplorer={frameExtras}
+      />
+    )
+    return (
+      <ReportWorkspaceSplitShell
+        reportPanel={livingReportPanel}
+        reportHeader={<ReportOutcomeBar progress={progress} model={workspace} />}
+      />
+    )
   `
   assert.equal(reportPaneCompositionIsCanonical(source), true)
-  assert.equal(reportPaneCompositionIsCanonical(source.replace('<ReportPolishPass />', '')), false)
+  assert.equal(reportPaneCompositionIsCanonical(source.replace('<ReportFinishPlan className="mt-3" />', '')), false)
+  assert.equal(
+    reportPaneCompositionIsCanonical(
+      source.replace(
+        '<ReportFinishPlan className="mt-3" />\n        <ReportContextDisclosure sectionIds={ids} />',
+        '<ReportContextDisclosure sectionIds={ids} />\n        <ReportFinishPlan className="mt-3" />',
+      ),
+    ),
+    false,
+  )
+  assert.equal(reportPaneCompositionIsCanonical(source.replaceAll('id="report-flags"', 'id="other"')), false)
+  assert.equal(reportPaneCompositionIsCanonical(source.replace('model={workspace}', 'model={other}')), false)
+})
+
+test('Report pane composition guard rejects malformed TSX instead of matching fragments', () => {
+  assert.equal(
+    reportPaneCompositionIsCanonical(`
+      <ReportWorkspaceSplitShell reportHeader={<ReportOutcomeBar model={workspace} />}
+      const text = '<ReportFinishPlan /><ReportContextDisclosure />'
+    `),
+    false,
+  )
 })
 
 test('repository sample bundle has complete distinct hashed captures', () => {

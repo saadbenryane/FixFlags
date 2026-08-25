@@ -1,28 +1,27 @@
-import Link from 'next/link'
 import { SHIMMER_KEYFRAMES } from '@/components/ui/skeleton'
+import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
 
 /**
- * Report header: name and a way back to the reports list.
- * Completeness sits with the category tabs, not as a Score hero.
+ * Compact Review header. Product identity and owner actions intentionally live
+ * elsewhere; this is the single Score, Review history, and progress surface.
  */
 export function ReportOutcomeBar({
   model,
   scanProgress,
   stageDetail,
-  actions,
   className,
 }: {
   model: ReportWorkspaceModel
   scanProgress?: number
   stageDetail?: string | null
-  actions?: React.ReactNode
   className?: string
 }) {
   const loading = model.context.loading
-  const name = model.identity.displayHost || REPORT_COPY.workspace.identityFallback
+  const score = model.summary.score
+  const history = model.summary.history
   const progress = typeof scanProgress === 'number'
     ? Math.min(100, Math.max(0, Math.round(scanProgress)))
     : null
@@ -30,24 +29,31 @@ export function ReportOutcomeBar({
   return (
     <section
       id="report-status"
-      aria-label={name}
+      aria-label={REPORT_COPY.workspace.summaryLabel}
       className={cn(
         'w-full shrink-0 scroll-mt-[var(--report-chrome-offset)]',
         className,
       )}
     >
-      <div className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 py-1">
-        <Link
-          href="/dashboard"
-          className="text-xs font-medium text-muted-foreground hover:text-foreground"
+      <div className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-4 gap-y-1 py-1">
+        <p
+          className="shrink-0 font-mono text-sm font-semibold tabular-nums text-foreground"
+          aria-label={loading ? 'Score pending' : score == null ? 'Score unavailable' : `Score ${Math.round(score)}`}
         >
-          {REPORT_COPY.workspace.dashboard.title}
-        </Link>
-        <p className="min-w-0 truncate text-sm font-semibold text-foreground">
-          {name}
+          <span className="text-muted-foreground">{REPORT_COPY.workspace.scoreLabel}</span>{' '}
+          {loading
+            ? REPORT_COPY.workspace.scorePending
+            : score == null
+              ? REPORT_COPY.workspace.scoreUnavailable
+              : Math.round(score)}
         </p>
-        {actions ? (
-          <div className="ml-auto flex min-w-0 flex-wrap items-center gap-2">{actions}</div>
+        {history ? (
+          <ScoreHistoryChart
+            history={history}
+            currentAuditId={model.identity.auditId}
+            isLoading={loading}
+            className="min-w-0 flex-1"
+          />
         ) : null}
       </div>
 

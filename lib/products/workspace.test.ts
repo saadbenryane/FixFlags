@@ -27,6 +27,7 @@ vi.mock('@/lib/db', () => ({
 import {
   loadProductOverview,
   loadProductWorkspace,
+  loadVerificationReceiptsForReview,
   parseProductHistoryCursor,
   PRODUCT_HISTORY_PAGE_SIZE,
 } from './workspace'
@@ -121,6 +122,54 @@ describe('parseProductHistoryCursor', () => {
     ).toBeNull()
     expect(parseProductHistoryCursor(`${now.toISOString()}|review-1`)).toBeNull()
     expect(parseProductHistoryCursor(undefined)).toBeNull()
+  })
+})
+
+describe('loadVerificationReceiptsForReview', () => {
+  it('loads owner-bounded receipts in stable order with their source Flag', async () => {
+    mocks.attemptFindMany.mockResolvedValue([
+      attempt({
+        verificationAuditId: 'review-2',
+        outcome: 'IMPROVED',
+        verificationReason: 'The independent check passed.',
+      }),
+    ])
+    mocks.occurrenceFindMany.mockResolvedValue([
+      {
+        improvementId: 'improvement-1',
+        auditId: 'review-1',
+        flagId: 'flag-1',
+      },
+    ])
+
+    const receipts = await loadVerificationReceiptsForReview('review-2', 'user-1')
+
+    expect(mocks.attemptFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          verificationAuditId: 'review-2',
+          improvement: { project: { userId: 'user-1' } },
+        },
+      }),
+    )
+    expect(receipts).toEqual([
+      expect.objectContaining({
+        id: 'attempt-1',
+        sourceReviewId: 'review-1',
+        sourceFlagId: 'flag-1',
+        verificationReviewId: 'review-2',
+        outcome: 'IMPROVED',
+      }),
+    ])
+  })
+
+  it('does not query occurrences when the Review has no receipts', async () => {
+    mocks.attemptFindMany.mockResolvedValue([])
+
+    await expect(
+      loadVerificationReceiptsForReview('review-2', 'user-1'),
+    ).resolves.toEqual([])
+    expect(mocks.occurrenceFindMany).not.toHaveBeenCalled()
   })
 })
 

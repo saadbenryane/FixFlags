@@ -225,7 +225,7 @@ export const BILLING_ACTION_COPY = {
 export const UPSELLS = {
   anon: {
     headline: "Save this report and run more reviews",
-    body: "Create a free account for fix prompts, update reviews after fixes, and 3 product reviews (lifetime). Your report saves to your history.",
+    body: "Create a free account to save this report and unlock its fix prompts. Free includes three lifetime product-review credits shared by new URLs and update reviews.",
     primaryCta: "Create free account",
     secondaryCta: "See paid plans",
   },
@@ -250,7 +250,7 @@ export const UPGRADE_MOMENTS = {
   compare_improved: {
     headline: (scoreDelta: number) => {
       void scoreDelta;
-      return "Fixes verified";
+      return "Update review complete";
     },
     body: "Keep the loop in your editor with MCP and more product reviews each month.",
     cta: proUpgradeCta("Start Pro"),

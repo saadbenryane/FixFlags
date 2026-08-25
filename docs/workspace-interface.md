@@ -130,9 +130,15 @@ Below-report context such as technology and Product Contract does not compete wi
 
 ## Update review
 
-- **Update review** is a primary header action on completed reports (owner).
-- **Compare** is the Pro payoff: before/after proof after update review; diff strip (cleared / remaining / new) on child reports.
+- **Update review** appears once in the completed owner report’s canonical action section, never in the compact Score/history header.
+- Anonymous, shared, non-owner, and static sample workspaces never receive an actionable update-review control.
+- **Compare** is the Pro payoff after an update review; its raw diff says no longer observed, remaining, new, or regressed.
+- Verification receipts separately report `IMPROVED`, `UNCHANGED`, `REGRESSED`, or `INCONCLUSIVE`.
+- Copying a prompt records a handoff and never declares verification.
+- Only `IMPROVED` may write verified Product Memory; partial or degraded reviews never do.
 - Customer term: **Update review** (not re-check). Internal route `/re-check` may remain until API migration.
+- Every signed-in manual update review consumes exactly one product-review credit.
+- Watch-triggered reviews are the only non-manual path that skips product-review usage.
 
 ---
 
@@ -166,13 +172,14 @@ Full parity. No degraded subset.
 
 **Primary switch:** one tab bar for the whole review — Agent, Preview/Timeline, Report, and Canvas when it is available.
 The same bar and the same Product pane serve a running scan and a completed report, so nothing about the mobile shell changes at completion.
-Active scans default to Agent without forcing a switch when the report completes.
+Active scans default to Agent on mobile.
+When the completed server report replaces the active review, Report becomes the default on mobile and desktop.
 Which surface the Product column shows is the same `view` state the desktop toggle sets, so the two never diverge.
 
 **Playback on small screens:** authenticated Timeline uses the adapted inline playback layout.
 A full-screen takeover is a later enhancement, not an unresolved requirement for this workspace.
 
-**Patterns (reference, not clone):** device toggle in the docked transport; live preview stays central; 44px targets; “Open on phone” / share preview link for testing captured URL on device.
+**Patterns (reference, not clone):** device toggle in the Product header; live preview stays central; 44px targets; “Open on phone” / share preview link for testing captured URL on device.
 
 ---
 
@@ -184,7 +191,7 @@ Wire from [lib/marketing/copy/terminology.ts](../lib/marketing/copy/terminology.
 |-------|----------------|
 | Product review | Standard full pass |
 | Deep review | Journey + funnel + path mode |
-| Update review | Re-run on same URL (header CTA) |
+| Update review | Fresh owner-triggered review on the same URL (report action section) |
 | Funnel | Report section |
 | Path | Playback unit |
 | Fix list | Ranked work queue |

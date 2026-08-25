@@ -75,12 +75,12 @@ function receiptFor(report, improvementId, expectedOutcome) {
 }
 
 async function main() {
-  const origin = new URL(required('RELEASE_SMOKE_URL')).origin
+  const origin = new URL(required('PRODUCTION_URL')).origin
   if (!['fixflags.com', 'www.fixflags.com'].includes(new URL(origin).hostname)) {
     throw new Error('Production dogfood must target the canonical production origin')
   }
   const endpoint = `${origin}/api/mcp`
-  const apiKey = required('E2E_API_KEY')
+  const apiKey = required('PRODUCTION_API_KEY')
   await rpc(endpoint, apiKey, {
     jsonrpc: '2.0', id: 1, method: 'initialize',
     params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'fixflags-release-dogfood', version: '1' } },

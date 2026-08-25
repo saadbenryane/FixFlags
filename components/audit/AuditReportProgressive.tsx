@@ -33,7 +33,7 @@ import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
-import { ReportPolishPass } from '@/components/report/ReportPolishPass'
+import { ReportFinishPlan } from '@/components/report/ReportFinishPlan'
 import { cn } from '@/lib/utils'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import type { AgentMessage } from '@/lib/audit/agent-message'
@@ -253,6 +253,7 @@ export function AuditReportProgressive({
       canChat: isOwnerAccess && Boolean(auditId),
       canUseCanvas: false,
       canShare: false,
+      canExport: false,
       canRecheck: false,
       canGiveFeedback: false,
       demonstratedFlagId: null,
@@ -315,7 +316,7 @@ export function AuditReportProgressive({
           </section>
         }
         afterFrame={
-          <ReportPolishPass
+          <ReportFinishPlan
             flagCount={flagCount}
             prompt={polishPassPrompt}
             loading={isLoading && flagCount === 0}
@@ -481,7 +482,7 @@ export function AuditReportProgressive({
                     }
                     afterFrame={
                       <>
-                        <ReportPolishPass
+                        <ReportFinishPlan
                           flagCount={flagCount}
                           prompt={polishPassPrompt}
                           loading={false}

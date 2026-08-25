@@ -58,7 +58,7 @@ const checks = [
     label: 'Cloud release smoke',
     command: 'npm run smoke:release',
     purpose: 'checks deployed service endpoints, AI provider, browser, and route boundary',
-    skipIfEnvMissing: ['RELEASE_SMOKE_URL'],
+    skipIfEnvMissing: ['PRODUCTION_URL'],
   },
   {
     id: 'release-verify',

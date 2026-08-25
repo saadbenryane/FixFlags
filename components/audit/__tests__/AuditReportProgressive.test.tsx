@@ -129,8 +129,8 @@ describe('AuditReportProgressive', () => {
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
     // The hold frame carries the same three rows as the completed report:
     // outcome bar, fix explorer, and the collapsed review context.
-    expect(screen.getByRole('region', { name: 'example.com' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: REPORT_COPY.workspace.dashboard.title })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: REPORT_COPY.workspace.summaryLabel })).toBeInTheDocument()
+    expect(screen.getByLabelText('Score 82')).toBeInTheDocument()
     expect(screen.getByText(REPORT_COPY.reviewContext.title)).toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: 'Report sections' })).not.toBeInTheDocument()
   })
@@ -316,8 +316,10 @@ describe('AuditReportProgressive', () => {
 
     expect(screen.getAllByRole('tab', { name: 'Agent' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('tab', { name: 'Report' }).length).toBeGreaterThan(0)
-    expect(screen.queryAllByRole('tab', { name: 'Timeline' })).toHaveLength(0)
+    expect(screen.getAllByRole('tab', { name: 'Timeline' }).length).toBeGreaterThan(0)
     expect(screen.queryByRole('slider')).not.toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
+    expect(screen.getByRole('slider')).toBeInTheDocument()
   })
 
   it('keeps a live marketing-sample envelope read-only with no sign-in claim action', () => {

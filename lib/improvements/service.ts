@@ -9,13 +9,21 @@ import { buildUnifiedPlanBundle } from '@/lib/audit/load-finish-plan-flags'
 import { flagFingerprint } from '@/lib/audit/flag-identity'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import {
+  appendIntentionalNote,
+  appendKnownRisk,
   appendVerifiedLearning,
+  mergeContractIntoProductIntelligence,
   productIntelligenceFromContract,
 } from '@/lib/audit/product-intelligence'
-import { mutateProjectIntelligence } from '@/lib/audit/ensure-product-project'
-import { synthesizeProductSignals } from '@/lib/signals/judgment'
+import {
+  ensureProductProject,
+  mutateProjectIntelligence,
+} from '@/lib/audit/ensure-product-project'
 import { assessVerificationCoverage } from '@/lib/improvements/verification-coverage'
-import type { ImprovementRejectionReason } from '@/lib/improvements/rejection-reasons'
+import {
+  normalizeImprovementRejectionReason,
+  type ImprovementRejectionReason,
+} from '@/lib/improvements/rejection-reasons'
 import { appendImprovementCycleEvent } from '@/lib/improvements/cycle-ledger'
 
 type ImprovementFlag = {
@@ -193,6 +201,14 @@ export async function createImprovementAttempt(input: {
   if (!improvement) throw new Error('Improvement not found for Product')
 
   return prisma.$transaction(async (tx) => {
+    // Serialize duplicate Ready-to-verify clicks for the same Improvement and
+    // source Review. The open-attempt lookup and create must be one boundary,
+    // otherwise concurrent web/MCP/CLI requests can both observe no attempt.
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(
+        hashtextextended(${`fixflags:improvement-attempt:${improvement.id}:${input.sourceAuditId}`}, 0)
+      )
+    `
     const accepted = await tx.improvement.updateMany({
       where: { id: improvement.id, acceptedAt: null },
       data: { acceptedAt: new Date(), acceptedByChannel: input.builder },
@@ -266,6 +282,7 @@ export async function recordFlagImprovementAttempt(input: {
   rejectionNote?: string
   rejectionRevisitAt?: Date
   contextCorrection?: Prisma.InputJsonValue
+  rejectionStatus?: 'REJECTED' | 'SUPERSEDED'
 }) {
   const flag = await prisma.flag.findFirst({
     where: { id: input.flagId, audit: { userId: input.userId } },
@@ -332,7 +349,7 @@ export async function recordFlagImprovementAttempt(input: {
       await tx.improvement.update({
         where: { id: improvementId },
         data: {
-          status: 'REJECTED',
+          status: input.rejectionStatus ?? 'REJECTED',
           rejectionReason: input.rejectionReason,
           rejectionNote: input.rejectionNote?.trim() || null,
           rejectedAt: new Date(),
@@ -372,7 +389,7 @@ export async function recordFlagImprovementAttempt(input: {
       improvementId,
       occurrenceId: flag.improvementOccurrence?.id,
       sourceAuditId: flag.audit.id,
-      idempotencyKey: `handoff-copied:${flag.id}:${input.builder}`,
+      idempotencyKey: `handoff-copied:${flag.id}`,
       type: 'HANDOFF_COPIED',
       transport: input.builder,
       client: input.client,
@@ -448,85 +465,87 @@ export async function recordFlagImprovementAttempt(input: {
   }
 }
 
-export async function loadProductImprovementWorkspace(projectId: string, userId: string) {
-  const product = await prisma.project.findFirst({
-    where: { id: projectId, userId },
+export async function recordOwnerFlagFeedbackDecision(input: {
+  flagId: string
+  userId: string
+  reason: string
+  note?: string
+}) {
+  const flag = await prisma.flag.findFirst({
+    where: { id: input.flagId, audit: { userId: input.userId } },
     select: {
       id: true,
-      name: true,
-      url: true,
-      productIntelligence: true,
-      watchInterval: true,
-      audits: {
-        where: { status: 'COMPLETED' },
-        orderBy: { completedAt: 'desc' },
-        take: 1,
-        select: { id: true, completedAt: true },
-      },
-      improvements: {
-        orderBy: [{ priority: 'desc' }, { updatedAt: 'desc' }],
-        include: {
-          occurrences: {
-            orderBy: { createdAt: 'desc' },
-            take: 3,
-            include: {
-              flag: {
-                select: {
-                  id: true,
-                  problem: true,
-                  evidence: true,
-                  whyItMatters: true,
-                  rubric: true,
-                  severity: true,
-                  pageUrl: true,
-                  status: true,
-                },
-              },
-              audit: { select: { id: true, completedAt: true } },
-            },
-          },
-          attempts: {
-            orderBy: { createdAt: 'desc' },
-            take: 5,
-          },
-        },
-      },
-      signals: {
-        where: { occurredAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
-        orderBy: { occurredAt: 'desc' },
-        take: 500,
+      problem: true,
+      audit: {
         select: {
-          kind: true,
-          name: true,
-          route: true,
-          sessionHash: true,
-          numericValue: true,
-          release: { select: { externalId: true } },
+          id: true,
+          url: true,
+          projectId: true,
+          productContract: true,
         },
       },
     },
   })
-  if (!product) return null
+  if (!flag) throw new Error('Flag is not attached to an owned Product')
 
-  const actionable = product.improvements.filter(
-    (improvement) =>
-      improvement.status !== 'REJECTED' && improvement.status !== 'SUPERSEDED'
-  )
-  return {
-    product: {
-      id: product.id,
-      name: product.name,
-      url: product.url,
-      memory: product.productIntelligence,
-      watching: product.watchInterval !== null,
-      latestReview: product.audits[0] ?? null,
-    },
-    attention: actionable
-      .filter((improvement) => improvement.status !== 'VERIFIED')
-      .slice(0, 3),
-    history: product.improvements,
-    signalContext: synthesizeProductSignals(product.signals),
+  let projectId = flag.audit.projectId
+  if (!projectId) {
+    const project = await ensureProductProject(input.userId, flag.audit.url)
+    projectId = project.id
+    await prisma.audit.update({
+      where: { id: flag.audit.id },
+      data: { projectId },
+    })
   }
+
+  const note = input.note?.trim()
+  const result = input.reason === 'already_fixed'
+    ? await recordFlagImprovementAttempt({
+        flagId: input.flagId,
+        userId: input.userId,
+        builder: 'user-decision',
+        actor: input.userId,
+        action: 'READY_TO_VERIFY',
+        changeSummary: note || 'The owner reports this change is ready to verify.',
+      })
+    : await recordFlagImprovementAttempt({
+        flagId: input.flagId,
+        userId: input.userId,
+        builder: 'user-decision',
+        actor: input.userId,
+        action: 'REJECT',
+        rejectionReason:
+          normalizeImprovementRejectionReason(input.reason) ?? 'WEAK_RECOMMENDATION',
+        rejectionNote: note,
+        rejectionStatus: input.reason === 'duplicate' ? 'SUPERSEDED' : 'REJECTED',
+      })
+
+  await prisma.flag.update({
+    where: { id: input.flagId },
+    data: { status: 'IGNORED' },
+  })
+
+  if (input.reason === 'intentional' || input.reason === 'low_priority') {
+    const contract = parseProductContract(flag.audit.productContract)
+    const fallback = contract
+      ? mergeContractIntoProductIntelligence(null, contract)
+      : productIntelligenceFromContract({
+          purpose: 'Help visitors get value from this product',
+          firstValueJourney: 'Complete the primary journey',
+          criticalOutcomes: ['Primary outcomes work'],
+          inferredAt: new Date().toISOString(),
+          source: 'heuristic',
+        })
+    const decisionNote = note ? `${flag.problem} - ${note}` : flag.problem
+    await mutateProjectIntelligence(projectId, (current) => {
+      const intelligence = current ?? fallback
+      return input.reason === 'low_priority'
+        ? appendKnownRisk(intelligence, decisionNote)
+        : appendIntentionalNote(intelligence, decisionNote)
+    })
+  }
+
+  return result
 }
 
 /** Records the exact top recommendations delivered in an owned Product workspace. */

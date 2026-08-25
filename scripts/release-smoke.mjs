@@ -3,11 +3,24 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
-const baseUrl = process.env.RELEASE_SMOKE_URL?.replace(/\/$/, '')
-if (!baseUrl) throw new Error('RELEASE_SMOKE_URL is required; deployed release verification cannot be skipped')
+const productionUrl = process.env.PRODUCTION_URL?.trim()
+if (!productionUrl) throw new Error('PRODUCTION_URL is required; deployed release verification cannot be skipped')
+const target = new URL(productionUrl)
+if (
+  target.protocol !== 'https:' ||
+  !['fixflags.com', 'www.fixflags.com'].includes(target.hostname) ||
+  target.username ||
+  target.password ||
+  target.search ||
+  target.hash ||
+  target.pathname !== '/'
+) {
+  throw new Error('PRODUCTION_URL must be the clean canonical production origin')
+}
+const baseUrl = target.origin
 const expectedCommit = process.env.RELEASE_EXPECTED_GIT_SHA?.trim()
-if (!expectedCommit) {
-  throw new Error('RELEASE_EXPECTED_GIT_SHA is required; deployed smoke must attest the candidate revision')
+if (!/^[a-f0-9]{40}$/.test(expectedCommit ?? '')) {
+  throw new Error('RELEASE_EXPECTED_GIT_SHA must be the full candidate revision')
 }
 
 async function probe(path, label) {
@@ -26,12 +39,12 @@ async function probe(path, label) {
 }
 
 const health = await probe('/api/health', 'deployed revision')
-if (typeof health?.commit !== 'string' || health.commit.length < 7) {
-  throw new Error('deployed revision failed: /api/health returned no commit')
+if (typeof health?.commit !== 'string' || !/^[a-f0-9]{40}$/.test(health.commit)) {
+  throw new Error('deployed revision failed: /api/health returned no full Git SHA')
 }
-if (!expectedCommit.startsWith(health.commit) && !health.commit.startsWith(expectedCommit)) {
+if (health.commit !== expectedCommit) {
   throw new Error(
-    `deployed revision failed: running ${health.commit} does not match candidate ${expectedCommit.slice(0, 7)}`,
+    `deployed revision failed: running ${health.commit} does not exactly match candidate ${expectedCommit}`,
   )
 }
 console.log(`PASS candidate revision ${health.commit}`)

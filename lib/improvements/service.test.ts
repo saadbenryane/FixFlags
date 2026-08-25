@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   auditFindUnique: vi.fn(),
   flagFindMany: vi.fn(),
   flagFindFirst: vi.fn(),
+  flagUpdate: vi.fn(),
+  auditUpdate: vi.fn(),
   improvementFindFirst: vi.fn(),
   improvementFindMany: vi.fn(),
   improvementUpsert: vi.fn(),
@@ -18,15 +20,24 @@ const mocks = vi.hoisted(() => ({
   cycleEventUpsert: vi.fn(),
   projectFindFirst: vi.fn(),
   transaction: vi.fn(),
+  executeRaw: vi.fn(),
   buildUnifiedPlanBundle: vi.fn(),
   mutateProjectIntelligence: vi.fn(),
   appendVerifiedLearning: vi.fn(),
+  ensureProductProject: vi.fn(),
+  appendIntentionalNote: vi.fn(),
+  appendKnownRisk: vi.fn(),
+  mergeContractIntoProductIntelligence: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    audit: { findUnique: mocks.auditFindUnique },
-    flag: { findMany: mocks.flagFindMany, findFirst: mocks.flagFindFirst },
+    audit: { findUnique: mocks.auditFindUnique, update: mocks.auditUpdate },
+    flag: {
+      findMany: mocks.flagFindMany,
+      findFirst: mocks.flagFindFirst,
+      update: mocks.flagUpdate,
+    },
     improvement: {
       findFirst: mocks.improvementFindFirst,
       findMany: mocks.improvementFindMany,
@@ -54,6 +65,7 @@ vi.mock('@/lib/audit/load-finish-plan-flags', () => ({
 }))
 
 vi.mock('@/lib/audit/ensure-product-project', () => ({
+  ensureProductProject: mocks.ensureProductProject,
   mutateProjectIntelligence: mocks.mutateProjectIntelligence,
 }))
 
@@ -66,6 +78,9 @@ vi.mock('@/lib/audit/product-intelligence', () => ({
     updatedAt: '2026-08-13T00:00:00.000Z',
   })),
   appendVerifiedLearning: mocks.appendVerifiedLearning,
+  appendIntentionalNote: mocks.appendIntentionalNote,
+  appendKnownRisk: mocks.appendKnownRisk,
+  mergeContractIntoProductIntelligence: mocks.mergeContractIntoProductIntelligence,
 }))
 
 import {
@@ -73,6 +88,7 @@ import {
   improvementFingerprint,
   materializeAttentionForAudit,
   recordFlagImprovementAttempt,
+  recordOwnerFlagFeedbackDecision,
   recordRecommendedImprovements,
   reconcileImprovementVerification,
 } from './service'
@@ -117,11 +133,13 @@ beforeEach(() => {
         improvementOccurrence: { upsert: mocks.occurrenceUpsert },
         improvementCycle: { upsert: mocks.cycleUpsert },
         improvementCycleEvent: { upsert: mocks.cycleEventUpsert },
+        $executeRaw: mocks.executeRaw,
       })
     }
     return Promise.all(input as Promise<unknown>[])
   })
   mocks.improvementUpdate.mockResolvedValue({})
+  mocks.executeRaw.mockResolvedValue(1)
   mocks.improvementUpdateMany.mockResolvedValue({ count: 1 })
   mocks.attemptUpdate.mockResolvedValue({})
   mocks.attemptFindFirst.mockResolvedValue(null)
@@ -135,6 +153,12 @@ beforeEach(() => {
   mocks.mutateProjectIntelligence.mockImplementation(async (_projectId, mutation) =>
     mutation(null)
   )
+  mocks.flagUpdate.mockResolvedValue({})
+  mocks.auditUpdate.mockResolvedValue({})
+  mocks.ensureProductProject.mockResolvedValue({ id: 'product-1' })
+  mocks.appendIntentionalNote.mockImplementation((memory) => memory)
+  mocks.appendKnownRisk.mockImplementation((memory) => memory)
+  mocks.mergeContractIntoProductIntelligence.mockImplementation((memory) => memory)
 })
 
 describe('improvementFingerprint', () => {
@@ -248,6 +272,7 @@ describe('createImprovementAttempt', () => {
       where: { id: 'improvement-1', acceptedAt: null },
       data: { acceptedAt: expect.any(Date), acceptedByChannel: 'Codex' },
     })
+    expect(mocks.executeRaw).toHaveBeenCalledTimes(1)
   })
 
   it('updates the one open attempt for the same Improvement and source Review', async () => {
@@ -325,7 +350,10 @@ describe('recordFlagImprovementAttempt', () => {
     expect(mocks.improvementUpdateMany).not.toHaveBeenCalled()
     expect(mocks.attemptCreate).not.toHaveBeenCalled()
     expect(mocks.cycleEventUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({ type: 'HANDOFF_COPIED' }),
+      create: expect.objectContaining({
+        type: 'HANDOFF_COPIED',
+        idempotencyKey: 'handoff-copied:flag-1',
+      }),
     }))
   })
 
@@ -364,6 +392,75 @@ describe('recordFlagImprovementAttempt', () => {
         rejectionReason: 'TOO_COSTLY',
         rejectionNote: 'Needs a larger migration',
       }),
+    }))
+  })
+})
+
+describe('recordOwnerFlagFeedbackDecision', () => {
+  const ownerDecisionFlag = {
+    id: 'flag-1',
+    problem: flag.problem,
+    audit: {
+      id: 'review-1',
+      url: 'https://example.com',
+      projectId: 'product-1',
+      productContract: null,
+    },
+  }
+  const ownedAttemptFlag = {
+    ...flag,
+    improvementOccurrence: { id: 'occurrence-1', improvementId: 'improvement-1' },
+    audit: {
+      id: 'review-1',
+      projectId: 'product-1',
+      productContract: null,
+    },
+  }
+
+  it('turns already-fixed owner feedback into one real ready-to-verify attempt', async () => {
+    mocks.flagFindFirst
+      .mockResolvedValueOnce(ownerDecisionFlag)
+      .mockResolvedValueOnce(ownedAttemptFlag)
+    mocks.improvementFindFirst.mockResolvedValue({ id: 'improvement-1' })
+    mocks.attemptCreate.mockResolvedValue({ id: 'attempt-1' })
+
+    const result = await recordOwnerFlagFeedbackDecision({
+      flagId: 'flag-1',
+      userId: 'user-1',
+      reason: 'already_fixed',
+      note: 'Deployed the corrected action',
+    })
+
+    expect(result).toMatchObject({
+      action: 'READY_TO_VERIFY',
+      attemptId: 'attempt-1',
+    })
+    expect(mocks.attemptCreate).toHaveBeenCalledTimes(1)
+    expect(mocks.cycleEventUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ type: 'ATTEMPTED' }),
+    }))
+    expect(mocks.flagUpdate).toHaveBeenCalledWith({
+      where: { id: 'flag-1' },
+      data: { status: 'IGNORED' },
+    })
+  })
+
+  it('routes a duplicate dismissal through the append-only rejection ledger', async () => {
+    mocks.flagFindFirst
+      .mockResolvedValueOnce(ownerDecisionFlag)
+      .mockResolvedValueOnce(ownedAttemptFlag)
+
+    await recordOwnerFlagFeedbackDecision({
+      flagId: 'flag-1',
+      userId: 'user-1',
+      reason: 'duplicate',
+    })
+
+    expect(mocks.improvementUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'SUPERSEDED' }),
+    }))
+    expect(mocks.cycleEventUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ type: 'REJECTED' }),
     }))
   })
 })

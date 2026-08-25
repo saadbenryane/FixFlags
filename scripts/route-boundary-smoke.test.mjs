@@ -33,10 +33,10 @@ test('boundaryStatusAllowed handles route-specific exceptions', () => {
 test('deployed release smoke executes the complete generated route inventory', () => {
   const releaseSmoke = readFileSync('scripts/release-smoke.mjs', 'utf8')
   assert.match(releaseSmoke, /runRouteBoundarySmoke/)
-  assert.match(releaseSmoke, /RELEASE_SMOKE_URL/)
+  assert.match(releaseSmoke, /PRODUCTION_URL/)
   assert.match(releaseSmoke, /RELEASE_EXPECTED_GIT_SHA/)
   assert.match(releaseSmoke, /probe\('\/api\/health', 'deployed revision'\)/)
-  assert.match(releaseSmoke, /running .* does not match candidate/)
+  assert.match(releaseSmoke, /running .* does not exactly match candidate/)
   assert.match(releaseSmoke, /RELEASE_SMOKE_EVIDENCE_FILE/)
   assert.match(releaseSmoke, /runningCommit: health\.commit/)
 })

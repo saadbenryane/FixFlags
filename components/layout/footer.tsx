@@ -1,6 +1,5 @@
 import type { Route } from 'next'
 import Link from 'next/link'
-import { Copy, RefreshCcw, ShieldCheck } from 'lucide-react'
 import { EditorMark } from '@/components/brand/EditorMarks'
 import { Logo } from '@/components/brand/Logo'
 import { FooterNewsletter } from '@/components/layout/FooterNewsletter'
@@ -8,31 +7,42 @@ import { FooterThemeToggle } from '@/components/layout/FooterThemeToggle'
 import { Container } from '@/components/ui/container'
 import { BRAND, LANDING_PAGE } from '@/lib/marketing/copy'
 import { FOOTER_COLUMNS, LEGAL_LINKS } from '@/lib/site/nav'
-import { HOMEPAGE_EDITOR_INTEGRATIONS, editorDocsHref } from '@/lib/integrations/editor-catalog'
+import {
+  HOMEPAGE_EDITOR_INTEGRATIONS,
+  editorDocsHref,
+} from '@/lib/integrations/editor-catalog'
 
 const FOOTER_EDITOR_MARKS = HOMEPAGE_EDITOR_INTEGRATIONS
 
-const METRIC_ICONS = {
-  fixPrompt: Copy,
-  updateReview: RefreshCcw,
-  teaser: ShieldCheck,
-} as const
-
 export function Footer() {
-  const { tagline, madeWith, buildersTitle, buildersBody, buildersCta, buildersHref } = LANDING_PAGE.footer
-  const trustMetrics = LANDING_PAGE.sampleReport.trustMetrics
+  const {
+    tagline,
+    madeWith,
+    buildersTitle,
+    buildersBody,
+    buildersCta,
+    buildersHref,
+  } = LANDING_PAGE.footer
 
   return (
     <footer className="border-t border-border/45 bg-background">
-      <Container variant="marketing" className="px-5 pb-7 pt-10 sm:px-6 sm:pb-8 sm:pt-12 lg:px-12 lg:pb-9 lg:pt-8">
+      <Container
+        variant="marketing"
+        className="px-5 pb-7 pt-10 sm:px-6 sm:pb-8 sm:pt-12 lg:px-12 lg:pb-9 lg:pt-8"
+      >
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-[1.35fr_repeat(4,minmax(0,0.78fr))_1.28fr] lg:gap-x-7 xl:gap-x-10">
           <div className="col-span-2 space-y-4 lg:col-span-1">
             <Logo variant="lockup" size="lg" href="/" />
-            <p className="max-w-[15rem] text-xs leading-[1.65] text-muted-foreground text-pretty">{tagline}</p>
+            <p className="max-w-[15rem] text-xs leading-[1.65] text-muted-foreground text-pretty">
+              {tagline}
+            </p>
           </div>
 
           <FooterColumn title="Product" links={FOOTER_COLUMNS.product} />
-          <FooterColumn title="Resources" links={FOOTER_COLUMNS.resources.slice(0, 5)} />
+          <FooterColumn
+            title="Resources"
+            links={FOOTER_COLUMNS.resources.slice(0, 5)}
+          />
           <FooterColumn title="Company" links={FOOTER_COLUMNS.company} />
           <FooterColumn title="Legal" links={LEGAL_LINKS} />
 
@@ -40,8 +50,13 @@ export function Footer() {
             <p className="font-mono text-3xs font-semibold uppercase tracking-label text-foreground/85">
               {buildersTitle}
             </p>
-            <p className="max-w-[16rem] text-xs leading-[1.6] text-muted-foreground text-pretty">{buildersBody}</p>
-            <ul className="grid max-w-[17rem] grid-cols-2 gap-2" aria-label="Supported AI builders">
+            <p className="max-w-[16rem] text-xs leading-[1.6] text-muted-foreground text-pretty">
+              {buildersBody}
+            </p>
+            <ul
+              className="grid max-w-[17rem] grid-cols-2 gap-2"
+              aria-label="Supported AI builders"
+            >
               {FOOTER_EDITOR_MARKS.map((editor) => (
                 <li key={editor.key}>
                   <Link
@@ -52,7 +67,9 @@ export function Footer() {
                       name={editor.label}
                       className="inline-flex h-4 w-4 shrink-0 items-center justify-center"
                     />
-                    <span className="truncate">{editor.label === 'Claude Code' ? 'Claude' : editor.label}</span>
+                    <span className="truncate">
+                      {editor.label === 'Claude Code' ? 'Claude' : editor.label}
+                    </span>
                   </Link>
                 </li>
               ))}
@@ -66,39 +83,31 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 grid grid-cols-2 gap-7 border-t border-border/55 pt-7 lg:mt-8 lg:grid-cols-[1.28fr_repeat(4,minmax(0,1fr))_1.55fr] lg:gap-0 lg:pt-8">
-          <div className="col-span-2 space-y-2 lg:col-span-1 lg:pr-7">
+        <div className="mt-10 grid gap-7 border-t border-border/55 pt-7 lg:mt-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)] lg:items-start lg:gap-10 lg:pt-8">
+          <div className="space-y-2 lg:pr-7">
             <p className="text-2xs leading-relaxed text-muted-foreground">
               © {new Date().getFullYear()} {BRAND.name}
             </p>
-            <p className="text-2xs leading-relaxed text-muted-foreground">{madeWith}</p>
+            <p className="text-2xs leading-relaxed text-muted-foreground">
+              {madeWith}
+            </p>
             <FooterThemeToggle />
           </div>
 
-          {trustMetrics.map((metric) => (
-            <FooterMetric key={metric.id} id={metric.id} value={metric.value} label={metric.label} />
-          ))}
-
-          <FooterNewsletter className="col-span-2 lg:col-span-1 lg:pl-7" />
+          <FooterNewsletter className="lg:justify-self-end" />
         </div>
       </Container>
     </footer>
   )
 }
 
-function FooterMetric({ id, value, label }: { id: keyof typeof METRIC_ICONS; value: string; label: string }) {
-  const Icon = METRIC_ICONS[id]
-
-  return (
-    <div className="space-y-2 border-border/55 lg:border-l lg:px-6">
-      <Icon className="h-5 w-5 text-brand" strokeWidth={1.75} aria-hidden />
-      <p className="text-sm font-semibold tracking-heading text-foreground">{value}</p>
-      <p className="max-w-[9.5rem] text-3xs leading-[1.55] text-muted-foreground">{label}</p>
-    </div>
-  )
-}
-
-function FooterColumn({ title, links }: { title: string; links: readonly { href: string; label: string }[] }) {
+function FooterColumn({
+  title,
+  links,
+}: {
+  title: string
+  links: readonly { href: string; label: string }[]
+}) {
   return (
     <div className="min-w-0">
       <p className="mb-3 font-mono text-3xs font-semibold uppercase tracking-label text-foreground/85">
@@ -111,7 +120,9 @@ function FooterColumn({ title, links }: { title: string; links: readonly { href:
               href={link.href as Route}
               className="inline-flex min-h-11 min-w-11 max-w-full items-center text-xs leading-tight text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
-              <span className="min-w-0 [overflow-wrap:anywhere]">{link.label}</span>
+              <span className="min-w-0 [overflow-wrap:anywhere]">
+                {link.label}
+              </span>
             </Link>
           </li>
         ))}

@@ -1,5 +1,8 @@
 import { tryAcquireLock } from './lock'
-import { runStuckAuditRecoverySweep } from '@/lib/audit/recover-audit-job'
+import {
+  recoverCompletedImprovementProjections,
+  runStuckAuditRecoverySweep,
+} from '@/lib/audit/recover-audit-job'
 import { runNurtureSweep } from '@/lib/leads/run-nurture'
 import { processDueProjectWatches, retryPendingWatchNotifications } from '@/lib/audit/project-watch'
 import { runIssueRollup } from '@/lib/growth/issue-rollup'
@@ -33,6 +36,8 @@ async function recoveryTick(): Promise<void> {
   try {
     const result = await runStuckAuditRecoverySweep()
     if (result.requeued || result.failed) logger.info('Recovery sweep', result)
+    const projections = await recoverCompletedImprovementProjections()
+    if (projections.checked > 0) logger.info('Improvement projection recovery sweep', projections)
   } catch (err) {
     logger.error('Recovery sweep failed', err instanceof Error ? err : new Error(String(err)))
   }

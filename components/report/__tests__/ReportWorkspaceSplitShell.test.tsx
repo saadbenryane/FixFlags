@@ -21,6 +21,7 @@ function capabilities(
     canChat: false,
     canUseCanvas: false,
     canShare: false,
+    canExport: false,
     canRecheck: false,
     canGiveFeedback: false,
     demonstratedFlagId: null,
@@ -90,12 +91,20 @@ describe('ReportWorkspaceSplitShell playback', () => {
     expect(screen.queryByRole('slider')).not.toBeInTheDocument()
   })
 
-  it('keeps the completed report on Report without a preview pane', () => {
+  it('defaults a completed review to Report and keeps Timeline as a sibling', () => {
     renderShell(undefined, undefined, false)
     expect(screen.getByTestId('report-panel')).toBeInTheDocument()
     expect(screen.getAllByRole('tab', { name: 'Agent' }).length).toBeGreaterThan(0)
-    expect(screen.queryAllByRole('tab', { name: 'Preview' })).toHaveLength(0)
+    expect(screen.getAllByRole('tab', { name: 'Timeline' }).length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByRole('tab', { name: 'Report' }).some(
+        (tab) => tab.getAttribute('aria-selected') === 'true',
+      ),
+    ).toBe(true)
     expect(screen.queryByRole('slider')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
+    expect(screen.getByRole('slider')).toBeInTheDocument()
   })
 })
 

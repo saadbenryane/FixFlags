@@ -42,7 +42,10 @@ vi.mock('@/lib/audit/journey/run-journey-reviews', () => ({
 vi.mock('@/lib/audit/checks/corridor-consistency', () => ({
   runCorridorConsistencyChecks: vi.fn(() => []),
 }))
-vi.mock('@/lib/audit/finalize', () => ({ persistFailedAuditCost: vi.fn() }))
+vi.mock('@/lib/audit/finalize', () => ({
+  persistFailedAuditCost: vi.fn(),
+  persistImprovementCycle: vi.fn(),
+}))
 vi.mock('@/lib/audit/pipeline/run-page', () => ({ runPage: vi.fn() }))
 vi.mock('@/lib/audit/pipeline/finalize-from-outcome', () => ({
   finalizeFromOutcome: vi.fn(),
@@ -60,6 +63,7 @@ import { runAudit } from '@/lib/audit/runner'
 import { runPage } from '@/lib/audit/pipeline/run-page'
 import { finalizeFromOutcome } from '@/lib/audit/pipeline/finalize-from-outcome'
 import { tryPartialFinalize } from '@/lib/audit/pipeline/context'
+import { persistImprovementCycle } from '@/lib/audit/finalize'
 
 function makeAudit(overrides: Record<string, unknown> = {}) {
   return {
@@ -113,12 +117,13 @@ describe('runAudit orchestrator', () => {
     ;(tryPartialFinalize as Mock).mockResolvedValue(false)
   })
 
-  it('returns immediately for an already-completed audit (retry after crash is a no-op)', async () => {
+  it('resumes durable projection before returning an already-completed audit', async () => {
     prismaMock.audit.findUnique.mockReset()
     prismaMock.audit.findUnique.mockResolvedValue(makeAudit({ status: 'COMPLETED' }))
 
     await runAudit('audit-1')
 
+    expect(persistImprovementCycle).toHaveBeenCalledWith('audit-1', null)
     expect(prismaMock.audit.update).not.toHaveBeenCalled()
     expect(runPage).not.toHaveBeenCalled()
   })

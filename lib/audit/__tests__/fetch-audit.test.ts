@@ -331,6 +331,20 @@ describe('getGatedAuditForRequest', () => {
       assert.equal(result.showDeterministicFixes, false)
     }
   })
+
+  it('never projects prompt access into a live public marketing sample', async () => {
+    mocks.resolveAuditAccess.mockResolvedValue('marketing_sample')
+    mocks.findUnique.mockResolvedValue(fullRow)
+
+    const result = await getGatedAuditForRequest('a1')
+
+    assert.equal(result.kind, 'ok')
+    if (result.kind === 'ok') {
+      assert.equal(result.showPrescription, false)
+      assert.equal(result.showDeterministicFixes, false)
+      assert.equal(result.sampleFixFlag, null)
+    }
+  })
 })
 
 import { expect } from 'vitest'

@@ -11,7 +11,7 @@ import { isNonRetryableAuditError } from './pipeline-errors'
 import { JudgeContractError } from './validate-judge-output'
 import { initPipelineLog, logPipelineEvent } from './pipeline-log'
 import { discoverCriticalPathUrlsEnriched } from './critical-path'
-import { persistFailedAuditCost } from './finalize'
+import { persistFailedAuditCost, persistImprovementCycle } from './finalize'
 import { runPage } from './pipeline/run-page'
 import {
   sanitizeAuditErrorMessage,
@@ -33,7 +33,13 @@ export async function runAudit(auditId: string): Promise<void> {
   return runWithContext({ auditId }, async () => {
     const audit = await prisma.audit.findUnique({ where: { id: auditId } })
     if (!audit) throw new Error(`Audit ${auditId} not found`)
-    if (audit.status === 'COMPLETED') return
+    if (audit.status === 'COMPLETED') {
+      // A worker may have exited after the Review reached COMPLETED but before
+      // its durable Improvement projection finished. Resume that idempotent
+      // boundary before declaring the job complete.
+      await persistImprovementCycle(auditId, audit.parentId)
+      return
+    }
 
     const startedAt = new Date()
     const scanAccess = await resolveAuditScanAccess(auditId)

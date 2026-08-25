@@ -27,6 +27,7 @@ export interface ReportWorkspaceCapabilities {
   canChat: boolean
   canUseCanvas: boolean
   canShare: boolean
+  canExport: boolean
   canRecheck: boolean
   canGiveFeedback: boolean
   demonstratedFlagId: string | null
@@ -215,6 +216,7 @@ export function buildReportWorkspaceModel(
       canChat: input.capabilities.canChat,
       canUseCanvas: input.capabilities.canUseCanvas,
       canShare: input.capabilities.canShare,
+      canExport: input.capabilities.canExport,
       canRecheck: input.capabilities.canRecheck,
       canGiveFeedback: input.capabilities.canGiveFeedback,
       demonstratedFlagId: input.capabilities.demonstratedFlagId,
