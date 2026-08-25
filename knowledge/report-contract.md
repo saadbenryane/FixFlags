@@ -27,8 +27,8 @@ Per-issue prompts are the primary handoff from understanding to improvement.
 The compact header does not repeat Product identity, verdict copy, the Critical count, or instructions already expressed by the ranked Fix list.
 Every history point is a native link to a complete Review.
 Desktop keeps Agent and Report visible throughout the review.
-Mobile exposes only Agent and Report, defaulting to Agent while work is active and Report afterward.
-Preview, Timeline, and Canvas are parked customer surfaces; legacy view parameters normalize to Report.
+Mobile exposes Agent, Preview or Timeline, Report, and Canvas when each surface is available, defaulting to Agent while work is active and Report afterward.
+`view=timeline`, `view=report`, and `view=canvas` are durable, URL-backed views for signed-in report owners.
 
 New anonymous scans render the progressive and completed evidence report without a blocking authentication dialog.
 Anonymous viewers can inspect scores, all confirmed Flags, screenshots, textual evidence, public-safe technology context, and deterministic Agent scan messages.

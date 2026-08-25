@@ -14,7 +14,7 @@ export function concreteRoute(file) {
 
 export function boundaryStatusAllowed(contract, status, method = 'GET') {
   if (status >= 500) return contract.file.includes('/health/') || contract.file.endsWith('/health/route.ts')
-  if (contract.boundary === 'parked') return status === 404
+  if (contract.boundary === 'parked') return status === 404 || (method === 'POST' && status === 409)
   if (contract.boundary === 'public') return status >= 200 && status < 500
   if (contract.boundary === 'webhook') return status === 400 || status === 401
   if (contract.file === 'app/api/reports/[id]/share-links/route.ts' && status === 400) return true

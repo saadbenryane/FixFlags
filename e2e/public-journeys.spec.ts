@@ -225,18 +225,19 @@ test('unknown share tokens render an unavailable or not-found state', async ({ p
   ).toBeVisible()
 })
 
-test('docs and legacy MCP setup surfaces render without client errors', async ({ page }) => {
-  const errors: string[] = []
-  page.on('pageerror', (error) => errors.push(error.message))
-
-  await page.goto('/help/mcp')
-  await expect(page).toHaveURL(/\/docs\/integrations$/)
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  await expect(page.getByText(/Lovable|Bolt|Cursor/i).first()).toBeVisible()
-
-  await page.goto('/docs/mcp')
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  expect(errors).toEqual([])
+test('parked power-tool docs and setup surfaces return not found', async ({ request }) => {
+  for (const path of [
+    '/help/mcp',
+    '/help/mcp-and-editors',
+    '/docs/mcp',
+    '/docs/cli',
+    '/docs/integrations',
+    '/.well-known/mcp.json',
+    '/.well-known/mcp-server.json',
+  ]) {
+    const response = await request.get(path, { maxRedirects: 0 })
+    expect(response.status(), path).toBe(404)
+  }
 })
 
 test('auth and pricing entry points render without client errors', async ({ page }) => {

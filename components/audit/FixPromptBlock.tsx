@@ -2,7 +2,6 @@
 
 import { type ReactNode } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Loader2, PlugZap } from 'lucide-react'
 import { PromptActionRow } from '@/components/audit/PromptActionRow'
 import {
   PromptToolSelector,
@@ -10,10 +9,8 @@ import {
   type PromptToolKey,
 } from '@/components/audit/PromptToolSelector'
 import { TerminalShell } from '@/components/ui/terminal-shell'
-import { Button } from '@/components/ui/button'
 import { OUTPUT_LABELS } from '@/lib/marketing/copy'
 import { resolveToolPrompt } from '@/lib/mcp/builders'
-import { useConnectBuilderMcp } from '@/lib/hooks/useConnectBuilderMcp'
 import { cn } from '@/lib/utils'
 import type { ReportAccessState, ReportSurface } from '@/lib/analytics/events'
 
@@ -136,7 +133,6 @@ export function FixPromptBlock({
   rows = 4,
   clamp = true,
   showNextStep = false,
-  showCursorAction = false,
   showToolSelector = false,
   defaultTool,
   variant = 'terminal',
@@ -151,9 +147,6 @@ export function FixPromptBlock({
   hideActions = false,
 }: FixPromptBlockProps) {
   const [preferredTool, setPreferredTool] = usePreferredTool(defaultTool)
-  const { installing, connect, actionBuilder } = useConnectBuilderMcp(
-    showToolSelector && preferredTool !== 'universal' ? preferredTool : 'cursor'
-  )
   const resolvedPrompt = showToolSelector
     ? resolveToolPrompt(toolPrompts, preferredTool, prompt)
     : prompt
@@ -186,24 +179,6 @@ export function FixPromptBlock({
           <div className="flex items-center justify-between gap-2 border-b border-border/40 px-3 py-1.5">
             <span className="meta-label text-muted-foreground">Markdown</span>
             <div className="flex items-center gap-1">
-              {showCursorAction ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  className="gap-1.5 px-2 text-muted-foreground hover:text-foreground"
-                  disabled={installing}
-                  onClick={connect}
-                  aria-label={`Connect ${actionBuilder.label} to FixFlags`}
-                >
-                  {installing ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                  ) : (
-                    <PlugZap className="h-3.5 w-3.5" aria-hidden />
-                  )}
-                  <span className="hidden sm:inline">{`Connect ${actionBuilder.label}`}</span>
-                </Button>
-              ) : null}
               {!promptUnavailable && !hideActions ? (
                 <PromptActionRow
                   prompt={clipboardPrompt}
@@ -259,7 +234,7 @@ export function FixPromptBlock({
             <div className="flex justify-end gap-2 border-t border-terminal-border/60 px-3 py-2">
               <PromptActionRow
                 prompt={clipboardPrompt}
-                showCursorAction={showCursorAction}
+                showCursorAction={false}
                 compact
                 tool={showToolSelector ? preferredTool : undefined}
                 auditId={auditId}
@@ -292,7 +267,7 @@ export function FixPromptBlock({
           promptUnavailable ? null : (
             <PromptActionRow
               prompt={clipboardPrompt}
-              showCursorAction={showCursorAction}
+              showCursorAction={false}
               compact
               tool={showToolSelector ? preferredTool : undefined}
               auditId={auditId}

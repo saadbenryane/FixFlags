@@ -4,7 +4,6 @@ import type { Metadata } from 'next'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Body, Heading } from '@/components/ui/typography'
-import { Button } from '@/components/ui/button'
 import { HelpArticleBody } from '@/components/help/HelpArticleBody'
 import { HelpChatEscalate } from '@/components/help/HelpChatEscalate'
 import { HELP_ARTICLES } from '@/lib/help/catalog'
@@ -77,11 +76,6 @@ export default async function HelpArticlePage({ params }: Props) {
 
           <HelpArticleBody blocks={article.body} />
 
-          {article.slug === 'mcp-setup' && (
-            <Button asChild variant="outline" size="sm">
-              <Link href="/docs/integrations">{HELP_CENTER.mcpGuideCta}</Link>
-            </Button>
-          )}
 
           {related.length > 0 && (
             <div className="space-y-3 border-t border-border/60 pt-8">

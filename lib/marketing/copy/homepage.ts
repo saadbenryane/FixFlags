@@ -139,7 +139,7 @@ export const FINAL_CTA = {
   headlineAccentPeriod: true,
 } as const;
 
-export const MCP_SECTION = {
+export const BUILDER_WORKFLOW_SECTION = {
   headline: "Fix the highest-impact Flag first",
   body: "Copy the evidence-backed fix prompt into the builder you already use. Publish the change, then run an update review for independent verification.",
   intro: "The workflow stays focused:",
@@ -151,6 +151,9 @@ export const MCP_SECTION = {
 4. Publish the change.
 5. Run an update review and compare the result.`,
 } as const;
+
+/** @deprecated Internal compatibility alias; the section is URL-first and contains no MCP offer. */
+export const MCP_SECTION = BUILDER_WORKFLOW_SECTION;
 
 export const HOW_IT_WORKS_PAGE = {
   hero: {

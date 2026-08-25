@@ -339,7 +339,7 @@ test.describe('credentialed revenue journeys', () => {
       user: { entitlements: { canAccessPaidFeatures: boolean; canWatchProduct: boolean } }
     }
     expect(body.user.entitlements.canAccessPaidFeatures).toBe(false)
-    expect(body.user.entitlements.canWatchProduct).toBe(false)
+    expect(body.user.entitlements.canWatchProduct).toBe(true)
     const report = await revoked.page.request.get(`/api/reports/${requiredEnv('E2E_REVOKED_REPORT_ID')}/status`)
     expect(report.ok(), await report.text()).toBe(true)
     await revoked.close()

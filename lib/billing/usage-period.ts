@@ -5,6 +5,7 @@ import {
   scanLimitForPlan,
   usageAllowanceForPriceId,
 } from '@/lib/billing/plans'
+import type { UsageAllowance } from '@/lib/billing/plans'
 import { UNLIMITED_SCAN_LIMIT } from '@/lib/auth/permissions'
 
 type UsagePeriodUser = Pick<

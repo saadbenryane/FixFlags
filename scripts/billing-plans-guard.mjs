@@ -7,6 +7,7 @@ import { join } from 'node:path'
 
 const root = process.cwd()
 const plans = readFileSync(join(root, 'lib/billing/plans.ts'), 'utf8')
+const planDefinitions = plans.slice(plans.indexOf('export const PLAN_DEFINITIONS'))
 const terminology = readFileSync(join(root, 'lib/marketing/copy/terminology.ts'), 'utf8')
 
 function extractPricingCopy(key) {
@@ -15,7 +16,7 @@ function extractPricingCopy(key) {
 }
 
 function extractPlanLimit(plan, field) {
-  const block = plans.match(new RegExp(`${plan}:\\s*\\{[\\s\\S]*?auditLimit:\\s*(\\d+)[\\s\\S]*?deepReviewLimit:\\s*(\\d+)`))
+  const block = planDefinitions.match(new RegExp(`${plan}:\\s*\\{[\\s\\S]*?auditLimit:\\s*(\\d+)[\\s\\S]*?deepReviewLimit:\\s*(\\d+)`))
   if (!block) return null
   if (field === 'audit') return Number(block[1])
   return Number(block[2])

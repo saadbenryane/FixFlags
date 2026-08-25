@@ -64,6 +64,8 @@ function discoveryFiles(root) {
   ]
   return [...new Set(files)].filter((file) => {
     if (!existsSync(file) || file.includes(`${path.sep}__tests__${path.sep}`)) return false
+    if (/(?:dashboard[\\/]mcp-|settings[\\/](?:api-keys|integrations)|docs[\\/](?:cli|mcp|integrations)|help[\\/]mcp)/.test(file)) return false
+    if (/(?:lib[\\/]help[\\/]catalog|CopyMcpCommand|McpConnectionTest)\.tsx?$/.test(file)) return false
     return !/(?:copy[\\/]auth|copy[\\/]brand|copy[\\/]tools)\.ts$/.test(file)
   })
 }
@@ -81,6 +83,9 @@ export function powerToolVisibilityFailures({ proxySource, discoverySources }) {
   for (const [file, source] of Object.entries(discoverySources)) {
     if (DISCOVERY_PATH_PATTERN.test(source)) {
       failures.push(`${file} links to a parked power-tool surface`)
+    }
+    if (/(?:Set up MCP|Copy MCP|Connect [^\n]{0,50} to FixFlags|CLI docs|API keys? (?:are|require)|Repository scan|Deployment webhook)/i.test(source)) {
+      failures.push(`${file} advertises parked power-tool terminology`)
     }
   }
   return failures

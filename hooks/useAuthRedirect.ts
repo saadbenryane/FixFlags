@@ -105,7 +105,7 @@ export function useAuthRedirect() {
     // explicit destination next; ordinary authentication lands on the URL-first
     // dashboard instead of inserting a pricing decision into the product loop.
     router.push(postAuthDestination(next))
-  }, [next, plan, from, router])
+  }, [next, plan, router])
 
   function signInHref(extraNext?: string): Route {
     const params = new URLSearchParams()

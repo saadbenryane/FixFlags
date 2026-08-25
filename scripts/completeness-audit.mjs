@@ -221,20 +221,6 @@ export function curatedSampleBundleFailures(root) {
   return failures
 }
 
-function mcpRegistrationSource(root) {
-  const toolDir = path.join(root, 'lib/mcp/tools')
-  const moduleFiles = readdirSync(toolDir)
-    .filter((file) => file.endsWith('.ts'))
-    .map((file) => path.join(toolDir, file))
-  return [
-    path.join(root, 'lib/mcp/task-tools.ts'),
-    path.join(root, 'lib/mcp/anon-task-tools.ts'),
-    path.join(root, 'lib/mcp/anon-check-status.ts'),
-    path.join(root, 'lib/mcp/contract.ts'),
-    ...moduleFiles,
-  ].map((file) => readFileSync(file, 'utf8')).join('\n')
-}
-
 export function runCompletenessAudit(root = DEFAULT_ROOT) {
   const failures = []
   const assert = (condition, message) => { if (!condition) failures.push(message) }

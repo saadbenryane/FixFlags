@@ -161,9 +161,10 @@ describe('homepage lean sections', () => {
     // The reviewed host names both panes now that no fake browser bar carries it.
     expect(screen.getAllByText('fixflags.com/demo').length).toBeGreaterThan(0)
     expect(screen.getByRole('tab', { name: 'Agent' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Report' })).toBeInTheDocument()
+    expect(screen.getAllByRole('tab', { name: 'Preview' })).not.toHaveLength(0)
+    expect(screen.getAllByRole('tab', { name: 'Report' })).not.toHaveLength(0)
     expect(
-      screen.getByRole('img', { name: /desktop screenshot/i }),
+      screen.getByRole('img', { name: 'Page screenshot' }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('link', { name: 'Review my site' }),
@@ -186,12 +187,12 @@ describe('homepage lean sections', () => {
     expect(grid).toBeDefined()
   })
 
-  it('gives the visitor the real Agent and Report workspace toggle', () => {
+  it('gives the visitor the real Agent, Preview, and Report workspace toggle', () => {
     render(<SampleReportSection />)
 
-    const mobileTabs = screen.getByRole('tablist', { name: 'Review workspace' })
+    const mobileTabs = screen.getByRole('tablist', { name: 'Review panels' })
     expect(
-      within(mobileTabs).getByRole('tab', { name: 'Report' }),
+      within(mobileTabs).getByRole('tab', { name: 'Preview' }),
     ).toHaveAttribute('aria-selected', 'true')
 
     fireEvent.click(within(mobileTabs).getByRole('tab', { name: 'Agent' }))
@@ -199,7 +200,7 @@ describe('homepage lean sections', () => {
     expect(
       within(mobileTabs).getByRole('tab', { name: 'Agent' }),
     ).toHaveAttribute('aria-selected', 'true')
-    expect(screen.queryByRole('tab', { name: /Preview|Timeline|Canvas/ })).not.toBeInTheDocument()
+    expect(within(mobileTabs).getByRole('tab', { name: 'Report' })).toBeInTheDocument()
   })
 
   it('shows the complete value story without timed motion for reduced-motion users', async () => {
@@ -217,7 +218,7 @@ describe('homepage lean sections', () => {
     render(<SampleReportSection />)
 
     fireEvent.click(
-      within(screen.getByRole('tablist', { name: 'Review workspace' })).getByRole(
+      within(screen.getByRole('tablist', { name: 'Review panels' })).getByRole(
         'tab',
         {
           name: 'Report',
@@ -230,11 +231,11 @@ describe('homepage lean sections', () => {
     expect(window.location.search).not.toMatch(/flag=/)
   })
 
-  it('keeps the sample focused on the Agent and complete report', () => {
+  it('shows the sample Agent and live Product preview before settling on the report', () => {
     render(<SampleReportSection />)
 
     expect(screen.getByRole('region', { name: 'Agent' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: /Fix list with/i })).toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: /Timeline|Canvas|Preview/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Page screenshot' })).toBeInTheDocument()
+    expect(screen.getAllByRole('tab', { name: 'Preview' })).not.toHaveLength(0)
   })
 })
