@@ -62,7 +62,7 @@ describe('product contract limits', () => {
       plan: 'BUILDER',
       role: 'user',
       auditsUsed: 0,
-      auditsLimit: 15,
+      auditsLimit: 30,
       subscriptionStatus: 'ACTIVE',
     })
     assert.equal(await resolveIncludeAiForNewAudit('active-user'), true)
@@ -98,12 +98,12 @@ describe('product contract limits', () => {
     assert.equal(total2, 0)
   })
 
-  it('pro plan has 15 monthly checks', () => {
-    assert.equal(scanLimitForPlan('BUILDER'), 15)
+  it('pro plan has 30 monthly reviews', () => {
+    assert.equal(scanLimitForPlan('BUILDER'), 30)
   })
 
-  it('studio plan has 50 monthly checks', () => {
-    assert.equal(scanLimitForPlan('TEAM'), 50)
+  it('studio plan has 90 monthly reviews', () => {
+    assert.equal(scanLimitForPlan('TEAM'), 90)
   })
 })
 
@@ -168,7 +168,7 @@ describe('wouldBlockNewCheck', () => {
   it('returns TOKEN_LIMIT for paid users at cap', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     const result = wouldBlockNewCheck(
-      { id: 'u2', plan: 'BUILDER', role: 'user', auditsUsed: 15, auditsLimit: 15 },
+      { id: 'u2', plan: 'BUILDER', role: 'user', auditsUsed: 30, auditsLimit: 30 },
       0
     )
     assert.equal(result.allowed, false)

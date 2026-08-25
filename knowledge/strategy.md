@@ -7,8 +7,8 @@
 | Tier | Plan enum | Price | Product reviews |
 |------|-----------|-------|-----------------|
 | Free | `FREE` | $0 | 3/month |
-| Pro | `BUILDER` | $29/month | 15/month |
-| Studio | `TEAM` | $79/month | 50/month |
+| Pro | `BUILDER` | $29/month | 30/month |
+| Studio | `TEAM` | $79/month | 90/month |
 
 Display name **Studio** maps to the existing `TEAM` enum.
 Enforcement lives in `lib/billing/plans.ts` and `lib/audit/usage.ts`.
@@ -25,8 +25,8 @@ Existing purchased overflow credits remain compatible but are not promoted.
 ## Upgrade logic
 
 - **Free:** three monthly reviews for one Product.
-- **Pro:** fifteen monthly reviews across up to five Products, with history across releases and release comparison.
-- **Studio:** fifty monthly reviews across unlimited Products, scheduled reviews, shared Product history, and workspace invitations.
+- **Pro:** thirty monthly reviews across up to five Products, with history across releases and release comparison.
+- **Studio:** ninety monthly reviews across unlimited Products, scheduled reviews, shared Product history, and workspace invitations.
 - **Studio launch offer:** unlimited workspace seats for a limited time.
 - **High volume:** handled through a direct conversation after the Studio allowance is demonstrably insufficient.
 

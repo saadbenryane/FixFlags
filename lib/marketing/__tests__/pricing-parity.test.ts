@@ -17,6 +17,10 @@ const OBSOLETE_PLAN_COPY = [
   /\$199/i,
   /25 product reviews/i,
   /80 product reviews/i,
+  /15 product reviews per month/i,
+  /50 product reviews per month/i,
+  /15 reviews each month/i,
+  /50 reviews, unlimited products/i,
 ]
 
 const FREE = PLAN_DEFINITIONS.FREE

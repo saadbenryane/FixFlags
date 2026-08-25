@@ -2,7 +2,8 @@
 
 FixFlags is the independent Product Intelligence System for AI-built software. A user submits a URL and receives a Fix list across Message, Experience, and Reach, with fix prompts for their AI editor.
 
-**Critical system architecture principle:** 
+**Critical system architecture principle:**
+
 1. PiWeb (/Users/saadbenryane/Code/pi-web) is the **interface layer** used to manage agent sessions and development workflows. It is maintained via FirstMate for interface-related concerns.
 2. FixFlags (/Users/saadbenryane/Code/fixflags) is the **actual product** being developed and maintained.
 3. When working in PiWeb:
@@ -12,9 +13,10 @@ FixFlags is the independent Product Intelligence System for AI-built software. A
 
 > **Note on PiWeb vs product work**: PiWeb is solely the interface layer used to manage agent sessions and is maintained by FirstMate. It is not part of the product suite. When working on PiWeb interface issues, route through FirstMate. All agent development ultimately serves the FixFlags product.
 
-*Verified facts about what FixFlags ships today. Not vision. Not strategy.*
+_Verified facts about what FixFlags ships today. Not vision. Not strategy._
 
 **Canonical sources:**
+
 - Product vision and strategy: `knowledge/product.md`, `knowledge/strategy.md`
 - Target product requirements and shipped-vs-target gaps: `docs/product-prd.md` § shipped vs target
 - Product Review and supporting surfaces: `knowledge/product-system.md`
@@ -146,11 +148,11 @@ Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
 Free is available now.
 Pro and Studio remain waitlist-gated while checkout stays in test mode.
 
-| Plan | Price | Product reviews | Products | Added value |
-|------|-------|-----------------|----------|-------------|
-| **Free** | $0 | 3/month | 1 | Flags, evidence, fix prompts, review changes, public report link |
-| **Pro** (`BUILDER`) | $29/mo | 15/month | Up to 5 | Product history across releases and release comparison |
-| **Studio** (`TEAM`) | $79/mo | 50/month | Unlimited | Scheduled reviews, shared product history, and workspace invitations |
+| Plan                | Price  | Product reviews | Products  | Added value                                                          |
+| ------------------- | ------ | --------------- | --------- | -------------------------------------------------------------------- |
+| **Free**            | $0     | 3/month         | 1         | Flags, evidence, fix prompts, review changes, public report link     |
+| **Pro** (`BUILDER`) | $29/mo | 30/month        | Up to 5   | Product history across releases and release comparison               |
+| **Studio** (`TEAM`) | $79/mo | 90/month        | Unlimited | Scheduled reviews, shared product history, and workspace invitations |
 
 New URLs, update reviews, and completed scheduled Watch reviews use the same monthly product review allowance.
 Unused allowance does not roll over.
@@ -159,6 +161,7 @@ Internal route `/re-check` remains for API compatibility.
 Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 
 ### First check and account claim
+
 - A homepage URL submission immediately opens the Agent-led progressive report workspace.
 - Anonymous visitors receive deterministic FixFlags Agent updates, the progressive and completed Report, all confirmed Flags, screenshots, and public-safe evidence without a blocking authentication overlay.
 - Interactive Agent chat, fix prompts, Timeline playback, account history, Product Memory, update reviews, Canvas, and export remain server-gated.
@@ -171,6 +174,7 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 - URLs captured on `Audit` and `Lead` for outbound (`/admin/leads`)
 
 ### Free (forever)
+
 - 3 product reviews per month (a claimed anonymous teaser counts once)
 - 1 Product
 - Interactive report Agent with 25,000 input-plus-output tokens per calendar month
@@ -181,13 +185,15 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 - Review changes, public report links, Canvas, and Product Signals
 
 ### Pro ($29/mo) — `BUILDER` in schema
-- 15 product reviews per month
+
+- 30 product reviews per month
 - Up to 5 Products
 - Product history across releases and release comparison
 - 500,000 Agent chat tokens per calendar month
 
 ### Studio ($79/mo) — `TEAM` in schema
-- 50 product reviews per month
+
+- 90 product reviews per month
 - Unlimited Products
 - Scheduled reviews
 - Invite people to the workspace
@@ -241,7 +247,7 @@ Full evidence rules: `knowledge/evidence-rules.md`.
 - Unit tests: run `npm run test:unit` (count measured per run; do not hardcode).
 - Stuck-audit recovery (15 min timeout window, self-hosted scheduler)
 - Knowledge graph Phase 1 in production (growth graph; separate from customer Product Intelligence)
-- Evidence-backed Made with profiles across reports, update-review diffs, and access-safe `/madewith/[hostname]` pages
+- Evidence-backed Made with profiles on owner-only Product detail pages, including update-review diffs
 - Sample size gate (`MIN_SAMPLE_SIZE` in `lib/graph/queries.ts`; target 20, temporarily 3 while seeding)
 - Public documentation at `/docs` covers the Product Review loop, complete Fix list, bounded Finish Plan, update reviews, and URL/report troubleshooting.
 - Project-scoped Product Intelligence persistence
@@ -276,6 +282,7 @@ FixFlags must evaluate itself more rigorously than it evaluates customers.
 ## Launch gates
 
 Do not launch broadly until:
+
 - The public Product Review regularly produces a useful result
 - The first evidence appears quickly
 - Critical findings are highly precise

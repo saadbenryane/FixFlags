@@ -4,14 +4,14 @@ import { Suspense, type ReactNode } from 'react'
 import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
 import { ReportContextDisclosure } from '@/components/report/ReportContextDisclosure'
 import { KeepReportEmail } from '@/components/report/KeepReportEmail'
-import {
-  REPORT_SECTION_SCROLL_MT,
-} from '@/components/report/workspace-geometry'
+import { REPORT_SECTION_SCROLL_MT } from '@/components/report/workspace-geometry'
 import { ReportPane } from '@/components/report/ReportPane'
 import { VerificationReceiptsSection } from '@/components/report/VerificationReceiptsSection'
 import type { ProductAttemptDTO } from '@/lib/products/workspace'
-const LiveReportExplorer = dynamic(
-  () => import('@/components/audit/LiveReportExplorer').then((m) => m.LiveReportExplorer)
+const LiveReportExplorer = dynamic(() =>
+  import('@/components/audit/LiveReportExplorer').then(
+    (m) => m.LiveReportExplorer
+  )
 )
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
@@ -49,7 +49,6 @@ import { ProductContractCard } from '@/components/audit/ProductContractCard'
 import { ProductMemoryStrip } from '@/components/audit/ProductMemoryStrip'
 import { ProductWatchControls } from '@/components/audit/ProductWatchControls'
 import { ReportAuthGateTracker } from '@/components/analytics/ReportAuthGateTracker'
-import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
@@ -60,7 +59,6 @@ import type { AuditAccessContext } from '@/lib/audit/access'
 
 /** Sections carried by the Review context disclosure, so anchors can open it. */
 const REPORT_CONTEXT_SECTION_IDS = [
-  'report-stack',
   'report-contract',
   'report-remember',
   'report-funnel',
@@ -105,7 +103,8 @@ interface AuditReportProps {
     evidenceAnchors?: EvidenceAnchorMap
     flagVisualEvidence?: import('@/lib/audit/persist-visual-evidence').FlagVisualEvidenceMap
     actionTimeline?: import('@/lib/audit/action-timeline').ActionTimelineEvent[]
-    productContract?: import('@/lib/audit/product-contract').ProductContract | null
+    productContract?:
+      import('@/lib/audit/product-contract').ProductContract | null
     verifiedLearnings?: import('@/lib/audit/product-intelligence').VerifiedLearning[]
     intentionalNotes?: string[]
     knownRisks?: string[]
@@ -182,10 +181,13 @@ export function AuditReport({
   productName = null,
 }: AuditReportProps) {
   const isSample = variant === 'sample'
-  const isRepositorySample = isSample && audit.accessContext === 'repository_sample'
+  const isRepositorySample =
+    isSample && audit.accessContext === 'repository_sample'
   const isOwnerAccess = audit.accessContext === 'owner'
   const canClaimAccess = audit.accessContext === 'anonymous_teaser'
-  const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
+  const signUpHref = auditId
+    ? `/sign-up?next=/report/${auditId}&from=report`
+    : '/sign-up?from=report'
   const chatGateReason = canClaimAccess ? 'sign-in' : 'owner'
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
   const showContract = Boolean(audit.productContract)
@@ -195,7 +197,11 @@ export function AuditReport({
   const fixPromptLocked = !showDeterministicFixes
   const demonstratedFlag = sampleFixFlag
   const promptProjection = resolveReportPromptProjection(
-    isRepositorySample ? 'curated-sample' : isOwnerAccess ? 'owner' : 'live-anonymous'
+    isRepositorySample
+      ? 'curated-sample'
+      : isOwnerAccess
+        ? 'owner'
+        : 'live-anonymous'
   )
 
   const upgradeMoment =
@@ -232,7 +238,11 @@ export function AuditReport({
     url: audit.url,
     pageType: audit.pageType,
     checkedAt: completedAt,
-    status: isPartialReport ? 'partial' : triageDegraded ? 'degraded' : 'completed',
+    status: isPartialReport
+      ? 'partial'
+      : triageDegraded
+        ? 'degraded'
+        : 'completed',
     history: scoreHistory,
     capabilities: {
       promptAccess: promptProjection.workspace,
@@ -250,7 +260,9 @@ export function AuditReport({
   const showRemember = Boolean(
     workspace.capabilities.canRecheck &&
     auditId &&
-    (audit.verifiedLearnings?.length || audit.intentionalNotes?.length || audit.knownRisks?.length)
+    (audit.verifiedLearnings?.length ||
+      audit.intentionalNotes?.length ||
+      audit.knownRisks?.length)
   )
   const unresolvedFlagCount = workspace.outcome.unresolvedCount
   const showStatusCallouts =
@@ -296,7 +308,6 @@ export function AuditReport({
       </section>
     )
 
-
   const statusCallouts =
     !isSample && showStatusCallouts ? (
       <div className="space-y-3">
@@ -306,7 +317,10 @@ export function AuditReport({
           </Callout>
         ) : null}
         {prescriptionFailed ? (
-          <Callout variant="warning" title={REPORT_COPY.prescriptionUnavailable.title}>
+          <Callout
+            variant="warning"
+            title={REPORT_COPY.prescriptionUnavailable.title}
+          >
             {AUDIT_ERRORS.partialAiReview}
           </Callout>
         ) : null}
@@ -320,7 +334,10 @@ export function AuditReport({
           />
         ) : null}
         {triageDegraded && !auditId ? (
-          <Callout variant="warning" title={REPORT_COPY.triageUnavailable.title}>
+          <Callout
+            variant="warning"
+            title={REPORT_COPY.triageUnavailable.title}
+          >
             {triageUnavailableBody(failureCode, isLoggedIn)}
           </Callout>
         ) : null}
@@ -360,11 +377,6 @@ export function AuditReport({
 
   const contextSections = (
     <>
-      {!isSample && audit.technologyProfile ? (
-        <div id="report-stack" className={REPORT_SECTION_SCROLL_MT}>
-          <MadeWithProfile profile={audit.technologyProfile} compact />
-        </div>
-      ) : null}
       {showContract && audit.productContract ? (
         <div id="report-contract" className={REPORT_SECTION_SCROLL_MT}>
           <ProductContractCard
@@ -387,7 +399,10 @@ export function AuditReport({
           <LaunchGates checklist={audit.launchReadiness.checklist} />
         </div>
       ) : null}
-      <div id="report-recheck" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-5')}>
+      <div
+        id="report-recheck"
+        className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-5')}
+      >
         {!isSample && workspace.capabilities.canExport && toolbarActions ? (
           <div className="flex flex-wrap gap-2">{toolbarActions}</div>
         ) : null}
@@ -397,9 +412,13 @@ export function AuditReport({
             <Link href={`/products/${projectId}`}>Return to Product</Link>
           </Button>
         ) : null}
-        {showMonitoringHint && workspace.capabilities.canRecheck && projectId ? (
+        {showMonitoringHint &&
+        workspace.capabilities.canRecheck &&
+        projectId ? (
           <div className="space-y-3 rounded-card border border-border/50 bg-muted/15 p-5">
-            <p className="text-sm font-semibold">{REPORT_COPY.recheckHint.title}</p>
+            <p className="text-sm font-semibold">
+              {REPORT_COPY.recheckHint.title}
+            </p>
             <ProductWatchControls
               projectId={projectId}
               canWatch={canWatchProduct}
@@ -410,26 +429,40 @@ export function AuditReport({
         ) : null}
         {isSample ? (
           <div className="space-y-3 rounded-card border border-border/50 bg-muted/15 p-5 text-center sm:p-6">
-            <p className="text-sm font-semibold">{REPORT_COPY.sampleCta.title}</p>
-            <p className="text-pretty text-sm text-muted-foreground">{REPORT_COPY.sampleCta.body}</p>
+            <p className="text-sm font-semibold">
+              {REPORT_COPY.sampleCta.title}
+            </p>
+            <p className="text-pretty text-sm text-muted-foreground">
+              {REPORT_COPY.sampleCta.body}
+            </p>
             <Button asChild variant="brand">
               <Link href="/#audit">{HERO.primaryCta}</Link>
             </Button>
           </div>
         ) : null}
-        {!isSample && showDeterministicFixes && !showPrescription && isLoggedIn ? (
+        {!isSample &&
+        showDeterministicFixes &&
+        !showPrescription &&
+        isLoggedIn ? (
           <div className="space-y-2 rounded-card border border-border/50 bg-muted/15 p-6 text-center">
             <p className="text-sm font-semibold">
-              {aiReviewPending ? UPSELLS.signedInAiPending.headline : UPSELLS.signedInAiDegraded.headline}
+              {aiReviewPending
+                ? UPSELLS.signedInAiPending.headline
+                : UPSELLS.signedInAiDegraded.headline}
             </p>
             <p className="text-sm text-muted-foreground">
-              {aiReviewPending ? UPSELLS.signedInAiPending.body : UPSELLS.signedInAiDegraded.body}
+              {aiReviewPending
+                ? UPSELLS.signedInAiPending.body
+                : UPSELLS.signedInAiDegraded.body}
             </p>
           </div>
         ) : null}
         {!isSample && !workspace.capabilities.canRecheck ? (
           <p className="text-center text-sm text-muted-foreground">
-            <Link href="/#audit" className="text-link font-medium underline-offset-2 hover:underline">
+            <Link
+              href="/#audit"
+              className="text-link font-medium underline-offset-2 hover:underline"
+            >
               {REPORT_COPY.runYourOwnAudit}
             </Link>
           </p>
@@ -463,12 +496,12 @@ export function AuditReport({
   )
 
   const belowFrame = (
-      <ReportContextDisclosure
-        sectionIds={REPORT_CONTEXT_SECTION_IDS}
-        className="mt-3"
-      >
-        {contextSections}
-      </ReportContextDisclosure>
+    <ReportContextDisclosure
+      sectionIds={REPORT_CONTEXT_SECTION_IDS}
+      className="mt-3"
+    >
+      {contextSections}
+    </ReportContextDisclosure>
   )
 
   const livingReportPanel = (
@@ -493,7 +526,9 @@ export function AuditReport({
           <Suspense fallback={null}>
             <ReportWorkspaceSplitShell
               capabilities={workspace.capabilities}
-              reportHeader={<ReportOutcomeBar model={workspace} actions={actions} />}
+              reportHeader={
+                <ReportOutcomeBar model={workspace} actions={actions} />
+              }
               leftPanel={
                 <WorkspaceChatPanel
                   auditId={auditId}
@@ -524,7 +559,9 @@ export function AuditReport({
       <Suspense fallback={null}>
         <ReportWorkspaceSplitShell
           capabilities={workspace.capabilities}
-          reportHeader={<ReportOutcomeBar model={workspace} actions={actions} />}
+          reportHeader={
+            <ReportOutcomeBar model={workspace} actions={actions} />
+          }
           leftPanel={
             <WorkspaceChatPanel
               capabilities={workspace.capabilities}

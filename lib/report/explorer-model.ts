@@ -1,5 +1,5 @@
 import {
-  buildExpertFixPrompt,
+  buildFixPromptPreview,
   formatDisplayEvidence,
   resolveWhyItMatters,
 } from '@/lib/audit/flag-copy'
@@ -28,7 +28,10 @@ import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
 import { rubricLabel, severityLabel } from '@/lib/utils'
-import type { SampleFlagDisplay, SampleReportDisplay } from '@/lib/marketing/sample-report-display'
+import type {
+  SampleFlagDisplay,
+  SampleReportDisplay,
+} from '@/lib/marketing/sample-report-display'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import { buildFixList, type FixList } from '@/lib/audit/finish-plan'
 
@@ -39,7 +42,10 @@ import { buildFixList, type FixList } from '@/lib/audit/finish-plan'
  * - AI → "Observed" (AI reviewer saw it in screenshots/text)
  * - AI + uncertain → "Likely cause" (AI inferred but not 100%)
  */
-export function deriveTruthLabel(source: string | null | undefined, checkId: string | null): string {
+export function deriveTruthLabel(
+  source: string | null | undefined,
+  checkId: string | null
+): string {
   if (source === 'JOURNEY') return 'Reproduced'
   if (
     checkId &&
@@ -127,18 +133,19 @@ export interface ReportExplorerModel {
 
 function mapLiveFlag(
   flag: RankableFlag,
-  visualByCheckId?: Record<string, { gifUrl?: string | null; overlayUrl?: string | null }>,
+  visualByCheckId?: Record<
+    string,
+    { gifUrl?: string | null; overlayUrl?: string | null }
+  >,
   mayShowPrompt = true,
   occurrences: { pageUrls: string[]; count: number } = {
     pageUrls: flag.pageUrl ? [flag.pageUrl] : [],
     count: 1,
-  },
+  }
 ): ExplorerFlag {
-  const fixPrompt = mayShowPrompt ? buildExpertFixPrompt(flag) : ''
-  const copyFixPrompt = mayShowPrompt
-    ? buildPlanModePrompt([flag], { limit: 1 })
-    : ''
   const sourceFix = resolveFixPrompt(flag)
+  const fixPrompt = mayShowPrompt ? buildFixPromptPreview(flag) : ''
+  const copyFixPrompt = fixPrompt
   const visual = flag.checkId ? visualByCheckId?.[flag.checkId] : undefined
   const visualUrl = visual?.gifUrl || visual?.overlayUrl || null
   return {
@@ -185,10 +192,17 @@ export function buildLiveExplorerModel(input: {
   score: number | null
   flags: RankableFlag[]
   screenshots?: AuditScreenshot[]
-  rubricRows: Array<{ name: string; score: number | null; grade?: string | null }>
+  rubricRows: Array<{
+    name: string
+    score: number | null
+    grade?: string | null
+  }>
   evidenceAnchors?: EvidenceAnchorMap
   previewMeta?: PreviewMeta | null
-  flagVisualEvidence?: Record<string, { gifUrl?: string | null; overlayUrl?: string | null }>
+  flagVisualEvidence?: Record<
+    string,
+    { gifUrl?: string | null; overlayUrl?: string | null }
+  >
   productContract?: ProductContract | null
   promptAccess?: 'all' | 'one' | 'none'
   demonstratedFlag?: RankableFlag | null
@@ -231,10 +245,16 @@ export function buildLiveExplorerModel(input: {
   const promptVisibleById = new Map(
     fixList.items.map((item) => [item.id, item.prompt !== null])
   )
-  const desktopScreenshot = input.screenshots?.find((s) => s.device === 'DESKTOP')?.url ?? null
-  const mobileScreenshot = input.screenshots?.find((s) => s.device === 'MOBILE')?.url ?? null
-  const desktop = desktopScreenshot ? normalizeInternalScreenshotUrl(desktopScreenshot) : null
-  const mobile = mobileScreenshot ? normalizeInternalScreenshotUrl(mobileScreenshot) : null
+  const desktopScreenshot =
+    input.screenshots?.find((s) => s.device === 'DESKTOP')?.url ?? null
+  const mobileScreenshot =
+    input.screenshots?.find((s) => s.device === 'MOBILE')?.url ?? null
+  const desktop = desktopScreenshot
+    ? normalizeInternalScreenshotUrl(desktopScreenshot)
+    : null
+  const mobile = mobileScreenshot
+    ? normalizeInternalScreenshotUrl(mobileScreenshot)
+    : null
   const displayHost = displayHostname(input.url)
 
   return {
@@ -252,7 +272,10 @@ export function buildLiveExplorerModel(input: {
         flag,
         input.flagVisualEvidence,
         promptVisibleById.get(flag.id) ?? false,
-        { pageUrls: item.pageUrls, count: item.occurrenceCount },
+        {
+          pageUrls: item.pageUrls,
+          count: item.occurrenceCount,
+        }
       )
     ),
     allHighlights: buildAllEvidenceHighlights(
@@ -279,7 +302,11 @@ export function buildPartialExplorerModel(input: {
   score?: number | null
   flags: PartialExplorerFlag[]
   screenshots?: AuditScreenshot[]
-  rubrics?: Array<{ name: string; score: number | null; grade?: string | null }>
+  rubrics?: Array<{
+    name: string
+    score: number | null
+    grade?: string | null
+  }>
 }): ReportExplorerModel {
   const rankableFlags: RankableFlag[] = input.flags.map((flag) => ({
     id: flag.id,
@@ -305,7 +332,10 @@ export function buildPartialExplorerModel(input: {
   })
 }
 
-function mapSampleFlag(flag: SampleFlagDisplay, mayShowPrompt: boolean): ExplorerFlag {
+function mapSampleFlag(
+  flag: SampleFlagDisplay,
+  mayShowPrompt: boolean
+): ExplorerFlag {
   return {
     id: flag.id,
     checkId: null,

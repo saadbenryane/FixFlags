@@ -20,7 +20,7 @@ Per-issue prompts are the primary handoff from understanding to improvement.
 2. Update-review result, when present
 3. Complete ranked Fix list (`#report-flags`) with `Your priorities` as the list heading, screenshot evidence, selected detail, and canonical Critical-first ranking
 4. One per-issue prompt row: an expandable `Fix Prompt` on the left and an always-visible `Copy prompt` action on the right
-5. Collapsed evidence and Product context: Made with (`#report-stack`), Product Contract (`#report-contract`), and verified Product Memory (`#report-remember`), when present
+5. Collapsed evidence and Product context: Product Contract (`#report-contract`) and verified Product Memory (`#report-remember`), when present
 6. Subordinate Watch, export, and Product controls; Export includes Copy link for the canonical public report URL
 7. At most one contextual signup or upgrade moment
 
@@ -31,7 +31,7 @@ Mobile exposes only Agent and Report, defaulting to Agent while work is active a
 Legacy `view=timeline` and `view=canvas` parameters normalize to `view=report`.
 
 New anonymous scans render the progressive and completed evidence report without a blocking authentication dialog.
-Anonymous viewers can inspect scores, all confirmed Flags, screenshots, textual evidence, public-safe technology context, and deterministic Agent scan messages.
+Anonymous viewers can inspect scores, all confirmed Flags, screenshots, textual evidence, and deterministic Agent scan messages.
 Fix prompts, interactive Agent conversation, Product Memory, account history, update reviews, and export remain unavailable until their access requirement is met.
 Authentication is contextual and returns through `/post-login` so the anonymous report is claimed before the same workspace unlocks.
 Anonymous API serialization remains redacted: gated fields are omitted server-side, evidence remains real page evidence, and gate strings are never persisted into Flag rows.
@@ -63,7 +63,7 @@ The progress band shows honest 0–100% pipeline progress and stage detail.
 Deterministic Agent messages use the same UI message envelope as authenticated model conversation but consume no model tokens and are reconstructed from persisted scan facts.
 Partial Flags stream into the ranked explorer and appear once in the Agent transcript with a link to the matching report detail.
 Desktop and mobile capture placeholders resolve independently inside Flag detail on mobile; the standalone capture pair stays on large screens only.
-Show honest status, early findings, and a layout-matched Made with skeleton that resolves to verified, empty, partial, or unavailable.
+Show honest status and early findings without introducing completed-Review context while the Review is still running.
 Parked Timeline, Preview, and Canvas payloads are not loaded by the default report route.
 Keep the workspace and transcript mounted until the completed server report replaces progressive data.
 

@@ -17,6 +17,10 @@ import {
   synthesizeProductSignals,
   type SynthesizedSignalContext,
 } from '@/lib/signals/judgment'
+import {
+  loadTechnologyProfile,
+  type TechnologyProfile,
+} from '@/lib/audit/technology-profile'
 
 const ACTIVE_IMPROVEMENT_STATUSES: ImprovementStatus[] = [
   'PROPOSED',
@@ -158,6 +162,8 @@ export type ProductWorkspaceDTO = {
   latestManualReview: ProductReviewSummaryDTO | null
   latestCompletedManualReview: ProductReviewSummaryDTO | null
   latestWatchReview: ProductWatchReviewDTO | null
+  technologyProfile: TechnologyProfile | null
+  reviewHistory: ProductReviewSummaryDTO[]
   history: ProductHistoryPageDTO
   integrations: ProductIntegrationDTO
 }
@@ -215,7 +221,7 @@ type AttemptRow = {
 const HISTORY_PREFIXES = ['review:', 'attempt:', 'learning:'] as const
 
 function reviewKind(
-  review: Pick<ReviewRow, 'parentId' | 'recheckTrigger'>,
+  review: Pick<ReviewRow, 'parentId' | 'recheckTrigger'>
 ): ReviewKind {
   if (review.recheckTrigger === 'WATCH') return 'WATCH'
   return review.parentId ? 'UPDATE_REVIEW' : 'PRODUCT_REVIEW'
@@ -229,7 +235,7 @@ function reviewSummary(review: ReviewRow): ProductReviewSummaryDTO {
     score: review.score,
     reportCompleteness: review.reportCompleteness,
     unresolvedCount: review.flags.filter(
-      (flag) => flag.status === 'OPEN' || flag.status === 'REGRESSED',
+      (flag) => flag.status === 'OPEN' || flag.status === 'REGRESSED'
     ).length,
     createdAt: review.createdAt.toISOString(),
     completedAt: review.completedAt?.toISOString() ?? null,
@@ -258,7 +264,7 @@ function evidenceBeforeFlagId(value: unknown): string | null {
 
 function attemptSummary(
   attempt: AttemptRow,
-  sourceFlagId: string | null,
+  sourceFlagId: string | null
 ): ProductAttemptDTO {
   return {
     id: attempt.id,
@@ -323,7 +329,7 @@ const attemptSelect = {
  */
 export async function loadVerificationReceiptsForReview(
   reviewId: string,
-  userId: string,
+  userId: string
 ): Promise<ProductAttemptDTO[]> {
   const attempts = await prisma.improvementAttempt.findMany({
     where: {
@@ -336,7 +342,9 @@ export async function loadVerificationReceiptsForReview(
 
   if (attempts.length === 0) return []
 
-  const sourceReviewIds = [...new Set(attempts.map((attempt) => attempt.sourceAuditId))]
+  const sourceReviewIds = [
+    ...new Set(attempts.map((attempt) => attempt.sourceAuditId)),
+  ]
   const sourceOccurrences = await prisma.improvementOccurrence.findMany({
     where: {
       improvement: { project: { userId } },
@@ -359,8 +367,9 @@ export async function loadVerificationReceiptsForReview(
   return attempts.map((attempt) =>
     attemptSummary(
       attempt,
-      sourceFlagIds.get(`${attempt.improvementId}:${attempt.sourceAuditId}`) ?? null,
-    ),
+      sourceFlagIds.get(`${attempt.improvementId}:${attempt.sourceAuditId}`) ??
+        null
+    )
   )
 }
 
@@ -385,7 +394,7 @@ function stableLearningId(learning: VerifiedLearning): string {
 }
 
 export function parseProductHistoryCursor(
-  value: string | undefined,
+  value: string | undefined
 ): ProductHistoryCursorDTO | null {
   if (!value || value.length > 500) return null
   const separatorIndex = value.indexOf('|')
@@ -401,19 +410,19 @@ export function parseProductHistoryCursor(
 }
 
 export function serializeProductHistoryCursor(
-  cursor: ProductHistoryCursorDTO,
+  cursor: ProductHistoryCursorDTO
 ): string {
   return `${cursor.at}|${cursor.id}`
 }
 
 function historyDateWhere(
   prefix: 'review:' | 'attempt:',
-  cursor: ProductHistoryCursorDTO | null,
+  cursor: ProductHistoryCursorDTO | null
 ) {
   if (!cursor) return {}
   const at = new Date(cursor.at)
   const cursorPrefix = HISTORY_PREFIXES.find((candidate) =>
-    cursor.id.startsWith(candidate),
+    cursor.id.startsWith(candidate)
   )
   if (!cursorPrefix) return {}
   const prefixOrder = prefix.localeCompare(cursorPrefix)
@@ -429,7 +438,7 @@ function historyDateWhere(
 
 function compareHistoryEvents(
   left: ProductHistoryEventDTO,
-  right: ProductHistoryEventDTO,
+  right: ProductHistoryEventDTO
 ): number {
   const dateOrder = right.at.localeCompare(left.at)
   return dateOrder || right.id.localeCompare(left.id)
@@ -437,7 +446,7 @@ function compareHistoryEvents(
 
 function eventIsBeforeCursor(
   event: ProductHistoryEventDTO,
-  cursor: ProductHistoryCursorDTO | null,
+  cursor: ProductHistoryCursorDTO | null
 ): boolean {
   if (!cursor) return true
   return (
@@ -447,7 +456,7 @@ function eventIsBeforeCursor(
 
 /** Account-level Product cards. Every manual Review and Attention item stays scoped to its Product. */
 export async function loadProductOverview(
-  userId: string,
+  userId: string
 ): Promise<ProductOverviewDTO[]> {
   const products = await prisma.project.findMany({
     where: { userId },
@@ -490,7 +499,7 @@ export async function loadProductOverview(
           requestedUserId: userId,
           actualUserId: product.userId,
           productId: product.id,
-        },
+        }
       )
     }
   }
@@ -528,7 +537,7 @@ export async function loadProductWorkspace(
     signalsEligible: boolean
     canDailyWatch?: boolean
     historyCursor?: ProductHistoryCursorDTO | null
-  },
+  }
 ): Promise<ProductWorkspaceDTO | null> {
   const product = await prisma.project.findFirst({
     where: { id: productId, userId },
@@ -666,6 +675,12 @@ export async function loadProductWorkspace(
   const sourceReviewIds = [
     ...new Set(historyAttemptRows.map((attempt) => attempt.sourceAuditId)),
   ]
+  const latestTechnologyReviewRow =
+    historyReviewRows.find((review) => review.status === 'COMPLETED') ??
+    latestCompletedManualReviewRow
+  const technologyProfile = latestTechnologyReviewRow
+    ? await loadTechnologyProfile(latestTechnologyReviewRow.id)
+    : null
   const sourceOccurrences =
     sourceReviewIds.length > 0
       ? await prisma.improvementOccurrence.findMany({
@@ -694,7 +709,7 @@ export async function loadProductWorkspace(
       at: review.createdAt.toISOString(),
       id: `review:${review.id}`,
       review: reviewSummary(review),
-    }),
+    })
   )
   const attemptEvents = historyAttemptRows.map(
     (attempt): ProductHistoryEventDTO => ({
@@ -705,10 +720,10 @@ export async function loadProductWorkspace(
       attempt: attemptSummary(
         attempt,
         sourceFlagIds.get(
-          `${attempt.improvementId}:${attempt.sourceAuditId}`,
-        ) ?? null,
+          `${attempt.improvementId}:${attempt.sourceAuditId}`
+        ) ?? null
       ),
-    }),
+    })
   )
   const learningEvents = (memory?.verifiedLearnings ?? []).map(
     (learning): ProductHistoryEventDTO => ({
@@ -716,7 +731,7 @@ export async function loadProductWorkspace(
       at: learning.at,
       id: stableLearningId(learning),
       learning,
-    }),
+    })
   )
   const historyCandidates = [
     ...reviewEvents,
@@ -780,6 +795,10 @@ export async function loadProductWorkspace(
     latestWatchReview: latestWatchReviewRow
       ? watchReviewSummary(latestWatchReviewRow)
       : null,
+    technologyProfile,
+    reviewHistory: historyReviewRows
+      .slice(0, PRODUCT_HISTORY_PAGE_SIZE)
+      .map(reviewSummary),
     history: {
       events: historyEvents,
       nextCursor,
@@ -798,7 +817,7 @@ export async function loadProductWorkspace(
 }
 
 function watchInterval(
-  value: ProjectWatchInterval | null,
+  value: ProjectWatchInterval | null
 ): 'weekly' | 'daily' | null {
   if (value === 'WEEKLY') return 'weekly'
   if (value === 'DAILY') return 'daily'

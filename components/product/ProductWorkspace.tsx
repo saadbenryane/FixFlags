@@ -10,13 +10,14 @@ import {
   TriangleAlert,
 } from 'lucide-react'
 import { ProductWatchControls } from '@/components/audit/ProductWatchControls'
+import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import { ProductSignalsSetup } from '@/components/dashboard/ProductSignalsSetup'
 import { ImprovementReceipt } from '@/components/product/ImprovementReceipt'
 import { ProductReviewAction } from '@/components/product/ProductReviewAction'
+import { ProductReviewTrend } from '@/components/product/ProductReviewTrend'
 import { ProductAttentionImpression } from '@/components/product/ProductAttentionImpression'
 import { ProductPriorities } from '@/components/product/ProductPriorities'
 import { ScoreRing } from '@/components/report/ScoreRing'
-import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Surface } from '@/components/ui/surface'
@@ -56,18 +57,14 @@ export function ProductWorkspace({
     latestCompletedManualReview,
     latestWatchReview,
   } = workspace
-  const currentReview = activeManualReview ?? latestCompletedManualReview ?? latestManualReview
-  const reviewHistory = workspace.history.events
-    .filter((event) => event.kind === 'review')
-    .map((event) => ({
-      id: event.review.id,
-      href: `/report/${event.review.id}?view=report`,
-      score: event.review.score,
-      checkedAt: new Date(event.at),
-      kind: event.review.kind === 'WATCH' ? 'watch' as const : event.review.kind === 'UPDATE_REVIEW' ? 'update-review' as const : 'product-review' as const,
-      status: event.review.status === 'FAILED' ? 'failed' as const : event.review.reportCompleteness === 'PARTIAL' ? 'partial' as const : 'completed' as const,
-    }))
-    .reverse()
+  const currentReview =
+    activeManualReview ?? latestCompletedManualReview ?? latestManualReview
+  const reviewEvents = workspace.history.events.filter(
+    (event) => event.kind === 'review'
+  )
+  const progressEvents = workspace.history.events.filter(
+    (event) => event.kind !== 'review'
+  )
 
   return (
     <main className="space-y-6">
@@ -102,27 +99,68 @@ export function ProductWorkspace({
             <span className="truncate">{product.url}</span>
             <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
           </a>
+          {product.purpose ? (
+            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+              {product.purpose}
+            </p>
+          ) : null}
         </div>
       </header>
 
-      <section className="flex flex-wrap items-center gap-5 border-y border-border/45 py-5" aria-label="Current score and review history">
-        <ScoreRing score={currentReview?.score ?? null} pending={Boolean(activeManualReview)} />
-        <ScoreHistoryChart history={reviewHistory} currentAuditId={currentReview?.id} isLoading={Boolean(activeManualReview)} className="min-w-[14rem] flex-1" />
-        <ProductReviewAction productUrl={product.url} activeManualReview={activeManualReview} latestManualReview={latestManualReview} latestCompletedManualReview={latestCompletedManualReview} />
+      <section aria-labelledby="current-review-heading">
+        <Surface
+          variant="elevated"
+          className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
+        >
+          <ScoreRing
+            score={currentReview?.score ?? null}
+            pending={Boolean(activeManualReview)}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="section-label">Current Review</p>
+            <SectionTitle id="current-review-heading" className="mt-1">
+              {currentReview
+                ? presentProductReview(currentReview).label
+                : 'Ready for a Product Review'}
+            </SectionTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {currentReview
+                ? `${currentReview.unresolvedCount} unresolved · ${dateLabel(currentReview.completedAt || currentReview.createdAt)}`
+                : 'Review this Product to find what deserves attention.'}
+            </p>
+          </div>
+          <div className="col-span-2 sm:col-span-1">
+            <ProductReviewAction
+              productUrl={product.url}
+              activeManualReview={activeManualReview}
+              latestManualReview={latestManualReview}
+              latestCompletedManualReview={latestCompletedManualReview}
+            />
+          </div>
+        </Surface>
       </section>
-      {latestManualReview?.status === 'FAILED' ? <p role="alert" className="flex items-start gap-2 text-sm text-destructive"><TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{latestManualReview.failureMessage || 'The latest review did not finish. Start an Update review to try again.'}</p> : null}
+      {latestManualReview?.status === 'FAILED' ? (
+        <p
+          role="alert"
+          className="flex items-start gap-2 text-sm text-destructive"
+        >
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          {latestManualReview.failureMessage ||
+            'The latest review did not finish. Start an Update review to try again.'}
+        </p>
+      ) : null}
 
       {onAttentionVisible && workspace.attention.length > 0 ? (
         <ProductAttentionImpression onVisible={onAttentionVisible}>
-          <AttentionSection
-            workspace={workspace}
-          />
+          <AttentionSection workspace={workspace} />
         </ProductAttentionImpression>
       ) : (
-        <AttentionSection
-          workspace={workspace}
-        />
+        <AttentionSection workspace={workspace} />
       )}
+
+      {workspace.technologyProfile ? (
+        <MadeWithProfile profile={workspace.technologyProfile} />
+      ) : null}
 
       <section
         id="product-history"
@@ -130,52 +168,83 @@ export function ProductWorkspace({
         className="space-y-3"
       >
         <div>
-          <SectionTitle id="product-history-heading">
-            Recent activity
-          </SectionTitle>
+          <SectionTitle id="product-history-heading">Reviews</SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            Reviews, copied prompts, verification, and learning.
+            Every Product Review, update review, and Watch check in one place.
           </p>
         </div>
+        <ProductReviewTrend reviews={workspace.reviewHistory} />
         <Surface variant="elevated">
-          {workspace.history.events.length > 0 ? (
+          {reviewEvents.length > 0 ? (
             <div className="divide-y divide-border/60">
-              {workspace.history.events.map((event) => {
-                if (event.kind === 'review') {
-                  return (
+              {reviewEvents.map((event) => (
+                <Link
+                  key={event.id}
+                  href={`/report/${event.review.id}?view=report` as Route}
+                  className="flex min-h-14 items-center justify-between gap-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium">
+                        {reviewTypeLabel(event.review)}
+                      </span>
+                      <Badge variant={presentProductReview(event.review).tone}>
+                        {presentProductReview(event.review).label}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {dateLabel(event.at)}
+                      {event.review.status === 'COMPLETED'
+                        ? ` · ${event.review.unresolvedCount} unresolved`
+                        : ''}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="font-mono text-sm font-semibold tabular-nums">
+                      {presentProductReview(event.review).score}
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-brand" aria-hidden />
+                  </div>
+                </Link>
+              ))}
+              {workspace.history.nextCursor ? (
+                <div className="py-3">
+                  <Button asChild variant="ghost" className="w-full sm:w-auto">
                     <Link
-                      key={event.id}
                       href={
-                        `/report/${event.review.id}?view=report` as Route
+                        (`/products/${product.id}?historyCursor=${encodeURIComponent(serializeProductHistoryCursor(workspace.history.nextCursor))}` +
+                          '#product-history') as Route
                       }
-                      className="flex min-h-14 items-center justify-between gap-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                     >
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {reviewTypeLabel(event.review)}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {dateLabel(event.at)}
-                          {event.review.status === 'COMPLETED'
-                            ? ` · ${event.review.unresolvedCount} unresolved`
-                            : ''}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-3">
-                        <span className="font-mono text-sm font-semibold tabular-nums">
-                          {presentProductReview(event.review).score}
-                        </span>
-                        <ArrowRight
-                          className="h-4 w-4 text-brand"
-                          aria-hidden
-                        />
-                      </div>
+                      Older history
+                      <ArrowRight className="h-4 w-4" aria-hidden />
                     </Link>
-                  )
-                }
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="py-4 text-sm text-muted-foreground">
+              Review history begins with the first Product Review.
+            </p>
+          )}
+        </Surface>
+      </section>
 
+      {progressEvents.length > 0 ? (
+        <section
+          aria-labelledby="product-progress-heading"
+          className="space-y-3"
+        >
+          <div>
+            <SectionTitle id="product-progress-heading">Progress</SectionTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Declared changes and what independent verification learned.
+            </p>
+          </div>
+          <Surface variant="elevated">
+            <div className="divide-y divide-border/60">
+              {progressEvents.map((event) => {
                 if (event.kind === 'attempt') {
                   return (
                     <div key={event.id} className="space-y-2 py-4">
@@ -191,7 +260,6 @@ export function ProductWorkspace({
                     </div>
                   )
                 }
-
                 return (
                   <div key={event.id} className="py-4">
                     <div className="rounded-nested-md bg-success-muted p-3">
@@ -211,29 +279,10 @@ export function ProductWorkspace({
                   </div>
                 )
               })}
-              {workspace.history.nextCursor ? (
-                <div className="py-3">
-                  <Button asChild variant="ghost" className="w-full sm:w-auto">
-                    <Link
-                      href={
-                        (`/products/${product.id}?historyCursor=${encodeURIComponent(serializeProductHistoryCursor(workspace.history.nextCursor))}` +
-                          '#product-history') as Route
-                      }
-                    >
-                      Older history
-                      <ArrowRight className="h-4 w-4" aria-hidden />
-                    </Link>
-                  </Button>
-                </div>
-              ) : null}
             </div>
-          ) : (
-            <p className="py-4 text-sm text-muted-foreground">
-              Product history begins with the first completed Review.
-            </p>
-          )}
-        </Surface>
-      </section>
+          </Surface>
+        </section>
+      ) : null}
 
       <details className="group rounded-card border border-border/45 bg-card/60 shadow-card">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:px-5 [&::-webkit-details-marker]:hidden">
@@ -253,7 +302,6 @@ export function ProductWorkspace({
         </summary>
 
         <div className="grid gap-4 border-t border-border/45 p-4 sm:p-5 lg:grid-cols-2">
-          <p className="text-sm text-muted-foreground lg:col-span-2">{product.purpose || 'FixFlags will learn this Product’s purpose from its first review.'}</p>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
               <Eye className="mt-0.5 h-5 w-5 text-brand" aria-hidden />
@@ -386,11 +434,7 @@ export function ProductWorkspace({
   )
 }
 
-function AttentionSection({
-  workspace,
-}: {
-  workspace: ProductWorkspaceDTO
-}) {
+function AttentionSection({ workspace }: { workspace: ProductWorkspaceDTO }) {
   return (
     <section aria-labelledby="attention-heading" className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-2">

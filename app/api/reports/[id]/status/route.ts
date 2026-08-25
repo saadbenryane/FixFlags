@@ -5,7 +5,8 @@ import { handleRouteError, apiError } from '@/lib/api/errors'
 import { resolveAuditAccess } from '@/lib/audit/access'
 import { SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
-import { deriveScreenshotCaptureStatus,
+import {
+  deriveScreenshotCaptureStatus,
   parseScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
@@ -13,11 +14,16 @@ import { computeShareStatusFromRubrics } from '@/lib/audit/rubric'
 import { recoverAuditJobOnPoll } from '@/lib/audit/recover-audit-job'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { parseProductContract } from '@/lib/audit/product-contract'
-import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
 import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
 import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 
-const NON_TERMINAL = new Set(['QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING'])
+const NON_TERMINAL = new Set([
+  'QUEUED',
+  'CAPTURING',
+  'CHECKING',
+  'JUDGING',
+  'FINALIZING',
+])
 
 export async function GET(
   _req: NextRequest,
@@ -29,7 +35,12 @@ export async function GET(
     const session = await resolveSessionUser()
 
     const clientId = requestClientId(await headers())
-    await recordRateLimit({ scope: 'report-status', identifier: clientId, limit: 60, windowSeconds: 60 })
+    await recordRateLimit({
+      scope: 'report-status',
+      identifier: clientId,
+      limit: 60,
+      windowSeconds: 60,
+    })
 
     const audit = await prisma.audit.findUnique({
       where: { id },
@@ -83,7 +94,8 @@ export async function GET(
       // Keep flags on COMPLETED so the progressive hold frame does not blank before SSR swap.
       effectiveStatus === 'COMPLETED'
 
-    const isTerminal = effectiveStatus === 'COMPLETED' || effectiveStatus === 'FAILED'
+    const isTerminal =
+      effectiveStatus === 'COMPLETED' || effectiveStatus === 'FAILED'
 
     // Skip heavy computations during scanning to keep the status endpoint fast
     // and avoid starving the event loop.
@@ -96,7 +108,9 @@ export async function GET(
           name: r.name,
           grade: r.grade,
           score: r.score,
-          flags: audit.flags.filter((f) => f.rubric === r.name).map((f) => ({ severity: f.severity })),
+          flags: audit.flags
+            .filter((f) => f.rubric === r.name)
+            .map((f) => ({ severity: f.severity })),
         }))
       : []
     const flatFlags = isTerminal
@@ -106,20 +120,17 @@ export async function GET(
       ? computeShareStatusFromRubrics(rubricSources, flatFlags)
       : 'private'
 
-    const { flags: partialFlags, performanceData, productContract, ...rest } = audit
+    const {
+      flags: partialFlags,
+      performanceData,
+      productContract,
+      ...rest
+    } = audit
     const canUsePrivateReportData = access === 'owner'
     void performanceData
-    const contract = canUsePrivateReportData ? parseProductContract(productContract) : null
-    const technologyProfile = isTerminal
-      ? await loadTechnologyProfile(id, {
-          score: audit.score,
-          rubrics: audit.rubrics.map((rubric) => ({
-            name: rubric.name,
-            score: rubric.score,
-          })),
-          flags: audit.flags.map((flag) => ({ rubric: flag.rubric })),
-        })
-      : undefined
+    const contract = canUsePrivateReportData
+      ? parseProductContract(productContract)
+      : null
     const agentMessages = buildFixFlagsScanMessages({
       id,
       status: effectiveStatus,
@@ -142,10 +153,16 @@ export async function GET(
         includeAi: canUsePrivateReportData ? rest.includeAi : undefined,
         aiReviewAt: canUsePrivateReportData ? rest.aiReviewAt : undefined,
         triageAt: canUsePrivateReportData ? rest.triageAt : undefined,
-        journeyReviewIncluded: canUsePrivateReportData ? rest.journeyReviewIncluded : undefined,
-        journeyReviewAt: canUsePrivateReportData ? rest.journeyReviewAt : undefined,
+        journeyReviewIncluded: canUsePrivateReportData
+          ? rest.journeyReviewIncluded
+          : undefined,
+        journeyReviewAt: canUsePrivateReportData
+          ? rest.journeyReviewAt
+          : undefined,
         status: effectiveStatus,
-        errorMsg: canUsePrivateReportData ? (refreshed?.errorMsg ?? audit.errorMsg) : undefined,
+        errorMsg: canUsePrivateReportData
+          ? (refreshed?.errorMsg ?? audit.errorMsg)
+          : undefined,
         failureCode: refreshed?.failureCode ?? audit.failureCode,
         screenshotCapture,
         pipelineVersion: audit.pipelineVersion ?? PIPELINE_VERSION,
@@ -154,13 +171,10 @@ export async function GET(
         partialFlags: showPartialFlags ? partialFlags : undefined,
         agentMessages,
         productContract: contract,
-        technologyProfile,
       },
       {
         headers: {
-          'Server-Timing': `report-status;dur=${(
-            performance.now() - requestStartedAt
-          ).toFixed(1)}`,
+          'Server-Timing': `report-status;dur=${(performance.now() - requestStartedAt).toFixed(1)}`,
         },
       }
     )

@@ -29,8 +29,8 @@ export function ProductReviewAction({
 
   if (activeManualReview) {
     return (
-      <div className="flex items-center justify-end">
-        <Button asChild className="shrink-0">
+      <div className="flex w-full items-center justify-end">
+        <Button asChild variant="brand" className="w-full shrink-0 sm:w-auto">
           <Link href={`/report/${activeManualReview.id}?view=report`}>
             Open review
           </Link>
@@ -101,7 +101,7 @@ export function ProductReviewAction({
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
+    <div className="flex w-full flex-col items-end gap-2">
         {error ? (
           <p
             id="product-review-action-error"
@@ -113,7 +113,8 @@ export function ProductReviewAction({
           </p>
         ) : null}
         <Button
-          variant="outline"
+          variant="brand"
+          className="w-full sm:w-auto"
           type="button"
           onClick={startUpdateReview}
           loading={busy}

@@ -26,9 +26,9 @@ Product Signals and integrations add evidence; they do not become Flags or confi
 
 ## Audit modes
 
-| Mode | Enum | Behavior |
-|------|------|----------|
-| Single URL | `SINGLE` | Primary page only |
+| Mode          | Enum            | Behavior                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Single URL    | `SINGLE`        | Primary page only                                                                                                                                                                                                                                                                                                                                                                                       |
 | Critical path | `CRITICAL_PATH` | Primary page + up to 5 additional same-origin URLs discovered from link metadata (`discoverCriticalPathUrls` in `lib/audit/critical-path.ts`). Categories: pricing, CTA destination, features, trust, resources. Max 6 pages total; category diversity enforced. Each page runs capture + deterministic checks; triage runs on primary only. Rubric scores combine across pages via `combine-pages.ts`. |
 
 Default for new audits: `CRITICAL_PATH` unless the client passes `mode: single` (`app/api/checks/route.ts`, MCP `fixflags_audit`).
@@ -37,12 +37,12 @@ Default for new audits: `CRITICAL_PATH` unless the client passes `mode: single` 
 
 `reportCompleteness` on the audit and `completeness` on each `AuditPage` reflect missing evidence, not scan failure:
 
-| Condition | Completeness |
-|-----------|--------------|
-| Desktop screenshot + metadata + both PageSpeed results + mobile screenshot | `FULL` |
-| PageSpeed 429 or partial capture | `PARTIAL` — flags still run; perf data or screenshots may be missing |
-| Triage degraded (no LLM) | `PARTIAL` — deterministic flags + honest degraded verdict |
-| Rubric dimension missing score on any page | Rubric `assessmentState: PARTIAL`, score `null` |
+| Condition                                                                  | Completeness                                                         |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Desktop screenshot + metadata + both PageSpeed results + mobile screenshot | `FULL`                                                               |
+| PageSpeed 429 or partial capture                                           | `PARTIAL` — flags still run; perf data or screenshots may be missing |
+| Triage degraded (no LLM)                                                   | `PARTIAL` — deterministic flags + honest degraded verdict            |
+| Rubric dimension missing score on any page                                 | Rubric `assessmentState: PARTIAL`, score `null`                      |
 
 Users still get a usable report on `PARTIAL`; UI should not treat it as a failed scan.
 
@@ -64,11 +64,11 @@ Screenshot base64 for prescription is loaded via `loadAuditScreenshotBase64` fro
 
 ## AI phases
 
-| Phase | When | Job | Gated by |
-|-------|------|-----|----------|
-| Deterministic checks | Always | `audit` | — |
-| Triage (phase 1) | Primary page only | `audit` | LLM keys + deadline budget |
-| Prescription (phase 2) | After triage | `ai-review` | `includeAi` + signed-in + credits |
+| Phase                  | When              | Job         | Gated by                          |
+| ---------------------- | ----------------- | ----------- | --------------------------------- |
+| Deterministic checks   | Always            | `audit`     | —                                 |
+| Triage (phase 1)       | Primary page only | `audit`     | LLM keys + deadline budget        |
+| Prescription (phase 2) | After triage      | `ai-review` | `includeAi` + signed-in + credits |
 
 ### `includeAi` vs `triageAt` vs `aiReviewAt`
 
@@ -80,26 +80,26 @@ Anonymous visitors: triage runs; fix prompts stripped by `lib/audit/report-acces
 
 ## Degradation matrix
 
-| Trigger | Outcome | User sees |
-|---------|---------|-----------|
-| Triage succeeds | `COMPLETED`, `triageAt` set | Score, verdict, rubrics |
-| Triage fails (keys, timeout, provider) | `COMPLETED`, `triageAt` null, `failureCode` set | Flags + honest degraded verdict |
-| Capture fails | `FAILED` | Check failed panel |
-| Prescription fails | `COMPLETED`, `triageAt` set, `failureCode` AI_REVIEW_FAILED | Triage report + partial AI callout |
-| PageSpeed 429 | PARTIAL completeness | Flags still run; perf data missing |
-| R2 missing (prod) | `FAILED` at capture | Scanner unavailable |
-| Worker down / stuck | Poll recovery → requeue or FAILED | Clear timeout message |
+| Trigger                                | Outcome                                                     | User sees                          |
+| -------------------------------------- | ----------------------------------------------------------- | ---------------------------------- |
+| Triage succeeds                        | `COMPLETED`, `triageAt` set                                 | Score, verdict, rubrics            |
+| Triage fails (keys, timeout, provider) | `COMPLETED`, `triageAt` null, `failureCode` set             | Flags + honest degraded verdict    |
+| Capture fails                          | `FAILED`                                                    | Check failed panel                 |
+| Prescription fails                     | `COMPLETED`, `triageAt` set, `failureCode` AI_REVIEW_FAILED | Triage report + partial AI callout |
+| PageSpeed 429                          | PARTIAL completeness                                        | Flags still run; perf data missing |
+| R2 missing (prod)                      | `FAILED` at capture                                         | Scanner unavailable                |
+| Worker down / stuck                    | Poll recovery → requeue or FAILED                           | Clear timeout message              |
 
 ## Failure codes
 
 Internal codes map to user copy via `lib/audit/user-facing-errors.ts` and `AUDIT_ERRORS` in `lib/marketing/copy.ts`.
 
-| Code | User message theme |
-|------|-------------------|
+| Code                         | User message theme              |
+| ---------------------------- | ------------------------------- |
 | `AI_PROVIDER_NOT_CONFIGURED` | Scanner temporarily unavailable |
-| `AUDIT_TIMEOUT` | Took longer than expected |
-| `AI_REVIEW_FAILED` | Partial AI review |
-| `DESKTOP_CAPTURE_FAILED` | Could not capture screenshot |
+| `AUDIT_TIMEOUT`              | Took longer than expected       |
+| `AI_REVIEW_FAILED`           | Partial AI review               |
+| `DESKTOP_CAPTURE_FAILED`     | Could not capture screenshot    |
 
 ## Recovery
 
@@ -112,25 +112,25 @@ Constants: `AUDIT_DEADLINE_MS` (180s), `POLL_FORCE_FAIL_GRACE_MS` (15s), `WORKER
 
 ## Environment variables
 
-| Variable | Purpose |
-|----------|---------|
-| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | At least one required for triage |
-| `JUDGE_PROVIDER_CHAIN` | Provider fallback order (default `openai,anthropic`) |
-| `TRIAGE_MODEL`, `TRIAGE_MAX_TOKENS` | Cheap triage pass tuning |
-| `PAGESPEED_API_KEY` | Recommended prod; avoids 429 |
-| `R2_*` (five vars) | Required for prod screenshots |
-| `AUDIT_DEADLINE_MS` | Hard audit deadline (default 180000) |
-| `MIN_JUDGE_BUDGET_MS` | Min time before triage starts (default 25000) |
+| Variable                               | Purpose                                              |
+| -------------------------------------- | ---------------------------------------------------- |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | At least one required for triage                     |
+| `JUDGE_PROVIDER_CHAIN`                 | Provider fallback order (default `openai,anthropic`) |
+| `TRIAGE_MODEL`, `TRIAGE_MAX_TOKENS`    | Cheap triage pass tuning                             |
+| `PAGESPEED_API_KEY`                    | Recommended prod; avoids 429                         |
+| `R2_*` (five vars)                     | Required for prod screenshots                        |
+| `AUDIT_DEADLINE_MS`                    | Hard audit deadline (default 180000)                 |
+| `MIN_JUDGE_BUDGET_MS`                  | Min time before triage starts (default 25000)        |
 
 ## Health endpoints
 
-| Endpoint | Checks |
-|----------|--------|
-| `GET /api/health` | DB, `storageConfigured`, `aiConfigured` |
-| `GET /api/health/ready` | Strict database, Redis, worker, Chromium, R2, AI, PageSpeed, auth, billing, email, and Product Watch readiness; returns 503 on any missing launch capability |
-| `GET /api/health/ai` | Provider keys + triage schema loaded |
-| `GET /api/health/browser` | Chromium + R2 connectivity |
-| `GET /api/health/worker` | Redis + worker heartbeat |
+| Endpoint                  | Checks                                                                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/health`         | DB, `storageConfigured`, `aiConfigured`                                                                                                                      |
+| `GET /api/health/ready`   | Strict database, Redis, worker, Chromium, R2, AI, PageSpeed, auth, billing, email, and Product Watch readiness; returns 503 on any missing launch capability |
+| `GET /api/health/ai`      | Provider keys + triage schema loaded                                                                                                                         |
+| `GET /api/health/browser` | Chromium + R2 connectivity                                                                                                                                   |
+| `GET /api/health/worker`  | Redis + worker heartbeat                                                                                                                                     |
 
 ## Debugging runbook
 
@@ -142,36 +142,36 @@ Constants: `AUDIT_DEADLINE_MS` (180s), `POLL_FORCE_FAIL_GRACE_MS` (15s), `WORKER
 
 ## Canonical files
 
-| File | Role |
-|------|------|
-| `lib/audit/runner.ts` | Top-level orchestrator |
-| `lib/audit/pipeline/run-page.ts` | Per-page capture/checks/triage |
-| `lib/audit/pipeline/finalize-from-outcome.ts` | Outcome → finalize routing |
-| `lib/audit/pipeline/outcome.ts` | Resolve triage_complete vs degraded |
-| `lib/audit/judge-triage.ts` | Triage LLM + retry |
-| `lib/audit/judge-prescription.ts` | Prescription LLM |
-| `lib/audit/finalize.ts` | Triage / prescription / degraded finalize |
-| `lib/audit/run-ai-review.ts` | Phase-2 prescription job |
-| `lib/audit/recover-audit-job.ts` | Stuck audit recovery |
-| `lib/audit/pipeline-config.ts` | Deadlines and budgets |
+| File                                          | Role                                      |
+| --------------------------------------------- | ----------------------------------------- |
+| `lib/audit/runner.ts`                         | Top-level orchestrator                    |
+| `lib/audit/pipeline/run-page.ts`              | Per-page capture/checks/triage            |
+| `lib/audit/pipeline/finalize-from-outcome.ts` | Outcome → finalize routing                |
+| `lib/audit/pipeline/outcome.ts`               | Resolve triage_complete vs degraded       |
+| `lib/audit/judge-triage.ts`                   | Triage LLM + retry                        |
+| `lib/audit/judge-prescription.ts`             | Prescription LLM                          |
+| `lib/audit/finalize.ts`                       | Triage / prescription / degraded finalize |
+| `lib/audit/run-ai-review.ts`                  | Phase-2 prescription job                  |
+| `lib/audit/recover-audit-job.ts`              | Stuck audit recovery                      |
+| `lib/audit/pipeline-config.ts`                | Deadlines and budgets                     |
 
 ## Browser capture (production)
 
 Production scans use **Playwright + Chromium** only (`lib/audit/screenshot.ts`, `lib/audit/browser/page-session.ts`). Do not use chrome-devtools-mcp, chrome-devtools-axi, or conversational browser agents on the audit path.
 
-| Step | Where | Notes |
-|------|-------|-------|
-| Desktop + mobile screenshots | `captureScreenshots` | Parallel pages; desktop required |
-| CTA flow scan | Primary page desktop session | `runFlowScan`; failures → `skipped` |
-| Slow 3G replay | `pipeline/run-page.ts` | `runSlowReplay` when deadline budget > 30s |
-| Network engagement | Desktop + mobile sessions | Merged `networkFailures`; `journeySafe` on flow capture |
-| Technology profile | Primary desktop session | Up to 300 deduplicated public resources plus allowlisted document headers and runtime markers; no extra navigation, bodies, cookies, queries, or authorization data |
-| Journey templates | `runner.ts` (Pro+) | Inline before finalize; not a separate queue job |
-| Visual evidence | `finalize-from-outcome.ts` | Graceful; must not fail audit |
+| Step                         | Where                        | Notes                                                                                                                                                               |
+| ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Desktop + mobile screenshots | `captureScreenshots`         | Parallel pages; desktop required                                                                                                                                    |
+| CTA flow scan                | Primary page desktop session | `runFlowScan`; failures → `skipped`                                                                                                                                 |
+| Slow 3G replay               | `pipeline/run-page.ts`       | `runSlowReplay` when deadline budget > 30s                                                                                                                          |
+| Network engagement           | Desktop + mobile sessions    | Merged `networkFailures`; `journeySafe` on flow capture                                                                                                             |
+| Technology profile           | Primary desktop session      | Up to 300 deduplicated public resources plus allowlisted document headers and runtime markers; no extra navigation, bodies, cookies, queries, or authorization data |
+| Journey templates            | `runner.ts` (Pro+)           | Inline before finalize; not a separate queue job                                                                                                                    |
+| Visual evidence              | `finalize-from-outcome.ts`   | Graceful; must not fail audit                                                                                                                                       |
 
 `lib/audit/deterministic-audit.ts` is an **offline/demo probe** (accuracy scripts, flow demos). It is not the production entry point.
 
-Technology detection is versioned and deterministic in `lib/audit/tech-detect.ts`. Audit-owned normalized observations preserve the exact profile shown on each report. Only a complete latest audit may reconcile the knowledge graph’s current stack; partial captures never infer removals. Re-check stack changes are shown only when parent and child used the same detector version.
+Technology detection is versioned and deterministic in `lib/audit/tech-detect.ts`. Audit-owned normalized observations preserve the exact profile shown on the signed-in Product detail page. Only a complete latest audit may reconcile the knowledge graph’s current stack; partial captures never infer removals. Update-review stack changes are shown only when parent and child used the same detector version.
 
 ## Page text limits
 

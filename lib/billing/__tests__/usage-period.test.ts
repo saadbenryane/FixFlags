@@ -106,7 +106,7 @@ describe('monthly usage periods', () => {
         plan: 'BUILDER',
         usagePeriodStart: start,
         usagePeriodEnd: end,
-        auditsLimit: 15,
+        auditsLimit: 30,
         deepReviewsLimit: -1,
         auditsUsed: 0,
         deepReviewsUsed: 0,

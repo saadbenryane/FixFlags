@@ -1,4 +1,7 @@
-import { METADATA_CHECK_IDS, formatVisualEvidence } from '@/lib/marketing/evidence-regions'
+import {
+  METADATA_CHECK_IDS,
+  formatVisualEvidence,
+} from '@/lib/marketing/evidence-regions'
 import { verificationRuleForCheckId } from '@/lib/audit/verification-rules'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import { resolveFixPrompt } from '@/lib/audit/priority-flags'
@@ -88,7 +91,9 @@ export function isCodeOrHeadCheck(checkId: string): boolean {
   return CODE_OR_HEAD_CHECKS.has(checkId)
 }
 
-export function isGenericWhyItMatters(text: string | null | undefined): boolean {
+export function isGenericWhyItMatters(
+  text: string | null | undefined
+): boolean {
   if (!text?.trim()) return true
   return GENERIC_WHY_PATTERN.test(text)
 }
@@ -382,11 +387,19 @@ export function resolveVerificationRule(flag: RankableFlag): string | null {
 }
 
 /** Human-readable evidence in the report UI - no screenshot fluff for head/code checks. */
-export function formatDisplayEvidence(checkId: string | null | undefined, evidence: string): string {
+export function formatDisplayEvidence(
+  checkId: string | null | undefined,
+  evidence: string
+): string {
   const raw = evidence.trim()
   if (!checkId || isCodeOrHeadCheck(checkId)) return raw
   if (!VISUAL_EVIDENCE_CHECKS.has(checkId)) return raw
-  if (/screenshot|viewport|visible|above the fold|below the fold|first screen|on mobile/i.test(raw)) return raw
+  if (
+    /screenshot|viewport|visible|above the fold|below the fold|first screen|on mobile/i.test(
+      raw
+    )
+  )
+    return raw
   return formatVisualEvidence(checkId, raw)
 }
 
@@ -395,17 +408,19 @@ export function buildExpertFixPrompt(flag: RankableFlag): string {
   const fix = normalizeFixBody(resolveFixPrompt(flag) ?? flag.problem)
   const verify = resolveVerificationRule(flag)
 
-  const constraint = flag.rubric === 'MESSAGE'
-    ? 'Do not restructure layout, change visual styles, or touch non-copy files.'
-    : flag.rubric === 'EXPERIENCE'
-      ? 'Do not rewrite marketing copy unless it directly affects usability. Do not change unrelated components.'
-      : 'Do not change visible page content unless it affects social previews. Do not touch layout or copy.'
+  const constraint =
+    flag.rubric === 'MESSAGE'
+      ? 'Do not restructure layout, change visual styles, or touch non-copy files.'
+      : flag.rubric === 'EXPERIENCE'
+        ? 'Do not rewrite marketing copy unless it directly affects usability. Do not change unrelated components.'
+        : 'Do not change visible page content unless it affects social previews. Do not touch layout or copy.'
 
-  const severity = flag.severity === 'CRITICAL'
-    ? 'This is a critical issue that directly blocks conversions or trust.'
-    : flag.severity === 'IMPORTANT'
-      ? 'This is an important issue that degrades the product experience.'
-      : 'This is a polish issue that improves overall quality.'
+  const severity =
+    flag.severity === 'CRITICAL'
+      ? 'This is a critical issue that directly blocks conversions or trust.'
+      : flag.severity === 'IMPORTANT'
+        ? 'This is an important issue that degrades the product experience.'
+        : 'This is a polish issue that improves overall quality.'
 
   const why = resolveWhyItMatters(flag)
 
@@ -435,6 +450,11 @@ export function buildExpertFixPrompt(flag: RankableFlag): string {
   return lines.join('\n')
 }
 
+/** Concise report preview. The copied editor payload remains plan-shaped. */
+export function buildFixPromptPreview(flag: RankableFlag): string {
+  return normalizeFixBody(resolveFixPrompt(flag) ?? flag.problem)
+}
+
 /** Pull actionable steps out of legacy Goal/Observed/Expected essays. */
 function normalizeFixBody(raw: string): string {
   const trimmed = raw.trim()
@@ -444,7 +464,9 @@ function normalizeFixBody(raw: string): string {
   if (expected?.[1]?.trim()) return expected[1].trim()
 
   if (/^## Goal\b/im.test(trimmed)) {
-    const withoutVerify = trimmed.replace(/\n## How to verify\s*\n[\s\S]*$/i, '').trim()
+    const withoutVerify = trimmed
+      .replace(/\n## How to verify\s*\n[\s\S]*$/i, '')
+      .trim()
     const withoutHeaders = withoutVerify
       .replace(/^## Goal\s*\n+/im, '')
       .replace(/\n## Observed behavior\s*\n+/gi, '\n')

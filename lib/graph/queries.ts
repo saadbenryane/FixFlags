@@ -14,11 +14,6 @@
  * See docs/growth/growth-architecture.md for the gates and thresholds.
  */
 import { prisma } from '@/lib/db'
-import { canSharePublicly } from '@/lib/auth/entitlements'
-import {
-  loadTechnologyProfile,
-  type TechnologyProfile,
-} from '@/lib/audit/technology-profile'
 
 /**
  * Minimum distinct audited sites before publishing a programmatic growth page.
@@ -55,7 +50,9 @@ export interface IssuePageData {
  * Aggregates are stored per-checkId (rollup writes the same counters onto
  * every fingerprint row for that check). We pick the freshest row for copy.
  */
-export async function getIssuePage(checkId: string): Promise<IssuePageData | null> {
+export async function getIssuePage(
+  checkId: string
+): Promise<IssuePageData | null> {
   const issue = await prisma.issue.findFirst({
     where: { checkId },
     orderBy: [{ siteCount: 'desc' }, { lastSeenAt: 'desc' }],
@@ -153,7 +150,9 @@ export interface BenchmarkData {
  * Read the most recent benchmark snapshot for a scope. Returns null if there
  * is no snapshot or the sample size is below the public threshold.
  */
-export async function getBenchmark(scope: string): Promise<BenchmarkData | null> {
+export async function getBenchmark(
+  scope: string
+): Promise<BenchmarkData | null> {
   const snap = await prisma.benchmarkSnapshot.findFirst({
     where: { scope },
     orderBy: { takenAt: 'desc' },
@@ -161,7 +160,8 @@ export async function getBenchmark(scope: string): Promise<BenchmarkData | null>
   if (!snap) return null
   if (snap.sampleSize < MIN_SAMPLE_SIZE) return null
 
-  const topIssues = (snap.topIssues as Array<{ checkId: string; rate: number }>) ?? []
+  const topIssues =
+    (snap.topIssues as Array<{ checkId: string; rate: number }>) ?? []
 
   return {
     scope,
@@ -184,9 +184,14 @@ export async function getBenchmark(scope: string): Promise<BenchmarkData | null>
  */
 export async function getTopIssuesForChecks(
   checkIds: string[],
-  minOccurrence = 0,
+  minOccurrence = 0
 ): Promise<
-  Array<{ checkId: string; rubric: string; problemTemplate: string; siteCount: number }>
+  Array<{
+    checkId: string
+    rubric: string
+    problemTemplate: string
+    siteCount: number
+  }>
 > {
   if (checkIds.length === 0) return []
   const issues = await prisma.issue.findMany({
@@ -225,200 +230,4 @@ export async function getGraphStats(): Promise<{
     prisma.benchmarkSnapshot.count(),
   ])
   return { sites, pages, issues, occurrences, benchmarks }
-}
-
-// ─── Madewith page ──────────────────────────────────────────────────────
-
-/**
- * Public read model for a /madewith/[hostname] page.
- * Shows detected technologies, industry, and audit summary for a site.
- */
-export interface MadewithPageData {
-  hostname: string
-  rootUrl: string
-  industry: string | null
-  technologyProfile: TechnologyProfile
-  lastAudit: {
-    id: string
-    score: number | null
-    flagCount: number
-    completedAt: Date
-    url: string
-  }
-  relatedSites: Array<{
-    hostname: string
-    techNames: string[]
-  }>
-}
-
-/**
- * Read the tech stack and audit summary for a hostname.
- * Returns null if the hostname hasn't been audited yet.
- */
-const PUBLIC_AUDIT_SELECT = {
-  id: true,
-  score: true,
-  url: true,
-  completedAt: true,
-  user: {
-    select: {
-      id: true,
-      role: true,
-      plan: true,
-      subscriptionStatus: true,
-    },
-  },
-  rubrics: { select: { name: true, score: true } },
-  flags: { select: { rubric: true, status: true } },
-  _count: { select: { flags: true } },
-} as const
-
-async function eligiblePublicAuditForSite(siteId: string) {
-  const candidates = await prisma.audit.findMany({
-    where: {
-      siteId,
-      status: 'COMPLETED',
-      isPublic: true,
-      userId: { not: null },
-      completedAt: { not: null },
-      technologyObservations: { some: {} },
-    },
-    orderBy: { completedAt: 'desc' },
-    take: 10,
-    select: PUBLIC_AUDIT_SELECT,
-  })
-  return candidates.find((audit) => audit.user && canSharePublicly(audit.user)) ?? null
-}
-
-function normalizeMadewithHostname(hostname: string): string | null {
-  let decoded: string
-  try {
-    decoded = decodeURIComponent(hostname).replace(/^www\./i, '').toLowerCase()
-  } catch {
-    return null
-  }
-  if (
-    decoded.length === 0 ||
-    decoded.length > 253 ||
-    decoded.includes('/') ||
-    !/^[a-z0-9.-]+$/.test(decoded) ||
-    !decoded.includes('.')
-  ) {
-    return null
-  }
-  return decoded
-}
-
-export async function getMadewithPage(hostname: string): Promise<MadewithPageData | null> {
-  const normalizedHostname = normalizeMadewithHostname(hostname)
-  if (!normalizedHostname) return null
-
-  const site = await prisma.site.findUnique({
-    where: { hostname: normalizedHostname },
-    select: {
-      id: true,
-      hostname: true,
-      rootUrl: true,
-      industryGuess: true,
-      technologies: {
-        where: { isCurrent: true },
-        select: {
-          technologyId: true,
-          technology: { select: { name: true } },
-        },
-      },
-    },
-  })
-  if (!site) return null
-
-  const audit = await eligiblePublicAuditForSite(site.id)
-  if (!audit?.completedAt) return null
-
-  const technologyProfile = await loadTechnologyProfile(audit.id, {
-    score: audit.score,
-    rubrics: audit.rubrics,
-    flags: audit.flags,
-  })
-  if (technologyProfile.technologies.length === 0) return null
-
-  const currentTechnologyIds = site.technologies.map((item) => item.technologyId)
-  const relatedCandidates = currentTechnologyIds.length > 1
-    ? await prisma.site.findMany({
-        where: {
-          id: { not: site.id },
-          technologies: {
-            some: {
-              isCurrent: true,
-              technologyId: { in: currentTechnologyIds },
-            },
-          },
-        },
-        take: 12,
-        select: {
-          id: true,
-          hostname: true,
-          technologies: {
-            where: {
-              isCurrent: true,
-              technologyId: { in: currentTechnologyIds },
-            },
-            select: { technology: { select: { name: true } } },
-          },
-        },
-      })
-    : []
-
-  const relatedSites: MadewithPageData['relatedSites'] = []
-  for (const candidate of relatedCandidates) {
-    if (candidate.technologies.length < 2) continue
-    if (!(await eligiblePublicAuditForSite(candidate.id))) continue
-    relatedSites.push({
-      hostname: candidate.hostname,
-      techNames: candidate.technologies.map((item) => item.technology.name).sort(),
-    })
-    if (relatedSites.length === 5) break
-  }
-
-  return {
-    hostname: site.hostname,
-    rootUrl: site.rootUrl,
-    industry: site.industryGuess,
-    technologyProfile,
-    lastAudit: {
-      id: audit.id,
-      score: audit.score,
-      flagCount: audit._count.flags,
-      completedAt: audit.completedAt,
-      url: audit.url,
-    },
-    relatedSites,
-  }
-}
-
-export async function getIndexableMadewithProfiles(): Promise<
-  Array<{ hostname: string; lastModified: Date }>
-> {
-  const sites = await prisma.site.findMany({
-    where: {
-      technologies: { some: { isCurrent: true } },
-      audits: {
-        some: {
-          status: 'COMPLETED',
-          isPublic: true,
-          userId: { not: null },
-          technologyObservations: { some: {} },
-        },
-      },
-    },
-    select: { id: true, hostname: true },
-  })
-
-  const result: Array<{ hostname: string; lastModified: Date }> = []
-  for (const site of sites) {
-    const audit = await eligiblePublicAuditForSite(site.id)
-    if (audit?.completedAt) {
-      result.push({ hostname: site.hostname, lastModified: audit.completedAt })
-    }
-  }
-  return result
 }

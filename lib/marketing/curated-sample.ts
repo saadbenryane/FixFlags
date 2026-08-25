@@ -115,7 +115,7 @@ export async function getCuratedSampleAudit(
   observationId?: string | null
 ): Promise<SampleResult> {
   // Marketing rendering is deterministic. This versioned snapshot is generated
-  // from the completed LaunchPad demo audit and reviewed with the sample tests.
+  // from the completed DemoSite audit and reviewed with the sample tests.
   // Production audit rows never affect homepage output or availability.
   return loadVersionedSnapshot(observationId)
 }

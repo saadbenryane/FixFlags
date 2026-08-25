@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   auditFindMany: vi.fn(),
   attemptFindMany: vi.fn(),
   occurrenceFindMany: vi.fn(),
+  loadTechnologyProfile: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -24,6 +25,10 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 
+vi.mock('@/lib/audit/technology-profile', () => ({
+  loadTechnologyProfile: mocks.loadTechnologyProfile,
+}))
+
 import {
   loadProductOverview,
   loadProductWorkspace,
@@ -33,6 +38,17 @@ import {
 } from './workspace'
 
 const now = new Date('2026-08-20T12:00:00.000Z')
+
+beforeEach(() => {
+  mocks.loadTechnologyProfile.mockReset()
+  mocks.loadTechnologyProfile.mockResolvedValue({
+    status: 'not_captured',
+    detectorVersion: null,
+    detectedAt: null,
+    technologies: [],
+    insight: null,
+  })
+})
 
 function review(overrides: Record<string, unknown> = {}) {
   return {
@@ -112,15 +128,15 @@ beforeEach(() => {
 describe('parseProductHistoryCursor', () => {
   it('accepts only a valid date plus a typed event ID', () => {
     expect(
-      parseProductHistoryCursor(`${now.toISOString()}|review:review-1`),
+      parseProductHistoryCursor(`${now.toISOString()}|review:review-1`)
     ).toEqual({
       at: now.toISOString(),
       id: 'review:review-1',
     })
+    expect(parseProductHistoryCursor('not-a-date|review:review-1')).toBeNull()
     expect(
-      parseProductHistoryCursor('not-a-date|review:review-1'),
+      parseProductHistoryCursor(`${now.toISOString()}|review-1`)
     ).toBeNull()
-    expect(parseProductHistoryCursor(`${now.toISOString()}|review-1`)).toBeNull()
     expect(parseProductHistoryCursor(undefined)).toBeNull()
   })
 })
@@ -142,7 +158,10 @@ describe('loadVerificationReceiptsForReview', () => {
       },
     ])
 
-    const receipts = await loadVerificationReceiptsForReview('review-2', 'user-1')
+    const receipts = await loadVerificationReceiptsForReview(
+      'review-2',
+      'user-1'
+    )
 
     expect(mocks.attemptFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -150,7 +169,7 @@ describe('loadVerificationReceiptsForReview', () => {
           verificationAuditId: 'review-2',
           improvement: { project: { userId: 'user-1' } },
         },
-      }),
+      })
     )
     expect(receipts).toEqual([
       expect.objectContaining({
@@ -167,7 +186,7 @@ describe('loadVerificationReceiptsForReview', () => {
     mocks.attemptFindMany.mockResolvedValue([])
 
     await expect(
-      loadVerificationReceiptsForReview('review-2', 'user-1'),
+      loadVerificationReceiptsForReview('review-2', 'user-1')
     ).resolves.toEqual([])
     expect(mocks.occurrenceFindMany).not.toHaveBeenCalled()
   })
@@ -240,7 +259,7 @@ describe('loadProductOverview', () => {
             },
           }),
         }),
-      }),
+      })
     )
   })
 })
@@ -252,12 +271,12 @@ describe('loadProductWorkspace', () => {
     await expect(
       loadProductWorkspace('product-other', 'user-1', {
         signalsEligible: false,
-      }),
+      })
     ).resolves.toBeNull()
     expect(mocks.projectFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'product-other', userId: 'user-1' },
-      }),
+      })
     )
     expect(mocks.auditFindFirst).not.toHaveBeenCalled()
   })
@@ -329,7 +348,7 @@ describe('loadProductWorkspace', () => {
           occurredAt: now,
           release: null,
         })),
-      }),
+      })
     )
     mocks.auditFindFirst
       .mockResolvedValueOnce(activeManual)
@@ -387,7 +406,7 @@ describe('loadProductWorkspace', () => {
       },
     })
     const attemptEvent = workspace?.history.events.find(
-      (event) => event.kind === 'attempt',
+      (event) => event.kind === 'attempt'
     )
     expect(attemptEvent).toMatchObject({
       kind: 'attempt',
@@ -395,8 +414,8 @@ describe('loadProductWorkspace', () => {
     })
     expect(
       workspace?.history.events.find(
-        (event) => event.id === 'review:review-watch-running',
-      ),
+        (event) => event.id === 'review:review-watch-running'
+      )
     ).toMatchObject({
       kind: 'review',
       review: { kind: 'WATCH' },
@@ -413,7 +432,7 @@ describe('loadProductWorkspace', () => {
           status: { notIn: ['COMPLETED', 'FAILED'] },
           OR: [{ recheckTrigger: null }, { recheckTrigger: 'MANUAL' }],
         }),
-      }),
+      })
     )
     expect(mocks.occurrenceFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -421,7 +440,7 @@ describe('loadProductWorkspace', () => {
           improvement: { projectId: 'product-1' },
           auditId: { in: ['review-1'] },
         },
-      }),
+      })
     )
     expect(mocks.projectFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -432,7 +451,7 @@ describe('loadProductWorkspace', () => {
             }),
           }),
         }),
-      }),
+      })
     )
   })
 
@@ -481,23 +500,23 @@ describe('loadProductWorkspace', () => {
           source: 'merged',
           updatedAt: now.toISOString(),
         },
-      }),
+      })
     )
     mocks.auditFindMany.mockResolvedValue(
       Array.from({ length: 15 }, (_, index) =>
         review({
           id: `review-${index.toString().padStart(2, '0')}`,
           createdAt: new Date(Date.UTC(2026, 7, 20, 12, 29 - index)),
-        }),
-      ),
+        })
+      )
     )
     mocks.attemptFindMany.mockResolvedValue(
       Array.from({ length: 10 }, (_, index) =>
         attempt({
           id: `attempt-${index.toString().padStart(2, '0')}`,
           createdAt: new Date(Date.UTC(2026, 7, 20, 12, 14 - index)),
-        }),
-      ),
+        })
+      )
     )
 
     const workspace = await loadProductWorkspace('product-1', 'user-1', {
@@ -515,7 +534,7 @@ describe('loadProductWorkspace', () => {
   it('applies the server cursor to each database history source', async () => {
     mocks.projectFindFirst.mockResolvedValue(product())
     const cursor = parseProductHistoryCursor(
-      `${now.toISOString()}|review:review-10`,
+      `${now.toISOString()}|review:review-10`
     )
 
     await loadProductWorkspace('product-1', 'user-1', {
@@ -532,7 +551,7 @@ describe('loadProductWorkspace', () => {
             { createdAt: now, id: { lt: 'review-10' } },
           ],
         }),
-      }),
+      })
     )
     expect(mocks.attemptFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -540,7 +559,7 @@ describe('loadProductWorkspace', () => {
           improvement: { projectId: 'product-1' },
           createdAt: { lte: now },
         }),
-      }),
+      })
     )
   })
 })

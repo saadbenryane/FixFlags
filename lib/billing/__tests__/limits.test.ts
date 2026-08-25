@@ -45,7 +45,7 @@ describe('computePlanLimitUpdate', () => {
       { role: 'user', auditsUsed: 12, auditsLimit: 25, deepReviewsUsed: 3, deepReviewsLimit: 4 },
       'TEAM'
     )
-    assert.equal(update?.auditsLimit, 50)
+    assert.equal(update?.auditsLimit, 90)
     assert.equal(update?.auditsUsed, 12)
     assert.equal(update?.deepReviewsLimit, UNLIMITED_SCAN_LIMIT)
     assert.equal(update?.deepReviewsUsed, 3)

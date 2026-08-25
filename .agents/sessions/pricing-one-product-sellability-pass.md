@@ -17,8 +17,8 @@ Stripe remains in test configuration and paid plans remain waitlist-gated.
 ## Commercial architecture
 
 - Free is positioned for one Product before launch and includes three monthly Reviews, enough for an initial Review and two Reviews after changes.
-- Pro supports up to five Products and includes 15 monthly Reviews at $29 per month, Product history across releases, and release comparison.
-- Studio supports unlimited Products and includes 50 monthly Reviews at $79 per month, scheduled Reviews, workspace invitations, and shared Product history.
+- Pro supports up to five Products and includes 30 monthly Reviews at $29 per month, Product history across releases, and release comparison.
+- Studio supports unlimited Products and includes 90 monthly Reviews at $79 per month, scheduled Reviews, workspace invitations, and shared Product history.
 - Studio workspace seats are unlimited for a limited time.
 - High-volume pricing starts when Studio capacity is insufficient.
 - The paid-plan waitlist keeps the existing first-500 and next-500 launch discount tiers.
@@ -27,7 +27,7 @@ Stripe remains in test configuration and paid plans remain waitlist-gated.
 
 - Product creation is enforced across every Product hostname: Free allows one, Pro allows five, and Studio is unlimited.
 - Scheduled Reviews are Studio-only at the shared entitlement, route, service, and worker boundaries.
-- Completed scheduled Reviews consume Studio's 50-Review monthly allowance.
+- Completed scheduled Reviews consume Studio's 90-Review monthly allowance.
 - Signed-in Product Reviews always include the existing browser-path review work where available.
 - Legacy `deepReviews*` database fields remain for migration and historical-price compatibility but are unmetered and absent from the customer account payload.
 - Separate deep-review admission and completion metering were removed.
@@ -42,9 +42,11 @@ Stripe remains in test configuration and paid plans remain waitlist-gated.
 ## Proof
 
 - Focused pricing, billing, auth, Product-capacity, scheduled-review, waitlist, and workspace tests: 409 passed.
+- Focused 3/30/90 allowance regression suite: 316 passed.
 - Focused ESLint: passed.
 - Skill validation: passed.
 - Completeness audit: passed.
+- Affected-file agent verification, including TypeScript, lint, billing, marketing, UI guards, image guards, and SEO guard: passed.
 - Doctor, database, and migration readiness: passed.
 - `git diff --check`: passed.
 - Browser pricing proof at desktop and 375px: zero console errors and no horizontal overflow.
@@ -55,9 +57,7 @@ Artifacts:
 - `output/playwright/pricing-final-desktop.png`
 - `output/playwright/pricing-final-mobile.png`
 
-## Shared-worktree blockers outside this scope
+## Final safeguards
 
-- `npm run agent -- verify` stops at the existing homepage font-runtime check because the rendered homepage heading uses Inter instead of Inter Tight.
-- The repository-wide TypeScript check is blocked by concurrent unrelated errors in `components/marketing/landing/AssuranceRow.tsx` and `components/report/__tests__/FlagDetailPanel.test.tsx`.
-
-These blockers are not caused by the pricing or one-product contract changes and were not bypassed or modified in this task.
+- Stripe secret and publishable keys are both configured for test mode.
+- Paid pricing actions remain routed to the Pro and Studio waitlists.

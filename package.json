@@ -145,6 +145,7 @@
     "react-markdown": "^9.1.0",
     "resend": "^4.0.0",
     "sharp": "0.35.0",
+    "simple-icons": "^16.28.0",
     "sonner": "^1.0.0",
     "stripe": "^17.0.0",
     "swr": "^2.0.0",

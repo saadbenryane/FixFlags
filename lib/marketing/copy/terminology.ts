@@ -24,10 +24,10 @@ export const PRICING_COPY = {
   freeProductReviewsPerMonth: 3,
   proPrice: '$29',
   proPeriod: '/mo',
-  proProductReviewsPerMonth: 15,
+  proProductReviewsPerMonth: 30,
   studioPrice: '$79',
   studioPeriod: '/mo',
-  studioProductReviewsPerMonth: 50,
+  studioProductReviewsPerMonth: 90,
 } as const
 
 export const CORE_LOOP_LABEL = 'Product Review → Fix → Verify → Watch'

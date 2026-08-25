@@ -38,6 +38,18 @@
       "requiredTerms": [],
       "consumers": ["components/marketing/landing/LandingFinalCtaSection.tsx"],
       "replaces": ["/marketing/visuals/pricing-glass-mark.webp"]
+    },
+    {
+      "id": "demosite-open-graph-preview",
+      "src": "/demo/og-v1.png",
+      "classification": "refined",
+      "width": 1200,
+      "height": 630,
+      "requiresAlpha": false,
+      "contentBearing": true,
+      "requiredTerms": ["DemoSite", "Ship landing pages in minutes"],
+      "consumers": ["lib/demo/fixtures/v1.ts"],
+      "replaces": []
     }
   ]
 }

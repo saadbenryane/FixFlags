@@ -171,9 +171,9 @@ export const WAITLIST_PAGE = {
     'Pro and Studio open in order. The first 500 waitlisters per plan get 25% off for 12 months from launch. The next 500 get 15% off.',
   planProLabel: 'Pro',
   planStudioLabel: 'Studio',
-  planProDetail: '15 reviews each month across up to 5 products',
+  planProDetail: '30 reviews each month across up to 5 products',
   planStudioDetail:
-    '50 reviews, unlimited products, scheduling, and workspace access',
+    '90 reviews, unlimited products, scheduling, and workspace access',
   emailPlaceholder: 'you@example.com',
   joinCta: 'Join the waitlist',
   signUpRequired: 'Sign up required',
@@ -245,7 +245,7 @@ export const UPSELLS = {
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
     headline: 'You\u2019ve used your free product reviews',
-    body: 'Join the Pro waitlist for 15 monthly reviews across up to five products.',
+    body: 'Join the Pro waitlist for 30 monthly reviews across up to five products.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
@@ -272,7 +272,7 @@ export const UPGRADE_MOMENTS = {
   },
   free_default: {
     headline: 'Shipping more products?',
-    body: 'Pro gives you 15 product reviews per month across up to five products, with history across releases.',
+    body: 'Pro gives you 30 product reviews per month across up to five products, with history across releases.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },

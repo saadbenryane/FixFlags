@@ -55,3 +55,14 @@ Recheck 320/375px after styling; compact padding or a narrow-label treatment is 
 - Expanded prompt scrolls only inside the Flag detail at wide pane widths; Review Context remains a distinct sibling below the report frame with no visual overlap in Chromium and WebKit/Safari.
 - Customer-facing primary CTAs use the shared brand-orange/white treatment and preserve hover, focus, active, and disabled states.
 - No horizontal overflow or clipped/wrapped action labels at 320/375px.
+
+## Root implementation and proof
+
+Implemented the bounded Flag controls in the selected-detail header with a visible `n of N` position, disabled first/last boundaries, filtered-order behavior, URL synchronization, and the existing Left/Right keyboard support.
+Flattened per-Flag Markdown rendering inside one `Fix Prompt` disclosure, removed the nested Markdown toolbar/card, and kept the branded Copy prompt action visible in the same row.
+Corrected the shared brand Button foreground to `text-brand-foreground` and applied the brand variant to the sample `Review my site` CTA.
+Focused component tests passed: 36 tests across ReportExplorer, detail, prompt, pane, and geometry coverage.
+TypeScript, focused ESLint, `npm run ui:drift-guard`, `node scripts/report-pane-proof.mjs`, and `npm run agent -- eval ui` passed.
+`npm run agent -- verify` passed all nine selected affected-file commands.
+Chromium browser proof passed at 320, 375, and 1280px with no horizontal overflow or console errors.
+WebKit proof at 1280px passed with both `Fix Prompt` and `Review context` open: the detail remained an independent 384px `overflow-y: auto` scroll owner, context started below the frame, and no paint overlap occurred.

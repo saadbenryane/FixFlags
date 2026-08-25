@@ -45,10 +45,10 @@ No scan type selection, agent configuration, project setup, or repository connec
 
 **Competitive frame:**
 
-| We are | We are not |
-|--------|------------|
-| An independent Product judgment and verification system | A generic analytics, QA, testing, or replay suite |
-| URL-first product experience with replayable evidence | A Lighthouse-only score dump |
+| We are                                                          | We are not                                         |
+| --------------------------------------------------------------- | -------------------------------------------------- |
+| An independent Product judgment and verification system         | A generic analytics, QA, testing, or replay suite  |
+| URL-first product experience with replayable evidence           | A Lighthouse-only score dump                       |
 | Durable Improvements with builder handoff and verified outcomes | A PostHog clone or disconnected feature collection |
 
 Direct peer war: Scout-class live product QA. CodeRabbit is adjacent (pre-merge code gate), not partner GTM.
@@ -82,19 +82,19 @@ Each cycle improves both the customer product and FixFlags judgment quality.
 
 Canonical source: `lib/marketing/copy/terminology.ts`.
 
-| Customer term | Meaning |
-|---------------|---------|
-| Product | The long-lived customer object |
-| Product review | One full pass on a URL: checks, report, fix prompts |
-| Update review | Re-run on the same URL after fixes (uses product review credit) |
-| Deep Review | Future repository-connected analysis that combines live-product evidence with source-code context; not currently sold |
-| Funnel | Report section listing journeys |
-| Path | Recorded journey unit for playback |
-| Flag | Confirmed finding with evidence |
-| Improvement | Durable Product-scoped judgment and worthwhile recommended action |
-| Improvement Attempt | Builder handoff or declared implementation awaiting independent verification |
-| Verification outcome | Improved, unchanged, regressed, or inconclusive result from a fresh Review |
-| Product Signal | Privacy-bounded observed context that is not a Flag or causal claim by default |
+| Customer term        | Meaning                                                                                                               |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Product              | The long-lived customer object                                                                                        |
+| Product review       | One full pass on a URL: checks, report, fix prompts                                                                   |
+| Update review        | Re-run on the same URL after fixes (uses product review credit)                                                       |
+| Deep Review          | Future repository-connected analysis that combines live-product evidence with source-code context; not currently sold |
+| Funnel               | Report section listing journeys                                                                                       |
+| Path                 | Recorded journey unit for playback                                                                                    |
+| Flag                 | Confirmed finding with evidence                                                                                       |
+| Improvement          | Durable Product-scoped judgment and worthwhile recommended action                                                     |
+| Improvement Attempt  | Builder handoff or declared implementation awaiting independent verification                                          |
+| Verification outcome | Improved, unchanged, regressed, or inconclusive result from a fresh Review                                            |
+| Product Signal       | Privacy-bounded observed context that is not a Flag or causal claim by default                                        |
 
 **Banned in customer copy:** re-check, unlimited re-checks, new URL checks, journeys per month, polish pass/scan. Internal code may still use `re-check`, `audit`, `scan`, `monitoring`.
 
@@ -104,11 +104,11 @@ Canonical source: `lib/marketing/copy/terminology.ts`.
 
 Canonical numbers: `PRICING_COPY` in terminology.ts. Philosophy: [docs/business-model.md](./business-model.md).
 
-| Plan | Price | Product reviews/mo |
-|------|-------|------------------|
-| Free | $0 | 3 |
-| Pro | $29/mo | 15 |
-| Studio | $79/mo | 50 |
+| Plan   | Price  | Product reviews/mo |
+| ------ | ------ | ------------------ |
+| Free   | $0     | 3                  |
+| Pro    | $29/mo | 30                 |
+| Studio | $79/mo | 90                 |
 
 **Rules:**
 
@@ -144,7 +144,7 @@ Initial wedge: Lovable users, with broad builder support from day one.
 
 - URL-first entry for anonymous users.
 - Workspace opens immediately with honest progress (stages, partial Flags, capture placeholders).
-- The progressive and completed Report, all confirmed Flags, screenshots, textual evidence, rubric results, and public-safe technology context remain visible while logged out.
+- The progressive and completed Report, all confirmed Flags, screenshots, textual evidence, and rubric results remain visible while logged out. Technology context belongs to the signed-in Product detail page.
 
 Account unlock includes:
 
@@ -518,19 +518,19 @@ Precision, false-positive handling, duplicate suppression, evidence completeness
 
 Canonical interface table: [docs/workspace-interface.md](../docs/workspace-interface.md) (Shipped vs target).
 
-| Area | Shipped today | Target |
-|------|---------------|--------|
-| Workspace layout | Unified Agent left; Report, authenticated Timeline, and Canvas right | Same |
-| Browser in UI | Authenticated Timeline screenshot replay and step scrub | Richer live path exploration inside Product Reviews |
-| In-app chat | Owner-only model chat plus free deterministic scan messages; monthly usage ledger | Same |
-| Product review capture | Playwright programmatic with workspace sync | Same |
-| Product Review path depth | Journey capture in pipeline; Funnel + path playback in workspace | Richer live browser mode in the workspace panel |
-| Customer metering | One Product Review quota enforced in `lib/billing/plans.ts` and `lib/audit/usage.ts`; legacy deep-review fields are persistence-only | Same |
-| Update review billing | Metered product review credits; internal route `/re-check` | Public API rename to update-review (open) |
-| Pricing display | $29 / $79 in marketing and Stripe plans | Same |
-| Funnel + path UI | Funnel section + Replay path into workspace | Full session-style takeover replay |
-| Mobile | Agent ↔ Report tabs; authenticated adapted playback | Full-screen path replay |
-| Compare | Before/after comparison after update review on every plan | Primary payoff surface |
+| Area                      | Shipped today                                                                                                                        | Target                                              |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| Workspace layout          | Unified Agent left; Report, authenticated Timeline, and Canvas right                                                                 | Same                                                |
+| Browser in UI             | Authenticated Timeline screenshot replay and step scrub                                                                              | Richer live path exploration inside Product Reviews |
+| In-app chat               | Owner-only model chat plus free deterministic scan messages; monthly usage ledger                                                    | Same                                                |
+| Product review capture    | Playwright programmatic with workspace sync                                                                                          | Same                                                |
+| Product Review path depth | Journey capture in pipeline; Funnel + path playback in workspace                                                                     | Richer live browser mode in the workspace panel     |
+| Customer metering         | One Product Review quota enforced in `lib/billing/plans.ts` and `lib/audit/usage.ts`; legacy deep-review fields are persistence-only | Same                                                |
+| Update review billing     | Metered product review credits; internal route `/re-check`                                                                           | Public API rename to update-review (open)           |
+| Pricing display           | $29 / $79 in marketing and Stripe plans                                                                                              | Same                                                |
+| Funnel + path UI          | Funnel section + Replay path into workspace                                                                                          | Full session-style takeover replay                  |
+| Mobile                    | Agent ↔ Report tabs; authenticated adapted playback                                                                                  | Full-screen path replay                             |
+| Compare                   | Before/after comparison after update review on every plan                                                                            | Primary payoff surface                              |
 
 Shipped truth detail: [PRODUCT.md](../PRODUCT.md).
 
@@ -560,6 +560,6 @@ The outcome is a continuous, evidence-first improvement story.
 
 ## Changelog
 
-| Date | Change |
-|------|--------|
+| Date       | Change                                                                                                                                              |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-08-01 | Canonical merge: live-review PRD, product-ui-intent, Product QA positioning, workspace interface spec. Removed implementation phases from PRD body. |

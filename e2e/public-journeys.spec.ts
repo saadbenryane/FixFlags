@@ -55,7 +55,7 @@ for (const width of widths) {
 
     await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
     // Identity lives once in Agent; the Report header owns only Score/history.
-    await expect(page.getByText(/Launchpad/i).first()).toBeVisible()
+    await expect(page.getByText(/DemoSite/i).first()).toBeVisible()
     await expect(page.getByRole('region', { name: 'Review score and history' })).toBeVisible()
     if (width < 1024) await expect(page.getByRole('tab', { name: 'Report' })).toHaveAttribute('aria-selected', 'true')
     await expect(page.getByRole('tab', { name: 'Timeline' })).toHaveCount(0)

@@ -229,7 +229,7 @@ export const REPORT_COPY = {
   sampleFocused: {
     eyebrow: "Sample fix list",
     title: "See what FixFlags found",
-    body: "A reviewed Launchpad report with real evidence and one complete fix prompt.",
+    body: "A reviewed DemoSite report with real evidence and one complete fix prompt.",
     detailsCta: "View the sample report",
   },
   progressive: {

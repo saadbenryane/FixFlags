@@ -73,8 +73,8 @@ Primary illustrations are generated compositions. Do not replace approved artwor
 - Free includes three product reviews per month for one Product.
 - Every signed-in manual update review uses one product-review credit.
 - Completed scheduled reviews use one product-review credit and are available on Studio.
-- Pro includes 15 product reviews per month across up to five Products.
-- Studio includes 50 product reviews per month, unlimited Products, scheduled reviews, and workspace invitations.
+- Pro includes 30 product reviews per month across up to five Products.
+- Studio includes 90 product reviews per month, unlimited Products, scheduled reviews, and workspace invitations.
 - Do not say "unlimited checks" or hardcode volatile prices and quotas in this skill.
 
 ## Avoid

@@ -14,9 +14,9 @@
 
 ## Layout regions (desktop)
 
-| Region | Purpose |
-|--------|---------|
-| **Left — FixFlags understanding** | Product identity, customer-meaningful review activity, observations, confirmed Flag announcements, judgment, and authenticated report conversation. Technical execution logs and simulated reasoning never appear here. |
+| Region                                 | Purpose                                                                                                                                                                                                                            |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Left — FixFlags understanding**      | Product identity, customer-meaningful review activity, observations, confirmed Flag announcements, judgment, and authenticated report conversation. Technical execution logs and simulated reasoning never appear here.            |
 | **Right — Product reality and Review** | The live Product, interaction, and captured evidence while a review runs. The completed public-safe Report becomes the default after completion; authorized viewers switch among URL-backed Timeline, Report, and Canvas siblings. |
 
 **Editor chrome (locked):**
@@ -31,11 +31,11 @@
 
 **Product pane is a fixed three-row stage (locked):**
 
-| Row | Rule |
-|-----|------|
-| Header | Product name and the reviewed address including its path (`displaySiteAddress`). Preview-first view toggle with Eye / FileText icons. When Preview is active, Monitor / Smartphone device icons sit beside that toggle. Any mid-scan control occupies a reserved slot. |
-| Stage | `WORKSPACE_STAGE_CLASS` from [workspace-geometry.ts](../components/report/workspace-geometry.ts). It is a flex column with a small-screen floor, because a stacked pane has no definite parent height and an `h-full` capture inside a block stage measures zero. The capture letterboxes inside it with `object-contain object-center` and never sizes it. |
-| Transport | [WorkspacePreviewTransport](../components/report/WorkspacePreviewTransport.tsx), a `shrink-0 border-t` sibling of the stage, always the last row whenever Preview is active. Path scrub, step chips, and status only — device switching lives in the header. |
+| Row       | Rule                                                                                                                                                                                                                                                                                                                                                        |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Header    | Product name and the reviewed address including its path (`displaySiteAddress`). Preview-first view toggle with Eye / FileText icons. When Preview is active, Monitor / Smartphone device icons sit beside that toggle. Any mid-scan control occupies a reserved slot.                                                                                      |
+| Stage     | `WORKSPACE_STAGE_CLASS` from [workspace-geometry.ts](../components/report/workspace-geometry.ts). It is a flex column with a small-screen floor, because a stacked pane has no definite parent height and an `h-full` capture inside a block stage measures zero. The capture letterboxes inside it with `object-contain object-center` and never sizes it. |
+| Transport | [WorkspacePreviewTransport](../components/report/WorkspacePreviewTransport.tsx), a `shrink-0 border-t` sibling of the stage, always the last row whenever Preview is active. Path scrub, step chips, and status only — device switching lives in the header.                                                                                                |
 
 - No browser chrome inside the editor. `BrowserFrame` renders `chrome="none"` and `fill` here; `chrome="browser"` is only for marketing and compare surfaces where no pane header carries the URL.
 - Switching Desktop to Mobile, selecting a playback step, or loading a capture changes only the letterboxed image. The stage container keeps identical geometry, and capture entry is opacity-only (`animate-capture-fade`).
@@ -88,11 +88,11 @@ Prompt actions remain authenticated even when their evidence is public.
 
 **Report mode anatomy (locked):**
 
-| Row | Rule |
-|-----|------|
-| Review header | [ReportOutcomeBar](../components/report/ReportOutcomeBar.tsx) is the fixed compact header and owns only visible Score, honest pending/unavailable state, full-Review history, and determinate scan progress. It contains no gauge, verdict excerpt, Critical shortcut, or next-step prose. |
-| Body | [ReportPane](../components/report/ReportPane.tsx) wraps the explorer with `data-report-frame` and `WORKSPACE_REPORT_FRAME_CLASS`. Above the split width the frame takes one pane height and the list and detail columns each scroll internally; below it the frame releases its height and the pane scrolls as one column. |
-| Review context | [ReportContextDisclosure](../components/report/ReportContextDisclosure.tsx) collects stack, contract, memory, funnel, previews, launch gates, feedback, and pipeline proof in one disclosure that is collapsed by default and auto-expands when a report anchor targets a section inside it. |
+| Row            | Rule                                                                                                                                                                                                                                                                                                                       |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Review header  | [ReportOutcomeBar](../components/report/ReportOutcomeBar.tsx) is the fixed compact header and owns only visible Score, honest pending/unavailable state, full-Review history, and determinate scan progress. It contains no gauge, verdict excerpt, Critical shortcut, or next-step prose.                                 |
+| Body           | [ReportPane](../components/report/ReportPane.tsx) wraps the explorer with `data-report-frame` and `WORKSPACE_REPORT_FRAME_CLASS`. Above the split width the frame takes one pane height and the list and detail columns each scroll internally; below it the frame releases its height and the pane scrolls as one column. |
+| Review context | [ReportContextDisclosure](../components/report/ReportContextDisclosure.tsx) collects contract, memory, funnel, previews, launch gates, feedback, and pipeline proof in one disclosure that is collapsed by default and auto-expands when a report anchor targets a section inside it.                                      |
 
 **Pane-relative, never viewport-relative.**
 The explorer lives inside a pane whose width has nothing to do with the viewport, so `ReportExplorer` uses container queries (`@container/pane` from `WORKSPACE_PANE_SCROLL_CLASS`, `@[40rem]/pane:` for the master/detail split) and carries no `lg:` breakpoint, no `100vh` cap, no `--header-offset` sticky, and no `overflow-clip` shell.
@@ -110,15 +110,15 @@ Canvas documents use validated FixFlags blocks and never execute model-generated
 
 ## Morph behavior
 
-| Phase | Default right panel | Chrome |
-|-------|---------------------|--------|
-| **Active review** | Preview view | FixFlags understanding on the left; live Product and captured evidence on the right; mobile defaults to Agent |
-| **After complete** | Report view | Agent remains mounted; authenticated Timeline and paid Canvas are secondary modes |
+| Phase              | Default right panel | Chrome                                                                                                        |
+| ------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Active review**  | Preview view        | FixFlags understanding on the left; live Product and captured evidence on the right; mobile defaults to Agent |
+| **After complete** | Report view         | Agent remains mounted; authenticated Timeline and paid Canvas are secondary modes                             |
 
 The workspace fills the available viewport beneath thin site chrome and has no marketing footer.
 During an active review, Product name and hostname live in the FixFlags pane instead of a separate report hero.
 Report and Preview controls belong to the Product pane header.
-Below-report context such as technology and Product Contract does not compete with the live Product while scanning.
+Below-report context such as Product Contract does not compete with the live Product while scanning. Technology context appears only on the signed-in Product detail page.
 
 ---
 
@@ -162,15 +162,15 @@ Below-report context such as technology and Product Contract does not compete wi
 
 Full parity. No degraded subset.
 
-| Capability | Requirement |
-|------------|-------------|
-| Start product review | Yes |
-| Watch progress / activity | Yes |
-| Chat with FixFlags | Yes |
-| Browse Fix list and Flag detail | Yes |
-| View evidence and path replay | Adapted layout |
-| Run update review and see diff | Yes |
-| Account, billing, usage meters | Yes |
+| Capability                      | Requirement    |
+| ------------------------------- | -------------- |
+| Start product review            | Yes            |
+| Watch progress / activity       | Yes            |
+| Chat with FixFlags              | Yes            |
+| Browse Fix list and Flag detail | Yes            |
+| View evidence and path replay   | Adapted layout |
+| Run update review and see diff  | Yes            |
+| Account, billing, usage meters  | Yes            |
 
 **Primary switch:** one tab bar for the whole review — Agent, Preview/Timeline, Report, and Canvas when it is available.
 The same bar and the same Product pane serve a running scan and a completed report, so nothing about the mobile shell changes at completion.
@@ -189,13 +189,13 @@ A full-screen takeover is a later enhancement, not an unresolved requirement for
 
 Wire from [lib/marketing/copy/terminology.ts](../lib/marketing/copy/terminology.ts):
 
-| Label | Use on chrome |
-|-------|----------------|
+| Label          | Use on chrome                                                              |
+| -------------- | -------------------------------------------------------------------------- |
 | Product review | Standard full pass with journey, Funnel, and path evidence where available |
-| Update review | Fresh owner-triggered review on the same URL (report action section) |
-| Funnel | Report section |
-| Path | Playback unit |
-| Fix list | Ranked work queue |
+| Update review  | Fresh owner-triggered review on the same URL (report action section)       |
+| Funnel         | Report section                                                             |
+| Path           | Playback unit                                                              |
+| Fix list       | Ranked work queue                                                          |
 
 Do not show **re-check** in customer UI.
 
@@ -203,15 +203,15 @@ Do not show **re-check** in customer UI.
 
 ## Shipped vs target (interface)
 
-| Area | Today | Target |
-|------|-------|--------|
-| Layout | Full-bleed flush split; no pane cards; same shell scan→complete | Same |
-| Browser | Constant stage, no fake chrome; selected playback step renders that captured frame | Richer live path exploration inside Product Reviews |
-| Playback | Docked transport with Desktop\|Mobile, scrub, and step chips; browser stage updates on select; `?step=N` replay from Flag/Funnel evidence | Full session-style takeover replay |
-| Agent | One transcript; programmatic output is public-safe and free, model conversation is authenticated and metered monthly | Same |
-| Funnel | Section + journey list + Replay path into the workspace browser | Same |
-| Mobile | One tab bar (Agent, Preview/Timeline, Report, Canvas) over the same Product pane, scanning and completed | Full-screen Timeline takeover may be evaluated later |
-| View toggle | Active review defaults to Preview; completed review defaults to Report; live Timeline owner-authorized; static sample Timeline public; Canvas paid | Same |
+| Area        | Today                                                                                                                                              | Target                                               |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Layout      | Full-bleed flush split; no pane cards; same shell scan→complete                                                                                    | Same                                                 |
+| Browser     | Constant stage, no fake chrome; selected playback step renders that captured frame                                                                 | Richer live path exploration inside Product Reviews  |
+| Playback    | Docked transport with Desktop\|Mobile, scrub, and step chips; browser stage updates on select; `?step=N` replay from Flag/Funnel evidence          | Full session-style takeover replay                   |
+| Agent       | One transcript; programmatic output is public-safe and free, model conversation is authenticated and metered monthly                               | Same                                                 |
+| Funnel      | Section + journey list + Replay path into the workspace browser                                                                                    | Same                                                 |
+| Mobile      | One tab bar (Agent, Preview/Timeline, Report, Canvas) over the same Product pane, scanning and completed                                           | Full-screen Timeline takeover may be evaluated later |
+| View toggle | Active review defaults to Preview; completed review defaults to Report; live Timeline owner-authorized; static sample Timeline public; Canvas paid | Same                                                 |
 
 ## Resolved design questions
 

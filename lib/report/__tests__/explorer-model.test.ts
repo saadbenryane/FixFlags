@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
-import { buildLiveExplorerModel, buildPartialExplorerModel } from '@/lib/report/explorer-model'
+import {
+  buildLiveExplorerModel,
+  buildPartialExplorerModel,
+} from '@/lib/report/explorer-model'
 
 describe('explorer-model', () => {
   it('builds live explorer model with sorted flags and highlights', () => {
@@ -65,9 +68,8 @@ describe('explorer-model', () => {
     assert.equal(model.flags[1]?.severity, 'IMPORTANT')
     assert.ok(model.allHighlights.length >= 2)
     assert.match(model.flags[0]?.evidence ?? '', /900px|Button/)
-    assert.match(model.flags[0]?.fixPrompt ?? '', /^## Goal$/m)
-    assert.match(model.flags[0]?.copyFixPrompt ?? '', /^Make a plan to fix these issues, then implement them in this product\./)
-    assert.match(model.flags[0]?.copyFixPrompt ?? '', /CTA below fold/)
+    assert.equal(model.flags[0]?.fixPrompt, 'Move CTA up.')
+    assert.equal(model.flags[0]?.copyFixPrompt, 'Move CTA up.')
   })
 
   it('maps flagVisualEvidence gif/overlay onto visualUrl', () => {
@@ -165,11 +167,17 @@ describe('explorer-model', () => {
       ['f2']
     )
     assert.equal(model.flags.find((flag) => flag.id === 'f1')?.fixPrompt, '')
-    assert.equal(model.flags.find((flag) => flag.id === 'f1')?.copyFixPrompt, '')
-    assert.equal(model.flags.find((flag) => flag.id === 'f3')?.copyFixPrompt, '')
-    assert.match(
-      model.flags.find((flag) => flag.id === 'f2')?.copyFixPrompt ?? '',
-      /CTA below fold/,
+    assert.equal(
+      model.flags.find((flag) => flag.id === 'f1')?.copyFixPrompt,
+      ''
+    )
+    assert.equal(
+      model.flags.find((flag) => flag.id === 'f3')?.copyFixPrompt,
+      ''
+    )
+    assert.equal(
+      model.flags.find((flag) => flag.id === 'f2')?.copyFixPrompt,
+      'Move the primary CTA into the initial mobile viewport.'
     )
     assert.equal(model.polishPassPrompt, null)
   })
@@ -276,7 +284,11 @@ describe('explorer-model', () => {
 
     assert.deepEqual(
       model.flags.map((flag) => flag.id),
-      ['conversion-polish-high-confidence', 'conversion-polish-low-confidence', 'seo-polish']
+      [
+        'conversion-polish-high-confidence',
+        'conversion-polish-low-confidence',
+        'seo-polish',
+      ]
     )
   })
 

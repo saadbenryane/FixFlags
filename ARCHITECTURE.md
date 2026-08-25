@@ -180,8 +180,8 @@ Target marketing prices (Stripe price IDs may lag until a revenue ops change):
 | Plan | Env price ID | Marketing price | Product reviews/mo |
 |------|--------------|-----------------|-------------------|
 | Free | — | $0 | 3 |
-| Pro (`BUILDER`) | `STRIPE_BUILDER_PRICE_ID` | $29/mo | 15 + 3 deep |
-| Studio (`TEAM`) | `STRIPE_TEAM_PRICE_ID` | $79/mo | 50 + 10 deep |
+| Pro (`BUILDER`) | `STRIPE_BUILDER_PRICE_ID` | $29/mo | 30 product reviews |
+| Studio (`TEAM`) | `STRIPE_TEAM_PRICE_ID` | $79/mo | 90 product reviews |
 
 Customer copy: **product review** and **update review** (same credit pool). Every plan exposes the same web capabilities and differs only by monthly Product Review usage. Deep Review is reserved for future repository-connected analysis. Internal: `/re-check` route, `recheck_*` analytics, and legacy deep-review persistence fields.
 

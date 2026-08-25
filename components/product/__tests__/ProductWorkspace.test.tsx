@@ -89,6 +89,34 @@ const workspace: ProductWorkspaceDTO = {
     notificationAttempts: 1,
     notificationError: null,
   },
+  technologyProfile: {
+    status: 'complete',
+    detectorVersion: 'test',
+    detectedAt: '2026-08-12T00:01:00.000Z',
+    technologies: [
+      {
+        slug: 'next-js',
+        name: 'Next.js',
+        category: 'framework',
+        confidenceBand: 'verified',
+        evidence: [],
+      },
+    ],
+    insight: null,
+  },
+  reviewHistory: [
+    {
+      id: 'review-1',
+      kind: 'PRODUCT_REVIEW',
+      status: 'COMPLETED',
+      score: 78,
+      reportCompleteness: 'FULL',
+      unresolvedCount: 1,
+      createdAt: '2026-08-12T00:00:00.000Z',
+      completedAt: '2026-08-12T00:01:00.000Z',
+      failureMessage: null,
+    },
+  ],
   history: {
     events: [
       {
@@ -123,23 +151,21 @@ describe('ProductWorkspace', () => {
     render(<ProductWorkspace workspace={workspace} />)
 
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Example Product' }),
+      screen.getByRole('heading', { level: 1, name: 'Example Product' })
     ).toBeInTheDocument()
     expect(screen.getByText('Help customers register')).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: 'https://example.com' }),
+      screen.getByRole('link', { name: 'https://example.com' })
     ).toHaveAttribute('href', 'https://example.com')
-    expect(
-      screen.getByRole('link', { name: /view report/i }),
-    ).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /view report/i })).toHaveAttribute(
       'href',
-      '/report/source-review?view=report&flag=source-flag',
+      '/report/source-review?view=report&flag=source-flag'
     )
     expect(
-      screen.getByText(/1 new or regressed issue found/i),
+      screen.getByText(/1 new or regressed issue found/i)
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: /open watch review/i }),
+      screen.getByRole('link', { name: /open watch review/i })
     ).toHaveAttribute('href', '/report/watch-review?view=report')
   })
 
@@ -147,31 +173,31 @@ describe('ProductWorkspace', () => {
     render(<ProductWorkspace workspace={workspace} />)
 
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Your priorities' }),
+      screen.getByRole('heading', { level: 2, name: 'Your priorities' })
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Recent activity' }),
+      screen.getByRole('heading', { level: 2, name: 'Reviews' })
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('heading', { name: 'Improvement history' }),
+      screen.queryByRole('heading', { name: 'Improvement history' })
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('heading', { name: 'Remember' }),
+      screen.queryByRole('heading', { name: 'Remember' })
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('heading', { name: 'Review history' }),
+      screen.queryByRole('heading', { name: 'Review history' })
     ).not.toBeInTheDocument()
     expect(
       screen.getByRole('heading', {
         level: 2,
         name: 'Product context',
-      }),
+      })
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { level: 3, name: 'Watch' }),
+      screen.getByRole('heading', { level: 3, name: 'Watch' })
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { level: 3, name: 'Product context' }),
+      screen.getByRole('heading', { level: 3, name: 'Product context' })
     ).toBeInTheDocument()
   })
 
@@ -203,17 +229,20 @@ describe('ProductWorkspace', () => {
             failureMessage: null,
           },
         }}
-      />,
+      />
     )
 
     expect(screen.getByLabelText('Score pending')).toBeInTheDocument()
     expect(screen.queryByText('-')).not.toBeInTheDocument()
     expect(
-      screen.getByText(/Ranked by the effect each issue has on the customer experience/i),
+      screen.getByText(
+        /Ranked by the effect each issue has on the customer experience/i
+      )
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('link', { name: /open review/i }),
-    ).toHaveAttribute('href', '/report/review-running?view=report')
+    expect(screen.getByRole('link', { name: /open review/i })).toHaveAttribute(
+      'href',
+      '/report/review-running?view=report'
+    )
   })
 
   it('combines Reviews, declared changes, and verified learning in one Product history', () => {
@@ -261,18 +290,18 @@ describe('ProductWorkspace', () => {
             nextCursor: null,
           },
         }}
-      />,
+      />
     )
 
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Recent activity' }),
+      screen.getByRole('heading', { level: 2, name: 'Reviews' })
     ).toBeInTheDocument()
     expect(
-      screen.getByText('Change declared: Clarify signup'),
+      screen.getByText('Change declared: Clarify signup')
     ).toBeInTheDocument()
     expect(screen.getByText('Verified learning')).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: /evidence from/i }),
+      screen.getByRole('link', { name: /evidence from/i })
     ).toHaveAttribute('href', '/report/review-2?view=report')
   })
 
@@ -308,15 +337,15 @@ describe('ProductWorkspace', () => {
             nextCursor: null,
           },
         }}
-      />,
+      />
     )
 
     expect(screen.getByLabelText('Score unavailable')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'The capture timed out.',
+      'The capture timed out.'
     )
     expect(
-      screen.queryByText('Nothing important requires action now'),
+      screen.queryByText('Nothing important requires action now')
     ).not.toBeInTheDocument()
   })
 
@@ -340,13 +369,13 @@ describe('ProductWorkspace', () => {
             },
           },
         }}
-      />,
+      />
     )
 
     expect(screen.getByText('Watch review')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Older history' })).toHaveAttribute(
       'href',
-      '/products/product-1?historyCursor=2026-08-13T00%3A00%3A00.000Z%7Creview%3Awatch-review#product-history',
+      '/products/product-1?historyCursor=2026-08-13T00%3A00%3A00.000Z%7Creview%3Awatch-review#product-history'
     )
   })
 
@@ -364,14 +393,14 @@ describe('ProductWorkspace', () => {
             failureMessage: 'Watch capture failed.',
           },
         }}
-      />,
+      />
     )
 
     expect(
-      screen.getByText('Latest Watch Review: Review failed'),
+      screen.getByText('Latest Watch Review: Review failed')
     ).toBeInTheDocument()
     expect(
-      screen.queryByText('Latest Watch Review: In progress'),
+      screen.queryByText('Latest Watch Review: In progress')
     ).not.toBeInTheDocument()
   })
 })

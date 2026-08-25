@@ -18,8 +18,8 @@ Canonical pricing strategy lives in [`knowledge/strategy.md`](../knowledge/strat
 | Plan | Price | Product reviews/month | Products | Plan value |
 |------|-------|-----------------------|----------|------------|
 | Free | $0 | 3 | 1 | Review, fix, and review changes |
-| Pro | $29 | 15 | Up to 5 | Product history across releases and release comparison |
-| Studio | $79 | 50 | Unlimited | Scheduled reviews and a shared workspace |
+| Pro | $29 | 30 | Up to 5 | Product history across releases and release comparison |
+| Studio | $79 | 90 | Unlimited | Scheduled reviews and a shared workspace |
 
 The existing internal enums remain `FREE`, `BUILDER`, and `TEAM`.
 Studio maps to `TEAM`.

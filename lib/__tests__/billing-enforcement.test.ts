@@ -100,12 +100,12 @@ describe('scanLimitForPlan', () => {
     assert.equal(scanLimitForPlan('FREE'), 3)
   })
 
-  it('returns 15 for BUILDER', () => {
-    assert.equal(scanLimitForPlan('BUILDER'), 15)
+  it('returns 30 for BUILDER', () => {
+    assert.equal(scanLimitForPlan('BUILDER'), 30)
   })
 
-  it('returns 50 for TEAM', () => {
-    assert.equal(scanLimitForPlan('TEAM'), 50)
+  it('returns 90 for TEAM', () => {
+    assert.equal(scanLimitForPlan('TEAM'), 90)
   })
 })
 

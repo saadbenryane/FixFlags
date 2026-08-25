@@ -299,6 +299,7 @@ export function AuditInput({
             />
             <Button
               type="submit"
+              variant="brand"
               size="lg"
               disabled={!hydrated || busy}
               className={cn(

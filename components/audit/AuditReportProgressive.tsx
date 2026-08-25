@@ -1,14 +1,20 @@
 'use client'
 
-import { Component, Suspense, useEffect, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from 'react'
+import {
+  Component,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ErrorInfo,
+  type ReactNode,
+} from 'react'
 import { Callout } from '@/components/ui/callout'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Card } from '@/components/ui/card'
 import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
 import { ReportContextDisclosure } from '@/components/report/ReportContextDisclosure'
-import {
-  REPORT_SECTION_SCROLL_MT,
-} from '@/components/report/workspace-geometry'
+import { REPORT_SECTION_SCROLL_MT } from '@/components/report/workspace-geometry'
 import { ReportPane } from '@/components/report/ReportPane'
 import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
 import { ProductContractCard } from '@/components/audit/ProductContractCard'
@@ -16,7 +22,10 @@ import type {
   AuditScreenshot,
   ScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
-import { getProgressPercent, getStagePresentation } from '@/lib/audit/progress-ui'
+import {
+  getProgressPercent,
+  getStagePresentation,
+} from '@/lib/audit/progress-ui'
 import {
   PIPELINE_PROGRESS_SUBSTEP,
   streamingFlagsVisible,
@@ -30,7 +39,6 @@ import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
-import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { cn } from '@/lib/utils'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
@@ -43,9 +51,18 @@ class ExplorerErrorBoundary extends Component<
   { hasError: boolean }
 > {
   state = { hasError: false }
-  static getDerivedStateFromError() { return { hasError: true } }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error(JSON.stringify({ level: 'error', event: 'ui.explorer.error', digest: (error as Error & { digest?: string }).digest, component: info.componentStack?.split('\n')[1]?.trim() }))
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        event: 'ui.explorer.error',
+        digest: (error as Error & { digest?: string }).digest,
+        component: info.componentStack?.split('\n')[1]?.trim(),
+      })
+    )
   }
   render() {
     if (this.state.hasError) {
@@ -61,7 +78,12 @@ interface AuditReportProgressiveProps {
   pageType?: string | null
   score?: number | null
   progress?: number
-  rubrics?: Array<{ name: string; grade: string | null; score: number | null; status?: string | null }>
+  rubrics?: Array<{
+    name: string
+    grade: string | null
+    score: number | null
+    status?: string | null
+  }>
   partialFlags?: Array<{
     id: string
     severity: string
@@ -98,7 +120,6 @@ export function AuditReportProgressive({
   screenshotCapture,
   workerIdle = false,
   productContract = null,
-  technologyProfile,
   sectionId = 'report-flags',
   auditId,
   accessContext = null,
@@ -131,7 +152,9 @@ export function AuditReportProgressive({
   const [easeTick, setEaseTick] = useState(0)
 
   const showWorkerWarning =
-    process.env.NODE_ENV === 'development' && status === 'QUEUED' && easeTick >= 12
+    process.env.NODE_ENV === 'development' &&
+    status === 'QUEUED' &&
+    easeTick >= 12
 
   const [queueWaitSeconds, setQueueWaitSeconds] = useState<number | undefined>()
 
@@ -140,7 +163,9 @@ export function AuditReportProgressive({
       setQueueWaitSeconds(undefined)
       return
     }
-    setQueueWaitSeconds(getActiveAudit()?.queue?.estimatedWaitSeconds ?? undefined)
+    setQueueWaitSeconds(
+      getActiveAudit()?.queue?.estimatedWaitSeconds ?? undefined
+    )
   }, [status])
 
   const showQueueWait =
@@ -171,7 +196,9 @@ export function AuditReportProgressive({
   const prevFlagsRef = useRef(partialFlags)
   const prevScreenshotsRef = useRef(screenshots)
   const prevRubricsRef = useRef(rubrics)
-  const prevModelRef = useRef<ReturnType<typeof buildPartialExplorerModel> | null>(null)
+  const prevModelRef = useRef<ReturnType<
+    typeof buildPartialExplorerModel
+  > | null>(null)
 
   const explorerModel = useMemo(() => {
     if (
@@ -204,7 +231,8 @@ export function AuditReportProgressive({
   // modules finish (persisted at CHECKS_DONE), so the progressive report shows
   // real results instead of a blank list while checks are still running.
   // Held from the moment findings can stream, so the first Flag never shifts the fix list.
-  const showFindingsStream = isLoading && streamingFlagsVisible(status, progress)
+  const showFindingsStream =
+    isLoading && streamingFlagsVisible(status, progress)
   const liveFindingsStrip = showFindingsStream ? (
     <div
       role="status"
@@ -217,7 +245,9 @@ export function AuditReportProgressive({
           : 'No Flags confirmed yet'}
       </span>
       <span aria-hidden="true">·</span>
-      <span>Checks are still running. New Flags appear as they are confirmed.</span>
+      <span>
+        Checks are still running. New Flags appear as they are confirmed.
+      </span>
     </div>
   ) : null
   const workspace = buildReportWorkspaceModel({
@@ -241,7 +271,7 @@ export function AuditReportProgressive({
     },
   })
   const queuedWarnings =
-    (workerIdle || showWorkerWarning || showQueueWait) ? (
+    workerIdle || showWorkerWarning || showQueueWait ? (
       <div className="space-y-3">
         {(workerIdle || showWorkerWarning) && (
           <Callout variant="warning" title="Still preparing">
@@ -264,34 +294,44 @@ export function AuditReportProgressive({
    */
   const scanReportPanel = (
     <ReportPane
-        beforeExplorer={
-          <>
-            <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-              {isLoading ? progressStatusLine : REPORT_COPY.sectionTitles.allFixes}
-            </p>
-            {liveFindingsStrip}
-          </>
-        }
-        explorer={
-          <section
-            id={sectionId}
-            className={cn(REPORT_SECTION_SCROLL_MT, 'flex min-h-0 flex-1 flex-col')}
-            aria-busy={isLoading}
+      beforeExplorer={
+        <>
+          <p
+            className="sr-only"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
           >
-            <ExplorerErrorBoundary
-              fallback={
-                <div className="space-y-3 py-4">
-                  <Skeleton shimmer className="h-4 w-3/4" />
-                  <Skeleton shimmer className="h-4 w-1/2" />
-                  <Skeleton shimmer className="h-4 w-2/3" />
-                </div>
-              }
-            >
-              <LiveReportExplorer model={explorerModel} loading={isLoading} />
-            </ExplorerErrorBoundary>
-          </section>
-        }
-      />
+            {isLoading
+              ? progressStatusLine
+              : REPORT_COPY.sectionTitles.allFixes}
+          </p>
+          {liveFindingsStrip}
+        </>
+      }
+      explorer={
+        <section
+          id={sectionId}
+          className={cn(
+            REPORT_SECTION_SCROLL_MT,
+            'flex min-h-0 flex-1 flex-col'
+          )}
+          aria-busy={isLoading}
+        >
+          <ExplorerErrorBoundary
+            fallback={
+              <div className="space-y-3 py-4">
+                <Skeleton shimmer className="h-4 w-3/4" />
+                <Skeleton shimmer className="h-4 w-1/2" />
+                <Skeleton shimmer className="h-4 w-2/3" />
+              </div>
+            }
+          >
+            <LiveReportExplorer model={explorerModel} loading={isLoading} />
+          </ExplorerErrorBoundary>
+        </section>
+      }
+    />
   )
 
   const scanWorkspace = auditId ? (
@@ -333,27 +373,6 @@ export function AuditReportProgressive({
 
   const contextSections = (
     <>
-      {isLoading && (!technologyProfile || technologyProfile.status === 'not_captured') ? (
-        <Card className="space-y-3 p-5" aria-label="Reading technology signals" id="report-stack">
-          <div className="flex items-center justify-between gap-3">
-            <div className="space-y-2">
-              <Skeleton shimmer className="h-3 w-28" />
-              <Skeleton shimmer className="h-5 w-24" />
-            </div>
-            <Skeleton shimmer className="h-3 w-24" />
-          </div>
-          <div className="flex gap-2">
-            <Skeleton shimmer className="h-8 w-24 rounded-full" />
-            <Skeleton shimmer className="h-8 w-20 rounded-full" />
-            <Skeleton shimmer className="h-8 w-28 rounded-full" />
-          </div>
-        </Card>
-      ) : technologyProfile ? (
-        <div id="report-stack" className={REPORT_SECTION_SCROLL_MT}>
-          <MadeWithProfile profile={technologyProfile} compact />
-        </div>
-      ) : null}
-
       {showContract && productContract ? (
         <div id="report-contract" className={REPORT_SECTION_SCROLL_MT}>
           <ProductContractCard contract={productContract} canEdit={false} />
@@ -374,7 +393,7 @@ export function AuditReportProgressive({
         surface: 'focused' as const,
       }
     },
-    [isLoading, displayProgress, status],
+    [isLoading, displayProgress, status]
   )
 
   if (isLoading) {
@@ -422,7 +441,10 @@ export function AuditReportProgressive({
                     explorer={
                       <section
                         id={sectionId}
-                        className={cn(REPORT_SECTION_SCROLL_MT, 'flex min-h-0 flex-1 flex-col')}
+                        className={cn(
+                          REPORT_SECTION_SCROLL_MT,
+                          'flex min-h-0 flex-1 flex-col'
+                        )}
                       >
                         <ExplorerErrorBoundary
                           fallback={
@@ -432,14 +454,17 @@ export function AuditReportProgressive({
                             </div>
                           }
                         >
-                          <LiveReportExplorer model={explorerModel} loading={false} />
+                          <LiveReportExplorer
+                            model={explorerModel}
+                            loading={false}
+                          />
                         </ExplorerErrorBoundary>
                       </section>
                     }
                     afterFrame={
                       <>
                         <ReportContextDisclosure
-                          sectionIds={['report-stack', 'report-contract']}
+                          sectionIds={['report-contract']}
                           className="mt-3"
                         >
                           {contextSections}
@@ -464,6 +489,6 @@ export function AuditReportProgressive({
   // a programming error rather than a document-layout fallback to silently
   // degrade into.
   throw new Error(
-    'AuditReportProgressive requires an auditId to render a completed report',
+    'AuditReportProgressive requires an auditId to render a completed report'
   )
 }

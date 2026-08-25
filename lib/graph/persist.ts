@@ -53,12 +53,12 @@ export function classifyPageRole(pageUrls: string[], url: string): string {
  */
 async function upsertSite(
   auditId: string,
-  snapshot: SiteSnapshot,
+  snapshot: SiteSnapshot
 ): Promise<{ siteId: string; pageIds: string[] }> {
   const hostname = hostnameOf(snapshot.rootUrl)
   if (!hostname) {
     throw new Error(
-      `persistAuditToGraph: cannot derive hostname from rootUrl=${snapshot.rootUrl}`,
+      `persistAuditToGraph: cannot derive hostname from rootUrl=${snapshot.rootUrl}`
     )
   }
 
@@ -83,7 +83,8 @@ async function upsertSite(
   const pageIds: string[] = []
   for (const url of snapshot.pageUrls) {
     const normPath = pathOf(url)
-    const role = snapshot.pageRoles[url] ?? classifyPageRole(snapshot.pageUrls, url)
+    const role =
+      snapshot.pageRoles[url] ?? classifyPageRole(snapshot.pageUrls, url)
 
     const page = await prisma.page.upsert({
       where: {
@@ -119,7 +120,11 @@ async function upsertSite(
   const pageByUrl = new Map(snapshot.pageUrls.map((u, i) => [u, pageIds[i]]))
   for (const ap of auditPages) {
     const gid = pageByUrl.get(ap.url)
-    if (gid && (await prisma.auditPage.findUnique({ where: { id: ap.id } }))?.pageId !== gid) {
+    if (
+      gid &&
+      (await prisma.auditPage.findUnique({ where: { id: ap.id } }))?.pageId !==
+        gid
+    ) {
       await prisma.auditPage.update({
         where: { id: ap.id },
         data: { pageId: gid },
@@ -136,7 +141,7 @@ async function upsertSite(
  */
 async function upsertIssue(
   flag: FlagSnapshot,
-  siteId: string,
+  siteId: string
 ): Promise<string | null> {
   if (!flag.fingerprint || !flag.checkId) {
     // Flags without a fingerprint or checkId can't be aggregated. Skip silently -
@@ -187,7 +192,10 @@ async function upsertIssue(
  * Upsert a FixPrompt for each (issue, tool) pair present on the flag.
  * Best-effort: missing prompts are simply skipped.
  */
-async function upsertFixPrompts(issueId: string, flag: FlagSnapshot): Promise<void> {
+async function upsertFixPrompts(
+  issueId: string,
+  flag: FlagSnapshot
+): Promise<void> {
   const candidates: Array<[string, string | null]> = [
     ['generic', flag.prompts.generic],
     ['cursor', flag.prompts.cursor],
@@ -208,13 +216,13 @@ async function upsertFixPrompts(issueId: string, flag: FlagSnapshot): Promise<vo
 
 /**
  * Upsert Technology and SiteTechnology rows for each detected tech.
- * This populates the graph tables that feed /madewith pages and
- * the topFrameworks display on issue pages.
+ * This populates the graph tables used by Product intelligence and the
+ * topFrameworks display on issue pages.
  */
 export async function reconcileSiteTechnologies(
   siteId: string,
   detectedTech: SiteSnapshot['detectedTech'],
-  reconcileCurrent: boolean,
+  reconcileCurrent: boolean
 ): Promise<void> {
   if (reconcileCurrent) {
     await prisma.siteTechnology.updateMany({
@@ -264,7 +272,7 @@ export async function reconcileSiteTechnologies(
 export async function persistAuditToGraph(
   auditId: string,
   snapshot: SiteSnapshot,
-  flags: FlagSnapshot[],
+  flags: FlagSnapshot[]
 ): Promise<PersistResult> {
   const { siteId, pageIds } = await upsertSite(auditId, snapshot)
 

@@ -2,7 +2,6 @@ import Link from 'next/link'
 import type { Route } from 'next'
 import { ArrowRight, CircleAlert, Eye, FileSearch, Flag } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Surface } from '@/components/ui/surface'
 import { SectionTitle } from '@/components/ui/typography'
@@ -43,39 +42,44 @@ export function ProductOverviewGrid({
           description="Review a URL below. FixFlags will keep that Product and every future update review together."
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {products.map((product) => {
-            const state = presentProductReview(product.latestManualReview)
-            return (
-              <Surface
-                key={product.id}
-                variant="elevated"
-                className="flex min-w-0 flex-col gap-5"
-              >
-                <div className="flex min-w-0 items-start justify-between gap-3">
+        <Surface variant="elevated" className="overflow-hidden p-0">
+          <div className="divide-y divide-border/60">
+            {products.map((product) => {
+              const state = presentProductReview(product.latestManualReview)
+              const reviewAt = product.latestManualReview
+                ? product.latestManualReview.completedAt ||
+                  product.latestManualReview.createdAt
+                : null
+              return (
+                <Link
+                  key={product.id}
+                  href={`/products/${product.id}` as Route}
+                  aria-label={`Open Product ${product.name}`}
+                  className="group grid min-h-28 gap-4 px-4 py-4 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:grid-cols-[minmax(0,1.2fr)_9rem_minmax(0,1fr)_auto] sm:items-center sm:px-5"
+                >
                   <div className="min-w-0">
-                    <h3 className="truncate text-lg font-semibold tracking-heading">
-                      {product.name}
-                    </h3>
-                    {product.purpose ? (
-                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                        {product.purpose}
-                      </p>
-                    ) : null}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="truncate text-base font-semibold tracking-heading">
+                        {product.name}
+                      </h3>
+                      {product.watching ? (
+                        <Badge variant="outline" className="shrink-0 gap-1.5">
+                          <Eye className="h-3.5 w-3.5" aria-hidden />
+                          Watching
+                        </Badge>
+                      ) : null}
+                    </div>
                     <p className="mt-1 truncate text-xs text-muted-foreground">
                       {product.url}
                     </p>
+                    {product.purpose ? (
+                      <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
+                        {product.purpose}
+                      </p>
+                    ) : null}
                   </div>
-                  {product.watching ? (
-                    <Badge variant="outline" className="shrink-0 gap-1.5">
-                      <Eye className="h-3.5 w-3.5" aria-hidden />
-                      Watching
-                    </Badge>
-                  ) : null}
-                </div>
 
-                <div className="space-y-3 text-sm">
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-nested-md bg-muted/30 p-3">
+                  <div className="flex items-center justify-between gap-3 sm:block sm:border-l sm:border-border/50 sm:pl-4">
                     <div>
                       <p className="text-xs text-muted-foreground">
                         Latest Review
@@ -84,82 +88,69 @@ export function ProductOverviewGrid({
                         {state.label}
                       </Badge>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Score</p>
-                      <p className="mt-1 font-mono text-base font-semibold tabular-nums">
+                    <div className="text-right sm:mt-2 sm:text-left">
+                      <span className="font-mono text-lg font-semibold tabular-nums">
                         {state.score}
-                      </p>
+                      </span>
+                      {reviewAt ? (
+                        <span className="ml-2 text-xs text-muted-foreground sm:ml-0 sm:block">
+                          {reviewDate(reviewAt)}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
-                  {product.latestManualReview ? (
-                    <p className="text-xs text-muted-foreground">
-                      {product.latestManualReview.completedAt
-                        ? 'Reviewed'
-                        : 'Started'}{' '}
-                      {reviewDate(
-                        product.latestManualReview.completedAt ||
-                          product.latestManualReview.createdAt,
-                      )}
-                    </p>
-                  ) : null}
-                  {product.topAttention ? (
-                    <div className="flex items-start gap-2 rounded-nested-md bg-brand-muted p-3">
-                      {product.topAttention.severity === 'CRITICAL' ? (
-                        <CircleAlert
-                          className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
-                          aria-hidden
-                        />
-                      ) : (
-                        <Flag
-                          className="mt-0.5 h-4 w-4 shrink-0 text-brand"
-                          aria-hidden
-                        />
-                      )}
+
+                  <div className="flex min-w-0 items-start gap-2 sm:border-l sm:border-border/50 sm:pl-4">
+                    {product.topAttention ? (
+                      <>
+                        {product.topAttention.severity === 'CRITICAL' ? (
+                          <CircleAlert
+                            className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
+                            aria-hidden
+                          />
+                        ) : (
+                          <Flag
+                            className="mt-0.5 h-4 w-4 shrink-0 text-brand"
+                            aria-hidden
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            {product.attentionCount} open
+                          </p>
+                          <p className="mt-0.5 line-clamp-2 text-sm font-medium">
+                            {product.topAttention.title}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-muted-foreground">
-                          {product.attentionCount} open{' '}
-                          {product.attentionCount === 1
-                            ? 'Improvement'
-                            : 'Improvements'}
+                          Attention
                         </p>
-                        <p className="mt-0.5 line-clamp-2 font-medium">
-                          {product.topAttention.title}
+                        <p className="mt-0.5 text-sm">
+                          {!product.latestManualReview
+                            ? 'No Review evidence yet.'
+                            : product.latestManualReview.status === 'FAILED'
+                              ? 'The latest Review did not finish.'
+                              : product.latestManualReview.status !==
+                                  'COMPLETED'
+                                ? 'Review in progress. New Attention will appear when it finishes.'
+                                : '0 open Improvements in the latest completed Review.'}
                         </p>
-                        {product.topAttention.severity ? (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {product.topAttention.severity.toLowerCase()}
-                          </p>
-                        ) : null}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-nested-md border border-border/50 p-3">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Attention
-                      </p>
-                      <p className="mt-1 text-sm">
-                        {!product.latestManualReview
-                          ? 'No Review evidence yet.'
-                          : product.latestManualReview.status === 'FAILED'
-                            ? 'The latest Review did not finish.'
-                            : product.latestManualReview.status !== 'COMPLETED'
-                              ? 'Review in progress. New Attention will appear when it finishes.'
-                              : '0 open Improvements in the latest completed Review.'}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
 
-                <Button asChild className="mt-auto w-full sm:w-fit">
-                  <Link href={`/products/${product.id}` as Route}>
-                    Open Product
-                    <ArrowRight className="h-4 w-4" aria-hidden />
-                  </Link>
-                </Button>
-              </Surface>
-            )
-          })}
-        </div>
+                  <ArrowRight
+                    className="hidden h-5 w-5 text-brand transition-transform group-hover:translate-x-0.5 sm:block"
+                    aria-hidden
+                  />
+                </Link>
+              )
+            })}
+          </div>
+        </Surface>
       )}
     </section>
   )

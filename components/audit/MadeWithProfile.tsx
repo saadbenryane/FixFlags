@@ -13,6 +13,33 @@ import {
   ShoppingBag,
   type LucideIcon,
 } from 'lucide-react'
+import {
+  siAngular,
+  siAstro,
+  siCloudflare,
+  siGatsby,
+  siGoogleanalytics,
+  siGoogletagmanager,
+  siIntercom,
+  siMixpanel,
+  siNetlify,
+  siNextdotjs,
+  siNuxt,
+  siPosthog,
+  siRailway,
+  siReact,
+  siRemix,
+  siSentry,
+  siShopify,
+  siStripe,
+  siSvelte,
+  siTypeform,
+  siVercel,
+  siVuedotjs,
+  siWebflow,
+  siWordpress,
+  type SimpleIcon,
+} from 'simple-icons'
 import { Card } from '@/components/ui/card'
 import { SectionTitle } from '@/components/ui/typography'
 import type {
@@ -35,6 +62,71 @@ const CATEGORY_META: Record<GraphTechKind, { label: string; icon: LucideIcon }> 
   support: { label: 'Support', icon: MessagesSquare },
   security: { label: 'Security', icon: Shield },
   form: { label: 'Forms', icon: ClipboardList },
+}
+
+const TECHNOLOGY_ICONS: Record<string, SimpleIcon> = {
+  'next.js': siNextdotjs,
+  react: siReact,
+  vue: siVuedotjs,
+  nuxt: siNuxt,
+  angular: siAngular,
+  svelte: siSvelte,
+  sveltekit: siSvelte,
+  astro: siAstro,
+  gatsby: siGatsby,
+  remix: siRemix,
+  webflow: siWebflow,
+  wordpress: siWordpress,
+  shopify: siShopify,
+  vercel: siVercel,
+  netlify: siNetlify,
+  cloudflare: siCloudflare,
+  railway: siRailway,
+  'google analytics': siGoogleanalytics,
+  'google tag manager': siGoogletagmanager,
+  mixpanel: siMixpanel,
+  posthog: siPosthog,
+  sentry: siSentry,
+  stripe: siStripe,
+  intercom: siIntercom,
+  typeform: siTypeform,
+}
+
+function TechnologyMark({
+  technology,
+  size = 'sm',
+}: {
+  technology: VisibleTechnology
+  size?: 'sm' | 'md'
+}) {
+  const icon = TECHNOLOGY_ICONS[technology.name.toLowerCase()]
+  const category = CATEGORY_META[technology.category]
+  const FallbackIcon = category.icon
+  const boxClass = size === 'md' ? 'h-9 w-9' : 'h-7 w-7'
+  const iconClass = size === 'md' ? 'h-5 w-5' : 'h-4 w-4'
+
+  return (
+    <span
+      className={cn(
+        'grid shrink-0 place-items-center rounded-[var(--radius-control)] border border-border/45 bg-background shadow-sm',
+        boxClass,
+      )}
+      aria-hidden="true"
+    >
+      {icon ? (
+        <svg
+          viewBox="0 0 24 24"
+          className={iconClass}
+          style={{ color: icon.hex === '000000' ? 'currentColor' : `#${icon.hex}` }}
+          fill="currentColor"
+        >
+          <path d={icon.path} />
+        </svg>
+      ) : (
+        <FallbackIcon className={cn(iconClass, 'text-muted-foreground')} />
+      )}
+    </span>
+  )
 }
 
 function groupTechnologies(technologies: VisibleTechnology[]) {
@@ -87,8 +179,9 @@ export function MadeWithProfile({
             {summary.map((technology) => (
               <span
                 key={technology.slug}
-                className="rounded-full bg-muted/70 px-2 py-1 text-xs font-medium text-foreground"
+                className="inline-flex items-center gap-1.5 rounded-full bg-muted/70 py-1 pl-1 pr-2 text-xs font-medium text-foreground"
               >
+                <TechnologyMark technology={technology} />
                 {technology.name}
               </span>
             ))}
@@ -163,8 +256,9 @@ export function MadeWithProfile({
               {summary.map((technology) => (
                 <span
                   key={technology.slug}
-                  className="rounded-full bg-muted/70 px-3 py-1.5 text-sm font-medium text-foreground shadow-sm"
+                  className="inline-flex items-center gap-2 rounded-full bg-muted/70 py-1.5 pl-1.5 pr-3 text-sm font-medium text-foreground shadow-sm"
                 >
+                  <TechnologyMark technology={technology} />
                   {technology.name}
                 </span>
               ))}
@@ -221,7 +315,10 @@ export function MadeWithProfile({
                           className="rounded-nested-md bg-background/70 p-3 shadow-sm"
                         >
                           <div className="flex flex-wrap items-baseline justify-between gap-2">
-                            <span className="font-medium text-foreground">{technology.name}</span>
+                            <span className="flex items-center gap-2 font-medium text-foreground">
+                              <TechnologyMark technology={technology} size="md" />
+                              {technology.name}
+                            </span>
                             <span className="font-mono text-xs text-muted-foreground">
                               {technology.confidenceBand === 'verified'
                                 ? MADE_WITH_COPY.verified

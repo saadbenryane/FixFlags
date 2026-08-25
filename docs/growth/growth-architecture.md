@@ -1,6 +1,6 @@
 # Architecture
 
-*Last updated: 2026-07-10*
+_Last updated: 2026-07-10_
 
 Status: **Growth system active. GSC/GA4 data pulling. Knowledge graph seeding in progress.**
 
@@ -60,6 +60,7 @@ The primary data source. Every completed audit writes to the knowledge graph
 via `persistAuditToGraph()` — fire-and-forget, idempotent, O(flags).
 
 **What it captures per audit:**
+
 - Site (hostname, root URL)
 - Pages (URLs, roles)
 - Flags (checkId, rubric, severity, fingerprint, problem, fix, evidence)
@@ -76,14 +77,15 @@ It inspects rendered HTML, a bounded sanitized resource inventory, allowlisted
 document headers, and known runtime markers from the existing Playwright
 navigation. Results are normalized into audit-owned observations, then the
 latest complete snapshot reconciles `graph_technology` /
-`graph_site_technology`. Explicitly public, currently eligible audits feed
-`/madewith/[hostname]`; current site technology rows feed `topFrameworks`.
+`graph_site_technology`. Current site technology rows feed `topFrameworks`;
+per-Product technology context is owner-only on the Product detail page.
 
 ### 1b. Search Console (NOT IMPLEMENTED — blocked on access)
 
 **Purpose:** Measure which queries drive impressions, clicks, and signups.
 
 **Required data pulls:**
+
 - `searchAnalytics` — queries, pages, impressions, clicks, CTR, position
 - `urlInspection` — index coverage, crawl status
 - `sitemaps` — submitted vs. indexed counts
@@ -101,6 +103,7 @@ highest-leverage unlock for Layer 2.
 **Purpose:** Track the conversion funnel: organic visit → audit → signup → paid.
 
 **Client funnel events (shipped via `lib/analytics/events.ts` + admin page):**
+
 - Full launch funnel including `landing_view`, `audit_intent`, `started_audit`, `signup_started` (email + OAuth), `fix_prompt_copied`, `recheck_*`
 - See `.cursor/skills/fixflags-analytics/SKILL.md`
 
@@ -112,6 +115,7 @@ highest-leverage unlock for Layer 2.
 **Purpose:** Track who ranks for target queries, their moats, our wedges.
 
 **Data sources:**
+
 - SERP monitoring (manual initially, automated later)
 - Backlink analysis (Moz free tier or Ahrefs API)
 - Community monitoring (Reddit, HN, X for AI-builder discussions)
@@ -139,6 +143,7 @@ the inputs that Layer 3's public pages consume.
 **Schedule:** Weekly
 
 **What it computes per scope:**
+
 - Sample size (distinct sites)
 - Score distribution (avg, p25, p50, p75)
 - Top issues by frequency
@@ -157,11 +162,13 @@ snapshot.
 **Schedule:** Weekly
 
 **Scoring formula (v1):**
+
 ```
 score = (impressions × CTR_gap × position_weight) + (sample_size_bonus × conversion_potential)
 ```
 
 Where:
+
 - `impressions` = GSC 30-day rolling impressions for the query cluster
 - `CTR_gap` = expected CTR for position minus actual CTR (higher = more room)
 - `position_weight` = 1.0 for position 5-20 (close to page 1), 0.5 for 21-50
@@ -186,6 +193,7 @@ manual entry.
 **Schedule:** Weekly (Sunday evening)
 
 **What it pulls:**
+
 - GSC rolling 7d vs. prior 7d (impressions, clicks, position)
 - Graph stats (sites, pages, issues, occurrences)
 - New backlinks (if tracked)
@@ -201,20 +209,20 @@ queries become a genuine bottleneck.
 
 ### Entities (implemented in `prisma/schema.prisma`, `graph_*` tables)
 
-| Model | Purpose |
-|---|---|
-| `Site` | One row per audited hostname. Tracks audit count, industry guess, detected tech. |
-| `Page` | One row per distinct URL path seen during any audit of a site. Has a role (home, pricing, signup, etc). |
-| `Technology` | Framework / builder / hosting / CMS / analytics vocabulary. |
-| `SiteTechnology` | Join table: which technologies a site uses, with confidence. |
-| `Industry` | Industry taxonomy (saas, ecommerce, agency, ...). |
-| `Issue` | One row per **fingerprint** — the same underlying problem across many sites. Holds denormalized counters (`occurrenceCount`, `siteCount`, `frameworkCount`) recomputed by the rollup job. |
-| `IssueOccurrence` | One row per flag that matched an issue — the raw event log the counters are derived from. Unique on `flagId`, which is what makes graph persistence idempotent. |
-| `FixPrompt` | Per-(issue, tool) canonical fix prompt (cursor/claude/lovable/bolt/generic), with usage + success-rate tracking. |
-| `BenchmarkSnapshot` | Point-in-time aggregate stats for a scope (e.g. `"builder:lovable"`, `"industry:saas"`). |
-| `Experiment` | Hypothesis → outcome log for growth experiments. |
-| `ToolUsage` | Anonymous usage events from free tools (once built) — the top-of-funnel signal. |
-| `GrowthArtifact` | Lineage record: which file/report was generated from which data, and when. |
+| Model               | Purpose                                                                                                                                                                                   |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Site`              | One row per audited hostname. Tracks audit count, industry guess, detected tech.                                                                                                          |
+| `Page`              | One row per distinct URL path seen during any audit of a site. Has a role (home, pricing, signup, etc).                                                                                   |
+| `Technology`        | Framework / builder / hosting / CMS / analytics vocabulary.                                                                                                                               |
+| `SiteTechnology`    | Join table: which technologies a site uses, with confidence.                                                                                                                              |
+| `Industry`          | Industry taxonomy (saas, ecommerce, agency, ...).                                                                                                                                         |
+| `Issue`             | One row per **fingerprint** — the same underlying problem across many sites. Holds denormalized counters (`occurrenceCount`, `siteCount`, `frameworkCount`) recomputed by the rollup job. |
+| `IssueOccurrence`   | One row per flag that matched an issue — the raw event log the counters are derived from. Unique on `flagId`, which is what makes graph persistence idempotent.                           |
+| `FixPrompt`         | Per-(issue, tool) canonical fix prompt (cursor/claude/lovable/bolt/generic), with usage + success-rate tracking.                                                                          |
+| `BenchmarkSnapshot` | Point-in-time aggregate stats for a scope (e.g. `"builder:lovable"`, `"industry:saas"`).                                                                                                  |
+| `Experiment`        | Hypothesis → outcome log for growth experiments.                                                                                                                                          |
+| `ToolUsage`         | Anonymous usage events from free tools (once built) — the top-of-funnel signal.                                                                                                           |
+| `GrowthArtifact`    | Lineage record: which file/report was generated from which data, and when.                                                                                                                |
 
 ### Existing tables extended (not replacing anything)
 
@@ -269,14 +277,14 @@ the boundary that keeps the graph private while the derived data is public.
 
 ### Six page families
 
-| Family | Route pattern | Information gain | Blocked by |
-|---|---|---|---|
-| Site Report | `/report/[auditId]` (public opt-in) | Full audit, screenshots, evidence anchors | Nothing — already works |
-| Reports Index | `/reports`, `/reports/[industry]`, `/reports/[framework]` | Filterable recency index | Enough `isPublic` audits |
-| Benchmark | `/benchmarks/[scope]` | Rolling `BenchmarkSnapshot` — score distribution, sample size | Industry/tech detection + sample size |
-| Issue Library | `/issues/[checkId]` | Frequency, top frameworks, anonymized examples, canonical fix prompt | Sample size (MIN_SAMPLE_SIZE) |
-| Comparison | `/compare/[slug]` | Cross-source scoring on the same audited URL | Multiple audits of same URL |
-| Free Tool | `/tools/[slug]` | Instant self-serve result + audit CTA | Nothing for meta-preview and placeholder-detector |
+| Family        | Route pattern                                             | Information gain                                                     | Blocked by                                        |
+| ------------- | --------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------- |
+| Site Report   | `/report/[auditId]` (public opt-in)                       | Full audit, screenshots, evidence anchors                            | Nothing — already works                           |
+| Reports Index | `/reports`, `/reports/[industry]`, `/reports/[framework]` | Filterable recency index                                             | Enough `isPublic` audits                          |
+| Benchmark     | `/benchmarks/[scope]`                                     | Rolling `BenchmarkSnapshot` — score distribution, sample size        | Industry/tech detection + sample size             |
+| Issue Library | `/issues/[checkId]`                                       | Frequency, top frameworks, anonymized examples, canonical fix prompt | Sample size (MIN_SAMPLE_SIZE)                     |
+| Comparison    | `/compare/[slug]`                                         | Cross-source scoring on the same audited URL                         | Multiple audits of same URL                       |
+| Free Tool     | `/tools/[slug]`                                           | Instant self-serve result + audit CTA                                | Nothing for meta-preview and placeholder-detector |
 
 ### The quality gate: `MIN_SAMPLE_SIZE`
 
@@ -293,6 +301,7 @@ a law.
 
 Every page template must render at least one number or artifact that only
 FixFlags can produce:
+
 - Issue page → frequency + real (anonymized) examples + our fix prompt
 - Benchmark page → our own sample's score distribution
 - Report page → our screenshots + our evidence anchors
@@ -308,14 +317,14 @@ If a template can't satisfy this, it doesn't ship. No exceptions for
 **Design:** A function `getRelatedPages(pageType, pageId)` that returns
 related pages based on:
 
-| From | To | Linking signal |
-|---|---|---|
-| Issue page | Other issues in same rubric | `Issue.rubric` |
-| Issue page | Benchmark for dominant framework | `IssueOccurrence` → `SiteTechnology` |
-| Benchmark page | Top issues for that scope | `BenchmarkSnapshot.topIssues` |
-| Benchmark page | Other benchmarks (same industry or framework) | Shared scope prefix |
-| Free tool | Related issue pages | Tool detects same check IDs |
-| Free tool | Audit CTA | Always — every tool page ends with "Run a full audit" |
+| From           | To                                            | Linking signal                                        |
+| -------------- | --------------------------------------------- | ----------------------------------------------------- |
+| Issue page     | Other issues in same rubric                   | `Issue.rubric`                                        |
+| Issue page     | Benchmark for dominant framework              | `IssueOccurrence` → `SiteTechnology`                  |
+| Benchmark page | Top issues for that scope                     | `BenchmarkSnapshot.topIssues`                         |
+| Benchmark page | Other benchmarks (same industry or framework) | Shared scope prefix                                   |
+| Free tool      | Related issue pages                           | Tool detects same check IDs                           |
+| Free tool      | Audit CTA                                     | Always — every tool page ends with "Run a full audit" |
 
 **Implementation:** A `lib/graph/related.ts` module that queries the graph
 and returns an array of `{ type, slug, title, reason }` for the page
@@ -327,6 +336,7 @@ template to render as "Related reading" or "See also" sections.
 the sitemap without manual intervention.
 
 **Design:** `app/sitemap.ts` reads from the knowledge graph:
+
 - Static routes (from `INDEXABLE_ROUTES`) — unchanged
 - Issue routes: `Issue.findMany({ where: { siteCount: { gte: MIN_SAMPLE_SIZE } } })`
 - Benchmark routes: `BenchmarkSnapshot.findMany(...)` with dedup by scope
@@ -341,12 +351,12 @@ Current: Organization, WebSite, SoftwareApplication, FAQPage.
 
 Add per page family:
 
-| Page type | Schema.org type | Key properties |
-|---|---|---|
-| Issue page | `Article` + `Dataset` | `about` (the check), `mentions` (frameworks), `distribution` (frequency) |
-| Benchmark page | `Dataset` + `Report` | `variableMeasured` (score, sample size), `measurementMethod` (FixFlags audit) |
-| Free tool | `SoftwareApplication` + `WebAPI` | `input` (URL), `output` (result), `provider` (FixFlags) |
-| Comparison page | `Article` + `Review` | `itemReviewed`, `reviewRating` |
+| Page type       | Schema.org type                  | Key properties                                                                |
+| --------------- | -------------------------------- | ----------------------------------------------------------------------------- |
+| Issue page      | `Article` + `Dataset`            | `about` (the check), `mentions` (frameworks), `distribution` (frequency)      |
+| Benchmark page  | `Dataset` + `Report`             | `variableMeasured` (score, sample size), `measurementMethod` (FixFlags audit) |
+| Free tool       | `SoftwareApplication` + `WebAPI` | `input` (URL), `output` (result), `provider` (FixFlags)                       |
+| Comparison page | `Article` + `Review`             | `itemReviewed`, `reviewRating`                                                |
 
 **Why this matters:** Google uses structured data for rich results, featured
 snippets, and AI Overviews. `Dataset` schema is particularly powerful for
@@ -365,6 +375,7 @@ audit, signup, or payment.
 **Design:** Two mechanisms:
 
 **1. UTM parameters on all public surface links:**
+
 ```
 /issues/[checkId]?utm_source=issue&utm_medium=organic&utm_campaign=[checkId]
 /tools/meta-preview?utm_source=tool&utm_medium=organic&utm_campaign=meta-preview
@@ -374,6 +385,7 @@ audit, signup, or payment.
 **2. Audit source tracking:**
 The `Audit.source` enum already exists (`HOMEPAGE`, `DASHBOARD`, `REPORT`,
 `API`, `MCP`, `UNKNOWN`). Extend it with:
+
 - `ISSUE_PAGE` — audit started from an issue page
 - `BENCHMARK_PAGE` — audit started from a benchmark page
 - `TOOL_PAGE` — audit started from a free tool
@@ -387,6 +399,7 @@ The `Experiment` table exists in the schema. What's missing:
 
 **1. Consistent experiment logging:**
 Every experiment must log to `experiments.md` with:
+
 - Hypothesis (before implementation)
 - Success metric (single number)
 - Baseline (before change)
@@ -395,17 +408,21 @@ Every experiment must log to `experiments.md` with:
 
 **2. A/B testing infrastructure:**
 For public pages, use URL parameter-based variants:
+
 ```
 /issues/[checkId]?variant=b (B variant of the page)
 ```
+
 Track which variant each visitor sees via `ToolUsage` or a lightweight
 `PageVariant` table.
 
 **3. Content performance scoring:**
 For each public page, compute a weekly performance score:
+
 ```
 performance = (impressions × CTR × position_score × conversion_rate)
 ```
+
 This replaces subjective "is this page good?" with a single number that
 can be tracked over time.
 
@@ -505,6 +522,7 @@ The system should automatically:
 
 See `decision-log.md` for anything that needs an explicit decision, and
 `opportunities.md` once analytics access exists. Current open items:
+
 - GSC / GA / PostHog access — not yet granted (see `decision-log.md`)
 - Industry/tech detection heuristics — currently stubbed to `null`/`[]` in
   `lib/graph/snapshot.ts`; needs real detection logic before benchmark pages

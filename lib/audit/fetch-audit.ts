@@ -26,7 +26,6 @@ import { parseFlagVisualEvidence } from '@/lib/audit/persist-visual-evidence'
 import { parseActionTimeline } from '@/lib/audit/action-timeline'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { parseProductIntelligence } from '@/lib/audit/product-intelligence'
-import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
 import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
 
 export type { PreviewMeta } from '@/lib/audit/preview-meta'
@@ -94,7 +93,9 @@ async function fetchAuditRow(id: string) {
 }
 
 /** Remove large JSON blobs not used by the report UI. */
-export function stripInternalAuditFields<T extends Record<string, unknown>>(audit: T) {
+export function stripInternalAuditFields<T extends Record<string, unknown>>(
+  audit: T
+) {
   const {
     htmlMetadata,
     performanceData,
@@ -146,24 +147,27 @@ export async function resolveLatestAttachedWorkId(id: string): Promise<string> {
   return current
 }
 
-export async function resolveIsPaidForAudit(
-  audit: { userId: string | null; isPublic: boolean }
-): Promise<boolean> {
+export async function resolveIsPaidForAudit(audit: {
+  userId: string | null
+  isPublic: boolean
+}): Promise<boolean> {
   const tier = await resolveReportTierForAudit(audit)
   return tier === 'paid'
 }
 
-export function redactCompletedPrivateReportData<T extends {
-  project: unknown
-  pages: unknown[]
-  journeyReviews: unknown[]
-  pipelineLog: unknown[]
-  watchInterval: unknown
-  triageAt: unknown
-  flowData: unknown
-  actionTimeline: unknown[]
-  productContract: unknown
-}>(input: T, canAccessPrivateReportData: boolean): T {
+export function redactCompletedPrivateReportData<
+  T extends {
+    project: unknown
+    pages: unknown[]
+    journeyReviews: unknown[]
+    pipelineLog: unknown[]
+    watchInterval: unknown
+    triageAt: unknown
+    flowData: unknown
+    actionTimeline: unknown[]
+    productContract: unknown
+  },
+>(input: T, canAccessPrivateReportData: boolean): T {
   if (canAccessPrivateReportData) return input
   return {
     ...input,
@@ -196,16 +200,21 @@ export async function getProgressiveAuditForRequest(id: string) {
   if (!requested) return { kind: 'not_found' as const }
 
   const shareGrant = (await cookies()).get(SHARE_GRANT_COOKIE)?.value
-  const accessContext = await resolveAuditAccess(requested, session?.user, shareGrant)
+  const accessContext = await resolveAuditAccess(
+    requested,
+    session?.user,
+    shareGrant
+  )
   if (accessContext === 'denied') return { kind: 'forbidden' as const }
 
   const workId = await resolveLatestAttachedWorkId(id)
-  const audit = workId === id
-    ? requested
-    : await prisma.audit.findUnique({
-        where: { id: workId },
-        select: progressiveAuditSelect,
-      })
+  const audit =
+    workId === id
+      ? requested
+      : await prisma.audit.findUnique({
+          where: { id: workId },
+          select: progressiveAuditSelect,
+        })
   if (!audit) return { kind: 'not_found' as const }
 
   if (audit.status === 'COMPLETED') {
@@ -240,8 +249,12 @@ export async function getProgressiveAuditForRequest(id: string) {
     audit: {
       ...publicAudit,
       screenshotCapture,
-      actionTimeline: accessContext === 'owner' ? parseActionTimeline(performanceData) : [],
-      productContract: accessContext === 'owner' ? parseProductContract(productContract) : null,
+      actionTimeline:
+        accessContext === 'owner' ? parseActionTimeline(performanceData) : [],
+      productContract:
+        accessContext === 'owner'
+          ? parseProductContract(productContract)
+          : null,
     },
   }
 }
@@ -255,7 +268,11 @@ export async function getGatedAuditForRequest(id: string) {
   }
 
   const shareGrant = (await cookies()).get(SHARE_GRANT_COOKIE)?.value
-  const accessContext = await resolveAuditAccess(requested, session?.user, shareGrant)
+  const accessContext = await resolveAuditAccess(
+    requested,
+    session?.user,
+    shareGrant
+  )
   if (accessContext === 'denied') {
     return { kind: 'forbidden' as const }
   }
@@ -267,31 +284,37 @@ export async function getGatedAuditForRequest(id: string) {
   }
   const isPaid = await resolveIsPaidForAudit(audit)
   const mayViewPrompts = accessContext === 'owner'
-  const showPrescription = mayViewPrompts && await canViewPrescriptionContentForAudit(
-    {
-      userId: audit.userId,
-      aiReviewAt: audit.aiReviewAt,
-      isPublic: audit.isPublic,
-    },
-    session?.user
-      )
-  const showDeterministicFixes = mayViewPrompts && await canViewDeterministicFixesForAudit(
-    {
-      userId: audit.userId,
-      aiReviewAt: audit.aiReviewAt,
-      isPublic: audit.isPublic,
-    },
-    session?.user
-      )
+  const showPrescription =
+    mayViewPrompts &&
+    (await canViewPrescriptionContentForAudit(
+      {
+        userId: audit.userId,
+        aiReviewAt: audit.aiReviewAt,
+        isPublic: audit.isPublic,
+      },
+      session?.user
+    ))
+  const showDeterministicFixes =
+    mayViewPrompts &&
+    (await canViewDeterministicFixesForAudit(
+      {
+        userId: audit.userId,
+        aiReviewAt: audit.aiReviewAt,
+        isPublic: audit.isPublic,
+      },
+      session?.user
+    ))
   const hasTriage = Boolean(audit.triageAt)
-  const isLegacyDeterministic = !hasTriage && !audit.aiReviewAt && !audit.failureCode
+  const isLegacyDeterministic =
+    !hasTriage && !audit.aiReviewAt && !audit.failureCode
   const triageDegraded =
     audit.status === 'COMPLETED' && !hasTriage && Boolean(audit.failureCode)
   const prescriptionFailed =
     hasTriage &&
     Boolean(audit.includeAi) &&
     !audit.aiReviewAt &&
-    (audit.failureCode === 'AI_REVIEW_FAILED' || audit.failureCode === 'AI_CONTRACT_INVALID')
+    (audit.failureCode === 'AI_REVIEW_FAILED' ||
+      audit.failureCode === 'AI_CONTRACT_INVALID')
   // includeAi is set at claim enqueue time (before the job starts) so pending UI works
   // immediately after signup refresh; JUDGING covers in-flight prescription.
   const aiReviewPending =
@@ -301,7 +324,9 @@ export async function getGatedAuditForRequest(id: string) {
     !prescriptionFailed &&
     (Boolean(audit.includeAi) || audit.status === 'JUDGING')
 
-  let sanitizedRubrics = audit.rubrics.map((rubric) => sanitizeRubricForRead(rubric))
+  let sanitizedRubrics = audit.rubrics.map((rubric) =>
+    sanitizeRubricForRead(rubric)
+  )
   let reportFlags = audit.flags
 
   if (isLegacyDeterministic) {
@@ -313,17 +338,31 @@ export async function getGatedAuditForRequest(id: string) {
     sanitizedRubrics = legacy.rubrics as typeof sanitizedRubrics
     reportFlags = legacy.flags as typeof reportFlags
   } else if (!showDeterministicFixes) {
-    sanitizedRubrics = stripDeterministicFixesFromRubrics(sanitizedRubrics) as typeof sanitizedRubrics
-    reportFlags = stripDeterministicFixesFromFlags(reportFlags) as typeof reportFlags
+    sanitizedRubrics = stripDeterministicFixesFromRubrics(
+      sanitizedRubrics
+    ) as typeof sanitizedRubrics
+    reportFlags = stripDeterministicFixesFromFlags(
+      reportFlags
+    ) as typeof reportFlags
   } else if (!showPrescription) {
-    sanitizedRubrics = stripAiPrescriptionFromRubrics(sanitizedRubrics) as typeof sanitizedRubrics
-    reportFlags = stripAiPrescriptionFromFlags(reportFlags) as typeof reportFlags
+    sanitizedRubrics = stripAiPrescriptionFromRubrics(
+      sanitizedRubrics
+    ) as typeof sanitizedRubrics
+    reportFlags = stripAiPrescriptionFromFlags(
+      reportFlags
+    ) as typeof reportFlags
   }
 
-  const stripped = stripInternalAuditFields({ ...audit, rubrics: sanitizedRubrics, flags: reportFlags })
+  const stripped = stripInternalAuditFields({
+    ...audit,
+    rubrics: sanitizedRubrics,
+    flags: reportFlags,
+  })
   const canAccessPrivateReportData = accessContext === 'owner'
   const launchReadiness =
-    hasTriage || showPrescription ? parseLaunchReadiness(audit.launchReadiness) : null
+    hasTriage || showPrescription
+      ? parseLaunchReadiness(audit.launchReadiness)
+      : null
   const pageSpeedCoverage = derivePageSpeedCoverage(
     audit.pages.length > 0
       ? audit.pages.map((page) => ({
@@ -338,16 +377,26 @@ export async function getGatedAuditForRequest(id: string) {
   const previewMeta = parsePreviewMeta(audit.htmlMetadata, audit.url, {
     ogImageOk: !ogImageBroken,
   })
-  const flowData = canAccessPrivateReportData ? parseFlowData(audit.flowData) : null
-  const evidenceAnchors = parseEvidenceAnchorsFromPerformanceData(audit.performanceData)
+  const flowData = canAccessPrivateReportData
+    ? parseFlowData(audit.flowData)
+    : null
+  const evidenceAnchors = parseEvidenceAnchorsFromPerformanceData(
+    audit.performanceData
+  )
   const flagVisualEvidence = parseFlagVisualEvidence(audit.performanceData)
-  const actionTimeline = canAccessPrivateReportData ? parseActionTimeline(audit.performanceData) : []
-  const productContract = canAccessPrivateReportData ? parseProductContract(audit.productContract) : null
+  const actionTimeline = canAccessPrivateReportData
+    ? parseActionTimeline(audit.performanceData)
+    : []
+  const productContract = canAccessPrivateReportData
+    ? parseProductContract(audit.productContract)
+    : null
   const productIntelligence = canAccessPrivateReportData
     ? parseProductIntelligence(audit.project?.productIntelligence)
     : null
-  const verifiedLearnings = productIntelligence?.verifiedLearnings?.slice(0, 8) ?? []
-  const intentionalNotes = productIntelligence?.intentionalNotes?.slice(0, 5) ?? []
+  const verifiedLearnings =
+    productIntelligence?.verifiedLearnings?.slice(0, 8) ?? []
+  const intentionalNotes =
+    productIntelligence?.intentionalNotes?.slice(0, 5) ?? []
   const knownRisks = productIntelligence?.knownRisks?.slice(0, 5) ?? []
   const watchInterval = canAccessPrivateReportData
     ? audit.project?.watchInterval === 'WEEKLY'
@@ -361,14 +410,23 @@ export async function getGatedAuditForRequest(id: string) {
     name: r.name,
     grade: r.grade,
     score: r.score,
-    flags: r.flags.map((f: { severity: string; id?: string }) => ({ severity: f.severity, id: f.id })),
+    flags: r.flags.map((f: { severity: string; id?: string }) => ({
+      severity: f.severity,
+      id: f.id,
+    })),
   }))
   const flatFlags = reportFlags.map((f) => ({
     severity: f.severity,
     rubric: f.rubric,
   }))
-  const rubrics: RubricComputed[] = computeRubricsFromRows(rubricSources, flatFlags)
-  const shareStatus: ShareStatus = computeShareStatusFromRubrics(rubricSources, flatFlags)
+  const rubrics: RubricComputed[] = computeRubricsFromRows(
+    rubricSources,
+    flatFlags
+  )
+  const shareStatus: ShareStatus = computeShareStatusFromRubrics(
+    rubricSources,
+    flatFlags
+  )
 
   const rubricRows = sanitizedRubrics.map((r) => ({
     id: r.id,
@@ -413,29 +471,20 @@ export async function getGatedAuditForRequest(id: string) {
   // never receive a demonstrated prompt payload.
   const sampleFixFlag = null
 
-  const technologyProfile = await loadTechnologyProfile(audit.id, {
-    score: audit.score,
-    rubrics: sanitizedRubrics.map((rubric) => ({
-      name: rubric.name,
-      score: rubric.score,
-    })),
-    flags: reportFlags.map((flag) => ({
-      rubric: flag.rubric,
-      status: flag.status,
-    })),
-  })
-
-  const privateProjection = redactCompletedPrivateReportData({
-    project: stripped.project,
-    pages: stripped.pages,
-    journeyReviews: stripped.journeyReviews,
-    pipelineLog: parsePipelineLog(audit.pipelineLog),
-    watchInterval,
-    triageAt: audit.triageAt,
-    flowData,
-    actionTimeline,
-    productContract,
-  }, canAccessPrivateReportData)
+  const privateProjection = redactCompletedPrivateReportData(
+    {
+      project: stripped.project,
+      pages: stripped.pages,
+      journeyReviews: stripped.journeyReviews,
+      pipelineLog: parsePipelineLog(audit.pipelineLog),
+      watchInterval,
+      triageAt: audit.triageAt,
+      flowData,
+      actionTimeline,
+      productContract,
+    },
+    canAccessPrivateReportData
+  )
 
   return {
     kind: 'ok' as const,
@@ -467,7 +516,6 @@ export async function getGatedAuditForRequest(id: string) {
       triageAt: privateProjection.triageAt,
       isLegacyDeterministic,
       rubricRows,
-      technologyProfile,
     },
     isPaid,
     isLoggedIn: !!session?.user,

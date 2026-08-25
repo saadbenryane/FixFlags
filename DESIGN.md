@@ -1,6 +1,6 @@
 # Design Standards
 
-*Validated visual and interaction standards. Code-enforced where possible, documented where not.*
+_Validated visual and interaction standards. Code-enforced where possible, documented where not._
 
 **Customer vs internal language:** Customer surfaces use Product QA, product review, update review, Funnel, and path. Internal code may still use re-check routes, recheck components, monitoring implementation names, and legacy deep-review fields. Deep Review is reserved for the future repository-connected analysis offer.
 
@@ -27,13 +27,13 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 
 ## Typography
 
-| Role | Font | Weight | Size |
-|------|------|--------|------|
+| Role                          | Font                           | Weight  | Size              |
+| ----------------------------- | ------------------------------ | ------- | ----------------- |
 | Display (marketing hero only) | Inter Tight (var-font-display) | 600–700 | text-5xl (3.5rem) |
-| Heading | Inter Tight | 600 | text-2xl/3xl/4xl |
-| Body | Inter (var-font-sans) | 400 | text-base |
-| Labels (uppercase) | JetBrains Mono (var-font-mono) | 500 | text-xs |
-| Score numbers | JetBrains Mono | 500–600 | tabular-nums |
+| Heading                       | Inter Tight                    | 600     | text-2xl/3xl/4xl  |
+| Body                          | Inter (var-font-sans)          | 400     | text-base         |
+| Labels (uppercase)            | JetBrains Mono (var-font-mono) | 500     | text-xs           |
+| Score numbers                 | JetBrains Mono                 | 500–600 | tabular-nums      |
 
 - `text-balance` on headings, `text-pretty` on body
 - `tabular-nums` on all numeric scores
@@ -41,11 +41,11 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 
 ## Color system (60/30/10)
 
-| Proportion | Role | Token values |
-|------------|------|--------------|
-| 60% | Background / canvas | `--background` (white `#FFFFFF` / dark ink `#0B0B0D`) |
-| 30% | Foreground / ink | `--foreground`, `--card`, `--muted` (stone `#F5F6F7`) |
-| 10% | Brand orange (signal) | `--brand` (Flag Orange `#FF5A00` / dark `#FF5C1A`) |
+| Proportion | Role                  | Token values                                          |
+| ---------- | --------------------- | ----------------------------------------------------- |
+| 60%        | Background / canvas   | `--background` (white `#FFFFFF` / dark ink `#0B0B0D`) |
+| 30%        | Foreground / ink      | `--foreground`, `--card`, `--muted` (stone `#F5F6F7`) |
+| 10%        | Brand orange (signal) | `--brand` (Flag Orange `#FF5A00` / dark `#FF5C1A`)    |
 
 - Dark mode: fully re-authored, not inverted. Graphite canvas, charcoal glass, warm orbs.
 - One accent per surface. Do not layer multiple accent colors.
@@ -53,12 +53,12 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 
 ### Report altitude (score ownership)
 
-| Altitude | Surface | Score treatment |
-|----------|---------|-----------------|
-| Identity | Product pane header and `WorkspaceChatPanel` | Product name with hostname fallback, reviewed address, and current review activity. No score. |
-| Review status | `ReportOutcomeBar` (fixed Report header) | Visible `Score N`, honest pending/unavailable state, chronological full-Review history, and scan progress while a review runs |
-| Working triage | `ReportExplorer` (Report body) | Complete ranked Flag list plus rubric, severity, impact, and page filters; Critical Flags lead through canonical ranking rather than a duplicate shortcut |
-| Review context | `ReportContextDisclosure` (Row C) | No score. Collapsed report-level context, expanded by anchor. |
+| Altitude       | Surface                                      | Score treatment                                                                                                                                           |
+| -------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identity       | Product pane header and `WorkspaceChatPanel` | Product name with hostname fallback, reviewed address, and current review activity. No score.                                                             |
+| Review status  | `ReportOutcomeBar` (fixed Report header)     | Visible `Score N`, honest pending/unavailable state, chronological full-Review history, and scan progress while a review runs                             |
+| Working triage | `ReportExplorer` (Report body)               | Complete ranked Flag list plus rubric, severity, impact, and page filters; Critical Flags lead through canonical ranking rather than a duplicate shortcut |
+| Review context | `ReportContextDisclosure` (Row C)            | No score. Collapsed report-level context, expanded by anchor.                                                                                             |
 
 The compact Review header is the single score surface.
 It uses one compact circular score with an accessible pending or unavailable label beside the chronological Review history.
@@ -68,7 +68,7 @@ Do not repeat Pass, Needs Attention, Blocked, or share-readiness labels beside s
 The report URL is public evidence by default. Agent chat, prompts, Product Memory, history, and owner actions remain server-gated.
 Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
 
-**Made with:** Technology evidence lives in the collapsed Review context after the complete Fix list and Finish Plan. The collapsed state shows at most four detected technologies; expansion groups the stack and exposes short sanitized evidence labels. Technology confidence is “Verified” or “Strong signal,” never a vendor score. Empty, legacy, partial, unavailable, and same-detector update-review diff states are explicit. Use Lucide category icons, not remote logos.
+**Made with:** Technology evidence lives on the signed-in Product detail page, based on that Product’s latest completed Review. The summary shows at most four detected technologies; expansion groups the stack and exposes short sanitized evidence labels. Technology confidence is “Verified” or “Strong signal,” never a vendor score. Empty, legacy, partial, unavailable, and same-detector update-review diff states are explicit. Use Lucide category icons, not remote logos.
 
 **Flags chrome:** Meta row is Severity → Rubric → Impact. Only Critical uses the `CircleAlert` icon; Important and Polish use accessible text. The list is ranked by launch impact and supports compact rubric, severity, impact, and page filters. When both captures exist, each selected Flag compares desktop and mobile: affected is red, available unaffected is green, and missing or failed remains neutral.
 
@@ -120,22 +120,23 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 
 ## Spacing
 
-| Token | Value | Used for |
-|-------|-------|----------|
-| `--space-card` | 1.25rem | Card padding |
-| `--space-section-inner` | 2.125rem | Section internal spacing |
-| `--space-section-y` | 2.75rem | Legacy compact section rhythm |
-| `--space-section-default` | clamp(3rem, 5vw, 4.5rem) | General page sections |
-| `--space-section-marketing` | clamp(4rem, 7vw, 7rem) | Marketing narrative sections |
-| `--space-hero-start/end` | clamp(2rem–4.5rem) / clamp(3rem–6rem) | Responsive homepage hero breathing room |
-| `--space-block` | 2rem | Block-level spacing within sections |
-| `--header-offset` | 6.5rem | Top offset for page content below fixed header |
-| `--gap-nested-sm/md/lg` | 0.5/0.75/1rem | Nested element gaps |
-| `--container-max-marketing` | 88rem | Wider container for marketing hero/feature sections |
+| Token                       | Value                                 | Used for                                            |
+| --------------------------- | ------------------------------------- | --------------------------------------------------- |
+| `--space-card`              | 1.25rem                               | Card padding                                        |
+| `--space-section-inner`     | 2.125rem                              | Section internal spacing                            |
+| `--space-section-y`         | 2.75rem                               | Legacy compact section rhythm                       |
+| `--space-section-default`   | clamp(3rem, 5vw, 4.5rem)              | General page sections                               |
+| `--space-section-marketing` | clamp(4rem, 7vw, 7rem)                | Marketing narrative sections                        |
+| `--space-hero-start/end`    | clamp(2rem–4.5rem) / clamp(3rem–6rem) | Responsive homepage hero breathing room             |
+| `--space-block`             | 2rem                                  | Block-level spacing within sections                 |
+| `--header-offset`           | 6.5rem                                | Top offset for page content below fixed header      |
+| `--gap-nested-sm/md/lg`     | 0.5/0.75/1rem                         | Nested element gaps                                 |
+| `--container-max-marketing` | 88rem                                 | Wider container for marketing hero/feature sections |
 
 ## Components
 
 ### Button
+
 - Control radius (`--radius-control` ~10px)
 - `active:scale-[0.98]` press effect
 - Layered shadow on hover
@@ -144,12 +145,14 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 - Light mode product primary: ink. Marketing accent CTAs: brand orange (`variant="brand"`).
 
 ### Card (`glass-surface`)
+
 - `border-0 shadow-card`
 - Inner elements use `rounded-nested-md`
 - Raised shadow (`shadow-raised`) for elevation
 - `glass-bg` variants: subtle, base, strong, elevated, nav
 
 ### Input
+
 - Control radius (`--radius-input` / `--radius-control` ~10px)
 - Border from `--input` / `--border`
 - Focus ring from `--ring`

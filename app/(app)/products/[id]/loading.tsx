@@ -14,16 +14,11 @@ export default function ProductLoading() {
         <Skeleton shimmer className="h-9 w-64 max-w-full rounded-md" />
         <Skeleton shimmer className="h-4 w-96 max-w-full rounded-md" />
       </div>
+      <Skeleton shimmer className="h-36 rounded-card" />
+      <Skeleton shimmer className="h-72 rounded-card" />
+      <Skeleton shimmer className="h-56 rounded-card" />
+      <Skeleton shimmer className="h-64 rounded-card" />
       <Skeleton shimmer className="h-40 rounded-card" />
-      <div className="grid gap-4 lg:grid-cols-3">
-        {[0, 1, 2].map((index) => (
-          <Skeleton key={index} shimmer className="h-72 rounded-card" />
-        ))}
-      </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Skeleton shimmer className="h-64 rounded-card" />
-        <Skeleton shimmer className="h-64 rounded-card" />
-      </div>
     </Container>
   )
 }

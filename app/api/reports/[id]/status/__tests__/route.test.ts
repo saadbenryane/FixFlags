@@ -27,9 +27,13 @@ vi.mock('next/headers', () => ({
   cookies: async () => ({ get: vi.fn() }),
 }))
 vi.mock('@/lib/security/rate-limit', () => ({
-  recordRateLimit: vi.fn().mockResolvedValue({ exceeded: false, retryAfterSeconds: 0 }),
+  recordRateLimit: vi
+    .fn()
+    .mockResolvedValue({ exceeded: false, retryAfterSeconds: 0 }),
   requestClientId: () => 'test-client',
-  RateLimitError: class RateLimitError extends Error { retryAfter = 60 },
+  RateLimitError: class RateLimitError extends Error {
+    retryAfter = 60
+  },
 }))
 
 import { GET } from '@/app/api/reports/[id]/status/route'
@@ -99,7 +103,9 @@ describe('GET /api/reports/[id]/status', () => {
 
   it('returns 404 when the report does not exist', async () => {
     prismaMock.audit.findUnique.mockResolvedValue(null)
-    const res = await GET(getReq(), { params: Promise.resolve({ id: 'missing' }) })
+    const res = await GET(getReq(), {
+      params: Promise.resolve({ id: 'missing' }),
+    })
     expect(res.status).toBe(404)
   })
 
@@ -126,7 +132,11 @@ describe('GET /api/reports/[id]/status', () => {
     ])
     expect(body.flagCount).toBe(1)
     expect(body.agentMessages).toEqual([
-      expect.objectContaining({ id: 'scan:a1:preparing', source: 'scan', role: 'agent' }),
+      expect.objectContaining({
+        id: 'scan:a1:preparing',
+        source: 'scan',
+        role: 'agent',
+      }),
       expect.objectContaining({ id: 'scan:a1:capturing' }),
       expect.objectContaining({ id: 'scan:a1:checking' }),
       expect.objectContaining({
@@ -134,7 +144,11 @@ describe('GET /api/reports/[id]/status', () => {
         evidenceRef: { auditId: 'a1', flagId: 'f1' },
       }),
     ])
-    expect(body.agentMessages.some((item: { content: string }) => item.content === 'Opened page')).toBe(false)
+    expect(
+      body.agentMessages.some(
+        (item: { content: string }) => item.content === 'Opened page'
+      )
+    ).toBe(false)
   })
 
   it.each([
@@ -147,7 +161,9 @@ describe('GET /api/reports/[id]/status', () => {
     async (access) => {
       resolveAuditAccess.mockResolvedValue(access)
 
-      const response = await GET(getReq(), { params: Promise.resolve({ id: 'audit-1' }) })
+      const response = await GET(getReq(), {
+        params: Promise.resolve({ id: 'audit-1' }),
+      })
       const body = await response.json()
 
       expect(body.agentMessages.length).toBeGreaterThan(0)
@@ -177,7 +193,7 @@ describe('GET /api/reports/[id]/status', () => {
     const res = await GET(getReq(), { params: Promise.resolve({ id: 'a1' }) })
     const body = await res.json()
     expect(body.status).toBe('COMPLETED')
-    expect(body.technologyProfile?.status).toBe('not_captured')
+    expect(body.technologyProfile).toBeUndefined()
     expect(body.partialFlags).toEqual([
       expect.objectContaining({
         id: 'f1',

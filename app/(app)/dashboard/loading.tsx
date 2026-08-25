@@ -15,9 +15,13 @@ export default function DashboardLoading() {
       </div>
       <div className="space-y-3">
         <Skeleton shimmer className="h-5 w-28 rounded-md" />
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="overflow-hidden rounded-card border border-border/45">
           {[0, 1, 2, 3].map((index) => (
-            <Skeleton key={index} shimmer className="h-72 rounded-card" />
+            <Skeleton
+              key={index}
+              shimmer
+              className="h-28 rounded-none border-b border-border/45 last:border-0"
+            />
           ))}
         </div>
       </div>
