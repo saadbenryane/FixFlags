@@ -9,7 +9,7 @@ export function ScoreRing({ score, pending = false, className }: { score: number
         <circle cx="32" cy="32" r="28" fill="none" stroke="hsl(var(--border))" strokeWidth="3" />
         {!pending && score != null ? <circle cx="32" cy="32" r="28" fill="none" stroke="hsl(var(--brand))" strokeWidth="3" strokeLinecap="round" pathLength="100" strokeDasharray={`${normalized} 100`} /> : null}
       </svg>
-      <span className="font-mono text-lg font-semibold tabular-nums text-foreground">{pending ? '…' : score == null ? '—' : normalized}</span>
+      <span className="font-mono text-lg font-semibold tabular-nums text-foreground">{pending ? '…' : score == null ? '–' : normalized}</span>
     </div>
   )
 }

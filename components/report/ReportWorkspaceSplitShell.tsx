@@ -3,10 +3,7 @@
 import { useCallback, useEffect, useId, useState, type ReactNode } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import {
-  WorkspaceViewTabs,
-  type WorkspacePanelView,
-} from '@/components/report/WorkspaceViewTabs'
+import type { WorkspacePanelView } from '@/components/report/WorkspaceViewTabs'
 import type { PlaybackStep } from '@/lib/audit/playback-steps'
 import {
   WorkspaceBrowserPanel,
@@ -125,10 +122,9 @@ function ReportWorkspaceSplitShellInner({
   const agentPanelId = `${shellId}-agent-panel`
   const productPanelId = `${shellId}-product-panel`
   const mobileTabsId = `${shellId}-mobile-tab`
-  const desktopTabsId = `${shellId}-view-tab`
-  const showCanvas = capabilities.canUseCanvas
-  const canReplayTimeline = capabilities.canReplayTimeline
-  const browserViewAvailable = scanning || canReplayTimeline
+  const showCanvas = false
+  const canReplayTimeline = false
+  const browserViewAvailable = false
   const hidePreviewPane = !browserViewAvailable
   const requestedView = searchParams?.get('view') ?? null
   const viewFromUrl = useCallback((): WorkspacePanelView | null => {
@@ -208,6 +204,15 @@ function ReportWorkspaceSplitShellInner({
     const next = viewFromUrl()
     if (next) setInternalView(next)
   }, [controlledView, syncViewToUrl, viewFromUrl])
+
+  useEffect(() => {
+    if (!syncViewToUrl || !requestedView || requestedView === 'report') return
+    const url = new URL(window.location.href)
+    url.searchParams.set('view', 'report')
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
+    if (controlledView === undefined) setInternalView('report')
+    onViewChange?.('report')
+  }, [controlledView, onViewChange, requestedView, syncViewToUrl])
 
   useEffect(() => {
     // Chromium can briefly retain the streamed server tree while committing
@@ -349,19 +354,6 @@ function ReportWorkspaceSplitShellInner({
       reportPanel
     )
 
-  const renderToggle = () => (
-    <WorkspaceViewTabs
-      view={view}
-      onChange={chooseView}
-      hrefForView={hrefForView}
-      capabilities={capabilities}
-      panelId={productPanelId}
-      idPrefix={desktopTabsId}
-      scanning={scanning}
-      hideBrowserView={hidePreviewPane}
-    />
-  )
-
   /**
    * One instance of each column. Rendering the Product column twice (desktop
    * grid plus mobile stack) duplicated every report section id, so anchors and
@@ -473,7 +465,6 @@ function ReportWorkspaceSplitShellInner({
         {view === 'browser' ? (
           <WorkspaceDeviceToggle device={device} onDeviceChange={chooseDevice} />
         ) : null}
-        <div className="hidden lg:block">{renderToggle()}</div>
       </div>
     </div>
   )
@@ -538,4 +529,3 @@ function ReportWorkspaceSplitShellInner({
     </section>
   )
 }
-

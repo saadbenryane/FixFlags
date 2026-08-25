@@ -113,7 +113,7 @@ describe('homepage message guardrails', () => {
 
   it('canonical terminology anchors stay aligned', () => {
     assert.equal(HERO.primaryCta, 'Review my site')
-    assert.equal(PLAN_DEFINITIONS.BUILDER.price, '$69')
+    assert.equal(PLAN_DEFINITIONS.BUILDER.price, '$29')
     assert.equal(REPORT_COPY.sectionTitles.journey, 'Funnel')
     assert.equal(REPORT_COPY.recheck.label, 'Update review')
   })
@@ -254,12 +254,12 @@ describe('homepage message guardrails', () => {
     assert.doesNotMatch(PRICING.trustBadge, /unlimited re-checks/i)
     assert.ok(
       PLAN_DEFINITIONS.FREE.features.some((feature) =>
-        /product reviews.*lifetime/i.test(feature),
+        /3 product reviews.*per month/i.test(feature),
       ),
     )
     assert.ok(
       PLAN_DEFINITIONS.BUILDER.features.some((feature) =>
-        /before\/after/i.test(feature),
+        /History, sharing, comparisons, Canvas, and Watch/i.test(feature),
       ),
     )
     assert.ok(
@@ -385,15 +385,16 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('why builders and editor integrations sections exist', () => {
+  it('why builders and URL-first workflow sections exist', () => {
     assert.ok(!('whyAiNeedsFixFlags' in LANDING_PAGE))
     assert.match(
       LANDING_PAGE.whyBuildersChoose.headlineDisplay,
       /more than a score/i,
     )
     assert.equal(LANDING_PAGE.whyBuildersChoose.demo.flags.length, 3)
-    assert.match(LANDING_PAGE.editorIntegrations.headlineDisplay, /workflow/i)
-    assert.match(LANDING_PAGE.editorIntegrations.label, /MCP/i)
+    assert.match(LANDING_PAGE.editorIntegrations.headlineDisplay, /shipping loop/i)
+    assert.match(LANDING_PAGE.editorIntegrations.label, /How it works/i)
+    assert.doesNotMatch(LANDING_PAGE.editorIntegrations.body, /MCP|repository|CLI/i)
     assert.equal(LANDING_PAGE.editorIntegrations.workspace.states.length, 3)
   })
 
@@ -442,7 +443,7 @@ describe('homepage message guardrails', () => {
     assert.match(LANDING_PAGE.sampleReport.label, /sample review/i)
     assert.match(
       LANDING_PAGE.sampleReport.body,
-      /repository-owned Launchpad demo/i,
+      /curated Launchpad demo/i,
     )
     assert.match(LANDING_PAGE.sampleReport.body, /paste into your AI editor/i)
     assert.ok(!/\d{2,},\d{3}/.test(LANDING_PAGE.sampleReport.body))

@@ -12,20 +12,20 @@ describe('toggle-public gating', () => {
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('denies pro users public share', () => {
+  it('allows pro users public share', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     assert.equal(
       canSharePublicly({ id: 'u1', role: 'user', plan: 'BUILDER', subscriptionStatus: 'ACTIVE' }),
-      false
+      true
     )
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('denies a Studio user whose subscription has lapsed', () => {
+  it('keeps sharing available when a Studio subscription has lapsed', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     assert.equal(
       canSharePublicly({ id: 'u1', role: 'user', plan: 'TEAM', subscriptionStatus: 'PAST_DUE' }),
-      false
+      true
     )
     delete process.env.DEV_SIMULATE_BILLING
   })

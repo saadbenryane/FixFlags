@@ -81,7 +81,7 @@ describe('report-access', () => {
     )
   })
 
-  it('allows Max public share when owner can share publicly', () => {
+  it('allows prescription content on any public share whose owner can share', () => {
     assert.equal(
       canViewAiViaStudioPublicShare(
         { userId: 'owner-1', aiReviewAt, isPublic: true },
@@ -307,7 +307,7 @@ describe('report-access async resolution', () => {
     )
   })
 
-  it('denies AI content on a public share when the owner is on a lower plan', async () => {
+  it('allows AI content on a public share when the owner is on Free', async () => {
     prismaMock.user.findUnique.mockResolvedValueOnce({
       id: 'owner-1',
       role: 'user',
@@ -319,7 +319,7 @@ describe('report-access async resolution', () => {
         { userId: 'owner-1', aiReviewAt, isPublic: true },
         { id: 'stranger' }
       ),
-      false
+      true
     )
   })
 

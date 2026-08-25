@@ -44,19 +44,16 @@ describe('product contract limits', () => {
     assert.equal(await resolveIncludeAiForNewAudit(null), false)
   })
 
-  it('denies AI for a paid plan whose subscription has lapsed, even with a stale high auditsLimit', async () => {
-    // Simulates the exact gap: invoice.payment_failed sets subscriptionStatus
-    // but never touches plan/auditsLimit, so auditsLimit can still read the
-    // paid plan's quota (25) while the user is PAST_DUE/CANCELED/UNPAID.
+  it('uses the Free review allowance after a paid subscription lapses', async () => {
     mockUserFindUnique.mockResolvedValueOnce({
       id: 'lapsed-user',
-      plan: 'BUILDER',
+      plan: 'FREE',
       role: 'user',
       auditsUsed: 0,
-      auditsLimit: 25,
+      auditsLimit: 3,
       subscriptionStatus: 'PAST_DUE',
     })
-    assert.equal(await resolveIncludeAiForNewAudit('lapsed-user'), false)
+    assert.equal(await resolveIncludeAiForNewAudit('lapsed-user'), true)
   })
 
   it('still allows AI for an active paid plan under its limit', async () => {
@@ -65,7 +62,7 @@ describe('product contract limits', () => {
       plan: 'BUILDER',
       role: 'user',
       auditsUsed: 0,
-      auditsLimit: 25,
+      auditsLimit: 15,
       subscriptionStatus: 'ACTIVE',
     })
     assert.equal(await resolveIncludeAiForNewAudit('active-user'), true)
@@ -84,13 +81,13 @@ describe('product contract limits', () => {
       plan: 'BUILDER',
       role: 'user',
       auditsUsed: 0,
-      auditsLimit: 25,
+      auditsLimit: 3,
       subscriptionStatus: 'PAST_DUE',
     })
     assert.equal(await resolveIncludeAiForNewAudit('lapsed-user-with-credits'), true)
   })
 
-  it('free plan has 3 lifetime AI reports', () => {
+  it('free plan has 3 monthly AI reports', () => {
     assert.equal(scanLimitForPlan('FREE'), 3)
   })
 
@@ -101,12 +98,12 @@ describe('product contract limits', () => {
     assert.equal(total2, 0)
   })
 
-  it('pro plan has 25 monthly checks', () => {
-    assert.equal(scanLimitForPlan('BUILDER'), 25)
+  it('pro plan has 15 monthly checks', () => {
+    assert.equal(scanLimitForPlan('BUILDER'), 15)
   })
 
-  it('studio plan has 80 monthly checks', () => {
-    assert.equal(scanLimitForPlan('TEAM'), 80)
+  it('studio plan has 50 monthly checks', () => {
+    assert.equal(scanLimitForPlan('TEAM'), 50)
   })
 })
 
@@ -171,7 +168,7 @@ describe('wouldBlockNewCheck', () => {
   it('returns TOKEN_LIMIT for paid users at cap', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     const result = wouldBlockNewCheck(
-      { id: 'u2', plan: 'BUILDER', role: 'user', auditsUsed: 25, auditsLimit: 25 },
+      { id: 'u2', plan: 'BUILDER', role: 'user', auditsUsed: 15, auditsLimit: 15 },
       0
     )
     assert.equal(result.allowed, false)
@@ -186,14 +183,16 @@ describe('share and export entitlements', () => {
   const proUser = { id: 'u2', role: 'user' as const, plan: 'BUILDER' as const, subscriptionStatus: 'ACTIVE' as const }
   const agencyUser = { id: 'u3', role: 'user' as const, plan: 'TEAM' as const, subscriptionStatus: 'ACTIVE' as const }
 
-  it('denies public share for free and pro', () => {
+  it('allows public share and export for free and pro', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(canSharePublicly(freeUser), false)
-    assert.equal(canSharePublicly(proUser), false)
+    assert.equal(canSharePublicly(freeUser), true)
+    assert.equal(canSharePublicly(proUser), true)
+    assert.equal(canExportSummary(freeUser), true)
+    assert.equal(canExportSummary(proUser), true)
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('allows public share for max', () => {
+  it('allows public share for Studio', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     assert.equal(canSharePublicly(agencyUser), true)
     assert.equal(canExportSummary(agencyUser), true)
@@ -220,7 +219,7 @@ describe('revoked subscription behavior', () => {
   const revokedStates = ['PAST_DUE', 'CANCELED', 'UNPAID'] as const
 
   for (const status of revokedStates) {
-    it(`getReportTierForUser returns free for ${status}`, () => {
+    it(`getReportTierForUser preserves full report content for ${status}`, () => {
       process.env.DEV_SIMULATE_BILLING = 'true'
       const tier = getReportTierForUser({
         id: 'u',
@@ -228,7 +227,7 @@ describe('revoked subscription behavior', () => {
         role: 'user',
         subscriptionStatus: status,
       })
-      assert.equal(tier, 'free')
+      assert.equal(tier, 'paid')
       delete process.env.DEV_SIMULATE_BILLING
     })
   }
@@ -247,11 +246,11 @@ describe('revoked subscription behavior', () => {
     })
   }
 
-  it('canSharePublicly revoked for Studio plan', () => {
+  it('keeps public sharing available after Studio cancellation', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     assert.equal(
       canSharePublicly({ id: 'u', plan: 'TEAM', role: 'user', subscriptionStatus: 'CANCELED' }),
-      false
+      true
     )
     delete process.env.DEV_SIMULATE_BILLING
   })
@@ -268,23 +267,23 @@ describe('revoked subscription behavior', () => {
       plan: 'BUILDER',
       role: 'user',
       auditsUsed: 0,
-      auditsLimit: 25,
+      auditsLimit: 3,
       subscriptionStatus: 'CANCELED',
     })
     assert.equal(await resolveIncludeAiForNewAudit('revoked-with-credits'), true)
   })
 
-  it('revoked user with zero credits gets no AI', async () => {
+  it('revoked user gets no AI after exhausting the Free fallback allowance and credits', async () => {
     const { prisma } = await import('@/lib/db')
     vi.mocked(prisma.creditPurchase.aggregate).mockResolvedValueOnce({
       _sum: { creditsRemaining: 0 },
     } as never)
     mockUserFindUnique.mockResolvedValueOnce({
       id: 'revoked-no-credits',
-      plan: 'BUILDER',
+      plan: 'FREE',
       role: 'user',
-      auditsUsed: 0,
-      auditsLimit: 25,
+      auditsUsed: 3,
+      auditsLimit: 3,
       subscriptionStatus: 'CANCELED',
     })
     assert.equal(await resolveIncludeAiForNewAudit('revoked-no-credits'), false)

@@ -22,7 +22,7 @@ export function ScoreHistoryChart({ history, currentAuditId, className, isLoadin
       <p className="mb-1 text-2xs font-medium uppercase tracking-label text-muted-foreground">Review history</p>
       <ol className="flex min-w-max items-start overflow-x-auto pb-1">
         {history.map((point, index) => {
-          const score = point.score == null ? '—' : Math.round(point.score)
+          const score = point.score == null ? '–' : Math.round(point.score)
           const current = point.id === currentAuditId
           return (
             <li key={point.id} className={cn('relative flex w-20 shrink-0 justify-center pt-1', index > 0 && 'before:absolute before:left-0 before:right-1/2 before:top-4 before:h-px before:bg-border', index < history.length - 1 && 'after:absolute after:left-1/2 after:right-0 after:top-4 after:h-px after:bg-border')}>
