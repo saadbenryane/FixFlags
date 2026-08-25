@@ -42,10 +42,10 @@ describe('homepage lean sections', () => {
     render(<LandingRubricsSection />)
 
     expect(
-      screen.getByRole('heading', { name: 'Three questions behind every product review' })
+      screen.getByRole('heading', { name: 'See your product through your users’ eyes' })
     ).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Can people understand and care in five seconds?' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Can people use it without friction?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Do people understand what you offer?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Can people use it without getting stuck?' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Can people find and share it?' })).toBeInTheDocument()
     expect(screen.getAllByText('Example Flag')).toHaveLength(3)
   })
@@ -55,15 +55,15 @@ describe('homepage lean sections', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Review. Fix. Prove it',
+        name: 'Check your product. Fix the issues. Check again',
       })
     ).toBeInTheDocument()
-    expect(screen.getByText('FixFlags report')).toBeInTheDocument()
+    expect(screen.getByText('FixFlags review')).toBeInTheDocument()
     expect(screen.getByRole('list')).toBeInTheDocument()
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
-    expect(screen.getByText('Evidence from the live product')).toBeInTheDocument()
-    expect(screen.getByText('Fix prompt for your editor')).toBeInTheDocument()
-    expect(screen.getByText('Fresh evidence verifies the result')).toBeInTheDocument()
+    expect(screen.getByText('Screenshots and details from the page')).toBeInTheDocument()
+    expect(screen.getByText('A fix to paste into your AI editor')).toBeInTheDocument()
+    expect(screen.getByText('A fresh review shows what improved')).toBeInTheDocument()
   })
 
   it('shows the compact integrations block with MCP and CLI links', () => {

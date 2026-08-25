@@ -45,7 +45,7 @@ export function EditorToolMarks({
   const isHero = variant === "hero";
 
   return (
-    <div className={cn(isHero ? "space-y-2.5" : "space-y-3", className)}>
+    <div className={cn(isHero ? "space-y-4" : "space-y-3", className)}>
       {showLabel ? (
         <p
           className={cn(
@@ -61,7 +61,7 @@ export function EditorToolMarks({
         className={cn(
           "flex flex-wrap items-center",
           isHero
-            ? "justify-start gap-x-4 gap-y-2 lg:flex-nowrap"
+            ? "justify-start gap-x-[1.125rem] gap-y-2.5 lg:flex-nowrap"
             : compact
               ? "gap-x-5 gap-y-2.5"
               : "gap-x-6 gap-y-3 sm:gap-x-8",

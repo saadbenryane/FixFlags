@@ -1,8 +1,8 @@
 import Link from "next/link";
 import {
   ChevronRight,
+  Copy,
   Flag,
-  LockKeyhole,
   RefreshCw,
   ScanSearch,
   ShieldCheck,
@@ -49,10 +49,10 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
     ...copy.trustMetrics.map((metric) => ({
       ...metric,
       icon:
-        metric.id === "recheck"
+        metric.id === "updateReview"
             ? RefreshCw
-            : metric.id === "private"
-              ? LockKeyhole
+            : metric.id === "fixPrompt"
+              ? Copy
               : ScanSearch,
     })),
   ];

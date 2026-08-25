@@ -1,6 +1,6 @@
 import type { Route } from 'next'
 import Link from 'next/link'
-import { LockKeyhole, RefreshCcw, ShieldCheck } from 'lucide-react'
+import { Copy, RefreshCcw, ShieldCheck } from 'lucide-react'
 import { EditorMark } from '@/components/brand/EditorMarks'
 import { Logo } from '@/components/brand/Logo'
 import { FooterNewsletter } from '@/components/layout/FooterNewsletter'
@@ -13,8 +13,8 @@ import { HOMEPAGE_EDITOR_INTEGRATIONS, editorDocsHref } from '@/lib/integrations
 const FOOTER_EDITOR_MARKS = HOMEPAGE_EDITOR_INTEGRATIONS
 
 const METRIC_ICONS = {
-  recheck: RefreshCcw,
-  private: LockKeyhole,
+  fixPrompt: Copy,
+  updateReview: RefreshCcw,
   teaser: ShieldCheck,
 } as const
 

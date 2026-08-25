@@ -127,32 +127,31 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('hero subhead leads with the report value and names the three rubrics', () => {
-    assert.match(HERO.subhead, /^See what to fix/i)
-    assert.match(HERO.subhead, /message/i)
-    assert.match(HERO.subhead, /experience/i)
-    assert.match(HERO.subhead, /reach/i)
+  it('hero subhead explains the visitor outcome in plain language', () => {
+    assert.match(HERO.subhead, /^Paste a URL/i)
+    assert.match(HERO.subhead, /people/i)
+    assert.match(HERO.subhead, /get stuck/i)
     assert.match(HERO.subhead, /fix/i)
     assert.ok(HERO.subhead.split(/\s+/).length <= 20)
     assert.ok(!HERO.subhead.toLowerCase().includes('finish what your ai started'))
   })
 
   it('hero assurances are product-true and skip invented social proof', () => {
-    assert.ok(HERO.assurances.length >= 3)
+    assert.equal(HERO.assurances.length, 2)
     for (const item of HERO.assurances) {
       assert.ok(!/\d{2,},\d{3}/.test(item.label), `Invented count: ${item.label}`)
       assert.ok(!/builders? reviewed/i.test(item.label), `Fake social proof: ${item.label}`)
     }
-    assert.ok(HERO.assurances.some((a) => /live product/i.test(a.label)))
-    assert.ok(HERO.assurances.some((a) => /3 Free Reviews/i.test(a.label)))
-    assert.ok(HERO.assurances.some((a) => /private/i.test(a.label)))
+    assert.ok(HERO.assurances.some((a) => /live site/i.test(a.label)))
+    assert.ok(HERO.assurances.some((a) => /3 reviews included free/i.test(a.label)))
+    assert.ok(HERO.assurances.every((a) => !/private/i.test(a.label)))
     assert.match(HERO.trustLine, /favourite/i)
     assert.doesNotMatch(HERO.trustLine, /trusted by/i)
     assert.ok(!/\d{2,},\d{3}/.test(HERO.trustLine), `Invented count in trust line: ${HERO.trustLine}`)
     assert.match(HERO.scrollHint, /scroll to discover/i)
   })
 
-  it('hero has no CYA trust-badge row; value lives in OFFER.short', async () => {
+  it('hero has no CYA trust-badge row; canonical offer copy remains product-true', async () => {
     const { OFFER } = await import('@/lib/marketing/copy')
     assert.ok(!('trustBadges' in HERO))
     assert.match(OFFER.short, /free product review/i)
@@ -206,15 +205,14 @@ describe('homepage message guardrails', () => {
     assert.match(REPORT_COPY.recheckHint.bodySuffix, /Flags cleared/i)
   })
 
-  it('core-loop copy consistently uses Recheck', () => {
+  it('core-loop copy avoids internal monitoring terms and names the homepage update review', () => {
     assert.ok(CORE_LOOP_STRINGS.some((line) => /\bRecheck\b/.test(line)))
     for (const line of CORE_LOOP_STRINGS) {
       assert.doesNotMatch(line, /\bmonitor(?:ed|ing|s)?\b/i)
       assert.doesNotMatch(line, /\bre-?scan\b/i)
       assert.doesNotMatch(line, /\bre-checks?\b/i)
-      assert.doesNotMatch(line, /update review/i)
     }
-    assert.match(LANDING_PAGE.howItWorks.steps.at(-1)?.body ?? '', /\bRecheck\b/)
+    assert.match(LANDING_PAGE.howItWorks.steps.at(-1)?.body ?? '', /update review/i)
   })
 
   it('pricing sells product reviews and deep reviews without unlimited re-check', () => {
@@ -270,7 +268,7 @@ describe('homepage message guardrails', () => {
 
   it('how it works section has 3-step loop copy', () => {
     assert.ok(!('problemBar' in LANDING_PAGE.howItWorks))
-    assert.match(LANDING_PAGE.howItWorks.headline, /review.*fix.*prove/i)
+    assert.match(LANDING_PAGE.howItWorks.headline, /check.*fix.*check again/i)
     assert.ok(LANDING_PAGE.howItWorks.subhead.length > 0)
     assert.equal(LANDING_PAGE.howItWorks.sampleLink, LANDING_PAGE.sampleReport.cta)
     assert.equal(LANDING_PAGE.howItWorks.steps.length, 3)
@@ -279,11 +277,12 @@ describe('homepage message guardrails', () => {
   it('how it works steps keep product-true rubrics without decorative artwork contracts', () => {
     assert.deepEqual(
       LANDING_PAGE.howItWorks.steps.map((s) => s.title),
-      ['Paste your live URL', 'See what deserves attention', 'Fix it. Prove it.']
+      ['Check your live product', 'Fix the important issues', 'See what changed']
     )
-    const scan = LANDING_PAGE.howItWorks.steps[1]!
-    assert.match(scan.body, /Message, Experience, and Reach/i)
-    assert.doesNotMatch(scan.body, /performance, accessibility, SEO/i)
+    const fix = LANDING_PAGE.howItWorks.steps[1]!
+    assert.match(fix.body, /people/i)
+    assert.match(fix.body, /AI editor/i)
+    assert.doesNotMatch(fix.body, /performance, accessibility, SEO/i)
     assert.ok(LANDING_PAGE.howItWorks.steps.every((step) => !('visual' in step)))
   })
 
@@ -363,10 +362,10 @@ describe('homepage message guardrails', () => {
   it('sample report section links to the full sample review', () => {
     assert.equal(LANDING_PAGE.sampleReport.cta, 'Explore a full report')
     assert.equal(LANDING_PAGE.sampleReport.ctaWithCount(7), 'Explore a full report')
-    assert.match(LANDING_PAGE.sampleReport.headlineDisplay, /exactly what ai misses/i)
-    assert.match(LANDING_PAGE.sampleReport.label, /sample report/i)
-    assert.match(LANDING_PAGE.sampleReport.body, /live product/i)
-    assert.match(LANDING_PAGE.sampleReport.body, /editor-ready fix/i)
+    assert.match(LANDING_PAGE.sampleReport.headlineDisplay, /users’ way/i)
+    assert.match(LANDING_PAGE.sampleReport.label, /sample review/i)
+    assert.match(LANDING_PAGE.sampleReport.body, /curated review/i)
+    assert.match(LANDING_PAGE.sampleReport.body, /paste into your AI editor/i)
     assert.ok(!/\d{2,},\d{3}/.test(LANDING_PAGE.sampleReport.body))
     assert.equal(LANDING_PAGE.sampleReport.trustMetrics.length, 3)
     for (const metric of LANDING_PAGE.sampleReport.trustMetrics) {
@@ -380,15 +379,15 @@ describe('homepage message guardrails', () => {
   it('landing page exposes three-rubric check story', () => {
     assert.equal(
       LANDING_PAGE.checkDimensions.headlineDisplay,
-      'Three questions behind every product review'
+      'See your product through your users’ eyes'
     )
     assert.deepEqual(
       LANDING_PAGE.checkDimensions.cards.map((c) => c.title),
       ['Message', 'Experience', 'Reach']
     )
-    assert.match(LANDING_PAGE.checkDimensions.cards[0].question, /understand and care/i)
-    assert.match(LANDING_PAGE.howItWorks.headline, /review.*fix.*prove/i)
-    assert.match(LANDING_PAGE.sampleReport.body, /editor-ready fix/i)
+    assert.match(LANDING_PAGE.checkDimensions.cards[0].question, /understand what you offer/i)
+    assert.match(LANDING_PAGE.howItWorks.headline, /check.*fix.*check again/i)
+    assert.match(LANDING_PAGE.sampleReport.body, /paste into your AI editor/i)
     assert.match(LANDING_PAGE.logoCloud.label, /works where you build/i)
     assert.deepEqual(HOMEPAGE_EDITOR_INTEGRATIONS.map((editor) => editor.label), [
       'Lovable',

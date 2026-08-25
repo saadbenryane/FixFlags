@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { ArrowRight, Link2, Loader2 } from 'lucide-react'
-import { HERO, AUDIT_PROGRESS, AUDIT_ERRORS, OFFER } from '@/lib/marketing/copy'
+import { HERO, AUDIT_PROGRESS, AUDIT_ERRORS } from '@/lib/marketing/copy'
 import { SCAN_LIMIT_GATE } from '@/lib/marketing/copy/auth'
 import { URL_PLACEHOLDER } from '@/lib/marketing/copy/brand'
 import { SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
@@ -39,7 +39,7 @@ export function AuditInput({
   autoStart?: boolean
   /** Distinguishes hero vs final CTA on the landing page for funnel attribution. */
   ctaPlacement?: 'hero' | 'final'
-  /** Landing-only offer line + sample CTA. Hero hides these to match mockup spacing. */
+  /** Landing-only sample CTA. */
   showLandingExtras?: boolean
 }) {
   const inputId = `audit-url${idSuffix}`
@@ -327,14 +327,8 @@ export function AuditInput({
         )}
       </form>
 
-      {isLanding && showLandingExtras ? (
-        <p className="text-2xs leading-relaxed text-muted-foreground/90">
-          {OFFER.short}
-        </p>
-      ) : null}
-
       {showLandingExtras || !isLanding ? (
-        <div className="flex flex-col gap-1 items-start">
+        <div className={cn('flex flex-col gap-1', isLanding ? 'items-center' : 'items-start')}>
           <Button
             type="button"
             variant="ghost"

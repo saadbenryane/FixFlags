@@ -1,4 +1,4 @@
-import { ClipboardCheck, Globe, RefreshCw } from "lucide-react";
+import { RefreshCw, ScanSearch, Wrench } from "lucide-react";
 import { LandingSectionHeader } from "@/components/marketing/landing/LandingSectionHeader";
 import { RevealOnView } from "@/components/marketing/landing/RevealOnView";
 import { Container } from "@/components/ui/container";
@@ -6,7 +6,7 @@ import { Section } from "@/components/ui/section";
 import { LANDING_PAGE } from "@/lib/marketing/copy";
 import { cn } from "@/lib/utils";
 
-const STEP_ICONS = [ClipboardCheck, Globe, RefreshCw] as const;
+const STEP_ICONS = [ScanSearch, Wrench, RefreshCw] as const;
 
 export function LandingHowItWorksSection() {
   const copy = LANDING_PAGE.howItWorks;

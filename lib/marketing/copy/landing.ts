@@ -5,16 +5,15 @@ export const HERO = {
   headlineDisplay: "Finish what your AI started",
   headlineAccentPeriod: true,
   subhead:
-    "See what to fix before anyone else sees your site. Message, Experience, and Reach Flags with evidence and fix prompts.",
+    "Paste a URL. See what people might miss, where they get stuck, and what to fix before you share it.",
   primaryCta: "Review my site",
   compactPrimaryCta: "Review site",
   trySampleCta: "See a sample review",
   urlPlaceholder: "Paste your site or app URL",
   /** Honest product assurances only. No invented counts or testimonials. */
   assurances: [
-    { id: "evidence", label: "Evidence from the live product", icon: "shield" as const },
-    { id: "teaser", label: "3 Free Reviews", icon: "shield" as const },
-    { id: "private", label: "Your report is private", icon: "lock" as const },
+    { id: "evidence", label: "Evidence from your live site", icon: "shield" as const },
+    { id: "teaser", label: "3 reviews included free", icon: "zap" as const },
   ],
   /** Product-true trust line only. No invented member counts or stock avatars. */
   trustLine: "Works with your favourite vibe coding tools",
@@ -134,7 +133,7 @@ export const DIFFERENTIATION = {
 export const FINAL_CTA = {
   headlineDisplay: "Paste a URL. See what to fix",
   headlineAccentPeriod: true,
-  body: "Free product review. Your report is private.",
+  body: "Start with a free product review. See the issues before you sign up.",
 } as const;
 
 export const MCP_SECTION = {
@@ -322,11 +321,11 @@ export const LANDING_PAGE = {
   },
   checkDimensions: {
     label: "What FixFlags reviews",
-    headlineDisplay: "Three questions behind every product review",
+    headlineDisplay: "See your product through your users’ eyes",
     headlineAccentPeriod: true,
-    headline: "Three questions behind every product review.",
+    headline: "See your product through your users’ eyes.",
     subhead:
-      "What people understand, what they can do, and how they find and share the product.",
+      "We check whether people understand what you offer, can use the product without getting stuck, and can find or share it.",
     allChecksTab: "All checks",
     topIssuesTitle: "Top Flags",
     viewAllIssues: "View all Flags",
@@ -338,9 +337,9 @@ export const LANDING_PAGE = {
         title: "Message",
         label: "Message",
         panelTitle: "Communicate what matters.",
-        question: "Can people understand and care in five seconds?",
+        question: "Do people understand what you offer?",
         panelBody:
-          "We review clarity, hierarchy, and content quality so people understand the value before they decide to leave.",
+          "We look at your headline, page structure, and calls to action to see whether the value is clear.",
         icon: "message",
         tint: "brand",
         checks: [
@@ -389,9 +388,9 @@ export const LANDING_PAGE = {
         title: "Experience",
         label: "Experience",
         panelTitle: "Make every next step obvious.",
-        question: "Can people use it without friction?",
+        question: "Can people use it without getting stuck?",
         panelBody:
-          "We test the path from arrival to action across devices so friction does not turn into a lost user.",
+          "We test the main path on desktop and mobile to find confusing, broken, or hard-to-use steps.",
         icon: "experience",
         tint: "success",
         checks: [
@@ -442,7 +441,7 @@ export const LANDING_PAGE = {
         panelTitle: "Show up clearly when people find and share you.",
         question: "Can people find and share it?",
         panelBody:
-          "We inspect search, metadata, and link previews so every discovery surface represents the product clearly.",
+          "We check search details and link previews so the product appears clearly beyond your site.",
         icon: "reach",
         tint: "info",
         checks: [
@@ -562,44 +561,44 @@ export const LANDING_PAGE = {
   },
   howItWorks: {
     label: "How it works",
-    headlineDisplay: "Review. Fix. Prove it",
+    headlineDisplay: "Check your product. Fix the issues. Check again",
     headlineAccentPeriod: true,
-    headline: "Review. Fix. Prove it.",
+    headline: "Check your product. Fix the issues. Check again.",
     subhead:
-      "Paste your live URL. See what matters, copy the fix, then Recheck.",
+      "FixFlags checks the live product and gives you a short list of what to do next.",
     sampleLink: "Explore a full report",
     steps: [
       {
         step: 1,
-        title: "Paste your live URL",
-        body: "FixFlags reviews the product at the URL you share.",
+        title: "Check your live product",
+        body: "Paste a URL. FixFlags reviews the page on desktop and mobile.",
       },
       {
         step: 2,
-        title: "See what deserves attention",
-        body: "Get ranked Flags across Message, Experience, and Reach.",
+        title: "Fix the important issues",
+        body: "See what people may misunderstand or struggle to use, then copy the fix into your AI editor.",
       },
       {
         step: 3,
-        title: "Fix it. Prove it.",
-        body: "Copy the fix into your editor, then Recheck.",
+        title: "See what changed",
+        body: "Publish your changes, then run an update review to see which issues are gone.",
       },
     ] as const,
     demo: {
       heading: "Three rubrics. One clear fix.",
       body: "Every Flag stays connected to its evidence, fix prompt, and the Recheck that proves the change.",
-      reportTitle: "FixFlags report",
+      reportTitle: "FixFlags review",
       hostname: "yourproduct.com",
       status: "Ready to Recheck",
       priorityLabel: "Prioritized Flag",
-      evidenceLabel: "Evidence from the live product",
+      evidenceLabel: "Screenshots and details from the page",
       promptTitle: "Fix prompt",
-      promptStatus: "Fix prompt for your editor",
+      promptStatus: "A fix to paste into your AI editor",
       copyAction: "Copy",
       copyAriaLabel: "Copy example fix prompt",
       prompt:
         "Update the primary action so it appears in the first mobile viewport. Keep the current visual hierarchy, then verify at 375px and 430px before publishing.",
-      recheckLabel: "Fresh evidence verifies the result",
+      recheckLabel: "A fresh review shows what improved",
     },
   },
   reportExamples: {
@@ -785,11 +784,11 @@ export const LANDING_PAGE = {
     npxCheckDescription: "No signup. No install. Just paste your URL.",
   },
   sampleReport: {
-    label: "Sample report",
-    headlineDisplay: "See exactly what AI misses",
+    label: "Sample review",
+    headlineDisplay: "See what gets in your users’ way",
     headlineAccentPeriod: true,
-    headline: "See exactly what AI misses.",
-    body: "FixFlags reviews the live product the way users experience it, then turns every Flag into a ranked, editor-ready fix prompt.",
+    headline: "See what gets in your users’ way.",
+    body: "Explore a curated review of the Launchpad demo. See the issues, the evidence behind them, and the fix to paste into your AI editor.",
     previewEyebrow: "Fix list",
     previewTitle: "Every fix, ranked and ready to apply",
     previewBadge: "Screenshot evidence included",
@@ -817,27 +816,27 @@ export const LANDING_PAGE = {
       {
         id: "message",
         title: "Message",
-        body: "Clarity, hierarchy, and content quality.",
+        body: "What people understand and expect.",
         icon: "message" as const,
       },
       {
         id: "experience",
         title: "Experience",
-        body: "Usability, flows, and interface quality.",
+        body: "What people can do without getting stuck.",
         icon: "experience" as const,
       },
       {
         id: "reach",
         title: "Reach",
-        body: "SEO, performance, and technical health.",
+        body: "How people find and share the product.",
         icon: "reach" as const,
       },
     ] as const,
-    trustLabel: "Built from the live product",
-    trustHeadline: "Proof for the fixes that matter.",
+    trustLabel: "What you get",
+    trustHeadline: "Find the issue. Fix it. Check what changed.",
     trustBody:
-      "Each Flag shows what happened, why it matters, and what to send to your editor.",
-    trustSupportLabel: "Built for the whole fix loop",
+      "Each Flag shows the problem, the evidence behind it, and a fix you can paste into your AI editor. Run an update review after you publish.",
+    trustSupportLabel: "After the review",
     issuesLabel: (count: number) => `${count} Flags in the sample review`,
     checksLabel: (count: number) =>
       `${count} checks across Message, Experience, and Reach`,
@@ -851,16 +850,16 @@ export const LANDING_PAGE = {
     }),
     trustMetrics: [
       {
-        id: "recheck",
-        value: "Recheck",
-        label: "fresh evidence after the fix",
-        icon: "refresh" as const,
+        id: "fixPrompt",
+        value: "Fix prompt",
+        label: "paste it into your AI editor",
+        icon: "zap" as const,
       },
       {
-        id: "private",
-        value: "Private",
-        label: "owned reports stay private",
-        icon: "lock" as const,
+        id: "updateReview",
+        value: "Update review",
+        label: "see what changed after the fix",
+        icon: "refresh" as const,
       },
       {
         id: "teaser",
