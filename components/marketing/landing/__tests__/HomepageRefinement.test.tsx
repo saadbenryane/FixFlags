@@ -161,11 +161,9 @@ describe('homepage lean sections', () => {
     // The reviewed host names both panes now that no fake browser bar carries it.
     expect(screen.getAllByText('fixflags.com/demo').length).toBeGreaterThan(0)
     expect(screen.getByRole('tab', { name: 'Agent' })).toBeInTheDocument()
-    expect(screen.getAllByRole('tab', { name: 'Preview' })).not.toHaveLength(0)
+    expect(screen.queryByRole('tab', { name: 'Preview' })).not.toBeInTheDocument()
     expect(screen.getAllByRole('tab', { name: 'Report' })).not.toHaveLength(0)
-    expect(
-      screen.getByRole('img', { name: 'Page screenshot' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Primary CTA is hidden below the fold on mobile' })).toBeInTheDocument()
     expect(
       screen.queryByRole('link', { name: 'Review my site' }),
     ).not.toBeInTheDocument()
@@ -187,12 +185,12 @@ describe('homepage lean sections', () => {
     expect(grid).toBeDefined()
   })
 
-  it('gives the visitor the real Agent, Preview, and Report workspace toggle', () => {
+  it('gives the visitor the real Agent and Report workspace toggle', () => {
     render(<SampleReportSection />)
 
     const mobileTabs = screen.getByRole('tablist', { name: 'Review panels' })
     expect(
-      within(mobileTabs).getByRole('tab', { name: 'Preview' }),
+      within(mobileTabs).getByRole('tab', { name: 'Report' }),
     ).toHaveAttribute('aria-selected', 'true')
 
     fireEvent.click(within(mobileTabs).getByRole('tab', { name: 'Agent' }))
@@ -231,11 +229,12 @@ describe('homepage lean sections', () => {
     expect(window.location.search).not.toMatch(/flag=/)
   })
 
-  it('shows the sample Agent and live Product preview before settling on the report', () => {
+  it('shows the sample Agent and the report-first priority surface', () => {
     render(<SampleReportSection />)
 
     expect(screen.getByRole('region', { name: 'Agent' })).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Page screenshot' })).toBeInTheDocument()
-    expect(screen.getAllByRole('tab', { name: 'Preview' })).not.toHaveLength(0)
+    expect(screen.getByText('Your priorities')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Primary CTA is hidden below the fold on mobile' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Preview' })).not.toBeInTheDocument()
   })
 })

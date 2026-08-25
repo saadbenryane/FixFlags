@@ -172,6 +172,55 @@ final result: passed
 
 ---
 
+# Simplified Product and Report QA
+
+## Comparison target
+
+- Selected hierarchy reference: `/Users/saadbenryane/.codex/generated_images/01a03a89-7093-7703-b640-c3067c198ecf/exec-da3ae6fb-28a8-4b80-b1b8-05cac7122042.png`
+- Browser-rendered implementation: `/Users/saadbenryane/Code/fixflags/.agents/artifacts/simplified-report-1487x1058.png`
+- Same-input comparison: `/Users/saadbenryane/Code/fixflags/.agents/artifacts/simplified-report-comparison.png`
+- Responsive captures:
+  - `/Users/saadbenryane/Code/fixflags/.agents/artifacts/simplified-report-375.png`
+  - `/Users/saadbenryane/Code/fixflags/.agents/artifacts/simplified-report-768.png`
+- Route: `/samples?view=report`
+- State: light theme, completed public sample, selected highest-ranked issue
+
+## Findings
+
+- The implementation follows the reference hierarchy without copying its shell: Agent remains on the left, while the report leads with a circular score, linked Review history, five ranked priorities, and one dominant issue detail.
+- The selected issue keeps `Copy prompt` visible above the screenshot and places prompt text behind `Preview prompt`.
+- Timeline, Preview, and Canvas controls are absent. A legacy Timeline URL was exercised and normalized to `?view=report`.
+- At `375px`, only Agent and Report are exposed, the five priorities remain readable, and no horizontal overflow appears.
+- The existing FixFlags type, spacing, color, radius, and navigation system was intentionally retained.
+- The public sample keeps its marketing frame, while authenticated reports use the same report workspace inside the unchanged application sidebar.
+
+## Comparison history
+
+### Pass 1
+
+- [P1] The report initially exposed Timeline and Canvas alongside Report.
+- [P1] The selected issue's copy action sat too low in the reading order.
+- [P2] The report defaulted to one rubric instead of the five highest-ranked issues overall.
+- [P2] The first filter control missed the `44px` target-size requirement.
+
+Fixes:
+
+- Reduced the customer workspace to Agent and Report and normalized dormant view parameters.
+- Moved `Copy prompt` above evidence and kept prompt contents collapsed.
+- Defaulted the priority projection to all rubrics, ranked by customer impact, with five visible items and `Show more`.
+- Enlarged the compact `All` filter target while retaining the quiet disclosure.
+
+### Pass 2
+
+- Re-captured desktop, tablet, and mobile states after the parked-surface changes.
+- Compared the selected reference and implementation at the same `1487 × 1058` canvas.
+- Confirmed the final browser state has no runtime console errors.
+- No actionable P0, P1, or P2 hierarchy or responsive defects remain.
+
+final result: passed
+
+---
+
 # Complete homepage refinement QA
 
 ## Comparison target

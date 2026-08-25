@@ -25,12 +25,10 @@ import { formatQueueWaitHint, REPORT_COPY } from '@/lib/marketing/copy'
 import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 import { getActiveAudit } from '@/lib/audit/active-audit'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
-import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
-import { ReportCanvasPanel } from '@/components/report/ReportCanvasPanel'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
@@ -75,6 +73,7 @@ interface AuditReportProgressiveProps {
   screenshots?: AuditScreenshot[]
   screenshotCapture?: ScreenshotCaptureStatus
   workerIdle?: boolean
+  /** Retained for compatibility while Timeline is parked; never rendered or loaded. */
   actionTimeline?: ActionTimelineEvent[]
   productContract?: ProductContract | null
   technologyProfile?: TechnologyProfile
@@ -98,7 +97,6 @@ export function AuditReportProgressive({
   screenshots = [],
   screenshotCapture,
   workerIdle = false,
-  actionTimeline = [],
   productContract = null,
   technologyProfile,
   sectionId = 'report-flags',
@@ -232,9 +230,9 @@ export function AuditReportProgressive({
     loading: isLoading,
     capabilities: {
       promptAccess: 'none',
-      canReplayTimeline: isOwnerAccess,
+      canReplayTimeline: false,
       canChat: isOwnerAccess && Boolean(auditId),
-      canUseCanvas: isOwnerAccess && Boolean(auditId) && !isLoading,
+      canUseCanvas: false,
       canShare: false,
       canExport: false,
       canRecheck: false,
@@ -242,7 +240,6 @@ export function AuditReportProgressive({
       demonstratedFlagId: null,
     },
   })
-  const playbackSteps = buildPlaybackSteps(actionTimeline)
   const queuedWarnings =
     (workerIdle || showWorkerWarning || showQueueWait) ? (
       <div className="space-y-3">
@@ -326,7 +323,7 @@ export function AuditReportProgressive({
         browserCaptureStatus={screenshotCapture}
         reportPanel={scanReportPanel}
         findingCount={flagCount}
-        steps={playbackSteps}
+        steps={[]}
         className="h-full"
       />
     </Suspense>
@@ -419,8 +416,6 @@ export function AuditReportProgressive({
               browserUrl={url}
               browserScreenshots={screenshots}
               browserCaptureStatus={screenshotCapture}
-              timelineGateActionHref={canClaimAccess ? `/sign-in?next=${encodeURIComponent(`/report/${auditId}`)}` : undefined}
-              canvasPanel={workspace.capabilities.canUseCanvas ? <ReportCanvasPanel auditId={auditId} /> : undefined}
               reportPanel={
                 <>
                   <ReportPane
@@ -454,7 +449,7 @@ export function AuditReportProgressive({
                   />
                 </>
               }
-              steps={playbackSteps}
+              steps={[]}
               className="h-full"
             />
           </Suspense>

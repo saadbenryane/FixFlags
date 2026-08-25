@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import {
   AuditReportProgressive,
 } from '@/components/audit/AuditReportProgressive'
@@ -206,7 +206,7 @@ describe('AuditReportProgressive', () => {
     expect(container.querySelector('img')).toBeNull()
   })
 
-  it('exposes the live Preview and captured viewport controls', () => {
+  it('streams into Agent and Report without exposing Preview controls', () => {
     render(
       <AuditReportProgressive
         auditId={AUDIT_ID}
@@ -219,9 +219,10 @@ describe('AuditReportProgressive', () => {
         screenshotCapture={{ desktop: 'ok', mobile: 'failed' }}
       />
     )
-    expect(screen.getAllByRole('tab', { name: 'Preview' })).not.toHaveLength(0)
-    expect(screen.getByRole('tab', { name: 'Desktop' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Mobile' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Preview' })).not.toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Agent' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Report' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Desktop' })).not.toBeInTheDocument()
   })
 
   it('keeps technology detections out of the immersive scanning workspace', () => {
@@ -302,7 +303,7 @@ describe('AuditReportProgressive', () => {
     expect(screen.getAllByText(/Preparing Funnel review/).length).toBeGreaterThan(0)
   })
 
-  it('lets an owner replay the completed Timeline', () => {
+  it('parks Timeline playback for an owner while keeping the Report available', () => {
     render(
       <AuditReportProgressive
         auditId={AUDIT_ID}
@@ -315,9 +316,8 @@ describe('AuditReportProgressive', () => {
 
     expect(screen.getAllByRole('tab', { name: 'Agent' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('tab', { name: 'Report' }).length).toBeGreaterThan(0)
-    const timeline = screen.getAllByRole('tab', { name: 'Timeline' })[0]
-    fireEvent.click(timeline)
-    expect(screen.getByRole('slider', { name: 'Scrub through the review path' })).toBeInTheDocument()
+    expect(screen.queryAllByRole('tab', { name: 'Timeline' })).toHaveLength(0)
+    expect(screen.queryByRole('slider', { name: 'Scrub through the review path' })).not.toBeInTheDocument()
   })
 
   it('keeps a live marketing-sample envelope read-only with no sign-in claim action', () => {

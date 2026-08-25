@@ -445,21 +445,6 @@ function ScreenshotPanel({
   const [letterbox, setLetterbox] = useState<LetterboxLayout | undefined>()
   const imgRef = useRef<HTMLImageElement>(null)
 
-  // Lazy-loaded captures can fail without dispatching an error event in some
-  // engines (complete + naturalWidth 0). Poll briefly so the fallback chain
-  // always resolves to an explicit error UI instead of a blank panel.
-  useEffect(() => {
-    const img = imgRef.current
-    if (img && img.complete && img.naturalWidth === 0) {
-      setImgError(true)
-      return
-    }
-    const settleTimer = window.setInterval(() => {
-      const el = imgRef.current
-      if (el && el.complete && el.naturalWidth === 0) setImgError(true)
-    }, 300)
-    return () => window.clearInterval(settleTimer)
-  }, [imgError, retryKey])
   const panelRef = useRef<HTMLDivElement>(null)
   const panelStyle: CSSProperties = size
     ? { width: size.width, height: size.height, maxHeight: size.height, flexShrink: 0 }
@@ -487,6 +472,23 @@ function ScreenshotPanel({
     },
     []
   )
+
+  useEffect(() => {
+    const settleImage = () => {
+      const image = imgRef.current
+      if (!image?.complete) return
+      if (image.naturalWidth > 0) {
+        setImgLoaded(true)
+        setImgError(false)
+        updateLetterbox(image)
+      } else {
+        setImgError(true)
+      }
+    }
+    settleImage()
+    const settleTimer = window.setInterval(settleImage, 300)
+    return () => window.clearInterval(settleTimer)
+  }, [retryKey, updateLetterbox])
 
   useEffect(() => {
     const panel = panelRef.current
@@ -589,7 +591,7 @@ function ScreenshotPanel({
             alt={`${device} screenshot of ${host}`}
             width={1440}
             height={900}
-            loading="lazy"
+            loading="eager"
             onLoad={(event) => {
               setImgLoaded(true)
               updateLetterbox(event.currentTarget)

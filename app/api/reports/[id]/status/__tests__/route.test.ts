@@ -109,14 +109,12 @@ describe('GET /api/reports/[id]/status', () => {
     expect(res.status).toBe(403)
   })
 
-  it('streams actionTimeline, productContract, and partial flags while checking', async () => {
+  it('streams report content without the parked Timeline payload while checking', async () => {
     const res = await GET(getReq(), { params: Promise.resolve({ id: 'a1' }) })
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.status).toBe('CHECKING')
-    expect(body.actionTimeline).toEqual([
-      { t: 1000, kind: 'capture', label: 'Opened page' },
-    ])
+    expect(body).not.toHaveProperty('actionTimeline')
     expect(body.productContract?.purpose).toBe('Ship cleaner sites')
     expect(body.technologyProfile).toBeUndefined()
     expect(body.partialFlags).toEqual([
@@ -153,7 +151,7 @@ describe('GET /api/reports/[id]/status', () => {
       const body = await response.json()
 
       expect(body.agentMessages.length).toBeGreaterThan(0)
-      expect(body.actionTimeline).toEqual([])
+      expect(body).not.toHaveProperty('actionTimeline')
       expect(body.productContract).toBeNull()
       for (const privateField of [
         'userId',

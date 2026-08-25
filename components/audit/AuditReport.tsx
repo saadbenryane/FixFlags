@@ -53,8 +53,6 @@ import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
-import { ReportCanvasPanel } from '@/components/report/ReportCanvasPanel'
-import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import type { AgentMessage } from '@/lib/audit/agent-message'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
@@ -189,7 +187,6 @@ export function AuditReport({
   const canClaimAccess = audit.accessContext === 'anonymous_teaser'
   const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
   const chatGateReason = canClaimAccess ? 'sign-in' : 'owner'
-  const timelineGateActionHref = canClaimAccess ? signUpHref : undefined
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
   const showContract = Boolean(audit.productContract)
   void _journeyReviews
@@ -239,9 +236,9 @@ export function AuditReport({
     history: scoreHistory,
     capabilities: {
       promptAccess: promptProjection.workspace,
-      canReplayTimeline: isRepositorySample || isOwnerAccess,
+      canReplayTimeline: false,
       canChat: !isSample && isLoggedIn && isOwnerAccess && Boolean(auditId),
-      canUseCanvas: !isSample && isLoggedIn && isOwnerAccess,
+      canUseCanvas: false,
       canShare: !isSample && isLoggedIn && isOwnerAccess,
       canExport: !isSample && isLoggedIn && isOwnerAccess,
       canRecheck: !isSample && isLoggedIn && isOwnerAccess,
@@ -481,7 +478,6 @@ export function AuditReport({
       afterFrame={belowFrame}
     />
   )
-  const playbackSteps = buildPlaybackSteps(audit.actionTimeline ?? [])
 
   if (auditId) {
     return (
@@ -497,8 +493,6 @@ export function AuditReport({
           <Suspense fallback={null}>
             <ReportWorkspaceSplitShell
               capabilities={workspace.capabilities}
-              timelineGateActionHref={timelineGateActionHref}
-              canvasPanel={workspace.capabilities.canUseCanvas ? <ReportCanvasPanel auditId={auditId} /> : undefined}
               reportHeader={<ReportOutcomeBar model={workspace} actions={actions} />}
               leftPanel={
                 <WorkspaceChatPanel
@@ -514,7 +508,7 @@ export function AuditReport({
               browserScreenshots={audit.screenshots}
               browserCaptureStatus={captureStatus}
               reportPanel={livingReportPanel}
-              steps={playbackSteps}
+              steps={[]}
               className="h-full"
             />
           </Suspense>
@@ -544,7 +538,7 @@ export function AuditReport({
           browserScreenshots={audit.screenshots}
           browserCaptureStatus={captureStatus}
           reportPanel={livingReportPanel}
-          steps={playbackSteps}
+          steps={[]}
           className="h-full min-h-[32rem]"
         />
       </Suspense>

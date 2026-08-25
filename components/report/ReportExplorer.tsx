@@ -1,21 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Globe } from 'lucide-react'
 import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportFixLoop'
 import {
   FlagDetailPane,
 } from '@/components/report/ReportExplorerDetail'
-import { FilterPill } from '@/components/ui/filter-pill'
 import { REPORT_COPY } from '@/lib/marketing/copy'
-import { rubricIcon } from '@/lib/rubric-icons'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import {
   clampFlagIndex,
   countFlagsByRubric,
   filterExplorerFlags,
   initialExplorerFlagIndex,
-  pageFilterLabel,
   type RubricFilter,
 } from '@/lib/report/explorer-filters'
 import type { JourneyPage } from '@/components/audit/JourneyBar'
@@ -23,7 +19,7 @@ import { focusFlagDetail } from '@/lib/report/scroll-to-section'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import { trackEvent } from '@/lib/analytics/events'
 import { IMPACT_TAG_ORDER, RUBRIC_ORDER, SEVERITY_ORDER, type RubricName } from '@/lib/audit/constants'
-import { cn, rubricLabel } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { usePreviewEvidence } from '@/components/report/preview-evidence-context'
 import type { ReportOwnerActionContext } from '@/components/report/FlagDetailPanel'
 
@@ -285,14 +281,6 @@ export function ReportExplorer({
     })
   }, [auditId, currentFlag, model.flags])
 
-  const pageScopedFlags = filterExplorerFlags(model.flags, {
-    rubricFilter: effectiveRubricFilter,
-    pageFilter: null,
-    severityFilter,
-    impactFilter,
-  })
-  const hasPages = pages.length > 1
-
   const showPrevious = useCallback(() => {
     if (flagCount <= 1) return
     const next = filteredFlags[(safeFlagIndex - 1 + flagCount) % flagCount]
@@ -339,31 +327,6 @@ export function ReportExplorer({
     [effectiveRubricFilter, filteredFlags, impactFilter, pageFilter, severityFilter, writeExplorerUrl]
   )
 
-  const applyFilters = useCallback((next: {
-    rubric?: RubricFilter
-    severity?: string | null
-    impact?: string | null
-    page?: string | null
-  }) => {
-    const rubric = next.rubric ?? effectiveRubricFilter
-    const severity = next.severity === undefined ? severityFilter : next.severity
-    const impact = next.impact === undefined ? impactFilter : next.impact
-    const page = next.page === undefined ? pageFilter : next.page
-    const visible = filterExplorerFlags(model.flags, {
-      rubricFilter: rubric,
-      pageFilter: page,
-      severityFilter: severity,
-      impactFilter: impact,
-    })
-    const flag = visible[0]?.id ?? null
-    if (next.rubric !== undefined) setRubricFilter(next.rubric)
-    if (next.severity !== undefined) setSeverityFilter(next.severity)
-    if (next.impact !== undefined) setImpactFilter(next.impact)
-    if (next.page !== undefined) setPageFilter(next.page)
-    setSelectedFlagId(flag)
-    writeExplorerUrl({ flag, rubric, severity, impact, page })
-  }, [effectiveRubricFilter, impactFilter, model.flags, pageFilter, severityFilter, writeExplorerUrl])
-
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const root = rootRef.current
@@ -398,79 +361,12 @@ export function ReportExplorer({
     [filteredFlags]
   )
 
-  /**
-   * Every filter stays reachable at every pane width. The pane is narrower
-   * than the viewport, so hiding filters on "desktop" hid them exactly where
-   * the list is hardest to scan.
-   */
-  const filterBar = (
-    <div className="flex shrink-0 flex-col gap-2 border-b border-border/30 pb-3">
-      <div className="flex min-w-0 items-center justify-between gap-3">
-        <div><h2 className="text-sm font-semibold text-foreground">Your priorities</h2><p className="text-xs text-muted-foreground">Ranked by customer impact</p></div>
-        <details className="relative">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-control px-3 text-xs font-medium text-muted-foreground hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring [&::-webkit-details-marker]:hidden">Filter issues</summary>
-          <div className="absolute right-0 z-20 mt-1 flex w-64 flex-wrap gap-1.5 rounded-card border border-border bg-card p-3 shadow-card">
-          <FilterPill
-            size="sm"
-            active={effectiveRubricFilter === 'ALL'}
-            onClick={() => applyFilters({ rubric: 'ALL' })}
-            className="min-h-11 min-w-11 justify-center"
-          >
-            All
-          </FilterPill>
-        {RUBRIC_ORDER.map((rubric) => {
-          const count = rubricCounts[rubric]
-          if (count === 0) return null
-          const Icon = rubricIcon(rubric)
-          return (
-            <FilterPill
-              key={rubric}
-              size="sm"
-              icon={Icon}
-              active={effectiveRubricFilter === rubric}
-              onClick={() => applyFilters({ rubric })}
-              className="min-h-11 rounded-[var(--radius-control)] px-3 text-xs"
-            >
-              {rubricLabel(rubric)}
-              <span className="ml-1.5 font-mono text-2xs tabular-nums opacity-70">{count}</span>
-            </FilterPill>
-          )
-        })}
-          </div>
-        </details>
-      </div>
-      {hasPages ? (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <FilterPill
-            size="sm"
-            icon={Globe}
-            active={pageFilter === null}
-            onClick={() => applyFilters({ page: null })}
-          >
-            {REPORT_COPY.explorer.allPages} ({pageScopedFlags.length})
-          </FilterPill>
-          {pages.map((page) => {
-            const count = pageScopedFlags.filter((f) => (f.pageUrls ?? []).includes(page.url)).length
-            if (count === 0) return null
-            const label = pageFilterLabel(page.url, page.role)
-            return (
-              <FilterPill
-                size="sm"
-                key={page.url}
-                active={pageFilter === page.url}
-                onClick={() => applyFilters({ page: pageFilter === page.url ? null : page.url })}
-              >
-                {label} ({count})
-              </FilterPill>
-            )
-          })}
-        </div>
-      ) : null}
-    </div>
-  )
-
   const listPane = (
     <div className="min-w-0 list-none @[40rem]/pane:min-h-0 @[40rem]/pane:overflow-y-auto @[40rem]/pane:pr-2 scrollbar-thin [&_ul]:list-none [&_li]:list-none">
+      <div className="mb-3 border-b border-border/30 pb-3">
+        <h2 className="text-sm font-semibold text-foreground">Your priorities</h2>
+        <p className="text-xs text-muted-foreground">Ranked by customer impact</p>
+      </div>
       {flagCount === 0 ? (
         <p className="text-sm text-muted-foreground">
           {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noMatchFilter}
@@ -520,7 +416,6 @@ export function ReportExplorer({
       aria-label={`Fix list with ${model.flags.length} flags`}
       className={cn('flex h-full min-h-0 min-w-0 flex-col gap-3.5', className)}
     >
-      {filterBar}
       <div className="grid min-h-0 flex-1 gap-5 @[40rem]/pane:grid-cols-[minmax(13rem,32%)_minmax(0,1fr)]">
         {listPane}
         <div

@@ -142,13 +142,11 @@ export function ProductWorkspace({
             <div className="divide-y divide-border/60">
               {workspace.history.events.map((event) => {
                 if (event.kind === 'review') {
-                  const reportView =
-                    event.review.status === 'COMPLETED' ? 'report' : 'timeline'
                   return (
                     <Link
                       key={event.id}
                       href={
-                        `/report/${event.review.id}?view=${reportView}` as Route
+                        `/report/${event.review.id}?view=report` as Route
                       }
                       className="flex min-h-14 items-center justify-between gap-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                     >

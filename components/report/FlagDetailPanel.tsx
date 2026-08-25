@@ -157,7 +157,6 @@ export function FlagDetailPanel({
   signUpHref,
   previewMeta,
   ownerActionContext,
-  hidePromptCopy = false,
 }: {
   flag: ExplorerFlag
   showFeedback?: boolean
@@ -166,18 +165,18 @@ export function FlagDetailPanel({
   signUpHref?: string
   previewMeta?: PreviewMeta | null
   ownerActionContext?: ReportOwnerActionContext
-  hidePromptCopy?: boolean
 }) {
   const showShareablePreview = isShareableCheck(flag.checkId) && previewMeta
+  const consequence = flag.whyItMatters.trim()
 
   return (
     <div key={flag.id} className="space-y-3 animate-soft-reveal" aria-live="polite">
       {flag.evidence ? (
         <div className="rounded-[var(--radius-inner)] border border-border/40 bg-muted/15 px-4 py-3">
-          <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">
-            {flag.truthLabel}
+          <p className="text-2xs font-medium uppercase tracking-label text-muted-foreground">What this means</p>
+          <p className="mt-1 text-sm leading-relaxed text-foreground text-pretty">
+            {flag.evidence}{consequence && consequence !== flag.evidence ? ` ${consequence}` : ''}
           </p>
-          <p className="mt-1 text-sm leading-relaxed text-foreground text-pretty">{flag.evidence}</p>
         </div>
       ) : null}
 
@@ -204,15 +203,15 @@ export function FlagDetailPanel({
           ) : aiEnhancementPending && !flag.fixPrompt ? (
             <p className="text-sm text-muted-foreground">Generating enhanced fix prompt.</p>
           ) : flag.hasFixPrompt ? (
-            <>
-              <details className="group rounded-[var(--radius-inner)] border border-border/45 bg-muted/15">
-                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring [&::-webkit-details-marker]:hidden">Preview prompt<ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden /></summary>
+            <div className="flex min-h-11 overflow-hidden rounded-[var(--radius-inner)] border border-border/45 bg-muted/15">
+              <details className="group min-w-0 flex-1">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring [&::-webkit-details-marker]:hidden">Preview prompt<ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden /></summary>
                 <div className="border-t border-border/40 p-3">
                   <FixPromptBlock prompt={flag.fixPrompt} copyPrompt={flag.copyFixPrompt || undefined} nested render="markdown" hideActions />
                 </div>
               </details>
-              {!hidePromptCopy ? <PromptCopyButton prompt={flag.copyFixPrompt || flag.fixPrompt} auditId={ownerActionContext?.auditId} flagId={flag.id} surface={ownerActionContext?.surface} accessState={ownerActionContext?.accessState} className="w-full border-brand bg-brand text-brand-foreground hover:bg-brand-hover" /> : null}
-            </>
+              <PromptCopyButton prompt={flag.copyFixPrompt || flag.fixPrompt} auditId={ownerActionContext?.auditId} flagId={flag.id} surface={ownerActionContext?.surface} accessState={ownerActionContext?.accessState} compact className="shrink-0 rounded-none border-0 border-l border-border/45 bg-transparent px-3 shadow-none hover:bg-muted/50" />
+            </div>
           ) : flag.copyFixPrompt ? (
             <PromptCopyButton prompt={flag.copyFixPrompt} compact />
           ) : null}

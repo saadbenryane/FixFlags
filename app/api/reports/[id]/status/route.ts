@@ -16,7 +16,6 @@ import { parseProductContract } from '@/lib/audit/product-contract'
 import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
 import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
 import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
-import { parseActionTimeline } from '@/lib/audit/action-timeline'
 
 const NON_TERMINAL = new Set(['QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING'])
 
@@ -109,7 +108,7 @@ export async function GET(
 
     const { flags: partialFlags, performanceData, productContract, ...rest } = audit
     const canUsePrivateReportData = access === 'owner'
-    const actionTimeline = canUsePrivateReportData ? parseActionTimeline(performanceData) : []
+    void performanceData
     const contract = canUsePrivateReportData ? parseProductContract(productContract) : null
     const technologyProfile = isTerminal
       ? await loadTechnologyProfile(id, {
@@ -154,7 +153,6 @@ export async function GET(
         shareStatus,
         partialFlags: showPartialFlags ? partialFlags : undefined,
         agentMessages,
-        actionTimeline,
         productContract: contract,
         technologyProfile,
       },

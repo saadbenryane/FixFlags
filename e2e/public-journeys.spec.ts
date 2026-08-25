@@ -147,7 +147,7 @@ test('curated sample demonstrates exactly one fix prompt', async ({ page }) => {
 })
 
 for (const { width, tablistName } of [
-  { width: 375, tablistName: 'Review workspace' },
+  { width: 375, tablistName: 'Review panels' },
 ]) {
   test(`canonical sample tabs support keyboard navigation at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })

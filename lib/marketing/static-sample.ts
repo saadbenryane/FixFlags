@@ -67,8 +67,8 @@ const ORIGINAL_FLAGS: readonly RankableFlag[] = [
     severity: 'CRITICAL',
     impactTag: 'CONVERSION',
     problem: 'Primary CTA is hidden below the fold on mobile',
-    evidence: 'At 375×812, the primary CTA is below the first viewport and requires scrolling.',
-    whyItMatters: 'Mobile visitors cannot see the main next step when the page first opens.',
+    evidence: 'On mobile (375×812), the primary CTA starts below the first screen and requires scrolling.',
+    whyItMatters: 'People can miss the main next step, which can reduce conversions.',
     fix: 'Reduce the mobile hero height and place the primary CTA in the first viewport.',
     agentPrompt: 'At 375px, reduce the hero media height and keep the primary CTA visible within the first 812px.',
     verificationRule: 'At 375×812, the primary CTA is visible without scrolling.',
@@ -160,16 +160,21 @@ const ORIGINAL_FLAGS: readonly RankableFlag[] = [
   },
 ]
 
+const FIRST_REVIEW_FLAGS: readonly RankableFlag[] = ORIGINAL_FLAGS.map((flag) => ({
+  ...flag,
+  severity: flag.severity === 'POLISH' ? 'IMPORTANT' : 'CRITICAL',
+}))
+
 const STATIC_OBSERVATIONS: readonly StaticObservationDefinition[] = [
   {
     id: 'curated-sample-v0',
-    revision: 'demo-v1-fixed',
-    sourcePath: '/demo/v1',
+    revision: 'demo-original-baseline',
+    sourcePath: '/demo',
     completedAt: '2026-06-09T14:30:00Z',
     parentId: null,
     kind: 'product-review',
-    verdict: 'The fixed demo has no curated Flags in this Review.',
-    flags: [],
+    verdict: 'The first review established the baseline and ranked the most urgent customer blockers.',
+    flags: FIRST_REVIEW_FLAGS,
   },
   {
     id: LATEST_STATIC_SAMPLE_OBSERVATION_ID,
@@ -178,7 +183,7 @@ const STATIC_OBSERVATIONS: readonly StaticObservationDefinition[] = [
     completedAt: '2026-06-10T14:30:00Z',
     parentId: 'curated-sample-v0',
     kind: 'update-review',
-    verdict: 'A deliberate demo rollback exposes mobile conversion, message, and discovery regressions.',
+    verdict: 'The update review shows progress while keeping the remaining conversion, message, and discovery issues visible.',
     flags: ORIGINAL_FLAGS,
   },
 ]

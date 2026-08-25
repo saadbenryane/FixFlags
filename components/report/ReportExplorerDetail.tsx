@@ -3,7 +3,6 @@
 import type { RefObject } from 'react'
 import { type LucideIcon } from 'lucide-react'
 import { ScreenshotWithHighlights } from '@/components/audit/ScreenshotWithHighlights'
-import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import {
   FlagDetailPanel,
   FlagMetaPills,
@@ -102,7 +101,6 @@ export function FlagDetailPane({
         <div className="mt-1.5">
           <FlagMetaPills flag={flag} />
         </div>
-        {!aiLocked && (flag.copyFixPrompt || flag.fixPrompt) ? <PromptCopyButton prompt={flag.copyFixPrompt || flag.fixPrompt} auditId={ownerActionContext?.auditId} flagId={flag.id} surface={ownerActionContext?.surface} accessState={ownerActionContext?.accessState} className="mt-3 w-full border-brand bg-brand text-brand-foreground hover:bg-brand-hover" /> : null}
       </header>
 
       <div className="flex flex-col gap-5">
@@ -128,7 +126,6 @@ export function FlagDetailPane({
           signUpHref={signUpHref}
           previewMeta={model.previewMeta}
           ownerActionContext={ownerActionContext}
-          hidePromptCopy
         />
       </div>
     </div>
