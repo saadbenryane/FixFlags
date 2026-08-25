@@ -100,18 +100,18 @@ export default function HowItWorksPage() {
           <div className="grid gap-3 md:grid-cols-2">
             <Card variant="strong" className="p-5 sm:p-6">
               <Heading as="h3">
-                {reviewTypes.productReview.title}
+                {reviewTypes.completeReview.title}
               </Heading>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {reviewTypes.productReview.body}
+                {reviewTypes.completeReview.body}
               </p>
             </Card>
             <Card variant="strong" className="p-5 sm:p-6">
               <Heading as="h3">
-                {reviewTypes.deepReview.title}
+                {reviewTypes.verification.title}
               </Heading>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {reviewTypes.deepReview.body}
+                {reviewTypes.verification.body}
               </p>
             </Card>
           </div>

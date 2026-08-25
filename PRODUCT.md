@@ -17,7 +17,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. A
 **Canonical sources:**
 - Product vision and strategy: `knowledge/product.md`, `knowledge/strategy.md`
 - Target product requirements and shipped-vs-target gaps: `docs/product-prd.md` § shipped vs target
-- Three products: `knowledge/product-system.md`
+- Product Review and supporting surfaces: `knowledge/product-system.md`
 - Pricing tiers and philosophy: `knowledge/strategy.md` → Pricing
 - Core loop (philosophy): `knowledge/vision.md` → Core loop
 - Rubrics (philosophy): `knowledge/product.md` → Report Hierarchy
@@ -45,11 +45,11 @@ Their thought: "It works for me. What did I miss?"
 
 They arrive through Product Hunt, social media, search, builder communities or a shared FixFlags result.
 
-### One-time buyer: The builder approaching a launch, handoff or campaign
+### Upgrade buyer: The builder approaching a launch, handoff or campaign
 
 They are about to launch on Product Hunt, share publicly, start outreach, spend on acquisition, deliver work to a client, or invite the first real users.
 
-They buy paid Deep Reviews for stronger journey coverage.
+They upgrade when the first review-fix-verify cycle proves useful and they need more Product Reviews for the launch or the releases that follow.
 
 ### Primary recurring buyer: The freelancer or small agency shipping repeatedly
 
@@ -143,14 +143,13 @@ Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
 
 ### Subscription plans (shipped)
 
-| Plan | Price | Product reviews | Deep reviews |
-|------|-------|-----------------|--------------|
-| **Free** | $0 | 3/month | 1/month |
-| **Pro** (`BUILDER`) | $29/mo | 15/month | 3/month |
-| **Studio** (`TEAM`) | $79/mo | 50/month | 10/month |
+| Plan | Price | Product reviews |
+|------|-------|-----------------|
+| **Free** | $0 | 3/month |
+| **Pro** (`BUILDER`) | $29/mo | 15/month |
+| **Studio** (`TEAM`) | $79/mo | 50/month |
 
 New URLs, update reviews, and completed scheduled Watch reviews use the same monthly product review allowance.
-Deep reviews use a separate monthly allowance.
 Unused allowance does not roll over.
 Internal route `/re-check` remains for API compatibility.
 
@@ -170,7 +169,6 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 
 ### Free (forever)
 - 3 product reviews per month (a claimed anonymous teaser counts once)
-- 1 deep review per month
 - Interactive report Agent with 25,000 input-plus-output tokens per calendar month
 - Saved review history and authenticated Timeline playback
 - CTA flow test (automated click-through with before/after screenshots)
@@ -179,12 +177,12 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 - Update comparisons, sharing, Canvas, Product Signals, and scheduled Watch
 
 ### Pro ($29/mo) — `BUILDER` in schema
-- 15 product reviews and 3 deep reviews per month
+- 15 product reviews per month
 - 500,000 Agent chat tokens per calendar month
 - The same complete web product as Free
 
 ### Studio ($79/mo) — `TEAM` in schema
-- 50 product reviews and 10 deep reviews per month
+- 50 product reviews per month
 - 2,000,000 Agent chat tokens per calendar month across Studio projects
 - The same complete web product as Free and Pro
 
@@ -194,6 +192,7 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 - Their public UI, documentation, discovery metadata, authorization routes, and dedicated API adapters return 404 while parked.
 - The underlying libraries, worker support, persistence models, and packaged CLI source remain in the repository so the power-user layer can be rebuilt after the URL-to-report wedge converts consistently.
 - GitHub authentication remains available for account sign-in and is separate from parked GitHub repository access.
+- Deep Review is reserved for the future repository-connected analysis offer and is not part of current plans, quotas, or checkout promises.
 
 ## Rubrics
 
@@ -274,7 +273,7 @@ Do not launch broadly until:
 - An update review can produce a real before-and-after result and strict verification receipt
 - The report is visually shareable
 - Privacy and scope are obvious
-- Paid Deep Reviews can be purchased without a sales call
+- Paid Product Review capacity can be requested from the waitlist without a sales call
 - At least ten people have already paid
 
 Five concrete checks from report evidence. Fix before shipping:
@@ -287,7 +286,7 @@ Five concrete checks from report evidence. Fix before shipping:
 
 ## Support
 
-- **Help Center** at `/help` — billing, account, privacy, failed reviews, plan questions, and human support. Product Review, report, deep review, and update-review guides live under `/docs`.
+- **Help Center** at `/help` — billing, account, privacy, failed reviews, plan questions, and human support. Product Review, report, and update-review guides live under `/docs`.
 - **Live chat** on all non-admin pages — first-party widget; team replies in `/admin/feedback`. Typical reply within a few hours.
 - **FAQ** at `/faq` — short Q&A; links into Help for deeper guides.
 - **Email** `hello@fixflags.com` — privacy, terms, high-volume pricing. Not a ticket system.
@@ -297,8 +296,8 @@ Five concrete checks from report evidence. Fix before shipping:
 
 - Which monthly review threshold most reliably converts Free users to Pro?
 - What update-review cadence builds the strongest Product Review → Fix → Verify → Watch habit?
-- Does current Deep Review pricing optimize for conversion against alternate price points?
-- Will 20% of paid Deep Review customers activate Watch for ongoing monitoring?
+- Does current Product Review pricing optimize for conversion against alternate price points?
+- Will 20% of paid Product Review customers activate Watch for ongoing review?
 
 ## Constraints
 

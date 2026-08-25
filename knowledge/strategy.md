@@ -4,11 +4,11 @@
 
 ## Pricing
 
-| Tier | Plan enum | Price | Product reviews | Deep reviews |
-|------|-----------|-------|-----------------|--------------|
-| Free | `FREE` | $0 | 3/month | 1/month |
-| Pro | `BUILDER` | $29/month | 15/month | 3/month |
-| Studio | `TEAM` | $79/month | 50/month | 10/month |
+| Tier | Plan enum | Price | Product reviews |
+|------|-----------|-------|-----------------|
+| Free | `FREE` | $0 | 3/month |
+| Pro | `BUILDER` | $29/month | 15/month |
+| Studio | `TEAM` | $79/month | 50/month |
 
 Display name **Studio** maps to the existing `TEAM` enum.
 Enforcement lives in `lib/billing/plans.ts` and `lib/audit/usage.ts`.
@@ -19,7 +19,6 @@ Every plan includes the same complete web product: reports, evidence, fix prompt
 Plans differ by monthly usage, not access to the core loop.
 
 New URLs, update reviews, and completed scheduled Watch reviews consume the same product review allowance.
-Deep reviews use a separate monthly allowance because they have a different execution cost.
 Unused monthly allowance does not roll over.
 Existing purchased overflow credits remain compatible but are not promoted.
 
@@ -42,7 +41,7 @@ An upgrade buys more capacity, never a more complete report or a more trustworth
 ## Unit economics
 
 - Deterministic checks run before expensive AI work.
-- Review and deep-review admission are bounded by explicit monthly allowances.
+- Product Review admission is bounded by an explicit monthly allowance.
 - Scheduled Watch pauses when no product review allowance remains.
 - Gross-margin reporting must include browser, model, storage, queue, and support costs.
 - Target gross margin remains above 80% across paid usage.

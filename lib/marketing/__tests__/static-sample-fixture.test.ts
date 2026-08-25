@@ -47,11 +47,7 @@ describe('static sample vs original fixture', () => {
 
       assert.equal(audit.id, id)
       assert.equal(audit.reportCompleteness, 'FULL')
-      if (id === LATEST_STATIC_SAMPLE_OBSERVATION_ID) {
-        assert.ok(audit.flags.length >= 7)
-      } else {
-        assert.equal(audit.flags.length, 0)
-      }
+      assert.ok(audit.flags.length >= 7)
       assert.equal(audit.rubricRows.length, 3)
       assert.equal(audit.screenshots.length, 2)
       assert.ok((audit.actionTimeline?.length ?? 0) >= 3)
@@ -64,6 +60,9 @@ describe('static sample vs original fixture', () => {
     }
 
     const changed = getStaticSampleAudit('curated-sample-v0')
+    const originalAnchors = structuredClone(
+      (changed.performanceData as { evidenceAnchors?: Record<string, unknown> }).evidenceAnchors
+    )
     changed.flags.splice(0)
     changed.actionTimeline?.splice(0)
     ;(changed.performanceData as { evidenceAnchors?: Record<string, unknown> }).evidenceAnchors = {
@@ -71,11 +70,11 @@ describe('static sample vs original fixture', () => {
     }
 
     const reloaded = getStaticSampleAudit('curated-sample-v0')
-    assert.equal(reloaded.flags.length, 0)
+    assert.ok(reloaded.flags.length >= 7)
     assert.ok((reloaded.actionTimeline?.length ?? 0) >= 3)
     assert.deepEqual(
       (reloaded.performanceData as { evidenceAnchors?: Record<string, unknown> }).evidenceAnchors,
-      {}
+      originalAnchors
     )
   })
 
@@ -84,11 +83,12 @@ describe('static sample vs original fixture', () => {
       'curated-sample-v0',
       'curated-sample-v1',
     ])
-    const [fixed, regression] = getStaticSampleObservationIds().map((id) =>
+    const [firstReview, updateReview] = getStaticSampleObservationIds().map((id) =>
       getStaticSampleAudit(id)
     )
-    assert.notEqual(fixed?.screenshots[0]?.url, regression?.screenshots[0]?.url)
-    assert.notEqual(fixed?.screenshots[1]?.url, regression?.screenshots[1]?.url)
+    assert.notEqual(firstReview?.screenshots[0]?.url, updateReview?.screenshots[0]?.url)
+    assert.notEqual(firstReview?.screenshots[1]?.url, updateReview?.screenshots[1]?.url)
+    assert.ok((firstReview?.score ?? 100) < (updateReview?.score ?? 0))
   })
 
   it('binds every capture to real WebP bytes, dimensions, and a SHA-256', async () => {

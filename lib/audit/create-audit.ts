@@ -10,7 +10,6 @@ import {
 } from '@/lib/auth/permissions'
 import { resolveIncludeAiForNewAudit } from '@/lib/audit/ai-report-entitlement'
 import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
-import { wouldBlockDeepReview } from '@/lib/billing/deep-review-limit'
 import { wouldBlockNewCheckWithCredits } from '@/lib/billing/credits'
 import { assertPublicAuditUrl } from '@/lib/audit/url'
 import type { AuditAttribution } from '@/lib/leads/attribution'
@@ -310,21 +309,8 @@ export async function createAndEnqueueAudit(
               }
             }
 
-            const pendingDeepReviews = await tx.audit.count({
-              where: {
-                userId: user.id,
-                journeyReviewIncluded: true,
-                deepReviewUsageCountedAt: null,
-                status: { not: 'FAILED' },
-              },
-            })
-            const journeyReviewIncluded = !wouldBlockDeepReview({
-              ...user,
-              deepReviewsUsed: user.deepReviewsUsed + pendingDeepReviews,
-            })
-
             const created = await tx.audit.create({
-              data: { ...data, journeyReviewIncluded },
+              data: { ...data, journeyReviewIncluded: true },
               select: { id: true, parentId: true },
             })
             return {

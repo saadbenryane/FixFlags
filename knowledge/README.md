@@ -64,7 +64,7 @@ Each layer has a distinct home. Information belongs to the layer that matches it
 | Market | What is the market context? | `knowledge/market.md` |
 | Product Vision | What system are we building and why? | `knowledge/vision.md` |
 | Product Mechanics | How do the Contract, Flag, truth, and moat work? | `knowledge/product.md` |
-| Product System | What are the three products and how do they work? | `knowledge/product-system.md` |
+| Product System | How do Product Review, Update Review, Watch, and future Deep Review relate? | `knowledge/product-system.md` |
 | User Journey | Who are the personas and how do they convert? | `knowledge/user-journey.md` |
 | Pricing & Revenue | How do we make money? | `knowledge/strategy.md` |
 | Growth | How do we acquire and retain customers? | `knowledge/growth.md` |
@@ -76,7 +76,7 @@ Each layer has a distinct home. Information belongs to the layer that matches it
 - knowledge/market.md contains market context, competitors, segments, risks, distribution.
 - knowledge/vision.md contains the north-star narrative and system layers.
 - knowledge/product.md contains the moat, Product Contract, Flag system, truth system, and repair specification.
-- knowledge/product-system.md contains Product Review, Deep Review, Watch, activation, paywall, and priority tiers.
+- knowledge/product-system.md contains Product Review, Update Review, Watch, future Deep Review, activation, paywall, and priority tiers.
 - knowledge/user-journey.md contains personas, core user journey, conversion architecture, and required copy changes.
 - knowledge/strategy.md contains pricing philosophy, tier structure, revenue model, unit economics.
 - knowledge/growth.md contains growth engine, distribution strategy, defensibility, and metrics.
@@ -89,7 +89,7 @@ Each layer has a distinct home. Information belongs to the layer that matches it
 - Competitor analysis: only in knowledge/market.md
 - Product vision: only in knowledge/vision.md
 - Product mechanics: only in knowledge/product.md
-- Three products: only in knowledge/product-system.md
+- Product surfaces and their boundaries: only in knowledge/product-system.md
 - User personas and journey: only in knowledge/user-journey.md
 - Growth strategy: only in knowledge/growth.md
 - Execution milestones: only in knowledge/execution.md
@@ -162,7 +162,7 @@ When you need information about a topic, go to the canonical source:
 | Product Contract | `knowledge/product.md` |
 | Flag system | `knowledge/product.md` |
 | Truth system | `knowledge/product.md` |
-| Three products | `knowledge/product-system.md` |
+| Product surfaces | `knowledge/product-system.md` |
 | Product Review, Deep Review, Watch | `knowledge/product-system.md` |
 | Activation and paywall | `knowledge/product-system.md` |
 | User personas | `knowledge/user-journey.md` |

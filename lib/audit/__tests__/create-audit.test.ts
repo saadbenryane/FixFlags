@@ -34,7 +34,6 @@ const checkAnonymousAuditAllowed = vi.hoisted(() => vi.fn())
 const enforceAnonymousIpSoftCeiling = vi.hoisted(() => vi.fn())
 const trackAnonymousAuditId = vi.hoisted(() => vi.fn())
 const resolveIncludeAiForNewAudit = vi.hoisted(() => vi.fn())
-const wouldBlockDeepReview = vi.hoisted(() => vi.fn())
 const wouldBlockNewCheckWithCredits = vi.hoisted(() => vi.fn())
 const assertPublicAuditUrl = vi.hoisted(() => vi.fn())
 const ensureProductProject = vi.hoisted(() => vi.fn())
@@ -51,7 +50,6 @@ vi.mock('@/lib/audit/usage', () => ({
 vi.mock('@/lib/audit/ai-report-entitlement', () => ({
   resolveIncludeAiForNewAudit,
 }))
-vi.mock('@/lib/billing/deep-review-limit', () => ({ wouldBlockDeepReview }))
 vi.mock('@/lib/billing/credits', () => ({ wouldBlockNewCheckWithCredits }))
 vi.mock('@/lib/audit/url', () => ({ assertPublicAuditUrl }))
 vi.mock('@/lib/audit/ensure-product-project', () => ({ ensureProductProject }))
@@ -111,7 +109,6 @@ describe('createAndEnqueueAudit', () => {
     queueAdd.mockResolvedValue({ id: 'job-1' })
     checkAnonymousAuditAllowed.mockResolvedValue({ allowed: true })
     resolveIncludeAiForNewAudit.mockResolvedValue(false)
-    wouldBlockDeepReview.mockResolvedValue(true)
     wouldBlockNewCheckWithCredits.mockResolvedValue({ allowed: true })
     ensureProductProject.mockResolvedValue({ id: 'project-1', productIntelligence: null })
     assertPublicAuditUrl.mockResolvedValue(new URL(AUDIT_URL))
@@ -204,7 +201,7 @@ describe('createAndEnqueueAudit', () => {
           skipUsageCount: false,
           status: 'QUEUED',
           includeAi: true,
-          journeyReviewIncluded: false,
+          journeyReviewIncluded: true,
           watchNotificationStatus: 'NOT_APPLICABLE',
           progress: PIPELINE_PROGRESS.QUEUED,
           scanAccessEncrypted: null,
@@ -245,50 +242,17 @@ describe('createAndEnqueueAudit', () => {
     expect(queueAdd).not.toHaveBeenCalled()
   })
 
-  it('drops journey review for a user whose deep-review quota is exhausted', async () => {
+  it('includes path review even when legacy deep-review counters are exhausted', async () => {
     prismaMock.user.findUnique.mockResolvedValue(
       signedInUser({ plan: 'BUILDER', deepReviewsUsed: 3, deepReviewsLimit: 3 })
     )
     rollUserUsagePeriod.mockResolvedValue(
       signedInUser({ plan: 'BUILDER', deepReviewsUsed: 3, deepReviewsLimit: 3 })
     )
-    wouldBlockDeepReview.mockResolvedValue(true)
-
     await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
 
-    expect(wouldBlockDeepReview).toHaveBeenCalledWith(
-      expect.objectContaining({ deepReviewsUsed: 3, deepReviewsLimit: 3 })
-    )
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ journeyReviewIncluded: false }),
-      select: { id: true, parentId: true },
-    })
-  })
-
-  it('reserves deep-review capacity for already-pending Reviews', async () => {
-    rollUserUsagePeriod.mockResolvedValue(
-      signedInUser({ plan: 'BUILDER', deepReviewsUsed: 1, deepReviewsLimit: 3 })
-    )
-    prismaMock.audit.count
-      .mockResolvedValueOnce(0)
-      .mockResolvedValueOnce(2)
-    wouldBlockDeepReview.mockImplementation(
-      (user: { deepReviewsUsed: number; deepReviewsLimit: number }) =>
-        user.deepReviewsUsed >= user.deepReviewsLimit
-    )
-
-    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
-
-    expect(prismaMock.audit.count).toHaveBeenCalledWith({
-      where: {
-        userId: 'user-1',
-        journeyReviewIncluded: true,
-        deepReviewUsageCountedAt: null,
-        status: { not: 'FAILED' },
-      },
-    })
-    expect(prismaMock.audit.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ journeyReviewIncluded: false }),
+      data: expect.objectContaining({ journeyReviewIncluded: true }),
       select: { id: true, parentId: true },
     })
   })

@@ -13,8 +13,6 @@ export const CUSTOMER_TERMS = {
   productReviews: 'product reviews',
   updateReview: 'Update review',
   updateReviews: 'Update reviews',
-  deepReview: 'deep review',
-  deepReviews: 'deep reviews',
   funnel: 'Funnel',
   path: 'path',
   flag: 'Flag',
@@ -24,15 +22,12 @@ export const CUSTOMER_TERMS = {
 /** Shared pricing numbers for marketing, help, and FAQ. Must match `lib/billing/plans.ts` enforcement. */
 export const PRICING_COPY = {
   freeProductReviewsPerMonth: 3,
-  freeDeepReviewsPerMonth: 1,
   proPrice: '$29',
   proPeriod: '/mo',
   proProductReviewsPerMonth: 15,
-  proDeepReviewsPerMonth: 3,
   studioPrice: '$79',
   studioPeriod: '/mo',
   studioProductReviewsPerMonth: 50,
-  studioDeepReviewsPerMonth: 10,
 } as const
 
 export const CORE_LOOP_LABEL = 'Product Review → Fix → Verify → Watch'

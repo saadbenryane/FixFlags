@@ -15,37 +15,29 @@ function extractPricingCopy(key) {
   return match ? Number(match[1]) : null
 }
 
-function extractPlanLimit(plan, field) {
-  const block = planDefinitions.match(new RegExp(`${plan}:\\s*\\{[\\s\\S]*?auditLimit:\\s*(\\d+)[\\s\\S]*?deepReviewLimit:\\s*(\\d+)`))
+function extractPlanLimit(plan) {
+  const block = planDefinitions.match(new RegExp(`${plan}:\\s*\\{[\\s\\S]*?auditLimit:\\s*(\\d+)`))
   if (!block) return null
-  if (field === 'audit') return Number(block[1])
-  return Number(block[2])
+  return Number(block[1])
 }
 
 const expected = {
   FREE: {
     audit: extractPricingCopy('freeProductReviewsPerMonth'),
-    deep: extractPricingCopy('freeDeepReviewsPerMonth'),
   },
   BUILDER: {
     audit: extractPricingCopy('proProductReviewsPerMonth'),
-    deep: extractPricingCopy('proDeepReviewsPerMonth'),
   },
   TEAM: {
     audit: extractPricingCopy('studioProductReviewsPerMonth'),
-    deep: extractPricingCopy('studioDeepReviewsPerMonth'),
   },
 }
 
 const errors = []
 for (const plan of ['FREE', 'BUILDER', 'TEAM']) {
-  const audit = extractPlanLimit(plan, 'audit')
-  const deep = extractPlanLimit(plan, 'deep')
+  const audit = extractPlanLimit(plan)
   if (audit !== expected[plan].audit) {
     errors.push(`${plan} auditLimit ${audit} !== PRICING_COPY ${expected[plan].audit}`)
-  }
-  if (deep !== expected[plan].deep) {
-    errors.push(`${plan} deepReviewLimit ${deep} !== PRICING_COPY ${expected[plan].deep}`)
   }
 }
 

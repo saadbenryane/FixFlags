@@ -386,7 +386,7 @@ export function formatDisplayEvidence(checkId: string | null | undefined, eviden
   const raw = evidence.trim()
   if (!checkId || isCodeOrHeadCheck(checkId)) return raw
   if (!VISUAL_EVIDENCE_CHECKS.has(checkId)) return raw
-  if (/screenshot|viewport|visible|above the fold|below the fold/i.test(raw)) return raw
+  if (/screenshot|viewport|visible|above the fold|below the fold|first screen|on mobile/i.test(raw)) return raw
   return formatVisualEvidence(checkId, raw)
 }
 

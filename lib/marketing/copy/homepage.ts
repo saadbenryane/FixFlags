@@ -250,21 +250,21 @@ export const HOW_IT_WORKS_PAGE = {
     ],
   },
   reviewTypes: {
-    label: "Two ways to review",
-    title: "Product review vs deep review",
-    body: "A product review is a fast programmatic pass with screenshot evidence across Message, Experience, and Reach. A deep review sends an agent-class browser through key paths, maps the Funnel, and records playback you can scrub.",
-    productReview: {
-      title: "Product review",
-      body: "Playwright-driven capture aligned to checks. Ranked Flags, fix prompts, and evidence you can inspect. Uses your product review credits.",
+    label: "One complete review",
+    title: "No depth tier. No second review product.",
+    body: "Every Product Review checks the live URL across Message, Experience, and Reach, then gives you one ranked Fix List with evidence and fix prompts.",
+    completeReview: {
+      title: "What every review includes",
+      body: "Live desktop and mobile capture, key-page checks, ranked Flags, evidence, and fix prompts you can paste into your builder.",
     },
-    deepReview: {
-      title: "Deep review",
-      body: "Agent-level browser exploration: multi-step paths, Funnel traversal, and playback with a timeline synced to evidence. Like a power user session you can replay, not a score dump.",
+    verification: {
+      title: "How you verify the fix",
+      body: "Publish the change, then use another Product Review as an update review. FixFlags captures the live result again and shows what changed.",
     },
-    docsCta: "Read the deep review guide",
-    docsHref: "/docs/deep-review",
+    docsCta: "Read the Product Review guide",
+    docsHref: "/docs/reports",
     analogyLine:
-      "Power-user browsing with replay is the deep review difference. Lighthouse-style checks alone do not walk your signup funnel.",
+      "New URLs, update reviews, and completed Watch reviews all use the same Product Review allowance.",
   },
   loop: {
     label: "The operating loop",

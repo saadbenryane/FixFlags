@@ -8,7 +8,7 @@ This document preserves the operator voice principles from the design system spe
 
 **Product context:** FixFlags is Product QA for what you shipped. Run a product review, see the Flags, copy the fix prompts, and run an update review before users find the problems. Fix prompts paste straight into Cursor, Claude Code, Lovable, or Bolt. The voice should sound like a calm senior product reviewer who has shipped messy launches, not a consultant selling a methodology. The loop is Flag, Fix, Update review. The AI built it. FixFlags finishes it.
 
-**Canonical terms:** See [`lib/marketing/copy/terminology.ts`](../lib/marketing/copy/terminology.ts). Customer-facing: **product review**, **update review**, **deep review**, **funnel**, **path**. Do not use re-check, polish (as a product tier), or journey as a pricing meter.
+**Canonical terms:** See [`lib/marketing/copy/terminology.ts`](../lib/marketing/copy/terminology.ts). Customer-facing: **product review**, **update review**, **funnel**, and **path**. Do not use re-check, polish (as a product tier), or journey as a pricing meter. Deep Review is reserved for the future repository-connected analysis offer and must not appear as a current plan feature or URL-review tier.
 
 **What stays the same:** Clear before clever. Specific before impressive. Useful before polished (writing quality only, not product tier naming). No startup-bro language. No fake urgency. No em dashes. Ever.
 

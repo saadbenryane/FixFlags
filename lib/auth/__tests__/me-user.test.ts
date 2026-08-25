@@ -46,13 +46,7 @@ describe('serializeMeUser', () => {
       periodStart: '2026-08-01T00:00:00.000Z',
       periodEnd: '2026-09-01T00:00:00.000Z',
     })
-    expect(me.deepReviews).toEqual({
-      used: 1,
-      limit: 3,
-      remaining: 2,
-      periodStart: '2026-08-01T00:00:00.000Z',
-      periodEnd: '2026-09-01T00:00:00.000Z',
-    })
+    expect(me).not.toHaveProperty('deepReviews')
     expect(me.entitlements.canAccessPaidFeatures).toBe(true)
     expect(me.entitlements.canMonitor).toBe(true)
     expect(me.entitlements).not.toHaveProperty('canUseMcp')

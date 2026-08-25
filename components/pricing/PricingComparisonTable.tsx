@@ -1,12 +1,6 @@
 import { PLAN_DEFINITIONS } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 
-const DEEP_REVIEW_LABELS: Record<keyof typeof PLAN_DEFINITIONS, string> = {
-  FREE: `${PLAN_DEFINITIONS.FREE.deepReviewLimit} per month`,
-  BUILDER: `${PLAN_DEFINITIONS.BUILDER.deepReviewLimit} per month`,
-  TEAM: `${PLAN_DEFINITIONS.TEAM.deepReviewLimit} per month`,
-}
-
 const ROWS = [
   {
     feature: "Who it's for",
@@ -15,16 +9,16 @@ const ROWS = [
     studio: PLAN_DEFINITIONS.TEAM.persona,
   },
   {
-    feature: "Web product",
+    feature: "Product Review",
     free: "Complete",
     pro: "Complete",
     studio: "Complete",
   },
   {
-    feature: "Deep reviews",
-    free: DEEP_REVIEW_LABELS.FREE,
-    pro: DEEP_REVIEW_LABELS.BUILDER,
-    studio: DEEP_REVIEW_LABELS.TEAM,
+    feature: "Product reviews",
+    free: PLAN_DEFINITIONS.FREE.auditLimitLabel,
+    pro: PLAN_DEFINITIONS.BUILDER.auditLimitLabel,
+    studio: PLAN_DEFINITIONS.TEAM.auditLimitLabel,
   },
   {
     feature: "Update reviews",
@@ -39,10 +33,10 @@ const ROWS = [
     studio: "Included; uses review allowance",
   },
   {
-    feature: "Limits",
-    free: PLAN_DEFINITIONS.FREE.auditLimitLabel,
-    pro: PLAN_DEFINITIONS.BUILDER.auditLimitLabel,
-    studio: PLAN_DEFINITIONS.TEAM.auditLimitLabel,
+    feature: "Best fit",
+    free: "One product before launch",
+    pro: "Frequent releases",
+    studio: "Client and multi-product work",
   },
 ] as const;
 

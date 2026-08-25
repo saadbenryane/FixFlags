@@ -149,7 +149,7 @@ export const REPORT_COPY = {
       transportLabel: "Preview controls",
       liveCapture: "Live capture",
       capturing: "Capturing the page",
-      noSteps: "Path replay appears after a deep review",
+      noSteps: "Path replay appears when this Product Review captures a multi-step path",
     },
     panels: {
       chatTab: "Agent",
@@ -198,7 +198,7 @@ export const REPORT_COPY = {
       body: "Sign in to inspect the captured Timeline and replay the evidence behind this report.",
       action: "Sign in to view Timeline",
     },
-    journeyRunDeepReview: "Run deep review",
+    journeyRunDeepReview: "Review this path again",
     funnelReplayPath: "Replay path",
     funnelLabel: "Funnel",
   },

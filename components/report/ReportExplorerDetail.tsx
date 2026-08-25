@@ -104,6 +104,16 @@ export function FlagDetailPane({
       </header>
 
       <div className="flex flex-col gap-5">
+        <FlagDetailPanel
+          flag={flag}
+          showFeedback={showFeedback}
+          aiLocked={aiLocked && flag.id !== demonstratedFlagId}
+          aiEnhancementPending={aiEnhancementPending}
+          signUpHref={signUpHref}
+          previewMeta={model.previewMeta}
+          ownerActionContext={ownerActionContext}
+        />
+
         {!shareableFlag ? (
           <ScreenshotWithHighlights
             host={model.displayHost}
@@ -117,16 +127,6 @@ export function FlagDetailPane({
             affectedDevices={flag.affectedDevices}
           />
         ) : null}
-
-        <FlagDetailPanel
-          flag={flag}
-          showFeedback={showFeedback}
-          aiLocked={aiLocked && flag.id !== demonstratedFlagId}
-          aiEnhancementPending={aiEnhancementPending}
-          signUpHref={signUpHref}
-          previewMeta={model.previewMeta}
-          ownerActionContext={ownerActionContext}
-        />
       </div>
     </div>
   )

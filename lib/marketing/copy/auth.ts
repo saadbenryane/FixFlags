@@ -125,8 +125,8 @@ export const AUTH = {
     passwordLabel: 'Password',
     planStepsTitle: 'What happens next',
     planTitles: {
-      BUILDER: `You\u2019re signing up for Pro, with ${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month`,
-      TEAM: `You\u2019re signing up for Studio, with ${PRICING_COPY.studioProductReviewsPerMonth} product reviews and ${PRICING_COPY.studioDeepReviewsPerMonth} deep reviews per month`,
+      BUILDER: `You\u2019re signing up for Pro, with ${PRICING_COPY.proProductReviewsPerMonth} product reviews per month`,
+      TEAM: `You\u2019re signing up for Studio, with ${PRICING_COPY.studioProductReviewsPerMonth} product reviews per month`,
     },
     planSteps: [
       'Create your account',
@@ -328,7 +328,7 @@ export const SCAN_LIMIT_GATE = {
   },
   upgrade: {
     title: 'Product review limit reached',
-    body: `You have used all the product reviews in your current monthly allowance. Upgrade to Pro for ${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month, or wait for renewal.`,
+    body: `You have used all the product reviews in your current monthly allowance. Upgrade to Pro for ${PRICING_COPY.proProductReviewsPerMonth} product reviews per month, or wait for renewal.`,
     primaryCta: 'Upgrade to Pro',
     secondaryCta: 'See plans',
     exit: 'Leave this page',
@@ -337,7 +337,7 @@ export const SCAN_LIMIT_GATE = {
 
 export const REPORT_UPGRADE_GATE = {
   title: 'Upgrade to continue reviewing',
-  body: 'You have used all the product reviews in your current plan. Upgrade for more product reviews and deep reviews each month.',
+  body: 'You have used all the product reviews in your current plan. Upgrade for more product reviews each month.',
   primaryCta: 'Upgrade to Pro',
   saving: 'Preparing your upgrade',
   savingBody: 'Taking you to checkout.',

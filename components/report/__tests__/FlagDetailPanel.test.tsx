@@ -63,6 +63,25 @@ describe('FlagDetailPanel', () => {
 
     expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeInTheDocument()
     expect(screen.getByText('Preview prompt')).toBeInTheDocument()
+    expect(screen.getByText('Preview prompt').closest('div')).toContainElement(
+      screen.getByRole('button', { name: 'Copy prompt' })
+    )
+  })
+
+  it('uses plain language for evidence and consequence', () => {
+    renderWithProviders(
+      <FlagDetailPanel
+        flag={makeFlag({
+          evidence: 'On mobile (375×812), the main action starts below the first screen.',
+          whyItMatters: 'People can miss it, which can reduce conversions.',
+          truthLabel: 'Observed',
+        })}
+      />
+    )
+
+    expect(screen.getByText('What this means')).toBeInTheDocument()
+    expect(screen.queryByText('Observed')).not.toBeInTheDocument()
+    expect(screen.getByText(/which can reduce conversions/i)).toBeInTheDocument()
   })
 
 

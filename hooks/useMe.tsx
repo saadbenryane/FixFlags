@@ -31,13 +31,6 @@ export interface MeUser {
     periodStart: string
     periodEnd: string
   }
-  deepReviews: {
-    used: number
-    limit: number
-    remaining: number | null
-    periodStart: string
-    periodEnd: string
-  }
   entitlements: {
     reportTier: 'free' | 'paid'
     canSharePublicly: boolean

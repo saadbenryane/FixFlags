@@ -21,13 +21,13 @@ export const PLANS = [
     plan: "FREE" as const,
     price: "$0",
     period: "",
-    persona: "Try before launch",
-    outcome: "See everything on one page",
+    persona: "One product before launch",
+    outcome: "Review it, fix it, then verify the live result",
     audits: `${PRICING_COPY.freeProductReviewsPerMonth} product reviews / month`,
     features: [
       `${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month`,
-      `${PRICING_COPY.freeDeepReviewsPerMonth} deep review per month`,
-      "The complete FixFlags web product",
+      "A complete Fix List with evidence and fix prompts",
+      "Update comparisons, history, sharing, and Watch",
     ],
     cta: "Start free",
     href: "/sign-up?from=pricing",
@@ -40,12 +40,12 @@ export const PLANS = [
     price: PRO_PRICE,
     period: PRO_PERIOD,
     persona: "Solo builders shipping weekly",
-    outcome: "Finish what your AI started, every week",
+    outcome: "Review every release and verify the fixes",
     audits: `${PRICING_COPY.proProductReviewsPerMonth} product reviews / month`,
     features: [
-      `${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month`,
-      "The complete FixFlags web product",
-      "Higher monthly usage for frequent shipping",
+      `${PRICING_COPY.proProductReviewsPerMonth} product reviews shared by new and update reviews`,
+      "A complete Fix List with evidence and fix prompts",
+      "Update comparisons, history, sharing, and Watch",
     ],
     cta: "Start Pro",
     href: "/sign-up?plan=BUILDER",
@@ -57,13 +57,13 @@ export const PLANS = [
     plan: "TEAM" as const,
     price: PRICING_COPY.studioPrice,
     period: PRICING_COPY.studioPeriod,
-    persona: "Agencies and multi-site teams",
-    outcome: "Finish many products, across teams and releases",
+    persona: "Freelancers and agencies",
+    outcome: "Review more client products without redoing QA by hand",
     audits: `${PRICING_COPY.studioProductReviewsPerMonth} product reviews / month`,
     features: [
-      `${PRICING_COPY.studioProductReviewsPerMonth} product reviews and ${PRICING_COPY.studioDeepReviewsPerMonth} deep reviews per month`,
-      "The complete FixFlags web product",
-      "Highest monthly usage for multiple products",
+      `${PRICING_COPY.studioProductReviewsPerMonth} product reviews shared by new and update reviews`,
+      "A complete Fix List with evidence and fix prompts",
+      "Update comparisons, history, sharing, and Watch",
     ],
     cta: "Start Studio",
     href: "/sign-up?plan=TEAM",
@@ -75,7 +75,7 @@ export const PLANS = [
 export const PRICING_FAQ = [
   {
     question: "Can I start free and upgrade later?",
-    answer: `Yes. ${OFFER.line} Upgrade when you need more product reviews and deep reviews each month.`,
+    answer: `Yes. ${OFFER.line} Upgrade when you need more product reviews each month.`,
   },
   {
     question: "What counts as a product review?",
@@ -83,14 +83,9 @@ export const PRICING_FAQ = [
       "A product review is one full pass on a URL: checks, report, and fix prompts. A new URL, an update review, and a completed scheduled Watch review each use one product review from your monthly allowance. Failed runs that never produce a report do not count.",
   },
   {
-    question: "What is a deep review?",
-    answer:
-      "A deep review uses agent-level browser exploration: FixFlags navigates key paths, maps the Funnel, and records scrubbable playback. It uses a separate monthly allowance from standard product reviews. See /docs/deep-review for the full comparison.",
-  },
-  {
     question: "Do update reviews consume credits?",
     answer:
-      "Yes. An update review on a report you own uses one product review credit, the same as reviewing a new URL. Run another deep review only when you need full path and Funnel coverage again.",
+      "Yes. An update review on a report you own uses one product review credit, the same as reviewing a new URL. The fresh review captures the live product again and shows what changed.",
   },
   {
     question: "Are reports public or private?",
@@ -130,11 +125,11 @@ export const PRICING_FAQ = [
 
 export const PRICING = {
   label: "Simple pricing",
-  headline: "Start free. Upgrade when you\u2019re reviewing often.",
-  subhead: `${OFFER.line} Every plan includes the complete web product. Upgrade only when you need more reviews.`,
-  trustBadge: "Product reviews and deep reviews on every plan",
+  headline: "One Product Review. Choose how often you need it.",
+  subhead: `${OFFER.line} Free gives you a full review-fix-verify cycle. Paid plans add monthly capacity for frequent releases and client work.`,
+  trustBadge: "The complete Product Review on every plan",
   assurances: [
-    "Evidence from the live product",
+    "Message, Experience, and Reach",
     "No credit card for Free",
     "Your reports stay private",
   ] as const,
@@ -142,7 +137,7 @@ export const PRICING = {
   upgradeStepsLoggedIn: "Stripe checkout → Dashboard",
   checkoutRedirecting: "Redirecting to checkout…",
   allPlansInclude:
-    "Every plan includes reports, evidence, fix prompts, update comparisons, history, sharing, Canvas, Product Signals, and Watch. Only monthly usage changes.",
+    "Every plan includes the complete Product Review: the Fix List, evidence, fix prompts, update comparisons, history, sharing, and Watch. Only monthly review capacity changes.",
   pickerEyebrow: "Pick a plan",
   pickerTitle: "Choose how you want to start",
   pickerSubtitle: "Every plan includes the complete web product. Choose the monthly review allowance that matches how often you ship.",
@@ -166,8 +161,8 @@ export const WAITLIST_PAGE = {
     'Pro and Studio open in order. The first 500 waitlisters per plan get 25% off for 12 months from launch. The next 500 get 15% off.',
   planProLabel: 'Pro',
   planStudioLabel: 'Studio',
-  planProDetail: '15 product reviews and 3 deep reviews per month',
-  planStudioDetail: '50 product reviews and 10 deep reviews per month',
+  planProDetail: '15 product reviews per month for frequent releases',
+  planStudioDetail: '50 product reviews per month for client and multi-product work',
   emailPlaceholder: 'you@example.com',
   joinCta: 'Join the waitlist',
   signUpRequired: 'Sign up required',
@@ -238,7 +233,7 @@ export const UPSELLS = {
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
     headline: "You\u2019ve used your free product reviews",
-    body: "Upgrade to Pro for 15 product reviews and 3 deep reviews per month.",
+    body: "Upgrade to Pro for 15 product reviews per month.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
   },
@@ -259,7 +254,7 @@ export const UPGRADE_MOMENTS = {
   },
   share_public: {
     headline: "Need more review capacity?",
-    body: "Sharing is included on every plan. Upgrade only when you need more product reviews and deep reviews each month.",
+    body: "Sharing is included on every plan. Upgrade only when you need more product reviews each month.",
     cta: "See usage plans",
     plan: "BUILDER" as const,
   },
@@ -271,13 +266,13 @@ export const UPGRADE_MOMENTS = {
   },
   free_default: {
     headline: "Ship weekly? Automate the loop",
-    body: "Pro adds 15 product reviews and 3 deep reviews per month.",
+    body: "Pro adds 15 product reviews per month for a frequent review-and-verify rhythm.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
   },
   report_completed: {
     headline: "Automate the review loop",
-    body: "Pro adds more product reviews and deep reviews each month.",
+    body: "Pro adds more product reviews each month.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
   },

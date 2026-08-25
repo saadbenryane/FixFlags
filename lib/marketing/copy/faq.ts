@@ -49,11 +49,11 @@ export const FAQ = [
   },
   {
     question: 'Do I need an account for my first product review?',
-    answer: `No. Your report opens immediately while the product review runs. You can inspect real evidence, then create a free account or sign in to save it and unlock the complete report. Free includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews and ${PRICING_COPY.freeDeepReviewsPerMonth} deep review per month.`,
+    answer: `No. Your report opens immediately while the product review runs. You can inspect real evidence, then create a free account or sign in to save it and unlock the complete report. Free includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month.`,
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
-    answer: `Every plan includes the same complete web product. Free includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews and ${PRICING_COPY.freeDeepReviewsPerMonth} deep review per month. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}) increases that to ${PRICING_COPY.proProductReviewsPerMonth} and ${PRICING_COPY.proDeepReviewsPerMonth}. New URLs, update reviews, and completed Watch reviews share the product review allowance.`,
+    answer: `Every plan includes the same complete Product Review. Free includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}) increases that to ${PRICING_COPY.proProductReviewsPerMonth}. New URLs, update reviews, and completed Watch reviews share the product review allowance.`,
   },
   {
     question: 'Do I need a specific AI builder?',

@@ -49,7 +49,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: `Your report opens immediately while the product review runs. If you are signed out, inspect the evidence, then create an account or sign in to save it and unlock the complete report. A free account includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews and ${PRICING_COPY.freeDeepReviewsPerMonth} deep review per month. New URLs, update reviews, and completed Watch reviews share the product review allowance.`,
+        text: `Your report opens immediately while the product review runs. If you are signed out, inspect the evidence, then create an account or sign in to save it and unlock the complete report. A free account includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month. New URLs, update reviews, and completed Watch reviews share the allowance.`,
       },
       {
         type: 'ol',
@@ -251,15 +251,15 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: `Free: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews and ${PRICING_COPY.freeDeepReviewsPerMonth} deep review per month.`,
+        text: `Free: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month. Enough for an initial review and two update reviews of the live result.`,
       },
       {
         type: 'p',
-        text: `Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): ${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month.`,
+        text: `Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): ${PRICING_COPY.proProductReviewsPerMonth} product reviews per month for frequent releases.`,
       },
       {
         type: 'p',
-        text: `Studio (${PRICING_COPY.studioPrice}${PRICING_COPY.studioPeriod}): ${PRICING_COPY.studioProductReviewsPerMonth} product reviews and ${PRICING_COPY.studioDeepReviewsPerMonth} deep reviews per month.`,
+        text: `Studio (${PRICING_COPY.studioPrice}${PRICING_COPY.studioPeriod}): ${PRICING_COPY.studioProductReviewsPerMonth} product reviews per month for client and multi-product work.`,
       },
       {
         type: 'p',

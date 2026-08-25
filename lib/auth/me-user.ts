@@ -11,8 +11,6 @@ export const meUserSelect = {
   role: true,
   auditsUsed: true,
   auditsLimit: true,
-  deepReviewsUsed: true,
-  deepReviewsLimit: true,
   usagePeriodStart: true,
   usagePeriodEnd: true,
   subscriptionStatus: true,
@@ -52,16 +50,6 @@ export async function serializeMeUser(
       remaining:
         checks.totalAvailable ??
         (checks.limit === null ? null : Math.max(0, checks.limit - checks.used - checks.pending)),
-    },
-    deepReviews: {
-      used: currentUser.deepReviewsUsed,
-      limit: currentUser.deepReviewsLimit,
-      remaining:
-        currentUser.deepReviewsLimit < 0
-          ? null
-          : Math.max(0, currentUser.deepReviewsLimit - currentUser.deepReviewsUsed),
-      periodStart: currentUser.usagePeriodStart.toISOString(),
-      periodEnd: currentUser.usagePeriodEnd.toISOString(),
     },
     entitlements,
     vibecodingLevel: user.vibecodingLevel,

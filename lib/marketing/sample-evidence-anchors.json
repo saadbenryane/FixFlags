@@ -3,38 +3,143 @@
   "generatedBy": "scripts/capture-sample-screenshots.ts",
   "observations": {
     "curated-sample-v0": {
-      "revision": "demo-v1-fixed",
-      "sourcePath": "/demo/v1",
+      "revision": "demo-original-baseline",
+      "sourcePath": "/demo",
       "reviewedAt": "2026-06-09T14:30:00Z",
-      "documentSha256": "d633a6d5727fd26c691ee4aee6578890678199d19d23cb8559ff71580ba2eb98",
-      "score": 90,
-      "flagIds": [],
+      "documentSha256": "8f85269ec53075179d3e83f71502f141a7b3a47efbee0e6da1f325f226be648d",
+      "score": 69,
+      "flagIds": [
+        "flag-experience-mobile-cta",
+        "flag-message-headline",
+        "flag-message-placeholder",
+        "flag-reach-robots",
+        "flag-reach-description",
+        "flag-reach-social-image",
+        "flag-reach-canonical"
+      ],
       "timeline": [
-        "Opened curated snapshot demo-v1-fixed",
+        "Opened curated snapshot demo-original-baseline",
         "Captured desktop and mobile evidence",
-        "Confirmed no curated Flags"
+        "Ranked the evidence-backed Flags"
       ],
       "captures": {
         "desktop": {
           "path": "/samples/observations/curated-sample-v0/desktop.webp",
-          "sha256": "81f5987e24db9bc2ba87dda737979df0706bd1eb6f39c6ab6339fb31a7a17599",
+          "sha256": "b4092aa4ec7ed6f512c0ee644cc5466fc30d4cd6fc215080dac6c6d2f69a9bc0",
           "width": 1280,
           "height": 900
         },
         "mobile": {
           "path": "/samples/observations/curated-sample-v0/mobile.webp",
-          "sha256": "1bec4c556b7a01805a9ca64975534a2cdfd66454f4599a2cefa84f9c5fa88e3b",
+          "sha256": "eae55416af2b35e0fdf0a26fab209144894977731ef8e1fcaee9b67cfbd72ef5",
           "width": 375,
           "height": 812
         }
       },
-      "anchors": {}
+      "anchors": {
+        "h1-generic": {
+          "desktop": {
+            "x": 0.275,
+            "y": 0.2902777777777778,
+            "width": 0.4375,
+            "height": 0.1395486111111111,
+            "scope": "element"
+          },
+          "mobile": {
+            "x": 0.5,
+            "y": 0.9054033251231527,
+            "width": 0.9573333333333334,
+            "height": 0.10746921182266023,
+            "scope": "element"
+          }
+        },
+        "placeholder-copy-detected": {
+          "desktop": {
+            "x": 0.275,
+            "y": 0.2902777777777778,
+            "width": 0.4375,
+            "height": 0.1395486111111111,
+            "scope": "element"
+          },
+          "mobile": {
+            "x": 0.5,
+            "y": 0.9054033251231527,
+            "width": 0.9573333333333334,
+            "height": 0.10746921182266023,
+            "scope": "element"
+          }
+        },
+        "robots-blocks-indexing": {
+          "desktop": {
+            "x": 0.5,
+            "y": 0.5,
+            "width": 1,
+            "height": 1,
+            "scope": "page"
+          },
+          "mobile": {
+            "x": 0.5,
+            "y": 0.5,
+            "width": 1,
+            "height": 1,
+            "scope": "page"
+          }
+        },
+        "description-missing": {
+          "desktop": {
+            "x": 0.5,
+            "y": 0.5,
+            "width": 1,
+            "height": 1,
+            "scope": "page"
+          },
+          "mobile": {
+            "x": 0.5,
+            "y": 0.5,
+            "width": 1,
+            "height": 1,
+            "scope": "page"
+          }
+        },
+        "og-image-missing": {
+          "desktop": {
+            "x": 0.5,
+            "y": 0.5,
+            "width": 1,
+            "height": 1,
+            "scope": "page"
+          },
+          "mobile": {
+            "x": 0.5,
+            "y": 0.5,
+            "width": 1,
+            "height": 1,
+            "scope": "page"
+          }
+        },
+        "canonical-missing": {
+          "desktop": {
+            "x": 0.5,
+            "y": 0.5,
+            "width": 1,
+            "height": 1,
+            "scope": "page"
+          },
+          "mobile": {
+            "x": 0.5,
+            "y": 0.5,
+            "width": 1,
+            "height": 1,
+            "scope": "page"
+          }
+        }
+      }
     },
     "curated-sample-v1": {
       "revision": "demo-original-regression",
       "sourcePath": "/demo",
       "reviewedAt": "2026-06-10T14:30:00Z",
-      "documentSha256": "d8d0c23ccea3c215e26db49bcf2ad4fd397d271607af46ee0379b74dec29167f",
+      "documentSha256": "a40baa76f52375864a68f7d89f76cc7147df78de0d53dc3c85a0f0082dc0c561",
       "score": 79,
       "flagIds": [
         "flag-experience-mobile-cta",

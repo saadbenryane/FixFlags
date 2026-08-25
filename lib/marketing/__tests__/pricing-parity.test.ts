@@ -9,7 +9,6 @@ import { SEO } from '@/lib/marketing/copy/seo'
 
 const ROOT = join(process.cwd(), 'lib/marketing/copy')
 const HELP_CATALOG = readFileSync(join(ROOT, '../../help/catalog.ts'), 'utf8')
-const DEEP_REVIEW_DOC = readFileSync(join(process.cwd(), 'content/docs/deep-review.md'), 'utf8')
 
 const OBSOLETE_PLAN_COPY = [
   /3 product reviews \(lifetime\)/i,
@@ -27,21 +26,18 @@ const TEAM = PLAN_DEFINITIONS.TEAM
 describe('pricing parity', () => {
   it('keeps Free marketing numbers aligned with billing enforcement', () => {
     expect(PRICING_COPY.freeProductReviewsPerMonth).toBe(FREE.auditLimit)
-    expect(PRICING_COPY.freeDeepReviewsPerMonth).toBe(FREE.deepReviewLimit)
   })
 
   it('keeps Pro marketing numbers aligned with billing enforcement', () => {
     expect(PRICING_COPY.proPrice).toBe(BUILDER.price)
     expect(PRICING_COPY.proPeriod).toBe(BUILDER.period)
     expect(PRICING_COPY.proProductReviewsPerMonth).toBe(BUILDER.auditLimit)
-    expect(PRICING_COPY.proDeepReviewsPerMonth).toBe(BUILDER.deepReviewLimit)
   })
 
   it('keeps Studio marketing numbers aligned with billing enforcement', () => {
     expect(PRICING_COPY.studioPrice).toBe(TEAM.price)
     expect(PRICING_COPY.studioPeriod).toBe(TEAM.period)
     expect(PRICING_COPY.studioProductReviewsPerMonth).toBe(TEAM.auditLimit)
-    expect(PRICING_COPY.studioDeepReviewsPerMonth).toBe(TEAM.deepReviewLimit)
   })
 
   it('drives the marketing plan cards from PRICING_COPY', () => {
@@ -68,7 +64,6 @@ describe('pricing parity', () => {
       JSON.stringify(SEO.pricing),
       PRICING.pickerSubtitle,
       HELP_CATALOG,
-      DEEP_REVIEW_DOC,
     ].join('\n')
 
     for (const pattern of OBSOLETE_PLAN_COPY) {
@@ -76,5 +71,12 @@ describe('pricing parity', () => {
     }
 
     expect(surfaces).toMatch(/per month/i)
+  })
+
+  it('sells one Product Review allowance without a current deep-review quota', () => {
+    const customerSurfaces = [JSON.stringify(PLANS), JSON.stringify(PRICING), HELP_CATALOG].join('\n')
+
+    expect(customerSurfaces).not.toMatch(/deep reviews? (?:per month|included|allowance)/i)
+    expect(customerSurfaces).toMatch(/product reviews? per month/i)
   })
 })

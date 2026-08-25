@@ -1,6 +1,6 @@
 # Product System
 
-**Canonical home for the three FixFlags surfaces:** Product Review, Deep Review, and Watch. Shipped facts are in [PRODUCT.md](../PRODUCT.md). Vision is in [vision.md](./vision.md).
+**Canonical home for the FixFlags Product Review and its supporting surfaces.** Shipped facts are in [PRODUCT.md](../PRODUCT.md). Vision is in [vision.md](./vision.md).
 
 ## Core loop
 
@@ -12,12 +12,12 @@ The unit of value is a verified fix. The public loop is:
 3. prove fixes in a follow-up review (update review),
 4. keep recurring verification for important paths (Watch).
 
-## One intelligence, multiple surfaces
+## One product, multiple moments
 
-Product review, deep review, and watch share one Product Contract + Product Intelligence source.
-Audience packaging is contextual, not separate products.
+Product Review, Update Review, and Watch share one Product Contract + Product Intelligence source.
+They are moments in one product loop, not separate products or capability tiers.
 
-## Three products (shipped)
+## The shipped product
 
 ### A. Product Review
 
@@ -32,9 +32,9 @@ The URL-first acquisition and core product surface.
 - scoped copy for immediate confidence,
 - one complete finding and the first progress proof before signup.
 
-**What it does not include:**
+**What remains gated before account creation:**
 - authenticated flows,
-- full multi-journey depth,
+- fix prompts,
 - private account history before claim.
 
 **After account creation:**
@@ -43,22 +43,7 @@ The URL-first acquisition and core product surface.
 - update reviews on the same URL within the monthly allowance,
 - history surfaces and authenticated report context.
 
-### B. Deep Review
-
-The deeper monthly-usage unit for important customer paths.
-
-**User promise:** run your important path(s) to completion and record what actually changed.
-
-**What it includes:**
-- multiple paths / assertions,
-- multi-viewport replay,
-- separate deep review credits,
-- stronger confidence on friction and completion conditions,
-- stronger change attribution for builder handoff.
-
-**Metering model:** deep reviews consume the separate monthly deep review allowance on every plan.
-
-### C. Watch
+### Watch
 
 The recurring verification surface.
 
@@ -81,7 +66,7 @@ Ask for account creation to unlock all Flags, fix prompts, update reviews, full 
 
 ### Usage upgrade
 Every plan includes the same authenticated web product.
-Paid plans provide more product reviews and deep reviews each month.
+Paid plans provide more product reviews each month.
 New URLs, update reviews, and completed Watch reviews share the product review allowance.
 
 ## Priority tiers
@@ -89,7 +74,7 @@ New URLs, update reviews, and completed Watch reviews share the product review a
 | Priority | Surface | Must include |
 |----------|---------|-------------|
 | P0 | Product Review | Public URL submission, route/action checks, desktop+mobile, console/network capture, metadata/a11y/performance checks, evidence-backed Flags, scope transparency, one result before signup |
-| P1 | Deep Review | Progressively richer path testing, success assertions, deterministic/fallback behavior, replay, complete evidence, re-run and update review verification |
+| P1 | Product Review depth | Progressively richer path testing, success assertions, deterministic/fallback behavior, replay, complete evidence, re-run and update review verification |
 | P2 | Authenticated depth | Test-account support, role-aware flows, safe credentials handling |
 | P3 | Watch | Scheduled review path, allowance-aware pause, regression signaling, alert surface |
 | P4 | Repeated workflow | multi-product context, client-ready evidence, and review history |
@@ -104,3 +89,10 @@ New URLs, update reviews, and completed Watch reviews share the product review a
 - Automated production payments.
 - Automated destructive actions.
 - Arbitrary “quality score first” product.
+
+## Future Deep Review
+
+Deep Review is reserved for a future repository-connected analysis product.
+It will combine the live Product Review with source-code context to explain structural causes and produce codebase-aware fixes.
+Repository access, repository scanning, and editor protocols stay parked until the URL-first Product Review converts consistently.
+Deep Review is not included in current plans, quotas, or checkout promises.

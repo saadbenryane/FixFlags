@@ -35,7 +35,6 @@ import {
   ANON_IP_SOFT_WINDOW_SECONDS,
   checkAnonymousAuditAllowed,
   enforceAnonymousIpSoftCeiling,
-  incrementDeepReviewOnCompleteForAudit,
   incrementUsageOnCompleteForAudit,
   readAnonAuditIds,
   readAnonAuditIdsFromStore,
@@ -275,84 +274,5 @@ describe('incrementUsageOnCompleteForAudit', () => {
       where: { id: 'user-1' },
       data: { auditsUsed: { increment: 1 } },
     })
-  })
-})
-
-describe('incrementDeepReviewOnCompleteForAudit', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    passthroughTx()
-  })
-
-  it('is a no-op when the audit has no journey review or is already counted', async () => {
-    prismaMock.audit.findUnique.mockResolvedValueOnce(null)
-    await incrementDeepReviewOnCompleteForAudit('audit-1', 'user-1')
-    prismaMock.audit.findUnique.mockResolvedValueOnce({
-      userId: 'user-1',
-      journeyReviewIncluded: false,
-      deepReviewUsageCountedAt: null,
-    })
-    await incrementDeepReviewOnCompleteForAudit('audit-1', 'user-1')
-    prismaMock.audit.findUnique.mockResolvedValueOnce({
-      userId: 'user-1',
-      journeyReviewIncluded: true,
-      deepReviewUsageCountedAt: new Date(),
-    })
-    await incrementDeepReviewOnCompleteForAudit('audit-1', 'user-1')
-    expect(prismaMock.user.update).not.toHaveBeenCalled()
-  })
-
-  it('marks counted without incrementing for unlimited users', async () => {
-    prismaMock.audit.findUnique.mockResolvedValueOnce({
-      userId: 'user-1',
-      journeyReviewIncluded: true,
-      deepReviewUsageCountedAt: null,
-    })
-    prismaMock.user.findUnique.mockResolvedValueOnce({
-      role: 'admin',
-      deepReviewsUsed: 10,
-      deepReviewsLimit: 1,
-    })
-    await incrementDeepReviewOnCompleteForAudit('audit-1', 'user-1')
-    expect(prismaMock.user.update).not.toHaveBeenCalled()
-    expect(prismaMock.audit.update).toHaveBeenCalledWith({
-      where: { id: 'audit-1' },
-      data: { deepReviewUsageCountedAt: expect.any(Date) },
-    })
-  })
-
-  it('increments deep reviews under the quota', async () => {
-    prismaMock.audit.findUnique.mockResolvedValueOnce({
-      userId: 'user-1',
-      journeyReviewIncluded: true,
-      deepReviewUsageCountedAt: null,
-    })
-    prismaMock.user.findUnique.mockResolvedValueOnce({
-      role: 'user',
-      deepReviewsUsed: 1,
-      deepReviewsLimit: 4,
-    })
-    await incrementDeepReviewOnCompleteForAudit('audit-1', 'user-1')
-    expect(prismaMock.user.update).toHaveBeenCalledWith({
-      where: { id: 'user-1' },
-      data: { deepReviewsUsed: { increment: 1 } },
-    })
-    expect(prismaMock.audit.update).toHaveBeenCalled()
-  })
-
-  it('marks counted without incrementing once the quota is exhausted', async () => {
-    prismaMock.audit.findUnique.mockResolvedValueOnce({
-      userId: 'user-1',
-      journeyReviewIncluded: true,
-      deepReviewUsageCountedAt: null,
-    })
-    prismaMock.user.findUnique.mockResolvedValueOnce({
-      role: 'user',
-      deepReviewsUsed: 4,
-      deepReviewsLimit: 4,
-    })
-    await incrementDeepReviewOnCompleteForAudit('audit-1', 'user-1')
-    expect(prismaMock.user.update).not.toHaveBeenCalled()
-    expect(prismaMock.audit.update).toHaveBeenCalled()
   })
 })

@@ -1,41 +1,23 @@
-## What is a deep review?
+## Deep Review is planned, not sold today
 
-A **deep review** is FixFlags exploring your product like a power user: clicking through journeys, following funnels, and recording **paths** with evidence you can replay in the workspace.
+FixFlags currently has one customer product: the URL-first **Product Review**.
+Every current plan includes the same complete review across Message, Experience, and Reach.
+Plans differ only by how many Product Reviews you can run each month.
 
-A standard **product review** runs fast programmatic checks with screenshot evidence. A deep review adds **expanded journey capture** for the funnels that matter.
+## What Deep Review will mean
 
-## Product review vs deep review
+Deep Review is reserved for a future repository-connected analysis offer.
+It will combine evidence from the live product with source-code context so FixFlags can explain structural causes and prepare codebase-aware fixes.
 
-| | Product review | Deep review |
-|---|---|---|
-| **Speed** | Fast full pass on a URL | Deeper journey and funnel coverage |
-| **Browser** | Programmatic capture (Playwright) with screenshot-forward evidence | Journey walk with path replay in the workspace browser panel |
-| **Best for** | Finish Plan, Fix list, fix prompts across Message, Experience, Reach | Funnel map, multi-step paths, replay-grade evidence |
-| **Metering** | Uses the product review allowance (new URLs, update reviews, and completed Watch reviews share the pool) | Uses the separate monthly deep review allowance |
+Deep Review will return when repository scanning is ready to be offered again.
+It is not a browser-depth tier, a separate allowance, or a feature included in a current paid-plan waitlist promise.
 
-Think of product review as a sharp QA pass on what shipped. Deep review is FixFlags following critical journeys, then showing you the recording.
+## What to use now
 
-Agent-class live browser exploration in the workspace is a documented target, not the shipped surface today. See [workspace interface](../docs/workspace-interface.md).
-
-## Funnel, paths, and playback
-
-Deep reviews produce:
-
-- **Funnel** — journeys listed in your report map.
-- **Path** — one recorded journey you can scrub and replay.
-- **Playback** — timeline at the bottom of the workspace synced to browser evidence.
-
-Open a path from the Funnel section or from Flag evidence to see what FixFlags saw step by step.
-
-## When to run each
-
-- Run a **product review** when you ship or change a URL and need ranked Flags with fix prompts.
-- Run an **update review** (same product review credit) after you fix issues to prove what cleared.
-- Run a **deep review** when signup, checkout, onboarding, or another critical funnel needs multi-step proof, not just a homepage screenshot.
-
-## Plans and limits
-
-Free includes 3 product reviews and 1 deep review per month. Pro includes 15 product reviews and 3 deep reviews per month. Studio includes 50 product reviews and 10 deep reviews per month. Every plan includes the same complete web product, and unused monthly allowance does not roll over. See [pricing](/pricing) for current numbers.
+- Run a **Product Review** for a live URL and its important pages.
+- Use the Fix List, evidence, and fix prompts to make changes.
+- Run an **update review** after publishing to capture the live product again and see what changed.
+- Use **Watch** for scheduled reviews. Completed Watch reviews use the same Product Review allowance.
 
 ## Related
 

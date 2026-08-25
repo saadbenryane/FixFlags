@@ -12,21 +12,19 @@ Canonical pricing strategy lives in [`knowledge/strategy.md`](../knowledge/strat
 - Evidence-backed Flags and copyable fix prompts.
 - Update reviews with before-and-after comparison.
 - Saved history, protected sharing, Canvas, Product Signals, and scheduled Watch.
-- Deep reviews with Funnel, path, and playback evidence.
 
 ## Usage plans
 
-| Plan | Price | Product reviews/month | Deep reviews/month |
-|------|-------|-----------------------|--------------------|
-| Free | $0 | 3 | 1 |
-| Pro | $29 | 15 | 3 |
-| Studio | $79 | 50 | 10 |
+| Plan | Price | Product reviews/month |
+|------|-------|-----------------------|
+| Free | $0 | 3 |
+| Pro | $29 | 15 |
+| Studio | $79 | 50 |
 
 The existing internal enums remain `FREE`, `BUILDER`, and `TEAM`.
 Studio maps to `TEAM`.
 
 New URL reviews, update reviews, and completed scheduled Watch reviews share the product review allowance.
-Deep reviews use a separate allowance.
 Usage renews monthly and does not roll over.
 At the limit, reviews pause until renewal or upgrade.
 Existing purchased overflow credits remain compatible but are not promoted.
@@ -34,7 +32,7 @@ Existing purchased overflow credits remain compatible but are not promoted.
 ## What is parked
 
 Repository scanning, editor protocols, command-line workflows, API-key setup, and deployment-triggered hooks remain implemented internally but are not part of the current customer product, marketing, documentation navigation, or pricing promise.
-They return only after the URL-to-report wedge converts consistently.
+Deep Review is the future repository-connected analysis offer and returns only after the URL-to-report wedge converts consistently.
 
 ## Revenue model
 

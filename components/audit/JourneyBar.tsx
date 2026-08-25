@@ -68,7 +68,7 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
           parentId: auditId,
           mode: 'critical_path',
         },
-        errorFallback: 'Could not start the deep review. Try again.',
+        errorFallback: 'Could not start the Product Review. Try again.',
       })
       if (!result.ok) toast.error(result.message)
     } finally {

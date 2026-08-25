@@ -18,8 +18,8 @@ Per-issue prompts are the primary handoff from understanding to improvement.
 
 1. Compact Review header (`#report-status`) with a circular score or honest pending/unavailable state, chronological full-Review history, and the owner Update review action
 2. Update-review result, when present
-3. Complete ranked Fix list (`#report-flags`) with filters, screenshot evidence, selected detail, and canonical Critical-first ranking
-4. Collapsed `Preview prompt` with an always-visible per-issue `Copy prompt`
+3. Complete ranked Fix list (`#report-flags`) with `Your priorities` as the list heading, screenshot evidence, selected detail, and canonical Critical-first ranking
+4. One per-issue prompt row: an expandable `Preview prompt` on the left and an always-visible `Copy prompt` action on the right
 5. Collapsed evidence and Product context: Made with (`#report-stack`), Product Contract (`#report-contract`), and verified Product Memory (`#report-remember`), when present
 6. Subordinate sharing, Watch, export, and Product controls
 7. At most one contextual signup or upgrade moment
@@ -27,12 +27,12 @@ Per-issue prompts are the primary handoff from understanding to improvement.
 The compact header does not repeat Product identity, verdict copy, the Critical count, or instructions already expressed by the ranked Fix list.
 Every history point is a native link to a complete Review.
 Desktop keeps Agent and Report visible throughout the review.
-Mobile exposes Agent, Preview or Timeline, Report, and Canvas when each surface is available, defaulting to Agent while work is active and Report afterward.
-`view=timeline`, `view=report`, and `view=canvas` are durable, URL-backed views for signed-in report owners.
+Mobile exposes only Agent and Report, defaulting to Agent while work is active and Report afterward.
+Legacy `view=timeline` and `view=canvas` parameters normalize to `view=report`.
 
 New anonymous scans render the progressive and completed evidence report without a blocking authentication dialog.
 Anonymous viewers can inspect scores, all confirmed Flags, screenshots, textual evidence, public-safe technology context, and deterministic Agent scan messages.
-Fix prompts, interactive Agent conversation, live Timeline and path replay payloads, private memory, private history, update reviews, export, restricted sharing, and Canvas remain unavailable until their access requirement is met.
+Fix prompts, interactive Agent conversation, private memory, private history, update reviews, export, and restricted sharing remain unavailable until their access requirement is met.
 Authentication is contextual and returns through `/post-login` so the anonymous report is claimed before the same workspace unlocks.
 Anonymous API serialization remains redacted: gated fields are omitted server-side, evidence remains real page evidence, and gate strings are never persisted into Flag rows.
 
@@ -64,16 +64,15 @@ Deterministic Agent messages use the same UI message envelope as authenticated m
 Partial Flags stream into the ranked explorer and appear once in the Agent transcript with a link to the matching report detail.
 Desktop and mobile capture placeholders resolve independently inside Flag detail on mobile; the standalone capture pair stays on large screens only.
 Show honest status, early findings, and a layout-matched Made with skeleton that resolves to verified, empty, partial, or unavailable.
-Live Timeline and path replay remain authenticated evidence surfaces and never supply raw activity labels as Agent claims.
+Parked Timeline, Preview, and Canvas payloads are not loaded by the default report route.
 Keep the workspace and transcript mounted until the completed server report replaces progressive data.
 
 ## Samples and sharing
 
 - Homepage: complete curated fix list with selected evidence and one editor-ready fix.
-- `/samples`: complete, versioned curated observations selected by `?observation=`, each with its own Flags, captures, score, exactly one demonstrated per-Flag prompt, and repository-owned static Timeline.
+- `/samples`: complete, versioned curated observations selected by `?observation=`, each with its own Flags, captures, score, and exactly one demonstrated per-Flag prompt.
   Every visible history point resolves to one immutable observation.
   An absent selector opens the current curated Review; an explicit unknown selector returns not found.
-  Public sample playback is the only anonymous Timeline exception and never queries production audit rows.
 - `/share/[token]` is the direct token surface; `/share/[token]/details` redirects after enforcing the same grant. Token access never mutates `Audit.isPublic`. Password access uses a scoped signed HttpOnly grant and protected metadata stays generic.
 
 ## Acceptance checks
@@ -86,6 +85,5 @@ Keep the workspace and transcript mounted until the completed server report repl
 - Loading, empty, partial, failure, forbidden, expired, revoked, and deleted states are explicit.
 - Visible report chrome lives in `lib/marketing/copy.ts`.
 - Technology profiles expose sanitized evidence labels and evidence bands only. They never grade vendors or leak raw requests, headers, cookies, query strings, or private report existence.
-- Newly submitted anonymous and non-owner live reports expose evidence but never prompts, Timeline payloads, private memory/history, update-review controls, export, restricted sharing, or Canvas data.
-- Repository-owned curated samples may expose only their static versioned Timeline payloads; this exception does not authorize live report playback.
+- Newly submitted anonymous and non-owner live reports expose evidence but never prompts, private memory/history, update-review controls, export, or restricted sharing.
 - Programmatic Agent messages are stable, monotonic, derived from persisted facts, and excluded from model usage and persisted conversation rows.

@@ -351,7 +351,7 @@ export function ProductWorkspace({
                     className="rounded-nested-md bg-muted/35 p-3 text-sm text-muted-foreground"
                   >
                     <Badge variant="outline" className="mr-2">
-                      Observed
+                      What this means
                     </Badge>
                     {context.summary}
                   </p>

@@ -103,7 +103,7 @@ describe('FlagDetailPane', () => {
         onSelectFlag={vi.fn()}
       />
     )
-    expect(screen.getAllByText(flagWithEvidence.evidence)).toHaveLength(1)
+    expect(screen.getAllByText((content) => content.includes(flagWithEvidence.evidence))).toHaveLength(1)
   })
 
   it('does not add redundant navigation for a single flag', () => {

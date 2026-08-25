@@ -2,7 +2,7 @@
 
 *Validated visual and interaction standards. Code-enforced where possible, documented where not.*
 
-**Customer vs internal language:** Customer surfaces use Product QA, product review, update review, deep review, Funnel, and path. Internal code may still use re-check routes, recheck components, and monitoring implementation names.
+**Customer vs internal language:** Customer surfaces use Product QA, product review, update review, Funnel, and path. Internal code may still use re-check routes, recheck components, monitoring implementation names, and legacy deep-review fields. Deep Review is reserved for the future repository-connected analysis offer.
 
 **Product UI direction (locked):** Layout modes, chat, funnel/path replay, and mobile parity live in [docs/workspace-interface.md](../docs/workspace-interface.md). Product requirements: [docs/product-prd.md](../docs/product-prd.md). Visual tokens and component rules stay in this file.
 
@@ -72,11 +72,11 @@ Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
 
 **Flags chrome:** Meta row is Severity → Rubric → Impact. Only Critical uses the `CircleAlert` icon; Important and Polish use accessible text. The list is ranked by launch impact and supports compact rubric, severity, impact, and page filters. When both captures exist, each selected Flag compares desktop and mobile: affected is red, available unaffected is green, and missing or failed remains neutral.
 
-**Progressive / loading:** The living review is editor chrome, not a carded report page. Full-bleed under thin immersive header (`showFooter={false}`), flush Agent | Product split with a divider only (no pane cards), left thinner than right. FixFlags understanding is chat on the left; the Product pane exposes the live Preview while work runs and the Report as findings arrive. Completed owner reviews add Timeline replay and Canvas. Anonymous reports keep public-safe evidence visible and use contextual sign-in only for private capabilities.
+**Progressive / loading:** The living review is editor chrome, not a carded report page. Full-bleed under thin immersive header (`showFooter={false}`), flush Agent | Product split with a divider only (no pane cards), left thinner than right. FixFlags understanding is chat on the left; the Product pane renders the Report immediately and fills in score, priorities, and evidence as findings arrive. Desktop keeps Agent and Report side by side; mobile switches only between Agent and Report. Anonymous reports keep public-safe evidence visible and use contextual sign-in only for private capabilities.
 
 **Product stage and transport:** The Product pane is three fixed rows: header, stage, transport. Small screens reach every surface through one Preview-first tab bar that does not change when a scan completes. The header carries the Product name, reviewed address (`displaySiteAddress`), Preview-first Eye/FileText toggle, and Monitor/Smartphone device icons when Preview is active. The stage uses `WORKSPACE_STAGE_CLASS` and letterboxes with `object-contain object-center`. The transport is path scrub and step chips only. The immersive shell carries no floating support bubble. `BrowserFrame` renders `chrome="none"` inside the editor; `chrome="browser"` belongs only to marketing and compare surfaces.
 
-**Report pane:** Report mode uses a fixed compact `ReportOutcomeBar` with circular score, chronological Review history, and the owner Update review action. The shared `ReportPane` contains the five highest-ranked priorities by default, a selected-issue evidence surface, an always-visible per-issue `Copy prompt`, and collapsed secondary context. The web report does not render the aggregate Fix plan.
+**Report pane:** Report mode uses a fixed compact `ReportOutcomeBar` with circular score, chronological Review history, and the owner Update review action. The shared `ReportPane` starts its ranked list with `Your priorities`, shows the five highest-ranked issues by default, and places the selected-issue evidence beside it without a separate filter bar. Each issue uses one prompt row with an expandable preview and a copy action on the right. The web report does not render the aggregate Fix plan.
 Only the explorer body sits inside `data-report-frame` using `WORKSPACE_REPORT_FRAME_CLASS`, so a wide pane gives the body exactly one pane height and each column scrolls itself, while a narrow pane releases that height and scrolls as one column.
 Everything inside the pane is pane-relative: container queries (`@container/pane`, `@[40rem]/pane:`), never `lg:`, `100vh`, `--header-offset` sticky, or `overflow-clip`.
 Filters stay visible at every pane width, and `goToFlag` scrolls the nearest scroll parent instead of the document.
@@ -171,9 +171,9 @@ Each column scrolls itself in a wide pane; a narrow pane stacks the list above t
 
 The compact header owns only Score, full-Review history, and active scan progress.
 The explorer owns ranking, per-rubric filters, the Fix count, evidence, and fix detail.
-Public curated samples expose the complete ranked list, exactly one demonstrated prompt, and repository-owned static Timeline playback.
+Public curated samples expose the same ranked report design and exactly one demonstrated prompt.
 Their history contains only complete generated observation bundles. Each bundle binds a repository revision and source path to capture hashes, document hash, date, score, Flags, Timeline, and evidence anchors; incomplete or reused comparison captures are a release failure.
-Live anonymous, non-owner, and shared reports expose zero prompts, zero copy controls, and no Timeline payload.
+Live anonymous, non-owner, and shared reports expose zero prompts and zero copy controls.
 Only a strict `IMPROVED` verification receipt may present an Improvement as verified or write verified Product Memory.
 Raw absence in an update review is “No longer observed in this review.”
 Copy records a handoff and never declares verification.
