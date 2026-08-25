@@ -53,7 +53,7 @@ export const FAQ = [
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
-    answer: `Every plan includes the same complete Product Review. Free includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}) increases that to ${PRICING_COPY.proProductReviewsPerMonth}. New URLs, update reviews, and completed Watch reviews share the product review allowance.`,
+    answer: `Every Product Review includes prioritized Flags, evidence, and fix prompts. Free includes ${PRICING_COPY.freeProductReviewsPerMonth} reviews per month for one product. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}) includes ${PRICING_COPY.proProductReviewsPerMonth} reviews per month across up to five products, with history across releases.`,
   },
   {
     question: 'Do I need a specific AI builder?',
@@ -77,7 +77,7 @@ export const FAQ = [
   },
   {
     question: 'Are my reports public?',
-    answer: `${OFFER.linkPrivacy} Protected share links are included on every plan. Separate public site pages are for discovery; they are not your private report.`,
+    answer: OFFER.reportAccess,
   },
   {
     question: 'Does it work on staging/password-protected sites?',
@@ -99,12 +99,12 @@ export const FAQ = [
 export const CHANGELOG_ENTRIES = [
   {
     date: '2026-07-22',
-    title: 'A complete Fix list and safer sharing',
+    title: 'A complete Fix list and public report links',
     items: [
       'Every report now opens with every unresolved Flag ranked by launch impact',
       'Screenshots, evidence, and fixes now share one report workspace',
       'The sample shows the same complete Fix list without a loading gap',
-      'Password-protected share links stay private and can be revoked without exposing the report',
+      'Every report has one canonical link for sharing its evidence',
       'Sign-in waits until your anonymous report is safely attached to your account',
     ],
   },

@@ -77,9 +77,9 @@ export const REPORT_COPY = {
       identity: "FixFlags report",
       identityBody: "Report details are not available",
       summaryValue: "Unavailable",
-      privateTitle: "This report is private",
+      privateTitle: "Report unavailable",
       privateBody:
-        "Sign in with the account that owns this report, or ask the owner for a new share link.",
+        "This report does not exist or is no longer available.",
       sharedTitle: "This shared report is unavailable",
       sharedBody:
         "The link may have expired, been revoked, or no longer be eligible for sharing. Ask the owner for a new link.",
@@ -149,7 +149,8 @@ export const REPORT_COPY = {
       transportLabel: "Preview controls",
       liveCapture: "Live capture",
       capturing: "Capturing the page",
-      noSteps: "Path replay appears when this Product Review captures a multi-step path",
+      noSteps:
+        "Path replay appears when this Product Review captures a multi-step path",
     },
     panels: {
       chatTab: "Agent",
@@ -258,12 +259,12 @@ export const REPORT_COPY = {
     title: "Next: verify the published change",
     bodyPrefix:
       "Paste the fix prompts into your editor, publish the changes, then select",
-    bodySuffix: "above to get an independent result for each attempted Improvement.",
+    bodySuffix:
+      "above to get an independent result for each attempted Improvement.",
   },
   verificationReceipts: {
     title: "Independent verification",
-    body:
-      "Each receipt comes from a fresh completed update review and shows the evidence, coverage, and remaining risk.",
+    body: "Each receipt comes from a fresh completed update review and shows the evidence, coverage, and remaining risk.",
     countLabel: (count: number) =>
       `${count} ${count === 1 ? "verification receipt" : "verification receipts"}`,
     outcomes: {
@@ -380,6 +381,7 @@ export const REPORT_COPY = {
     hint: "Stack, contract, funnel, previews, launch gates",
   },
   explorer: {
+    fixPrompt: "Fix Prompt",
     allPages: "All Pages",
     noMatchFilter: "No flags match this filter.",
     checkingIssues: "Checking for Flags…",

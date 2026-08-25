@@ -4,7 +4,6 @@ import { Container } from '@/components/ui/container'
 import { getAppViewer } from '@/lib/auth/app-viewer'
 import {
   canAccessProductWatch,
-  canSharePublicly,
 } from '@/lib/auth/entitlements'
 import {
   loadProductWorkspace,
@@ -25,9 +24,10 @@ export default async function ProductPage({
   if (!viewer) redirect('/sign-in')
   const { id } = await params
   const query = searchParams ? await searchParams : undefined
+  const canScheduleReviews = canAccessProductWatch(viewer.user)
   const workspace = await loadProductWorkspace(id, viewer.user.id, {
-    signalsEligible: canAccessProductWatch(viewer.user),
-    canDailyWatch: canSharePublicly(viewer.user),
+    signalsEligible: canScheduleReviews,
+    canDailyWatch: canScheduleReviews,
     historyCursor: parseProductHistoryCursor(query?.historyCursor),
   })
   if (!workspace) notFound()

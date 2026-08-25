@@ -44,17 +44,41 @@ describe('pricing parity', () => {
     expect(PLANS.find((plan) => plan.plan === 'FREE')).toMatchObject({
       price: '$0',
       audits: `${PRICING_COPY.freeProductReviewsPerMonth} product reviews / month`,
+      products: '1 product',
+      cta: 'Start free',
     })
     expect(PLANS.find((plan) => plan.plan === 'BUILDER')).toMatchObject({
       price: PRICING_COPY.proPrice,
       period: PRICING_COPY.proPeriod,
       audits: `${PRICING_COPY.proProductReviewsPerMonth} product reviews / month`,
+      products: 'Up to 5 products',
+      cta: 'Join Pro waitlist',
     })
     expect(PLANS.find((plan) => plan.plan === 'TEAM')).toMatchObject({
       price: PRICING_COPY.studioPrice,
       period: PRICING_COPY.studioPeriod,
       audits: `${PRICING_COPY.studioProductReviewsPerMonth} product reviews / month`,
+      products: 'Unlimited products',
+      cta: 'Join Studio waitlist',
     })
+  })
+
+  it('gives each paid plan a concrete reason to upgrade', () => {
+    const pro = PLANS.find((plan) => plan.plan === 'BUILDER')!
+    const studio = PLANS.find((plan) => plan.plan === 'TEAM')!
+
+    expect(pro.features.join('\n')).toMatch(/history across releases/i)
+    expect(pro.features.join('\n')).toMatch(/compare releases/i)
+    expect(studio.features.join('\n')).toMatch(/scheduled reviews/i)
+    expect(studio.features.join('\n')).toMatch(/invite people/i)
+    expect(studio.accountModel).toMatch(/unlimited workspace seats.*limited time/i)
+  })
+
+  it('avoids inheritance shorthand and internal metering language', () => {
+    const customerSurfaces = JSON.stringify({ PLANS, PRICING })
+    expect(customerSurfaces).not.toMatch(/everything in (free|pro|studio)/i)
+    expect(customerSurfaces).not.toMatch(/shared by new and update/i)
+    expect(customerSurfaces).not.toMatch(/run update reviews manually/i)
   })
 
   it('uses the monthly usage ladder on customer surfaces', () => {

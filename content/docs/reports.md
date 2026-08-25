@@ -27,4 +27,4 @@ After a deployment, an update review captures the live product again and compare
 
 ## Sharing and Watch
 
-Protected share links respect report access and ownership. Scheduled Watch reviews are included on every plan and consume the monthly product review allowance when they complete. If no allowance remains, Watch pauses until renewal or upgrade. For usage or billing questions, see the [Help Center](/help).
+Use Copy link in the Export menu to share the public report evidence. Agent chat, fix prompts, Product Memory, account history, and owner actions are not included for other viewers. Scheduled Watch reviews are included on every plan and consume the monthly product review allowance when they complete. If no allowance remains, Watch pauses until renewal or upgrade. For usage or billing questions, see the [Help Center](/help).

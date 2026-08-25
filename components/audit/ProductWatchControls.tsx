@@ -104,7 +104,7 @@ export function ProductWatchControls({
         {REPORT_COPY.recheckHint.bodyPrefix}{' '}
         <strong>{REPORT_COPY.recheck.label}</strong> {REPORT_COPY.recheckHint.bodySuffix}{' '}
         <Link href="/pricing" className="text-link font-medium underline-offset-2 hover:underline">
-          {PRODUCT_WATCH_COPY.proLink}
+          {PRODUCT_WATCH_COPY.studioLink}
         </Link>.
       </p>
     )

@@ -32,14 +32,25 @@ describe('planLabel', () => {
 
 describe('usage plan ladder', () => {
   it('keeps enum codes while exposing the canonical monthly limits and prices', () => {
-    expect(PLAN_DEFINITIONS.FREE).toMatchObject({ price: '$0', auditLimit: 3, deepReviewLimit: 1 })
+    expect(PLAN_DEFINITIONS.FREE).toMatchObject({
+      price: '$0',
+      auditLimit: 3,
+      projectLimit: 1,
+      deepReviewLimit: -1,
+    })
     expect(PLAN_DEFINITIONS.BUILDER).toMatchObject({
       price: '$29',
       auditLimit: 15,
-      deepReviewLimit: 3,
-      deepReviewLimitLabel: '3 deep reviews / month',
+      projectLimit: 5,
+      deepReviewLimit: -1,
+      deepReviewLimitLabel: 'Path depth included',
     })
-    expect(PLAN_DEFINITIONS.TEAM).toMatchObject({ price: '$79', auditLimit: 50, deepReviewLimit: 10 })
+    expect(PLAN_DEFINITIONS.TEAM).toMatchObject({
+      price: '$79',
+      auditLimit: 50,
+      projectLimit: null,
+      deepReviewLimit: -1,
+    })
     expect(Object.values(PLAN_DEFINITIONS).every((plan) => plan.auditLimitKind === 'monthly')).toBe(true)
   })
 
@@ -51,13 +62,13 @@ describe('usage plan ladder', () => {
     expect(usageAllowanceForPriceId('price_older_pro')).toEqual({
       plan: 'BUILDER',
       auditLimit: 25,
-      deepReviewLimit: 4,
+      deepReviewLimit: -1,
       legacy: true,
     })
     expect(usageAllowanceForPriceId('price_old_studio')).toEqual({
       plan: 'TEAM',
       auditLimit: 80,
-      deepReviewLimit: 10,
+      deepReviewLimit: -1,
       legacy: true,
     })
     vi.unstubAllEnvs()

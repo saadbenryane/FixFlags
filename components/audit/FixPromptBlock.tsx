@@ -39,6 +39,8 @@ interface FixPromptBlockProps {
   copyNextStep?: string
   /** Render the body as Markdown (lean ChatGPT/Claude-style) instead of raw terminal text. */
   render?: 'raw' | 'markdown'
+  /** Remove the nested Markdown card when the prompt already lives in a disclosure shell. */
+  markdownChrome?: 'card' | 'flat'
   hideActions?: boolean
 }
 
@@ -144,6 +146,7 @@ export function FixPromptBlock({
   itemPosition,
   copyNextStep,
   render = 'raw',
+  markdownChrome = 'card',
   hideActions = false,
 }: FixPromptBlockProps) {
   const [preferredTool, setPreferredTool] = usePreferredTool(defaultTool)
@@ -166,6 +169,30 @@ export function FixPromptBlock({
   ) : null
 
   if (render === 'markdown') {
+    const markdownBody = (
+      <div
+        className={markdownChrome === 'flat' ? 'px-4 py-4' : 'px-3 py-3 sm:px-4'}
+        aria-label="Fix prompt"
+      >
+        {promptUnavailable ? (
+          <p className="text-sm text-destructive" role="alert">
+            No validated prompt is available for this builder. Choose another builder.
+          </p>
+        ) : (
+          <ReactMarkdown components={markdownComponents}>{displayPrompt}</ReactMarkdown>
+        )}
+      </div>
+    )
+
+    if (markdownChrome === 'flat') {
+      return (
+        <div className={cn('space-y-2', className)}>
+          {toolSelector}
+          {markdownBody}
+        </div>
+      )
+    }
+
     const mShellRadius = nested ? 'rounded-[var(--radius-inner)]' : 'rounded-card'
     return (
       <div className={cn('space-y-2', className)}>
@@ -195,15 +222,7 @@ export function FixPromptBlock({
             </div>
           </div>
 
-          <div className="px-3 py-3 sm:px-4" aria-label="Fix prompt">
-            {promptUnavailable ? (
-              <p className="text-sm text-destructive" role="alert">
-                No validated prompt is available for this builder. Choose another builder.
-              </p>
-            ) : (
-              <ReactMarkdown components={markdownComponents}>{displayPrompt}</ReactMarkdown>
-            )}
-          </div>
+          {markdownBody}
         </div>
       </div>
     )

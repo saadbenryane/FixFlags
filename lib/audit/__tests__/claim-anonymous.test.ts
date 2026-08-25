@@ -22,6 +22,7 @@ const incrementUsageOnCompleteForAudit = vi.hoisted(() => vi.fn())
 const remainingAiReportCredits = vi.hoisted(() => vi.fn())
 const enqueueAiReview = vi.hoisted(() => vi.fn())
 const hasUnlimitedScans = vi.hoisted(() => vi.fn())
+const assertCanCreateProduct = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('next/headers', () => ({ cookies: async () => cookieStore }))
@@ -35,6 +36,7 @@ vi.mock('@/lib/audit/usage', async (importOriginal) => {
 vi.mock('@/lib/audit/ai-report-entitlement', () => ({ remainingAiReportCredits }))
 vi.mock('@/lib/audit/enqueue-ai-review', () => ({ enqueueAiReview }))
 vi.mock('@/lib/auth/permissions', () => ({ hasUnlimitedScans }))
+vi.mock('@/lib/billing/product-capacity', () => ({ assertCanCreateProduct }))
 import { claimAnonymousAudits } from '@/lib/audit/claim-anonymous'
 import { ANON_AUDIT_IDS_COOKIE } from '@/lib/audit/usage'
 import { createAnonymousClaim } from '@/lib/security/anonymous-claim'
@@ -76,6 +78,7 @@ describe('claimAnonymousAudits', () => {
     remainingAiReportCredits.mockResolvedValue(3)
     enqueueAiReview.mockResolvedValue(undefined)
     hasUnlimitedScans.mockReturnValue(false)
+    assertCanCreateProduct.mockResolvedValue(undefined)
   })
 
   it('returns 0 and skips work when there is no anon cookie', async () => {

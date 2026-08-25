@@ -30,7 +30,7 @@ export default function PrivacyPage() {
                 {section.title === 'How we use it'
                   ? `${section.body} ${OFFER.privacy}`
                   : section.title === 'Report access'
-                    ? `${section.body} ${OFFER.linkPrivacy}`
+                    ? `${section.body} ${OFFER.reportAccess}`
                     : section.body}
               </p>
             </div>

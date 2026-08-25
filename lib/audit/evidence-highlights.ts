@@ -65,7 +65,7 @@ export function buildEvidenceHighlightsForFlag(
   const measured = highlightsFromTargets(flag, index, visualDetail)
   if (measured.length > 0) return measured
 
-  // Curated sample fixtures may still supply measured Launchpad anchors.
+  // Curated sample fixtures may still supply measured DemoSite anchors.
   // Live Flags without evidenceTargets must not receive a guessed box.
   if (!anchorMap) return []
 

@@ -5,20 +5,11 @@ export const HERO = {
   headlineDisplay: "Finish what your AI started",
   headlineAccentPeriod: true,
   subhead:
-    "Paste your live URL. See where people may get confused or stuck, and know what to fix before you share it.",
+    "Paste your live URL. See the problems most likely to cost trust or conversions, ranked with evidence from the product.",
   primaryCta: "Review my site",
   compactPrimaryCta: "Review site",
   trySampleCta: "See a sample review",
-  urlPlaceholder: "Paste your site or app URL",
-  /** Honest product assurances only. No invented counts or testimonials. */
-  assurances: [
-    {
-      id: "evidence",
-      label: "Evidence from your live site",
-      icon: "shield" as const,
-    },
-    { id: "teaser", label: "3 reviews included free", icon: "zap" as const },
-  ],
+  urlPlaceholder: "yourproduct.com",
   /** Product-true trust line only. No invented member counts or stock avatars. */
   trustLine: "Works with your favourite vibe coding tools",
   scrollHint: "Scroll to discover",
@@ -88,7 +79,7 @@ export const DIFFERENTIATION = {
       fixflags: "Yes",
     },
     {
-      feature: "Protected share links",
+      feature: "Public report link",
       lighthouse: "No",
       manual: "No",
       fixflags: "Yes",
@@ -137,6 +128,7 @@ export const DIFFERENTIATION = {
 export const FINAL_CTA = {
   headlineDisplay: "Paste a URL. See what to fix",
   headlineAccentPeriod: true,
+  body: "Get a ranked Product Review with evidence from the live page.",
 } as const;
 
 export const BUILDER_WORKFLOW_SECTION = {
@@ -547,23 +539,23 @@ export const LANDING_PAGE = {
     headlineAccentPeriod: true,
     headline: "Find the issues. Fix them. See what improved.",
     subhead:
-      "Start with the live product. Keep each fix connected to the evidence behind it.",
+      "From live page to evidence-backed fix, every step stays connected.",
     sampleLink: "Explore a full report",
     steps: [
       {
         step: 1,
-        title: "Review the live product",
-        body: "Paste a URL. FixFlags reviews the page on desktop and mobile.",
+        title: "Show us the real product",
+        body: "Paste the live URL. FixFlags experiences the page on desktop and mobile.",
       },
       {
         step: 2,
-        title: "Fix the most important Flag",
-        body: "See where people get stuck, inspect the evidence, then copy the fix into your AI editor.",
+        title: "See what matters first",
+        body: "Get the highest-impact Flags in order, each tied to the screen and behavior behind it.",
       },
       {
         step: 3,
-        title: "Run an update review",
-        body: "Publish the change, then run an update review to see what improved.",
+        title: "Fix it. Check it again",
+        body: "Take the fix to your AI editor, publish it, then run a fresh update review.",
       },
     ] as const,
   },
@@ -658,7 +650,10 @@ export const LANDING_PAGE = {
     headlineDisplay: "FixFlags in your shipping loop. Always independent",
     headlineAccentPeriod: true,
     headline: "FixFlags in your shipping loop. Always independent.",
-    headlineLines: ["FixFlags in your shipping loop.", "Always independent"] as const,
+    headlineLines: [
+      "FixFlags in your shipping loop.",
+      "Always independent",
+    ] as const,
     body: "Review the live URL, act on clear Flags, and run an update review after you publish.",
     workspace: {
       title: "Product release review",
@@ -693,7 +688,8 @@ export const LANDING_PAGE = {
         },
       ] as const,
       verifiedTitle: "Independent result recorded",
-      verifiedBody: "The verification receipt stays attached to the original Flag.",
+      verifiedBody:
+        "The verification receipt stays attached to the original Flag.",
       continueLabel: "Copy fix prompt",
     },
   },
@@ -754,7 +750,7 @@ export const LANDING_PAGE = {
     headlineDisplay: "See what gets in your users’ way",
     headlineAccentPeriod: true,
     headline: "See what gets in your users’ way.",
-    body: "Explore the curated Launchpad demo. See the issues, the evidence behind them, and a fix you can paste into your AI editor.",
+    body: "Explore a curated demo review. See the issues, the evidence behind them, and a fix you can paste into your AI editor.",
     previewEyebrow: "Fix list",
     previewTitle: "Every fix, ranked and ready to apply",
     previewBadge: "Screenshot evidence included",

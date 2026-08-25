@@ -1,9 +1,4 @@
-import {
-  fireEvent,
-  render,
-  screen,
-  within,
-} from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { IntegrationsBlock } from '@/components/marketing/landing/IntegrationsBlock'
 import { Footer } from '@/components/layout/footer'
@@ -91,13 +86,13 @@ describe('homepage lean sections', () => {
     expect(screen.getByRole('list')).toBeInTheDocument()
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
     expect(
-      screen.getByRole('heading', { name: 'Review the live product' }),
+      screen.getByRole('heading', { name: 'Show us the real product' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: 'Fix the most important Flag' }),
+      screen.getByRole('heading', { name: 'See what matters first' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: 'Run an update review' }),
+      screen.getByRole('heading', { name: 'Fix it. Check it again' }),
     ).toBeInTheDocument()
     expect(screen.queryByText('FixFlags review')).not.toBeInTheDocument()
   })
@@ -113,16 +108,16 @@ describe('homepage lean sections', () => {
     expect(
       screen.getByText(/run an update review on the live URL/i),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Read the report guide' })).toHaveAttribute(
-      'href',
-      '/docs/reports',
-    )
-    expect(screen.getByRole('link', { name: 'See a sample report' })).toHaveAttribute(
-      'href',
-      '/samples',
-    )
+    expect(
+      screen.getByRole('link', { name: 'Read the report guide' }),
+    ).toHaveAttribute('href', '/docs/reports')
+    expect(
+      screen.getByRole('link', { name: 'See a sample report' }),
+    ).toHaveAttribute('href', '/samples')
     expect(screen.queryByText(/MCP|CLI/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /integration guide/i })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /integration guide/i }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
@@ -139,7 +134,9 @@ describe('homepage lean sections', () => {
     expect(finalCta).not.toBeNull()
     expect(footer).not.toBeNull()
     expect(
-      within(finalCta as HTMLElement).queryByText('Evidence from your live site'),
+      within(finalCta as HTMLElement).queryByText(
+        'Evidence from your live site',
+      ),
     ).not.toBeInTheDocument()
     expect(
       within(finalCta as HTMLElement).queryByText('3 reviews included free'),
@@ -157,13 +154,19 @@ describe('homepage lean sections', () => {
 
     const story = screen.getByLabelText('FixFlags review story')
     expect(story).toBeInTheDocument()
-    expect(screen.getByText('Launchpad demo')).toBeInTheDocument()
+    expect(screen.getByText('DemoSite')).toBeInTheDocument()
     // The reviewed host names both panes now that no fake browser bar carries it.
     expect(screen.getAllByText('fixflags.com/demo').length).toBeGreaterThan(0)
     expect(screen.getByRole('tab', { name: 'Agent' })).toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Preview' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('tab', { name: 'Preview' }),
+    ).not.toBeInTheDocument()
     expect(screen.getAllByRole('tab', { name: 'Report' })).not.toHaveLength(0)
-    expect(screen.getByRole('heading', { name: 'Primary CTA is hidden below the fold on mobile' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
+        name: 'Primary CTA is hidden below the fold on mobile',
+      }),
+    ).toBeInTheDocument()
     expect(
       screen.queryByRole('link', { name: 'Review my site' }),
     ).not.toBeInTheDocument()
@@ -198,7 +201,9 @@ describe('homepage lean sections', () => {
     expect(
       within(mobileTabs).getByRole('tab', { name: 'Agent' }),
     ).toHaveAttribute('aria-selected', 'true')
-    expect(within(mobileTabs).getByRole('tab', { name: 'Report' })).toBeInTheDocument()
+    expect(
+      within(mobileTabs).getByRole('tab', { name: 'Report' }),
+    ).toBeInTheDocument()
   })
 
   it('shows the complete value story without timed motion for reduced-motion users', async () => {
@@ -234,7 +239,13 @@ describe('homepage lean sections', () => {
 
     expect(screen.getByRole('region', { name: 'Agent' })).toBeInTheDocument()
     expect(screen.getByText('Your priorities')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Primary CTA is hidden below the fold on mobile' })).toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Preview' })).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
+        name: 'Primary CTA is hidden below the fold on mobile',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('tab', { name: 'Preview' }),
+    ).not.toBeInTheDocument()
   })
 })

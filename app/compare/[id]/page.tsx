@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { cookies, headers } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
-import { getRequestedPath, signInUrl } from '@/lib/auth/redirect-path'
 import { Card } from '@/components/ui/card'
 import { FlagDiff } from '@/components/compare/FlagDiff'
 import { BeforeAfterComparison } from '@/components/audit/BeforeAfterComparison'
@@ -16,15 +15,13 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Muted, SectionTitle } from '@/components/ui/typography'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
-import { canAccessAudit, resolveAuditAccess } from '@/lib/audit/access'
-import { canSharePublicly } from '@/lib/auth/entitlements'
+import { resolveAuditAccess } from '@/lib/audit/access'
 import { SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
 import { isAdminUser } from '@/lib/auth/permissions'
 import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/audit/rubric'
 import { RubricDiff } from '@/components/compare/RubricDiff'
 import { ShareCompareButton } from '@/components/audit/ShareCompareButton'
 import { RecheckCompletedTracker } from '@/components/audit/RecheckCompletedTracker'
-import type { User } from '@prisma/client'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -58,34 +55,16 @@ export default async function ComparePage({ params, searchParams }: Props) {
     redirect(`/report/${id}`)
   }
 
-  let viewer: Pick<User, 'id' | 'plan' | 'role' | 'subscriptionStatus'> | null = null
   let showAdmin = false
-  let isShareView = false
-
   const grantValue = (await cookies()).get(SHARE_GRANT_COOKIE)?.value
   const childAccess = await resolveAuditAccess(monitoringAudit, session?.user, grantValue)
-  const parentAccess = childAccess === 'denied'
-    ? await resolveAuditAccess(monitoringAudit.parent, session?.user, grantValue)
-    : childAccess
-  isShareView = childAccess === 'share_grant' || parentAccess === 'share_grant'
+  const parentAccess = await resolveAuditAccess(monitoringAudit.parent, session?.user, grantValue)
+  if (childAccess === 'denied' || parentAccess === 'denied') notFound()
 
-  if (!isShareView) {
-    if (!session?.user) {
-      redirect(`/sign-in?next=/compare/${id}`)
-    }
-
+  if (session?.user) {
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-    if (!user) {
-      redirect(signInUrl(await getRequestedPath(`/compare/${id}`)))
-    }
-    viewer = user
-    showAdmin = isAdminUser(user)
-
-    if (
-      !canAccessAudit(monitoringAudit, session.user) ||
-      !canAccessAudit(monitoringAudit.parent, session.user)
-    ) {
-      notFound()
+    if (user) {
+      showAdmin = isAdminUser(user)
     }
   }
 
@@ -111,8 +90,6 @@ export default async function ComparePage({ params, searchParams }: Props) {
   const afterRubrics = computeRubricsFromRows(mapRubrics(after.rubrics))
   const beforeShareStatus = computeShareStatusFromRubrics(mapRubrics(before.rubrics))
   const afterShareStatus = computeShareStatusFromRubrics(mapRubrics(after.rubrics))
-
-  const canShare = viewer ? canSharePublicly(viewer) : isShareView
 
   return (
     <AuditShell session={session} showAdmin={showAdmin}>
@@ -214,12 +191,7 @@ export default async function ComparePage({ params, searchParams }: Props) {
           </div>
         )}
 
-        {canShare && (
-          <ShareCompareButton
-            auditId={after.id}
-            label="Share this comparison"
-          />
-        )}
+        <ShareCompareButton auditId={after.id} />
 
         <div className="flex gap-3 flex-wrap">
           <Button asChild variant="outline">

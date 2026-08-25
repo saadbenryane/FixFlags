@@ -1,7 +1,7 @@
 'use client'
 
 import type { RefObject } from 'react'
-import { type LucideIcon } from 'lucide-react'
+import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react'
 import { ScreenshotWithHighlights } from '@/components/audit/ScreenshotWithHighlights'
 import {
   FlagDetailPanel,
@@ -10,6 +10,7 @@ import {
   type ReportOwnerActionContext,
 } from '@/components/report/FlagDetailPanel'
 import { FilterPill } from '@/components/ui/filter-pill'
+import { Button } from '@/components/ui/button'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import type { RubricFilter } from '@/lib/report/explorer-filters'
@@ -59,6 +60,10 @@ export function RubricTabs({
 export function FlagDetailPane({
   model,
   flag,
+  flagCount,
+  flagPosition,
+  onPrevious,
+  onNext,
   showFeedback,
   aiLocked,
   aiEnhancementPending,
@@ -71,6 +76,7 @@ export function FlagDetailPane({
   model: ReportExplorerModel
   flag: ReportExplorerModel['flags'][number]
   flagCount: number
+  flagPosition: number
   onPrevious: () => void
   onNext: () => void
   showFeedback?: boolean
@@ -89,17 +95,44 @@ export function FlagDetailPane({
   return (
     <div className="min-w-0">
       <header className="mb-5">
-        <div className="flex items-start justify-between gap-4">
-          <h3
-            ref={headingRef}
-            tabIndex={-1}
-            className="min-w-0 flex-1 text-lg font-semibold leading-snug tracking-heading text-balance outline-none"
-          >
-            {flag.title}
-          </h3>
-        </div>
-        <div className="mt-1.5">
+        <h3
+          ref={headingRef}
+          tabIndex={-1}
+          className="text-lg font-semibold leading-snug tracking-heading text-balance outline-none"
+        >
+          {flag.title}
+        </h3>
+        <div className="mt-2 flex items-center justify-between gap-3">
           <FlagMetaPills flag={flag} />
+          {flagCount > 1 ? (
+            <nav className="flex shrink-0 items-center gap-1" aria-label="Flag navigation">
+              <span className="mr-1 font-mono text-2xs tabular-nums text-muted-foreground" aria-live="polite">
+                {flagPosition} of {flagCount}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onPrevious}
+                disabled={flagPosition <= 1}
+                aria-label="Previous flag"
+                className="border border-border/45 bg-background text-muted-foreground shadow-sm hover:text-foreground"
+              >
+                <ChevronLeft aria-hidden />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={onNext}
+                disabled={flagPosition >= flagCount}
+                aria-label="Next flag"
+                className="border border-border/45 bg-background text-muted-foreground shadow-sm hover:text-foreground"
+              >
+                <ChevronRight aria-hidden />
+              </Button>
+            </nav>
+          ) : null}
         </div>
       </header>
 

@@ -25,8 +25,8 @@ Run after deploying metering + GTM changes. Operator credentials required for pa
 
 1. Free user blocked on 4th product review (new URL).
 2. Free user blocked on update review when at product review cap.
-3. Free user gets exactly one deep review teaser.
-4. Pro user deep review cap at 4/month (journey pipeline gated).
+3. Free user gets three complete Product Reviews per month.
+4. Pro user gets 15 complete Product Reviews per month, including path evidence where available.
 
 ## Anonymous wedge
 

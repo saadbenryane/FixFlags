@@ -172,6 +172,40 @@ final result: passed
 
 ---
 
+# Focused shared-report refinement QA (2026-08-25)
+
+## Comparison target
+
+- Hierarchy reference: `/Users/saadbenryane/.codex/generated_images/01a03a89-7093-7703-b640-c3067c198ecf/exec-da3ae6fb-28a8-4b80-b1b8-05cac7122042.png`
+- Browser-rendered desktop implementation: `/Users/saadbenryane/Code/fixflags/.agents/artifacts/focused-report-refinement-1440.png`
+- Browser-rendered mobile implementation: `/Users/saadbenryane/Code/fixflags/.agents/artifacts/focused-report-refinement-375.png`
+- Normalized side-by-side comparison: `/Users/saadbenryane/Code/fixflags/.agents/artifacts/focused-report-refinement-comparison.png`
+- Route and state: `/samples?view=report`, current completed curated Review, light theme
+- Desktop CSS viewport: `1440 × 900`
+- Mobile CSS viewport: `375 × 812`
+
+## Findings
+
+- The first Review now establishes a score of 69 and the newer Review scores 79, so the history communicates improvement instead of regression.
+- `Your priorities` is the heading of the ranked list itself. The separate filter toolbar and `Filter issues` disclosure are gone, moving selected-issue detail upward.
+- The selected issue uses one concise `What this means` sentence pair. The mobile viewport is written as `On mobile (375×812)` and the conversion consequence is explicit.
+- `Fix Prompt` and `Copy prompt` share one compact row. The prompt expands independently while the copy action remains visible at the right.
+- Desktop and mobile captures load eagerly through the shared screenshot component. The browser showed two real screenshots with affected and unaffected viewport labels.
+- The shared `ReportExplorer`, `FlagDetailPane`, and `FlagDetailPanel` own this hierarchy, so sample, live, progressive, owner, and shared report surfaces do not fork their design.
+- At 375px, the workspace exposes only Agent and Report, has no horizontal overflow, and keeps the ranked list readable before the selected detail.
+- The circular score, linked Review history, five-item ranked list, `Show more`, prompt action, and screenshot evidence preserve the existing FixFlags tokens and interaction behavior.
+
+## Proof
+
+- Focused report and sample tests: 52 passed.
+- `npm run ui:drift-guard`: passed.
+- `node scripts/report-pane-proof.mjs`: passed at 320, 375, 768, and 1280px with the prompt visible in every state.
+- In-app browser DOM inspection confirmed no `Filter issues`, the new consequence copy, both prompt controls, and two screenshot images.
+
+final result: passed
+
+---
+
 # Simplified Product and Report QA
 
 ## Comparison target
@@ -188,7 +222,7 @@ final result: passed
 ## Findings
 
 - The implementation follows the reference hierarchy without copying its shell: Agent remains on the left, while the report leads with a circular score, linked Review history, five ranked priorities, and one dominant issue detail.
-- The selected issue keeps `Copy prompt` visible above the screenshot and places prompt text behind `Preview prompt`.
+- The selected issue keeps `Copy prompt` visible above the screenshot and places prompt text behind `Fix Prompt`.
 - Timeline, Preview, and Canvas controls are absent. A legacy Timeline URL was exercised and normalized to `?view=report`.
 - At `375px`, only Agent and Report are exposed, the five priorities remain readable, and no horizontal overflow appears.
 - The existing FixFlags type, spacing, color, radius, and navigation system was intentionally retained.

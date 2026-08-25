@@ -65,7 +65,7 @@ It uses one compact circular score with an accessible pending or unavailable lab
 Each history point has a complete Review destination, chronological placement, a 44px target, and an accessible label containing Review number, kind, date, and score or status.
 The explorer owns the complete ranked Fix list count and every Flag navigation action.
 Do not repeat Pass, Needs Attention, Blocked, or share-readiness labels beside severity counts.
-When shareStatus is `fix_before_sharing`, ShareDrawer may show one warning line.
+The report URL is public evidence by default. Agent chat, prompts, Product Memory, history, and owner actions remain server-gated.
 Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
 
 **Made with:** Technology evidence lives in the collapsed Review context after the complete Fix list and Finish Plan. The collapsed state shows at most four detected technologies; expansion groups the stack and exposes short sanitized evidence labels. Technology confidence is “Verified” or “Strong signal,” never a vendor score. Empty, legacy, partial, unavailable, and same-detector update-review diff states are explicit. Use Lucide category icons, not remote logos.
@@ -76,7 +76,11 @@ Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
 
 **Product stage and transport:** The Product pane is three fixed rows: header, stage, transport. Small screens reach every surface through one Preview-first tab bar that does not change when a scan completes. The header carries the Product name, reviewed address (`displaySiteAddress`), Preview-first Eye/FileText toggle, and Monitor/Smartphone device icons when Preview is active. The stage uses `WORKSPACE_STAGE_CLASS` and letterboxes with `object-contain object-center`. The transport is path scrub and step chips only. The immersive shell carries no floating support bubble. `BrowserFrame` renders `chrome="none"` inside the editor; `chrome="browser"` belongs only to marketing and compare surfaces.
 
-**Report pane:** Report mode uses a fixed compact `ReportOutcomeBar` with circular score, chronological Review history, and the owner Update review action. The shared `ReportPane` starts its ranked list with `Your priorities`, shows the five highest-ranked issues by default, and places the selected-issue evidence beside it without a separate filter bar. Each issue uses one prompt row with an expandable preview and a copy action on the right. The web report does not render the aggregate Fix plan.
+**Report pane:** Report mode uses a fixed compact `ReportOutcomeBar` with circular score, chronological Review history, and the owner Update review action.
+The shared `ReportPane` starts its ranked list with `Your priorities`, shows the five highest-ranked issues by default, and places the selected-issue evidence beside it without a separate filter bar.
+Each issue uses one prompt row with an expandable `Fix Prompt` and a branded copy action on the right.
+The prompt expands in normal flow without a nested card.
+The web report does not render the aggregate Fix plan.
 Only the explorer body sits inside `data-report-frame` using `WORKSPACE_REPORT_FRAME_CLASS`, so a wide pane gives the body exactly one pane height and each column scrolls itself, while a narrow pane releases that height and scrolls as one column.
 Everything inside the pane is pane-relative: container queries (`@container/pane`, `@[40rem]/pane:`), never `lg:`, `100vh`, `--header-offset` sticky, or `overflow-clip`.
 Filters stay visible at every pane width, and `goToFlag` scrolls the nearest scroll parent instead of the document.

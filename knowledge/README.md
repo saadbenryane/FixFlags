@@ -163,7 +163,7 @@ When you need information about a topic, go to the canonical source:
 | Flag system | `knowledge/product.md` |
 | Truth system | `knowledge/product.md` |
 | Product surfaces | `knowledge/product-system.md` |
-| Product Review, Deep Review, Watch | `knowledge/product-system.md` |
+| Product Review, Update Review, Watch, future Deep Review | `knowledge/product-system.md` |
 | Activation and paywall | `knowledge/product-system.md` |
 | User personas | `knowledge/user-journey.md` |
 | Core user journey | `knowledge/user-journey.md` |

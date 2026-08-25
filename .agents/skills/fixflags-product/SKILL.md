@@ -32,7 +32,8 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 
 ## Invariants
 
-- The user loop is Flag → Fix → Update review; update reviews are fresh, full, and diff against their parent (they meter against the product-review pool; watch-triggered re-checks skip the meter).
+- The user loop is Flag → Fix → Update review; update reviews are fresh, full, and diff against their parent.
+- Completed scheduled Studio reviews meter against the same product-review pool.
 - Public rubrics are exactly Message, Experience, and Reach.
 - Anonymous users receive one teaser scan with deterministic Agent updates and real evidence for every confirmed Flag. Every fix prompt, interactive Agent request, and Timeline payload stays gated until claim (`PRODUCT.md`, `knowledge/report-contract.md`). Never persist signup-gate strings as Flag evidence or fix text.
 - Preview overlays are Flag-owned and measured (`Flag.evidenceTargets`). Never draw a preset box. Page-scope and unmeasured Flags use an honest chip.

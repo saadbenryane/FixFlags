@@ -110,10 +110,10 @@ describe('scanLimitForPlan', () => {
 })
 
 describe('projectLimitForPlan', () => {
-  it('uses the same operational Product capacity on every plan', () => {
-    assert.equal(projectLimitForPlan('FREE'), 5)
+  it('uses the 1, 5, unlimited Product ladder', () => {
+    assert.equal(projectLimitForPlan('FREE'), 1)
     assert.equal(projectLimitForPlan('BUILDER'), 5)
-    assert.equal(projectLimitForPlan('TEAM'), 5)
+    assert.equal(projectLimitForPlan('TEAM'), null)
   })
 })
 

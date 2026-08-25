@@ -20,7 +20,7 @@ type SampleRubricScores = Record<'MESSAGE' | 'EXPERIENCE' | 'REACH', number>
 type StaticObservationDefinition = {
   id: string
   revision: string
-  sourcePath: '/demo' | '/demo/v1'
+  sourcePath: '/demo' | '/demo?baseline=1' | '/demo/v1'
   completedAt: string
   parentId: string | null
   kind: 'product-review' | 'update-review'
@@ -168,8 +168,8 @@ const FIRST_REVIEW_FLAGS: readonly RankableFlag[] = ORIGINAL_FLAGS.map((flag) =>
 const STATIC_OBSERVATIONS: readonly StaticObservationDefinition[] = [
   {
     id: 'curated-sample-v0',
-    revision: 'demo-original-baseline',
-    sourcePath: '/demo',
+    revision: 'demo-v0-baseline',
+    sourcePath: '/demo?baseline=1',
     completedAt: '2026-06-09T14:30:00Z',
     parentId: null,
     kind: 'product-review',

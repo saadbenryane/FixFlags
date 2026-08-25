@@ -52,7 +52,13 @@ import { chromium } from 'playwright'
 
 const browser = await chromium.launch({ headless: true })
 const page = await browser.newPage()
-await page.goto(pageUrl, { waitUntil: 'networkidle' })
+await page.goto(pageUrl, { waitUntil: 'load' })
+await page.waitForFunction(() => {
+  return (
+    document.body.classList.contains('font-variables') &&
+    getComputedStyle(document.documentElement).getPropertyValue('--font-sans').trim().length > 0
+  )
+})
 const runtime = await page.evaluate(() => {
   return {
     bodyClass: document.body.className,

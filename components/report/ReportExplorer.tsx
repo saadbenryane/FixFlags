@@ -282,8 +282,8 @@ export function ReportExplorer({
   }, [auditId, currentFlag, model.flags])
 
   const showPrevious = useCallback(() => {
-    if (flagCount <= 1) return
-    const next = filteredFlags[(safeFlagIndex - 1 + flagCount) % flagCount]
+    if (safeFlagIndex <= 0) return
+    const next = filteredFlags[safeFlagIndex - 1]
     if (!next) return
     setSelectedFlagId(next.id)
     writeExplorerUrl({
@@ -293,11 +293,11 @@ export function ReportExplorer({
       impact: impactFilter,
       page: pageFilter,
     })
-  }, [effectiveRubricFilter, filteredFlags, flagCount, impactFilter, pageFilter, safeFlagIndex, severityFilter, writeExplorerUrl])
+  }, [effectiveRubricFilter, filteredFlags, impactFilter, pageFilter, safeFlagIndex, severityFilter, writeExplorerUrl])
 
   const showNext = useCallback(() => {
-    if (flagCount <= 1) return
-    const next = filteredFlags[(safeFlagIndex + 1) % flagCount]
+    if (safeFlagIndex >= flagCount - 1) return
+    const next = filteredFlags[safeFlagIndex + 1]
     if (!next) return
     setSelectedFlagId(next.id)
     writeExplorerUrl({
@@ -391,6 +391,7 @@ export function ReportExplorer({
         model={model}
         flag={currentFlag}
         flagCount={flagCount}
+        flagPosition={safeFlagIndex + 1}
         onPrevious={showPrevious}
         onNext={showNext}
         showFeedback={showFeedback}

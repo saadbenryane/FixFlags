@@ -5,6 +5,7 @@ import { startMonitoringAudit } from '@/lib/audit/monitoring'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { resend } from '@/lib/email/client'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
+import { canAccessProductWatch } from '@/lib/auth/entitlements'
 
 export type WatchInterval = 'weekly' | 'daily'
 
@@ -49,11 +50,18 @@ export async function setProjectWatch(input: {
 }): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
   const project = await prisma.project.findFirst({
     where: { id: input.projectId, userId: input.userId },
-    select: { id: true },
+    select: { id: true, user: true },
   })
   if (!project) return { ok: false, error: 'Product not found' }
 
   if (input.interval) {
+    if (!canAccessProductWatch(project.user)) {
+      return {
+        ok: false,
+        error: 'Scheduled reviews are available on Studio.',
+        code: 'STUDIO_REQUIRED',
+      }
+    }
     const readiness = productWatchReadiness()
     if (!readiness.available) {
       return { ok: false, error: readiness.error!, code: 'WATCH_UNAVAILABLE' }
@@ -129,6 +137,18 @@ export async function processDueProjectWatches(limit = 20): Promise<{
   for (const project of due) {
     const interval = fromStoredWatchInterval(project.watchInterval)
     if (!interval) continue
+    if (!canAccessProductWatch(project.user as User)) {
+      await prisma.project.update({
+        where: { id: project.id },
+        data: {
+          watchInterval: null,
+          watchNextRunAt: null,
+          watchLeaseUntil: null,
+          watchLastError: 'Scheduled reviews require Studio.',
+        },
+      })
+      continue
+    }
     const claimed = await prisma.project.updateMany({
       where: {
         id: project.id,

@@ -30,6 +30,7 @@ import {
   refreshUserUsagePeriod,
   rollUserUsagePeriod,
 } from '@/lib/billing/usage-period'
+import { ProductLimitReached } from '@/lib/billing/product-capacity'
 
 export interface CreateAuditOptions {
   url: string
@@ -177,8 +178,18 @@ export async function createAndEnqueueAudit(
       inheritedScanAccessEncrypted = parent?.scanAccessEncrypted ?? null
     }
     if (!projectId) {
-      const project = await ensureProductProject(userId, url)
-      projectId = project.id
+      try {
+        const project = await ensureProductProject(userId, url)
+        projectId = project.id
+      } catch (error) {
+        if (error instanceof ProductLimitReached) {
+          throw new AuditLimitError('UPGRADE_REQUIRED', {
+            action: 'upgrade',
+            message: `Your plan supports ${error.limit} ${error.limit === 1 ? 'Product' : 'Products'}. Choose an existing Product or see the paid plans.`,
+          })
+        }
+        throw error
+      }
     }
     if (!inheritedScanAccessEncrypted && projectId) {
       const project = await prisma.project.findUnique({
@@ -198,6 +209,7 @@ export async function createAndEnqueueAudit(
   const data = {
     url,
     userId,
+    isPublic: true,
     projectId,
     scanAccessEncrypted: resolvedScanAccess ? encryptScanAccess(resolvedScanAccess) : null,
     parentId: options.parentId ?? null,

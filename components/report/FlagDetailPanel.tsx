@@ -8,7 +8,7 @@ import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { FlagFeedback } from '@/components/audit/FlagFeedback'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import { SeveritySignal } from '@/components/report/SeveritySignal'
-import { LOCKED_CONTENT_TEASER } from '@/lib/marketing/copy'
+import { LOCKED_CONTENT_TEASER, REPORT_COPY } from '@/lib/marketing/copy'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { displayHostname, truncatePreview } from '@/lib/audit/preview-meta'
@@ -203,14 +203,14 @@ export function FlagDetailPanel({
           ) : aiEnhancementPending && !flag.fixPrompt ? (
             <p className="text-sm text-muted-foreground">Generating enhanced fix prompt.</p>
           ) : flag.hasFixPrompt ? (
-            <div className="flex min-h-11 overflow-hidden rounded-[var(--radius-inner)] border border-border/45 bg-muted/15">
+            <div className="flex min-h-11 overflow-hidden rounded-[var(--radius-inner)] border border-border/45 bg-background shadow-sm">
               <details className="group min-w-0 flex-1">
-                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring [&::-webkit-details-marker]:hidden">Preview prompt<ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden /></summary>
-                <div className="border-t border-border/40 p-3">
-                  <FixPromptBlock prompt={flag.fixPrompt} copyPrompt={flag.copyFixPrompt || undefined} nested render="markdown" hideActions />
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 whitespace-nowrap px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:px-4 [&::-webkit-details-marker]:hidden">{REPORT_COPY.explorer.fixPrompt}<ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden /></summary>
+                <div className="border-t border-border/40 bg-muted/15">
+                  <FixPromptBlock prompt={flag.fixPrompt} copyPrompt={flag.copyFixPrompt || undefined} render="markdown" markdownChrome="flat" hideActions />
                 </div>
               </details>
-              <PromptCopyButton prompt={flag.copyFixPrompt || flag.fixPrompt} auditId={ownerActionContext?.auditId} flagId={flag.id} surface={ownerActionContext?.surface} accessState={ownerActionContext?.accessState} compact className="shrink-0 rounded-none border-0 border-l border-border/45 bg-transparent px-3 shadow-none hover:bg-muted/50" />
+              <PromptCopyButton prompt={flag.copyFixPrompt || flag.fixPrompt} auditId={ownerActionContext?.auditId} flagId={flag.id} surface={ownerActionContext?.surface} accessState={ownerActionContext?.accessState} compact variant="brand" className="shrink-0 rounded-none border-0 px-3 shadow-none sm:px-4" />
             </div>
           ) : flag.copyFixPrompt ? (
             <PromptCopyButton prompt={flag.copyFixPrompt} compact />

@@ -183,7 +183,7 @@ Target marketing prices (Stripe price IDs may lag until a revenue ops change):
 | Pro (`BUILDER`) | `STRIPE_BUILDER_PRICE_ID` | $29/mo | 15 + 3 deep |
 | Studio (`TEAM`) | `STRIPE_TEAM_PRICE_ID` | $79/mo | 50 + 10 deep |
 
-Customer copy: **product review**, **update review** (same credit pool), **deep review**. Every plan exposes the same web capabilities and differs only by monthly usage. Internal: `/re-check` route, `recheck_*` analytics.
+Customer copy: **product review** and **update review** (same credit pool). Every plan exposes the same web capabilities and differs only by monthly Product Review usage. Deep Review is reserved for future repository-connected analysis. Internal: `/re-check` route, `recheck_*` analytics, and legacy deep-review persistence fields.
 
 - Stripe: hosted Checkout + Customer Portal + webhooks (`docs/stripe-setup.md`)
 - Cost tracking: `AuditRunCost` per audit phase (LLM tokens + estimated USD)

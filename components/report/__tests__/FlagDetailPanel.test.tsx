@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { FlagDetailPanel, FlagMetaPills, isShareableCheck } from '@/components/report/FlagDetailPanel'
 import { MeProvider } from '@/hooks/useMe'
@@ -61,11 +61,20 @@ describe('FlagDetailPanel', () => {
       />
     )
 
-    expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeInTheDocument()
-    expect(screen.getByText('Preview prompt')).toBeInTheDocument()
-    expect(screen.getByText('Preview prompt').closest('div')).toContainElement(
+    expect(screen.getByRole('button', { name: 'Copy prompt' })).toHaveClass('bg-brand', 'text-brand-foreground')
+    expect(screen.getByText('Fix Prompt')).toBeInTheDocument()
+    expect(screen.getByText('Fix Prompt').closest('div')).toContainElement(
       screen.getByRole('button', { name: 'Copy prompt' })
     )
+  })
+
+  it('expands the fix prompt without a nested Markdown card', () => {
+    renderWithProviders(<FlagDetailPanel flag={makeFlag()} />)
+
+    fireEvent.click(screen.getByText('Fix Prompt'))
+
+    expect(screen.getByLabelText('Fix prompt')).toBeInTheDocument()
+    expect(screen.queryByText('Markdown')).not.toBeInTheDocument()
   })
 
   it('uses plain language for evidence and consequence', () => {

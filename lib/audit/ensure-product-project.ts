@@ -7,6 +7,7 @@ import {
   productNameFromUrl,
   type ProductIntelligence,
 } from '@/lib/audit/product-intelligence'
+import { assertCanCreateProduct } from '@/lib/billing/product-capacity'
 
 const MAX_PI_MUTATION_ATTEMPTS = 5
 
@@ -22,18 +23,33 @@ export async function ensureProductProject(
   if (!canonicalHost) throw new Error('A valid Product hostname is required')
   const canonicalUrl = canonicalProductUrl(auditUrl)
 
-  const project = await prisma.project.upsert({
-    where: { userId_canonicalHost: { userId, canonicalHost } },
-    create: {
-      userId,
-      name: productNameFromUrl(auditUrl),
-      url: canonicalUrl,
-      canonicalHost,
-      isManaged: false,
-    },
-    update: { url: canonicalUrl },
-    select: { id: true, productIntelligence: true },
-  })
+  const project = await prisma.$transaction(async (tx) => {
+    const existing = await tx.project.findUnique({
+      where: { userId_canonicalHost: { userId, canonicalHost } },
+      select: { id: true, productIntelligence: true },
+    })
+    if (existing) {
+      return tx.project.update({
+        where: { id: existing.id },
+        data: { url: canonicalUrl },
+        select: { id: true, productIntelligence: true },
+      })
+    }
+
+    await assertCanCreateProduct(tx, userId)
+    return tx.project.upsert({
+      where: { userId_canonicalHost: { userId, canonicalHost } },
+      create: {
+        userId,
+        name: productNameFromUrl(auditUrl),
+        url: canonicalUrl,
+        canonicalHost,
+        isManaged: false,
+      },
+      update: { url: canonicalUrl },
+      select: { id: true, productIntelligence: true },
+    })
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })
 
   return {
     id: project.id,

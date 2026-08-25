@@ -76,7 +76,6 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       url={state.audit.url}
       score={state.audit.score}
       verdict={state.audit.verdict}
-      topIssue={state.topIssue}
       flags={state.flags}
       rubrics={state.rubricRows.map((rubric) => ({
         name: rubric.name,
@@ -89,14 +88,10 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           rubric: flag.rubric,
         })),
       }))}
-      isPaid={state.viewerIsPaid}
       isLoggedIn={state.isLoggedIn}
       isOwner={state.isOwner}
-      isPublic={state.audit.isPublic}
       compareAuditId={compareAuditId}
       canExportSummary={state.entitlements?.canExportSummary ?? false}
-      canSharePublicly={state.entitlements?.canSharePublicly ?? false}
-      shareStatus={state.reportAudit.shareStatus}
       showFixPrompts={state.showDeterministicFixes}
       variant="all"
     />

@@ -19,9 +19,9 @@ Per-issue prompts are the primary handoff from understanding to improvement.
 1. Compact Review header (`#report-status`) with a circular score or honest pending/unavailable state, chronological full-Review history, and the owner Update review action
 2. Update-review result, when present
 3. Complete ranked Fix list (`#report-flags`) with `Your priorities` as the list heading, screenshot evidence, selected detail, and canonical Critical-first ranking
-4. One per-issue prompt row: an expandable `Preview prompt` on the left and an always-visible `Copy prompt` action on the right
+4. One per-issue prompt row: an expandable `Fix Prompt` on the left and an always-visible `Copy prompt` action on the right
 5. Collapsed evidence and Product context: Made with (`#report-stack`), Product Contract (`#report-contract`), and verified Product Memory (`#report-remember`), when present
-6. Subordinate sharing, Watch, export, and Product controls
+6. Subordinate Watch, export, and Product controls; Export includes Copy link for the canonical public report URL
 7. At most one contextual signup or upgrade moment
 
 The compact header does not repeat Product identity, verdict copy, the Critical count, or instructions already expressed by the ranked Fix list.
@@ -32,7 +32,7 @@ Legacy `view=timeline` and `view=canvas` parameters normalize to `view=report`.
 
 New anonymous scans render the progressive and completed evidence report without a blocking authentication dialog.
 Anonymous viewers can inspect scores, all confirmed Flags, screenshots, textual evidence, public-safe technology context, and deterministic Agent scan messages.
-Fix prompts, interactive Agent conversation, private memory, private history, update reviews, export, and restricted sharing remain unavailable until their access requirement is met.
+Fix prompts, interactive Agent conversation, Product Memory, account history, update reviews, and export remain unavailable until their access requirement is met.
 Authentication is contextual and returns through `/post-login` so the anonymous report is claimed before the same workspace unlocks.
 Anonymous API serialization remains redacted: gated fields are omitted server-side, evidence remains real page evidence, and gate strings are never persisted into Flag rows.
 
@@ -67,13 +67,13 @@ Show honest status, early findings, and a layout-matched Made with skeleton that
 Parked Timeline, Preview, and Canvas payloads are not loaded by the default report route.
 Keep the workspace and transcript mounted until the completed server report replaces progressive data.
 
-## Samples and sharing
+## Samples and public reports
 
 - Homepage: complete curated fix list with selected evidence and one editor-ready fix.
 - `/samples`: complete, versioned curated observations selected by `?observation=`, each with its own Flags, captures, score, and exactly one demonstrated per-Flag prompt.
   Every visible history point resolves to one immutable observation.
   An absent selector opens the current curated Review; an explicit unknown selector returns not found.
-- `/share/[token]` is the direct token surface; `/share/[token]/details` redirects after enforcing the same grant. Token access never mutates `Audit.isPublic`. Password access uses a scoped signed HttpOnly grant and protected metadata stays generic.
+- `/report/[id]` is the canonical public evidence URL. Legacy `/share/[token]` links remain readable for compatibility but are no longer created or managed in the product.
 
 ## Acceptance checks
 
@@ -85,5 +85,5 @@ Keep the workspace and transcript mounted until the completed server report repl
 - Loading, empty, partial, failure, forbidden, expired, revoked, and deleted states are explicit.
 - Visible report chrome lives in `lib/marketing/copy.ts`.
 - Technology profiles expose sanitized evidence labels and evidence bands only. They never grade vendors or leak raw requests, headers, cookies, query strings, or private report existence.
-- Newly submitted anonymous and non-owner live reports expose evidence but never prompts, private memory/history, update-review controls, export, or restricted sharing.
+- Newly submitted anonymous and non-owner live reports expose evidence but never prompts, Product Memory, account history, update-review controls, or export.
 - Programmatic Agent messages are stable, monotonic, derived from persisted facts, and excluded from model usage and persisted conversation rows.

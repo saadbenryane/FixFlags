@@ -23,6 +23,7 @@ vi.mock('@/lib/audit/claim-anonymous', () => ({ claimAnonymousAudits }))
 
 import { GET } from '@/app/api/me/route'
 import { POST } from '@/app/api/me/claim/route'
+import { ProductLimitReached } from '@/lib/billing/product-capacity'
 
 describe('/api/me', () => {
   beforeEach(() => {
@@ -60,5 +61,14 @@ describe('/api/me', () => {
     const response = await POST()
     expect(response.status).toBe(401)
     expect(claimAnonymousAudits).not.toHaveBeenCalled()
+  })
+
+  it('returns a clear Product limit when a claim would add another Product', async () => {
+    claimAnonymousAudits.mockRejectedValue(new ProductLimitReached(1))
+
+    const response = await POST()
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ code: 'PROJECT_LIMIT' })
   })
 })

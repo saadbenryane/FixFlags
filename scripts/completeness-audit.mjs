@@ -303,7 +303,6 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   )
   const criticalRoutes = [
     'app/api/reports/[id]/chat/route.ts',
-    'app/api/reports/[id]/share-links/route.ts',
     'app/api/webhooks/stripe/route.ts',
   ]
   const criticalRouteFailures = criticalRouteBoundaryFailures(

@@ -3,10 +3,10 @@
   "generatedBy": "scripts/capture-sample-screenshots.ts",
   "observations": {
     "curated-sample-v0": {
-      "revision": "demo-original-baseline",
-      "sourcePath": "/demo",
+      "revision": "demo-v0-baseline",
+      "sourcePath": "/demo?baseline=1",
       "reviewedAt": "2026-06-09T14:30:00Z",
-      "documentSha256": "8f85269ec53075179d3e83f71502f141a7b3a47efbee0e6da1f325f226be648d",
+      "documentSha256": "3ed82732c65359a517a9791a21b55cd29edaacf965b22156ec7368e4a03ffee4",
       "score": 69,
       "flagIds": [
         "flag-experience-mobile-cta",
@@ -18,20 +18,20 @@
         "flag-reach-canonical"
       ],
       "timeline": [
-        "Opened curated snapshot demo-original-baseline",
+        "Opened curated snapshot demo-v0-baseline",
         "Captured desktop and mobile evidence",
         "Ranked the evidence-backed Flags"
       ],
       "captures": {
         "desktop": {
           "path": "/samples/observations/curated-sample-v0/desktop.webp",
-          "sha256": "b4092aa4ec7ed6f512c0ee644cc5466fc30d4cd6fc215080dac6c6d2f69a9bc0",
+          "sha256": "c41f27b2f50707e4160cf54c8413c93c0ad7d6ff18708e030a8c13e4230156ae",
           "width": 1280,
           "height": 900
         },
         "mobile": {
           "path": "/samples/observations/curated-sample-v0/mobile.webp",
-          "sha256": "eae55416af2b35e0fdf0a26fab209144894977731ef8e1fcaee9b67cfbd72ef5",
+          "sha256": "d5842e7c65d44e49a729069152b25570a7eaa4636ab31de0a9da472841967e2d",
           "width": 375,
           "height": 812
         }
@@ -40,14 +40,14 @@
         "h1-generic": {
           "desktop": {
             "x": 0.275,
-            "y": 0.2902777777777778,
+            "y": 0.2902690972222222,
             "width": 0.4375,
-            "height": 0.1395486111111111,
+            "height": 0.0727423611111111,
             "scope": "element"
           },
           "mobile": {
             "x": 0.5,
-            "y": 0.9054033251231527,
+            "y": 0.9294181034482759,
             "width": 0.9573333333333334,
             "height": 0.10746921182266023,
             "scope": "element"
@@ -56,14 +56,14 @@
         "placeholder-copy-detected": {
           "desktop": {
             "x": 0.275,
-            "y": 0.2902777777777778,
+            "y": 0.2902690972222222,
             "width": 0.4375,
-            "height": 0.1395486111111111,
+            "height": 0.0727423611111111,
             "scope": "element"
           },
           "mobile": {
             "x": 0.5,
-            "y": 0.9054033251231527,
+            "y": 0.9294181034482759,
             "width": 0.9573333333333334,
             "height": 0.10746921182266023,
             "scope": "element"
@@ -139,7 +139,7 @@
       "revision": "demo-original-regression",
       "sourcePath": "/demo",
       "reviewedAt": "2026-06-10T14:30:00Z",
-      "documentSha256": "a40baa76f52375864a68f7d89f76cc7147df78de0d53dc3c85a0f0082dc0c561",
+      "documentSha256": "d6f3069228440b9301b476989f24dc8d08b74daac8cec2559bc333c6b9a0a49f",
       "score": 79,
       "flagIds": [
         "flag-experience-mobile-cta",

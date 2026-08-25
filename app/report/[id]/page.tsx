@@ -30,13 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const isShareableOg = audit.isPublic || audit.userId === null
 
-  if (!isShareableOg) {
-    return {
-      title: 'Private report',
-      description: `Sign in to view this ${BRAND.name} report.`,
-      robots: { index: false, follow: false },
-    }
-  }
+  if (!isShareableOg) return { title: `${BRAND.name} report unavailable` }
 
   const hostname = displayHostname(audit.url)
 

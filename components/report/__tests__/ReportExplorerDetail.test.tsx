@@ -53,6 +53,7 @@ describe('FlagDetailPane', () => {
         model={MODEL}
         flag={FIRST_FLAG}
         flagCount={MODEL.flags.length}
+        flagPosition={1}
         onPrevious={vi.fn()}
         onNext={vi.fn()}
         onSelectFlag={vi.fn()}
@@ -62,19 +63,24 @@ describe('FlagDetailPane', () => {
     expect(screen.getByText(FIRST_FLAG.rubricLabel)).toBeInTheDocument()
   })
 
-  it('keeps navigation in the master Flag list', () => {
+  it('renders bounded previous and next controls in the detail header', () => {
+    const onPrevious = vi.fn()
+    const onNext = vi.fn()
     renderWithProviders(
       <FlagDetailPane
         model={MODEL}
         flag={FIRST_FLAG}
         flagCount={MODEL.flags.length}
-        onPrevious={vi.fn()}
-        onNext={vi.fn()}
+        flagPosition={1}
+        onPrevious={onPrevious}
+        onNext={onNext}
         onSelectFlag={vi.fn()}
       />
     )
-    expect(screen.queryByLabelText('Previous flag')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Next flag')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Previous flag')).toBeDisabled()
+    fireEvent.click(screen.getByLabelText('Next flag'))
+    expect(onNext).toHaveBeenCalledOnce()
+    expect(screen.getByText(`1 of ${MODEL.flags.length}`)).toBeInTheDocument()
   })
 
   it('hides screenshots for shareable checks', () => {
@@ -84,6 +90,7 @@ describe('FlagDetailPane', () => {
         model={MODEL}
         flag={shareableFlag}
         flagCount={MODEL.flags.length}
+        flagPosition={1}
         onPrevious={vi.fn()}
         onNext={vi.fn()}
         onSelectFlag={vi.fn()}
@@ -98,6 +105,7 @@ describe('FlagDetailPane', () => {
         model={MODEL}
         flag={flagWithEvidence}
         flagCount={MODEL.flags.length}
+        flagPosition={1}
         onPrevious={vi.fn()}
         onNext={vi.fn()}
         onSelectFlag={vi.fn()}
@@ -112,6 +120,7 @@ describe('FlagDetailPane', () => {
         model={MODEL}
         flag={FIRST_FLAG}
         flagCount={1}
+        flagPosition={1}
         onPrevious={vi.fn()}
         onNext={vi.fn()}
         onSelectFlag={vi.fn()}

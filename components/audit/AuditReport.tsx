@@ -412,7 +412,7 @@ export function AuditReport({
           <div className="space-y-3 rounded-card border border-border/50 bg-muted/15 p-5 text-center sm:p-6">
             <p className="text-sm font-semibold">{REPORT_COPY.sampleCta.title}</p>
             <p className="text-pretty text-sm text-muted-foreground">{REPORT_COPY.sampleCta.body}</p>
-            <Button asChild>
+            <Button asChild variant="brand">
               <Link href="/#audit">{HERO.primaryCta}</Link>
             </Button>
           </div>

@@ -16,7 +16,7 @@ They arrive through the FixFlags review path: **Review my product** and one clea
 
 They are about to launch on Product Hunt, share publicly, or show work to a customer.
 
-They typically run a paid **Deep Review** first.
+They use the free review-fix-verify cycle first, then join Pro when the next launch or release needs more Product Reviews.
 
 ### Primary recurring buyer: The freelancer or small agency shipping repeatedly
 
@@ -56,9 +56,9 @@ The user saves the report to unlock authenticated fields: private memory, fix pr
 After changes, the user runs an **update review** to prove the fix.
 
 ### 7. Expand
-The user chooses deeper work:
-- update review on additional flows,
-- Deep Review for multi-step paths,
+The user repeats the loop:
+- Product Reviews for new releases or products,
+- update reviews after fixes,
 - Watch for recurring release verification.
 
 ## Conversion architecture
@@ -69,8 +69,8 @@ The user chooses deeper work:
 2. **Evidence moment** — short replay proving a real finding.
 3. **Proof sample** — one meaningful result, not abstract scores.
 4. **Three-step loop** — Review, Fix, Verify.
-5. **Growth map** — who should add Deep Review and Watch next.
-6. **Complete web loop** — history, sharing, Canvas, Product Signals, and scheduled Watch.
+5. **Growth map** — who needs more review capacity and Watch next.
+6. **Complete web loop** — Product history, public report links, Canvas, Product Signals, and scheduled reviews.
 7. **Pricing** — the same product at three monthly usage levels.
 8. **Trust** — anonymous evidence and private account surfaces.
 9. **Final CTA** — "Review my product."
@@ -91,7 +91,7 @@ The user chooses deeper work:
 
 1. **Simple first, depth later**
    - Default: one clear check and one clear next action.
-   - Depth: Deep Review and Watch for retained value.
+   - Recurrence: more Product Reviews and Watch for retained value.
 
 2. **Trust over hype**
    - Honest scope limits and gated private surfaces.

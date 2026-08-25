@@ -8,7 +8,7 @@ FixFlags grows by improving certainty and recurrence:
 - **Awareness:** product review appears in search, integrations, and founder communities.
 - **Activation:** first URL review lands with one clear finding.
 - **Verification:** update review proves the first fix.
-- **Expansion:** Deep Review and Watch convert to paid retention.
+- **Expansion:** frequent Product Reviews and Watch convert to paid retention.
 
 ## Channel strategy
 
@@ -20,7 +20,7 @@ FixFlags grows by improving certainty and recurrence:
 
 ## Pricing and conversion (current)
 
-- Free: 3 product reviews + 1 deep review teaser.
+- Free: 3 product reviews per month, enough for one initial review and two update reviews.
 - Pro/Studio pricing and credit cadence are canonical in `lib/billing/plans.ts`.
 - Conversion target: upgrade after first successful update review.
 
@@ -29,7 +29,7 @@ FixFlags grows by improving certainty and recurrence:
 - Review completion rate of first run.
 - Fix prompt acceptance rate.
 - Update review completion rate.
-- Conversion to paid after first deep review.
+- Conversion to paid after the first successful review-fix-verify cycle.
 - Re-check (update review) retention within 30 days.
 - Watch onboarding from paid plans.
 - Share + invite conversion from sample reports.

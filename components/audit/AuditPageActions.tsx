@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { RefreshCw, ArrowLeftRight } from 'lucide-react'
 
-import { ShareDrawer } from '@/components/audit/ShareDrawer'
 import { ExportMenu } from '@/components/audit/ExportMenu'
 import { trackEvent } from '@/lib/analytics/events'
 import { REPORT_COPY } from '@/lib/marketing/copy'
@@ -19,7 +18,6 @@ interface Props {
   url: string
   score: number | null
   verdict?: string | null
-  topIssue?: string
   flags?: RankableFlag[]
   contract?: import('@/lib/audit/product-contract').ProductContract | null
   rubrics: Array<{
@@ -29,14 +27,10 @@ interface Props {
     rubricPrompt?: string | null
     flags?: Array<{ severity: string; problem: string }>
   }>
-  isPaid: boolean
   isLoggedIn: boolean
   isOwner: boolean
-  isPublic: boolean
   compareAuditId?: string | null
   canExportSummary?: boolean
-  canSharePublicly?: boolean
-  shareStatus?: string
   showFixPrompts?: boolean
   variant?: 'all' | 'update' | 'secondary'
 }
@@ -46,22 +40,17 @@ export function AuditPageActions({
   url,
   score,
   verdict,
-  topIssue,
   rubrics,
   flags = [],
   contract = null,
   isLoggedIn,
   isOwner,
-  isPublic: initialIsPublic,
   compareAuditId,
   canExportSummary = false,
-  canSharePublicly = false,
-  shareStatus,
   showFixPrompts = false,
   variant = 'all',
 }: Props) {
   const router = useRouter()
-  const [isPublic, setIsPublic] = useState(initialIsPublic)
   const [recheckLoading, setRecheckLoading] = useState(false)
 
   if (!isLoggedIn || !isOwner) return null
@@ -105,18 +94,6 @@ export function AuditPageActions({
           </Link>
         </Button>
       )}
-      {variant !== 'update' ? <ShareDrawer
-        auditId={auditId}
-        score={score}
-        topIssue={topIssue}
-        isLoggedIn={isLoggedIn}
-        isOwner={isOwner}
-        isPublic={isPublic}
-        isAnonymous={false}
-        canPublicShare={canSharePublicly}
-        shareStatus={shareStatus}
-        onPublicChange={setIsPublic}
-      /> : null}
       {variant !== 'update' ? <ExportMenu
         auditId={auditId}
         url={url}

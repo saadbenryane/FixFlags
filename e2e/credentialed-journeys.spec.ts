@@ -408,47 +408,6 @@ test.describe('credentialed revenue journeys', () => {
     await free.close()
   })
 
-  test('[journey:protected-sharing] protected share grants access, counts a view, and denies after revoke', async ({ browser }) => {
-    const owner = await signedInPage(browser, 'E2E_SHARE_OWNER_EMAIL', 'E2E_SHARE_OWNER_PASSWORD')
-    const reportId = requiredEnv('E2E_SHARE_REPORT_ID')
-    const password = requiredEnv('E2E_SHARE_PASSWORD')
-    const created = await owner.page.request.post(`/api/reports/${reportId}/share-links`, {
-      data: {
-        label: 'Release verification',
-        password,
-        expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
-        maxViews: 3,
-      },
-    })
-    expect(created.ok(), await created.text()).toBe(true)
-    const link = (await created.json()) as { id: string; token: string }
-
-    const viewerContext = await browser.newContext()
-    const viewer = await viewerContext.newPage()
-    await viewer.goto(`/share/${link.token}`)
-    await viewer.getByLabel(/password/i).fill(password)
-    await viewer.getByRole('button', { name: /view report/i }).click()
-    await viewer.waitForURL(new RegExp(`/report/${reportId}`))
-    await viewer.reload()
-    await expect(viewer.locator('#report-flags')).toBeVisible()
-
-    const links = await owner.page.request.get(`/api/reports/${reportId}/share-links`)
-    const refreshed = (await links.json()) as Array<{ id: string; viewCount: number }>
-    expect(refreshed.find((candidate) => candidate.id === link.id)?.viewCount).toBe(1)
-    const revoke = await owner.page.request.delete(
-      `/api/reports/${reportId}/share-links?shareId=${encodeURIComponent(link.id)}`
-    )
-    expect(revoke.ok(), await revoke.text()).toBe(true)
-    await viewerContext.close()
-
-    const deniedContext = await browser.newContext()
-    const denied = await deniedContext.newPage()
-    await denied.goto(`/share/${link.token}`)
-    await expect(denied.getByText(/unavailable|revoked|not found/i).first()).toBeVisible()
-    await deniedContext.close()
-    await owner.close()
-  })
-
   test('[journey:attempt-update-receipt] explicit attempt reaches an independent update Review receipt', async ({ browser }) => {
     test.setTimeout(420_000)
     const owner = await signedInPage(browser, 'E2E_SHARE_OWNER_EMAIL', 'E2E_SHARE_OWNER_PASSWORD')

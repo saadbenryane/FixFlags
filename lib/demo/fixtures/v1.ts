@@ -3,7 +3,7 @@ import { DEMO_BRAND } from '@/lib/demo/brand'
 import { originalFixture } from '@/lib/demo/fixtures/original'
 
 const description =
-  'Launchpad helps product teams run every release as a checklist, with automated pre-flight checks and a clear go or no-go before rollout.'
+  'DemoSite helps product teams run every release as a checklist, with automated pre-flight checks and a clear go or no-go before rollout.'
 
 const title = `${DEMO_BRAND.name} - Release checklists for product teams`
 
@@ -41,11 +41,11 @@ export const v1Fixture: DemoFixture = {
   navLinks: [{ label: 'Features', href: '#features' }],
   headline: 'Ship every release without a last-minute scramble',
   subhead:
-    'Product teams use Launchpad to turn chaotic releases into a repeatable checklist with automated pre-flight checks. As seen in TechCrunch. Start your 14-day free trial - no credit card required.',
+    'Product teams use DemoSite to turn chaotic releases into a repeatable checklist with automated pre-flight checks. As seen in TechCrunch. Start your 14-day free trial - no credit card required.',
   primaryCta: { label: 'Start free', href: '/demo/v1/signup' },
   secondaryCta: null,
   heroImageSrc: '/demo/hero-v1.svg',
-  heroImageAlt: 'Launchpad dashboard showing release checklist and pre-flight status',
+  heroImageAlt: 'DemoSite dashboard showing release checklist and pre-flight status',
   featuresSectionTitle: 'Everything you need to run a calm release',
   features: [
     {
@@ -84,7 +84,7 @@ export const v1Fixture: DemoFixture = {
     statLine: 'Join 10,000+ teams shipping on schedule',
     testimonials: [
       {
-        quote: 'Cut our failed releases by 30% in the first quarter on Launchpad',
+        quote: 'Cut our failed releases by 30% in the first quarter on DemoSite',
         author: 'Sarah Chen',
         role: 'CTO at Acme',
       },

@@ -7,7 +7,6 @@ describe('documentation catalog', () => {
       '/docs',
       '/docs/getting-started',
       '/docs/reports',
-      '/docs/deep-review',
       '/docs/troubleshooting',
     ])
     expect(new Set(DOCS_PAGES.map((page) => page.path)).size).toBe(DOCS_PAGES.length)

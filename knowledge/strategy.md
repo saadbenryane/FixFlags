@@ -15,8 +15,8 @@ Enforcement lives in `lib/billing/plans.ts` and `lib/audit/usage.ts`.
 
 ## Packaging principle
 
-Every plan includes the same complete web product: reports, evidence, fix prompts, update comparisons, history, protected sharing, Canvas, Product Signals, and scheduled Watch.
-Plans differ by monthly usage, not access to the core loop.
+Every Product Review includes prioritized Flags, evidence, and fix prompts.
+The plans form a workflow ladder: Free proves the loop on one Product, Pro supports repeated releases across up to five Products, and Studio adds scheduling and workspace collaboration for unlimited Products.
 
 New URLs, update reviews, and completed scheduled Watch reviews consume the same product review allowance.
 Unused monthly allowance does not roll over.
@@ -24,12 +24,13 @@ Existing purchased overflow credits remain compatible but are not promoted.
 
 ## Upgrade logic
 
-- **Free:** proves value and supports occasional shipping.
-- **Pro:** fits a builder who ships frequently.
-- **Studio:** fits agencies, studios, and teams reviewing multiple products.
+- **Free:** three monthly reviews for one Product.
+- **Pro:** fifteen monthly reviews across up to five Products, with history across releases and release comparison.
+- **Studio:** fifty monthly reviews across unlimited Products, scheduled reviews, shared Product history, and workspace invitations.
+- **Studio launch offer:** unlimited workspace seats for a limited time.
 - **High volume:** handled through a direct conversation after the Studio allowance is demonstrably insufficient.
 
-An upgrade buys more capacity, never a more complete report or a more trustworthy verification result.
+An upgrade adds capacity and workflow leverage, never a more trustworthy report.
 
 ## Revenue model
 

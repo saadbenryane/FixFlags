@@ -74,7 +74,7 @@ describe('monthly usage periods', () => {
         usagePeriodStart: FEB_START,
         usagePeriodEnd: MAR_START,
         auditsLimit: 3,
-        deepReviewsLimit: 1,
+        deepReviewsLimit: -1,
         auditsUsed: 0,
         deepReviewsUsed: 0,
       },
@@ -82,7 +82,7 @@ describe('monthly usage periods', () => {
   })
 
   it('does not reset counters again inside the same period', async () => {
-    const tx = txFor(user({ usagePeriodStart: FEB_START, usagePeriodEnd: MAR_START }))
+    const tx = txFor(user({ usagePeriodStart: FEB_START, usagePeriodEnd: MAR_START, deepReviewsLimit: -1 }))
     await rollUserUsagePeriod(tx as never, 'user-1', new Date('2026-02-18T00:00:00.000Z'))
     expect(tx.user.update).not.toHaveBeenCalled()
   })
@@ -107,7 +107,7 @@ describe('monthly usage periods', () => {
         usagePeriodStart: start,
         usagePeriodEnd: end,
         auditsLimit: 15,
-        deepReviewsLimit: 3,
+        deepReviewsLimit: -1,
         auditsUsed: 0,
         deepReviewsUsed: 0,
       }),
@@ -138,7 +138,7 @@ describe('monthly usage periods', () => {
 
     expect(tx.user.update).toHaveBeenCalledWith({
       where: { id: 'user-1' },
-      data: expect.objectContaining({ auditsLimit: 25, deepReviewsLimit: 4 }),
+      data: expect.objectContaining({ auditsLimit: 25, deepReviewsLimit: -1 }),
     })
     vi.unstubAllEnvs()
   })

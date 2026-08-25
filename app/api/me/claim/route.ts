@@ -6,6 +6,7 @@ import { apiError, handleRouteError } from '@/lib/api/errors'
 import { claimAnonymousAudits } from '@/lib/audit/claim-anonymous'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { meUserSelect, serializeMeUser } from '@/lib/auth/me-user'
+import { ProductLimitReached } from '@/lib/billing/product-capacity'
 
 export async function POST() {
   try {
@@ -31,6 +32,13 @@ export async function POST() {
       user: user ? await serializeMeUser(user, session.user) : null,
     })
   } catch (error) {
+    if (error instanceof ProductLimitReached) {
+      return apiError(
+        `Your plan supports ${error.limit} ${error.limit === 1 ? 'Product' : 'Products'}. Choose an existing Product or see the paid plans.`,
+        409,
+        { code: 'PROJECT_LIMIT', action: 'upgrade' }
+      )
+    }
     return handleRouteError(error)
   }
 }

@@ -133,35 +133,19 @@ describe('homepage message guardrails', () => {
 
   it('hero subhead explains the visitor outcome in plain language', () => {
     assert.match(HERO.subhead, /^Paste your live URL/i)
-    assert.match(HERO.subhead, /people/i)
-    assert.match(HERO.subhead, /confused or stuck/i)
-    assert.match(HERO.subhead, /fix/i)
+    assert.match(HERO.subhead, /trust or conversions/i)
+    assert.match(HERO.subhead, /ranked with evidence/i)
     assert.equal(
       HERO.subhead,
-      'Paste your live URL. See where people may get confused or stuck, and know what to fix before you share it.',
+      'Paste your live URL. See the problems most likely to cost trust or conversions, ranked with evidence from the product.',
     )
     assert.ok(
       !HERO.subhead.toLowerCase().includes('finish what your ai started'),
     )
   })
 
-  it('hero assurances are product-true and skip invented social proof', () => {
-    assert.equal(HERO.assurances.length, 2)
-    for (const item of HERO.assurances) {
-      assert.ok(
-        !/\d{2,},\d{3}/.test(item.label),
-        `Invented count: ${item.label}`,
-      )
-      assert.ok(
-        !/builders? reviewed/i.test(item.label),
-        `Fake social proof: ${item.label}`,
-      )
-    }
-    assert.ok(HERO.assurances.some((a) => /live site/i.test(a.label)))
-    assert.ok(
-      HERO.assurances.some((a) => /3 reviews included free/i.test(a.label)),
-    )
-    assert.ok(HERO.assurances.every((a) => !/private/i.test(a.label)))
+  it('hero skips low-value assurance bullets and invented social proof', () => {
+    assert.ok(!('assurances' in HERO))
     assert.match(HERO.trustLine, /favourite/i)
     assert.doesNotMatch(HERO.trustLine, /trusted by/i)
     assert.ok(
@@ -192,8 +176,8 @@ describe('homepage message guardrails', () => {
     assert.match(OFFER.line, /free product review/i)
     assert.match(OFFER.line, /fix prompts/i)
     assert.match(OFFER.privacy, /do not change your site/i)
-    assert.match(OFFER.linkPrivacy, /private to your account/i)
-    assert.ok(!('body' in FINAL_CTA))
+    assert.match(OFFER.reportAccess, /report evidence is public/i)
+    assert.match(FINAL_CTA.body, /ranked Product Review/i)
   })
 
   it('landing and hero avoid CYA, readiness jargon, and banned unlock', () => {
@@ -249,23 +233,18 @@ describe('homepage message guardrails', () => {
     )
   })
 
-  it('pricing sells product reviews and deep reviews without unlimited re-check', () => {
-    assert.match(PRICING.trustBadge, /product reviews/i)
+  it('pricing sells one complete Product Review with usage-based plans', () => {
+    assert.match(PRICING.trustBadge, /Flags and fix prompts/i)
     assert.doesNotMatch(PRICING.trustBadge, /unlimited re-checks/i)
-    assert.ok(
-      PLAN_DEFINITIONS.FREE.features.some((feature) =>
-        /3 product reviews.*per month/i.test(feature),
-      ),
-    )
+    assert.match(PLAN_DEFINITIONS.FREE.auditLimitLabel, /3 product reviews \/ month/i)
     assert.ok(
       PLAN_DEFINITIONS.BUILDER.features.some((feature) =>
-        /History, sharing, comparisons, Canvas, and Watch/i.test(feature),
+        /Product history across releases/i.test(feature),
       ),
     )
-    assert.ok(
-      PLAN_DEFINITIONS.BUILDER.features.some((feature) =>
-        /deep reviews/i.test(feature),
-      ),
+    assert.doesNotMatch(
+      PLAN_DEFINITIONS.BUILDER.features.join(' '),
+      /deep reviews/i,
     )
     assert.doesNotMatch(
       PLAN_DEFINITIONS.BUILDER.features.join(' '),
@@ -325,18 +304,18 @@ describe('homepage message guardrails', () => {
     assert.equal(LANDING_PAGE.howItWorks.steps.length, 3)
   })
 
-  it('how it works steps keep product-true rubrics without decorative artwork contracts', () => {
+  it('how it works steps keep the product-true review loop', () => {
     assert.deepEqual(
       LANDING_PAGE.howItWorks.steps.map((s) => s.title),
       [
-        'Review the live product',
-        'Fix the most important Flag',
-        'Run an update review',
+        'Show us the real product',
+        'See what matters first',
+        'Fix it. Check it again',
       ],
     )
     const fix = LANDING_PAGE.howItWorks.steps[1]!
-    assert.match(fix.body, /people/i)
-    assert.match(fix.body, /AI editor/i)
+    assert.match(fix.body, /highest-impact Flags/i)
+    assert.match(fix.body, /screen and behavior/i)
     assert.doesNotMatch(fix.body, /performance, accessibility, SEO/i)
     assert.ok(
       LANDING_PAGE.howItWorks.steps.every((step) => !('visual' in step)),
@@ -441,10 +420,7 @@ describe('homepage message guardrails', () => {
     )
     assert.match(LANDING_PAGE.sampleReport.headlineDisplay, /users’ way/i)
     assert.match(LANDING_PAGE.sampleReport.label, /sample review/i)
-    assert.match(
-      LANDING_PAGE.sampleReport.body,
-      /curated Launchpad demo/i,
-    )
+    assert.match(LANDING_PAGE.sampleReport.body, /curated demo review/i)
     assert.match(LANDING_PAGE.sampleReport.body, /paste into your AI editor/i)
     assert.ok(!/\d{2,},\d{3}/.test(LANDING_PAGE.sampleReport.body))
     assert.ok(!('trustMetrics' in LANDING_PAGE.sampleReport))
@@ -519,8 +495,8 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('samples SEO references the Launchpad demo, not homepage dogfood', () => {
-    assert.match(SEO.samples.description, /Launchpad demo/i)
+  it('samples SEO references DemoSite, not homepage dogfood', () => {
+    assert.match(SEO.samples.description, /DemoSite/i)
     assert.ok(!/our own homepage/i.test(SEO.samples.description))
   })
 })

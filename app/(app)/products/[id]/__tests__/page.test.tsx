@@ -23,7 +23,6 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/auth/app-viewer', () => ({ getAppViewer: mocks.getAppViewer }))
 vi.mock('@/lib/auth/entitlements', () => ({
   canAccessProductWatch: () => true,
-  canSharePublicly: () => false,
 }))
 vi.mock('@/lib/products/workspace', () => ({
   loadProductWorkspace: mocks.loadProductWorkspace,
@@ -74,7 +73,7 @@ describe('/products/[id]', () => {
       'owner-1',
       {
         signalsEligible: true,
-        canDailyWatch: false,
+        canDailyWatch: true,
         historyCursor: null,
       },
     )

@@ -16,6 +16,7 @@ import {
   productNameFromUrl,
 } from '@/lib/audit/product-intelligence'
 import { parseProductContract } from '@/lib/audit/product-contract'
+import { assertCanCreateProduct } from '@/lib/billing/product-capacity'
 
 async function unlockClaimedAudit(audit: {
   id: string
@@ -74,12 +75,18 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
       for (const audit of claimable) {
         const canonicalHost = canonicalProductHost(audit.url)
         if (!canonicalHost) throw new Error(`Cannot attach Product for audit ${audit.id}`)
-        const project = audit.projectId
+        let project = audit.projectId
           ? await tx.project.findUnique({
               where: { id: audit.projectId },
               select: { id: true, productIntelligence: true },
             })
-          : await tx.project.upsert({
+          : await tx.project.findUnique({
+              where: { userId_canonicalHost: { userId, canonicalHost } },
+              select: { id: true, productIntelligence: true },
+            })
+        if (!project) {
+          await assertCanCreateProduct(tx, userId)
+          project = await tx.project.upsert({
               where: { userId_canonicalHost: { userId, canonicalHost } },
               create: {
                 userId,
@@ -91,6 +98,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
               update: { url: canonicalProductUrl(audit.url) },
               select: { id: true, productIntelligence: true },
             })
+        }
         if (!project) throw new Error(`Cannot attach Product for audit ${audit.id}`)
 
         const contract = parseProductContract(audit.productContract)

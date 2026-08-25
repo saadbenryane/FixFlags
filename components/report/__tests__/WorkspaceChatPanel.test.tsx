@@ -58,13 +58,13 @@ describe('WorkspaceChatPanel', () => {
         auditId="a1"
         capabilities={capabilities(false)}
         gateReason="owner"
-        productName="Launchpad demo"
+        productName="DemoSite"
         reportUrl="https://fixflags.com/demo"
         agentMessages={scanMessages}
       />,
     )
 
-    expect(screen.getByText('Launchpad demo')).toBeInTheDocument()
+    expect(screen.getByText('DemoSite')).toBeInTheDocument()
     expect(screen.getByText('fixflags.com/demo')).toBeInTheDocument()
     expect(screen.queryByText('fixflags.com')).not.toBeInTheDocument()
   })

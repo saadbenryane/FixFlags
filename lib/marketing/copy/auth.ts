@@ -269,12 +269,6 @@ export const AUTH = {
 } as const
 
 export const SHARE_COPY = {
-  privateTitle: 'Private report',
-  privateBody: 'This link only works for you while signed in. Create a protected share link when someone else needs to review the evidence.',
-  privateLinkCta: 'Copy private link',
-  privateLinkCopied: 'Private link copied',
-  privateLinkCopiedDetail: 'This link only works for you while signed in.',
-  studioCta: 'Create share link',
   access: {
     openingTitle: 'Opening shared report',
     openingBody: 'Checking that this link is still available.',

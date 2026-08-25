@@ -10,7 +10,8 @@ FixFlags is the independent Product Intelligence System for AI-built software. A
 
 - Core loop: **Product Review → Fix → Verify → Watch** (customer wedge; internal canonical loop: Observe → Understand → Judge → Improve → Verify → Learn, [knowledge/vision.md](knowledge/vision.md)).
 - Canonical report hierarchy: [knowledge/report-contract.md](knowledge/report-contract.md). Do not duplicate route or section order in skills.
-- Plans meter product reviews (new URLs and update reviews share the same credit pool). Customer copy uses **update review**; internal routes may still use `re-check`.
+- Plans meter completed product reviews from first reviews, update reviews, and scheduled Studio reviews against the same monthly pool.
+- Customer copy uses **update review**; internal routes may still use `re-check`.
 - Stage: pre-revenue testing. Distribution has priority over additional product depth.
 - Shipped truth: [PRODUCT.md](PRODUCT.md). North star and canonical loop: [knowledge/vision.md](knowledge/vision.md) (Observe → Understand → Judge → Improve → Verify → Learn; customer loop Product Review → Fix → Verify → Watch).
 - Product and technical vocabulary: [knowledge/README.md](knowledge/README.md).
@@ -91,7 +92,7 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for setup, databases, deployment, and debug
 - Decision filter: every major feature must improve understanding of a product or make that understanding more useful in improving it; otherwise question why it is being built.
 - Marketing copy has one source of truth: `lib/marketing/copy.ts`. Do not hardcode it in components.
 - The product exposes exactly three report rubrics: Message, Experience, Reach.
-- Customer-facing loop language lives in `lib/marketing/copy/terminology.ts`: product review, update review, deep review, Funnel, path. Internal code may still use `re-check`, `recheck`, and `monitoring` routes and analytics names.
+- Customer-facing loop language lives in `lib/marketing/copy/terminology.ts`: product review, update review, Funnel, path. Internal code may still use `re-check`, `recheck`, and `monitoring` routes and analytics names. Deep Review is reserved for the future repository-connected analysis offer and is not a current plan feature or URL-review tier.
 - The anonymous wedge is one teaser scan. Evidence and deterministic Agent updates stay visible; every fix prompt, interactive Agent request, and Timeline payload stays gated until claim. Public APIs must not leak gated prompts or playback data. Do not persist signup-gate strings as evidence or fix text.
 - Authentication flows land on `/post-login` so anonymous audits are claimed before checkout or `next` navigation.
 - Real product output is the proof surface. Do not invent testimonials, member counts, fake reports, or unsupported product claims.

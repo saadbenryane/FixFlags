@@ -17,7 +17,6 @@ export function boundaryStatusAllowed(contract, status, method = 'GET') {
   if (contract.boundary === 'parked') return status === 404 || (method === 'POST' && status === 409)
   if (contract.boundary === 'public') return status >= 200 && status < 500
   if (contract.boundary === 'webhook') return status === 400 || status === 401
-  if (contract.file === 'app/api/reports/[id]/share-links/route.ts' && status === 400) return true
   if (contract.file.includes('/api/integrations/')) return status === 307 || status === 401 || status === 403 || status === 404
   return status === 401 || status === 403 || status === 404
 }

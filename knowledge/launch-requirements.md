@@ -74,7 +74,7 @@ Browser infrastructure can stay efficient with session reuse and bounded runs.
 
 ### Internal cost targets
 - Product review: controlled unit budget,
-- Deep Review: deeper but still bounded,
+- Product Review path exploration: bounded inside the review budget,
 - Watch run: low marginal recurrence,
 - Gross margin: above 80% across paid usage.
 
@@ -112,7 +112,7 @@ The inspected page is untrusted input.
 - no unrestricted uploads,
 - no executable download execution,
 - human approval for any state-changing action outside policy.
-- Private reports by default,
+- Public report evidence with owner-only chat, prompts, history, and Product Memory,
 - public links only through explicit action,
 - customer evidence excluded from training by default.
 

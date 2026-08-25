@@ -76,7 +76,7 @@ describe('/api/projects/[id]/watch', () => {
     expect(response.status).toBe(404)
   })
 
-  it('enables weekly Watch for an authenticated Product owner', async () => {
+  it('enables scheduled reviews for an authenticated Studio Product owner', async () => {
     const enabled = await PUT(
       new NextRequest('http://localhost/api/projects/project-1/watch', {
         method: 'PUT',
@@ -89,7 +89,7 @@ describe('/api/projects/[id]/watch', () => {
 
   })
 
-  it('allows daily Watch on every plan and validates interval', async () => {
+  it('allows daily scheduled reviews and validates interval', async () => {
     const daily = await PUT(
       new NextRequest('http://localhost/api/projects/project-1/watch', {
         method: 'PUT',
@@ -107,5 +107,24 @@ describe('/api/projects/[id]/watch', () => {
       { params: Promise.resolve({ id: 'project-1' }) }
     )
     expect(invalid.status).toBe(400)
+  })
+
+  it('returns a Studio upgrade response when scheduling is not entitled', async () => {
+    setProjectWatch.mockResolvedValueOnce({
+      ok: false,
+      error: 'Scheduled reviews are available on Studio.',
+      code: 'STUDIO_REQUIRED',
+    })
+
+    const response = await PUT(
+      new NextRequest('http://localhost/api/projects/project-1/watch', {
+        method: 'PUT',
+        body: JSON.stringify({ interval: 'weekly' }),
+      }),
+      { params: Promise.resolve({ id: 'project-1' }) }
+    )
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({ code: 'STUDIO_REQUIRED' })
   })
 })

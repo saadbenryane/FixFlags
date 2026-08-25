@@ -298,7 +298,7 @@ FixFlags checks AI-built sites before handoff. Paste the URL. Get a ranked list 
 
 The useful part for agencies: share the report with your client before delivery. Catch the issues before they do. Looks professional. Saves the back-and-forth.
 
-Studio plan: 100 checks/month, share links, 5 projects, GitHub repo scanning.
+Studio plan: higher monthly Product Review capacity for freelancers and agencies.
 
 Try it: fixflags.com
 

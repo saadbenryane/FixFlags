@@ -46,7 +46,6 @@ describe('URL-first public product scope', () => {
       '/docs',
       '/docs/getting-started',
       '/docs/reports',
-      '/docs/deep-review',
       '/docs/troubleshooting',
     ])
     expect(FOOTER_COLUMNS.resources.map((link) => String(link.href))).not.toContain('/docs/integrations')

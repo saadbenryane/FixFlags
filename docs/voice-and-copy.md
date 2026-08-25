@@ -19,7 +19,7 @@ This document preserves the operator voice principles from the design system spe
 - **Paste verbs over readiness adjectives.** Prefer `Copy for Cursor` / `Paste into Lovable` over `ready`, `AI-ready`, `Agent-ready`, `fix prompt ready`.
 - **Counts over stacked status labels.** Report summaries show Critical counts. Do not pair `Needs Attention` or `Blocked` with the same severity signal.
 - **No hero CYA.** Lines like "read-only review," "we never modify your site," "compatibility is not endorsement," and "claim the report" belong on `/privacy` or FAQ, not marketing heroes or logo clouds.
-- **Report privacy framing:** "Save to your account" beats "claim." Owned reports are private. Public SEO site pages are a different surface.
+- **Report access framing:** Report evidence is public at its canonical URL. "Save to your account" beats "claim" for owner-only chat, prompts, history, and Product Memory.
 - **Industry vernacular:** *paste into Cursor*, *what's broken*, *before you share the link*, *copy the fix*, *update review*, *product review*.
 - **Copy is a handoff:** `Copy` means the user sent a fix prompt to their builder. It never means the change worked.
 - **Verification is receipt-bound:** Only an `IMPROVED` receipt from a fresh completed update review may say an Improvement is verified or improved.

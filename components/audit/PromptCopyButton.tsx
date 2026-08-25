@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
+import type { ButtonProps } from '@/components/ui/button'
 import { Check, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isUsableFixPrompt } from '@/lib/audit/priority-flags'
@@ -26,6 +27,7 @@ interface Props {
   accessState?: ReportAccessState
   itemPosition?: number
   nextStep?: string
+  variant?: ButtonProps['variant']
 }
 
 export function PromptCopyButton({
@@ -42,6 +44,7 @@ export function PromptCopyButton({
   accessState,
   itemPosition,
   nextStep,
+  variant = 'outline',
 }: Props) {
   const [copied, setCopied] = useState(false)
   const safePrompt = isUsableFixPrompt(prompt) ? prompt.trim() : null
@@ -104,7 +107,7 @@ export function PromptCopyButton({
   return (
     <Button
       type="button"
-      variant="outline"
+      variant={variant}
       size={compact ? 'xs' : 'sm'}
       onClick={handleCopy}
       className={cn(compact ? 'gap-1.5 [&_svg]:size-3.5' : '[&_svg]:size-4', className)}

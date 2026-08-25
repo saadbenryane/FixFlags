@@ -4,11 +4,12 @@ import type { NextRequest } from 'next/server'
 /**
  * Route-level billing gating enforcement for the projects endpoint
  * (QUALITY.md "Billing enforcement leaks"). Real `projectLimitForPlan` gating:
- * FREE/BUILDER have no project quota (402), TEAM does (allowed).
+ * Free supports one Product, Pro supports five, and Studio is unlimited.
  */
 
 const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
+  $executeRaw: vi.fn(),
   user: { findUnique: vi.fn() },
   project: { count: vi.fn(), findUnique: vi.fn(), upsert: vi.fn() },
 }))
@@ -45,6 +46,7 @@ describe('POST /api/projects - billing gating enforcement', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     prismaMock.$transaction.mockImplementation(async (operation) => operation(prismaMock))
+    prismaMock.$executeRaw.mockResolvedValue(1)
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     prismaMock.project.count.mockResolvedValue(0)
     prismaMock.project.findUnique.mockResolvedValue(null)
@@ -69,12 +71,35 @@ describe('POST /api/projects - billing gating enforcement', () => {
     expect(prismaMock.project.upsert).toHaveBeenCalledTimes(1)
   })
 
-  it('lets a TEAM user create a project - never blocked on an owned feature', async () => {
+  it('stops a Free user from creating a second Product', async () => {
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ plan: 'FREE' }))
+    prismaMock.project.count.mockResolvedValue(1)
+
+    const res = await POST(postReq)
+
+    expect(res.status).toBe(409)
+    expect(await res.json()).toMatchObject({ code: 'PROJECT_LIMIT' })
+    expect(prismaMock.project.upsert).not.toHaveBeenCalled()
+  })
+
+  it('stops a Pro user from creating a sixth Product', async () => {
+    prismaMock.user.findUnique.mockResolvedValue(makeUser({ plan: 'BUILDER' }))
+    prismaMock.project.count.mockResolvedValue(5)
+
+    const res = await POST(postReq)
+
+    expect(res.status).toBe(409)
+    expect(prismaMock.project.upsert).not.toHaveBeenCalled()
+  })
+
+  it('lets a Studio user create Products without a product-count gate', async () => {
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ plan: 'TEAM' }))
+    prismaMock.project.count.mockResolvedValue(500)
 
     const res = await POST(postReq)
 
     expect(res.status).toBe(201)
     expect(prismaMock.project.upsert).toHaveBeenCalledTimes(1)
+    expect(prismaMock.project.count).not.toHaveBeenCalled()
   })
 })

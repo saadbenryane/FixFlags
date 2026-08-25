@@ -83,7 +83,9 @@ describe('curated sample provenance', () => {
     assert.equal(selected.audit.id, 'curated-sample-v0')
     assert.equal(selected.completedAt?.toISOString(), '2026-06-09T14:30:00.000Z')
     assert.ok((selected.audit.actionTimeline?.length ?? 0) > 0)
-    assert.equal(selected.audit.flags.length, 0)
+    assert.ok(selected.audit.flags.length >= 7)
+    const current = await getCuratedSampleAudit()
+    assert.ok((selected.audit.score ?? 100) < (current.audit.score ?? 0))
   })
 
   it('defaults only an absent ID and rejects an explicit unknown ID', async () => {

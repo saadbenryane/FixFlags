@@ -26,33 +26,37 @@ export function LandingFinalCtaSection() {
       className="scroll-mt-[var(--header-offset)] bg-muted/15"
     >
       <Container variant="marketing" className="px-4 sm:px-6 lg:px-12">
-        <div className="rounded-[1rem] border border-border/50 bg-background p-5 shadow-card sm:p-6 lg:p-7">
-          <div className="grid items-center gap-6 lg:grid-cols-2 lg:gap-10">
-            <div className="flex items-start gap-4 sm:gap-5 lg:gap-10">
-              <div className="relative hidden h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-[0.875rem] bg-muted/55 shadow-sm sm:flex">
-                <Image
-                  src="/marketing/visuals/pricing-glass-mark.webp"
-                  alt=""
-                  fill
-                  sizes="72px"
-                  className="rounded-[0.875rem] object-cover"
-                />
-              </div>
+        <div className="overflow-hidden rounded-card bg-background shadow-glass-deep">
+          <div className="grid items-stretch lg:grid-cols-[0.92fr_1.08fr]">
+            <div className="relative min-h-[15rem] overflow-hidden bg-muted/25 sm:min-h-[18rem] lg:min-h-[23rem]">
+              <Image
+                src="/marketing/visuals/final-cta-gateway-v2.webp"
+                alt="A live URL passes through a review gateway and becomes an actionable Flag"
+                fill
+                sizes="(min-width: 1280px) 620px, (min-width: 1024px) 46vw, 100vw"
+                className="scale-[1.08] object-contain object-left-center drop-shadow-[0_28px_44px_hsl(var(--foreground)/0.1)]"
+                unoptimized
+              />
+              <div className="absolute inset-y-0 right-0 w-1/3 bg-[linear-gradient(to_right,transparent,hsl(var(--background)))]" />
+            </div>
+
+            <div className="flex flex-col justify-center px-5 pb-7 sm:px-8 sm:pb-9 lg:-ml-6 lg:px-12 lg:py-12">
               <LandingSectionHeader
                 align="left"
                 headline={FINAL_CTA.headlineDisplay}
                 accentPeriod={FINAL_CTA.headlineAccentPeriod}
-                className="max-w-[25rem] space-y-2 [&_h2]:max-w-[14rem] [&_h2]:!text-xl [&_h2]:!leading-display"
+                subhead={FINAL_CTA.body}
+                className="max-w-xl [&_h2]:max-w-[18ch] [&_h2]:!text-3xl [&_h2]:!leading-display sm:[&_h2]:!text-4xl"
               />
-            </div>
 
-            <div>
-              <AuditInput
-                variant="landing"
-                idSuffix="-final-cta"
-                ctaPlacement="final"
-                showLandingExtras={false}
-              />
+              <div className="mt-6 w-full max-w-2xl">
+                <AuditInput
+                  variant="landing"
+                  idSuffix="-final-cta"
+                  ctaPlacement="final"
+                  showLandingExtras={false}
+                />
+              </div>
             </div>
           </div>
         </div>

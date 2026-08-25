@@ -8,8 +8,7 @@ export const SEO = {
   },
   pricing: {
     title: 'Pricing',
-    description:
-      `Every plan includes the complete FixFlags Product Review. Start free with ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month. Pro includes ${PRICING_COPY.proProductReviewsPerMonth} product reviews per month.`,
+    description: `Every plan includes the complete FixFlags Product Review. Start free with ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month. Pro includes ${PRICING_COPY.proProductReviewsPerMonth} product reviews per month.`,
   },
   waitlist: {
     title: 'Join the waitlist',
@@ -24,7 +23,7 @@ export const SEO = {
   samples: {
     title: 'Sample Report',
     description:
-      'See a real FixFlags report of our Launchpad demo landing page: evidence-backed Flags with fix prompts.',
+      'See a real FixFlags report of DemoSite: evidence-backed Flags with fix prompts.',
   },
   examples: {
     title: 'Example Reports',
@@ -48,7 +47,8 @@ export const SEO = {
   },
   changelog: {
     title: 'Changelog',
-    description: 'Product updates, new checks, and shipping improvements for FixFlags.',
+    description:
+      'Product updates, new checks, and shipping improvements for FixFlags.',
   },
   metaPreview: {
     title: 'Meta Preview Tool – FixFlags',
@@ -62,7 +62,8 @@ export const SEO = {
   },
   blog: {
     title: 'Blog',
-    description: 'Notes on shipping AI-built products without the embarrassing bugs: product review, what breaks first, and what to fix before users see it.',
+    description:
+      'Notes on shipping AI-built products without the embarrassing bugs: product review, what breaks first, and what to fix before users see it.',
   },
   privacy: {
     title: 'Privacy Policy',
@@ -74,7 +75,8 @@ export const SEO = {
   },
   issues: {
     title: 'Flag Library',
-    description: 'Real Flags from reviewed sites, with frequency, affected frameworks, examples, and fixes.',
+    description:
+      'Real Flags from reviewed sites, with frequency, affected frameworks, examples, and fixes.',
   },
   partners: {
     title: 'Expert program',

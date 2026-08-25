@@ -248,26 +248,26 @@ describe('canScanRepositories', () => {
 })
 
 describe('canAccessProductWatch', () => {
-  it('returns true for BUILDER plan', () => {
-    expect(canAccessProductWatch(makeUser({ plan: 'BUILDER' }))).toBe(true)
+  it('returns false for BUILDER plan', () => {
+    expect(canAccessProductWatch(makeUser({ plan: 'BUILDER' }))).toBe(false)
   })
 
   it('returns true for TEAM plan', () => {
     expect(canAccessProductWatch(makeUser({ plan: 'TEAM' }))).toBe(true)
   })
 
-  it('returns true for FREE plan', () => {
-    expect(canAccessProductWatch(makeUser({ plan: 'FREE' }))).toBe(true)
+  it('returns false for FREE plan', () => {
+    expect(canAccessProductWatch(makeUser({ plan: 'FREE' }))).toBe(false)
   })
 
   it('returns true for admin', () => {
     expect(canAccessProductWatch(makeUser({ role: 'admin', plan: 'FREE' }))).toBe(true)
   })
 
-  it('keeps Watch available for BUILDER with revoked status', () => {
+  it('revokes Watch for Studio with revoked status', () => {
     expect(
-      canAccessProductWatch(makeUser({ plan: 'BUILDER', subscriptionStatus: 'UNPAID' }))
-    ).toBe(true)
+      canAccessProductWatch(makeUser({ plan: 'TEAM', subscriptionStatus: 'UNPAID' }))
+    ).toBe(false)
   })
 })
 
@@ -374,7 +374,7 @@ describe('getEntitlements', () => {
       canExportSummary: true,
       canAccessPaidFeatures: false,
       canMonitor: true,
-      canWatchProduct: true,
+      canWatchProduct: false,
       canUseMcp: false,
       canAccessBasicMcp: true,
       canScanRepositories: false,
@@ -389,7 +389,7 @@ describe('getEntitlements', () => {
       canExportSummary: true,
       canAccessPaidFeatures: true,
       canMonitor: true,
-      canWatchProduct: true,
+      canWatchProduct: false,
       canUseMcp: true,
       canAccessBasicMcp: true,
       canScanRepositories: false,
@@ -436,7 +436,7 @@ describe('getEntitlements', () => {
       canExportSummary: true,
       canAccessPaidFeatures: false,
       canMonitor: true,
-      canWatchProduct: true,
+      canWatchProduct: false,
       canUseMcp: false,
       canAccessBasicMcp: false,
       canScanRepositories: false,

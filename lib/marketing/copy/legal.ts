@@ -59,7 +59,7 @@ export const PRIVACY_SECTIONS = {
   reportAccess: {
     title: 'Report access',
     body:
-      'Every plan can create protected share links. Separate public pages on FixFlags are for discovery; they are not your owned report.',
+      'Report evidence is public at its link. Agent chat, fix prompts, Product Memory, account history, and owner actions remain account-gated.',
   },
   thirdParties: {
     title: 'Third parties',

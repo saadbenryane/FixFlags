@@ -1,6 +1,6 @@
 import { AuditInput } from "@/components/audit/AuditInput";
-import { AssuranceRow } from "@/components/marketing/landing/AssuranceRow";
 import { EditorToolMarks } from "@/components/marketing/landing/EditorToolMarks";
+import { HeroSignalBackdrop } from "@/components/marketing/landing/HeroSignalBackdrop";
 import { MarketingEyebrow } from "@/components/marketing/MarketingEyebrow";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
@@ -13,9 +13,10 @@ export function LandingHeroSection() {
       spacing="hero"
       className="relative flex min-h-0 flex-col overflow-x-clip !pb-10 !pt-7 sm:!pb-12 sm:!pt-10 lg:!pb-14 lg:!pt-10"
     >
+      <HeroSignalBackdrop />
       <Container
         variant="marketing"
-        className="flex w-full flex-col px-4 sm:px-6 lg:px-12"
+        className="relative flex w-full flex-col px-4 sm:px-6 lg:px-12"
       >
         <div className="mx-auto flex w-full max-w-4xl flex-col items-center gap-4 text-center sm:gap-5 lg:pt-1">
           <MarketingEyebrow>{HERO.badge}</MarketingEyebrow>
@@ -48,8 +49,6 @@ export function LandingHeroSection() {
               showLandingExtras
             />
           </div>
-
-          <AssuranceRow className="items-center sm:justify-center" />
 
           <EditorToolMarks
             variant="hero"

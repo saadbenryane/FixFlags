@@ -136,8 +136,8 @@ export const OFFER = {
   short: 'Free product review. See what needs attention before you share the link.',
   /** Privacy page / FAQ only. Do not render on marketing heroes. */
   privacy: 'We scan your live URL. We do not change your site or touch your code.',
-  linkPrivacy:
-    'Owned reports are private to your account. Anonymous scans stay on a private link until you sign in and save them.',
+  reportAccess:
+    'Report evidence is public at its link. Agent chat, fix prompts, Product Memory, and account history stay available only to the report owner.',
 } as const
 
 /** User-facing score explanation. Must match lib/audit/checks/rubric.ts + scoring.ts. */

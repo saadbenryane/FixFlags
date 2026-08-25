@@ -79,12 +79,14 @@ export function canScanRepositories(
   return user.plan === 'TEAM'
 }
 
-/** Product Watch is part of the authenticated web product on every plan. */
+/** Scheduled Product Reviews are a Studio capability. */
 export function canAccessProductWatch(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
-  void user
-  return true
+  if (!shouldEnforcePlanGates()) return true
+  if (user.role === 'admin' || isAdminUser(user)) return true
+  if (hasRevokedSubscriptionStatus(user.subscriptionStatus)) return false
+  return user.plan === 'TEAM'
 }
 
 /** Manual re-check is always available to the report owner; not a plan gate. */

@@ -468,7 +468,7 @@ model Audit {
   verdict                    String?
   score                      Int?
   parentId                   String?
-  isPublic                   Boolean                      @default(false)
+  isPublic                   Boolean                      @default(true)
   startedAt                  DateTime?
   completedAt                DateTime?
   errorMsg                   String?

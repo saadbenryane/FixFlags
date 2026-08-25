@@ -25,11 +25,6 @@ describe('getUpgradeMomentContent', () => {
     assert.ok(content.headline)
   })
 
-  it('returns content for share_public', () => {
-    const content = getUpgradeMomentContent('share_public')
-    assert.ok(content.headline)
-  })
-
   it('returns content for free_default', () => {
     const content = getUpgradeMomentContent('free_default')
     assert.ok(content.headline)

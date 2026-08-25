@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronDown, FileText, Lock, Eye } from 'lucide-react'
+import { Check, ChevronDown, FileText, Link, Lock, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -26,6 +26,7 @@ import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { rubricLabel } from '@/lib/utils'
 import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
 import { useCopyToClipboard } from '@/lib/hooks/useCopyToClipboard'
+import { SITE_URL } from '@/lib/marketing/copy'
 
 interface ExportRubric {
   name: string
@@ -100,6 +101,14 @@ export function ExportMenu({
     await copy(summary, { kind: 'export', auditId, successMessage: 'Report summary copied' })
   }
 
+  async function handleCopyLink() {
+    await copy(`${SITE_URL}/report/${auditId}`, {
+      kind: 'link',
+      auditId,
+      successMessage: 'Report link copied',
+    })
+  }
+
   const totalPrompts = countFixPrompts(flags)
 
   return (
@@ -122,6 +131,11 @@ export function ExportMenu({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>Copy to clipboard</DropdownMenuLabel>
+          <DropdownMenuItem onClick={handleCopyLink} className="gap-2">
+            <Link className="h-4 w-4" />
+            Report link
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleCopySummary} className="gap-2">
             {canExportSummary ? (
               <FileText className="h-4 w-4" />

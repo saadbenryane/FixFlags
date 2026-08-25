@@ -4,7 +4,7 @@
 
 **Not in this document:** implementation phases, milestone ordering, or “what to build first.” Sequencing lives in [ROADMAP.md](../ROADMAP.md) and [knowledge/execution.md](../knowledge/execution.md). Shipped facts only: [PRODUCT.md](../PRODUCT.md).
 
-**Workspace UI detail:** [workspace-interface.md](./workspace-interface.md) (chat left, browser right, playback bottom, Browser view ↔ Report view toggle, product review vs deep review browser modes, mobile parity).
+**Workspace UI detail:** [workspace-interface.md](./workspace-interface.md) (chat left, browser right, playback bottom, Browser view ↔ Report view toggle, Product Review path evidence, mobile parity).
 
 ---
 
@@ -87,7 +87,7 @@ Canonical source: `lib/marketing/copy/terminology.ts`.
 | Product | The long-lived customer object |
 | Product review | One full pass on a URL: checks, report, fix prompts |
 | Update review | Re-run on the same URL after fixes (uses product review credit) |
-| Deep review | Journeys, funnel map, path playback with agent-class browsing |
+| Deep Review | Future repository-connected analysis that combines live-product evidence with source-code context; not currently sold |
 | Funnel | Report section listing journeys |
 | Path | Recorded journey unit for playback |
 | Flag | Confirmed finding with evidence |
@@ -104,23 +104,25 @@ Canonical source: `lib/marketing/copy/terminology.ts`.
 
 Canonical numbers: `PRICING_COPY` in terminology.ts. Philosophy: [docs/business-model.md](./business-model.md).
 
-| Plan | Price | Product reviews/mo | Deep reviews/mo |
-|------|-------|------------------|-----------------|
-| Free | $0 | 3 | 1 |
-| Pro | $29/mo | 15 | 3 |
-| Studio | $79/mo | 50 | 10 |
+| Plan | Price | Product reviews/mo |
+|------|-------|------------------|
+| Free | $0 | 3 |
+| Pro | $29/mo | 15 |
+| Studio | $79/mo | 50 |
 
 **Rules:**
 
 - Product reviews meter **new URLs, update reviews, and completed scheduled Watch reviews** from the same monthly pool.
-- Deep reviews use a separate monthly allowance on every plan.
 - At product review limit, new runs pause until upgrade or cycle reset.
 - Unused monthly allowance does not roll over.
 - Re-check is not free unlimited in customer language; implementation may lag marketing (see shipped gap table).
 - Stripe IDs and enforcement: `lib/billing/plans.ts`, [PRODUCT.md](../PRODUCT.md).
 
-Every plan includes the same complete web product: reports, fix prompts, comparison, history, sharing, Canvas, Product Signals, and scheduled Watch.
-Paid plans provide more monthly usage only.
+Every Product Review includes prioritized Flags, evidence, fix prompts, and a report link.
+Free supports one Product.
+Pro supports up to five Products with history across releases and release comparison.
+Studio supports unlimited Products, scheduled reviews, workspace invitations, and shared Product history.
+Studio workspace seats are unlimited for a limited time.
 
 ---
 
@@ -167,7 +169,7 @@ Full spec: [workspace-interface.md](./workspace-interface.md).
 - **Right:** dominant **Report** with authenticated **Timeline** and paid private **Canvas** modes.
 - The left panel has no redundant title. Its right-aligned toolbar contains History followed by New scan.
 - **Product review browser:** Playwright programmatic capture, screenshot-forward.
-- **Deep review browser:** agent-class autonomous navigation (journeys, funnel, path recording).
+- **Product Review path exploration:** journey, Funnel, and path evidence are part of the same review product where available.
 - **Mobile:** Agent ↔ Report is the primary switch. Active reviews default to Agent and preserve the chosen tab through completion.
 
 ---
@@ -212,7 +214,7 @@ Use the product in-browser with deterministic steps, targeted model decisions, a
 
 **Product review:** programmatic Playwright steps dominate.
 
-**Deep review:** agent-class browsing for multi-step journeys and funnel traversal.
+**Target Product Review depth:** agent-class browsing for multi-step journeys and funnel traversal remains part of the Product Review, not a separate plan meter.
 
 ### Stage 5: judgment
 
@@ -519,11 +521,11 @@ Canonical interface table: [docs/workspace-interface.md](../docs/workspace-inter
 | Area | Shipped today | Target |
 |------|---------------|--------|
 | Workspace layout | Unified Agent left; Report, authenticated Timeline, and Canvas right | Same |
-| Browser in UI | Authenticated Timeline screenshot replay and step scrub | Agent-class deep-review live browser |
+| Browser in UI | Authenticated Timeline screenshot replay and step scrub | Richer live path exploration inside Product Reviews |
 | In-app chat | Owner-only model chat plus free deterministic scan messages; monthly usage ledger | Same |
 | Product review capture | Playwright programmatic with workspace sync | Same |
-| Deep review | Journey capture in pipeline; funnel + path playback in workspace | Agent-class browser mode in workspace panel |
-| Customer metering | Product review + deep review quotas enforced in `lib/billing/plans.ts` and `lib/audit/usage.ts` | Same |
+| Product Review path depth | Journey capture in pipeline; Funnel + path playback in workspace | Richer live browser mode in the workspace panel |
+| Customer metering | One Product Review quota enforced in `lib/billing/plans.ts` and `lib/audit/usage.ts`; legacy deep-review fields are persistence-only | Same |
 | Update review billing | Metered product review credits; internal route `/re-check` | Public API rename to update-review (open) |
 | Pricing display | $29 / $79 in marketing and Stripe plans | Same |
 | Funnel + path UI | Funnel section + Replay path into workspace | Full session-style takeover replay |

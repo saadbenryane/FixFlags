@@ -5,8 +5,8 @@ import { boundaryStatusAllowed, concreteRoute } from './route-boundary-smoke.mjs
 
 test('concreteRoute resolves dynamic API paths without changing the public boundary', () => {
   assert.equal(
-    concreteRoute('app/api/reports/[id]/share-links/route.ts'),
-    '/api/reports/missing/share-links',
+    concreteRoute('app/api/reports/[id]/chat/route.ts'),
+    '/api/reports/missing/chat',
   )
   assert.equal(concreteRoute('app/api/badge/[url]/route.ts'), '/api/badge/https%3A%2F%2Fexample.com')
 })
@@ -21,10 +21,7 @@ test('boundaryStatusAllowed rejects protected success and unexpected server fail
 })
 
 test('boundaryStatusAllowed handles route-specific exceptions', () => {
-  const shareLinks = { boundary: 'session', file: 'app/api/reports/[id]/share-links/route.ts' }
   const mcp = { boundary: 'parked', file: 'app/api/mcp/route.ts' }
-  assert.equal(boundaryStatusAllowed(shareLinks, 400), true)
-  assert.equal(boundaryStatusAllowed(shareLinks, 404), true)
   assert.equal(boundaryStatusAllowed(mcp, 404), true)
   assert.equal(boundaryStatusAllowed(mcp, 406), false)
   assert.equal(boundaryStatusAllowed(mcp, 200, 'DELETE'), false)

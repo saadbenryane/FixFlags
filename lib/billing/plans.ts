@@ -5,8 +5,11 @@ export type PaidPlan = Exclude<Plan, 'FREE'>
 
 export interface UsageAllowance {
   auditLimit: number
+  /** Legacy persistence field. Browser-path depth is unmetered inside Product Reviews. */
   deepReviewLimit: number
 }
+
+const UNMETERED_LEGACY_DEPTH = -1
 
 /**
  * The allowance sold with the retired $39/$129 Stripe prices. These values
@@ -14,8 +17,8 @@ export interface UsageAllowance {
  * an active subscriber's purchase.
  */
 export const LEGACY_PRICE_ALLOWANCES: Record<PaidPlan, UsageAllowance> = {
-  BUILDER: { auditLimit: 25, deepReviewLimit: 4 },
-  TEAM: { auditLimit: 80, deepReviewLimit: 10 },
+  BUILDER: { auditLimit: 25, deepReviewLimit: UNMETERED_LEGACY_DEPTH },
+  TEAM: { auditLimit: 80, deepReviewLimit: UNMETERED_LEGACY_DEPTH },
 }
 
 export interface PlanDefinition {
@@ -30,13 +33,22 @@ export interface PlanDefinition {
   auditLimit: number
   auditLimitKind: 'monthly' | 'lifetime'
   auditLimitLabel: string
+  /** @deprecated Legacy DB compatibility. Not a customer plan allowance. */
   deepReviewLimit: number
+  /** @deprecated Legacy DB compatibility. */
   deepReviewLimitKind: 'monthly' | 'lifetime'
+  /** @deprecated Legacy DB compatibility. */
   deepReviewLimitLabel: string
   /** Monthly input plus output token allowance for authenticated report chat. */
   chatTokenLimit: number
   stripePriceId?: string
-  projectLimit?: number
+  /** Managed Products available to the account. Null means unlimited. */
+  projectLimit: number | null
+  projectLimitLabel: string
+  scheduledReviews: boolean
+  workspaceSeatLimit: number | null
+  workspaceSeatsLabel: string
+  accountModel: string
   features: readonly string[]
   highlight: boolean
   cta: string
@@ -55,16 +67,21 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     auditLimit: 3,
     auditLimitKind: 'monthly',
     auditLimitLabel: '3 product reviews / month',
-    deepReviewLimit: 1,
+    deepReviewLimit: UNMETERED_LEGACY_DEPTH,
     deepReviewLimitKind: 'monthly',
-    deepReviewLimitLabel: '1 deep review / month',
+    deepReviewLimitLabel: 'Path depth included',
     chatTokenLimit: 25_000,
-    projectLimit: 5,
+    projectLimit: 1,
+    projectLimitLabel: '1 product',
+    scheduledReviews: false,
+    workspaceSeatLimit: 1,
+    workspaceSeatsLabel: '1 seat',
+    accountModel: 'One account for one product.',
     features: [
-      '3 product reviews per month',
-      'Complete Fix List, evidence, and fix prompts',
-      'Update reviews use the same product review credits',
-      'History, sharing, comparisons, Canvas, and Watch',
+      '1 product',
+      'Prioritized Flags with evidence and fix prompts',
+      'Review again after changes and see what changed',
+      'A public report link',
     ],
     highlight: false,
     cta: 'Start free',
@@ -81,20 +98,25 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     auditLimit: 15,
     auditLimitKind: 'monthly',
     auditLimitLabel: '15 product reviews / month',
-    deepReviewLimit: 3,
+    deepReviewLimit: UNMETERED_LEGACY_DEPTH,
     deepReviewLimitKind: 'monthly',
-    deepReviewLimitLabel: '3 deep reviews / month',
+    deepReviewLimitLabel: 'Path depth included',
     chatTokenLimit: 500_000,
     projectLimit: 5,
+    projectLimitLabel: 'Up to 5 products',
+    scheduledReviews: false,
+    workspaceSeatLimit: 1,
+    workspaceSeatsLabel: '1 seat',
+    accountModel: 'One account across up to 5 products.',
     stripePriceId: envPriceId('STRIPE_BUILDER_PRICE_ID'),
     features: [
-      '15 product reviews per month',
-      'Complete Fix List, evidence, and fix prompts',
-      'Update reviews use the same product review credits',
-      'History, sharing, comparisons, Canvas, and Watch',
+      'Up to 5 products',
+      'Product history across releases',
+      'Compare releases and see what improved',
+      'A public report link',
     ],
     highlight: true,
-    cta: 'Start Pro',
+    cta: 'Join Pro waitlist',
     href: '/sign-up?plan=BUILDER',
   },
   TEAM: {
@@ -108,20 +130,26 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     auditLimit: 50,
     auditLimitKind: 'monthly',
     auditLimitLabel: '50 product reviews / month',
-    deepReviewLimit: 10,
+    deepReviewLimit: UNMETERED_LEGACY_DEPTH,
     deepReviewLimitKind: 'monthly',
-    deepReviewLimitLabel: '10 deep reviews / month',
+    deepReviewLimitLabel: 'Path depth included',
     chatTokenLimit: 2_000_000,
     stripePriceId: envPriceId('STRIPE_TEAM_PRICE_ID'),
-    projectLimit: 5,
+    projectLimit: null,
+    projectLimitLabel: 'Unlimited products',
+    scheduledReviews: true,
+    workspaceSeatLimit: null,
+    workspaceSeatsLabel: 'Unlimited seats for a limited time',
+    accountModel: 'Unlimited workspace seats for a limited time.',
     features: [
-      '50 product reviews per month',
-      'Complete Fix List, evidence, and fix prompts',
-      'Update reviews use the same product review credits',
-      'History, sharing, comparisons, Canvas, and Watch',
+      'Unlimited products',
+      'Scheduled reviews',
+      'Invite people to your workspace',
+      'Unlimited workspace seats for a limited time',
+      'Shared product history',
     ],
     highlight: false,
-    cta: 'Start Studio',
+    cta: 'Join Studio waitlist',
     href: '/sign-up?plan=TEAM',
   },
 }
@@ -166,8 +194,8 @@ export function planLabel(plan: Plan | string): string {
   return PLAN_DEFINITIONS[plan as Plan]?.label ?? PLAN_DEFINITIONS.FREE.label
 }
 
-export function projectLimitForPlan(plan: Plan): number {
-  return PLAN_DEFINITIONS[plan].projectLimit ?? PLAN_DEFINITIONS.FREE.projectLimit!
+export function projectLimitForPlan(plan: Plan): number | null {
+  return PLAN_DEFINITIONS[plan].projectLimit
 }
 
 export function planFromPriceId(priceId: string): Plan | null {
@@ -217,7 +245,8 @@ export function getMarketingPlans() {
       cta: def.cta,
       href: def.href,
       highlight: def.highlight,
-      accountModel: 'Single account. No seats or shared workspace.',
+      products: def.projectLimitLabel,
+      accountModel: def.accountModel,
     }
   })
 }
@@ -231,8 +260,8 @@ export const CONTACT_PLAN = {
   outcome: 'Volume pricing for teams that need more reviews',
   audits: 'More than 50 / month',
   features: [
-    'Everything in Studio',
     'Custom review volume',
+    'A product and workspace setup that fits your team',
     'Talk through your workflow with us',
   ],
   cta: 'Talk to us',

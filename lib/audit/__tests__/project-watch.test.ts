@@ -46,7 +46,7 @@ const project = {
   watchInterval: 'WEEKLY',
   watchNextRunAt: new Date('2026-07-22T10:00:00.000Z'),
   watchConsecutiveFailures: 0,
-  user: { id: 'user-1', plan: 'BUILDER', role: 'user', subscriptionStatus: 'ACTIVE' },
+  user: { id: 'user-1', plan: 'TEAM', role: 'user', subscriptionStatus: 'ACTIVE' },
 }
 
 describe('Product Watch', () => {
@@ -60,10 +60,10 @@ describe('Product Watch', () => {
     mocks.projectUpdateMany.mockResolvedValue({ count: 1 })
     mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
     mocks.sendEmail.mockResolvedValue({ id: 'email-1' })
-    mocks.projectFindFirst.mockResolvedValue({ id: 'project-1' })
+    mocks.projectFindFirst.mockResolvedValue({ id: 'project-1', user: project.user })
   })
 
-  it('enables weekly Watch for an ordinary claimed Product on Pro', async () => {
+  it('enables weekly scheduled reviews for a Studio Product', async () => {
     const result = await setProjectWatch({
       projectId: 'project-1',
       userId: 'user-1',
@@ -75,6 +75,26 @@ describe('Product Watch', () => {
       where: { id: 'project-1' },
       data: expect.objectContaining({ watchInterval: 'WEEKLY' }),
     }))
+  })
+
+  it('does not enable a schedule outside Studio', async () => {
+    mocks.projectFindFirst.mockResolvedValue({
+      id: 'project-1',
+      user: { ...project.user, plan: 'BUILDER' },
+    })
+
+    const result = await setProjectWatch({
+      projectId: 'project-1',
+      userId: 'user-1',
+      interval: 'weekly',
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Scheduled reviews are available on Studio.',
+      code: 'STUDIO_REQUIRED',
+    })
+    expect(mocks.projectUpdate).not.toHaveBeenCalled()
   })
 
   it('enables daily Watch on the same terms as weekly Watch', async () => {

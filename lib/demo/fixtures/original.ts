@@ -31,7 +31,7 @@ export const originalFixture: DemoFixture = {
     },
   },
   announcement:
-    'Launchpad 2.0 just dropped. Now with AI-generated release notes and automated pre-flight checks.',
+    'DemoSite 2.0 just dropped. Now with AI-generated release notes and automated pre-flight checks.',
   navLinks: [
     { label: 'Features', href: '#features' },
     { label: 'Pricing', href: '#pricing' },
@@ -41,11 +41,11 @@ export const originalFixture: DemoFixture = {
   ],
   headline: 'The launch platform for teams who move fast',
   subhead:
-    'Launchpad turns your release into a checklist, watches every pre-flight check, and tells you when something is not ready. Ship more, break less.',
+    'DemoSite turns your release into a checklist, watches every pre-flight check, and tells you when something is not ready. Ship more, break less.',
   primaryCta: { label: 'Start a launch', href: '/demo/signup' },
   secondaryCta: { label: 'Watch demo', href: '#demo' },
   heroImageSrc: '/demo/hero-original.svg',
-  heroImageAlt: 'Launchpad dashboard showing release checklist and pre-flight status',
+  heroImageAlt: 'DemoSite dashboard showing release checklist and pre-flight status',
   featuresSectionTitle: '',
   features: [
     {
@@ -87,7 +87,7 @@ export const originalFixture: DemoFixture = {
     statLine: 'Trusted by 10,000+ teams who stopped shipping broken releases',
     testimonials: [
       {
-        quote: 'Launchpad kept our releases on schedule through three consecutive rewrites.',
+        quote: 'DemoSite kept our releases on schedule through three consecutive rewrites.',
         author: 'Jane D.',
         role: 'Engineering Manager, Startup Co.',
       },

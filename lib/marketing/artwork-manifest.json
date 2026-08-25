@@ -2,16 +2,42 @@
   "schemaVersion": 1,
   "assets": [
     {
-      "id": "homepage-final-cta",
-      "src": "/marketing/visuals/pricing-glass-mark.webp",
+      "id": "homepage-how-it-works-workflow",
+      "src": "/marketing/visuals/how-it-works-workflow-v4.webp",
       "classification": "approved",
-      "width": 1448,
-      "height": 1086,
-      "requiresAlpha": false,
+      "width": 1942,
+      "height": 809,
+      "requiresAlpha": true,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": [
+        "components/marketing/landing/LandingHowItWorksSection.tsx"
+      ],
+      "replaces": []
+    },
+    {
+      "id": "homepage-review-rubrics",
+      "src": "/marketing/visuals/review-rubrics-v4.webp",
+      "classification": "approved",
+      "width": 1586,
+      "height": 992,
+      "requiresAlpha": true,
+      "contentBearing": false,
+      "requiredTerms": [],
+      "consumers": ["components/marketing/landing/LandingRubricsSection.tsx"],
+      "replaces": []
+    },
+    {
+      "id": "homepage-final-cta",
+      "src": "/marketing/visuals/final-cta-gateway-v2.webp",
+      "classification": "approved",
+      "width": 1672,
+      "height": 941,
+      "requiresAlpha": true,
       "contentBearing": false,
       "requiredTerms": [],
       "consumers": ["components/marketing/landing/LandingFinalCtaSection.tsx"],
-      "replaces": []
+      "replaces": ["/marketing/visuals/pricing-glass-mark.webp"]
     }
   ]
 }

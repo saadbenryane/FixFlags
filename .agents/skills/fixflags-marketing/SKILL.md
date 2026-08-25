@@ -70,10 +70,11 @@ Primary illustrations are generated compositions. Do not replace approved artwor
 
 ## Entitlement language
 
-- Free includes three lifetime product reviews.
+- Free includes three product reviews per month for one Product.
 - Every signed-in manual update review uses one product-review credit.
-- Watch-triggered reviews are the only non-manual path that skips product-review usage.
-- Pro includes 25 product reviews per month, shared by new URLs and manual update reviews.
+- Completed scheduled reviews use one product-review credit and are available on Studio.
+- Pro includes 15 product reviews per month across up to five Products.
+- Studio includes 50 product reviews per month, unlimited Products, scheduled reviews, and workspace invitations.
 - Do not say "unlimited checks" or hardcode volatile prices and quotas in this skill.
 
 ## Avoid

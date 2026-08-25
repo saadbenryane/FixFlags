@@ -141,13 +141,16 @@ Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
 
 ## What we ship
 
-### Subscription plans (shipped)
+### Plan contract
 
-| Plan | Price | Product reviews |
-|------|-------|-----------------|
-| **Free** | $0 | 3/month |
-| **Pro** (`BUILDER`) | $29/mo | 15/month |
-| **Studio** (`TEAM`) | $79/mo | 50/month |
+Free is available now.
+Pro and Studio remain waitlist-gated while checkout stays in test mode.
+
+| Plan | Price | Product reviews | Products | Added value |
+|------|-------|-----------------|----------|-------------|
+| **Free** | $0 | 3/month | 1 | Flags, evidence, fix prompts, review changes, public report link |
+| **Pro** (`BUILDER`) | $29/mo | 15/month | Up to 5 | Product history across releases and release comparison |
+| **Studio** (`TEAM`) | $79/mo | 50/month | Unlimited | Scheduled reviews, shared product history, and workspace invitations |
 
 New URLs, update reviews, and completed scheduled Watch reviews use the same monthly product review allowance.
 Unused allowance does not roll over.
@@ -158,7 +161,7 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 ### First check and account claim
 - A homepage URL submission immediately opens the Agent-led progressive report workspace.
 - Anonymous visitors receive deterministic FixFlags Agent updates, the progressive and completed Report, all confirmed Flags, screenshots, and public-safe evidence without a blocking authentication overlay.
-- Interactive Agent chat, fix prompts, Timeline playback, private history, Product Memory, update reviews, Canvas, export, and restricted sharing remain server-gated.
+- Interactive Agent chat, fix prompts, Timeline playback, account history, Product Memory, update reviews, Canvas, and export remain server-gated.
 - Timeline stays discoverable as an inline sign-in state on live reports, and its event, URL, screenshot, and playback payload is absent from anonymous live-report responses.
 - Curated samples expose only their versioned static Timeline fixtures.
 - Curated samples expose exactly one demonstrated fix prompt and no aggregate Finish Plan prompt.
@@ -169,22 +172,30 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 
 ### Free (forever)
 - 3 product reviews per month (a claimed anonymous teaser counts once)
+- 1 Product
 - Interactive report Agent with 25,000 input-plus-output tokens per calendar month
 - Saved review history and authenticated Timeline playback
 - CTA flow test (automated click-through with before/after screenshots)
 - Preview cards (Google snippet + social link preview)
 - Fix prompts tuned for Cursor, Claude Code, Lovable, Bolt
-- Update comparisons, sharing, Canvas, Product Signals, and scheduled Watch
+- Review changes, public report links, Canvas, and Product Signals
 
 ### Pro ($29/mo) — `BUILDER` in schema
 - 15 product reviews per month
+- Up to 5 Products
+- Product history across releases and release comparison
 - 500,000 Agent chat tokens per calendar month
-- The same complete web product as Free
 
 ### Studio ($79/mo) — `TEAM` in schema
 - 50 product reviews per month
+- Unlimited Products
+- Scheduled reviews
+- Invite people to the workspace
+- Unlimited workspace seats for a limited time
+- Shared Product history
 - 2,000,000 Agent chat tokens per calendar month across Studio projects
-- The same complete web product as Free and Pro
+
+Workspace invitations are part of the waitlisted Studio launch contract and must ship before Studio checkout opens.
 
 ### Parked power-user infrastructure
 
@@ -238,9 +249,9 @@ Full evidence rules: `knowledge/evidence-rules.md`.
 - Fix list with every unresolved Flag and contract-aware ranking from one shared service across web, export, update review, and sample
 - Remember strip on report when Project has verified learnings; Contract edits merge without wiping memory
 - Scheduled Product Watch: recurring full review plus regression email; completed Watch reviews consume the monthly product review allowance
-- **Agent-led report workspace:** URL submission immediately opens `/report/{id}` with Agent chat on the left and the progressive Report on the right. Persisted scan facts stream into the same score, ranked priority, evidence, and per-issue prompt layout. Preview, Timeline, Canvas, comparison, sharing, and Product Signals remain part of the web product.
+- **Agent-led report workspace:** URL submission immediately opens `/report/{id}` with Agent chat on the left and the progressive Report on the right. Persisted scan facts stream into the same score, ranked priority, evidence, and per-issue prompt layout. The canonical report URL exposes public evidence while Agent chat, prompts, Product Memory, account history, and owner actions remain gated.
 - Dedicated audit worker runtime: web requests stay isolated from Playwright capture; unfinished reports use a lightweight access/status read before completed-report assembly
-- **Protected sharing:** token routes render directly without making the report public; password grants are signed, HttpOnly, revocable, expiring, and metadata-safe on every plan
+- **Public report link:** every Review exposes evidence at its canonical `/report/{id}` URL; Copy link lives in Export, while owner-only data stays server-gated
 
 ## Evaluation system
 

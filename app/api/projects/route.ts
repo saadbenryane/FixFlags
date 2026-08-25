@@ -3,7 +3,10 @@ import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
-import { projectLimitForPlan } from '@/lib/billing/plans'
+import {
+  assertCanCreateProduct,
+  ProductLimitReached,
+} from '@/lib/billing/product-capacity'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { canonicalProductHost, canonicalProductUrl } from '@/lib/audit/product-intelligence'
@@ -54,7 +57,6 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
     if (!user) return apiError('Account not found', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
 
-  const limit = projectLimitForPlan(user.plan)
   const body = await req.json().catch(() => ({}))
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) {
@@ -67,12 +69,7 @@ export async function POST(req: NextRequest) {
     const existing = await tx.project.findUnique({
       where: { userId_canonicalHost: { userId: user.id, canonicalHost } },
     })
-    if (!existing?.isManaged) {
-      const count = await tx.project.count({
-        where: { userId: user.id, isManaged: true },
-      })
-      if (count >= limit) throw new ProjectLimitReached(limit)
-    }
+    if (!existing) await assertCanCreateProduct(tx, user.id)
 
     return tx.project.upsert({
       where: { userId_canonicalHost: { userId: user.id, canonicalHost } },
@@ -93,17 +90,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(project, { status: 201 })
   } catch (error) {
-    if (error instanceof ProjectLimitReached) {
+    if (error instanceof ProductLimitReached) {
       return apiError(`Product limit reached (${error.limit})`, 409, {
         code: 'PROJECT_LIMIT',
       })
     }
     return handleRouteError(error, 'Could not create project')
-  }
-}
-
-class ProjectLimitReached extends Error {
-  constructor(readonly limit: number) {
-    super('Project limit reached')
   }
 }

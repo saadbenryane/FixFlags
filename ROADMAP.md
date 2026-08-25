@@ -32,7 +32,7 @@ flowchart TB
 
 **Product review** — programmatic Playwright capture with screenshot-forward evidence (today’s pipeline). Live or stepped captures aligned to checks; not full agent autonomy.
 
-**Deep review** — agent-class browser: autonomous navigation and interaction (multi-step journeys, funnel traversal, path recording). Public site explains this as agent-level browser exploration. See [How it works](/how-it-works) and [/docs/deep-review](/docs/deep-review).
+**Deep Review** — future repository-connected analysis that combines live-product evidence with source-code context. It remains parked with repository scanning and is not a current pricing feature.
 
 ### Report view
 
@@ -52,12 +52,12 @@ Authenticated Timeline uses the adapted inline playback layout on small screens.
 
 ### Customer labels
 
-Product review, Deep review, Update review, Funnel, Path, Fix list — from `lib/marketing/copy/terminology.ts`. No re-check in customer UI.
+Product review, Update review, Funnel, Path, Fix list — from `lib/marketing/copy/terminology.ts`. No re-check in customer UI. Deep Review appears only in future-product context.
 
 ## Recently closed
 
 - **Beat Scout: precision over spectacle — shipped.** Network/API failure Flags, overlay click-blocker detection, structured action timeline, Product Contract, truth labels in model/API data. See board `beat-scout-precision` / `beat-scout-completeness`.
-- **Docs and Help separation — shipped locally.** `/docs` owns the URL-first product loop, reports, deep reviews, update reviews, and troubleshooting. `/help` owns billing, account, failed reviews, privacy, and human support. Parked power-tool documentation remains in source but is absent from navigation and search.
+- **Docs and Help separation — shipped locally.** `/docs` owns the URL-first product loop, reports, update reviews, and troubleshooting. `/help` owns billing, account, failed reviews, privacy, and human support. Parked power-tool and future Deep Review documentation remains in source but is absent from navigation and search.
 - **Monetization blockers — CLOSED.** Automated coverage in CI via `npm run test:unit`. See [QUALITY.md](./QUALITY.md).
 - **Scan depth Phase 1 — shipped.** Flow scan, slop detection, preview cards, og:image validation.
 - **Ultimate audit Phases 0–4 — shipped.** Playwright-only stack, narrative report, Journey Review MVP, and update-review next fixes.
@@ -89,7 +89,7 @@ Product review, Deep review, Update review, Funnel, Path, Fix list — from `lib
 - **Customer journey trust close** — Anon evidence placeholders, dishonest Copy toast, score/BLOCKED contradiction, nav CTA clarity. Brand Phase 0 done (`fix-live-images`). Board `customer-journey-completion`.
   *Signal:* Phases 1-3 of customer-journey-completion-plan accepted on production dogfood.
 
-- **Usage pricing and metering** — the complete web product is available on every plan; Free, Pro ($29), and Studio ($79) differ only by monthly product review and deep review allowances. See [docs/business-model.md](./docs/business-model.md).
+- **Usage pricing and metering** — the complete web product is available on every plan; Free, Pro ($29), and Studio ($79) differ only by monthly Product Review allowance. See [docs/business-model.md](./docs/business-model.md).
 
 - **Growth distribution** — anon → signed-up → paying conversion; upsell timing; re-engagement.
   *Signal:* >5% free-to-paid conversion.

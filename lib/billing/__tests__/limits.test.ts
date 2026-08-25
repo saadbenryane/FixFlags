@@ -36,7 +36,7 @@ describe('computePlanLimitUpdate', () => {
       { role: 'user', auditsUsed: 2, auditsLimit: 3, deepReviewsUsed: 9, deepReviewsLimit: 10 },
       'BUILDER'
     )
-    assert.equal(update?.deepReviewsLimit, 3)
+    assert.equal(update?.deepReviewsLimit, UNLIMITED_SCAN_LIMIT)
     assert.equal(update?.deepReviewsUsed, 9)
   })
 
@@ -47,7 +47,7 @@ describe('computePlanLimitUpdate', () => {
     )
     assert.equal(update?.auditsLimit, 50)
     assert.equal(update?.auditsUsed, 12)
-    assert.equal(update?.deepReviewsLimit, 10)
+    assert.equal(update?.deepReviewsLimit, UNLIMITED_SCAN_LIMIT)
     assert.equal(update?.deepReviewsUsed, 3)
   })
 })
@@ -87,7 +87,7 @@ describe('applyPlanLimits', () => {
         plan: 'FREE',
         auditsLimit: 3,
         auditsUsed: 20,
-        deepReviewsLimit: 1,
+        deepReviewsLimit: UNLIMITED_SCAN_LIMIT,
         deepReviewsUsed: 5,
       },
     })

@@ -251,19 +251,19 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: `Free: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month. Enough for an initial review and two update reviews of the live result.`,
+        text: `Free: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month for one product. Enough for an initial review and two reviews after changes.`,
       },
       {
         type: 'p',
-        text: `Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): ${PRICING_COPY.proProductReviewsPerMonth} product reviews per month for frequent releases.`,
+        text: `Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): ${PRICING_COPY.proProductReviewsPerMonth} product reviews per month across up to five products, with history across releases.`,
       },
       {
         type: 'p',
-        text: `Studio (${PRICING_COPY.studioPrice}${PRICING_COPY.studioPeriod}): ${PRICING_COPY.studioProductReviewsPerMonth} product reviews per month for client and multi-product work.`,
+        text: `Studio (${PRICING_COPY.studioPrice}${PRICING_COPY.studioPeriod}): ${PRICING_COPY.studioProductReviewsPerMonth} product reviews per month, unlimited products, scheduled reviews, and a shared workspace. Workspace seats are unlimited for a limited time.`,
       },
       {
         type: 'p',
-        text: 'Every plan includes reports, evidence, fix prompts, update comparisons, history, sharing, Canvas, Product Signals, and Watch. Plans differ only by monthly usage. Usage does not roll over.',
+        text: 'Every Product Review includes prioritized Flags, evidence, and fix prompts. Plans add product capacity, release history, scheduled reviews, and workspace access. Usage does not roll over.',
       },
     ],
     related: ['what-counts-as-a-check', 'cancel-or-manage'],
@@ -278,7 +278,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'A product review counts toward your monthly allowance. Each new URL, each update review, and each completed scheduled Watch review uses one product review.',
+        text: 'A completed review counts toward your monthly allowance. This includes the first review of a product, a review after changes, and a completed scheduled review on Studio.',
       },
       {
         type: 'p',
@@ -447,17 +447,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'report-privacy',
     categoryId: 'account',
-    title: 'Report privacy',
-    excerpt: 'Owned reports are private. Every plan can create protected share links.',
+    title: 'Report access',
+    excerpt: 'Report evidence is public. Owner tools and account data stay gated.',
     searchTokens: ['private', 'share', 'public', 'anonymous'],
     body: [
       {
         type: 'p',
-        text: 'Owned reports are private to your account. A newly submitted private scan requires sign-up or sign-in before its report can be inspected or saved.',
+        text: 'Anyone with the canonical report URL can inspect its score, Flags, screenshots, and public-safe evidence.',
       },
       {
         type: 'p',
-        text: 'Every plan can create revocable share links with optional passwords, expiry, and view limits. Opening a share link does not make the underlying report public. Separate public discovery pages are not private reports.',
+        text: 'Agent chat, fix prompts, Product Memory, account history, update reviews, and export remain available only to the report owner. Use Copy link in Export to share the report evidence.',
       },
     ],
     related: ['free-vs-pro', 'sign-in-and-security'],

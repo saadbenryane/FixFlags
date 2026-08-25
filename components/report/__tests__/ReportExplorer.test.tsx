@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ReportExplorer } from '@/components/report/ReportExplorer'
 import { AGENT_COPY_LEAD } from '@/lib/audit/priority-flags'
@@ -176,6 +176,34 @@ describe('ReportExplorer anonymous teaser', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /Another issue/ })).toHaveAttribute('aria-pressed', 'true')
+    })
+  })
+
+  it('moves through the filtered Flag order with bounded detail controls', async () => {
+    window.history.replaceState({}, '', '/report/a1?flag=locked')
+    render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer model={model} auditId="a1" />
+      </MeProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Locked first flag/ })).toHaveAttribute('aria-pressed', 'true')
+    })
+    expect(screen.getByRole('button', { name: 'Previous flag' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next flag' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Demonstrated fix/ })).toHaveAttribute('aria-pressed', 'true')
+    })
+    expect(window.location.search).toContain('flag=demonstrated')
+    expect(screen.getByRole('button', { name: 'Next flag' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Previous flag' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Locked first flag/ })).toHaveAttribute('aria-pressed', 'true')
     })
   })
 

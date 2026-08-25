@@ -262,7 +262,9 @@ export function ProductWorkspace({
                 <p className="mt-1 text-sm text-muted-foreground">
                   {product.watching
                     ? `Watching for meaningful changes. Last checked ${dateLabel(workspace.watch.lastRunAt)}.`
-                    : 'Choose a schedule after the first completed Review.'}
+                    : workspace.watch.eligible
+                      ? 'Choose a schedule after the first completed Review.'
+                      : 'Scheduled reviews are available on Studio.'}
                 </p>
               </div>
             </div>

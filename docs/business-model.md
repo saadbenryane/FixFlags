@@ -2,24 +2,24 @@
 
 *Last updated: 2026-08-25*
 
-FixFlags sells monthly review capacity for one complete URL-first web product.
+FixFlags sells Product Reviews with a clear capacity and workflow ladder.
 The customer loop is Product Review → Fix → Verify → Watch.
 Canonical pricing strategy lives in [`knowledge/strategy.md`](../knowledge/strategy.md).
 
-## What every plan includes
+## What every Product Review includes
 
 - Product reviews across Message, Experience, and Reach.
 - Evidence-backed Flags and copyable fix prompts.
-- Update reviews with before-and-after comparison.
-- Saved history, protected sharing, Canvas, Product Signals, and scheduled Watch.
+- A fresh review after changes that shows what changed.
+- A public report link.
 
 ## Usage plans
 
-| Plan | Price | Product reviews/month |
-|------|-------|-----------------------|
-| Free | $0 | 3 |
-| Pro | $29 | 15 |
-| Studio | $79 | 50 |
+| Plan | Price | Product reviews/month | Products | Plan value |
+|------|-------|-----------------------|----------|------------|
+| Free | $0 | 3 | 1 | Review, fix, and review changes |
+| Pro | $29 | 15 | Up to 5 | Product history across releases and release comparison |
+| Studio | $79 | 50 | Unlimited | Scheduled reviews and a shared workspace |
 
 The existing internal enums remain `FREE`, `BUILDER`, and `TEAM`.
 Studio maps to `TEAM`.
@@ -28,6 +28,10 @@ New URL reviews, update reviews, and completed scheduled Watch reviews share the
 Usage renews monthly and does not roll over.
 At the limit, reviews pause until renewal or upgrade.
 Existing purchased overflow credits remain compatible but are not promoted.
+
+Studio includes workspace invitations and unlimited workspace seats for a limited time.
+Pro and Studio remain on the waitlist while Stripe stays in test mode.
+Workspace invitations must be complete before Studio checkout opens.
 
 ## What is parked
 
@@ -39,7 +43,7 @@ Deep Review is the future repository-connected analysis offer and returns only a
 - Monthly Pro and Studio subscriptions.
 - High-volume pricing by direct conversation.
 - No annual commitment at launch.
-- No capability-based upsells inside the core web loop.
+- The report itself stays equally trustworthy on every plan.
 
 ## Target customer
 

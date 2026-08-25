@@ -39,7 +39,6 @@ export type FunnelEvent =
   | 'product_contract_saved'
   | 'remember_shown'
   | 'managed_subscription'
-  | 'share_link_created'
   | 'marketing_page_view'
   | 'waitlist_joined'
   | 'plan_picker_viewed'
@@ -135,7 +134,6 @@ type EventParams = {
   product_contract_saved: { audit_id?: string }
   remember_shown: { audit_id?: string; learning_count?: number }
   managed_subscription: { action?: string }
-  share_link_created: { audit_id?: string; kind?: 'share' | 'compare' }
   marketing_page_view: {
     page: string
     utm_source?: string

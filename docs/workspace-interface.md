@@ -79,7 +79,7 @@ Live reports require owner authorization; repository-owned curated samples use p
 
 **Product review mode** — programmatic capture. Playwright-driven browser with screenshot-forward evidence (today’s pipeline). User sees live or stepped captures aligned to checks; not full agent autonomy.
 
-**Deep review mode** — agent-class browser. Autonomous navigation and interaction comparable to power-user browsing (multi-step journeys, funnel traversal, path recording). Public marketing explains this as agent-level browser exploration without naming competitors as endorsement.
+**Target browser mode** — progressively richer path exploration inside Product Reviews. Multi-step journeys, funnel traversal, and path recording do not create a second customer product or pricing meter.
 
 ### Report view
 
@@ -140,7 +140,7 @@ Below-report context such as technology and Product Contract does not compete wi
 - Only `IMPROVED` may write verified Product Memory; partial or degraded reviews never do.
 - Customer term: **Update review** (not re-check). Internal route `/re-check` may remain until API migration.
 - Every signed-in manual update review consumes exactly one product-review credit.
-- Watch-triggered reviews are the only non-manual path that skips product-review usage.
+- Completed scheduled Studio reviews consume one product-review credit.
 
 ---
 
@@ -191,8 +191,7 @@ Wire from [lib/marketing/copy/terminology.ts](../lib/marketing/copy/terminology.
 
 | Label | Use on chrome |
 |-------|----------------|
-| Product review | Standard full pass |
-| Deep review | Journey + funnel + path mode |
+| Product review | Standard full pass with journey, Funnel, and path evidence where available |
 | Update review | Fresh owner-triggered review on the same URL (report action section) |
 | Funnel | Report section |
 | Path | Playback unit |
@@ -207,7 +206,7 @@ Do not show **re-check** in customer UI.
 | Area | Today | Target |
 |------|-------|--------|
 | Layout | Full-bleed flush split; no pane cards; same shell scan→complete | Same |
-| Browser | Constant stage, no fake chrome; selected playback step renders that captured frame | Deep review (agent-class) live browser |
+| Browser | Constant stage, no fake chrome; selected playback step renders that captured frame | Richer live path exploration inside Product Reviews |
 | Playback | Docked transport with Desktop\|Mobile, scrub, and step chips; browser stage updates on select; `?step=N` replay from Flag/Funnel evidence | Full session-style takeover replay |
 | Agent | One transcript; programmatic output is public-safe and free, model conversation is authenticated and metered monthly | Same |
 | Funnel | Section + journey list + Replay path into the workspace browser | Same |
