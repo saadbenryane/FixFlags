@@ -118,7 +118,7 @@ Canonical numbers: `PRICING_COPY` in terminology.ts. Philosophy: [docs/business-
 - Re-check is not free unlimited in customer language; implementation may lag marketing (see shipped gap table).
 - Stripe IDs and enforcement: `lib/billing/plans.ts`, [PRODUCT.md](../PRODUCT.md).
 
-**Paid add-ons (story):** before/after compare (Pro+), MCP (Pro+), share links and proof export (Studio).
+**Paid add-ons (story):** before/after compare (Pro+), share links and proof export (Studio).
 
 ---
 
@@ -392,11 +392,9 @@ Each task receives: goal, evidence, affected journey, priority, constraints, pro
 
 ## 29) Integration levels
 
-1. Copyable tasks (Lovable, Claude Code, Cursor, Codex, Replit)
-2. Knowledge export (tooling- and rules-file compatible context)
-3. FixFlags MCP (product brief, coverage, findings, history)
-4. Repo/preview integrations (when authenticated)
-5. Closed-loop verify after deployment (not required for first public beta)
+The current public product stops at copyable tasks for Lovable and other AI builders.
+Knowledge export, MCP, CLI, and repository integrations are parked power-user layers and must remain unavailable until the URL-to-report wedge converts consistently.
+Closed-loop verification after deployment remains part of the Product Review experience and does not require a repository connection.
 
 ---
 

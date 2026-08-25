@@ -45,7 +45,7 @@ export const PLANS = [
     features: [
       `${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month`,
       "Before/after comparisons",
-      "MCP in supported builders",
+      "Evidence-backed fix prompts for your builder",
       "Weekly product watch with regression email",
     ],
     cta: "Start Pro",
@@ -66,8 +66,6 @@ export const PLANS = [
       `${PRICING_COPY.studioProductReviewsPerMonth} product reviews and ${PRICING_COPY.studioDeepReviewsPerMonth} deep reviews per month`,
       "Up to 5 projects",
       "Public share links for clients",
-      "GitHub repository scans",
-      "Draft Fix PRs from repository Flags (secrets auto-patch when possible)",
       "Daily product watch with regression email",
     ],
     cta: "Start Studio",
@@ -80,7 +78,7 @@ export const PLANS = [
 export const PRICING_FAQ = [
   {
     question: "Can I start free and upgrade later?",
-    answer: `Yes. ${OFFER.line} Upgrade for more product reviews, deep reviews, compare, and MCP.`,
+    answer: `Yes. ${OFFER.line} Upgrade for more product reviews, deep reviews, and before/after compare.`,
   },
   {
     question: "What counts as a product review?",
@@ -122,21 +120,21 @@ export const PRICING_FAQ = [
       "Product reviews pause until you upgrade. Free includes 3 product reviews in total. Paid plans reset each cycle.",
   },
   {
-    question: "Do I need Pro for MCP?",
+    question: "Do I need a specific AI builder?",
     answer:
-      "Yes for MCP API access. You do not need MCP to use fix prompts. Generate an API key in Settings after upgrading.",
+      "No. Every full report includes evidence-backed fix prompts you can paste into Lovable or the builder you already use.",
   },
   {
     question: "What\u2019s included in every plan?",
     answer:
-      "Every plan includes Flags with evidence and fix prompts after you create an account. Paid plans add more product reviews, deep reviews, before/after compare, MCP, and team features.",
+      "Every plan includes Flags with evidence and fix prompts after you create an account. Paid plans add more product reviews, deep reviews, before/after compare, and team features.",
   },
 ] as const;
 
 export const PRICING = {
   label: "Simple pricing",
   headline: "Start free. Upgrade when you\u2019re reviewing often.",
-  subhead: `${OFFER.line} Upgrade for more product reviews, deep reviews, compare, and MCP.`,
+  subhead: `${OFFER.line} Upgrade for more product reviews, deep reviews, and before/after compare.`,
   trustBadge: "Product reviews and deep reviews on every paid plan",
   assurances: [
     "Evidence from the live product",
@@ -147,10 +145,10 @@ export const PRICING = {
   upgradeStepsLoggedIn: "Stripe checkout → Dashboard",
   checkoutRedirecting: "Redirecting to checkout…",
   allPlansInclude:
-    "Every product review includes evidence and rubric summaries. Fix prompts come with a free account. Pro adds compare, more reviews, deep reviews, and MCP.",
+    "Every product review includes evidence and rubric summaries. Fix prompts come with a free account. Pro adds compare, more product reviews, and deep reviews.",
   pickerEyebrow: "Pick a plan",
   pickerTitle: "Choose how you want to start",
-  pickerSubtitle: "Free includes 3 product reviews (lifetime) and every Flag. Paid adds more reviews, deep reviews, compare, and MCP.",
+  pickerSubtitle: "Free includes 3 product reviews (lifetime) and every Flag. Paid adds more reviews, deep reviews, and before/after compare.",
   pickerBody: "Pick the plan that matches how often you ship.",
   pickerBodyWithReport: "Your review is still running. Pick a plan to keep your report and fix prompts.",
   pickerReportNote: "Choosing Free returns you to the running report.",
@@ -243,7 +241,7 @@ export const UPSELLS = {
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
     headline: "You\u2019ve used your free product reviews",
-    body: "Upgrade to Pro for 25 product reviews and 4 deep reviews per month, before/after compare, and MCP in Cursor, Claude Code, Windsurf, Lovable, or Bolt.",
+    body: "Upgrade to Pro for 25 product reviews and 4 deep reviews per month with before/after compare.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
   },
@@ -252,13 +250,13 @@ export const UPGRADE_MOMENTS = {
       void scoreDelta;
       return "Update review complete";
     },
-    body: "Keep the loop in your editor with MCP and more product reviews each month.",
+    body: "Keep reviewing every release with more product reviews each month.",
     cta: proUpgradeCta("Start Pro"),
     plan: "BUILDER" as const,
   },
   compare_flat: {
     headline: "Still Flags after your update review",
-    body: "Use MCP so your agent can close what remains without copy-pasting URLs.",
+    body: "Use the full report to close what remains, then run an update review on the live URL.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
   },
@@ -276,13 +274,13 @@ export const UPGRADE_MOMENTS = {
   },
   free_default: {
     headline: "Ship weekly? Automate the loop",
-    body: "Pro adds 25 product reviews and 4 deep reviews per month, before/after compare, and MCP so reviews run inside your supported builder.",
+    body: "Pro adds 25 product reviews and 4 deep reviews per month with before/after compare.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
   },
   report_completed: {
     headline: "Automate the review loop",
-    body: "Pro adds more product reviews and deep reviews each month, before/after proof, and MCP in your supported builder.",
+    body: "Pro adds more product reviews and deep reviews each month with before/after proof.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
   },
@@ -290,5 +288,5 @@ export const UPGRADE_MOMENTS = {
 
 export const BILLING_PAGE_COPY = {
   pastDueBody:
-    "Update your card to restore paid features (compare, MCP, share). We'll retry automatically. Product reviews resume when payment succeeds.",
+    "Update your card to restore paid features such as compare and sharing. We'll retry automatically. Product reviews resume when payment succeeds.",
 } as const;

@@ -1,8 +1,5 @@
 import { BRAND, SITE_URL } from './copy'
 import { INDEXABLE_ROUTES, LLMS_SECTIONS, LLMS_TXT_PATH } from './seo-routes'
-import { MCP_TOOL_DEFINITIONS } from '@/lib/mcp/tool-manifest'
-
-const MCP_ENDPOINT = `${SITE_URL.replace(/\/$/, '')}/api/mcp`
 
 export function buildLlmsTxt(): string {
   const lines: string[] = [
@@ -21,24 +18,6 @@ export function buildLlmsTxt(): string {
     }
     lines.push('')
   }
-
-  lines.push('## MCP Server', '')
-  lines.push(
-    `- FixFlags MCP server URL: ${MCP_ENDPOINT}`
-  )
-  lines.push(
-    `- Required header: \`Authorization: Bearer ff_live_your_key_here\``
-  )
-  lines.push(
-    `- Get an API key: ${SITE_URL}/settings/api-keys (Pro plan required)`
-  )
-  lines.push(
-    `- Setup guide: ${SITE_URL}/docs/mcp`
-  )
-  lines.push(
-    `- Tools: ${MCP_TOOL_DEFINITIONS.map((tool) => tool.name).join(', ')}`
-  )
-  lines.push('')
 
   return lines.join('\n').trimEnd() + '\n'
 }

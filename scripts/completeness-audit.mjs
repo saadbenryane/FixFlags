@@ -294,8 +294,6 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
 
   const editorConsumers = [
     'components/marketing/landing/EditorIntegrationGrid.tsx',
-    'components/layout/footer.tsx',
-    'app/(docs)/docs/integrations/page.tsx',
     'app/(app)/dashboard/mcp-setup/page.tsx',
     'app/api/me/preferences/route.ts',
   ]
@@ -308,12 +306,12 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   }
   const integrationPage = read(root, 'app/(docs)/docs/integrations/page.tsx')
   assert(
-    integrationPage.includes('buildEditorMcpConfiguration'),
-    'Integration docs do not consume the canonical configuration generator',
+    integrationPage.includes('notFound()'),
+    'Parked integration docs must remain unavailable',
   )
   assert(
-    read(root, 'app/(docs)/docs/mcp/tools/page.tsx').includes("from '@/lib/mcp/tool-manifest'"),
-    'MCP tool reference does not consume the canonical tool manifest',
+    read(root, 'app/(docs)/docs/mcp/tools/page.tsx').includes('notFound()'),
+    'Parked MCP tool reference must remain unavailable',
   )
   assert(
     read(root, 'fixflags-cli/src/init.ts').includes(

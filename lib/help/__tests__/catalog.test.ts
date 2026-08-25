@@ -12,9 +12,10 @@ import {
 import { SUPPORT_CHAT } from '@/lib/marketing/copy'
 
 describe('help catalog', () => {
-  it('has five categories and day-one articles', () => {
-    expect(HELP_CATEGORIES).toHaveLength(5)
-    expect(HELP_ARTICLES.length).toBeGreaterThanOrEqual(18)
+  it('keeps public help focused on URL reviews and accounts', () => {
+    expect(HELP_CATEGORIES).toHaveLength(4)
+    expect(HELP_CATEGORIES.some((category) => category.id === 'mcp-and-editors')).toBe(false)
+    expect(HELP_ARTICLES.every((article) => article.categoryId !== 'mcp-and-editors')).toBe(true)
   })
 
   it('resolves every article slug', () => {
@@ -23,12 +24,11 @@ describe('help catalog', () => {
     }
   })
 
-  it('searches billing and MCP topics', () => {
+  it('searches billing without surfacing parked power tools', () => {
     const billing = searchHelpArticles('credit pack')
     expect(billing.some((h) => h.article.slug === 'credits')).toBe(true)
 
-    const mcp = searchHelpArticles('cursor mcp')
-    expect(mcp.some((h) => h.article.slug === 'mcp-setup')).toBe(true)
+    expect(searchHelpArticles('cursor mcp')).toEqual([])
   })
 
   it('maps failure and limit surfaces to help hrefs', () => {

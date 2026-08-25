@@ -6,6 +6,32 @@ function isProtectedPath(pathname: string): boolean {
   return pathname.startsWith('/admin/') || pathname.startsWith('/settings/')
 }
 
+const PARKED_POWER_TOOL_PREFIXES = [
+  '/dashboard/mcp-analytics',
+  '/dashboard/mcp-setup',
+  '/settings/api-keys',
+  '/settings/integrations',
+  '/cli/authorize',
+  '/report/repo',
+  '/docs/integrations',
+  '/docs/cli',
+  '/docs/mcp',
+  '/help/mcp',
+  '/help/mcp-and-editors',
+  '/api/api-keys',
+  '/api/cli',
+  '/api/integrations/github',
+  '/api/mcp',
+  '/api/repo-scans',
+  '/api/well-known/mcp-json',
+] as const
+
+export function isParkedPowerToolPath(pathname: string): boolean {
+  return PARKED_POWER_TOOL_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )
+}
+
 /**
  * Edge-safe presence check for the better-auth session cookie. Middleware runs
  * on the edge runtime, so it must NOT import '@/lib/auth' (that pulls Prisma /
@@ -43,6 +69,10 @@ function buildCsp(): string {
 }
 
 export async function middleware(request: NextRequest) {
+  if (isParkedPowerToolPath(request.nextUrl.pathname)) {
+    return new NextResponse(null, { status: 404 })
+  }
+
   const canonicalHost = siteHostname()
   const requestHost = request.nextUrl.hostname
   if (
@@ -85,6 +115,12 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/api/api-keys/:path*',
+    '/api/cli/:path*',
+    '/api/integrations/github/:path*',
+    '/api/mcp/:path*',
+    '/api/repo-scans/:path*',
+    '/api/well-known/mcp-json/:path*',
     // Skip API routes, static assets, and images
     '/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],

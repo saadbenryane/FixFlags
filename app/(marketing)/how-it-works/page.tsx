@@ -1,14 +1,12 @@
 import Link from 'next/link'
 import {
   ArrowRight,
-  Bot,
   Flag,
   RefreshCcw,
   Wrench,
 } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { AiGapHero } from '@/components/marketing/how-it-works/AiGapHero'
-import { TerminalBlock } from '@/components/marketing/TerminalBlock'
 import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -24,7 +22,7 @@ export const metadata = buildPageMetadata('howItWorks', '/how-it-works')
 const LOOP_ICONS = [Flag, Wrench, RefreshCcw] as const
 
 export default function HowItWorksPage() {
-  const { reportPreview, reviewTypes, loop, mcp, finalCta } = HOW_IT_WORKS_PAGE
+  const { reportPreview, reviewTypes, loop, finalCta } = HOW_IT_WORKS_PAGE
 
   return (
     <>
@@ -158,37 +156,6 @@ export default function HowItWorksPage() {
                 </Card>
               )
             })}
-          </div>
-        </Container>
-      </Section>
-
-      <Section spacing="marketing">
-        <Container variant="wide" className="grid gap-8 lg:grid-cols-[0.8fr_1fr] lg:items-center">
-          <div className="space-y-4">
-            <Badge variant="secondary" className="w-fit">
-              {mcp.label}
-            </Badge>
-            <Heading as="h2" className="max-w-2xl">
-              {mcp.title}
-            </Heading>
-            <p className="max-w-xl text-base leading-relaxed text-muted-foreground">{mcp.body}</p>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button asChild>
-                <Link href={mcp.setupHref}>
-                  {mcp.setupCta}
-                  <ArrowRight className="h-4 w-4" aria-hidden />
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href={mcp.plansHref}>{mcp.plansCta}</Link>
-              </Button>
-            </div>
-          </div>
-          <div className="relative">
-            <div className="absolute -left-5 top-5 hidden h-14 w-14 items-center justify-center rounded-full bg-brand text-brand-foreground shadow-card lg:flex">
-              <Bot className="h-6 w-6" aria-hidden />
-            </div>
-            <TerminalBlock label="Agent loop">{mcp.transcript}</TerminalBlock>
           </div>
         </Container>
       </Section>

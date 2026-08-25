@@ -12,7 +12,7 @@ export type DocsPageKey =
   | 'mcp-tools'
   | 'troubleshooting'
 
-export type DocsNavigationGroup = 'Start' | 'Use FixFlags' | 'Connect' | 'Reference'
+export type DocsNavigationGroup = 'Start' | 'Use FixFlags' | 'Reference'
 
 export interface DocsHeadingDefinition {
   id: string
@@ -98,70 +98,6 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
     ],
   },
   {
-    key: 'integrations',
-    path: '/docs/integrations',
-    group: 'Connect',
-    title: 'Editor integrations',
-    description: 'Connect FixFlags to the editor you already use.',
-    order: 3,
-    headings: [
-      { id: 'quick-start', title: 'Quick start' },
-      { id: 'lovable', title: 'Lovable' },
-      { id: 'bolt', title: 'Bolt' },
-      { id: 'cursor', title: 'Cursor' },
-      { id: 'replit', title: 'Replit' },
-      { id: 'claude-code', title: 'Claude Code' },
-      { id: 'windsurf', title: 'Windsurf' },
-      { id: 'codex', title: 'Codex' },
-      { id: 'devin', title: 'Devin' },
-      { id: 'verify', title: 'Verify the connection' },
-      { id: 'security', title: 'Keep credentials safe' },
-      { id: 'troubleshooting', title: 'Troubleshooting' },
-    ],
-  },
-  {
-    key: 'cli',
-    path: '/docs/cli',
-    group: 'Connect',
-    title: 'FixFlags CLI',
-    description: 'Install, authenticate, configure supported editors, review products, and update review from the terminal.',
-    source: 'cli.md',
-    order: 4,
-    headings: [
-      { id: 'availability', title: 'Availability' },
-      { id: 'install', title: 'Install' },
-      { id: 'authenticate', title: 'Authenticate' },
-      { id: 'configure-an-editor', title: 'Configure an editor' },
-      { id: 'check-and-update-review', title: 'Product review and update review' },
-      { id: 'json-and-ci', title: 'JSON and CI' },
-    ],
-  },
-  {
-    key: 'mcp',
-    path: '/docs/mcp',
-    group: 'Connect',
-    title: 'Model Context Protocol',
-    description: 'How FixFlags MCP authentication, transport, workflows, and connection testing work.',
-    source: 'mcp.md',
-    order: 5,
-    headings: [
-      { id: 'how-it-works', title: 'How it works' },
-      { id: 'endpoint-and-authentication', title: 'Endpoint and authentication' },
-      { id: 'recommended-workflow', title: 'Recommended workflow' },
-      { id: 'connection-testing', title: 'Connection testing' },
-      { id: 'security', title: 'Security' },
-    ],
-  },
-  {
-    key: 'mcp-tools',
-    path: '/docs/mcp/tools',
-    group: 'Reference',
-    title: 'MCP tool reference',
-    description: 'The public FixFlags tools available to connected agents.',
-    order: 6,
-    headings: [{ id: 'tools', title: 'Tools' }],
-  },
-  {
     key: 'troubleshooting',
     path: '/docs/troubleshooting',
     group: 'Reference',
@@ -170,12 +106,11 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
     source: 'troubleshooting.md',
     order: 7,
     headings: [
-      { id: 'authentication', title: 'Authentication' },
-      { id: 'plan-access', title: 'Plan access' },
-      { id: 'public-url', title: 'Public URL requirements' },
+      { id: 'sign-in-and-account-access', title: 'Sign-in and account access' },
+      { id: 'product-review-access', title: 'Product review access' },
+      { id: 'public-url-requirements', title: 'Public URL requirements' },
       { id: 'timeouts-and-queues', title: 'Timeouts and queues' },
-      { id: 'configuration', title: 'Configuration' },
-      { id: 'credential-recovery', title: 'Credential recovery' },
+      { id: 'report-recovery', title: 'Report recovery' },
       { id: 'get-help', title: 'Get help' },
     ],
   },
@@ -184,7 +119,6 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
 export const DOCS_GROUPS: readonly DocsNavigationGroup[] = [
   'Start',
   'Use FixFlags',
-  'Connect',
   'Reference',
 ]
 

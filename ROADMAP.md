@@ -65,6 +65,9 @@ Product review, Deep review, Update review, Funnel, Path, Fix list — from `lib
 
 ## Now
 
+- **Game On completion closeout** — implementation commit `6c17558f` on `main` and `origin/main` contains the homepage, shared workspace, access, metering, Improvement lifecycle, verification receipt, release-contract, and terminology refactor, but it is not yet release-attested.
+  *Resume signal:* follow [the implementation handoff](./.agents/handoffs/game-on-product-completion.md), complete the no-skip browser and full local gates, repair and create a new final SHA if needed, then collect CI, release-environment, registry, exact-SHA production, honest `IMPROVED`/`INCONCLUSIVE`, and promotion receipts.
+
 - **Durable continuous improvement loop** — Product-scoped Improvements connect bounded Attention, evidence occurrences, builder attempts, fresh update-review verification receipts, regressions, and provenance-bearing Product Memory.
   *Signal:* URL-only Review produces zero to three worthwhile Improvements; a handoff creates an attempt; only a fresh child Review can produce `IMPROVED`, `UNCHANGED`, `REGRESSED`, or `INCONCLUSIVE`.
 

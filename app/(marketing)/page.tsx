@@ -1,4 +1,3 @@
-import { IntegrationsBlock } from '@/components/marketing/landing/IntegrationsBlock'
 import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
 import { LandingHeroSection } from '@/components/marketing/landing/LandingHeroSection'
 import { LandingHowItWorksSection } from '@/components/marketing/landing/LandingHowItWorksSection'
@@ -21,7 +20,6 @@ export default async function HomePage() {
       <SampleReportSection audit={sample.audit} />
       <LandingHowItWorksSection />
       <LandingRubricsSection />
-      <IntegrationsBlock />
       <LandingFinalCtaSection />
     </>
   )

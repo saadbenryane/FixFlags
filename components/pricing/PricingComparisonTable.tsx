@@ -17,8 +17,8 @@ const ROWS = [
   {
     feature: "What you get",
     free: "3 product reviews (lifetime) with full reports and fix prompts",
-    pro: "Before/after compare + MCP in your editor",
-    studio: "Share links, proof exports, 5 projects, GitHub repo scans",
+    pro: "More Product Reviews + before/after compare",
+    studio: "Share links, proof exports, and 5 projects",
   },
   {
     feature: "Deep reviews",

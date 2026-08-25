@@ -7,8 +7,6 @@ import { usePathname } from 'next/navigation'
 import {
   Boxes,
   Settings,
-  KeyRound,
-  GitBranch,
   CreditCard,
   Menu,
   ShieldCheck,
@@ -44,8 +42,6 @@ const PRIMARY_ITEMS: SidebarItem[] = [
 
 const SECONDARY_ITEMS: SidebarItem[] = [
   { href: '/settings', label: 'Settings', icon: Settings },
-  { href: '/settings/api-keys', label: 'API Keys', icon: KeyRound },
-  { href: '/settings/integrations', label: 'Integrations', icon: GitBranch },
   { href: '/billing', label: 'Billing', icon: CreditCard },
   { href: '/help', label: 'Help', icon: CircleHelp },
 ]

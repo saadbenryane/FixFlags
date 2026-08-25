@@ -167,8 +167,8 @@ export const HOW_IT_WORKS_PAGE = {
       "Run a live URL, review the Flags, copy the fix prompts, then run an update review.",
     primaryCta: "Review my site",
     primaryHref: "/#audit",
-    secondaryCta: "Set up MCP",
-    secondaryHref: "/docs/integrations#quick-start",
+    secondaryCta: "See a full report",
+    secondaryHref: "/samples",
     annotations: [
       {
         id: "ai-build",
@@ -279,7 +279,7 @@ export const HOW_IT_WORKS_PAGE = {
       },
       {
         title: "Fix",
-        body: "Copy the prompt into your builder, or let MCP hand the exact Flag to your coding agent.",
+        body: "Copy the evidence-backed prompt into the builder you already use.",
       },
       {
         title: "Update review",
@@ -308,8 +308,8 @@ Agent reports: "Experience has no Critical Flags in this review. One Flag was no
     body: "Paste your site, get Flags with evidence and fix prompts, then run an update review to see what changed.",
     primaryCta: "Review my site",
     primaryHref: "/#audit",
-    secondaryCta: "Connect MCP",
-    secondaryHref: "/docs/integrations#quick-start",
+    secondaryCta: "See a full report",
+    secondaryHref: "/samples",
     tryLabel: "Try it on a live URL",
   },
 } as const;

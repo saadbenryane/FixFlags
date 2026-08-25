@@ -20,7 +20,6 @@ export const FOOTER_COLUMNS = {
     { href: '/roast', label: 'Website Roast' },
     { href: '/help', label: 'Help Center' },
     { href: '/docs', label: 'Documentation' },
-    { href: '/docs/integrations', label: 'Integration guides' },
     { href: '/examples', label: 'Examples' },
     { href: '/faq', label: 'FAQ' },
     { href: '/blog', label: 'Blog' },

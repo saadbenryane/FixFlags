@@ -16,7 +16,7 @@ An anonymous first product review stays visible. Sign in from the report to clai
 
 Start with the highest-ranked Flag. Read the evidence before copying its prompt. The prompt is designed to give your editor enough context to make a focused change without rewriting unrelated parts of the product.
 
-You can paste that prompt directly or [connect your editor through MCP](/docs/integrations).
+Paste that prompt directly into Lovable or the builder you already use.
 
 ## Update review
 

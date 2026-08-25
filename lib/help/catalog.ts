@@ -1,7 +1,7 @@
 import type { HelpArticle, HelpCategory } from './types'
 import { PRICING_COPY } from '@/lib/marketing/copy/terminology'
 
-export const HELP_CATEGORIES: readonly HelpCategory[] = [
+const ALL_HELP_CATEGORIES: readonly HelpCategory[] = [
   {
     id: 'getting-started',
     title: 'Getting started',
@@ -34,7 +34,7 @@ export const HELP_CATEGORIES: readonly HelpCategory[] = [
   },
 ] as const
 
-export const HELP_ARTICLES: readonly HelpArticle[] = [
+const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'first-check',
     categoryId: 'getting-started',
@@ -255,7 +255,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Pro ($69/mo): before/after compare, MCP in supported builders, and 25 product reviews and 4 deep reviews per month.',
+        text: 'Pro ($69/mo): before/after compare, 25 product reviews, and 4 deep reviews per month.',
       },
       {
         type: 'p',
@@ -490,3 +490,11 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     related: ['why-check-failed', 'payment-past-due', 'mcp-setup'],
   },
 ] as const
+
+export const HELP_CATEGORIES: readonly HelpCategory[] = ALL_HELP_CATEGORIES.filter(
+  (category) => category.id !== 'mcp-and-editors',
+)
+
+export const HELP_ARTICLES: readonly HelpArticle[] = ALL_HELP_ARTICLES.filter(
+  (article) => article.categoryId !== 'mcp-and-editors',
+)

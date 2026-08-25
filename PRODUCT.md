@@ -111,7 +111,7 @@ Paste your live URL. FixFlags tests the paths that matter, shows exactly where t
 6. User ships fixes.
 7. User runs an update review on the same URL (metered; uses a product review credit).
 8. User sees before/after comparison and cleared Flags.
-9. User upgrades to Pro or Studio for more reviews, compare, and MCP.
+9. User upgrades to Pro or Studio for more reviews, compare, and sharing.
 10. User enables product watch (Pro/Studio) for deployment-triggered regression detection.
 
 Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
@@ -128,7 +128,6 @@ Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
 - Raw absence is presented as “No longer observed in this review.”
 - Partial or degraded child Reviews never create verified Product Memory.
 - The Product dashboard leads with Attention now and allows the honest result that nothing important requires action.
-- MCP Product context and Finish Plan responses include Product Improvements; MCP and CLI update-review responses include independent verification receipts.
 
 ### Minimal Product Signals
 
@@ -183,8 +182,7 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 - 500,000 Agent chat tokens per calendar month
 - Private evidence-grounded visual Canvases with immutable versions
 - Before-and-after compare
-- MCP in supported builders
-- CLI and MCP
+- Evidence-backed fix prompts for the builder the customer already uses
 - Product watch with regression email (weekly/daily on Studio)
 
 ### Studio ($199/mo) — `TEAM` in schema
@@ -192,8 +190,14 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 - 2,000,000 Agent chat tokens per calendar month across Studio projects
 - Everything in Pro
 - Up to 5 projects
-- GitHub repository scans
 - Share links for client reports
+
+### Parked power-user infrastructure
+
+- Repository scanning, MCP, API-key setup, and CLI customer surfaces are not part of the current public product.
+- Their public UI, documentation, discovery metadata, authorization routes, and dedicated API adapters return 404 while parked.
+- The underlying libraries, worker support, persistence models, and packaged CLI source remain in the repository so the power-user layer can be rebuilt after the URL-to-report wedge converts consistently.
+- GitHub authentication remains available for account sign-in and is separate from parked GitHub repository access.
 
 ## Rubrics
 
@@ -231,13 +235,12 @@ Full evidence rules: `knowledge/evidence-rules.md`.
 - Unit tests: run `npm run test:unit` (count measured per run; do not hardcode).
 - Stuck-audit recovery (15 min timeout window, self-hosted scheduler)
 - Knowledge graph Phase 1 in production (growth graph; separate from customer Product Intelligence)
-- Evidence-backed Made with profiles across reports, update-review diffs, API/CLI/MCP summaries, and access-safe `/madewith/[hostname]` pages
+- Evidence-backed Made with profiles across reports, update-review diffs, and access-safe `/madewith/[hostname]` pages
 - Sample size gate (`MIN_SAMPLE_SIZE` in `lib/graph/queries.ts`; target 20, temporarily 3 while seeding)
-- MCP integration for Cursor, Claude Code, Windsurf, Lovable, and Bolt; public tool names live in `lib/mcp/tool-manifest.ts`, register through modular handlers, and are checked by `npm run mcp:quality-gate`.
-- Public documentation at `/docs` covers the product loop, complete Fix list, bounded Finish Plan, editor setup, CLI, MCP, generated tool reference, and troubleshooting. The code-backed editor catalog is the source for homepage, footer, docs, preferences, setup, and API-key attribution. Production-smoke claims remain limited to verified integrations.
+- Public documentation at `/docs` covers the Product Review loop, complete Fix list, bounded Finish Plan, update reviews, and URL/report troubleshooting.
 - Project-scoped Product Intelligence persistence
 - Canonical `/report/[id]` workspace with identity, update-review results, the complete ranked Flag explorer, and the bounded Finish Plan, governed by `knowledge/report-contract.md`
-- Fix list with every unresolved Flag and contract-aware ranking from one shared service across web, export, MCP, CLI, update review, and sample
+- Fix list with every unresolved Flag and contract-aware ranking from one shared service across web, export, update review, and sample
 - Remember strip on report when Project has verified learnings; Contract edits merge without wiping memory
 - Project product watch (Pro/Studio): weekly/daily full review plus regression email, without manual product-review usage
 - Free tools: meta preview, placeholder copy detector
@@ -262,8 +265,7 @@ FixFlags must evaluate itself more rigorously than it evaluates customers.
 - Touch-tier component tests cover progressive chrome, failure panel, empty states; full report-state matrix still expanding
 - No localhost or private network checks (preview tunnels and HTTP basic auth supported on Studio projects)
 - No team workspaces or white-label reports
-- Deployed Lovable/Bolt connector smoke, release credential proof, and production dogfood remain open; local MCP setup and API-key auth for those builders are shipped
-- The public `fixflags` package is available through npm trusted publishing; registry `latest` is `1.0.4`. The corrected bounded Finish Plan and explicit `--all` behavior are prepared locally as `1.0.5` and remain unshipped until the tagged trusted-publisher release and production dogfood pass
+- Repository, MCP, API-key, and CLI foundations still exist internally, but every dedicated customer entry point is parked while the URL-to-report experience is the only public wedge.
 - Full `npm run verify` / `verify:release` still require a quiet tree plus designated RELEASE_* / R2 / smoke resources (see `.agents/handoffs/current-product-completion.md`)
 
 ## Launch gates

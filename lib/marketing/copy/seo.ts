@@ -9,7 +9,7 @@ export const SEO = {
   pricing: {
     title: 'Pricing',
     description:
-      `Start free with ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) and ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser (lifetime). Pro adds ${PRICING_COPY.proProductReviewsPerMonth} product reviews, ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews, compare, and MCP.`,
+      `Start free with ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) and ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser (lifetime). Pro adds ${PRICING_COPY.proProductReviewsPerMonth} product reviews, ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews, and before/after compare.`,
   },
   waitlist: {
     title: 'Join the waitlist',
@@ -19,7 +19,7 @@ export const SEO = {
   howItWorks: {
     title: 'How FixFlags Works',
     description:
-      'FixFlags closes the AI gap from prompt to product: Build, Review, Fix, and Verify across Message, Experience, and Reach. Product reviews in the browser or MCP in your editor.',
+      'Paste a live URL and get a complete Product Review across Message, Experience, and Reach with evidence-backed fix prompts.',
   },
   samples: {
     title: 'Sample Report',
@@ -31,25 +31,20 @@ export const SEO = {
     description:
       'Automated FixFlags product reviews of recognizable sites like web.dev, Vercel, and Wikipedia.',
   },
-  mcp: {
-    title: 'MCP Integration',
-    description:
-      'Connect FixFlags to Cursor, Claude Code, Windsurf, Lovable, or Bolt. Review and fix your site inside your builder.',
-  },
   faq: {
     title: 'FAQ',
     description:
-      'Answers about FixFlags product reviews, Flags, fix prompts, free vs paid plans, MCP integration, and who it\u2019s for.',
+      'Answers about FixFlags Product Reviews, Flags, fix prompts, free vs paid plans, and who it\u2019s for.',
   },
   help: {
     title: 'Help Center',
     description:
-      'Guides for FixFlags product reviews, reports, billing, MCP setup, and your account. Chat with us when you need a human.',
+      'Guides for FixFlags Product Reviews, reports, billing, and your account. Chat with us when you need a human.',
   },
   docs: {
     title: 'FixFlags Documentation',
     description:
-      'Learn FixFlags product reviews, Fix lists, editor integrations, CLI workflows, MCP tools, and update reviews.',
+      'Learn FixFlags Product Reviews, Fix lists, reports, and update reviews.',
   },
   changelog: {
     title: 'Changelog',

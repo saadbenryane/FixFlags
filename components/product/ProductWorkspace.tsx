@@ -7,7 +7,6 @@ import {
   Clock3,
   ExternalLink,
   Eye,
-  Github,
   History,
   Radio,
   ShieldCheck,
@@ -431,12 +430,6 @@ export function ProductWorkspace({
                   : 'Run a Product Review before adding browser context.'}
               </p>
             )}
-            <Button asChild variant="outline">
-              <Link href="/settings/integrations">
-                <Github className="h-4 w-4" aria-hidden />
-                Manage account-wide GitHub integration
-              </Link>
-            </Button>
           </div>
         </div>
       </details>

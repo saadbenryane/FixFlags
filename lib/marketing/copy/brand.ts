@@ -154,7 +154,7 @@ export const SCORE_HELP = {
 export const HELP_CENTER = {
   label: 'Help Center',
   title: 'How can we help?',
-  subhead: 'Search guides for checks, billing, MCP, and your account. Still stuck? Chat with us.',
+  subhead: 'Search guides for Product Reviews, billing, and your account. Still stuck? Chat with us.',
   searchPlaceholder: 'Search help articles…',
   categoriesHeading: 'Browse by topic',
   popularHeading: 'Popular articles',

@@ -25,9 +25,22 @@ It covers release orchestration, integration verification, terminology, canonica
 
 | Stage | Required proof | Status |
 |-------|----------------|--------|
-| Baseline | Doctor, ownership, heartbeat, completeness, dry-run manifest | Completeness currently fails |
+| Baseline | Doctor, ownership, heartbeat, completeness, dry-run manifest | Passed after the structural guard repair |
 | Wave 1 | Focused homepage, workspace/access, lifecycle/recovery/receipt tests | Passed: homepage 49; report 138; product-loop 110 plus packaged CLI 16; root integration 129 plus access 41 |
-| Integration | UI drift, report pane proof, UI evaluation, agent verification | In progress; Wave 2 structural and browser verification assigned |
-| Local release | Full `npm run verify` on a clean immutable SHA | Pending |
+| Integration | UI drift, report pane proof, UI evaluation, agent verification | Structural guards, skills validation, lint, typecheck, and focused suites pass; final browser rerun, report-pane proof, UI evaluation, and agent verification remain |
+| Local release | Full `npm run verify` on a clean immutable SHA | Pending; implementation commit `6c17558f` exists on `main` and `origin/main`, but the required final gates were not completed against it |
 | Credentialed release | Every required journey non-skipped against a bound release environment | Pending credentials |
 | Registry and production | Candidate CLI, exact-SHA dogfood, `latest` promotion, signed final receipts | Pending |
+
+## Closeout and resume order
+
+Implementation stopped on 2026-08-25 at the operator's request.
+The implementation is present at `6c17558f` on `main` and `origin/main`.
+Closeout performed no additional commit, push, deployment, package publication, fixture reset, or external setting change.
+Only the tracking and handoff edits made during closeout remain uncommitted.
+
+Resume from [the Game On handoff](../handoffs/game-on-product-completion.md).
+First rerun the interrupted public-journey browser proof after the accessibility fixes and run the full conditional environment without skips.
+Then complete report-pane proof, UI evaluation, changed-file verification, full verification, and artifact inspection.
+If verification requires repairs, create a new clean final SHA after they pass; otherwise attest `6c17558f` before entering Railway, credentialed release-environment, candidate registry, production dogfood, and `latest` promotion gates.
+The umbrella completion verdict remains **NOT MET**.

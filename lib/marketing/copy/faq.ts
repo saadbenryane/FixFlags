@@ -53,12 +53,12 @@ export const FAQ = [
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
-    answer: `Free: ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) with full reports and fix prompts, plus ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser. Update reviews use the same product review credits. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): before/after compare, MCP in supported builders, ${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month.`,
+    answer: `Free: ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) with full reports and fix prompts, plus ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser. Update reviews use the same product review credits. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): before/after compare, ${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month.`,
   },
   {
-    question: 'Do I need Cursor or MCP?',
+    question: 'Do I need a specific AI builder?',
     answer:
-      'No. MCP is optional on Pro. Fix prompts copy into any editor, ticket, or brief. Lovable and Bolt also connect through custom MCP connectors.',
+      'No. Fix prompts copy into Lovable or any other editor, ticket, or brief.',
   },
   {
     question: 'Can it review sites built with Lovable/Bolt/v0/Devin?',
@@ -68,12 +68,12 @@ export const FAQ = [
   {
     question: 'How do fix prompts work with Cursor/Claude?',
     answer:
-      'Each Flag includes a fix prompt with specific evidence from your page. Paste it into your AI agent and it knows exactly what to fix. With MCP, your agent fetches prompts automatically.',
+      'Each Flag includes a fix prompt with specific evidence from your page. Paste it into your AI builder and it knows exactly what to fix.',
   },
   {
     question: 'Can I run an update review after my agent fixes Flags?',
     answer:
-      'Yes. Update reviews on reports you own use one product review credit. Pro adds before/after compare and MCP in your editor.',
+      'Yes. Update reviews on reports you own use one product review credit. Pro adds before/after compare.',
   },
   {
     question: 'Are my reports public?',
@@ -114,7 +114,7 @@ export const CHANGELOG_ENTRIES = [
     items: [
       'Product Contract and Action Timeline show what we inferred and how we checked',
       'Funnel and CTA flow evidence on Pro reports',
-      'Help Center with guides for reviews, billing, MCP, and account',
+      'Help Center with guides for reviews, billing, and account',
       'One free teaser review without an account; sign up to claim fix prompts',
       'Update reviews use product review credits on every plan',
     ],

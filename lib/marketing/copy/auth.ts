@@ -125,7 +125,7 @@ export const AUTH = {
     passwordLabel: 'Password',
     planStepsTitle: 'What happens next',
     planTitles: {
-      BUILDER: 'You\u2019re signing up for Pro, with 25 product reviews and 4 deep reviews per month, compare, and MCP from day one',
+      BUILDER: 'You\u2019re signing up for Pro, with 25 product reviews and 4 deep reviews per month plus before/after compare',
       TEAM: 'You\u2019re signing up for Studio, publish share links your clients can open and organize across up to 5 projects',
     },
     planSteps: [
@@ -185,12 +185,12 @@ export const AUTH = {
       changePasswordChanging: 'Changing\u2026',
       changePasswordSuccess: 'Password changed and other sessions revoked',
       deleteTitle: 'Delete account',
-      deleteDescription: 'This permanently removes your reports, screenshots, projects, API keys, and account.',
+      deleteDescription: 'This permanently removes your reports, screenshots, projects, and account.',
       deletePasswordLabel: 'Password, if your account has one',
       deleteCta: 'Delete account',
       deleteConfirming: 'Sending confirmation\u2026',
       deleteConfirmTitle: 'Delete your account?',
-      deleteConfirmDescription: 'This permanently deletes your account, reports, screenshots, and API keys.',
+      deleteConfirmDescription: 'This permanently deletes your account, reports, and screenshots.',
       deleteConfirmLabel: 'Delete account',
       deleteSuccess: 'Check your email to confirm account deletion',
       errorTitle: 'Could not update account',
@@ -328,7 +328,7 @@ export const SCAN_LIMIT_GATE = {
   },
   upgrade: {
     title: 'Product review limit reached',
-    body: 'You have used all the product reviews in your current plan. Upgrade to Pro for 25 product reviews and 4 deep reviews per month, before/after compare, and MCP.',
+    body: 'You have used all the product reviews in your current plan. Upgrade to Pro for 25 product reviews and 4 deep reviews per month with before/after compare.',
     primaryCta: 'Upgrade to Pro',
     secondaryCta: 'See plans',
     exit: 'Leave this page',

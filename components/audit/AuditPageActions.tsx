@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { RefreshCw, ArrowLeftRight } from 'lucide-react'
 
-import { CopyMcpCommand } from '@/components/audit/CopyMcpCommand'
 import { ShareDrawer } from '@/components/audit/ShareDrawer'
 import { ExportMenu } from '@/components/audit/ExportMenu'
 import { trackEvent } from '@/lib/analytics/events'
@@ -50,7 +49,6 @@ export function AuditPageActions({
   rubrics,
   flags = [],
   contract = null,
-  isPaid,
   isLoggedIn,
   isOwner,
   isPublic: initialIsPublic,
@@ -128,7 +126,6 @@ export function AuditPageActions({
         canExportSummary={canExportSummary}
         showFixPrompts={showFixPrompts}
       />
-      {isPaid && isOwner ? <CopyMcpCommand auditId={auditId} /> : null}
       <p className="w-full text-xs text-muted-foreground sm:w-auto">{REPORT_COPY.recheck.helper}</p>
     </>
   )
