@@ -6,6 +6,7 @@ import { consumePurchasedCredit } from '@/lib/billing/credits'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { createAnonymousClaim, verifyAnonymousClaim } from '@/lib/security/anonymous-claim'
 import { sharedCookieDomain } from '@/lib/http/site-host'
+import { rollUserUsagePeriod } from '@/lib/billing/usage-period'
 
 type CookieReader = {
   get: (name: string) => { value: string } | undefined
@@ -163,8 +164,8 @@ export async function clearAnonymousAuditCookie(): Promise<void> {
 
 /**
  * Count a completed new-URL or update review against the user's product-review quota.
- * Idempotent via usageCountedAt. Watch-triggered re-checks (skipUsageCount) are marked
- * counted but never increment.
+ * Idempotent via usageCountedAt. New, update, claimed anonymous, and Watch
+ * reviews all consume the same monthly pool.
  */
 export async function incrementUsageOnCompleteForAudit(
   auditId: string,
@@ -173,16 +174,13 @@ export async function incrementUsageOnCompleteForAudit(
   if (isDevUnlimitedScans()) return
 
   await prisma.$transaction(async (tx) => {
+    const user = await rollUserUsagePeriod(tx, userId)
     const audit = await tx.audit.findUnique({
       where: { id: auditId },
       select: { usageCountedAt: true, userId: true, skipUsageCount: true },
     })
     if (!audit || audit.userId !== userId || audit.usageCountedAt) return
 
-    const user = await tx.user.findUnique({
-      where: { id: userId },
-      select: { role: true },
-    })
     if (user && hasUnlimitedScans(user)) {
       await tx.audit.update({
         where: { id: auditId },
@@ -236,6 +234,7 @@ export async function incrementDeepReviewOnCompleteForAudit(
   if (isDevUnlimitedScans()) return
 
   await prisma.$transaction(async (tx) => {
+    const user = await rollUserUsagePeriod(tx, userId)
     const audit = await tx.audit.findUnique({
       where: { id: auditId },
       select: {
@@ -253,10 +252,6 @@ export async function incrementDeepReviewOnCompleteForAudit(
       return
     }
 
-    const user = await tx.user.findUnique({
-      where: { id: userId },
-      select: { role: true, deepReviewsUsed: true, deepReviewsLimit: true },
-    })
     if (!user) return
 
     if (hasUnlimitedScans(user)) {

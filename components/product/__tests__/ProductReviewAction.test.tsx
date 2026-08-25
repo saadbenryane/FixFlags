@@ -34,7 +34,7 @@ afterEach(() => {
 })
 
 describe('ProductReviewAction', () => {
-  it('resumes the active manual Product Review in Timeline', () => {
+  it('opens an active manual Product Review in Report', () => {
     const activeManualReview: ProductReviewSummaryDTO = {
       ...completedReview,
       id: 'review-active',
@@ -55,8 +55,8 @@ describe('ProductReviewAction', () => {
     )
 
     expect(
-      screen.getByRole('link', { name: /resume review/i }),
-    ).toHaveAttribute('href', '/report/review-active?view=timeline')
+      screen.getByRole('link', { name: /open review/i }),
+    ).toHaveAttribute('href', '/report/review-active?view=report')
     expect(
       screen.queryByRole('button', { name: /update review/i }),
     ).not.toBeInTheDocument()
@@ -119,7 +119,7 @@ describe('ProductReviewAction', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /recheck/i }))
+    fireEvent.click(screen.getByRole('button', { name: /update review/i }))
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -135,7 +135,7 @@ describe('ProductReviewAction', () => {
       )
     })
     expect(
-      screen.getByRole('button', { name: 'Starting Recheck' }),
+      screen.getByRole('button', { name: 'Starting update review' }),
     ).toHaveAttribute('aria-busy', 'true')
   })
 
@@ -163,7 +163,7 @@ describe('ProductReviewAction', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /recheck/i }))
+    fireEvent.click(screen.getByRole('button', { name: /update review/i }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'A Product Review is already in progress.',

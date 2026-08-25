@@ -27,15 +27,16 @@ async function settleLayout(page) {
 }
 
 async function openReportMode(page) {
-  await page.locator('[data-workspace-ready="true"]').first().waitFor({ state: 'visible', timeout: 60000 })
   const visibleReportTab = page
     .locator('[role="tab"]:visible')
     .filter({ hasText: /^Report$/ })
     .first()
-  await visibleReportTab.waitFor({ state: 'visible', timeout: 60000 })
   const explorer = page.locator('[role="region"][aria-label^="Fix list with"]').first()
-  if ((await visibleReportTab.getAttribute('aria-selected')) !== 'true') {
-    await visibleReportTab.click()
+  if (await visibleReportTab.count()) {
+    await visibleReportTab.scrollIntoViewIfNeeded()
+    if ((await visibleReportTab.getAttribute('aria-selected')) !== 'true') {
+      await visibleReportTab.click()
+    }
   }
   await explorer.waitFor({ state: 'visible', timeout: 60000 })
   return true
@@ -68,12 +69,8 @@ async function measurePane(page) {
 
     return {
       scoreHeaders: scoreHeaders.length,
-      hasVisibleScoreLabel: scoreHeaders.some((header) =>
-        Array.from(header.querySelectorAll('*')).some(
-          (node) => node.childElementCount === 0 && node.textContent?.trim() === 'Score' && visible(node)
-        )
-      ),
-      hasLegacyScoreGauge: scoreHeaders.some((node) => Boolean(node.querySelector('svg circle'))),
+      hasAccessibleScore: scoreHeaders.some((node) => Boolean(node.querySelector('[aria-label^="Score"]'))),
+      hasCircularScore: scoreHeaders.some((node) => Boolean(node.querySelector('svg circle'))),
       comparisonFrameCount: comparisonFrames.length,
       comparisonBordersInset: comparisonFrames.length > 0 && comparisonFrames.every((node) =>
         getComputedStyle(node).boxShadow.includes('inset')
@@ -96,7 +93,7 @@ async function measurePane(page) {
       listScrolls: scrolls(list),
       detailScrolls: scrolls(detail),
       fixPromptVisible: Boolean(
-        detail && detail.textContent && /Fix/.test(detail.textContent)
+        detail && detail.textContent && /Copy prompt/.test(detail.textContent)
       ),
     }
   })
@@ -152,7 +149,6 @@ async function run() {
     const results = []
 
     const targets = [
-      { name: 'home', path: '/' },
       { name: 'samples', path: '/samples' },
     ]
     if (reportPath) targets.push({ name: 'report', path: reportPath })
@@ -197,10 +193,10 @@ async function run() {
       if (row.phase !== 'scanning' && row.scoreHeaders !== 1) {
         failures.push(`${at}: expected one Score header, saw ${row.scoreHeaders}`)
       }
-      if (row.scoreHeaders > 0 && !row.hasVisibleScoreLabel) {
-        failures.push(`${at}: Score header has no visible Score label`)
+      if (row.scoreHeaders > 0 && !row.hasAccessibleScore) {
+        failures.push(`${at}: Score header has no accessible score`)
       }
-      if (row.hasLegacyScoreGauge) failures.push(`${at}: circular score gauge returned`)
+      if (row.scoreHeaders > 0 && !row.hasCircularScore) failures.push(`${at}: circular score is missing`)
       if (row.comparisonFrameCount === 0) {
         failures.push(`${at}: no comparison frame was inspected`)
       } else if (row.comparisonBordersInset === false) {

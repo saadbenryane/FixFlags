@@ -6,7 +6,7 @@ import type {
   SubscriptionLifecycleType,
   SubscriptionStatus,
 } from '@prisma/client'
-import { applyPlanLimits } from '@/lib/billing/limits'
+import { setStripeUsagePeriod } from '@/lib/billing/usage-period'
 import { refundPurchasedCredit } from '@/lib/billing/credits'
 import { notifyAdminPaymentFailed, notifyUserPaymentFailed } from '@/lib/billing/notify'
 import { markWaitlistConverted } from '@/lib/billing/waitlist'
@@ -39,6 +39,11 @@ function hasPaidEntitlement(status: SubscriptionStatus): boolean {
 
 function subscriptionPeriodEnd(subscription: Stripe.Subscription): Date | null {
   const value = (subscription as unknown as { current_period_end?: number }).current_period_end
+  return value ? new Date(value * 1000) : null
+}
+
+function subscriptionPeriodStart(subscription: Stripe.Subscription): Date | null {
+  const value = (subscription as unknown as { current_period_start?: number }).current_period_start
   return value ? new Date(value * 1000) : null
 }
 
@@ -77,25 +82,44 @@ async function processSubscription(
   if (!user) throw new Error(`No user found for Stripe subscription ${subscription.id}`)
 
   const priceIds = resolvePriceIds(subscription)
-  const paidPlan = priceIds.reduce<Plan | null>((found, id) => found ?? planFromPriceId(id), null)
+  const mappedPlan = priceIds.reduce<Plan | null>((found, id) => found ?? planFromPriceId(id), null)
   const status = entitlementStatus(subscription.status)
+  const periodStart = subscriptionPeriodStart(subscription)
   const periodEnd = subscriptionPeriodEnd(subscription)
-  const resetUsage =
-    periodEnd !== null &&
-    user.stripeCurrentPeriodEnd !== null &&
-    periodEnd > user.stripeCurrentPeriodEnd
+  // Existing subscribers keep their current paid plan when Stripe sends a
+  // legacy price that was already attached to this account. New checkouts use
+  // the canonical current price IDs; optional legacy ID lists cover imports.
+  const grandfatheredPlan =
+    !mappedPlan &&
+    user.plan !== 'FREE' &&
+    user.stripePriceId !== null &&
+    priceIds.includes(user.stripePriceId)
+      ? user.plan
+      : null
+  const paidPlan = mappedPlan ?? grandfatheredPlan
   const effectivePlan: Plan = paidPlan && hasPaidEntitlement(status) ? paidPlan : 'FREE'
+  const entitlementPriceId =
+    effectivePlan === 'FREE'
+      ? null
+      : priceIds.find((id) => planFromPriceId(id) === effectivePlan) ?? user.stripePriceId
 
-  await applyPlanLimits(user.id, effectivePlan, tx)
+  await setStripeUsagePeriod(tx, {
+    userId: user.id,
+    plan: effectivePlan,
+    status,
+    priceId: entitlementPriceId,
+    start: periodStart,
+    end: periodEnd,
+  })
   await tx.user.update({
     where: { id: user.id },
     data: {
       stripeCustomerId: subscription.customer as string,
       stripeSubscriptionId: subscription.id,
       stripePriceId: priceIds[0] ?? null,
+      stripeCurrentPeriodStart: periodStart,
       stripeCurrentPeriodEnd: periodEnd,
       subscriptionStatus: status,
-      ...(resetUsage ? { auditsUsed: 0, deepReviewsUsed: 0 } : {}),
     },
   })
 

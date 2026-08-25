@@ -229,7 +229,6 @@ export function AuditPageClient({
         statusPayload?.screenshotCapture ??
         (raw?.screenshotCapture as AuditStatusPayload['screenshotCapture']),
       workerIdle,
-      actionTimeline: statusPayload?.actionTimeline ?? [],
       productContract: statusPayload?.productContract ?? null,
       technologyProfile: statusPayload?.technologyProfile,
       agentMessages: statusPayload?.agentMessages ?? [],
@@ -238,7 +237,7 @@ export function AuditPageClient({
       isTeaser,
     }
   }, [status, progress, statusPayload?.partialFlags,
-      statusPayload?.screenshots, statusPayload?.rubrics, statusPayload?.actionTimeline,
+      statusPayload?.screenshots, statusPayload?.rubrics,
       statusPayload?.productContract, statusPayload?.technologyProfile,
       statusPayload?.agentMessages,
       statusPayload?.screenshotCapture, statusPayload?.url, statusPayload?.pageType,

@@ -68,6 +68,7 @@ Credentialed forbidden, expired, and revoked report paths remain part of the rel
 | Brand hex | `npm run brand:hex-guard` | Brand color compliance | Yes |
 | UI drift | `npm run ui:drift-guard` | Design system drift | Yes |
 | Product contract | `npm run product:contract-guard` | Stale routes, homepage bloat, prompt/sample/share regressions, focused deep imports | Yes |
+| Parked visibility | `npm run power-tools:visibility-guard` | Power-tool routes remain uniformly unavailable and absent from customer discovery | Yes |
 | Scan accuracy | `npm run accuracy:eval` | Gold 0 false blockers, builder top-3, demo v1 repair, non-HTML regression | Yes (via `validate.mjs` full gate) |
 | Rendered dogfood accuracy | `npm run accuracy:browser` | Curated live mobile CTA selection, fold geometry, input zoom candidates, and visual-metric false positives | On demand |
 | SEO | `npm run seo:guard` | SEO compliance | Yes |
@@ -76,6 +77,9 @@ Credentialed forbidden, expired, and revoked report paths remain part of the rel
 | Build | `npm run build` | Next.js production build | Yes |
 | Worker build | `npm run worker:build` | Worker compile | Yes |
 | Docker image | `docker build -t fixflags:local .` | Railway packaging (`npm ci`, Chromium, Next build) | No (run locally when Dockerfile/package*.json change) |
+
+Dormant repository, MCP, CLI, API-key, and deployment-hook implementations are verified separately with `npm run power-tools:verify`.
+That command preserves their engineering health without making them customer-release requirements or shipped-product evidence.
 
 ## Monetization blockers
 

@@ -42,6 +42,7 @@ interface FixPromptBlockProps {
   copyNextStep?: string
   /** Render the body as Markdown (lean ChatGPT/Claude-style) instead of raw terminal text. */
   render?: 'raw' | 'markdown'
+  hideActions?: boolean
 }
 
 const markdownComponents = {
@@ -147,6 +148,7 @@ export function FixPromptBlock({
   itemPosition,
   copyNextStep,
   render = 'raw',
+  hideActions = false,
 }: FixPromptBlockProps) {
   const [preferredTool, setPreferredTool] = usePreferredTool(defaultTool)
   const { installing, connect, actionBuilder } = useConnectBuilderMcp(
@@ -202,7 +204,7 @@ export function FixPromptBlock({
                   <span className="hidden sm:inline">{`Connect ${actionBuilder.label}`}</span>
                 </Button>
               ) : null}
-              {!promptUnavailable ? (
+              {!promptUnavailable && !hideActions ? (
                 <PromptActionRow
                   prompt={clipboardPrompt}
                   compact

@@ -1,6 +1,11 @@
-import { describe, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import assert from 'node:assert/strict'
-import { planLabel, PLAN_DEFINITIONS } from '@/lib/billing/plans'
+import {
+  planFromPriceId,
+  planLabel,
+  PLAN_DEFINITIONS,
+  usageAllowanceForPriceId,
+} from '@/lib/billing/plans'
 
 describe('planLabel', () => {
   // Paying customers must always see the name they bought. The internal enum
@@ -22,5 +27,39 @@ describe('planLabel', () => {
 
   it('falls back to Free for an unknown plan instead of throwing', () => {
     assert.equal(planLabel('SOMETHING_ELSE'), 'Free')
+  })
+})
+
+describe('usage plan ladder', () => {
+  it('keeps enum codes while exposing the canonical monthly limits and prices', () => {
+    expect(PLAN_DEFINITIONS.FREE).toMatchObject({ price: '$0', auditLimit: 3, deepReviewLimit: 1 })
+    expect(PLAN_DEFINITIONS.BUILDER).toMatchObject({
+      price: '$29',
+      auditLimit: 15,
+      deepReviewLimit: 3,
+      deepReviewLimitLabel: '3 deep reviews / month',
+    })
+    expect(PLAN_DEFINITIONS.TEAM).toMatchObject({ price: '$79', auditLimit: 50, deepReviewLimit: 10 })
+    expect(Object.values(PLAN_DEFINITIONS).every((plan) => plan.auditLimitKind === 'monthly')).toBe(true)
+  })
+
+  it('maps configured legacy prices for grandfathered subscribers', () => {
+    vi.stubEnv('STRIPE_LEGACY_BUILDER_PRICE_IDS', 'price_old_pro, price_older_pro')
+    vi.stubEnv('STRIPE_LEGACY_TEAM_PRICE_IDS', 'price_old_studio')
+    expect(planFromPriceId('price_older_pro')).toBe('BUILDER')
+    expect(planFromPriceId('price_old_studio')).toBe('TEAM')
+    expect(usageAllowanceForPriceId('price_older_pro')).toEqual({
+      plan: 'BUILDER',
+      auditLimit: 25,
+      deepReviewLimit: 4,
+      legacy: true,
+    })
+    expect(usageAllowanceForPriceId('price_old_studio')).toEqual({
+      plan: 'TEAM',
+      auditLimit: 80,
+      deepReviewLimit: 10,
+      legacy: true,
+    })
+    vi.unstubAllEnvs()
   })
 })

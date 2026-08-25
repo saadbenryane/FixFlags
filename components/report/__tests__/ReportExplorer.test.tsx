@@ -94,7 +94,7 @@ describe('ReportExplorer anonymous teaser', () => {
     await waitFor(() => {
       expect(
         screen.getByRole('button', {
-          name: 'Important Flag · Experience · Conversion: Demonstrated fix',
+          name: /Demonstrated fix/,
         })
       ).toHaveAttribute('aria-pressed', 'true')
     })
@@ -112,7 +112,7 @@ describe('ReportExplorer anonymous teaser', () => {
     await waitFor(() => {
       expect(
         screen.getByRole('button', {
-          name: 'Important Flag · Experience · Conversion: Locked first flag',
+          name: /Locked first flag/,
         })
       ).toHaveAttribute('aria-pressed', 'true')
     })
@@ -130,7 +130,7 @@ describe('ReportExplorer anonymous teaser', () => {
     await waitFor(() => {
       expect(
         screen.getByRole('button', {
-          name: 'Important Flag · Experience · Conversion: Locked first flag',
+          name: /Locked first flag/,
         })
       ).toHaveAttribute('aria-pressed', 'true')
     })

@@ -11,10 +11,13 @@ const ROOT = join(process.cwd(), 'lib/marketing/copy')
 const HELP_CATALOG = readFileSync(join(ROOT, '../../help/catalog.ts'), 'utf8')
 const DEEP_REVIEW_DOC = readFileSync(join(process.cwd(), 'content/docs/deep-review.md'), 'utf8')
 
-const FREE_LIFETIME_FORBIDDEN = [
-  /3 product reviews per month/i,
-  /teaser per month/i,
-  /free product reviews this month/i,
+const OBSOLETE_PLAN_COPY = [
+  /3 product reviews \(lifetime\)/i,
+  /deep review teaser/i,
+  /\$69/i,
+  /\$199/i,
+  /25 product reviews/i,
+  /80 product reviews/i,
 ]
 
 const FREE = PLAN_DEFINITIONS.FREE
@@ -23,8 +26,8 @@ const TEAM = PLAN_DEFINITIONS.TEAM
 
 describe('pricing parity', () => {
   it('keeps Free marketing numbers aligned with billing enforcement', () => {
-    expect(PRICING_COPY.freeProductReviewsLifetime).toBe(FREE.auditLimit)
-    expect(PRICING_COPY.freeDeepReviewTeaserLifetime).toBe(FREE.deepReviewLimit)
+    expect(PRICING_COPY.freeProductReviewsPerMonth).toBe(FREE.auditLimit)
+    expect(PRICING_COPY.freeDeepReviewsPerMonth).toBe(FREE.deepReviewLimit)
   })
 
   it('keeps Pro marketing numbers aligned with billing enforcement', () => {
@@ -44,6 +47,7 @@ describe('pricing parity', () => {
   it('drives the marketing plan cards from PRICING_COPY', () => {
     expect(PLANS.find((plan) => plan.plan === 'FREE')).toMatchObject({
       price: '$0',
+      audits: `${PRICING_COPY.freeProductReviewsPerMonth} product reviews / month`,
     })
     expect(PLANS.find((plan) => plan.plan === 'BUILDER')).toMatchObject({
       price: PRICING_COPY.proPrice,
@@ -57,7 +61,7 @@ describe('pricing parity', () => {
     })
   })
 
-  it('never describes Free tier product reviews as monthly in customer surfaces', () => {
+  it('uses the monthly usage ladder on customer surfaces', () => {
     const surfaces = [
       JSON.stringify(AUTH.signUp),
       JSON.stringify(SCAN_LIMIT_GATE),
@@ -67,10 +71,10 @@ describe('pricing parity', () => {
       DEEP_REVIEW_DOC,
     ].join('\n')
 
-    for (const pattern of FREE_LIFETIME_FORBIDDEN) {
+    for (const pattern of OBSOLETE_PLAN_COPY) {
       expect(surfaces).not.toMatch(pattern)
     }
 
-    expect(surfaces).toMatch(/lifetime/i)
+    expect(surfaces).toMatch(/per month/i)
   })
 })

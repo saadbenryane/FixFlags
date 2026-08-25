@@ -58,14 +58,11 @@ export async function startMonitoringAudit(
     return validation
   }
 
-  const trigger = options.trigger ?? 'MANUAL'
-  const skipUsage = trigger === 'WATCH'
-
   const { auditId, status, reused, parentId: parentAuditId } = await createAndEnqueueAudit({
     url: parent!.url,
     userId: user.id,
     parentId,
-    skipUsageCount: skipUsage,
+    skipUsageCount: false,
     monitoringMode: 'FULL',
     recheckTrigger: options.trigger ?? 'MANUAL',
     delayMs: options.delayMs,

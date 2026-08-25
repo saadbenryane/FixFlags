@@ -32,19 +32,6 @@ function appendAuthParams(
   if (from) params.set('from', from)
 }
 
-function buildOnboardingHref(
-  next: string | null,
-  from: string | null,
-  source: 'post_signup' | 'post_signin'
-): Route {
-  const params = new URLSearchParams()
-  if (next) params.set('next', next)
-  if (from) params.set('from', from)
-  params.set('source', source)
-  const qs = params.toString()
-  return (qs ? `/onboarding/plans?${qs}` : '/onboarding/plans') as Route
-}
-
 export function buildPostLoginQuery(
   next: string | null,
   plan: string | null,
@@ -58,6 +45,10 @@ export function buildPostLoginQuery(
   if (options?.newUser) params.set('signup', '1')
   const qs = params.toString()
   return (qs ? `/post-login?${qs}` : '/post-login') as Route
+}
+
+export function postAuthDestination(next: string | null): Route {
+  return sanitizeNextPath(next) ?? '/dashboard'
 }
 
 export function useAuthRedirect() {
@@ -110,11 +101,10 @@ export function useAuthRedirect() {
       return
     }
 
-    // Pre-checkout (no `plan` param): every signup and every Free signin lands
-    // on the plan picker so they can choose Free, Pro, or Studio. The picker
-    // host checks the user's plan, skips the modal for paid signins, and
-    // re-claims any pending report when they pick Free.
-    router.push(buildOnboardingHref(next, from, 'post_signin'))
+    // `/post-login` has already claimed any anonymous Review. Honor the user's
+    // explicit destination next; ordinary authentication lands on the URL-first
+    // dashboard instead of inserting a pricing decision into the product loop.
+    router.push(postAuthDestination(next))
   }, [next, plan, from, router])
 
   function signInHref(extraNext?: string): Route {

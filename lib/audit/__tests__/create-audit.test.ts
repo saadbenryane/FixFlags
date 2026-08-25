@@ -38,6 +38,8 @@ const wouldBlockDeepReview = vi.hoisted(() => vi.fn())
 const wouldBlockNewCheckWithCredits = vi.hoisted(() => vi.fn())
 const assertPublicAuditUrl = vi.hoisted(() => vi.fn())
 const ensureProductProject = vi.hoisted(() => vi.fn())
+const refreshUserUsagePeriod = vi.hoisted(() => vi.fn())
+const rollUserUsagePeriod = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/queue/client', () => ({ getAuditQueue: () => ({ add: queueAdd }) }))
@@ -53,6 +55,10 @@ vi.mock('@/lib/billing/deep-review-limit', () => ({ wouldBlockDeepReview }))
 vi.mock('@/lib/billing/credits', () => ({ wouldBlockNewCheckWithCredits }))
 vi.mock('@/lib/audit/url', () => ({ assertPublicAuditUrl }))
 vi.mock('@/lib/audit/ensure-product-project', () => ({ ensureProductProject }))
+vi.mock('@/lib/billing/usage-period', () => ({
+  refreshUserUsagePeriod,
+  rollUserUsagePeriod,
+}))
 
 const AUDIT_URL = 'https://example.com/'
 
@@ -99,15 +105,18 @@ describe('createAndEnqueueAudit', () => {
     })
     prismaMock.audit.create.mockResolvedValue({ id: 'audit-1', parentId: null })
     prismaMock.audit.findFirst.mockResolvedValue(null)
+    prismaMock.audit.count.mockResolvedValue(0)
     prismaMock.audit.update.mockResolvedValue({})
     prismaMock.user.findUnique.mockResolvedValue(signedInUser())
     queueAdd.mockResolvedValue({ id: 'job-1' })
     checkAnonymousAuditAllowed.mockResolvedValue({ allowed: true })
     resolveIncludeAiForNewAudit.mockResolvedValue(false)
-    wouldBlockDeepReview.mockResolvedValue(false)
+    wouldBlockDeepReview.mockResolvedValue(true)
     wouldBlockNewCheckWithCredits.mockResolvedValue({ allowed: true })
     ensureProductProject.mockResolvedValue({ id: 'project-1', productIntelligence: null })
     assertPublicAuditUrl.mockResolvedValue(new URL(AUDIT_URL))
+    refreshUserUsagePeriod.mockResolvedValue(signedInUser())
+    rollUserUsagePeriod.mockResolvedValue(signedInUser())
   })
 
   it('creates a reduced single-page teaser for anonymous visitors and tracks the cookie', async () => {
@@ -240,6 +249,9 @@ describe('createAndEnqueueAudit', () => {
     prismaMock.user.findUnique.mockResolvedValue(
       signedInUser({ plan: 'BUILDER', deepReviewsUsed: 3, deepReviewsLimit: 3 })
     )
+    rollUserUsagePeriod.mockResolvedValue(
+      signedInUser({ plan: 'BUILDER', deepReviewsUsed: 3, deepReviewsLimit: 3 })
+    )
     wouldBlockDeepReview.mockResolvedValue(true)
 
     await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
@@ -247,6 +259,34 @@ describe('createAndEnqueueAudit', () => {
     expect(wouldBlockDeepReview).toHaveBeenCalledWith(
       expect.objectContaining({ deepReviewsUsed: 3, deepReviewsLimit: 3 })
     )
+    expect(prismaMock.audit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ journeyReviewIncluded: false }),
+      select: { id: true, parentId: true },
+    })
+  })
+
+  it('reserves deep-review capacity for already-pending Reviews', async () => {
+    rollUserUsagePeriod.mockResolvedValue(
+      signedInUser({ plan: 'BUILDER', deepReviewsUsed: 1, deepReviewsLimit: 3 })
+    )
+    prismaMock.audit.count
+      .mockResolvedValueOnce(0)
+      .mockResolvedValueOnce(2)
+    wouldBlockDeepReview.mockImplementation(
+      (user: { deepReviewsUsed: number; deepReviewsLimit: number }) =>
+        user.deepReviewsUsed >= user.deepReviewsLimit
+    )
+
+    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+
+    expect(prismaMock.audit.count).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        journeyReviewIncluded: true,
+        deepReviewUsageCountedAt: null,
+        status: { not: 'FAILED' },
+      },
+    })
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ journeyReviewIncluded: false }),
       select: { id: true, parentId: true },
@@ -299,7 +339,7 @@ describe('createAndEnqueueAudit', () => {
     })
   })
 
-  it('keeps Watch creation outside the manual Review lock', async () => {
+  it('meters Watch creation inside the usage admission transaction', async () => {
     prismaMock.audit.findUnique
       .mockResolvedValueOnce({
         id: 'parent-1',
@@ -315,12 +355,12 @@ describe('createAndEnqueueAudit', () => {
       userId: 'user-1',
       parentId: 'parent-1',
       recheckTrigger: 'WATCH',
-      skipUsageCount: true,
+      skipUsageCount: false,
     })
 
-    expect(prismaMock.$transaction).not.toHaveBeenCalled()
+    expect(prismaMock.$transaction).toHaveBeenCalledTimes(1)
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ recheckTrigger: 'WATCH', skipUsageCount: true }),
+      data: expect.objectContaining({ recheckTrigger: 'WATCH', skipUsageCount: false }),
       select: { id: true, parentId: true },
     })
   })

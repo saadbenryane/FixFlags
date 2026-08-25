@@ -86,7 +86,7 @@ describe('ImprovementReceipt', () => {
   it('keeps a builder declaration explicitly pending until an update Review', () => {
     render(<ImprovementReceipt attempt={attempt(null)} />)
 
-    expect(screen.getByText('Awaiting update Review')).toBeInTheDocument()
+    expect(screen.getByText('Awaiting update review')).toBeInTheDocument()
     expect(
       screen.getByText(/builder declaration is not verification/i),
     ).toBeInTheDocument()

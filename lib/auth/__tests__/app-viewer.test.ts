@@ -4,6 +4,7 @@ const getSession = vi.hoisted(() => vi.fn())
 const prismaUserFindUnique = vi.hoisted(() => vi.fn())
 const getCheckUsage = vi.hoisted(() => vi.fn())
 const isAdminUser = vi.hoisted(() => vi.fn())
+const refreshUserUsagePeriod = vi.hoisted(() => vi.fn())
 
 vi.mock('next/headers', () => ({ headers: async () => new Headers() }))
 vi.mock('@/lib/auth', () => ({
@@ -11,6 +12,7 @@ vi.mock('@/lib/auth', () => ({
 }))
 vi.mock('@/lib/db', () => ({ prisma: { user: { findUnique: prismaUserFindUnique } } }))
 vi.mock('@/lib/auth/permissions', () => ({ getCheckUsage, isAdminUser, isDevUnlimitedScans: () => false }))
+vi.mock('@/lib/billing/usage-period', () => ({ refreshUserUsagePeriod }))
 
 import { getAppMeUser, getAppViewer } from '@/lib/auth/app-viewer'
 
@@ -22,6 +24,10 @@ const viewerUser = {
   role: 'user',
   auditsUsed: 0,
   auditsLimit: 3,
+  deepReviewsUsed: 0,
+  deepReviewsLimit: 1,
+  usagePeriodStart: new Date('2026-08-01T00:00:00.000Z'),
+  usagePeriodEnd: new Date('2026-09-01T00:00:00.000Z'),
   subscriptionStatus: 'NONE',
   vibecodingLevel: null,
   preferredTools: [],
@@ -65,6 +71,7 @@ describe('getAppMeUser', () => {
     getSession.mockResolvedValueOnce({ user: { id: 'user-1' } })
     prismaUserFindUnique.mockResolvedValueOnce(viewerUser)
     getCheckUsage.mockResolvedValue({ used: 0, pending: 0, limit: 3, isUnlimited: false })
+    refreshUserUsagePeriod.mockResolvedValue(null)
     isAdminUser.mockReturnValue(false)
 
     const me = await getAppMeUser()

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
 import {
   buildPostLoginQuery,
+  postAuthDestination,
   sanitizeFunnelFrom,
   sanitizeNextPath,
 } from '@/hooks/useAuthRedirect'
@@ -21,6 +22,12 @@ describe('auth redirect helpers', () => {
     assert.equal(sanitizeNextPath('https://evil.example'), null)
     assert.equal(sanitizeNextPath('//evil.example'), null)
     assert.equal(sanitizeNextPath('/report/abc'), '/report/abc')
+  })
+
+  it('returns to the claimed report or the URL-first dashboard', () => {
+    assert.equal(postAuthDestination('/report/abc'), '/report/abc')
+    assert.equal(postAuthDestination(null), '/dashboard')
+    assert.equal(postAuthDestination('//evil.example'), '/dashboard')
   })
 
   it('only keeps known funnel sources', () => {

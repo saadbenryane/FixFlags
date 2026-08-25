@@ -39,18 +39,11 @@ const checks = [
     purpose: 'keeps local continuity for web + worker development',
   },
   {
-    id: 'cli-mcp',
-    category: 'cli',
-    label: 'CLI + MCP contract',
-    command: 'npm run mcp:quality-gate',
-    purpose: 'ensures CLI tool quality contract and MCP compatibility checks stay green',
-  },
-  {
-    id: 'cli-registry',
-    category: 'cli',
-    label: 'CLI registry availability',
-    command: 'npm run cli:registry-guard',
-    purpose: 'verifies published CLI version contract for continuity claims',
+    id: 'parked-power-tools',
+    category: 'maintenance',
+    label: 'Parked power-tools contract',
+    command: 'npm run power-tools:verify',
+    purpose: 'maintains repository, MCP, CLI, API-key, and deployment-hook code outside the customer release gate',
   },
   {
     id: 'cloud-release-smoke',
@@ -70,6 +63,7 @@ const checks = [
 ]
 
 const runnableChecks = checks.filter((check) => {
+  if (check.id === 'parked-power-tools' && !includeAllChecks) return false
   if (!runChecks) return true
   if (check.id === 'release-verify' && !includeAllChecks) return false
   if (!check.skipIfEnvMissing) return true

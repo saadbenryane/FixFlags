@@ -1,5 +1,4 @@
 import type { RankableFlag } from '@/lib/audit/priority-flags'
-import { loadRepoFlagsForAudit } from '@/lib/audit/repo-rankable-flags'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import {
   buildFixArtifacts,
@@ -57,18 +56,17 @@ export function toRankableFlag(flag: LiveFlag): RankableFlag {
   } as RankableFlag
 }
 
-/** Live page flags plus Studio repo findings for one shared Finish Plan ranking. */
+/**
+ * URL Reviews are source-pure: their plan is built only from evidence captured
+ * for that Review. Repository tooling keeps its own aggregation path while it
+ * is parked and must never silently alter a URL report.
+ */
 export async function loadFinishPlanFlags(input: {
   userId: string | null
   auditUrl: string
   flags: LiveFlag[]
 }): Promise<RankableFlag[]> {
-  const live = input.flags.map(toRankableFlag)
-  const repo = await loadRepoFlagsForAudit({
-    userId: input.userId,
-    auditUrl: input.auditUrl,
-  })
-  return [...live, ...repo]
+  return input.flags.map(toRankableFlag)
 }
 
 type UnifiedPlanInput = {
@@ -91,7 +89,7 @@ export async function buildUnifiedPlanBundle(input: UnifiedPlanInput): Promise<{
   return buildFixArtifacts(planInput)
 }
 
-/** Shared complete Fix List ranking including Studio repo findings. */
+/** Shared complete Fix List ranking for URL Review findings. */
 export async function buildUnifiedFixList(input: UnifiedPlanInput): Promise<FixList> {
   const planInput = await buildPlanInput(input)
   return buildFixList(planInput)

@@ -14,7 +14,7 @@ export async function GET() {
     const session = await auth.api.getSession({ headers: await headers() })
     if (!session?.user) {
       return NextResponse.redirect(
-        new URL('/sign-in?next=/settings/integrations', SITE_URL)
+        new URL('/sign-in?next=/settings', SITE_URL)
       )
     }
 
@@ -28,7 +28,7 @@ export async function GET() {
 
     if (!isGoogleSearchConsoleConfigured()) {
       return NextResponse.redirect(
-        new URL('/settings/integrations?error=gsc_not_configured', SITE_URL)
+        new URL('/settings?error=gsc_not_configured', SITE_URL)
       )
     }
 
@@ -36,7 +36,7 @@ export async function GET() {
     return NextResponse.redirect(buildGscAuthorizeUrl(state))
   } catch {
     return NextResponse.redirect(
-      new URL('/settings/integrations?error=gsc_connect_failed', SITE_URL)
+      new URL('/settings?error=gsc_connect_failed', SITE_URL)
     )
   }
 }

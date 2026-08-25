@@ -34,7 +34,7 @@ This file is **shipped truth only**.
 ## Users and their context
 
 - **AI-first founders and small teams** — shipping with Cursor, Claude Code, Lovable, Bolt. They move fast and discover issues after launch. Want a Product Review before sharing a link.
-- **Agencies and studios** — building AI-assisted sites for clients. Need shareable reports and repo scanning.
+- **Agencies and studios** — building AI-assisted sites for clients. Need repeatable reviews and shareable evidence.
 - **Later:** Product teams using AI coding internally (once team accounts, continuous verification, and CI/CD land).
 
 ### Acquisition user: The AI builder preparing to share something real
@@ -61,7 +61,7 @@ They buy Studio.
 
 They need to know whether a deployment broke signup, checkout, onboarding, the core action, or an important client workflow.
 
-They buy Watch through Pro or Team plans.
+They use scheduled Watch and choose a plan based on monthly review volume.
 
 ### Not the initial customer
 
@@ -93,7 +93,7 @@ FixFlags reduces that uncertainty with observable evidence.
 
 ## Promise
 
-Paste your live URL. FixFlags tests the paths that matter, shows exactly where they fail, and gives your AI the fix. Run an update review after you ship. Watch after every deploy.
+Paste your live URL. FixFlags tests the paths that matter, shows exactly where they fail, and gives your AI the fix. Run an update review after you ship. Keep Watch on a schedule.
 
 ## Core loop
 
@@ -111,8 +111,8 @@ Paste your live URL. FixFlags tests the paths that matter, shows exactly where t
 6. User ships fixes.
 7. User runs an update review on the same URL (metered; uses a product review credit).
 8. User sees before/after comparison and cleared Flags.
-9. User upgrades to Pro or Studio for more reviews, compare, and sharing.
-10. User enables product watch (Pro/Studio) for deployment-triggered regression detection.
+9. User upgrades to Pro or Studio when they need more monthly reviews.
+10. User enables scheduled Watch for recurring regression detection.
 
 Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
 
@@ -127,7 +127,7 @@ Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
 - Verified Product Memory is written only from an `IMPROVED` attempt with Review and evidence provenance.
 - Raw absence is presented as “No longer observed in this review.”
 - Partial or degraded child Reviews never create verified Product Memory.
-- The Product dashboard leads with Attention now and allows the honest result that nothing important requires action.
+- The Product workspace leads with a circular current score, chronological Review history, and `Your priorities`, while allowing the honest result that nothing important requires action.
 
 ### Minimal Product Signals
 
@@ -145,13 +145,14 @@ Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
 
 | Plan | Price | Product reviews | Deep reviews |
 |------|-------|-----------------|--------------|
-| **Free** | $0 | 3 lifetime | 1 teaser (lifetime) |
-| **Pro** (`BUILDER`) | $69/mo | 25/month | 4/month |
-| **Studio** (`TEAM`) | $199/mo | 80/month | 10/month |
+| **Free** | $0 | 3/month | 1/month |
+| **Pro** (`BUILDER`) | $29/mo | 15/month | 3/month |
+| **Studio** (`TEAM`) | $79/mo | 50/month | 10/month |
 
-Update reviews use the same product review credit pool as new URLs. Internal route `/re-check` remains for API compatibility.
-Every signed-in manual update review consumes exactly one product-review credit.
-Watch-triggered reviews are the only non-manual path that skips product-review usage.
+New URLs, update reviews, and completed scheduled Watch reviews use the same monthly product review allowance.
+Deep reviews use a separate monthly allowance.
+Unused allowance does not roll over.
+Internal route `/re-check` remains for API compatibility.
 
 Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 
@@ -160,37 +161,32 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 - Anonymous visitors receive deterministic FixFlags Agent updates, the progressive and completed Report, all confirmed Flags, screenshots, and public-safe evidence without a blocking authentication overlay.
 - Interactive Agent chat, fix prompts, Timeline playback, private history, Product Memory, update reviews, Canvas, export, and restricted sharing remain server-gated.
 - Timeline stays discoverable as an inline sign-in state on live reports, and its event, URL, screenshot, and playback payload is absent from anonymous live-report responses.
-- Repository-owned curated samples expose only their versioned static Timeline fixtures.
-- Repository-owned curated samples expose exactly one demonstrated fix prompt and no aggregate Finish Plan prompt.
+- Curated samples expose only their versioned static Timeline fixtures.
+- Curated samples expose exactly one demonstrated fix prompt and no aggregate Finish Plan prompt.
 - Authentication returns through `/post-login`, verifies the signed anonymous claim, claims the review, and only then restores the same workspace.
 - Anonymous API responses never expose gated prompts, and access control never persists gate copy into Flag evidence or fix fields.
 - A successful claim saves the report and makes every eligible fix prompt available, including when the claim happens before triage completes.
 - URLs captured on `Audit` and `Lead` for outbound (`/admin/leads`)
 
 ### Free (forever)
-- 3 product reviews lifetime (claimed teaser counts as 1; full report with fix prompts)
-- 1 deep review teaser (lifetime)
+- 3 product reviews per month (a claimed anonymous teaser counts once)
+- 1 deep review per month
 - Interactive report Agent with 25,000 input-plus-output tokens per calendar month
 - Saved review history and authenticated Timeline playback
 - CTA flow test (automated click-through with before/after screenshots)
 - Preview cards (Google snippet + social link preview)
 - Fix prompts tuned for Cursor, Claude Code, Lovable, Bolt
-- Update reviews metered (same product review credits)
+- Update comparisons, sharing, Canvas, Product Signals, and scheduled Watch
 
-### Pro ($69/mo) — `BUILDER` in schema
-- 25 product reviews and 4 deep reviews per month
+### Pro ($29/mo) — `BUILDER` in schema
+- 15 product reviews and 3 deep reviews per month
 - 500,000 Agent chat tokens per calendar month
-- Private evidence-grounded visual Canvases with immutable versions
-- Before-and-after compare
-- Evidence-backed fix prompts for the builder the customer already uses
-- Product watch with regression email (weekly/daily on Studio)
+- The same complete web product as Free
 
-### Studio ($199/mo) — `TEAM` in schema
-- 80 product reviews and 10 deep reviews per month
+### Studio ($79/mo) — `TEAM` in schema
+- 50 product reviews and 10 deep reviews per month
 - 2,000,000 Agent chat tokens per calendar month across Studio projects
-- Everything in Pro
-- Up to 5 projects
-- Share links for client reports
+- The same complete web product as Free and Pro
 
 ### Parked power-user infrastructure
 
@@ -242,11 +238,10 @@ Full evidence rules: `knowledge/evidence-rules.md`.
 - Canonical `/report/[id]` workspace with identity, update-review results, the complete ranked Flag explorer, and the bounded Finish Plan, governed by `knowledge/report-contract.md`
 - Fix list with every unresolved Flag and contract-aware ranking from one shared service across web, export, update review, and sample
 - Remember strip on report when Project has verified learnings; Contract edits merge without wiping memory
-- Project product watch (Pro/Studio): weekly/daily full review plus regression email, without manual product-review usage
-- Free tools: meta preview, placeholder copy detector
-- **Agent-led report workspace:** URL submission immediately opens `/report/{id}` with a title-free Agent panel and progressive Report. Persisted scan facts project into free deterministic Agent messages, confirmed Flags append once, and completion preserves the same transcript contract. Timeline is authenticated and Canvas is private to paid owners.
+- Scheduled Product Watch: recurring full review plus regression email; completed Watch reviews consume the monthly product review allowance
+- **Agent-led report workspace:** URL submission immediately opens `/report/{id}` with Agent chat on the left and the progressive Report on the right. Persisted scan facts stream into the same score, ranked priority, evidence, and per-issue prompt layout. Preview, Timeline, Canvas, comparison, sharing, and Product Signals remain part of the web product.
 - Dedicated audit worker runtime: web requests stay isolated from Playwright capture; unfinished reports use a lightweight access/status read before completed-report assembly
-- **Scoped Studio sharing:** token routes render directly without making the report public; password grants are signed, HttpOnly, revocable, expiring, and metadata-safe
+- **Protected sharing:** token routes render directly without making the report public; password grants are signed, HttpOnly, revocable, expiring, and metadata-safe on every plan
 
 ## Evaluation system
 
@@ -263,7 +258,7 @@ FixFlags must evaluate itself more rigorously than it evaluates customers.
 - Regression suite covers HTML plus frozen PageSpeed, network, overlay, slow-replay, and dead-end-flow outputs; screenshot pixel rendering is not yet frozen
 - Route contract tests cover the critical path (checks create, api-keys, projects, scan-access, railway webhook, report status poll, re-check); remaining API routes still lack handler-level tests
 - Touch-tier component tests cover progressive chrome, failure panel, empty states; full report-state matrix still expanding
-- No localhost or private network checks (preview tunnels and HTTP basic auth supported on Studio projects)
+- No localhost, private-network, or password-only checks in the public URL experience
 - No team workspaces or white-label reports
 - Repository, MCP, API-key, and CLI foundations still exist internally, but every dedicated customer entry point is parked while the URL-to-report experience is the only public wedge.
 - Full `npm run verify` / `verify:release` still require a quiet tree plus designated RELEASE_* / R2 / smoke resources (see `.agents/handoffs/current-product-completion.md`)
@@ -292,7 +287,7 @@ Five concrete checks from report evidence. Fix before shipping:
 
 ## Support
 
-- **Help Center** at `/help` — billing, account, privacy, failed checks, plan questions, and human support. Product usage and technical integration guides live under `/docs`.
+- **Help Center** at `/help` — billing, account, privacy, failed reviews, plan questions, and human support. Product Review, report, deep review, and update-review guides live under `/docs`.
 - **Live chat** on all non-admin pages — first-party widget; team replies in `/admin/feedback`. Typical reply within a few hours.
 - **FAQ** at `/faq` — short Q&A; links into Help for deeper guides.
 - **Email** `hello@fixflags.com` — privacy, terms, high-volume pricing. Not a ticket system.
@@ -300,8 +295,7 @@ Five concrete checks from report evidence. Fix before shipping:
 
 ## Unresolved questions
 
-- Does Studio Fix PR creation close enough sales, or do buyers still want white-label share branding?
-- Will free users convert to Pro before exhausting their 3 lifetime AI reports?
+- Which monthly review threshold most reliably converts Free users to Pro?
 - What update-review cadence builds the strongest Product Review → Fix → Verify → Watch habit?
 - Does current Deep Review pricing optimize for conversion against alternate price points?
 - Will 20% of paid Deep Review customers activate Watch for ongoing monitoring?
@@ -310,6 +304,6 @@ Five concrete checks from report evidence. Fix before shipping:
 
 - **Core loop above all.** Every feature must serve Product Review → Fix → Verify → Watch.
 - **Every feature must serve the core loop.** If it does not fit Product Review → Fix → Verify → Watch, it does not ship.
-- **Update reviews are metered** like new product reviews. Product watch-triggered runs do not consume the manual credit pool.
-- **Localhost and private networks are not supported.** Studio projects may store encrypted preview scan access (HTTP basic auth, cookies, headers) for public preview URLs.
-- **CI/CD:** Railway deployment webhook (`/api/webhooks/railway?apiKey=...&url=...`) enqueues Product Reviews after deploy. See `docs/railway-deploy-check.md`.
+- **One review allowance.** New URLs, update reviews, and completed scheduled Watch reviews use the monthly product review allowance.
+- **Localhost and private networks are not supported.** Reviews require a publicly reachable URL.
+- **Scheduled Watch only.** Deployment-triggered webhooks are parked with the other power-user surfaces.

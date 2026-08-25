@@ -3,7 +3,6 @@ import dynamic from 'next/dynamic'
 import { Suspense, type ReactNode } from 'react'
 import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
 import { ReportContextDisclosure } from '@/components/report/ReportContextDisclosure'
-import { ReportFinishPlan } from '@/components/report/ReportFinishPlan'
 import { KeepReportEmail } from '@/components/report/KeepReportEmail'
 import {
   REPORT_SECTION_SCROLL_MT,
@@ -17,8 +16,6 @@ const LiveReportExplorer = dynamic(
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { TriageUnavailableCallout } from '@/components/audit/TriageUnavailableCallout'
-import { SectionTitle } from '@/components/ui/typography'
-import { Play } from 'lucide-react'
 import { UPSELLS, REPORT_COPY, HERO, AUDIT_ERRORS } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
@@ -46,13 +43,8 @@ import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors
 import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { resolveReportPromptProjection } from '@/lib/report/prompt-access'
-import { JourneyBar, type JourneyPage } from '@/components/audit/JourneyBar'
-import { FlowScanTimeline } from '@/components/audit/FlowScanTimeline'
-import { PreviewCards } from '@/components/audit/PreviewCards'
-import {
-  JourneyReviewTimeline,
-  type JourneyReviewSummary,
-} from '@/components/audit/JourneyReviewTimeline'
+import type { JourneyPage } from '@/components/audit/JourneyBar'
+import type { JourneyReviewSummary } from '@/components/audit/JourneyReviewTimeline'
 import { ProductContractCard } from '@/components/audit/ProductContractCard'
 import { ProductMemoryStrip } from '@/components/audit/ProductMemoryStrip'
 import { ProductWatchControls } from '@/components/audit/ProductWatchControls'
@@ -60,9 +52,9 @@ import { ReportAuthGateTracker } from '@/components/analytics/ReportAuthGateTrac
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
-import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import { ReportCanvasPanel } from '@/components/report/ReportCanvasPanel'
+import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import type { AgentMessage } from '@/lib/audit/agent-message'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
@@ -182,7 +174,7 @@ export function AuditReport({
   actions,
   toolbarActions,
   pages = [],
-  journeyReviews = [],
+  journeyReviews: _journeyReviews = [],
   recheckDiff = null,
   verificationReceipts = [],
   scoreHistory = [],
@@ -196,13 +188,11 @@ export function AuditReport({
   const isOwnerAccess = audit.accessContext === 'owner'
   const canClaimAccess = audit.accessContext === 'anonymous_teaser'
   const signUpHref = auditId ? `/sign-up?next=/report/${auditId}&from=report` : '/sign-up?from=report'
-  const timelineGateActionHref = canClaimAccess && auditId
-    ? `/sign-in?next=${encodeURIComponent(`/report/${auditId}`)}`
-    : undefined
   const chatGateReason = canClaimAccess ? 'sign-in' : 'owner'
+  const timelineGateActionHref = canClaimAccess ? signUpHref : undefined
   const hasLaunchGates = (audit.launchReadiness?.checklist?.length ?? 0) > 0
   const showContract = Boolean(audit.productContract)
-  const showPreviews = Boolean(audit.previewMeta)
+  void _journeyReviews
 
   // Server strip is the only entitlement; never unlock via client sessionStorage.
   const fixPromptLocked = !showDeterministicFixes
@@ -251,7 +241,7 @@ export function AuditReport({
       promptAccess: promptProjection.workspace,
       canReplayTimeline: isRepositorySample || isOwnerAccess,
       canChat: !isSample && isLoggedIn && isOwnerAccess && Boolean(auditId),
-      canUseCanvas: !isSample && viewerIsPaid && isOwnerAccess,
+      canUseCanvas: !isSample && isLoggedIn && isOwnerAccess,
       canShare: !isSample && isLoggedIn && isOwnerAccess,
       canExport: !isSample && isLoggedIn && isOwnerAccess,
       canRecheck: !isSample && isLoggedIn && isOwnerAccess,
@@ -260,21 +250,12 @@ export function AuditReport({
     },
   })
   const showFeedback = workspace.capabilities.canGiveFeedback
-  const showJourney = workspace.capabilities.canReplayTimeline && pages.length > 1
-  const showJourneyReview = workspace.capabilities.canReplayTimeline && journeyReviews.length > 0
-  const showFlow = workspace.capabilities.canReplayTimeline && Boolean(audit.flowData)
   const showRemember = Boolean(
     workspace.capabilities.canRecheck &&
     auditId &&
     (audit.verifiedLearnings?.length || audit.intentionalNotes?.length || audit.knownRisks?.length)
   )
-  const showTimeline =
-    workspace.capabilities.canReplayTimeline && (audit.actionTimeline?.length ?? 0) > 0
   const unresolvedFlagCount = workspace.outcome.unresolvedCount
-  const polishPassPrompt =
-    explorerModel.polishPassPrompt ??
-    explorerModel.flags.find((flag) => flag.hasFixPrompt)?.copyFixPrompt ??
-    null
   const showStatusCallouts =
     !isSample &&
     (aiReviewPending ||
@@ -318,7 +299,6 @@ export function AuditReport({
       </section>
     )
 
-  const playbackSteps = buildPlaybackSteps(audit.actionTimeline ?? [])
 
   const statusCallouts =
     !isSample && showStatusCallouts ? (
@@ -405,43 +385,6 @@ export function AuditReport({
           knownRisks={audit.knownRisks}
         />
       ) : null}
-      {showJourney || showJourneyReview || showFlow || showTimeline ? (
-        <div id="report-funnel" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-4')}>
-          {(audit.actionTimeline?.length ?? 0) > 0 ? (
-            <div className="flex items-center justify-between gap-3">
-              <SectionTitle>{REPORT_COPY.sectionTitles.timelineCompleted}</SectionTitle>
-              <Link
-                href={
-                  isSample && observationId
-                    ? `/samples?observation=${encodeURIComponent(observationId)}&view=timeline&step=1#report-flags`
-                    : auditId
-                      ? `/report/${encodeURIComponent(auditId)}?view=timeline&step=1#report-flags`
-                      : '?view=timeline&step=1#report-flags'
-                }
-                className="inline-flex items-center gap-1.5 rounded-sm text-xs font-medium text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-              >
-                <Play className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                {REPORT_COPY.workspace.funnelReplayPath}
-              </Link>
-            </div>
-          ) : null}
-          {showJourney ? (
-            <JourneyBar
-              pages={pages}
-              totalFlags={unresolvedFlagCount}
-              auditId={auditId}
-              primaryUrl={audit.url}
-            />
-          ) : null}
-          {showJourneyReview ? <JourneyReviewTimeline reviews={journeyReviews} /> : null}
-          {showFlow && audit.flowData ? <FlowScanTimeline flowData={audit.flowData} /> : null}
-        </div>
-      ) : null}
-      {showPreviews && audit.previewMeta ? (
-        <div id="report-previews" className={REPORT_SECTION_SCROLL_MT}>
-          <PreviewCards preview={audit.previewMeta} />
-        </div>
-      ) : null}
       {hasLaunchGates && audit.launchReadiness?.checklist ? (
         <div id="report-launch" className={REPORT_SECTION_SCROLL_MT}>
           <LaunchGates checklist={audit.launchReadiness.checklist} />
@@ -450,9 +393,6 @@ export function AuditReport({
       <div id="report-recheck" className={cn(REPORT_SECTION_SCROLL_MT, 'space-y-5')}>
         {!isSample && workspace.capabilities.canExport && toolbarActions ? (
           <div className="flex flex-wrap gap-2">{toolbarActions}</div>
-        ) : null}
-        {!isSample && workspace.capabilities.canRecheck && actions ? (
-          <div className="flex flex-wrap gap-2">{actions}</div>
         ) : null}
         {!isSample && auditId ? <KeepReportEmail auditId={auditId} /> : null}
         {projectId && workspace.capabilities.canRecheck ? (
@@ -526,26 +466,12 @@ export function AuditReport({
   )
 
   const belowFrame = (
-    <>
-      {!isSample && unresolvedFlagCount > 0 ? (
-        <ReportFinishPlan
-          flagCount={unresolvedFlagCount}
-          prompt={polishPassPrompt}
-          locked={fixPromptLocked && !polishPassPrompt}
-          generating={Boolean(aiReviewPending && !polishPassPrompt)}
-          signUpHref={signUpHref}
-          auditId={auditId}
-          accessState={fixPromptLocked ? 'anonymous' : 'owner'}
-          className="mt-3"
-        />
-      ) : null}
       <ReportContextDisclosure
         sectionIds={REPORT_CONTEXT_SECTION_IDS}
         className="mt-3"
       >
         {contextSections}
       </ReportContextDisclosure>
-    </>
   )
 
   const livingReportPanel = (
@@ -555,6 +481,7 @@ export function AuditReport({
       afterFrame={belowFrame}
     />
   )
+  const playbackSteps = buildPlaybackSteps(audit.actionTimeline ?? [])
 
   if (auditId) {
     return (
@@ -571,12 +498,8 @@ export function AuditReport({
             <ReportWorkspaceSplitShell
               capabilities={workspace.capabilities}
               timelineGateActionHref={timelineGateActionHref}
-              reportHeader={<ReportOutcomeBar model={workspace} />}
-              canvasPanel={
-                workspace.capabilities.canUseCanvas
-                  ? <ReportCanvasPanel auditId={auditId} />
-                  : undefined
-              }
+              canvasPanel={workspace.capabilities.canUseCanvas ? <ReportCanvasPanel auditId={auditId} /> : undefined}
+              reportHeader={<ReportOutcomeBar model={workspace} actions={actions} />}
               leftPanel={
                 <WorkspaceChatPanel
                   auditId={auditId}
@@ -607,7 +530,7 @@ export function AuditReport({
       <Suspense fallback={null}>
         <ReportWorkspaceSplitShell
           capabilities={workspace.capabilities}
-          reportHeader={<ReportOutcomeBar model={workspace} />}
+          reportHeader={<ReportOutcomeBar model={workspace} actions={actions} />}
           leftPanel={
             <WorkspaceChatPanel
               capabilities={workspace.capabilities}

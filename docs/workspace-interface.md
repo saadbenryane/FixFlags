@@ -1,5 +1,7 @@
 # Report workspace interface
 
+> Current product surface: the workspace is intentionally reduced to Agent + Report. Preview, Timeline, and Canvas remain dormant implementations and are not exposed by the default review route. Legacy `view=timeline`, `view=preview`, and `view=canvas` parameters normalize to `view=report`. Repository scanning is parked from discovery and new starts; protected historical reports and GitHub revocation remain available.
+
 **Status:** Approved interface spec (August 2026). Engineering and design source for report workspace chrome.
 
 **Canonical for:** layout regions, view modes, browser modes, playback strip, mobile behavior, and on-screen terminology.

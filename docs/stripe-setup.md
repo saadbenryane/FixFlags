@@ -39,10 +39,10 @@ When `STRIPE_PAID_OPEN=true`, checkout is public; the tier promotion auto-applie
 
 | Product | Target | Env var | Notes |
 |---------|--------|---------|--------|
-| Pro | $69/mo | `STRIPE_BUILDER_PRICE_ID` | Create new test/live price; legacy test ID was $39 |
-| Studio | $199/mo | `STRIPE_TEAM_PRICE_ID` | Create new test/live price; legacy test ID was $129 |
+| Pro | $29/mo | `STRIPE_BUILDER_PRICE_ID` | Create a new test/live recurring price |
+| Studio | $79/mo | `STRIPE_TEAM_PRICE_ID` | Create a new test/live recurring price |
 
-Legacy test IDs (2026-07-19, **$39 / $129** — replace for launch):
+Legacy test IDs (2026-07-19, **$39 / $129**): preserve them for active legacy subscriptions, but do not use them for new checkout sessions. Map them through `STRIPE_LEGACY_BUILDER_PRICE_IDS` and `STRIPE_LEGACY_TEAM_PRICE_IDS` until those subscriptions end or change.
 
 | Product | Price ID | Amount |
 |---------|----------|--------|

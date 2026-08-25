@@ -27,4 +27,4 @@ After a deployment, an update review captures the live product again and compare
 
 ## Sharing and Watch
 
-Share links respect report access and ownership. Watch surfaces scheduled product reviews where the plan and product surface support them. For plan access or billing questions, see the [Help Center](/help).
+Protected share links respect report access and ownership. Scheduled Watch reviews are included on every plan and consume the monthly product review allowance when they complete. If no allowance remains, Watch pauses until renewal or upgrade. For usage or billing questions, see the [Help Center](/help).

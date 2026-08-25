@@ -8,7 +8,7 @@ const {
   mockUserFindUnique,
   mockUserFindFirst,
   mockUserUpdate,
-  mockApplyPlanLimits,
+  mockSetStripeUsagePeriod,
   mockCreditFindUnique,
   mockCreditUpdate,
   mockCreditDeleteMany,
@@ -24,7 +24,7 @@ const {
   mockUserFindUnique: vi.fn(),
   mockUserFindFirst: vi.fn(),
   mockUserUpdate: vi.fn(),
-  mockApplyPlanLimits: vi.fn(),
+  mockSetStripeUsagePeriod: vi.fn(),
   mockCreditFindUnique: vi.fn(),
   mockCreditUpdate: vi.fn(),
   mockCreditDeleteMany: vi.fn(),
@@ -97,8 +97,8 @@ vi.mock('@/lib/stripe', () => ({
   },
 }))
 
-vi.mock('@/lib/billing/limits', () => ({
-  applyPlanLimits: mockApplyPlanLimits,
+vi.mock('@/lib/billing/usage-period', () => ({
+  setStripeUsagePeriod: mockSetStripeUsagePeriod,
 }))
 
 vi.mock('@/lib/billing/credits', () => ({
@@ -161,7 +161,7 @@ beforeEach(() => {
   mockUserFindUnique.mockResolvedValue(baseUser)
   mockUserFindFirst.mockResolvedValue(baseUser)
   mockUserUpdate.mockResolvedValue({})
-  mockApplyPlanLimits.mockResolvedValue(undefined)
+  mockSetStripeUsagePeriod.mockResolvedValue(undefined)
   mockNotify.mockResolvedValue(undefined)
 })
 
@@ -198,7 +198,7 @@ describe('POST /api/webhooks/stripe', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.replay).toBe(true)
-    expect(mockApplyPlanLimits).not.toHaveBeenCalled()
+    expect(mockSetStripeUsagePeriod).not.toHaveBeenCalled()
   })
 
   it('marks a same-payload replay discovered inside the transaction', async () => {
@@ -219,7 +219,7 @@ describe('POST /api/webhooks/stripe', () => {
 
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ received: true, replay: true })
-    expect(mockApplyPlanLimits).not.toHaveBeenCalled()
+    expect(mockSetStripeUsagePeriod).not.toHaveBeenCalled()
     expect(mockCreateProcessed).not.toHaveBeenCalled()
   })
 
@@ -241,7 +241,7 @@ describe('POST /api/webhooks/stripe', () => {
 
     expect(res.status).toBe(409)
     expect(await res.json()).toEqual({ message: 'Payload hash mismatch' })
-    expect(mockApplyPlanLimits).not.toHaveBeenCalled()
+    expect(mockSetStripeUsagePeriod).not.toHaveBeenCalled()
     expect(mockCreateProcessed).not.toHaveBeenCalled()
   })
 
@@ -256,7 +256,10 @@ describe('POST /api/webhooks/stripe', () => {
     mockConstructEvent.mockReturnValue(event)
     const res = await POST(makeRequest(body, signBody(body)))
     expect(res.status).toBe(200)
-    expect(mockApplyPlanLimits).toHaveBeenCalledWith('user_1', 'BUILDER', expect.anything())
+    expect(mockSetStripeUsagePeriod).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ userId: 'user_1', plan: 'BUILDER', status: 'ACTIVE' })
+    )
     expect(mockUserUpdate).toHaveBeenCalled()
     expect(mockCreateProcessed).toHaveBeenCalled()
     expect(mockCreateLifecycle).toHaveBeenCalledWith({
@@ -268,6 +271,37 @@ describe('POST /api/webhooks/stripe', () => {
         status: 'ACTIVE',
       }),
     })
+  })
+
+  it('grandfathers an active subscriber on their already-stored legacy price', async () => {
+    mockUserFindUnique.mockResolvedValue({
+      ...baseUser,
+      plan: 'TEAM',
+      stripePriceId: 'price_legacy_studio',
+    })
+    const subscription = subscriptionObject('active')
+    subscription.items.data[0].price.id = 'price_legacy_studio'
+    const event = {
+      id: 'evt_legacy_sub',
+      created: Math.floor(Date.now() / 1000),
+      type: 'customer.subscription.updated',
+      data: { object: subscription },
+    }
+    const body = JSON.stringify(event)
+    mockConstructEvent.mockReturnValue(event)
+
+    const res = await POST(makeRequest(body, signBody(body)))
+
+    expect(res.status).toBe(200)
+    expect(mockSetStripeUsagePeriod).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        userId: 'user_1',
+        plan: 'TEAM',
+        status: 'ACTIVE',
+        priceId: 'price_legacy_studio',
+      })
+    )
   })
 
   it('payment_failed syncs subscription and notifies admin', async () => {
@@ -284,7 +318,10 @@ describe('POST /api/webhooks/stripe', () => {
     const res = await POST(makeRequest(body, signBody(body)))
     expect(res.status).toBe(200)
     expect(mockSubscriptionsRetrieve).toHaveBeenCalledWith('sub_1')
-    expect(mockApplyPlanLimits).toHaveBeenCalledWith('user_1', 'FREE', expect.anything())
+    expect(mockSetStripeUsagePeriod).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ userId: 'user_1', plan: 'FREE', status: 'PAST_DUE' })
+    )
     expect(mockNotify).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user_1', subscriptionId: 'sub_1' })
     )

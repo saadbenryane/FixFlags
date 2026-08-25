@@ -61,7 +61,8 @@ describe('FlagDetailPanel', () => {
       />
     )
 
-    expect(screen.getByRole('button', { name: 'Ready to verify' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeInTheDocument()
+    expect(screen.getByText('Preview prompt')).toBeInTheDocument()
   })
 
 
@@ -141,15 +142,14 @@ describe('FlagDetailPanel', () => {
     expect(links.some((l) => l.getAttribute('href') === 'https://example.com/page')).toBe(true)
   })
 
-  it('renders replay step link that drives the workspace playback strip', () => {
+  it('keeps reproduced step evidence as text without exposing Timeline playback', () => {
     renderWithProviders(
       <FlagDetailPanel
         flag={makeFlag({ evidence: 'Reproduced at step 3: signup' })}
       />
     )
-    const link = screen.getByText(/replay step 3/i)
-    expect(link).toBeInTheDocument()
-    expect(link.closest('a')).toHaveAttribute('href', '?step=3#report-flags')
+    expect(screen.getByText(/Reproduced at step 3/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Replay step 3/i)).not.toBeInTheDocument()
   })
 })
 

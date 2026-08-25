@@ -8,7 +8,7 @@ export const PARTNERS_COPY = {
   perks: [
     'Referral revenue on paying clients you introduce',
     'Verified Delivery report template for handoffs',
-    'Studio preview scan access and Railway deploy Launch Checks',
+    'Scheduled Watch reviews and regression evidence',
   ],
   cta: 'Apply for the expert program',
   email: 'hello@fixflags.com',

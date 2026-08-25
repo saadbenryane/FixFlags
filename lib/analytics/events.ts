@@ -50,7 +50,7 @@ export type FunnelEvent =
   | 'polish_pass_copied'
   | 'flag_detail_viewed'
 
-export type ReportSurface = 'focused' | 'details' | 'sample' | 'shared'
+export type ReportSurface = 'focused' | 'details' | 'sample' | 'shared' | 'product'
 export type ReportAccessState = 'anonymous' | 'owner' | 'signed_in' | 'shared'
 
 type EventParams = {

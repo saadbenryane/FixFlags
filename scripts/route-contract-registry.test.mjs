@@ -18,12 +18,18 @@ test('readiness is public and dependency-aware', () => {
 })
 
 test('protected mutations include access and input contracts', () => {
-  const contracts = collectRouteContracts().filter(({ boundary, methods }) => boundary !== 'public' && methods.some((method) => method !== 'GET'))
+  const contracts = collectRouteContracts().filter(({ boundary, methods }) => !['public', 'parked'].includes(boundary) && methods.some((method) => method !== 'GET'))
   assert.ok(contracts.length > 0)
   for (const contract of contracts) {
     assert.ok(contract.cases.includes('unauthenticated'), contract.file)
     assert.ok(contract.cases.includes('invalid-input'), contract.file)
   }
+})
+
+test('parked power-tool routes expose only the not-found contract', () => {
+  const parked = collectRouteContracts().filter(({ boundary }) => boundary === 'parked')
+  assert.ok(parked.length > 0)
+  assert.ok(parked.every(({ cases }) => JSON.stringify(cases) === JSON.stringify(['not-found'])))
 })
 
 test('secret and webhook boundaries declare validation and retry contracts', () => {

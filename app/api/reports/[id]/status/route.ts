@@ -12,7 +12,6 @@ import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { computeShareStatusFromRubrics } from '@/lib/audit/rubric'
 import { recoverAuditJobOnPoll } from '@/lib/audit/recover-audit-job'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
-import { parseActionTimeline } from '@/lib/audit/action-timeline'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
 import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
@@ -107,11 +106,9 @@ export async function GET(
       ? computeShareStatusFromRubrics(rubricSources, flatFlags)
       : 'private'
 
-    const { flags: partialFlags, performanceData, productContract, ...rest } = audit
-    // Timeline + contract are lightweight JSON parses; stream them during CHECKING
-    // so progressive report chrome stays honest. Technology profile stays terminal-only.
+    const { flags: partialFlags, performanceData: _parkedTimelineData, productContract, ...rest } = audit
+    void _parkedTimelineData
     const canUsePrivateReportData = access === 'owner'
-    const actionTimeline = canUsePrivateReportData ? parseActionTimeline(performanceData) : []
     const contract = canUsePrivateReportData ? parseProductContract(productContract) : null
     const technologyProfile = isTerminal
       ? await loadTechnologyProfile(id, {
@@ -156,7 +153,6 @@ export async function GET(
         shareStatus,
         partialFlags: showPartialFlags ? partialFlags : undefined,
         agentMessages,
-        actionTimeline,
         productContract: contract,
         technologyProfile,
       },

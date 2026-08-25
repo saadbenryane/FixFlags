@@ -60,15 +60,13 @@ describe('POST /api/projects - billing gating enforcement', () => {
     expect(prismaMock.project.upsert).not.toHaveBeenCalled()
   })
 
-  it('returns 402 UPGRADE_REQUIRED for a FREE user (no project quota)', async () => {
+  it('lets a Free user create a Product', async () => {
     prismaMock.user.findUnique.mockResolvedValue(makeUser({ plan: 'FREE' }))
 
     const res = await POST(postReq)
 
-    expect(res.status).toBe(402)
-    const body = await res.json()
-    expect(body.code).toBe('UPGRADE_REQUIRED')
-    expect(prismaMock.project.upsert).not.toHaveBeenCalled()
+    expect(res.status).toBe(201)
+    expect(prismaMock.project.upsert).toHaveBeenCalledTimes(1)
   })
 
   it('lets a TEAM user create a project - never blocked on an owned feature', async () => {

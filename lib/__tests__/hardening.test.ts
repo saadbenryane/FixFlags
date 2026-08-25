@@ -79,15 +79,15 @@ describe('getReportTierForUser', () => {
     )
   })
 
-  it('returns free for a builder plan whose subscription lapsed', () => {
+  it('preserves full report access when a subscription lapses', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     assert.equal(
       getReportTierForUser({ id: 'u1', plan: 'BUILDER', role: 'user', subscriptionStatus: 'PAST_DUE' }),
-      'free'
+      'paid'
     )
     assert.equal(
       getReportTierForUser({ id: 'u1', plan: 'TEAM', role: 'user', subscriptionStatus: 'CANCELED' }),
-      'free'
+      'paid'
     )
     delete process.env.DEV_SIMULATE_BILLING
   })
@@ -106,11 +106,11 @@ describe('getEntitlements', () => {
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('denies share/export for pro users', () => {
+  it('allows share/export for pro users', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     const user = { id: 'u1', role: 'user' as const, plan: 'BUILDER' as const, subscriptionStatus: 'ACTIVE' as const }
-    assert.equal(canSharePublicly(user), false)
-    assert.equal(canExportSummary(user), false)
+    assert.equal(canSharePublicly(user), true)
+    assert.equal(canExportSummary(user), true)
     delete process.env.DEV_SIMULATE_BILLING
   })
 })
@@ -132,7 +132,7 @@ describe('canScanRepositories', () => {
 })
 
 describe('plan limits', () => {
-  it('sets free plan to 3 lifetime checks', () => {
+  it('sets Free to 3 checks per monthly usage period', () => {
     assert.equal(scanLimitForPlan('FREE'), 3)
   })
 })
@@ -157,9 +157,9 @@ describe('canAccessCompare', () => {
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('blocks free users from compare', () => {
+  it('allows free authenticated users to compare', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(canAccessCompare(freeUser), false)
+    assert.equal(canAccessCompare(freeUser), true)
     delete process.env.DEV_SIMULATE_BILLING
   })
 })

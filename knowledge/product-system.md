@@ -21,7 +21,7 @@ Audience packaging is contextual, not separate products.
 
 ### A. Product Review
 
-The free acquisition surface.
+The URL-first acquisition and core product surface.
 
 **Input:** a public or staging URL. No account required before the first value appears.
 
@@ -35,18 +35,17 @@ The free acquisition surface.
 **What it does not include:**
 - authenticated flows,
 - full multi-journey depth,
-- long-form repository context,
-- historical comparison.
+- private account history before claim.
 
 **After account creation:**
 - all confirmed Flags,
 - fix prompts,
-- one `update review` on the same URL,
+- update reviews on the same URL within the monthly allowance,
 - history surfaces and authenticated report context.
 
 ### B. Deep Review
 
-The paid depth surface for important customer paths.
+The deeper monthly-usage unit for important customer paths.
 
 **User promise:** run your important path(s) to completion and record what actually changed.
 
@@ -57,7 +56,7 @@ The paid depth surface for important customer paths.
 - stronger confidence on friction and completion conditions,
 - stronger change attribution for builder handoff.
 
-**Metering model:** one or more deep reviews consume monthly deep review credits on Pro/Studio.
+**Metering model:** deep reviews consume the separate monthly deep review allowance on every plan.
 
 ### C. Watch
 
@@ -66,11 +65,11 @@ The recurring verification surface.
 **User promise:** know when important paths drift after deployment.
 
 **What it includes:**
-- deployment-triggered re-verification,
+- scheduled re-verification,
 - regression detection from saved paths,
 - changed/unchanged evidence summaries,
 - compact alerts + history visibility,
-- optional integrations as availability expands.
+- allowance-aware pause and renewal messaging.
 
 ## Activation and paywall design
 
@@ -80,12 +79,10 @@ Show enough to establish trust: what was checked, what changed, and one complete
 ### Free-account gate
 Ask for account creation to unlock all Flags, fix prompts, update reviews, full history, and private memory.
 
-### Paid gate
-Paid plans are for authenticated depth and recurrence:
-- more product reviews,
-- more deep reviews,
-- compare and update workflows,
-- MCP and workspace continuity.
+### Usage upgrade
+Every plan includes the same authenticated web product.
+Paid plans provide more product reviews and deep reviews each month.
+New URLs, update reviews, and completed Watch reviews share the product review allowance.
 
 ## Priority tiers
 
@@ -94,8 +91,8 @@ Paid plans are for authenticated depth and recurrence:
 | P0 | Product Review | Public URL submission, route/action checks, desktop+mobile, console/network capture, metadata/a11y/performance checks, evidence-backed Flags, scope transparency, one result before signup |
 | P1 | Deep Review | Progressively richer path testing, success assertions, deterministic/fallback behavior, replay, complete evidence, re-run and update review verification |
 | P2 | Authenticated depth | Test-account support, role-aware flows, safe credentials handling |
-| P3 | Watch | Deployment webhook path, affected-route prioritization, regression signaling, alert surface |
-| P4 | Studio workflow | multi-project context, client-ready evidence, project templates, team controls |
+| P3 | Watch | Scheduled review path, allowance-aware pause, regression signaling, alert surface |
+| P4 | Repeated workflow | multi-product context, client-ready evidence, and review history |
 | P5 | External evidence integration | structured correlation with external signals and real-user telemetry |
 
 ## What we will not build first

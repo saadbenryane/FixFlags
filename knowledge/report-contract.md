@@ -8,7 +8,7 @@ FixFlags is one product: **paste URL → understand what deserves attention → 
 
 `buildUnifiedPlanBundle()` aggregates live and repository Flags once.
 
-Its bounded Finish Plan supplies zero-to-three worthwhile candidates for durable Product Improvements.
+Per-issue prompts are the primary handoff from understanding to improvement.
 
 `buildFixList()` owns the complete supporting evidence list, Product Contract bias, prompt availability, and anonymous redaction.
 
@@ -16,18 +16,19 @@ Its bounded Finish Plan supplies zero-to-three worthwhile candidates for durable
 
 `/report/[id]` is the default destination:
 
-1. Compact Review header (`#report-status`) with a visible score or honest pending/unavailable state and chronological full-Review history
+1. Compact Review header (`#report-status`) with a circular score or honest pending/unavailable state, chronological full-Review history, and the owner Update review action
 2. Update-review result, when present
 3. Complete ranked Fix list (`#report-flags`) with filters, screenshot evidence, selected detail, and canonical Critical-first ranking
-4. “What to fix next” Finish Plan with zero-to-three worthwhile Improvements
+4. Collapsed `Preview prompt` with an always-visible per-issue `Copy prompt`
 5. Collapsed evidence and Product context: Made with (`#report-stack`), Product Contract (`#report-contract`), and verified Product Memory (`#report-remember`), when present
-6. Funnel, flow, Timeline, previews, sharing, Watch, export, project, MCP, and owner update-review controls
+6. Subordinate sharing, Watch, export, and Product controls
 7. At most one contextual signup or upgrade moment
 
 The compact header does not repeat Product identity, verdict copy, the Critical count, or instructions already expressed by the ranked Fix list.
-Every history point is a native link to a complete Review, and `?view=timeline|report|canvas` is the canonical sibling-view state.
-Active desktop reviews default to Preview, active mobile reviews default to Agent, and completed reviews default to Report on every width.
-Completed Timeline remains a sibling view only when the workspace capability permits it.
+Every history point is a native link to a complete Review.
+Desktop keeps Agent and Report visible throughout the review.
+Mobile exposes only Agent and Report, defaulting to Agent while work is active and Report afterward.
+Preview, Timeline, and Canvas are parked customer surfaces; legacy view parameters normalize to Report.
 
 New anonymous scans render the progressive and completed evidence report without a blocking authentication dialog.
 Anonymous viewers can inspect scores, all confirmed Flags, screenshots, textual evidence, public-safe technology context, and deterministic Agent scan messages.
@@ -37,7 +38,7 @@ Anonymous API serialization remains redacted: gated fields are omitted server-si
 
 Prompt and action projection is centralized by access capability:
 
-- Authenticated owners receive every eligible per-Flag prompt and the aggregate Finish Plan.
+- Authenticated owners receive every eligible per-Flag prompt.
 - Repository-owned curated samples expose exactly one demonstrated per-Flag prompt and no aggregate Finish Plan prompt.
 - Anonymous live-report viewers, non-owners, and shared-report viewers receive zero prompts and no copy controls.
 - Static samples never expose update-review or lifecycle mutation actions.

@@ -32,7 +32,7 @@ describe('AuditInput scan handoff', () => {
     fireEvent.change(input, { target: { value: 'example.com' } })
     fireEvent.submit(input.closest('form')!)
 
-    expect(await screen.findByRole('button', { name: /Scanning/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Reviewing/ })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'Website URL' })).toBeInTheDocument()
     expect(screen.queryByText(/Opening your report/i)).not.toBeInTheDocument()
   })

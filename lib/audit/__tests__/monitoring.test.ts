@@ -129,13 +129,13 @@ describe('startMonitoringAudit', () => {
     )
   })
 
-  it('skips Product Review usage only for Watch-triggered reviews', async () => {
+  it('meters Watch-triggered reviews against Product Review usage', async () => {
     const user = { id: 'u1' } as User
     await startMonitoringAudit('parent-1', user, { trigger: 'WATCH' })
     expect(createAndEnqueueAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         recheckTrigger: 'WATCH',
-        skipUsageCount: true,
+        skipUsageCount: false,
       })
     )
   })

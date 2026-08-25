@@ -22,6 +22,7 @@ vi.mock('@/lib/audit/judge-config', () => ({
 }))
 
 const { GET } = await import('../route')
+const { resolveCommitSha } = await import('@/lib/health/commit-sha')
 
 function healthyConfig() {
   isProdStorageConfigured.mockReturnValue(true)
@@ -47,6 +48,7 @@ describe('GET /api/health', () => {
     const response = await GET()
     expect(response.status).toBe(200)
     const body = await response.json()
+    expect(body.ok).toBe(true)
     expect(body.status).toBe('ok')
     expect(body.database).toBe('ok')
     expect(body.aiConfigured).toBe(true)
@@ -87,7 +89,17 @@ describe('GET /api/health', () => {
     const response = await GET()
     expect(response.status).toBe(503)
     const body = await response.json()
+    expect(body.ok).toBe(false)
     expect(body.status).toBe('error')
     expect(body.database).toBe('error')
+  })
+
+  it('reports only a full deployed commit SHA', () => {
+    const sha = 'a'.repeat(40)
+    expect(resolveCommitSha({ RAILWAY_GIT_COMMIT_SHA: sha })).toBe(sha)
+    expect(resolveCommitSha({ GIT_COMMIT_SHA: sha.toUpperCase() })).toBe(sha)
+    expect(resolveCommitSha({ RAILWAY_GIT_COMMIT_SHA: sha.slice(0, 7) })).toBeNull()
+    expect(resolveCommitSha({ RAILWAY_GIT_COMMIT_SHA: sha.slice(0, 7), GIT_COMMIT_SHA: sha })).toBe(sha)
+    expect(resolveCommitSha({})).toBeNull()
   })
 })

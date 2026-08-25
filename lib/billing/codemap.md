@@ -6,9 +6,9 @@ Subscription management, credit tracking, audit limits, Stripe integration, cost
 ## Entry Points
 | File | Purpose |
 |------|---------|
-| `limits.ts` | Audit limits per plan (Free: 3 lifetime, Pro: 5/mo, Studio: 25/mo) |
+| `limits.ts` | Monthly Product Review and deep-review limits from the canonical plan definitions |
 | `credits.ts` | AI credit tracking (prescription costs credits) |
-| `plans.ts` | Plan definitions + feature gates |
+| `plans.ts` | Canonical plan names, prices, and usage allowances |
 | `config.ts` | Stripe config (prices, products) |
 | `costs.ts` | `MODEL_RATES` for LLM cost estimation (keep in sync with `judge-config.ts`) |
 | `env.ts` | Billing environment variables |
@@ -16,7 +16,8 @@ Subscription management, credit tracking, audit limits, Stripe integration, cost
 | `upgrade-moments.ts` | Upgrade prompt triggers |
 
 ## Architecture
-- **Plans:** Free (3 lifetime new URL checks), Pro $39/mo (5/mo), Studio $129/mo (25/mo)
+- **Plans:** Free (3 Product Reviews + 1 deep review/month), Pro $29/month (15 + 3), Studio $79/month (50 + 10)
+- **Capabilities:** Every plan has the same web product. Plans differ by monthly usage only.
 - **Credits:** AI prescription gated by `includeAi` + available credits
 - **Stripe:** Hosted Checkout + Customer Portal + webhooks (`app/api/stripe/webhook/route.ts`)
 - **Cost tracking:** Cache-aware (`estimateLlmCostUsd` prices cache reads/writes differently)
@@ -28,7 +29,8 @@ Subscription management, credit tracking, audit limits, Stripe integration, cost
 - **Cost persist:** `lib/audit/persist.ts` calls `persistAuditRunCost` with cache-aware tokens
 
 ## Invariants
-- Re-checks are free and unlimited (never gate them)
+- New URLs, update reviews, and completed scheduled Watch reviews use the same Product Review allowance
+- Usage periods roll atomically; Free uses UTC calendar months and paid plans use Stripe subscription periods
 - Anonymous wedge: 1 teaser audit (triage only, fix prompts stripped)
-- Claimed teaser counts as 1 of Free's 3 lifetime checks
+- A claimed anonymous teaser counts once against the current monthly Product Review allowance
 - `MODEL_RATES` in `costs.ts` must stay in sync with `judge-config.ts` model IDs

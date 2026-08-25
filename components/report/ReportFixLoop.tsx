@@ -1,13 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { ChevronDown, Wrench } from 'lucide-react'
 import Link from 'next/link'
 import type { Route } from 'next'
-import { SeveritySignal } from '@/components/report/SeveritySignal'
 import { cn } from '@/lib/utils'
-import { rubricIcon, impactTagIcon } from '@/lib/rubric-icons'
-import { rubricLabel, impactTagLabel, severityLabel } from '@/lib/utils'
+import { impactTagLabel, severityLabel } from '@/lib/utils'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 
 export type FixLoopFlagItem = {
@@ -41,31 +37,18 @@ function FlagList({
 }) {
   return (
     <ul className="space-y-1" style={{ listStyle: 'none' }} aria-label="Report Flags">
-      {flags.map((flag) => {
+      {flags.map((flag, index) => {
         const selected = selectedFlagId === flag.id
-        const RubricIcon = rubricIcon(flag.rubric)
-        const ImpactIcon = impactTagIcon(flag.impactTag)
         const categoryLabel = [
           severityLabel(flag.severity),
-          rubricLabel(flag.rubric),
           impactTagLabel(flag.impactTag),
         ]
           .filter(Boolean)
           .join(' · ')
         const content = (
           <>
-            <SeveritySignal severity={flag.severity} className="h-4 w-4" />
-            <span
-              className="flex shrink-0 items-center gap-1 text-muted-foreground"
-              title={categoryLabel}
-            >
-              <RubricIcon className="h-3.5 w-3.5" aria-hidden />
-              {ImpactIcon && <ImpactIcon className="h-3.5 w-3.5" aria-hidden />}
-            </span>
-            <span className="min-w-0 flex-1 line-clamp-2">{flag.title}</span>
-            {flag.hasFixPrompt !== false && (
-              <Wrench className="h-3 w-3 shrink-0 text-brand/70" aria-hidden />
-            )}
+            <span className="mt-0.5 font-mono text-2xs font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
+            <span className="min-w-0 flex-1"><span className="line-clamp-2">{flag.title}</span><span className="mt-1 block text-3xs text-muted-foreground">{categoryLabel}</span></span>
           </>
         )
         const rowClassName = cn(
@@ -117,45 +100,11 @@ export function ReportFixLoop({
   loading = false,
 }: ReportFixLoopProps) {
   const interactive = flags.length > 0 && Boolean(onSelectFlag || reportHref)
-  const primaryFlags = flags.filter((flag) => flag.rubric !== 'REACH')
-  const reachFlags = flags.filter((flag) => flag.rubric === 'REACH')
-  const [reachOpen, setReachOpen] = useState(false)
 
   return (
     <div className="space-y-2.5">
       {interactive ? (
-        <>
-          <FlagList
-            flags={primaryFlags.length > 0 ? primaryFlags : flags}
-            selectedFlagId={selectedFlagId}
-            onSelectFlag={onSelectFlag}
-            reportHref={reportHref}
-          />
-          {reachFlags.length > 0 && primaryFlags.length > 0 ? (
-            <div>
-              <button
-                type="button"
-                className="flex min-h-11 w-full items-center justify-between rounded-[var(--radius-control)] px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted/45"
-                aria-expanded={reachOpen}
-                onClick={() => setReachOpen((open) => !open)}
-              >
-                <span>{REPORT_COPY.explorer.moreChecks}</span>
-                <span className="flex items-center gap-1.5">
-                  <span className="font-mono text-2xs tabular-nums">{reachFlags.length}</span>
-                  <ChevronDown className={reachOpen ? 'h-3.5 w-3.5 rotate-180' : 'h-3.5 w-3.5'} aria-hidden />
-                </span>
-              </button>
-              {reachOpen ? (
-                <FlagList
-                  flags={reachFlags}
-                  selectedFlagId={selectedFlagId}
-                  onSelectFlag={onSelectFlag}
-                  reportHref={reportHref}
-                />
-              ) : null}
-            </div>
-          ) : null}
-        </>
+        <FlagList flags={flags} selectedFlagId={selectedFlagId} onSelectFlag={onSelectFlag} reportHref={reportHref} />
       ) : (
         <p className="px-1 py-2 text-xs text-muted-foreground">
           {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noFlagsNice}

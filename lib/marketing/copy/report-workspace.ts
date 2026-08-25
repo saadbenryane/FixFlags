@@ -189,8 +189,8 @@ export const REPORT_COPY = {
       scoreUnavailable: "Not scored",
       lockedTitle: "Turn this report into a visual Canvas",
       lockedBody:
-        "Upgrade to create private, evidence-grounded visual reports with version history.",
-      upgrade: "Upgrade to create a Canvas",
+        "Sign in to create private, evidence-grounded visual reports with version history.",
+      upgrade: "Sign in to create a Canvas",
       start: "Create a Canvas from this report.",
     },
     timelineGate: {

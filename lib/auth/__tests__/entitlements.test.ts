@@ -150,34 +150,34 @@ describe('canSharePublicly', () => {
     expect(canSharePublicly(makeUser({ role: 'admin', plan: 'FREE' }))).toBe(true)
   })
 
-  it('returns false for FREE plan', () => {
-    expect(canSharePublicly(makeUser({ plan: 'FREE' }))).toBe(false)
+  it('returns true for FREE plan', () => {
+    expect(canSharePublicly(makeUser({ plan: 'FREE' }))).toBe(true)
   })
 
-  it('returns false for BUILDER plan', () => {
-    expect(canSharePublicly(makeUser({ plan: 'BUILDER' }))).toBe(false)
+  it('returns true for BUILDER plan', () => {
+    expect(canSharePublicly(makeUser({ plan: 'BUILDER' }))).toBe(true)
   })
 
   it('returns true for TEAM plan', () => {
     expect(canSharePublicly(makeUser({ plan: 'TEAM' }))).toBe(true)
   })
 
-  it('returns false for TEAM with PAST_DUE status', () => {
+  it('keeps sharing available for TEAM with PAST_DUE status', () => {
     expect(
       canSharePublicly(makeUser({ plan: 'TEAM', subscriptionStatus: 'PAST_DUE' }))
-    ).toBe(false)
+    ).toBe(true)
   })
 
-  it('returns false for TEAM with CANCELED status', () => {
+  it('keeps sharing available for TEAM with CANCELED status', () => {
     expect(
       canSharePublicly(makeUser({ plan: 'TEAM', subscriptionStatus: 'CANCELED' }))
-    ).toBe(false)
+    ).toBe(true)
   })
 
-  it('returns false for TEAM with UNPAID status', () => {
+  it('keeps sharing available for TEAM with UNPAID status', () => {
     expect(
       canSharePublicly(makeUser({ plan: 'TEAM', subscriptionStatus: 'UNPAID' }))
-    ).toBe(false)
+    ).toBe(true)
   })
 
   it('returns true for TEAM with ACTIVE status', () => {
@@ -200,26 +200,26 @@ describe('canSharePublicly', () => {
 })
 
 describe('canExportSummary', () => {
-  it('returns false for BUILDER plan', () => {
-    expect(canExportSummary(makeUser({ plan: 'BUILDER' }))).toBe(false)
+  it('returns true for BUILDER plan', () => {
+    expect(canExportSummary(makeUser({ plan: 'BUILDER' }))).toBe(true)
   })
 
   it('returns true for TEAM plan', () => {
     expect(canExportSummary(makeUser({ plan: 'TEAM' }))).toBe(true)
   })
 
-  it('returns false for FREE plan', () => {
-    expect(canExportSummary(makeUser({ plan: 'FREE' }))).toBe(false)
+  it('returns true for FREE plan', () => {
+    expect(canExportSummary(makeUser({ plan: 'FREE' }))).toBe(true)
   })
 
   it('returns true for admin', () => {
     expect(canExportSummary(makeUser({ role: 'admin', plan: 'FREE' }))).toBe(true)
   })
 
-  it('returns false for TEAM with revoked status', () => {
+  it('keeps export available for TEAM with revoked status', () => {
     expect(
       canExportSummary(makeUser({ plan: 'TEAM', subscriptionStatus: 'CANCELED' }))
-    ).toBe(false)
+    ).toBe(true)
   })
 })
 
@@ -256,18 +256,18 @@ describe('canAccessProductWatch', () => {
     expect(canAccessProductWatch(makeUser({ plan: 'TEAM' }))).toBe(true)
   })
 
-  it('returns false for FREE plan', () => {
-    expect(canAccessProductWatch(makeUser({ plan: 'FREE' }))).toBe(false)
+  it('returns true for FREE plan', () => {
+    expect(canAccessProductWatch(makeUser({ plan: 'FREE' }))).toBe(true)
   })
 
   it('returns true for admin', () => {
     expect(canAccessProductWatch(makeUser({ role: 'admin', plan: 'FREE' }))).toBe(true)
   })
 
-  it('returns false for BUILDER with revoked status', () => {
+  it('keeps Watch available for BUILDER with revoked status', () => {
     expect(
       canAccessProductWatch(makeUser({ plan: 'BUILDER', subscriptionStatus: 'UNPAID' }))
-    ).toBe(false)
+    ).toBe(true)
   })
 })
 
@@ -300,8 +300,8 @@ describe('canAccessCompare', () => {
     expect(canAccessCompare(makeUser({ plan: 'TEAM' }))).toBe(true)
   })
 
-  it('returns false for FREE plan', () => {
-    expect(canAccessCompare(makeUser({ plan: 'FREE' }))).toBe(false)
+  it('returns true for FREE plan', () => {
+    expect(canAccessCompare(makeUser({ plan: 'FREE' }))).toBe(true)
   })
 
   it('returns true for admin', () => {
@@ -322,8 +322,8 @@ describe('getReportTierForUser', () => {
     expect(getReportTierForUser(makeUser({ role: 'admin', plan: 'FREE' }))).toBe('paid')
   })
 
-  it('returns free for FREE plan', () => {
-    expect(getReportTierForUser(makeUser({ plan: 'FREE' }))).toBe('free')
+  it('returns paid report access for an authenticated FREE user', () => {
+    expect(getReportTierForUser(makeUser({ plan: 'FREE' }))).toBe('paid')
   })
 
   it('returns paid for BUILDER plan', () => {
@@ -334,22 +334,22 @@ describe('getReportTierForUser', () => {
     expect(getReportTierForUser(makeUser({ plan: 'TEAM' }))).toBe('paid')
   })
 
-  it('returns free for TEAM with PAST_DUE', () => {
+  it('keeps report access for TEAM with PAST_DUE', () => {
     expect(
       getReportTierForUser(makeUser({ plan: 'TEAM', subscriptionStatus: 'PAST_DUE' }))
-    ).toBe('free')
+    ).toBe('paid')
   })
 
-  it('returns free for TEAM with CANCELED', () => {
+  it('keeps report access for TEAM with CANCELED', () => {
     expect(
       getReportTierForUser(makeUser({ plan: 'TEAM', subscriptionStatus: 'CANCELED' }))
-    ).toBe('free')
+    ).toBe('paid')
   })
 
-  it('returns free for TEAM with UNPAID', () => {
+  it('keeps report access for TEAM with UNPAID', () => {
     expect(
       getReportTierForUser(makeUser({ plan: 'TEAM', subscriptionStatus: 'UNPAID' }))
-    ).toBe('free')
+    ).toBe('paid')
   })
 
   it('returns paid for TEAM with ACTIVE', () => {
@@ -369,12 +369,12 @@ describe('getEntitlements', () => {
   it('returns correct entitlements for FREE user', () => {
     const entitlements = getEntitlements(makeUser({ plan: 'FREE' }))
     expect(entitlements).toEqual({
-      reportTier: 'free',
-      canSharePublicly: false,
-      canExportSummary: false,
+      reportTier: 'paid',
+      canSharePublicly: true,
+      canExportSummary: true,
       canAccessPaidFeatures: false,
       canMonitor: true,
-      canWatchProduct: false,
+      canWatchProduct: true,
       canUseMcp: false,
       canAccessBasicMcp: true,
       canScanRepositories: false,
@@ -385,8 +385,8 @@ describe('getEntitlements', () => {
     const entitlements = getEntitlements(makeUser({ plan: 'BUILDER' }))
     expect(entitlements).toEqual({
       reportTier: 'paid',
-      canSharePublicly: false,
-      canExportSummary: false,
+      canSharePublicly: true,
+      canExportSummary: true,
       canAccessPaidFeatures: true,
       canMonitor: true,
       canWatchProduct: true,
@@ -426,17 +426,17 @@ describe('getEntitlements', () => {
     })
   })
 
-  it('returns revoked entitlements for TEAM with CANCELED status', () => {
+  it('revokes power tools but preserves web capabilities after cancellation', () => {
     const entitlements = getEntitlements(
       makeUser({ plan: 'TEAM', subscriptionStatus: 'CANCELED' })
     )
     expect(entitlements).toEqual({
-      reportTier: 'free',
-      canSharePublicly: false,
-      canExportSummary: false,
+      reportTier: 'paid',
+      canSharePublicly: true,
+      canExportSummary: true,
       canAccessPaidFeatures: false,
       canMonitor: true,
-      canWatchProduct: false,
+      canWatchProduct: true,
       canUseMcp: false,
       canAccessBasicMcp: false,
       canScanRepositories: false,
@@ -461,7 +461,7 @@ describe('resolveReportTierForAudit', () => {
     })
   })
 
-  it('returns free when owner is on FREE plan', async () => {
+  it('returns full report access when owner is on FREE plan', async () => {
     mockedFindUnique.mockResolvedValue({
       id: 'user-1',
       plan: 'FREE',
@@ -469,7 +469,7 @@ describe('resolveReportTierForAudit', () => {
       subscriptionStatus: 'NONE',
     } as never)
     const tier = await resolveReportTierForAudit({ userId: 'user-1', isPublic: true })
-    expect(tier).toBe('free')
+    expect(tier).toBe('paid')
   })
 
   it('returns paid when owner is on TEAM plan', async () => {
@@ -494,7 +494,7 @@ describe('resolveReportTierForAudit', () => {
     expect(tier).toBe('paid')
   })
 
-  it('returns free when owner TEAM has revoked subscription', async () => {
+  it('keeps full report access when owner TEAM has revoked subscription', async () => {
     mockedFindUnique.mockResolvedValue({
       id: 'user-1',
       plan: 'TEAM',
@@ -502,6 +502,6 @@ describe('resolveReportTierForAudit', () => {
       subscriptionStatus: 'CANCELED',
     } as never)
     const tier = await resolveReportTierForAudit({ userId: 'user-1', isPublic: true })
-    expect(tier).toBe('free')
+    expect(tier).toBe('paid')
   })
 })

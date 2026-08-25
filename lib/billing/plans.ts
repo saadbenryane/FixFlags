@@ -1,7 +1,22 @@
 import { Plan } from '@prisma/client'
-import { envPriceId } from '@/lib/billing/env'
+import { envPriceId, envPriceIds } from '@/lib/billing/env'
 
 export type PaidPlan = Exclude<Plan, 'FREE'>
+
+export interface UsageAllowance {
+  auditLimit: number
+  deepReviewLimit: number
+}
+
+/**
+ * The allowance sold with the retired $39/$129 Stripe prices. These values
+ * stay price-bound so changing today's plan definitions cannot silently alter
+ * an active subscriber's purchase.
+ */
+export const LEGACY_PRICE_ALLOWANCES: Record<PaidPlan, UsageAllowance> = {
+  BUILDER: { auditLimit: 25, deepReviewLimit: 4 },
+  TEAM: { auditLimit: 80, deepReviewLimit: 10 },
+}
 
 export interface PlanDefinition {
   plan: Plan
@@ -11,7 +26,7 @@ export interface PlanDefinition {
   period: string
   persona: string
   outcome: string
-  /** Product review cap: monthly for paid, lifetime for FREE */
+  /** Product review cap for each monthly usage period. */
   auditLimit: number
   auditLimitKind: 'monthly' | 'lifetime'
   auditLimitLabel: string
@@ -38,17 +53,18 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     persona: 'Try before launch',
     outcome: 'See everything on one page',
     auditLimit: 3,
-    auditLimitKind: 'lifetime',
-    auditLimitLabel: '3 product reviews (lifetime)',
+    auditLimitKind: 'monthly',
+    auditLimitLabel: '3 product reviews / month',
     deepReviewLimit: 1,
-    deepReviewLimitKind: 'lifetime',
-    deepReviewLimitLabel: '1 deep review teaser (lifetime)',
+    deepReviewLimitKind: 'monthly',
+    deepReviewLimitLabel: '1 deep review / month',
     chatTokenLimit: 25_000,
+    projectLimit: 5,
     features: [
-      '3 product reviews (lifetime) with full reports and fix prompts',
-      '1 deep review teaser',
+      '3 product reviews and 1 deep review per month',
+      'Full reports and fix prompts',
       'Update reviews use the same product review credits',
-      'Upgrade anytime for more reviews',
+      'History, sharing, comparisons, Canvas, and Watch',
     ],
     highlight: false,
     cta: 'Start free',
@@ -58,23 +74,24 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     plan: 'BUILDER',
     name: 'Pro',
     label: 'Pro',
-    price: '$69',
+    price: '$29',
     period: '/mo',
     persona: 'Solo builders shipping weekly',
     outcome: 'Finish what your AI started, every week',
-    auditLimit: 25,
+    auditLimit: 15,
     auditLimitKind: 'monthly',
-    auditLimitLabel: '25 product reviews / month',
-    deepReviewLimit: 4,
+    auditLimitLabel: '15 product reviews / month',
+    deepReviewLimit: 3,
     deepReviewLimitKind: 'monthly',
-    deepReviewLimitLabel: '4 deep reviews / month',
+    deepReviewLimitLabel: '3 deep reviews / month',
     chatTokenLimit: 500_000,
+    projectLimit: 5,
     stripePriceId: envPriceId('STRIPE_BUILDER_PRICE_ID'),
     features: [
-      '25 product reviews and 4 deep reviews per month',
-      'Before/after comparisons',
-      'MCP in supported builders',
-      'Weekly product watch with regression email',
+      '15 product reviews and 3 deep reviews per month',
+      'Full reports and fix prompts',
+      'Update reviews use the same product review credits',
+      'History, sharing, comparisons, Canvas, and Watch',
     ],
     highlight: true,
     cta: 'Start Pro',
@@ -84,13 +101,13 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     plan: 'TEAM',
     name: 'Studio',
     label: 'Studio',
-    price: '$199',
+    price: '$79',
     period: '/mo',
     persona: 'Agencies and multi-site teams',
     outcome: 'Finish many products, across teams and releases',
-    auditLimit: 80,
+    auditLimit: 50,
     auditLimitKind: 'monthly',
-    auditLimitLabel: '80 product reviews / month',
+    auditLimitLabel: '50 product reviews / month',
     deepReviewLimit: 10,
     deepReviewLimitKind: 'monthly',
     deepReviewLimitLabel: '10 deep reviews / month',
@@ -98,13 +115,10 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     stripePriceId: envPriceId('STRIPE_TEAM_PRICE_ID'),
     projectLimit: 5,
     features: [
-      'Everything in Pro',
-      '80 product reviews and 10 deep reviews per month',
-      'Up to 5 projects',
-      'Public share links for clients',
-      'GitHub repository scans',
-      'Draft Fix PRs from repository Flags (secrets auto-patch when possible)',
-      'Daily product watch with regression email',
+      '50 product reviews and 10 deep reviews per month',
+      'Full reports and fix prompts',
+      'Update reviews use the same product review credits',
+      'History, sharing, comparisons, Canvas, and Watch',
     ],
     highlight: false,
     cta: 'Start Studio',
@@ -153,12 +167,37 @@ export function planLabel(plan: Plan | string): string {
 }
 
 export function projectLimitForPlan(plan: Plan): number {
-  return PLAN_DEFINITIONS[plan].projectLimit ?? 0
+  return PLAN_DEFINITIONS[plan].projectLimit ?? PLAN_DEFINITIONS.FREE.projectLimit!
 }
 
 export function planFromPriceId(priceId: string): Plan | null {
   for (const def of Object.values(PLAN_DEFINITIONS)) {
     if (def.stripePriceId === priceId) return def.plan
+  }
+  if (envPriceIds('STRIPE_LEGACY_BUILDER_PRICE_IDS').includes(priceId)) return 'BUILDER'
+  if (envPriceIds('STRIPE_LEGACY_TEAM_PRICE_IDS').includes(priceId)) return 'TEAM'
+  return null
+}
+
+export function usageAllowanceForPriceId(
+  priceId: string
+): (UsageAllowance & { plan: PaidPlan; legacy: boolean }) | null {
+  for (const plan of ['BUILDER', 'TEAM'] as const) {
+    if (PLAN_DEFINITIONS[plan].stripePriceId === priceId) {
+      return {
+        plan,
+        auditLimit: PLAN_DEFINITIONS[plan].auditLimit,
+        deepReviewLimit: PLAN_DEFINITIONS[plan].deepReviewLimit,
+        legacy: false,
+      }
+    }
+  }
+
+  if (envPriceIds('STRIPE_LEGACY_BUILDER_PRICE_IDS').includes(priceId)) {
+    return { plan: 'BUILDER', ...LEGACY_PRICE_ALLOWANCES.BUILDER, legacy: true }
+  }
+  if (envPriceIds('STRIPE_LEGACY_TEAM_PRICE_IDS').includes(priceId)) {
+    return { plan: 'TEAM', ...LEGACY_PRICE_ALLOWANCES.TEAM, legacy: true }
   }
   return null
 }

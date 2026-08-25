@@ -53,20 +53,11 @@ export function computePlanLimitUpdate(
 
   const newAuditLimit = scanLimitForPlan(plan)
   const newDeepLimit = deepReviewLimitForPlan(plan)
-  const cappedAuditUsed =
-    newAuditLimit === UNLIMITED_SCAN_LIMIT
-      ? user.auditsUsed
-      : Math.min(user.auditsUsed, newAuditLimit)
-  const cappedDeepUsed =
-    newDeepLimit === UNLIMITED_SCAN_LIMIT
-      ? user.deepReviewsUsed
-      : Math.min(user.deepReviewsUsed, newDeepLimit)
-
   return {
     plan,
     auditsLimit: newAuditLimit,
-    auditsUsed: cappedAuditUsed,
+    auditsUsed: user.auditsUsed,
     deepReviewsLimit: newDeepLimit,
-    deepReviewsUsed: cappedDeepUsed,
+    deepReviewsUsed: user.deepReviewsUsed,
   }
 }

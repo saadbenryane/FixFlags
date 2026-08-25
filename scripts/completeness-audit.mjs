@@ -126,8 +126,8 @@ function containsComponent(node, name) {
 /**
  * Inspect the rendered dependency graph, not a particular JSX spelling:
  * every workspace shell must resolve to ReportOutcomeBar + ReportPane; the
- * pane must resolve to the complete Fix list followed by Finish Plan and the
- * collapsed Review context.
+ * pane must resolve to the complete Flag explorer followed by the collapsed
+ * Review context. ReportPane itself owns this rendered order.
  */
 export function reportPaneCompositionIsCanonical(source) {
   const sourceFile = parseTsx(source)
@@ -158,13 +158,8 @@ export function reportPaneCompositionIsCanonical(source) {
     const afterFrame = resolveExpression(jsxAttributeExpression(pane, 'afterFrame'), variables)
     if (!explorer || !afterFrame || !hasLiteralId(explorer, 'report-flags')) return false
 
-    const finishPlans = containsComponent(afterFrame, 'ReportFinishPlan')
     const disclosures = containsComponent(afterFrame, 'ReportContextDisclosure')
-    return (
-      finishPlans.length === 1 &&
-      disclosures.length === 1 &&
-      finishPlans[0].getStart(sourceFile) < disclosures[0].getStart(sourceFile)
-    )
+    return disclosures.length === 1
   })
 }
 
@@ -248,88 +243,6 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   const modelCount = (schema.match(/^model /gm) ?? []).length
   assert(modelCount > 0, 'Prisma schema has no models')
 
-  const manifest = collectMcpToolManifest(read(root, 'lib/mcp/tool-manifest.ts'))
-  const registeredKeys = collectRegisteredMcpToolKeys(mcpRegistrationSource(root))
-  const registeredKeySet = new Set(registeredKeys)
-  const unknownKeys = registeredKeys.filter((key) => !manifest.has(key))
-  const missingKeys = [...manifest.keys()].filter((key) => !registeredKeySet.has(key))
-  const tools = [...manifest.values()]
-  assert(manifest.size > 0, 'MCP tool manifest is empty')
-  assert(unknownKeys.length === 0, `MCP registrations absent from manifest: ${[...new Set(unknownKeys)].join(', ')}`)
-  assert(missingKeys.length === 0, `MCP manifest tools not registered: ${missingKeys.join(', ')}`)
-  assert(
-    read(root, 'lib/mcp/docs-content.ts').includes("from '@/lib/mcp/tool-manifest'"),
-    'MCP documentation does not consume the canonical tool manifest',
-  )
-
-  const integrationFiles = [
-    'fixflags-cli/src/index.ts',
-    'fixflags-cli/src/workflows.ts',
-    'lib/help/catalog.ts',
-    'lib/marketing/copy.ts',
-    'lib/mcp/docs-content.ts',
-    'ide-integrations/README.md',
-    'ide-integrations/cursor/fixflags.mdc',
-    'ide-integrations/claude-code/fixflags-skill.md',
-    'ide-integrations/kiro/fixflags-power.md',
-  ]
-  const integrationText = integrationFiles.map((file) => read(root, file)).join('\n')
-  for (const stale of ['ff_check_url', 'ff_monitoring']) {
-    assert(!integrationText.includes(stale), `Obsolete MCP tool reference: ${stale}`)
-  }
-  for (const canonical of ['ff_check_and_plan', 'ff_recheck_and_compare']) {
-    assert(tools.includes(canonical), `Canonical MCP tool is not registered: ${canonical}`)
-    assert(integrationText.includes(canonical), `Canonical MCP tool is absent from integrations: ${canonical}`)
-  }
-  assert(!read(root, 'fixflags-cli/src/index.ts').includes(".alias('scan')"), 'Unpublished CLI scan alias is still registered')
-  assert(!read(root, 'fixflags-cli/README.md').includes('fixflags scan '), 'CLI README still documents scan')
-
-  const editorCatalog = read(root, 'lib/integrations/editor-catalog.ts')
-  const editorKeys = [...editorCatalog.matchAll(/^\s{4}key:\s*'([a-zA-Z]+)',/gm)].map((match) => match[1])
-  const editorAnchors = [...editorCatalog.matchAll(/^\s{4}docsAnchor:\s*'([a-z0-9-]+)',/gm)].map((match) => match[1])
-  assert(editorKeys.length === 8, `Editor catalog drift: expected=8, code=${editorKeys.length}`)
-  assert(new Set(editorKeys).size === editorKeys.length, 'Editor catalog keys are not unique')
-  assert(new Set(editorAnchors).size === editorAnchors.length, 'Editor documentation anchors are not unique')
-  assert(editorAnchors.length === editorKeys.length, 'Every editor must have one documentation anchor')
-
-  const editorConsumers = [
-    'components/marketing/landing/EditorIntegrationGrid.tsx',
-    'app/(app)/dashboard/mcp-setup/page.tsx',
-    'app/api/me/preferences/route.ts',
-  ]
-  for (const file of editorConsumers) {
-    const source = read(root, file)
-    assert(
-      source.includes('EDITOR_INTEGRATION') || source.includes('HOMEPAGE_EDITOR_INTEGRATIONS'),
-      `Editor surface does not consume the canonical catalog: ${file}`,
-    )
-  }
-  const integrationPage = read(root, 'app/(docs)/docs/integrations/page.tsx')
-  assert(
-    integrationPage.includes('notFound()'),
-    'Parked integration docs must remain unavailable',
-  )
-  assert(
-    read(root, 'app/(docs)/docs/mcp/tools/page.tsx').includes('notFound()'),
-    'Parked MCP tool reference must remain unavailable',
-  )
-  assert(
-    read(root, 'fixflags-cli/src/init.ts').includes(
-      "export const EDITORS = ['cursor', 'claude', 'windsurf', 'codex']",
-    ),
-    'CLI-managed editor list must contain only Cursor, Claude Code, Windsurf, and Codex',
-  )
-  for (const key of ['replit', 'codex', 'devin']) {
-    assert(schema.includes(`  ${key}`), `ApiKeyClient enum is missing ${key}`)
-  }
-  const pendingSmokeCount = (editorCatalog.match(/productionSmoke:\s*'pending'/g) ?? []).length
-  if (pendingSmokeCount > 0) {
-    assert(
-      !/\beight (?:production-ready )?integrations\b/i.test(read(root, 'PRODUCT.md')),
-      'PRODUCT.md claims eight shipped integrations before production smokes are recorded',
-    )
-  }
-
   const reportShell = read(root, 'components/audit/AuditReport.tsx')
   const reportSources = [
     'components/audit/AuditReport.tsx',
@@ -341,24 +254,10 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
     'components/audit/PreviewCards.tsx',
     'components/audit/LaunchGates.tsx',
   ].map((file) => read(root, file)).join('\n')
-  // Every section the Review context disclosure claims to carry must exist.
-  const contextIds = [
-    ...(reportShell.match(/const REPORT_CONTEXT_SECTION_IDS = \[[^\]]+\]/s)?.[0] ?? '').matchAll(
-      /'([^']+)'/g,
-    ),
-  ].map((match) => match[1])
-  assert(contextIds.length > 0, 'AuditReport must declare REPORT_CONTEXT_SECTION_IDS')
-  for (const sectionId of contextIds) {
-    assert(
-      reportSources.includes(`id="${sectionId}"`) || reportSources.includes(`id={${sectionId}`),
-      `Review context lists a section that no report renders: ${sectionId}`,
-    )
-  }
-
-  // Report pane order: outcome header → shared pane/explorer → Finish Plan → context.
+  // Report pane order: outcome header → shared pane/explorer → Review context.
   assert(
     reportPaneCompositionIsCanonical(reportShell),
-    'Report pane order must be outcome bar → fix list → Finish Plan → review context',
+    'Report pane order must be outcome bar → complete Flag list → review context',
   )
   for (const failure of curatedSampleBundleFailures(root)) assert(false, failure)
 
@@ -389,10 +288,7 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   assert(!read(root, 'app/api/projects/route.ts').includes('isAnchor'), 'Managed quota still uses isAnchor')
   assert(!read(root, 'components/audit/ExportMenu.tsx').includes('limit: null'), 'Finish Plan still uses limit:null')
 
-  const unifiedFixListConsumers = [
-    'lib/audit/task-contracts.ts',
-    'lib/mcp/tools/flags.ts',
-  ]
+  const unifiedFixListConsumers = ['lib/audit/task-contracts.ts']
   for (const file of unifiedFixListConsumers) {
     assert(
       read(root, file).includes('buildUnifiedFixList') ||
@@ -402,8 +298,8 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
     )
   }
   assert(
-    read(root, 'app/report/[id]/load-report-route-state.ts').includes('loadFinishPlanFlags'),
-    'Canonical report does not load the shared live and repository Flag set',
+    !read(root, 'app/report/[id]/load-report-route-state.ts').includes('loadFinishPlanFlags'),
+    'URL reports must not merge repository findings into their Flag list',
   )
   assert(
     !read(root, 'components/audit/ExportMenu.tsx').includes('buildFinishPlan'),
@@ -452,9 +348,9 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
     failures,
     facts: {
       modelCount,
-      mcpToolCount: manifest.size,
-      editorCount: editorKeys.length,
-      sectionCount: contextIds.length,
+      renderedReportSectionCount: new Set(
+        [...reportSources.matchAll(/\bid=["'](report-[a-z0-9-]+)["']/g)].map((match) => match[1]),
+      ).size,
     },
   }
 }
@@ -465,6 +361,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     for (const failure of result.failures) console.error(`FAIL ${failure}`)
     process.exitCode = 1
   } else {
-    console.log(`PASS completeness audit: ${result.facts.modelCount} models, ${result.facts.mcpToolCount} MCP tools, ${result.facts.editorCount} editor integrations, ${result.facts.sectionCount} review context sections`)
+    console.log(`PASS completeness audit: ${result.facts.modelCount} models, ${result.facts.renderedReportSectionCount} rendered report sections; parked power tools verify separately`)
   }
 }

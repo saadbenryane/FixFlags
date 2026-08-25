@@ -62,7 +62,7 @@ describe('FlagDetailPane', () => {
     expect(screen.getByText(FIRST_FLAG.rubricLabel)).toBeInTheDocument()
   })
 
-  it('renders navigation buttons', () => {
+  it('keeps navigation in the master Flag list', () => {
     renderWithProviders(
       <FlagDetailPane
         model={MODEL}
@@ -73,8 +73,8 @@ describe('FlagDetailPane', () => {
         onSelectFlag={vi.fn()}
       />
     )
-    expect(screen.getByLabelText('Previous flag')).toBeInTheDocument()
-    expect(screen.getByLabelText('Next flag')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Previous flag')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Next flag')).not.toBeInTheDocument()
   })
 
   it('hides screenshots for shareable checks', () => {
@@ -106,7 +106,7 @@ describe('FlagDetailPane', () => {
     expect(screen.getAllByText(flagWithEvidence.evidence)).toHaveLength(1)
   })
 
-  it('disables navigation when only one flag', () => {
+  it('does not add redundant navigation for a single flag', () => {
     renderWithProviders(
       <FlagDetailPane
         model={MODEL}
@@ -117,7 +117,7 @@ describe('FlagDetailPane', () => {
         onSelectFlag={vi.fn()}
       />
     )
-    expect(screen.getByLabelText('Previous flag')).toBeDisabled()
-    expect(screen.getByLabelText('Next flag')).toBeDisabled()
+    expect(screen.queryByLabelText('Previous flag')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Next flag')).not.toBeInTheDocument()
   })
 })

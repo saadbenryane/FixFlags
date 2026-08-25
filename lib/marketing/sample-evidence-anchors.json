@@ -10,7 +10,7 @@
       "score": 90,
       "flagIds": [],
       "timeline": [
-        "Opened repository revision demo-v1-fixed",
+        "Opened curated snapshot demo-v1-fixed",
         "Captured desktop and mobile evidence",
         "Confirmed no curated Flags"
       ],
@@ -46,7 +46,7 @@
         "flag-reach-canonical"
       ],
       "timeline": [
-        "Opened repository revision demo-original-regression",
+        "Opened curated snapshot demo-original-regression",
         "Captured desktop and mobile evidence",
         "Ranked the evidence-backed Flags"
       ],

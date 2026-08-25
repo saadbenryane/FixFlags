@@ -8,7 +8,7 @@ import {
 import type { ReportRubricRow } from '@/lib/audit/build-report-shape'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 
-/** Marketing sample provenance. The public sample is a repository-owned snapshot. */
+/** Marketing sample provenance. The public sample is a versioned curated snapshot. */
 export type SampleSource = 'curated'
 
 export class UnknownCuratedObservationError extends Error {

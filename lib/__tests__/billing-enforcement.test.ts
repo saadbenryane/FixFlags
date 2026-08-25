@@ -43,8 +43,8 @@ describe('plan definitions', () => {
     }
   })
 
-  it('FREE is lifetime, paid plans are monthly', () => {
-    assert.equal(PLAN_DEFINITIONS.FREE.auditLimitKind, 'lifetime')
+  it('every plan renews monthly', () => {
+    assert.equal(PLAN_DEFINITIONS.FREE.auditLimitKind, 'monthly')
     assert.equal(PLAN_DEFINITIONS.BUILDER.auditLimitKind, 'monthly')
     assert.equal(PLAN_DEFINITIONS.TEAM.auditLimitKind, 'monthly')
   })
@@ -100,22 +100,19 @@ describe('scanLimitForPlan', () => {
     assert.equal(scanLimitForPlan('FREE'), 3)
   })
 
-  it('returns 25 for BUILDER', () => {
-    assert.equal(scanLimitForPlan('BUILDER'), 25)
+  it('returns 15 for BUILDER', () => {
+    assert.equal(scanLimitForPlan('BUILDER'), 15)
   })
 
-  it('returns 80 for TEAM', () => {
-    assert.equal(scanLimitForPlan('TEAM'), 80)
+  it('returns 50 for TEAM', () => {
+    assert.equal(scanLimitForPlan('TEAM'), 50)
   })
 })
 
 describe('projectLimitForPlan', () => {
-  it('returns 0 for FREE and BUILDER', () => {
-    assert.equal(projectLimitForPlan('FREE'), 0)
-    assert.equal(projectLimitForPlan('BUILDER'), 0)
-  })
-
-  it('returns 5 for TEAM', () => {
+  it('uses the same operational Product capacity on every plan', () => {
+    assert.equal(projectLimitForPlan('FREE'), 5)
+    assert.equal(projectLimitForPlan('BUILDER'), 5)
     assert.equal(projectLimitForPlan('TEAM'), 5)
   })
 })
@@ -125,7 +122,7 @@ describe('projectLimitForPlan', () => {
 describe('proUpgradeCta', () => {
   it('includes the Pro price in the default CTA', () => {
     const cta = proUpgradeCta()
-    assert.ok(cta.includes('$69'))
+    assert.ok(cta.includes('$29'))
     assert.ok(cta.includes('/mo'))
   })
 
@@ -369,11 +366,11 @@ describe('canUseApiKeys', () => {
 // ── canAccessCompare ──────────────────────────────────────────────
 
 describe('canAccessCompare', () => {
-  it('blocks free users when gates enforce', () => {
+  it('allows free authenticated users when gates enforce', () => {
     _env.NODE_ENV = 'production'
     assert.equal(
       canAccessCompare({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }),
-      false
+      true
     )
   })
 

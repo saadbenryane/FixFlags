@@ -345,7 +345,7 @@ test.describe('credentialed revenue journeys', () => {
     await revoked.close()
   })
 
-  test('[journey:pro-canvas] Pro creates and revises an evidence-grounded Canvas', async ({ browser }) => {
+  test('[journey:shared-canvas] an authenticated owner creates and revises an evidence-grounded Canvas', async ({ browser }) => {
     test.setTimeout(180_000)
     const pro = await signedInPage(browser, 'E2E_PRO_EMAIL', 'E2E_PRO_PASSWORD')
     const reportId = requiredEnv('E2E_PRO_REPORT_ID')
@@ -363,7 +363,7 @@ test.describe('credentialed revenue journeys', () => {
     await pro.close()
   })
 
-  test('[journey:studio-product-boundary] Studio creates a Product while Free remains denied', async ({ browser }) => {
+  test('[journey:shared-product-boundary] Studio and Free can both create a Product', async ({ browser }) => {
     const studio = await signedInPage(browser, 'E2E_STUDIO_EMAIL', 'E2E_STUDIO_PASSWORD')
     const created = await studio.page.request.post('/api/projects', {
       data: { name: 'Release Product', url: requiredEnv('E2E_AUDIT_URL') },
@@ -400,10 +400,10 @@ test.describe('credentialed revenue journeys', () => {
     const revoked = await studio.page.request.delete(`/api/projects/${productId}/signal-keys?keyId=${signalKey.id}`)
     expect(revoked.ok(), await revoked.text()).toBe(true)
     const free = await signedInPage(browser, 'E2E_BILLING_FREE_EMAIL', 'E2E_BILLING_FREE_PASSWORD')
-    const denied = await free.page.request.post('/api/projects', {
-      data: { name: 'Denied Product', url: requiredEnv('E2E_AUDIT_URL') },
+    const freeCreated = await free.page.request.post('/api/projects', {
+      data: { name: 'Free Release Product', url: `${requiredEnv('E2E_AUDIT_URL')}?plan=free` },
     })
-    expect(denied.status()).toBe(402)
+    expect(freeCreated.status(), await freeCreated.text()).toBe(201)
     await studio.close()
     await free.close()
   })

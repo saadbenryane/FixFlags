@@ -27,6 +27,10 @@ import {
   trackAnonymousAuditId,
 } from '@/lib/audit/usage'
 import { ensureProductProject } from '@/lib/audit/ensure-product-project'
+import {
+  refreshUserUsagePeriod,
+  rollUserUsagePeriod,
+} from '@/lib/billing/usage-period'
 
 export interface CreateAuditOptions {
   url: string
@@ -59,10 +63,11 @@ export interface CreateAuditResult {
 export class AuditLimitError extends Error {
   readonly code: UsageLimitCode
   readonly action: UsageLimitAction
+  readonly renewalAt?: Date
 
   constructor(
     code: UsageLimitCode,
-    options?: { action?: UsageLimitAction; message?: string }
+    options?: { action?: UsageLimitAction; message?: string; renewalAt?: Date }
   ) {
     const action =
       options?.action ??
@@ -82,6 +87,7 @@ export class AuditLimitError extends Error {
     this.name = 'AuditLimitError'
     this.code = code
     this.action = action
+    this.renewalAt = options?.renewalAt
   }
 }
 
@@ -121,23 +127,6 @@ async function assertParentAuditAllowed(
   }
 }
 
-async function resolveJourneyReviewIncluded(userId: string | null | undefined): Promise<boolean> {
-  if (!userId) return false
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      plan: true,
-      role: true,
-      subscriptionStatus: true,
-      deepReviewsUsed: true,
-      deepReviewsLimit: true,
-    },
-  })
-  if (!user) return false
-  return !wouldBlockDeepReview(user)
-}
-
 export async function createAndEnqueueAudit(
   options: CreateAuditOptions
 ): Promise<CreateAuditResult> {
@@ -171,8 +160,11 @@ export async function createAndEnqueueAudit(
     }
   }
 
+  if (userId) {
+    await refreshUserUsagePeriod(userId)
+  }
+
   const includeAi = await resolveIncludeAiForNewAudit(userId)
-  const journeyReviewIncluded = await resolveJourneyReviewIncluded(userId)
 
   let projectId: string | null = null
   let inheritedScanAccessEncrypted: string | null = null
@@ -221,7 +213,7 @@ export async function createAndEnqueueAudit(
     status: 'QUEUED' as const,
     progress: PIPELINE_PROGRESS.QUEUED,
     includeAi,
-    journeyReviewIncluded,
+    journeyReviewIncluded: false,
     ...(attribution
       ? {
           normalizedDomain: attribution.normalizedDomain,
@@ -243,16 +235,16 @@ export async function createAndEnqueueAudit(
     parentId: string | null
   }
   const isWatchReview = options.recheckTrigger === 'WATCH'
-  if (userId && !isWatchReview) {
+  if (userId) {
     let conflicts = 0
     while (true) {
       try {
         audit = await prisma.$transaction(
           async (tx) => {
-            const user = await tx.user.findUnique({ where: { id: userId } })
+            const user = await rollUserUsagePeriod(tx, userId)
             if (!user) throw new Error('User not found')
 
-            if (projectId) {
+            if (projectId && !isWatchReview) {
               await tx.$executeRaw`
                 SELECT pg_advisory_xact_lock(
                   hashtextextended(${`fixflags:manual-review:${projectId}`}, 0)
@@ -265,7 +257,7 @@ export async function createAndEnqueueAudit(
             // concurrent transports resume the same Review without spending a
             // second credit or enqueueing duplicate work. Watch runs use their
             // own lease and are intentionally excluded.
-            const activeManualReview = projectId
+            const activeManualReview = projectId && !isWatchReview
               ? await tx.audit.findFirst({
                   where: {
                     projectId,
@@ -311,14 +303,28 @@ export async function createAndEnqueueAudit(
                           ? gate.action
                           : undefined,
                       message: gate.error,
+                      renewalAt: user.usagePeriodEnd,
                     }
                   )
                 }
               }
             }
 
+            const pendingDeepReviews = await tx.audit.count({
+              where: {
+                userId: user.id,
+                journeyReviewIncluded: true,
+                deepReviewUsageCountedAt: null,
+                status: { not: 'FAILED' },
+              },
+            })
+            const journeyReviewIncluded = !wouldBlockDeepReview({
+              ...user,
+              deepReviewsUsed: user.deepReviewsUsed + pendingDeepReviews,
+            })
+
             const created = await tx.audit.create({
-              data,
+              data: { ...data, journeyReviewIncluded },
               select: { id: true, parentId: true },
             })
             return {

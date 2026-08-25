@@ -75,7 +75,7 @@ describe('static sample scoring consistency', () => {
 })
 
 describe('curated sample provenance', () => {
-  it('selects a requested repository observation without authentication', async () => {
+  it('selects a requested curated observation without authentication', async () => {
     const selected = await getCuratedSampleAudit('curated-sample-v0')
 
     assert.equal(selected.source, 'curated')

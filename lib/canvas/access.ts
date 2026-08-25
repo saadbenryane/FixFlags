@@ -3,7 +3,7 @@ import { authorizeCanvasAccess } from '@/lib/canvas/authorization'
 
 export type CanvasReportAccess =
   | { allowed: true; audit: { id: string; projectId: string; userId: string }; user: { id: string; role: string; plan: 'FREE' | 'BUILDER' | 'TEAM'; subscriptionStatus: 'NONE' | 'ACTIVE' | 'TRIALING' | 'PAST_DUE' | 'CANCELED' | 'UNPAID' } }
-  | { allowed: false; reason: 'AUTH_REQUIRED' | 'OWNER_REQUIRED' | 'PAID_PLAN_REQUIRED' | 'REPORT_NOT_FOUND' | 'PROJECT_REQUIRED' }
+  | { allowed: false; reason: 'AUTH_REQUIRED' | 'OWNER_REQUIRED' | 'REPORT_NOT_FOUND' | 'PROJECT_REQUIRED' }
 
 export async function resolveCanvasReportAccess(
   auditId: string,

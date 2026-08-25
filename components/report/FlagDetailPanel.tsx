@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { ExternalLink, Share2, Wrench, type LucideIcon } from 'lucide-react'
+import { ChevronDown, ExternalLink, Share2, type LucideIcon } from 'lucide-react'
 import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
@@ -112,10 +112,9 @@ function FlagCard({
 }
 
 function FlagEvidenceMeta({ flag }: { flag: ExplorerFlag }) {
-  const stepMatch = flag.evidence?.match(/[Rr]eproduced at step (\d+)/)
   const hasMedia = Boolean(flag.visualUrl)
   const pageUrls = flag.pageUrls.length > 0 ? flag.pageUrls : flag.pageUrl ? [flag.pageUrl] : []
-  const hasLinks = Boolean(stepMatch || pageUrls.length > 0)
+  const hasLinks = pageUrls.length > 0
   if (!hasMedia && !hasLinks) return null
 
   return (
@@ -132,14 +131,6 @@ function FlagEvidenceMeta({ flag }: { flag: ExplorerFlag }) {
       ) : null}
       {hasLinks ? (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {stepMatch ? (
-            <a
-              href={`?step=${stepMatch[1]}#report-flags`}
-              className="inline-flex items-center gap-1.5 text-xs text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-sm"
-            >
-              Replay step {stepMatch[1]}
-            </a>
-          ) : null}
           {pageUrls.map((pageUrl) => (
             <a
               key={pageUrl}
@@ -166,6 +157,7 @@ export function FlagDetailPanel({
   signUpHref,
   previewMeta,
   ownerActionContext,
+  hidePromptCopy = false,
 }: {
   flag: ExplorerFlag
   showFeedback?: boolean
@@ -174,6 +166,7 @@ export function FlagDetailPanel({
   signUpHref?: string
   previewMeta?: PreviewMeta | null
   ownerActionContext?: ReportOwnerActionContext
+  hidePromptCopy?: boolean
 }) {
   const showShareablePreview = isShareableCheck(flag.checkId) && previewMeta
 
@@ -196,10 +189,6 @@ export function FlagDetailPanel({
 
       {(flag.hasFixPrompt || aiLocked || flag.copyFixPrompt) && (
         <section className="space-y-2.5">
-          <div className="flex items-center gap-2">
-            <Wrench className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <h4 className="text-sm font-medium text-foreground">Fix</h4>
-          </div>
           {aiLocked ? (
             <div className="space-y-2">
               <LockedContentTeaser
@@ -215,19 +204,15 @@ export function FlagDetailPanel({
           ) : aiEnhancementPending && !flag.fixPrompt ? (
             <p className="text-sm text-muted-foreground">Generating enhanced fix prompt.</p>
           ) : flag.hasFixPrompt ? (
-            <FixPromptBlock
-              prompt={flag.fixPrompt}
-              copyPrompt={flag.copyFixPrompt || undefined}
-              toolPrompts={flag.toolPrompts}
-              showToolSelector
-              showCursorAction
-              auditId={ownerActionContext?.auditId}
-              flagId={flag.id}
-              surface={ownerActionContext?.surface}
-              accessState={ownerActionContext?.accessState}
-              nested
-              render="markdown"
-            />
+            <>
+              <details className="group rounded-[var(--radius-inner)] border border-border/45 bg-muted/15">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring [&::-webkit-details-marker]:hidden">Preview prompt<ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden /></summary>
+                <div className="border-t border-border/40 p-3">
+                  <FixPromptBlock prompt={flag.fixPrompt} copyPrompt={flag.copyFixPrompt || undefined} nested render="markdown" hideActions />
+                </div>
+              </details>
+              {!hidePromptCopy ? <PromptCopyButton prompt={flag.copyFixPrompt || flag.fixPrompt} auditId={ownerActionContext?.auditId} flagId={flag.id} surface={ownerActionContext?.surface} accessState={ownerActionContext?.accessState} className="w-full border-brand bg-brand text-brand-foreground hover:bg-brand-hover" /> : null}
+            </>
           ) : flag.copyFixPrompt ? (
             <PromptCopyButton prompt={flag.copyFixPrompt} compact />
           ) : null}

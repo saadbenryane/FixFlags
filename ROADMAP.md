@@ -41,7 +41,7 @@ Finish Plan surfaces: progress band, Fix list, Flag detail, Funnel, Contract, pr
 ### Morph behavior
 
 - **During active review:** Agent left, public-safe Report right, and mobile defaults to Agent.
-- **After complete:** the same transcript and Report remain mounted. Authenticated Timeline and paid Canvas are secondary right-panel modes.
+- **After complete:** the same transcript and Report remain mounted. Authenticated Timeline and Canvas are secondary right-panel modes.
 
 Evolve `ReportWorkspaceShell` and progressive report parity; do not fork a second report app.
 
@@ -57,10 +57,10 @@ Product review, Deep review, Update review, Funnel, Path, Fix list — from `lib
 ## Recently closed
 
 - **Beat Scout: precision over spectacle — shipped.** Network/API failure Flags, overlay click-blocker detection, structured action timeline, Product Contract, truth labels in model/API data. See board `beat-scout-precision` / `beat-scout-completeness`.
-- **Docs and Help separation — shipped locally.** `/docs` owns product usage, reports, editor integrations, CLI, MCP, generated reference, search, and stable anchors. `/help` owns billing, account, failed checks, privacy, and human support. Credentialed production smokes for newly cataloged editors remain required before expanding the verified shipped-integration claim. See `lib/docs/`, `lib/integrations/`, `lib/help/`, and `DECISIONS.md`.
+- **Docs and Help separation — shipped locally.** `/docs` owns the URL-first product loop, reports, deep reviews, update reviews, and troubleshooting. `/help` owns billing, account, failed reviews, privacy, and human support. Parked power-tool documentation remains in source but is absent from navigation and search.
 - **Monetization blockers — CLOSED.** Automated coverage in CI via `npm run test:unit`. See [QUALITY.md](./QUALITY.md).
 - **Scan depth Phase 1 — shipped.** Flow scan, slop detection, preview cards, og:image validation.
-- **Ultimate audit Phases 0–4 — shipped.** Playwright-only stack, narrative report, Journey Review MVP, MCP plan-mode + re-check next-fixes.
+- **Ultimate audit Phases 0–4 — shipped.** Playwright-only stack, narrative report, Journey Review MVP, and update-review next fixes.
 - **Beat Scout precision foundations — shipped.** Network/API Flags, overlay blockers, action timeline, Product Contract MVP, truth labels.
 
 ## Now
@@ -71,37 +71,37 @@ Product review, Deep review, Update review, Funnel, Path, Fix list — from `lib
 - **Durable continuous improvement loop** — Product-scoped Improvements connect bounded Attention, evidence occurrences, builder attempts, fresh update-review verification receipts, regressions, and provenance-bearing Product Memory.
   *Signal:* URL-only Review produces zero to three worthwhile Improvements; a handoff creates an attempt; only a fresh child Review can produce `IMPROVED`, `UNCHANGED`, `REGRESSED`, or `INCONCLUSIVE`.
 
-- **Product workspace recentering** — Products lead with intended outcome, Attention now, action state, verification, Watch, and history; immutable reports remain evidence snapshots and public/shareable proof.
-  *Signal:* the dashboard leads with Product attention, MCP analytics is not primary navigation, and shared task contracts carry Improvement and verification context across web, MCP, and CLI.
+- **URL-first product recentering** — the dashboard leads with one URL field, then Product attention, action state, verification, scheduled Watch, and history; immutable reports remain evidence snapshots and shareable proof.
+  *Signal:* a user can paste a URL, claim the same report, copy a fix, run an update review, and keep Watch without encountering parked power-tool entry points.
 
 - **Minimal native Product Signals** — origin-bound browser context for navigation, named actions/outcomes, runtime errors, Core Web Vitals, and releases, with strict privacy and 30-day raw retention.
   *Signal:* undeclared or sensitive fields are rejected; missing instrumentation never blocks URL Review; signals remain `OBSERVED` evidence until judgment uses them.
 
-- **Agent-led Report Workspace (release proof)** — Unified Agent transcript left; public-safe Report, authenticated Timeline, and paid Canvas right. Deterministic scan messages are free; authenticated model chat is metered monthly. Mobile uses Agent ↔ Report. Canon: [docs/workspace-interface.md](./docs/workspace-interface.md), [docs/product-prd.md](./docs/product-prd.md). Completion: [`.agents/sessions/agent-workspace-completion.md`](./.agents/sessions/agent-workspace-completion.md).
-  *Signal:* paste URL → truthful Agent updates on phone and desktop → complete public evidence report → authenticate into the same workspace → chat, Timeline, and paid Canvas → update review.
+- **Agent-led Report Workspace (release proof)** — Unified Agent transcript left; public-safe Report, authenticated Timeline, and Canvas right. Deterministic scan messages are free; authenticated model chat is metered monthly. Mobile uses Agent ↔ Report. Canon: [docs/workspace-interface.md](./docs/workspace-interface.md), [docs/product-prd.md](./docs/product-prd.md). Completion: [`.agents/sessions/agent-workspace-completion.md`](./.agents/sessions/agent-workspace-completion.md).
+  *Signal:* paste URL → truthful Agent updates on phone and desktop → complete public evidence report → authenticate into the same workspace → chat, Timeline, and Canvas → update review.
 
 - **Product Hunt completion release** — canonical complete Fix list workspace, deterministic curated sample, claim retry integrity, scoped share grants, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`. First-value dogfood: [`.agents/sessions/customer-journey-completion-plan.md`](./.agents/sessions/customer-journey-completion-plan.md).
-  *Signal:* anonymous URL → progressive complete Fix list with real evidence and no prompts → successful claim → authenticated fix prompts and Timeline → update review → diff; Studio password share → canonical report → revoke.
+  *Signal:* anonymous URL → progressive evidence teaser with no prompts → successful claim → complete report, fix prompts, and Timeline → update review → diff → protected share → revoke.
 
-- **Launch Check Completeness** — every unresolved Flag ranked in one report, Contract merge-not-wipe, Remember UI, claim→Project, dogfood twin suppressions, Studio share honesty, Project product watch. Board `current-product-completion`.
+- **Launch Check Completeness** — every unresolved Flag ranked in one report, Contract merge-not-wipe, Remember UI, claim→Project, dogfood twin suppressions, protected share honesty, and scheduled Product Watch. Board `current-product-completion`.
   *Signal:* Contract edit keeps learnings; Copy all fixes includes every unresolved prompt; watch enqueues FULL re-check; regression email on watched projects.
 
 - **Customer journey trust close** — Anon evidence placeholders, dishonest Copy toast, score/BLOCKED contradiction, nav CTA clarity. Brand Phase 0 done (`fix-live-images`). Board `customer-journey-completion`.
   *Signal:* Phases 1-3 of customer-journey-completion-plan accepted on production dogfood.
 
-- **Pricing and metering** — Product review + deep review quotas enforced in code ($69/$199 Pro/Studio). See [docs/business-model.md](./docs/business-model.md). **Closed** in `lib/billing/plans.ts` + `lib/audit/usage.ts`.
+- **Usage pricing and metering** — the complete web product is available on every plan; Free, Pro ($29), and Studio ($79) differ only by monthly product review and deep review allowances. See [docs/business-model.md](./docs/business-model.md).
 
 - **Growth distribution** — anon → signed-up → paying conversion; upsell timing; re-engagement.
   *Signal:* >5% free-to-paid conversion.
 
-- **Distribution harden** — Claim the initial `fixflags` npm package with operator 2FA, configure its trusted publisher, run the protected provenance release, then complete published-package CLI and MCP dogfood.
+- **Park power-user surfaces** — keep their implementation intact while removing customer entry points, discovery, pricing promises, and launch dependencies.
 
 - **Residual hardening** — API route contract tests beyond critical path; auth/session coverage; Touch-tier matrix.
   *Evidence baseline:* [QUALITY.md](./QUALITY.md), [test-strategy.md](./test-strategy.md).
 
 ## Recently closed (also)
 
-- **Product Intelligence Phase 0–1 foundations** — Project PI, Fix list UI, Remember writes, MCP context tools (thesis UI gaps closed in launch-check-completeness).
+- **Product Intelligence Phase 0–1 foundations** — Project PI, Fix list UI, Remember writes, and report context tools.
 - **Dogfood audit quality** — Absorbed into launch-check-completeness.
 
 ## Readiness (reconciled)
@@ -121,13 +121,7 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 - **Judgment quality** — use Product Contract, verified history, release linkage, frequency, affected outcomes, and source reliability to decide which zero-to-three Improvements deserve attention.
 - **Product history and Agent grounding** — present Review → judgment → attempt → deployment → independent verification → outcome → learning with source provenance, never a raw event stream.
 - **First external adapter** — add Sentry only after native error/release evidence proves a concrete judgment gap; add PostHog/Amplitude, Stripe, support, and GA/GSC one at a time after the preceding source changes a real decision.
-- **GitHub-native "Fix it for me"** — branch/PR path with fresh independent FixFlags verification before human merge (vision Fixing trust model; extends `repo-fix-pr`).
-- **Repo signals into Fix list** — Optional repo connect feeds Implementation Integrity into the same prioritized list (entitlement expansion after thesis).
-- **CLI understand / finish / verify / status** — Cloud-backed first; local runtime later ([knowledge/open-source.md](./knowledge/open-source.md)).
 - **Evolution tracking** — Trend quality over time per Product / URL.
-- **MCP proof and distribution** — deployed Lovable/Bolt connector smokes; PI tools refined.
-- **Open community skills** — Extract the in-repo loop skill (`public/.well-known/skills/`, `ide-integrations/`) into a standalone OSS repo with Cursor, Claude Code, and Kiro install paths, an MCP tool contract manifest, and CI that lints skill tool names against the live MCP surface. Ship the core Product Review → Fix → Update review loop only; keep internal operator skills (`.cursor/skills/fixflags-*`) proprietary. Accept community platform extensions (Lovable, Bolt, launch-gate, Re-check-only) via contribution templates. See [knowledge/open-source.md](./knowledge/open-source.md).
-  *Signal:* one-command install of the core skill; help center MCP guide links to the canonical repo; community PRs pass tool-name contract lint; platform skills do not embed engine prompts or ranking logic.
 - **Knowledge graph Phase 2** — Public issue/benchmark pages (growth graph, not customer PI). See `docs/growth/growth-roadmap.md`.
 
 ## Later
@@ -135,7 +129,7 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 - Portable PI export + open protocol/local pieces
 - Agent Integrity checks (instruction drift)
 - Design Integrity as first-class pass
-- CI/CD integration, team workspaces, white-label share branding
+- Team workspaces and white-label share branding
 - Authenticated journey architecture (staged)
 - Personas, testing modes, full session video (demand-triggered)
 - Platform-native `.fixflags` subdomain trick
@@ -150,7 +144,12 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 
 ## Shipped retention (was Next)
 
-- **Project product watch** — Prisma `watchInterval` / `watchNextRunAt`; recovery-scheduler tick; regression-only email. Pro/Studio. Manual update reviews consume product-review credits; watch-triggered re-checks skip the meter.
+- **Scheduled Product Watch** — Prisma `watchInterval` / `watchNextRunAt`; recovery-scheduler tick; regression-only email. Available on every plan. Completed Watch reviews consume the monthly product review allowance and pause honestly at the limit.
+
+## Parked, not scheduled
+
+Repository scanning, editor protocols, command-line workflows, API-key setup, deployment-triggered hooks, and their distribution work remain in the codebase.
+They are intentionally absent from the customer app, marketing, public documentation discovery, pricing, and launch gates until the URL-first product converts consistently.
 
 ## Not planned
 
@@ -162,7 +161,7 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 - Open-sourcing the Intelligence Network
 - Enterprise compliance reports (SOC2, HIPAA) as a product line
 - Custom rubric creation
-- Batch/API scanning for non-MCP use
+- Batch scanning
 - Desktop/mobile apps
 - Bug bounty program
 - On-premise deployment (until enterprise demand justifies)
@@ -173,5 +172,5 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 |------|--------|
 | PI thesis | Contract persistence + Fix list action + Remember on re-check |
 | 100 paying users | Monetization blockers closed, conversion >5% |
-| Studio viability | 10+ Studio subscribers, CI/CD or white-label share demand |
+| Studio viability | 10+ Studio subscribers consistently using the higher monthly allowance |
 | Product-market fit | >20% MoM paid user growth for 3 consecutive months |

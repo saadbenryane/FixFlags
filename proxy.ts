@@ -7,12 +7,13 @@ function isProtectedPath(pathname: string): boolean {
 }
 
 const PARKED_POWER_TOOL_PREFIXES = [
+  '/report/repo',
   '/dashboard/mcp-analytics',
   '/dashboard/mcp-setup',
-  '/settings/api-keys',
   '/settings/integrations',
+  '/settings/api-keys',
+  '/onboarding/plans',
   '/cli/authorize',
-  '/report/repo',
   '/docs/integrations',
   '/docs/cli',
   '/docs/mcp',
@@ -23,7 +24,11 @@ const PARKED_POWER_TOOL_PREFIXES = [
   '/api/integrations/github',
   '/api/mcp',
   '/api/repo-scans',
+  '/api/webhooks/railway',
   '/api/well-known/mcp-json',
+  '/.well-known/mcp.json',
+  '/.well-known/mcp-server.json',
+  '/.well-known/skills/fixflags',
 ] as const
 
 export function isParkedPowerToolPath(pathname: string): boolean {
@@ -120,6 +125,7 @@ export const config = {
     '/api/integrations/github/:path*',
     '/api/mcp/:path*',
     '/api/repo-scans/:path*',
+    '/api/webhooks/railway/:path*',
     '/api/well-known/mcp-json/:path*',
     // Skip API routes, static assets, and images
     '/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',

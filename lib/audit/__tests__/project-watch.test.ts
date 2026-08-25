@@ -5,14 +5,11 @@ const mocks = vi.hoisted(() => ({
   projectUpdate: vi.fn(),
   projectUpdateMany: vi.fn(),
   projectFindFirst: vi.fn(),
-  userFindUnique: vi.fn(),
   auditFindFirst: vi.fn(),
   auditFindUnique: vi.fn(),
   auditUpdateMany: vi.fn(),
   auditUpdate: vi.fn(),
   startMonitoringAudit: vi.fn(),
-  canAccessProductWatch: vi.fn(),
-  canSharePublicly: vi.fn(),
   getFlagDiffSummary: vi.fn(),
   sendEmail: vi.fn(),
 }))
@@ -25,7 +22,6 @@ vi.mock('@/lib/db', () => ({
       update: mocks.projectUpdate,
       updateMany: mocks.projectUpdateMany,
     },
-    user: { findUnique: mocks.userFindUnique },
     audit: {
       findFirst: mocks.auditFindFirst,
       findUnique: mocks.auditFindUnique,
@@ -35,10 +31,6 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 vi.mock('@/lib/audit/monitoring', () => ({ startMonitoringAudit: mocks.startMonitoringAudit }))
-vi.mock('@/lib/auth/entitlements', () => ({
-  canAccessProductWatch: mocks.canAccessProductWatch,
-  canSharePublicly: mocks.canSharePublicly,
-}))
 vi.mock('@/lib/audit/diff-flags', () => ({ getFlagDiffSummary: mocks.getFlagDiffSummary }))
 vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: mocks.sendEmail } } }))
 
@@ -68,10 +60,7 @@ describe('Product Watch', () => {
     mocks.projectUpdateMany.mockResolvedValue({ count: 1 })
     mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
     mocks.sendEmail.mockResolvedValue({ id: 'email-1' })
-    mocks.canAccessProductWatch.mockReturnValue(true)
-    mocks.canSharePublicly.mockReturnValue(true)
     mocks.projectFindFirst.mockResolvedValue({ id: 'project-1' })
-    mocks.userFindUnique.mockResolvedValue(project.user)
   })
 
   it('enables weekly Watch for an ordinary claimed Product on Pro', async () => {
@@ -88,30 +77,17 @@ describe('Product Watch', () => {
     }))
   })
 
-  it('requires Studio for daily Watch', async () => {
-    mocks.canSharePublicly.mockReturnValue(false)
-
+  it('enables daily Watch on the same terms as weekly Watch', async () => {
     const result = await setProjectWatch({
       projectId: 'project-1',
       userId: 'user-1',
       interval: 'daily',
     })
 
-    expect(result).toEqual({ ok: false, error: 'Daily watch requires Studio' })
-    expect(mocks.projectUpdate).not.toHaveBeenCalled()
-  })
-
-  it('denies Watch after entitlement loss', async () => {
-    mocks.canAccessProductWatch.mockReturnValue(false)
-
-    const result = await setProjectWatch({
-      projectId: 'project-1',
-      userId: 'user-1',
-      interval: 'weekly',
-    })
-
-    expect(result).toEqual({ ok: false, error: 'Product watch requires Pro or Studio' })
-    expect(mocks.projectUpdate).not.toHaveBeenCalled()
+    expect(result).toEqual({ ok: true })
+    expect(mocks.projectUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ watchInterval: 'DAILY' }),
+    }))
   })
 
   it('queries all due entitled Products, including unmanaged claimed Products', async () => {
@@ -146,21 +122,30 @@ describe('Product Watch', () => {
     }))
   })
 
-  it('turns watch off when the live entitlement is gone', async () => {
-    mocks.canAccessProductWatch.mockReturnValue(false)
+  it('pauses at the renewal boundary when monthly Review capacity is exhausted', async () => {
+    const renewalAt = new Date('2026-09-01T00:00:00.000Z')
+    mocks.auditFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'parent-1' })
+    mocks.startMonitoringAudit.mockRejectedValue(
+      Object.assign(new Error('Monthly Review allowance used'), {
+        code: 'UPGRADE_REQUIRED',
+        renewalAt,
+      })
+    )
 
-    await processDueProjectWatches()
+    const result = await processDueProjectWatches()
 
+    expect(result).toEqual({ processed: 1, enqueued: 0, errors: 0 })
     expect(mocks.projectUpdate).toHaveBeenCalledWith({
       where: { id: 'project-1' },
       data: {
-        watchInterval: null,
-        watchNextRunAt: null,
         watchLeaseUntil: null,
-        watchLastError: 'Product Watch disabled after entitlement loss',
+        watchNextRunAt: renewalAt,
+        watchLastError:
+          'Watch paused because this month’s Product Review allowance is used. It will resume after renewal or an upgrade.',
       },
     })
-    expect(mocks.startMonitoringAudit).not.toHaveBeenCalled()
   })
 
   it('sends at most one regression notification per child report', async () => {

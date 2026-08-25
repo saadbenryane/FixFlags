@@ -70,7 +70,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       impactTag: flag.impactTag,
     })),
   })
-  const toolbarActions = (
+  const headerActions = (
     <AuditPageActions
       auditId={state.id}
       url={state.audit.url}
@@ -98,6 +98,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       canSharePublicly={state.entitlements?.canSharePublicly ?? false}
       shareStatus={state.reportAudit.shareStatus}
       showFixPrompts={state.showDeterministicFixes}
+      variant="all"
     />
   )
   return (
@@ -129,7 +130,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           showMonitoringHint={state.isLoggedIn && state.isOwner}
           projectId={state.audit.projectId}
           canWatchProduct={state.entitlements?.canWatchProduct ?? false}
-          canDailyWatch={(state.user?.plan ?? 'FREE') === 'TEAM'}
+          canDailyWatch={state.isLoggedIn && state.isOwner}
           watchInterval={
             state.audit.watchInterval === 'weekly' || state.audit.watchInterval === 'daily'
               ? state.audit.watchInterval
@@ -154,7 +155,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
               ? `/compare/${state.id}`
               : null
           }
-          toolbarActions={toolbarActions}
+          actions={headerActions}
           agentMessages={agentMessages}
         />
         <AiReviewPendingRefresh auditId={state.id} enabled={state.aiReviewPending} />

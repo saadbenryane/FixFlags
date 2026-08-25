@@ -11,8 +11,6 @@ export const RELEASE_STAGES = [
   'billing-closed',
   'external',
   'deployed',
-  'registry-cli',
-  'production-dogfood',
 ]
 
 export const FOUNDATION_INPUTS = [
@@ -29,7 +27,6 @@ export const FIXTURE_BINDING_INPUTS = [
 
 export const CREDENTIALED_CORE_INPUTS = [
   'RELEASE_ENV_URL',
-  'RELEASE_ENV_API_KEY',
   'RELEASE_FIXTURE_MANIFEST',
   'E2E_AUDIT_URL',
   'E2E_SIGNUP_PASSWORD',
@@ -53,13 +50,10 @@ export const CREDENTIALED_CORE_INPUTS = [
   'E2E_PRO_REPORT_ID',
   'E2E_STUDIO_EMAIL',
   'E2E_STUDIO_PASSWORD',
-  'E2E_DEPLOYMENT_TRIGGER_URL',
-  'E2E_DEPLOYMENT_TRIGGER_TOKEN',
 ]
 
 export const BILLING_OPEN_INPUTS = [
   'RELEASE_ENV_URL',
-  'RELEASE_ENV_API_KEY',
   'RELEASE_FIXTURE_MANIFEST',
   'E2E_ADMIN_EMAIL',
   'E2E_ADMIN_PASSWORD',
@@ -83,28 +77,9 @@ export const EXTERNAL_INPUTS = [
   'E2E_WATCH_PASSWORD',
   'E2E_WATCH_PROJECT_ID',
   'E2E_WATCH_MAILBOX_ASSERT_URL',
-  'E2E_GITHUB_EMAIL',
-  'E2E_GITHUB_PASSWORD',
-  'E2E_GITHUB_REPOSITORY',
 ]
 
 export const DEPLOYED_INPUTS = ['PRODUCTION_URL']
-
-export const REGISTRY_CLI_INPUTS = [
-  'PRODUCTION_URL',
-  'PRODUCTION_API_KEY',
-  'E2E_AUDIT_URL',
-]
-
-export const PRODUCTION_DOGFOOD_INPUTS = [
-  'PRODUCTION_URL',
-  'PRODUCTION_API_KEY',
-  'PRODUCTION_DOGFOOD_IMPROVED_REPORT_ID',
-  'PRODUCTION_DOGFOOD_IMPROVED_IMPROVEMENT_ID',
-  'PRODUCTION_DOGFOOD_INCONCLUSIVE_REPORT_ID',
-  'PRODUCTION_DOGFOOD_INCONCLUSIVE_IMPROVEMENT_ID',
-  'PRODUCTION_DOGFOOD_PRODUCT_REPORT_ID',
-]
 
 const STAGE_INPUTS = {
   foundation: FOUNDATION_INPUTS,
@@ -114,8 +89,6 @@ const STAGE_INPUTS = {
   'billing-closed': BILLING_CLOSED_INPUTS,
   external: EXTERNAL_INPUTS,
   deployed: DEPLOYED_INPUTS,
-  'registry-cli': REGISTRY_CLI_INPUTS,
-  'production-dogfood': PRODUCTION_DOGFOOD_INPUTS,
 }
 
 export const REQUIRED_RELEASE_INPUTS = [
@@ -246,7 +219,7 @@ export function validateReleasePreflight(
   if (['credentialed-core', 'billing-open', 'billing-closed', 'external'].includes(typedStage)) {
     validateReleaseOrigin(env, issues)
   }
-  if (['deployed', 'registry-cli', 'production-dogfood'].includes(typedStage)) {
+  if (typedStage === 'deployed') {
     validateProductionBinding(env, issues)
   }
   if (typedStage === 'billing-open' && env.E2E_PAID_OPEN_EXPECTED !== 'true') {

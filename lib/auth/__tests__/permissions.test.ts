@@ -208,6 +208,7 @@ describe('getPendingCheckCount', () => {
     expect(mockedAuditCount).toHaveBeenCalledWith({
       where: {
         userId: 'user-1',
+        skipUsageCount: false,
         status: { notIn: ['COMPLETED', 'FAILED'] },
       },
     })

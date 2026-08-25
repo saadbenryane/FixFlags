@@ -63,6 +63,7 @@ export type ProductAttentionItemDTO = {
   severity: string | null
   sourceReviewId: string | null
   sourceFlagId: string | null
+  prompt?: string | null
 }
 
 export type ProductAttemptDTO = {
@@ -564,6 +565,7 @@ export async function loadProductWorkspace(
                   evidence: true,
                   rubric: true,
                   severity: true,
+                  agentPrompt: true,
                 },
               },
             },
@@ -730,7 +732,7 @@ export async function loadProductWorkspace(
       ? { at: lastHistoryEvent.at, id: lastHistoryEvent.id }
       : null
 
-  const attention = product.improvements.slice(0, 3).map((improvement) => ({
+  const attention = product.improvements.map((improvement) => ({
     id: improvement.id,
     title: improvement.title,
     judgment: improvement.judgment,
@@ -743,6 +745,7 @@ export async function loadProductWorkspace(
     severity: improvement.occurrences[0]?.flag.severity ?? null,
     sourceReviewId: improvement.occurrences[0]?.auditId ?? null,
     sourceFlagId: improvement.occurrences[0]?.flagId ?? null,
+    prompt: improvement.occurrences[0]?.flag.agentPrompt ?? null,
   }))
 
   return {

@@ -9,7 +9,7 @@ export const SEO = {
   pricing: {
     title: 'Pricing',
     description:
-      `Start free with ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) and ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser (lifetime). Pro adds ${PRICING_COPY.proProductReviewsPerMonth} product reviews, ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews, and before/after compare.`,
+      `Every plan includes the complete FixFlags web product. Start free with ${PRICING_COPY.freeProductReviewsPerMonth} product reviews and ${PRICING_COPY.freeDeepReviewsPerMonth} deep review per month. Pro includes ${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month.`,
   },
   waitlist: {
     title: 'Join the waitlist',

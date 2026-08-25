@@ -2,7 +2,6 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor,
   within,
 } from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
@@ -103,7 +102,7 @@ describe('homepage lean sections', () => {
     expect(screen.queryByText('FixFlags review')).not.toBeInTheDocument()
   })
 
-  it('shows the compact integrations block with MCP and CLI links', () => {
+  it('shows the URL-first builder workflow without power-tool discovery', () => {
     render(<IntegrationsBlock />)
 
     expect(
@@ -112,19 +111,18 @@ describe('homepage lean sections', () => {
       ),
     ).toBeInTheDocument()
     expect(
-      screen.getByText(/run an update review after you publish/i),
+      screen.getByText(/run an update review on the live URL/i),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Set up MCP' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Read the report guide' })).toHaveAttribute(
       'href',
-      '/docs/integrations#quick-start',
+      '/docs/reports',
     )
-    expect(screen.getByRole('link', { name: 'CLI docs' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'See a sample report' })).toHaveAttribute(
       'href',
-      '/docs/cli',
+      '/samples',
     )
-    expect(
-      screen.getAllByRole('link', { name: /integration guide/i }),
-    ).toHaveLength(8)
+    expect(screen.queryByText(/MCP|CLI/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /integration guide/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
   })
 
@@ -163,13 +161,9 @@ describe('homepage lean sections', () => {
     // The reviewed host names both panes now that no fake browser bar carries it.
     expect(screen.getAllByText('fixflags.com/demo').length).toBeGreaterThan(0)
     expect(screen.getByRole('tab', { name: 'Agent' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Desktop' })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Mobile' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Report' })).toBeInTheDocument()
     expect(
-      screen.getByText(/opening the Product on desktop and mobile/i),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('img', { name: 'Page screenshot' }),
+      screen.getByRole('img', { name: /desktop screenshot/i }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('link', { name: 'Review my site' }),
@@ -192,22 +186,20 @@ describe('homepage lean sections', () => {
     expect(grid).toBeDefined()
   })
 
-  it('gives the visitor the real Preview and Report toggle instead of decorative pills', () => {
+  it('gives the visitor the real Agent and Report workspace toggle', () => {
     render(<SampleReportSection />)
 
-    const mobileTabs = screen.getByRole('tablist', { name: 'Review panels' })
-    expect(
-      within(mobileTabs).getByRole('tab', { name: 'Preview' }),
-    ).toHaveAttribute('aria-selected', 'true')
-
-    fireEvent.click(within(mobileTabs).getByRole('tab', { name: 'Report' }))
-
+    const mobileTabs = screen.getByRole('tablist', { name: 'Review workspace' })
     expect(
       within(mobileTabs).getByRole('tab', { name: 'Report' }),
     ).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.click(within(mobileTabs).getByRole('tab', { name: 'Agent' }))
+
     expect(
-      screen.queryByRole('tab', { name: 'Desktop' }),
-    ).not.toBeInTheDocument()
+      within(mobileTabs).getByRole('tab', { name: 'Agent' }),
+    ).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('tab', { name: /Preview|Timeline|Canvas/ })).not.toBeInTheDocument()
   })
 
   it('shows the complete value story without timed motion for reduced-motion users', async () => {
@@ -225,7 +217,7 @@ describe('homepage lean sections', () => {
     render(<SampleReportSection />)
 
     fireEvent.click(
-      within(screen.getByRole('tablist', { name: 'Review panels' })).getByRole(
+      within(screen.getByRole('tablist', { name: 'Review workspace' })).getByRole(
         'tab',
         {
           name: 'Report',
@@ -238,30 +230,11 @@ describe('homepage lean sections', () => {
     expect(window.location.search).not.toMatch(/flag=/)
   })
 
-  it('lets the repository sample replay its curated Timeline in the canonical workspace', async () => {
+  it('keeps the sample focused on the Agent and complete report', () => {
     render(<SampleReportSection />)
 
-    fireEvent.click(
-      within(screen.getByRole('tablist', { name: 'Review panels' })).getByRole(
-        'tab',
-        {
-          name: 'Report',
-        },
-      ),
-    )
-    await waitFor(() => {
-      expect(screen.getAllByRole('tab', { name: 'Timeline' })).not.toHaveLength(
-        0,
-      )
-    })
-    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0])
-
-    expect(
-      screen.getByRole('slider', { name: 'Scrub through the review path' }),
-    ).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Agent' })).toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'Scan history' }),
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: /Fix list with/i })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: /Timeline|Canvas|Preview/ })).not.toBeInTheDocument()
   })
 })

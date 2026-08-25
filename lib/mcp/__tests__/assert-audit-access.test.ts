@@ -40,32 +40,23 @@ describe('assertAuditAccess', () => {
     await assertAuditAccess({ userId: 'owner-1', isPublic: true }, 'someone-else')
   })
 
-  it('denies a non-owner on a public audit whose owner has since lapsed - the stale isPublic bit is not enough', async () => {
-    // Regression: the audit's own isPublic flag never gets cleared when the
-    // owner's subscription lapses/downgrades, so relying on isPublic alone
-    // would keep exposing fix-prompt content to any caller indefinitely.
+  it('keeps an explicitly public audit available after subscription lapse', async () => {
     mockUserFindUnique.mockResolvedValueOnce({
       id: 'owner-1',
       role: 'user',
       plan: 'TEAM',
       subscriptionStatus: 'PAST_DUE',
     })
-    await assert.rejects(
-      () => assertAuditAccess({ userId: 'owner-1', isPublic: true }, 'someone-else'),
-      /Unauthorized/
-    )
+    await assertAuditAccess({ userId: 'owner-1', isPublic: true }, 'someone-else')
   })
 
-  it('denies a non-owner on a public audit whose owner downgraded off Studio plan', async () => {
+  it('keeps public sharing available after a plan change', async () => {
     mockUserFindUnique.mockResolvedValueOnce({
       id: 'owner-1',
       role: 'user',
       plan: 'BUILDER',
       subscriptionStatus: 'ACTIVE',
     })
-    await assert.rejects(
-      () => assertAuditAccess({ userId: 'owner-1', isPublic: true }, 'someone-else'),
-      /Unauthorized/
-    )
+    await assertAuditAccess({ userId: 'owner-1', isPublic: true }, 'someone-else')
   })
 })

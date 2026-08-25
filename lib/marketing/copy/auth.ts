@@ -35,7 +35,7 @@ export const AUTH = {
     footer: 'Don\u2019t have an account?',
     footerLink: 'Sign up',
     forgotPassword: 'Forgot password?',
-    oauthNote: 'We never post or access your repositories.',
+    oauthNote: 'Social sign-in is used only to identify your account.',
     error: 'Sign in failed',
     unexpectedError: 'Something went wrong',
     emailLabel: 'Email',
@@ -111,9 +111,9 @@ export const AUTH = {
   },
   signUp: {
     title: 'Create your free account',
-    subtitle: `${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) · Upgrade anytime`,
-    fromPricing: `Create your free account: ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) included, upgrade anytime`,
-    oauthNote: 'We never post or access your repositories.',
+    subtitle: `${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month · Upgrade anytime`,
+    fromPricing: `Create your free account: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month included, upgrade anytime`,
+    oauthNote: 'Social sign-in is used only to identify your account.',
     cta: 'Create account',
     footer: 'Already have an account?',
     footerLink: 'Sign in',
@@ -125,8 +125,8 @@ export const AUTH = {
     passwordLabel: 'Password',
     planStepsTitle: 'What happens next',
     planTitles: {
-      BUILDER: 'You\u2019re signing up for Pro, with 25 product reviews and 4 deep reviews per month plus before/after compare',
-      TEAM: 'You\u2019re signing up for Studio, publish share links your clients can open and organize across up to 5 projects',
+      BUILDER: `You\u2019re signing up for Pro, with ${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month`,
+      TEAM: `You\u2019re signing up for Studio, with ${PRICING_COPY.studioProductReviewsPerMonth} product reviews and ${PRICING_COPY.studioDeepReviewsPerMonth} deep reviews per month`,
     },
     planSteps: [
       'Create your account',
@@ -270,11 +270,11 @@ export const AUTH = {
 
 export const SHARE_COPY = {
   privateTitle: 'Private report',
-  privateBody: 'This link only works for you while signed in. Upgrade to Studio for public share links anyone can open.',
+  privateBody: 'This link only works for you while signed in. Create a protected share link when someone else needs to review the evidence.',
   privateLinkCta: 'Copy private link',
   privateLinkCopied: 'Private link copied',
   privateLinkCopiedDetail: 'This link only works for you while signed in.',
-  studioCta: 'Studio',
+  studioCta: 'Create share link',
   access: {
     openingTitle: 'Opening shared report',
     openingBody: 'Checking that this link is still available.',
@@ -321,14 +321,14 @@ export const SAMPLE_FIX = {
 export const SCAN_LIMIT_GATE = {
   signup: {
     title: 'Create a free account to continue',
-    body: `You have already used your free product reviews. Create a free account for fix prompts, saved reports, and ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime).`,
+    body: `You have already used your anonymous product review. Create a free account for fix prompts, saved reports, and ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month.`,
     primaryCta: 'Create free account',
     secondaryCta: 'Sign in',
     exit: 'Leave this page',
   },
   upgrade: {
     title: 'Product review limit reached',
-    body: 'You have used all the product reviews in your current plan. Upgrade to Pro for 25 product reviews and 4 deep reviews per month with before/after compare.',
+    body: `You have used all the product reviews in your current monthly allowance. Upgrade to Pro for ${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month, or wait for renewal.`,
     primaryCta: 'Upgrade to Pro',
     secondaryCta: 'See plans',
     exit: 'Leave this page',

@@ -10,7 +10,7 @@ Keep the report open while the product review runs. The progress state shows whe
 
 ## Claim your report
 
-An anonymous first product review stays visible. Sign in from the report to claim it before you continue to a paid setup or another destination.
+An anonymous first product review shows genuine progress and safe evidence. Sign in from the report to claim it, unlock the complete report and fix prompts, and return to the same place.
 
 ## Fix the first Flag
 

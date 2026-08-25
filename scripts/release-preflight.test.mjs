@@ -38,10 +38,11 @@ describe('release preflight contract', () => {
     assert.ok(issues.some((issue) => issue.includes('must not target the canonical production origin')))
   })
 
-  it('requires a distinct canonical production target and credential', () => {
-    assert.deepEqual(validateReleasePreflight(validEnv(), { checkFile: false, stage: 'registry-cli' }), [])
-    assert.ok(validateReleasePreflight(validEnv({ PRODUCTION_URL: 'https://preview.fixflags.test' }), { checkFile: false, stage: 'registry-cli' }).some((issue) => issue.includes('canonical production origin')))
-    assert.ok(validateReleasePreflight(validEnv({ PRODUCTION_API_KEY: 'same', RELEASE_ENV_API_KEY: 'same' }), { checkFile: false, stage: 'registry-cli' }).some((issue) => issue.includes('must not equal RELEASE_ENV_API_KEY')))
+  it('requires the canonical production target without a power-tool credential', () => {
+    assert.deepEqual(validateReleasePreflight(validEnv(), { checkFile: false, stage: 'deployed' }), [])
+    assert.ok(validateReleasePreflight(validEnv({ PRODUCTION_URL: 'https://preview.fixflags.test' }), { checkFile: false, stage: 'deployed' }).some((issue) => issue.includes('canonical production origin')))
+    assert.deepEqual(validateReleasePreflight(validEnv({ PRODUCTION_API_KEY: '', RELEASE_ENV_API_KEY: '' }), { checkFile: false, stage: 'deployed' }), [])
+    assert.deepEqual(validateReleasePreflight(validEnv(), { checkFile: false, stage: 'registry-cli' }), ['Unknown release stage: registry-cli'])
   })
 
   it('does not accept the legacy shared smoke variables in place of separated targets', () => {

@@ -16,7 +16,7 @@ export const TERMS_SECTIONS = {
   accountsAndBilling: {
     title: 'Accounts and billing',
     body:
-      'Paid plans renew monthly unless you cancel through the Stripe billing portal. Product review limits apply per plan. New URLs and update reviews on reports you own each use one product review credit. Downgrades and cancellations take effect at the end of the current billing period unless Stripe indicates otherwise.',
+      'Paid plans renew monthly unless you cancel through the Stripe billing portal. Product review limits apply per plan. New URLs, update reviews, and completed scheduled Watch reviews each use one product review from the monthly allowance. Unused allowance does not roll over. Downgrades and cancellations take effect at the end of the current billing period unless Stripe indicates otherwise.',
   },
   discountTiers: {
     title: 'Launch discount tiers',
@@ -36,7 +36,7 @@ export const TERMS_SECTIONS = {
   refunds: {
     title: 'Refunds and cancellation',
     body:
-      'You may cancel anytime via the Stripe billing portal and keep access through the end of the paid period. We do not provide cash refunds for unused subscription time. Chargebacks or payment disputes may result in immediate suspension of paid features.',
+      'You may cancel anytime via the Stripe billing portal and keep access through the end of the paid period. We do not provide cash refunds for unused subscription time. Chargebacks or payment disputes may result in immediate suspension of paid usage allowances.',
   },
   acceptableUse: {
     title: 'Acceptable use',
@@ -59,7 +59,7 @@ export const PRIVACY_SECTIONS = {
   reportAccess: {
     title: 'Report access',
     body:
-      'Studio plans can create public share links. Separate public pages on FixFlags are for discovery; they are not your owned report.',
+      'Every plan can create protected share links. Separate public pages on FixFlags are for discovery; they are not your owned report.',
   },
   thirdParties: {
     title: 'Third parties',

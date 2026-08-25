@@ -8,7 +8,7 @@ export const PRODUCT_WATCH_COPY = {
   weekly: 'Weekly',
   daily: 'Daily',
   off: 'Off',
-  proLink: 'Pro adds weekly watch',
+  proLink: 'Watch is included on every plan',
   unavailable: 'Product Watch is unavailable until scheduling and email delivery are configured.',
   updateFailed: 'Could not update Product Watch.',
   loadFailed: 'Could not load Product Watch status.',

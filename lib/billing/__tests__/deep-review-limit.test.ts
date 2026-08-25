@@ -32,7 +32,7 @@ describe('getEffectiveDeepReviewLimit', () => {
         role: 'user',
         deepReviewsLimit: undefined as never,
       })
-    ).toBe(4)
+    ).toBe(3)
     expect(
       getEffectiveDeepReviewLimit({
         plan: 'TEAM',

@@ -55,13 +55,6 @@ export async function POST(req: NextRequest) {
     if (!user) return apiError('Account not found', 401, { code: 'UNAUTHORIZED', action: 'sign_in' })
 
   const limit = projectLimitForPlan(user.plan)
-  if (limit === 0) {
-      return apiError('Projects require the Studio plan', 402, {
-        code: 'UPGRADE_REQUIRED',
-        action: 'view_pricing',
-      })
-  }
-
   const body = await req.json().catch(() => ({}))
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) {
@@ -101,9 +94,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(project, { status: 201 })
   } catch (error) {
     if (error instanceof ProjectLimitReached) {
-      return apiError(`Project limit reached (${error.limit})`, 402, {
+      return apiError(`Product limit reached (${error.limit})`, 409, {
         code: 'PROJECT_LIMIT',
-        action: 'upgrade',
       })
     }
     return handleRouteError(error, 'Could not create project')

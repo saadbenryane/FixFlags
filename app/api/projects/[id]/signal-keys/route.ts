@@ -76,7 +76,7 @@ export async function POST(request: Request, context: RouteContext) {
       return apiError('Revoke an existing Product Signal key before creating another', 409)
     }
     if (error instanceof Error && error.message.includes('Product Watch access')) {
-      return apiError('Upgrade to Pro or Studio to use Product Signals', 403)
+      return apiError('Product Signals are unavailable for this account', 403)
     }
     return handleRouteError(error, 'Could not create Product Signal key')
   }

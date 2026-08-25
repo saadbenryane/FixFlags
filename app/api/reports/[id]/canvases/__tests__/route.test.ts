@@ -33,10 +33,10 @@ beforeEach(() => {
 })
 
 describe('Canvas collection route', () => {
-  it('does not leak Canvas data without paid owner access', async () => {
-    resolveCanvasReportAccess.mockResolvedValue({ allowed: false, reason: 'PAID_PLAN_REQUIRED' })
+  it('does not leak Canvas data without owner access', async () => {
+    resolveCanvasReportAccess.mockResolvedValue({ allowed: false, reason: 'OWNER_REQUIRED' })
     const response = await GET(new Request('http://localhost') as never, params)
-    expect(response.status).toBe(402)
+    expect(response.status).toBe(403)
     expect(listCanvases).not.toHaveBeenCalled()
   })
 

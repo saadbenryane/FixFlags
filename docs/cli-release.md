@@ -1,5 +1,9 @@
 # FixFlags CLI release
 
+> Parked internal runbook.
+> CLI publication and registry promotion are not part of the customer web release while FixFlags is URL-first.
+> Use `npm run power-tools:verify` to maintain this implementation without promoting or advertising it.
+
 The public package is `fixflags`. The website treats a release as installable
 only after the exact version in `fixflags-cli/package.json` exists in the npm
 registry.
@@ -39,8 +43,8 @@ After the one-time claim and trusted-publisher setup:
 3. The workflow tests Node 22 on macOS, Linux, and Windows, checks package
    contents, clean-installs the tarball, publishes with OIDC trusted publishing,
    and verifies the exact version and Git SHA on the `candidate` dist-tag.
-4. Run the release receipt `registry-cli` stage against `PRODUCTION_URL` with `PRODUCTION_API_KEY`.
-   The stage clean-installs `fixflags@1.0.5` from `candidate` and proves the packaged CLI journey against production.
+4. Run the dedicated power-tools verification outside `npm run verify:release`.
+   Do not publish or promote a candidate while the CLI is parked.
 5. Confirm `/api/cli/release` returns `"available": true` for the candidate.
 6. Install from npm and run the FixFlags dogfood journey:
 
@@ -57,7 +61,7 @@ After the clean-install and production proofs pass for the exact candidate SHA, 
 The workflow verifies `candidate` again, moves only that immutable version to `latest`, and uploads `fixflags-1.0.5-promotion-receipt`.
 Save the receipt with the signed release matrix.
 Do not reuse a published version or move `latest` to an unverified build.
-Call the release complete only after CLI and MCP report IDs, consolidated Flag identities, counts, ranking, Finish Plan, and update-review diffs match the web report and the promotion receipt exists.
+For a future CLI relaunch, call its separate release complete only after CLI and MCP report IDs, consolidated Flag identities, counts, ranking, Finish Plan, and update-review diffs match the web report and the promotion receipt exists.
 
 The QewOS repository stays private. npm trusted publishing supports private
 GitHub repositories, but npm provenance attestations require a public source

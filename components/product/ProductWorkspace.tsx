@@ -4,12 +4,9 @@ import {
   ArrowLeft,
   ArrowRight,
   ChevronDown,
-  Clock3,
   ExternalLink,
   Eye,
-  History,
   Radio,
-  ShieldCheck,
   TriangleAlert,
 } from 'lucide-react'
 import { ProductWatchControls } from '@/components/audit/ProductWatchControls'
@@ -17,10 +14,11 @@ import { ProductSignalsSetup } from '@/components/dashboard/ProductSignalsSetup'
 import { ImprovementReceipt } from '@/components/product/ImprovementReceipt'
 import { ProductReviewAction } from '@/components/product/ProductReviewAction'
 import { ProductAttentionImpression } from '@/components/product/ProductAttentionImpression'
-import { SeveritySignal } from '@/components/report/SeveritySignal'
+import { ProductPriorities } from '@/components/product/ProductPriorities'
+import { ScoreRing } from '@/components/report/ScoreRing'
+import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { EmptyState } from '@/components/ui/empty-state'
 import { Surface } from '@/components/ui/surface'
 import { SectionTitle } from '@/components/ui/typography'
 import type {
@@ -41,7 +39,7 @@ function dateLabel(value: string | null): string {
 
 function reviewTypeLabel(review: ProductReviewSummaryDTO): string {
   if (review.kind === 'WATCH') return 'Watch review'
-  return review.kind === 'UPDATE_REVIEW' ? 'Recheck' : 'Product review'
+  return review.kind === 'UPDATE_REVIEW' ? 'Update review' : 'Product review'
 }
 
 export function ProductWorkspace({
@@ -58,12 +56,18 @@ export function ProductWorkspace({
     latestCompletedManualReview,
     latestWatchReview,
   } = workspace
-  const observation = activeManualReview ?? latestManualReview
-  const attentionIsPrior = Boolean(
-    activeManualReview &&
-    latestCompletedManualReview &&
-    activeManualReview.id !== latestCompletedManualReview.id,
-  )
+  const currentReview = activeManualReview ?? latestCompletedManualReview ?? latestManualReview
+  const reviewHistory = workspace.history.events
+    .filter((event) => event.kind === 'review')
+    .map((event) => ({
+      id: event.review.id,
+      href: `/report/${event.review.id}?view=report`,
+      score: event.review.score,
+      checkedAt: new Date(event.at),
+      kind: event.review.kind === 'WATCH' ? 'watch' as const : event.review.kind === 'UPDATE_REVIEW' ? 'update-review' as const : 'product-review' as const,
+      status: event.review.status === 'FAILED' ? 'failed' as const : event.review.reportCompleteness === 'PARTIAL' ? 'partial' as const : 'completed' as const,
+    }))
+    .reverse()
 
   return (
     <main className="space-y-6">
@@ -89,10 +93,6 @@ export function ProductWorkspace({
               </Badge>
             ) : null}
           </div>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            {product.purpose ||
-              'FixFlags will learn this Product’s purpose from its first Review.'}
-          </p>
           <a
             href={product.url}
             target="_blank"
@@ -105,70 +105,22 @@ export function ProductWorkspace({
         </div>
       </header>
 
-      <Surface variant="elevated">
-        <ProductReviewAction
-          productUrl={product.url}
-          activeManualReview={activeManualReview}
-          latestManualReview={latestManualReview}
-          latestCompletedManualReview={latestCompletedManualReview}
-        />
-      </Surface>
-
-      {observation ? (
-        <Surface variant="nested" className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div>
-              <p className="text-xs text-muted-foreground">
-                Latest observation
-              </p>
-              <p className="mt-1 text-sm font-medium">
-                {reviewTypeLabel(observation)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Status</p>
-              <p className="mt-1 text-sm font-medium">
-                {presentProductReview(observation).label}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Score</p>
-              <p className="mt-1 font-mono text-sm font-semibold tabular-nums">
-                {presentProductReview(observation).score}
-              </p>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {observation.completedAt ? 'Observed' : 'Started'}{' '}
-            {dateLabel(observation.completedAt ?? observation.createdAt)}
-            {observation.status === 'COMPLETED'
-              ? ` · ${observation.unresolvedCount} unresolved`
-              : ''}
-          </p>
-          {observation.status === 'FAILED' ? (
-            <p
-              role="alert"
-              className="flex items-start gap-2 text-sm text-destructive"
-            >
-              <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              {observation.failureMessage ||
-                'This Product Review did not finish.'}
-            </p>
-          ) : null}
-        </Surface>
-      ) : null}
+      <section className="flex flex-wrap items-center gap-5 border-y border-border/45 py-5" aria-label="Current score and review history">
+        <ScoreRing score={currentReview?.score ?? null} pending={Boolean(activeManualReview)} />
+        <ScoreHistoryChart history={reviewHistory} currentAuditId={currentReview?.id} isLoading={Boolean(activeManualReview)} className="min-w-[14rem] flex-1" />
+        <ProductReviewAction productUrl={product.url} activeManualReview={activeManualReview} latestManualReview={latestManualReview} latestCompletedManualReview={latestCompletedManualReview} />
+      </section>
+      {latestManualReview?.status === 'FAILED' ? <p role="alert" className="flex items-start gap-2 text-sm text-destructive"><TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{latestManualReview.failureMessage || 'The latest review did not finish. Start an Update review to try again.'}</p> : null}
 
       {onAttentionVisible && workspace.attention.length > 0 ? (
         <ProductAttentionImpression onVisible={onAttentionVisible}>
           <AttentionSection
             workspace={workspace}
-            attentionIsPrior={attentionIsPrior}
           />
         </ProductAttentionImpression>
       ) : (
         <AttentionSection
           workspace={workspace}
-          attentionIsPrior={attentionIsPrior}
         />
       )}
 
@@ -179,11 +131,10 @@ export function ProductWorkspace({
       >
         <div>
           <SectionTitle id="product-history-heading">
-            Product history
+            Recent activity
           </SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            Reviews, declared changes, independent verification, and proven
-            learning in one record.
+            Reviews, copied prompts, verification, and learning.
           </p>
         </div>
         <Surface variant="elevated">
@@ -206,9 +157,6 @@ export function ProductWorkspace({
                           <span className="text-sm font-medium">
                             {reviewTypeLabel(event.review)}
                           </span>
-                          <Badge variant="outline">
-                            {presentProductReview(event.review).label}
-                          </Badge>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {dateLabel(event.at)}
@@ -292,7 +240,7 @@ export function ProductWorkspace({
       <details className="group rounded-card border border-border/45 bg-card/60 shadow-card">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:px-5 [&::-webkit-details-marker]:hidden">
           <div>
-            <SectionTitle as="h2">Watch and Product context</SectionTitle>
+            <SectionTitle as="h2">Product context</SectionTitle>
             <p className="mt-1 text-sm text-muted-foreground">
               {product.watching ? 'Watch is active.' : 'Watch is not active.'}{' '}
               {workspace.integrations.signalKeys.length > 0
@@ -307,6 +255,7 @@ export function ProductWorkspace({
         </summary>
 
         <div className="grid gap-4 border-t border-border/45 p-4 sm:p-5 lg:grid-cols-2">
+          <p className="text-sm text-muted-foreground lg:col-span-2">{product.purpose || 'FixFlags will learn this Product’s purpose from its first review.'}</p>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
               <Eye className="mt-0.5 h-5 w-5 text-brand" aria-hidden />
@@ -439,124 +388,23 @@ export function ProductWorkspace({
 
 function AttentionSection({
   workspace,
-  attentionIsPrior,
 }: {
   workspace: ProductWorkspaceDTO
-  attentionIsPrior: boolean
 }) {
-  const {
-    activeManualReview,
-    latestManualReview,
-    latestCompletedManualReview,
-  } = workspace
   return (
     <section aria-labelledby="attention-heading" className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <SectionTitle id="attention-heading">Attention now</SectionTitle>
+          <SectionTitle id="attention-heading">Your priorities</SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            {attentionIsPrior
-              ? 'From the latest completed Product Review while the current Recheck runs.'
-              : 'Up to three worthwhile Improvements supported by the latest completed Review.'}
+            Ranked by the effect each issue has on the customer experience.
           </p>
         </div>
         <Badge variant="outline" className="font-mono tabular-nums">
           {workspace.attentionCount} open
         </Badge>
       </div>
-      {workspace.attention.length === 0 ? (
-        activeManualReview ? (
-          <EmptyState
-            icon={
-              <Clock3 className="h-6 w-6 text-muted-foreground" aria-hidden />
-            }
-            title="Product Review in progress"
-            description={
-              latestCompletedManualReview
-                ? 'The previous completed Review had no open Attention. New results will appear when this Review finishes.'
-                : 'FixFlags is gathering the first evidence for this Product.'
-            }
-          />
-        ) : latestManualReview?.status === 'FAILED' ? (
-          <EmptyState
-            icon={
-              <TriangleAlert className="h-6 w-6 text-destructive" aria-hidden />
-            }
-            title="The latest Product Review did not finish"
-            description={
-              latestCompletedManualReview
-                ? 'There was no open Attention in the last completed Review. Recheck again for current evidence.'
-                : 'Try the Product Review again to establish current evidence.'
-            }
-          />
-        ) : latestCompletedManualReview ? (
-          <EmptyState
-            icon={<ShieldCheck className="h-6 w-6 text-success" aria-hidden />}
-            title="Nothing important requires action now"
-            description="The latest completed Review found no open Attention."
-          />
-        ) : (
-          <EmptyState
-            icon={
-              <History className="h-6 w-6 text-muted-foreground" aria-hidden />
-            }
-            title="No Review evidence yet"
-            description="Run the first Product Review to understand what deserves attention."
-          />
-        )
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-3">
-          {workspace.attention.map((item, index) => (
-            <Surface
-              key={item.id}
-              variant="nested"
-              className="flex h-full flex-col gap-3"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <Badge variant="outline">Priority {index + 1}</Badge>
-                {item.severity ? (
-                  <SeveritySignal severity={item.severity} />
-                ) : null}
-              </div>
-              <div>
-                <h3 className="font-semibold">{item.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {item.judgment}
-                </p>
-              </div>
-              {item.evidence ? (
-                <p className="border-l-2 border-brand-border pl-3 text-xs text-muted-foreground">
-                  {item.evidence}
-                </p>
-              ) : null}
-              <div className="mt-auto space-y-2 text-sm">
-                <p>
-                  <span className="font-medium">Improve:</span>{' '}
-                  {item.recommendedChange}
-                </p>
-                <p>
-                  <span className="font-medium">Verify:</span>{' '}
-                  {item.successCondition}
-                </p>
-              </div>
-              {item.sourceReviewId ? (
-                <Button asChild variant="outline" className="w-full">
-                  <Link
-                    href={
-                      (item.sourceFlagId
-                        ? `/report/${item.sourceReviewId}?view=report&flag=${encodeURIComponent(item.sourceFlagId)}#report-flags`
-                        : `/report/${item.sourceReviewId}?view=report`) as Route
-                    }
-                  >
-                    Open source evidence
-                    <ArrowRight className="h-4 w-4" aria-hidden />
-                  </Link>
-                </Button>
-              ) : null}
-            </Surface>
-          ))}
-        </div>
-      )}
+      <ProductPriorities items={workspace.attention} />
     </section>
   )
 }

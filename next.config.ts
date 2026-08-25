@@ -3,7 +3,7 @@ import { execSync } from 'node:child_process'
 
 function localGitSha(): string | undefined {
   try {
-    const sha = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim()
+    const sha = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim()
     return sha || undefined
   } catch {
     return undefined

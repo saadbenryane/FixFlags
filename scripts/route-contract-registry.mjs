@@ -17,7 +17,15 @@ function walk(directory, files = []) {
 }
 
 function boundaryFor(file) {
-  if (file === 'app/api/mcp/route.ts') return 'mcp'
+  if (
+    file === 'app/api/mcp/route.ts' ||
+    file.startsWith('app/api/api-keys/') ||
+    file.startsWith('app/api/cli/') ||
+    file.startsWith('app/api/integrations/github/') ||
+    file.startsWith('app/api/repo-scans/') ||
+    file.startsWith('app/api/webhooks/railway/') ||
+    file.startsWith('app/api/well-known/mcp-json/')
+  ) return 'parked'
   if (file === 'app/api/stripe/waitlist/route.ts') return 'public'
   if (file === 'app/api/me/route.ts') return 'public'
   if (file === 'app/api/support/sessions/route.ts') return 'public'
@@ -36,6 +44,7 @@ function boundaryFor(file) {
 }
 
 function casesFor(boundary, methods, file) {
+  if (boundary === 'parked') return ['not-found']
   const cases = new Set(['success', 'dependency-failure'])
   if (boundary !== 'public') cases.add('unauthenticated')
   if (boundary === 'session' || boundary === 'admin') cases.add('forbidden')
@@ -127,6 +136,12 @@ export function collectRouteContracts(root = process.cwd()) {
 export function validateRouteContracts(contracts) {
   const errors = []
   for (const contract of contracts) {
+    if (contract.boundary === 'parked') {
+      if (JSON.stringify(contract.cases) !== JSON.stringify(['not-found'])) {
+        errors.push(`${contract.file}: parked boundary must expose only not-found`)
+      }
+      continue
+    }
     if (contract.methods.length === 0) errors.push(`${contract.file}: no exported HTTP method`)
     if (!contract.cases.includes('success')) errors.push(`${contract.file}: missing success case`)
     if (!contract.cases.includes('dependency-failure')) errors.push(`${contract.file}: missing dependency-failure case`)

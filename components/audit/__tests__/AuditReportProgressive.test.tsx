@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import {
   AuditReportProgressive,
 } from '@/components/audit/AuditReportProgressive'
@@ -68,7 +68,7 @@ describe('AuditReportProgressive', () => {
     expect(screen.queryByText('Queued')).not.toBeInTheDocument()
   })
 
-  it('shows capturing progress with Preview selected and no Working percent strip', () => {
+  it('shows capturing progress with Agent selected and the Report mounted', () => {
     render(
       <AuditReportProgressive
         auditId={AUDIT_ID}
@@ -78,10 +78,10 @@ describe('AuditReportProgressive', () => {
       />,
     )
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Product').length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('tab', { name: 'Report' }).length).toBeGreaterThan(0)
     expect(screen.queryByText('Working')).not.toBeInTheDocument()
     expect(
-      screen.getAllByRole('tab', { name: 'Preview' }).some(
+      screen.getAllByRole('tab', { name: 'Agent' }).some(
         (tab) => tab.getAttribute('aria-selected') === 'true',
       ),
     ).toBe(true)
@@ -192,21 +192,21 @@ describe('AuditReportProgressive', () => {
     ).toBeGreaterThan(0)
   })
 
-  it('falls back to a skeleton frame while screenshots are pending', () => {
+  it('keeps the progressive Report mounted while evidence is pending', () => {
     const { container } = render(
       <AuditReportProgressive auditId={AUDIT_ID} status="CHECKING" url={URL} />
     )
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
     expect(screen.queryByLabelText('Reading technology signals')).not.toBeInTheDocument()
     expect(
-      screen.getAllByRole('tab', { name: 'Preview' }).some(
+      screen.getAllByRole('tab', { name: 'Agent' }).some(
         (tab) => tab.getAttribute('aria-selected') === 'true',
       ),
     ).toBe(true)
     expect(container.querySelector('img')).toBeNull()
   })
 
-  it('resolves desktop and mobile capture frames independently', () => {
+  it('does not expose capture device controls in the parked Preview surface', () => {
     render(
       <AuditReportProgressive
         auditId={AUDIT_ID}
@@ -219,10 +219,8 @@ describe('AuditReportProgressive', () => {
         screenshotCapture={{ desktop: 'ok', mobile: 'failed' }}
       />
     )
-    fireEvent.click(screen.getAllByRole('tab', { name: 'Preview' })[0]!)
-    expect(screen.getAllByAltText('Page screenshot').length).toBeGreaterThan(0)
-    fireEvent.click(screen.getAllByRole('tab', { name: 'Mobile' })[0]!)
-    expect(screen.getAllByText(/Screenshot could not be captured for this check/i).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('tab', { name: 'Preview' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Mobile' })).not.toBeInTheDocument()
   })
 
   it('keeps technology detections out of the immersive scanning workspace', () => {
@@ -303,7 +301,7 @@ describe('AuditReportProgressive', () => {
     expect(screen.getAllByText(/Preparing Funnel review/).length).toBeGreaterThan(0)
   })
 
-  it('replays Timeline only for an owner progressive envelope', () => {
+  it('parks Timeline even for an owner progressive envelope', () => {
     render(
       <AuditReportProgressive
         auditId={AUDIT_ID}
@@ -316,10 +314,8 @@ describe('AuditReportProgressive', () => {
 
     expect(screen.getAllByRole('tab', { name: 'Agent' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('tab', { name: 'Report' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('tab', { name: 'Timeline' }).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('tab', { name: 'Timeline' })).not.toBeInTheDocument()
     expect(screen.queryByRole('slider')).not.toBeInTheDocument()
-    fireEvent.click(screen.getAllByRole('tab', { name: 'Timeline' })[0]!)
-    expect(screen.getByRole('slider')).toBeInTheDocument()
   })
 
   it('keeps a live marketing-sample envelope read-only with no sign-in claim action', () => {

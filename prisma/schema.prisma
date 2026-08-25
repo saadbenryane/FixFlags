@@ -8,57 +8,60 @@ datasource db {
 }
 
 model User {
-  id                      String                       @id @default(cuid())
-  email                   String                       @unique
-  name                    String?
-  emailVerified           Boolean                      @default(false)
-  role                    String                       @default("user")
-  plan                    Plan                         @default(FREE)
-  auditsUsed              Int                          @default(0)
-  auditsLimit             Int                          @default(3)
-  stripeCustomerId        String?                      @unique
-  stripeSubscriptionId    String?                      @unique
-  stripePriceId           String?
-  stripeCurrentPeriodEnd  DateTime?
-  createdAt               DateTime                     @default(now())
-  updatedAt               DateTime                     @updatedAt
-  subscriptionStatus      SubscriptionStatus           @default(NONE)
-  preferredTools          String[]
-  vibecodingLevel         String?
-  image                   String?
-  gclid                   String?
-  fbclid                  String?
-  twoFactorEnabled        Boolean                      @default(false)
-  founderOfferRedeemedAt  DateTime?
-  deepReviewsUsed         Int                          @default(0)
-  deepReviewsLimit        Int                          @default(1)
-  gscConnection           GscConnection?
-  accounts                Account[]
-  apiKeys                 ApiKey[]
-  audits                  Audit[]
-  cliDeviceAuthorizations CliDeviceAuthorization[]
-  creditPurchases         CreditPurchase[]
-  emailLogs               EmailLog[]
-  githubConnection        GithubConnection?
-  linkedLeads             Lead[]                       @relation("LeadLinkedUser")
-  mcpInteractions         McpInteraction[]
-  paidPlanWaitlistEntries PaidPlanWaitlistEntry[]
-  passkeys                Passkey[]
-  projects                Project[]
-  repoFixPrs              RepoFixPr[]
-  repoScans               RepoScan[]
-  reportChatMessages      ReportChatMessage[]
-  chatUsagePeriods        ChatUsagePeriod[]
-  createdCanvases         ReportCanvas[]               @relation("CanvasCreator")
-  canvasVersions          CanvasVersion[]              @relation("CanvasVersionCreator")
-  sessions                Session[]
-  subscriptionLifecycle   SubscriptionLifecycleEvent[]
-  assignedSupportSessions SupportSession[]             @relation("SupportSessionAgent")
-  supportSessions         SupportSession[]             @relation("SupportSessionUser")
-  twoFactors              TwoFactor[]
-  waitlistInvitesSent     WaitlistInvite[]             @relation("WaitlistInviter")
-  waitlistInvitesRedeemed WaitlistInvite[]             @relation("WaitlistInvitee")
-  waitlistLeads           WaitlistLead[]               @relation("WaitlistLeadClaimedUser")
+  id                       String                       @id @default(cuid())
+  email                    String                       @unique
+  name                     String?
+  emailVerified            Boolean                      @default(false)
+  role                     String                       @default("user")
+  plan                     Plan                         @default(FREE)
+  auditsUsed               Int                          @default(0)
+  auditsLimit              Int                          @default(3)
+  stripeCustomerId         String?                      @unique
+  stripeSubscriptionId     String?                      @unique
+  stripePriceId            String?
+  stripeCurrentPeriodStart DateTime?
+  stripeCurrentPeriodEnd   DateTime?
+  usagePeriodStart         DateTime                     @default(dbgenerated("date_trunc('month'::text, (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text))"))
+  usagePeriodEnd           DateTime                     @default(dbgenerated("(date_trunc('month'::text, (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text)) + '1 mon'::interval)"))
+  createdAt                DateTime                     @default(now())
+  updatedAt                DateTime                     @updatedAt
+  subscriptionStatus       SubscriptionStatus           @default(NONE)
+  preferredTools           String[]
+  vibecodingLevel          String?
+  image                    String?
+  gclid                    String?
+  fbclid                   String?
+  twoFactorEnabled         Boolean                      @default(false)
+  founderOfferRedeemedAt   DateTime?
+  deepReviewsUsed          Int                          @default(0)
+  deepReviewsLimit         Int                          @default(1)
+  gscConnection            GscConnection?
+  accounts                 Account[]
+  apiKeys                  ApiKey[]
+  audits                   Audit[]
+  cliDeviceAuthorizations  CliDeviceAuthorization[]
+  creditPurchases          CreditPurchase[]
+  emailLogs                EmailLog[]
+  githubConnection         GithubConnection?
+  linkedLeads              Lead[]                       @relation("LeadLinkedUser")
+  mcpInteractions          McpInteraction[]
+  paidPlanWaitlistEntries  PaidPlanWaitlistEntry[]
+  passkeys                 Passkey[]
+  projects                 Project[]
+  repoFixPrs               RepoFixPr[]
+  repoScans                RepoScan[]
+  reportChatMessages       ReportChatMessage[]
+  chatUsagePeriods         ChatUsagePeriod[]
+  createdCanvases          ReportCanvas[]               @relation("CanvasCreator")
+  canvasVersions           CanvasVersion[]              @relation("CanvasVersionCreator")
+  sessions                 Session[]
+  subscriptionLifecycle    SubscriptionLifecycleEvent[]
+  assignedSupportSessions  SupportSession[]             @relation("SupportSessionAgent")
+  supportSessions          SupportSession[]             @relation("SupportSessionUser")
+  twoFactors               TwoFactor[]
+  waitlistInvitesSent      WaitlistInvite[]             @relation("WaitlistInviter")
+  waitlistInvitesRedeemed  WaitlistInvite[]             @relation("WaitlistInvitee")
+  waitlistLeads            WaitlistLead[]               @relation("WaitlistLeadClaimedUser")
 
   @@map("users")
 }

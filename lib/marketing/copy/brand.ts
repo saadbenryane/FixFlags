@@ -164,7 +164,7 @@ export const HELP_CENTER = {
   emailCta: 'Email us',
   relatedHeading: 'Related articles',
   backToHelp: 'Back to Help Center',
-  mcpGuideCta: 'Open full MCP guide',
+  mcpGuideCta: 'Open the report guide',
   askSupportCta: 'Ask support',
   viewHelpCta: 'View help article',
 } as const

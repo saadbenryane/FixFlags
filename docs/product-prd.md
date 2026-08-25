@@ -106,19 +106,21 @@ Canonical numbers: `PRICING_COPY` in terminology.ts. Philosophy: [docs/business-
 
 | Plan | Price | Product reviews/mo | Deep reviews/mo |
 |------|-------|------------------|-----------------|
-| Free | $0 | 3 | 1 teaser |
-| Pro | $69/mo | 25 | 4 |
-| Studio | $199/mo | 80 | 10 |
+| Free | $0 | 3 | 1 |
+| Pro | $29/mo | 15 | 3 |
+| Studio | $79/mo | 50 | 10 |
 
 **Rules:**
 
-- Product reviews meter **new URLs and update reviews** from the same monthly pool.
-- Deep reviews use a separate monthly allowance on paid plans.
+- Product reviews meter **new URLs, update reviews, and completed scheduled Watch reviews** from the same monthly pool.
+- Deep reviews use a separate monthly allowance on every plan.
 - At product review limit, new runs pause until upgrade or cycle reset.
+- Unused monthly allowance does not roll over.
 - Re-check is not free unlimited in customer language; implementation may lag marketing (see shipped gap table).
 - Stripe IDs and enforcement: `lib/billing/plans.ts`, [PRODUCT.md](../PRODUCT.md).
 
-**Paid add-ons (story):** before/after compare (Pro+), share links and proof export (Studio).
+Every plan includes the same complete web product: reports, fix prompts, comparison, history, sharing, Canvas, Product Signals, and scheduled Watch.
+Paid plans provide more monthly usage only.
 
 ---
 
@@ -338,7 +340,7 @@ Internal route `/re-check` may persist until API migration.
 
 ## 24) Mobile parity
 
-Full feature parity on phone: start review, Agent progress and chat, Report, Flag detail, evidence, authenticated Timeline, update review and diff, account, billing, and paid Canvas.
+Full feature parity on phone: start review, Agent progress and chat, Report, Flag detail, evidence, authenticated Timeline, update review and diff, account, billing, and Canvas.
 
 Agent ↔ Report is the primary view switch.
 
@@ -516,17 +518,17 @@ Canonical interface table: [docs/workspace-interface.md](../docs/workspace-inter
 
 | Area | Shipped today | Target |
 |------|---------------|--------|
-| Workspace layout | Unified Agent left; Report, authenticated Timeline, and paid Canvas right | Same |
+| Workspace layout | Unified Agent left; Report, authenticated Timeline, and Canvas right | Same |
 | Browser in UI | Authenticated Timeline screenshot replay and step scrub | Agent-class deep-review live browser |
 | In-app chat | Owner-only model chat plus free deterministic scan messages; monthly usage ledger | Same |
 | Product review capture | Playwright programmatic with workspace sync | Same |
 | Deep review | Journey capture in pipeline; funnel + path playback in workspace | Agent-class browser mode in workspace panel |
 | Customer metering | Product review + deep review quotas enforced in `lib/billing/plans.ts` and `lib/audit/usage.ts` | Same |
 | Update review billing | Metered product review credits; internal route `/re-check` | Public API rename to update-review (open) |
-| Pricing display | $69 / $199 in marketing and Stripe plans | Same |
+| Pricing display | $29 / $79 in marketing and Stripe plans | Same |
 | Funnel + path UI | Funnel section + Replay path into workspace | Full session-style takeover replay |
 | Mobile | Agent ↔ Report tabs; authenticated adapted playback | Full-screen path replay |
-| Compare | Pro before/after compare after update review | Primary payoff surface |
+| Compare | Before/after comparison after update review on every plan | Primary payoff surface |
 
 Shipped truth detail: [PRODUCT.md](../PRODUCT.md).
 

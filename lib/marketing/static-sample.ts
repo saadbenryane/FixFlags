@@ -109,7 +109,7 @@ const ORIGINAL_FLAGS: readonly RankableFlag[] = [
     severity: 'CRITICAL',
     impactTag: 'SEO',
     problem: 'The page asks search engines not to index it',
-    evidence: 'The repository fixture renders robots metadata with index and follow disabled.',
+    evidence: 'The curated fixture renders robots metadata with index and follow disabled.',
     whyItMatters: 'A noindex directive prevents the public page from appearing in search results.',
     fix: 'Allow indexing and following on the public launch page.',
     agentPrompt: 'Change the public page robots metadata to allow index and follow, then inspect the rendered head.',
@@ -123,7 +123,7 @@ const ORIGINAL_FLAGS: readonly RankableFlag[] = [
     severity: 'IMPORTANT',
     impactTag: 'SEO',
     problem: 'The page has no meta description',
-    evidence: 'The repository fixture metadata has an empty description.',
+    evidence: 'The curated fixture metadata has an empty description.',
     whyItMatters: 'Search engines must invent a result snippet when the page supplies no description.',
     fix: 'Add a concise description of the release-checklist outcome.',
     agentPrompt: 'Add a unique 120–158 character metadata description that states the product outcome.',
@@ -137,7 +137,7 @@ const ORIGINAL_FLAGS: readonly RankableFlag[] = [
     severity: 'IMPORTANT',
     impactTag: 'SHARING',
     problem: 'Shared links have no Open Graph image',
-    evidence: 'The repository fixture Open Graph metadata declares an empty images list.',
+    evidence: 'The curated fixture Open Graph metadata declares an empty images list.',
     whyItMatters: 'Shared links cannot show a branded visual preview.',
     fix: 'Add a 1200×630 Open Graph image with meaningful alt text.',
     agentPrompt: 'Add a 1200×630 Open Graph image to page metadata and verify the rendered og:image tag.',
@@ -151,7 +151,7 @@ const ORIGINAL_FLAGS: readonly RankableFlag[] = [
     severity: 'POLISH',
     impactTag: 'SEO',
     problem: 'No canonical URL is declared',
-    evidence: 'The repository fixture metadata does not declare a canonical URL.',
+    evidence: 'The curated fixture metadata does not declare a canonical URL.',
     whyItMatters: 'A canonical URL helps search engines consolidate duplicate page variants.',
     fix: 'Declare the public demo URL as canonical.',
     agentPrompt: 'Add the public demo URL to metadata alternates.canonical and inspect the rendered link element.',
@@ -168,7 +168,7 @@ const STATIC_OBSERVATIONS: readonly StaticObservationDefinition[] = [
     completedAt: '2026-06-09T14:30:00Z',
     parentId: null,
     kind: 'product-review',
-    verdict: 'The fixed repository demo has no curated Flags in this Review.',
+    verdict: 'The fixed demo has no curated Flags in this Review.',
     flags: [],
   },
   {
@@ -178,7 +178,7 @@ const STATIC_OBSERVATIONS: readonly StaticObservationDefinition[] = [
     completedAt: '2026-06-10T14:30:00Z',
     parentId: 'curated-sample-v0',
     kind: 'update-review',
-    verdict: 'A deliberate repository demo rollback exposes mobile conversion, message, and discovery regressions.',
+    verdict: 'A deliberate demo rollback exposes mobile conversion, message, and discovery regressions.',
     flags: ORIGINAL_FLAGS,
   },
 ]
@@ -208,7 +208,7 @@ function scoresFor(flags: readonly RankableFlag[]): SampleRubricScores {
 
 function timelineLabels(definition: StaticObservationDefinition): string[] {
   return [
-    `Opened repository revision ${definition.revision}`,
+    `Opened curated snapshot ${definition.revision}`,
     'Captured desktop and mobile evidence',
     definition.flags.length > 0 ? 'Ranked the evidence-backed Flags' : 'Confirmed no curated Flags',
   ]
@@ -315,7 +315,7 @@ function buildStaticSampleAudit(definition: StaticObservationDefinition): Curate
     accessContext: 'repository_sample',
     id: definition.id,
     url: SAMPLE_URL,
-    pageJob: 'Repository demo fixture',
+    pageJob: 'Curated demo fixture',
     pageType: 'Demo fixture',
     score: bundle.score,
     verdict: definition.verdict,
@@ -334,7 +334,7 @@ function buildStaticSampleAudit(definition: StaticObservationDefinition): Curate
     launchReadiness: {
       readiness: flags.length > 0 ? 'fix_first' : 'safe',
       checklist: [
-        { id: 'capture', label: 'Repository captures generated', passed: true },
+        { id: 'capture', label: 'Demo captures generated', passed: true },
         { id: 'curated-flags', label: 'Curated Flags resolved', passed: true },
       ],
     },
@@ -352,7 +352,7 @@ function buildStaticSampleAudit(definition: StaticObservationDefinition): Curate
     verifiedLearnings: [],
     scoreHistory: historyPoints(),
     previewMeta: {
-      title: `${DEMO_BRAND.name} · Repository demo`,
+      title: `${DEMO_BRAND.name} · Curated demo`,
       description: originalFixture.subhead,
       ogTitle: DEMO_BRAND.name,
       ogDescription: originalFixture.subhead,
@@ -376,13 +376,13 @@ function buildStaticSampleAudit(definition: StaticObservationDefinition): Curate
       { t: 1460, kind: 'click', label: judged, url: sourceUrl, screenshot: bundle.captures.desktop.path },
     ],
     intentionalNotes: [
-      'Repository-owned curated fixture. It does not represent a production customer Review.',
-      `Captured from immutable repository revision ${bundle.revision} at ${definition.sourcePath}.`,
+      'Versioned curated fixture. It does not represent a production customer Review.',
+      `Captured from immutable demo snapshot ${bundle.revision}.`,
     ],
   }
 }
 
-/** Resolve a complete repository-owned observation. Explicit unknown IDs fail closed. */
+/** Resolve a complete curated observation. Explicit unknown IDs fail closed. */
 export function getStaticSampleAudit(observationId?: string | null): CuratedSampleAudit {
   const definition =
     observationId === undefined || observationId === null

@@ -11,7 +11,7 @@ A standard **product review** runs fast programmatic checks with screenshot evid
 | **Speed** | Fast full pass on a URL | Deeper journey and funnel coverage |
 | **Browser** | Programmatic capture (Playwright) with screenshot-forward evidence | Journey walk with path replay in the workspace browser panel |
 | **Best for** | Finish Plan, Fix list, fix prompts across Message, Experience, Reach | Funnel map, multi-step paths, replay-grade evidence |
-| **Metering** | Uses product review credits (new URLs and update reviews share the pool) | Uses deep review allowance on paid plans; Free includes one teaser (lifetime) |
+| **Metering** | Uses the product review allowance (new URLs, update reviews, and completed Watch reviews share the pool) | Uses the separate monthly deep review allowance |
 
 Think of product review as a sharp QA pass on what shipped. Deep review is FixFlags following critical journeys, then showing you the recording.
 
@@ -35,7 +35,7 @@ Open a path from the Funnel section or from Flag evidence to see what FixFlags s
 
 ## Plans and limits
 
-Free includes 3 product reviews (lifetime) and 1 deep review teaser (lifetime). Pro and Studio add more of both each month. See [pricing](/pricing) for current numbers.
+Free includes 3 product reviews and 1 deep review per month. Pro includes 15 product reviews and 3 deep reviews per month. Studio includes 50 product reviews and 10 deep reviews per month. Every plan includes the same complete web product, and unused monthly allowance does not roll over. See [pricing](/pricing) for current numbers.
 
 ## Related
 

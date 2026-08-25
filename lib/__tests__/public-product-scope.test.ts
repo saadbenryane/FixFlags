@@ -8,6 +8,7 @@ describe('URL-first public product scope', () => {
     '/dashboard/mcp-setup',
     '/settings/api-keys',
     '/settings/integrations',
+    '/onboarding/plans',
     '/cli/authorize',
     '/report/repo/scan-1',
     '/docs/integrations',
@@ -20,7 +21,11 @@ describe('URL-first public product scope', () => {
     '/api/integrations/github/connect',
     '/api/mcp',
     '/api/repo-scans/scan-1',
+    '/api/webhooks/railway',
     '/api/well-known/mcp-json',
+    '/.well-known/mcp.json',
+    '/.well-known/mcp-server.json',
+    '/.well-known/skills/fixflags/SKILL.md',
   ])('parks the power-user entry point %s', (pathname) => {
     expect(isParkedPowerToolPath(pathname)).toBe(true)
   })

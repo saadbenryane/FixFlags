@@ -1,8 +1,6 @@
 import Link from 'next/link'
-import { ArrowRight, ArrowUpRight } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { CopyableCommand } from '@/components/marketing/landing/CopyableCommand'
-import { EditorIntegrationGrid } from '@/components/marketing/landing/EditorIntegrationGrid'
 import { RevealOnView } from '@/components/marketing/landing/RevealOnView'
 import { MarketingEyebrow } from '@/components/marketing/MarketingEyebrow'
 import { Container } from '@/components/ui/container'
@@ -33,14 +31,6 @@ export function IntegrationsBlock() {
               {copy.body}
             </p>
 
-            <div className="mt-6 max-w-[30rem]">
-              <CopyableCommand
-                command={copy.npxCheckCommand}
-                label={copy.npxCheckLabel}
-                description={copy.npxCheckDescription}
-              />
-            </div>
-
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Button
                 asChild
@@ -49,7 +39,7 @@ export function IntegrationsBlock() {
               >
                 <Link href={copy.mcpHref}>
                   {copy.mcpCta}
-                  <ArrowUpRight className="h-4 w-4" aria-hidden />
+                  <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
               </Button>
               <Button variant="ghost" asChild>
@@ -60,9 +50,6 @@ export function IntegrationsBlock() {
               </Button>
             </div>
 
-            <div className="mt-10 max-w-[72rem]">
-              <EditorIntegrationGrid />
-            </div>
           </div>
         </RevealOnView>
       </Container>

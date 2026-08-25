@@ -13,7 +13,7 @@ describe('computePlanLimitUpdate', () => {
     assert.equal(update?.auditsUsed, 10)
   })
 
-  it('sets free plan to 3 lifetime checks', () => {
+  it('sets Free to 3 reviews per active monthly period', () => {
     const update = computePlanLimitUpdate(
       { role: 'user', auditsUsed: 0, auditsLimit: 25, deepReviewsUsed: 0, deepReviewsLimit: 10 },
       'FREE'
@@ -22,22 +22,22 @@ describe('computePlanLimitUpdate', () => {
     assert.equal(update?.auditsUsed, 0)
   })
 
-  it('caps used count when downgrading', () => {
+  it('preserves used count when downgrading inside a period', () => {
     const update = computePlanLimitUpdate(
       { role: 'user', auditsUsed: 20, auditsLimit: 25, deepReviewsUsed: 5, deepReviewsLimit: 10 },
       'FREE'
     )
     assert.equal(update?.auditsLimit, 3)
-    assert.equal(update?.auditsUsed, 3)
+    assert.equal(update?.auditsUsed, 20)
   })
 
-  it('caps deep review usage when downgrading to a smaller deep quota', () => {
+  it('preserves deep review usage when changing plan inside a period', () => {
     const update = computePlanLimitUpdate(
       { role: 'user', auditsUsed: 2, auditsLimit: 3, deepReviewsUsed: 9, deepReviewsLimit: 10 },
       'BUILDER'
     )
-    assert.equal(update?.deepReviewsLimit, 4)
-    assert.equal(update?.deepReviewsUsed, 4)
+    assert.equal(update?.deepReviewsLimit, 3)
+    assert.equal(update?.deepReviewsUsed, 9)
   })
 
   it('keeps used counts when upgrading to unlimited', () => {
@@ -45,7 +45,7 @@ describe('computePlanLimitUpdate', () => {
       { role: 'user', auditsUsed: 12, auditsLimit: 25, deepReviewsUsed: 3, deepReviewsLimit: 4 },
       'TEAM'
     )
-    assert.equal(update?.auditsLimit, 80)
+    assert.equal(update?.auditsLimit, 50)
     assert.equal(update?.auditsUsed, 12)
     assert.equal(update?.deepReviewsLimit, 10)
     assert.equal(update?.deepReviewsUsed, 3)
@@ -86,9 +86,9 @@ describe('applyPlanLimits', () => {
       data: {
         plan: 'FREE',
         auditsLimit: 3,
-        auditsUsed: 3,
+        auditsUsed: 20,
         deepReviewsLimit: 1,
-        deepReviewsUsed: 1,
+        deepReviewsUsed: 5,
       },
     })
   })

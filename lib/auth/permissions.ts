@@ -35,6 +35,7 @@ export async function getPendingCheckCount(userId: string): Promise<number> {
   return prisma.audit.count({
     where: {
       userId,
+      skipUsageCount: false,
       status: { notIn: ['COMPLETED', 'FAILED'] },
     },
   })

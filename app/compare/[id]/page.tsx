@@ -15,12 +15,9 @@ import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Muted, SectionTitle } from '@/components/ui/typography'
-import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
-import { RECHECK_DIFF_COPY } from '@/lib/marketing/copy'
-import { resolveCompareUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { canAccessAudit, resolveAuditAccess } from '@/lib/audit/access'
-import { canAccessCompare, canSharePublicly } from '@/lib/auth/entitlements'
+import { canSharePublicly } from '@/lib/auth/entitlements'
 import { SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
 import { isAdminUser } from '@/lib/auth/permissions'
 import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/audit/rubric'
@@ -84,28 +81,6 @@ export default async function ComparePage({ params, searchParams }: Props) {
     viewer = user
     showAdmin = isAdminUser(user)
 
-    if (!canAccessCompare(user)) {
-      return (
-        <AuditShell session={session} showAdmin={showAdmin}>
-          <Container variant="report" className="space-y-8 py-8">
-            <PageHeader
-              title="Before vs After"
-              description={RECHECK_DIFF_COPY.compareProGateDescription}
-            />
-            <ContextualUpgradeCard
-              moment="compare_flat"
-              isLoggedIn
-              currentPlan={user.plan}
-              userEmail={user.email ?? undefined}
-            />
-            <Button asChild variant="outline">
-              <Link href={`/report/${id}`}>Back to report</Link>
-            </Button>
-          </Container>
-        </AuditShell>
-      )
-    }
-
     if (
       !canAccessAudit(monitoringAudit, session.user) ||
       !canAccessAudit(monitoringAudit.parent, session.user)
@@ -124,9 +99,6 @@ export default async function ComparePage({ params, searchParams }: Props) {
   const afterMobile = after.screenshots.find((s) => s.device === 'MOBILE')
   const hasMobileCompare = beforeMobile && afterMobile
 
-  const scoreDelta =
-    before.score !== null && after.score !== null ? after.score - before.score : 0
-  const compareMoment = resolveCompareUpgradeMoment(before.score, after.score)
   const mapRubrics = (rubrics: typeof before.rubrics) =>
     rubrics.map((r) => ({
       name: r.name,
@@ -184,15 +156,6 @@ export default async function ComparePage({ params, searchParams }: Props) {
             <div className="text-xs text-muted-foreground mt-1">After</div>
           </div>
         </Card>
-
-        {!isShareView && viewer && (!viewer.plan || viewer.plan === 'FREE') && (
-          <ContextualUpgradeCard
-            moment={compareMoment}
-            scoreDelta={scoreDelta}
-            isLoggedIn
-            currentPlan={viewer.plan}
-          />
-        )}
 
         <RubricDiff
           beforeShareStatus={beforeShareStatus}

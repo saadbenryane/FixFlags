@@ -85,16 +85,16 @@ export const DIFFERENTIATION = {
       feature: "Before/after comparison",
       lighthouse: "No",
       manual: "No",
-      fixflags: "Yes (Pro)",
+      fixflags: "Yes",
     },
     {
-      feature: "Public share links for clients",
+      feature: "Protected share links",
       lighthouse: "No",
       manual: "No",
-      fixflags: "Yes (Studio)",
+      fixflags: "Yes",
     },
     {
-      feature: "Runs inside supported builders",
+      feature: "Copyable fix prompts for builders",
       lighthouse: "No",
       manual: "No",
       fixflags: "Yes",
@@ -140,22 +140,16 @@ export const FINAL_CTA = {
 } as const;
 
 export const MCP_SECTION = {
-  headline: "Run product reviews from your editor",
-  body: "Connect via MCP so your agent can pull Flags, use the fix prompts, and run an update review after you publish.",
-  intro: "A typical prompt sequence looks like this:",
-  closing: "Then run an update review for independent verification.",
-  cta: "See MCP setup",
-  workflow: `User: "Check https://myapp.com and review the Experience rubric"
-
-Claude calls: ff_check_and_plan → ff_get_rubric("EXPERIENCE")
-Claude: "Experience has two Critical Flags:
-  - Primary CTA is below fold on 375px screens
-  - 3 buttons with tap targets under 40px
-  Should I apply fixes now?"
-User: "Yes"
-Claude: applies fixes
-Claude: calls ff_recheck_and_compare
-Claude: "Experience has no Critical Flags in this review. Two Flags were no longer observed. Open the receipts for strict verification."`,
+  headline: "Fix the highest-impact Flag first",
+  body: "Copy the evidence-backed fix prompt into the builder you already use. Publish the change, then run an update review for independent verification.",
+  intro: "The workflow stays focused:",
+  closing: "The fresh review records what changed and what still needs work.",
+  cta: "See how it works",
+  workflow: `1. Paste the live URL into FixFlags.
+2. Inspect the highest-impact Flag and its evidence.
+3. Copy the fix prompt into your builder.
+4. Publish the change.
+5. Run an update review and compare the result.`,
 } as const;
 
 export const HOW_IT_WORKS_PAGE = {
@@ -288,20 +282,18 @@ export const HOW_IT_WORKS_PAGE = {
     ],
   },
   mcp: {
-    label: "MCP workflow",
-    title: "Your agent reads the same report you do.",
-    body: "MCP is the open standard that lets coding agents call outside tools. Connect FixFlags so Live Review and fix prompts land in the editor you already use.",
-    setupCta: "Set up MCP",
-    setupHref: "/docs/integrations#quick-start",
+    label: "Builder workflow",
+    title: "Take one evidence-backed fix at a time.",
+    body: "Copy a focused fix prompt from the report into the builder you already use. Publish when you are ready, then let FixFlags independently review the live result.",
+    setupCta: "Read the report guide",
+    setupHref: "/docs/reports",
     plansCta: "See plans",
     plansHref: "/pricing",
-    transcript: `User: "Check the landing page and fix the first Critical Flag"
-
-Agent calls: ff_check_and_plan
-Agent reads: Experience rubric and top Flag
-Agent applies: mobile CTA layout fix
-Agent calls: ff_recheck_and_compare
-Agent reports: "Experience has no Critical Flags in this review. One Flag was no longer observed. Open the receipt for strict verification."`,
+    transcript: `FixFlags: "The primary action falls below the fold on mobile."
+You: copy the focused fix prompt into your builder
+Builder: applies the mobile CTA layout fix
+You: publish the change and run an update review
+FixFlags: "The original evidence is no longer observed. Open the comparison for details."`,
   },
   finalCta: {
     headline: "Close the AI gap on a live URL.",
@@ -659,16 +651,16 @@ export const LANDING_PAGE = {
     },
   },
   editorIntegrations: {
-    label: "How it works (MCP)",
-    headlineDisplay: "FixFlags in your workflow. Always in sync",
+    label: "How it works",
+    headlineDisplay: "FixFlags in your shipping loop. Always independent",
     headlineAccentPeriod: true,
-    headline: "FixFlags in your workflow. Always in sync.",
-    headlineLines: ["FixFlags in your workflow.", "Always in sync"] as const,
-    body: "Connect FixFlags through MCP. Review each change, act on clear Flags, and run an update review on the live product.",
+    headline: "FixFlags in your shipping loop. Always independent.",
+    headlineLines: ["FixFlags in your shipping loop.", "Always independent"] as const,
+    body: "Review the live URL, act on clear Flags, and run an update review after you publish.",
     workspace: {
       title: "Product release review",
-      meta: "editor · FixFlags MCP",
-      status: "Connected",
+      meta: "live URL · FixFlags review",
+      status: "Reviewed",
       builderLabel: "Your builder",
       userLabel: "You",
       request:
@@ -699,7 +691,7 @@ export const LANDING_PAGE = {
       ] as const,
       verifiedTitle: "Independent result recorded",
       verifiedBody: "The verification receipt stays attached to the original Flag.",
-      continueLabel: "Continue in editor",
+      continueLabel: "Copy fix prompt",
     },
   },
   productEvidence: {
@@ -745,21 +737,21 @@ export const LANDING_PAGE = {
     headline: "Start with copy and paste.",
     headlineDisplay: "Start with copy and paste",
     headlineAccentPeriod: true,
-    body: "Copy a fix into the AI editor you already use. On Pro, connect MCP or use the CLI, then run an update review after you publish.",
-    mcpCta: "Set up MCP",
-    mcpHref: "/docs/integrations#quick-start",
-    cliCta: "CLI docs",
-    cliHref: "/docs/cli",
-    npxCheckCommand: "npx fixflags check https://site.com",
-    npxCheckLabel: "Terminal",
-    npxCheckDescription: "No signup. No install. Just paste your URL.",
+    body: "Copy a fix into the AI builder you already use. Publish the change, then run an update review on the live URL.",
+    mcpCta: "Read the report guide",
+    mcpHref: "/docs/reports",
+    cliCta: "See a sample report",
+    cliHref: "/samples",
+    npxCheckCommand: "https://your-product.com",
+    npxCheckLabel: "Product URL",
+    npxCheckDescription: "Paste one URL. Get one complete report.",
   },
   sampleReport: {
     label: "Sample review",
     headlineDisplay: "See what gets in your users’ way",
     headlineAccentPeriod: true,
     headline: "See what gets in your users’ way.",
-    body: "Explore the repository-owned Launchpad demo. See the issues, the evidence behind them, and a fix you can paste into your AI editor.",
+    body: "Explore the curated Launchpad demo. See the issues, the evidence behind them, and a fix you can paste into your AI editor.",
     previewEyebrow: "Fix list",
     previewTitle: "Every fix, ranked and ready to apply",
     previewBadge: "Screenshot evidence included",

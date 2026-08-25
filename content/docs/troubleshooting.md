@@ -5,7 +5,7 @@ If your report asks you to sign in again, return through the sign-in flow and Fi
 ## Product review access
 
 Your plan controls how many Product Reviews and deep reviews you can run.
-If you reach the limit, use the upgrade action shown in the product or wait for the next paid-plan cycle.
+If you reach the limit, use the upgrade action shown in the product or wait for the monthly allowance to renew.
 
 ## Public URL requirements
 

@@ -214,7 +214,7 @@ Then repeat step 1 after the flip and confirm `billingConfigured: true` with liv
 ## Caveats
 
 - The table display of `railway variables` **truncates long values** — statuses in section a come from `railway variables --kv` (raw), lengths/prefixes only; no values recorded.
-- docs/stripe-setup.md legacy amounts ($39/$129) are **stale** — the API shows the same price IDs are $29/$99 today. Trust the API amounts in this checklist.
+- New checkout uses newly created $29 Pro and $79 Studio prices. Existing active subscribers keep their current Stripe price and allowance until they change or cancel.
 - `RESEND_FROM_EMAIL` docs example (`hello@saadbenryane.com`) is stale; prod uses `hello@fixflags.com` — fine for a verified sender.
 - Webhook route verified live (unsigned POST → 400). Test-mode webhook events were not replayed in this audit; confirm the test event flow before flip.
 - This checklist is read-only verification; the flip itself (Stripe Dashboard, `railway variables set`, redeploy) is not performed.

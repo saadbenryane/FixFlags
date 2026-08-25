@@ -21,12 +21,12 @@ export const RECHECK_DIFF_COPY = {
     `${count} ${count === 1 ? 'Flag has' : 'Flags have'} insufficient comparable coverage. Inspect the verification receipt for coverage and remaining risk.`,
   empty: 'No Flag changes in this update review.',
   compareCta: 'Open full before/after',
-  compareProHint: 'Want side-by-side screenshots?',
-  compareProCta: 'See Pro compare',
+  compareProHint: 'See the evidence side by side.',
+  compareProCta: 'Open comparison',
   outcomesHint:
     'Outcomes: no longer observed, still open, unchanged severity, regressed, or inconclusive.',
   compareProGateDescription:
-    'Before/after comparison is available on Pro. Update reviews use product review credits.',
+    'Before/after comparison is included on every plan. Update reviews use the monthly product review allowance.',
 } as const
 
 export const FLAG_DISMISS_REASONS = [

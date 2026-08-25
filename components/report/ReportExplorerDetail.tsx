@@ -1,15 +1,15 @@
 'use client'
 
 import type { RefObject } from 'react'
-import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react'
+import { type LucideIcon } from 'lucide-react'
 import { ScreenshotWithHighlights } from '@/components/audit/ScreenshotWithHighlights'
+import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import {
   FlagDetailPanel,
   FlagMetaPills,
   isShareableCheck,
   type ReportOwnerActionContext,
 } from '@/components/report/FlagDetailPanel'
-import { Button } from '@/components/ui/button'
 import { FilterPill } from '@/components/ui/filter-pill'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
@@ -57,47 +57,9 @@ export function RubricTabs({
   )
 }
 
-function FlagNavigation({
-  total,
-  onPrevious,
-  onNext,
-}: {
-  total: number
-  onPrevious: () => void
-  onNext: () => void
-}) {
-  return (
-    <div className="flex shrink-0 items-center gap-1">
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        onClick={onPrevious}
-        aria-label="Previous flag"
-        disabled={total <= 1}
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        onClick={onNext}
-        aria-label="Next flag"
-        disabled={total <= 1}
-      >
-        <ChevronRight className="h-4 w-4" />
-      </Button>
-    </div>
-  )
-}
-
 export function FlagDetailPane({
   model,
   flag,
-  flagCount,
-  onPrevious,
-  onNext,
   showFeedback,
   aiLocked,
   aiEnhancementPending,
@@ -136,11 +98,11 @@ export function FlagDetailPane({
           >
             {flag.title}
           </h3>
-          <FlagNavigation total={flagCount} onPrevious={onPrevious} onNext={onNext} />
         </div>
         <div className="mt-1.5">
           <FlagMetaPills flag={flag} />
         </div>
+        {!aiLocked && (flag.copyFixPrompt || flag.fixPrompt) ? <PromptCopyButton prompt={flag.copyFixPrompt || flag.fixPrompt} auditId={ownerActionContext?.auditId} flagId={flag.id} surface={ownerActionContext?.surface} accessState={ownerActionContext?.accessState} className="mt-3 w-full border-brand bg-brand text-brand-foreground hover:bg-brand-hover" /> : null}
       </header>
 
       <div className="flex flex-col gap-5">
@@ -166,6 +128,7 @@ export function FlagDetailPane({
           signUpHref={signUpHref}
           previewMeta={model.previewMeta}
           ownerActionContext={ownerActionContext}
+          hidePromptCopy
         />
       </div>
     </div>

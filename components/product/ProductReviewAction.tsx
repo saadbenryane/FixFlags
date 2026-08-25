@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Clock3, RefreshCw, TriangleAlert } from 'lucide-react'
+import { RefreshCw, TriangleAlert } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { Button } from '@/components/ui/button'
 import { parseApiErrorResponse } from '@/lib/api/parse-error'
@@ -29,17 +29,10 @@ export function ProductReviewAction({
 
   if (activeManualReview) {
     return (
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="font-medium">Product Review in progress</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Return to the Timeline to see what FixFlags is observing.
-          </p>
-        </div>
+      <div className="flex items-center justify-end">
         <Button asChild className="shrink-0">
-          <Link href={`/report/${activeManualReview.id}?view=timeline`}>
-            <Clock3 aria-hidden />
-            Resume Review
+          <Link href={`/report/${activeManualReview.id}?view=report`}>
+            Open review
           </Link>
         </Button>
       </div>
@@ -108,16 +101,7 @@ export function ProductReviewAction({
   }
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="font-medium">
-          {retrying ? 'Try Recheck again' : 'Ready to Recheck?'}
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {retrying
-            ? 'The latest attempt did not finish. Start a fresh comparison from the last completed Review.'
-            : REPORT_COPY.recheck.helper}
-        </p>
+    <div className="flex flex-col items-end gap-2">
         {error ? (
           <p
             id="product-review-action-error"
@@ -128,25 +112,17 @@ export function ProductReviewAction({
             {error}
           </p>
         ) : null}
-      </div>
-      <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-        <Button asChild variant="outline">
-          <Link href={`/report/${latestCompletedManualReview.id}?view=report`}>
-            Open latest report
-          </Link>
-        </Button>
         <Button
+          variant="outline"
           type="button"
           onClick={startUpdateReview}
           loading={busy}
-          loadingLabel="Starting Recheck"
+          loadingLabel="Starting update review"
           aria-describedby={error ? 'product-review-action-error' : undefined}
         >
           <RefreshCw aria-hidden />
-          {retrying ? 'Try Recheck again' : REPORT_COPY.recheck.label}
-          <ArrowRight aria-hidden />
+          {retrying ? 'Try update review again' : 'Update review'}
         </Button>
-      </div>
     </div>
   )
 }

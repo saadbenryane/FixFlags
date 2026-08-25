@@ -23,7 +23,6 @@ test('Report pane composition guard follows resolved component structure', () =>
       : <section id="report-flags" />
     const belowFrame = (
       <>
-        <ReportFinishPlan className="mt-3" />
         <ReportContextDisclosure sectionIds={ids} />
       </>
     )
@@ -42,13 +41,9 @@ test('Report pane composition guard follows resolved component structure', () =>
     )
   `
   assert.equal(reportPaneCompositionIsCanonical(source), true)
-  assert.equal(reportPaneCompositionIsCanonical(source.replace('<ReportFinishPlan className="mt-3" />', '')), false)
   assert.equal(
     reportPaneCompositionIsCanonical(
-      source.replace(
-        '<ReportFinishPlan className="mt-3" />\n        <ReportContextDisclosure sectionIds={ids} />',
-        '<ReportContextDisclosure sectionIds={ids} />\n        <ReportFinishPlan className="mt-3" />',
-      ),
+      source.replace('<ReportContextDisclosure sectionIds={ids} />', ''),
     ),
     false,
   )

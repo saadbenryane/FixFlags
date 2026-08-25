@@ -66,14 +66,16 @@ consumers; restart the worker deliberately when worker code changes.
 | `npm run brand:hex-guard` | Enforce brand hex color compliance |
 | `npm run ui:drift-guard` | Detect UI drift from design system |
 | `npm run seo:guard` | SEO compliance checks |
+| `npm run power-tools:visibility-guard` | Ensure parked power tools stay unavailable and undiscoverable |
+| `npm run power-tools:verify` | Non-release-blocking health check for dormant repository, MCP, CLI, API-key, and deployment-hook code |
 | `npm run verify` | Full manifest: database checks, typecheck, source lint, guards, audits, tests, packaging, and builds |
 | `npm run verify:release` | Clean install, full manifest, browser journeys, Docker build, and deployed readiness probes |
 
-Release verification requires designated non-customer resources: `RELEASE_FRESH_DATABASE_URL`, `RELEASE_ALLOW_DATABASE_RESET=true`, `RELEASE_CONTAINER_ENV_FILE`, `RELEASE_ENV_URL`, and `RELEASE_ENV_API_KEY`.
+Release verification requires designated non-customer resources: `RELEASE_FRESH_DATABASE_URL`, `RELEASE_ALLOW_DATABASE_RESET=true`, `RELEASE_CONTAINER_ENV_FILE`, and `RELEASE_ENV_URL`.
 Credentialed fixtures and their manifest are permitted only in release-environment stages.
 The fixture-binding stage first requires `/api/health` to report the exact candidate SHA, then provisions fixtures.
-Production stages use only `PRODUCTION_URL` and `PRODUCTION_API_KEY`; they never hydrate the release fixture manifest.
-The release and production origins and API keys must be distinct.
+The production stage uses only `PRODUCTION_URL`; it never hydrates the release fixture manifest.
+The release and production origins must be distinct.
 The database name must include `release` or `test`; the gate refuses to reset the normal `DATABASE_URL`.
 The container environment file and fixture manifest must be regular files with mode `0600`.
 Before production proof, enable Railway Wait for CI for both web and worker.
@@ -176,7 +178,8 @@ FIXFLAGS_PROCESS_ROLE=worker AUDIT_WORKER_CONCURRENCY=2 npm run worker:start
 
 Required production env vars: `DATABASE_URL`, `REDIS_URL`, `OPENAI_API_KEY` (or Anthropic), `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `NEXT_PUBLIC_APP_URL`, R2 vars, Stripe vars, `CRON_SECRET`, `RESEND_API_KEY`.
 
-**Post-deploy Launch Check (Railway):** configure a project webhook pointing at `/api/webhooks/railway?apiKey=...&url=https://YOUR-SERVICE.up.railway.app`. See [docs/railway-deploy-check.md](docs/railway-deploy-check.md).
+The former customer-triggered Railway deployment review remains parked with the other power tools.
+Scheduled Watch is the supported automated review trigger.
 
 CI uses the same `scripts/validate.mjs` full manifest as local verification, then runs browser journeys. `npm run verify:release` adds clean installation, Docker, and deployed readiness probes and requires designated release resources.
 

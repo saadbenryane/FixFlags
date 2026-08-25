@@ -2,7 +2,7 @@ import { PLAN_DEFINITIONS } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
 
 const DEEP_REVIEW_LABELS: Record<keyof typeof PLAN_DEFINITIONS, string> = {
-  FREE: `${PLAN_DEFINITIONS.FREE.deepReviewLimit} teaser (lifetime)`,
+  FREE: `${PLAN_DEFINITIONS.FREE.deepReviewLimit} per month`,
   BUILDER: `${PLAN_DEFINITIONS.BUILDER.deepReviewLimit} per month`,
   TEAM: `${PLAN_DEFINITIONS.TEAM.deepReviewLimit} per month`,
 }
@@ -15,10 +15,10 @@ const ROWS = [
     studio: PLAN_DEFINITIONS.TEAM.persona,
   },
   {
-    feature: "What you get",
-    free: "3 product reviews (lifetime) with full reports and fix prompts",
-    pro: "More Product Reviews + before/after compare",
-    studio: "Share links, proof exports, and 5 projects",
+    feature: "Web product",
+    free: "Complete",
+    pro: "Complete",
+    studio: "Complete",
   },
   {
     feature: "Deep reviews",
@@ -28,9 +28,15 @@ const ROWS = [
   },
   {
     feature: "Update reviews",
-    free: "Use product review credits",
-    pro: "Use product review credits",
-    studio: "Use product review credits",
+    free: "Included; uses review allowance",
+    pro: "Included; uses review allowance",
+    studio: "Included; uses review allowance",
+  },
+  {
+    feature: "Watch reviews",
+    free: "Included; uses review allowance",
+    pro: "Included; uses review allowance",
+    studio: "Included; uses review allowance",
   },
   {
     feature: "Limits",

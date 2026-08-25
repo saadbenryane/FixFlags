@@ -29,11 +29,9 @@ import type { ProductContract } from '@/lib/audit/product-contract'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
-import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
-import { ReportFinishPlan } from '@/components/report/ReportFinishPlan'
 import { cn } from '@/lib/utils'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import type { AgentMessage } from '@/lib/audit/agent-message'
@@ -98,7 +96,6 @@ export function AuditReportProgressive({
   screenshots = [],
   screenshotCapture,
   workerIdle = false,
-  actionTimeline = [],
   productContract = null,
   technologyProfile,
   sectionId = 'report-flags',
@@ -109,9 +106,6 @@ export function AuditReportProgressive({
 }: AuditReportProgressiveProps) {
   const isOwnerAccess = accessContext === 'owner'
   const canClaimAccess = accessContext === 'anonymous_teaser'
-  const timelineGateActionHref = canClaimAccess && auditId
-    ? `/sign-in?next=${encodeURIComponent(`/report/${auditId}`)}`
-    : undefined
   const chatGateReason = canClaimAccess ? 'sign-in' : 'owner'
   const isFailed = status === 'FAILED'
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
@@ -139,8 +133,6 @@ export function AuditReportProgressive({
     process.env.NODE_ENV === 'development' && status === 'QUEUED' && easeTick >= 12
 
   const [queueWaitSeconds, setQueueWaitSeconds] = useState<number | undefined>()
-  const [showCompletionBadge, setShowCompletionBadge] = useState(false)
-  const wasLoadingRef = useRef(isLoading)
 
   useEffect(() => {
     if (status !== 'QUEUED') {
@@ -174,18 +166,6 @@ export function AuditReportProgressive({
   useEffect(() => {
     if (status === 'COMPLETED') setDisplayProgress(100)
   }, [status])
-
-  // Show a brief "Review complete" badge when the scan transitions from loading
-  // to completed, then fade it out after 3 seconds.
-  useEffect(() => {
-    if (wasLoadingRef.current && !isLoading && status === 'COMPLETED') {
-      setShowCompletionBadge(true)
-      const timer = setTimeout(() => setShowCompletionBadge(false), 3000)
-      wasLoadingRef.current = isLoading
-      return () => clearTimeout(timer)
-    }
-    wasLoadingRef.current = isLoading
-  }, [isLoading, status])
 
   const prevFlagsRef = useRef(partialFlags)
   const prevScreenshotsRef = useRef(screenshots)
@@ -259,11 +239,6 @@ export function AuditReportProgressive({
       demonstratedFlagId: null,
     },
   })
-  const polishPassPrompt =
-    explorerModel.polishPassPrompt ??
-    explorerModel.flags.find((flag) => flag.hasFixPrompt)?.copyFixPrompt ??
-    null
-
   const queuedWarnings =
     (workerIdle || showWorkerWarning || showQueueWait) ? (
       <div className="space-y-3">
@@ -315,14 +290,6 @@ export function AuditReportProgressive({
             </ExplorerErrorBoundary>
           </section>
         }
-        afterFrame={
-          <ReportFinishPlan
-            flagCount={flagCount}
-            prompt={polishPassPrompt}
-            loading={isLoading && flagCount === 0}
-            className="mt-3"
-          />
-        }
       />
   )
 
@@ -332,7 +299,6 @@ export function AuditReportProgressive({
         isActiveReview
         scanning
         capabilities={workspace.capabilities}
-        timelineGateActionHref={timelineGateActionHref}
         reportHeader={
           <ReportOutcomeBar
             model={workspace}
@@ -356,7 +322,6 @@ export function AuditReportProgressive({
         browserCaptureStatus={screenshotCapture}
         reportPanel={scanReportPanel}
         findingCount={flagCount}
-        steps={buildPlaybackSteps(actionTimeline)}
         className="h-full"
       />
     </Suspense>
@@ -436,7 +401,6 @@ export function AuditReportProgressive({
             <ReportWorkspaceSplitShell
               isActiveReview
               capabilities={workspace.capabilities}
-              timelineGateActionHref={timelineGateActionHref}
               reportHeader={<ReportOutcomeBar model={workspace} />}
               leftPanel={
                 <WorkspaceChatPanel
@@ -452,16 +416,6 @@ export function AuditReportProgressive({
               browserCaptureStatus={screenshotCapture}
               reportPanel={
                 <>
-                  {showCompletionBadge && (
-                    <div
-                      role="status"
-                      aria-live="polite"
-                      className="mb-3 flex items-center gap-2 rounded-card border border-success/20 bg-success/5 px-3 py-2 text-sm text-success motion-safe:animate-soft-reveal"
-                    >
-                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-success" aria-hidden />
-                      Review complete
-                    </div>
-                  )}
                   <ReportPane
                     explorer={
                       <section
@@ -482,12 +436,6 @@ export function AuditReportProgressive({
                     }
                     afterFrame={
                       <>
-                        <ReportFinishPlan
-                          flagCount={flagCount}
-                          prompt={polishPassPrompt}
-                          loading={false}
-                          className="mt-3"
-                        />
                         <ReportContextDisclosure
                           sectionIds={['report-stack', 'report-contract']}
                           className="mt-3"
@@ -499,7 +447,6 @@ export function AuditReportProgressive({
                   />
                 </>
               }
-              steps={buildPlaybackSteps(actionTimeline)}
               className="h-full"
             />
           </Suspense>

@@ -2,7 +2,6 @@ import { ProjectWatchInterval, type User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { startMonitoringAudit } from '@/lib/audit/monitoring'
-import { canAccessProductWatch, canSharePublicly } from '@/lib/auth/entitlements'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { resend } from '@/lib/email/client'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
@@ -54,17 +53,6 @@ export async function setProjectWatch(input: {
   })
   if (!project) return { ok: false, error: 'Product not found' }
 
-  const user = await prisma.user.findUnique({
-    where: { id: input.userId },
-    select: { id: true, plan: true, role: true, subscriptionStatus: true },
-  })
-  if (!user) return { ok: false, error: 'User not found' }
-  if (input.interval && !canAccessProductWatch(user)) {
-    return { ok: false, error: 'Product watch requires Pro or Studio' }
-  }
-  if (input.interval === 'daily' && !canSharePublicly(user)) {
-    return { ok: false, error: 'Daily watch requires Studio' }
-  }
   if (input.interval) {
     const readiness = productWatchReadiness()
     if (!readiness.available) {
@@ -157,19 +145,6 @@ export async function processDueProjectWatches(limit = 20): Promise<{
     processed += 1
 
     try {
-      if (!canAccessProductWatch(project.user)) {
-        await prisma.project.update({
-          where: { id: project.id },
-          data: {
-            watchInterval: null,
-            watchNextRunAt: null,
-            watchLeaseUntil: null,
-            watchLastError: 'Product Watch disabled after entitlement loss',
-          },
-        })
-        continue
-      }
-
       const active = await prisma.audit.findFirst({
         where: {
           projectId: project.id,
@@ -215,6 +190,25 @@ export async function processDueProjectWatches(limit = 20): Promise<{
         },
       })
     } catch (error) {
+      const usageLimit = error as {
+        code?: string
+        renewalAt?: Date
+      }
+      if (usageLimit.code === 'UPGRADE_REQUIRED' || usageLimit.code === 'TOKEN_LIMIT') {
+        await prisma.project.update({
+          where: { id: project.id },
+          data: {
+            watchLeaseUntil: null,
+            watchNextRunAt:
+              usageLimit.renewalAt && usageLimit.renewalAt > now
+                ? usageLimit.renewalAt
+                : calcWatchNextRun(interval, now),
+            watchLastError:
+              'Watch paused because this month’s Product Review allowance is used. It will resume after renewal or an upgrade.',
+          },
+        })
+        continue
+      }
       errors += 1
       const message = error instanceof Error ? error.message : String(error)
       logger.error('Project watch tick failed', error instanceof Error ? error : new Error(message), {

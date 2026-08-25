@@ -53,13 +53,14 @@ for (const width of widths) {
     page.on('pageerror', (error) => errors.push(error.message))
     await page.goto('/samples')
 
-    await expect(page.locator('[data-workspace-ready="true"]')).toBeVisible({ timeout: 60_000 })
     await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
     // Identity lives once in Agent; the Report header owns only Score/history.
     await expect(page.getByText(/Launchpad/i).first()).toBeVisible()
     await expect(page.getByRole('region', { name: 'Review score and history' })).toBeVisible()
-    await expect(page.getByRole('tab', { name: 'Report' }).first()).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByRole('tab', { name: 'Timeline' }).first()).toBeVisible()
+    if (width < 1024) await expect(page.getByRole('tab', { name: 'Report' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tab', { name: 'Timeline' })).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: 'Canvas' })).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: 'Preview' })).toHaveCount(0)
     await expect(page.getByLabel('Product fixflags.com/demo')).toHaveCount(0)
 
     const dimensions = await page.evaluate(() => ({
@@ -146,28 +147,23 @@ test('curated sample demonstrates exactly one fix prompt', async ({ page }) => {
 })
 
 for (const { width, tablistName } of [
-  { width: 375, tablistName: 'Review panels' },
-  { width: 1280, tablistName: 'Workspace view' },
+  { width: 375, tablistName: 'Review workspace' },
 ]) {
   test(`canonical sample tabs support keyboard navigation at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/samples')
-    await expect(page.locator('[data-workspace-ready="true"]')).toBeVisible({ timeout: 60_000 })
-
     const tabs = page.getByRole('tablist', { name: tablistName })
     const report = tabs.getByRole('tab', { name: 'Report' })
-    const timeline = tabs.getByRole('tab', { name: 'Timeline' })
+    const agent = tabs.getByRole('tab', { name: 'Agent' })
     await expect(report).toHaveAttribute('aria-selected', 'true')
     await report.focus()
     await page.keyboard.press('ArrowLeft')
-    await expect(timeline).toBeFocused()
-    await expect(timeline).toHaveAttribute('aria-selected', 'true')
-    await expect(page).toHaveURL(/view=timeline/)
+    await expect(agent).toBeFocused()
+    await expect(agent).toHaveAttribute('aria-selected', 'true')
 
     await page.keyboard.press('ArrowRight')
     await expect(report).toBeFocused()
     await expect(report).toHaveAttribute('aria-selected', 'true')
-    await expect(page).toHaveURL(/view=report/)
   })
 }
 

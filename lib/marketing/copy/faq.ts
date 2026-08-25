@@ -49,11 +49,11 @@ export const FAQ = [
   },
   {
     question: 'Do I need an account for my first product review?',
-    answer: `Yes. Your report opens immediately while the product review runs. If you are signed out, create a free account or sign in to save it. Free includes ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) and ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser.`,
+    answer: `No. Your report opens immediately while the product review runs. You can inspect real evidence, then create a free account or sign in to save it and unlock the complete report. Free includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews and ${PRICING_COPY.freeDeepReviewsPerMonth} deep review per month.`,
   },
   {
     question: 'What\u2019s included in the free plan vs Pro?',
-    answer: `Free: ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) with full reports and fix prompts, plus ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser. Update reviews use the same product review credits. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): before/after compare, ${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month.`,
+    answer: `Every plan includes the same complete web product. Free includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews and ${PRICING_COPY.freeDeepReviewsPerMonth} deep review per month. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}) increases that to ${PRICING_COPY.proProductReviewsPerMonth} and ${PRICING_COPY.proDeepReviewsPerMonth}. New URLs, update reviews, and completed Watch reviews share the product review allowance.`,
   },
   {
     question: 'Do I need a specific AI builder?',
@@ -73,16 +73,16 @@ export const FAQ = [
   {
     question: 'Can I run an update review after my agent fixes Flags?',
     answer:
-      'Yes. Update reviews on reports you own use one product review credit. Pro adds before/after compare.',
+      'Yes. Update reviews on reports you own use one product review from your monthly allowance. Before/after comparison is included on every plan.',
   },
   {
     question: 'Are my reports public?',
-    answer: `${OFFER.linkPrivacy} Studio plans can create public share links. Separate public site pages are for discovery; they are not your private report.`,
+    answer: `${OFFER.linkPrivacy} Protected share links are included on every plan. Separate public site pages are for discovery; they are not your private report.`,
   },
   {
     question: 'Does it work on staging/password-protected sites?',
     answer:
-      'Yes for preview URLs you can reach over HTTPS (ngrok, Vercel preview, Cloudflare tunnel). On Studio projects, save HTTP basic auth or a session cookie under Projects → Preview access. Localhost and private networks are still not supported.',
+      'FixFlags can review a publicly reachable HTTPS preview URL. Localhost, private networks, and password-only pages are not supported in the current URL-first product.',
   },
   {
     question: 'We already have a live site. Is this only for pre-launch?',
@@ -113,7 +113,7 @@ export const CHANGELOG_ENTRIES = [
     title: 'Report depth and Help Center',
     items: [
       'Product Contract and Action Timeline show what we inferred and how we checked',
-      'Funnel and CTA flow evidence on Pro reports',
+      'Funnel and CTA flow evidence in reports',
       'Help Center with guides for reviews, billing, and account',
       'One free teaser review without an account; sign up to claim fix prompts',
       'Update reviews use product review credits on every plan',

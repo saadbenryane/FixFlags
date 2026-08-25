@@ -3,141 +3,38 @@ import type { Route } from 'next'
 import { cn } from '@/lib/utils'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 
-const BAR_WIDTH = 3
-const BAR_HEIGHT = 32
-
-function scoreToColor(score: number | null): string {
-  if (score === null) return 'hsl(var(--muted-foreground))'
-  if (score >= 80) return 'hsl(var(--success))'
-  if (score >= 60) return 'hsl(var(--warning))'
-  return 'hsl(var(--destructive))'
+function dateLabel(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date)
 }
 
-function formatDateLabel(date: Date): string {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(date)
+function pointLabel(point: ReportWorkspaceHistoryPoint, index: number, total: number): string {
+  const kind = point.kind === 'watch' ? 'Watch run' : point.kind === 'update-review' ? 'Update review' : 'Product review'
+  const status = point.status === 'partial' ? 'Partial capture' : point.status === 'degraded' ? 'Degraded capture' : point.status === 'failed' ? 'Failed capture' : 'Completed'
+  const score = point.score == null ? 'score unavailable' : `score ${Math.round(point.score)}`
+  const fullDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(point.checkedAt)
+  return `Review ${index + 1} of ${total}, ${kind}, ${fullDate}, ${status}, ${score}`
 }
 
-function getKindLabel(kind: ReportWorkspaceHistoryPoint['kind']): string {
-  switch (kind) {
-    case 'product-review':
-      return 'Product review'
-    case 'update-review':
-      return 'Update review'
-    case 'watch':
-      return 'Watch run'
-  }
-}
-
-function getStatusLabel(status: ReportWorkspaceHistoryPoint['status']): string {
-  switch (status) {
-    case 'completed':
-      return 'Completed'
-    case 'partial':
-      return 'Partial capture'
-    case 'degraded':
-      return 'Degraded capture'
-    case 'failed':
-      return 'Failed capture'
-  }
-}
-
-function getHistoryPointLabel(
-  point: ReportWorkspaceHistoryPoint,
-  index: number,
-  total: number,
-): string {
-  const scoreLabel = point.score === null
-    ? 'score unavailable'
-    : `score ${Math.round(point.score)}`
-
-  return [
-    `Review ${index + 1} of ${total}`,
-    getKindLabel(point.kind),
-    formatDateLabel(point.checkedAt),
-    getStatusLabel(point.status),
-    scoreLabel,
-  ].join(', ')
-}
-
-export function ScoreHistoryChart({
-  history,
-  currentAuditId,
-  className,
-  isLoading = false,
-}: {
-  history: ReportWorkspaceHistoryPoint[]
-  currentAuditId?: string | null
-  className?: string
-  isLoading?: boolean
-}) {
-  if (history.length === 0 && !isLoading) {
-    return (
-      <div
-        className={cn('py-2 text-center text-muted-foreground', className)}
-        role="status"
-        aria-label="No score history available"
-      >
-        No observations yet
-      </div>
-    )
-  }
-
+export function ScoreHistoryChart({ history, currentAuditId, className, isLoading = false }: { history: ReportWorkspaceHistoryPoint[]; currentAuditId?: string | null; className?: string; isLoading?: boolean }) {
+  if (history.length === 0 && !isLoading) return <p role="status" aria-label="No score history available" className={cn('text-sm text-muted-foreground', className)}>No observations yet</p>
   return (
     <nav className={cn('min-w-0', className)} aria-label="Review history">
-      <ol className="flex max-w-full items-end overflow-x-auto">
+      <p className="mb-1 text-2xs font-medium uppercase tracking-label text-muted-foreground">Review history</p>
+      <ol className="flex min-w-max items-start overflow-x-auto pb-1">
         {history.map((point, index) => {
-          const isCurrent = point.id === currentAuditId
-          const score = point.score
-          const label = getHistoryPointLabel(point, index, history.length)
-
+          const score = point.score == null ? '—' : Math.round(point.score)
+          const current = point.id === currentAuditId
           return (
-            <li key={point.id} className="shrink-0">
-              <Link
-                href={point.href as Route}
-                aria-label={label}
-                aria-current={isCurrent ? 'page' : undefined}
-                title={label}
-                className="relative flex min-h-11 min-w-11 items-end justify-center rounded-[var(--radius-control)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-1"
-              >
-                <span
-                  aria-hidden="true"
-                  className={cn(
-                    'rounded-sm transition-[height,opacity,box-shadow] duration-200',
-                    isCurrent && 'ring-2 ring-inset ring-foreground/45',
-                  )}
-                  style={{
-                    width: BAR_WIDTH,
-                    height: score !== null
-                      ? Math.max(4, (Math.min(100, Math.max(0, score)) / 100) * BAR_HEIGHT)
-                      : 4,
-                    backgroundColor: scoreToColor(score),
-                    opacity: score !== null ? (isCurrent ? 1 : 0.72) : 0.45,
-                  }}
-                />
+            <li key={point.id} className={cn('relative flex w-20 shrink-0 justify-center pt-1', index > 0 && 'before:absolute before:left-0 before:right-1/2 before:top-4 before:h-px before:bg-border', index < history.length - 1 && 'after:absolute after:left-1/2 after:right-0 after:top-4 after:h-px after:bg-border')}>
+              <Link href={point.href as Route} aria-current={current ? 'page' : undefined} aria-label={pointLabel(point, index, history.length)} className="relative z-10 flex min-h-11 min-w-11 flex-col items-center rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+                <span className={cn('grid h-7 w-7 place-items-center rounded-full border bg-card font-mono text-2xs font-semibold tabular-nums', current ? 'border-brand text-brand shadow-sm' : 'border-border text-muted-foreground')}>{score}</span>
+                <span className="mt-1 whitespace-nowrap text-3xs text-muted-foreground">{dateLabel(point.checkedAt)}</span>
               </Link>
             </li>
           )
         })}
-        {isLoading ? (
-          <li className="flex min-h-11 min-w-11 shrink-0 items-end justify-center" aria-hidden="true">
-            <span
-              className="inline-block w-[3px] rounded-sm bg-foreground/25"
-              style={{ height: 16 }}
-            />
-          </li>
-        ) : null}
+        {isLoading ? <li className="relative flex w-20 shrink-0 justify-center pt-1 before:absolute before:left-0 before:right-1/2 before:top-4 before:h-px before:bg-border"><span role="status" className="relative z-10 grid h-7 w-7 animate-pulse place-items-center rounded-full border border-brand/40 bg-card font-mono text-xs text-brand" aria-label="Review in progress"><span aria-hidden>…</span><span className="sr-only">Live review in progress</span></span></li> : null}
       </ol>
-
-      {isLoading ? (
-        <span className="sr-only" role="status" aria-live="polite">
-          Live review in progress
-        </span>
-      ) : null}
     </nav>
   )
 }

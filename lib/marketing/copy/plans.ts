@@ -23,11 +23,11 @@ export const PLANS = [
     period: "",
     persona: "Try before launch",
     outcome: "See everything on one page",
-    audits: `${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime)`,
+    audits: `${PRICING_COPY.freeProductReviewsPerMonth} product reviews / month`,
     features: [
-      `${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) with full reports and fix prompts`,
-      `${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser (lifetime)`,
-      "Upgrade anytime for more reviews",
+      `${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month`,
+      `${PRICING_COPY.freeDeepReviewsPerMonth} deep review per month`,
+      "The complete FixFlags web product",
     ],
     cta: "Start free",
     href: "/sign-up?from=pricing",
@@ -44,9 +44,8 @@ export const PLANS = [
     audits: `${PRICING_COPY.proProductReviewsPerMonth} product reviews / month`,
     features: [
       `${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month`,
-      "Before/after comparisons",
-      "Evidence-backed fix prompts for your builder",
-      "Weekly product watch with regression email",
+      "The complete FixFlags web product",
+      "Higher monthly usage for frequent shipping",
     ],
     cta: "Start Pro",
     href: "/sign-up?plan=BUILDER",
@@ -62,11 +61,9 @@ export const PLANS = [
     outcome: "Finish many products, across teams and releases",
     audits: `${PRICING_COPY.studioProductReviewsPerMonth} product reviews / month`,
     features: [
-      "Everything in Pro",
       `${PRICING_COPY.studioProductReviewsPerMonth} product reviews and ${PRICING_COPY.studioDeepReviewsPerMonth} deep reviews per month`,
-      "Up to 5 projects",
-      "Public share links for clients",
-      "Daily product watch with regression email",
+      "The complete FixFlags web product",
+      "Highest monthly usage for multiple products",
     ],
     cta: "Start Studio",
     href: "/sign-up?plan=TEAM",
@@ -78,12 +75,12 @@ export const PLANS = [
 export const PRICING_FAQ = [
   {
     question: "Can I start free and upgrade later?",
-    answer: `Yes. ${OFFER.line} Upgrade for more product reviews, deep reviews, and before/after compare.`,
+    answer: `Yes. ${OFFER.line} Upgrade when you need more product reviews and deep reviews each month.`,
   },
   {
     question: "What counts as a product review?",
     answer:
-      "A product review is one full pass on a URL: checks, report, and fix prompts. A new URL and an update review on the same report each use one product review from your monthly allowance. Failed runs that never produce a report do not count.",
+      "A product review is one full pass on a URL: checks, report, and fix prompts. A new URL, an update review, and a completed scheduled Watch review each use one product review from your monthly allowance. Failed runs that never produce a report do not count.",
   },
   {
     question: "What is a deep review?",
@@ -97,7 +94,7 @@ export const PRICING_FAQ = [
   },
   {
     question: "Are reports public or private?",
-    answer: `${OFFER.linkPrivacy} Studio plans can create public share links. Public site pages on FixFlags are for discovery; they are not your private report.`,
+    answer: `${OFFER.linkPrivacy} You can create a protected share link on any plan. Public site pages on FixFlags are for discovery; they are not your private report.`,
   },
   {
     question: "Are screenshots stored?",
@@ -117,7 +114,7 @@ export const PRICING_FAQ = [
   {
     question: "What happens when I hit my limit?",
     answer:
-      "Product reviews pause until you upgrade. Free includes 3 product reviews in total. Paid plans reset each cycle.",
+      "Product reviews pause until your monthly allowance renews or you upgrade. Usage does not roll over.",
   },
   {
     question: "Do I need a specific AI builder?",
@@ -127,15 +124,15 @@ export const PRICING_FAQ = [
   {
     question: "What\u2019s included in every plan?",
     answer:
-      "Every plan includes Flags with evidence and fix prompts after you create an account. Paid plans add more product reviews, deep reviews, before/after compare, and team features.",
+      "Every plan includes the same complete web product: reports, evidence, fix prompts, update comparisons, history, sharing, Canvas, Product Signals, and Watch. Plans differ only by monthly usage.",
   },
 ] as const;
 
 export const PRICING = {
   label: "Simple pricing",
   headline: "Start free. Upgrade when you\u2019re reviewing often.",
-  subhead: `${OFFER.line} Upgrade for more product reviews, deep reviews, and before/after compare.`,
-  trustBadge: "Product reviews and deep reviews on every paid plan",
+  subhead: `${OFFER.line} Every plan includes the complete web product. Upgrade only when you need more reviews.`,
+  trustBadge: "Product reviews and deep reviews on every plan",
   assurances: [
     "Evidence from the live product",
     "No credit card for Free",
@@ -145,10 +142,10 @@ export const PRICING = {
   upgradeStepsLoggedIn: "Stripe checkout → Dashboard",
   checkoutRedirecting: "Redirecting to checkout…",
   allPlansInclude:
-    "Every product review includes evidence and rubric summaries. Fix prompts come with a free account. Pro adds compare, more product reviews, and deep reviews.",
+    "Every plan includes reports, evidence, fix prompts, update comparisons, history, sharing, Canvas, Product Signals, and Watch. Only monthly usage changes.",
   pickerEyebrow: "Pick a plan",
   pickerTitle: "Choose how you want to start",
-  pickerSubtitle: "Free includes 3 product reviews (lifetime) and every Flag. Paid adds more reviews, deep reviews, and before/after compare.",
+  pickerSubtitle: "Every plan includes the complete web product. Choose the monthly review allowance that matches how often you ship.",
   pickerBody: "Pick the plan that matches how often you ship.",
   pickerBodyWithReport: "Your review is still running. Pick a plan to keep your report and fix prompts.",
   pickerReportNote: "Choosing Free returns you to the running report.",
@@ -169,8 +166,8 @@ export const WAITLIST_PAGE = {
     'Pro and Studio open in order. The first 500 waitlisters per plan get 25% off for 12 months from launch. The next 500 get 15% off.',
   planProLabel: 'Pro',
   planStudioLabel: 'Studio',
-  planProDetail: '25 product reviews and 4 deep reviews per month',
-  planStudioDetail: '80 product reviews and 10 deep reviews per month',
+  planProDetail: '15 product reviews and 3 deep reviews per month',
+  planStudioDetail: '50 product reviews and 10 deep reviews per month',
   emailPlaceholder: 'you@example.com',
   joinCta: 'Join the waitlist',
   signUpRequired: 'Sign up required',
@@ -223,7 +220,7 @@ export const BILLING_ACTION_COPY = {
 export const UPSELLS = {
   anon: {
     headline: "Save this report and run more reviews",
-    body: "Create a free account to save this report and unlock its fix prompts. Free includes three lifetime product-review credits shared by new URLs and update reviews.",
+    body: "Create a free account to save this report and unlock its fix prompts. Free includes three product reviews every month, shared by new URLs, update reviews, and Watch.",
     primaryCta: "Create free account",
     secondaryCta: "See paid plans",
   },
@@ -241,7 +238,7 @@ export const UPSELLS = {
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
     headline: "You\u2019ve used your free product reviews",
-    body: "Upgrade to Pro for 25 product reviews and 4 deep reviews per month with before/after compare.",
+    body: "Upgrade to Pro for 15 product reviews and 3 deep reviews per month.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
   },
@@ -261,26 +258,26 @@ export const UPGRADE_MOMENTS = {
     plan: "BUILDER" as const,
   },
   share_public: {
-    headline: "Share reports with clients",
-    body: "Studio includes public share links with OG previews and a Check My Site CTA for viewers.",
-    cta: "Upgrade to Studio",
-    plan: "TEAM" as const,
+    headline: "Need more review capacity?",
+    body: "Sharing is included on every plan. Upgrade only when you need more product reviews and deep reviews each month.",
+    cta: "See usage plans",
+    plan: "BUILDER" as const,
   },
   export_locked: {
-    headline: "Proof exports are on Studio",
-    body: "Studio includes summaries your clients can open with rubrics and top Flags.",
-    cta: "Upgrade to Studio",
-    plan: "TEAM" as const,
+    headline: "Need more review capacity?",
+    body: "Proof exports are included on every plan. Upgrade only when you need more reviews each month.",
+    cta: "See usage plans",
+    plan: "BUILDER" as const,
   },
   free_default: {
     headline: "Ship weekly? Automate the loop",
-    body: "Pro adds 25 product reviews and 4 deep reviews per month with before/after compare.",
+    body: "Pro adds 15 product reviews and 3 deep reviews per month.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
   },
   report_completed: {
     headline: "Automate the review loop",
-    body: "Pro adds more product reviews and deep reviews each month with before/after proof.",
+    body: "Pro adds more product reviews and deep reviews each month.",
     cta: proUpgradeCta(),
     plan: "BUILDER" as const,
   },
@@ -288,5 +285,5 @@ export const UPGRADE_MOMENTS = {
 
 export const BILLING_PAGE_COPY = {
   pastDueBody:
-    "Update your card to restore paid features such as compare and sharing. We'll retry automatically. Product reviews resume when payment succeeds.",
+    "Update your card to restore your paid monthly usage allowance. We'll retry automatically. Product reviews resume when payment succeeds.",
 } as const;

@@ -23,15 +23,15 @@ export const CUSTOMER_TERMS = {
 
 /** Shared pricing numbers for marketing, help, and FAQ. Must match `lib/billing/plans.ts` enforcement. */
 export const PRICING_COPY = {
-  freeProductReviewsLifetime: 3,
-  freeDeepReviewTeaserLifetime: 1,
-  proPrice: '$69',
+  freeProductReviewsPerMonth: 3,
+  freeDeepReviewsPerMonth: 1,
+  proPrice: '$29',
   proPeriod: '/mo',
-  proProductReviewsPerMonth: 25,
-  proDeepReviewsPerMonth: 4,
-  studioPrice: '$199',
+  proProductReviewsPerMonth: 15,
+  proDeepReviewsPerMonth: 3,
+  studioPrice: '$79',
   studioPeriod: '/mo',
-  studioProductReviewsPerMonth: 80,
+  studioProductReviewsPerMonth: 50,
   studioDeepReviewsPerMonth: 10,
 } as const
 

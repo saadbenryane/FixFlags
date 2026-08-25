@@ -38,6 +38,7 @@ interface Props {
   canSharePublicly?: boolean
   shareStatus?: string
   showFixPrompts?: boolean
+  variant?: 'all' | 'update' | 'secondary'
 }
 
 export function AuditPageActions({
@@ -57,6 +58,7 @@ export function AuditPageActions({
   canSharePublicly = false,
   shareStatus,
   showFixPrompts = false,
+  variant = 'all',
 }: Props) {
   const router = useRouter()
   const [isPublic, setIsPublic] = useState(initialIsPublic)
@@ -86,7 +88,7 @@ export function AuditPageActions({
 
   return (
     <>
-      <Button
+      {variant !== 'secondary' ? <Button
         size="sm"
         onClick={handleRecheck}
         loading={recheckLoading}
@@ -94,8 +96,8 @@ export function AuditPageActions({
       >
         <RefreshCw className="h-4 w-4 mr-2" />
         {REPORT_COPY.recheck.label}
-      </Button>
-      {compareAuditId && (
+      </Button> : null}
+      {variant !== 'update' && compareAuditId && (
         <Button variant="outline" size="sm" asChild>
           <Link href={`/compare/${compareAuditId}`}>
             <ArrowLeftRight className="h-4 w-4 mr-2" />
@@ -103,7 +105,7 @@ export function AuditPageActions({
           </Link>
         </Button>
       )}
-      <ShareDrawer
+      {variant !== 'update' ? <ShareDrawer
         auditId={auditId}
         score={score}
         topIssue={topIssue}
@@ -114,8 +116,8 @@ export function AuditPageActions({
         canPublicShare={canSharePublicly}
         shareStatus={shareStatus}
         onPublicChange={setIsPublic}
-      />
-      <ExportMenu
+      /> : null}
+      {variant !== 'update' ? <ExportMenu
         auditId={auditId}
         url={url}
         score={score}
@@ -125,8 +127,7 @@ export function AuditPageActions({
         contract={contract}
         canExportSummary={canExportSummary}
         showFixPrompts={showFixPrompts}
-      />
-      <p className="w-full text-xs text-muted-foreground sm:w-auto">{REPORT_COPY.recheck.helper}</p>
+      /> : null}
     </>
   )
 }

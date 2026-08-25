@@ -27,6 +27,16 @@ export interface MeUser {
     isUnlimited: boolean
     purchasedCredits?: number
     totalAvailable?: number | null
+    remaining: number | null
+    periodStart: string
+    periodEnd: string
+  }
+  deepReviews: {
+    used: number
+    limit: number
+    remaining: number | null
+    periodStart: string
+    periodEnd: string
   }
   entitlements: {
     reportTier: 'free' | 'paid'
@@ -35,8 +45,6 @@ export interface MeUser {
     canAccessPaidFeatures: boolean
     canMonitor: boolean
     canWatchProduct: boolean
-    canUseMcp: boolean
-    canScanRepositories: boolean
   }
   vibecodingLevel: string | null
   preferredTools: string[]

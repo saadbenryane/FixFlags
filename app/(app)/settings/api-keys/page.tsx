@@ -43,7 +43,7 @@ export default function ApiKeysPage() {
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  const canUseKeys = user?.entitlements?.canUseMcp ?? false
+  const canUseKeys = user?.entitlements?.canAccessPaidFeatures ?? false
 
   useEffect(() => {
     if (meLoading) return

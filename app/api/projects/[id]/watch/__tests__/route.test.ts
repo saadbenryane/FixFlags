@@ -3,11 +3,9 @@ import { NextRequest } from 'next/server'
 
 const prismaMock = vi.hoisted(() => ({
   project: { findFirst: vi.fn(), findUnique: vi.fn() },
-  user: { findUnique: vi.fn() },
 }))
 const getSession = vi.hoisted(() => vi.fn())
 const setProjectWatch = vi.hoisted(() => vi.fn())
-const canAccessProductWatch = vi.hoisted(() => vi.fn())
 const fromStoredWatchInterval = vi.hoisted(() => vi.fn())
 const productWatchReadiness = vi.hoisted(() => vi.fn())
 
@@ -24,7 +22,6 @@ vi.mock('@/lib/audit/project-watch', () => ({
   fromStoredWatchInterval,
   productWatchReadiness,
 }))
-vi.mock('@/lib/auth/entitlements', () => ({ canAccessProductWatch }))
 
 import { GET, PUT } from '@/app/api/projects/[id]/watch/route'
 
@@ -32,7 +29,6 @@ describe('/api/projects/[id]/watch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
-    canAccessProductWatch.mockReturnValue(true)
     fromStoredWatchInterval.mockReturnValue('weekly')
     productWatchReadiness.mockReturnValue({ ready: true })
     prismaMock.project.findFirst.mockResolvedValue({
@@ -44,12 +40,6 @@ describe('/api/projects/[id]/watch', () => {
       watchLastAttemptAt: null,
       watchConsecutiveFailures: 0,
       watchLastError: null,
-    })
-    prismaMock.user.findUnique.mockResolvedValue({
-      id: 'user-1',
-      plan: 'BUILDER',
-      role: 'user',
-      subscriptionStatus: 'ACTIVE',
     })
     setProjectWatch.mockResolvedValue({
       ok: true,
@@ -86,7 +76,7 @@ describe('/api/projects/[id]/watch', () => {
     expect(response.status).toBe(404)
   })
 
-  it('enables weekly watch for Pro and rejects Free upgrades', async () => {
+  it('enables weekly Watch for an authenticated Product owner', async () => {
     const enabled = await PUT(
       new NextRequest('http://localhost/api/projects/project-1/watch', {
         method: 'PUT',
@@ -97,18 +87,9 @@ describe('/api/projects/[id]/watch', () => {
     expect(enabled.status).toBe(200)
     expect(setProjectWatch).toHaveBeenCalled()
 
-    canAccessProductWatch.mockReturnValue(false)
-    const denied = await PUT(
-      new NextRequest('http://localhost/api/projects/project-1/watch', {
-        method: 'PUT',
-        body: JSON.stringify({ interval: 'weekly' }),
-      }),
-      { params: Promise.resolve({ id: 'project-1' }) }
-    )
-    expect(denied.status).toBe(402)
   })
 
-  it('requires Studio for daily watch and validates interval', async () => {
+  it('allows daily Watch on every plan and validates interval', async () => {
     const daily = await PUT(
       new NextRequest('http://localhost/api/projects/project-1/watch', {
         method: 'PUT',
@@ -116,7 +97,7 @@ describe('/api/projects/[id]/watch', () => {
       }),
       { params: Promise.resolve({ id: 'project-1' }) }
     )
-    expect(daily.status).toBe(402)
+    expect(daily.status).toBe(200)
 
     const invalid = await PUT(
       new NextRequest('http://localhost/api/projects/project-1/watch', {

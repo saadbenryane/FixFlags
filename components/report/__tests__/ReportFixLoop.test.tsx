@@ -31,14 +31,14 @@ describe('ReportFixLoop empty / loading states', () => {
     )
 
     const flag = screen.getByRole('button', {
-      name: /Message: Clarify the primary action/i,
+      name: /Important Flag: Clarify the primary action/i,
     })
     expect(flag).toHaveAttribute('aria-pressed', 'true')
     expect(flag).toHaveAttribute('aria-controls', 'selected-flag-detail')
   })
   
 
-  it('collapses Reach Flags under More checks', () => {
+  it('keeps the complete ranked Flag list visible', () => {
     render(
       <ReportFixLoop
         onSelectFlag={() => undefined}
@@ -59,8 +59,8 @@ describe('ReportFixLoop empty / loading states', () => {
       />
     )
 
-    expect(screen.getByText(REPORT_COPY.explorer.moreChecks)).toBeInTheDocument()
-    expect(screen.queryByText('Missing Open Graph title')).not.toBeInTheDocument()
+    expect(screen.getByText('Missing Open Graph title')).toBeInTheDocument()
+    expect(screen.queryByText(REPORT_COPY.explorer.moreChecks)).not.toBeInTheDocument()
   })
 
 })

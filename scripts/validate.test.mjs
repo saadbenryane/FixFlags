@@ -129,8 +129,7 @@ describe('validate.mjs', () => {
       assert.deepEqual(labels, [
         'release:foundation', 'release:fixture-binding', 'release:credentialed-core',
         'release:billing-open', 'release:billing-closed', 'release:external',
-        'release:deployed', 'release:registry-cli', 'release:production-dogfood',
-        'release:final',
+        'release:deployed', 'release:final',
       ])
       for (const item of buildPlan('release', []).commands.slice(0, -1)) {
         assert.deepEqual(item.args.slice(0, 2), ['scripts/release-receipts.mjs', 'stage'])

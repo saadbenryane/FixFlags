@@ -81,8 +81,6 @@ export default async function DashboardPage({
         ) : null}
       </PageHeader>
 
-      <ProductOverviewGrid products={products} />
-
       <Surface variant="elevated" className="space-y-4">
         <div>
           <SectionTitle>Review a URL</SectionTitle>
@@ -96,6 +94,8 @@ export default async function DashboardPage({
           idSuffix="-dashboard"
         />
       </Surface>
+
+      <ProductOverviewGrid products={products} />
 
       {atAuditLimit ? (
         <ContextualUpgradeCard

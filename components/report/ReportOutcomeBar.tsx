@@ -3,6 +3,8 @@ import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
+import { ScoreRing } from '@/components/report/ScoreRing'
+import type { ReactNode } from 'react'
 
 /**
  * Compact Review header. Product identity and owner actions intentionally live
@@ -13,11 +15,13 @@ export function ReportOutcomeBar({
   scanProgress,
   stageDetail,
   className,
+  actions,
 }: {
   model: ReportWorkspaceModel
   scanProgress?: number
   stageDetail?: string | null
   className?: string
+  actions?: ReactNode
 }) {
   const loading = model.context.loading
   const score = model.summary.score
@@ -35,26 +39,17 @@ export function ReportOutcomeBar({
         className,
       )}
     >
-      <div className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-4 gap-y-1 py-1">
-        <p
-          className="shrink-0 font-mono text-sm font-semibold tabular-nums text-foreground"
-          aria-label={loading ? 'Score pending' : score == null ? 'Score unavailable' : `Score ${Math.round(score)}`}
-        >
-          <span className="text-muted-foreground">{REPORT_COPY.workspace.scoreLabel}</span>{' '}
-          {loading
-            ? REPORT_COPY.workspace.scorePending
-            : score == null
-              ? REPORT_COPY.workspace.scoreUnavailable
-              : Math.round(score)}
-        </p>
+      <div className="flex min-h-20 min-w-0 flex-wrap items-center gap-x-5 gap-y-2 py-1">
+        <ScoreRing score={score} pending={loading} />
         {history ? (
           <ScoreHistoryChart
             history={history}
             currentAuditId={model.identity.auditId}
             isLoading={loading}
-            className="min-w-0 flex-1"
+            className="min-w-[12rem] flex-1"
           />
         ) : null}
+        {actions ? <div className="ml-auto shrink-0">{actions}</div> : null}
       </div>
 
       {loading ? (

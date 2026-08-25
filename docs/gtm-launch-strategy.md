@@ -62,7 +62,7 @@ Flip to `true` when business registration, live Stripe, and support are ready; a
 1. **Documentation + test Stripe** — launch-tier model, waitlist schema, and checkout gating.
 2. **Product Hunt** — free try primary; paid plans + tiered launch discount in maker story.
 3. **Measure** — reviews completed, waitlist progression, qualified conversion.
-4. **Business + live Stripe** — entity, live prices at $69 / $199, webhook.
+4. **Business + live Stripe** — entity, live prices at $29 / $79, webhook.
 5. **Batch 1 invite** — manual or automated from qualified cohort; then flip `PAID_OPEN=true`.
 6. **Ads** — only after batch 1 waitlist→paid conversion is acceptable.
 

@@ -79,7 +79,7 @@ describe('static sample vs original fixture', () => {
     )
   })
 
-  it('publishes only the two repository states that have their own captures', () => {
+  it('publishes only the two curated states that have their own captures', () => {
     assert.deepEqual(getStaticSampleObservationIds(), [
       'curated-sample-v0',
       'curated-sample-v1',
@@ -128,7 +128,7 @@ describe('static sample vs original fixture', () => {
       )
       assert.match(
         audit.intentionalNotes?.join(' ') ?? '',
-        /repository-owned curated fixture/i
+        /versioned curated fixture/i
       )
     }
   })

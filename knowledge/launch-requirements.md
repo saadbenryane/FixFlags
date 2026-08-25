@@ -13,7 +13,7 @@ Do not launch broadly until:
 - The update review can prove a real before-and-after change.
 - The report is visually shareable.
 - Privacy and scope are obvious.
-- Paid deep review is purchasable without friction.
+- Pro and Studio usage upgrades are purchasable without friction.
 - At least ten paid users are converting to recurring plans.
 
 ## Launch demo
@@ -47,14 +47,12 @@ For each participant:
 4. Provide evidence.
 5. Provide a builder-ready fix.
 6. Re-run update review after the change.
-7. Ask for upgrade for continued watch or deeper review.
+7. Ask for an upgrade only when the user needs more monthly review capacity.
 
 ### Pricing tests
 
-Verify willingness for paid depth and retention with realistic offer framing:
-- Paid Deep Review framing,
-- Watch + Pro value, and
-- launch discount behavior.
+Verify willingness to pay for higher monthly usage with realistic Free, Pro, and Studio framing.
+Do not imply that upgrading unlocks a more complete report or a core web capability.
 
 ## Required proof before scaling
 
@@ -62,9 +60,9 @@ Verify willingness for paid depth and retention with realistic offer framing:
 - 40% attempt a recommended fix.
 - 30% run an update review.
 - Fewer than 2% of critical Flags are false.
-- Ten customers purchase a paid Deep Review surface.
+- Ten customers purchase a recurring usage plan.
 - Five agencies use FixFlags on a second product.
-- Five teams connect a deployment or request watch.
+- Five teams enable scheduled Watch.
 - At least 20% of paid launch customers choose recurring Watch.
 - Positive gross margin at expected usage.
 

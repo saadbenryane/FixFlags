@@ -9,7 +9,7 @@ import { getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } fro
 import { isAtCheckLimit } from '@/lib/audit/usage'
 import { isPublicMarketingSample } from '@/lib/audit/report-access'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
-import { loadFinishPlanFlags } from '@/lib/audit/load-finish-plan-flags'
+import { toRankableFlag } from '@/lib/audit/load-finish-plan-flags'
 import { historyPointFromAudit } from '@/lib/report/workspace-model'
 import { buildFixList } from '@/lib/audit/finish-plan'
 import { loadVerificationReceiptsForReview } from '@/lib/products/workspace'
@@ -353,11 +353,7 @@ export async function loadReportRouteState(
       status: f.status,
     }))
 
-    const allFlags = await loadFinishPlanFlags({
-      userId: audit.userId,
-      auditUrl: audit.url,
-      flags,
-    })
+    const allFlags = flags.map(toRankableFlag)
     const fixList = buildFixList({
       flags: allFlags,
       rubricRows,
@@ -417,7 +413,6 @@ export async function loadReportRouteState(
       failedModules: Array.isArray(audit.failedModules)
         ? audit.failedModules.filter((module): module is string => typeof module === 'string')
         : [],
-      actionTimeline: audit.actionTimeline,
       fixList,
     }
 

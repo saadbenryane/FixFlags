@@ -123,7 +123,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
     return 0
   }
 
-  // Claimed teasers count toward Free lifetime quota (idempotent via usageCountedAt).
+  // Claimed teasers count once toward the active monthly quota (idempotent via usageCountedAt).
   for (const audit of audits) {
     if (audit.skipUsageCount || audit.usageCountedAt) continue
     if (audit.status === 'COMPLETED') {

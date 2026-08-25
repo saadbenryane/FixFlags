@@ -25,10 +25,7 @@ export function getReportTierForUser(
   user: Pick<User, 'id' | 'plan' | 'role' | 'subscriptionStatus'> | null | undefined
 ): ReportTier {
   if (!user) return 'free'
-  if (isAdminUser(user)) return 'paid'
-  if (user.plan === 'FREE') return 'free'
-  if (!shouldEnforcePlanGates()) return 'paid'
-  return hasRevokedSubscriptionStatus(user.subscriptionStatus) ? 'free' : 'paid'
+  return 'paid'
 }
 
 export function canAccessPaidFeatures(
@@ -43,17 +40,16 @@ export function canAccessPaidFeatures(
 export function canSharePublicly(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
-  if (!shouldEnforcePlanGates()) return true
-  if (user.role === 'admin' || isAdminUser(user)) return true
-  if (hasRevokedSubscriptionStatus(user.subscriptionStatus)) return false
-  return user.plan === 'TEAM'
+  void user
+  return true
 }
 
-/** Proof export (copy summary) - Studio plan only. */
+/** Proof export is part of the authenticated web product on every plan. */
 export function canExportSummary(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
-  return canSharePublicly(user)
+  void user
+  return true
 }
 
 export function canUseApiKeys(
@@ -77,14 +73,18 @@ export function canAccessBasicMcp(
 export function canScanRepositories(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
-  return canSharePublicly(user)
+  if (!shouldEnforcePlanGates()) return true
+  if (user.role === 'admin' || isAdminUser(user)) return true
+  if (hasRevokedSubscriptionStatus(user.subscriptionStatus)) return false
+  return user.plan === 'TEAM'
 }
 
-/** Authenticated Pro/Studio can enable Project product watch (recurring verify). */
+/** Product Watch is part of the authenticated web product on every plan. */
 export function canAccessProductWatch(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
-  return canAccessPaidFeatures(user)
+  void user
+  return true
 }
 
 /** Manual re-check is always available to the report owner; not a plan gate. */
@@ -95,7 +95,8 @@ export function canAccessMonitoring(): boolean {
 export function canAccessCompare(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
-  return canAccessPaidFeatures(user)
+  void user
+  return true
 }
 
 export interface UserEntitlements {

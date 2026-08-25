@@ -22,13 +22,13 @@ They typically run a paid **Deep Review** first.
 
 Their money problem is private QA, handoff risk, and missing objective evidence from repeated launches.
 
-They adopt **Studio** for multi-project repetition, compare surfaces, and recurring review.
+They adopt **Studio** when repeated work across products needs the highest monthly review allowance.
 
 ### Secondary recurring buyer: The small product team shipping weekly
 
 They need to know if deployment changes broke important paths.
 
-They adopt Watch through Pro or Studio.
+They adopt scheduled Watch and choose a plan based on monthly review volume.
 
 ### Not the initial target
 
@@ -58,7 +58,7 @@ After changes, the user runs an **update review** to prove the fix.
 ### 7. Expand
 The user chooses deeper work:
 - update review on additional flows,
-- Deep Review on paid plan,
+- Deep Review for multi-step paths,
 - Watch for recurring release verification.
 
 ## Conversion architecture
@@ -70,9 +70,9 @@ The user chooses deeper work:
 3. **Proof sample** — one meaningful result, not abstract scores.
 4. **Three-step loop** — Review, Fix, Verify.
 5. **Growth map** — who should add Deep Review and Watch next.
-6. **Builder integrations** — familiar tool names with realistic expectations.
-7. **Pricing** — clear plan entry and upgrade fit.
-8. **Trust** — anonymous report safety and private paid surfaces.
+6. **Complete web loop** — history, sharing, Canvas, Product Signals, and scheduled Watch.
+7. **Pricing** — the same product at three monthly usage levels.
+8. **Trust** — anonymous evidence and private account surfaces.
 9. **Final CTA** — "Review my product."
 
 ## Required copy changes

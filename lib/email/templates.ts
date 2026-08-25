@@ -28,18 +28,18 @@ export const NURTURE_EMAILS = {
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
-  <p>You have ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime). Each one gives you Flags across Message, Experience, and Reach, plus a fix prompt you can paste into Cursor, Claude, Lovable, or Bolt.</p>
+  <p>You have ${PRICING_COPY.freeProductReviewsPerMonth} product reviews each month. Each one gives you Flags across Message, Experience, and Reach, plus a fix prompt you can paste into Cursor, Claude, Lovable, or Bolt.</p>
   <p>Paste the URL you are about to share. That is what this is for.</p>
   <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Run your first product review</a></p>
   <p style="font-size: 13px; color: hsl(212 10% 46%);">Common first reviews: your Product Hunt page, your demo day landing page, a client site before handoff.</p>
 `),
   },
   firstAuditNudge: {
-    subject: `Your ${PRICING_COPY.freeProductReviewsLifetime} product reviews are waiting`,
+    subject: `Your ${PRICING_COPY.freeProductReviewsPerMonth} monthly product reviews are waiting`,
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
-  <p>You signed up for ${BRAND.name} yesterday. Your ${PRICING_COPY.freeProductReviewsLifetime} product reviews are still waiting.</p>
+  <p>You signed up for ${BRAND.name} yesterday. Your ${PRICING_COPY.freeProductReviewsPerMonth} monthly product reviews are still waiting.</p>
   <p>Paste any public URL. You will get ranked Flags with evidence and a fix prompt for each one.</p>
   <p><a href="${SITE_URL}" style="${ctaStyle}">Paste a URL</a></p>
 `),

@@ -5,7 +5,7 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { chmodSync, lstatSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { REQUIRED_RELEASE_JOURNEYS, JOURNEYS_BY_STAGE } from './release-journeys.mjs'
+import { KNOWN_RELEASE_JOURNEYS, REQUIRED_RELEASE_JOURNEYS, JOURNEYS_BY_STAGE } from './release-journeys.mjs'
 import { canonicalDatabaseIdentity, RELEASE_STAGES, validateReleasePreflight } from './release-preflight.mjs'
 
 export const REQUIRED_RECEIPT_STAGES = [...RELEASE_STAGES]
@@ -16,7 +16,7 @@ export const RELEASE_ENV_STAGES = new Set([
   'billing-closed',
   'external',
 ])
-export const PRODUCTION_STAGES = new Set(['deployed', 'registry-cli', 'production-dogfood'])
+export const PRODUCTION_STAGES = new Set(['deployed'])
 export const RELEASE_CLI_VERSION = '1.0.5'
 const TERMINAL_STATUSES = new Set(['passed', 'failed', 'timedOut', 'skipped', 'interrupted'])
 const RELEASE_FIXTURE_ENV_KEYS = new Set([
@@ -132,7 +132,7 @@ export function inspectPlaywrightJourneys(report) {
     const ownIds = typeof value.title === 'string'
       ? [...value.title.matchAll(/\[journey:([a-z0-9-]+)\]/g)].map((match) => match[1])
       : []
-    for (const id of ownIds) if (!REQUIRED_RELEASE_JOURNEYS.includes(id)) unknown.add(id)
+    for (const id of ownIds) if (!KNOWN_RELEASE_JOURNEYS.includes(id)) unknown.add(id)
     const ids = [...new Set([...inheritedIds, ...ownIds])]
     if (typeof value.status === 'string' && TERMINAL_STATUSES.has(value.status)) {
       for (const id of ids) {
@@ -169,7 +169,6 @@ export function releaseStageCommands(stage) {
   if (stage === 'foundation') {
     return [
       ['clean-install', 'npm', ['ci']],
-      ['clean-install-cli', 'npm', ['ci', '--prefix', 'fixflags-cli']],
       ['fresh-database', 'node', ['scripts/release-database.mjs']],
       ['full-verification', 'npm', ['run', 'verify']],
       ['container-build', 'docker', ['build', '-t', 'fixflags:release-check', '.']],
@@ -326,12 +325,10 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
     const targetEnv = RELEASE_ENV_STAGES.has(stage)
       ? {
           E2E_BASE_URL: env.RELEASE_ENV_URL,
-          E2E_API_KEY: env.RELEASE_ENV_API_KEY,
         }
       : PRODUCTION_STAGES.has(stage)
         ? {
             E2E_BASE_URL: env.PRODUCTION_URL,
-            E2E_API_KEY: env.PRODUCTION_API_KEY,
           }
         : {}
     const commandBaseEnv = PRODUCTION_STAGES.has(stage)
@@ -502,6 +499,13 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
 
 export function validateFinalReceiptObjects(receipts, expectedGitSha) {
   const byStage = new Map(receipts.map((receipt) => [receipt.stage, receipt]))
+  if (byStage.size !== receipts.length) throw new Error('Release receipts contain duplicate stages')
+  const unknownStages = receipts
+    .map((receipt) => receipt.stage)
+    .filter((stage) => !REQUIRED_RECEIPT_STAGES.includes(stage))
+  if (unknownStages.length > 0) {
+    throw new Error(`Unknown release receipt stage: ${[...new Set(unknownStages)].join(', ')}`)
+  }
   for (const stage of REQUIRED_RECEIPT_STAGES) {
     const receipt = byStage.get(stage)
     if (!receipt) throw new Error(`Missing valid ${stage} release receipt`)
@@ -522,12 +526,6 @@ export function validateFinalReceiptObjects(receipts, expectedGitSha) {
     }
     if ((receipt.artifacts ?? []).some((item) => !/^[a-f0-9]{64}$/.test(item.sha256))) {
       throw new Error(`${stage} release receipt contains an invalid artifact hash`)
-    }
-    if (
-      (['credentialed-core', 'billing-open', 'billing-closed', 'external', 'registry-cli', 'production-dogfood'].includes(stage)) &&
-      !/^[a-f0-9]{64}$/.test(receipt.apiKeyIdentityHash ?? '')
-    ) {
-      throw new Error(`${stage} release receipt has no valid API key identity`)
     }
     if (stage === 'foundation' && !/^sha256:[a-f0-9]{64}$/.test(receipt.containerImageDigest ?? '')) {
       throw new Error('foundation release receipt has no valid container image digest')
@@ -573,19 +571,6 @@ export function validateFinalReceiptObjects(receipts, expectedGitSha) {
   }
   const databaseIdentities = new Set(receipts.map((receipt) => receipt.databaseIdentityHash).filter(Boolean))
   if (databaseIdentities.size !== 1) throw new Error('Release receipts have mixed database identities')
-  const releaseApiKeyIdentities = new Set(receipts
-    .filter((receipt) => RELEASE_ENV_STAGES.has(receipt.stage) && receipt.stage !== 'fixture-binding')
-    .map((receipt) => receipt.apiKeyIdentityHash)
-    .filter(Boolean))
-  if (releaseApiKeyIdentities.size !== 1) throw new Error('Release-environment receipts have mixed API key identities')
-  const productionApiKeyIdentities = new Set(receipts
-    .filter((receipt) => PRODUCTION_STAGES.has(receipt.stage) && receipt.stage !== 'deployed')
-    .map((receipt) => receipt.apiKeyIdentityHash)
-    .filter(Boolean))
-  if (productionApiKeyIdentities.size !== 1) throw new Error('Production receipts have mixed API key identities')
-  if ([...releaseApiKeyIdentities][0] === [...productionApiKeyIdentities][0]) {
-    throw new Error('Release environment and production receipts use the same API key identity')
-  }
   const journeys = new Map(receipts.flatMap((receipt) => receipt.journeys ?? []).map((journey) => [journey.id, journey.status]))
   for (const id of REQUIRED_RELEASE_JOURNEYS) {
     if (journeys.get(id) !== 'PASS') throw new Error(`Missing PASS evidence for release journey: ${id}`)

@@ -31,24 +31,13 @@ function receipt(stage, overrides = {}) {
     gitSha: SHA,
     targetOrigin: stage === 'foundation'
       ? null
-      : ['deployed', 'registry-cli', 'production-dogfood'].includes(stage)
+      : stage === 'deployed'
         ? 'https://fixflags.com'
         : 'https://release.fixflags.test',
     databaseIdentityHash: ['foundation', 'fixture-binding', 'credentialed-core', 'billing-open', 'billing-closed', 'external'].includes(stage) ? 'db-hash' : null,
-    apiKeyIdentityHash: ['credentialed-core', 'billing-open', 'billing-closed', 'external'].includes(stage)
-      ? 'e'.repeat(64)
-      : ['registry-cli', 'production-dogfood'].includes(stage)
-        ? 'f'.repeat(64)
-        : null,
+    apiKeyIdentityHash: null,
     containerImageDigest: stage === 'foundation' ? `sha256:${'d'.repeat(64)}` : undefined,
     releaseEnvironmentRevision: stage === 'fixture-binding' ? SHA : undefined,
-    cli: stage === 'registry-cli' ? {
-      packageName: 'fixflags',
-      version: RELEASE_CLI_VERSION,
-      tag: 'candidate',
-      installedVersion: RELEASE_CLI_VERSION,
-      gitSha: SHA,
-    } : undefined,
     journeys: [],
     commands: expectedReleaseCommandLabels(stage).map((label) => ({ label, exitCode: 0, durationMs: 1 })),
     artifacts: expectedReleaseArtifactLabels(stage).map((label) => ({ label, sha256: 'c'.repeat(64) })),
@@ -64,6 +53,7 @@ describe('release evidence receipts', () => {
   })
   it('recognizes title annotations and rejects skipped proof', () => {
     assert.deepEqual(Object.keys(inspectPlaywrightJourneys(report(['anonymous-claim']))), ['anonymous-claim'])
+    assert.deepEqual(Object.keys(inspectPlaywrightJourneys(report(['mcp-full-loop']))), ['mcp-full-loop'])
     assert.throws(() => requireStageJourneys('credentialed-core', report(REQUIRED_RELEASE_JOURNEYS, 'skipped')), /skipped or interrupted/)
   })
 
@@ -73,7 +63,7 @@ describe('release evidence receipts', () => {
 
   it('rejects duplicate journey evidence instead of collapsing it into a PASS', () => {
     const ids = [
-      ...REQUIRED_RELEASE_JOURNEYS.filter((id) => !['billing-webhook-active', 'billing-revoked', 'watch-child-notification', 'github-oauth-pr', 'cli-registry-loop'].includes(id)),
+      ...REQUIRED_RELEASE_JOURNEYS.filter((id) => !['billing-webhook-active', 'billing-revoked', 'watch-child-notification'].includes(id)),
       'anonymous-claim',
     ]
     assert.throws(
@@ -95,24 +85,15 @@ describe('release evidence receipts', () => {
     assert.equal(value.status, 'FAIL')
   })
 
-  it('filters each browser stage to its owned journeys and gives registry and dogfood real proofs', () => {
+  it('filters each browser stage to its owned web journeys and excludes parked stages', () => {
     const core = releaseStageCommands('credentialed-core')[0][2].at(-1)
     const billing = releaseStageCommands('billing-open')[0][2].at(-1)
     assert.match(core, /anonymous-claim/)
     assert.doesNotMatch(core, /billing-webhook-active/)
     assert.match(billing, /billing-webhook-active/)
-    assert.deepEqual(expectedReleaseCommandLabels('registry-cli'), ['registry-package', 'credentialed-journeys'])
-    assert.deepEqual(releaseStageCommands('registry-cli')[0][2], [
-      'scripts/verify-cli-registry.mjs',
-      '--version',
-      RELEASE_CLI_VERSION,
-      '--tag',
-      'candidate',
-      '--clean-install',
-    ])
+    assert.deepEqual(expectedReleaseCommandLabels('registry-cli'), [])
     assert.deepEqual(expectedReleaseArtifactLabels('registry-cli'), ['cli-registry-evidence', 'playwright-report'])
     assert.deepEqual(expectedReleaseCommandLabels('deployed'), ['deployment-attestation', 'deployed-smoke'])
-    assert.deepEqual(expectedReleaseCommandLabels('production-dogfood'), ['production-smoke', 'production-fix-verify-watch'])
   })
 
   it('hydrates browser inputs from a private fixture manifest without exposing its values', () => {
@@ -167,7 +148,7 @@ describe('release evidence receipts', () => {
     assert.equal(value.releaseEnvironmentRevision, SHA)
   })
 
-  it('records candidate-tag, clean-install, and production CLI journey evidence', () => {
+  it('does not mint a customer release receipt for the parked registry CLI stage', () => {
     const workingDirectory = temp()
     const directory = path.join(workingDirectory, 'test-results', 'release', 'run-1')
     mkdirSync(directory, { recursive: true })
@@ -192,10 +173,8 @@ describe('release evidence receipts', () => {
         return { status: 0 }
       },
     })
-    assert.equal(value.status, 'PASS')
-    assert.equal(value.cli.version, RELEASE_CLI_VERSION)
-    assert.equal(value.cli.tag, 'candidate')
-    assert.equal(value.targetOrigin, 'https://fixflags.com')
+    assert.equal(value.status, 'BLOCKED')
+    assert.match(value.reason, /Unknown release stage/)
   })
 
   it('injects forced HEAD and records attested deployed commit evidence', () => {
@@ -258,7 +237,7 @@ describe('release evidence receipts', () => {
     })
     assert.equal(value.status, 'PASS')
     assert.equal(observedEnv.E2E_BASE_URL, 'https://fixflags.com')
-    assert.equal(observedEnv.E2E_API_KEY, 'ff_production_test')
+    assert.equal(observedEnv.E2E_API_KEY, undefined)
     assert.equal(observedEnv.RELEASE_FIXTURE_MANIFEST, undefined)
     assert.equal(observedEnv.RELEASE_ENV_API_KEY, undefined)
   })
@@ -275,43 +254,34 @@ describe('release evidence receipts', () => {
   })
 
   it('rejects mixed runs, stale revisions, and incomplete canonical journeys', () => {
-    const stages = ['foundation','fixture-binding','credentialed-core','billing-open','billing-closed','external','deployed','registry-cli','production-dogfood']
+    const stages = ['foundation','fixture-binding','credentialed-core','billing-open','billing-closed','external','deployed']
     const receipts = stages.map((stage) => receipt(stage))
     assert.throws(() => validateFinalReceiptObjects(receipts, SHA), /Missing PASS evidence/)
     const all = receipts.map((value) => ({ ...value, journeys: (value.stage === 'credentialed-core'
-      ? REQUIRED_RELEASE_JOURNEYS.filter((id) => !['billing-webhook-active','billing-revoked','watch-child-notification','github-oauth-pr','cli-registry-loop'].includes(id))
+      ? REQUIRED_RELEASE_JOURNEYS.filter((id) => !['billing-webhook-active','billing-revoked','watch-child-notification'].includes(id))
       : value.stage === 'billing-open' ? ['billing-webhook-active']
       : value.stage === 'billing-closed' ? ['billing-revoked']
-      : value.stage === 'external' ? ['watch-child-notification','github-oauth-pr']
-      : value.stage === 'registry-cli' ? ['cli-registry-loop'] : []).map((id) => ({ id, status: 'PASS' })) }))
+      : value.stage === 'external' ? ['watch-child-notification'] : []).map((id) => ({ id, status: 'PASS' })) }))
     const separated = all.map((value) =>
-      ['deployed', 'registry-cli', 'production-dogfood'].includes(value.stage)
+      value.stage === 'deployed'
         ? { ...value, targetOrigin: 'https://fixflags.com' }
         : value,
     )
     assert.doesNotThrow(() => validateFinalReceiptObjects(separated, SHA))
     assert.throws(
-      () => validateFinalReceiptObjects(separated.map((value) =>
-        value.stage === 'registry-cli'
-          ? { ...value, targetOrigin: 'https://wrong-production.example' }
-          : value,
-      ), SHA),
-      /Production receipts have mixed target origins/,
+      () => validateFinalReceiptObjects([...separated, { ...receipt('deployed'), targetOrigin: 'https://wrong-production.example' }], SHA),
+      /duplicate stages/,
     )
     assert.throws(() => validateFinalReceiptObjects(all.map((value, index) => index === 1 ? { ...value, runId: 'other' } : value), SHA), /mixed run IDs/)
     assert.throws(() => validateFinalReceiptObjects(all, 'b'.repeat(40)), /current Git HEAD/)
     assert.throws(
-      () => validateFinalReceiptObjects(separated.map((value) =>
-        value.stage === 'registry-cli' || value.stage === 'production-dogfood'
-          ? { ...value, apiKeyIdentityHash: 'e'.repeat(64) }
-          : value,
-      ), SHA),
-      /same API key identity/,
+      () => validateFinalReceiptObjects([...separated, receipt('registry-cli')], SHA),
+      /Unknown release receipt stage: registry-cli/,
     )
   })
 
   it('rejects manually minted command evidence and exposes no record-PASS command', () => {
-    const stages = ['foundation','fixture-binding','credentialed-core','billing-open','billing-closed','external','deployed','registry-cli','production-dogfood']
+    const stages = ['foundation','fixture-binding','credentialed-core','billing-open','billing-closed','external','deployed']
     const forged = stages.map((stage) => receipt(stage))
     forged[0] = { ...forged[0], commands: [] }
     assert.throws(() => validateFinalReceiptObjects(forged, SHA), /command evidence is incomplete/)

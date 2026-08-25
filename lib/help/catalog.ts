@@ -5,7 +5,7 @@ const ALL_HELP_CATEGORIES: readonly HelpCategory[] = [
   {
     id: 'getting-started',
     title: 'Getting started',
-    description: 'Run your first check and read the report.',
+    description: 'Run your first product review and read the report.',
     icon: 'rocket',
   },
   {
@@ -38,7 +38,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'first-check',
     categoryId: 'getting-started',
-    title: 'Run your first check',
+    title: 'Run your first product review',
     excerpt: 'Paste a public URL. Get Flags across Message, Experience, and Reach.',
     popular: true,
     searchTokens: ['scan', 'audit', 'start', 'url', 'anonymous'],
@@ -49,7 +49,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: `Your report opens immediately while the product review runs. If you are signed out, create an account or sign in to save it. A free account includes ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) and ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser (lifetime). Update reviews on the same report also use product review credits.`,
+        text: `Your report opens immediately while the product review runs. If you are signed out, inspect the evidence, then create an account or sign in to save it and unlock the complete report. A free account includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews and ${PRICING_COPY.freeDeepReviewsPerMonth} deep review per month. New URLs, update reviews, and completed Watch reviews share the product review allowance.`,
       },
       {
         type: 'ol',
@@ -107,7 +107,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'callout',
-        text: 'Pro adds before/after compare so you can prove what cleared and what is still open.',
+        text: 'Before/after comparison is included on every plan so you can prove what cleared and what is still open.',
       },
     ],
     related: ['update-review-credits', 'reading-your-report', 'what-counts-as-a-check'],
@@ -145,7 +145,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'why-check-failed',
     categoryId: 'checks-and-reports',
-    title: 'Why a check failed',
+    title: 'Why a product review failed',
     excerpt: 'Unreachable pages, blocked bots, timeouts, and what to try next.',
     popular: true,
     searchTokens: ['failed', 'error', 'timeout', 'unreachable', 'blocked', 'retry'],
@@ -178,7 +178,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'public-urls-only',
     categoryId: 'checks-and-reports',
     title: 'Public URLs only',
-    excerpt: 'Public HTTPS URLs work everywhere. Studio projects can scan password-protected preview deploys.',
+    excerpt: 'FixFlags reviews public HTTPS URLs on every plan.',
     searchTokens: ['localhost', 'staging', 'password', 'vpn', 'private', 'preview', 'basic auth'],
     body: [
       {
@@ -187,11 +187,11 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Use a public preview URL from your host (Vercel, Netlify, Railway, and similar) when production is not ready.',
+        text: 'Use a publicly reachable HTTPS preview URL from your host when production is not ready.',
       },
       {
         type: 'p',
-        text: 'On Studio, open a Project and configure preview scan access (HTTP basic auth or cookies) when a deploy is behind a password.',
+        text: 'Password-only, localhost, and private-network pages are not part of the public URL review experience.',
       },
     ],
     related: ['why-check-failed', 'first-check'],
@@ -251,19 +251,19 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: `Free: ${PRICING_COPY.freeProductReviewsLifetime} product reviews (lifetime) with full reports and fix prompts, plus ${PRICING_COPY.freeDeepReviewTeaserLifetime} deep review teaser (lifetime).`,
+        text: `Free: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews and ${PRICING_COPY.freeDeepReviewsPerMonth} deep review per month.`,
       },
       {
         type: 'p',
-        text: 'Pro ($69/mo): before/after compare, 25 product reviews, and 4 deep reviews per month.',
+        text: `Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): ${PRICING_COPY.proProductReviewsPerMonth} product reviews and ${PRICING_COPY.proDeepReviewsPerMonth} deep reviews per month.`,
       },
       {
         type: 'p',
-        text: 'Studio ($199/mo): 80 product reviews and 10 deep reviews per month, share links for client reports, and everything in Pro.',
+        text: `Studio (${PRICING_COPY.studioPrice}${PRICING_COPY.studioPeriod}): ${PRICING_COPY.studioProductReviewsPerMonth} product reviews and ${PRICING_COPY.studioDeepReviewsPerMonth} deep reviews per month.`,
       },
       {
         type: 'p',
-        text: 'You can start free and upgrade anytime. Paid plans include more product reviews and deep reviews each month.',
+        text: 'Every plan includes reports, evidence, fix prompts, update comparisons, history, sharing, Canvas, Product Signals, and Watch. Plans differ only by monthly usage. Usage does not roll over.',
       },
     ],
     related: ['what-counts-as-a-check', 'cancel-or-manage'],
@@ -278,7 +278,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'A product review counts toward your monthly allowance. Each new URL and each update review on the same report uses one product review credit.',
+        text: 'A product review counts toward your monthly allowance. Each new URL, each update review, and each completed scheduled Watch review uses one product review.',
       },
       {
         type: 'p',
@@ -345,12 +345,12 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'payment-past-due',
     categoryId: 'billing-and-plans',
     title: 'Payment past due',
-    excerpt: 'Update your card in the billing portal to restore paid features.',
+    excerpt: 'Update your card in the billing portal to restore your paid usage allowance.',
     searchTokens: ['past due', 'failed payment', 'card declined'],
     body: [
       {
         type: 'p',
-        text: 'If a subscription payment fails, paid features pause until the payment succeeds. Open Billing and update your payment method in the Stripe customer portal.',
+        text: 'If a subscription payment fails, the account returns to the Free monthly usage allowance until payment succeeds. Open Billing and update your payment method in the Stripe customer portal.',
       },
       {
         type: 'p',
@@ -448,7 +448,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'report-privacy',
     categoryId: 'account',
     title: 'Report privacy',
-    excerpt: 'Owned reports are private. Studio can create share links.',
+    excerpt: 'Owned reports are private. Every plan can create protected share links.',
     searchTokens: ['private', 'share', 'public', 'anonymous'],
     body: [
       {
@@ -457,7 +457,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Studio plans can create revocable client share links with optional passwords, expiry, and view limits. Opening a share link does not make the underlying report public. Separate public discovery pages are not private reports.',
+        text: 'Every plan can create revocable share links with optional passwords, expiry, and view limits. Opening a share link does not make the underlying report public. Separate public discovery pages are not private reports.',
       },
     ],
     related: ['free-vs-pro', 'sign-in-and-security'],
@@ -487,7 +487,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
         text: 'We do not offer phone support. Product feedback on reports (thumbs up/down) also reaches the team.',
       },
     ],
-    related: ['why-check-failed', 'payment-past-due', 'mcp-setup'],
+    related: ['why-check-failed', 'payment-past-due', 'free-vs-pro'],
   },
 ] as const
 

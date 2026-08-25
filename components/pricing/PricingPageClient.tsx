@@ -139,7 +139,7 @@ export function PricingPageClient() {
                       </span>
                       {plan.highlight ? (
                         <span className="marketing-brand-badge rounded-full px-2.5 py-1 text-xs font-semibold">
-                          Best for frequent checks
+                          Best for frequent reviews
                         </span>
                       ) : null}
                     </div>

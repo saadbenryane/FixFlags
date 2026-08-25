@@ -29,9 +29,9 @@ Record command output here when credentials are provisioned.
 | Re-check / diff / Remember | Unit + claim/re-check E2E | Implemented; sandbox run pending | Claims the anonymous report through `/post-login`, unlocks the Fix List, performs a fresh FULL re-check, and asserts diff and Remember UI. |
 | Protected sharing | Handler tests + credentialed E2E | Implemented; sandbox run pending | Creates a password/expiry/max-view link, verifies one scoped view, revokes it, and asserts denial in a clean context. |
 | Product Watch | Unit/handler tests + scheduler/mailbox E2E | Implemented; sandbox run pending | Requires a due disposable project and a mail-sandbox assertion endpoint; asserts exactly one matching message. |
-| GitHub Fix PR | Integration tests + dedicated-repository E2E | Implemented; sandbox run pending | Starts a real repo scan, selects a permitted fixable finding, and requires an open GitHub PR URL. |
-| MCP | Contract / tool / quality gate + release E2E | Implemented; sandbox run pending | Authenticates, checks, polls, reads the complete Fix List, and starts a re-check. |
-| CLI | Unit tests + packaged release E2E | Implemented; sandbox run pending | Runs the packaged CLI against the release app for check, Fix List, and re-check. |
+| GitHub Fix PR | Separate power-tools verification | Parked; not a customer release journey | Implementation and its fixture instructions remain for a future relaunch. |
+| MCP | Separate power-tools verification | Parked; not a customer release journey | Contract and tool tests remain under `npm run power-tools:verify`. |
+| CLI | Separate power-tools verification | Parked; not a customer release journey | Package and registry tests remain under `npm run power-tools:verify`; no publication or promotion is required. |
 
 ## Manual smoke (QUALITY §86–96)
 

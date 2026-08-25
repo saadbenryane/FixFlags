@@ -17,7 +17,6 @@ vi.mock('@/lib/audit/repo-rankable-flags', async () => {
 
 import { buildFixList } from '@/lib/audit/finish-plan'
 import { buildUnifiedFixList } from '@/lib/audit/load-finish-plan-flags'
-import { repoFindingToRankableFlag } from '@/lib/audit/repo-rankable-flags'
 
 describe('fix list surface parity', () => {
   const liveFlag = {
@@ -42,23 +41,8 @@ describe('fix list surface parity', () => {
     source: 'DETERMINISTIC',
   }
 
-  const repoFinding = repoFindingToRankableFlag({
-    id: 'repo-1',
-    severity: 'CRITICAL',
-    category: 'secret',
-    filePath: '.env',
-    problem: 'Exposed API key in repository',
-    evidence: 'sk_live_***',
-    fix: 'Remove and rotate',
-    agentPrompt: 'Remove secret from .env',
-    cursorPrompt: null,
-    claudePrompt: null,
-    windsurfPrompt: null,
-  })
-
   beforeEach(() => {
     mocks.loadRepoFlagsForAudit.mockReset()
-    mocks.loadRepoFlagsForAudit.mockResolvedValue([repoFinding])
   })
 
   it('returns the same ordered unresolved Flag IDs for report API and unified loader', async () => {
@@ -78,11 +62,11 @@ describe('fix list surface parity', () => {
       apiFixList.items.map((item) => item.id),
       reportLoaderFixList.items.map((item) => item.id)
     )
-    assert.equal(apiFixList.items[0]?.id, 'repo:repo-1')
-    assert.equal(apiFixList.items[1]?.id, 'live-1')
+    assert.equal(apiFixList.items[0]?.id, 'live-1')
+    assert.equal(mocks.loadRepoFlagsForAudit.mock.calls.length, 0)
   })
 
-  it('includes Studio repo Flags that live-only buildFixList omits', async () => {
+  it('keeps URL Review findings source-pure', async () => {
     const liveOnly = buildFixList({
       flags: [{ ...liveFlag, whyItMatters: undefined }],
       rubricRows: [{ name: 'MESSAGE', grade: 'B' }],
@@ -98,6 +82,7 @@ describe('fix list surface parity', () => {
     })
 
     assert.deepEqual(liveOnly.items.map((item) => item.id), ['live-1'])
-    assert.deepEqual(unified.items.map((item) => item.id), ['repo:repo-1', 'live-1'])
+    assert.deepEqual(unified.items.map((item) => item.id), ['live-1'])
+    assert.equal(mocks.loadRepoFlagsForAudit.mock.calls.length, 0)
   })
 })

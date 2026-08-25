@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) {
     return NextResponse.redirect(
-      new URL('/sign-in?next=/settings/integrations', SITE_URL)
+      new URL('/sign-in?next=/settings', SITE_URL)
     )
   }
 
@@ -26,12 +26,12 @@ export async function GET(req: NextRequest) {
 
   if (oauthError) {
     return NextResponse.redirect(
-      new URL('/settings/integrations?error=gsc_denied', SITE_URL)
+      new URL('/settings?error=gsc_denied', SITE_URL)
     )
   }
   if (!code || !state || !verifyGscConnectState(state, session.user.id)) {
     return NextResponse.redirect(
-      new URL('/settings/integrations?error=gsc_invalid_state', SITE_URL)
+      new URL('/settings?error=gsc_invalid_state', SITE_URL)
     )
   }
 
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 
     if (!siteUrl) {
       return NextResponse.redirect(
-        new URL('/settings/integrations?error=gsc_no_sites', SITE_URL)
+        new URL('/settings?error=gsc_no_sites', SITE_URL)
       )
     }
 
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
     })
 
     return NextResponse.redirect(
-      new URL('/settings/integrations?gsc_connected=1', SITE_URL)
+      new URL('/settings?gsc_connected=1', SITE_URL)
     )
   } catch (err) {
     logger.error(
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
       err instanceof Error ? err : new Error(String(err))
     )
     return NextResponse.redirect(
-      new URL('/settings/integrations?error=gsc_connect_failed', SITE_URL)
+      new URL('/settings?error=gsc_connect_failed', SITE_URL)
     )
   }
 }

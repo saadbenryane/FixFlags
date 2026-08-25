@@ -34,8 +34,9 @@ function firstCategory(counts: Record<RubricName, number>): RubricName {
 function resolveCategory(
   current: RubricFilter,
   counts: Record<RubricName, number>,
-): RubricName {
-  if (current !== 'ALL' && counts[current] > 0) return current
+): RubricFilter {
+  if (current === 'ALL') return 'ALL'
+  if (counts[current] > 0) return current
   return firstCategory(counts)
 }
 
@@ -75,18 +76,14 @@ export function ReportExplorer({
   const visibleDemonstratedFlagId =
     demonstratedFlagId ??
     (aiLocked ? model.flags.find((flag) => flag.hasFixPrompt)?.id : undefined)
-  const demonstratedRubric = model.flags.find(
-    (flag) => flag.id === visibleDemonstratedFlagId,
-  )?.rubric
-  const defaultRubric: RubricName = RUBRIC_ORDER.includes(demonstratedRubric as RubricName)
-    ? demonstratedRubric as RubricName
-    : firstCategory(countFlagsByRubric(model.flags))
+  const defaultRubric: RubricFilter = 'ALL'
   const [rubricFilter, setRubricFilter] = useState<RubricFilter>(
     defaultRubric,
   )
   const [pageFilter, setPageFilter] = useState<string | null>(null)
   const [severityFilter, setSeverityFilter] = useState<string | null>(null)
   const [impactFilter, setImpactFilter] = useState<string | null>(null)
+  const [showAll, setShowAll] = useState(false)
   const initialIndex = initialExplorerFlagIndex(
     model.flags,
     initialFlagIndex,
@@ -408,12 +405,19 @@ export function ReportExplorer({
    */
   const filterBar = (
     <div className="flex shrink-0 flex-col gap-2 border-b border-border/30 pb-3">
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-        <p className="mr-1 text-xs text-muted-foreground">
-          {loading
-            ? REPORT_COPY.workspace.status.checking
-            : REPORT_COPY.workspace.status.completed}
-        </p>
+      <div className="flex min-w-0 items-center justify-between gap-3">
+        <div><h2 className="text-sm font-semibold text-foreground">Your priorities</h2><p className="text-xs text-muted-foreground">Ranked by customer impact</p></div>
+        <details className="relative">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center rounded-control px-3 text-xs font-medium text-muted-foreground hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring [&::-webkit-details-marker]:hidden">Filter issues</summary>
+          <div className="absolute right-0 z-20 mt-1 flex w-64 flex-wrap gap-1.5 rounded-card border border-border bg-card p-3 shadow-card">
+          <FilterPill
+            size="sm"
+            active={effectiveRubricFilter === 'ALL'}
+            onClick={() => applyFilters({ rubric: 'ALL' })}
+            className="min-h-11 min-w-11 justify-center"
+          >
+            All
+          </FilterPill>
         {RUBRIC_ORDER.map((rubric) => {
           const count = rubricCounts[rubric]
           if (count === 0) return null
@@ -432,6 +436,8 @@ export function ReportExplorer({
             </FilterPill>
           )
         })}
+          </div>
+        </details>
       </div>
       {hasPages ? (
         <div className="flex flex-wrap items-center gap-1.5">
@@ -470,12 +476,15 @@ export function ReportExplorer({
           {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noMatchFilter}
         </p>
       ) : (
-        <ReportFixLoop
-          flags={fixLoopFlags}
-          selectedFlagId={currentFlag?.id}
-          onSelectFlag={goToFlag}
-          loading={loading}
-        />
+        <>
+          <ReportFixLoop
+            flags={showAll ? fixLoopFlags : fixLoopFlags.slice(0, 5)}
+            selectedFlagId={currentFlag?.id}
+            onSelectFlag={goToFlag}
+            loading={loading}
+          />
+          {fixLoopFlags.length > 5 ? <button type="button" onClick={() => setShowAll((value) => !value)} className="mt-2 min-h-11 w-full rounded-control px-3 text-sm font-medium text-muted-foreground hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">{showAll ? 'Show fewer' : `Show more (${fixLoopFlags.length - 5})`}</button> : null}
+        </>
       )}
     </div>
   )
@@ -511,7 +520,6 @@ export function ReportExplorer({
       aria-label={`Fix list with ${model.flags.length} flags`}
       className={cn('flex h-full min-h-0 min-w-0 flex-col gap-3.5', className)}
     >
-      <h2 className="sr-only">Flags</h2>
       {filterBar}
       <div className="grid min-h-0 flex-1 gap-5 @[40rem]/pane:grid-cols-[minmax(13rem,32%)_minmax(0,1fr)]">
         {listPane}

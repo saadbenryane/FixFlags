@@ -9,7 +9,6 @@ import {
   productWatchReadiness,
   setProjectWatch,
 } from '@/lib/audit/project-watch'
-import { canAccessProductWatch } from '@/lib/auth/entitlements'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 
 const bodySchema = z.object({
@@ -71,34 +70,14 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       windowSeconds: 60,
     })
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, plan: true, role: true, subscriptionStatus: true },
-    })
-    if (!user) return apiError('Account not found', 401)
-
     const body = bodySchema.safeParse(await req.json().catch(() => null))
     if (!body.success) {
       return apiError('interval must be weekly, daily, or null', 400)
     }
 
-    if (body.data.interval && !canAccessProductWatch(user)) {
-      return apiError('Product watch requires Pro or Studio', 402, {
-        code: 'UPGRADE_REQUIRED',
-        action: 'view_pricing',
-      })
-    }
-
-    if (body.data.interval === 'daily' && user.plan !== 'TEAM' && user.role !== 'admin') {
-      return apiError('Daily watch requires Studio', 402, {
-        code: 'UPGRADE_REQUIRED',
-        action: 'view_pricing',
-      })
-    }
-
     const result = await setProjectWatch({
       projectId: id,
-      userId: user.id,
+      userId: session.user.id,
       interval: body.data.interval,
     })
     if (!result.ok) {

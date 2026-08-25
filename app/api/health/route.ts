@@ -7,15 +7,9 @@ import { getJudgeProviderChain, getConfiguredJudgeProviderChain } from '@/lib/au
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { productWatchReadiness } from '@/lib/audit/project-watch'
 import { getRateLimitRedisHealth } from '@/lib/security/rate-limit'
+import { resolveCommitSha } from '@/lib/health/commit-sha'
 
 export const dynamic = 'force-dynamic'
-
-// Deployed build markers, so a deploy is observable from the outside (the
-// platform sets RAILWAY_GIT_COMMIT_SHA at build time).
-const COMMIT_SHA =
-  process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ??
-  process.env.GIT_COMMIT_SHA?.slice(0, 7) ??
-  null
 
 /**
  * Liveness + readiness probe (the platform healthcheck path).
@@ -46,9 +40,11 @@ export async function GET() {
   try {
     await prisma.$queryRaw`SELECT 1`
     return NextResponse.json({
+      healthy: true,
+      ok: true,
       status: 'ok',
       database: 'ok',
-      commit: COMMIT_SHA,
+      commit: resolveCommitSha(),
       pipelineVersion: PIPELINE_VERSION,
       storageConfigured,
       billingConfigured,
@@ -64,8 +60,11 @@ export async function GET() {
   } catch {
     return NextResponse.json(
       {
+        healthy: false,
+        ok: false,
         status: 'error',
         database: 'error',
+        commit: resolveCommitSha(),
         storageConfigured,
         billingConfigured,
         aiConfigured: ai.configured,

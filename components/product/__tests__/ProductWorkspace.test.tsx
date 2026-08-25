@@ -130,10 +130,10 @@ describe('ProductWorkspace', () => {
       screen.getByRole('link', { name: 'https://example.com' }),
     ).toHaveAttribute('href', 'https://example.com')
     expect(
-      screen.getByRole('link', { name: /open source evidence/i }),
+      screen.getByRole('link', { name: /view report/i }),
     ).toHaveAttribute(
       'href',
-      '/report/source-review?view=report&flag=source-flag#report-flags',
+      '/report/source-review?view=report&flag=source-flag',
     )
     expect(
       screen.getByText(/1 new or regressed issue found/i),
@@ -147,10 +147,10 @@ describe('ProductWorkspace', () => {
     render(<ProductWorkspace workspace={workspace} />)
 
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Attention now' }),
+      screen.getByRole('heading', { level: 2, name: 'Your priorities' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Product history' }),
+      screen.getByRole('heading', { level: 2, name: 'Recent activity' }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'Improvement history' }),
@@ -164,7 +164,7 @@ describe('ProductWorkspace', () => {
     expect(
       screen.getByRole('heading', {
         level: 2,
-        name: 'Watch and Product context',
+        name: 'Product context',
       }),
     ).toBeInTheDocument()
     expect(
@@ -206,16 +206,14 @@ describe('ProductWorkspace', () => {
       />,
     )
 
-    expect(screen.getByText('Pending')).toBeInTheDocument()
+    expect(screen.getByLabelText('Score pending')).toBeInTheDocument()
     expect(screen.queryByText('-')).not.toBeInTheDocument()
     expect(
-      screen.getByText(
-        /from the latest completed Product Review while the current Recheck runs/i,
-      ),
+      screen.getByText(/Ranked by the effect each issue has on the customer experience/i),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: /resume review/i }),
-    ).toHaveAttribute('href', '/report/review-running?view=timeline')
+      screen.getByRole('link', { name: /open review/i }),
+    ).toHaveAttribute('href', '/report/review-running?view=report')
   })
 
   it('combines Reviews, declared changes, and verified learning in one Product history', () => {
@@ -267,7 +265,7 @@ describe('ProductWorkspace', () => {
     )
 
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Product history' }),
+      screen.getByRole('heading', { level: 2, name: 'Recent activity' }),
     ).toBeInTheDocument()
     expect(
       screen.getByText('Change declared: Clarify signup'),
@@ -313,13 +311,10 @@ describe('ProductWorkspace', () => {
       />,
     )
 
-    expect(screen.getAllByText('Unavailable').length).toBeGreaterThan(0)
+    expect(screen.getByLabelText('Score unavailable')).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent(
       'The capture timed out.',
     )
-    expect(
-      screen.getByText('The latest Product Review did not finish'),
-    ).toBeInTheDocument()
     expect(
       screen.queryByText('Nothing important requires action now'),
     ).not.toBeInTheDocument()

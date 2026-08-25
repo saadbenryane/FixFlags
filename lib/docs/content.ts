@@ -3,8 +3,6 @@ import 'server-only'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { DOCS_PAGES, type DocsPageDefinition } from '@/lib/docs/catalog'
-import { EDITOR_INTEGRATIONS } from '@/lib/integrations/editor-catalog'
-import { MCP_TOOL_DEFINITIONS } from '@/lib/mcp/tool-manifest'
 
 export interface DocsSearchEntry {
   title: string
@@ -45,19 +43,5 @@ export async function buildDocsSearchIndex(): Promise<DocsSearchEntry[]> {
     })
   )
 
-  const editors = EDITOR_INTEGRATIONS.map((editor) => ({
-    title: `${editor.label} integration`,
-    description: `Connect FixFlags in ${editor.label}.`,
-    href: `/docs/integrations#${editor.docsAnchor}`,
-    keywords: `${editor.label} ${editor.setupMode} ${editor.setupLocation} MCP editor connection`,
-  }))
-
-  const tools = MCP_TOOL_DEFINITIONS.map((tool) => ({
-    title: tool.name,
-    description: tool.desc,
-    href: `/docs/mcp/tools#${tool.name}`,
-    keywords: `MCP tool ${tool.name} ${tool.desc}`,
-  }))
-
-  return [...pages, ...editors, ...tools]
+  return pages
 }

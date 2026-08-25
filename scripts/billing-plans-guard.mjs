@@ -23,8 +23,8 @@ function extractPlanLimit(plan, field) {
 
 const expected = {
   FREE: {
-    audit: extractPricingCopy('freeProductReviewsLifetime'),
-    deep: extractPricingCopy('freeDeepReviewTeaserLifetime'),
+    audit: extractPricingCopy('freeProductReviewsPerMonth'),
+    deep: extractPricingCopy('freeDeepReviewsPerMonth'),
   },
   BUILDER: {
     audit: extractPricingCopy('proProductReviewsPerMonth'),
