@@ -202,3 +202,16 @@ export function parseReviewCoverage(value: unknown): ReviewCoverage | null {
     partial: Boolean(record.partial),
   }
 }
+
+export function buildReviewCoverage(input: {
+  reviewedPageCount: number
+  openCheckCount: number
+  partial: boolean
+}): ReviewCoverage {
+  return {
+    reviewedPageCount: input.reviewedPageCount,
+    linkedPageCount: Math.max(0, input.reviewedPageCount - 1),
+    openCheckCount: input.openCheckCount,
+    partial: input.partial,
+  }
+}

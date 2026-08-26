@@ -63,7 +63,6 @@ export interface FlagData extends AgentPrompts {
   causeCertainty?: CauseCertainty
   source: string
   pageUrl: string | null
-  affectedPaths?: string[] | null
   verificationRule: string | null
   fingerprint: string
   position: number
@@ -108,6 +107,7 @@ export type DeterministicFlagRow = Omit<FlagData, 'severity' | 'impactTag'> & {
   severity: import('@prisma/client').Severity
   impactTag: import('@prisma/client').ImpactTag | null
   evidenceTargets?: import('@prisma/client').Prisma.InputJsonValue
+  affectedPaths?: import('@prisma/client').Prisma.InputJsonValue
 }
 
 /**
@@ -122,6 +122,7 @@ export type AiFlagRow = Omit<FlagData, 'severity' | 'impactTag'> & {
   severity: import('@prisma/client').Severity
   impactTag: import('@prisma/client').ImpactTag | null
   evidenceTargets?: import('@prisma/client').Prisma.InputJsonValue
+  affectedPaths?: import('@prisma/client').Prisma.InputJsonValue
 }
 
 /**

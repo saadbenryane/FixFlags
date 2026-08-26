@@ -167,20 +167,28 @@ describe('persistDeterministicFlags', () => {
     expect(exp!.score).toBeNull()
   })
 
-  it('persists duplicate flags as separate rows with identical fingerprints (dedup is upstream)', async () => {
-    // The persist layer does not dedupe - deduplicateTriageFlags handles that
-    // before persist. Two identical deterministic flags therefore produce two
-    // rows sharing one fingerprint (Flag.fingerprint is indexed, not unique).
-    const dup = makeDet({ checkId: 'title-missing', problem: 'Title is missing' })
+  it('collapses duplicate deterministic Flags into one row with affectedPaths', async () => {
+    const dup = makeDet({
+      checkId: 'title-missing',
+      problem: 'Title is missing',
+      pageUrl: 'https://example.com/',
+    })
 
-    await persistDeterministicFlags('audit-1', [dup, { ...dup }], baseRubricScores())
+    await persistDeterministicFlags(
+      'audit-1',
+      [dup, { ...dup, pageUrl: 'https://example.com/pricing' }],
+      baseRubricScores()
+    )
 
     expect(mockTx.flag.createMany).toHaveBeenCalledTimes(1)
     const flagData = (mockTx.flag.createMany.mock.calls[0] as unknown[])[0] as {
-      data: Array<{ fingerprint: string }>
+      data: Array<{ fingerprint: string; affectedPaths?: unknown }>
     }
-    expect(flagData.data).toHaveLength(2)
-    expect(flagData.data[0].fingerprint).toBe(flagData.data[1].fingerprint)
+    expect(flagData.data).toHaveLength(1)
+    expect(flagData.data[0]?.affectedPaths).toEqual([
+      'https://example.com/',
+      'https://example.com/pricing',
+    ])
   })
 })
 

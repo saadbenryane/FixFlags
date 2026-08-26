@@ -294,10 +294,12 @@ export function AuditReportProgressive({
         ? agentMessages
         : buildFixFlagsScanMessages({
             id: auditId ?? 'pending',
+            url,
             status,
             progress,
+            flags: partialFlags,
           }),
-    [agentMessages, auditId, status, progress]
+    [agentMessages, auditId, url, status, progress, partialFlags]
   )
   const queuedWarnings =
     workerIdle || showWorkerWarning || showQueueWait ? (

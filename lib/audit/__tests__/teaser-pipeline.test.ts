@@ -78,9 +78,9 @@ beforeEach(() => {
   prismaMock.audit.create.mockResolvedValue({ id: 'audit-new', parentId: null })
   prismaMock.audit.findFirst.mockResolvedValue(null)
   prismaMock.audit.count.mockResolvedValue(0)
-  prismaMock.user.findUnique.mockResolvedValue({
+    prismaMock.user.findUnique.mockResolvedValue({
     id: 'user-1',
-    plan: 'PRO',
+    plan: 'FREE',
     role: 'USER',
     subscriptionStatus: 'ACTIVE',
     deepReviewsUsed: 0,
@@ -129,6 +129,7 @@ describe('createAndEnqueueAudit anonymous teaser stage subset', () => {
 
     const data = createdAuditData()
     expect(data.auditMode).toBe('SINGLE')
+    expect(data.reviewDepth).toBe(1)
     expect(data.userId).toBeNull()
     expect(data.parentId).toBeNull()
     // Gates still enforced on the anonymous path.
@@ -153,6 +154,7 @@ describe('createAndEnqueueAudit full pipeline for signed-in paths', () => {
 
     const data = createdAuditData()
     expect(data.auditMode).toBe('CRITICAL_PATH')
+    expect(data.reviewDepth).toBe(1)
     expect(data.userId).toBe('user-1')
     expect(data.parentId).toBeNull()
     // The anonymous teaser gates must not run for signed-in creates.
@@ -163,7 +165,8 @@ describe('createAndEnqueueAudit full pipeline for signed-in paths', () => {
 
   it('keeps CRITICAL_PATH and FULL monitoring for re-checks (parented audits)', async () => {
     prismaMock.audit.findUnique
-      .mockResolvedValueOnce({ id: 'parent-1', userId: 'user-1', status: 'COMPLETED' })
+      .mockResolvedValueOnce({ id: 'parent-1', userId: 'user-1', status: 'COMPLETED', reviewDepth: 2 })
+      .mockResolvedValueOnce({ reviewDepth: 2 })
       .mockResolvedValueOnce({ projectId: 'project-1', scanAccessEncrypted: null })
 
     await createAndEnqueueAudit({
@@ -176,6 +179,7 @@ describe('createAndEnqueueAudit full pipeline for signed-in paths', () => {
 
     const data = createdAuditData()
     expect(data.auditMode).toBe('CRITICAL_PATH')
+    expect(data.reviewDepth).toBe(2)
     expect(data.parentId).toBe('parent-1')
     expect(data.monitoringMode).toBe('FULL')
   })

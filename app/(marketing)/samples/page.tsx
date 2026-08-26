@@ -42,6 +42,7 @@ export default async function SamplesPage({ searchParams }: SamplesPageProps) {
   // Deterministic transcript of the curated run. No scan is started here.
   const agentMessages = buildFixFlagsScanMessages({
     id: audit.id,
+    url: audit.url,
     status: 'COMPLETED',
     progress: 100,
     startedAt: audit.startedAt,

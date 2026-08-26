@@ -207,4 +207,22 @@ describe('buildFixFlagsScanMessages', () => {
     } as typeof base & { actionTimeline: Array<{ label: string }> })
     expect(messages.some((item) => item.content.includes('Opened page'))).toBe(false)
   })
+
+  it('names a Flag path when it is not the pasted page', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      url: 'https://example.com/',
+      flags: [
+        {
+          id: 'flag-2',
+          problem: 'Checkout is unclear',
+          rubric: 'EXPERIENCE',
+          pageUrl: 'https://example.com/checkout',
+        },
+      ],
+    })
+    expect(messages.map((item) => item.content).join('\n')).toMatch(
+      /I found an Experience Flag on \/checkout: Checkout is unclear/
+    )
+  })
 })

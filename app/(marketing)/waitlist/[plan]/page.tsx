@@ -24,11 +24,6 @@ export async function generateMetadata({
   }
 }
 
-const PLAN_BY_SEGMENT: Record<string, CheckoutPlan> = {
-  pro: 'BUILDER',
-  studio: 'TEAM',
-}
-
 export default async function WaitlistPlanPage({
   params,
 }: {

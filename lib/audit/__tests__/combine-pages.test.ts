@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildCombinedTriageOutput, averageScores } from '../pipeline/combine-pages'
+import { buildCombinedTriageOutput, averageScores, productScoresFromFlags } from '../pipeline/combine-pages'
 import type { PageRun } from '../pipeline/types'
 import type { TriageOutput } from '../judge-triage-schema'
 import type { TriageResult } from '../judge-triage'
@@ -68,17 +68,17 @@ function pageRun(output: TriageOutput): PageRun {
 }
 
 describe('buildCombinedTriageOutput', () => {
-  it('averages rubric scores when every page reports one', () => {
+  it('clears combined rubric scores so Flag-based Product scores win later', () => {
     const pages = [
       pageRun(triageOutput({ rubricScores: { MESSAGE: 80, EXPERIENCE: 60, REACH: 90 } })),
       pageRun(triageOutput({ rubricScores: { MESSAGE: 90, EXPERIENCE: 70, REACH: 100 } })),
     ]
     const combined = buildCombinedTriageOutput(pages)
     const byName = Object.fromEntries(combined.rubrics.map((r) => [r.name, r]))
-    expect(byName.MESSAGE.score).toBe(85)
-    expect(byName.EXPERIENCE.score).toBe(65)
-    expect(byName.REACH.score).toBe(95)
-    expect(byName.MESSAGE.assessmentState).toBe('ASSESSED')
+    expect(byName.MESSAGE.score).toBeNull()
+    expect(byName.EXPERIENCE.score).toBeNull()
+    expect(byName.REACH.score).toBeNull()
+    expect(byName.MESSAGE.assessmentState).toBe('PARTIAL')
   })
 
   it('marks a rubric PARTIAL when any page is missing its score', () => {
@@ -111,10 +111,10 @@ describe('buildCombinedTriageOutput', () => {
     expect(combined.newFlags.map((f) => f.problem)).toEqual(['flag-1', 'flag-2'])
   })
 
-  it('throws when the primary page has no triage result', () => {
+  it('throws when no reviewed page has a triage result', () => {
     const page = pageRun(triageOutput({ rubricScores: { MESSAGE: 80, EXPERIENCE: 60, REACH: 90 } }))
     page.triage = undefined
-    expect(() => buildCombinedTriageOutput([page])).toThrow(/primary triage/)
+    expect(() => buildCombinedTriageOutput([page])).toThrow(/reviewed-page triage/)
   })
 })
 
@@ -141,7 +141,7 @@ describe('averageScores', () => {
     }
   }
 
-  it('averages scores from flags across multiple pages', () => {
+  it('scores the Product from collapsed Flags, not page averages', () => {
     const page1 = pageRunWithFlags(
       { checkId: 'c1', rubric: 'MESSAGE', severity: 'IMPORTANT', problem: 'p1', evidence: 'e', fix: 'f', confidence: 1, source: 'DETERMINISTIC' },
       { checkId: 'c2', rubric: 'EXPERIENCE', severity: 'IMPORTANT', problem: 'p2', evidence: 'e', fix: 'f', confidence: 1, source: 'DETERMINISTIC' },
@@ -150,14 +150,35 @@ describe('averageScores', () => {
       { checkId: 'c3', rubric: 'MESSAGE', severity: 'POLISH', problem: 'p3', evidence: 'e', fix: 'f', confidence: 1, source: 'DETERMINISTIC' },
     )
 
-    // Page 1: MESSAGE=96 (log penalty for 1 IMPORTANT), EXPERIENCE=96 (log penalty for 1 IMPORTANT), REACH=100
-    // Page 2: MESSAGE=99 (log penalty for 1 POLISH), EXPERIENCE=75 (penalized baseline, no PS data), REACH=100
-    // Avg: MESSAGE=98, EXPERIENCE=86, REACH=100
     const scores = averageScores([page1, page2])
+    const together = productScoresFromFlags([
+      pageRunWithFlags(
+        { checkId: 'c1', rubric: 'MESSAGE', severity: 'IMPORTANT', problem: 'p1', evidence: 'e', fix: 'f', confidence: 1, source: 'DETERMINISTIC' },
+        { checkId: 'c2', rubric: 'EXPERIENCE', severity: 'IMPORTANT', problem: 'p2', evidence: 'e', fix: 'f', confidence: 1, source: 'DETERMINISTIC' },
+        { checkId: 'c3', rubric: 'MESSAGE', severity: 'POLISH', problem: 'p3', evidence: 'e', fix: 'f', confidence: 1, source: 'DETERMINISTIC' },
+      ),
+    ])
 
-    expect(scores.MESSAGE).toBe(98)
-    expect(scores.EXPERIENCE).toBe(86)
-    expect(scores.REACH).toBe(100)
+    expect(scores).toEqual(together)
+  })
+
+  it('does not dilute a severe checkout Flag with healthy marketing pages', () => {
+    const checkout = pageRunWithFlags({
+      checkId: 'checkout-broken',
+      rubric: 'EXPERIENCE',
+      severity: 'CRITICAL',
+      problem: 'Checkout is broken',
+      evidence: 'The pay action does nothing',
+      fix: 'Restore checkout',
+      confidence: 1,
+      source: 'DETERMINISTIC',
+      pageUrl: 'https://example.com/checkout',
+    })
+    const healthy = Array.from({ length: 5 }, () => pageRunWithFlags())
+    const withHealthyPages = productScoresFromFlags([checkout, ...healthy])
+    const checkoutOnly = productScoresFromFlags([checkout])
+    expect(withHealthyPages.EXPERIENCE).toBe(checkoutOnly.EXPERIENCE)
+    expect(withHealthyPages.EXPERIENCE).toBeLessThan(90)
   })
 
   it('falls back to triage score when deterministic score is null', () => {

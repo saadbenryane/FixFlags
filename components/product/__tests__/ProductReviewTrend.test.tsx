@@ -15,6 +15,7 @@ function review(
     score,
     reportCompleteness: 'FULL',
     unresolvedCount: 1,
+    coverageLabel: null,
     createdAt: completedAt,
     completedAt,
     failureMessage: null,

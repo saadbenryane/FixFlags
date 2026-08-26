@@ -182,7 +182,10 @@ describe('FlagDetailPanel', () => {
   it('renders page URLs with external links', () => {
     renderWithProviders(<FlagDetailPanel flag={makeFlag()} />)
     const links = screen.getAllByRole('link')
-    expect(links.some((l) => l.getAttribute('href') === 'https://example.com/page')).toBe(true)
+    const pageLink = links.find((l) => l.getAttribute('href') === 'https://example.com/page')
+    expect(pageLink).toBeTruthy()
+    expect(pageLink).toHaveAttribute('title', 'https://example.com/page')
+    expect(pageLink).toHaveTextContent('On /page')
   })
 
   it('does not render a standalone visualUrl screenshot above the prompt', () => {

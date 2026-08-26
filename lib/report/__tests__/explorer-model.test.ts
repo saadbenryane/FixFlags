@@ -339,4 +339,25 @@ describe('explorer-model', () => {
     assert.equal(model.flags.length, 0)
     assert.equal(model.displayHost, 'example.com')
   })
+
+  it('renders a coverage sentence from reviewCoverage', () => {
+    const model = buildLiveExplorerModel({
+      url: 'https://example.com',
+      pageType: 'Landing page',
+      score: 70,
+      flags: [],
+      rubricRows: [],
+      reviewCoverage: {
+        reviewedPageCount: 5,
+        linkedPageCount: 4,
+        openCheckCount: 24,
+        partial: true,
+      },
+      reportCompleteness: 'PARTIAL',
+    })
+    assert.equal(
+      model.coverageSentence,
+      'Reviewed this page and 4 linked pages. Opened 24 public links. Review was partial.'
+    )
+  })
 })

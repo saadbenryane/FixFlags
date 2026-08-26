@@ -49,11 +49,23 @@ describe('resolveAuditOutcome', () => {
     }
   })
 
-  it('hasPrimaryTriage ignores secondary pages without triage', () => {
+  it('hasPrimaryTriage is true when any reviewed page has triage', () => {
     const runs = [
       stubPageRun({ triage: { output: {} as never, usage: { inputTokens: 0, outputTokens: 0, model: 't' } } }),
       stubPageRun({ pageId: 'p2', triage: undefined }),
     ]
+    expect(hasPrimaryTriage(runs)).toBe(true)
+  })
+
+  it('returns triage_complete when a secondary reviewed page has triage', () => {
+    const runs = [
+      stubPageRun({ pageId: 'p0' }),
+      stubPageRun({
+        pageId: 'p1',
+        triage: { output: {} as never, usage: { inputTokens: 0, outputTokens: 0, model: 't' } },
+      }),
+    ]
+    expect(resolveAuditOutcome(runs)).toEqual({ kind: 'triage_complete', pageRuns: runs })
     expect(hasPrimaryTriage(runs)).toBe(true)
   })
 })

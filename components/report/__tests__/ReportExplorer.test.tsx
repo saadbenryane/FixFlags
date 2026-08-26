@@ -74,6 +74,7 @@ const model: ReportExplorerModel = {
   flags: [locked, demonstrated],
   allHighlights: [],
   previewMeta: null,
+  coverageSentence: null,
 }
 
 afterEach(() => {
@@ -300,5 +301,43 @@ describe('ReportExplorer anonymous teaser', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Copy all$/i }))
     expect(await screen.findAllByText('Create your free account')).not.toHaveLength(0)
     expect(writeText).not.toHaveBeenCalled()
+  })
+
+  it('shows a muted coverage sentence under Your priorities', () => {
+    render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer
+          model={{
+            ...model,
+            coverageSentence: 'Reviewed this page and 4 linked pages. Opened 24 public links.',
+          }}
+        />
+      </MeProvider>
+    )
+    expect(
+      screen.getByText('Reviewed this page and 4 linked pages. Opened 24 public links.')
+    ).toBeInTheDocument()
+  })
+
+  it('labels a Flag row with On /pricing', () => {
+    render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer
+          model={{
+            ...model,
+            flags: [
+              {
+                ...demonstrated,
+                pageUrl: 'https://example.com/pricing',
+                pageUrls: ['https://example.com/pricing'],
+                occurrenceCount: 1,
+              },
+            ],
+            flagCount: 1,
+          }}
+        />
+      </MeProvider>
+    )
+    expect(screen.getAllByText(/On \/pricing/).length).toBeGreaterThan(0)
   })
 })

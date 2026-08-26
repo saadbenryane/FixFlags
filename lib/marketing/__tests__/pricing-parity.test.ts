@@ -115,6 +115,36 @@ describe('pricing parity', () => {
     expect(customerSurfaces).toMatch(/product reviews? per month/i)
   })
 
+  it('describes how far a review goes without crawler jargon', () => {
+    const free = PLANS.find((plan) => plan.plan === 'FREE')!
+    const pro = PLANS.find((plan) => plan.plan === 'BUILDER')!
+    const studio = PLANS.find((plan) => plan.plan === 'TEAM')!
+
+    expect(free.features).toContain('This page, plus every public link to see if it loads')
+    expect(pro.features).toContain('This page and every public page it links to')
+    expect(pro.features).toContain('Logged-in review on your computer')
+    expect(studio.features).toContain('This page, its linked pages, and one level beyond')
+    expect(studio.features).toContain('Logged-in review on your computer')
+
+    const howFar = PRICING_FAQ.find((entry) => entry.question === 'How far does a review go?')
+    expect(howFar?.answer).toMatch(/page you paste/i)
+    expect(howFar?.answer).toMatch(/linked pages/i)
+    expect(howFar?.answer).toMatch(/logged-in review on your computer/i)
+
+    const surfaces = JSON.stringify({ PLANS, PRICING, PRICING_FAQ })
+    expect(surfaces).not.toMatch(/\b(hops?|crawler|layers?)\b/i)
+    expect(surfaces).not.toMatch(/deep review/i)
+
+    const comparison = readFileSync(
+      join(process.cwd(), 'components/pricing/PricingComparisonTable.tsx'),
+      'utf8',
+    )
+    expect(comparison).toContain('How far a review goes')
+    expect(comparison).toContain('This page. Checks every public link.')
+    expect(comparison).toContain('This page and the pages it links to')
+    expect(comparison).toContain('This page, linked pages, and one level beyond')
+  })
+
   it('links pricing FAQ entries to help articles with PRICING_COPY numbers', () => {
     expect(PRICING_FAQ.length).toBeGreaterThan(0)
     expect(PRICING_FAQ.every((entry) => entry.learnMore?.href && entry.learnMore.label)).toBe(true)

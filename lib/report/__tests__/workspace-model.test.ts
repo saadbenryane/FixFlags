@@ -41,6 +41,7 @@ function buildExplorer(): ReportExplorerModel {
     ],
     allHighlights: [],
     previewMeta: null,
+    coverageSentence: null,
   }
 }
 

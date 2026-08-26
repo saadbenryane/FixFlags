@@ -51,6 +51,7 @@ function buildModel(): ReportWorkspaceModel {
       flags: [],
       allHighlights: [],
       previewMeta: null,
+      coverageSentence: null,
     },
     capabilities: {
       promptAccess: 'none',

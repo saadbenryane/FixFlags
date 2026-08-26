@@ -59,6 +59,7 @@ const workspace: ProductWorkspaceDTO = {
     score: 78,
     reportCompleteness: 'FULL',
     unresolvedCount: 1,
+    coverageLabel: 'This page and 6 linked pages',
     createdAt: '2026-08-12T00:00:00.000Z',
     completedAt: '2026-08-12T00:01:00.000Z',
     failureMessage: null,
@@ -70,6 +71,7 @@ const workspace: ProductWorkspaceDTO = {
     score: 78,
     reportCompleteness: 'FULL',
     unresolvedCount: 1,
+    coverageLabel: 'This page and 6 linked pages',
     createdAt: '2026-08-12T00:00:00.000Z',
     completedAt: '2026-08-12T00:01:00.000Z',
     failureMessage: null,
@@ -81,6 +83,7 @@ const workspace: ProductWorkspaceDTO = {
     score: 80,
     reportCompleteness: 'FULL',
     unresolvedCount: 1,
+    coverageLabel: null,
     createdAt: '2026-08-13T00:00:00.000Z',
     completedAt: '2026-08-13T00:01:00.000Z',
     failureMessage: null,
@@ -134,6 +137,7 @@ const workspace: ProductWorkspaceDTO = {
       score: 78,
       reportCompleteness: 'FULL',
       unresolvedCount: 1,
+    coverageLabel: null,
       createdAt: '2026-08-12T00:00:00.000Z',
       completedAt: '2026-08-12T00:01:00.000Z',
       failureMessage: null,
@@ -152,6 +156,7 @@ const workspace: ProductWorkspaceDTO = {
           score: 78,
           reportCompleteness: 'FULL',
           unresolvedCount: 1,
+    coverageLabel: null,
           createdAt: '2026-08-12T00:00:00.000Z',
           completedAt: '2026-08-12T00:01:00.000Z',
           failureMessage: null,
@@ -224,6 +229,7 @@ describe('ProductWorkspace', () => {
     expect(
       screen.getByRole('heading', { level: 2, name: 'Current review' })
     ).toBeInTheDocument()
+    expect(screen.getByText(/1 unresolved · This page and 6 linked pages/)).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { level: 2, name: 'Product understanding' })
     ).toBeInTheDocument()
@@ -269,6 +275,7 @@ describe('ProductWorkspace', () => {
             score: null,
             reportCompleteness: 'UNKNOWN',
             unresolvedCount: 0,
+            coverageLabel: null,
             createdAt: '2026-08-20T00:00:00.000Z',
             completedAt: null,
             failureMessage: null,
@@ -280,6 +287,7 @@ describe('ProductWorkspace', () => {
             score: null,
             reportCompleteness: 'UNKNOWN',
             unresolvedCount: 0,
+            coverageLabel: null,
             createdAt: '2026-08-20T00:00:00.000Z',
             completedAt: null,
             failureMessage: null,

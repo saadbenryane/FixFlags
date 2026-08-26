@@ -141,6 +141,7 @@ describe('createAndEnqueueAudit', () => {
         includeAi: false,
         journeyReviewIncluded: false,
         watchNotificationStatus: 'NOT_APPLICABLE',
+        reviewDepth: 1,
       }),
       select: { id: true, parentId: true },
     })
@@ -595,5 +596,59 @@ describe('createAndEnqueueAudit', () => {
     )
     expect(prismaMock.audit.create).not.toHaveBeenCalled()
     expect(queueAdd).not.toHaveBeenCalled()
+  })
+
+  it('stores reviewDepth 1 for anonymous teasers and Free accounts', async () => {
+    await createAndEnqueueAudit({ url: AUDIT_URL })
+    expect(prismaMock.audit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ reviewDepth: 1 }),
+      select: { id: true, parentId: true },
+    })
+
+    prismaMock.audit.create.mockClear()
+    prismaMock.user.findUnique.mockResolvedValue(signedInUser({ plan: 'FREE' }))
+    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    expect(prismaMock.audit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ reviewDepth: 1 }),
+      select: { id: true, parentId: true },
+    })
+  })
+
+  it('stores reviewDepth from the owner plan for Pro and Studio', async () => {
+    prismaMock.user.findUnique.mockResolvedValue(signedInUser({ plan: 'BUILDER' }))
+    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    expect(prismaMock.audit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ reviewDepth: 2 }),
+      select: { id: true, parentId: true },
+    })
+
+    prismaMock.audit.create.mockClear()
+    prismaMock.user.findUnique.mockResolvedValue(signedInUser({ plan: 'TEAM' }))
+    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
+    expect(prismaMock.audit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ reviewDepth: 3 }),
+      select: { id: true, parentId: true },
+    })
+  })
+
+  it('copies stored reviewDepth onto update reviews and Watch', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({
+      id: 'parent-1',
+      userId: 'user-1',
+      status: 'COMPLETED',
+      projectId: 'parent-project',
+      scanAccessEncrypted: null,
+      reviewDepth: 3,
+    })
+    await createAndEnqueueAudit({
+      url: AUDIT_URL,
+      userId: 'user-1',
+      parentId: 'parent-1',
+      recheckTrigger: 'WATCH',
+    })
+    expect(prismaMock.audit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ reviewDepth: 3, parentId: 'parent-1' }),
+      select: { id: true, parentId: true },
+    })
   })
 })

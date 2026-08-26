@@ -182,6 +182,8 @@ interface TriageDegradedFinalizeInput {
   auditId: string
   durationMs: number
   pagespeedCalls: number
+  pagesReviewed?: number
+  openCheckRequests?: number
   usage?: {
     inputTokens: number
     outputTokens: number
@@ -356,6 +358,8 @@ interface PartialFinalizeInput {
   auditId: string
   durationMs: number
   pagespeedCalls: number
+  pagesReviewed?: number
+  openCheckRequests?: number
   usage?: {
     inputTokens: number
     outputTokens: number
@@ -445,6 +449,8 @@ interface DeterministicFinalizeInput {
   auditId: string
   durationMs: number
   pagespeedCalls: number
+  pagesReviewed?: number
+  openCheckRequests?: number
   evidence: {
     desktopScreenshot: boolean
     mobileScreenshot: boolean

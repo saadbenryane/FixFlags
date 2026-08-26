@@ -23,6 +23,7 @@ const completedReview: ProductReviewSummaryDTO = {
   score: 81,
   reportCompleteness: 'FULL',
   unresolvedCount: 1,
+  coverageLabel: null,
   createdAt: '2026-08-12T00:00:00.000Z',
   completedAt: '2026-08-12T00:01:00.000Z',
   failureMessage: null,

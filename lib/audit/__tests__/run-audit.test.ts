@@ -10,7 +10,7 @@ import { AuditDeadlineError } from '@/lib/audit/pipeline-errors'
 
 const { prismaMock } = vi.hoisted(() => {
   const prismaMock = {
-    audit: { findUnique: vi.fn(), update: vi.fn() },
+    audit: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     screenshot: { deleteMany: vi.fn() },
     auditPage: { deleteMany: vi.fn() },
     journeyReview: { deleteMany: vi.fn() },
@@ -32,9 +32,19 @@ vi.mock('@/lib/audit/pipeline-log', () => ({
   initPipelineLog: vi.fn(),
   logPipelineEvent: vi.fn(),
 }))
-vi.mock('@/lib/audit/critical-path', () => ({
-  discoverCriticalPathUrls: vi.fn(() => []),
-  discoverCriticalPathUrlsEnriched: vi.fn(async () => []),
+vi.mock('@/lib/audit/scan-access-store', () => ({
+  resolveAuditScanAccess: vi.fn(async () => null),
+}))
+vi.mock('@/lib/audit/gsc-integration', () => ({
+  pullGscDataForAudit: vi.fn(async () => undefined),
+}))
+vi.mock('@/lib/audit/checks/search-performance', () => ({
+  runSearchPerformanceChecks: vi.fn(async () => []),
+}))
+vi.mock('@/lib/audit/open-check', () => ({
+  DEFAULT_OPEN_CHECK_CEILING: 80,
+  openCheckDestinations: vi.fn(async () => ({ results: [], truncated: false })),
+  deadDestinationFlags: vi.fn(() => []),
 }))
 vi.mock('@/lib/audit/journey/run-journey-reviews', () => ({
   runJourneyReviewsForAudit: vi.fn(async () => 0),
@@ -75,6 +85,7 @@ function makeAudit(overrides: Record<string, unknown> = {}) {
     monitoringMode: null,
     parentId: null,
     auditMode: 'SINGLE',
+    reviewDepth: 1,
     ...overrides,
   }
 }
@@ -83,7 +94,7 @@ function makePageRun(overrides: Record<string, unknown> = {}) {
   return {
     pageId: 'page-1',
     url: 'https://example.com',
-    metadata: { pageText: '' },
+    metadata: { pageText: '', links: [] },
     desktop: null,
     mobile: null,
     desktopScreenshot: true,
@@ -197,5 +208,27 @@ describe('runAudit orchestrator', () => {
     const pageArgs = (runPage as Mock).mock.calls[0][1] as Record<string, unknown>
     expect(pageArgs).not.toHaveProperty('skipCapture')
     expect(pageArgs).not.toHaveProperty('parentId')
+  })
+
+  it('fully reviews linked pages when stored reviewDepth is 2', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue(makeAudit({ reviewDepth: 2 }))
+    ;(runPage as Mock).mockImplementation(async (_ctx: unknown, input: { url: string }) =>
+      makePageRun({
+        url: input.url,
+        metadata: {
+          pageText: '',
+          links: [{ href: '/pricing', text: 'Pricing' }],
+        },
+      })
+    )
+
+    await runAudit('audit-1')
+
+    const urls = (runPage as Mock).mock.calls.map(
+      (call: unknown[]) => (call[1] as { url: string }).url
+    )
+    expect(urls[0]).toBe('https://example.com')
+    expect(urls).toContain('https://example.com/pricing')
+    expect(urls.length).toBeGreaterThan(1)
   })
 })

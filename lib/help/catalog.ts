@@ -453,6 +453,10 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
+        text: 'Pro and Studio include logged-in review on your computer when those plans open. That is not available yet.',
+      },
+      {
+        type: 'p',
         text: 'Every Product Review includes prioritized Flags, evidence, and fix prompts. Plans add how far a review goes, product capacity, release history, scheduled reviews, and workspace access. Usage does not roll over.',
       },
     ],

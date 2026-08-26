@@ -136,6 +136,7 @@ export async function GET(
       : null
     const agentMessages = buildFixFlagsScanMessages({
       id,
+      url: audit.url,
       status: effectiveStatus,
       progress: audit.progress,
       startedAt: audit.startedAt,

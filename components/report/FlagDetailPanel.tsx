@@ -14,6 +14,7 @@ import type { ExplorerFlag } from '@/lib/report/explorer-model'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { displayHostname, truncatePreview } from '@/lib/audit/preview-meta'
 import { impactTagIcon } from '@/lib/rubric-icons'
+import { impactTagLabel } from '@/lib/utils'
 import { reviewPathLabel } from '@/lib/audit/url-identity'
 import type { ReportAccessState, ReportSurface } from '@/lib/analytics/events'
 

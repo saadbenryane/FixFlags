@@ -69,6 +69,7 @@ function review(overrides: Record<string, unknown> = {}) {
     watchNotificationAttempts: 0,
     watchNotificationLastError: null,
     flags: [{ status: 'OPEN' }, { status: 'FIXED' }],
+    reviewCoverage: null,
     ...overrides,
   }
 }

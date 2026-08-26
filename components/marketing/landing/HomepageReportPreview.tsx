@@ -87,6 +87,7 @@ export function HomepageReportPreview({
     () =>
       buildFixFlagsScanMessages({
         id: 'homepage-product-story',
+        url: 'https://demosite.example',
         status: storyStatus(phase),
         progress: STORY_PROGRESS[phase],
         journeyReviewIncluded: true,

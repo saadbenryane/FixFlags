@@ -21,6 +21,9 @@ function lowestPagespeed(results: Array<PageSpeedResult | null>): PageSpeedResul
 export function productScoresFromFlags(
   pageRuns: PageRun[]
 ): Partial<Record<RubricName, number | null>> {
+  if (pageRuns.length === 0) {
+    return { MESSAGE: null, EXPERIENCE: null, REACH: null }
+  }
   const collapsed = collapseFlagsWithAffectedPaths(pageRuns.flatMap((page) => page.flags))
   const failedModules = [...new Set(pageRuns.flatMap((page) => page.failedModules))]
   const desktop = lowestPagespeed(pageRuns.map((page) => page.desktop))

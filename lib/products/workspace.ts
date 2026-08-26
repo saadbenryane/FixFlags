@@ -222,6 +222,7 @@ type ReviewRow = {
   watchNotificationAttempts: number
   watchNotificationLastError: string | null
   reviewCoverage: unknown
+  flags: Array<{ status: string }>
 }
 
 type AttemptRow = {

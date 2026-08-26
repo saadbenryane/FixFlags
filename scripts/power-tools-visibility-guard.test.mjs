@@ -29,3 +29,24 @@ test('rejects missing route parking, inconsistent repository responses, and publ
   assert.ok(failures.some((failure) => failure.includes('same not-found boundary')))
   assert.ok(failures.some((failure) => failure.includes('links to a parked')))
 })
+
+test('allows the waitlist logged-in review line on pricing copy without setup-route links', () => {
+  assert.deepEqual(powerToolVisibilityFailures({
+    proxySource: parkedProxy(),
+    discoverySources: {
+      'lib/marketing/copy/plans.ts':
+        "features: ['This page and every public page it links to', 'Logged-in review on your computer']",
+    },
+  }), [])
+})
+
+test('still rejects parked setup routes next to the waitlist logged-in line', () => {
+  const failures = powerToolVisibilityFailures({
+    proxySource: parkedProxy(),
+    discoverySources: {
+      'lib/marketing/copy/plans.ts':
+        "features: ['Logged-in review on your computer']\nhref: '/docs/cli'",
+    },
+  })
+  assert.ok(failures.some((failure) => failure.includes('links to a parked')))
+})

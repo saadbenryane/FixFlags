@@ -5,6 +5,7 @@ import {
   classifyImportanceBand,
   planReviewTargets,
   rankDestinations,
+  buildReviewCoverage,
 } from '@/lib/audit/review-depth'
 import { collectEligibleDestinations } from '@/lib/audit/url-identity'
 import { AUDIT_DEADLINE_MS } from '@/lib/audit/pipeline-config'
@@ -85,5 +86,19 @@ describe('review depth', () => {
     expect(auditDeadlineMsForDepth(3)).toBeGreaterThan(auditDeadlineMsForDepth(2))
     expect(asReviewDepth(2)).toBe(2)
     expect(asReviewDepth(9)).toBe(1)
+  })
+
+  it('builds coverage with linked pages excluding the pasted page', () => {
+    const coverage = buildReviewCoverage({
+      reviewedPageCount: 5,
+      openCheckCount: 24,
+      partial: true,
+    })
+    expect(coverage).toEqual({
+      reviewedPageCount: 5,
+      linkedPageCount: 4,
+      openCheckCount: 24,
+      partial: true,
+    })
   })
 })

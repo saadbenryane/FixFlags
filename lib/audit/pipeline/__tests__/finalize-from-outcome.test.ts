@@ -48,6 +48,8 @@ vi.mock('@/lib/audit/pipeline/triage-step', () => ({ runTriageStep }))
 vi.mock('@/lib/audit/pipeline/context', () => ({ accumulateTriageUsage }))
 vi.mock('@/lib/audit/pipeline/combine-pages', () => ({
   averageScores,
+  productScoresFromFlags: averageScores,
+  collapsedPageFlags: vi.fn(() => []),
   buildCombinedTriageOutput,
 }))
 vi.mock('@/lib/audit/pipeline/outcome', () => ({

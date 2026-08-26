@@ -55,6 +55,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
     : null
   const agentMessages = buildFixFlagsScanMessages({
     id: state.id,
+    url: state.audit.url,
     status: state.audit.status,
     progress: state.audit.progress,
     startedAt: state.audit.startedAt,
@@ -71,6 +72,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       severity: flag.severity,
       checkId: flag.checkId,
       impactTag: flag.impactTag,
+      pageUrl: flag.pageUrl,
     })),
   })
   const headerActions = (

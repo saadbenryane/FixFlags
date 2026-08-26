@@ -383,7 +383,10 @@ export function ReportExplorer({
         impactTag: f.impactTag,
         severity: f.severity,
         hasFixPrompt: f.hasFixPrompt,
-        pathLabel: f.pageUrls[0] ? reviewPathLabel(f.pageUrls[0]) : f.pageUrl ? reviewPathLabel(f.pageUrl) : null,
+        pathLabel: (() => {
+          const raw = f.pageUrls[0] ?? f.pageUrl
+          return raw ? REPORT_COPY.explorer.onPath(reviewPathLabel(raw)) : null
+        })(),
         occurrenceCount: f.occurrenceCount,
       })),
     [filteredFlags]

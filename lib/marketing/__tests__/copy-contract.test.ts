@@ -61,4 +61,18 @@ describe('customer copy contract', () => {
       'No longer observed in this review.',
     )
   })
+
+  it('describes review breadth in customer language', () => {
+    const sentence = REPORT_COPY.explorer.coverageSentence({
+      linkedPageCount: 4,
+      openCheckCount: 24,
+      partial: false,
+    })
+    expect(sentence).toBe('Reviewed this page and 4 linked pages. Opened 24 public links.')
+    expect(REPORT_COPY.explorer.onPath('/pricing')).toBe('On /pricing')
+    expect(REPORT_COPY.explorer.onPages(8)).toBe('On 8 pages')
+    expect(REPORT_COPY.explorer.productCoverage(6)).toBe('This page and 6 linked pages')
+    const visible = collectStrings(REPORT_COPY.explorer)
+    expect(visible.join('\n')).not.toMatch(/\b(hops?|crawler|layers?)\b/i)
+  })
 })

@@ -114,7 +114,7 @@ export async function runAudit(auditId: string): Promise<void> {
       const hop1Plan = planReviewTargets({
         pastedUrl: audit.url,
         depth: reviewDepth,
-        pastedLinks: primary.metadata.links,
+        pastedLinks: primary.metadata.links ?? [],
       })
 
       const { results, truncated: openCheckTruncated } = await openCheckDestinations(
@@ -179,10 +179,10 @@ export async function runAudit(auditId: string): Promise<void> {
         const hop2Plan = planReviewTargets({
           pastedUrl: audit.url,
           depth: 3,
-          pastedLinks: primary.metadata.links,
+          pastedLinks: primary.metadata.links ?? [],
           linkedPageLinks: pageRuns.slice(1).map((page) => ({
             pageUrl: page.url,
-            links: page.metadata.links,
+            links: page.metadata.links ?? [],
           })),
         })
         const extraOpenCheck = hop2Plan.openCheckUrls.filter((url) => {

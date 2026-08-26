@@ -4,8 +4,7 @@ import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '@/lib/audit/progre
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { getUserFacingAuditError } from '@/lib/audit/user-facing-errors'
 import { AGENT_SCAN_COPY } from '@/lib/marketing/copy'
-import { reviewPathLabel } from '@/lib/audit/url-identity'
-import { canonicalizeDestination } from '@/lib/audit/url-identity'
+import { reviewPathLabel, canonicalizeDestination } from '@/lib/audit/url-identity'
 
 export type ScanAgentFlag = {
   id: string

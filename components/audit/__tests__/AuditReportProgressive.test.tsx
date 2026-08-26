@@ -213,6 +213,7 @@ describe('AuditReportProgressive', () => {
         accessContext="owner"
         status="CAPTURING"
         url={URL}
+        progressDetail="Opening public links"
         screenshots={[
           { device: 'DESKTOP', url: '/desktop.png', width: 1280, height: 900 },
         ]}
@@ -223,6 +224,7 @@ describe('AuditReportProgressive', () => {
     expect(screen.getByRole('tab', { name: 'Agent' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: 'Report' })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Desktop' })).not.toBeInTheDocument()
+    expect(screen.getByText('Opening public links')).toBeInTheDocument()
   })
 
   it('keeps technology detections out of the immersive scanning workspace', () => {

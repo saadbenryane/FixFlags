@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { baseCheckId, durableCheckId, flagFingerprint } from '@/lib/audit/flag-identity'
+import { baseCheckId, durableCheckId, flagFingerprint, collapseFlagsWithAffectedPaths } from '@/lib/audit/flag-identity'
 
 describe('Flag identity', () => {
   it('removes page occurrence suffixes without losing the durable check', () => {
@@ -25,5 +25,32 @@ describe('Flag identity', () => {
       rubric: 'MESSAGE',
     })
     expect(fingerprint).toContain('MESSAGE')
+  })
+
+  it('collapses the same check across pages into one Flag with affectedPaths', () => {
+    const collapsed = collapseFlagsWithAffectedPaths([
+      {
+        checkId: 'cta-unclear',
+        problem: 'The action is unclear',
+        rubric: 'MESSAGE',
+        severity: 'IMPORTANT',
+        evidence: 'On /',
+        pageUrl: 'https://example.com/',
+      },
+      {
+        checkId: 'cta-unclear',
+        problem: 'The action is unclear',
+        rubric: 'MESSAGE',
+        severity: 'CRITICAL',
+        evidence: 'On /pricing',
+        pageUrl: 'https://example.com/pricing',
+      },
+    ])
+    expect(collapsed).toHaveLength(1)
+    expect(collapsed[0]?.severity).toBe('CRITICAL')
+    expect(collapsed[0]?.affectedPaths).toEqual([
+      'https://example.com/',
+      'https://example.com/pricing',
+    ])
   })
 })

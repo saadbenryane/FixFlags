@@ -34,8 +34,13 @@ describe('site share metadata', () => {
 
       expect(metadata.alternates?.canonical, key).toBeTruthy()
       expect(metadata.robots, key).toMatchObject({ index: true, follow: true })
-      expect(metadata.openGraph?.images?.length, key).toBeGreaterThan(0)
-      expect(metadata.twitter?.card, key).toBe('summary_large_image')
+      const images = metadata.openGraph?.images
+      const imageCount = Array.isArray(images) ? images.length : images ? 1 : 0
+      expect(imageCount, key).toBeGreaterThan(0)
+      expect(
+        metadata.twitter && 'card' in metadata.twitter ? metadata.twitter.card : undefined,
+        key,
+      ).toBe('summary_large_image')
     }
   })
 })

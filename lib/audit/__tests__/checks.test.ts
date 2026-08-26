@@ -4,6 +4,7 @@ import { runMetadataChecks, runOgImageUrlCheck } from '@/lib/audit/checks/metada
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { runAccessibilityChecks } from '@/lib/audit/checks/accessibility'
 import { runSeoChecks } from '@/lib/audit/checks/seo'
+import { deadDestinationFlags } from '@/lib/audit/open-check'
 import { runTrustChecks } from '@/lib/audit/checks/trust'
 import { runMobileChecks } from '@/lib/audit/checks/mobile'
 import { runContentChecks } from '@/lib/audit/checks/content'
@@ -315,7 +316,7 @@ describe('runSeoChecks', () => {
     assert.ok(ids.includes('robots-txt-missing'))
   })
 
-  it('flags broken internal links', async () => {
+  it('does not emit dead-link Flags; open-check owns those', async () => {
     restoreFetch = mockFetchHead({ 'sitemap.xml': 200, 'robots.txt': 200, '/pricing': 404 })
     const ids = checkIds(
       await runSeoChecks(
@@ -325,113 +326,12 @@ describe('runSeoChecks', () => {
         })
       )
     )
-    assert.ok(ids.includes('broken-internal-links'))
-  })
-
-  it('does not treat origin-prefix impostor hosts as internal links', async () => {
-    restoreFetch = mockFetchHead({
-      'sitemap.xml': 200,
-      'robots.txt': 200,
-      'example.com.evil/pricing': 404,
-    })
-    const ids = checkIds(
-      await runSeoChecks(
-        'https://example.com',
-        healthyMeta({
-          links: [{ href: 'https://example.com.evil/pricing', text: 'Pricing', rel: null }],
-        })
-      )
-    )
     assert.ok(!ids.includes('broken-internal-links'))
   })
 
   it('passes when sitemap and robots exist', async () => {
     restoreFetch = mockFetchHead({ 'sitemap.xml': 200, 'robots.txt': 200 })
     assert.equal((await runSeoChecks('https://example.com', healthyMeta())).length, 0)
-  })
-
-  it('does not flag a link as broken when the server rejects HEAD but GET succeeds', async () => {
-    const original = globalThis.fetch
-    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input)
-      if (url.includes('sitemap.xml') || url.includes('robots.txt')) {
-        return new Response(null, { status: 200 })
-      }
-      if (url.includes('/pricing')) {
-        return new Response(null, { status: init?.method === 'HEAD' ? 405 : 200 })
-      }
-      return new Response(null, { status: 200 })
-    }) as typeof fetch
-    restoreFetch = () => {
-      globalThis.fetch = original
-    }
-
-    const ids = checkIds(
-      await runSeoChecks(
-        'https://example.com',
-        healthyMeta({
-          links: [{ href: '/pricing', text: 'Pricing', rel: null }],
-        })
-      )
-    )
-    assert.ok(!ids.includes('broken-internal-links'))
-  })
-
-  it('falls back to GET and still flags a link as broken when a server rejects HEAD entirely', async () => {
-    // Regression test: some servers return 405 for HEAD on every route regardless
-    // of whether the resource exists. Without a GET fallback, a genuinely dead
-    // link on such a server was silently passed as fine (false negative).
-    const original = globalThis.fetch
-    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input)
-      if (url.includes('sitemap.xml') || url.includes('robots.txt')) {
-        return new Response(null, { status: 200 })
-      }
-      if (url.includes('/missing')) {
-        return new Response(null, { status: init?.method === 'HEAD' ? 405 : 404 })
-      }
-      return new Response(null, { status: 200 })
-    }) as typeof fetch
-    restoreFetch = () => {
-      globalThis.fetch = original
-    }
-
-    const ids = checkIds(
-      await runSeoChecks(
-        'https://example.com',
-        healthyMeta({
-          links: [{ href: '/missing', text: 'Missing', rel: null }],
-        })
-      )
-    )
-    assert.ok(ids.includes('broken-internal-links'))
-  })
-
-  it('does not flag a link as broken on a transient network error', async () => {
-    // Regression test: a fetch exception (timeout, DNS hiccup, anti-bot block
-    // against the scanner itself) isn't evidence the link is dead for a real
-    // visitor. Matches the established, documented behavior in auth-checkout.ts.
-    const original = globalThis.fetch
-    globalThis.fetch = (async (input: RequestInfo | URL) => {
-      const url = String(input)
-      if (url.includes('sitemap.xml') || url.includes('robots.txt')) {
-        return new Response(null, { status: 200 })
-      }
-      throw new Error('network error')
-    }) as typeof fetch
-    restoreFetch = () => {
-      globalThis.fetch = original
-    }
-
-    const ids = checkIds(
-      await runSeoChecks(
-        'https://example.com',
-        healthyMeta({
-          links: [{ href: '/flaky', text: 'Flaky', rel: null }],
-        })
-      )
-    )
-    assert.ok(!ids.includes('broken-internal-links'))
   })
 })
 
@@ -1496,17 +1396,21 @@ describe('trigger matrix - one failing signal per checkId', () => {
       restoreFetch = mockFetchHead({ 'sitemap.xml': 200, 'robots.txt': 404 })
       return checkIds(await runSeoChecks('https://example.com', healthyMeta()))
     },
-    'broken-internal-links': async () => {
-      restoreFetch = mockFetchHead({ 'sitemap.xml': 200, 'robots.txt': 200, '/pricing': 404 })
-      return checkIds(
-        await runSeoChecks(
-          'https://example.com',
-          healthyMeta({
-            links: [{ href: '/pricing', text: 'Pricing', rel: null }],
-          })
-        )
-      )
-    },
+    'broken-internal-links': () =>
+      deadDestinationFlags(
+        [
+          {
+            url: 'https://example.com/pricing',
+            canonicalUrl: 'https://example.com/pricing',
+            outcome: 'not_found',
+            status: 404,
+            finalUrl: 'https://example.com/pricing',
+            evidence: 'GET returned 404',
+            shouldFlagDead: true,
+          },
+        ],
+        'https://example.com/'
+      ).map((flag) => flag.checkId),
     'no-https': () => checkIds(runTrustChecks('http://example.com', healthyMeta(), [])),
     'no-privacy-policy': () =>
       checkIds(
