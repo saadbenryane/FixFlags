@@ -15,6 +15,7 @@ describe('evidence-highlights', () => {
     severity: 'IMPORTANT',
     problem: 'Headline is generic',
     evidence: 'Headline reads a category label, not an outcome.',
+    fix: 'Replace the H1 with an audience-and-outcome statement.',
   }
 
   it('does not invent a box when the Flag was not measured', () => {
@@ -69,9 +70,10 @@ describe('evidence-highlights', () => {
     assert.match(evidence, /Headline reads|H1|category/i)
 
     const fix = formatFlagFixPrompt(flag)
-    assert.match(fix, /^## Goal$/m)
-    assert.match(fix, /## Plan/)
-    assert.match(fix, /## Verify/)
+    assert.match(fix, /This is a FixFlags finding from the live page/)
+    assert.match(fix, /Task:/)
+    assert.match(fix, /Make a short plan/)
+    assert.doesNotMatch(fix, /^## Goal$/m)
     assert.doesNotMatch(fix, /look at Hero headline on the screenshot/i)
   })
 

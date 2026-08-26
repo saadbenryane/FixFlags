@@ -126,31 +126,13 @@ describe('priority-flags', () => {
       promptAccess: 'all',
     })
 
-    // Priority ordering: the CONVERSION flag outranks the SEO flag, so its
-    // plan-shaped prompt (## Goal / ## Constraint / ## Context / ## Plan) is the
-    // top copyable fix prompt.
+    // Priority ordering: the CONVERSION flag outranks the SEO flag.
     assert.equal(list.items[0]?.problem, 'Conversion polish')
-    assert.equal(
-      list.items[0]?.prompt,
-      [
-        '## Goal',
-        'Conversion polish',
-        '',
-        '## Constraint',
-        '- Do not restructure layout, change visual styles, or touch non-copy files.',
-        '- This is a polish issue that improves overall quality.',
-        '',
-        '## Context',
-        '- Issue: MESSAGE / POLISH',
-        '- Evidence: Conversion polish',
-        '',
-        '## Why it matters',
-        '- Conversion polish',
-        '',
-        '## Plan',
-        'Fix conversion polish',
-      ].join('\n')
-    )
+    assert.match(list.items[0]?.prompt ?? '', /This is a FixFlags finding from the live page/)
+    assert.match(list.items[0]?.prompt ?? '', /Task: Fix conversion polish/)
+    assert.match(list.items[0]?.prompt ?? '', /Make a short plan/)
+    assert.doesNotMatch(list.items[0]?.prompt ?? '', /## Goal/)
+    assert.equal(list.items[0]?.prompt, list.items[0]?.prompt)
   })
 
   it('prefers the AI-crafted agentPrompt over the plain-English fix once both exist', () => {
@@ -229,23 +211,23 @@ describe('priority-flags', () => {
       ],
       { url: 'https://acme.com' }
     )
-    assert.equal(result.split('\n', 1)[0], 'Make a plan to fix these issues, then implement them in this product.')
-    assert.equal(result.includes('https://acme.com'), false)
+    assert.equal(result.split('\n', 1)[0], 'This is a FixFlags finding from the live page, not a guess about your repo.')
+    assert.equal(result.includes('https://acme.com'), true)
     assert.equal(result.includes('## Mission'), false)
     assert.match(result, /HIGH/)
     assert.ok(result.indexOf('Blocker') < result.indexOf('Low'))
     assert.match(result, /\[CRITICAL · Message · HIGH\] Blocker/)
-    assert.match(result, /Evidence: CTA is dead/)
-    assert.match(result, /Fix: Fix blocker/)
+    assert.match(result, /Task: Fix blocker/)
     // no em dashes (product voice)
     assert.equal(result.includes('\u2014'), false)
   })
 
   it('buildPlanModePrompt does not mention a second product when no url is given', () => {
     const result = buildPlanModePrompt([flag({ id: 'a', problem: 'Thing', agentPrompt: 'Fix thing' })])
-    assert.equal(result.split('\n', 1)[0], 'Make a plan to fix these issues, then implement them in this product.')
+    assert.equal(result.split('\n', 1)[0], 'This is a FixFlags finding from the live page, not a guess about your repo.')
     assert.match(result, /Thing/)
-    assert.equal(result.includes(' of '), false)
+    assert.equal(result.includes('this product'), false)
+    assert.doesNotMatch(result, /^Page:/m)
   })
 
   it('buildPlanModePrompt defaults to Finish Plan limit of 3', () => {
@@ -256,7 +238,7 @@ describe('priority-flags', () => {
       flag({ id: '4', severity: 'POLISH', problem: 'D', agentPrompt: 'Fix D' }),
     ]
     const result = buildPlanModePrompt(flags, { url: 'https://x.com' })
-    assert.equal(result.split('\n', 1)[0], 'Make a plan to fix these issues, then implement them in this product.')
+    assert.equal(result.split('\n', 1)[0], 'This is a FixFlags finding from the live page, not a guess about your repo.')
     assert.match(result, /Fix A/)
     assert.match(result, /Fix B/)
     assert.match(result, /Fix C/)
@@ -271,7 +253,7 @@ describe('priority-flags', () => {
       flag({ id: '4', severity: 'POLISH', problem: 'D', agentPrompt: 'Fix D' }),
     ]
     const result = buildAllFixPrompts({ flags })
-    assert.match(result, /^Make a plan to fix these issues, then implement them in this product\./)
+    assert.match(result, /^This is a FixFlags finding from the live page, not a guess about your repo\./)
     assert.match(result, /Fix D/)
   })
 

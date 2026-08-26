@@ -1,9 +1,6 @@
-import { buildExpertFixPrompt } from '@/lib/audit/flag-copy'
+import { buildEditorHandoffPrompt } from '@/lib/audit/editor-handoff'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
-import {
-  resolveToolPrompt,
-  type PromptToolKey,
-} from '@/lib/mcp/builders'
+import type { PromptToolKey } from '@/lib/mcp/builders'
 
 export type McpPromptTool = PromptToolKey
 
@@ -29,17 +26,7 @@ export function buildMcpFlagPayload(
   flag: McpFlagPayloadInput,
   tool: McpPromptTool = 'universal'
 ): McpFlagPayload {
-  const expertPrompt = buildExpertFixPrompt(flag)
-  const promptMap: Record<McpPromptTool, string | null | undefined> = {
-    universal: expertPrompt,
-    cursor: flag.cursorPrompt,
-    claude: flag.claudePrompt,
-    windsurf: flag.windsurfPrompt,
-    lovable: flag.lovablePrompt,
-    bolt: flag.boltPrompt,
-  }
-
-  const prompt = resolveToolPrompt(promptMap, tool, expertPrompt)
+  const prompt = buildEditorHandoffPrompt(flag, { url: flag.pageUrl })
   return {
     id: flag.id,
     rubric: flag.rubric,
@@ -48,7 +35,7 @@ export function buildMcpFlagPayload(
     evidence: flag.evidence,
     whyItMatters: flag.whyItMatters,
     fix: flag.fix,
-    prompt,
+    prompt: prompt || null,
     ...(prompt
       ? {}
       : { promptError: `No validated ${tool} prompt is available for this Flag.` }),

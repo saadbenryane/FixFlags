@@ -1,5 +1,5 @@
 import type { ProductContract } from '@/lib/audit/product-contract'
-import { buildExpertFixPrompt } from '@/lib/audit/flag-copy'
+import { buildEditorHandoffPrompt } from '@/lib/audit/editor-handoff'
 import {
   buildPlanModePrompt,
   rankFlagsByPriority,
@@ -73,6 +73,7 @@ type PlanInput = {
   flags: FixListFlag[]
   rubricRows?: Array<{ name: string; grade: string | null }>
   url?: string | null
+  pageType?: string | null
   contract?: ProductContract | null
   promptAccess: FinishPlanPromptAccess
   demonstratedFlag?: RankableFlag | null
@@ -105,10 +106,20 @@ function buildRankedFixes(input: PlanInput): {
     const mayShowPrompt =
       input.promptAccess === 'all' ||
       (input.promptAccess === 'one' && !demonstratedPromptUsed && flag.id === demonstratedId)
-    // Expert-shaped prompt (Why / Evidence / Fix / Verify) so the anonymous
-    // demonstrated fix is agent-ready without an extra LLM call. Same path
-    // for signed-in full access so copy-paste quality stays consistent.
-    const prompt = mayShowPrompt && resolveFixPrompt(source) ? buildExpertFixPrompt(source) : null
+    const occurrenceUrls =
+      'occurrencePageUrls' in source && Array.isArray((source as { occurrencePageUrls?: string[] }).occurrencePageUrls)
+        ? (source as { occurrencePageUrls: string[] }).occurrencePageUrls
+        : source.pageUrl
+          ? [source.pageUrl]
+          : []
+    const prompt =
+      mayShowPrompt && resolveFixPrompt(source)
+        ? buildEditorHandoffPrompt(source, {
+            url: input.url,
+            pageType: input.pageType,
+            pageUrls: occurrenceUrls,
+          })
+        : null
     if (prompt && input.promptAccess === 'one') demonstratedPromptUsed = true
 
     return {
@@ -158,6 +169,7 @@ function copyPromptFor(
   if (input.promptAccess === 'none') return null
   const prompt = buildPlanModePrompt(rankedFlags, {
     url: input.url,
+    pageType: input.pageType,
     contract: input.contract ?? null,
     limit: rankedFlags.length,
   })

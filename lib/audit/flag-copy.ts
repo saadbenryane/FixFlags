@@ -456,7 +456,7 @@ export function buildFixPromptPreview(flag: RankableFlag): string {
 }
 
 /** Pull actionable steps out of legacy Goal/Observed/Expected essays. */
-function normalizeFixBody(raw: string): string {
+export function normalizeFixBody(raw: string): string {
   const trimmed = raw.trim()
   const expected = trimmed.match(
     /## Expected behavior\s*\n+([\s\S]*?)(?=\n## |\s*$)/i

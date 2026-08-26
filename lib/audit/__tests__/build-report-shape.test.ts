@@ -22,6 +22,7 @@ describe('buildReportShapeFromDb', () => {
     verificationRule: 'Verification rule',
     pageUrl: 'https://example.com',
     confidence: 0.9,
+    evidenceTargets: [{ kind: 'element', source: 'measured', device: 'desktop' }],
   }
 
   const sampleRubricRow = {
@@ -53,28 +54,7 @@ describe('buildReportShapeFromDb', () => {
       score: 75,
       status: 'NEEDS_WORK',
       summary: 'Row summary',
-      flags: [
-        {
-          id: 'flag-1',
-          checkId: 'check-1',
-          rubric: 'MESSAGE',
-          severity: 'HIGH',
-          impactTag: 'CONVERSION',
-          problem: 'Problem description',
-          evidence: 'Evidence text',
-          whyItMatters: 'Why it matters',
-          fix: 'Fix suggestion',
-          agentPrompt: 'Agent prompt',
-          cursorPrompt: 'Cursor prompt',
-          claudePrompt: 'Claude prompt',
-          windsurfPrompt: 'Windsurf prompt',
-          lovablePrompt: 'Lovable prompt',
-          boltPrompt: 'Bolt prompt',
-          verificationRule: 'Verification rule',
-          pageUrl: 'https://example.com',
-          confidence: 0.9,
-        },
-      ],
+      flags: [sampleFlag],
     })
   })
 
@@ -86,26 +66,7 @@ describe('buildReportShapeFromDb', () => {
     )
 
     expect(result.flags).toHaveLength(1)
-    expect(result.flags[0]).toEqual({
-      id: 'flag-1',
-      checkId: 'check-1',
-      rubric: 'MESSAGE',
-      severity: 'HIGH',
-      impactTag: 'CONVERSION',
-      problem: 'Problem description',
-      evidence: 'Evidence text',
-      whyItMatters: 'Why it matters',
-      fix: 'Fix suggestion',
-      agentPrompt: 'Agent prompt',
-      cursorPrompt: 'Cursor prompt',
-      claudePrompt: 'Claude prompt',
-      windsurfPrompt: 'Windsurf prompt',
-      lovablePrompt: 'Lovable prompt',
-      boltPrompt: 'Bolt prompt',
-      verificationRule: 'Verification rule',
-      pageUrl: 'https://example.com',
-      confidence: 0.9,
-    })
+    expect(result.flags[0]).toEqual(sampleFlag)
   })
 
   it('preserves share status', () => {
@@ -230,5 +191,6 @@ describe('buildReportShapeFromDb', () => {
     expect(flag).toHaveProperty('verificationRule')
     expect(flag).toHaveProperty('pageUrl')
     expect(flag).toHaveProperty('confidence')
+    expect(flag).toHaveProperty('evidenceTargets')
   })
 })

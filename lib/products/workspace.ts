@@ -23,6 +23,7 @@ import {
 } from '@/lib/audit/technology-profile'
 import { parseProductContract, type ProductContract } from '@/lib/audit/product-contract'
 import { parseLaunchReadiness, type LaunchChecklistItem } from '@/lib/audit/launch-readiness'
+import { buildEditorHandoffPrompt } from '@/lib/audit/editor-handoff'
 
 const ACTIVE_IMPROVEMENT_STATUSES: ImprovementStatus[] = [
   'PROPOSED',
@@ -584,7 +585,13 @@ export async function loadProductWorkspace(
                   evidence: true,
                   rubric: true,
                   severity: true,
+                  problem: true,
+                  checkId: true,
+                  pageUrl: true,
+                  fix: true,
                   agentPrompt: true,
+                  verificationRule: true,
+                  evidenceTargets: true,
                 },
               },
             },
@@ -780,7 +787,28 @@ export async function loadProductWorkspace(
     severity: improvement.occurrences[0]?.flag.severity ?? null,
     sourceReviewId: improvement.occurrences[0]?.auditId ?? null,
     sourceFlagId: improvement.occurrences[0]?.flagId ?? null,
-    prompt: improvement.occurrences[0]?.flag.agentPrompt ?? null,
+    prompt: (() => {
+      const source = improvement.occurrences[0]?.flag
+      if (!source) return null
+      return (
+        buildEditorHandoffPrompt(
+          {
+            id: improvement.occurrences[0]?.flagId ?? improvement.id,
+            checkId: source.checkId,
+            rubric: source.rubric,
+            severity: source.severity,
+            problem: source.problem || improvement.title,
+            evidence: source.evidence,
+            fix: source.fix,
+            agentPrompt: source.agentPrompt,
+            verificationRule: source.verificationRule,
+            pageUrl: source.pageUrl,
+            evidenceTargets: source.evidenceTargets,
+          },
+          { url: product.url }
+        ) || source.agentPrompt
+      )
+    })(),
   }))
 
   return {

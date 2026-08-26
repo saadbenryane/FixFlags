@@ -8,9 +8,9 @@ import {
 } from '@/lib/marketing/evidence-regions'
 import {
   formatDisplayEvidence,
-  buildExpertFixPrompt,
 } from '@/lib/audit/flag-copy'
 import { parseEvidenceTargets } from '@/lib/audit/evidence-targets'
+import { buildEditorHandoffPrompt } from '@/lib/audit/editor-handoff'
 
 /** Normalized evidence region on a screenshot (0–1). */
 export interface EvidenceHighlight {
@@ -42,7 +42,7 @@ export function formatFlagEvidence(flag: RankableFlag): string {
 }
 
 export function formatFlagFixPrompt(flag: RankableFlag): string {
-  return buildExpertFixPrompt(flag)
+  return buildEditorHandoffPrompt(flag, { url: flag.pageUrl })
 }
 
 function lookupAnchor(

@@ -66,6 +66,7 @@ export interface FlagData extends AgentPrompts {
   verificationRule: string | null
   fingerprint: string
   position: number
+  evidenceTargets?: unknown
 }
 
 /**
@@ -155,7 +156,7 @@ export type RankableFlag = Pick<FlagData, 'id' | 'rubric' | 'severity' | 'proble
  */
 export type ExistingFlagForPrescription = Pick<
   FlagData,
-  'source' | 'rubric' | 'severity' | 'problem' | 'checkId'
+  'source' | 'rubric' | 'severity' | 'problem' | 'checkId' | 'evidence' | 'pageUrl'
 > & { flagKey: string }
 
 /**

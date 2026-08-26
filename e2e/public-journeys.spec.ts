@@ -140,7 +140,7 @@ test('curated sample demonstrates exactly one fix prompt', async ({ page }) => {
   expect(promptCount).toBe(1)
   await expect(page.getByRole('button', { name: 'Ready to verify' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: /update review|recheck/i })).toHaveCount(0)
-  await expect(page.getByText(/Make a plan to fix these issues, then implement them in this product/)).toHaveCount(0)
+  await expect(page.getByText(/Plan all of these changes before implementing any of them/)).toHaveCount(0)
 })
 
 for (const { width, tablistName } of [

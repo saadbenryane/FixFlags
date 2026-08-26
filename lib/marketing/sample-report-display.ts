@@ -16,8 +16,8 @@ import {
 import { displayVerdict } from '@/lib/audit/verdict'
 import { getSampleSiteDisplay } from '@/lib/marketing/display-meta'
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
+import { buildEditorHandoffPrompt } from '@/lib/audit/editor-handoff'
 import {
-  buildExpertFixPrompt,
   formatDisplayEvidence,
   resolveWhyItMatters,
 } from '@/lib/audit/flag-copy'
@@ -175,7 +175,8 @@ export function buildAllEvidenceHighlights(flags: SampleFlagDisplay[]): Evidence
 function mapFlag(
   flag: RankableFlag,
   index: number,
-  anchors: EvidenceAnchorMap
+  anchors: EvidenceAnchorMap,
+  context: { url: string; pageType: string | null }
 ): SampleFlagDisplay {
   return {
     id: flag.id,
@@ -192,7 +193,10 @@ function mapFlag(
     whyItMatters: resolveWhyItMatters(flag),
     fix: flag.fix ?? '',
     agentPrompt: flag.agentPrompt ?? flag.fix ?? '',
-    fixPrompt: buildExpertFixPrompt(flag),
+    fixPrompt: buildEditorHandoffPrompt(flag, {
+      url: context.url,
+      pageType: context.pageType,
+    }),
     verificationRule: flag.verificationRule ?? null,
     evidenceHighlights: buildEvidenceHighlights(flag, index, anchors),
     affectedDevices: devicesForCheck(flag.checkId ?? flag.id),
@@ -209,6 +213,7 @@ export function buildSampleReportDisplay(
     flags: audit.flags,
     rubricRows: audit.rubricRows,
     url: audit.url,
+    pageType: audit.pageType,
     promptAccess: 'one',
   }).items.map((item) => item.id)
   const flagsById = new Map(audit.flags.map((flag) => [flag.id, flag]))
@@ -217,7 +222,9 @@ export function buildSampleReportDisplay(
     return flag ? [flag] : []
   })
   const totalFlagCount = sorted.length
-  const flags = sorted.map((flag, index) => mapFlag(flag, index, anchors))
+  const flags = sorted.map((flag, index) =>
+    mapFlag(flag, index, anchors, { url: audit.url, pageType: audit.pageType })
+  )
   const desktop = audit.screenshots.find((s) => s.device === 'DESKTOP')
   const mobile = audit.screenshots.find((s) => s.device === 'MOBILE')
   const { overall, rubrics } = resolveDisplayScores(audit)

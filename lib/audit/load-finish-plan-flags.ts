@@ -29,6 +29,7 @@ type LiveFlag = {
   confidence: number | null
   source?: string | null
   status?: string | null
+  evidenceTargets?: unknown
 }
 
 export function toRankableFlag(flag: LiveFlag): RankableFlag {
@@ -53,6 +54,7 @@ export function toRankableFlag(flag: LiveFlag): RankableFlag {
     confidence: flag.confidence,
     source: flag.source ?? 'DETERMINISTIC',
     status: flag.status,
+    evidenceTargets: flag.evidenceTargets,
   } as RankableFlag
 }
 
@@ -78,6 +80,7 @@ type UnifiedPlanInput = {
   promptAccess: FinishPlanPromptAccess
   demonstratedFlag?: RankableFlag | null
   limit?: number
+  pageType?: string | null
 }
 
 /** Build canonical and compatibility views from one shared aggregated Flag set. */
@@ -109,5 +112,6 @@ async function buildPlanInput(input: UnifiedPlanInput) {
     promptAccess: input.promptAccess,
     demonstratedFlag: input.demonstratedFlag,
     limit: input.limit,
+    pageType: input.pageType,
   }
 }

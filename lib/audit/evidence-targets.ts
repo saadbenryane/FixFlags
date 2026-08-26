@@ -17,6 +17,7 @@ export interface EvidenceTarget {
   device: EvidenceDevice
   rect?: EvidenceRect
   selector?: string
+  text?: string
   label: string
 }
 
@@ -97,14 +98,20 @@ export function parseEvidenceTargets(value: unknown): EvidenceTarget[] {
     }
     const rect = parseRect(raw.rect)
     if (!rect) continue
-    targets.push({
+    const target: EvidenceTarget = {
       kind: 'element',
       source: 'measured',
       device: raw.device,
       rect,
       selector: typeof raw.selector === 'string' ? raw.selector : undefined,
       label,
-    })
+    }
+    const text =
+      typeof raw.text === 'string' && raw.text.trim()
+        ? raw.text.trim().slice(0, 160)
+        : undefined
+    if (text) target.text = text
+    targets.push(target)
   }
   return targets
 }
@@ -341,14 +348,17 @@ function targetsForFlag(
     const node = matchHarvestNode(flag, harvest)
     if (!node) continue
     if (targets.some((target) => target.device === harvest.device)) continue
-    targets.push({
+    const harvested: EvidenceTarget = {
       kind: 'element',
       source: 'measured',
       device: harvest.device,
       rect: node.rect,
       selector: node.selector,
       label: labelForCheck(checkId),
-    })
+    }
+    const text = node.text?.trim() ? node.text.trim().slice(0, 160) : undefined
+    if (text) harvested.text = text
+    targets.push(harvested)
   }
 
   return targets

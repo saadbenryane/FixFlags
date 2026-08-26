@@ -9,6 +9,7 @@ import {
   buildPrescriptionPrompt,
 } from '@/lib/prompts/system-prompt'
 import type { TriageContext, PrescriptionContext } from '@/lib/prompts/system-prompt'
+import { flagPrescriptionSchema } from '@/lib/audit/judge-prescription-schema'
 
 const basicTriageContext: TriageContext = {
   screenshotHint: 'desktop-and-mobile',
@@ -101,10 +102,52 @@ describe('system-prompt triage contract', () => {
     assert.match(system, /SCOPE/i)
   })
 
+  it('prescription system prompt asks for a task body, not six tool dialects or invented files', () => {
+    const system = buildPrescriptionSystemPrompt()
+    assert.match(system, /TASK BODY/)
+    assert.match(system, /Do not invent file paths/)
+    assert.doesNotMatch(system, /@app\/page\.tsx/)
+    assert.doesNotMatch(system, /cursorPrompt \(REQUIRED\)/)
+    assert.match(system, /Omit cursorPrompt/)
+  })
+
+  it('prescription user prompt includes page URL, evidence, and quoted current text', () => {
+    const prompt = buildPrescriptionUserPrompt({
+      ...basicPrescriptionContext,
+      existingFlags: [
+        {
+          flagKey: 'flag-1',
+          source: 'judge',
+          rubric: 'message',
+          severity: 'high',
+          problem: 'Hero CTA is generic',
+          checkId: null,
+          pageUrl: 'https://example.com/pricing',
+          evidence: 'The H1 reads "Welcome to Example".',
+        },
+      ],
+    })
+    assert.match(prompt, /Page: https:\/\/example\.com\/pricing/)
+    assert.match(prompt, /Evidence: The H1 reads "Welcome to Example"/)
+    assert.match(prompt, /Current text: "Welcome to Example"/)
+  })
+
   it('prescription system prompt requires verification steps', () => {
     const system = buildPrescriptionSystemPrompt()
     assert.match(system, /VERIFICATION RULE/i)
     assert.match(system, /Reload the page/i)
+  })
+
+  it('accepts agentPrompt without a URL', () => {
+    const parsed = flagPrescriptionSchema.parse({
+      flagKey: 'h1-generic',
+      evidence: 'The H1 reads "Hi"',
+      whyItMatters: 'Visitors bounce without an outcome.',
+      fix: 'Name the audience and outcome in the H1.',
+      agentPrompt: 'Replace the H1 with an audience-and-outcome statement.',
+      verificationRule: 'Reload the page and read the H1.',
+    })
+    assert.equal(parsed.agentPrompt?.includes('http'), false)
   })
 })
 

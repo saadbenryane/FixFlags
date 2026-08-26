@@ -321,6 +321,7 @@ export async function loadReportRouteState(
         pageUrl: string | null
         confidence: number | null
         source?: string | null
+        evidenceTargets?: unknown
       }>
     }> | undefined ?? []).map((row) => ({
       ...row,
@@ -351,6 +352,7 @@ export async function loadReportRouteState(
       confidence: f.confidence,
       source: f.source ?? undefined,
       status: f.status,
+      evidenceTargets: f.evidenceTargets,
     }))
 
     const allFlags = flags.map(toRankableFlag)
@@ -358,6 +360,7 @@ export async function loadReportRouteState(
       flags: allFlags,
       rubricRows,
       url: audit.url,
+      pageType: audit.pageType,
       contract: audit.productContract,
       promptAccess: showDeterministicFixes ? 'all' : sampleFixFlag ? 'one' : 'none',
       demonstratedFlag: sampleFixFlag,

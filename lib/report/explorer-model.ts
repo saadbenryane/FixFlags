@@ -1,8 +1,5 @@
-import {
-  buildFixPromptPreview,
-  formatDisplayEvidence,
-  resolveWhyItMatters,
-} from '@/lib/audit/flag-copy'
+import { formatDisplayEvidence, resolveWhyItMatters } from '@/lib/audit/flag-copy'
+import { buildEditorHandoffPrompt } from '@/lib/audit/editor-handoff'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import {
   buildPlanModePrompt,
@@ -141,10 +138,17 @@ function mapLiveFlag(
   occurrences: { pageUrls: string[]; count: number } = {
     pageUrls: flag.pageUrl ? [flag.pageUrl] : [],
     count: 1,
-  }
+  },
+  context: { url: string; pageType: string | null } = { url: '', pageType: null }
 ): ExplorerFlag {
   const sourceFix = resolveFixPrompt(flag)
-  const fixPrompt = mayShowPrompt ? buildFixPromptPreview(flag) : ''
+  const fixPrompt = mayShowPrompt
+    ? buildEditorHandoffPrompt(flag, {
+        url: context.url,
+        pageType: context.pageType,
+        pageUrls: occurrences.pageUrls,
+      })
+    : ''
   const copyFixPrompt = fixPrompt
   const visual = flag.checkId ? visualByCheckId?.[flag.checkId] : undefined
   const visualUrl =
@@ -219,6 +223,7 @@ export function buildLiveExplorerModel(input: {
         grade: row.grade ?? null,
       })),
       url: input.url,
+      pageType: input.pageType,
       contract: input.productContract ?? null,
       promptAccess: input.promptAccess ?? 'all',
       demonstratedFlag: input.demonstratedFlag,
@@ -276,7 +281,8 @@ export function buildLiveExplorerModel(input: {
         {
           pageUrls: item.pageUrls,
           count: item.occurrenceCount,
-        }
+        },
+        { url: input.url, pageType: input.pageType }
       )
     ),
     allHighlights: buildAllEvidenceHighlights(
@@ -339,11 +345,30 @@ export function buildPartialExplorerModel(input: {
 
 function mapSampleFlag(
   flag: SampleFlagDisplay,
-  mayShowPrompt: boolean
+  mayShowPrompt: boolean,
+  context: { url: string; pageType: string | null }
 ): ExplorerFlag {
+  const rankable: RankableFlag = {
+    id: flag.id,
+    checkId: flag.checkId,
+    rubric: flag.rubric,
+    severity: flag.severity,
+    problem: flag.title,
+    evidence: flag.evidence,
+    fix: flag.fix,
+    agentPrompt: flag.agentPrompt || flag.fix,
+    verificationRule: flag.verificationRule,
+    pageUrl: flag.pageUrl ?? context.url,
+  }
+  const handoff = mayShowPrompt
+    ? buildEditorHandoffPrompt(rankable, {
+        url: context.url,
+        pageType: context.pageType,
+      })
+    : ''
   return {
     id: flag.id,
-    checkId: null,
+    checkId: flag.checkId ?? null,
     title: flag.title,
     rubric: flag.rubric,
     rubricLabel: flag.rubricLabel,
@@ -352,27 +377,12 @@ function mapSampleFlag(
     impactTag: flag.impactTag,
     whyItMatters: flag.whyItMatters,
     evidence: flag.evidence,
-    fixPrompt: mayShowPrompt ? flag.fixPrompt : '',
-    copyFixPrompt: mayShowPrompt
-      ? buildPlanModePrompt(
-          [
-            {
-              id: flag.id,
-              checkId: null,
-              rubric: flag.rubric,
-              severity: flag.severity,
-              problem: flag.title,
-              evidence: flag.evidence,
-              fix: flag.fixPrompt,
-            },
-          ],
-          { limit: 1 }
-        )
-      : '',
+    fixPrompt: handoff,
+    copyFixPrompt: handoff,
     toolPrompts: {},
     verificationRule: flag.verificationRule,
     affectedDevices: flag.affectedDevices,
-    hasFixPrompt: mayShowPrompt && Boolean(flag.fixPrompt),
+    hasFixPrompt: mayShowPrompt && Boolean(flag.fixPrompt || flag.agentPrompt || flag.fix),
     pageUrl: flag.pageUrl ?? null,
     pageUrls: flag.pageUrl ? [flag.pageUrl] : [],
     occurrenceCount: 1,
@@ -394,6 +404,8 @@ export function buildSampleExplorerModel(
     problem: flag.title,
     evidence: flag.evidence,
     fix: flag.fixPrompt,
+    agentPrompt: flag.agentPrompt,
+    pageUrl: flag.pageUrl,
   }))
   return {
     displayHost: report.displayHost,
@@ -403,7 +415,11 @@ export function buildSampleExplorerModel(
     polishPassPrompt:
       promptAccess === 'none'
         ? null
-        : buildPlanModePrompt(rankedOpenFlags, { limit: rankedOpenFlags.length }) || null,
+        : buildPlanModePrompt(rankedOpenFlags, {
+            url: report.url,
+            pageType: report.pageType,
+            limit: rankedOpenFlags.length,
+          }) || null,
     desktopScreenshot: report.desktopScreenshot,
     mobileScreenshot: report.mobileScreenshot,
     rubricScores: report.rubricScores,
@@ -411,7 +427,8 @@ export function buildSampleExplorerModel(
       mapSampleFlag(
         flag,
         promptAccess === 'all' ||
-          (promptAccess === 'one' && flag.id === report.demonstratedFlagId)
+          (promptAccess === 'one' && flag.id === report.demonstratedFlagId),
+        { url: report.url, pageType: report.pageType }
       )
     ),
     allHighlights: report.flags.flatMap((f) => f.evidenceHighlights),

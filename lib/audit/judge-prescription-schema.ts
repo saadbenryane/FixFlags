@@ -22,7 +22,12 @@ export const flagPrescriptionSchema = z.object({
     .min(1)
     .describe('1-2 sentences on real-world business impact'),
   fix: z.string().min(1).describe('1-3 numbered steps for fixing the issue, each starting with an action verb'),
-  agentPrompt: z.string().optional(),
+  agentPrompt: z
+    .string()
+    .optional()
+    .describe(
+      'Short task body: named element, current text or behavior, desired outcome. No file paths. No URL required. Copy-time assembly supplies ground and method.'
+    ),
   cursorPrompt: z.string().optional(),
   claudePrompt: z.string().optional(),
   windsurfPrompt: z.string().optional(),

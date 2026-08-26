@@ -57,6 +57,8 @@ describe('evidence-targets', () => {
     assert.equal(flags[0]?.evidenceTargets?.length, 1)
     assert.equal(flags[0]?.evidenceTargets?.[0]?.kind, 'element')
     assert.equal(flags[0]?.evidenceTargets?.[0]?.source, 'measured')
+    assert.equal(flags[0]?.evidenceTargets?.[0]?.selector, 'h1')
+    assert.equal(flags[0]?.evidenceTargets?.[0]?.text, 'Welcome')
     assert.deepEqual(flags[0]?.evidenceTargets?.[0]?.rect, {
       x: 0.12,
       y: 0.18,
@@ -99,6 +101,22 @@ describe('evidence-targets', () => {
         },
       ]
     )
+  })
+
+  it('keeps measured selector and node text through parse', () => {
+    const parsed = parseEvidenceTargets([
+      {
+        kind: 'element',
+        source: 'measured',
+        device: 'desktop',
+        rect: { x: 0.1, y: 0.2, width: 0.3, height: 0.1 },
+        selector: 'h1.hero',
+        text: 'Welcome aboard',
+        label: 'Hero headline',
+      },
+    ])
+    assert.equal(parsed[0]?.selector, 'h1.hero')
+    assert.equal(parsed[0]?.text, 'Welcome aboard')
   })
 
   it('collects unique axe targets', () => {

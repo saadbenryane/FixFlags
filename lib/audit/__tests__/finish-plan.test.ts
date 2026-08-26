@@ -100,10 +100,11 @@ describe('buildFixList', () => {
     ])
     expect(list.items.filter((item) => item.prompt)).toHaveLength(1)
     const demonstratedPrompt = list.items.find((item) => item.id === demonstrated.id)?.prompt
-    expect(demonstratedPrompt).toMatch(/## Goal/)
-    expect(demonstratedPrompt).toMatch(/## Plan/)
+    expect(demonstratedPrompt).toMatch(/This is a FixFlags finding from the live page/)
+    expect(demonstratedPrompt).toMatch(/Task:/)
     expect(demonstratedPrompt).toContain('Fix important-a')
-    expect(list.copyPrompt).toMatch(/^Make a plan to fix these issues, then implement them in this product\./)
+    expect(list.copyPrompt).toMatch(/^This is a FixFlags finding from the live page, not a guess about your repo\./)
+    expect(list.copyPrompt).toMatch(/Plan all of these changes before implementing any of them/)
     expect(list.copyPrompt).toContain('Problem important-a')
     expect(list.copyPrompt).toMatch(/1\. /);
     expect(list.copyPrompt).toMatch(/2\. /);

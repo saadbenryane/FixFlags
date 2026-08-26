@@ -79,10 +79,10 @@ export const judgeOutputSchema = z.object({
         .describe(
           'A holistic prompt that fixes ALL flags in this rubric at once. Must be specific, actionable, reference actual content from the page, and be ready to paste into an AI coding agent.'
         ),
-      cursorPrompt: z.string().optional().describe('Tool-specific prompt with file-path references when inferable from the page'),
+      cursorPrompt: z.string().optional(),
       claudePrompt: z.string().optional(),
       windsurfPrompt: z.string().optional(),
-      lovablePrompt: z.string().optional().describe('Tool-specific prompt describing visual and component changes'),
+      lovablePrompt: z.string().optional(),
       boltPrompt: z.string().optional(),
     })
   ),
@@ -100,7 +100,12 @@ export const judgeOutputSchema = z.object({
           .describe('1-2 sentences explaining the real-world business impact'),
         fix: z.string().min(1).describe('Numbered steps for fixing the issue (e.g. "1. Open metadata export\\n2. Add og:image\\n3. Verify")'),
         confidence: z.number().min(0).max(1),
-        agentPrompt: z.string().optional(),
+        agentPrompt: z
+          .string()
+          .optional()
+          .describe(
+            'Short task body: named element, current text or behavior, desired outcome. No file paths. No URL required.'
+          ),
         cursorPrompt: z.string().optional(),
         claudePrompt: z.string().optional(),
         windsurfPrompt: z.string().optional(),
@@ -121,7 +126,12 @@ export const judgeOutputSchema = z.object({
           .string()
           .min(1)
           .describe('1-2 sentences explaining the real-world impact'),
-        agentPrompt: z.string().optional(),
+        agentPrompt: z
+          .string()
+          .optional()
+          .describe(
+            'Short task body: named element, current text or behavior, desired outcome. No file paths. No URL required.'
+          ),
         cursorPrompt: z.string().optional(),
         claudePrompt: z.string().optional(),
         windsurfPrompt: z.string().optional(),
@@ -135,7 +145,7 @@ export const judgeOutputSchema = z.object({
       })
     )
     .describe(
-      'One enrichment per deterministic flag checkId, adds whyItMatters and agent-specific prompts'
+      'One enrichment per deterministic flag checkId, adds whyItMatters and a short agentPrompt task body'
     ),
 })
 

@@ -273,7 +273,7 @@ describe('ReportExplorer anonymous teaser', () => {
       expect(writeText).toHaveBeenCalled()
     })
     const copied = writeText.mock.calls[0]?.[0] as string
-    expect(copied.split('\n', 1)[0]).toBe(AGENT_COPY_LEAD)
+    expect(copied.split('\n', 1)[0]).toBe(AGENT_COPY_LEAD.split('\n', 1)[0])
     expect(copied).toMatch(/1\. /)
     expect(copied).toMatch(/2\. /)
     expect(copied).toContain('CTA below fold')

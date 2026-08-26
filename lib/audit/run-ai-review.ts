@@ -60,6 +60,8 @@ export async function runAiReview(auditId: string): Promise<void> {
     severity: flag.severity,
     problem: flag.problem,
     checkId: flag.checkId,
+    evidence: flag.evidence,
+    pageUrl: flag.pageUrl,
   }))
 
   const startedAt = Date.now()

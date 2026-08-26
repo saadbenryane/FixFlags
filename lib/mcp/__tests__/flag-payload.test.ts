@@ -28,15 +28,14 @@ describe('buildMcpFlagPayload', () => {
     assert.match(payload.fix, /substantiate/)
     assert.match(payload.verificationRule ?? '', /customer count|testimonial|review badge/i)
     assert.ok(payload.prompt)
-    assert.match(payload.prompt, /^## Goal/)
-    assert.match(payload.prompt, /No social proof signals/)
-    assert.match(payload.prompt, /## Constraint/)
-    assert.match(payload.prompt, /## Plan\nAdd the strongest proof/)
-    assert.match(payload.prompt, /## Verify/)
+    assert.match(payload.prompt ?? '', /This is a FixFlags finding from the live page/)
+    assert.match(payload.prompt ?? '', /Task: Add the strongest proof/)
+    assert.match(payload.prompt ?? '', /Make a short plan/)
+    assert.doesNotMatch(payload.prompt ?? '', /^## Goal/)
     assert.doesNotMatch(payload.prompt, /Join 10,000/i)
   })
 
-  it('uses tool-specific prompts and reports unavailable builder prompts explicitly', () => {
+  it('uses the same editor handoff for every MCP tool and reports empty prompts explicitly', () => {
     const baseFlag = {
       id: 'flag-2',
       checkId: 'mobile-cta-weak-label',
@@ -53,9 +52,13 @@ describe('buildMcpFlagPayload', () => {
 
     assert.equal(
       buildMcpFlagPayload(baseFlag, 'cursor').prompt,
-      'Find the mobile CTA and rename it to an outcome-specific action.'
+      buildMcpFlagPayload(baseFlag, 'universal').prompt
     )
-    const unavailable = buildMcpFlagPayload(baseFlag, 'bolt')
+    assert.match(buildMcpFlagPayload(baseFlag, 'cursor').prompt ?? '', /This is a FixFlags finding from the live page/)
+    const unavailable = buildMcpFlagPayload(
+      { ...baseFlag, fix: '', agentPrompt: null, cursorPrompt: undefined },
+      'bolt'
+    )
     assert.equal(unavailable.prompt, null)
     assert.match(unavailable.promptError ?? '', /No validated bolt prompt/)
   })

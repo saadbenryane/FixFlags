@@ -460,6 +460,7 @@ export async function getGatedAuditForRequest(id: string) {
       pageUrl: f.pageUrl,
       confidence: f.confidence,
       source: f.source ?? undefined,
+      evidenceTargets: f.evidenceTargets,
     })),
   }))
 

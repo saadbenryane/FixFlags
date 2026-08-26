@@ -1,8 +1,10 @@
 import { gradeRank, severityRank } from '@/lib/utils'
 import type { FixConfidence, RankableFlag } from './flag-types'
 import type { ProductContract } from './product-contract'
+import { buildPlanBundleHeader, formatPlanItem, buildEditorHandoffPrompt } from '@/lib/audit/editor-handoff'
 
 export type { FixConfidence, RankableFlag } from './flag-types'
+export { AGENT_COPY_LEAD } from '@/lib/audit/editor-handoff'
 
 const IMPACT_PRIORITY: Record<string, number> = {
   REVENUE: 0,
@@ -340,7 +342,8 @@ export function flagHasFixPrompt(flag: RankableFlag): boolean {
 
 export function collectFixPromptsByRubric(
   flags: RankableFlag[],
-  rubric: string
+  rubric: string,
+  options: { url?: string | null; pageType?: string | null } = {}
 ): string {
   const rubricFlags = flags.filter((f) => f.rubric === rubric)
   const sorted = [...rubricFlags].sort(compareFlagsByPriority)
@@ -348,7 +351,10 @@ export function collectFixPromptsByRubric(
   const parts: string[] = []
   let index = 0
   for (const flag of sorted) {
-    const prompt = resolveFixPrompt(flag)
+    const prompt = buildEditorHandoffPrompt(flag, {
+      url: options.url ?? flag.pageUrl,
+      pageType: options.pageType,
+    })
     if (prompt) {
       index++
       parts.push(`=== ${label}: Fix ${index}: ${flag.problem} ===\n${prompt}`)
@@ -361,22 +367,24 @@ export function countFixPromptsByRubric(flags: RankableFlag[], rubric: string): 
   return flags.filter((f) => f.rubric === rubric && flagHasFixPrompt(f)).length
 }
 
-export function collectAllFixPrompts(flags: RankableFlag[]): string {
+export function collectAllFixPrompts(
+  flags: RankableFlag[],
+  options: { url?: string | null; pageType?: string | null } = {}
+): string {
   const sorted = [...flags].sort(compareFlagsByPriority)
   const parts: string[] = []
   let index = 0
   for (const flag of sorted) {
-    const prompt = resolveFixPrompt(flag)
+    const prompt = buildEditorHandoffPrompt(flag, {
+      url: options.url ?? flag.pageUrl,
+      pageType: options.pageType,
+    })
     if (prompt) {
       index++
       parts.push(`=== Fix ${index}: ${flag.problem} ===\n${prompt}`)
     }
   }
   return parts.join('\n\n')
-}
-
-function titleCaseRubric(rubric: string): string {
-  return rubric.charAt(0).toUpperCase() + rubric.slice(1).toLowerCase()
 }
 
 export function resolveFixConfidence(flag: RankableFlag): FixConfidence {
@@ -389,12 +397,8 @@ export function resolveFixConfidence(flag: RankableFlag): FixConfidence {
   return 'MEDIUM'
 }
 
-/** First line of every copyable agent prompt. Do not paraphrase. */
-export const AGENT_COPY_LEAD =
-  "Make a plan to fix these issues, then implement them in this product."
-
 /**
- * Copyable agent prompt: instruction first, then the ranked issues.
+ * Copyable agent prompt: finding lead, reviewed page, then ranked issues.
  * Defaults to the deprecated Quick Plan (up to three highest-leverage issues). Explicit all-prompt
  * exports use buildAllFixPrompts instead of changing this contract.
  */
@@ -402,27 +406,24 @@ export function buildPlanModePrompt(
   flags: RankableFlag[],
   options: {
     url?: string | null
+    pageType?: string | null
     limit?: number
     contract?: ProductContract | null
   } = {}
 ): string {
   const limit = options.limit === undefined ? 3 : options.limit
   const ranked = rankFlagsByPriority(flags, [], limit, options.contract).map((r) => r.flag)
+  const context = { url: options.url, pageType: options.pageType }
 
   const items: string[] = []
   for (const flag of ranked) {
-    const prompt = resolveFixPrompt(flag)
-    if (!prompt) continue
+    if (!resolveFixPrompt(flag)) continue
     const confidence = resolveFixConfidence(flag)
-    const tag = `[${flag.severity} · ${titleCaseRubric(flag.rubric)} · ${confidence}]`
-    const lines = [`${items.length + 1}. ${tag} ${flag.problem}`]
-    if (flag.evidence?.trim()) lines.push(`   Evidence: ${flag.evidence.trim()}`)
-    lines.push(`   Fix: ${prompt.replace(/\n/g, "\n   ")}`)
-    items.push(lines.join("\n"))
+    items.push(formatPlanItem(flag, items.length + 1, context, confidence))
   }
-  if (items.length === 0) return ""
+  if (items.length === 0) return ''
 
-  return `${AGENT_COPY_LEAD}\n\n${items.join("\n\n")}`
+  return `${buildPlanBundleHeader(context)}${items.join('\n\n')}`
 }
 
 export function countFixPrompts(flags: RankableFlag[]): number {

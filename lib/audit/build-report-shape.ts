@@ -38,6 +38,7 @@ export function buildReportShapeFromDb(
       verificationRule: string | null
       pageUrl: string | null
       confidence: number
+      evidenceTargets?: unknown
     }>
   }>,
   flatFlags: Array<{
@@ -59,6 +60,7 @@ export function buildReportShapeFromDb(
     verificationRule: string | null
     pageUrl: string | null
     confidence: number
+    evidenceTargets?: unknown
   }>,
   shareStatus: ShareStatus
 ): { rubricRows: ReportRubricRow[]; flags: RankableFlag[]; shareStatus: ShareStatus } {
@@ -81,6 +83,7 @@ export function buildReportShapeFromDb(
     verificationRule: f.verificationRule,
     pageUrl: f.pageUrl,
     confidence: f.confidence,
+    evidenceTargets: f.evidenceTargets,
   })
 
   return {

@@ -68,8 +68,10 @@ describe('explorer-model', () => {
     assert.equal(model.flags[1]?.severity, 'IMPORTANT')
     assert.ok(model.allHighlights.length >= 2)
     assert.match(model.flags[0]?.evidence ?? '', /900px|Button/)
-    assert.equal(model.flags[0]?.fixPrompt, 'Move CTA up.')
-    assert.equal(model.flags[0]?.copyFixPrompt, 'Move CTA up.')
+    assert.match(model.flags[0]?.fixPrompt ?? '', /Task: Move CTA up\./)
+    assert.equal(model.flags[0]?.fixPrompt, model.flags[0]?.copyFixPrompt)
+    assert.match(model.flags[0]?.copyFixPrompt ?? '', /Page: https:\/\/example.com/)
+    assert.match(model.flags[0]?.copyFixPrompt ?? '', /Viewport: mobile 375x812/)
   })
 
   it('maps flagVisualEvidence gif/overlay onto visualUrl', () => {
@@ -179,14 +181,19 @@ describe('explorer-model', () => {
       model.flags.find((flag) => flag.id === 'f3')?.copyFixPrompt,
       ''
     )
+    assert.match(
+      model.flags.find((flag) => flag.id === 'f2')?.copyFixPrompt ?? '',
+      /Move the primary CTA into the initial mobile viewport/
+    )
     assert.equal(
-      model.flags.find((flag) => flag.id === 'f2')?.copyFixPrompt,
-      'Move the primary CTA into the initial mobile viewport.'
+      model.flags.find((flag) => flag.id === 'f2')?.fixPrompt,
+      model.flags.find((flag) => flag.id === 'f2')?.copyFixPrompt
     )
     assert.match(
       model.polishPassPrompt ?? '',
-      /^Make a plan to fix these issues, then implement them in this product\./
+      /^This is a FixFlags finding from the live page, not a guess about your repo\./
     )
+    assert.match(model.polishPassPrompt ?? '', /Plan all of these changes before implementing any of them/)
     assert.match(model.polishPassPrompt ?? '', /CTA below fold/)
     assert.match(model.polishPassPrompt ?? '', /Generic headline/)
     assert.match(model.polishPassPrompt ?? '', /Search title is too short/)

@@ -46,6 +46,8 @@ Prompt and action projection is centralized by access capability:
 - Static samples never expose update-review or lifecycle mutation actions.
 
 Copying an owner prompt is a handoff, not verification.
+A copied prompt is an editor handoff of a live-page observation: page, viewport, section, current text, then search, plan, and implement.
+It is not a guessed file path and not a second essay around the task.
 It records one idempotent `HANDOFF_COPIED` event.
 “Ready to verify” records an Improvement Attempt, but only a fresh completed child Update Review can determine the result.
 The web report, MCP, and CLI use the same strict verification receipts.
