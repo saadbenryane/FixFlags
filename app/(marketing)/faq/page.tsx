@@ -1,4 +1,5 @@
 import { FaqSection } from '@/components/marketing/FaqSection'
+import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
@@ -19,6 +20,7 @@ export default function FaqPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
+      <MarketingPageViewTracker page="/faq" />
       <Section spacing="marketing">
         <Container>
           <div className="mx-auto max-w-3xl space-y-10 sm:space-y-12">

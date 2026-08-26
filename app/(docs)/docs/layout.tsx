@@ -1,7 +1,7 @@
 import { DocsShell } from '@/components/docs/DocsShell'
-import { buildDocsSearchIndex } from '@/lib/docs/content'
+import { buildKnowledgeIndex } from '@/lib/knowledge'
 
 export default async function DocsLayout({ children }: { children: React.ReactNode }) {
-  const entries = await buildDocsSearchIndex()
+  const entries = await buildKnowledgeIndex()
   return <DocsShell entries={entries}>{children}</DocsShell>
 }

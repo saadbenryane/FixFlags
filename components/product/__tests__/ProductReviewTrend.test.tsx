@@ -41,6 +41,7 @@ describe('ProductReviewTrend', () => {
       'href',
       '/report/review-2?view=report',
     )
+    expect(screen.queryByText(/open any point/i)).not.toBeInTheDocument()
   })
 
   it('keeps the chart visible before the first Review', () => {

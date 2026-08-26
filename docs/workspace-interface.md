@@ -20,7 +20,7 @@
 | Region                                 | Purpose                                                                                                                                                                                                                            |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Left — FixFlags understanding**      | Product identity, customer-meaningful review activity, observations, confirmed Flag announcements, judgment, and authenticated report conversation. Technical execution logs and simulated reasoning never appear here.            |
-| **Right — Product reality and Review** | The live Product, interaction, and captured evidence while a review runs. The completed public-safe Report becomes the default after completion; authorized viewers switch among URL-backed Timeline, Report, and Canvas siblings. |
+| **Right — Product reality and Review** | The completed public-safe Report. Preview, Timeline, and Canvas stay parked on `/report/[id]` and are not loaded there. |
 
 **Editor chrome (locked):**
 
@@ -51,7 +51,7 @@
 - Agent column is chat: one Flag mark (animated `ScanWorkingMark` while scanning), bubble transcript, one-row composer with ArrowUp send. Anonymous viewers see the composer; submit opens the in-place create-account dialog and never posts chat. There is no "Working · N%" strip above the transcript.
 - Report mode uses `ReportExplorer` master/detail (list left, detail + `FixPromptBlock` right). Homepage and samples reuse that explorer; they do not hand-roll Flag cards.
 - Report mode is itself a three-row pane, mirroring Preview (see "Report mode anatomy" below).
-- Small screens use `WorkspaceMobileTabs` (Agent, Preview/Timeline, Report, Canvas) over one Product pane. Marketing emulations use the same bar so a stacked homepage card cannot bury the capture.
+- Small screens use `WorkspaceMobileTabs` (Agent, Report) over one Product pane. Marketing emulations use the same bar so a stacked homepage card cannot bury the capture.
 - `/samples` fills its marketing card (`h-full`). The live report route is the only surface that uses `h-[calc(100dvh-var(--header-height))]`.
 - An absent `observation` selects the current curated Review. An explicit unpublished ID returns not found; it never substitutes a different Review or queries production.
 
@@ -95,7 +95,7 @@ Prompt actions remain authenticated even when their evidence is public.
 | Row            | Rule                                                                                                                                                                                                                                                                                                                       |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Review header  | [ReportOutcomeBar](../components/report/ReportOutcomeBar.tsx) is the fixed compact header and owns only visible Score, honest pending/unavailable state, full-Review history, and determinate scan progress. It contains no gauge, verdict excerpt, Critical shortcut, or next-step prose.                                 |
-| Body           | [ReportPane](../components/report/ReportPane.tsx) wraps the explorer with `data-report-frame` and `WORKSPACE_REPORT_FRAME_CLASS`. Above the split width the frame takes one pane height and the list and detail columns each scroll internally; below it the frame releases its height and the pane scrolls as one column. Flag detail is one desktop \| mobile pair with Fix Prompt above it. Motion evidence plays in the affected frame. |
+| Body           | [ReportPane](../components/report/ReportPane.tsx) wraps the explorer with `data-report-frame` and `WORKSPACE_REPORT_FRAME_CLASS`. Above the split width the frame takes one pane height and the list and detail columns each scroll internally; below it the frame releases its height and the pane scrolls as one column. Flag detail is one desktop \| mobile pair with Fix Prompt and Copy prompt docked at the bottom of the detail column. Motion evidence plays in the affected frame. |
 | Product page   | Contract (`#product-contract`), verified memory (`#product-remember`), and launch gates (`#product-launch-gates`) live on `/products/[id]` with Made with, Watch, and Signals. The report does not mount a Review context disclosure. Anonymous and sample reports omit durable Product context. |
 
 **Pane-relative, never viewport-relative.**
@@ -116,8 +116,8 @@ Canvas documents use validated FixFlags blocks and never execute model-generated
 
 | Phase              | Default right panel | Chrome                                                                                                        |
 | ------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Active review**  | Preview view        | FixFlags understanding on the left; live Product and captured evidence on the right; mobile defaults to Agent |
-| **After complete** | Report view         | Agent remains mounted; authenticated Timeline and paid Canvas are secondary modes                             |
+| **Active review**  | Report              | Agent on the left; Report fills in as findings arrive; mobile defaults to Agent                               |
+| **After complete** | Report              | Agent remains mounted. Preview, Timeline, and Canvas stay parked on this route                                |
 
 The workspace fills the available viewport beneath thin site chrome and has no marketing footer.
 During an active review, Product name and hostname live in the FixFlags pane instead of a separate report hero.
@@ -202,6 +202,26 @@ Wire from [lib/marketing/copy/terminology.ts](../lib/marketing/copy/terminology.
 | Fix list       | Ranked work queue                                                          |
 
 Do not show **re-check** in customer UI.
+
+---
+
+## In-product help and escalation
+
+Contextual help links route through `lib/help/contextual.ts` (`helpHrefForSurface`, `helpHrefForFailureCode`, `helpHrefForLimitAction`).
+
+| Surface | Help entry | Escalation |
+| ------- | ---------- | ------------ |
+| App sidebar | `/help` (public) | — |
+| Usage meter at limit | `what-counts-as-a-check`, `when-credits-run-out` | `SupportProvider` on app shell |
+| Report score tooltip | `how-scores-work` via `score_help` | — |
+| Scan / report failure | `why-check-failed` + `HelpSupportActions` | `openSupportChat` |
+| Deleted / missing report | `why-check-failed` | contact link |
+| Report error boundary | contextual help article | — |
+| Dashboard empty products | `first-check` | — |
+| Billing / limit gates | contextual billing articles | `openSupportChat` |
+
+The immersive report workspace keeps `showSupport={false}` on the report shell so the Agent column stays the chat surface.
+Knowledge routes (`/help`, `/faq`, `/docs`) and the authenticated app shell mount `SupportProvider` so `HelpChatEscalate` and billing help actions can open live chat.
 
 ---
 

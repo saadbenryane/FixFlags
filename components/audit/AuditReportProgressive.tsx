@@ -43,7 +43,7 @@ import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 import { cn } from '@/lib/utils'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import type { AgentMessage } from '@/lib/audit/agent-message'
-import { resolveReportChatGate, type AuditAccessContext } from '@/lib/audit/access-context'
+import { resolveReportSurfaceCapabilities, type AuditAccessContext } from '@/lib/audit/access-capabilities'
 
 /** Catches crashes in the explorer subtree so the scanning UI stays visible. */
 class ExplorerErrorBoundary extends Component<
@@ -130,10 +130,11 @@ export function AuditReportProgressive({
   agentMessages = [],
 }: AuditReportProgressiveProps) {
   const isOwnerAccess = accessContext === 'owner'
-  const chatGate = resolveReportChatGate({
+  const surface = resolveReportSurfaceCapabilities({
     accessContext,
     isLoggedIn: isLoggedIn || isOwnerAccess,
   })
+  const chatGate = surface.chat
   const fixPromptLocked = !isOwnerAccess
   const signUpHref = auditId
     ? `/sign-up?next=/report/${auditId}&from=report`

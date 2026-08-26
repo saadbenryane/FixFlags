@@ -160,7 +160,7 @@ describe('report workspace model', () => {
     })
   })
 
-  it('keeps Timeline, chat, Canvas, and prompt access independent', () => {
+  it('parks Timeline and Canvas on every report workspace', () => {
     const workspace = buildReportWorkspaceModel({
       kind: 'sample',
       explorer: buildExplorer(),
@@ -174,9 +174,9 @@ describe('report workspace model', () => {
     expect(workspace.capabilities).toMatchObject({
       promptAccess: 'none',
       canCopyPrompts: false,
-      canReplayTimeline: true,
+      canReplayTimeline: false,
       canChat: false,
-      canUseCanvas: true,
+      canUseCanvas: false,
     })
   })
 })

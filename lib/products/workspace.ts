@@ -24,6 +24,7 @@ import {
 import { parseProductContract, type ProductContract } from '@/lib/audit/product-contract'
 import { parseLaunchReadiness, type LaunchChecklistItem } from '@/lib/audit/launch-readiness'
 import { buildEditorHandoffPrompt } from '@/lib/audit/editor-handoff'
+import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 
 const ACTIVE_IMPROVEMENT_STATUSES: ImprovementStatus[] = [
   'PROPOSED',
@@ -34,6 +35,8 @@ const ACTIVE_IMPROVEMENT_STATUSES: ImprovementStatus[] = [
 ]
 
 export const PRODUCT_HISTORY_PAGE_SIZE = 20
+/** Completed Reviews kept on each dashboard Product card for the score sparkline. */
+export const PRODUCT_OVERVIEW_REVIEW_WINDOW = 12
 
 export type ReviewKind = 'PRODUCT_REVIEW' | 'UPDATE_REVIEW' | 'WATCH'
 
@@ -179,6 +182,12 @@ export type ProductWorkspaceDTO = {
   integrations: ProductIntegrationDTO
 }
 
+export type ProductScorePointDTO = {
+  id: string
+  score: number
+  at: string
+}
+
 export type ProductOverviewDTO = {
   id: string
   name: string
@@ -191,6 +200,8 @@ export type ProductOverviewDTO = {
     'id' | 'title' | 'status' | 'severity'
   > | null
   latestManualReview: ProductReviewSummaryDTO | null
+  desktopScreenshotUrl: string | null
+  scoreHistory: ProductScorePointDTO[]
 }
 
 type ReviewRow = {
@@ -312,6 +323,16 @@ const reviewSelect = {
   watchNotificationAttempts: true,
   watchNotificationLastError: true,
   flags: { select: { status: true } },
+} as const
+
+const overviewReviewSelect = {
+  ...reviewSelect,
+  screenshots: {
+    where: { device: 'DESKTOP' as const },
+    orderBy: { id: 'asc' as const },
+    take: 1,
+    select: { url: true },
+  },
 } as const
 
 const attemptSelect = {
@@ -482,8 +503,8 @@ export async function loadProductOverview(
       audits: {
         where: manualReviewWhere(),
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        take: 1,
-        select: reviewSelect,
+        take: PRODUCT_OVERVIEW_REVIEW_WINDOW,
+        select: overviewReviewSelect,
       },
       improvements: {
         where: { status: { in: ACTIVE_IMPROVEMENT_STATUSES } },
@@ -517,6 +538,26 @@ export async function loadProductOverview(
 
   return products.map((product) => {
     const memory = parseProductIntelligence(product.productIntelligence)
+    const reviews = product.audits
+    let desktopScreenshotUrl: string | null = null
+    for (const review of reviews) {
+      if (review.status !== 'COMPLETED') continue
+      const screenshotUrl = review.screenshots?.[0]?.url
+      if (!screenshotUrl) continue
+      desktopScreenshotUrl = normalizeInternalScreenshotUrl(screenshotUrl)
+      break
+    }
+    const scoreHistory = reviews
+      .filter(
+        (review) => review.status === 'COMPLETED' && review.score != null
+      )
+      .slice()
+      .reverse()
+      .map((review) => ({
+        id: review.id,
+        score: review.score as number,
+        at: (review.completedAt ?? review.createdAt).toISOString(),
+      }))
     return {
       id: product.id,
       name: product.name,
@@ -533,9 +574,9 @@ export async function loadProductOverview(
               product.improvements[0].occurrences[0]?.flag.severity ?? null,
           }
         : null,
-      latestManualReview: product.audits[0]
-        ? reviewSummary(product.audits[0])
-        : null,
+      latestManualReview: reviews[0] ? reviewSummary(reviews[0]) : null,
+      desktopScreenshotUrl,
+      scoreHistory,
     }
   })
 }

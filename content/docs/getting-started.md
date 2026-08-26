@@ -21,3 +21,12 @@ Paste that prompt directly into Lovable or the builder you already use.
 ## Update review
 
 Deploy the change first, then choose **Update review**. An update review performs a fresh capture and compares the new result with the original report. Each update review uses one product review credit.
+
+## Get help
+
+For step-by-step walkthroughs and common questions, visit the [Help Center](/help).
+
+- [Run your first product review](/help/getting-started/first-check)
+- [Claim your report after sign-in](/help/getting-started/claiming-a-report)
+- [Flag, fix, and update review](/help/getting-started/flag-fix-recheck)
+- [Anonymous vs signed-in report access](/help/getting-started/anonymous-report-access)

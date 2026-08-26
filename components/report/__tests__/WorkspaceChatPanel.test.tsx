@@ -99,7 +99,7 @@ describe('WorkspaceChatPanel', () => {
     expect(screen.getByText(/The headline is unclear/)).toHaveAttribute('data-source', 'scan')
     expect(screen.getByRole('link', { name: 'View Flag' })).toHaveAttribute('href', '?flag=f1#report-flags')
     expect(screen.getByRole('button', { name: 'Sign in to chat' })).toBeInTheDocument()
-    expect(screen.getByPlaceholderText(/Sign in to ask about the Flags/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Send a message')).toBeInTheDocument()
     expect(fetch).not.toHaveBeenCalled()
   })
 
@@ -193,7 +193,11 @@ describe('WorkspaceChatPanel', () => {
     expect(screen.queryByText(/upgrade/i)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /close/i }))
-    fireEvent.change(screen.getByPlaceholderText(/Sign in to ask about the Flags/i), {
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in to chat' }))
+    expect(screen.getAllByText('Create your free account').length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByRole('button', { name: /close/i }))
+    fireEvent.change(screen.getByPlaceholderText('Send a message'), {
       target: { value: 'What first?' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Sign in to chat' }))

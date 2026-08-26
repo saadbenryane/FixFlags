@@ -142,7 +142,7 @@ if (!sampleRoute.includes('UnknownCuratedObservationError') || !sampleRoute.incl
 
 const workspaceAdapters = readFileSync(join(ROOT, 'lib/report/workspace-adapters.ts'), 'utf8')
 for (const required of [
-  'canReplayTimeline: true',
+  'canReplayTimeline: false',
   'canChat: false',
   'canUseCanvas: false',
   "promptAccess: 'demonstrated'",

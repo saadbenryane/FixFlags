@@ -6,6 +6,8 @@ import { ScreenshotWithHighlights } from '@/components/audit/ScreenshotWithHighl
 import {
   FlagDetailPanel,
   FlagMetaPills,
+  FlagPromptRow,
+  flagHasPromptChrome,
   isShareableCheck,
   type ReportOwnerActionContext,
 } from '@/components/report/FlagDetailPanel'
@@ -91,60 +93,69 @@ export function FlagDetailPane({
   const showDesktop = Boolean(model.desktopScreenshot)
   const showMobile = Boolean(model.mobileScreenshot)
   const shareableFlag = isShareableCheck(flag.checkId)
+  const promptLocked = Boolean(aiLocked && flag.id !== demonstratedFlagId)
+  const showPromptRow = flagHasPromptChrome(flag, {
+    aiLocked: promptLocked,
+    aiEnhancementPending,
+  })
 
   return (
-    <div className="min-w-0">
-      <header className="mb-5">
-        <h3
-          ref={headingRef}
-          tabIndex={-1}
-          className="text-lg font-semibold leading-snug tracking-heading text-balance outline-none"
-        >
-          {flag.title}
-        </h3>
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <FlagMetaPills flag={flag} />
-          {flagCount > 1 ? (
-            <nav className="flex shrink-0 items-center gap-1" aria-label="Flag navigation">
-              <span className="mr-1 font-mono text-2xs tabular-nums text-muted-foreground" aria-live="polite">
-                {flagPosition} of {flagCount}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onPrevious}
-                disabled={flagPosition <= 1}
-                aria-label="Previous flag"
-                className="border border-border/45 bg-background text-muted-foreground shadow-sm hover:text-foreground"
-              >
-                <ChevronLeft aria-hidden />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={onNext}
-                disabled={flagPosition >= flagCount}
-                aria-label="Next flag"
-                className="border border-border/45 bg-background text-muted-foreground shadow-sm hover:text-foreground"
-              >
-                <ChevronRight aria-hidden />
-              </Button>
-            </nav>
-          ) : null}
-        </div>
-      </header>
+    <div className="flex h-full min-h-0 min-w-0 flex-col">
+      <div
+        data-flag-detail-scroll
+        className="min-h-0 flex-1 overflow-y-auto scrollbar-thin @[40rem]/pane:pr-1"
+      >
+        <header className="mb-5">
+          <h3
+            ref={headingRef}
+            tabIndex={-1}
+            className="text-lg font-semibold leading-snug tracking-heading text-balance outline-none"
+          >
+            {flag.title}
+          </h3>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <FlagMetaPills flag={flag} />
+            {flagCount > 1 ? (
+              <nav className="flex shrink-0 items-center gap-1" aria-label="Flag navigation">
+                <span className="mr-1 font-mono text-2xs tabular-nums text-muted-foreground" aria-live="polite">
+                  {flagPosition} of {flagCount}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onPrevious}
+                  disabled={flagPosition <= 1}
+                  aria-label="Previous flag"
+                  className="border border-border/45 bg-background text-muted-foreground shadow-sm hover:text-foreground"
+                >
+                  <ChevronLeft aria-hidden />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={onNext}
+                  disabled={flagPosition >= flagCount}
+                  aria-label="Next flag"
+                  className="border border-border/45 bg-background text-muted-foreground shadow-sm hover:text-foreground"
+                >
+                  <ChevronRight aria-hidden />
+                </Button>
+              </nav>
+            ) : null}
+          </div>
+        </header>
 
-      <div className="flex flex-col gap-5">
         <FlagDetailPanel
           flag={flag}
           showFeedback={showFeedback}
-          aiLocked={aiLocked && flag.id !== demonstratedFlagId}
+          aiLocked={promptLocked}
           aiEnhancementPending={aiEnhancementPending}
           signUpHref={signUpHref}
           previewMeta={model.previewMeta}
           ownerActionContext={ownerActionContext}
+          hidePromptRow
           evidencePair={
             shareableFlag ? null : (
               <ScreenshotWithHighlights
@@ -171,6 +182,20 @@ export function FlagDetailPane({
           }
         />
       </div>
+      {showPromptRow ? (
+        <footer
+          data-flag-prompt-footer
+          className="shrink-0 border-t border-border/30 bg-background pt-3"
+        >
+          <FlagPromptRow
+            flag={flag}
+            aiLocked={promptLocked}
+            aiEnhancementPending={aiEnhancementPending}
+            signUpHref={signUpHref}
+            ownerActionContext={ownerActionContext}
+          />
+        </footer>
+      ) : null}
     </div>
   )
 }

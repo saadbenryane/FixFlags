@@ -2,10 +2,10 @@
 
 import { Menu } from 'lucide-react'
 import { useState } from 'react'
-import type { DocsSearchEntry } from '@/lib/docs/content'
+import type { KnowledgeSearchEntry } from '@/lib/knowledge/search'
 import { Button } from '@/components/ui/button'
 import { DocsNavigation } from '@/components/docs/DocsNavigation'
-import { DocsSearch } from '@/components/docs/DocsSearch'
+import { KnowledgeSearch } from '@/components/help/KnowledgeSearch'
 import {
   Sheet,
   SheetContent,
@@ -14,7 +14,7 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet'
 
-export function DocsMobileNavigation({ entries }: { entries: readonly DocsSearchEntry[] }) {
+export function DocsMobileNavigation({ entries }: { entries: readonly KnowledgeSearchEntry[] }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="flex items-center gap-3 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur lg:hidden">
@@ -29,13 +29,13 @@ export function DocsMobileNavigation({ entries }: { entries: readonly DocsSearch
             <SheetTitle>Documentation</SheetTitle>
           </SheetHeader>
           <div className="mt-6 space-y-7">
-            <DocsSearch entries={entries} compact />
+            <KnowledgeSearch entries={entries} placeholder="Search help and docs" />
             <DocsNavigation onNavigate={() => setOpen(false)} />
           </div>
         </SheetContent>
       </Sheet>
       <div className="min-w-0 flex-1">
-        <DocsSearch entries={entries} compact />
+        <KnowledgeSearch entries={entries} placeholder="Search help and docs" />
       </div>
     </div>
   )

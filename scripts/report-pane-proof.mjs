@@ -4,7 +4,7 @@
  * Opens Report mode on the homepage emulation, /samples, and an optional live
  * report at three widths, then asserts the pane anatomy: one compact Score header, the
  * fix list reachable without scrolling, list and detail scrolling inside the
- * pane, Copy prompt above the comparison pair, and no Review context disclosure.
+ * pane, Copy prompt docked below the comparison pair, and no Review context disclosure.
  *
  * Usage: node scripts/report-pane-proof.mjs [baseUrl] [reportPath]
  *        node scripts/report-pane-proof.mjs [baseUrl] --live [targetUrl]
@@ -65,12 +65,15 @@ async function measurePane(page) {
     const copyPrompt = Array.from(detail?.querySelectorAll('button') ?? []).find(
       (node) => /Copy prompt/.test(node.textContent ?? '')
     )
-    const firstComparison = comparisonFrames[0] ?? null
+    const promptFooter = detail?.querySelector('[data-flag-prompt-footer]') ?? null
+    const detailScroll = detail?.querySelector('[data-flag-detail-scroll]') ?? detail
     const copyPromptRect = copyPrompt?.getBoundingClientRect()
-    const comparisonRect = firstComparison?.getBoundingClientRect()
+    const scrollRect = detailScroll?.getBoundingClientRect() ?? null
+    const promptFooterRect = promptFooter?.getBoundingClientRect()
     const paneRect = pane?.getBoundingClientRect() ?? null
     const listRect = list?.getBoundingClientRect() ?? null
     const frameRect = frame?.getBoundingClientRect() ?? null
+    const detailRect = detail?.getBoundingClientRect() ?? null
 
     return {
       scoreHeaders: scoreHeaders.length,
@@ -90,11 +93,18 @@ async function measurePane(page) {
           (node) => visible(node) && /^\s*Review context\s*$/.test(node.textContent ?? '')
         )
       ),
-      copyPromptAbovePair:
-        copyPromptRect && comparisonRect
-          ? copyPromptRect.bottom <= comparisonRect.top + 2
+      copyPromptBelowPair:
+        copyPromptRect && scrollRect
+          ? copyPromptRect.top + 2 >= scrollRect.bottom
           : copyPromptRect
             ? true
+            : null,
+      copyPromptInFooter: Boolean(promptFooter && copyPrompt && promptFooter.contains(copyPrompt)),
+      copyPromptInView:
+        copyPromptRect && detailRect
+          ? copyPromptRect.bottom <= detailRect.bottom + 2 && copyPromptRect.top >= detailRect.top - 2
+          : copyPromptRect && paneRect
+            ? copyPromptRect.bottom <= paneRect.bottom + 2
             : null,
       comparisonHasCapture:
         comparisonFrames.length === 0 ||
@@ -108,7 +118,11 @@ async function measurePane(page) {
       listWithinFirstScreen:
         paneRect && listRect ? listRect.top < paneRect.bottom : null,
       listScrolls: scrolls(list),
-      detailScrolls: scrolls(detail),
+      detailScrolls: scrolls(detailScroll),
+      footerPinned:
+        promptFooterRect && detailRect
+          ? Math.abs(promptFooterRect.bottom - detailRect.bottom) <= 4
+          : null,
       fixPromptVisible: Boolean(
         detail && detail.textContent && /Copy prompt/.test(detail.textContent)
       ),
@@ -219,8 +233,17 @@ async function run() {
         failures.push(`${at}: comparison border is external and can be clipped`)
       }
       if (row.hasReviewContext) failures.push(`${at}: Review context disclosure is still mounted`)
-      if (row.phase !== 'scanning' && row.copyPromptAbovePair === false) {
-        failures.push(`${at}: Copy prompt is not above the comparison pair`)
+      if (row.phase !== 'scanning' && row.copyPromptBelowPair === false) {
+        failures.push(`${at}: Copy prompt is not below the comparison pair`)
+      }
+      if (row.phase !== 'scanning' && row.copyPromptInFooter === false) {
+        failures.push(`${at}: Copy prompt is not in the Flag detail footer`)
+      }
+      if (row.splitMode && row.phase !== 'scanning' && row.copyPromptInView === false) {
+        failures.push(`${at}: Copy prompt is not in view without scrolling evidence`)
+      }
+      if (row.splitMode && row.phase !== 'scanning' && row.footerPinned === false) {
+        failures.push(`${at}: prompt footer is not pinned to the bottom of Flag detail`)
       }
       if (row.comparisonHasCapture === false) {
         failures.push(`${at}: a comparison frame is missing its capture image`)

@@ -13,22 +13,28 @@ manual review that scripts cannot fully prove.
 
 ## Product and report contracts
 
-- Trace Check → Fix → Re-check → Watch through the UI, HTTP boundary, CLI, and
-  MCP task contracts.
+- Trace Product Review → Fix → Update review → Watch through the UI, HTTP boundary,
+  and shared task contracts. CLI and MCP stay parked unless the task is explicitly
+  `npm run agent -- context cli`.
 - Confirm ranking, report access, anonymous redaction, evidence, and prompt
   availability agree with `knowledge/report-contract.md` and `SECURITY.md`.
 - Confirm Message, Experience, and Reach remain the only customer-facing
   report rubrics.
+- Default `/report/[id]` is Agent beside Report. Preview, Timeline, and Canvas
+  stay parked there and must not be loaded on that route.
+- Legacy `/share/[token]` is compatibility-only. New sharing is Copy link on the
+  public report URL. Do not reintroduce protected-share create/manage UX.
 
 ## Evidence overlay
 
 - Live Flag highlights must come from `Flag.evidenceTargets` measured at capture time.
 - A missing measurement is a chip, not a preset hero rectangle.
-- Product Preview uses `EvidenceSpotlight` / `EvidenceChip`. Stage geometry must not change.
+- Product Preview overlays apply only if Preview is unparked. Do not rebuild Preview
+  chrome on the default report route.
 
 ## Interface behavior
 
-- Exercise loading, empty, partial, error, forbidden, completed, and Re-check
+- Exercise loading, empty, partial, error, forbidden, completed, and Update review
   states that apply to the changed surface.
 - Check keyboard order, focus visibility, semantic names, 44px targets, reduced
   motion, 200% reflow, and responsive behavior at 375, 768, and 1280px.

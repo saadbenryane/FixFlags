@@ -80,7 +80,7 @@ Product review, Update review, Funnel, Path, Fix list — from `lib/marketing/co
 - **Agent-led Report Workspace (release proof)** — Unified Agent transcript left; public-safe Report, authenticated Timeline, and Canvas right. Deterministic scan messages are free; authenticated model chat is metered monthly. Mobile uses Agent ↔ Report. Canon: [docs/workspace-interface.md](./docs/workspace-interface.md), [docs/product-prd.md](./docs/product-prd.md). Completion: [`.agents/sessions/agent-workspace-completion.md`](./.agents/sessions/agent-workspace-completion.md).
   *Signal:* paste URL → truthful Agent updates on phone and desktop → complete public evidence report → authenticate into the same workspace → chat, Timeline, and Canvas → update review.
 
-- **Product Hunt completion release** — canonical complete Fix list workspace, deterministic curated sample, claim retry integrity, scoped share grants, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`. First-value dogfood: [`.agents/sessions/customer-journey-completion-plan.md`](./.agents/sessions/customer-journey-completion-plan.md).
+- **Product Hunt completion release** — canonical complete Fix list workspace, deterministic curated sample, claim retry integrity, scoped share grants, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`. First-value dogfood: [`.agents/sessions/archive/customer-journey-completion-plan.md`](./.agents/sessions/archive/customer-journey-completion-plan.md).
   *Signal:* anonymous URL → progressive evidence teaser with no prompts → successful claim → complete report, fix prompts, and Timeline → update review → diff → protected share → revoke.
 
 - **Launch Check Completeness** — every unresolved Flag ranked in one report, Contract merge-not-wipe, Remember UI, claim→Project, dogfood twin suppressions, protected share honesty, and scheduled Product Watch. Board `current-product-completion`.
@@ -144,7 +144,7 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 
 ## Shipped retention (was Next)
 
-- **Scheduled Product Watch** — Prisma `watchInterval` / `watchNextRunAt`; recovery-scheduler tick; regression-only email. Available on every plan. Completed Watch reviews consume the monthly product review allowance and pause honestly at the limit.
+- **Scheduled Product Watch** — Prisma `watchInterval` / `watchNextRunAt`; recovery-scheduler tick; regression-only email. Studio only (`canAccessProductWatch` is TEAM). Completed Watch reviews consume the monthly product review allowance and pause honestly at the limit.
 
 ## Parked, not scheduled
 

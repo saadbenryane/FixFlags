@@ -143,25 +143,122 @@ function claimNextFromHref(href?: string): string | undefined {
   }
 }
 
-function GatedFixPromptRow({ onClaim }: { onClaim: () => void }) {
+export function flagHasPromptChrome(
+  flag: ExplorerFlag,
+  options: { aiLocked?: boolean; aiEnhancementPending?: boolean } = {},
+) {
+  return Boolean(
+    flag.hasFixPrompt ||
+      options.aiLocked ||
+      flag.copyFixPrompt ||
+      (options.aiEnhancementPending && !flag.fixPrompt),
+  )
+}
+
+const PROMPT_COPY_CLASS =
+  'h-11 shrink-0 self-end rounded-none border-0 px-3 shadow-none sm:px-4'
+
+export function FlagPromptRow({
+  flag,
+  aiLocked = false,
+  aiEnhancementPending = false,
+  signUpHref,
+  ownerActionContext,
+}: {
+  flag: ExplorerFlag
+  aiLocked?: boolean
+  aiEnhancementPending?: boolean
+  signUpHref?: string
+  ownerActionContext?: ReportOwnerActionContext
+}) {
+  const [claimOpen, setClaimOpen] = useState(false)
+  const authGate = useReportAuthGate()
+
+  function openClaim() {
+    if (authGate) {
+      authGate.open({
+        nextPath: claimNextFromHref(signUpHref),
+        auditId: ownerActionContext?.auditId,
+      })
+      return
+    }
+    setClaimOpen(true)
+  }
+
+  if (!flagHasPromptChrome(flag, { aiLocked, aiEnhancementPending })) {
+    return null
+  }
+
+  let row: ReactNode
+  if (aiLocked) {
+    row = (
+      <div className="flex min-h-11 overflow-hidden rounded-[var(--radius-inner)] border border-border/45 bg-background shadow-sm">
+        <button
+          type="button"
+          onClick={openClaim}
+          className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 whitespace-nowrap px-3 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:px-4"
+        >
+          {REPORT_COPY.explorer.fixPrompt}
+          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        </button>
+        <PromptCopyButton
+          prompt=""
+          onLockedAction={openClaim}
+          compact
+          variant="brand"
+          className={PROMPT_COPY_CLASS}
+        />
+      </div>
+    )
+  } else if (aiEnhancementPending && !flag.fixPrompt) {
+    row = (
+      <p className="px-1 text-sm text-muted-foreground">Generating enhanced fix prompt.</p>
+    )
+  } else if (flag.hasFixPrompt) {
+    row = (
+      <div className="flex items-stretch overflow-hidden rounded-[var(--radius-inner)] border border-border/45 bg-background shadow-sm">
+        <details className="group flex min-w-0 flex-1 flex-col-reverse">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 whitespace-nowrap px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:px-4 [&::-webkit-details-marker]:hidden">
+            {REPORT_COPY.explorer.fixPrompt}
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+          </summary>
+          <div className="max-h-44 overflow-y-auto border-b border-border/40 bg-muted/15 scrollbar-thin">
+            <FixPromptBlock
+              prompt={flag.fixPrompt}
+              copyPrompt={flag.copyFixPrompt || undefined}
+              render="markdown"
+              markdownChrome="flat"
+              hideActions
+            />
+          </div>
+        </details>
+        <PromptCopyButton
+          prompt={flag.copyFixPrompt || flag.fixPrompt}
+          auditId={ownerActionContext?.auditId}
+          flagId={flag.id}
+          surface={ownerActionContext?.surface}
+          accessState={ownerActionContext?.accessState}
+          compact
+          variant="brand"
+          className={PROMPT_COPY_CLASS}
+        />
+      </div>
+    )
+  } else {
+    row = <PromptCopyButton prompt={flag.copyFixPrompt} compact />
+  }
+
   return (
-    <div className="flex min-h-11 overflow-hidden rounded-[var(--radius-inner)] border border-border/45 bg-background shadow-sm">
-      <button
-        type="button"
-        onClick={onClaim}
-        className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 whitespace-nowrap px-3 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:px-4"
-      >
-        {REPORT_COPY.explorer.fixPrompt}
-        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-      </button>
-      <PromptCopyButton
-        prompt=""
-        onLockedAction={onClaim}
-        compact
-        variant="brand"
-        className="shrink-0 rounded-none border-0 px-3 shadow-none sm:px-4"
+    <section data-flag-prompt-row className="min-w-0">
+      {row}
+      <ReportClaimDialog
+        open={authGate ? false : claimOpen}
+        onOpenChange={setClaimOpen}
+        nextPath={claimNextFromHref(signUpHref)}
+        from="report"
+        reason="save-report"
       />
-    </div>
+    </section>
   )
 }
 
@@ -174,6 +271,7 @@ export function FlagDetailPanel({
   previewMeta,
   ownerActionContext,
   evidencePair,
+  hidePromptRow = false,
 }: {
   flag: ExplorerFlag
   showFeedback?: boolean
@@ -183,22 +281,10 @@ export function FlagDetailPanel({
   previewMeta?: PreviewMeta | null
   ownerActionContext?: ReportOwnerActionContext
   evidencePair?: ReactNode
+  hidePromptRow?: boolean
 }) {
-  const [claimOpen, setClaimOpen] = useState(false)
-  const authGate = useReportAuthGate()
   const showShareablePreview = isShareableCheck(flag.checkId) && previewMeta
   const consequence = flag.whyItMatters.trim()
-
-  function openClaim() {
-    if (authGate) {
-      authGate.open({
-        nextPath: claimNextFromHref(signUpHref),
-        auditId: ownerActionContext?.auditId,
-      })
-      return
-    }
-    setClaimOpen(true)
-  }
 
   return (
     <div key={flag.id} className="space-y-3 animate-soft-reveal" aria-live="polite">
@@ -217,39 +303,19 @@ export function FlagDetailPanel({
 
       <FlagEvidenceMeta flag={flag} />
 
-      {(flag.hasFixPrompt || aiLocked || flag.copyFixPrompt) && (
-        <section className="space-y-2.5">
-          {aiLocked ? (
-            <GatedFixPromptRow onClaim={openClaim} />
-          ) : aiEnhancementPending && !flag.fixPrompt ? (
-            <p className="text-sm text-muted-foreground">Generating enhanced fix prompt.</p>
-          ) : flag.hasFixPrompt ? (
-            <div className="flex min-h-11 overflow-hidden rounded-[var(--radius-inner)] border border-border/45 bg-background shadow-sm">
-              <details className="group min-w-0 flex-1">
-                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 whitespace-nowrap px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:px-4 [&::-webkit-details-marker]:hidden">{REPORT_COPY.explorer.fixPrompt}<ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden /></summary>
-                <div className="border-t border-border/40 bg-muted/15">
-                  <FixPromptBlock prompt={flag.fixPrompt} copyPrompt={flag.copyFixPrompt || undefined} render="markdown" markdownChrome="flat" hideActions />
-                </div>
-              </details>
-              <PromptCopyButton prompt={flag.copyFixPrompt || flag.fixPrompt} auditId={ownerActionContext?.auditId} flagId={flag.id} surface={ownerActionContext?.surface} accessState={ownerActionContext?.accessState} compact variant="brand" className="shrink-0 rounded-none border-0 px-3 shadow-none sm:px-4" />
-            </div>
-          ) : flag.copyFixPrompt ? (
-            <PromptCopyButton prompt={flag.copyFixPrompt} compact />
-          ) : null}
-        </section>
+      {hidePromptRow ? null : (
+        <FlagPromptRow
+          flag={flag}
+          aiLocked={aiLocked}
+          aiEnhancementPending={aiEnhancementPending}
+          signUpHref={signUpHref}
+          ownerActionContext={ownerActionContext}
+        />
       )}
 
       {evidencePair}
 
       {showFeedback && <FlagFeedback flagId={flag.id} canDismiss />}
-
-      <ReportClaimDialog
-        open={authGate ? false : claimOpen}
-        onOpenChange={setClaimOpen}
-        nextPath={claimNextFromHref(signUpHref)}
-        from="report"
-        reason="save-report"
-      />
     </div>
   )
 }

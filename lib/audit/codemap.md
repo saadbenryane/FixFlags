@@ -1,7 +1,7 @@
 # lib/audit/ - Audit Engine
 
 ## Responsibility
-Core audit pipeline: browser capture, 22 check modules, AI triage/prescription, scoring, flag persistence, report data shaping.
+Core audit pipeline: browser capture, registered check modules, AI triage/prescription, scoring, flag persistence, report data shaping.
 
 ## Entry Points
 | File | Purpose |
@@ -9,7 +9,7 @@ Core audit pipeline: browser capture, 22 check modules, AI triage/prescription, 
 | `runner.ts` | Main audit orchestrator (capture → checks → journey → finalize) |
 | `pipeline/run-page.ts` | Per-page capture, slow replay, checks, triage |
 | `deterministic-audit.ts` | Offline/demo probe runner (not production) |
-| `checks/index.ts` | Barrel for 22 check modules (`checkers[]` array) |
+| `checks/index.ts` | Barrel that registers check modules (`runAllChecks`) |
 | `persist.ts` | Saves audit results to DB (flags, scores, metadata) |
 | `finalize.ts` | Post-check finalization (diff against parent, journey flags, visual evidence) |
 | `create-audit.ts` | Creates audit record + enqueues job |
@@ -23,7 +23,7 @@ Core audit pipeline: browser capture, 22 check modules, AI triage/prescription, 
 - `journey-safety.ts` - Form probe safety (payment/download blocking)
 
 ### Check Modules (`checks/`)
-22 modules, each a `run*Checks()` function. Registered in `checks/index.ts` barrel.
+Each module exports a `run*Checks()` function and registers through `checks/index.ts`.
 Key modules: metadata, performance, accessibility, SEO, trust, mobile, content, security, visual-polish, messaging-clarity, conversion-friction.
 
 ### AI Judge (`judge*.ts`, `prompts/`)

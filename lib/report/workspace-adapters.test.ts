@@ -87,7 +87,7 @@ describe('Report workspace adapters', () => {
       expect(contentSignature(variant)).toEqual(contentSignature(sample))
     }
     expect(sample.capabilities).toMatchObject({
-      canReplayTimeline: true,
+      canReplayTimeline: false,
       canChat: false,
       canUseCanvas: false,
       canShare: false,

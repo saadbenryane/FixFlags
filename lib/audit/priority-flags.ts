@@ -399,8 +399,8 @@ export function resolveFixConfidence(flag: RankableFlag): FixConfidence {
 
 /**
  * Copyable agent prompt: finding lead, reviewed page, then ranked issues.
- * Defaults to the deprecated Quick Plan (up to three highest-leverage issues). Explicit all-prompt
- * exports use buildAllFixPrompts instead of changing this contract.
+ * Defaults to every Flag that has a prompt. Pass `limit` only for transport-specific
+ * Finish Plan truncation (MCP/CLI still use `buildFinishPlan`).
  */
 export function buildPlanModePrompt(
   flags: RankableFlag[],
@@ -411,7 +411,7 @@ export function buildPlanModePrompt(
     contract?: ProductContract | null
   } = {}
 ): string {
-  const limit = options.limit === undefined ? 3 : options.limit
+  const limit = options.limit === undefined ? flags.length : options.limit
   const ranked = rankFlagsByPriority(flags, [], limit, options.contract).map((r) => r.flag)
   const context = { url: options.url, pageType: options.pageType }
 

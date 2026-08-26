@@ -8,7 +8,7 @@ This directory enables safe parallel work by multiple AI agents (Cursor, Claude 
 
 | Path | Purpose |
 |------|---------|
-| `BOARD.md` | Active task board — claim here before starting |
+| `BOARD.md` | Active task board — claim here before starting. Older terminal rows: `BOARD-archive.md`. |
 | `GOAL.md` | Active goal state (gitignored): Condition, Proof, Constraints, turn Bound, Turn log with verdicts. Template: `GOAL.md.example`; detail briefs: `GOAL_BRIEF.md` (root) |
 | `GOAL.md.example` | Committed template for goal-state tracking |
 | `sessions/` | Implementation records for substantial work |
@@ -28,7 +28,7 @@ This directory enables safe parallel work by multiple AI agents (Cursor, Claude 
 6. **Stop and document** ambiguous ownership or conflicting state.
 7. **Create a handoff** before leaving meaningful work incomplete.
 8. **Archive records** after useful knowledge is promoted into canonical docs, code, tests, or evals.
-9. **After a BOARD task that changes product behavior or docs:** update the relevant `.cursor/skills/*/SKILL.md` in the same change set (see skill index under `.cursor/skills/`).
+9. **After a BOARD task that changes product behavior or docs:** update the relevant `.agents/skills/*/SKILL.md` body. `.cursor/skills/*/SKILL.md` files are thin wrappers and should stay wrappers.
 
 ## Filesystem & operational helpers
 
@@ -40,9 +40,13 @@ This directory enables safe parallel work by multiple AI agents (Cursor, Claude 
 | `npm run agent:release-continuity` | Runtime + CLI/MCP + cloud continuity plan/readout for release cadence |
 | `npm run agent:release-continuity -- --check --strict` | Run continuity checks and fail if any required gate fails |
 
+## PiWeb vs FixFlags
+
+PiWeb (`/Users/saadbenryane/Code/pi-web`) is the session and workflow interface. FixFlags is the product. Interface/session issues go through FirstMate. Product work happens in this repository.
+
 ## Skills
 
-Canonical skills live in `.cursor/skills/`. Prefer those over any mirrored copies under `.opencode/skills/` (deprecated mirrors; may lag).
+Canonical skill **bodies** live in `.agents/skills/`. `.cursor/skills/` files are thin wrappers that point at those bodies. Prefer those over any mirrored copies under `.opencode/skills/` (deprecated mirrors; may lag).
 
 | Skill | Use for |
 |-------|---------|

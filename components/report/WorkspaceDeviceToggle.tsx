@@ -1,7 +1,7 @@
 'use client'
 
 import { Monitor, Smartphone } from 'lucide-react'
-import type { PreviewDevice } from '@/components/report/WorkspaceBrowserPanel'
+import type { PreviewDevice } from '@/components/report/preview-device'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'

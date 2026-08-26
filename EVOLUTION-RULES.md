@@ -30,7 +30,7 @@ Ask: "Does this task change what we know about the product?"
 - If no, proceed with implementation.
 
 Examples:
-- Adding a new check module? Update PRODUCT.md (capabilities) and AGENTS.md (check count).
+- Adding a new check module? Update PRODUCT.md (capabilities) and register it in `lib/audit/checks/index.ts`. Do not store check counts in AGENTS.md.
 - Changing pricing? Update knowledge/strategy.md (pricing tiers).
 - Fixing a bug that reveals a design principle? Update DECISIONS.md.
 - Refactoring architecture? Update ARCHITECTURE.md.
@@ -145,14 +145,12 @@ When these change, update the canonical source and review related documents for 
 
 These concepts change every week or month:
 
-- **Project facts** (AGENTS.md → Project facts: check counts, model counts, test counts)
 - **Current capabilities** (PRODUCT.md → Current capabilities)
 - **Limitations and technical debt** (PRODUCT.md → Limitations and technical debt)
 - **Directory structure** (ARCHITECTURE.md → Directory structure)
-- **Verified commands** (AGENTS.md → Verified commands)
 - **Recently closed items** (ROADMAP.md → Recently closed)
 
-When these change, update the canonical source. Use regeneration commands where possible (see AGENTS.md → Project facts).
+When these change, update the canonical source. Do not hardcode check, model, or test counts in AGENTS.md.
 
 ---
 
@@ -181,7 +179,7 @@ If these change, the product itself has changed. Document the change in DECISION
 4. **Leave obsolete knowledge.** Delete it.
 5. **Reference non-canonical sources.** Always link to the canonical source.
 6. **Overload a document.** If a document answers multiple unrelated questions, split it.
-7. **Hardcode facts that change.** Use regeneration commands (see AGENTS.md → Project facts).
+7. **Hardcode facts that change.** Prefer generated capability reports and PRODUCT.md over counts in AGENTS.md.
 8. **Update a copy instead of the canonical source.** Always find the canonical source first.
 9. **Leave knowledge unlinked.** Every concept should be in CANONICAL-SOURCES.md.
 10. **Ignore the evolution loop.** Always check if knowledge should change before implementing.
@@ -206,8 +204,8 @@ Before claiming a knowledge update is complete:
 ### Example 1: Adding a New Check Module
 
 **Before implementation:**
-- Check AGENTS.md → Project facts (check module count)
 - Check PRODUCT.md → Current capabilities
+- Check `lib/audit/checks/index.ts` for the live registry
 
 **During implementation:**
 - Add the check module to lib/audit/checks/
@@ -215,7 +213,6 @@ Before claiming a knowledge update is complete:
 - Add check IDs to check-ids.ts
 
 **After implementation:**
-- Update AGENTS.md → Project facts (check module count)
 - Update PRODUCT.md → Current capabilities
 - Update docs/scan-catalog.md (if it exists)
 - Run `npm run audit:capabilities` to verify

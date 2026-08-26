@@ -2,11 +2,11 @@ import type { MetadataRoute } from 'next'
 import { BLOG_POSTS, SITE_URL } from '@/lib/marketing/copy'
 import { INDEXABLE_ROUTES, LLMS_TXT_PATH } from '@/lib/marketing/seo-routes'
 import { getIndexableIssueCheckIds } from '@/lib/graph/queries'
+import { HELP_ARTICLES, HELP_CATEGORIES } from '@/lib/help/catalog'
+import { helpArticlePath } from '@/lib/help/types'
 
 const baseUrl = SITE_URL.replace(/\/$/, '')
 
-// The issue inventory is backed by PostgreSQL and is only available at runtime.
-// Keeping this route dynamic prevents image builds from querying production data.
 export const dynamic = 'force-dynamic'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -19,6 +19,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: route.priority,
   }))
 
+  for (const category of HELP_CATEGORIES) {
+    pages.push({
+      url: `${baseUrl}/help/${category.id}`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    })
+  }
+
+  for (const article of HELP_ARTICLES) {
+    pages.push({
+      url: `${baseUrl}${helpArticlePath(article.categoryId, article.slug)}`,
+      lastModified: article.updatedAt ? new Date(article.updatedAt) : now,
+      changeFrequency: 'monthly',
+      priority: 0.55,
+    })
+  }
+
   for (const post of BLOG_POSTS) {
     pages.push({
       url: `${baseUrl}/blog/${post.slug}`,
@@ -28,7 +46,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })
   }
 
-  // Dynamic issue pages from the knowledge graph.
   const issues = await getIndexableIssueCheckIds()
   for (const issue of issues) {
     pages.push({

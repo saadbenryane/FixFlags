@@ -28,6 +28,8 @@
     "skills:validate": "node scripts/skill-validator.mjs",
     "brand:icons": "node scripts/generate-brand-icons.mjs",
     "seo:guard": "node scripts/seo-guard.mjs",
+    "copy-drift-check": "tsx scripts/copy-drift-check.ts",
+    "help:catalog-guard": "node scripts/help-catalog-guard.mjs",
     "knowledge:duplication-guard": "node scripts/knowledge-duplication-guard.mjs",
     "completeness:audit": "node scripts/completeness-audit.mjs",
     "mcp:quality-gate": "node scripts/mcp-quality-gate.mjs",

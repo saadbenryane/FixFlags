@@ -177,7 +177,7 @@ describe('ProductWorkspace', () => {
     ).toBeInTheDocument()
     expect(screen.getAllByText('Help customers register').length).toBeGreaterThan(0)
     expect(
-      screen.getByRole('link', { name: 'https://example.com' })
+      screen.getByRole('link', { name: 'example.com' })
     ).toHaveAttribute('href', 'https://example.com')
     expect(screen.getByRole('link', { name: /view report/i })).toHaveAttribute(
       'href',
@@ -189,6 +189,27 @@ describe('ProductWorkspace', () => {
     expect(
       screen.getByRole('link', { name: /open watch review/i })
     ).toHaveAttribute('href', '/report/watch-review?view=report')
+    expect(screen.queryByText(/open any point/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Product review')).not.toBeInTheDocument()
+  })
+
+  it('shows the Product purpose without the Help visitors wrapper', () => {
+    render(
+      <ProductWorkspace
+        workspace={{
+          ...workspace,
+          product: {
+            ...workspace.product,
+            purpose: 'Help visitors: I build products, brands, and companies.',
+          },
+        }}
+      />
+    )
+
+    expect(
+      screen.getByText('I build products, brands, and companies.')
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/help visitors:/i)).not.toBeInTheDocument()
   })
 
   it('uses a logical heading hierarchy for nested workspace regions', () => {
@@ -198,7 +219,10 @@ describe('ProductWorkspace', () => {
       screen.getByRole('heading', { level: 2, name: 'Your priorities' })
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Reviews' })
+      screen.getByRole('heading', { level: 2, name: 'Made with' })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Current review' })
     ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { level: 2, name: 'Product understanding' })
@@ -222,14 +246,14 @@ describe('ProductWorkspace', () => {
     expect(
       screen.getByRole('heading', {
         level: 2,
-        name: 'Product context',
+        name: 'Watch and Signals',
       })
     ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { level: 3, name: 'Watch' })
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { level: 3, name: 'Product context' })
+      screen.getByRole('heading', { level: 3, name: 'Signals' })
     ).toBeInTheDocument()
   })
 
@@ -326,7 +350,7 @@ describe('ProductWorkspace', () => {
     )
 
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Reviews' })
+      screen.getByRole('heading', { level: 2, name: 'Progress' })
     ).toBeInTheDocument()
     expect(
       screen.getByText('Change declared: Clarify signup')
@@ -404,10 +428,10 @@ describe('ProductWorkspace', () => {
       />
     )
 
-    expect(screen.getByText('Watch review')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Older history' })).toHaveAttribute(
+    expect(screen.getByText('Latest Watch Review: Completed')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Older reviews' })).toHaveAttribute(
       'href',
-      '/products/product-1?historyCursor=2026-08-13T00%3A00%3A00.000Z%7Creview%3Awatch-review#product-history'
+      '/products/product-1?historyCursor=2026-08-13T00%3A00%3A00.000Z%7Creview%3Awatch-review#current-review-heading'
     )
   })
 

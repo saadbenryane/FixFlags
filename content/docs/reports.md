@@ -27,4 +27,13 @@ After a deployment, an update review captures the live product again and compare
 
 ## Sharing and Watch
 
-Use Copy link in the Export menu to share the public report evidence. Agent chat, fix prompts, Product Memory, account history, and owner actions are not included for other viewers. Scheduled Watch reviews are included on every plan and consume the monthly product review allowance when they complete. If no allowance remains, Watch pauses until renewal or upgrade. For usage or billing questions, see the [Help Center](/help).
+Use Copy link in the Export menu to share the public report evidence. Agent chat, fix prompts, Product Memory, account history, and owner actions are not included for other viewers. Scheduled Watch reviews are included on every plan and consume the monthly product review allowance when they complete. If no allowance remains, Watch pauses until renewal or upgrade.
+
+## Get help
+
+For scores, evidence, and report questions, visit the [Help Center](/help).
+
+- [How to read your report](/help/getting-started/reading-your-report)
+- [Scores and severity](/help/checks-and-reports/scores-and-severity)
+- [Finish Plan vs full Fix list](/help/checks-and-reports/finish-plan-vs-fix-list)
+- [Evidence and screenshots](/help/checks-and-reports/evidence-and-screenshots)

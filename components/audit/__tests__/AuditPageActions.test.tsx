@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 vi.mock('@/components/audit/ExportMenu', () => ({ ExportMenu: () => <div>Export control</div> }))
-vi.mock('@/components/audit/CopyMcpCommand', () => ({ CopyMcpCommand: () => <div>MCP control</div> }))
 
 import { AuditPageActions } from '@/components/audit/AuditPageActions'
 

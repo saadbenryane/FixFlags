@@ -6,6 +6,8 @@ import {
   FlagDetailPane,
 } from '@/components/report/ReportExplorerDetail'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
+import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
+import { useReportAuthGate } from '@/components/auth/ReportAuthGate'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import {
@@ -23,6 +25,15 @@ import { IMPACT_TAG_ORDER, RUBRIC_ORDER, SEVERITY_ORDER, type RubricName } from 
 import { cn } from '@/lib/utils'
 import { usePreviewEvidence } from '@/components/report/preview-evidence-context'
 import type { ReportOwnerActionContext } from '@/components/report/FlagDetailPanel'
+
+function claimNextFromHref(href?: string): string | undefined {
+  if (!href) return undefined
+  try {
+    return new URL(href, 'https://fixflags.local').searchParams.get('next') ?? undefined
+  } catch {
+    return undefined
+  }
+}
 
 function firstCategory(counts: Record<RubricName, number>): RubricName {
   return RUBRIC_ORDER.find((rubric) => counts[rubric] > 0) ?? 'MESSAGE'
@@ -81,6 +92,8 @@ export function ReportExplorer({
   const [severityFilter, setSeverityFilter] = useState<string | null>(null)
   const [impactFilter, setImpactFilter] = useState<string | null>(null)
   const [showAll, setShowAll] = useState(false)
+  const [claimOpen, setClaimOpen] = useState(false)
+  const authGate = useReportAuthGate()
   const initialIndex = initialExplorerFlagIndex(
     model.flags,
     initialFlagIndex,
@@ -92,6 +105,17 @@ export function ReportExplorer({
   const { setSelection } = usePreviewEvidence()
   const demonstratedSelectionApplied = useRef(false)
   const urlStateLoaded = useRef(false)
+
+  function openClaim() {
+    if (authGate) {
+      authGate.open({
+        nextPath: claimNextFromHref(signUpHref),
+        auditId,
+      })
+      return
+    }
+    setClaimOpen(true)
+  }
 
   const writeExplorerUrl = useCallback((state: {
     flag: string | null
@@ -370,9 +394,10 @@ export function ReportExplorer({
             <h2 className="text-sm font-semibold text-foreground">{REPORT_COPY.explorer.prioritiesTitle}</h2>
             <p className="text-xs text-muted-foreground">{REPORT_COPY.explorer.prioritiesHint}</p>
           </div>
-          {model.polishPassPrompt ? (
+          {model.polishPassPrompt || aiLocked ? (
             <PromptCopyButton
-              prompt={model.polishPassPrompt}
+              prompt={aiLocked ? '' : model.polishPassPrompt ?? ''}
+              onLockedAction={aiLocked ? openClaim : undefined}
               label={REPORT_COPY.finishPlan.copyCta}
               kind="plan"
               compact
@@ -440,11 +465,19 @@ export function ReportExplorer({
           id="selected-flag-detail"
           aria-live="polite"
           aria-atomic="true"
-          className="min-w-0 border-t border-border/30 pt-5 scrollbar-thin @[40rem]/pane:min-h-0 @[40rem]/pane:overflow-y-auto @[40rem]/pane:border-t-0 @[40rem]/pane:pr-1 @[40rem]/pane:pt-0"
+          className="flex min-h-0 min-w-0 flex-col border-t border-border/30 pt-5 @[40rem]/pane:border-t-0 @[40rem]/pane:pt-0"
         >
           {detailPane}
         </div>
       </div>
+      <ReportClaimDialog
+        open={authGate ? false : claimOpen}
+        onOpenChange={setClaimOpen}
+        nextPath={claimNextFromHref(signUpHref)}
+        from="report"
+        auditId={auditId}
+        reason="create-account"
+      />
     </div>
   )
 }

@@ -26,7 +26,14 @@ export const contexts = {
   },
   ui: {
     description: 'Change report or application UI without drifting from the design system.',
-    files: ['DESIGN.md', 'lib/design/tokens.css', 'components/audit/', 'components/report/'],
+    files: [
+      'knowledge/report-contract.md',
+      'PRODUCT.md',
+      'DESIGN.md',
+      'lib/design/tokens.css',
+      'components/audit/',
+      'components/report/',
+    ],
     commands: ['npm run ui:drift-guard', 'npm run agent -- verify'],
   },
   audit: {
@@ -86,7 +93,7 @@ export const contexts = {
     commands: ['npm run agent -- eval auth', 'npm run agent -- verify --dry-run'],
   },
   security: {
-    description: 'Review access control, protected sharing, webhooks, secrets, middleware, and release boundaries.',
+    description: 'Review access control, public reports, legacy share compatibility, webhooks, secrets, middleware, and release boundaries.',
     files: ['SECURITY.md', 'lib/security/', 'middleware.ts', 'app/api/webhooks/'],
     commands: ['npm run agent -- eval security', 'npm run agent -- verify --dry-run'],
   },

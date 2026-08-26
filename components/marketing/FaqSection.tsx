@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import type { Route } from 'next'
 import { Search } from 'lucide-react'
 import {
   Accordion,
@@ -11,15 +12,11 @@ import {
 import { IconInput } from '@/components/ui/icon-input'
 import { cn } from '@/lib/utils'
 import { Heading } from '@/components/ui/typography'
-import { FAQ_SECTION } from '@/lib/marketing/copy'
-
-export interface FaqItem {
-  question: string
-  answer: string
-}
+import { TextLink } from '@/components/ui/text-link'
+import { FAQ_SECTION, type FaqEntry } from '@/lib/marketing/copy/faq'
 
 interface Props {
-  items: readonly FaqItem[]
+  items: readonly FaqEntry[]
   title?: string
   /** Uppercase label above title (hidden when title is empty) */
   sectionLabel?: string | null
@@ -116,7 +113,14 @@ export function FaqSection({
               {highlightMatch(item.question, query)}
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-4 pt-0">
-              {highlightMatch(item.answer, query)}
+              <p className="text-sm text-muted-foreground text-pretty">
+                {highlightMatch(item.answer, query)}
+              </p>
+              {item.learnMore ? (
+                <p className="mt-2 text-sm">
+                  <TextLink href={item.learnMore.href as Route}>{item.learnMore.label}</TextLink>
+                </p>
+              ) : null}
             </AccordionContent>
           </AccordionItem>
         ))}

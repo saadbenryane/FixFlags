@@ -26,3 +26,9 @@ If a report is still running, keep that report open while its current state upda
 ## Get help
 
 For billing, account, privacy, failed Product Reviews, or human support, visit the [Help Center](/help).
+
+- [Why a product review failed](/help/checks-and-reports/why-check-failed)
+- [Public URLs only](/help/checks-and-reports/public-urls-only)
+- [Review stuck on Running](/help/checks-and-reports/stuck-running-review)
+- [Payment past due](/help/billing-and-plans/payment-past-due)
+- [Contact us](/help/account/contact-us)

@@ -3,6 +3,7 @@
 import { AUTH } from '@/lib/marketing/copy'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { PasskeyTwoFactorSettings } from '@/components/settings/PasskeyTwoFactorSettings'
 
 interface Props {
   email: string
@@ -10,6 +11,7 @@ interface Props {
   hasPassword: boolean
   passkeyCount: number
   linkedProviders: string[]
+  twoFactorEnabled: boolean
 }
 
 export function ConnectedAccounts({
@@ -18,10 +20,15 @@ export function ConnectedAccounts({
   hasPassword,
   passkeyCount,
   linkedProviders,
+  twoFactorEnabled,
 }: Props) {
   const isGoogle = linkedProviders.includes('google')
   const isGithub = linkedProviders.includes('github')
-  const primaryMethod = isGoogle ? AUTH.connectedAccounts.google : isGithub ? AUTH.connectedAccounts.github : null
+  const primaryMethod = isGoogle
+    ? AUTH.connectedAccounts.google
+    : isGithub
+      ? AUTH.connectedAccounts.github
+      : null
 
   const methods = [
     {
@@ -37,12 +44,11 @@ export function ConnectedAccounts({
     {
       label: AUTH.connectedAccounts.password,
       connected: hasPassword,
-      detail: hasPassword ? (emailVerified ? AUTH.connectedAccounts.connected : AUTH.connectedAccounts.notConnected) : AUTH.connectedAccounts.noPassword,
-    },
-    {
-      label: AUTH.connectedAccounts.passkeys,
-      connected: passkeyCount > 0,
-      detail: AUTH.connectedAccounts.passkeyCount(passkeyCount),
+      detail: hasPassword
+        ? emailVerified
+          ? AUTH.connectedAccounts.connected
+          : AUTH.connectedAccounts.notConnected
+        : AUTH.connectedAccounts.noPassword,
     },
   ]
 
@@ -60,7 +66,9 @@ export function ConnectedAccounts({
               <p className="text-xs text-muted-foreground">{method.detail}</p>
             </div>
             <Badge variant={method.connected ? 'default' : 'secondary'}>
-              {method.connected ? AUTH.connectedAccounts.connected : AUTH.connectedAccounts.notConnected}
+              {method.connected
+                ? AUTH.connectedAccounts.connected
+                : AUTH.connectedAccounts.notConnected}
             </Badge>
           </li>
         ))}
@@ -70,6 +78,12 @@ export function ConnectedAccounts({
           {AUTH.connectedAccounts.signedInVia(primaryMethod)}
         </p>
       )}
+      <div className="mt-6 border-t border-border/60 pt-6">
+        <PasskeyTwoFactorSettings
+          twoFactorEnabled={twoFactorEnabled}
+          hasPassword={hasPassword}
+        />
+      </div>
     </Card>
   )
 }

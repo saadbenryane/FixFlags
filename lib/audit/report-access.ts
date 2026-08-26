@@ -1,6 +1,7 @@
 import { canSharePublicly } from '@/lib/auth/entitlements'
 import { prisma } from '@/lib/db'
 import { flagHasFixPrompt, type RankableFlag } from '@/lib/audit/priority-flags'
+import { severityRank } from '@/lib/utils'
 
 type AiAccessAudit = {
   userId: string | null
@@ -154,12 +155,6 @@ export function stripDeterministicFixesFromRubrics<T extends RubricLike>(rubrics
   }))
 }
 
-const SEVERITY_RANK: Record<string, number> = {
-  CRITICAL: 0,
-  IMPORTANT: 1,
-  POLISH: 2,
-}
-
 /** Find the highest-severity flag with a usable (non-placeholder) fix prompt. */
 export function findHighestSeverityFlagWithFix<T extends FlagLike>(flags: T[]): T | null {
   const withFix = flags.filter((f) =>
@@ -182,7 +177,7 @@ export function findHighestSeverityFlagWithFix<T extends FlagLike>(flags: T[]): 
   )
   if (withFix.length === 0) return null
   return withFix.sort(
-    (a, b) => (SEVERITY_RANK[a.severity as string] ?? 99) - (SEVERITY_RANK[b.severity as string] ?? 99)
+    (a, b) => severityRank(String(a.severity ?? '')) - severityRank(String(b.severity ?? ''))
   )[0]
 }
 

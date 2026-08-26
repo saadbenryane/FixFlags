@@ -114,7 +114,7 @@ describe('FlagDetailPane', () => {
     expect(screen.getAllByText((content) => content.includes(flagWithEvidence.evidence))).toHaveLength(1)
   })
 
-  it('keeps Copy prompt above the desktop and mobile comparison pair', () => {
+  it('keeps Copy prompt below the desktop and mobile comparison pair', () => {
     renderWithProviders(
       <FlagDetailPane
         model={MODEL}
@@ -130,7 +130,7 @@ describe('FlagDetailPane', () => {
     const comparison = document.querySelector('[data-comparison-state]')
     expect(comparison).not.toBeNull()
     expect(
-      copyPrompt.compareDocumentPosition(comparison!) & Node.DOCUMENT_POSITION_FOLLOWING
+      comparison!.compareDocumentPosition(copyPrompt) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy()
   })
 

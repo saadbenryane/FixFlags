@@ -17,7 +17,6 @@ const PARKED_POWER_TOOL_PREFIXES = [
   '/docs/integrations',
   '/docs/cli',
   '/docs/mcp',
-  '/help/mcp',
   '/help/mcp-and-editors',
   '/api/api-keys',
   '/api/cli',

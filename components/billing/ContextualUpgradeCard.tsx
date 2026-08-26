@@ -5,10 +5,12 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardTitle } from '@/components/ui/card'
 import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
+import { HelpSupportActions } from '@/components/help/HelpSupportActions'
 import {
   getUpgradeMomentContent,
   type UpgradeMoment,
 } from '@/lib/billing/upgrade-moments'
+import { helpHrefForLimitAction, helpHrefForSurface } from '@/lib/help/contextual'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import { cn } from '@/lib/utils'
 
@@ -22,6 +24,15 @@ interface Props {
   className?: string
   userEmail?: string
   auditId?: string
+  helpHref?: Route
+}
+
+function resolveHelpHref(moment: UpgradeMoment, helpHref?: Route): Route {
+  if (helpHref) return helpHref
+  if (moment === 'audit_limit_reached') {
+    return helpHrefForSurface('audit_limit')
+  }
+  return helpHrefForLimitAction('upgrade')
 }
 
 export function ContextualUpgradeCard({
@@ -34,10 +45,12 @@ export function ContextualUpgradeCard({
   className,
   userEmail,
   auditId,
+  helpHref,
 }: Props) {
   const content = getUpgradeMomentContent(moment, { scoreDelta })
   const signUpHref =
     content.plan === 'TEAM' ? '/sign-up?plan=TEAM' : '/sign-up?plan=BUILDER'
+  const resolvedHelpHref = resolveHelpHref(moment, helpHref)
 
   useOneShotEvent(
     'audit_limit_reached',
@@ -80,6 +93,7 @@ export function ContextualUpgradeCard({
             />
           </div>
         ))}
+      <HelpSupportActions helpHref={resolvedHelpHref} className="justify-center pt-1" />
     </Card>
   )
 }

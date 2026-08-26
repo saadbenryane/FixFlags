@@ -30,7 +30,11 @@ Report pages: `Container variant="report"` (`max-w-6xl`). Marketing: `default` (
 
 ## Report hierarchy
 
-Read `knowledge/report-contract.md`. `/report/[id]` is the focused three-item Finish Plan. `/report/[id]/details` is the full inspection workspace. Anonymous viewers get three problem/evidence summaries and exactly one complete fix. Keep advanced controls off the first-use surface. Progressive UI builds toward three plan cards. Verify 375, 768, and 1280px plus keyboard, zoom/reflow, loading, partial, error, and reduced-motion states.
+Read `knowledge/report-contract.md`. That file is the only report IA source.
+
+`/report/[id]` is Agent beside Report with the complete ranked Fix list. Preview, Timeline, and Canvas stay parked on the default route and are not loaded there.
+
+Anonymous viewers see evidence and gated Copy chrome; prompt bodies stay omitted until claim. Verify 375, 768, and 1280px plus keyboard, zoom/reflow, loading, partial, error, and reduced-motion states.
 
 ## Radius
 

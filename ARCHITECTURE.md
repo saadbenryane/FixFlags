@@ -115,7 +115,7 @@ Each page in an audit progresses through these stages independently.
 | `lib/audit/tech-detect.ts` | Technology detection engine |
 | `lib/prompts/system-prompt.ts` | AI prompts (triage + prescription) |
 
-### Check modules (22)
+### Check modules
 
 Metadata, og-image, performance, accessibility, seo, trust, mobile, content, slop, layout, interaction, cta-focus, measurement, auth-checkout, security, visual-polish, security-headers, messaging-clarity, conversion-friction, trust-psychology, visual-hierarchy, mobile-ux-quality
 
@@ -233,10 +233,10 @@ Playwright Chromium via `lib/audit/screenshot.ts` + `lib/audit/browser/page-sess
 
 ### Support and Help Center
 
-- **Documentation and Help:** public product documentation lives under `/docs`, including the canonical `/docs/integrations` and `/docs/mcp` guides. `/help` remains the support surface for billing, account, failed checks, privacy, and human support. `/help/mcp` permanently redirects to `/docs/integrations`.
-- **FAQ:** `/faq` remains a searchable FAQ projection (`FAQ` in copy.ts) with a link into Help.
-- **Live chat:** `SupportProvider` in `SiteShell` + FAB widget. APIs under `/api/support/*`. Admin inbox: `/admin/feedback`. Welcome SYSTEM message from `lib/help/sla.ts` / `SUPPORT_CHAT`.
-- **Escalation:** Help articles and stuck surfaces (`AuditFailurePanel`, limit gate, billing) call `openSupportChat` or deep-link to articles via `lib/help/contextual.ts`.
+- **Documentation and Help:** public product documentation lives under `/docs` (getting started, reports, troubleshooting). `/help` is the support surface for billing, account, failed checks, privacy, and human support. `/faq` is a searchable FAQ projection with `learnMore` links into Help. Content ownership and cross-link rules live in `docs/knowledge-base-ia.md`.
+- **Unified search:** `KnowledgeSearch` indexes help articles and docs pages via `lib/knowledge/index.ts` (`buildKnowledgeIndex()`). Search appears on `/help`, help category/article pages, and the docs sidebar.
+- **Live chat:** `SupportProvider` wraps knowledge routes (`/help`, `/faq`, `/docs`) and the authenticated app shell. APIs under `/api/support/*`. Admin inbox: `/admin/feedback`. Welcome SYSTEM message from `lib/help/sla.ts` / `SUPPORT_CHAT`.
+- **Escalation:** Help articles and stuck surfaces (`AuditFailurePanel`, limit gate, billing, usage meter, report errors) call `openSupportChat` or deep-link to articles via `lib/help/contextual.ts`. `HelpChatEscalate` hides the chat button when no provider is mounted and links to contact-us instead.
 - **Email:** `hello@fixflags.com` for legal/high-volume. Payment failure notifies admin + user (`lib/billing/notify.ts`).
 
 ### SaaS flow

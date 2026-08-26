@@ -10,7 +10,7 @@ import { readDocsMarkdown } from '@/lib/docs/content'
 
 const MARKDOWN_PAGES = DOCS_PAGES.filter(
   (page): page is DocsPageDefinition & { source: string } =>
-    Boolean(page.source && page.path !== '/docs' && page.key !== 'cli')
+    Boolean(page.source && page.path !== '/docs')
 )
 
 function pageFromSlug(slug: string) {

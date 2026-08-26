@@ -1,5 +1,6 @@
 import { OFFER } from './brand'
 import { PRICING_COPY } from './terminology'
+import type { FaqEntry } from './faq'
 
 /**
  * Marketing plan display data. Defined here (not in lib/billing/plans) so the
@@ -79,54 +80,87 @@ export const PLANS = [
   },
 ] as const
 
-export const PRICING_FAQ = [
+export const PRICING_FAQ: readonly FaqEntry[] = [
   {
     question: 'Can I start free and upgrade later?',
     answer: `Yes. ${OFFER.line} Upgrade when you need more product reviews each month.`,
+    learnMore: {
+      href: '/help/billing-and-plans/upgrade-or-downgrade',
+      label: 'Upgrade or downgrade your plan',
+    },
   },
   {
     question: 'What counts as a product review?',
     answer:
       'Each time FixFlags reviews a live URL and produces a report, it uses one review from your monthly allowance. That includes reviewing a product for the first time, reviewing it again after changes, and a completed scheduled review on Studio. Failed runs that never produce a report do not count.',
+    learnMore: {
+      href: '/help/billing-and-plans/what-counts-as-a-check',
+      label: 'What counts as a product review',
+    },
   },
   {
     question: 'Can I review a product again after I change it?',
     answer:
       'Yes. Review the live product again to see what changed and what improved. Each completed review uses one review from your monthly allowance.',
+    learnMore: {
+      href: '/help/billing-and-plans/update-review-credits',
+      label: 'How update reviews use credits',
+    },
   },
   {
     question: 'Are reports public or private?',
     answer: OFFER.reportAccess,
+    learnMore: { href: '/help/account/report-privacy', label: 'Report access' },
   },
   {
     question: 'Are screenshots stored?',
     answer:
       'Yes. We store screenshots and page evidence needed to show Flags and before/after comparisons. See the Privacy Policy for retention details.',
+    learnMore: {
+      href: '/help/checks-and-reports/evidence-and-screenshots',
+      label: 'Evidence and screenshots',
+    },
   },
   {
     question: 'How long are reports saved?',
     answer:
       'Reports saved to your account stay in your history while the account is active. Anonymous reports you never save may be removed after a retention window.',
+    learnMore: {
+      href: '/help/getting-started/anonymous-report-access',
+      label: 'Anonymous vs signed-in report access',
+    },
   },
   {
     question: 'Can I cancel anytime?',
     answer:
       'Yes. Cancel from billing settings and keep access through the end of the current billing period.',
+    learnMore: {
+      href: '/help/billing-and-plans/cancel-or-manage',
+      label: 'Cancel or manage billing',
+    },
   },
   {
     question: 'What happens when I hit my limit?',
     answer:
       'Product reviews pause until your monthly allowance renews or you upgrade. Usage does not roll over.',
+    learnMore: {
+      href: '/help/billing-and-plans/when-credits-run-out',
+      label: 'When product reviews run out',
+    },
   },
   {
     question: 'Do I need a specific AI builder?',
     answer:
       'No. Every full report includes evidence-backed fix prompts you can paste into Lovable or the builder you already use.',
+    learnMore: {
+      href: '/help/getting-started/first-check',
+      label: 'Run your first product review',
+    },
   },
   {
     question: 'What\u2019s included in every plan?',
-    answer:
-      'Every Product Review includes prioritized Flags, evidence, and fix prompts. You can review the live product again after a change to see what improved. Product capacity, release history, scheduling, and workspace access depend on the plan.',
+    answer: `Free includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month for one product. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}) includes ${PRICING_COPY.proProductReviewsPerMonth} reviews across up to five products. Studio (${PRICING_COPY.studioPrice}${PRICING_COPY.studioPeriod}) includes ${PRICING_COPY.studioProductReviewsPerMonth} reviews per month with unlimited products, scheduled reviews, and a shared workspace.`,
+    learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
   },
 ] as const
 

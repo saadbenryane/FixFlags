@@ -13,6 +13,7 @@ import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { ROAST_COPY } from '@/lib/marketing/copy'
 import { gradeFromScore } from '@/lib/audit/scoring'
 import { generateBadgeSvg, hostnameFromUrl } from '@/lib/design/badge-svg'
+import { severityRank } from '@/lib/utils'
 
 interface RoastResult {
   url: string
@@ -150,11 +151,8 @@ export async function POST(req: NextRequest) {
         : 0
     const overallGrade = gradeFromScore(overallScore)
 
-    const severityOrder = { CRITICAL: 0, IMPORTANT: 1, POLISH: 2 } as const
     const topIssues = [...audit.flags].sort(
-      (a, b) =>
-        (severityOrder[a.severity as keyof typeof severityOrder] ?? 3) -
-        (severityOrder[b.severity as keyof typeof severityOrder] ?? 3)
+      (a, b) => severityRank(a.severity) - severityRank(b.severity)
     )
 
     const result: RoastResult = {

@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { PRICING_COPY } from '@/lib/marketing/copy/terminology'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
-import { PLANS, PRICING } from '@/lib/marketing/copy/plans'
+import { PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy/plans'
 import { AUTH, SCAN_LIMIT_GATE } from '@/lib/marketing/copy/auth'
 import { SEO } from '@/lib/marketing/copy/seo'
 
@@ -113,5 +113,19 @@ describe('pricing parity', () => {
 
     expect(customerSurfaces).not.toMatch(/deep reviews? (?:per month|included|allowance)/i)
     expect(customerSurfaces).toMatch(/product reviews? per month/i)
+  })
+
+  it('links pricing FAQ entries to help articles with PRICING_COPY numbers', () => {
+    expect(PRICING_FAQ.length).toBeGreaterThan(0)
+    expect(PRICING_FAQ.every((entry) => entry.learnMore?.href && entry.learnMore.label)).toBe(true)
+
+    const includedPlanAnswer = PRICING_FAQ.find(
+      (entry) => entry.question === 'What\u2019s included in every plan?',
+    )!
+    expect(includedPlanAnswer.answer).toContain(String(PRICING_COPY.freeProductReviewsPerMonth))
+    expect(includedPlanAnswer.answer).toContain(PRICING_COPY.proPrice)
+    expect(includedPlanAnswer.answer).toContain(String(PRICING_COPY.proProductReviewsPerMonth))
+    expect(includedPlanAnswer.answer).toContain(PRICING_COPY.studioPrice)
+    expect(includedPlanAnswer.answer).toContain(String(PRICING_COPY.studioProductReviewsPerMonth))
   })
 })

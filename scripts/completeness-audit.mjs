@@ -238,7 +238,6 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
     'components/report/ReportFinishPlan.tsx',
     'components/audit/ProductMemoryStrip.tsx',
     'components/audit/RecheckDiffStrip.tsx',
-    'components/audit/FlowScanTimeline.tsx',
     'components/audit/LaunchGates.tsx',
   ].map((file) => read(root, file)).join('\n')
   // Report pane order: outcome header → shared pane/explorer. Product context is on the Product page.
@@ -271,7 +270,7 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
   for (const forbidden of ['location.search', 'innerText', 'outerHTML', 'event.target', 'document.cookie']) {
     assert(!signalClient.includes(forbidden), `Product Signal client captures forbidden data: ${forbidden}`)
   }
-  assert(schema.includes('passwordHash') && !/model ShareLink[\s\S]*?\n\}/.exec(schema)?.[0].includes('password     '), 'ShareLink passwordHash contract drift')
+  assert(schema.includes('model ShareLink'), 'Legacy ShareLink model missing; leftover token reads still need it')
   assert(!read(root, 'app/api/projects/route.ts').includes('isAnchor'), 'Managed quota still uses isAnchor')
   assert(!read(root, 'components/audit/ExportMenu.tsx').includes('limit: null'), 'Finish Plan still uses limit:null')
 

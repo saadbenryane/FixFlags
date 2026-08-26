@@ -224,7 +224,6 @@ test('unknown share tokens render an unavailable or not-found state', async ({ p
 
 test('parked power-tool docs and setup surfaces return not found', async ({ request }) => {
   for (const path of [
-    '/help/mcp',
     '/help/mcp-and-editors',
     '/docs/mcp',
     '/docs/cli',
@@ -235,6 +234,12 @@ test('parked power-tool docs and setup surfaces return not found', async ({ requ
     const response = await request.get(path, { maxRedirects: 0 })
     expect(response.status(), path).toBe(404)
   }
+})
+
+test('/help/mcp redirects to the help hub', async ({ request }) => {
+  const response = await request.get('/help/mcp', { maxRedirects: 0 })
+  expect(response.status()).toBe(308)
+  expect(response.headers()['location']).toMatch(/\/help$/)
 })
 
 test('auth and pricing entry points render without client errors', async ({ page }) => {

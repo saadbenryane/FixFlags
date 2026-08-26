@@ -28,6 +28,11 @@ const products: ProductOverviewDTO[] = [
       completedAt: '2026-08-13T00:01:00.000Z',
       failureMessage: null,
     },
+    desktopScreenshotUrl: '/api/screenshots/review-alpha/desktop',
+    scoreHistory: [
+      { id: 'review-alpha-earlier', score: 70, at: '2026-08-01T00:00:00.000Z' },
+      { id: 'review-alpha', score: 82, at: '2026-08-13T00:01:00.000Z' },
+    ],
   },
   {
     id: 'product-beta',
@@ -48,6 +53,10 @@ const products: ProductOverviewDTO[] = [
       completedAt: '2026-08-12T00:01:00.000Z',
       failureMessage: null,
     },
+    desktopScreenshotUrl: null,
+    scoreHistory: [
+      { id: 'review-beta', score: 44, at: '2026-08-12T00:01:00.000Z' },
+    ],
   },
 ]
 
@@ -72,7 +81,14 @@ describe('ProductOverviewGrid', () => {
     expect(
       screen.getByRole('heading', { level: 3, name: 'Beta' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('https://alpha.example')).toBeInTheDocument()
+    expect(screen.getByText('alpha.example')).toBeInTheDocument()
+    expect(
+      container.querySelector('img[src="/api/screenshots/review-alpha/desktop"]'),
+    ).toBeTruthy()
+    expect(
+      screen.getByRole('link', { name: /score trend 70 to 82/i }),
+    ).toBeInTheDocument()
+    expect(container.querySelector('polyline')).toBeTruthy()
     expect(
       container.querySelector('.lucide-circle-alert'),
     ).not.toBeInTheDocument()
@@ -111,6 +127,9 @@ describe('ProductOverviewGrid', () => {
 
     const section = screen.getByRole('region', { name: 'Your Products' })
     expect(within(section).getByText('No Products yet')).toBeInTheDocument()
+    expect(
+      within(section).getByRole('link', { name: 'Run your first product review' }),
+    ).toHaveAttribute('href', '/help/getting-started/first-check')
     expect(within(section).queryByText('Alpha')).not.toBeInTheDocument()
   })
 })

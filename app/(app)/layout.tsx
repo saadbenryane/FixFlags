@@ -28,7 +28,7 @@ export default async function AppLayout({
 
   return (
     <MeProvider initialUser={initialUser}>
-      <SiteShell variant="app" showAdmin={showAdmin} showSupport={false}>
+      <SiteShell variant="app" showAdmin={showAdmin} showSupport>
         {children}
       </SiteShell>
     </MeProvider>

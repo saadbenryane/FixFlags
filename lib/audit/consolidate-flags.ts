@@ -1,13 +1,8 @@
 import type { RankableFlag } from './flag-types'
 import { baseCheckId, durableCheckId } from './flag-identity'
+import { severityRank } from '@/lib/utils'
 
 export { baseCheckId, durableCheckId } from './flag-identity'
-
-const SEVERITY_RANK: Record<string, number> = {
-  CRITICAL: 3,
-  IMPORTANT: 2,
-  POLISH: 1,
-}
 
 export interface ConsolidatedFlag extends RankableFlag {
   occurrenceCount: number
@@ -35,8 +30,7 @@ function selectRepresentative(
   // Highest severity wins so a CRITICAL occurrence is never diluted by a POLISH
   // sibling of the same check on another page. Confidence is the tie-break.
   return [...flags].sort((left, right) => {
-    const severity =
-      (SEVERITY_RANK[right.severity] ?? 0) - (SEVERITY_RANK[left.severity] ?? 0)
+    const severity = severityRank(left.severity) - severityRank(right.severity)
     if (severity !== 0) return severity
     return (right.confidence ?? 0) - (left.confidence ?? 0)
   })[0]!

@@ -21,7 +21,6 @@ export const PARKED_PUBLIC_PREFIXES = [
   '/docs/cli',
   '/docs/integrations',
   '/docs/mcp',
-  '/help/mcp',
   '/help/mcp-and-editors',
   '/report/repo',
   '/settings/api-keys',
@@ -65,7 +64,7 @@ function discoveryFiles(root) {
   return [...new Set(files)].filter((file) => {
     if (!existsSync(file) || file.includes(`${path.sep}__tests__${path.sep}`)) return false
     if (/(?:dashboard[\\/]mcp-|settings[\\/](?:api-keys|integrations)|docs[\\/](?:cli|mcp|integrations)|help[\\/]mcp)/.test(file)) return false
-    if (/(?:lib[\\/]help[\\/]catalog|CopyMcpCommand|McpConnectionTest)\.tsx?$/.test(file)) return false
+    if (/(?:lib[\\/]help[\\/]catalog)\.tsx?$/.test(file)) return false
     return !/(?:copy[\\/]auth|copy[\\/]brand|copy[\\/]tools)\.ts$/.test(file)
   })
 }

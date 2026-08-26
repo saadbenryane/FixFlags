@@ -43,15 +43,11 @@ export function inferProductContract(
   const h1 = metadata?.h1s?.[0]?.trim() || ''
   const pageText = metadata?.pageText?.trim() || ''
 
-  const purposeSeed =
+  const purpose =
     firstSentence(description) ||
     firstSentence(h1) ||
     firstSentence(title) ||
-    `Help visitors get value from ${host}`
-
-  const purpose = purposeSeed.toLowerCase().startsWith('help')
-    ? purposeSeed
-    : `Help visitors: ${purposeSeed}`
+    host
 
   const pathHint = (() => {
     try {
@@ -89,6 +85,21 @@ export function inferProductContract(
     inferredAt: new Date().toISOString(),
     source: 'heuristic',
   }
+}
+
+/**
+ * Customer-facing purpose. Drops the old "Help visitors:" inference wrapper
+ * and hides the generic fallback that does not describe the Product.
+ */
+export function displayProductPurpose(
+  purpose: string | null | undefined
+): string | null {
+  if (!purpose) return null
+  const trimmed = purpose.replace(/\s+/g, ' ').trim()
+  if (!trimmed) return null
+  if (/^help visitors get value from\b/i.test(trimmed)) return null
+  const readable = trimmed.replace(/^help visitors:\s*/i, '').trim()
+  return readable || null
 }
 
 export function parseProductContract(data: unknown): ProductContract | null {

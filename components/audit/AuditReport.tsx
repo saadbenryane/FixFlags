@@ -37,7 +37,6 @@ import type { FlowData } from '@/lib/audit/flow-data'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
-import { resolveReportPromptProjection } from '@/lib/report/prompt-access'
 import type { JourneyPage } from '@/components/audit/JourneyBar'
 import type { JourneyReviewSummary } from '@/components/audit/JourneyReviewTimeline'
 import { ReportAuthGateTracker } from '@/components/analytics/ReportAuthGateTracker'
@@ -47,7 +46,7 @@ import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import type { AgentMessage } from '@/lib/audit/agent-message'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
-import { resolveReportChatGate, type AuditAccessContext } from '@/lib/audit/access'
+import { resolveReportSurfaceCapabilities, type AuditAccessContext } from '@/lib/audit/access-capabilities'
 
 interface RubricRow {
   id: string
@@ -166,10 +165,13 @@ export function AuditReport({
   const isRepositorySample =
     isSample && audit.accessContext === 'repository_sample'
   const isOwnerAccess = audit.accessContext === 'owner'
-  const chatGate = resolveReportChatGate({
+  const surface = resolveReportSurfaceCapabilities({
     accessContext: audit.accessContext,
     isLoggedIn,
+    isRepositorySample,
   })
+  const chatGate = surface.chat
+  const promptProjection = surface.prompt
   const signUpHref = auditId
     ? `/sign-up?next=/report/${auditId}&from=report`
     : '/sign-up?from=report'
@@ -185,13 +187,6 @@ export function AuditReport({
   // Server strip is the only entitlement; never unlock via client sessionStorage.
   const fixPromptLocked = !showDeterministicFixes
   const demonstratedFlag = sampleFixFlag
-  const promptProjection = resolveReportPromptProjection(
-    isRepositorySample
-      ? 'curated-sample'
-      : isOwnerAccess
-        ? 'owner'
-        : 'live-anonymous'
-  )
 
   const upgradeMoment =
     !isSample && isLoggedIn && !viewerIsPaid

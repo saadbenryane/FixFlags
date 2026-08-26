@@ -1,13 +1,13 @@
-import type { DocsSearchEntry } from '@/lib/docs/content'
+import type { KnowledgeSearchEntry } from '@/lib/knowledge/search'
 import { DocsMobileNavigation } from '@/components/docs/DocsMobileNavigation'
 import { DocsNavigation } from '@/components/docs/DocsNavigation'
-import { DocsSearch } from '@/components/docs/DocsSearch'
+import { KnowledgeSearch } from '@/components/help/KnowledgeSearch'
 
 export function DocsShell({
   entries,
   children,
 }: {
-  entries: readonly DocsSearchEntry[]
+  entries: readonly KnowledgeSearchEntry[]
   children: React.ReactNode
 }) {
   return (
@@ -16,7 +16,7 @@ export function DocsShell({
       <div className="mx-auto grid w-full max-w-[96rem] lg:grid-cols-[17rem_minmax(0,1fr)]">
         <aside className="hidden border-r border-border/50 px-5 py-8 lg:block">
           <div className="sticky top-[calc(var(--header-height-marketing)+2rem)] space-y-8">
-            <DocsSearch entries={entries} compact />
+            <KnowledgeSearch entries={entries} placeholder="Search help and docs" />
             <DocsNavigation />
           </div>
         </aside>

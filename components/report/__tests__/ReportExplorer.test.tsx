@@ -267,7 +267,7 @@ describe('ReportExplorer anonymous teaser', () => {
       </MeProvider>
     )
 
-    const copyAll = screen.getByRole('button', { name: /Copy Finish Plan/i })
+    const copyAll = screen.getByRole('button', { name: /Copy all/i })
     fireEvent.click(copyAll)
     await waitFor(() => {
       expect(writeText).toHaveBeenCalled()
@@ -278,5 +278,27 @@ describe('ReportExplorer anonymous teaser', () => {
     expect(copied).toMatch(/2\. /)
     expect(copied).toContain('CTA below fold')
     expect(copied).toContain('Generic headline')
+  })
+
+  it('gates Copy all to create-account when prompts are locked', async () => {
+    writeText.mockClear()
+    render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer
+          model={{
+            ...model,
+            polishPassPrompt: `${AGENT_COPY_LEAD}\n\n1. Fix the CTA.`,
+            flags: [locked, demonstrated],
+            flagCount: 2,
+          }}
+          aiLocked
+          signUpHref="/sign-in?next=%2Fsamples"
+        />
+      </MeProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /^Copy all$/i }))
+    expect(await screen.findAllByText('Create your free account')).not.toHaveLength(0)
+    expect(writeText).not.toHaveBeenCalled()
   })
 })

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import type { ProductContract } from '@/lib/audit/product-contract'
+import { displayProductPurpose, type ProductContract } from '@/lib/audit/product-contract'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
 import { cn } from '@/lib/utils'
@@ -150,7 +150,9 @@ export function ProductContractCard({
         </div>
       ) : (
         <>
-          <p className="mt-2 text-sm text-foreground/90">{contract.purpose}</p>
+          <p className="mt-2 text-sm text-foreground/90">
+            {displayProductPurpose(contract.purpose) ?? contract.purpose}
+          </p>
           <p className="mt-3 text-sm text-muted-foreground">
             <span className="font-medium text-foreground">First-value journey:</span>{' '}
             {contract.firstValueJourney}

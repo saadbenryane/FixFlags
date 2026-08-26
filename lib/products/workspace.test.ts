@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   projectFindFirst: vi.fn(),
   auditFindFirst: vi.fn(),
   auditFindMany: vi.fn(),
+  auditFindUnique: vi.fn(),
   attemptFindMany: vi.fn(),
   occurrenceFindMany: vi.fn(),
   loadTechnologyProfile: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock('@/lib/db', () => ({
     audit: {
       findFirst: mocks.auditFindFirst,
       findMany: mocks.auditFindMany,
+      findUnique: mocks.auditFindUnique,
     },
     improvementAttempt: { findMany: mocks.attemptFindMany },
     improvementOccurrence: { findMany: mocks.occurrenceFindMany },
@@ -35,6 +37,7 @@ import {
   loadVerificationReceiptsForReview,
   parseProductHistoryCursor,
   PRODUCT_HISTORY_PAGE_SIZE,
+  PRODUCT_OVERVIEW_REVIEW_WINDOW,
 } from './workspace'
 
 const now = new Date('2026-08-20T12:00:00.000Z')
@@ -121,6 +124,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.auditFindFirst.mockResolvedValue(null)
   mocks.auditFindMany.mockResolvedValue([])
+  mocks.auditFindUnique.mockResolvedValue(null)
   mocks.attemptFindMany.mockResolvedValue([])
   mocks.occurrenceFindMany.mockResolvedValue([])
 })
@@ -241,6 +245,14 @@ describe('loadProductOverview', () => {
       }),
     ])
     expect(products[0]).not.toHaveProperty('latestVerification')
+    expect(products[0]?.desktopScreenshotUrl).toBeNull()
+    expect(products[0]?.scoreHistory).toEqual([
+      {
+        id: 'review-a',
+        score: 70,
+        at: now.toISOString(),
+      },
+    ])
     expect(mocks.projectFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId: 'user-1' },
@@ -249,7 +261,7 @@ describe('loadProductOverview', () => {
             where: {
               OR: [{ recheckTrigger: null }, { recheckTrigger: 'MANUAL' }],
             },
-            take: 1,
+            take: PRODUCT_OVERVIEW_REVIEW_WINDOW,
           }),
           improvements: expect.objectContaining({
             where: {
@@ -261,6 +273,60 @@ describe('loadProductOverview', () => {
         }),
       })
     )
+  })
+
+  it('attaches the latest completed capture and chronological scores', async () => {
+    const earlier = new Date('2026-08-10T12:00:00.000Z')
+    mocks.projectFindMany.mockResolvedValue([
+      {
+        ...product({
+          id: 'product-a',
+          userId: 'user-1',
+          name: 'Alpha',
+          url: 'https://alpha.example',
+        }),
+        audits: [
+          review({
+            id: 'review-running',
+            status: 'CHECKING',
+            score: null,
+            completedAt: null,
+            screenshots: [],
+          }),
+          review({
+            id: 'review-latest',
+            score: 88,
+            screenshots: [
+              {
+                url: 'http://localhost:3000/api/screenshots/review-latest/desktop',
+              },
+            ],
+          }),
+          review({
+            id: 'review-earlier',
+            score: 64,
+            createdAt: earlier,
+            completedAt: earlier,
+            screenshots: [{ url: '/api/screenshots/review-earlier/desktop' }],
+          }),
+        ],
+        improvements: [],
+      },
+    ])
+
+    const products = await loadProductOverview('user-1')
+
+    expect(products[0]?.desktopScreenshotUrl).toBe(
+      '/api/screenshots/review-latest/desktop',
+    )
+    expect(products[0]?.scoreHistory).toEqual([
+      { id: 'review-earlier', score: 64, at: earlier.toISOString() },
+      { id: 'review-latest', score: 88, at: now.toISOString() },
+    ])
+    expect(products[0]?.latestManualReview).toMatchObject({
+      id: 'review-running',
+      status: 'CHECKING',
+    })
   })
 })
 

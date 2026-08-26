@@ -1,4 +1,4 @@
-
+import { helpHrefForSurface } from '@/lib/help/contextual'
 
 export const BRAND = {
   name: 'FixFlags',
@@ -146,8 +146,8 @@ export const SCORE_HELP = {
     'Each rubric starts at 100 and drops based on the number and severity of unresolved flags across Message, Experience, and Reach.',
   detail:
     'Each rubric starts at 100. Critical flags subtract more than Important, which subtract more than Polish. The overall score weights Experience highest, then Message, then Reach. Experience may also blend in PageSpeed when available.',
-  /** Canonical deep link: keep in sync with lib/help scores-and-severity */
-  faqHref: '/help/checks-and-reports/scores-and-severity',
+  /** Canonical deep link via lib/help contextual surfaces */
+  faqHref: helpHrefForSurface('score_help'),
 } as const
 
 /** Help Center chrome. Article bodies live in lib/help/catalog.ts. */
@@ -155,7 +155,7 @@ export const HELP_CENTER = {
   label: 'Help Center',
   title: 'How can we help?',
   subhead: 'Search guides for Product Reviews, billing, and your account. Still stuck? Chat with us.',
-  searchPlaceholder: 'Search help articles…',
+  searchPlaceholder: 'Search help and docs…',
   categoriesHeading: 'Browse by topic',
   popularHeading: 'Popular articles',
   noResults: 'No articles match that search. Try another phrase or open chat.',

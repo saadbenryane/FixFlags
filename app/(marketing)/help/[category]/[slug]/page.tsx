@@ -1,11 +1,16 @@
+import type { Route } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { Body, Heading } from '@/components/ui/typography'
+import { Heading } from '@/components/ui/typography'
 import { HelpArticleBody } from '@/components/help/HelpArticleBody'
+import { HelpArticleFeedback } from '@/components/help/HelpArticleFeedback'
 import { HelpChatEscalate } from '@/components/help/HelpChatEscalate'
+import { HelpKnowledgeSearch } from '@/components/help/HelpKnowledgeSearch'
+import { HelpPageFrame } from '@/components/help/HelpPageFrame'
+import { HelpRelatedDocs } from '@/components/help/HelpRelatedDocs'
 import { HELP_ARTICLES } from '@/lib/help/catalog'
 import {
   getHelpArticle,
@@ -38,6 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${article.title}: ${BRAND.name} Help`,
     description: article.excerpt,
     alternates: { canonical: url },
+    robots: { index: true, follow: true },
     openGraph: {
       title: article.title,
       description: article.excerpt,
@@ -55,27 +61,20 @@ export default async function HelpArticlePage({ params }: Props) {
   if (!article || article.categoryId !== categoryId) notFound()
 
   const category = getHelpCategory(categoryId as HelpCategoryId)
+  if (!category) notFound()
+
   const related = getRelatedArticles(article.slug)
 
   return (
     <Section spacing="marketing">
       <Container>
         <article className="mx-auto max-w-3xl space-y-8">
-          <div>
-            <Link
-              href={`/help/${article.categoryId}`}
-              className="text-xs font-medium text-muted-foreground hover:text-foreground"
-            >
-              ← {category?.title ?? HELP_CENTER.backToHelp}
-            </Link>
-            <Heading as="h1" className="mt-4 text-3xl tracking-heading sm:text-4xl">
-              {article.title}
-            </Heading>
-            <Body className="mt-3 text-muted-foreground">{article.excerpt}</Body>
-          </div>
+          <HelpKnowledgeSearch compact />
+          <HelpPageFrame kind="article" article={article} category={category} />
 
           <HelpArticleBody blocks={article.body} />
 
+          <HelpRelatedDocs article={article} />
 
           {related.length > 0 && (
             <div className="space-y-3 border-t border-border/60 pt-8">
@@ -86,7 +85,7 @@ export default async function HelpArticlePage({ params }: Props) {
                 {related.map((r) => (
                   <li key={r.slug}>
                     <Link
-                      href={helpArticlePath(r.categoryId, r.slug)}
+                      href={helpArticlePath(r.categoryId, r.slug) as Route}
                       className="text-sm font-medium text-brand hover:underline"
                     >
                       {r.title}
@@ -97,6 +96,7 @@ export default async function HelpArticlePage({ params }: Props) {
             </div>
           )}
 
+          <HelpArticleFeedback articleSlug={article.slug} />
           <HelpChatEscalate
             articleTitle={article.title}
             className="rounded-card glass-surface shadow-card p-5"

@@ -1,7 +1,9 @@
 'use client'
 
+import { HelpSupportActions } from '@/components/help/HelpSupportActions'
 import { RouteErrorPage } from '@/components/ui/route-error-page'
 import { SYSTEM_COPY } from '@/lib/marketing/copy'
+import { helpHrefForSurface } from '@/lib/help/contextual'
 
 export default function ReportPageError({
   error,
@@ -20,6 +22,11 @@ export default function ReportPageError({
       returnHref="/dashboard"
       returnLabel={SYSTEM_COPY.actions.dashboard}
       shell="audit"
-    />
+    >
+      <HelpSupportActions
+        helpHref={helpHrefForSurface('audit_failure')}
+        articleTitle="Why a check failed"
+      />
+    </RouteErrorPage>
   )
 }

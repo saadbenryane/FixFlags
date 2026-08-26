@@ -261,6 +261,8 @@ export function fullCommands() {
     command('routes:contract-guard', 'npm', ['run', 'routes:contract-guard']),
     command('skills:validate', 'npm', ['run', 'skills:validate']),
     command('seo:guard', 'npm', ['run', 'seo:guard']),
+    command('copy-drift-check', 'npm', ['run', 'copy-drift-check']),
+    command('help:catalog-guard', 'npm', ['run', 'help:catalog-guard']),
     command('knowledge:duplication-guard', 'npm', ['run', 'knowledge:duplication-guard']),
     command('completeness:audit', 'npm', ['run', 'completeness:audit']),
     command('audit:capabilities', 'npm', ['run', 'audit:capabilities']),
@@ -364,6 +366,8 @@ export function buildPlan(requestedMode, providedFiles) {
     commands.push(command('image:local-patterns-guard', 'npm', ['run', 'image:local-patterns-guard']))
     commands.push(command('image:artwork-guard', 'npm', ['run', 'image:artwork-guard']))
     commands.push(command('seo:guard', 'npm', ['run', 'seo:guard']))
+    commands.push(command('copy-drift-check', 'npm', ['run', 'copy-drift-check']))
+    commands.push(command('help:catalog-guard', 'npm', ['run', 'help:catalog-guard']))
   }
 
   return { files, commands, reason: `${requestedMode} validation for changed files` }

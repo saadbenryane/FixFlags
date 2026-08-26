@@ -2,13 +2,14 @@ import Link from 'next/link'
 import type { Route } from 'next'
 import { cn } from '@/lib/utils'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
+import { CUSTOMER_TERMS } from '@/lib/marketing/copy'
 
 function dateLabel(date: Date): string {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date)
 }
 
 function pointLabel(point: ReportWorkspaceHistoryPoint, index: number, total: number): string {
-  const kind = point.kind === 'watch' ? 'Watch run' : point.kind === 'update-review' ? 'Update review' : 'Product review'
+  const kind = point.kind === 'watch' ? CUSTOMER_TERMS.watchRun : point.kind === 'update-review' ? CUSTOMER_TERMS.updateReview : CUSTOMER_TERMS.productReviewTitle
   const status = point.status === 'partial' ? 'Partial capture' : point.status === 'degraded' ? 'Degraded capture' : point.status === 'failed' ? 'Failed capture' : 'Completed'
   const score = point.score == null ? 'score unavailable' : `score ${Math.round(point.score)}`
   const fullDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(point.checkedAt)

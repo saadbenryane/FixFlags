@@ -7,7 +7,6 @@ export {
   getHelpCategory,
   getPopularArticles,
   getRelatedArticles,
-  helpArticlesAsFaq,
   searchHelpArticles,
 } from './search'
 export type { HelpSearchHit } from './search'

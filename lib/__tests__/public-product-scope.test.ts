@@ -14,7 +14,6 @@ describe('URL-first public product scope', () => {
     '/docs/integrations',
     '/docs/cli',
     '/docs/mcp/tools',
-    '/help/mcp',
     '/help/mcp-and-editors/mcp-setup',
     '/api/api-keys',
     '/api/cli/auth/device',

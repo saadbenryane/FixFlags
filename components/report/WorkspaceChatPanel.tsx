@@ -47,6 +47,8 @@ interface WorkspaceChatPanelProps {
   gateReason: WorkspaceChatGateReason
   /** Copy for the sign-in dialog. Defaults to save-report for teaser owners. */
   claimReason?: 'save-report' | 'create-account'
+  /** After signup, send the visitor here when this panel has no report id. */
+  claimNextPath?: string
   className?: string
   observationAuditId?: string | null
   /** Deterministic scan messages share this transcript and consume no model usage. */
@@ -110,6 +112,7 @@ export function WorkspaceChatPanel({
   capabilities,
   gateReason,
   claimReason: defaultClaimReason = 'save-report',
+  claimNextPath: claimNextPathProp,
   className,
   observationAuditId,
   agentMessages = [],
@@ -152,7 +155,8 @@ export function WorkspaceChatPanel({
   const scanInputRef = useRef<HTMLInputElement>(null)
 
   const claimNextPath =
-    claimNextOverride ?? (auditId ? `/report/${auditId}` : undefined)
+    claimNextOverride ??
+    (auditId ? `/report/${auditId}` : claimNextPathProp)
 
   function openSaveReportClaim() {
     if (authGate) {
@@ -244,13 +248,14 @@ export function WorkspaceChatPanel({
 
   async function send(text: string) {
     const trimmed = text.trim()
-    if (!trimmed || loading) return
+    if (loading) return
     // Anonymous owners may claim the report. Other viewers stay read-only
     // because signing in cannot grant ownership of somebody else's Review.
     if (!canChat) {
       if (gateReason === 'sign-in') gateToSignIn()
       return
     }
+    if (!trimmed) return
     const reportId = auditId
     if (!reportId || meta.exhausted) return
     const localUser: AgentMessage = {
@@ -597,7 +602,7 @@ export function WorkspaceChatPanel({
                   canChat
                     ? chatCopy.placeholder
                     : gateReason === 'sign-in'
-                      ? chatCopy.authBody
+                      ? chatCopy.sendPlaceholder
                       : chatCopy.notOwner
                 }
                 disabled={
@@ -605,8 +610,14 @@ export function WorkspaceChatPanel({
                   (canChat && !meta.available) ||
                   (!canChat && gateReason === 'owner')
                 }
-                className="min-h-11 min-w-0 w-auto flex-1 text-sm"
-                aria-label={chatCopy.placeholder}
+                className="min-h-11 min-w-0 flex-1 text-sm"
+                aria-label={
+                  canChat
+                    ? chatCopy.placeholder
+                    : gateReason === 'sign-in'
+                      ? chatCopy.sendPlaceholder
+                      : chatCopy.notOwner
+                }
               />
               <Button
                 type="submit"
@@ -614,8 +625,8 @@ export function WorkspaceChatPanel({
                 className="h-11 w-11 shrink-0"
                 loading={loading}
                 disabled={
-                  !input.trim() ||
-                  (canChat && !meta.available) ||
+                  loading ||
+                  (canChat && (!input.trim() || !meta.available)) ||
                   (!canChat && gateReason === 'owner')
                 }
                 aria-label={

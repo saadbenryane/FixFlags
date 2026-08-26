@@ -82,6 +82,14 @@ export default async function DashboardPage({
         ) : null}
       </PageHeader>
 
+      <UsageMeter
+        variant="compact"
+        used={used}
+        limit={isUnlimited ? null : effectiveLimit}
+        pending={pending}
+        plan={user.plan}
+      />
+
       <Surface
         variant="elevated"
         className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-center"
@@ -92,9 +100,9 @@ export default async function DashboardPage({
           </span>
           <div>
             <SectionTitle>Review a URL</SectionTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            A new URL creates a Product. Reviewing the same Product adds a fresh observation.
-          </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              A new URL creates a Product. Reviewing the same Product adds a fresh observation.
+            </p>
           </div>
         </div>
         <div className="min-w-0">
@@ -116,13 +124,6 @@ export default async function DashboardPage({
           userEmail={user.email ?? undefined}
         />
       ) : null}
-
-      <UsageMeter
-        used={used}
-        limit={isUnlimited ? null : effectiveLimit}
-        pending={pending}
-        plan={user.plan}
-      />
     </Container>
   )
 }

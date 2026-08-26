@@ -212,9 +212,9 @@ export function buildReportWorkspaceModel(
       canCopyPrompts:
         promptAccess !== 'none' &&
         input.explorer.flags.some((flag) => flag.hasFixPrompt),
-      canReplayTimeline: input.capabilities.canReplayTimeline,
+      canReplayTimeline: false,
       canChat: input.capabilities.canChat,
-      canUseCanvas: input.capabilities.canUseCanvas,
+      canUseCanvas: false,
       canShare: input.capabilities.canShare,
       canExport: input.capabilities.canExport,
       canRecheck: input.capabilities.canRecheck,

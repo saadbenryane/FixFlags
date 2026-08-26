@@ -32,7 +32,7 @@ Read `AGENTS.md` first. Generate volatile facts from code and repository command
 4. **Customer PI ≠ growth graph.** `Project.productIntelligence` vs `lib/graph/` (`graph_*`).
 5. **Never claim unshipped layers** (local OSS runtime, enterprise isolation, Agent Integrity checks) in marketing copy.
 6. **Privacy:** FixFlags never learns your product; it learns how to understand products.
-7. **Finish Plan ≤3** highest-leverage items; not a backlog dump.
+7. **Finish Plan ranking** uses `buildUnifiedPlanBundle` plus `buildFixList` for the complete ranked list; it is not a three-item truncation of the report.
 8. **Review and Flag are observations.** The durable customer action object is the Product-scoped Improvement.
 9. **No self-certification.** A builder declaration creates an Improvement Attempt; only a fresh child Review creates a verification outcome.
 10. **Signals are senses, not analytics products.** Keep the schema narrow and treat correlations as `OBSERVED`.
@@ -45,12 +45,11 @@ Read `AGENTS.md` first. Generate volatile facts from code and repository command
 | Product persistence | Prisma `Project.productIntelligence`, `canonicalHost`, `isManaged`, and `productIntelligenceRevision` |
 | Improvement history | Prisma `Improvement`, `ImprovementOccurrence`, `ImprovementAttempt`; `lib/improvements/service.ts` |
 | Native Product Signals | Prisma `ProductSignal`, `ProductRelease`, `ProductSignalKey`; `lib/signals/`; `/api/products/[id]/signals`; `/fixflags.js` |
-| Finish Plan service | `lib/audit/finish-plan.ts` (`buildFinishPlan`) |
-| Focused report / details | `FocusedAuditReport.tsx`; `AuditReport.tsx` on `/details` |
+| Finish Plan service | `lib/audit/load-finish-plan-flags.ts`, `lib/audit/finish-plan.ts` |
+| Canonical report | `AuditReport.tsx` on `/report/[id]`; `/details` redirects |
 | Remember UI | `components/audit/ProductMemoryStrip.tsx` |
 | Task contracts | `lib/audit/task-contracts.ts` (check → plan, re-check → diff + next plan) |
-| MCP | `ff_check_and_plan`, `ff_recheck_and_compare`, plus context/plan drill-down tools |
-| Agent CLI | `fixflags-cli/`: `check` → Finish Plan ≤3; `recheck` → verification diff + next plan |
+| Parked MCP / CLI | `lib/mcp/`, `fixflags-cli/` — undiscoverable; use `npm run agent -- context cli` |
 | Remember on re-check | `reconcileImprovementVerification` → provenance-bearing `verifiedLearnings` only for `IMPROVED` attempts |
 | Contract edit | `mergeContractIntoProductIntelligence` (never wipe memory) |
 | Claim → Project | `lib/audit/claim-anonymous.ts` + `ensureProductProject` |
@@ -66,7 +65,7 @@ Anchor creation is concurrency-safe through the partial unique database index. W
 ## Hard rules (additions)
 
 11. **Contract PATCH merges** into existing PI. Never `productIntelligenceFromContract` alone when Project PI exists.
-12. **Finish Plan copy/export/MCP plan prompt ≤3** by default. "All prompts" is a separate labeled export.
+12. **Finish Plan transport prompts stay bounded.** `buildFinishPlan` remains one-to-three items for MCP/CLI. The web report shows the complete ranked Fix list via `buildFixList`.
 13. **Remember must be visible** when learnings exist (`ProductMemoryStrip`). Do not claim Remember in PRODUCT.md without UI.
 14. **Report order lives only in `knowledge/report-contract.md`.** Link to it; do not restate it in skills.
 15. **Every transport uses task contracts.** UI, HTTP, watch, MCP, export, and CLI consume the same bounded Attention and independent verification receipt.

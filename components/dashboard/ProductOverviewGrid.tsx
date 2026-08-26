@@ -3,10 +3,14 @@ import type { Route } from 'next'
 import { ArrowRight, CircleAlert, Eye, FileSearch, Flag } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
+import { TextLink } from '@/components/ui/text-link'
 import { Surface } from '@/components/ui/surface'
 import { SectionTitle } from '@/components/ui/typography'
+import { ProductCaptureThumb } from '@/components/dashboard/ProductCaptureThumb'
+import { ProductScoreSparkline } from '@/components/dashboard/ProductScoreSparkline'
 import type { ProductOverviewDTO } from '@/lib/products/workspace'
 import { presentProductReview } from '@/lib/products/review-state'
+import { displayHostname } from '@/lib/utils/url-helpers'
 
 function reviewDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', {
@@ -14,6 +18,20 @@ function reviewDate(value: string): string {
     day: 'numeric',
     year: 'numeric',
   })
+}
+
+function productLinkLabel(product: ProductOverviewDTO): string {
+  const state = presentProductReview(product.latestManualReview)
+  const first = product.scoreHistory[0]?.score
+  const last = product.scoreHistory.at(-1)?.score
+  const trend =
+    product.scoreHistory.length > 1 && first != null && last != null
+      ? ` Score trend ${Math.round(first)} to ${Math.round(last)}.`
+      : ` Latest score ${state.score}.`
+  const attention = product.topAttention
+    ? ` ${product.attentionCount} open. ${product.topAttention.title}.`
+    : ''
+  return `Open Product ${product.name}.${trend}${attention}`
 }
 
 export function ProductOverviewGrid({
@@ -39,7 +57,12 @@ export function ProductOverviewGrid({
         <EmptyState
           icon={<FileSearch className="h-6 w-6" aria-hidden />}
           title="No Products yet"
-          description="Review a URL below. FixFlags will keep that Product and every future update review together."
+          description="Review a URL above. FixFlags will keep that Product and every future update review together."
+          action={
+            <TextLink href={'/help/getting-started/first-check' as Route}>
+              Run your first product review
+            </TextLink>
+          }
         />
       ) : (
         <Surface variant="elevated" className="overflow-hidden p-0">
@@ -54,9 +77,11 @@ export function ProductOverviewGrid({
                 <Link
                   key={product.id}
                   href={`/products/${product.id}` as Route}
-                  aria-label={`Open Product ${product.name}`}
-                  className="group grid min-h-28 gap-4 px-4 py-4 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:grid-cols-[minmax(0,1.2fr)_9rem_minmax(0,1fr)_auto] sm:items-center sm:px-5"
+                  aria-label={productLinkLabel(product)}
+                  className="group grid min-h-28 grid-cols-[7.5rem_minmax(0,1fr)] gap-4 px-4 py-4 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:grid-cols-[7.5rem_minmax(0,1.1fr)_11rem_minmax(0,1fr)_auto] sm:items-center sm:px-5"
                 >
+                  <ProductCaptureThumb src={product.desktopScreenshotUrl} />
+
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="truncate text-base font-semibold tracking-heading">
@@ -70,7 +95,7 @@ export function ProductOverviewGrid({
                       ) : null}
                     </div>
                     <p className="mt-1 truncate text-xs text-muted-foreground">
-                      {product.url}
+                      {displayHostname(product.url) || product.url}
                     </p>
                     {product.purpose ? (
                       <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
@@ -79,28 +104,32 @@ export function ProductOverviewGrid({
                     ) : null}
                   </div>
 
-                  <div className="flex items-center justify-between gap-3 sm:block sm:border-l sm:border-border/50 sm:pl-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        Latest Review
-                      </p>
-                      <Badge variant={state.tone} className="mt-1.5">
-                        {state.label}
-                      </Badge>
-                    </div>
-                    <div className="text-right sm:mt-2 sm:text-left">
+                  <div className="col-span-2 min-w-0 sm:col-span-1 sm:border-l sm:border-border/50 sm:pl-4">
+                    <p className="text-xs text-muted-foreground">
+                      Latest Review
+                    </p>
+                    <ProductScoreSparkline
+                      productId={product.id}
+                      points={product.scoreHistory}
+                      decorative
+                      className="mt-1.5"
+                    />
+                    <div className="mt-1 flex items-baseline justify-between gap-2">
                       <span className="font-mono text-lg font-semibold tabular-nums">
                         {state.score}
                       </span>
                       {reviewAt ? (
-                        <span className="ml-2 text-xs text-muted-foreground sm:ml-0 sm:block">
+                        <span className="text-xs text-muted-foreground">
                           {reviewDate(reviewAt)}
                         </span>
                       ) : null}
                     </div>
+                    <Badge variant={state.tone} className="mt-1.5">
+                      {state.label}
+                    </Badge>
                   </div>
 
-                  <div className="flex min-w-0 items-start gap-2 sm:border-l sm:border-border/50 sm:pl-4">
+                  <div className="col-span-2 flex min-w-0 items-start gap-2 sm:col-span-1 sm:border-l sm:border-border/50 sm:pl-4">
                     {product.topAttention ? (
                       <>
                         {product.topAttention.severity === 'CRITICAL' ? (

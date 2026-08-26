@@ -33,23 +33,26 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
         className="scroll-mt-[calc(var(--header-height-marketing)+1rem)] px-4 sm:px-6 lg:px-12"
         variant="marketing"
       >
-        <div className="grid items-center gap-10 xl:grid-cols-[minmax(18rem,0.58fr)_minmax(0,1.42fr)] xl:gap-12">
-          <RevealOnView className="flex flex-col gap-6">
+        <div className="flex flex-col items-center gap-8 sm:gap-10">
+          <RevealOnView className="w-full">
             <LandingSectionHeader
-              align="left"
+              align="center"
               label={copy.label}
               brandEyebrow
               headline={copy.headlineDisplay}
               accentPeriod={copy.headlineAccentPeriod}
               subhead={copy.body}
               size="lg"
-              className="max-w-md space-y-4 sm:space-y-5"
+              className="space-y-4 sm:space-y-5"
             />
-            <SampleSectionCta />
           </RevealOnView>
 
-          <RevealOnView className="min-w-0">
+          <RevealOnView className="w-full min-w-0 max-w-6xl">
             <HomepageReportPreview model={workspace} />
+          </RevealOnView>
+
+          <RevealOnView>
+            <SampleSectionCta />
           </RevealOnView>
         </div>
       </Container>

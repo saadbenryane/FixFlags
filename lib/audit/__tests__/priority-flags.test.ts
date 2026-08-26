@@ -230,7 +230,7 @@ describe('priority-flags', () => {
     assert.doesNotMatch(result, /^Page:/m)
   })
 
-  it('buildPlanModePrompt defaults to Finish Plan limit of 3', () => {
+  it('buildPlanModePrompt defaults to every Flag that has a prompt', () => {
     const flags = [
       flag({ id: '1', severity: 'CRITICAL', problem: 'A', agentPrompt: 'Fix A' }),
       flag({ id: '2', severity: 'IMPORTANT', problem: 'B', agentPrompt: 'Fix B' }),
@@ -242,7 +242,7 @@ describe('priority-flags', () => {
     assert.match(result, /Fix A/)
     assert.match(result, /Fix B/)
     assert.match(result, /Fix C/)
-    assert.equal(result.includes('Fix D'), false)
+    assert.match(result, /Fix D/)
   })
 
   it('buildAllFixPrompts includes all prompts', () => {

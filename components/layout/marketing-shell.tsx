@@ -5,15 +5,21 @@ interface MarketingShellProps {
   children: React.ReactNode
   footer?: 'default' | 'minimal' | 'none'
   focused?: boolean
+  showSupport?: boolean
 }
 
-export function MarketingShell({ children, footer = 'default', focused = false }: MarketingShellProps) {
+export function MarketingShell({
+  children,
+  footer = 'default',
+  focused = false,
+  showSupport = false,
+}: MarketingShellProps) {
   return (
     <SiteShell
       variant="marketing"
       headerRight={focused ? null : <MarketingHeaderAuth />}
       showHeaderNavigation={!focused}
-      showSupport={false}
+      showSupport={showSupport}
       backdrop={focused ? 'minimal' : 'full'}
       showFooter={footer !== 'none'}
       footer={footer === 'minimal' ? 'minimal' : 'default'}

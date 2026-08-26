@@ -6,6 +6,7 @@ import {
 import { runOverlayBlockerChecks } from '@/lib/audit/checks/overlay'
 import {
   buildUserProductContract,
+  displayProductPurpose,
   inferProductContract,
   parseProductContract,
   validateProductContractInput,
@@ -100,6 +101,19 @@ describe('product contract', () => {
     expect(contract.purpose).toContain('Simple plans')
     expect(contract.firstValueJourney.toLowerCase()).toContain('pricing')
     expect(contract.criticalOutcomes.length).toBeGreaterThan(0)
+    expect(contract.purpose.startsWith('Help visitors:')).toBe(false)
+  })
+
+  it('shows a human purpose and hides the generic Help visitors fallback', () => {
+    expect(
+      displayProductPurpose('Help visitors: I build products, brands, and companies.')
+    ).toBe('I build products, brands, and companies.')
+    expect(
+      displayProductPurpose('Help visitors get value from saadbenryane.com')
+    ).toBeNull()
+    expect(displayProductPurpose('Help customers register')).toBe(
+      'Help customers register'
+    )
   })
 
   it('parses stored contract', () => {

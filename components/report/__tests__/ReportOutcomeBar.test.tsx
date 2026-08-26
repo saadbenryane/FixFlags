@@ -78,7 +78,8 @@ describe('ReportOutcomeBar', () => {
     expect(screen.getByRole('region', { name: REPORT_COPY.workspace.summaryLabel })).toBeInTheDocument()
     expect(screen.getByLabelText('Score 70')).toBeVisible()
     expect(screen.getByRole('navigation', { name: 'Review history' })).toBeInTheDocument()
-    expect(screen.getAllByRole('link')).toHaveLength(2)
+    expect(screen.getByRole('link', { name: 'How scores work' })).toBeInTheDocument()
+    expect(screen.getAllByRole('link')).toHaveLength(3)
     expect(screen.queryByText('example.com')).not.toBeInTheDocument()
   })
 

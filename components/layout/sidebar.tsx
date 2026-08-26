@@ -11,6 +11,7 @@ import {
   Menu,
   ShieldCheck,
   CircleHelp,
+  BookOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/brand/Logo'
@@ -43,6 +44,7 @@ const PRIMARY_ITEMS: SidebarItem[] = [
 const SECONDARY_ITEMS: SidebarItem[] = [
   { href: '/settings', label: 'Settings', icon: Settings },
   { href: '/billing', label: 'Billing', icon: CreditCard },
+  { href: '/docs', label: 'Docs', icon: BookOpen },
   { href: '/help', label: 'Help', icon: CircleHelp },
 ]
 

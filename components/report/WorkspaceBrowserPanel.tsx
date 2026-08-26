@@ -7,8 +7,9 @@ import type { PlaybackStep } from '@/lib/audit/playback-steps'
 import type { EvidenceHighlight } from '@/lib/audit/evidence-highlights'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
+import type { PreviewDevice } from '@/components/report/preview-device'
 
-export type PreviewDevice = 'desktop' | 'mobile'
+export type { PreviewDevice }
 
 interface WorkspaceBrowserPanelProps {
   url: string

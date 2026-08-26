@@ -8,7 +8,9 @@ export default function PublicDocsLayout({ children }: { children: React.ReactNo
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(marketingGraphSchema()) }}
       />
-      <MarketingShell footer="minimal">{children}</MarketingShell>
+      <MarketingShell footer="minimal" showSupport>
+        {children}
+      </MarketingShell>
     </>
   )
 }

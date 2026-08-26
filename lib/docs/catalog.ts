@@ -1,15 +1,11 @@
 import type { Metadata } from 'next'
 import { SITE_URL } from '@/lib/marketing/copy'
+import type { HelpArticleSlug } from '@/lib/help/types'
 
 export type DocsPageKey =
   | 'home'
   | 'getting-started'
   | 'reports'
-  | 'deep-review'
-  | 'integrations'
-  | 'cli'
-  | 'mcp'
-  | 'mcp-tools'
   | 'troubleshooting'
 
 export type DocsNavigationGroup = 'Start' | 'Use FixFlags' | 'Reference'
@@ -29,6 +25,7 @@ export interface DocsPageDefinition {
   source?: string
   order: number
   headings: readonly DocsHeadingDefinition[]
+  relatedHelpSlugs?: readonly HelpArticleSlug[]
 }
 
 export const DOCS_PAGES: readonly DocsPageDefinition[] = [
@@ -45,6 +42,7 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
       { id: 'product-loop', title: 'The product loop' },
       { id: 'choose-your-path', title: 'Choose your path' },
     ],
+    relatedHelpSlugs: ['first-check', 'reading-your-report', 'flag-fix-recheck', 'free-vs-pro'],
   },
   {
     key: 'getting-started',
@@ -60,6 +58,12 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
       { id: 'claim-your-report', title: 'Claim your report' },
       { id: 'fix-the-first-flag', title: 'Fix the first Flag' },
       { id: 'update-review', title: 'Update review' },
+    ],
+    relatedHelpSlugs: [
+      'first-check',
+      'claiming-a-report',
+      'anonymous-report-access',
+      'flag-fix-recheck',
     ],
   },
   {
@@ -78,6 +82,12 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
       { id: 'update-review-and-compare', title: 'Update review and compare' },
       { id: 'sharing-and-watch', title: 'Sharing and Watch' },
     ],
+    relatedHelpSlugs: [
+      'reading-your-report',
+      'scores-and-severity',
+      'finish-plan-vs-fix-list',
+      'evidence-and-screenshots',
+    ],
   },
   {
     key: 'troubleshooting',
@@ -94,6 +104,14 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
       { id: 'timeouts-and-queues', title: 'Timeouts and queues' },
       { id: 'report-recovery', title: 'Report recovery' },
       { id: 'get-help', title: 'Get help' },
+    ],
+    relatedHelpSlugs: [
+      'why-check-failed',
+      'public-urls-only',
+      'stuck-running-review',
+      'oauth-sign-in-issues',
+      'payment-past-due',
+      'contact-us',
     ],
   },
 ] as const
@@ -136,31 +154,7 @@ export function buildDocsMetadata(page: DocsPageDefinition): Metadata {
   }
 }
 
-export function docsStructuredData(page: DocsPageDefinition) {
-  const url = `${SITE_URL}${page.path}`
-  return {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'Docs', item: `${SITE_URL}/docs` },
-          ...(page.path === '/docs'
-            ? []
-            : [{ '@type': 'ListItem', position: 2, name: page.title, item: url }]),
-        ],
-      },
-      {
-        '@type': 'TechArticle',
-        headline: page.title,
-        description: page.description,
-        url,
-        isPartOf: { '@type': 'WebSite', name: 'FixFlags', url: SITE_URL },
-        publisher: { '@type': 'Organization', name: 'FixFlags', url: SITE_URL },
-      },
-    ],
-  }
-}
+export { docsStructuredData } from '@/lib/marketing/structured-data'
 
 export function slugifyDocsHeading(value: string) {
   return value

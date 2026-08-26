@@ -48,6 +48,9 @@ export type FunnelEvent =
   | 'report_progress_viewed'
   | 'polish_pass_copied'
   | 'flag_detail_viewed'
+  | 'help_article_feedback'
+  | 'help_search_no_results'
+  | 'help_search_result_clicked'
 
 export type ReportSurface = 'focused' | 'details' | 'sample' | 'shared' | 'product'
 export type ReportAccessState = 'anonymous' | 'owner' | 'signed_in' | 'shared'
@@ -165,6 +168,20 @@ type EventParams = {
     surface?: ReportSurface
     access_state?: ReportAccessState
     item_position?: number
+  }
+  help_article_feedback: {
+    article_slug: string
+    helpful: boolean
+  }
+  help_search_no_results: {
+    query: string
+    filter?: string
+  }
+  help_search_result_clicked: {
+    query: string
+    filter?: string
+    href: string
+    surface: string
   }
 }
 

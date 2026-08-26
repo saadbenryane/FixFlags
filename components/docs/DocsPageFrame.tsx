@@ -1,6 +1,8 @@
-import Link from 'next/link'
 import type { DocsPageDefinition } from '@/lib/docs/catalog'
 import { docsStructuredData } from '@/lib/docs/catalog'
+import { DocsRelatedHelp } from '@/components/docs/DocsRelatedHelp'
+import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
+import { KnowledgePageHeader } from '@/components/knowledge/KnowledgePageHeader'
 
 export function DocsPageFrame({
   page,
@@ -12,6 +14,7 @@ export function DocsPageFrame({
   const jsonLd = docsStructuredData(page)
   return (
     <>
+      <MarketingPageViewTracker page={page.path} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -19,31 +22,21 @@ export function DocsPageFrame({
       <div className="grid min-w-0 xl:grid-cols-[minmax(0,1fr)_13rem]">
         <article className="min-w-0 px-5 py-12 sm:px-8 sm:py-16 lg:px-12 xl:px-16">
           <div className="mx-auto max-w-3xl">
-            <nav aria-label="Breadcrumb" className="mb-7 text-sm text-muted-foreground">
-              <Link href="/docs" className="hover:text-foreground hover:underline">
-                Docs
-              </Link>
-              {page.path !== '/docs' ? (
-                <>
-                  <span aria-hidden className="mx-2">
-                    /
-                  </span>
-                  <span aria-current="page">{page.title}</span>
-                </>
-              ) : null}
-            </nav>
-            <header className="mb-12 border-b border-border/60 pb-9">
-              <p className="mb-3 font-mono text-xs font-semibold uppercase tracking-label text-brand">
-                {page.group}
-              </p>
-              <h1 className="font-serif text-4xl font-semibold leading-display tracking-display text-foreground sm:text-5xl">
-                {page.title}
-              </h1>
-              <p className="mt-4 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-                {page.description}
-              </p>
-            </header>
+            <div className="mb-12">
+              <KnowledgePageHeader
+                breadcrumbs={[
+                  { href: '/docs', label: 'Docs' },
+                  ...(page.path === '/docs'
+                    ? [{ label: page.title, current: true }]
+                    : [{ label: page.title, current: true }]),
+                ]}
+                eyebrow={page.group}
+                title={page.title}
+                description={page.description}
+              />
+            </div>
             {children}
+            <DocsRelatedHelp page={page} />
           </div>
         </article>
         {page.headings.length > 2 ? (

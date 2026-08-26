@@ -19,7 +19,7 @@ export function buildCuratedSampleWorkspaceModel(
     status: 'completed',
     history: report.scoreHistory,
     capabilities: {
-      canReplayTimeline: true,
+      canReplayTimeline: false,
       canChat: false,
       canUseCanvas: false,
       canShare: false,

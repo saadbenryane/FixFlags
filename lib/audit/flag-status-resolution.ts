@@ -1,10 +1,5 @@
 import type { FlagStatus, Severity } from '@prisma/client'
-
-const severityRank: Record<Severity, number> = {
-  CRITICAL: 3,
-  IMPORTANT: 2,
-  POLISH: 1,
-}
+import { severityRank } from '@/lib/utils'
 
 export function resolveMonitoringFlagStatus(input: {
   parentStatus: FlagStatus
@@ -14,7 +9,7 @@ export function resolveMonitoringFlagStatus(input: {
 }): FlagStatus {
   if (!input.stillFails) return 'FIXED'
   if (input.parentStatus === 'FIXED') return 'REGRESSED'
-  if (severityRank[input.monitoringSeverity] > severityRank[input.parentSeverity]) {
+  if (severityRank(input.monitoringSeverity) < severityRank(input.parentSeverity)) {
     return 'REGRESSED'
   }
   return 'OPEN'

@@ -25,13 +25,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Surface } from '@/components/ui/surface'
 import { SectionTitle } from '@/components/ui/typography'
-import type {
-  ProductReviewSummaryDTO,
-  ProductWorkspaceDTO,
-} from '@/lib/products/workspace'
+import { displayProductPurpose } from '@/lib/audit/product-contract'
+import type { ProductWorkspaceDTO } from '@/lib/products/workspace'
 import { serializeProductHistoryCursor } from '@/lib/products/workspace'
 import { presentProductReview } from '@/lib/products/review-state'
 import { REPORT_COPY } from '@/lib/marketing/copy'
+import { displayHostname } from '@/lib/utils/url-helpers'
 
 function dateLabel(value: string | null): string {
   if (!value) return 'Not yet'
@@ -40,11 +39,6 @@ function dateLabel(value: string | null): string {
     day: 'numeric',
     year: 'numeric',
   })
-}
-
-function reviewTypeLabel(review: ProductReviewSummaryDTO): string {
-  if (review.kind === 'WATCH') return 'Watch review'
-  return review.kind === 'UPDATE_REVIEW' ? 'Update review' : 'Product review'
 }
 
 export function ProductWorkspace({
@@ -63,12 +57,11 @@ export function ProductWorkspace({
   } = workspace
   const currentReview =
     activeManualReview ?? latestCompletedManualReview ?? latestManualReview
-  const reviewEvents = workspace.history.events.filter(
-    (event) => event.kind === 'review'
-  )
   const progressEvents = workspace.history.events.filter(
     (event) => event.kind !== 'review'
   )
+  const purpose = displayProductPurpose(product.purpose)
+  const hostLabel = displayHostname(product.url) || product.url
 
   return (
     <main className="space-y-6">
@@ -81,10 +74,10 @@ export function ProductWorkspace({
         </Button>
       </div>
 
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <header className="space-y-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="truncate text-3xl font-semibold tracking-display">
+            <h1 className="truncate text-3xl font-semibold leading-tight tracking-display">
               {product.name}
             </h1>
             {product.watching ? (
@@ -98,49 +91,95 @@ export function ProductWorkspace({
             href={product.url}
             target="_blank"
             rel="noreferrer"
-            className="mt-2 inline-flex min-h-11 max-w-full items-center gap-1.5 text-sm text-link hover:text-link-hover"
+            className="relative mt-0.5 inline-flex max-w-full items-center gap-1.5 text-sm text-link hover:text-link-hover after:absolute after:-inset-y-3 after:-inset-x-1 after:content-['']"
           >
-            <span className="truncate">{product.url}</span>
-            <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <span className="truncate">{hostLabel}</span>
+            <ExternalLink className="relative h-3.5 w-3.5 shrink-0" aria-hidden />
           </a>
-          {product.purpose ? (
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-              {product.purpose}
+          {purpose ? (
+            <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground text-pretty">
+              {purpose}
             </p>
           ) : null}
         </div>
+        {workspace.technologyProfile ? (
+          <MadeWithProfile
+            profile={workspace.technologyProfile}
+            compact
+            className="max-w-xl"
+          />
+        ) : null}
       </header>
 
       <section aria-labelledby="current-review-heading">
-        <Surface
-          variant="elevated"
-          className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 sm:grid-cols-[auto_minmax(0,1fr)_auto]"
-        >
-          <ScoreRing
-            score={currentReview?.score ?? null}
-            pending={Boolean(activeManualReview)}
-          />
-          <div className="min-w-0 flex-1">
-            <p className="section-label">Current Review</p>
-            <SectionTitle id="current-review-heading" className="mt-1">
-              {currentReview
-                ? presentProductReview(currentReview).label
-                : 'Ready for a Product Review'}
-            </SectionTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {currentReview
-                ? `${currentReview.unresolvedCount} unresolved · ${dateLabel(currentReview.completedAt || currentReview.createdAt)}`
-                : 'Review this Product to find what deserves attention.'}
-            </p>
-          </div>
-          <div className="col-span-2 sm:col-span-1">
-            <ProductReviewAction
-              productUrl={product.url}
-              activeManualReview={activeManualReview}
-              latestManualReview={latestManualReview}
-              latestCompletedManualReview={latestCompletedManualReview}
+        <Surface variant="elevated" className="space-y-5">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-4 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
+            <ScoreRing
+              score={currentReview?.score ?? null}
+              pending={Boolean(activeManualReview)}
             />
+            <div className="min-w-0 flex-1">
+              <SectionTitle id="current-review-heading">
+                Current review
+              </SectionTitle>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <Badge
+                  variant={
+                    currentReview
+                      ? presentProductReview(currentReview).tone
+                      : 'secondary'
+                  }
+                >
+                  {currentReview
+                    ? presentProductReview(currentReview).label
+                    : 'Ready'}
+                </Badge>
+                <p className="text-sm text-muted-foreground">
+                  {currentReview
+                    ? `${currentReview.unresolvedCount} unresolved · ${dateLabel(currentReview.completedAt || currentReview.createdAt)}`
+                    : 'Review this Product to find what deserves attention.'}
+                  {currentReview ? (
+                    <>
+                      {' · '}
+                      <Link
+                        href={`/report/${currentReview.id}?view=report` as Route}
+                        className="relative text-link hover:text-link-hover after:absolute after:-inset-y-3 after:-inset-x-1 after:content-['']"
+                      >
+                        Open report
+                      </Link>
+                    </>
+                  ) : null}
+                </p>
+              </div>
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <ProductReviewAction
+                productUrl={product.url}
+                activeManualReview={activeManualReview}
+                latestManualReview={latestManualReview}
+                latestCompletedManualReview={latestCompletedManualReview}
+              />
+            </div>
           </div>
+          <ProductReviewTrend
+            reviews={workspace.reviewHistory}
+            embedded
+          />
+          {workspace.history.nextCursor ? (
+            <div className="flex justify-end border-t border-border/50 pt-3">
+              <Button asChild variant="ghost" className="w-full sm:w-auto">
+                <Link
+                  href={
+                    (`/products/${product.id}?historyCursor=${encodeURIComponent(serializeProductHistoryCursor(workspace.history.nextCursor))}` +
+                      '#current-review-heading') as Route
+                  }
+                >
+                  Older reviews
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+              </Button>
+            </div>
+          ) : null}
         </Surface>
       </section>
       {latestManualReview?.status === 'FAILED' ? (
@@ -161,10 +200,6 @@ export function ProductWorkspace({
       ) : (
         <AttentionSection workspace={workspace} />
       )}
-
-      {workspace.technologyProfile ? (
-        <MadeWithProfile profile={workspace.technologyProfile} />
-      ) : null}
 
       {workspace.understanding.productContract ||
       workspace.understanding.verifiedLearnings.length > 0 ||
@@ -201,75 +236,6 @@ export function ProductWorkspace({
           ) : null}
         </section>
       ) : null}
-
-      <section
-        id="product-history"
-        aria-labelledby="product-history-heading"
-        className="space-y-3"
-      >
-        <div>
-          <SectionTitle id="product-history-heading">Reviews</SectionTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Every Product Review, update review, and Watch check in one place.
-          </p>
-        </div>
-        <ProductReviewTrend reviews={workspace.reviewHistory} />
-        <Surface variant="elevated">
-          {reviewEvents.length > 0 ? (
-            <div className="divide-y divide-border/60">
-              {reviewEvents.map((event) => (
-                <Link
-                  key={event.id}
-                  href={`/report/${event.review.id}?view=report` as Route}
-                  className="flex min-h-14 items-center justify-between gap-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {reviewTypeLabel(event.review)}
-                      </span>
-                      <Badge variant={presentProductReview(event.review).tone}>
-                        {presentProductReview(event.review).label}
-                      </Badge>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {dateLabel(event.at)}
-                      {event.review.status === 'COMPLETED'
-                        ? ` · ${event.review.unresolvedCount} unresolved`
-                        : ''}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="font-mono text-sm font-semibold tabular-nums">
-                      {presentProductReview(event.review).score}
-                    </span>
-                    <ArrowRight className="h-4 w-4 text-brand" aria-hidden />
-                  </div>
-                </Link>
-              ))}
-              {workspace.history.nextCursor ? (
-                <div className="py-3">
-                  <Button asChild variant="ghost" className="w-full sm:w-auto">
-                    <Link
-                      href={
-                        (`/products/${product.id}?historyCursor=${encodeURIComponent(serializeProductHistoryCursor(workspace.history.nextCursor))}` +
-                          '#product-history') as Route
-                      }
-                    >
-                      Older history
-                      <ArrowRight className="h-4 w-4" aria-hidden />
-                    </Link>
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <p className="py-4 text-sm text-muted-foreground">
-              Review history begins with the first Product Review.
-            </p>
-          )}
-        </Surface>
-      </section>
 
       {progressEvents.length > 0 ? (
         <section
@@ -327,12 +293,12 @@ export function ProductWorkspace({
       <details className="group rounded-card border border-border/45 bg-card/60 shadow-card">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:px-5 [&::-webkit-details-marker]:hidden">
           <div>
-            <SectionTitle as="h2">Product context</SectionTitle>
+            <SectionTitle as="h2">Watch and Signals</SectionTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              {product.watching ? 'Watch is active.' : 'Watch is not active.'}{' '}
+              {product.watching ? 'Watch is on.' : 'Watch is off.'}{' '}
               {workspace.integrations.signalKeys.length > 0
                 ? `${workspace.integrations.signalKeys.length} Signal key${workspace.integrations.signalKeys.length === 1 ? '' : 's'} connected.`
-                : 'No browser Signal key connected.'}
+                : 'No browser Signals yet.'}
             </p>
           </div>
           <ChevronDown
@@ -349,7 +315,7 @@ export function ProductWorkspace({
                 <SectionTitle as="h3">Watch</SectionTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {product.watching
-                    ? `Watching for meaningful changes. Last checked ${dateLabel(workspace.watch.lastRunAt)}.`
+                    ? `FixFlags checks this Product on a schedule. Last checked ${dateLabel(workspace.watch.lastRunAt)}.`
                     : workspace.watch.eligible
                       ? 'Choose a schedule after the first completed Review.'
                       : 'Scheduled reviews are available on Studio.'}
@@ -426,10 +392,10 @@ export function ProductWorkspace({
             <div className="flex items-start gap-3">
               <Radio className="mt-0.5 h-5 w-5 text-brand" aria-hidden />
               <div>
-                <SectionTitle as="h3">Product context</SectionTitle>
+                <SectionTitle as="h3">Signals</SectionTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Privacy-bounded browser Signals add context but never verify a
-                  fix.
+                  A small browser snippet adds privacy-bounded context. It never
+                  verifies a fix.
                 </p>
               </div>
             </div>

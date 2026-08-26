@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
-import type { PreviewDevice } from '@/components/report/WorkspaceBrowserPanel'
+import type { PreviewDevice } from '@/components/report/preview-device'
 import type { WorkspacePanelView } from '@/components/report/WorkspaceViewTabs'
 import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
 import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
@@ -167,7 +167,9 @@ export function HomepageReportPreview({
         leftPanel={
           <WorkspaceChatPanel
             capabilities={model.capabilities}
-            gateReason="owner"
+            gateReason="sign-in"
+            claimReason="create-account"
+            claimNextPath="/samples"
             agentMessages={messages}
             reportUrl={model.identity.url ?? DEMO_BRAND.sampleUrl}
             productName={DEMO_BRAND.displayLabel}

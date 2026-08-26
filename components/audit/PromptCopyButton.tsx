@@ -6,6 +6,7 @@ import type { ButtonProps } from '@/components/ui/button'
 import { Check, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { isUsableFixPrompt } from '@/lib/audit/priority-flags'
+import { LOCKED_CONTENT_TEASER, REPORT_COPY } from '@/lib/marketing/copy'
 import {
   trackEvent,
   type ReportAccessState,
@@ -34,7 +35,7 @@ interface Props {
 
 export function PromptCopyButton({
   prompt,
-  label = 'Copy prompt',
+  label = REPORT_COPY.explorer.copyPrompt,
   className,
   compact,
   iconOnly = false,
@@ -58,7 +59,7 @@ export function PromptCopyButton({
       return
     }
     if (!safePrompt) {
-      toast.error('Create a free account to copy this fix prompt')
+      toast.error(LOCKED_CONTENT_TEASER.fixPromptLabel)
       return
     }
     await navigator.clipboard.writeText(safePrompt)
@@ -69,7 +70,7 @@ export function PromptCopyButton({
         body: JSON.stringify({ builder: tool || 'web', action: 'HANDOFF_COPIED' }),
       })
       if (!response.ok) {
-        toast.error('Prompt copied, but FixFlags could not record the handoff')
+        toast.error(REPORT_COPY.explorer.promptCopiedRecordFailed)
       }
     }
     trackEvent('fix_prompt_copied', {
@@ -88,7 +89,10 @@ export function PromptCopyButton({
       })
     }
     setCopied(true)
-    toast.success('Prompt copied', nextStep ? { description: nextStep } : undefined)
+    toast.success(
+      REPORT_COPY.explorer.promptCopied,
+      nextStep ? { description: nextStep } : undefined,
+    )
     setTimeout(() => setCopied(false), 2000)
   }
 
@@ -103,7 +107,7 @@ export function PromptCopyButton({
         variant="ghost"
         size="icon"
         onClick={handleCopy}
-        aria-label={copied ? 'Copied' : label}
+        aria-label={copied ? REPORT_COPY.explorer.copied : label}
         className={cn('text-muted-foreground hover:text-foreground', className)}
       >
         {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -120,7 +124,7 @@ export function PromptCopyButton({
       className={cn(compact ? 'gap-1.5 [&_svg]:size-3.5' : '[&_svg]:size-4', className)}
     >
       {copied ? (
-        <><Check className="h-3 w-3" /> Copied!</>
+        <><Check className="h-3 w-3" /> {REPORT_COPY.explorer.copied}</>
       ) : (
         <><Copy className="h-3 w-3" /> {label}</>
       )}

@@ -97,6 +97,7 @@ export const REPORT_COPY = {
       replyFallback:
         "I could not generate a reply. Try asking about a specific Flag.",
       notSignedIn: "Sign in to chat",
+      sendPlaceholder: "Send a message",
       notOwner: "You can only chat on your own reports",
       notFound: "Report not found",
       messageRequired: "Message required",
@@ -354,8 +355,8 @@ export const REPORT_COPY = {
     loadingBody: "Your Finish Plan will appear when the review is complete.",
     readyBody: (count: number) =>
       `${count} ${count === 1 ? "Flag" : "Flags"} ranked by impact. Review every confirmed Flag and its evidence.`,
-    copyCta: "Copy Finish Plan",
-    copyLabel: "Finish Plan prompt",
+    copyCta: "Copy all",
+    copyLabel: "All fixes",
     previewToggle: "Preview prompt",
     generating: "Generating fix prompts for every Flag…",
     demonstratedNote:
@@ -378,6 +379,11 @@ export const REPORT_COPY = {
   },
   explorer: {
     fixPrompt: "Fix Prompt",
+    copyPrompt: "Copy prompt",
+    copied: "Copied!",
+    promptCopied: "Prompt copied",
+    promptCopiedRecordFailed:
+      "Prompt copied, but FixFlags could not record the handoff",
     prioritiesTitle: "Your priorities",
     prioritiesHint: "Ranked by customer impact",
     allPages: "All Pages",

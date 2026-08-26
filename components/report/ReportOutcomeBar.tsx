@@ -1,6 +1,8 @@
+import Link from 'next/link'
 import { SHIMMER_KEYFRAMES } from '@/components/ui/skeleton'
 import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
 import { REPORT_COPY } from '@/lib/marketing/copy'
+import { helpHrefForSurface } from '@/lib/help/contextual'
 import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
 import { ScoreRing } from '@/components/report/ScoreRing'
@@ -40,7 +42,17 @@ export function ReportOutcomeBar({
       )}
     >
       <div className="flex min-h-20 min-w-0 flex-wrap items-center gap-x-5 gap-y-2 py-1">
-        <ScoreRing score={score} pending={loading} />
+        <div className="flex items-center gap-2">
+          <ScoreRing score={score} pending={loading} />
+          {!loading && score != null ? (
+            <Link
+              href={helpHrefForSurface('score_help')}
+              className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              How scores work
+            </Link>
+          ) : null}
+        </div>
         {history ? (
           <ScoreHistoryChart
             history={history}

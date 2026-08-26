@@ -43,7 +43,7 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 - Report mode uses a fixed compact `ReportOutcomeBar` and the shared `ReportPane` with `ReportExplorer` master/detail. Only the explorer body lives inside `data-report-frame` using `WORKSPACE_REPORT_FRAME_CLASS`. Hard checks before you call Report work done:
   1. **Pane-relative, never viewport-relative.** Container queries only (`@container/pane`, `@[40rem]/pane:`). No `lg:` breakpoint, `100vh` cap, `--header-offset` sticky, or `overflow-clip` inside the explorer. A 1280px viewport can still be a 527px pane.
   2. **One score surface.** Visible Score, honest pending/unavailable state, full-Review history, and scan progress live only in the compact header. Ranking, the Fix count, Critical-first order, evidence, and next action live only in the explorer. No circular gauge, Critical shortcut, duplicated verdict, or instructional summary.
-  3. **Columns scroll, not the document.** In a wide pane the frame is exactly one pane height with each column `min-h-0 overflow-y-auto`; in a narrow pane the frame releases its height and the pane scrolls as one column. `goToFlag` and anchors scroll the nearest scroll parent.
+  3. **Columns scroll, not the document.** In a wide pane the frame is exactly one pane height with the list column and Flag-detail body each `min-h-0 overflow-y-auto` and Fix Prompt / Copy prompt docked as a `shrink-0` footer; in a narrow pane the frame releases its height and the pane scrolls as one column. `goToFlag` and anchors scroll the nearest scroll parent.
   4. **Filters always visible.** Rubric, severity, impact, and page filters stay in the bar at every pane width.
   5. **Product context is on the Product page.** Contract, memory, and launch gates live on `/products/[id]` with Made with, Watch, and Signals. The report does not mount a Review context disclosure. Flag detail is one desktop|mobile pair; GIF/overlay plays in the affected frame.
   6. **One of each.** One CTA per surface, at most one contextual signup or upgrade moment, one owner update-review entry point, and `rounded-card` on every in-pane box. The canonical aggregate surface is `ReportFinishPlan`.
@@ -70,7 +70,7 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 - [ ] Homepage shows Launchpad / `fixflags.com/demo`, real demo captures, `ReportExplorer` in Report mode, emulated story (no network scan)
 - [ ] Agent: chat bubbles + gate-on-send composer; one Flag working mark; no Working percent strip
 - [ ] Live anonymous reports show the owner Fix Prompt dropdown and orange Copy prompt; both clicks open create-account, never prompt text
-- [ ] Report: compact Score/history header → explorer with Fix Prompt above one capture pair; every history point opens a complete Review; fix list visible without scrolling; columns scroll inside the pane; filters present at every width
+- [ ] Report: compact Score/history header → explorer with Fix Prompt and Copy prompt docked at the bottom of Flag detail beneath one capture pair; every history point opens a complete Review; fix list visible without scrolling; columns scroll inside the pane; filters present at every width
 - [ ] First-time comprehension: Product identity, current activity, observation→Flag, where to inspect evidence
 
 ## Workflow

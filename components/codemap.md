@@ -45,4 +45,5 @@ React components organized by feature area. Shared primitives in `ui/`, feature-
 - Marketing copy imported from `lib/marketing/copy.ts` (never hardcoded)
 - Design tokens from `lib/design/tokens.css` (never raw hex)
 - shadcn/ui primitives in `components/ui/` (extend, don't replace)
-- Report UI section order: Hero → rubrics → Product Contract → Top Priorities → Journey → Flow → Action Timeline → Flags → Previews → Launch → Re-check
+- Report UI hierarchy: `knowledge/report-contract.md` only. Default route is Agent beside Report. Preview, Timeline, and Canvas stay parked.
+- `repo-scan/` is parked power-user UI, not a default product surface.

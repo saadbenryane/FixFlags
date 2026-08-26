@@ -8,7 +8,6 @@ import { AUTH } from '@/lib/marketing/copy'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Callout } from '@/components/ui/callout'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { useConfirm } from '@/components/ui/confirm-dialog'
@@ -22,8 +21,11 @@ type PasskeyRow = {
   backedUp?: boolean
 }
 
-function passkeyLabel(passkey: PasskeyRow): string {
-  return passkey.name?.trim() || 'Passkey'
+function passkeyCreatedLabel(createdAt?: Date | string | null): string | null {
+  if (!createdAt) return null
+  const date = createdAt instanceof Date ? createdAt : new Date(createdAt)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 export function PasskeyTwoFactorSettings({
@@ -41,7 +43,6 @@ export function PasskeyTwoFactorSettings({
   const [error, setError] = useState<string | null>(null)
   const [password, setPassword] = useState('')
   const [backupCodes, setBackupCodes] = useState<string[] | null>(null)
-  const [newPasskeyName, setNewPasskeyName] = useState('')
   const [enabled, setEnabled] = useState(twoFactorEnabled)
   const sec = AUTH.security
 
@@ -70,14 +71,11 @@ export function PasskeyTwoFactorSettings({
     setBusy('add')
     setError(null)
     try {
-      const { error: addError } = await authClient.passkey.addPasskey({
-        name: newPasskeyName.trim() || undefined,
-      })
+      const { error: addError } = await authClient.passkey.addPasskey()
       if (addError) {
         setError(addError.message || sec.addError)
         return
       }
-      setNewPasskeyName('')
       toast.success(sec.addSuccess)
       await loadPasskeys()
       router.refresh()
@@ -204,35 +202,27 @@ export function PasskeyTwoFactorSettings({
         </Callout>
       )}
 
-      <Card className="border-0 p-5 shadow-card">
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
-            <h2 className="text-base font-semibold">{sec.title}</h2>
-            <p className="text-sm text-muted-foreground">{sec.description}</p>
-          </div>
-          <Badge variant={enabled ? 'default' : 'secondary'}>
-            {enabled ? sec.enabledBadge : sec.disabledBadge}
-          </Badge>
-        </div>
-
-        <div className="space-y-4">
-          <div className="space-y-1">
-            <h3 className="text-sm font-medium">{sec.passkeysTitle}</h3>
-            {loading ? (
-              <p className="text-sm text-muted-foreground">{sec.loadingPasskeys}</p>
-            ) : passkeys.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{sec.passkeysEmpty}</p>
-            ) : (
-              <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/60">
-                {passkeys.map((passkey) => (
+      <div className="space-y-4">
+        <div className="space-y-1">
+          <h3 className="text-sm font-medium">{sec.passkeysTitle}</h3>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">{sec.loadingPasskeys}</p>
+          ) : passkeys.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{sec.passkeysEmpty}</p>
+          ) : (
+            <ul className="divide-y divide-border/60 overflow-hidden rounded-card border border-border/60">
+              {passkeys.map((passkey) => {
+                const created = passkeyCreatedLabel(passkey.createdAt)
+                const location = passkey.backedUp ? sec.synced : sec.device
+                return (
                   <li
                     key={passkey.id}
                     className="flex items-center justify-between gap-3 px-3 py-2.5"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{passkeyLabel(passkey)}</p>
+                      <p className="truncate text-sm font-medium">{sec.passkeyItem}</p>
                       <p className="text-xs text-muted-foreground">
-                        {passkey.backedUp ? sec.synced : sec.device}
+                        {created ? `${created} · ${location}` : location}
                         {passkey.deviceType ? ` · ${passkey.deviceType}` : ''}
                       </p>
                     </div>
@@ -251,44 +241,39 @@ export function PasskeyTwoFactorSettings({
                       )}
                     </Button>
                   </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Input
-              value={newPasskeyName}
-              onChange={(event) => setNewPasskeyName(event.target.value)}
-              placeholder={sec.passkeyNamePlaceholder}
-              aria-label={sec.passkeyNameLabel}
-              disabled={busy !== null}
-            />
-            <Button
-              type="button"
-              onClick={() => void addPasskey()}
-              disabled={busy !== null}
-              loading={busy === 'add'}
-              loadingLabel={sec.addPasskey}
-            >
-              {busy !== 'add' && (
-                <Fingerprint className="mr-2 h-4 w-4" />
-              )}
-              {sec.addPasskey}
-            </Button>
-          </div>
+                )
+              })}
+            </ul>
+          )}
         </div>
-      </Card>
 
-      <Card className="border-0 p-5 shadow-card">
-        <form
-          onSubmit={enabled ? disableTwoFactor : enableTwoFactor}
-          className="space-y-4"
+        <Button
+          type="button"
+          onClick={() => void addPasskey()}
+          disabled={busy !== null}
+          loading={busy === 'add'}
+          loadingLabel={sec.addPasskey}
         >
+          {busy !== 'add' && <Fingerprint className="mr-2 h-4 w-4" />}
+          {sec.addPasskey}
+        </Button>
+      </div>
+
+      <div className="space-y-4 border-t border-border/60 pt-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">{sec.enableTitle}</h3>
             <p className="text-sm text-muted-foreground">{sec.enableDescription}</p>
           </div>
+          <Badge variant={enabled ? 'default' : 'secondary'}>
+            {enabled ? sec.enabledBadge : sec.disabledBadge}
+          </Badge>
+        </div>
+
+        <form
+          onSubmit={enabled ? disableTwoFactor : enableTwoFactor}
+          className="space-y-4"
+        >
           {hasPassword ? (
             <div className="space-y-2">
               <label htmlFor="two-factor-password" className="text-sm font-medium">
@@ -332,7 +317,7 @@ export function PasskeyTwoFactorSettings({
             )}
           </div>
         </form>
-      </Card>
+      </div>
 
       {backupCodes && backupCodes.length > 0 && (
         <Callout variant="warning" title={sec.backupCodesTitle}>

@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { FileQuestion } from 'lucide-react'
+import { HelpSupportActions } from '@/components/help/HelpSupportActions'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { AUDIT_ERRORS, REPORT_COPY, SYSTEM_COPY } from '@/lib/marketing/copy'
+import { helpHrefForSurface } from '@/lib/help/contextual'
 
 /**
  * Helpful empty state for a report route whose audit no longer exists
@@ -48,6 +50,11 @@ export function DeletedReportState() {
             <Link href="/dashboard">{SYSTEM_COPY.actions.dashboard}</Link>
           </Button>
         </div>
+
+        <HelpSupportActions
+          helpHref={helpHrefForSurface('audit_failure')}
+          articleTitle="Why a check failed"
+        />
       </section>
     </Container>
   )

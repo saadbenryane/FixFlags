@@ -1461,23 +1461,6 @@ model BenchmarkSnapshot {
   @@map("graph_benchmark_snapshot")
 }
 
-model Experiment {
-  id         String    @id @default(cuid())
-  slug       String    @unique
-  hypothesis String
-  surface    String
-  startedAt  DateTime  @default(now())
-  endedAt    DateTime?
-  metric     String
-  baseline   Float?
-  result     Float?
-  decision   String?
-  notes      String?
-
-  @@index([surface, startedAt])
-  @@map("graph_experiment")
-}
-
 model ToolUsage {
   id        String   @id @default(cuid())
   toolSlug  String
@@ -1562,23 +1545,6 @@ model GrowthArtifact {
 
   @@index([kind, writtenAt])
   @@map("graph_artifact")
-}
-
-model RumMeasurement {
-  id        String   @id @default(cuid())
-  siteId    String
-  page      String
-  metric    String
-  value     Float
-  rating    String?
-  delta     Float?
-  nav       Int?
-  createdAt DateTime @default(now())
-
-  @@index([siteId])
-  @@index([siteId, metric])
-  @@index([siteId, createdAt])
-  @@map("rum_measurements")
 }
 
 enum Plan {

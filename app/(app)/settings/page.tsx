@@ -6,7 +6,6 @@ import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { AccountSettingsForms } from '@/components/settings/AccountSettingsForms'
-import { PasskeyTwoFactorSettings } from '@/components/settings/PasskeyTwoFactorSettings'
 import { ConnectedAccounts } from '@/components/settings/ConnectedAccounts'
 import { GscConnectionCard } from '@/components/settings/GscConnectionCard'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -82,6 +81,7 @@ export default async function SettingsPage({
         hasPassword={hasPassword}
         passkeyCount={user.passkeys.length}
         linkedProviders={linkedProviders}
+        twoFactorEnabled={user.twoFactorEnabled}
       />
 
       {isGoogleSearchConsoleConfigured() && (
@@ -93,31 +93,16 @@ export default async function SettingsPage({
 
       <Card variant="subtle">
         <CardHeader>
-          <CardTitle className="text-base">Account</CardTitle>
-          <CardDescription>Name, email, password, and account deletion.</CardDescription>
+          <CardTitle className="text-base">{AUTH.settings.account.title}</CardTitle>
+          <CardDescription>{AUTH.settings.account.description}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-8">
-          <div className="flex justify-between gap-4 text-sm">
-            <span className="text-muted-foreground">Plan</span>
-            <span className="font-medium">{planDef.name}</span>
-          </div>
+        <CardContent>
           <AccountSettingsForms
             initialName={user.name ?? ''}
             email={user.email}
             emailVerified={user.emailVerified}
-          />
-        </CardContent>
-      </Card>
-
-      <Card variant="subtle">
-        <CardHeader>
-          <CardTitle className="text-base">{AUTH.security.title}</CardTitle>
-          <CardDescription>{AUTH.security.description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <PasskeyTwoFactorSettings
-            twoFactorEnabled={user.twoFactorEnabled}
-            hasPassword={hasPassword}
+            planName={planDef.name}
+            isPaid={user.plan !== 'FREE'}
           />
         </CardContent>
       </Card>

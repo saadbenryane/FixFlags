@@ -86,7 +86,7 @@ describe('AuditReportProgressive', () => {
         (tab) => tab.getAttribute('aria-selected') === 'true',
       ),
     ).toBe(true)
-    expect(screen.getAllByPlaceholderText(/Ask about this report|Sign in to ask/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByPlaceholderText(/Ask about this report|Send a message/i).length).toBeGreaterThan(0)
   })
 
   it('keeps product contract out of the immersive scanning workspace', () => {
@@ -356,7 +356,7 @@ describe('AuditReportProgressive', () => {
     )
 
     expect(screen.queryAllByRole('tab', { name: 'Timeline' })).toHaveLength(0)
-    expect(screen.getByPlaceholderText(/Sign in to ask about the Flags/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Send a message')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sign in to chat' })).toBeInTheDocument()
   })
 

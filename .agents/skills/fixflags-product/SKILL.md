@@ -14,7 +14,7 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 | Shipped promise | `PRODUCT.md` |
 | Product direction | `knowledge/vision.md`, `ROADMAP.md` |
 | Report hierarchy | `knowledge/report-contract.md` |
-| Report workspace and active-review behavior | `docs/workspace-interface.md`, `DESIGN.md` (full-bleed living-review editor) |
+| Report workspace | `knowledge/report-contract.md`, `docs/workspace-interface.md`, `DESIGN.md` |
 | Audit stages and recovery | `docs/audit-pipeline.md`, `lib/audit/` |
 | Plans and quotas | `lib/billing/plans.ts`, `lib/auth/entitlements.ts`, `lib/auth/permissions.ts` |
 | Access and sharing | `lib/audit/report-access.ts`, `lib/security/share-grant.ts`, `SECURITY.md` |
@@ -33,11 +33,11 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 ## Invariants
 
 - The user loop is Flag → Fix → Update review; update reviews are fresh, full, and diff against their parent.
-- Completed scheduled Studio reviews meter against the same product-review pool.
+- Completed scheduled Studio reviews meter against the same product-review pool. Watch is Studio only (`canAccessProductWatch` → `plan === 'TEAM'`).
 - Public rubrics are exactly Message, Experience, and Reach.
-- Anonymous users receive one teaser scan with deterministic Agent updates and real evidence for every confirmed Flag. Every fix prompt, interactive Agent request, and Timeline payload stays gated until claim (`PRODUCT.md`, `knowledge/report-contract.md`). Never persist signup-gate strings as Flag evidence or fix text.
-- Preview overlays are Flag-owned and measured (`Flag.evidenceTargets`). Never draw a preset box. Page-scope and unmeasured Flags use an honest chip.
-- Active review UI follows the full-bleed living-review contract: Agent chat (bubbles + gate-on-send) on the left, Product reality on the right, no pane cards, flush viewport split, Preview-first Eye/FileText chrome with header Monitor/Smartphone icons while Preview is active, Report-first after completion inside the same shell with `ReportExplorer` master/detail, path-only docked transport, and customer-meaningful evidence-bound activity only. Route report UI changes through `docs/workspace-interface.md` and the design-system living-review checklist.
+- Anonymous users receive one teaser scan with deterministic Agent updates and real evidence for every confirmed Flag. Every fix prompt, interactive Agent request, and Timeline payload stays gated until claim. Never persist signup-gate strings as Flag evidence or fix text.
+- The default live report is Agent beside Report. Preview, Timeline, and Canvas stay parked on `/report/[id]` and are not loaded there (`PRODUCT.md`).
+- Flag evidence overlays, when Preview is unparked, are Flag-owned measurements (`Flag.evidenceTargets`). Never draw a preset box.
 - Authentication returns through `/post-login` so claim occurs before checkout or onward navigation.
 - HTTP, MCP, CLI, watch, and UI transports call shared task/application services; routes validate access and adapt responses.
 - Public boundaries remain `/api/checks` and `/api/reports/[id]/*`; do not add legacy audit routes.
@@ -55,7 +55,7 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 
 ## Anonymous wedge checklist
 
-1. Trace `getGatedAuditForRequest` → `promptAccess` → Finish Plan → Copy UI → `/details` explorer.
+1. Trace `getGatedAuditForRequest` → `promptAccess` → Copy UI on `/report/[id]`. Do not rebuild a second explorer.
 2. Assert live anon evidence is real page evidence, not `Create a free account to see evidence…`.
 3. Assert live anonymous Copy chrome is visible and locked. Clicking Copy or Fix Prompt opens create-account and must not write the clipboard. After authentication, every eligible Copy action must copy a real editor prompt and never a gate placeholder.
 4. Keep marketing sample unlock on the sample path only (`isPublicMarketingSample` / `variant="sample"`).
@@ -65,4 +65,4 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 - Roadmap "Next" or "Later" work disguised as completion.
 - Silent production degradation, hardcoded provider answers, fake proof, duplicated canonical facts, or compatibility fallbacks.
 - A UI-only gate without matching server access control, or a route-only implementation unavailable to other transports.
-- Production dogfood gaps filed as "Touch later" when they break first-value trust (see `.agents/sessions/customer-journey-completion-plan.md`).
+- Preview/Timeline/Canvas UI on the default report route while PRODUCT parks those panes.

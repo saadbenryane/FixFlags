@@ -60,6 +60,10 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
       { path: '/docs/troubleshooting', label: 'Troubleshooting', note: 'Setup and runtime recovery' },
       { path: '/partners', label: 'Expert program', note: 'Lovable and Bolt delivery partners' },
       { path: '/help', label: 'Help Center', note: 'Billing, account, failed checks, and contact' },
+      { path: '/help/getting-started/first-check', label: 'Run your first product review' },
+      { path: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
+      { path: '/help/checks-and-reports/why-check-failed', label: 'Why a product review failed' },
+      { path: '/help/account/contact-us', label: 'Contact support' },
     ],
   },
   {

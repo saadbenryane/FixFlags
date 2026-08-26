@@ -10,15 +10,14 @@ export default function ProductLoading() {
       aria-label="Loading Product"
     >
       <Skeleton shimmer className="h-11 w-28 rounded-[var(--radius-control)]" />
-      <div className="space-y-2">
-        <Skeleton shimmer className="h-9 w-64 max-w-full rounded-md" />
-        <Skeleton shimmer className="h-4 w-96 max-w-full rounded-md" />
+      <div className="space-y-1.5">
+        <Skeleton shimmer className="h-8 w-56 max-w-full rounded-md" />
+        <Skeleton shimmer className="h-4 w-40 max-w-full rounded-md" />
       </div>
-      <Skeleton shimmer className="h-36 rounded-card" />
-      <Skeleton shimmer className="h-72 rounded-card" />
+      <Skeleton shimmer className="h-11 max-w-xl rounded-card" />
       <Skeleton shimmer className="h-56 rounded-card" />
-      <Skeleton shimmer className="h-64 rounded-card" />
-      <Skeleton shimmer className="h-40 rounded-card" />
+      <Skeleton shimmer className="h-72 rounded-card" />
+      <Skeleton shimmer className="h-48 rounded-card" />
     </Container>
   )
 }

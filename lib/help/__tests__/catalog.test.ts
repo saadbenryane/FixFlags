@@ -16,6 +16,7 @@ describe('help catalog', () => {
     expect(HELP_CATEGORIES).toHaveLength(4)
     expect(HELP_CATEGORIES.some((category) => category.id === 'mcp-and-editors')).toBe(false)
     expect(HELP_ARTICLES.every((article) => article.categoryId !== 'mcp-and-editors')).toBe(true)
+    expect(HELP_ARTICLES.length).toBeGreaterThanOrEqual(25)
   })
 
   it('resolves every article slug', () => {
@@ -41,5 +42,9 @@ describe('help catalog', () => {
   it('keeps chat SLA strings aligned', () => {
     expect(SUPPORT_CHAT.welcomeMessage).toBe(SUPPORT_WELCOME_MESSAGE)
     expect(SUPPORT_CHAT.subtitle).toContain('few hours')
+  })
+
+  it('sets updatedAt on every help article', () => {
+    expect(HELP_ARTICLES.every((article) => article.updatedAt)).toBe(true)
   })
 })

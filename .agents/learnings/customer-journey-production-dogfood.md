@@ -30,7 +30,7 @@ First-value trust is the acquisition surface. Broken logo + empty evidence + fak
 ## Where prevention was encoded
 
 - Brand fix: `fix-live-images` + `.agents/learnings/next-image-local-patterns-blank-assets.md`
-- `.agents/sessions/customer-journey-completion-plan.md` (Phase 0 marked done 2026-07-23)
+- `.agents/sessions/archive/customer-journey-completion-plan.md` (Phase 0 marked done 2026-07-23)
 - `.agents/sessions/launch-readiness-completion-plan.md` immediate actions
 - `.agents/sessions/credentialed-journey-matrix.md` anon row
 - `AGENTS.md` anon invariant

@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { Footer } from '@/components/layout/footer'
-import { IntegrationsBlock } from '@/components/marketing/landing/IntegrationsBlock'
 import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
 import { LandingHowItWorksSection } from '@/components/marketing/landing/LandingHowItWorksSection'
 import { LandingRubricsSection } from '@/components/marketing/landing/LandingRubricsSection'
@@ -111,30 +110,6 @@ describe('homepage lean sections', () => {
     expect(screen.queryByText('FixFlags review')).not.toBeInTheDocument()
   })
 
-  it('shows the URL-first builder workflow without power-tool discovery', () => {
-    render(<IntegrationsBlock />)
-
-    expect(
-      screen.getByText((content) =>
-        content.includes('Start with copy and paste'),
-      ),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(/run an update review on the live URL/i),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('link', { name: 'Read the report guide' }),
-    ).toHaveAttribute('href', '/docs/reports')
-    expect(
-      screen.getByRole('link', { name: 'See a sample report' }),
-    ).toHaveAttribute('href', '/samples')
-    expect(screen.queryByText(/MCP|CLI/i)).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('link', { name: /integration guide/i }),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByRole('img')).not.toBeInTheDocument()
-  })
-
   it('keeps the final CTA copy and URL field before the review plaque', () => {
     const { container } = render(<LandingFinalCtaSection />)
     const finalCta = container.querySelector('#final-cta')
@@ -219,6 +194,58 @@ describe('homepage lean sections', () => {
       node.className.includes(WORKSPACE_SPLIT_GRID_CLASS),
     )
     expect(grid).toBeDefined()
+  })
+
+  it('centers the sample review and puts the report CTA under the preview', () => {
+    render(<SampleReportSection />)
+
+    const heading = screen.getByRole('heading', {
+      name: /See what gets in your users’ way/i,
+    })
+    expect(heading.parentElement?.className).toMatch(/text-center/)
+    expect(
+      screen.getByText(/Explore a curated demo review/i).className,
+    ).toMatch(/text-center|mx-auto/)
+
+    const story = screen.getByLabelText('FixFlags review story')
+    const cta = screen.getByRole('link', { name: /Explore a full report/i })
+    expect(
+      Boolean(
+        heading.compareDocumentPosition(story) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true)
+    expect(
+      Boolean(
+        story.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true)
+  })
+
+  it('gates demo Copy all and send behind create-account', async () => {
+    render(<SampleReportSection />)
+
+    expect(
+      screen.getByRole('button', { name: /^Copy all$/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Send a message')).toBeEnabled()
+    expect(screen.queryByText('Copy Finish Plan')).not.toBeInTheDocument()
+    expect(screen.queryByText('Copy Mega Prompt')).not.toBeInTheDocument()
+    expect(
+      screen.queryByPlaceholderText(/You can only chat on your own reports/i),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Copy all$/i }))
+    expect(
+      await screen.findAllByText('Create your free account'),
+    ).not.toHaveLength(0)
+    expect(screen.queryByText(/upgrade/i)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /close/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in to chat' }))
+    expect(screen.getAllByText('Create your free account').length).toBeGreaterThan(
+      0,
+    )
   })
 
   it('gives the visitor the real Agent and Report workspace toggle', () => {

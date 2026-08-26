@@ -38,8 +38,8 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 | `components/audit/` | Report page layout (hero, toolbar, rubrics, actions) | — |
 | `components/report/` | Flag interaction (explorer, detail panel, fix loop, scoring) | — |
 | `lib/` | Core business logic | [lib/codemap.md](lib/codemap.md) |
-| `lib/audit/` | Audit engine (90 files: runner, checks, scoring, flow, judge, persist, capture) | [lib/audit/codemap.md](lib/audit/codemap.md) |
-| `lib/audit/checks/` | 22 check modules (metadata, performance, accessibility, SEO, trust, etc.) | — |
+| `lib/audit/` | Audit engine (runner, checks, scoring, flow, judge, persist, capture) | [lib/audit/codemap.md](lib/audit/codemap.md) |
+| `lib/audit/checks/` | Check modules registered in `checks/index.ts` | — |
 | `lib/queue/` | BullMQ queue (client, worker, heartbeat, recovery) | [lib/queue/codemap.md](lib/queue/codemap.md) |
 | `lib/billing/` | Subscription limits, credits, Stripe integration | [lib/billing/codemap.md](lib/billing/codemap.md) |
 | `lib/graph/` | Knowledge graph (persist, queries, snapshot) — internal only | — |
@@ -48,7 +48,8 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 | `lib/help/` | Help Center catalog, search, contextual hrefs, SLA | — |
 | `lib/docs/` | Typed docs catalog, Markdown loading, and search index | — |
 | `lib/integrations/` | Canonical editor catalog and MCP configuration generator | — |
-| `lib/mcp/` | Model Context Protocol server (16 tools) | — |
+| `lib/mcp/` | Parked Model Context Protocol server. Load only with `npm run agent -- context cli`. | — |
+| `fixflags-cli/` | Parked standalone CLI package. Load only with `npm run agent -- context cli`. | — |
 | `lib/design/` | Design tokens, brand spec | — |
 | `prisma/` | Database schema, migrations, seed | — |
 | `scripts/` | CLI scripts (demo audits, backfills, guards, validation) | [scripts/codemap.md](scripts/codemap.md) |
@@ -57,7 +58,6 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 | `docs/` | Strategy, positioning, voice, growth docs | — |
 | `docs/growth/` | Organic growth workspace (architecture, roadmap, experiments) | — |
 | `.agents/` | Multi-agent coordination (board, learnings, evals, handoffs) | — |
-| `fixflags-cli/` | Standalone CLI package | — |
 | `ide-integrations/` | Cursor, Claude Code, Kiro integrations | — |
 
 ## Where To Change Things
@@ -68,11 +68,11 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 - **Billing/subscription logic** → `lib/billing/` (read `lib/billing/codemap.md`)
 - **Marketing copy** → `lib/marketing/copy.ts` ONLY (never hardcode in components)
 - **Design tokens** → `lib/design/tokens.css` (semantic tokens, never raw hex)
-- **Canonical report UI** → `components/audit/AuditReport.tsx`, `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts`
-- **Detailed report UI** → `components/audit/AuditReport.tsx`, `components/report/ReportExplorer.tsx`
+- **Canonical report UI** → `components/audit/AuditReport.tsx`, `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts`. Default route is Agent beside Report.
 - **Flag interaction UI** → `components/report/` (explorer, detail panel, fix loop)
 - **Shared UI primitives** → `components/ui/` (shadcn-based)
-- **API routes** → `app/api/` (audits, auth, MCP, Stripe, cron, health)
+- **API routes** → `app/api/` (checks, reports, auth, Stripe, cron, health). Parked MCP/CLI/repo-scan routes stay undiscoverable.
+- **Parked CLI / MCP / repo-scan** → `fixflags-cli/`, `lib/mcp/`, `lib/repo-scan/` (not default UI work; `npm run agent -- context cli`)
 - **Marketing pages** → `app/(marketing)/` (homepage, pricing, FAQ, etc.)
 - **Public product documentation** → `app/(docs)/`, `content/docs/`, and `lib/docs/catalog.ts`
 - **Editor integration behavior** → `lib/integrations/editor-catalog.ts` and `lib/integrations/editor-config.ts`
@@ -115,4 +115,4 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 - **Marketing copy** is centralized in `lib/marketing/copy.ts`; components import from there
 - **Design tokens** use semantic names (`bg-card`, `text-brand`); raw hex only in `tokens.css` and `brand-spec.ts`
 - **AI prompts** split system (stable, cacheable) from user (per-request) for prompt caching
-- **Report UI** has strict section order documented in `knowledge/report-contract.md`: identity/readiness/re-check → complete Fix list → Product Contract → Journey → Flow → Action Timeline → previews/launch/watch/share.
+- **Report UI** hierarchy lives only in `knowledge/report-contract.md`. Default `/report/[id]` is Agent beside Report. Preview, Timeline, and Canvas stay parked there. Legacy `/share/[token]` is compatibility-only.

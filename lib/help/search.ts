@@ -79,11 +79,3 @@ export function getRelatedArticles(slug: HelpArticleSlug): HelpArticle[] {
     .map((s) => getHelpArticle(s))
     .filter((a): a is HelpArticle => Boolean(a))
 }
-
-/** FAQ projection: question/answer pairs derived from article title + excerpt. */
-export function helpArticlesAsFaq(): ReadonlyArray<{ question: string; answer: string }> {
-  return HELP_ARTICLES.map((a) => ({
-    question: a.title,
-    answer: a.excerpt,
-  }))
-}

@@ -21,7 +21,7 @@ describe('ReportFinishPlan', () => {
   it('renders copy action for a bundled top fixes prompt', () => {
     render(<ReportFinishPlan flagCount={3} prompt={PROMPT} />)
     expect(screen.getByText(/3 Flags ranked by impact/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Copy Finish Plan/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Copy all/i })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Preview prompt/i }))
     expect(screen.getByTestId('fix-prompt-preview')).toHaveTextContent('Fix all 2 issues')
   })

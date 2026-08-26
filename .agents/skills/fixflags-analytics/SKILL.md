@@ -37,6 +37,10 @@ Growth thresholds and deferred work live in `ROADMAP.md` and the launch funnel h
 | `report_progress_viewed` / `sticky_nav_used` / `polish_pass_copied` / `flag_detail_viewed` | Report workspace instrumentation |
 | `product_contract_saved` | `ProductContractCard` after successful PATCH |
 | `remember_shown` | `ProductMemoryStrip` when verified learnings render |
+| `help_article_feedback` | `HelpArticleFeedback` on help articles (helpful / not helpful) |
+| `help_search_no_results` | `KnowledgeSearch` when a query returns zero hits (deduped per query+filter) |
+| `help_search_result_clicked` | `KnowledgeSearch` when the user clicks a search result |
+| `marketing_page_view` | `MarketingPageViewTracker` on `/help`, `/faq`, `/docs/*`, pricing, samples, etc. |
 
 **GA4 key events:** Run `npm run growth:configure-ga4-key-events` (requires `GA4_PROPERTY_ID` + service account with `analytics.edit`). Canonical names: `lib/growth/ga-key-events.ts`.
 

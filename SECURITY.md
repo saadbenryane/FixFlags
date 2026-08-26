@@ -46,7 +46,8 @@
 - Anonymous report responses may include confirmed Flags, public screenshots, textual evidence, rubric results, and deterministic scan messages.
 - Anonymous live-report responses omit fix prompts, Timeline events and playback metadata, pipeline logs, owner and plan state, Product Memory, private history, Canvas data, and watch configuration.
 - Repository-owned curated samples may ship versioned static Timeline fixtures because they contain no production report payload or private viewer data.
-- Timeline, chat history, and Canvas authorization are enforced by report APIs. Client-side locks are presentation only.
+- `/report/[id]` is the canonical public evidence URL. Copy link is the share action.
+- Legacy `/share/[token]` reads remain compatibility-only. The product no longer creates or manages protected share links. Do not treat `ShareLink.passwordHash` as a live product contract.
 - Canvas is private to the paid report owner. Generated documents are schema-validated, evidence-grounded, and cannot contain executable markup, external resources, or inaccessible source references.
 
 ## Secrets management

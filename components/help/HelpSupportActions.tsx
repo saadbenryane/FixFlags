@@ -11,10 +11,12 @@ export function HelpSupportActions({
   helpHref,
   articleTitle,
   size = 'sm',
+  className,
 }: {
   helpHref: string
   articleTitle?: string
   size?: 'sm' | 'default'
+  className?: string
 }) {
   const support = useOptionalSupportContext()
 
@@ -26,13 +28,13 @@ export function HelpSupportActions({
   }
 
   return (
-    <>
+    <div className={className ? `flex flex-wrap gap-2 ${className}` : 'flex flex-wrap gap-2'}>
       <Button asChild variant="outline" size={size}>
         <Link href={helpHref as Route}>{HELP_CENTER.viewHelpCta}</Link>
       </Button>
       <Button type="button" variant="ghost" size={size} onClick={openChat}>
         {HELP_CENTER.askSupportCta}
       </Button>
-    </>
+    </div>
   )
 }

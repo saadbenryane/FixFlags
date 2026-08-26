@@ -46,7 +46,7 @@ export function SampleSectionCta({ flagCount }: { flagCount?: number }) {
       : LANDING_PAGE.sampleReport.cta
 
   return (
-    <div>
+    <div className="flex justify-center">
       <Button
         variant="outline"
         asChild

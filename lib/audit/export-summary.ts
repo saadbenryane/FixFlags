@@ -1,7 +1,7 @@
 import { gradeFromScore } from '@/lib/audit/scoring'
 import { formatScoreInline } from '@/lib/audit/score-display'
 import { displayVerdict } from '@/lib/audit/verdict'
-import { rubricLabel, shareStatusLabel } from '@/lib/utils'
+import { rubricLabel, severityRank, shareStatusLabel } from '@/lib/utils'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
@@ -27,12 +27,6 @@ interface ExportAuditInput {
   isPublic?: boolean
   rubrics: ExportRubricRow[]
   flags: ExportFlag[]
-}
-
-const SEVERITY_ORDER: Record<string, number> = {
-  CRITICAL: 0,
-  IMPORTANT: 1,
-  POLISH: 2,
 }
 
 function formatRubricScore(row: ExportRubricRow): string {
@@ -68,7 +62,7 @@ export function buildAuditExportSummary(audit: ExportAuditInput): string {
   }).join('\n')
 
   const topFlags = [...flags]
-    .sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9))
+    .sort((a, b) => severityRank(a.severity) - severityRank(b.severity))
     .slice(0, 3)
 
   const flagLines =

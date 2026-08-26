@@ -1,7 +1,9 @@
 'use client'
 
+import type { Route } from 'next'
 import { RouteErrorPage } from '@/components/ui/route-error-page'
-import { SYSTEM_COPY } from '@/lib/marketing/copy'
+import { TextLink } from '@/components/ui/text-link'
+import { HELP_CENTER, SYSTEM_COPY } from '@/lib/marketing/copy'
 
 export default function DocsError({
   error,
@@ -20,6 +22,12 @@ export default function DocsError({
       returnHref="/docs"
       returnLabel={SYSTEM_COPY.actions.docsHome}
       shell="marketing"
-    />
+    >
+      <p className="text-sm text-muted-foreground">
+        <TextLink href={'/docs/troubleshooting' as Route}>Troubleshooting guide</TextLink>
+        {' · '}
+        <TextLink href="/help">{HELP_CENTER.label}</TextLink>
+      </p>
+    </RouteErrorPage>
   )
 }

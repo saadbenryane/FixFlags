@@ -182,6 +182,9 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Responsive behavior | `DESIGN.md` → Responsive behavior |
 | Product PRD (requirements, terminology, metering story) | `docs/product-prd.md` |
 | Report workspace interface (layout, modes, playback, mobile) | `docs/workspace-interface.md` |
+| Help center information architecture (Docs / Help / FAQ ownership) | `docs/knowledge-base-ia.md` |
+| Help article catalog and contextual links | `lib/help/catalog.ts`, `lib/help/contextual.ts` |
+| Unified help + docs search index | `lib/knowledge/index.ts` |
 | Product UI intent (pointer) | `docs/product-ui-intent.md` |
 | Live Review PRD (retired pointer) | `docs/live-review-and-product-intelligence-prd.md` |
 | States (rest, hover, focus, active, disabled) | `DESIGN.md` → States |
