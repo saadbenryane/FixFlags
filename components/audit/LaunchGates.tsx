@@ -9,9 +9,10 @@ import { REPORT_COPY } from '@/lib/marketing/copy'
 
 interface Props {
   checklist: LaunchChecklistItem[]
+  sectionId?: string
 }
 
-export function LaunchGates({ checklist }: Props) {
+export function LaunchGates({ checklist, sectionId = 'product-launch-gates' }: Props) {
   if (checklist.length === 0) return null
 
   const ordered = LAUNCH_CHECKLIST_IDS.map((id) => checklist.find((item) => item.id === id)).filter(
@@ -21,7 +22,7 @@ export function LaunchGates({ checklist }: Props) {
 
   return (
     <Card
-      id="report-launch-gates"
+      id={sectionId}
       className="scroll-mt-[var(--header-offset)] space-y-3 p-4"
       aria-labelledby="launch-gates-heading"
     >

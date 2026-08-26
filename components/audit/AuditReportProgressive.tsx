@@ -13,11 +13,9 @@ import {
 import { Callout } from '@/components/ui/callout'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
-import { ReportContextDisclosure } from '@/components/report/ReportContextDisclosure'
 import { REPORT_SECTION_SCROLL_MT } from '@/components/report/workspace-geometry'
 import { ReportPane } from '@/components/report/ReportPane'
 import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
-import { ProductContractCard } from '@/components/audit/ProductContractCard'
 import type {
   AuditScreenshot,
   ScreenshotCaptureStatus,
@@ -45,7 +43,7 @@ import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 import { cn } from '@/lib/utils'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import type { AgentMessage } from '@/lib/audit/agent-message'
-import type { AuditAccessContext } from '@/lib/audit/access'
+import { resolveReportChatGate, type AuditAccessContext } from '@/lib/audit/access-context'
 
 /** Catches crashes in the explorer subtree so the scanning UI stays visible. */
 class ExplorerErrorBoundary extends Component<
@@ -106,6 +104,7 @@ interface AuditReportProgressiveProps {
   auditId?: string
   /** Exact server access decision. Missing envelopes fail closed. */
   accessContext?: Exclude<AuditAccessContext, 'denied'> | null
+  isLoggedIn?: boolean
   /** Anonymous teaser scan: reduced pipeline (no journey walk). */
   isTeaser?: boolean
   agentMessages?: AgentMessage[]
@@ -126,16 +125,20 @@ export function AuditReportProgressive({
   sectionId = 'report-flags',
   auditId,
   accessContext = null,
+  isLoggedIn = false,
   isTeaser = false,
   agentMessages = [],
 }: AuditReportProgressiveProps) {
   const isOwnerAccess = accessContext === 'owner'
-  const canClaimAccess = accessContext === 'anonymous_teaser'
-  const fixPromptLocked = canClaimAccess
+  const chatGate = resolveReportChatGate({
+    accessContext,
+    isLoggedIn: isLoggedIn || isOwnerAccess,
+  })
+  const fixPromptLocked = !isOwnerAccess
   const signUpHref = auditId
     ? `/sign-up?next=/report/${auditId}&from=report`
     : '/sign-up?from=report'
-  const chatGateReason = canClaimAccess ? 'sign-in' : 'owner'
+  const chatGateReason = chatGate.gateReason
   const isFailed = status === 'FAILED'
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
   const stage = useMemo(
@@ -235,7 +238,7 @@ export function AuditReportProgressive({
     return model
   }, [url, pageType, score, partialFlags, screenshots, rubrics, isOwnerAccess])
 
-  const showContract = Boolean(productContract)
+  void productContract
   const flagCount = explorerModel.flagCount
 
   // Live findings stream: deterministic flags become visible as their check
@@ -272,7 +275,7 @@ export function AuditReportProgressive({
     capabilities: {
       promptAccess: 'none',
       canReplayTimeline: false,
-      canChat: isOwnerAccess && Boolean(auditId),
+      canChat: chatGate.canChat && Boolean(auditId),
       canUseCanvas: false,
       canShare: false,
       canExport: false,
@@ -380,6 +383,7 @@ export function AuditReportProgressive({
             auditId={auditId}
             capabilities={workspace.capabilities}
             gateReason={chatGateReason}
+            claimReason={chatGate.claimReason}
             agentMessages={scanTranscript}
             reportUrl={url}
             scanning
@@ -395,16 +399,6 @@ export function AuditReportProgressive({
         className="h-full"
       />
     </Suspense>
-  )
-
-  const contextSections = (
-    <>
-      {showContract && productContract ? (
-        <div id="report-contract" className={REPORT_SECTION_SCROLL_MT}>
-          <ProductContractCard contract={productContract} canEdit={false} />
-        </div>
-      ) : null}
-    </>
   )
 
   const progressAuditId = auditId ?? getActiveAudit()?.auditId ?? 'progressive'
@@ -454,6 +448,7 @@ export function AuditReportProgressive({
                   auditId={auditId}
                   capabilities={workspace.capabilities}
                   gateReason={chatGateReason}
+                  claimReason={chatGate.claimReason}
                   agentMessages={agentMessages}
                   reportUrl={url}
                 />
@@ -489,16 +484,6 @@ export function AuditReportProgressive({
                           />
                         </ExplorerErrorBoundary>
                       </section>
-                    }
-                    afterFrame={
-                      <>
-                        <ReportContextDisclosure
-                          sectionIds={['report-contract']}
-                          className="mt-3"
-                        >
-                          {contextSections}
-                        </ReportContextDisclosure>
-                      </>
                     }
                   />
                 </>

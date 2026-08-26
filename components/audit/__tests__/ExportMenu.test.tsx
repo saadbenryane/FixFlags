@@ -40,4 +40,25 @@ describe('ExportMenu', () => {
       )
     })
   })
+
+  it('opens the email report dialog from Export', async () => {
+    render(
+      <ExportMenu
+        auditId="review-1"
+        url="https://example.com"
+        score={72}
+        rubrics={[]}
+        flags={[]}
+      />,
+    )
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: /export/i }), {
+      button: 0,
+      ctrlKey: false,
+    })
+    fireEvent.click(await screen.findByText('Email me this report'))
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('you@company.com')).toBeInTheDocument()
+  })
 })

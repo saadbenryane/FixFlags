@@ -128,11 +128,10 @@ describe('AuditReportProgressive', () => {
   it('renders the completed hold frame through the immersive split shell', () => {
     render(<AuditReportProgressive auditId={AUDIT_ID} status="COMPLETED" url={URL} score={82} />)
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
-    // The hold frame carries the same three rows as the completed report:
-    // outcome bar, fix explorer, and the collapsed review context.
+    // The hold frame matches the completed report: outcome bar and Flag explorer.
     expect(screen.getByRole('region', { name: REPORT_COPY.workspace.summaryLabel })).toBeInTheDocument()
     expect(screen.getByLabelText('Score 82')).toBeInTheDocument()
-    expect(screen.getByText(REPORT_COPY.reviewContext.title)).toBeInTheDocument()
+    expect(screen.queryByText('Review context')).not.toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: 'Report sections' })).not.toBeInTheDocument()
   })
 
@@ -345,11 +344,11 @@ describe('AuditReportProgressive', () => {
     expect(screen.queryByRole('slider', { name: 'Scrub through the review path' })).not.toBeInTheDocument()
   })
 
-  it('keeps a live marketing-sample envelope read-only with no sign-in claim action', () => {
+  it('lets a signed-out public viewer ask to sign in instead of locking the composer', () => {
     render(
       <AuditReportProgressive
         auditId={AUDIT_ID}
-        accessContext="marketing_sample"
+        accessContext="public_viewer"
         status="COMPLETED"
         url={URL}
         actionTimeline={[{ t: 500, kind: 'capture', label: 'Opened page' }]}
@@ -357,9 +356,8 @@ describe('AuditReportProgressive', () => {
     )
 
     expect(screen.queryAllByRole('tab', { name: 'Timeline' })).toHaveLength(0)
-    expect(screen.queryByRole('slider')).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Sign in to view Timeline' })).not.toBeInTheDocument()
-    expect(screen.getByPlaceholderText('You can only chat on your own reports')).toBeDisabled()
+    expect(screen.getByPlaceholderText(/Sign in to ask about the Flags/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign in to chat' })).toBeInTheDocument()
   })
 
   it('offers report claim only to the anonymous teaser context', () => {

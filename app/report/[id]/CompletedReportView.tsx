@@ -90,6 +90,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       }))}
       isLoggedIn={state.isLoggedIn}
       isOwner={state.isOwner}
+      isClaimedAnonymous={state.reportAudit.accessContext === 'anonymous_teaser'}
       compareAuditId={compareAuditId}
       canExportSummary={state.entitlements?.canExportSummary ?? false}
       showFixPrompts={state.showDeterministicFixes}
@@ -100,6 +101,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
     <AuditShell
       session={state.session}
       immersive
+      claimReason={state.reportAudit.accessContext === 'anonymous_teaser' ? 'save-report' : 'create-account'}
       showAdmin={
         state.user && state.session
           ? isAdminUser({ id: state.session.user.id, role: state.user.role })

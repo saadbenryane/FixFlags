@@ -19,10 +19,10 @@ Per-issue prompts are the primary handoff from understanding to improvement.
 1. Compact Review header (`#report-status`) with a circular score or honest pending/unavailable state, chronological full-Review history, and the owner Update review action
 2. Update-review result, when present
 3. Complete ranked Fix list (`#report-flags`) with `Your priorities` as the list heading, screenshot evidence, selected detail, and canonical Critical-first ranking
-4. One per-issue prompt row: an expandable `Fix Prompt` on the left and an always-visible `Copy prompt` action on the right
-5. Collapsed evidence and Product context: Product Contract (`#report-contract`) and verified Product Memory (`#report-remember`), when present
-6. Subordinate Watch, export, and Product controls; Export includes Copy link for the canonical public report URL
-7. At most one contextual signup or upgrade moment
+4. One per-issue prompt row: an expandable `Fix Prompt` on the left and an always-visible `Copy prompt` action on the right, above one desktop | mobile capture pair
+5. Report actions: owner Update review, Export (Copy link and Email me this report), sample CTA when this is a curated sample, and at most one contextual signup or upgrade moment
+6. Durable Product context lives on `/products/[id]`, not on the report: Product Contract (`#product-contract`), verified Product Memory (`#product-remember`), and launch gates (`#product-launch-gates`), merged with Made with, Watch, and Signals
+7. Anonymous and sample reports have no Product page; they omit durable Product context entirely
 
 The compact header does not repeat Product identity, verdict copy, the Critical count, or instructions already expressed by the ranked Fix list.
 Every history point is a native link to a complete Review.
@@ -78,12 +78,19 @@ Keep the workspace and transcript mounted until the completed server report repl
   Every visible history point resolves to one immutable observation.
   An absent selector opens the current curated Review; an explicit unknown selector returns not found.
 - `/report/[id]` is the canonical public evidence URL. Legacy `/share/[token]` links remain readable for compatibility but are no longer created or managed in the product.
+- Live unclaimed reports are never marketing samples.
+  Cookie membership is `anonymous_teaser`; everyone else on a public report is `public_viewer`.
+  Curated fixtures stay on the sample route.
+- Unsigned Agent send, history, Copy, and private rail destinations open one signup/login dialog.
+  Conversations load only for the owner.
+  Last-hour anonymous URL reuse returns the existing public report without attaching it to the visitor cookie.
 
 ## Acceptance checks
 
 - The primary report renders every persisted unresolved Flag without truncation.
 - Interactive report targets are at least 44px and keyboard operable.
-- Per-Flag capture comparisons show affected viewports in red, available unaffected viewports in green, and missing or failed captures neutrally. Every state includes text and an icon.
+- Per-Flag capture comparisons show affected viewports in red with "Flagged on {device}," available unaffected viewports in green with "Not flagged on {device}" on real pixels, and missing or failed captures as Screenshot unavailable. Every state includes text and an icon.
+- Flag detail is one desktop | mobile pair. Fix Prompt and Copy prompt sit above that pair. Motion evidence plays in the affected frame, not as a third screenshot.
 - Screenshot overlays use measured `Flag.evidenceTargets` or an explicit page-scope chip. Unmeasured Flags do not receive a guessed rectangle.
 - `CircleAlert` is reserved for Critical Flags. Important and Polish remain available as accessible text.
 - Loading, empty, partial, failure, forbidden, expired, revoked, and deleted states are explicit.

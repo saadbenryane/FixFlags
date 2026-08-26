@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { resolveAuditAccess } from '@/lib/audit/access'
 import { SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
+import { readAnonAuditIdsFromStore } from '@/lib/audit/usage'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
 import {
   deriveScreenshotCaptureStatus,
@@ -51,10 +52,12 @@ export async function GET(
       return apiError('Report not found', 404)
     }
 
+    const store = await cookies()
     const access = await resolveAuditAccess(
       audit,
       session?.user,
-      (await cookies()).get(SHARE_GRANT_COOKIE)?.value
+      store.get(SHARE_GRANT_COOKIE)?.value,
+      readAnonAuditIdsFromStore(store)
     )
     if (access === 'denied') {
       return apiError('You do not have access to this report', 403)

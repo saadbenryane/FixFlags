@@ -10,7 +10,7 @@ export function LandingHeroSection() {
   return (
     <Section
       spacing="hero"
-      className="relative flex min-h-0 flex-col overflow-x-clip !pb-10 !pt-7 sm:!pb-12 sm:!pt-10 lg:!pb-14 lg:!pt-10"
+      className="relative flex min-h-0 flex-col overflow-x-clip bg-background !pb-10 !pt-7 sm:!pb-12 sm:!pt-10 lg:!pb-14 lg:!pt-10"
     >
       <Container
         variant="marketing"

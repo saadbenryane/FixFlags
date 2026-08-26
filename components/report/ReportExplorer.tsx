@@ -5,6 +5,7 @@ import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportF
 import {
   FlagDetailPane,
 } from '@/components/report/ReportExplorerDetail'
+import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import {
@@ -364,8 +365,23 @@ export function ReportExplorer({
   const listPane = (
     <div className="min-w-0 list-none @[40rem]/pane:min-h-0 @[40rem]/pane:overflow-y-auto @[40rem]/pane:pr-2 scrollbar-thin [&_ul]:list-none [&_li]:list-none">
       <div className="mb-3 border-b border-border/30 pb-3">
-        <h2 className="text-sm font-semibold text-foreground">{REPORT_COPY.explorer.prioritiesTitle}</h2>
-        <p className="text-xs text-muted-foreground">{REPORT_COPY.explorer.prioritiesHint}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-foreground">{REPORT_COPY.explorer.prioritiesTitle}</h2>
+            <p className="text-xs text-muted-foreground">{REPORT_COPY.explorer.prioritiesHint}</p>
+          </div>
+          {model.polishPassPrompt ? (
+            <PromptCopyButton
+              prompt={model.polishPassPrompt}
+              label={REPORT_COPY.finishPlan.copyCta}
+              kind="plan"
+              compact
+              auditId={auditId}
+              surface="focused"
+              accessState={ownerActionContext?.accessState}
+            />
+          ) : null}
+        </div>
       </div>
       {flagCount === 0 ? (
         <p className="text-sm text-muted-foreground">

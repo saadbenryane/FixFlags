@@ -34,6 +34,7 @@ import { displaySiteAddress } from '@/lib/utils/url-helpers'
 import { cn } from '@/lib/utils'
 import type { ReportWorkspaceCapabilities } from '@/lib/report/workspace-model'
 import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
+import { useReportAuthGate } from '@/components/auth/ReportAuthGate'
 
 export type WorkspaceChatGateReason = 'sign-in' | 'owner'
 
@@ -44,6 +45,8 @@ interface WorkspaceChatPanelProps {
   capabilities: ReportWorkspaceCapabilities
   /** Explains a locked composer without pretending sign-in grants ownership. */
   gateReason: WorkspaceChatGateReason
+  /** Copy for the sign-in dialog. Defaults to save-report for teaser owners. */
+  claimReason?: 'save-report' | 'create-account'
   className?: string
   observationAuditId?: string | null
   /** Deterministic scan messages share this transcript and consume no model usage. */
@@ -106,6 +109,7 @@ export function WorkspaceChatPanel({
   auditId,
   capabilities,
   gateReason,
+  claimReason: defaultClaimReason = 'save-report',
   className,
   observationAuditId,
   agentMessages = [],
@@ -139,8 +143,11 @@ export function WorkspaceChatPanel({
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyListError, setHistoryListError] = useState<string | null>(null)
   const [claimOpen, setClaimOpen] = useState(false)
-  const [claimReason, setClaimReason] = useState<'save-report' | 'scan-limit'>('save-report')
+  const [claimReason, setClaimReason] = useState<'save-report' | 'scan-limit' | 'create-account'>(
+    defaultClaimReason
+  )
   const [claimNextOverride, setClaimNextOverride] = useState<string | undefined>()
+  const authGate = useReportAuthGate()
   const transcriptRef = useRef<HTMLDivElement>(null)
   const scanInputRef = useRef<HTMLInputElement>(null)
 
@@ -148,7 +155,11 @@ export function WorkspaceChatPanel({
     claimNextOverride ?? (auditId ? `/report/${auditId}` : undefined)
 
   function openSaveReportClaim() {
-    setClaimReason('save-report')
+    if (authGate) {
+      authGate.open({ reason: defaultClaimReason, nextPath: claimNextPath, auditId })
+      return
+    }
+    setClaimReason(defaultClaimReason)
     setClaimNextOverride(undefined)
     setClaimOpen(true)
   }
@@ -329,9 +340,17 @@ export function WorkspaceChatPanel({
     })
     if (!result.ok) {
       if (result.code === 'AUTH_REQUIRED') {
-        setClaimReason('scan-limit')
-        setClaimNextOverride(`/dashboard?url=${encodeURIComponent(url)}`)
-        setClaimOpen(true)
+        if (authGate) {
+          authGate.open({
+            reason: 'scan-limit',
+            nextPath: `/dashboard?url=${encodeURIComponent(url)}`,
+            auditId,
+          })
+        } else {
+          setClaimReason('scan-limit')
+          setClaimNextOverride(`/dashboard?url=${encodeURIComponent(url)}`)
+          setClaimOpen(true)
+        }
       } else {
         setScanError(result.message)
       }
@@ -617,7 +636,7 @@ export function WorkspaceChatPanel({
         )}
       </section>
       <ReportClaimDialog
-        open={claimOpen}
+        open={authGate ? false : claimOpen}
         onOpenChange={setClaimOpen}
         nextPath={claimNextPath}
         from="report"

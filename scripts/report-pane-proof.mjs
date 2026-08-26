@@ -4,7 +4,7 @@
  * Opens Report mode on the homepage emulation, /samples, and an optional live
  * report at three widths, then asserts the pane anatomy: one compact Score header, the
  * fix list reachable without scrolling, list and detail scrolling inside the
- * pane, and Review context collapsed by default.
+ * pane, Copy prompt above the comparison pair, and no Review context disclosure.
  *
  * Usage: node scripts/report-pane-proof.mjs [baseUrl] [reportPath]
  *        node scripts/report-pane-proof.mjs [baseUrl] --live [targetUrl]
@@ -49,7 +49,6 @@ async function measurePane(page) {
     const explorer = Array.from(
       document.querySelectorAll('[role="region"][aria-label^="Fix list with"]')
     ).filter(visible)
-    const details = Array.from(document.querySelectorAll('details')).filter(visible)
     const pane = explorer[0]?.closest('.overflow-y-auto') ?? null
     const list = explorer[0]?.querySelector('[aria-label="Report Flags"]')?.closest('div') ?? null
     // Measure the detail that belongs to the visible explorer, never a copy.
@@ -63,6 +62,12 @@ async function measurePane(page) {
     const comparisonFrames = Array.from(
       explorer[0]?.querySelectorAll('[data-comparison-state="affected"], [data-comparison-state="unaffected"]') ?? []
     ).filter(visible)
+    const copyPrompt = Array.from(detail?.querySelectorAll('button') ?? []).find(
+      (node) => /Copy prompt/.test(node.textContent ?? '')
+    )
+    const firstComparison = comparisonFrames[0] ?? null
+    const copyPromptRect = copyPrompt?.getBoundingClientRect()
+    const comparisonRect = firstComparison?.getBoundingClientRect()
     const paneRect = pane?.getBoundingClientRect() ?? null
     const listRect = list?.getBoundingClientRect() ?? null
     const frameRect = frame?.getBoundingClientRect() ?? null
@@ -80,8 +85,20 @@ async function measurePane(page) {
       // 40rem is the container breakpoint where the explorer becomes master/detail.
       paneWidth: paneRect ? Math.round(paneRect.width) : null,
       splitMode: paneRect ? paneRect.width >= 640 : null,
-      contextDisclosures: details.length,
-      contextOpen: details.some((node) => node.open),
+      hasReviewContext: Boolean(
+        Array.from(document.querySelectorAll('summary, h2, h3')).some(
+          (node) => visible(node) && /^\s*Review context\s*$/.test(node.textContent ?? '')
+        )
+      ),
+      copyPromptAbovePair:
+        copyPromptRect && comparisonRect
+          ? copyPromptRect.bottom <= comparisonRect.top + 2
+          : copyPromptRect
+            ? true
+            : null,
+      comparisonHasCapture:
+        comparisonFrames.length === 0 ||
+        comparisonFrames.every((node) => Boolean(node.querySelector('img'))),
       paneScrollTop: pane?.scrollTop ?? null,
       paneScrollable: pane ? pane.scrollHeight > pane.clientHeight + 1 : null,
       // In split mode the frame must fit one pane height so only its columns scroll.
@@ -121,10 +138,9 @@ async function proveLiveReview(browser) {
 
   for (const phase of ['scanning', 'completed']) {
     if (phase === 'completed') {
-      // The completed hold frame is the first state that renders Review context.
       await page.setViewportSize({ width: 1280, height: 900 })
       await page
-        .locator('details:visible')
+        .getByRole('button', { name: 'Copy prompt' })
         .first()
         .waitFor({ state: 'visible', timeout: 300000 })
     }
@@ -202,7 +218,13 @@ async function run() {
       } else if (row.comparisonBordersInset === false) {
         failures.push(`${at}: comparison border is external and can be clipped`)
       }
-      if (row.contextOpen) failures.push(`${at}: review context is expanded by default`)
+      if (row.hasReviewContext) failures.push(`${at}: Review context disclosure is still mounted`)
+      if (row.phase !== 'scanning' && row.copyPromptAbovePair === false) {
+        failures.push(`${at}: Copy prompt is not above the comparison pair`)
+      }
+      if (row.comparisonHasCapture === false) {
+        failures.push(`${at}: a comparison frame is missing its capture image`)
+      }
       if (row.duplicateIds?.length) {
         failures.push(`${at}: duplicated report ids ${row.duplicateIds.join(', ')}`)
       }

@@ -44,9 +44,9 @@ export const WORKSPACE_REPORT_SPLIT_CONTAINER = '40rem'
 /**
  * Report frame: the fix explorer occupies exactly one pane height beneath the
  * fixed Score/history header, so the list is always reachable without
- * scrolling. Review context follows the frame as a sibling and scrolls the
- * pane. Below the split width the frame releases its height and the pane
- * scrolls as one column.
+ * scrolling. Report actions may follow the frame as a sibling. Below the
+ * split width the frame releases its height and the pane scrolls as one
+ * column.
  */
 export const WORKSPACE_REPORT_FRAME_CLASS =
   'flex min-h-[26rem] flex-col gap-3 @[40rem]/pane:h-full @[40rem]/pane:min-h-[24rem]'

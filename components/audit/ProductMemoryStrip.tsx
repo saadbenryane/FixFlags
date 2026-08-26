@@ -12,17 +12,18 @@ interface ProductMemoryStripProps {
   verifiedLearnings?: VerifiedLearning[]
   intentionalNotes?: string[]
   knownRisks?: string[]
+  sectionId?: string
 }
 
 /**
- * Surfaces Project Product Intelligence "Remember" state on the report.
- * One job: show what we proved fixed (and optional intentional / known risks).
+ * Surfaces Project Product Intelligence "Remember" state on the Product page.
  */
 export function ProductMemoryStrip({
   auditId,
   verifiedLearnings = [],
   intentionalNotes = [],
   knownRisks = [],
+  sectionId = 'product-remember',
 }: ProductMemoryStripProps) {
   const hasLearnings = verifiedLearnings.length > 0
   const hasNotes = intentionalNotes.length > 0 || knownRisks.length > 0
@@ -40,13 +41,13 @@ export function ProductMemoryStrip({
 
   return (
     <section
-      id="report-remember"
-      aria-labelledby="report-remember-heading"
+      id={sectionId}
+      aria-labelledby={`${sectionId}-heading`}
       className="scroll-mt-[var(--header-offset)] space-y-3"
     >
       <div>
         <h2
-          id="report-remember-heading"
+          id={`${sectionId}-heading`}
           className="text-lg font-semibold tracking-heading text-foreground"
         >
           {REPORT_COPY.sectionTitles.remember}

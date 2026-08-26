@@ -163,7 +163,9 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 ### First check and account claim
 
 - A homepage URL submission immediately paints the Agent-led progressive report workspace, then replaces history with `/report/[id]` once the review exists.
+- If that URL already has a public scan from the last hour, the unsigned visitor sees that report instead of starting a new job. The existing scan is not attached to their anonymous cookie, and Agent conversations stay with the owner.
 - Anonymous visitors receive deterministic FixFlags Agent updates, the progressive and completed Report, all confirmed Flags, screenshots, and public-safe evidence without a blocking authentication overlay.
+- The live report uses the same product chrome as a signed-in completed review: brand Sign up CTA, app rail, and Agent composer. Private destinations open create-account in place. Signing in does not grant another person’s chat.
 - Live anonymous reports show the same Fix Prompt and Copy chrome as an owner report. The prompt body stays empty until claim. Copy and the Fix Prompt control open create-account and never write the clipboard.
 - Interactive Agent chat, prompt bodies, Timeline playback, account history, Product Memory, update reviews, Canvas, and export remain server-gated.
 - The default live report route is Agent beside Report. Timeline, Preview, and Canvas stay parked on `/report/[id]` and are not loaded there.
@@ -255,11 +257,11 @@ Full evidence rules: `knowledge/evidence-rules.md`.
 - Project-scoped Product Intelligence persistence
 - Canonical `/report/[id]` workspace with identity, update-review results, the complete ranked Flag explorer, and the bounded Finish Plan, governed by `knowledge/report-contract.md`
 - Fix list with every unresolved Flag and contract-aware ranking from one shared service across web, export, update review, and sample
-- Remember strip on report when Project has verified learnings; Contract edits merge without wiping memory
+- Remember strip and Product Contract on the signed-in Product page when the latest completed Review has them; Contract edits merge without wiping memory
 - Scheduled Product Watch: recurring full review plus regression email; completed Watch reviews consume the monthly product review allowance
 - **Agent-led report workspace:** URL submission immediately opens `/report/{id}` with Agent chat on the left and the progressive Report on the right. Persisted scan facts stream into the same score, ranked priority, evidence, and per-issue prompt layout. The canonical report URL exposes public evidence while Agent chat, prompts, Product Memory, account history, and owner actions remain gated.
 - Dedicated audit worker runtime: web requests stay isolated from Playwright capture; unfinished reports use a lightweight access/status read before completed-report assembly
-- **Public report link:** every Review exposes evidence at its canonical `/report/{id}` URL; Copy link lives in Export, while owner-only data stays server-gated
+- **Public report link:** every Review exposes evidence at its canonical `/report/{id}` URL; Copy link and Email me this report live in Export, while owner-only data stays server-gated
 
 ## Evaluation system
 

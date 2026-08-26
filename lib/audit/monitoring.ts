@@ -14,11 +14,12 @@ export interface StartMonitoringOptions {
   delayMs?: number
   trigger?: RecheckTrigger
   clientId?: string
+  claimedAnonymous?: boolean
 }
 
 export function validateMonitoringParent(
   parent: { userId: string | null; status: string } | null,
-  actor: { userId: string | null }
+  actor: { userId: string | null; claimedAnonymous?: boolean }
 ):
   | { ok: true }
   | { ok: false; status: number; error: string } {
@@ -26,10 +27,11 @@ export function validateMonitoringParent(
     return { ok: false, status: 404, error: 'Audit not found' }
   }
   const signedInOwner = Boolean(actor.userId) && parent.userId === actor.userId
-  if (!actor.userId) {
-    return { ok: false, status: 401, error: 'Sign in to run an update review' }
-  }
-  if (!signedInOwner) {
+  const claimedAnonymous = Boolean(actor.claimedAnonymous) && parent.userId === null
+  if (!signedInOwner && !claimedAnonymous) {
+    if (!actor.userId) {
+      return { ok: false, status: 401, error: 'Sign in to run an update review' }
+    }
     return { ok: false, status: 403, error: 'You can only re-check your own reports' }
   }
   if (parent.status !== 'COMPLETED') {
@@ -40,7 +42,7 @@ export function validateMonitoringParent(
 
 export async function startMonitoringAudit(
   parentId: string,
-  user: User,
+  user: User | null,
   options: StartMonitoringOptions = {}
 ): Promise<
   | { ok: true; result: MonitoringResult }
@@ -52,7 +54,8 @@ export async function startMonitoringAudit(
   })
 
   const validation = validateMonitoringParent(parent, {
-    userId: user.id,
+    userId: user?.id ?? null,
+    claimedAnonymous: options.claimedAnonymous,
   })
   if (!validation.ok) {
     return validation
@@ -60,7 +63,7 @@ export async function startMonitoringAudit(
 
   const { auditId, status, reused, parentId: parentAuditId } = await createAndEnqueueAudit({
     url: parent!.url,
-    userId: user.id,
+    userId: user?.id ?? null,
     parentId,
     skipUsageCount: false,
     monitoringMode: 'FULL',

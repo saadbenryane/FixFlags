@@ -331,6 +331,7 @@ export function AuditInput({
                 status="QUEUED"
                 url={url}
                 accessContext={user ? 'owner' : 'anonymous_teaser'}
+                isLoggedIn={Boolean(user)}
               />
             </AuditShell>
           </div>,

@@ -154,6 +154,7 @@ export async function POST(req: NextRequest) {
         reportId: outcome.reportId,
         reportUrl: outcome.reportUrl,
         status: outcome.status,
+        reused: Boolean(outcome.reused),
         isLoggedIn: Boolean(session?.user),
         queued: queueInfo.queued,
         queueReason: queueInfo.queueReason,

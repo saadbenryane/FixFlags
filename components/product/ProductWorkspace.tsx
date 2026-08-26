@@ -11,6 +11,9 @@ import {
 } from 'lucide-react'
 import { ProductWatchControls } from '@/components/audit/ProductWatchControls'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
+import { ProductContractCard } from '@/components/audit/ProductContractCard'
+import { ProductMemoryStrip } from '@/components/audit/ProductMemoryStrip'
+import { LaunchGates } from '@/components/audit/LaunchGates'
 import { ProductSignalsSetup } from '@/components/dashboard/ProductSignalsSetup'
 import { ImprovementReceipt } from '@/components/product/ImprovementReceipt'
 import { ProductReviewAction } from '@/components/product/ProductReviewAction'
@@ -161,6 +164,42 @@ export function ProductWorkspace({
 
       {workspace.technologyProfile ? (
         <MadeWithProfile profile={workspace.technologyProfile} />
+      ) : null}
+
+      {workspace.understanding.productContract ||
+      workspace.understanding.verifiedLearnings.length > 0 ||
+      workspace.understanding.intentionalNotes.length > 0 ||
+      workspace.understanding.knownRisks.length > 0 ||
+      workspace.understanding.launchChecklist.length > 0 ? (
+        <section className="space-y-5" aria-labelledby="product-understanding-heading">
+          <SectionTitle id="product-understanding-heading">
+            Product understanding
+          </SectionTitle>
+          {workspace.understanding.productContract ? (
+            <div id="product-contract">
+              <ProductContractCard
+                contract={workspace.understanding.productContract}
+                auditId={workspace.understanding.reviewId ?? undefined}
+                canEdit
+              />
+            </div>
+          ) : null}
+          {workspace.understanding.reviewId ? (
+            <ProductMemoryStrip
+              auditId={workspace.understanding.reviewId}
+              verifiedLearnings={workspace.understanding.verifiedLearnings}
+              intentionalNotes={workspace.understanding.intentionalNotes}
+              knownRisks={workspace.understanding.knownRisks}
+              sectionId="product-remember"
+            />
+          ) : null}
+          {workspace.understanding.launchChecklist.length > 0 ? (
+            <LaunchGates
+              checklist={workspace.understanding.launchChecklist}
+              sectionId="product-launch-gates"
+            />
+          ) : null}
+        </section>
       ) : null}
 
       <section

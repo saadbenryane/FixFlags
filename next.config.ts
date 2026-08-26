@@ -46,6 +46,10 @@ const nextConfig: NextConfig = {
         source: '/.well-known/mcp.json',
         destination: '/api/well-known/mcp-json',
       },
+      {
+        source: '/opengraph-image',
+        destination: '/og.jpg',
+      },
     ]
   },
   serverExternalPackages: [

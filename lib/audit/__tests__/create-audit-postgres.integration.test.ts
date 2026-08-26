@@ -19,6 +19,12 @@ vi.mock('@/lib/billing/credits', () => ({
 vi.mock('@/lib/audit/ensure-product-project', () => ({
   ensureProductProject: vi.fn(async () => ({ id: projectState.id })),
 }))
+const trackAnonymousAuditId = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/audit/usage', () => ({
+  checkAnonymousAuditAllowed: vi.fn(async () => ({ allowed: true })),
+  enforceAnonymousIpSoftCeiling: vi.fn(),
+  trackAnonymousAuditId,
+}))
 
 import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 import { prisma } from '@/lib/db'
@@ -163,5 +169,86 @@ runPostgres('manual Review creation PostgreSQL boundary', () => {
       ])
     )
     expect(queueAdd).toHaveBeenCalledTimes(2)
+  })
+})
+
+runPostgres('anonymous last-hour URL reuse PostgreSQL boundary', () => {
+  const suffix = randomUUID()
+  const url = `https://example.com/anon-reuse-${suffix}`
+
+  beforeEach(() => {
+    queueAdd.mockClear()
+    trackAnonymousAuditId.mockClear()
+  })
+
+  afterEach(async () => {
+    await prisma.audit.deleteMany({ where: { url } })
+  })
+
+  it('reuses a completed public scan of the same URL from the last hour without tracking or enqueueing', async () => {
+    const existing = await prisma.audit.create({
+      data: {
+        url,
+        userId: null,
+        isPublic: true,
+        status: 'COMPLETED',
+        completedAt: new Date(),
+        includeAi: false,
+      },
+    })
+
+    const result = await createAndEnqueueAudit({ url, clientId: `anon-${suffix}` })
+
+    expect(result).toEqual({
+      auditId: existing.id,
+      status: 'COMPLETED',
+      reused: true,
+      parentId: null,
+    })
+    expect(queueAdd).not.toHaveBeenCalled()
+    expect(trackAnonymousAuditId).not.toHaveBeenCalled()
+  })
+
+  it('reuses an in-progress public scan of the same URL from the last hour', async () => {
+    const existing = await prisma.audit.create({
+      data: {
+        url,
+        userId: null,
+        isPublic: true,
+        status: 'CHECKING',
+        includeAi: false,
+      },
+    })
+
+    const result = await createAndEnqueueAudit({ url })
+
+    expect(result).toMatchObject({
+      auditId: existing.id,
+      status: 'CHECKING',
+      reused: true,
+    })
+    expect(queueAdd).not.toHaveBeenCalled()
+    expect(trackAnonymousAuditId).not.toHaveBeenCalled()
+  })
+
+  it('creates a new teaser when the last public scan is older than one hour', async () => {
+    await prisma.audit.create({
+      data: {
+        url,
+        userId: null,
+        isPublic: true,
+        status: 'COMPLETED',
+        completedAt: new Date(Date.now() - 61 * 60 * 1000),
+        createdAt: new Date(Date.now() - 62 * 60 * 1000),
+        includeAi: false,
+      },
+    })
+
+    const result = await createAndEnqueueAudit({ url, clientId: `anon-miss-${suffix}` })
+
+    expect(result.reused).toBe(false)
+    expect(result.auditId).toBeTruthy()
+    expect(queueAdd).toHaveBeenCalledTimes(1)
+    expect(trackAnonymousAuditId).toHaveBeenCalledWith(result.auditId)
   })
 })

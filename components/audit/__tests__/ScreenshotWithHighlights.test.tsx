@@ -78,4 +78,60 @@ describe('ScreenshotWithHighlights fallback chain', () => {
       expect(document.querySelector('.animate-pulse')).toBeNull()
     })
   })
+
+  it('shows both captures with a not-flagged badge on the unaffected device', () => {
+    render(
+      <ScreenshotWithHighlights
+        host={HOST}
+        desktopScreenshot="/desktop.png"
+        mobileScreenshot="/mobile.png"
+        highlights={HIGHLIGHTS}
+        affectedDevices={['mobile']}
+      />
+    )
+
+    expect(screen.getByRole('img', { name: `desktop screenshot of ${HOST}` })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: `mobile screenshot of ${HOST}` })).toBeInTheDocument()
+    expect(screen.getByText('Not flagged on desktop')).toBeInTheDocument()
+    expect(screen.getByText('Flagged on mobile')).toBeInTheDocument()
+  })
+
+  it('plays motion evidence in the affected frame instead of a third image', () => {
+    render(
+      <ScreenshotWithHighlights
+        host={HOST}
+        desktopScreenshot="/desktop.png"
+        mobileScreenshot="/mobile.png"
+        highlights={HIGHLIGHTS}
+        affectedDevices={['mobile']}
+        flagVisual={{ url: '/loading.gif', device: 'mobile', type: 'animated-gif' }}
+      />
+    )
+
+    expect(screen.getByRole('img', { name: `mobile screenshot of ${HOST}` })).toHaveAttribute(
+      'src',
+      '/loading.gif'
+    )
+    expect(screen.getByRole('img', { name: `desktop screenshot of ${HOST}` })).toHaveAttribute(
+      'src',
+      '/desktop.png'
+    )
+    expect(screen.getAllByRole('img')).toHaveLength(2)
+  })
+
+  it('omits a missing capture instead of using a not-flagged badge as filler', () => {
+    render(
+      <ScreenshotWithHighlights
+        host={HOST}
+        desktopScreenshot="/desktop.png"
+        mobileScreenshot={null}
+        highlights={HIGHLIGHTS}
+        affectedDevices={['desktop']}
+      />
+    )
+
+    expect(screen.getByRole('img', { name: `desktop screenshot of ${HOST}` })).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: `mobile screenshot of ${HOST}` })).not.toBeInTheDocument()
+    expect(screen.queryByText('Not flagged on mobile')).not.toBeInTheDocument()
+  })
 })

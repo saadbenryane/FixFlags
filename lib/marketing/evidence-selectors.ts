@@ -62,6 +62,26 @@ export const EVIDENCE_SELECTORS: Record<string, EvidenceSelectorEntry> = {
       'main .demo-cta-primary',
     ],
   },
+  'mobile-load-delay-content': {
+    device: 'mobile',
+    selectors: ['[aria-busy="true"]', '[class*="skeleton" i]', '[class*="spinner" i]', '[class*="loading" i]', 'main h1', 'main'],
+  },
+  'mobile-cta-thumb-zone': {
+    device: 'mobile',
+    selectors: ['.demo-cta-primary', 'main a', 'main button', 'header a'],
+  },
+  'mobile-cta-weak-label': {
+    device: 'mobile',
+    selectors: ['.demo-cta-primary', 'main a', 'main button'],
+  },
+  'mobile-input-zoom': {
+    device: 'mobile',
+    selectors: ['main input', 'main textarea', 'main select', 'form input'],
+  },
+  'loading-indicator-stuck': {
+    device: 'mobile',
+    selectors: ['[aria-busy="true"]', '[class*="skeleton" i]', '[class*="spinner" i]', '[class*="loading" i]', 'main'],
+  },
   'flow-no-cta-found': {
     device: 'both',
     selectors: [

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { resolveAuditAccess } from '@/lib/audit/access'
 import { SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
+import { readAnonAuditIdsFromStore } from '@/lib/audit/usage'
 import {
   canViewPrescriptionContentForAudit,
   canViewDeterministicFixesForAudit,
@@ -183,6 +184,19 @@ export function redactCompletedPrivateReportData<
   }
 }
 
+async function resolveAccessForCookies(
+  audit: { id: string; userId: string | null; isPublic: boolean },
+  sessionUser: { id: string } | null | undefined
+) {
+  const store = await cookies()
+  return resolveAuditAccess(
+    audit,
+    sessionUser,
+    store.get(SHARE_GRANT_COOKIE)?.value,
+    readAnonAuditIdsFromStore(store)
+  )
+}
+
 /**
  * Resolve access and the minimum state needed to render an unfinished report.
  * Completed reports deliberately return only an access envelope; callers then
@@ -199,12 +213,7 @@ export async function getProgressiveAuditForRequest(id: string) {
 
   if (!requested) return { kind: 'not_found' as const }
 
-  const shareGrant = (await cookies()).get(SHARE_GRANT_COOKIE)?.value
-  const accessContext = await resolveAuditAccess(
-    requested,
-    session?.user,
-    shareGrant
-  )
+  const accessContext = await resolveAccessForCookies(requested, session?.user)
   if (accessContext === 'denied') return { kind: 'forbidden' as const }
 
   const workId = await resolveLatestAttachedWorkId(id)
@@ -267,12 +276,7 @@ export async function getGatedAuditForRequest(id: string) {
     return { kind: 'not_found' as const }
   }
 
-  const shareGrant = (await cookies()).get(SHARE_GRANT_COOKIE)?.value
-  const accessContext = await resolveAuditAccess(
-    requested,
-    session?.user,
-    shareGrant
-  )
+  const accessContext = await resolveAccessForCookies(requested, session?.user)
   if (accessContext === 'denied') {
     return { kind: 'forbidden' as const }
   }

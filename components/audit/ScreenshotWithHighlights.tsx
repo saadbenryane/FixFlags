@@ -36,6 +36,12 @@ interface ScreenshotWithHighlightsProps {
   showDesktop?: boolean
   showMobile?: boolean
   affectedDevices?: ('desktop' | 'mobile')[]
+  /** Motion or overlay evidence for the affected device. Never a third screenshot. */
+  flagVisual?: {
+    url: string
+    device: 'desktop' | 'mobile'
+    type: 'animated-gif' | 'static-overlay' | 'side-by-side'
+  } | null
   className?: string
 }
 
@@ -457,7 +463,7 @@ function ScreenshotPanel({
     resolvedComparisonState === 'affected'
       ? REPORT_COPY.reportFirst.affectedViewport(device)
       : resolvedComparisonState === 'unaffected'
-        ? REPORT_COPY.reportFirst.unaffectedViewport
+        ? REPORT_COPY.reportFirst.unaffectedViewport(device)
         : null
   const ComparisonIcon =
     resolvedComparisonState === 'affected' ? CircleAlert : CheckCircle2
@@ -627,6 +633,22 @@ function ScreenshotPanel({
   )
 }
 
+function resolveDeviceImage(
+  device: 'desktop' | 'mobile',
+  pageUrl: string | null,
+  flagVisual?: ScreenshotWithHighlightsProps['flagVisual']
+): string | null {
+  if (
+    flagVisual &&
+    flagVisual.type !== 'side-by-side' &&
+    flagVisual.device === device &&
+    flagVisual.url
+  ) {
+    return flagVisual.url
+  }
+  return pageUrl
+}
+
 export function ScreenshotWithHighlights({
   host,
   desktopScreenshot,
@@ -637,10 +659,13 @@ export function ScreenshotWithHighlights({
   showDesktop = true,
   showMobile = true,
   affectedDevices,
+  flagVisual,
   className,
 }: ScreenshotWithHighlightsProps) {
-  const showDesktopPanel = showDesktop && Boolean(desktopScreenshot)
-  const showMobilePanel = showMobile && Boolean(mobileScreenshot)
+  const desktopImage = resolveDeviceImage('desktop', desktopScreenshot, flagVisual)
+  const mobileImage = resolveDeviceImage('mobile', mobileScreenshot, flagVisual)
+  const showDesktopPanel = showDesktop && Boolean(desktopImage)
+  const showMobilePanel = showMobile && Boolean(mobileImage)
 
   if (!showDesktopPanel && !showMobilePanel) return null
 
@@ -648,7 +673,7 @@ export function ScreenshotWithHighlights({
     return (
       <div className={cn('w-full', className)}>
         <ScreenshotPanel
-          imageUrl={desktopScreenshot!}
+          imageUrl={desktopImage!}
           device="desktop"
           host={host}
           highlights={highlights}
@@ -673,7 +698,7 @@ export function ScreenshotWithHighlights({
     return (
       <div className={cn('flex w-full justify-center', className)}>
         <ScreenshotPanel
-          imageUrl={mobileScreenshot!}
+          imageUrl={mobileImage!}
           device="mobile"
           host={host}
           highlights={highlights}
@@ -695,10 +720,10 @@ export function ScreenshotWithHighlights({
 
   return (
     <div className={cn('w-full', className)}>
-      <div className="grid w-full min-w-0 grid-cols-1 items-start gap-3 sm:grid-cols-[minmax(0,1.422222fr)_minmax(0,0.461823fr)] sm:gap-6">
+      <div className="grid w-full min-w-0 grid-cols-1 items-start gap-3 sm:grid-cols-[minmax(0,1.422222fr)_minmax(0,0.461823fr)] sm:gap-6 [&>div]:max-h-[28rem]">
         <div className="min-w-0 flex-1">
           <ScreenshotPanel
-            imageUrl={desktopScreenshot!}
+            imageUrl={desktopImage!}
             device="desktop"
             host={host}
             highlights={highlights}
@@ -711,12 +736,13 @@ export function ScreenshotWithHighlights({
                   : 'unaffected'
                 : 'neutral'
             }
+            className="max-h-[28rem]"
             useMobileTooltip
           />
         </div>
         <div className="mx-auto min-w-0 w-[32.4719%] sm:w-full">
           <ScreenshotPanel
-            imageUrl={mobileScreenshot!}
+            imageUrl={mobileImage!}
             device="mobile"
             host={host}
             highlights={highlights}
@@ -729,6 +755,7 @@ export function ScreenshotWithHighlights({
                   : 'unaffected'
                 : 'neutral'
             }
+            className="max-h-[28rem]"
             useMobileTooltip
           />
         </div>

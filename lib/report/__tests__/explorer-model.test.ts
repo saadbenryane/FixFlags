@@ -98,11 +98,15 @@ describe('explorer-model', () => {
         'cta-below-fold-mobile': {
           gifUrl: 'https://cdn.example.com/cta.gif',
           overlayUrl: 'https://cdn.example.com/cta.png',
+          device: 'mobile',
+          type: 'static-overlay',
         },
       },
     })
 
     assert.equal(model.flags[0]?.visualUrl, 'https://cdn.example.com/cta.gif')
+    assert.equal(model.flags[0]?.visualDevice, 'mobile')
+    assert.equal(model.flags[0]?.visualType, 'static-overlay')
   })
 
   it('keeps every curated-sample Flag and its evidence while exposing exactly one prompt', () => {
@@ -179,7 +183,16 @@ describe('explorer-model', () => {
       model.flags.find((flag) => flag.id === 'f2')?.copyFixPrompt,
       'Move the primary CTA into the initial mobile viewport.'
     )
-    assert.equal(model.polishPassPrompt, null)
+    assert.match(
+      model.polishPassPrompt ?? '',
+      /^Make a plan to fix these issues, then implement them in this product\./
+    )
+    assert.match(model.polishPassPrompt ?? '', /CTA below fold/)
+    assert.match(model.polishPassPrompt ?? '', /Generic headline/)
+    assert.match(model.polishPassPrompt ?? '', /Search title is too short/)
+    assert.match(model.polishPassPrompt ?? '', /1\. /)
+    assert.match(model.polishPassPrompt ?? '', /2\. /)
+    assert.match(model.polishPassPrompt ?? '', /3\. /)
   })
 
   it('keeps live anonymous evidence while redacting every prompt and aggregate plan', () => {

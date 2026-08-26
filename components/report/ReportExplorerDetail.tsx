@@ -145,21 +145,31 @@ export function FlagDetailPane({
           signUpHref={signUpHref}
           previewMeta={model.previewMeta}
           ownerActionContext={ownerActionContext}
+          evidencePair={
+            shareableFlag ? null : (
+              <ScreenshotWithHighlights
+                host={model.displayHost}
+                desktopScreenshot={model.desktopScreenshot}
+                mobileScreenshot={model.mobileScreenshot}
+                highlights={model.allHighlights}
+                selectedFlagId={flag.id}
+                onPinSelect={onSelectFlag}
+                showDesktop={showDesktop}
+                showMobile={showMobile}
+                affectedDevices={flag.affectedDevices}
+                flagVisual={
+                  flag.visualUrl && flag.visualDevice && flag.visualType
+                    ? {
+                        url: flag.visualUrl,
+                        device: flag.visualDevice,
+                        type: flag.visualType,
+                      }
+                    : null
+                }
+              />
+            )
+          }
         />
-
-        {!shareableFlag ? (
-          <ScreenshotWithHighlights
-            host={model.displayHost}
-            desktopScreenshot={model.desktopScreenshot}
-            mobileScreenshot={model.mobileScreenshot}
-            highlights={model.allHighlights}
-            selectedFlagId={flag.id}
-            onPinSelect={onSelectFlag}
-            showDesktop={showDesktop}
-            showMobile={showMobile}
-            affectedDevices={flag.affectedDevices}
-          />
-        ) : null}
       </div>
     </div>
   )

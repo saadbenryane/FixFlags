@@ -9,7 +9,7 @@
 
 **Canonical for:** layout regions, view modes, browser modes, playback strip, mobile behavior, and on-screen terminology.
 
-**Related:** Product requirements live in [product-prd.md](./product-prd.md). Visual tokens and component rules live in [DESIGN.md](../DESIGN.md). Report section order and anchors follow [knowledge/report-contract.md](../knowledge/report-contract.md) (Funnel anchor: `report-funnel`).
+**Related:** Product requirements live in [product-prd.md](./product-prd.md). Visual tokens and component rules live in [DESIGN.md](../DESIGN.md). Report section order and anchors follow [knowledge/report-contract.md](../knowledge/report-contract.md). Durable Product context lives on `/products/[id]`.
 
 **Implementation:** The interactive split workspace lives in [ReportWorkspaceSplitShell](../components/report/ReportWorkspaceSplitShell.tsx) with progressive parity in [AuditReportProgressive](../components/audit/AuditReportProgressive.tsx). Do not fork a second report app.
 
@@ -24,7 +24,8 @@
 
 **Editor chrome (locked):**
 
-- Full-bleed under thin site chrome: `h-[calc(100dvh-header)] w-full`. Do not inset the split in `Container variant="report"` / `max-w-6xl`.
+- Full-bleed under thin site chrome plus the compact app rail: `h-[calc(100dvh-header)] w-full`. Do not inset the split in `Container variant="report"` / `max-w-6xl`.
+- Signed-out reports use the same rail. Products, Settings, and Billing open the in-place signup/login dialog. Help stays public. The header Sign up CTA stays on the report.
 - No pane cards. Agent and Product columns are flat surfaces separated by a single vertical divider (`border-r`), not `rounded-card`, `shadow-card`, `glass-surface`, or pane rings.
 - Desktop grid: `minmax(280px, 32%)_minmax(0, 1fr)` with `gap-0`. Left is thinner than right. Both panes `min-h-0` with internal scroll.
 - Scanning and completed reviews share one continuous shell. Completed reports do not jump to a hero/summary document above the split; score, Flags, and actions live in Product Report mode.
@@ -94,8 +95,8 @@ Prompt actions remain authenticated even when their evidence is public.
 | Row            | Rule                                                                                                                                                                                                                                                                                                                       |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Review header  | [ReportOutcomeBar](../components/report/ReportOutcomeBar.tsx) is the fixed compact header and owns only visible Score, honest pending/unavailable state, full-Review history, and determinate scan progress. It contains no gauge, verdict excerpt, Critical shortcut, or next-step prose.                                 |
-| Body           | [ReportPane](../components/report/ReportPane.tsx) wraps the explorer with `data-report-frame` and `WORKSPACE_REPORT_FRAME_CLASS`. Above the split width the frame takes one pane height and the list and detail columns each scroll internally; below it the frame releases its height and the pane scrolls as one column. |
-| Review context | [ReportContextDisclosure](../components/report/ReportContextDisclosure.tsx) collects contract, memory, funnel, previews, launch gates, feedback, and pipeline proof in one disclosure that is collapsed by default and auto-expands when a report anchor targets a section inside it.                                      |
+| Body           | [ReportPane](../components/report/ReportPane.tsx) wraps the explorer with `data-report-frame` and `WORKSPACE_REPORT_FRAME_CLASS`. Above the split width the frame takes one pane height and the list and detail columns each scroll internally; below it the frame releases its height and the pane scrolls as one column. Flag detail is one desktop \| mobile pair with Fix Prompt above it. Motion evidence plays in the affected frame. |
+| Product page   | Contract (`#product-contract`), verified memory (`#product-remember`), and launch gates (`#product-launch-gates`) live on `/products/[id]` with Made with, Watch, and Signals. The report does not mount a Review context disclosure. Anonymous and sample reports omit durable Product context. |
 
 **Pane-relative, never viewport-relative.**
 The explorer lives inside a pane whose width has nothing to do with the viewport, so `ReportExplorer` uses container queries (`@container/pane` from `WORKSPACE_PANE_SCROLL_CLASS`, `@[40rem]/pane:` for the master/detail split) and carries no `lg:` breakpoint, no `100vh` cap, no `--header-offset` sticky, and no `overflow-clip` shell.
@@ -121,7 +122,7 @@ Canvas documents use validated FixFlags blocks and never execute model-generated
 The workspace fills the available viewport beneath thin site chrome and has no marketing footer.
 During an active review, Product name and hostname live in the FixFlags pane instead of a separate report hero.
 Report and Preview controls belong to the Product pane header.
-Below-report context such as Product Contract does not compete with the live Product while scanning. Technology context appears only on the signed-in Product detail page.
+Below-report Product Contract does not compete with the live Product while scanning. Technology, contract, memory, and launch gates appear only on the signed-in Product detail page.
 
 ---
 

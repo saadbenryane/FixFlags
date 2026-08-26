@@ -215,7 +215,7 @@ export const REPORT_COPY = {
     unavailableLabel: "Unavailable",
     statusPendingLabel: "Status pending",
     affectedViewport: (device: "desktop" | "mobile") => `Flagged on ${device}`,
-    unaffectedViewport: "Not detected for this Flag",
+    unaffectedViewport: (device: "desktop" | "mobile") => `Not flagged on ${device}`,
     unmeasuredElement: "Exact element was not pinned on this capture",
     pageScopeEvidence: "This issue is not a visible element on the page",
   },
@@ -375,10 +375,6 @@ export const REPORT_COPY = {
     remember: "What we proved",
     rememberHint:
       "Only independently verified Improvements stay with this product across reviews.",
-  },
-  reviewContext: {
-    title: "Review context",
-    hint: "Stack, contract, funnel, previews, launch gates",
   },
   explorer: {
     fixPrompt: "Fix Prompt",

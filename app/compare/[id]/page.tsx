@@ -17,6 +17,7 @@ import { Muted, SectionTitle } from '@/components/ui/typography'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { resolveAuditAccess } from '@/lib/audit/access'
 import { SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
+import { readAnonAuditIdsFromStore } from '@/lib/audit/usage'
 import { isAdminUser } from '@/lib/auth/permissions'
 import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/audit/rubric'
 import { RubricDiff } from '@/components/compare/RubricDiff'
@@ -56,9 +57,11 @@ export default async function ComparePage({ params, searchParams }: Props) {
   }
 
   let showAdmin = false
-  const grantValue = (await cookies()).get(SHARE_GRANT_COOKIE)?.value
-  const childAccess = await resolveAuditAccess(monitoringAudit, session?.user, grantValue)
-  const parentAccess = await resolveAuditAccess(monitoringAudit.parent, session?.user, grantValue)
+  const store = await cookies()
+  const grantValue = store.get(SHARE_GRANT_COOKIE)?.value
+  const anonAuditIds = readAnonAuditIdsFromStore(store)
+  const childAccess = await resolveAuditAccess(monitoringAudit, session?.user, grantValue, anonAuditIds)
+  const parentAccess = await resolveAuditAccess(monitoringAudit.parent, session?.user, grantValue, anonAuditIds)
   if (childAccess === 'denied' || parentAccess === 'denied') notFound()
 
   if (session?.user) {

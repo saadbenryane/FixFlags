@@ -85,7 +85,7 @@ export function runMobileUXQualityChecks(
     }
   }
 
-  if (captureMetrics.loadExperience?.loadingClearedMs != null && captureMetrics.loadExperience.loadingClearedMs > 4000) {
+  if (captureMetrics.loadExperience?.device === 'mobile' && captureMetrics.loadExperience.loadingClearedMs != null && captureMetrics.loadExperience.loadingClearedMs > 4000) {
     const seconds = (captureMetrics.loadExperience.loadingClearedMs / 1000).toFixed(1)
     findings.push({
       checkId: 'mobile-load-delay-content',

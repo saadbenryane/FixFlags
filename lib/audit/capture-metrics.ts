@@ -22,6 +22,7 @@ export interface CaptureMetrics {
   motionSampleLabel: string | null
   inputsBelow16px: Array<{ selector: string; fontSize: number }>
   loadExperience?: PageLoadExperience | null
+  desktopLoadExperience?: PageLoadExperience | null
 }
 
 export interface PageLoadExperience {

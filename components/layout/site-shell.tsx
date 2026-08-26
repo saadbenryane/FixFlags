@@ -1,5 +1,6 @@
 import { Header, type HeaderVariant } from '@/components/layout/header'
 import { DesktopSidebar, MobileSidebar } from '@/components/layout/sidebar'
+import { ReportAppRail } from '@/components/layout/ReportAppRail'
 import { Logo } from '@/components/brand/Logo'
 import { Footer } from '@/components/layout/footer'
 import { MinimalFooter } from '@/components/layout/minimal-footer'
@@ -7,6 +8,7 @@ import { ActiveAuditBanner } from '@/components/audit/ActiveAuditBanner'
 import { SupportWidgetLazy } from '@/components/live-support/SupportWidgetLazy'
 import { SupportProvider } from '@/components/live-support/SupportProvider'
 import { GlobalMeshBackdrop } from '@/components/marketing/landing/GlobalMeshBackdrop'
+import { cn } from '@/lib/utils'
 
 interface SiteShellProps {
   children: React.ReactNode
@@ -24,7 +26,7 @@ interface SiteShellProps {
    * static minimal grid. Anonymous work surfaces also pass `minimal`.
    */
   backdrop?: 'full' | 'minimal' | 'off'
-  /** Living-review editor: slim header, no sidebar, footer, or support bubble. */
+  /** Living-review editor: slim header, app rail, no footer or support bubble. */
   immersive?: boolean
 }
 
@@ -48,7 +50,12 @@ export function SiteShell({
   const resolvedBackdrop = backdrop ?? (variant === 'marketing' ? 'full' : 'minimal')
 
   const shell = (
-    <div className="relative min-h-screen flex flex-col">
+    <div
+      className={cn(
+        'relative flex min-h-screen flex-col',
+        variant === 'marketing' && 'bg-background',
+      )}
+    >
       {resolvedBackdrop !== 'off' && <GlobalMeshBackdrop fixed intensity={resolvedBackdrop} />}
       <div className="relative z-0 flex min-h-screen flex-col">
         {immersive ? (
@@ -60,8 +67,9 @@ export function SiteShell({
               right={headerRight}
               showNavigation={false}
             />
-            <main id="main-content" className="flex-1" tabIndex={-1}>
-              {children}
+            <main id="main-content" className="flex min-h-0 flex-1" tabIndex={-1}>
+              <ReportAppRail showAdmin={showAdmin} />
+              <div className="min-w-0 flex-1">{children}</div>
             </main>
           </>
         ) : hasSidebar ? (

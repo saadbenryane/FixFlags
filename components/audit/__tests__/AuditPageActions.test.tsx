@@ -39,4 +39,18 @@ describe('AuditPageActions access projection', () => {
 
     expect(screen.getByRole('button', { name: 'Update review' })).toBeInTheDocument()
   })
+
+  it('offers Recheck to a claimed anonymous session without Export', () => {
+    render(
+      <AuditPageActions
+        {...baseProps}
+        isLoggedIn={false}
+        isOwner={false}
+        isClaimedAnonymous
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Update review' })).toBeInTheDocument()
+    expect(screen.queryByText('Export control')).not.toBeInTheDocument()
+  })
 })

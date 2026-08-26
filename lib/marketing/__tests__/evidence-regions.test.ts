@@ -53,6 +53,7 @@ describe('evidence-regions', () => {
   it('keeps mobile-only checks on mobile (no healthy desktop twin)', () => {
     assert.deepEqual(devicesForCheck('cta-below-fold-mobile'), ['mobile'])
     assert.deepEqual(devicesForCheck('mobile-cta-thumb-zone'), ['mobile'])
+    assert.deepEqual(devicesForCheck('mobile-load-delay-content'), ['mobile'])
     assert.deepEqual(devicesForCheck('unknown-mobile-issue'), ['mobile'])
     assert.deepEqual(devicesForCheck('unknown-check-xyz'), ['desktop'])
   })

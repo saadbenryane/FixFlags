@@ -76,6 +76,7 @@ describe('POST /api/checks - billing gating enforcement', () => {
       reportId: 'audit-1',
       reportUrl: 'https://fixflags.com/report/audit-1',
       status: 'QUEUED',
+      reused: false,
     })
   })
 
@@ -101,6 +102,27 @@ describe('POST /api/checks - billing gating enforcement', () => {
     expect(res.status).toBe(201)
     expect(checkAndPlan).toHaveBeenCalled()
     expect(checkAndPlan.mock.calls[0][0].clientId).toBe('test-client')
+    const body = await res.json()
+    expect(body.reused).toBe(false)
+  })
+
+  it('returns reused true when an anonymous check resumes a last-hour public report', async () => {
+    checkAndPlan.mockResolvedValue({
+      reportId: 'recent-public',
+      reportUrl: 'https://fixflags.com/report/recent-public',
+      status: 'COMPLETED',
+      reused: true,
+    })
+
+    const res = await POST(postReq({ url: 'https://example.com' }))
+    const body = await res.json()
+
+    expect(res.status).toBe(201)
+    expect(body).toMatchObject({
+      reportId: 'recent-public',
+      status: 'COMPLETED',
+      reused: true,
+    })
   })
 
   it('returns 201 for FREE user on critical_path mode (now free for all)', async () => {

@@ -1,5 +1,29 @@
-import type { CaptureMetrics } from '../capture-metrics'
+import type { CaptureMetrics, PageLoadExperience } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
+
+function slowLoadFlag(load: PageLoadExperience | null | undefined): DeterministicFlag | null {
+  if (
+    !load?.loadingVisibleAtInitial ||
+    load.loadingVisibleAtFinal ||
+    load.loadingClearedMs === null ||
+    load.loadingClearedMs <= 3_000
+  ) {
+    return null
+  }
+  const label = load.loadingLabel ? `"${load.loadingLabel}"` : 'loading UI'
+  const seconds = (load.loadingClearedMs / 1000).toFixed(1)
+  return {
+    checkId: 'loading-state-slow',
+    rubric: 'EXPERIENCE',
+    impactTag: 'CONVERSION',
+    severity: load.loadingClearedMs > 8_000 ? 'CRITICAL' : 'IMPORTANT',
+    problem: `Loading state delays usable content for ${seconds}s`,
+    evidence: `The initial ${load.device} capture showed ${label}; it cleared after ${seconds}s. Initial screenshot: ${load.initialScreenshotUrl ?? 'not stored'}.`,
+    fix: '1. Render the hero headline and primary CTA in the initial HTML\n2. Reserve skeletons for below-the-fold cards instead of covering the first screen\n3. Inline critical CSS and defer non-essential scripts so the first screen becomes usable faster',
+    confidence: 0.9,
+    source: 'DETERMINISTIC',
+  }
+}
 
 export function runInteractionChecks(metrics: CaptureMetrics | null): DeterministicFlag[] {
   if (metrics == null) return []
@@ -21,27 +45,10 @@ export function runInteractionChecks(metrics: CaptureMetrics | null): Determinis
     })
   }
 
-  const load = metrics.loadExperience
-  if (
-    load?.loadingVisibleAtInitial &&
-    !load.loadingVisibleAtFinal &&
-    load.loadingClearedMs !== null &&
-    load.loadingClearedMs > 3_000
-  ) {
-    const label = load.loadingLabel ? `"${load.loadingLabel}"` : 'loading UI'
-    const seconds = (load.loadingClearedMs / 1000).toFixed(1)
-    findings.push({
-      checkId: 'loading-state-slow',
-      rubric: 'EXPERIENCE',
-      impactTag: 'CONVERSION',
-      severity: load.loadingClearedMs > 8_000 ? 'CRITICAL' : 'IMPORTANT',
-      problem: `Loading state delays usable content for ${seconds}s`,
-      evidence: `The initial ${load.device} capture showed ${label}; it cleared after ${seconds}s. Initial screenshot: ${load.initialScreenshotUrl ?? 'not stored'}.`,
-      fix: '1. Render the hero headline and primary CTA in the initial HTML\n2. Reserve skeletons for below-the-fold cards instead of covering the first screen\n3. Inline critical CSS and defer non-essential scripts so the first screen becomes usable faster',
-      confidence: 0.9,
-      source: 'DETERMINISTIC',
-    })
-  }
+  const mobileSlow = slowLoadFlag(metrics.loadExperience)
+  const desktopSlow = slowLoadFlag(metrics.desktopLoadExperience)
+  const slow = mobileSlow ?? desktopSlow
+  if (slow) findings.push(slow)
 
   if (metrics.motionIgnoresReducedPreference) {
     const label = metrics.motionSampleLabel ? `"${metrics.motionSampleLabel}"` : 'animated element'

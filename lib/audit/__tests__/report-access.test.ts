@@ -25,10 +25,10 @@ import {
 const aiReviewAt = new Date('2026-01-01')
 
 describe('report-access', () => {
-  it('identifies public marketing sample audits', () => {
+  it('never treats live unclaimed public reports as marketing samples', () => {
     assert.equal(
       isPublicMarketingSample({ userId: null, aiReviewAt, isPublic: true }),
-      true
+      false
     )
     assert.equal(
       isPublicMarketingSample({ userId: 'user-1', aiReviewAt, isPublic: true }),
@@ -270,13 +270,13 @@ describe('report-access', () => {
 describe('report-access async resolution', () => {
   const aiReviewAt = new Date('2026-01-01')
 
-  it('allows marketing samples without any viewer or owner lookup', async () => {
+  it('denies prescription content on unclaimed public reports', async () => {
     assert.equal(
       await canViewPrescriptionContentForAudit(
         { userId: null, aiReviewAt, isPublic: true },
         null
       ),
-      true
+      false
     )
     assert.equal(prismaMock.user.findUnique.mock.calls.length, 0)
   })
@@ -351,13 +351,13 @@ describe('report-access async resolution', () => {
     )
   })
 
-  it('resolves deterministic fix access for owners and marketing samples', async () => {
+  it('resolves deterministic fix access for owners only', async () => {
     assert.equal(
       await canViewDeterministicFixesForAudit(
         { userId: null, aiReviewAt, isPublic: true },
         null
       ),
-      true
+      false
     )
     assert.equal(
       await canViewDeterministicFixesForAudit(

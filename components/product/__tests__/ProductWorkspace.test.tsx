@@ -104,6 +104,28 @@ const workspace: ProductWorkspaceDTO = {
     ],
     insight: null,
   },
+  understanding: {
+    reviewId: 'review-1',
+    productContract: {
+      purpose: 'Help customers register',
+      firstValueJourney: 'Open the site and start signup',
+      criticalOutcomes: ['A visitor can begin signup'],
+      inferredAt: '2026-08-12T00:01:00.000Z',
+      source: 'heuristic',
+    },
+    verifiedLearnings: [
+      {
+        summary: 'Primary action is now visible on the first screen.',
+        auditId: 'review-1',
+        at: '2026-08-12T00:01:00.000Z',
+      },
+    ],
+    intentionalNotes: [],
+    knownRisks: [],
+    launchChecklist: [
+      { id: 'https', label: 'Served over HTTPS', passed: true },
+    ],
+  },
   reviewHistory: [
     {
       id: 'review-1',
@@ -153,7 +175,7 @@ describe('ProductWorkspace', () => {
     expect(
       screen.getByRole('heading', { level: 1, name: 'Example Product' })
     ).toBeInTheDocument()
-    expect(screen.getByText('Help customers register')).toBeInTheDocument()
+    expect(screen.getAllByText('Help customers register').length).toBeGreaterThan(0)
     expect(
       screen.getByRole('link', { name: 'https://example.com' })
     ).toHaveAttribute('href', 'https://example.com')
@@ -178,6 +200,16 @@ describe('ProductWorkspace', () => {
     expect(
       screen.getByRole('heading', { level: 2, name: 'Reviews' })
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Product understanding' })
+    ).toBeInTheDocument()
+    expect(document.getElementById('product-contract')).not.toBeNull()
+    expect(document.getElementById('product-remember')).not.toBeNull()
+    expect(document.getElementById('product-launch-gates')).not.toBeNull()
+    expect(
+      screen.getByText('Primary action is now visible on the first screen.')
+    ).toBeInTheDocument()
+    expect(screen.getByText('Served over HTTPS')).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'Improvement history' })
     ).not.toBeInTheDocument()

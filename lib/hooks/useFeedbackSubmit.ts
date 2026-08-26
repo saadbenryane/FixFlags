@@ -12,7 +12,7 @@ export interface FeedbackBody {
 
 /**
  * Single feedback POST surface. Encapsulates the request, error parsing, and
- * error toast so `ReportFeedback` and `FlagFeedback` converge on one path.
+ * error toast so Flag thumbs feedback uses one path.
  */
 export function useFeedbackSubmit() {
   const submit = useCallback(

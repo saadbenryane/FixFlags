@@ -196,6 +196,28 @@ describe('task contracts', () => {
       reportId: 'report-1',
       retryAfterSeconds: 3,
     })
+    expect(outcome.reused).toBe(false)
+  })
+
+  it('propagates last-hour anonymous reuse without waiting on a new job', async () => {
+    mocks.createAndEnqueueAudit.mockResolvedValueOnce({
+      auditId: 'recent-public',
+      status: 'COMPLETED',
+      reused: true,
+      parentId: null,
+    })
+
+    const outcome = await checkAndPlan({
+      url: 'https://example.com',
+      userId: null,
+    })
+
+    expect(outcome).toMatchObject({
+      reportId: 'recent-public',
+      status: 'COMPLETED',
+      reused: true,
+    })
+    expect(mocks.pollAuditUntilDone).not.toHaveBeenCalled()
   })
 
   it('reports a recoverable timeout below the route runtime', async () => {

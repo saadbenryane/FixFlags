@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronDown, FileText, Link, Lock, Eye } from 'lucide-react'
+import { Check, ChevronDown, FileText, Link, Lock, Eye, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import { PromptPreviewModal } from '@/components/audit/PromptPreviewModal'
+import { KeepReportEmail } from '@/components/report/KeepReportEmail'
 import { buildAuditExportSummary } from '@/lib/audit/export-summary'
 import {
   collectFixPromptsByRubric,
@@ -26,7 +27,7 @@ import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { rubricLabel } from '@/lib/utils'
 import { getUpgradeMomentContent } from '@/lib/billing/upgrade-moments'
 import { useCopyToClipboard } from '@/lib/hooks/useCopyToClipboard'
-import { SITE_URL } from '@/lib/marketing/copy'
+import { SITE_URL, REPORT_COPY } from '@/lib/marketing/copy'
 
 interface ExportRubric {
   name: string
@@ -65,6 +66,7 @@ export function ExportMenu({
   const { copied, copy } = useCopyToClipboard()
   const [previewPrompt, setPreviewPrompt] = useState<string | null>(null)
   const [previewTitle, setPreviewTitle] = useState('Fix prompt preview')
+  const [emailOpen, setEmailOpen] = useState(false)
 
   function openPreview(title: string, text: string) {
     setPreviewTitle(title)
@@ -135,6 +137,10 @@ export function ExportMenu({
             <Link className="h-4 w-4" />
             Report link
           </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setEmailOpen(true)} className="gap-2">
+            <Mail className="h-4 w-4" />
+            {REPORT_COPY.keepReport.title}
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleCopySummary} className="gap-2">
             {canExportSummary ? (
@@ -200,6 +206,7 @@ export function ExportMenu({
           title={previewTitle}
         />
       )}
+      <KeepReportEmail auditId={auditId} open={emailOpen} onOpenChange={setEmailOpen} />
     </>
   )
 }

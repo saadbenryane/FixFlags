@@ -125,7 +125,7 @@ describe('createAndEnqueueAudit', () => {
       reused: false,
       parentId: null,
     })
-    expect(prismaMock.$transaction).not.toHaveBeenCalled()
+    expect(prismaMock.$transaction).toHaveBeenCalled()
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         url: AUDIT_URL,
@@ -145,6 +145,14 @@ describe('createAndEnqueueAudit', () => {
       select: { id: true, parentId: true },
     })
     expect(trackAnonymousAuditId).toHaveBeenCalledWith('audit-1')
+    expect(prismaMock.audit.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          url: AUDIT_URL,
+          isPublic: true,
+        }),
+      })
+    )
     expect(queueAdd).toHaveBeenCalledWith(
       'audit',
       { auditId: 'audit-1' },
@@ -167,6 +175,47 @@ describe('createAndEnqueueAudit', () => {
       action: 'signup',
     })
     expect(prismaMock.audit.create).not.toHaveBeenCalled()
+    expect(queueAdd).not.toHaveBeenCalled()
+  })
+
+  it('reuses a public scan of the same URL from the last hour without tracking or enqueueing', async () => {
+    prismaMock.audit.findFirst.mockResolvedValueOnce({
+      id: 'recent-public',
+      status: 'COMPLETED',
+      parentId: null,
+    })
+
+    const result = await createAndEnqueueAudit({ url: AUDIT_URL, clientId: 'ip-1' })
+
+    expect(result).toEqual({
+      auditId: 'recent-public',
+      status: 'COMPLETED',
+      reused: true,
+      parentId: null,
+    })
+    expect(prismaMock.audit.create).not.toHaveBeenCalled()
+    expect(trackAnonymousAuditId).not.toHaveBeenCalled()
+    expect(queueAdd).not.toHaveBeenCalled()
+    expect(checkAnonymousAuditAllowed).not.toHaveBeenCalled()
+    expect(enforceAnonymousIpSoftCeiling).not.toHaveBeenCalled()
+  })
+
+  it('reuses an in-progress public scan of the same URL from the last hour', async () => {
+    prismaMock.audit.findFirst.mockResolvedValueOnce({
+      id: 'live-public',
+      status: 'CHECKING',
+      parentId: null,
+    })
+
+    const result = await createAndEnqueueAudit({ url: AUDIT_URL })
+
+    expect(result).toEqual({
+      auditId: 'live-public',
+      status: 'CHECKING',
+      reused: true,
+      parentId: null,
+    })
+    expect(trackAnonymousAuditId).not.toHaveBeenCalled()
     expect(queueAdd).not.toHaveBeenCalled()
   })
 

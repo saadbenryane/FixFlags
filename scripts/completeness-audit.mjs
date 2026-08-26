@@ -126,8 +126,8 @@ function containsComponent(node, name) {
 /**
  * Inspect the rendered dependency graph, not a particular JSX spelling:
  * every workspace shell must resolve to ReportOutcomeBar + ReportPane; the
- * pane must resolve to the complete Flag explorer followed by the collapsed
- * Review context. ReportPane itself owns this rendered order.
+ * pane must resolve to the complete Flag explorer. Product context lives on
+ * the Product page, not in a Report disclosure.
  */
 export function reportPaneCompositionIsCanonical(source) {
   const sourceFile = parseTsx(source)
@@ -155,11 +155,13 @@ export function reportPaneCompositionIsCanonical(source) {
     if (panes.length !== 1) return false
     const pane = panes[0]
     const explorer = resolveExpression(jsxAttributeExpression(pane, 'explorer'), variables)
-    const afterFrame = resolveExpression(jsxAttributeExpression(pane, 'afterFrame'), variables)
-    if (!explorer || !afterFrame || !hasLiteralId(explorer, 'report-flags')) return false
+    if (!explorer || !hasLiteralId(explorer, 'report-flags')) return false
 
-    const disclosures = containsComponent(afterFrame, 'ReportContextDisclosure')
-    return disclosures.length === 1
+    const afterFrame = resolveExpression(jsxAttributeExpression(pane, 'afterFrame'), variables)
+    const disclosures = afterFrame
+      ? containsComponent(afterFrame, 'ReportContextDisclosure')
+      : []
+    return disclosures.length === 0
   })
 }
 
@@ -237,13 +239,12 @@ export function runCompletenessAudit(root = DEFAULT_ROOT) {
     'components/audit/ProductMemoryStrip.tsx',
     'components/audit/RecheckDiffStrip.tsx',
     'components/audit/FlowScanTimeline.tsx',
-    'components/audit/PreviewCards.tsx',
     'components/audit/LaunchGates.tsx',
   ].map((file) => read(root, file)).join('\n')
-  // Report pane order: outcome header → shared pane/explorer → Review context.
+  // Report pane order: outcome header → shared pane/explorer. Product context is on the Product page.
   assert(
     reportPaneCompositionIsCanonical(reportShell),
-    'Report pane order must be outcome bar → complete Flag list → review context',
+    'Report pane order must be outcome bar → complete Flag list, with no Review context disclosure',
   )
   for (const failure of curatedSampleBundleFailures(root)) assert(false, failure)
 

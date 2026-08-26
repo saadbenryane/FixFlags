@@ -70,7 +70,8 @@ Calm senior product reviewer. Clear, direct, useful, specific; technical when ne
 | `lib/design/brand-spec.ts` | Hex for OG, email, manifest |
 | `lib/design/fonts.ts` | Inter Tight display + Inter + JetBrains Mono |
 | `lib/design/logo-mark.tsx` | Flag mark SVG component |
-| `lib/design/og-templates.tsx` | OG + favicon |
+| `lib/design/og-templates.tsx` | Report share cards |
+| `public/og.jpg` | Site Open Graph and Twitter share image (1200×630) |
 | `public/brand/*` | Logo assets (mark + lockups + wordmarks) |
 
 ## Dark mode

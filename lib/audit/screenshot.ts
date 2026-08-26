@@ -322,19 +322,6 @@ function initialPageKey(pageKey: string | undefined): string {
   return pageKey ? `${pageKey}-initial` : 'initial'
 }
 
-function pickLoadExperience(
-  desktop?: PageLoadExperience | null,
-  mobile?: PageLoadExperience | null
-): PageLoadExperience | null {
-  const candidates = [desktop, mobile].filter(Boolean) as PageLoadExperience[]
-  if (candidates.length === 0) return null
-  return candidates.sort((a, b) => {
-    const aMs = a.loadingClearedMs ?? a.finalCaptureElapsedMs
-    const bMs = b.loadingClearedMs ?? b.finalCaptureElapsedMs
-    return bMs - aMs
-  })[0]
-}
-
 async function closeSessionPage(page: Page | null): Promise<void> {
   if (!page) return
   const context = page.context()
@@ -624,9 +611,13 @@ export async function captureScreenshots(
     captureFailures.push(pageCaptureFailureFromError('mobile', mobileSettled.reason))
   }
 
-  const loadExperience = pickLoadExperience(desktop.loadExperience, mobile.loadExperience)
+  const loadExperience = mobile.loadExperience ?? null
   const captureMetrics = mobile.captureMetrics
-    ? { ...mobile.captureMetrics, loadExperience }
+    ? {
+        ...mobile.captureMetrics,
+        loadExperience: mobile.loadExperience ?? mobile.captureMetrics.loadExperience ?? null,
+        desktopLoadExperience: desktop.loadExperience ?? null,
+      }
     : null
 
   const mergedNetworkFailures = [

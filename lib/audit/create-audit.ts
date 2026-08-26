@@ -60,6 +60,9 @@ export interface CreateAuditResult {
   parentId: string | null
 }
 
+/** Unsigned visitors reuse a public scan of the same URL instead of starting a duplicate job. */
+export const ANON_URL_REUSE_WINDOW_MS = 60 * 60 * 1000
+
 export class AuditLimitError extends Error {
   readonly code: UsageLimitCode
   readonly action: UsageLimitAction
@@ -143,21 +146,6 @@ export async function createAndEnqueueAudit(
 
   if (options.parentId) {
     await assertParentAuditAllowed(options.parentId, userId)
-  }
-
-  // Anonymous teaser gate lives here so every create path (checks, roast, score) shares it.
-  // Parented Recheck from the same claimed session is not a new teaser.
-  if (!userId && !options.parentId) {
-    const anonCheck = await checkAnonymousAuditAllowed()
-    if (!anonCheck.allowed) {
-      throw new AuditLimitError(anonCheck.code ?? 'AUTH_REQUIRED', {
-        action: anonCheck.action ?? 'signup',
-        message: anonCheck.error,
-      })
-    }
-    if (options.clientId) {
-      await enforceAnonymousIpSoftCeiling(options.clientId)
-    }
   }
 
   if (userId) {
@@ -348,16 +336,62 @@ export async function createAndEnqueueAudit(
       }
     }
   } else {
-    const created = await prisma.audit.create({
-      data,
-      select: { id: true, parentId: true },
+    audit = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        SELECT pg_advisory_xact_lock(
+          hashtextextended(${`fixflags:anon-url-reuse:${url}`}, 0)
+        )
+      `
+      const windowStart = new Date(Date.now() - ANON_URL_REUSE_WINDOW_MS)
+      const recent = await tx.audit.findFirst({
+        where: {
+          url,
+          isPublic: true,
+          AND: [
+            { status: { not: 'FAILED' } },
+            {
+              OR: [
+                {
+                  status: { notIn: ['COMPLETED', 'FAILED'] },
+                  createdAt: { gte: windowStart },
+                },
+                {
+                  status: 'COMPLETED',
+                  completedAt: { gte: windowStart },
+                },
+              ],
+            },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, status: true, parentId: true },
+      })
+      if (recent) {
+        return { ...recent, reused: true }
+      }
+
+      const anonCheck = await checkAnonymousAuditAllowed()
+      if (!anonCheck.allowed) {
+        throw new AuditLimitError(anonCheck.code ?? 'AUTH_REQUIRED', {
+          action: anonCheck.action ?? 'signup',
+          message: anonCheck.error,
+        })
+      }
+      if (options.clientId) {
+        await enforceAnonymousIpSoftCeiling(options.clientId)
+      }
+
+      const created = await tx.audit.create({
+        data,
+        select: { id: true, parentId: true },
+      })
+      return {
+        id: created.id,
+        status: 'QUEUED' as const,
+        reused: false,
+        parentId: created.parentId,
+      }
     })
-    audit = {
-      id: created.id,
-      status: 'QUEUED',
-      reused: false,
-      parentId: created.parentId,
-    }
   }
 
   if (audit.reused) {

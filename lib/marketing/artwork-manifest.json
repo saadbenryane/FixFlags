@@ -45,6 +45,18 @@
       "replaces": ["/marketing/visuals/final-cta-gateway-v2.webp"]
     },
     {
+      "id": "site-open-graph",
+      "src": "/og.jpg",
+      "classification": "approved",
+      "width": 1200,
+      "height": 630,
+      "requiresAlpha": false,
+      "contentBearing": true,
+      "requiredTerms": ["fixflags.com", "Copy prompt"],
+      "consumers": ["lib/marketing/metadata.ts"],
+      "replaces": []
+    },
+    {
       "id": "demosite-open-graph-preview",
       "src": "/demo/og-v1.png",
       "classification": "refined",

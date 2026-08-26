@@ -114,6 +114,26 @@ describe('FlagDetailPane', () => {
     expect(screen.getAllByText((content) => content.includes(flagWithEvidence.evidence))).toHaveLength(1)
   })
 
+  it('keeps Copy prompt above the desktop and mobile comparison pair', () => {
+    renderWithProviders(
+      <FlagDetailPane
+        model={MODEL}
+        flag={FIRST_FLAG}
+        flagCount={MODEL.flags.length}
+        flagPosition={1}
+        onPrevious={vi.fn()}
+        onNext={vi.fn()}
+        onSelectFlag={vi.fn()}
+      />
+    )
+    const copyPrompt = screen.getByRole('button', { name: 'Copy prompt' })
+    const comparison = document.querySelector('[data-comparison-state]')
+    expect(comparison).not.toBeNull()
+    expect(
+      copyPrompt.compareDocumentPosition(comparison!) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+  })
+
   it('does not add redundant navigation for a single flag', () => {
     renderWithProviders(
       <FlagDetailPane

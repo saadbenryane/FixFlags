@@ -21,14 +21,8 @@ test('Report pane composition guard follows resolved component structure', () =>
     const flagsSection = condition
       ? <section className="whatever" id="report-flags"><LiveReportExplorer /></section>
       : <section id="report-flags" />
-    const belowFrame = (
-      <>
-        <ReportContextDisclosure sectionIds={ids} />
-      </>
-    )
     const livingReportPanel = (
       <ReportPane
-        afterFrame={belowFrame}
         explorer={flagsSection}
         beforeExplorer={frameExtras}
       />
@@ -43,7 +37,10 @@ test('Report pane composition guard follows resolved component structure', () =>
   assert.equal(reportPaneCompositionIsCanonical(source), true)
   assert.equal(
     reportPaneCompositionIsCanonical(
-      source.replace('<ReportContextDisclosure sectionIds={ids} />', ''),
+      source.replace(
+        'explorer={flagsSection}',
+        'explorer={flagsSection} afterFrame={<ReportContextDisclosure />}',
+      ),
     ),
     false,
   )

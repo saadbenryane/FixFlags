@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { AGENT_COPY_LEAD } from '@/lib/audit/priority-flags'
 import { buildSampleReportDisplay } from '@/lib/marketing/sample-report-display'
 import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 import { buildSampleExplorerModel } from '@/lib/report/explorer-model'
@@ -99,7 +100,10 @@ describe('Report workspace adapters', () => {
     expect(sample.explorer.flags.filter((flag) => flag.hasFixPrompt).map((flag) => flag.id)).toEqual(
       [report.demonstratedFlagId],
     )
-    expect(sample.explorer.polishPassPrompt).toBeNull()
+    expect(sample.explorer.polishPassPrompt?.split('\n', 1)[0]).toBe(AGENT_COPY_LEAD)
+    expect(sample.explorer.polishPassPrompt).toMatch(/1\. /)
+    const numbered = sample.explorer.polishPassPrompt?.match(/^\d+\. /gm) ?? []
+    expect(numbered).toHaveLength(sample.explorer.flagCount)
     expect(variants[2]?.capabilities).toMatchObject({
       canReplayTimeline: false,
       canChat: false,

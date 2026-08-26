@@ -12,6 +12,9 @@ vi.mock('@/lib/analytics/events', () => ({
   trackEvent: vi.fn(),
 }))
 
+const writeText = vi.fn().mockResolvedValue(undefined)
+Object.assign(navigator, { clipboard: { writeText } })
+
 vi.mock('@/components/audit/FixPromptBlock', () => ({
   FixPromptBlock: ({ prompt }: { prompt: string }) => {
     if (!prompt) return null
@@ -241,6 +244,39 @@ describe('ReportExplorer anonymous teaser', () => {
     )
 
     expect(await screen.findByText('Flagged on desktop')).toBeInTheDocument()
-    expect(screen.getByText('Not detected for this Flag')).toBeInTheDocument()
+    expect(screen.getByText('Not flagged on mobile')).toBeInTheDocument()
+  })
+
+  it('copies every ranked open flag from polishPassPrompt, not one CTA', async () => {
+    const polishPassPrompt = `${AGENT_COPY_LEAD}
+
+1. [CRITICAL · Experience · HIGH] CTA below fold
+   Fix: Move the CTA up.
+2. [IMPORTANT · Message · MEDIUM] Generic headline
+   Fix: Name the outcome.`
+    render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer
+          model={{
+            ...model,
+            polishPassPrompt,
+            flags: [locked, demonstrated],
+            flagCount: 2,
+          }}
+        />
+      </MeProvider>
+    )
+
+    const copyAll = screen.getByRole('button', { name: /Copy Finish Plan/i })
+    fireEvent.click(copyAll)
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalled()
+    })
+    const copied = writeText.mock.calls[0]?.[0] as string
+    expect(copied.split('\n', 1)[0]).toBe(AGENT_COPY_LEAD)
+    expect(copied).toMatch(/1\. /)
+    expect(copied).toMatch(/2\. /)
+    expect(copied).toContain('CTA below fold')
+    expect(copied).toContain('Generic headline')
   })
 })

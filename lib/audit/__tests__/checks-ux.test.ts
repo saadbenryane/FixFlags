@@ -405,6 +405,30 @@ describe('runMobileUXQualityChecks', () => {
       0
     )
   })
+
+  it('does not flag mobile load delay from a slow desktop load', () => {
+    assert.ok(
+      !checkIds(
+        runMobileUXQualityChecks(
+          healthyMeta(),
+          captureMetrics({
+            loadExperience: {
+              device: 'desktop',
+              initialScreenshotUrl: '/screenshots/desktop-initial.png',
+              initialCaptureElapsedMs: 500,
+              finalCaptureElapsedMs: 6000,
+              loadingVisibleAtInitial: true,
+              loadingVisibleAtFinal: false,
+              loadingClearedMs: 5500,
+              loadingLabel: 'spinner',
+              finalReadyState: 'complete',
+              finalTitle: 'Loaded',
+            },
+          })
+        )
+      ).includes('mobile-load-delay-content')
+    )
+  })
 })
 
 describe('new check IDs registered in ALL_CHECK_IDS', () => {

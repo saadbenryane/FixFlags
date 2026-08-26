@@ -33,6 +33,7 @@ import {
   canManageAudit,
   canRetryAnonymousAudit,
   resolveAuditAccess,
+  resolveReportChatGate,
 } from '@/lib/audit/access'
 
 const mockedUserFindUnique = dbMocks.userFindUnique
@@ -119,8 +120,8 @@ describe('canRetryAnonymousAudit', () => {
     expect(canRetryAnonymousAudit(makeAudit({ userId: 'user-1', isPublic: false }), 'audit-1', ['audit-1'])).toBe(false)
   })
 
-  it('returns false for public audit', () => {
-    expect(canRetryAnonymousAudit(makeAudit({ userId: null, isPublic: true }), 'audit-1', ['audit-1'])).toBe(false)
+  it('returns true for a public teaser when the cookie lists this audit', () => {
+    expect(canRetryAnonymousAudit(makeAudit({ userId: null, isPublic: true }), 'audit-1', ['audit-1'])).toBe(true)
   })
 
   it('returns true when anonAuditIds includes the auditId', () => {
@@ -153,25 +154,26 @@ describe('resolveAuditAccess', () => {
     expect(result).toBe('owner')
   })
 
-  it('returns anonymous_teaser when audit has null userId and is not public', async () => {
+  it('returns anonymous_teaser when the cookie lists an unclaimed audit', async () => {
     const result = await resolveAuditAccess(
-      makeAudit({ userId: null, isPublic: false }),
+      makeAudit({ userId: null, isPublic: true }),
       null,
-      undefined
+      undefined,
+      ['audit-1']
     )
     expect(result).toBe('anonymous_teaser')
   })
 
-  it('returns marketing_sample when audit has null userId and is public', async () => {
+  it('returns public_viewer for an unclaimed audit without a matching cookie', async () => {
     const result = await resolveAuditAccess(
       makeAudit({ userId: null, isPublic: true }),
       null,
       undefined
     )
-    expect(result).toBe('marketing_sample')
+    expect(result).toBe('public_viewer')
   })
 
-  it('returns studio_public when audit is public and owner can share publicly', async () => {
+  it('returns public_viewer when audit is public and the viewer is not the owner', async () => {
     mockedUserFindUnique.mockResolvedValue({
       id: 'user-1',
       role: 'user',
@@ -185,7 +187,7 @@ describe('resolveAuditAccess', () => {
       { id: 'user-2' },
       undefined
     )
-    expect(result).toBe('studio_public')
+    expect(result).toBe('public_viewer')
     expect(mockedUserFindUnique).toHaveBeenCalledWith({
       where: { id: 'user-1' },
       select: { id: true, role: true, plan: true, subscriptionStatus: true },
@@ -340,5 +342,43 @@ describe('resolveAuditAccess', () => {
       undefined
     )
     expect(result).toBe('denied')
+  })
+})
+
+describe('resolveReportChatGate', () => {
+  it('lets the owner chat', () => {
+    expect(resolveReportChatGate({ accessContext: 'owner', isLoggedIn: true })).toEqual({
+      canChat: true,
+      gateReason: 'owner',
+      canClaim: false,
+      claimReason: 'create-account',
+    })
+  })
+
+  it('opens save-report for a signed-out teaser owner', () => {
+    expect(resolveReportChatGate({ accessContext: 'anonymous_teaser', isLoggedIn: false })).toEqual({
+      canChat: false,
+      gateReason: 'sign-in',
+      canClaim: true,
+      claimReason: 'save-report',
+    })
+  })
+
+  it('opens create-account for a signed-out public viewer', () => {
+    expect(resolveReportChatGate({ accessContext: 'public_viewer', isLoggedIn: false })).toEqual({
+      canChat: false,
+      gateReason: 'sign-in',
+      canClaim: true,
+      claimReason: 'create-account',
+    })
+  })
+
+  it('locks a signed-in non-owner without a claim dialog', () => {
+    expect(resolveReportChatGate({ accessContext: 'public_viewer', isLoggedIn: true })).toEqual({
+      canChat: false,
+      gateReason: 'owner',
+      canClaim: false,
+      claimReason: 'create-account',
+    })
   })
 })

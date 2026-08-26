@@ -154,6 +154,7 @@ describe('GET /api/reports/[id]/status', () => {
   it.each([
     'anonymous_teaser',
     'marketing_sample',
+    'public_viewer',
     'studio_public',
     'share_grant',
   ])(
@@ -167,7 +168,8 @@ describe('GET /api/reports/[id]/status', () => {
       const body = await response.json()
 
       expect(body.agentMessages.length).toBeGreaterThan(0)
-      expect(body).not.toHaveProperty('actionTimeline')
+      expect(body.agentMessages.every((item: { source?: string }) => item.source === 'scan')).toBe(true)
+      expect(body).not.toHaveProperty('messages')
       expect(body.productContract).toBeNull()
       for (const privateField of [
         'userId',

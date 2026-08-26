@@ -1,30 +1,37 @@
 'use client'
 
-import Link from 'next/link'
-import type { Route } from 'next'
-import { usePathname } from 'next/navigation'
+import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/useMe'
 import { AvatarMenu } from '@/components/layout/AvatarMenu'
+import { AUTH } from '@/lib/marketing/copy/auth'
+import { useReportAuthGate } from '@/components/auth/ReportAuthGate'
+import { ReportMobileNav } from '@/components/layout/ReportAppRail'
 
-/** Slim report header account slot: Log in or avatar. No second Review CTA. */
+/** Slim report header account slot: Sign up CTA or avatar. No second Review CTA. */
 export function ReportHeaderAuth() {
   const { user } = useMe()
-  const pathname = usePathname()
-  const reportNext = /^\/report\/[^/]+/.test(pathname) ? pathname : null
-  const href = reportNext
-    ? `/sign-in?next=${encodeURIComponent(reportNext)}&from=report`
-    : '/sign-in'
+  const gate = useReportAuthGate()
 
   if (!user) {
     return (
-      <Link
-        href={href as Route}
-        className="inline-flex min-h-11 min-w-11 items-center text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-      >
-        Log in
-      </Link>
+      <div className="flex items-center gap-1 sm:gap-2">
+        <ReportMobileNav />
+        <Button
+          variant="brand"
+          size="sm"
+          className="rounded-[var(--radius-control)] px-4 font-semibold"
+          onClick={() => gate?.open({ reason: 'create-account' })}
+        >
+          {AUTH.reportHeader.cta}
+        </Button>
+      </div>
     )
   }
 
-  return <AvatarMenu user={user} />
+  return (
+    <div className="flex items-center gap-1 sm:gap-2">
+      <ReportMobileNav />
+      <AvatarMenu user={user} />
+    </div>
+  )
 }

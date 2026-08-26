@@ -185,6 +185,32 @@ describe('FlagDetailPanel', () => {
     expect(links.some((l) => l.getAttribute('href') === 'https://example.com/page')).toBe(true)
   })
 
+  it('does not render a standalone visualUrl screenshot above the prompt', () => {
+    renderWithProviders(
+      <FlagDetailPanel
+        flag={makeFlag({
+          visualUrl: 'https://cdn.example.com/loading.gif',
+          visualDevice: 'mobile',
+          visualType: 'animated-gif',
+        })}
+      />
+    )
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+    expect(screen.getByText('Fix Prompt')).toBeInTheDocument()
+  })
+
+  it('renders the evidence pair after the prompt row', () => {
+    renderWithProviders(
+      <FlagDetailPanel
+        flag={makeFlag()}
+        evidencePair={<div data-testid="evidence-pair">pair</div>}
+      />
+    )
+    const prompt = screen.getByText('Fix Prompt')
+    const pair = screen.getByTestId('evidence-pair')
+    expect(prompt.compareDocumentPosition(pair) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('keeps reproduced step evidence as text without exposing Timeline playback', () => {
     renderWithProviders(
       <FlagDetailPanel

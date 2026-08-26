@@ -33,6 +33,7 @@ import type {
   SampleReportDisplay,
 } from '@/lib/marketing/sample-report-display'
 import type { ProductContract } from '@/lib/audit/product-contract'
+import type { FlagVisualEvidenceMap } from '@/lib/audit/persist-visual-evidence'
 import { buildFixList, type FixList } from '@/lib/audit/finish-plan'
 
 /**
@@ -81,8 +82,10 @@ export interface ExplorerFlag {
   pageUrl: string | null
   pageUrls: string[]
   occurrenceCount: number
-  /** Animated GIF or overlay/side-by-side image URL for this flag. */
+  /** Animated GIF or overlay image URL for this flag. Not a third screenshot. */
   visualUrl?: string | null
+  visualDevice?: 'desktop' | 'mobile'
+  visualType?: 'animated-gif' | 'static-overlay' | 'side-by-side'
   /** Derived truth label: Reproduced / Detected / Observed / Likely cause. */
   truthLabel: string
 }
@@ -133,10 +136,7 @@ export interface ReportExplorerModel {
 
 function mapLiveFlag(
   flag: RankableFlag,
-  visualByCheckId?: Record<
-    string,
-    { gifUrl?: string | null; overlayUrl?: string | null }
-  >,
+  visualByCheckId?: FlagVisualEvidenceMap,
   mayShowPrompt = true,
   occurrences: { pageUrls: string[]; count: number } = {
     pageUrls: flag.pageUrl ? [flag.pageUrl] : [],
@@ -147,7 +147,10 @@ function mapLiveFlag(
   const fixPrompt = mayShowPrompt ? buildFixPromptPreview(flag) : ''
   const copyFixPrompt = fixPrompt
   const visual = flag.checkId ? visualByCheckId?.[flag.checkId] : undefined
-  const visualUrl = visual?.gifUrl || visual?.overlayUrl || null
+  const visualUrl =
+    visual?.type === 'side-by-side'
+      ? null
+      : visual?.gifUrl || visual?.overlayUrl || null
   return {
     id: flag.id,
     checkId: flag.checkId ?? null,
@@ -182,6 +185,8 @@ function mapLiveFlag(
     pageUrls: occurrences.pageUrls ?? [],
     occurrenceCount: occurrences.count,
     visualUrl,
+    visualDevice: visualUrl && visual?.device ? visual.device : undefined,
+    visualType: visualUrl && visual?.type ? visual.type : undefined,
     truthLabel: deriveTruthLabel(flag.source, flag.checkId ?? null),
   }
 }
@@ -199,10 +204,7 @@ export function buildLiveExplorerModel(input: {
   }>
   evidenceAnchors?: EvidenceAnchorMap
   previewMeta?: PreviewMeta | null
-  flagVisualEvidence?: Record<
-    string,
-    { gifUrl?: string | null; overlayUrl?: string | null }
-  >
+  flagVisualEvidence?: FlagVisualEvidenceMap
   productContract?: ProductContract | null
   promptAccess?: 'all' | 'one' | 'none'
   demonstratedFlag?: RankableFlag | null
@@ -262,8 +264,7 @@ export function buildLiveExplorerModel(input: {
     pageType: input.pageType,
     score: input.score,
     flagCount: sorted.length,
-    polishPassPrompt:
-      (input.promptAccess ?? 'all') === 'all' ? fixList.copyPrompt : null,
+    polishPassPrompt: fixList.copyPrompt,
     desktopScreenshot: desktop,
     mobileScreenshot: mobile,
     rubricScores: buildRubricScoreRows(input.rubricRows),
@@ -385,12 +386,24 @@ export function buildSampleExplorerModel(
   options: { promptAccess?: 'one' | 'all' | 'none' } = {}
 ): ReportExplorerModel {
   const promptAccess = options.promptAccess ?? 'one'
+  const rankedOpenFlags: RankableFlag[] = report.flags.map((flag) => ({
+    id: flag.id,
+    checkId: flag.checkId ?? null,
+    rubric: flag.rubric as RankableFlag['rubric'],
+    severity: flag.severity as RankableFlag['severity'],
+    problem: flag.title,
+    evidence: flag.evidence,
+    fix: flag.fixPrompt,
+  }))
   return {
     displayHost: report.displayHost,
     pageType: report.pageType,
     score: report.score,
     flagCount: report.flagCount,
-    polishPassPrompt: null,
+    polishPassPrompt:
+      promptAccess === 'none'
+        ? null
+        : buildPlanModePrompt(rankedOpenFlags, { limit: rankedOpenFlags.length }) || null,
     desktopScreenshot: report.desktopScreenshot,
     mobileScreenshot: report.mobileScreenshot,
     rubricScores: report.rubricScores,

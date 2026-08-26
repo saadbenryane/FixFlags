@@ -119,6 +119,13 @@ describe('/api/reports/[id]/chat', () => {
     expect(prismaMock.reportChatMessage.create).not.toHaveBeenCalled()
   })
 
+  it('GET rejects a signed-out user with 401 and does not load history', async () => {
+    getSession.mockResolvedValue(null)
+    const res = await GET(getReq(), { params: Promise.resolve({ id: 'report-1' }) })
+    expect(res.status).toBe(401)
+    expect(prismaMock.reportChatMessage.findMany).not.toHaveBeenCalled()
+  })
+
   it('POST rejects a non-owner with 403', async () => {
     getSession.mockResolvedValue({ user: { id: 'other-user' } })
     const res = await POST(getReq(), { params: Promise.resolve({ id: 'report-1' }) })

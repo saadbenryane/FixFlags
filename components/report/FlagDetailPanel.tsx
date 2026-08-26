@@ -5,6 +5,7 @@ import { ChevronDown, ExternalLink, Share2, type LucideIcon } from 'lucide-react
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
+import { useReportAuthGate } from '@/components/auth/ReportAuthGate'
 import { FlagFeedback } from '@/components/audit/FlagFeedback'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import { SeveritySignal } from '@/components/report/SeveritySignal'
@@ -112,39 +113,23 @@ function FlagCard({
 }
 
 function FlagEvidenceMeta({ flag }: { flag: ExplorerFlag }) {
-  const hasMedia = Boolean(flag.visualUrl)
   const pageUrls = flag.pageUrls.length > 0 ? flag.pageUrls : flag.pageUrl ? [flag.pageUrl] : []
-  const hasLinks = pageUrls.length > 0
-  if (!hasMedia && !hasLinks) return null
+  if (pageUrls.length === 0) return null
 
   return (
-    <div className="space-y-2">
-      {flag.visualUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={flag.visualUrl}
-          alt=""
-          width={1440}
-          height={900}
-          className="w-full rounded-[var(--radius-inner)] border border-border/40"
-        />
-      ) : null}
-      {hasLinks ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {pageUrls.map((pageUrl) => (
-            <a
-              key={pageUrl}
-              href={pageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-sm"
-            >
-              <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
-              <span className="truncate max-w-[300px]">{pageUrl}</span>
-            </a>
-          ))}
-        </div>
-      ) : null}
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      {pageUrls.map((pageUrl) => (
+        <a
+          key={pageUrl}
+          href={pageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-sm"
+        >
+          <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+          <span className="truncate max-w-[300px]">{pageUrl}</span>
+        </a>
+      ))}
     </div>
   )
 }
@@ -188,6 +173,7 @@ export function FlagDetailPanel({
   signUpHref,
   previewMeta,
   ownerActionContext,
+  evidencePair,
 }: {
   flag: ExplorerFlag
   showFeedback?: boolean
@@ -196,10 +182,23 @@ export function FlagDetailPanel({
   signUpHref?: string
   previewMeta?: PreviewMeta | null
   ownerActionContext?: ReportOwnerActionContext
+  evidencePair?: ReactNode
 }) {
   const [claimOpen, setClaimOpen] = useState(false)
+  const authGate = useReportAuthGate()
   const showShareablePreview = isShareableCheck(flag.checkId) && previewMeta
   const consequence = flag.whyItMatters.trim()
+
+  function openClaim() {
+    if (authGate) {
+      authGate.open({
+        nextPath: claimNextFromHref(signUpHref),
+        auditId: ownerActionContext?.auditId,
+      })
+      return
+    }
+    setClaimOpen(true)
+  }
 
   return (
     <div key={flag.id} className="space-y-3 animate-soft-reveal" aria-live="polite">
@@ -221,7 +220,7 @@ export function FlagDetailPanel({
       {(flag.hasFixPrompt || aiLocked || flag.copyFixPrompt) && (
         <section className="space-y-2.5">
           {aiLocked ? (
-            <GatedFixPromptRow onClaim={() => setClaimOpen(true)} />
+            <GatedFixPromptRow onClaim={openClaim} />
           ) : aiEnhancementPending && !flag.fixPrompt ? (
             <p className="text-sm text-muted-foreground">Generating enhanced fix prompt.</p>
           ) : flag.hasFixPrompt ? (
@@ -240,10 +239,12 @@ export function FlagDetailPanel({
         </section>
       )}
 
+      {evidencePair}
+
       {showFeedback && <FlagFeedback flagId={flag.id} canDismiss />}
 
       <ReportClaimDialog
-        open={claimOpen}
+        open={authGate ? false : claimOpen}
         onOpenChange={setClaimOpen}
         nextPath={claimNextFromHref(signUpHref)}
         from="report"

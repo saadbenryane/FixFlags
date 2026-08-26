@@ -8,9 +8,13 @@ type AiAccessAudit = {
   isPublic?: boolean
 }
 
-/** Public anonymous audits used as marketing samples (homepage /samples). */
+/**
+ * Live unclaimed public reports are not marketing samples.
+ * Curated fixtures use the sample route and `repository_sample`, never this helper.
+ */
 export function isPublicMarketingSample(audit: AiAccessAudit): boolean {
-  return Boolean(audit.isPublic && audit.userId === null && audit.aiReviewAt)
+  void audit
+  return false
 }
 
 export function canViewPrescriptionContent(
@@ -31,7 +35,6 @@ export function canViewDeterministicFixes(
   audit: { userId: string | null; aiReviewAt: Date | null; isPublic?: boolean },
   viewer: { id: string } | null | undefined
 ): boolean {
-  if (isPublicMarketingSample(audit)) return true
   if (!viewer?.id) return false
   return audit.userId === viewer.id
 }
@@ -48,7 +51,6 @@ export async function canViewPrescriptionContentForAudit(
   audit: AiAccessAudit,
   viewer: { id: string } | null | undefined
 ): Promise<boolean> {
-  if (isPublicMarketingSample(audit)) return true
   if (canViewPrescriptionContent(audit, viewer)) return true
   if (!audit.aiReviewAt || !audit.isPublic || !audit.userId) return false
   const owner = await prisma.user.findUnique({

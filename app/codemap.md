@@ -44,7 +44,8 @@ Next.js App Router routes: marketing pages, auth, authenticated dashboard, audit
 | `globals.css` | Global styles |
 | `robots.ts` | robots.txt generation |
 | `sitemap.ts` | sitemap.xml generation |
-| `opengraph-image.tsx` | OpenGraph image generation |
+| `opengraph-image.jpg` | Site Open Graph share image |
+| `twitter-image.jpg` | Twitter/X large-image share card |
 
 ## Integration Points
 - **Middleware:** `middleware.ts` → `proxy.ts` (edge runtime, CSP, auth gating)

@@ -2,10 +2,11 @@ import type { Metadata } from 'next'
 import { BRAND, SEO, SITE_URL } from './copy'
 
 const DEFAULT_OG_IMAGE = {
-  url: '/opengraph-image',
+  url: '/og.jpg',
   width: 1200,
   height: 630,
   alt: BRAND.tagline,
+  type: 'image/jpeg',
 } as const
 
 export function buildPageMetadata(

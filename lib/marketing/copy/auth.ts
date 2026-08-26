@@ -25,6 +25,9 @@ export const AUTH = {
     saveError: 'Your account is ready, but we could not save your report yet.',
     retryCta: 'Try saving again',
   },
+  reportHeader: {
+    cta: 'Sign up',
+  },
   signIn: {
     title: 'Sign in to your account',
     subtitle: 'Access your reports and continue where you left off',

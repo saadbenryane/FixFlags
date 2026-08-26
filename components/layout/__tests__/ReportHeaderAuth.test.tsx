@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { MeProvider } from '@/hooks/useMe'
 import { ReportHeaderAuth } from '@/components/layout/ReportHeaderAuth'
+import { ReportAuthGateProvider } from '@/components/auth/ReportAuthGate'
 
 const pathname = vi.hoisted(() => ({ value: '/report/audit-1' }))
 
@@ -10,28 +11,33 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   useSearchParams: () => ({ get: () => null }),
 }))
+vi.mock('@/components/auth/AuthFlow', () => ({
+  AuthFlow: ({ dialogTitle }: { dialogTitle?: string }) => <div>{dialogTitle}</div>,
+}))
 
 describe('ReportHeaderAuth', () => {
-  it('returns to the current report after sign-in', () => {
+  it('shows a Sign up CTA that stays on the report', () => {
     pathname.value = '/report/audit-1'
     render(
       <MeProvider initialUser={null}>
-        <ReportHeaderAuth />
+        <ReportAuthGateProvider auditId="audit-1">
+          <ReportHeaderAuth />
+        </ReportAuthGateProvider>
       </MeProvider>
     )
-    expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute(
-      'href',
-      '/sign-in?next=%2Freport%2Faudit-1&from=report'
-    )
+    expect(screen.getByRole('button', { name: 'Sign up' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Log in' })).not.toBeInTheDocument()
   })
 
-  it('uses plain sign-in when there is no report to claim', () => {
+  it('still renders the Sign up CTA off a report route', () => {
     pathname.value = '/'
     render(
       <MeProvider initialUser={null}>
-        <ReportHeaderAuth />
+        <ReportAuthGateProvider>
+          <ReportHeaderAuth />
+        </ReportAuthGateProvider>
       </MeProvider>
     )
-    expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/sign-in')
+    expect(screen.getByRole('button', { name: 'Sign up' })).toBeInTheDocument()
   })
 })

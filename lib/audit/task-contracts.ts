@@ -68,6 +68,7 @@ export interface CheckAndPlanOutcome {
   reportId: string
   reportUrl: string
   status: string
+  reused?: boolean
   score?: number | null
   verdict?: string | null
   rubrics?: TaskRubricSummary[]
@@ -472,7 +473,7 @@ export async function checkAndPlan(options: TaskQueueOptions & {
   attribution?: AuditAttribution
   scanAccess?: import('@/lib/audit/scan-access').ScanAccessConfig | null
 }): Promise<CheckAndPlanOutcome> {
-  const { auditId, status: initialStatus } = await createAndEnqueueAudit({
+  const { auditId, status: initialStatus, reused } = await createAndEnqueueAudit({
     url: options.url,
     userId: options.userId,
     parentId: options.parentId,
@@ -501,7 +502,7 @@ export async function checkAndPlan(options: TaskQueueOptions & {
     timedOut = poll.timedOut
   }
 
-  const base = { reportId: auditId, reportUrl: reportUrl(auditId), status }
+  const base = { reportId: auditId, reportUrl: reportUrl(auditId), status, reused }
   if (status === 'FAILED') {
     return {
       ...base,
@@ -541,12 +542,14 @@ export async function checkAndPlan(options: TaskQueueOptions & {
 
 export async function recheckAndCompare(options: TaskQueueOptions & {
   parentReportId: string
-  user: User
+  user: User | null
+  claimedAnonymous?: boolean
   clientId?: string
 }): Promise<RecheckAndCompareOutcome> {
   const started = await startMonitoringAudit(options.parentReportId, options.user, {
     delayMs: options.delayMs,
     clientId: options.clientId,
+    claimedAnonymous: options.claimedAnonymous,
   })
   if (!started.ok) {
     const error = new Error(started.error) as Error & {

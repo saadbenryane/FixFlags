@@ -6,6 +6,7 @@ import { recheckAndCompare } from '@/lib/audit/task-contracts'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { RateLimitError, recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { prisma } from '@/lib/db'
+import { claimsAnonymousReport, readClaimedAnonymousIds } from '@/lib/audit/usage'
 
 export async function POST(
   req: NextRequest,
@@ -15,20 +16,31 @@ export async function POST(
     const { id: parentId } = await params
 
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
-    if (!session?.user?.id) {
-      return apiError('Sign in to run an update review', 401, { code: 'AUTH_REQUIRED' })
-    }
+    const claimedIds = await readClaimedAnonymousIds()
+    const parent = await prisma.audit.findUnique({
+      where: { id: parentId },
+      select: { userId: true, parentId: true },
+    })
+    const claimedAnonymous =
+      Boolean(parent) &&
+      parent!.userId === null &&
+      claimsAnonymousReport(claimedIds, parentId, parent!.parentId)
 
-    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-    if (!user) {
+    const user = session?.user?.id
+      ? await prisma.user.findUnique({ where: { id: session.user.id } })
+      : null
+    if (session?.user?.id && !user) {
       return apiError('User not found', 404)
+    }
+    if (!user && !claimedAnonymous) {
+      return apiError('Sign in to run an update review', 401, { code: 'AUTH_REQUIRED' })
     }
 
     const clientId = requestClientId(req.headers)
     const [recheckLimit, workerEstimate] = await Promise.all([
       recordRateLimit({
         scope: 'report-recheck',
-        identifier: user.id,
+        identifier: user?.id ?? clientId,
         limit: 20,
         windowSeconds: 3600,
         onRedisDown: 'reject',
@@ -45,6 +57,7 @@ export async function POST(
     const outcome = await recheckAndCompare({
       parentReportId: parentId,
       user,
+      claimedAnonymous,
       delayMs: queue.delayMs,
       clientId,
     })

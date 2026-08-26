@@ -76,7 +76,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'The Fix list contains every unresolved Flag, ranked by launch impact. Select a Flag to inspect its evidence, screenshot, and editor-ready prompt. Product context, journeys, previews, and launch gates continue below the workspace.',
+        text: 'The Fix list contains every unresolved Flag, ranked by launch impact. Select a Flag to inspect its evidence, screenshot, and editor-ready prompt. Contract, memory, and launch gates live on the signed-in Product page.',
       },
       {
         type: 'ul',

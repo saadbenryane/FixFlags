@@ -26,7 +26,7 @@ import {
 } from '@/lib/audit/active-audit'
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { Heading, Muted } from '@/components/ui/typography'
-import type { AuditAccessContext } from '@/lib/audit/access'
+import type { AuditAccessContext } from '@/lib/audit/access-context'
 
 /** Catches crashes in the progressive report view so the page doesn't go white. */
 class ProgressiveErrorBoundary extends Component<
@@ -69,6 +69,7 @@ function isViewableAuditAccessContext(value: unknown): value is ViewableAuditAcc
   return value === 'owner' ||
     value === 'anonymous_teaser' ||
     value === 'marketing_sample' ||
+    value === 'public_viewer' ||
     value === 'studio_public' ||
     value === 'share_grant'
 }
@@ -234,6 +235,7 @@ export function AuditPageClient({
       agentMessages: statusPayload?.agentMessages ?? [],
       auditId: id,
       accessContext,
+      isLoggedIn: Boolean(session?.user),
       isTeaser,
     }
   }, [status, progress, statusPayload?.partialFlags,
@@ -242,7 +244,7 @@ export function AuditPageClient({
       statusPayload?.agentMessages,
       statusPayload?.screenshotCapture, statusPayload?.url, statusPayload?.pageType,
       statusPayload?.score,
-      initialAudit, workerIdle, id, accessContext, isTeaser])
+      initialAudit, workerIdle, id, accessContext, isTeaser, session?.user])
 
   async function handleRetrySameAudit() {
     setRetryLoading(true)
@@ -289,7 +291,7 @@ export function AuditPageClient({
 
   if (isFailed) {
     return (
-      <AuditShell session={session}>
+      <AuditShell session={session} immersive claimReason={isTeaser ? 'save-report' : 'create-account'}>
         <Container variant="report" className="mx-auto max-w-lg space-y-4 py-24 text-center">
           <AuditFailurePanel
             failureCode={statusPayload?.failureCode}
@@ -306,7 +308,7 @@ export function AuditPageClient({
 
   // In-progress and COMPLETED hold share the progressive frame until SSR swap.
   return (
-    <AuditShell session={session} immersive>
+    <AuditShell session={session} immersive claimReason={isTeaser ? 'save-report' : 'create-account'}>
       {!isNotFound && !isForbidden && !isFailed ? (
         <ReportViewedTracker
           auditId={id}

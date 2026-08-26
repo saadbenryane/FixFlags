@@ -9,11 +9,16 @@ const getSession = vi.hoisted(() => vi.fn())
 const recheckAndCompare = vi.hoisted(() => vi.fn())
 const recordRateLimit = vi.hoisted(() => vi.fn())
 const getWorkerQueueEstimate = vi.hoisted(() => vi.fn())
+const readClaimedAnonymousIds = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession } } }))
-vi.mock('next/headers', () => ({ headers: async () => new Headers() }))
 vi.mock('@/lib/audit/task-contracts', () => ({ recheckAndCompare }))
+vi.mock('@/lib/audit/usage', () => ({
+  readClaimedAnonymousIds,
+  claimsAnonymousReport: (ids: string[], reportId: string, parentId?: string | null) =>
+    ids.includes(reportId) || (parentId != null && ids.includes(parentId)),
+}))
 vi.mock('@/lib/queue/estimate', () => ({
   computeEnqueueDelay: vi.fn((_: number, queue: { delayedJobs: number }) => ({
     delayMs: queue.delayedJobs,
@@ -51,6 +56,7 @@ describe('POST /api/reports/[id]/re-check', () => {
     getSession.mockResolvedValue({ user: { id: 'u1' } })
     prismaMock.user.findUnique.mockResolvedValue({ id: 'u1', plan: 'FREE' })
     prismaMock.audit.findUnique.mockResolvedValue({ userId: 'u1', parentId: null })
+    readClaimedAnonymousIds.mockResolvedValue([])
     recordRateLimit.mockResolvedValue({ exceeded: false, retryAfterSeconds: 0, currentCount: 1 })
     getWorkerQueueEstimate.mockResolvedValue({
       activeJobs: 0,
@@ -99,6 +105,7 @@ describe('POST /api/reports/[id]/re-check', () => {
     expect(recheckAndCompare).toHaveBeenCalledWith({
       parentReportId: 'parent-1',
       user: expect.objectContaining({ id: 'u1' }),
+      claimedAnonymous: false,
       delayMs: 0,
       clientId: 'client-1',
     })
@@ -138,11 +145,27 @@ describe('POST /api/reports/[id]/re-check', () => {
     expect(res.status).toBe(403)
   })
 
-  it('does not let an anonymous report claim bypass authentication', async () => {
+  it('rejects an unclaimed anonymous viewer', async () => {
     getSession.mockResolvedValue(null)
+    prismaMock.audit.findUnique.mockResolvedValue({ userId: null, parentId: null })
     const res = await POST(postReq(), { params: Promise.resolve({ id: 'parent-1' }) })
     expect(res.status).toBe(401)
     await expect(res.json()).resolves.toMatchObject({ code: 'AUTH_REQUIRED' })
     expect(recheckAndCompare).not.toHaveBeenCalled()
+  })
+
+  it('starts a re-check for a claimed anonymous session', async () => {
+    getSession.mockResolvedValue(null)
+    prismaMock.audit.findUnique.mockResolvedValue({ userId: null, parentId: null })
+    readClaimedAnonymousIds.mockResolvedValue(['parent-1'])
+    const res = await POST(postReq(), { params: Promise.resolve({ id: 'parent-1' }) })
+    expect(res.status).toBe(201)
+    expect(recheckAndCompare).toHaveBeenCalledWith({
+      parentReportId: 'parent-1',
+      user: null,
+      claimedAnonymous: true,
+      delayMs: 0,
+      clientId: 'client-1',
+    })
   })
 })

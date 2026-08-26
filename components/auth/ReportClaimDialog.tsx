@@ -3,8 +3,9 @@
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { AuthFlow } from '@/components/auth/AuthFlow'
 import { AUTH, SCAN_LIMIT_GATE } from '@/lib/marketing/copy/auth'
+import type { ReportClaimReason } from '@/lib/audit/access-context'
 
-export type ReportClaimReason = 'save-report' | 'scan-limit'
+export type { ReportClaimReason }
 
 export function ReportClaimDialog({
   open,
@@ -27,10 +28,15 @@ export function ReportClaimDialog({
           title: SCAN_LIMIT_GATE.signup.title,
           body: SCAN_LIMIT_GATE.signup.body,
         }
-      : {
-          title: AUTH.signUp.title,
-          body: AUTH.reportContext.body,
-        }
+      : reason === 'create-account'
+        ? {
+            title: AUTH.signUp.title,
+            body: AUTH.signUp.subtitle,
+          }
+        : {
+            title: AUTH.signUp.title,
+            body: AUTH.reportContext.body,
+          }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -40,12 +40,12 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
   6. **One mobile shell.** Small screens use a single tab bar (Agent, Preview/Timeline, Report, Canvas) over the same Product pane, driven by the same `view` state as the desktop toggle. The bar must not change shape when a scan completes, and the immersive shell carries no floating support bubble over the transport.
   7. **Agent is chat.** One Flag mark (animated while scanning), bubble transcript, one-row ArrowUp composer. Anonymous submit gates to sign-in. No "Working · N%" strip. Homepage Report mode uses `ReportExplorer` master/detail + real `FixPromptBlock`, never a hand-rolled Flag card.
   8. **Measured spotlight.** Selecting a Flag overlays `EvidenceSpotlight` on the Product Preview capture for that device. The rectangle is a capture-time measurement. Page-scope and unmeasured Flags get `EvidenceChip`, never a guessed hero box. Overlay must not resize the stage. `object-contain object-center` only.
-- Report mode uses a fixed compact `ReportOutcomeBar`, the shared `ReportPane` with `ReportExplorer` master/detail, and the collapsed `ReportContextDisclosure`. Only the explorer body lives inside `data-report-frame` using `WORKSPACE_REPORT_FRAME_CLASS`. Hard checks before you call Report work done:
+- Report mode uses a fixed compact `ReportOutcomeBar` and the shared `ReportPane` with `ReportExplorer` master/detail. Only the explorer body lives inside `data-report-frame` using `WORKSPACE_REPORT_FRAME_CLASS`. Hard checks before you call Report work done:
   1. **Pane-relative, never viewport-relative.** Container queries only (`@container/pane`, `@[40rem]/pane:`). No `lg:` breakpoint, `100vh` cap, `--header-offset` sticky, or `overflow-clip` inside the explorer. A 1280px viewport can still be a 527px pane.
   2. **One score surface.** Visible Score, honest pending/unavailable state, full-Review history, and scan progress live only in the compact header. Ranking, the Fix count, Critical-first order, evidence, and next action live only in the explorer. No circular gauge, Critical shortcut, duplicated verdict, or instructional summary.
   3. **Columns scroll, not the document.** In a wide pane the frame is exactly one pane height with each column `min-h-0 overflow-y-auto`; in a narrow pane the frame releases its height and the pane scrolls as one column. `goToFlag` and anchors scroll the nearest scroll parent.
   4. **Filters always visible.** Rubric, severity, impact, and page filters stay in the bar at every pane width.
-  5. **Context is collapsed.** Stack, contract, memory, funnel, previews, launch gates, feedback, and pipeline proof sit in one disclosure that only opens by user action or a matching anchor.
+  5. **Product context is on the Product page.** Contract, memory, and launch gates live on `/products/[id]` with Made with, Watch, and Signals. The report does not mount a Review context disclosure. Flag detail is one desktop|mobile pair; GIF/overlay plays in the affected frame.
   6. **One of each.** One CTA per surface, at most one contextual signup or upgrade moment, one owner update-review entry point, and `rounded-card` on every in-pane box. The canonical aggregate surface is `ReportFinishPlan`.
   Guards: `npm run ui:drift-guard`, `components/report/__tests__/workspace-geometry.test.ts`, and `node scripts/report-pane-proof.mjs`.
 - Honest pending/failed states for the active device only.
@@ -54,7 +54,7 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 - The canonical detailed workspace owns the complete ranked Fix list and the bounded zero-to-three Finish Plan. Funnel, Flow, Timeline, previews, and secondary controls remain subordinate context or sibling capabilities.
 - Progressive, focused, detailed, shared, and sample reports consume shared report/access models while retaining intentional density differences.
 - `ReportExplorer` is the only detailed flag browser. Rubric summaries link into it; they do not duplicate it.
-- Evidence remains device-specific. Never show a healthy twin viewport as filler.
+- Evidence remains device-specific. Never invent a healthy twin capture as filler. If both captures exist, show both. Unaffected viewports keep their real pixels and a “Not flagged” badge.
 - Sample evidence must identify itself as a curated fixture and keep URL, brand, screenshots, copy, and metadata consistent.
 - Live anonymous, shared, and non-owner reports show real evidence and the per-issue Fix Prompt / Copy prompt chrome. Expand and copy open create-account; prompt bodies, update-review actions, lifecycle mutations, and Timeline payload stay gated.
 - Repository-owned curated samples may expose exactly one demonstrated per-Flag prompt and their versioned static Timeline. They expose no aggregate Finish Plan prompt or update-review action.
@@ -70,7 +70,7 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 - [ ] Homepage shows Launchpad / `fixflags.com/demo`, real demo captures, `ReportExplorer` in Report mode, emulated story (no network scan)
 - [ ] Agent: chat bubbles + gate-on-send composer; one Flag working mark; no Working percent strip
 - [ ] Live anonymous reports show the owner Fix Prompt dropdown and orange Copy prompt; both clicks open create-account, never prompt text
-- [ ] Report: compact Score/history header → explorer → collapsed context; every history point opens a complete Review; fix list visible without scrolling; columns scroll inside the pane; filters present at every width
+- [ ] Report: compact Score/history header → explorer with Fix Prompt above one capture pair; every history point opens a complete Review; fix list visible without scrolling; columns scroll inside the pane; filters present at every width
 - [ ] First-time comprehension: Product identity, current activity, observation→Flag, where to inspect evidence
 
 ## Workflow

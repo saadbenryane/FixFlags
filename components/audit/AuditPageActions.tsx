@@ -29,6 +29,8 @@ interface Props {
   }>
   isLoggedIn: boolean
   isOwner: boolean
+  /** Cookie-claimed anonymous teaser (ff_anon_report_ids). Recheck must work. */
+  isClaimedAnonymous?: boolean
   compareAuditId?: string | null
   canExportSummary?: boolean
   showFixPrompts?: boolean
@@ -45,6 +47,7 @@ export function AuditPageActions({
   contract = null,
   isLoggedIn,
   isOwner,
+  isClaimedAnonymous = false,
   compareAuditId,
   canExportSummary = false,
   showFixPrompts = false,
@@ -52,8 +55,10 @@ export function AuditPageActions({
 }: Props) {
   const router = useRouter()
   const [recheckLoading, setRecheckLoading] = useState(false)
+  const canRecheck = isOwner || isClaimedAnonymous
+  const canManage = isLoggedIn && isOwner
 
-  if (!isLoggedIn || !isOwner) return null
+  if (!canRecheck) return null
 
   async function handleRecheck() {
     setRecheckLoading(true)
@@ -86,7 +91,7 @@ export function AuditPageActions({
         <RefreshCw className="h-4 w-4 mr-2" />
         {REPORT_COPY.recheck.label}
       </Button> : null}
-      {variant !== 'update' && compareAuditId && (
+      {canManage && variant !== 'update' && compareAuditId && (
         <Button variant="outline" size="sm" asChild>
           <Link href={`/compare/${compareAuditId}`}>
             <ArrowLeftRight className="h-4 w-4 mr-2" />
@@ -94,7 +99,7 @@ export function AuditPageActions({
           </Link>
         </Button>
       )}
-      {variant !== 'update' ? <ExportMenu
+      {canManage && variant !== 'update' ? <ExportMenu
         auditId={auditId}
         url={url}
         score={score}

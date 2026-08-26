@@ -48,14 +48,16 @@ const SECONDARY_ITEMS: SidebarItem[] = [
 
 const ADMIN_ITEM: SidebarItem = { href: '/admin', label: 'Admin', icon: ShieldCheck }
 
-function SidebarNav({
+export function SidebarNav({
   onNav,
   showAdmin,
   compact = false,
+  onGatedItem,
 }: {
   onNav?: () => void
   showAdmin?: boolean
   compact?: boolean
+  onGatedItem?: (href: string) => boolean
 }) {
   const pathname = usePathname()
 
@@ -75,7 +77,13 @@ function SidebarNav({
       <Link
         key={item.href}
         href={item.href as Route}
-        onClick={() => handleClick(item.href)}
+        onClick={(event) => {
+          if (onGatedItem?.(item.href)) {
+            event.preventDefault()
+            return
+          }
+          handleClick(item.href)
+        }}
         aria-current={active ? 'page' : undefined}
         className={cn(
           'relative flex min-h-11 items-center rounded-[var(--radius-control)] text-sm font-medium transition-colors duration-150',

@@ -50,7 +50,15 @@ describe('validateMonitoringParent', () => {
     }
   })
 
-  it('requires sign-in even when an anonymous session claimed the parent', () => {
+  it('accepts a claimed anonymous session on an unclaimed completed parent', () => {
+    const result = validateMonitoringParent(
+      { userId: null, status: 'COMPLETED' },
+      { userId: null, claimedAnonymous: true }
+    )
+    assert.equal(result.ok, true)
+  })
+
+  it('rejects anonymous parent without claim', () => {
     const result = validateMonitoringParent(
       { userId: null, status: 'COMPLETED' },
       { userId: null }
@@ -60,15 +68,6 @@ describe('validateMonitoringParent', () => {
       assert.equal(result.status, 401)
       assert.equal(result.error, 'Sign in to run an update review')
     }
-  })
-
-  it('rejects anonymous parent without claim', () => {
-    const result = validateMonitoringParent(
-      { userId: null, status: 'COMPLETED' },
-      { userId: null }
-    )
-    assert.equal(result.ok, false)
-    if (!result.ok) assert.equal(result.status, 401)
   })
 
   it('accepts completed owned parent', () => {
@@ -125,6 +124,26 @@ describe('startMonitoringAudit', () => {
     expect(createAndEnqueueAudit).toHaveBeenCalledWith(
       expect.objectContaining({
         skipUsageCount: false,
+      })
+    )
+  })
+
+
+  it('enqueues a claimed-anonymous re-check without a signed-in user', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({
+      userId: null,
+      status: 'COMPLETED',
+      url: 'https://example.com',
+    })
+    const outcome = await startMonitoringAudit('parent-1', null, { claimedAnonymous: true })
+    assert.equal(outcome.ok, true)
+    expect(createAndEnqueueAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: 'https://example.com',
+        userId: null,
+        parentId: 'parent-1',
+        skipUsageCount: false,
+        monitoringMode: 'FULL',
       })
     )
   })

@@ -21,6 +21,8 @@ import {
   loadTechnologyProfile,
   type TechnologyProfile,
 } from '@/lib/audit/technology-profile'
+import { parseProductContract, type ProductContract } from '@/lib/audit/product-contract'
+import { parseLaunchReadiness, type LaunchChecklistItem } from '@/lib/audit/launch-readiness'
 
 const ACTIVE_IMPROVEMENT_STATUSES: ImprovementStatus[] = [
   'PROPOSED',
@@ -163,6 +165,14 @@ export type ProductWorkspaceDTO = {
   latestCompletedManualReview: ProductReviewSummaryDTO | null
   latestWatchReview: ProductWatchReviewDTO | null
   technologyProfile: TechnologyProfile | null
+  understanding: {
+    reviewId: string | null
+    productContract: ProductContract | null
+    verifiedLearnings: VerifiedLearning[]
+    intentionalNotes: string[]
+    knownRisks: string[]
+    launchChecklist: LaunchChecklistItem[]
+  }
   reviewHistory: ProductReviewSummaryDTO[]
   history: ProductHistoryPageDTO
   integrations: ProductIntegrationDTO
@@ -703,6 +713,16 @@ export async function loadProductWorkspace(
   }
 
   const memory = parseProductIntelligence(product.productIntelligence)
+  const understandingReviewId = latestCompletedManualReviewRow?.id ?? null
+  const understandingRow = understandingReviewId
+    ? await prisma.audit.findUnique({
+        where: { id: understandingReviewId },
+        select: { productContract: true, launchReadiness: true },
+      })
+    : null
+  const productContract = parseProductContract(understandingRow?.productContract)
+  const launchChecklist =
+    parseLaunchReadiness(understandingRow?.launchReadiness)?.checklist ?? []
   const reviewEvents = historyReviewRows.map(
     (review): ProductHistoryEventDTO => ({
       kind: 'review',
@@ -796,6 +816,14 @@ export async function loadProductWorkspace(
       ? watchReviewSummary(latestWatchReviewRow)
       : null,
     technologyProfile,
+    understanding: {
+      reviewId: understandingReviewId,
+      productContract,
+      verifiedLearnings: memory?.verifiedLearnings ?? [],
+      intentionalNotes: memory?.intentionalNotes ?? [],
+      knownRisks: memory?.knownRisks ?? [],
+      launchChecklist,
+    },
     reviewHistory: historyReviewRows
       .slice(0, PRODUCT_HISTORY_PAGE_SIZE)
       .map(reviewSummary),
