@@ -49,7 +49,7 @@ Do not mix both readers in one hero or block.
 
 1. Logged-out primary action is the free check (`Review my site` → `/#audit`), not account creation.
 2. Account creation belongs after triage value.
-3. Live anonymous reports show deterministic Agent progress and every confirmed Flag with evidence. They expose zero prompts, copy controls, Timeline payload, update-review actions, or lifecycle mutations.
+3. Live anonymous reports show deterministic Agent progress and every confirmed Flag with evidence. They show Fix Prompt / Copy prompt chrome that opens create-account. Prompt bodies, Timeline payload, update-review actions, and lifecycle mutations stay gated.
 4. `/samples` is the canonical curated workspace. It exposes the complete ranked Fix list, exactly one demonstrated per-Flag prompt, its versioned static Timeline, no aggregate Finish Plan prompt, and no update-review action.
 5. Never present a curated sample as a live customer review.
 

@@ -3,8 +3,8 @@ import { AuditReportProgressive } from '@/components/audit/AuditReportProgressiv
 
 export default function ReportLoading() {
   return (
-    <AuditShell>
-      <AuditReportProgressive status="QUEUED" />
+    <AuditShell immersive>
+      <AuditReportProgressive status="QUEUED" accessContext="anonymous_teaser" />
     </AuditShell>
   )
 }

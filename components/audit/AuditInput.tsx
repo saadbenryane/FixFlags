@@ -1,13 +1,12 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { ArrowRight, Link2, Loader2 } from 'lucide-react'
 import { HERO, AUDIT_PROGRESS, AUDIT_ERRORS } from '@/lib/marketing/copy'
-import { SCAN_LIMIT_GATE } from '@/lib/marketing/copy/auth'
 import { URL_PLACEHOLDER } from '@/lib/marketing/copy/brand'
 import { SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { cn } from '@/lib/utils'
@@ -17,7 +16,9 @@ import {
   startScanWithHandoff,
   trackStartedAudit,
 } from '@/lib/audit/start-scan-handoff'
-import { AuthFlow } from '@/components/auth/AuthFlow'
+import { AuditShell } from '@/components/layout/audit-shell'
+import { AuditReportProgressive } from '@/components/audit/AuditReportProgressive'
+import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
 
 const AUTOSTART_DONE_KEY = 'ff:autostart-url'
 
@@ -208,6 +209,7 @@ export function AuditInput({
 
   const describedBy = urlError ? errorId : undefined
   const busy = loading
+  const showHandoff = hydrated && busy && !authDialogOpen
 
   const fieldHeightClass = 'h-12 min-h-12'
   const fieldHeightInputClass = 'h-12 min-h-12 py-0 leading-none'
@@ -344,22 +346,31 @@ export function AuditInput({
         </div>
       ) : null}
 
-      <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-md overflow-y-auto overscroll-contain p-5 sm:p-6">
-          <DialogTitle className="sr-only">{SCAN_LIMIT_GATE.signup.title}</DialogTitle>
-          <DialogDescription className="sr-only">
-            {SCAN_LIMIT_GATE.signup.body}
-          </DialogDescription>
-          <AuthFlow
-            mode="signup"
-            presentation="report-dialog"
-            from="scan-limit"
-            dialogTitle={SCAN_LIMIT_GATE.signup.title}
-            dialogSubtitle={SCAN_LIMIT_GATE.signup.body}
-            onAuthenticated={handleAuthenticated}
-          />
-        </DialogContent>
-      </Dialog>
+      {showHandoff &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[var(--z-modal)] bg-background"
+            role="status"
+            aria-live="polite"
+            aria-label="Starting your review"
+          >
+            <AuditShell immersive>
+              <AuditReportProgressive
+                status="QUEUED"
+                url={url}
+                accessContext="anonymous_teaser"
+              />
+            </AuditShell>
+          </div>,
+          document.body
+        )}
+
+      <ReportClaimDialog
+        open={authDialogOpen}
+        onOpenChange={setAuthDialogOpen}
+        from="scan-limit"
+        onAuthenticated={handleAuthenticated}
+      />
     </div>
   )
 }

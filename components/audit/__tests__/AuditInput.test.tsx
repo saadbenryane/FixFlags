@@ -5,7 +5,11 @@ import { MeProvider } from '@/hooks/useMe'
 const startScanWithHandoff = vi.hoisted(() => vi.fn())
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }))
 
-vi.mock('next/navigation', () => ({ useRouter: () => router }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => router,
+  usePathname: () => '/',
+  useSearchParams: () => ({ get: () => null }),
+}))
 vi.mock('@/lib/audit/start-scan-handoff', () => ({
   startScanWithHandoff,
   trackStartedAudit: vi.fn(),
@@ -33,7 +37,10 @@ describe('AuditInput scan handoff', () => {
     fireEvent.submit(input.closest('form')!)
 
     expect(await screen.findByRole('button', { name: /Reviewing/ })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Website URL' })).toBeInTheDocument()
+    expect(await screen.findByText('Your priorities')).toBeInTheDocument()
+    expect(
+      screen.getByText(/getting ready to experience the Product/i)
+    ).toBeInTheDocument()
     expect(screen.queryByText(/Opening your report/i)).not.toBeInTheDocument()
   })
 

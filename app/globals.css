@@ -152,34 +152,3 @@
   }
 }
 
-@keyframes hero-signal-travel {
-  from {
-    stroke-dashoffset: 0;
-  }
-  to {
-    stroke-dashoffset: -900;
-  }
-}
-
-@keyframes hero-signal-pulse {
-  0%,
-  100% {
-    opacity: 0.1;
-    transform: scale(0.82);
-  }
-  50% {
-    opacity: 0.32;
-    transform: scale(1.08);
-  }
-}
-
-.hero-signal-travel {
-  animation: hero-signal-travel 12s linear infinite;
-  stroke-dasharray: 12 888;
-}
-
-.hero-signal-pulse {
-  animation: hero-signal-pulse 4s ease-in-out infinite;
-  transform-box: fill-box;
-  transform-origin: center;
-}

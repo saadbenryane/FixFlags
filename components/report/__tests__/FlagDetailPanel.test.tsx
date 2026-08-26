@@ -1,9 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { FlagDetailPanel, FlagMetaPills, isShareableCheck } from '@/components/report/FlagDetailPanel'
 import { MeProvider } from '@/hooks/useMe'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
 import type { ReactNode } from 'react'
+
+vi.mock('@/components/auth/AuthFlow', () => ({
+  AuthFlow: ({ dialogTitle }: { dialogTitle?: string }) => <div>{dialogTitle}</div>,
+}))
 
 const LABEL_MAP: Record<string, string> = {
   CRITICAL: 'Critical Flag',
@@ -109,9 +113,19 @@ describe('FlagDetailPanel', () => {
     expect(screen.getByRole('button', { name: /copy prompt/i })).toBeInTheDocument()
   })
 
-  it('shows locked teaser when aiLocked', () => {
-    renderWithProviders(<FlagDetailPanel flag={makeFlag()} aiLocked />)
-    expect(screen.getByText(/Create a free account/i)).toBeInTheDocument()
+  it('shows locked prompt chrome and opens create-account on click', async () => {
+    renderWithProviders(
+      <FlagDetailPanel flag={makeFlag()} aiLocked signUpHref="/sign-up?next=/report/a1&from=report" />
+    )
+    expect(screen.getByText('Fix Prompt')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeInTheDocument()
+    expect(screen.queryByText(/Create a free account to get the fix prompt/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Add an Open Graph image meta tag.')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy prompt' }))
+    expect(await screen.findAllByText('Create a free account to continue')).not.toHaveLength(0)
+    expect(screen.queryByText(/upgrade/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Add an Open Graph image meta tag.')).not.toBeInTheDocument()
   })
 
   it('shows generating text when aiEnhancementPending and no fixPrompt', () => {

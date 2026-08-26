@@ -39,7 +39,9 @@ import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
+import { WORKSPACE_VIEWPORT_CLASS } from '@/components/report/workspace-geometry'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
+import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 import { cn } from '@/lib/utils'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import type { AgentMessage } from '@/lib/audit/agent-message'
@@ -127,7 +129,7 @@ export function AuditReportProgressive({
   agentMessages = [],
 }: AuditReportProgressiveProps) {
   const isOwnerAccess = accessContext === 'owner'
-  const canClaimAccess = accessContext === 'anonymous_teaser'
+  const canClaimAccess = accessContext === 'anonymous_teaser' || (!accessContext && !auditId)
   const chatGateReason = canClaimAccess ? 'sign-in' : 'owner'
   const isFailed = status === 'FAILED'
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
@@ -270,6 +272,17 @@ export function AuditReportProgressive({
       demonstratedFlagId: null,
     },
   })
+  const scanTranscript = useMemo(
+    () =>
+      agentMessages.length > 0
+        ? agentMessages
+        : buildFixFlagsScanMessages({
+            id: auditId ?? 'handoff',
+            status,
+            progress,
+          }),
+    [agentMessages, auditId, status, progress]
+  )
   const queuedWarnings =
     workerIdle || showWorkerWarning || showQueueWait ? (
       <div className="space-y-3">
@@ -334,7 +347,7 @@ export function AuditReportProgressive({
     />
   )
 
-  const scanWorkspace = auditId ? (
+  const scanWorkspace = (
     <Suspense fallback={null}>
       <ReportWorkspaceSplitShell
         isActiveReview
@@ -352,7 +365,7 @@ export function AuditReportProgressive({
             auditId={auditId}
             capabilities={workspace.capabilities}
             gateReason={chatGateReason}
-            agentMessages={agentMessages}
+            agentMessages={scanTranscript}
             reportUrl={url}
             scanning
             className="h-full"
@@ -367,8 +380,6 @@ export function AuditReportProgressive({
         className="h-full"
       />
     </Suspense>
-  ) : (
-    scanReportPanel
   )
 
   const contextSections = (
@@ -398,7 +409,7 @@ export function AuditReportProgressive({
 
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col motion-safe:animate-soft-reveal">
+      <div className={`${WORKSPACE_VIEWPORT_CLASS} motion-safe:animate-soft-reveal`}>
         {queuedWarnings ? (
           <div className="shrink-0 space-y-3 border-b border-border/40 px-4 py-3">
             {queuedWarnings}
@@ -411,7 +422,7 @@ export function AuditReportProgressive({
 
   if (auditId) {
     return (
-      <div className="flex h-[calc(100dvh-3.5rem)] min-h-0 flex-col motion-safe:animate-soft-reveal">
+      <div className={`${WORKSPACE_VIEWPORT_CLASS} motion-safe:animate-soft-reveal`}>
         {queuedWarnings ? (
           <div className="shrink-0 space-y-3 border-b border-border/40 px-4 py-3">
             {queuedWarnings}

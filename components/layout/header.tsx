@@ -38,6 +38,8 @@ interface HeaderProps {
   className?: string
   adminInboxUnread?: number
   showNavigation?: boolean
+  /** Slim glass bar at `--header-height`. Used by the living-review editor. */
+  compact?: boolean
 }
 
 export function Header({
@@ -47,6 +49,7 @@ export function Header({
   className,
   adminInboxUnread = 0,
   showNavigation = true,
+  compact = false,
 }: HeaderProps) {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -58,7 +61,8 @@ export function Header({
   const defaultRight = variant === 'admin' ? <AdminHeaderRight /> : null
 
   const resolvedRight = right ?? defaultRight
-  const isMarketing = variant === 'marketing'
+  const isMarketing = variant === 'marketing' && !compact
+  const showRightAlways = compact || !showNavigation
 
   useEffect(() => {
     if (!isMarketing) return
@@ -74,7 +78,7 @@ export function Header({
       className={cn(
         'sticky top-0 z-navbar border-0 transition-[background-color,box-shadow,backdrop-filter] duration-200 ease-out',
         isMarketing && !scrolled && 'bg-transparent shadow-none backdrop-blur-none',
-        (!isMarketing || scrolled) && 'glass-nav',
+        (!isMarketing || scrolled || compact) && 'glass-nav',
         className
       )}
     >
@@ -158,8 +162,12 @@ export function Header({
           <div className="flex min-w-0 items-center justify-end gap-1">
             <div
               className={cn(
-                'hidden items-center gap-0.5',
-                isMarketing ? 'lg:flex' : 'md:flex'
+                'items-center gap-0.5',
+                showRightAlways
+                  ? 'flex'
+                  : isMarketing
+                    ? 'hidden lg:flex'
+                    : 'hidden md:flex'
               )}
             >
               {resolvedRight}

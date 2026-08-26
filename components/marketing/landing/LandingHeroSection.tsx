@@ -1,6 +1,5 @@
 import { AuditInput } from "@/components/audit/AuditInput";
 import { EditorToolMarks } from "@/components/marketing/landing/EditorToolMarks";
-import { HeroSignalBackdrop } from "@/components/marketing/landing/HeroSignalBackdrop";
 import { MarketingEyebrow } from "@/components/marketing/MarketingEyebrow";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
@@ -13,7 +12,6 @@ export function LandingHeroSection() {
       spacing="hero"
       className="relative flex min-h-0 flex-col overflow-x-clip !pb-10 !pt-7 sm:!pb-12 sm:!pt-10 lg:!pb-14 lg:!pt-10"
     >
-      <HeroSignalBackdrop />
       <Container
         variant="marketing"
         className="relative flex w-full flex-col px-4 sm:px-6 lg:px-12"

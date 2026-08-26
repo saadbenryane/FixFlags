@@ -4,6 +4,15 @@ import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import type { AgentMessage } from '@/lib/audit/agent-message'
 import type { ReportWorkspaceCapabilities } from '@/lib/report/workspace-model'
 
+const startScanWithHandoff = vi.hoisted(() => vi.fn())
+
+vi.mock('@/lib/audit/start-scan-handoff', () => ({
+  startScanWithHandoff,
+}))
+vi.mock('@/components/auth/AuthFlow', () => ({
+  AuthFlow: ({ dialogTitle }: { dialogTitle?: string }) => <div>{dialogTitle}</div>,
+}))
+
 function capabilities(canChat: boolean): ReportWorkspaceCapabilities {
   return {
     promptAccess: 'none',
@@ -152,5 +161,42 @@ describe('WorkspaceChatPanel', () => {
     expect(screen.getByPlaceholderText('You can only chat on your own reports')).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Sign in to chat' })).not.toBeInTheDocument()
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('opens create-account from History, chat send, and a second anonymous review', async () => {
+    startScanWithHandoff.mockResolvedValue({
+      ok: false,
+      code: 'AUTH_REQUIRED',
+      message: 'Create a free account to continue.',
+    })
+    render(
+      <WorkspaceChatPanel
+        auditId="a1"
+        capabilities={capabilities(false)}
+        gateReason="sign-in"
+        reportUrl="https://example.com"
+        agentMessages={scanMessages}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Review history' }))
+    expect(screen.getAllByText('Create a free account to continue').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/upgrade/i)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /close/i }))
+    fireEvent.change(screen.getByPlaceholderText(/Sign in to ask about the Flags/i), {
+      target: { value: 'What first?' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in to chat' }))
+    expect(screen.getAllByText('Create a free account to continue').length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByRole('button', { name: /close/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'New review' }))
+    fireEvent.change(screen.getByLabelText('URL to review'), {
+      target: { value: 'https://other.com' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Start review' }))
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalled())
+    expect(screen.getAllByText('Create a free account to continue').length).toBeGreaterThan(0)
   })
 })

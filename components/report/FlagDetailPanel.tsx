@@ -1,14 +1,14 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { ChevronDown, ExternalLink, Share2, type LucideIcon } from 'lucide-react'
-import { LockedContentTeaser } from '@/components/audit/LockedContentTeaser'
 import { FixPromptBlock } from '@/components/audit/FixPromptBlock'
 import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
+import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
 import { FlagFeedback } from '@/components/audit/FlagFeedback'
 import { RubricPill } from '@/components/marketing/sample/RubricDimensionHeader'
 import { SeveritySignal } from '@/components/report/SeveritySignal'
-import { LOCKED_CONTENT_TEASER, REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { displayHostname, truncatePreview } from '@/lib/audit/preview-meta'
@@ -149,6 +149,37 @@ function FlagEvidenceMeta({ flag }: { flag: ExplorerFlag }) {
   )
 }
 
+function claimNextFromHref(href?: string): string | undefined {
+  if (!href) return undefined
+  try {
+    return new URL(href, 'https://fixflags.local').searchParams.get('next') ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+function GatedFixPromptRow({ onClaim }: { onClaim: () => void }) {
+  return (
+    <div className="flex min-h-11 overflow-hidden rounded-[var(--radius-inner)] border border-border/45 bg-background shadow-sm">
+      <button
+        type="button"
+        onClick={onClaim}
+        className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center justify-between gap-2 whitespace-nowrap px-3 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:px-4"
+      >
+        {REPORT_COPY.explorer.fixPrompt}
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      </button>
+      <PromptCopyButton
+        prompt=""
+        onLockedAction={onClaim}
+        compact
+        variant="brand"
+        className="shrink-0 rounded-none border-0 px-3 shadow-none sm:px-4"
+      />
+    </div>
+  )
+}
+
 export function FlagDetailPanel({
   flag,
   showFeedback = false,
@@ -166,6 +197,7 @@ export function FlagDetailPanel({
   previewMeta?: PreviewMeta | null
   ownerActionContext?: ReportOwnerActionContext
 }) {
+  const [claimOpen, setClaimOpen] = useState(false)
   const showShareablePreview = isShareableCheck(flag.checkId) && previewMeta
   const consequence = flag.whyItMatters.trim()
 
@@ -189,17 +221,7 @@ export function FlagDetailPanel({
       {(flag.hasFixPrompt || aiLocked || flag.copyFixPrompt) && (
         <section className="space-y-2.5">
           {aiLocked ? (
-            <div className="space-y-2">
-              <LockedContentTeaser
-                label={LOCKED_CONTENT_TEASER.fixPromptLabel}
-                signUpHref={signUpHref}
-                from="sample_fix"
-                compact
-              />
-              {flag.copyFixPrompt ? (
-                <PromptCopyButton prompt={flag.copyFixPrompt} compact />
-              ) : null}
-            </div>
+            <GatedFixPromptRow onClaim={() => setClaimOpen(true)} />
           ) : aiEnhancementPending && !flag.fixPrompt ? (
             <p className="text-sm text-muted-foreground">Generating enhanced fix prompt.</p>
           ) : flag.hasFixPrompt ? (
@@ -219,6 +241,13 @@ export function FlagDetailPanel({
       )}
 
       {showFeedback && <FlagFeedback flagId={flag.id} canDismiss />}
+
+      <ReportClaimDialog
+        open={claimOpen}
+        onOpenChange={setClaimOpen}
+        nextPath={claimNextFromHref(signUpHref)}
+        from="report"
+      />
     </div>
   )
 }

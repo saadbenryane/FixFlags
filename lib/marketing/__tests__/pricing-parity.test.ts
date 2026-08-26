@@ -101,6 +101,13 @@ describe('pricing parity', () => {
     expect(surfaces).toMatch(/per month/i)
   })
 
+  it('keeps anonymous signup copy free of upgrade language', () => {
+    expect(AUTH.signUp.subtitle).not.toMatch(/upgrade/i)
+    expect(AUTH.signUp.fromPricing).not.toMatch(/upgrade/i)
+    expect(SCAN_LIMIT_GATE.signup.title).not.toMatch(/upgrade/i)
+    expect(SCAN_LIMIT_GATE.signup.body).not.toMatch(/upgrade/i)
+  })
+
   it('sells one Product Review allowance without a current deep-review quota', () => {
     const customerSurfaces = [JSON.stringify(PLANS), JSON.stringify(PRICING), HELP_CATALOG].join('\n')
 

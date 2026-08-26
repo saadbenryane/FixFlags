@@ -24,11 +24,13 @@ const LAST_PHASE = STORY_DURATIONS.length - 1
 const story = LANDING_PAGE.sampleReport.story
 
 /**
- * Marketing frame keeps its rounded card. The fixed editor height stops the
- * section from jumping when the story swaps the desktop and mobile capture.
+ * Marketing frame keeps its rounded card. Overflow lives on this wrapper so
+ * both panes clip to the radius; the editor shell itself stays flush.
+ * The fixed editor height stops the section from jumping when the story
+ * swaps the desktop and mobile capture.
  */
 const STORY_FRAME_CLASS =
-  'rounded-card shadow-glass-hero ring-1 ring-border/55 lg:h-[38rem]'
+  'isolate overflow-hidden rounded-card bg-background shadow-glass-hero ring-1 ring-border/55 lg:h-[38rem]'
 
 function storyStatus(phase: number): string {
   if (phase === 0) return 'CAPTURING'
@@ -129,83 +131,85 @@ export function HomepageReportPreview({
   }
 
   return (
-    <ReportWorkspaceSplitShell
-      ariaLabel={story.label}
-      browserUrl={model.identity.url ?? DEMO_BRAND.sampleUrl}
-      browserScreenshots={screenshots}
-      controlledDevice={device}
-      onDeviceChange={(next) => {
-        takeOver()
-        setChosenDevice(next)
-      }}
-      controlledView={view}
-      onViewChange={(next) => {
-        takeOver()
-        setChosenView(next)
-      }}
-      syncViewToUrl={false}
-      initialMobileFocus="product"
-      scanning={capturing}
-      capabilities={model.capabilities}
-      steps={steps}
-      activeStepIndex={activeStepIndex}
-      onSelectStep={(index) => {
-        takeOver()
-        setActiveStepIndex((current) => (current === index ? null : index))
-        setChosenView('browser')
-      }}
-      onScrub={(index) => {
-        takeOver()
-        setActiveStepIndex(index)
-        setChosenView('browser')
-      }}
-      onBackToLive={() => setActiveStepIndex(null)}
-      className={STORY_FRAME_CLASS}
-      leftPanel={
-        <WorkspaceChatPanel
-          capabilities={model.capabilities}
-          gateReason="owner"
-          agentMessages={messages}
-          reportUrl={model.identity.url ?? DEMO_BRAND.sampleUrl}
-          productName={DEMO_BRAND.displayLabel}
-          scanning={capturing}
-          showToolbarActions={false}
-        />
-      }
-      previewOverlay={
-        phase === 2 && selectedFlag && playing ? (
-          <div className="absolute inset-x-6 bottom-6 rounded-[var(--radius-inner)] border-l-2 border-brand bg-background/95 p-4 shadow-raised ring-1 ring-border/55 backdrop-blur motion-safe:animate-soft-reveal sm:inset-x-auto sm:right-6 sm:max-w-sm">
-            <p className="text-xs font-semibold uppercase tracking-label text-brand">
-              {story.evidenceLabel}
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-foreground">
-              {selectedFlag.evidence || selectedFlag.whyItMatters}
-            </p>
-          </div>
-        ) : null
-      }
-      reportHeader={<ReportOutcomeBar model={model} />}
-      reportPanel={
-        <MeProvider initialUser={null}>
-          <ReportPane
-            explorer={
-              <section
-                id="report-flags"
-                className="flex min-h-0 flex-1 flex-col"
-              >
-                <LiveReportExplorer
-                  model={model.explorer}
-                  aiLocked
-                  demonstratedFlagId={
-                    model.capabilities.demonstratedFlagId ?? undefined
-                  }
-                  signUpHref="/sign-in?next=%2Fsamples"
-                />
-              </section>
-            }
+    <div className={STORY_FRAME_CLASS}>
+      <ReportWorkspaceSplitShell
+        ariaLabel={story.label}
+        browserUrl={model.identity.url ?? DEMO_BRAND.sampleUrl}
+        browserScreenshots={screenshots}
+        controlledDevice={device}
+        onDeviceChange={(next) => {
+          takeOver()
+          setChosenDevice(next)
+        }}
+        controlledView={view}
+        onViewChange={(next) => {
+          takeOver()
+          setChosenView(next)
+        }}
+        syncViewToUrl={false}
+        initialMobileFocus="product"
+        scanning={capturing}
+        capabilities={model.capabilities}
+        steps={steps}
+        activeStepIndex={activeStepIndex}
+        onSelectStep={(index) => {
+          takeOver()
+          setActiveStepIndex((current) => (current === index ? null : index))
+          setChosenView('browser')
+        }}
+        onScrub={(index) => {
+          takeOver()
+          setActiveStepIndex(index)
+          setChosenView('browser')
+        }}
+        onBackToLive={() => setActiveStepIndex(null)}
+        className="h-full min-h-0"
+        leftPanel={
+          <WorkspaceChatPanel
+            capabilities={model.capabilities}
+            gateReason="owner"
+            agentMessages={messages}
+            reportUrl={model.identity.url ?? DEMO_BRAND.sampleUrl}
+            productName={DEMO_BRAND.displayLabel}
+            scanning={capturing}
+            showToolbarActions={false}
           />
-        </MeProvider>
-      }
-    />
+        }
+        previewOverlay={
+          phase === 2 && selectedFlag && playing ? (
+            <div className="absolute inset-x-6 bottom-6 rounded-[var(--radius-inner)] border-l-2 border-brand bg-background/95 p-4 shadow-raised ring-1 ring-border/55 backdrop-blur motion-safe:animate-soft-reveal sm:inset-x-auto sm:right-6 sm:max-w-sm">
+              <p className="text-xs font-semibold uppercase tracking-label text-brand">
+                {story.evidenceLabel}
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-foreground">
+                {selectedFlag.evidence || selectedFlag.whyItMatters}
+              </p>
+            </div>
+          ) : null
+        }
+        reportHeader={<ReportOutcomeBar model={model} />}
+        reportPanel={
+          <MeProvider initialUser={null}>
+            <ReportPane
+              explorer={
+                <section
+                  id="report-flags"
+                  className="flex min-h-0 flex-1 flex-col"
+                >
+                  <LiveReportExplorer
+                    model={model.explorer}
+                    aiLocked
+                    demonstratedFlagId={
+                      model.capabilities.demonstratedFlagId ?? undefined
+                    }
+                    signUpHref="/sign-in?next=%2Fsamples"
+                  />
+                </section>
+              }
+            />
+          </MeProvider>
+        }
+      />
+    </div>
   )
 }

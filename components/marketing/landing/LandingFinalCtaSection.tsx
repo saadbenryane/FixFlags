@@ -27,19 +27,8 @@ export function LandingFinalCtaSection() {
     >
       <Container variant="marketing" className="px-4 sm:px-6 lg:px-12">
         <div className="overflow-hidden rounded-card bg-background shadow-glass-deep">
-          <div className="grid items-stretch lg:grid-cols-[0.92fr_1.08fr]">
-            <div className="relative min-h-[15rem] overflow-hidden bg-muted/25 sm:min-h-[18rem] lg:min-h-[23rem]">
-              <Image
-                src="/marketing/visuals/how-it-works-review-v3.webp"
-                alt="A live product is reviewed across Message, Experience, and Reach"
-                fill
-                sizes="(min-width: 1280px) 620px, (min-width: 1024px) 46vw, 100vw"
-                className="scale-[0.92] object-contain object-center drop-shadow-[0_28px_44px_hsl(var(--foreground)/0.1)]"
-                unoptimized
-              />
-            </div>
-
-            <div className="flex flex-col justify-center px-5 pb-7 sm:px-8 sm:pb-9 lg:-ml-6 lg:px-12 lg:py-12">
+          <div className="grid items-stretch lg:grid-cols-[1.08fr_0.92fr]">
+            <div className="flex flex-col justify-center px-5 py-7 sm:px-8 sm:py-9 lg:px-12 lg:py-12">
               <LandingSectionHeader
                 align="left"
                 headline={FINAL_CTA.headlineDisplay}
@@ -56,6 +45,17 @@ export function LandingFinalCtaSection() {
                   showLandingExtras={false}
                 />
               </div>
+            </div>
+
+            <div className="relative min-h-[15rem] overflow-hidden bg-muted/25 sm:min-h-[18rem] lg:-ml-6 lg:min-h-[23rem]">
+              <Image
+                src="/marketing/visuals/how-it-works-review-v3.webp"
+                alt="A live product is reviewed across Message, Experience, and Reach"
+                fill
+                sizes="(min-width: 1280px) 620px, (min-width: 1024px) 46vw, 100vw"
+                className="scale-[0.92] object-contain object-center drop-shadow-[0_28px_44px_hsl(var(--foreground)/0.1)]"
+                unoptimized
+              />
             </div>
           </div>
         </div>

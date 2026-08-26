@@ -39,4 +39,14 @@ describe('PromptCopyButton', () => {
       }),
     ))
   })
+
+  it('does not copy when the locked action runs instead', () => {
+    const onLockedAction = vi.fn()
+    render(
+      <PromptCopyButton prompt="" onLockedAction={onLockedAction} variant="brand" />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Copy prompt' }))
+    expect(onLockedAction).toHaveBeenCalledOnce()
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalled()
+  })
 })

@@ -53,3 +53,7 @@ export const WORKSPACE_REPORT_FRAME_CLASS =
 
 /** Anchor offset for report sections addressed by id. */
 export const REPORT_SECTION_SCROLL_MT = 'scroll-mt-[var(--report-chrome-offset)]'
+
+/** Live report route fills the viewport beneath the slim immersive header. */
+export const WORKSPACE_VIEWPORT_CLASS =
+  'flex h-[calc(100dvh-var(--header-height))] min-h-0 flex-col'

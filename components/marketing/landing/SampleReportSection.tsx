@@ -25,8 +25,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
   return (
     <Section
       spacing="marketing"
-      tint="subtle"
-      className="overflow-hidden py-14 sm:py-16 lg:py-20"
+      className="overflow-hidden bg-background py-14 sm:py-16 lg:py-20"
     >
       <SampleViewTracker placement="homepage" />
       <Container

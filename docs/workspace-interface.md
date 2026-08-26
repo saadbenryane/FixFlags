@@ -44,11 +44,11 @@
   Repository-owned curated samples may replay their static versioned Timeline fixtures publicly.
 - Anything that streams in mid-scan reserves its space first: the findings strip holds its row from the moment findings can stream, and progress readouts use `tabular-nums` in a fixed-width slot.
 - The immersive shell carries no floating support bubble (`AuditShell` passes `showSupport={false}`). The Agent column is the chat surface, and a floating launcher would sit on top of the docked transport.
-- Agent column is chat: one Flag mark (animated `ScanWorkingMark` while scanning), bubble transcript, one-row composer with ArrowUp send. Anonymous viewers see the composer; submit gates to `/sign-in?next=…` and never posts chat. There is no "Working · N%" strip above the transcript.
+- Agent column is chat: one Flag mark (animated `ScanWorkingMark` while scanning), bubble transcript, one-row composer with ArrowUp send. Anonymous viewers see the composer; submit opens the in-place create-account dialog and never posts chat. There is no "Working · N%" strip above the transcript.
 - Report mode uses `ReportExplorer` master/detail (list left, detail + `FixPromptBlock` right). Homepage and samples reuse that explorer; they do not hand-roll Flag cards.
 - Report mode is itself a three-row pane, mirroring Preview (see "Report mode anatomy" below).
 - Small screens use `WorkspaceMobileTabs` (Agent, Preview/Timeline, Report, Canvas) over one Product pane. Marketing emulations use the same bar so a stacked homepage card cannot bury the capture.
-- `/samples` fills its marketing card (`h-full`). The live report route is the only surface that uses `h-[calc(100dvh-3.5rem)]`.
+- `/samples` fills its marketing card (`h-full`). The live report route is the only surface that uses `h-[calc(100dvh-var(--header-height))]`.
 - An absent `observation` selects the current curated Review. An explicit unpublished ID returns not found; it never substitutes a different Review or queries production.
 
 ```mermaid

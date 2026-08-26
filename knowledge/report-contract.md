@@ -32,7 +32,9 @@ Legacy `view=timeline` and `view=canvas` parameters normalize to `view=report`.
 
 New anonymous scans render the progressive and completed evidence report without a blocking authentication dialog.
 Anonymous viewers can inspect scores, all confirmed Flags, screenshots, textual evidence, and deterministic Agent scan messages.
-Fix prompts, interactive Agent conversation, Product Memory, account history, update reviews, and export remain unavailable until their access requirement is met.
+The per-issue prompt row chrome (Fix Prompt dropdown and Copy prompt) stays visible on live anonymous reports.
+Expanding the dropdown or copying still requires claim; the prompt body never renders and public APIs omit prompt fields.
+Interactive Agent conversation, Product Memory, account history, update reviews, and export remain unavailable until their access requirement is met.
 Authentication is contextual and returns through `/post-login` so the anonymous report is claimed before the same workspace unlocks.
 Anonymous API serialization remains redacted: gated fields are omitted server-side, evidence remains real page evidence, and gate strings are never persisted into Flag rows.
 
@@ -40,7 +42,7 @@ Prompt and action projection is centralized by access capability:
 
 - Authenticated owners receive every eligible per-Flag prompt.
 - Repository-owned curated samples expose exactly one demonstrated per-Flag prompt and no aggregate Finish Plan prompt.
-- Anonymous live-report viewers, non-owners, and shared-report viewers receive zero prompts and no copy controls.
+- Anonymous live-report viewers, non-owners, and shared-report viewers see the per-issue prompt row chrome; expand and copy open a create-account dialog. Prompt fields stay omitted from anonymous serialization.
 - Static samples never expose update-review or lifecycle mutation actions.
 
 Copying an owner prompt is a handoff, not verification.

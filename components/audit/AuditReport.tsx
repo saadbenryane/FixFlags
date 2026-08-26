@@ -4,7 +4,7 @@ import { Suspense, type ReactNode } from 'react'
 import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
 import { ReportContextDisclosure } from '@/components/report/ReportContextDisclosure'
 import { KeepReportEmail } from '@/components/report/KeepReportEmail'
-import { REPORT_SECTION_SCROLL_MT } from '@/components/report/workspace-geometry'
+import { REPORT_SECTION_SCROLL_MT, WORKSPACE_VIEWPORT_CLASS } from '@/components/report/workspace-geometry'
 import { ReportPane } from '@/components/report/ReportPane'
 import { VerificationReceiptsSection } from '@/components/report/VerificationReceiptsSection'
 import type { ProductAttemptDTO } from '@/lib/products/workspace'
@@ -520,7 +520,7 @@ export function AuditReport({
             'flex min-h-0 flex-col',
             // Marketing /samples embeds this editor in a fixed card. A 100dvh
             // shell inside that card clips the docked transport.
-            isSample ? 'h-full' : 'h-[calc(100dvh-3.5rem)]'
+            isSample ? 'h-full' : WORKSPACE_VIEWPORT_CLASS
           )}
         >
           <Suspense fallback={null}>

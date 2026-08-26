@@ -55,7 +55,7 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 - `ReportExplorer` is the only detailed flag browser. Rubric summaries link into it; they do not duplicate it.
 - Evidence remains device-specific. Never show a healthy twin viewport as filler.
 - Sample evidence must identify itself as a curated fixture and keep URL, brand, screenshots, copy, and metadata consistent.
-- Live anonymous, shared, and non-owner reports show real evidence but zero prompts, copy controls, update-review actions, lifecycle mutations, or Timeline payload.
+- Live anonymous, shared, and non-owner reports show real evidence and the per-issue Fix Prompt / Copy prompt chrome. Expand and copy open create-account; prompt bodies, update-review actions, lifecycle mutations, and Timeline payload stay gated.
 - Repository-owned curated samples may expose exactly one demonstrated per-Flag prompt and their versioned static Timeline. They expose no aggregate Finish Plan prompt or update-review action.
 - Copying an owner prompt records a handoff. Only a strict `IMPROVED` receipt may present an Improvement as verified or write verified Product Memory.
 - Rubric score and Pass / Needs Attention / Blocked must not contradict; fix scoring or presentation at the shared model, not with per-page copy.
@@ -68,6 +68,7 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 - [ ] Completed stays in the same shell with Report selected
 - [ ] Homepage shows Launchpad / `fixflags.com/demo`, real demo captures, `ReportExplorer` in Report mode, emulated story (no network scan)
 - [ ] Agent: chat bubbles + gate-on-send composer; one Flag working mark; no Working percent strip
+- [ ] Live anonymous reports show the owner Fix Prompt dropdown and orange Copy prompt; both clicks open create-account, never prompt text
 - [ ] Report: compact Score/history header → explorer → collapsed context; every history point opens a complete Review; fix list visible without scrolling; columns scroll inside the pane; filters present at every width
 - [ ] First-time comprehension: Product identity, current activity, observation→Flag, where to inspect evidence
 

@@ -24,8 +24,10 @@ interface SiteShellProps {
    * static minimal grid. Anonymous work surfaces also pass `minimal`.
    */
   backdrop?: 'full' | 'minimal' | 'off'
-  /** Immersive report: no site header, sidebar, or footer chrome. */
+  /** When false, skip header, sidebar, and footer. Prefer `immersive` for reports. */
   showChrome?: boolean
+  /** Living-review editor: slim header, no sidebar, footer, or support bubble. */
+  immersive?: boolean
 }
 
 export function SiteShell({
@@ -41,9 +43,10 @@ export function SiteShell({
   showSupport,
   backdrop,
   showChrome = true,
+  immersive = false,
 }: SiteShellProps) {
-  const supportEnabled = showSupport ?? variant !== 'admin'
-  const hasSidebar = variant === 'app'
+  const supportEnabled = immersive ? false : (showSupport ?? variant !== 'admin')
+  const hasSidebar = !immersive && variant === 'app'
   const resolvedFooter = footer ?? (variant === 'marketing' ? 'default' : 'minimal')
   const resolvedBackdrop = backdrop ?? (variant === 'marketing' ? 'full' : 'minimal')
 
@@ -51,7 +54,20 @@ export function SiteShell({
     <div className="relative min-h-screen flex flex-col">
       {resolvedBackdrop !== 'off' && <GlobalMeshBackdrop fixed intensity={resolvedBackdrop} />}
       <div className="relative z-0 flex min-h-screen flex-col">
-        {!showChrome ? (
+        {immersive ? (
+          <>
+            <Header
+              variant="marketing"
+              compact
+              logoHref={logoHref}
+              right={headerRight}
+              showNavigation={false}
+            />
+            <main id="main-content" className="flex-1" tabIndex={-1}>
+              {children}
+            </main>
+          </>
+        ) : !showChrome ? (
           <main id="main-content" className="flex-1" tabIndex={-1}>
             {children}
           </main>
@@ -84,8 +100,8 @@ export function SiteShell({
             </main>
           </>
         )}
-        {showFooter && resolvedFooter === 'minimal' && <MinimalFooter />}
-        {showFooter && resolvedFooter === 'default' && <Footer />}
+        {!immersive && showFooter && resolvedFooter === 'minimal' && <MinimalFooter />}
+        {!immersive && showFooter && resolvedFooter === 'default' && <Footer />}
         {supportEnabled && <SupportWidgetLazy />}
       </div>
     </div>

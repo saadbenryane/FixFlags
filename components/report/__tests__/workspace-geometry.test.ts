@@ -4,6 +4,7 @@ import {
   WORKSPACE_PANE_SCROLL_CLASS,
   WORKSPACE_REPORT_FRAME_CLASS,
   WORKSPACE_STAGE_CLASS,
+  WORKSPACE_VIEWPORT_CLASS,
 } from '@/components/report/workspace-geometry'
 
 describe('workspace stage geometry', () => {
@@ -14,6 +15,11 @@ describe('workspace stage geometry', () => {
     expect(WORKSPACE_STAGE_CLASS).toContain('flex-col')
     expect(WORKSPACE_STAGE_CLASS).toContain('min-h-[18rem]')
     expect(WORKSPACE_STAGE_CLASS).toContain('flex-1')
+  })
+
+  it('fills the viewport beneath the slim header token, not a hardcoded 3.5rem', () => {
+    expect(WORKSPACE_VIEWPORT_CLASS).toContain('100dvh-var(--header-height)')
+    expect(WORKSPACE_VIEWPORT_CLASS).not.toContain('3.5rem')
   })
 })
 

@@ -111,8 +111,8 @@ export const AUTH = {
   },
   signUp: {
     title: 'Create your free account',
-    subtitle: `${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month · Upgrade anytime`,
-    fromPricing: `Create your free account: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month included, upgrade anytime`,
+    subtitle: `${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month. Keep this report and unlock every fix prompt.`,
+    fromPricing: `Create your free account: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month included.`,
     oauthNote: 'Social sign-in is used only to identify your account.',
     cta: 'Create account',
     footer: 'Already have an account?',

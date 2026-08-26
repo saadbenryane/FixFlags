@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { IntegrationsBlock } from '@/components/marketing/landing/IntegrationsBlock'
 import { Footer } from '@/components/layout/footer'
+import { IntegrationsBlock } from '@/components/marketing/landing/IntegrationsBlock'
 import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
 import { LandingHowItWorksSection } from '@/components/marketing/landing/LandingHowItWorksSection'
 import { LandingRubricsSection } from '@/components/marketing/landing/LandingRubricsSection'
@@ -40,6 +40,20 @@ afterAll(() => {
 })
 
 describe('homepage lean sections', () => {
+  it('keeps the sample review on the same canvas as the hero', () => {
+    const { container } = render(<SampleReportSection />)
+    const section = container.querySelector('#sample-review')?.closest('section')
+    expect(section?.className).not.toMatch(/bg-muted/)
+    expect(section?.className).toMatch(/bg-background/)
+  })
+
+  it('clips both panes of the sample review to the rounded card', () => {
+    render(<SampleReportSection />)
+    const story = screen.getByLabelText('FixFlags review story')
+    expect(story.parentElement?.className).toMatch(/overflow-hidden/)
+    expect(story.parentElement?.className).toMatch(/rounded-card/)
+  })
+
   it('explains Message, Experience, and Reach through customer questions', () => {
     render(<LandingRubricsSection />)
 
@@ -119,6 +133,25 @@ describe('homepage lean sections', () => {
       screen.queryByRole('link', { name: /integration guide/i }),
     ).not.toBeInTheDocument()
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
+  })
+
+  it('keeps the final CTA copy and URL field before the review plaque', () => {
+    const { container } = render(<LandingFinalCtaSection />)
+    const finalCta = container.querySelector('#final-cta')
+    expect(finalCta).not.toBeNull()
+
+    const heading = within(finalCta as HTMLElement).getByRole('heading', {
+      name: /Paste a URL\. See what to fix/,
+    })
+    const plaque = within(finalCta as HTMLElement).getByRole('img', {
+      name: 'A live product is reviewed across Message, Experience, and Reach',
+    })
+    expect(
+      Boolean(
+        heading.compareDocumentPosition(plaque) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true)
   })
 
   it('keeps repeated assurances and sample metrics out of the final CTA and footer', () => {

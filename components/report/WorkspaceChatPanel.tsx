@@ -31,6 +31,7 @@ import { REPORT_COPY } from '@/lib/marketing/copy'
 import { displaySiteAddress } from '@/lib/utils/url-helpers'
 import { cn } from '@/lib/utils'
 import type { ReportWorkspaceCapabilities } from '@/lib/report/workspace-model'
+import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
 
 export type WorkspaceChatGateReason = 'sign-in' | 'owner'
 
@@ -134,12 +135,11 @@ export function WorkspaceChatPanel({
   const [historyCursor, setHistoryCursor] = useState<string | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyListError, setHistoryListError] = useState<string | null>(null)
+  const [claimOpen, setClaimOpen] = useState(false)
   const transcriptRef = useRef<HTMLDivElement>(null)
   const scanInputRef = useRef<HTMLInputElement>(null)
 
-  const signInHref = auditId
-    ? { pathname: '/sign-in', query: { next: `/report/${auditId}` } }
-    : { pathname: '/sign-in' }
+  const claimNextPath = auditId ? `/report/${auditId}` : undefined
 
   async function loadConversation() {
     const reportId = auditId
@@ -216,10 +216,7 @@ export function WorkspaceChatPanel({
   }, [messages.length])
 
   function gateToSignIn() {
-    const href = auditId
-      ? `/sign-in?next=${encodeURIComponent(`/report/${auditId}`)}`
-      : '/sign-in'
-    window.location.assign(href)
+    setClaimOpen(true)
   }
 
   async function send(text: string) {
@@ -318,7 +315,12 @@ export function WorkspaceChatPanel({
       errorFallback: chatCopy.startError,
     })
     if (!result.ok) {
-      setScanError(result.message)
+      if (result.code === 'AUTH_REQUIRED') {
+        setClaimOpen(true)
+        setNewScan(false)
+      } else {
+        setScanError(result.message)
+      }
       setLoading(false)
     }
   }
@@ -375,6 +377,21 @@ export function WorkspaceChatPanel({
           </div>
           {showToolbarActions ? (
             <>
+              {gateReason === 'sign-in' ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={chatCopy.historyLabel}
+                      onClick={() => setClaimOpen(true)}
+                    >
+                      <History className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{chatCopy.historyTooltip}</TooltipContent>
+                </Tooltip>
+              ) : (
               <Sheet onOpenChange={(open) => { if (open) void loadHistory() }}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -401,11 +418,8 @@ export function WorkspaceChatPanel({
                       </Link>
                     ) : null}
                     <p className="text-sm text-muted-foreground">
-                      {gateReason === 'sign-in' ? chatCopy.saveHistory : chatCopy.notOwner}
+                      {chatCopy.notOwner}
                     </p>
-                    {gateReason === 'sign-in' ? (
-                      <Button asChild className="w-full"><Link href={signInHref}>{chatCopy.signIn}</Link></Button>
-                    ) : null}
                   </div>
                 ) : historyListError ? (
                   <div className="space-y-3">
@@ -446,6 +460,7 @@ export function WorkspaceChatPanel({
               </div>
             </SheetContent>
               </Sheet>
+              )}
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -587,6 +602,13 @@ export function WorkspaceChatPanel({
           </form>
         )}
       </section>
+      <ReportClaimDialog
+        open={claimOpen}
+        onOpenChange={setClaimOpen}
+        nextPath={claimNextPath}
+        from="report"
+        auditId={auditId}
+      />
     </TooltipProvider>
   )
 }

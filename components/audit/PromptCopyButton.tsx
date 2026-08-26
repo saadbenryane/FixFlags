@@ -28,6 +28,8 @@ interface Props {
   itemPosition?: number
   nextStep?: string
   variant?: ButtonProps['variant']
+  /** Show the button and run this instead of copying. Used for anonymous claim gates. */
+  onLockedAction?: () => void
 }
 
 export function PromptCopyButton({
@@ -45,11 +47,16 @@ export function PromptCopyButton({
   itemPosition,
   nextStep,
   variant = 'outline',
+  onLockedAction,
 }: Props) {
   const [copied, setCopied] = useState(false)
   const safePrompt = isUsableFixPrompt(prompt) ? prompt.trim() : null
 
   async function handleCopy() {
+    if (onLockedAction) {
+      onLockedAction()
+      return
+    }
     if (!safePrompt) {
       toast.error('Create a free account to copy this fix prompt')
       return
@@ -85,7 +92,7 @@ export function PromptCopyButton({
     setTimeout(() => setCopied(false), 2000)
   }
 
-  if (!safePrompt) {
+  if (!safePrompt && !onLockedAction) {
     return null
   }
 
