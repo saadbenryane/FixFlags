@@ -16,7 +16,9 @@ Enforcement lives in `lib/billing/plans.ts` and `lib/audit/usage.ts`.
 ## Packaging principle
 
 Every Product Review includes prioritized Flags, evidence, and fix prompts.
-The plans form a workflow ladder: Free proves the loop on one Product, Pro supports repeated releases across up to five Products, and Studio adds scheduling and workspace collaboration for unlimited Products.
+Plans add how far a public review goes as well as monthly volume and workflow: Free reviews this page and checks every public link, Pro also reviews the pages that page links to, and Studio reviews one level beyond.
+Judgment quality per reviewed page stays the same.
+An upgrade buys more of the Product, not better intelligence.
 
 New URLs, update reviews, and completed scheduled Watch reviews consume the same product review allowance.
 Unused monthly allowance does not roll over.
@@ -24,20 +26,22 @@ Existing purchased overflow credits remain compatible but are not promoted.
 
 ## Upgrade logic
 
-- **Free:** three monthly reviews for one Product.
-- **Pro:** thirty monthly reviews across up to five Products, with history across releases and release comparison.
-- **Studio:** ninety monthly reviews across unlimited Products, scheduled reviews, shared Product history, and workspace invitations.
+- **Free:** three monthly reviews for one Product. Each review covers this page and checks every public link.
+- **Pro:** thirty monthly reviews across up to five Products, with history across releases, release comparison, and review of the pages the pasted page links to.
+- **Studio:** ninety monthly reviews across unlimited Products, scheduled reviews, shared Product history, workspace invitations, and one level beyond the linked pages.
 - **Studio launch offer:** unlimited workspace seats for a limited time.
 - **High volume:** handled through a direct conversation after the Studio allowance is demonstrably insufficient.
 
-An upgrade adds capacity and workflow leverage, never a more trustworthy report.
+An upgrade adds capacity, how far a public review goes, and workflow leverage.
+Judgment quality on every page FixFlags claims to have reviewed stays the same.
 
 ## Revenue model
 
 - Monthly Pro and Studio subscriptions.
 - Existing overflow-credit balances remain usable.
 - Annual billing waits until retention evidence supports it.
-- Power-user tooling is parked and is not part of the current revenue promise.
+- Power-user tooling is parked and is not part of the current shipped product.
+Logged-in review on your computer is a waitlisted Pro and Studio offer (NEXT), not a shipped capability.
 
 ## Unit economics
 

@@ -41,13 +41,29 @@ export const REPORT_COPY = {
     scoreUnavailable: "unavailable",
     dashboard: {
       title: "Products",
-      attentionTitle: "Attention now",
-      attentionBody:
-        "The highest-leverage improvements FixFlags can support with current evidence.",
-      noAttention: "Nothing important requires action now.",
-      noAttentionBody:
-        "FixFlags will keep the complete evidence available and look again on the next Review.",
-      keepWatching: "Keep FixFlags watching",
+      pageDescription:
+        "See what deserves attention, improve it, and verify whether it worked.",
+      reviewUrlTitle: "Review a URL",
+      reviewUrlBody:
+        "A new URL creates a Product. Reviewing the same Product adds a fresh observation.",
+      productsHeading: "Your Products",
+      productsBody:
+        "Choose a Product to see what deserves attention and what changed.",
+      productCount: (count: number) =>
+        `${count} ${count === 1 ? "Product" : "Products"}`,
+      emptyTitle: "No Products yet",
+      emptyBody:
+        "Review a URL above. FixFlags will keep that Product and every future update review together.",
+      emptyCta: "Run your first product review",
+      watching: "Watching",
+      latestReview: "Latest Review",
+      attentionLabel: "Attention",
+      attentionOpen: (count: number) => `${count} open`,
+      noReviewYet: "No Review evidence yet.",
+      reviewFailed: "The latest Review did not finish.",
+      reviewInProgress:
+        "Review in progress. New Attention will appear when it finishes.",
+      zeroOpen: "0 open Improvements in the latest completed Review.",
       addProductContext: "Add product context",
       productContextBody:
         "Add a small privacy-bounded browser snippet after FixFlags has reviewed the Product.",
@@ -56,22 +72,64 @@ export const REPORT_COPY = {
       copySnippet: "Copy snippet",
       observedContext: "Observed product context",
       verificationPending: "Run an update review for independent verification.",
-      historyTitle: "Improvement history",
-      latestRelease: "Latest completed release",
       openReport: "Open report",
-      topFlags: "Top ranked Flags",
-      total: (count: number) => `${count} total`,
-      nextActionLabel: "Next action",
-      nextActionBody:
-        "Open a Flag, copy its fix, publish the change, then run an update review.",
-      clearReleaseBody:
-        "No unresolved Flags remain. Open the report to verify the release details.",
-      reviewTopFlag: "Review the top Flag",
-      reviewClearRelease: "Review the release",
-      rechecks: (count: number) =>
-        `${count} completed ${count === 1 ? "update review" : "update reviews"}`,
-      pageDescription:
-        "See what deserves attention, improve it, and verify whether it worked.",
+      openProductAria: (name: string) => `Open Product ${name}.`,
+      scoreTrend: (from: number, to: number) =>
+        ` Score trend ${from} to ${to}.`,
+      latestScore: (score: string | number) => ` Latest score ${score}.`,
+      attentionAria: (count: number, title: string) =>
+        ` ${count} open. ${title}.`,
+    },
+    product: {
+      allProducts: "All Products",
+      currentReview: "Current review",
+      ready: "Ready",
+      unresolvedLine: (count: number, date: string) =>
+        `${count} unresolved · ${date}`,
+      reviewToFind: "Review this Product to find what deserves attention.",
+      olderReviews: "Older reviews",
+      reviewFailedFallback:
+        "The latest review did not finish. Start an Update review to try again.",
+      understanding: "Product understanding",
+      progress: "Progress",
+      progressBody: "Declared changes and what independent verification learned.",
+      changeDeclared: (title: string) => `Change declared: ${title}`,
+      verifiedLearning: "Verified learning",
+      evidenceFrom: (date: string) => `Evidence from ${date}`,
+      watchAndSignals: "Watch and Signals",
+      watchOn: "Watch is on.",
+      watchOff: "Watch is off.",
+      signalKeysConnected: (count: number) =>
+        `${count} Signal key${count === 1 ? "" : "s"} connected.`,
+      noSignals: "No browser Signals yet.",
+      watch: "Watch",
+      watchOnSchedule: (date: string) =>
+        `FixFlags checks this Product on a schedule. Last checked ${date}.`,
+      watchChooseSchedule: "Choose a schedule after the first completed Review.",
+      watchStudio: "Scheduled reviews are available on Studio.",
+      watchNeedsAttention: (error: string) => `Watch needs attention: ${error}`,
+      latestWatchReview: (label: string) => `Latest Watch Review: ${label}`,
+      changesEvaluating: "Meaningful changes are still being evaluated.",
+      regressedIssues: (count: number) =>
+        `${count} new or regressed issue${count === 1 ? "" : "s"} found.`,
+      noRegressedIssues: "No new or regressed issues found.",
+      notification: "Notification:",
+      attempts: (count: number) =>
+        `${count} attempt${count === 1 ? "" : "s"}`,
+      openWatchReview: "Open Watch Review",
+      signals: "Signals",
+      signalsBody:
+        "A small browser snippet adds privacy-bounded context. It never verifies a fix.",
+      whatThisMeans: "What this means",
+      signalKeysActive: (count: number, date: string) =>
+        `${count} active key${count === 1 ? "" : "s"} · Last accepted Signal ${date}`,
+      noSignalKey: "No browser Signal key installed.",
+      signalsNeedWatch: "Product Signals are available with Product Watch access.",
+      signalsNeedReview: "Run a Product Review before adding browser context.",
+      attentionHint:
+        "Ranked by the effect each issue has on the customer experience.",
+      attentionOpen: (count: number) => `${count} open`,
+      notYet: "Not yet",
     },
     unavailableState: {
       identity: "FixFlags report",

@@ -27,6 +27,18 @@ export function getEffectiveScanLimit(user: Pick<User, 'role' | 'auditsLimit'>):
   return user.auditsLimit
 }
 
+/**
+ * Plan allowance for UI meters. Ignores local `isDevUnlimitedScans()` so
+ * Dashboard and Billing show the sold limit even when local scans are unblocked.
+ * Returns null only for admin accounts or a stored unlimited allowance.
+ */
+export function getPlanDisplayLimit(
+  user: Pick<User, 'role' | 'auditsLimit'>
+): number | null {
+  if (user.role === 'admin' || isUnlimitedScanLimit(user.auditsLimit)) return null
+  return user.auditsLimit
+}
+
 export function isUnlimitedScanLimit(limit: number): boolean {
   return limit === UNLIMITED_SCAN_LIMIT
 }

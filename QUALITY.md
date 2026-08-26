@@ -46,7 +46,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Risk | Rating | Required check | Evidence |
 |------|--------|---------------|----------|
 | Report rendering per audit state | 🔶 IMPORTANT | Progressive QUEUED/CAPTURING/CHECKING/COMPLETED + FAILED panel | Component tests for progressive, failure, empty flags |
-| Canonical complete report contract | ⚠️ CRITICAL | One report workspace contains every unresolved Flag; legacy details routes redirect; anonymous shows real evidence and deterministic Agent updates while every fix prompt and Timeline payload remains absent until authentication | access serialization tests, product contract guard, browser matrix, Agent workspace completion plan |
+| Canonical complete report contract | ⚠️ CRITICAL | One report workspace contains every unresolved Flag; legacy details routes redirect; anonymous shows real evidence and deterministic Agent updates while every fix prompt remains absent until authentication. Preview, Timeline, and Canvas stay parked on `/report/[id]`. Contract and Memory live on `/products/[id]`. | access serialization tests, product contract guard, browser matrix, Agent workspace completion plan |
 | Empty states | 🔶 IMPORTANT | No scans, no flags, deleted audit — helpful prompts, not errors | `ReportFixLoop` + `EmptyState` tests; deleted-audit E2E tests (not-found state + forward actions) |
 | Loading / progress UI | 🔶 IMPORTANT | Progress bar, skeleton screens, polling behavior | Progressive tests + AiReviewPendingRefresh timeout UX |
 | Mobile-responsive layout | ✅ DONE | Canonical report at 375px, 768px, 1280px, plus 200% text and reduced motion | Isolated production Playwright matrix passes at 320/375/768/1280px; 200% reflow and reduced motion pass |
@@ -98,12 +98,12 @@ Remaining hardening (not blocking): freeze screenshot/flow/PageSpeed modules int
 
 Until automated Touch-tier tests cover report chrome:
 
-1. `/report/[id]`: identity → optional diff → complete ranked Fix List → Contract/Memory → Journey/Flow/Timeline → previews/gates/actions → owner re-check.
-2. Anonymous report exposes every problem, evidence summary, and deterministic Agent update, exposes no fix prompt or Timeline payload, and presents contextual authentication without replacing the report.
+1. `/report/[id]`: compact identity and score → optional update-review result → complete ranked Fix List with per-issue prompt row. Preview, Timeline, and Canvas stay parked and are not loaded. Product Contract, Memory, and launch gates live on `/products/[id]`. Owner Update review is the verify action. Public evidence is the canonical report URL.
+2. Anonymous report exposes every problem, evidence summary, and deterministic Agent update, exposes no fix prompt body, and presents contextual authentication without replacing the report.
 3. `/report/[id]/details`, sample details, and share details redirect to their canonical surfaces after enforcing the same access contract.
-4. Progressive route shows captures and every verified Flag in the same ranked explorer; Contract/timeline are collapsible. COMPLETED holds the frame until refresh.
+4. Progressive route shows captures and every verified Flag in the same ranked explorer. COMPLETED holds the frame until refresh. Contract and Timeline are not on the live report.
 5. `/samples` and loading shell never render an empty main area. Homepage and sample do not query production audit rows.
-6. Password share metadata is generic; authorize once, refresh without another view increment, open details, then revoke.
+6. Report evidence is public at `/report/[id]`. There is no password-protected share flow. Copy link in Export shares the canonical URL. Legacy `/share/[token]` links remain readable for compatibility.
 7. Verify 375, 768, and 1280px, keyboard focus, 200% zoom, reduced motion, partial/failure/deleted states.
 
 ## Completion standard

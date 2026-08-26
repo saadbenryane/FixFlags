@@ -6,10 +6,10 @@ import { HelpArticleList } from '@/components/help/HelpArticleList'
 import { HelpChatEscalate } from '@/components/help/HelpChatEscalate'
 import { HelpKnowledgeSearch } from '@/components/help/HelpKnowledgeSearch'
 import { HelpPageFrame } from '@/components/help/HelpPageFrame'
+import { buildHelpCategoryMetadata } from '@/lib/help/metadata'
 import { HELP_CATEGORIES } from '@/lib/help/catalog'
 import { getArticlesForCategory, getHelpCategory } from '@/lib/help/search'
-import { HELP_CENTER, BRAND, SITE_URL } from '@/lib/marketing/copy'
-import { DEFAULT_OG_IMAGE } from '@/lib/marketing/metadata'
+import { HELP_CENTER } from '@/lib/marketing/copy'
 import type { HelpCategoryId } from '@/lib/help/types'
 
 interface Props {
@@ -25,20 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const category = getHelpCategory(categoryId as HelpCategoryId)
   if (!category) return { title: HELP_CENTER.label }
 
-  const url = `${SITE_URL}/help/${category.id}`
-  return {
-    title: `${category.title}: ${BRAND.name} Help`,
-    description: category.description,
-    alternates: { canonical: url },
-    robots: { index: true, follow: true },
-    openGraph: {
-      title: category.title,
-      description: category.description,
-      url,
-      siteName: BRAND.name,
-      images: [DEFAULT_OG_IMAGE],
-    },
-  }
+  return buildHelpCategoryMetadata(category)
 }
 
 export default async function HelpCategoryPage({ params }: Props) {

@@ -21,6 +21,12 @@ const ROWS = [
     studio: PLAN_DEFINITIONS.TEAM.auditLimitLabel,
   },
   {
+    feature: "How far a review goes",
+    free: "This page. Checks every public link.",
+    pro: "This page and the pages it links to",
+    studio: "This page, linked pages, and one level beyond",
+  },
+  {
     feature: "Release history",
     free: "Latest changes",
     pro: "Across releases",

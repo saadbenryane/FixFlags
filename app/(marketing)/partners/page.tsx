@@ -3,13 +3,10 @@ import { Container } from '@/components/ui/container'
 import { PageTitle } from '@/components/ui/typography'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { PARTNERS_COPY } from '@/lib/marketing/partners-copy'
 
-export const metadata = {
-  title: 'Expert program | FixFlags',
-  description:
-    'FixFlags Verified Delivery for Lovable, Bolt, and MVP studios. Catch Flags before client handoff.',
-}
+export const metadata = buildPageMetadata('partners', '/partners')
 
 export default function PartnersPage() {
   return (

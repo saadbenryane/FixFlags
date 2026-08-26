@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { TextLink } from "@/components/ui/text-link";
 import { Gauge, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { HELP_CENTER, UPSELLS } from "@/lib/marketing/copy";
+import { HELP_CENTER, UPSELLS, USAGE_METER_COPY } from "@/lib/marketing/copy";
 import { checkUsageProgress } from "@/lib/audit/check-limit-utils";
 import { planLabel } from "@/lib/billing/plans";
 import {
@@ -44,17 +44,15 @@ export function UsageMeter({
   const remaining = !isUnlimited
     ? Math.max(0, limit - used - pending)
     : Infinity;
-  const headline = isUnlimited
-    ? `${used} this period`
-    : `${remaining} remaining`;
-  const detail = isUnlimited
-    ? `product review${used === 1 ? "" : "s"} this period`
-    : `product review${remaining === 1 ? "" : "s"} remaining`;
+  const copy = USAGE_METER_COPY;
+  const compactHeadline = isUnlimited
+    ? copy.thisPeriod(used)
+    : copy.usedOfLimit(reserved, limit);
 
   if (variant === "compact") {
     return (
       <section
-        aria-label="Product review usage"
+        aria-label={copy.regionLabel}
         className="flex flex-col gap-2 rounded-[var(--radius-control)] bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:gap-4"
       >
         <div className="flex min-w-0 items-center gap-2 sm:w-48">
@@ -64,16 +62,16 @@ export function UsageMeter({
             aria-hidden
           />
           <div className="min-w-0">
-            <p className="text-xs font-medium">Product reviews</p>
+            <p className="text-xs font-medium">{copy.compactLabel}</p>
             <p className="font-mono text-sm font-semibold tabular-nums leading-tight">
-              {headline}
+              {compactHeadline}
             </p>
           </div>
         </div>
         {!isUnlimited ? (
           <Progress
             value={pct}
-            aria-label={`${reserved} of ${limit} product reviews used`}
+            aria-label={copy.progressLabel(reserved, limit)}
             className={cn(
               "h-1.5 sm:flex-1",
               atLimit && "bg-destructive/20 [&>div]:bg-destructive",
@@ -84,14 +82,16 @@ export function UsageMeter({
           <span className="hidden sm:block sm:flex-1" />
         )}
         <p className="text-xs text-muted-foreground sm:max-w-xs sm:text-right">
-          {pending > 0
-            ? `${pending} in progress. Update reviews use the same credits.`
-            : "Update reviews use the same credits."}
+          {isUnlimited
+            ? pending > 0
+              ? copy.compactPendingNote(pending)
+              : copy.compactNote
+            : `${copy.remainingShort(remaining)}. ${pending > 0 ? copy.compactPendingNote(pending) : copy.compactNote}`}
           {atLimit && plan === "FREE" && purchasedCredits === 0 ? (
             <>
               {" "}
               <Link href="/pricing" className="text-brand hover:underline">
-                Upgrade to Pro
+                {copy.upgradeToPro}
               </Link>
             </>
           ) : null}
@@ -107,16 +107,16 @@ export function UsageMeter({
   }
 
   return (
-    <section aria-label="Product review usage" className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-2 text-sm font-semibold">
+    <section aria-label={copy.regionLabel} className="space-y-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h3 className="inline-flex items-center gap-2 text-sm font-medium">
           <Gauge
             className="h-4 w-4 text-brand"
             strokeWidth={1.75}
             aria-hidden
           />
-          Product review usage
-        </span>
+          {copy.panelLabel}
+        </h3>
         {plan !== "FREE" && !isUnlimited && (
           <span className="text-xs text-muted-foreground">
             {planLabel(plan)} plan
@@ -124,47 +124,57 @@ export function UsageMeter({
         )}
       </div>
 
-      <div>
-        <p className="font-mono text-3xl font-semibold tabular-nums leading-none">
-          {isUnlimited ? used : Math.max(0, remaining)}
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-      </div>
+      {isUnlimited ? (
+        <div>
+          <p className="font-mono text-3xl font-semibold tabular-nums leading-none">
+            {used}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {copy.thisPeriodCaption(used)}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="font-mono text-3xl font-semibold tabular-nums leading-none">
+                {copy.usedOfLimit(reserved, limit)}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {copy.usedCaption}
+              </p>
+            </div>
+            <p className="text-sm tabular-nums text-muted-foreground">
+              {copy.remainingCaption(remaining)}
+            </p>
+          </div>
+          <Progress
+            value={pct}
+            aria-label={copy.progressLabel(reserved, limit)}
+            className={cn(
+              "h-2.5",
+              atLimit && "bg-destructive/20 [&>div]:bg-destructive",
+              nearLimit && !atLimit && "[&>div]:bg-brand",
+            )}
+          />
+        </div>
+      )}
 
       {pending > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {pending} AI report{pending !== 1 ? "s" : ""} in progress
-        </p>
+        <p className="text-xs text-muted-foreground">{copy.pending(pending)}</p>
       )}
 
       {purchasedCredits > 0 && (
         <p className="text-xs text-muted-foreground">
-          {purchasedCredits} purchased credit
-          {purchasedCredits !== 1 ? "s" : ""} available
+          {copy.purchasedCredits(purchasedCredits)}
         </p>
       )}
 
-      {!isUnlimited && (
-        <Progress
-          value={pct}
-          className={cn(
-            atLimit && "bg-destructive/20 [&>div]:bg-destructive",
-            nearLimit && !atLimit && "[&>div]:bg-brand",
-          )}
-        />
-      )}
-
-      {!isUnlimited && plan === "FREE" && remaining > 0 && (
-        <p className="text-xs tabular-nums text-muted-foreground">
-          {limit > 0 ? `${used + pending} of ${limit} product reviews used` : ""}
-          {remaining === 1 && (
-            <span>
-              {" - "}
-              <Link href="/pricing" className="text-brand hover:underline">
-                upgrade for more
-              </Link>
-            </span>
-          )}
+      {!isUnlimited && plan === "FREE" && remaining === 1 && (
+        <p className="text-xs text-muted-foreground">
+          <Link href="/pricing" className="text-brand hover:underline">
+            {copy.upgradeForMore}
+          </Link>
         </p>
       )}
 
@@ -172,7 +182,7 @@ export function UsageMeter({
         <p className="text-xs text-muted-foreground">
           {UPSELLS.atLimit}{" "}
           <Link href="/pricing" className="text-brand hover:underline">
-            Upgrade to Pro
+            {copy.upgradeToPro}
           </Link>
           {" · "}
           <TextLink href={limitHelpHref}>{HELP_CENTER.viewHelpCta}</TextLink>
@@ -181,7 +191,7 @@ export function UsageMeter({
 
       {atLimit && plan !== "FREE" && purchasedCredits === 0 && (
         <p className="text-xs text-muted-foreground">
-          Plan limit reached. Upgrade for more product reviews.{" "}
+          {copy.paidLimitReached}{" "}
           <TextLink href={limitHelpHref}>{HELP_CENTER.viewHelpCta}</TextLink>
         </p>
       )}
@@ -194,7 +204,7 @@ export function UsageMeter({
 
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <RotateCcw className="h-3.5 w-3.5 text-brand" aria-hidden />
-        Update reviews use the same product review credits as new URLs.
+        {copy.panelNote}
       </div>
     </section>
   );

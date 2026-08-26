@@ -10,6 +10,7 @@ import { ProductCaptureThumb } from '@/components/dashboard/ProductCaptureThumb'
 import { ProductScoreSparkline } from '@/components/dashboard/ProductScoreSparkline'
 import type { ProductOverviewDTO } from '@/lib/products/workspace'
 import { presentProductReview } from '@/lib/products/review-state'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
 function reviewDate(value: string): string {
@@ -21,17 +22,18 @@ function reviewDate(value: string): string {
 }
 
 function productLinkLabel(product: ProductOverviewDTO): string {
+  const copy = REPORT_COPY.workspace.dashboard
   const state = presentProductReview(product.latestManualReview)
   const first = product.scoreHistory[0]?.score
   const last = product.scoreHistory.at(-1)?.score
   const trend =
     product.scoreHistory.length > 1 && first != null && last != null
-      ? ` Score trend ${Math.round(first)} to ${Math.round(last)}.`
-      : ` Latest score ${state.score}.`
+      ? copy.scoreTrend(Math.round(first), Math.round(last))
+      : copy.latestScore(state.score)
   const attention = product.topAttention
-    ? ` ${product.attentionCount} open. ${product.topAttention.title}.`
+    ? copy.attentionAria(product.attentionCount, product.topAttention.title)
     : ''
-  return `Open Product ${product.name}.${trend}${attention}`
+  return `${copy.openProductAria(product.name)}${trend}${attention}`
 }
 
 export function ProductOverviewGrid({
@@ -39,28 +41,29 @@ export function ProductOverviewGrid({
 }: {
   products: ProductOverviewDTO[]
 }) {
+  const copy = REPORT_COPY.workspace.dashboard
   return (
     <section aria-labelledby="products-heading" className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <SectionTitle id="products-heading">Your Products</SectionTitle>
+          <SectionTitle id="products-heading">{copy.productsHeading}</SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            Choose a Product to see what deserves attention and what changed.
+            {copy.productsBody}
           </p>
         </div>
         <Badge variant="outline" className="font-mono tabular-nums">
-          {products.length} {products.length === 1 ? 'Product' : 'Products'}
+          {copy.productCount(products.length)}
         </Badge>
       </div>
 
       {products.length === 0 ? (
         <EmptyState
           icon={<FileSearch className="h-6 w-6" aria-hidden />}
-          title="No Products yet"
-          description="Review a URL above. FixFlags will keep that Product and every future update review together."
+          title={copy.emptyTitle}
+          description={copy.emptyBody}
           action={
             <TextLink href={'/help/getting-started/first-check' as Route}>
-              Run your first product review
+              {copy.emptyCta}
             </TextLink>
           }
         />
@@ -90,7 +93,7 @@ export function ProductOverviewGrid({
                       {product.watching ? (
                         <Badge variant="outline" className="shrink-0 gap-1.5">
                           <Eye className="h-3.5 w-3.5" aria-hidden />
-                          Watching
+                          {copy.watching}
                         </Badge>
                       ) : null}
                     </div>
@@ -106,7 +109,7 @@ export function ProductOverviewGrid({
 
                   <div className="col-span-2 min-w-0 sm:col-span-1 sm:border-l sm:border-border/50 sm:pl-4">
                     <p className="text-xs text-muted-foreground">
-                      Latest Review
+                      {copy.latestReview}
                     </p>
                     <ProductScoreSparkline
                       productId={product.id}
@@ -145,7 +148,7 @@ export function ProductOverviewGrid({
                         )}
                         <div className="min-w-0">
                           <p className="text-xs font-medium text-muted-foreground">
-                            {product.attentionCount} open
+                            {copy.attentionOpen(product.attentionCount)}
                           </p>
                           <p className="mt-0.5 line-clamp-2 text-sm font-medium">
                             {product.topAttention.title}
@@ -155,17 +158,17 @@ export function ProductOverviewGrid({
                     ) : (
                       <div className="min-w-0">
                         <p className="text-xs font-medium text-muted-foreground">
-                          Attention
+                          {copy.attentionLabel}
                         </p>
                         <p className="mt-0.5 text-sm">
                           {!product.latestManualReview
-                            ? 'No Review evidence yet.'
+                            ? copy.noReviewYet
                             : product.latestManualReview.status === 'FAILED'
-                              ? 'The latest Review did not finish.'
+                              ? copy.reviewFailed
                               : product.latestManualReview.status !==
                                   'COMPLETED'
-                                ? 'Review in progress. New Attention will appear when it finishes.'
-                                : '0 open Improvements in the latest completed Review.'}
+                                ? copy.reviewInProgress
+                                : copy.zeroOpen}
                         </p>
                       </div>
                     )}

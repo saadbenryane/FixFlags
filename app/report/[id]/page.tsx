@@ -24,13 +24,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const envelope = await getProgressiveAuditForRequest(id)
   if (envelope.kind !== 'completed') {
-    return { title: 'FixFlags report' }
+    return {
+      title: 'FixFlags report',
+      robots: { index: false, follow: false },
+    }
   }
   const { audit } = envelope
 
   const isShareableOg = audit.isPublic || audit.userId === null
 
-  if (!isShareableOg) return { title: `${BRAND.name} report unavailable` }
+  if (!isShareableOg) {
+    return {
+      title: `${BRAND.name} report unavailable`,
+      robots: { index: false, follow: false },
+    }
+  }
 
   const hostname = displayHostname(audit.url)
 
@@ -45,6 +53,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: { canonical: `${SITE_URL}/report/${id}` },
+    robots: { index: true, follow: true },
     openGraph: {
       title,
       description,

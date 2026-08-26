@@ -8,6 +8,9 @@ import type { loadReportRouteState } from './load-report-route-state'
 import { ReportPromptsUnlockedTracker } from '@/components/report/ReportPromptsUnlockedTracker'
 import { ReportViewedTracker } from '@/components/analytics/ReportViewedTracker'
 import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
+import { BRAND } from '@/lib/marketing/copy'
+import { publicReportStructuredData } from '@/lib/marketing/structured-data'
+import { displayHostname } from '@/lib/utils/url-helpers'
 
 type CompletedState = Extract<
   Awaited<ReturnType<typeof loadReportRouteState>>,
@@ -97,6 +100,20 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       variant="all"
     />
   )
+
+  const isIndexableReport =
+    !state.shareToken && (state.audit.isPublic || state.audit.userId === null)
+  const reportJsonLd = isIndexableReport
+    ? publicReportStructuredData({
+        reportId: state.id,
+        reviewedUrl: state.audit.url,
+        title: `${displayHostname(state.audit.url)} report · ${BRAND.name}`,
+        description:
+          state.audit.verdict?.slice(0, 140) ??
+          `Automated FixFlags report with fix prompts. Run your own check at ${BRAND.name}.`,
+      })
+    : null
+
   return (
     <AuditShell
       session={state.session}
@@ -108,6 +125,12 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           : false
       }
     >
+      {reportJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(reportJsonLd) }}
+        />
+      ) : null}
       <ReportViewedTracker
         auditId={state.id}
         isOwner={state.isOwner}

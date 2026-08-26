@@ -11,6 +11,7 @@ import { HelpChatEscalate } from '@/components/help/HelpChatEscalate'
 import { HelpKnowledgeSearch } from '@/components/help/HelpKnowledgeSearch'
 import { HelpPageFrame } from '@/components/help/HelpPageFrame'
 import { HelpRelatedDocs } from '@/components/help/HelpRelatedDocs'
+import { buildHelpArticleMetadata, buildHelpCategoryMetadata } from '@/lib/help/metadata'
 import { HELP_ARTICLES } from '@/lib/help/catalog'
 import {
   getHelpArticle,
@@ -18,8 +19,7 @@ import {
   getRelatedArticles,
 } from '@/lib/help/search'
 import { helpArticlePath } from '@/lib/help/types'
-import { HELP_CENTER, BRAND, SITE_URL } from '@/lib/marketing/copy'
-import { DEFAULT_OG_IMAGE } from '@/lib/marketing/metadata'
+import { HELP_CENTER } from '@/lib/marketing/copy'
 import type { HelpArticleSlug, HelpCategoryId } from '@/lib/help/types'
 
 interface Props {
@@ -38,21 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const article = getHelpArticle(slug as HelpArticleSlug)
   if (!article) return { title: HELP_CENTER.label }
 
-  const url = `${SITE_URL}${helpArticlePath(article.categoryId, article.slug)}`
-  return {
-    title: `${article.title}: ${BRAND.name} Help`,
-    description: article.excerpt,
-    alternates: { canonical: url },
-    robots: { index: true, follow: true },
-    openGraph: {
-      title: article.title,
-      description: article.excerpt,
-      type: 'article',
-      url,
-      siteName: BRAND.name,
-      images: [DEFAULT_OG_IMAGE],
-    },
-  }
+  return buildHelpArticleMetadata(article)
 }
 
 export default async function HelpArticlePage({ params }: Props) {

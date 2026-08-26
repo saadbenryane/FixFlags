@@ -1,22 +1,32 @@
-import { TOOLS } from '@/lib/marketing/copy'
+import { PlaceholderDetectorClient } from '@/components/marketing/tools/PlaceholderDetectorClient'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { PlaceholderDetectorClient } from '@/components/marketing/tools/PlaceholderDetectorClient'
+import { SEO } from '@/lib/marketing/copy'
+import { buildPageMetadata } from '@/lib/marketing/metadata'
+import { toolPageStructuredData } from '@/lib/marketing/structured-data'
 
-export function generateMetadata() {
-  const seo = TOOLS.placeholderDetector
-  return {
-    title: `${seo.heading} – FixFlags`,
-    description: seo.subhead,
-  }
-}
+export const metadata = buildPageMetadata('placeholderDetector', '/tools/placeholder-detector')
+
+const jsonLd = toolPageStructuredData({
+  path: '/tools/placeholder-detector',
+  name: SEO.placeholderDetector.title,
+  description: SEO.placeholderDetector.description,
+})
 
 export default function PlaceholderDetectorPage() {
   return (
-    <Section spacing="marketing">
-      <Container variant="narrow" className="space-y-8">
-        <PlaceholderDetectorClient />
-      </Container>
-    </Section>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <Section spacing="marketing">
+        <Container variant="narrow" className="space-y-8">
+          <main>
+            <PlaceholderDetectorClient />
+          </main>
+        </Container>
+      </Section>
+    </>
   )
 }

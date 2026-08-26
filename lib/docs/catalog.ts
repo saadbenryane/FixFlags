@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import { SITE_URL } from '@/lib/marketing/copy'
 import type { HelpArticleSlug } from '@/lib/help/types'
+import { buildIndexableMetadata } from '@/lib/marketing/metadata'
 
 export type DocsPageKey =
   | 'home'
@@ -133,25 +133,13 @@ export function getDocsPageByPath(path: string) {
 }
 
 export function buildDocsMetadata(page: DocsPageDefinition): Metadata {
-  const url = `${SITE_URL}${page.path}`
-  return {
+  return buildIndexableMetadata({
     title: `${page.title} | FixFlags Docs`,
     description: page.description,
-    alternates: { canonical: url },
-    robots: { index: true, follow: true },
-    openGraph: {
-      type: 'article',
-      title: page.title,
-      description: page.description,
-      url,
-      siteName: 'FixFlags',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: page.title,
-      description: page.description,
-    },
-  }
+    path: page.path,
+    openGraphType: 'article',
+    openGraphTitle: page.title,
+  })
 }
 
 export { docsStructuredData } from '@/lib/marketing/structured-data'

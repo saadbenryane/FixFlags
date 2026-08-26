@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useConfirm } from '@/components/ui/confirm-dialog'
+import { AUTH } from '@/lib/marketing/copy'
 
 interface Props {
   connected: boolean
@@ -15,6 +16,7 @@ interface Props {
 export function GscConnectionCard({ connected, siteUrl }: Props) {
   const [busy, setBusy] = useState(false)
   const { confirm, confirmDialog } = useConfirm()
+  const gsc = AUTH.settings.gsc
 
   async function handleConnect() {
     setBusy(true)
@@ -23,10 +25,9 @@ export function GscConnectionCard({ connected, siteUrl }: Props) {
 
   async function handleDisconnect() {
     const ok = await confirm({
-      title: 'Disconnect Search Console',
-      description:
-        'Your reports will no longer include search performance data. This will not delete past data.',
-      confirmLabel: 'Disconnect',
+      title: gsc.disconnectTitle,
+      description: gsc.disconnectDescription,
+      confirmLabel: gsc.disconnectConfirm,
       destructive: true,
     })
     if (!ok) return
@@ -42,7 +43,7 @@ export function GscConnectionCard({ connected, siteUrl }: Props) {
 
   return (
     <>
-      <Card className="border-0 p-5 shadow-card">
+      <Card variant="subtle" className="p-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-control)] bg-muted/70">
@@ -50,12 +51,12 @@ export function GscConnectionCard({ connected, siteUrl }: Props) {
             </span>
             <div className="min-w-0">
               <p className="text-sm font-semibold tracking-heading text-foreground">
-                Google Search Console
+                {gsc.title}
               </p>
               <p className="text-xs text-muted-foreground">
                 {connected
-                  ? `Connected to ${siteUrl ?? 'your property'}`
-                  : 'Connect to see search performance, indexing status, and keyword data in your reports'}
+                  ? gsc.connectedTo(siteUrl ?? gsc.connectedFallback)
+                  : gsc.connectBody}
               </p>
             </div>
           </div>
@@ -68,7 +69,7 @@ export function GscConnectionCard({ connected, siteUrl }: Props) {
                   className="text-success border-success/30 bg-success/5 text-xs gap-1"
                 >
                   <Link2 className="h-3 w-3" aria-hidden />
-                  Connected
+                  {gsc.connectedBadge}
                 </Badge>
                 <Button
                   variant="outline"
@@ -81,7 +82,7 @@ export function GscConnectionCard({ connected, siteUrl }: Props) {
                   ) : (
                     <Unlink className="h-4 w-4" aria-hidden />
                   )}
-                  <span className="ml-1.5 hidden sm:inline">Disconnect</span>
+                  <span className="ml-1.5 hidden sm:inline">{gsc.disconnectCta}</span>
                 </Button>
               </>
             ) : (
@@ -96,7 +97,7 @@ export function GscConnectionCard({ connected, siteUrl }: Props) {
                 ) : (
                   <Link2 className="h-4 w-4" aria-hidden />
                 )}
-                <span className="ml-1.5">Connect</span>
+                <span className="ml-1.5">{gsc.connectCta}</span>
               </Button>
             )}
           </div>

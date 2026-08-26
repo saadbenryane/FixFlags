@@ -8,12 +8,7 @@ import { Button } from '@/components/ui/button'
 import { UsageMeter } from '@/components/dashboard/UsageMeter'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { getPurchasedCreditsRemaining } from '@/lib/billing/credits'
-import {
-  getEffectiveScanLimit,
-  getPendingCheckCount,
-  isDevUnlimitedScans,
-  isUnlimitedScanLimit,
-} from '@/lib/auth/permissions'
+import { getPendingCheckCount, getPlanDisplayLimit } from '@/lib/auth/permissions'
 import { ManageSubscriptionButton } from '@/components/billing/ManageSubscriptionButton'
 import { Heading, Muted, SectionTitle } from '@/components/ui/typography'
 import { Callout } from '@/components/ui/callout'
@@ -21,7 +16,7 @@ import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { formatUsd } from '@/lib/billing/costs'
-import { BILLING_PAGE_COPY } from '@/lib/marketing/copy'
+import { BILLING_PAGE_COPY, HELP_CENTER } from '@/lib/marketing/copy'
 import { helpHrefForSurface } from '@/lib/help/contextual'
 import { Suspense } from 'react'
 import { BillingCreditsToast } from '@/components/billing/BillingCreditsToast'
@@ -56,41 +51,40 @@ export default async function BillingPage() {
   const purchasedCreditsRemaining = await getPurchasedCreditsRemaining(user.id)
 
   const planDef = PLAN_DEFINITIONS[user.plan]
-  const isUnlimited =
-    isDevUnlimitedScans() || isUnlimitedScanLimit(getEffectiveScanLimit(user))
-  const effectiveLimit = isUnlimited ? null : getEffectiveScanLimit(user)
+  const displayLimit = getPlanDisplayLimit(user)
   const pending = await getPendingCheckCount(session.user.id)
   // A lapsed subscription (payment failure, cancellation) only updates subscriptionStatus via
   // the Stripe webhook - plan can lag behind until a separate subscription.updated event
   // resyncs it. Billing must show the true current state, not the stale plan field.
   const isPaid = user.plan !== 'FREE' && !hasRevokedSubscriptionStatus(user.subscriptionStatus)
   const isActivating = isPaid && !user.stripeCustomerId
+  const copy = BILLING_PAGE_COPY
 
   const displayPlanName =
     user.subscriptionStatus === 'PAST_DUE' && user.plan !== 'FREE'
-      ? `${planDef.name} (payment past due: features paused)`
-      : `${planDef.name} plan`
+      ? copy.pastDuePlanName(planDef.name)
+      : copy.planName(planDef.name)
 
   return (
     <Container variant="narrow" className="space-y-8 py-8">
       <Suspense
         fallback={
           <span className="sr-only" role="status">
-            Checking credit purchase status
+            {copy.checkingCredits}
           </span>
         }
       >
         <BillingCreditsToast />
       </Suspense>
-      <PageHeader title="Billing" description="Manage your plan and subscription" />
+      <PageHeader title={copy.title} description={copy.description} />
 
       {user.subscriptionStatus === 'PAST_DUE' && (
-        <Callout variant="warning" title="Payment past due: features paused">
-          <p>{BILLING_PAGE_COPY.pastDueBody}</p>
+        <Callout variant="warning" title={copy.pastDueTitle}>
+          <p>{copy.pastDueBody}</p>
           <div className="flex flex-wrap items-center gap-2 pt-1">
             {user.stripeCustomerId && <ManageSubscriptionButton />}
             <Button asChild variant="outline" size="sm">
-              <Link href={helpHrefForSurface('billing_past_due')}>View help article</Link>
+              <Link href={helpHrefForSurface('billing_past_due')}>{HELP_CENTER.viewHelpCta}</Link>
             </Button>
           </div>
         </Callout>
@@ -110,39 +104,32 @@ export default async function BillingPage() {
             ) : (
               <>
                 {PLAN_DEFINITIONS.FREE.price || '$0'} · {PLAN_DEFINITIONS.FREE.auditLimitLabel}
-                {user.plan !== 'FREE' ? ' (paid features paused)' : ''}
+                {user.plan !== 'FREE' ? copy.paidFeaturesPaused : ''}
               </>
             )}
           </Muted>
-          {user.subscriptionStatus !== 'NONE' && (
-            <p className="text-xs text-muted-foreground">
-              Subscription status: {user.subscriptionStatus.toLowerCase().replaceAll('_', ' ')}
-            </p>
-          )}
         </div>
 
         {(user.subscriptionStatus === 'CANCELED' || user.subscriptionStatus === 'UNPAID') && (
-          <Callout variant="danger" title="Payment issue">
-            {user.subscriptionStatus === 'CANCELED'
-              ? 'Your subscription has been canceled. Features may be downgraded.'
-              : 'Your subscription is unpaid. Check your payment method.'}
+          <Callout variant="danger" title={copy.paymentIssueTitle}>
+            {user.subscriptionStatus === 'CANCELED' ? copy.canceledBody : copy.unpaidBody}
           </Callout>
         )}
-        <UsageMeter
-          used={user.auditsUsed}
-          limit={effectiveLimit}
-          pending={pending}
-          plan={user.plan}
-          purchasedCredits={purchasedCreditsRemaining}
-        />
+        <div className="border-t border-border/60 pt-5">
+          <UsageMeter
+            used={user.auditsUsed}
+            limit={displayLimit}
+            pending={pending}
+            plan={user.plan}
+            purchasedCredits={purchasedCreditsRemaining}
+          />
+        </div>
         {isActivating && (
-          <p className="text-xs text-muted-foreground">
-            Activating subscription… This usually takes a few seconds after checkout.
-          </p>
+          <p className="text-xs text-muted-foreground">{copy.activatingHint}</p>
         )}
         {user.stripeCurrentPeriodEnd && isPaid && !isActivating && (
           <p className="text-xs text-muted-foreground">
-            Current period ends {new Date(user.stripeCurrentPeriodEnd).toLocaleDateString()}
+            {copy.periodEnds(new Date(user.stripeCurrentPeriodEnd).toLocaleDateString())}
           </p>
         )}
         {isPaid && user.stripeCustomerId ? (
@@ -150,7 +137,7 @@ export default async function BillingPage() {
             <ManageSubscriptionButton />
             {user.plan === 'BUILDER' && (
               <Button asChild variant="outline" size="sm">
-                <Link href="/pricing">Compare Agency</Link>
+                <Link href="/pricing">{copy.compareStudio}</Link>
               </Button>
             )}
           </div>
@@ -158,43 +145,41 @@ export default async function BillingPage() {
           <ManageSubscriptionButton />
         ) : isPaid ? (
           <Button disabled variant="outline">
-            Activating subscription…
+            {copy.activating}
           </Button>
         ) : (
           <Button asChild>
-            <Link href="/pricing">Upgrade plan</Link>
+            <Link href="/pricing">{copy.upgradeCta}</Link>
           </Button>
         )}
       </Card>
 
       {isPaid && (
         <Card variant="subtle" className="space-y-4 p-6" id="credit-packs">
-          <SectionTitle>Credits</SectionTitle>
+          <SectionTitle>{copy.creditsTitle}</SectionTitle>
           {purchasedCreditsRemaining > 0 && (
             <p className="text-sm text-muted-foreground">
-              {purchasedCreditsRemaining} purchased check{purchasedCreditsRemaining !== 1 ? 's' : ''} available
+              {copy.purchasedAvailable(purchasedCreditsRemaining)}
             </p>
           )}
           {purchasedCreditsRemaining === 0 && (
-            <p className="text-xs text-muted-foreground">
-              Credit packs are no longer available for purchase. Existing credits remain active and never expire.
-            </p>
+            <p className="text-xs text-muted-foreground">{copy.creditsUnavailable}</p>
           )}
 
           {creditPurchases.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm font-medium">Purchase history</p>
+              <p className="text-sm font-medium">{copy.purchaseHistory}</p>
               <div className="space-y-1">
                 {creditPurchases.map((p) => (
                   <div key={p.id} className="flex items-center justify-between text-xs text-muted-foreground py-1 border-b border-border/20 last:border-0">
-                    <span>
-                      {p.creditsPurchased} credits - {p.packId.replace('_', ' ')}
-                    </span>
-                    <span>
-                      {formatUsd(p.priceUsdCents / 100)}
-                    </span>
+                    <span>{copy.creditsLine(p.creditsPurchased, p.packId)}</span>
+                    <span>{formatUsd(p.priceUsdCents / 100)}</span>
                     <span className={p.status === 'PAID' ? 'text-success' : ''}>
-                      {p.status === 'PAID' ? 'Paid' : p.status === 'PENDING' ? 'Pending' : p.status.toLowerCase()}
+                      {p.status === 'PAID'
+                        ? copy.paid
+                        : p.status === 'PENDING'
+                          ? copy.pending
+                          : p.status.toLowerCase()}
                     </span>
                     {p.paidAt && (
                       <span>{new Date(p.paidAt).toLocaleDateString()}</span>

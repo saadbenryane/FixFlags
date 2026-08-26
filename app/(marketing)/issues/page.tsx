@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge'
 import { Heading, Lead, Muted } from '@/components/ui/typography'
 import { getIndexableIssueCheckIds, MIN_SAMPLE_SIZE } from '@/lib/graph/queries'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
+import { issueIndexStructuredData } from '@/lib/marketing/structured-data'
+import { humanizeCheckId } from '@/lib/marketing/issue-page'
 import { rubricBadgeClasses } from '@/lib/rubric-icons'
 import { prisma } from '@/lib/db'
 
@@ -34,10 +36,22 @@ export default async function IssuesIndexPage() {
         })
       : []
 
+  const issueIndexJsonLd = issueIndexStructuredData(
+    issuesWithMeta.map((issue) => ({
+      checkId: issue.checkId,
+      title: issue.problemTemplate || humanizeCheckId(issue.checkId),
+    }))
+  )
+
   return (
-    <Section spacing="marketing">
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(issueIndexJsonLd) }}
+      />
+      <Section spacing="marketing">
       <Container variant="default">
-        <div className="space-y-8 sm:space-y-10">
+        <main className="space-y-8 sm:space-y-10">
           <div className="text-center space-y-3">
             <Heading as="h1" className="text-3xl sm:text-4xl font-bold">
               Flag Library
@@ -84,8 +98,9 @@ export default async function IssuesIndexPage() {
               ))}
             </div>
           )}
-        </div>
+        </main>
       </Container>
     </Section>
+    </>
   )
 }

@@ -441,19 +441,19 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: `Free: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month for one product. Enough for an initial review and two reviews after changes.`,
+        text: `Free: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month for one product. Each review covers the page you paste and checks every public link.`,
       },
       {
         type: 'p',
-        text: `Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): ${PRICING_COPY.proProductReviewsPerMonth} product reviews per month across up to five products, with history across releases.`,
+        text: `Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): ${PRICING_COPY.proProductReviewsPerMonth} product reviews per month across up to five products, with history across releases. Each review covers this page and every public page it links to.`,
       },
       {
         type: 'p',
-        text: `Studio (${PRICING_COPY.studioPrice}${PRICING_COPY.studioPeriod}): ${PRICING_COPY.studioProductReviewsPerMonth} product reviews per month, unlimited products, scheduled reviews, and a shared workspace. Workspace seats are unlimited for a limited time.`,
+        text: `Studio (${PRICING_COPY.studioPrice}${PRICING_COPY.studioPeriod}): ${PRICING_COPY.studioProductReviewsPerMonth} product reviews per month, unlimited products, scheduled reviews, and a shared workspace. Each review covers this page, its linked pages, and one level beyond. Workspace seats are unlimited for a limited time.`,
       },
       {
         type: 'p',
-        text: 'Every Product Review includes prioritized Flags, evidence, and fix prompts. Plans add product capacity, release history, scheduled reviews, and workspace access. Usage does not roll over.',
+        text: 'Every Product Review includes prioritized Flags, evidence, and fix prompts. Plans add how far a review goes, product capacity, release history, scheduled reviews, and workspace access. Usage does not roll over.',
       },
     ],
     related: ['what-counts-as-a-check', 'cancel-or-manage'],
@@ -706,7 +706,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'You can enable passkey-based two-factor authentication in Settings → Security. Keep backup codes somewhere safe.',
+        text: 'You can enable passkey-based two-factor authentication in Settings → Sign-in methods. Passkeys live there with 2FA. Keep backup codes somewhere safe.',
       },
       {
         type: 'p',
@@ -772,16 +772,16 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'delete-account',
     categoryId: 'account',
     title: 'Delete your account',
-    excerpt: 'Contact support to request account deletion and data removal.',
+    excerpt: 'Delete your account from Settings. A confirmation email follows.',
     searchTokens: ['delete', 'remove account', 'close account', 'gdpr'],
     body: [
       {
         type: 'p',
-        text: 'To delete your FixFlags account and associated data, open chat or email hello@fixflags.com from the address on the account.',
+        text: 'To delete your FixFlags account and associated data, open Settings and choose Delete account. We send a confirmation email after deletion.',
       },
       {
         type: 'p',
-        text: 'Include whether you also want report links revoked. We confirm deletion by email.',
+        text: 'If you cannot reach Settings, open chat or email hello@fixflags.com from the address on the account. Include whether you also want report links revoked.',
       },
     ],
     related: ['contact-us', 'report-privacy'],

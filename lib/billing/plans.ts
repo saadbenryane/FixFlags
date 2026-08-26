@@ -50,6 +50,8 @@ export interface PlanDefinition {
   workspaceSeatsLabel: string
   accountModel: string
   features: readonly string[]
+  /** How far a public Product Review fully judges: 1 this page, 2 linked pages, 3 one level beyond. */
+  reviewDepth: 1 | 2 | 3
   highlight: boolean
   cta: string
   href: string
@@ -82,7 +84,9 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
       'Prioritized Flags with evidence and fix prompts',
       'Review again after changes and see what changed',
       'A public report link',
+      'This page, plus every public link to see if it loads',
     ],
+    reviewDepth: 1,
     highlight: false,
     cta: 'Start free',
     href: '/sign-up?from=pricing',
@@ -114,7 +118,10 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
       'Product history across releases',
       'Compare releases and see what improved',
       'A public report link',
+      'This page and every public page it links to',
+      'Logged-in review on your computer',
     ],
+    reviewDepth: 2,
     highlight: true,
     cta: 'Join Pro waitlist',
     href: '/sign-up?plan=BUILDER',
@@ -147,7 +154,10 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
       'Invite people to your workspace',
       'Unlimited workspace seats for a limited time',
       'Shared product history',
+      'This page, its linked pages, and one level beyond',
+      'Logged-in review on your computer',
     ],
+    reviewDepth: 3,
     highlight: false,
     cta: 'Join Studio waitlist',
     href: '/sign-up?plan=TEAM',
@@ -173,8 +183,8 @@ export function proUpgradeCta(prefix = 'Upgrade to Pro'): string {
   return `${prefix} - ${def.price}${def.period}`
 }
 
-export function scanLimitForPlan(plan: Plan): number {
-  return PLAN_DEFINITIONS[plan].auditLimit
+export function reviewDepthForPlan(plan: Plan): 1 | 2 | 3 {
+  return PLAN_DEFINITIONS[plan]?.reviewDepth ?? 1
 }
 
 export function deepReviewLimitForPlan(plan: Plan): number {
@@ -196,6 +206,10 @@ export function planLabel(plan: Plan | string): string {
 
 export function projectLimitForPlan(plan: Plan): number | null {
   return PLAN_DEFINITIONS[plan].projectLimit
+}
+
+export function scanLimitForPlan(plan: Plan): number {
+  return PLAN_DEFINITIONS[plan].auditLimit
 }
 
 export function planFromPriceId(priceId: string): Plan | null {

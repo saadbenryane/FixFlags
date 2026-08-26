@@ -14,6 +14,7 @@ export default function BlogPage() {
         <LandingSectionHeader
           label={BLOG_INDEX.label}
           headline={BLOG_INDEX.headline}
+          as="h1"
           align="left"
         />
 

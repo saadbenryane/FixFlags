@@ -1,10 +1,28 @@
 import { redirect } from 'next/navigation'
-import type { Route } from 'next'
+import type { Metadata, Route } from 'next'
 import { WaitlistLanding } from '@/components/marketing/waitlist/WaitlistLanding'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import type { CheckoutPlan } from '@/lib/billing/client-checkout'
 
-export const metadata = buildPageMetadata('waitlist', '/waitlist')
+const PLAN_BY_SEGMENT: Record<string, CheckoutPlan> = {
+  pro: 'BUILDER',
+  studio: 'TEAM',
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ plan: string }>
+}): Promise<Metadata> {
+  const { plan } = await params
+  const checkoutPlan = PLAN_BY_SEGMENT[plan.toLowerCase()]
+  if (!checkoutPlan) return buildPageMetadata('waitlist', '/waitlist')
+
+  return {
+    ...buildPageMetadata('waitlist', '/waitlist'),
+    robots: { index: false, follow: true },
+  }
+}
 
 const PLAN_BY_SEGMENT: Record<string, CheckoutPlan> = {
   pro: 'BUILDER',

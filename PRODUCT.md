@@ -150,9 +150,9 @@ Pro and Studio remain waitlist-gated while checkout stays in test mode.
 
 | Plan                | Price  | Product reviews | Products  | Added value                                                          |
 | ------------------- | ------ | --------------- | --------- | -------------------------------------------------------------------- |
-| **Free**            | $0     | 3/month         | 1         | Flags, evidence, fix prompts, review changes, public report link     |
-| **Pro** (`BUILDER`) | $29/mo | 30/month        | Up to 5   | Product history across releases and release comparison               |
-| **Studio** (`TEAM`) | $79/mo | 90/month        | Unlimited | Scheduled reviews, shared product history, and workspace invitations |
+| **Free**            | $0     | 3/month         | 1         | This page plus every public link; Flags, evidence, fix prompts, public report link |
+| **Pro** (`BUILDER`) | $29/mo | 30/month        | Up to 5   | Linked public pages, product history, release comparison. Logged-in review on your computer is waitlisted NEXT |
+| **Studio** (`TEAM`) | $79/mo | 90/month        | Unlimited | One level beyond linked pages, scheduled reviews, workspace. Logged-in review on your computer is waitlisted NEXT |
 
 New URLs, update reviews, and completed scheduled Watch reviews use the same monthly product review allowance.
 Unused allowance does not roll over.

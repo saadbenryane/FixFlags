@@ -163,6 +163,32 @@ export const AUTH = {
     cta: 'Sign out',
   },
   settings: {
+    pageTitle: 'Settings',
+    pageDescription: 'Manage your account and security.',
+    gscConnectedTitle: 'Google Search Console connected',
+    gscNotConnectedTitle: 'Google Search Console was not connected',
+    gscRetry: 'Try connecting again.',
+    gscErrors: {
+      gsc_not_configured: 'Google Search Console is not configured on this deployment.',
+      gsc_connect_failed: 'Google Search Console could not be connected. Try again.',
+      gsc_denied: 'Google Search Console access was not granted.',
+      gsc_invalid_state: 'That Google Search Console connection link expired. Try again.',
+      gsc_no_sites: 'No verified Google Search Console properties were available for this account.',
+    } as Record<string, string>,
+    gsc: {
+      title: 'Google Search Console',
+      connectBody:
+        'Connect to see search performance, indexing status, and keyword data in your reports',
+      connectedTo: (site: string) => `Connected to ${site}`,
+      connectedFallback: 'your property',
+      connectedBadge: 'Connected',
+      connectCta: 'Connect',
+      disconnectCta: 'Disconnect',
+      disconnectTitle: 'Disconnect Search Console',
+      disconnectDescription:
+        'Your reports will no longer include search performance data. This will not delete past data.',
+      disconnectConfirm: 'Disconnect',
+    },
     account: {
       title: 'Account',
       description: 'Your plan, name, email, and password.',
@@ -237,12 +263,8 @@ export const AUTH = {
     passkeys: 'Passkeys',
     connected: 'Connected',
     notConnected: 'Not connected',
-    lastChanged: (date: string) => `Last changed ${date}`,
-    passkeyCount: (n: number) => `${n} passkey${n === 1 ? '' : 's'}`,
-    passkeyLastUsed: (date: string) => `Last used ${date}`,
     noPassword: 'Not set',
     signedInVia: (method: string) => `Signed in via ${method}`,
-    loading: 'Loading sign-in methods',
   },
   privacyNote: 'By creating an account, you agree to our Privacy Policy and Terms of Service.',
   forgotPassword: {

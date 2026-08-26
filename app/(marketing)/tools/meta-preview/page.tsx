@@ -1,22 +1,32 @@
-import { TOOLS } from '@/lib/marketing/copy'
+import { MetaPreviewClient } from '@/components/marketing/tools/MetaPreviewClient'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { MetaPreviewClient } from '@/components/marketing/tools/MetaPreviewClient'
+import { SEO } from '@/lib/marketing/copy'
+import { buildPageMetadata } from '@/lib/marketing/metadata'
+import { toolPageStructuredData } from '@/lib/marketing/structured-data'
 
-export function generateMetadata() {
-  const seo = TOOLS.metaPreview
-  return {
-    title: `${seo.heading} – FixFlags`,
-    description: seo.subhead,
-  }
-}
+export const metadata = buildPageMetadata('metaPreview', '/tools/meta-preview')
+
+const jsonLd = toolPageStructuredData({
+  path: '/tools/meta-preview',
+  name: SEO.metaPreview.title,
+  description: SEO.metaPreview.description,
+})
 
 export default function MetaPreviewPage() {
   return (
-    <Section spacing="marketing">
-      <Container variant="narrow" className="space-y-8">
-        <MetaPreviewClient />
-      </Container>
-    </Section>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <Section spacing="marketing">
+        <Container variant="narrow" className="space-y-8">
+          <main>
+            <MetaPreviewClient />
+          </main>
+        </Container>
+      </Section>
+    </>
   )
 }

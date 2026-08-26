@@ -51,10 +51,30 @@ for (const key of seoKeys) {
   }
 }
 
-const requiredLlmsPaths = ['/', '/how-it-works', '/samples', '/pricing', '/docs', '/docs/getting-started', '/docs/reports', '/docs/troubleshooting', '/faq', '/help', '/help/getting-started/first-check', '/help/billing-and-plans/free-vs-pro', '/privacy', '/terms', '/examples', '/tools/meta-preview', '/tools/placeholder-detector']
+const requiredLlmsPaths = ['/', '/how-it-works', '/samples', '/pricing', '/docs', '/docs/getting-started', '/docs/reports', '/docs/troubleshooting', '/faq', '/help', '/help/getting-started/first-check', '/help/billing-and-plans/free-vs-pro', '/help/checks-and-reports/why-check-failed', '/privacy', '/terms', '/examples', '/tools/meta-preview', '/tools/placeholder-detector']
 for (const path of requiredLlmsPaths) {
   if (!llmsPaths.includes(path)) {
     errors.push(`LLMS_SECTIONS missing path "${path}"`)
+  }
+}
+
+const catalogSource = readFileSync(join(ROOT, 'lib/help/catalog.ts'), 'utf8')
+const helpArticlePaths = [...catalogSource.matchAll(/slug:\s*'([^']+)'[\s\S]*?categoryId:\s*'([^']+)'/g)].map(
+  (match) => `/help/${match[2]}/${match[1]}`
+)
+const helpCategoryPaths = [...catalogSource.matchAll(/\{\s*\n\s*id:\s*'([^']+)'/g)].map(
+  (match) => `/help/${match[1]}`
+)
+
+for (const llmsPath of llmsPaths) {
+  if (!llmsPath.startsWith('/help/')) continue
+  if (llmsPath === '/help') continue
+  const exists =
+    helpArticlePaths.includes(llmsPath) ||
+    helpCategoryPaths.includes(llmsPath) ||
+    llmsPath.endsWith('/contact-us')
+  if (!exists && requiredLlmsPaths.includes(llmsPath)) {
+    errors.push(`LLMS help path "${llmsPath}" not found in help catalog`)
   }
 }
 

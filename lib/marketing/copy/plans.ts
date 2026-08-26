@@ -31,6 +31,7 @@ export const PLANS = [
       'Prioritized Flags with evidence and fix prompts',
       'Review again after changes and see what changed',
       'A public report link',
+      'This page, plus every public link to see if it loads',
     ],
     cta: 'Start free',
     href: '/sign-up?from=pricing',
@@ -51,6 +52,8 @@ export const PLANS = [
       'Product history across releases',
       'Compare releases and see what improved',
       'A public report link',
+      'This page and every public page it links to',
+      'Logged-in review on your computer',
     ],
     cta: 'Join Pro waitlist',
     href: '/sign-up?plan=BUILDER',
@@ -72,6 +75,8 @@ export const PLANS = [
       'Invite people to your workspace',
       'Unlimited workspace seats for a limited time',
       'Shared product history',
+      'This page, its linked pages, and one level beyond',
+      'Logged-in review on your computer',
     ],
     cta: 'Join Studio waitlist',
     href: '/sign-up?plan=TEAM',
@@ -158,8 +163,14 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
     },
   },
   {
+    question: 'How far does a review go?',
+    answer:
+      'Every review fully reviews the page you paste and checks whether its public links load. Pro also reviews those linked pages. Studio reviews the next pages after that. Pro and Studio include logged-in review on your computer when those plans open.',
+    learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
+  },
+  {
     question: 'What\u2019s included in every plan?',
-    answer: `Free includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month for one product. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}) includes ${PRICING_COPY.proProductReviewsPerMonth} reviews across up to five products. Studio (${PRICING_COPY.studioPrice}${PRICING_COPY.studioPeriod}) includes ${PRICING_COPY.studioProductReviewsPerMonth} reviews per month with unlimited products, scheduled reviews, and a shared workspace.`,
+    answer: `Free includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month for one product, on the page you paste plus a check of every public link. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}) includes ${PRICING_COPY.proProductReviewsPerMonth} reviews across up to five products and reviews the pages that page links to. Studio (${PRICING_COPY.studioPrice}${PRICING_COPY.studioPeriod}) includes ${PRICING_COPY.studioProductReviewsPerMonth} reviews per month with unlimited products, scheduled reviews, a shared workspace, and one level beyond the linked pages.`,
     learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
   },
 ] as const
@@ -179,7 +190,7 @@ export const PRICING = {
   upgradeStepsLoggedIn: 'Stripe checkout → Dashboard',
   checkoutRedirecting: 'Redirecting to checkout…',
   allPlansInclude:
-    'Every review includes prioritized Flags, evidence, and fix prompts. Plans add room for more products, release history, scheduled reviews, and workspace access.',
+    'Every review includes prioritized Flags, evidence, and fix prompts. Plans add how far a review goes, room for more products, release history, scheduled reviews, and workspace access.',
   pickerEyebrow: 'Pick a plan',
   pickerTitle: 'Choose how you want to start',
   pickerSubtitle:
@@ -318,7 +329,58 @@ export const UPGRADE_MOMENTS = {
   },
 } as const
 
+export const USAGE_METER_COPY = {
+  regionLabel: 'Product review usage',
+  compactLabel: 'Product reviews',
+  panelLabel: 'Product reviews',
+  usedOfLimit: (used: number, limit: number) => `${used} of ${limit}`,
+  usedCaption: 'used this month',
+  remainingCaption: (n: number) =>
+    n === 1 ? '1 remaining this month' : `${n} remaining this month`,
+  remainingShort: (n: number) => `${n} remaining`,
+  thisPeriod: (used: number) => `${used} this period`,
+  thisPeriodCaption: (n: number) =>
+    `product review${n === 1 ? '' : 's'} this period`,
+  compactNote: 'Update reviews use the same credits.',
+  compactPendingNote: (n: number) =>
+    `${n} in progress. Update reviews use the same credits.`,
+  panelNote: 'Update reviews use the same credits as new URLs.',
+  progressLabel: (used: number, limit: number) =>
+    `${used} of ${limit} product reviews used`,
+  pending: (n: number) => `${n} in progress`,
+  purchasedCredits: (n: number) =>
+    `${n} purchased credit${n === 1 ? '' : 's'} available`,
+  upgradeToPro: 'Upgrade to Pro',
+  upgradeForMore: 'upgrade for more',
+  paidLimitReached: 'Plan limit reached. Upgrade for more product reviews.',
+} as const
+
 export const BILLING_PAGE_COPY = {
+  title: 'Billing',
+  description: 'Manage your plan and subscription',
+  pastDueTitle: 'Payment past due: features paused',
   pastDueBody:
     "Update your card to restore your paid monthly usage allowance. We'll retry automatically. Product reviews resume when payment succeeds.",
+  planName: (name: string) => `${name} plan`,
+  pastDuePlanName: (name: string) => `${name} (payment past due: features paused)`,
+  paidFeaturesPaused: ' (paid features paused)',
+  upgradeCta: 'Upgrade plan',
+  compareStudio: 'Compare Studio',
+  activating: 'Activating subscription…',
+  activatingHint: 'This usually takes a few seconds after checkout.',
+  periodEnds: (date: string) => `Current period ends ${date}`,
+  paymentIssueTitle: 'Payment issue',
+  canceledBody: 'Your subscription has been canceled. Features may be downgraded.',
+  unpaidBody: 'Your subscription is unpaid. Check your payment method.',
+  creditsTitle: 'Credits',
+  purchasedAvailable: (n: number) =>
+    `${n} purchased check${n !== 1 ? 's' : ''} available`,
+  creditsUnavailable:
+    'Credit packs are no longer available for purchase. Existing credits remain active and never expire.',
+  purchaseHistory: 'Purchase history',
+  creditsLine: (credits: number, packId: string) =>
+    `${credits} credits - ${packId.replace('_', ' ')}`,
+  paid: 'Paid',
+  pending: 'Pending',
+  checkingCredits: 'Checking credit purchase status',
 } as const

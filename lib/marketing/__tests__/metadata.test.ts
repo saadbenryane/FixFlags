@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { BRAND } from '../copy'
-import { DEFAULT_OG_IMAGE, buildPageMetadata } from '../metadata'
+import { BRAND, SEO } from '../copy'
+import { DEFAULT_OG_IMAGE, buildIndexableMetadata, buildPageMetadata } from '../metadata'
 
 describe('site share metadata', () => {
   it('points Open Graph and Twitter cards at the 1200x630 brand artwork', () => {
@@ -16,7 +16,26 @@ describe('site share metadata', () => {
     expect(home.openGraph?.images).toEqual([DEFAULT_OG_IMAGE])
     expect(home.twitter).toMatchObject({
       card: 'summary_large_image',
-      images: ['/og.jpg'],
+      images: ['https://fixflags.com/og.jpg'],
     })
+  })
+
+  it('includes canonical, robots, OG, and Twitter for every SEO registry page', () => {
+    for (const [key, copy] of Object.entries(SEO)) {
+      const path = key === 'home' ? '/' : `/${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`
+      const metadata =
+        key === 'home'
+          ? buildPageMetadata('home', '/')
+          : buildIndexableMetadata({
+              title: copy.title,
+              description: copy.description,
+              path: `/seo-test/${key}`,
+            })
+
+      expect(metadata.alternates?.canonical, key).toBeTruthy()
+      expect(metadata.robots, key).toMatchObject({ index: true, follow: true })
+      expect(metadata.openGraph?.images?.length, key).toBeGreaterThan(0)
+      expect(metadata.twitter?.card, key).toBe('summary_large_image')
+    }
   })
 })

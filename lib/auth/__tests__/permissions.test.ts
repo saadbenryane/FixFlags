@@ -21,6 +21,7 @@ import {
   isAdminUser,
   hasUnlimitedScans,
   getEffectiveScanLimit,
+  getPlanDisplayLimit,
   isUnlimitedScanLimit,
   getPendingCheckCount,
   getCheckUsage,
@@ -177,6 +178,27 @@ describe('getEffectiveScanLimit', () => {
   it('returns 0 when auditsLimit is 0', () => {
     setEnv('NODE_ENV', 'production')
     expect(getEffectiveScanLimit(makeUser({ auditsLimit: 0 }))).toBe(0)
+  })
+})
+
+describe('getPlanDisplayLimit', () => {
+  it('returns the stored plan allowance in local unlimited-scan mode', () => {
+    setEnv('NODE_ENV', 'development')
+    process.env.DEV_SIMULATE_BILLING = 'false'
+    expect(getPlanDisplayLimit(makeUser({ role: 'user', auditsLimit: 3 }))).toBe(3)
+  })
+
+  it('returns null for admin accounts', () => {
+    setEnv('NODE_ENV', 'development')
+    process.env.DEV_SIMULATE_BILLING = 'false'
+    expect(getPlanDisplayLimit(makeUser({ role: 'admin', auditsLimit: 3 }))).toBeNull()
+  })
+
+  it('returns null when the stored allowance is unlimited', () => {
+    setEnv('NODE_ENV', 'production')
+    expect(
+      getPlanDisplayLimit(makeUser({ role: 'user', auditsLimit: UNLIMITED_SCAN_LIMIT })),
+    ).toBeNull()
   })
 })
 

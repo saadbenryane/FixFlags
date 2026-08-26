@@ -185,6 +185,10 @@ See `knowledge/README.md` for the full architecture and evolution rules.
 | Help center information architecture (Docs / Help / FAQ ownership) | `docs/knowledge-base-ia.md` |
 | Help article catalog and contextual links | `lib/help/catalog.ts`, `lib/help/contextual.ts` |
 | Unified help + docs search index | `lib/knowledge/index.ts` |
+| SEO route registry and llms.txt | `lib/marketing/seo-routes.ts` |
+| Page metadata (canonical, OG, Twitter) | `lib/marketing/metadata.ts`, `lib/help/metadata.ts`, `lib/docs/catalog.ts` (`buildDocsMetadata`) |
+| Structured data (schema.org JSON-LD) | `lib/marketing/structured-data.ts` |
+| SEO architecture and deploy checklist | `docs/seo.md`, `docs/seo-deploy-checklist.md` |
 | Product UI intent (pointer) | `docs/product-ui-intent.md` |
 | Live Review PRD (retired pointer) | `docs/live-review-and-product-intelligence-prd.md` |
 | States (rest, hover, focus, active, disabled) | `DESIGN.md` → States |

@@ -189,6 +189,10 @@ export function issuePageSchema(input: {
   return {
     '@context': 'https://schema.org',
     '@graph': [
+      breadcrumbListSchema([
+        { name: 'Flag Library', item: `${SITE_URL}/issues` },
+        { name: input.title, item: url },
+      ]),
       {
         '@type': 'Article',
         '@id': `${url}#article`,
@@ -225,5 +229,143 @@ export function issuePageSchema(input: {
         ],
       },
     ],
+  }
+}
+
+export function helpHubStructuredData(
+  categories: ReadonlyArray<{ id: string; title: string; description: string }>
+) {
+  const url = `${SITE_URL}/help`
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      breadcrumbListSchema([{ name: 'Help Center', item: url }]),
+      {
+        '@type': 'CollectionPage',
+        name: 'Help Center',
+        description: 'Billing, account, failed checks, privacy, and contact support.',
+        url,
+        isPartOf: { '@type': 'WebSite', name: BRAND.name, url: SITE_URL },
+      },
+      {
+        '@type': 'ItemList',
+        itemListElement: categories.map((category, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name: category.title,
+          description: category.description,
+          url: `${SITE_URL}/help/${category.id}`,
+        })),
+      },
+    ],
+  }
+}
+
+export function issueIndexStructuredData(
+  issues: ReadonlyArray<{ checkId: string; title: string }>
+) {
+  const url = `${SITE_URL}/issues`
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      breadcrumbListSchema([{ name: 'Flag Library', item: url }]),
+      {
+        '@type': 'CollectionPage',
+        name: 'Flag Library',
+        description: 'Real Flags from checked sites with frequency, examples, and fixes.',
+        url,
+        isPartOf: { '@type': 'WebSite', name: BRAND.name, url: SITE_URL },
+      },
+      {
+        '@type': 'ItemList',
+        itemListElement: issues.map((issue, index) => ({
+          '@type': 'ListItem',
+          position: index + 1,
+          name: issue.title,
+          url: `${SITE_URL}/issues/${issue.checkId}`,
+        })),
+      },
+    ],
+  }
+}
+
+export function blogPostingSchema(post: {
+  slug: string
+  title: string
+  excerpt: string
+  date: string
+}) {
+  const url = `${SITE_URL}/blog/${post.slug}`
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      breadcrumbListSchema([
+        { name: 'Blog', item: `${SITE_URL}/blog` },
+        { name: post.title, item: url },
+      ]),
+      {
+        '@type': 'BlogPosting',
+        headline: post.title,
+        description: post.excerpt,
+        url,
+        datePublished: post.date,
+        author: { '@id': ORG_ID },
+        publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', name: `${BRAND.name} Blog`, url: `${SITE_URL}/blog` },
+      },
+    ],
+  }
+}
+
+export function toolPageStructuredData(input: {
+  path: string
+  name: string
+  description: string
+}) {
+  const url = `${SITE_URL}${input.path}`
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      breadcrumbListSchema([
+        { name: 'Free Tools', item: `${SITE_URL}/tools/meta-preview` },
+        { name: input.name, item: url },
+      ]),
+      {
+        '@type': 'WebApplication',
+        name: input.name,
+        description: input.description,
+        url,
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Web',
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'USD',
+        },
+        provider: { '@id': ORG_ID },
+      },
+    ],
+  }
+}
+
+export function publicReportStructuredData(input: {
+  reportId: string
+  reviewedUrl: string
+  title: string
+  description: string
+}) {
+  const url = `${SITE_URL}/report/${input.reportId}`
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: input.title,
+    description: input.description,
+    url,
+    about: {
+      '@type': 'WebSite',
+      url: input.reviewedUrl,
+    },
+    isPartOf: { '@id': WEBSITE_ID },
+    publisher: { '@id': ORG_ID },
   }
 }

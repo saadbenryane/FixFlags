@@ -10,13 +10,13 @@ import { Heading, Lead, Muted, Body } from '@/components/ui/typography'
 import { getIssuePage, MIN_SAMPLE_SIZE } from '@/lib/graph/queries'
 import { getRelatedIssues } from '@/lib/graph/related'
 import { issuePageSchema } from '@/lib/marketing/structured-data'
+import { buildIssuePageMetadata } from '@/lib/marketing/metadata'
 import {
   issuePageTitle,
   issuePageDescription,
   rubricLabel,
 } from '@/lib/marketing/issue-page'
 import { rubricBadgeClasses } from '@/lib/rubric-icons'
-import { SITE_URL } from '@/lib/marketing/copy'
 
 interface Props {
   params: Promise<{ checkId: string }>
@@ -29,25 +29,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = issuePageTitle(data)
   const description = issuePageDescription(data)
-  const url = `${SITE_URL}/issues/${checkId}`
 
-  return {
-    title,
-    description,
-    alternates: { canonical: url },
-    robots: { index: true, follow: true },
-    openGraph: {
-      title,
-      description,
-      type: 'article',
-      url,
-    },
-    twitter: {
-      card: 'summary',
-      title,
-      description,
-    },
-  }
+  return buildIssuePageMetadata({ checkId, title, description })
 }
 
 export default async function IssuePage({ params }: Props) {

@@ -362,7 +362,7 @@ export function AccountSettingsForms({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{ac.deleteConfirmTitle}</DialogTitle>
-            <DialogDescription>{ac.deleteDescription}</DialogDescription>
+            <DialogDescription>{ac.deleteConfirmDescription}</DialogDescription>
           </DialogHeader>
           <Field id="delete-password" label={ac.deletePasswordLabel}>
             {(fieldProps) => (

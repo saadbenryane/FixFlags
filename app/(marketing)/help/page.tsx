@@ -11,18 +11,25 @@ import { HELP_CATEGORIES } from '@/lib/help/catalog'
 import { getPopularArticles } from '@/lib/help/search'
 import { HELP_CENTER } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
+import { helpHubStructuredData } from '@/lib/marketing/structured-data'
 
 export const metadata = buildPageMetadata('help', '/help')
+
+const helpHubJsonLd = helpHubStructuredData(HELP_CATEGORIES)
 
 export default async function HelpCenterPage() {
   const popular = getPopularArticles()
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(helpHubJsonLd) }}
+      />
       <MarketingPageViewTracker page="/help" />
       <Section spacing="marketing">
       <Container>
-        <div className="mx-auto max-w-3xl space-y-10 sm:space-y-12">
+        <main className="mx-auto max-w-3xl space-y-10 sm:space-y-12">
           <div className="text-center">
             <LandingSectionHeader
               label={HELP_CENTER.label}
@@ -36,7 +43,7 @@ export default async function HelpCenterPage() {
           <HelpCategoryGrid categories={HELP_CATEGORIES} />
           <HelpArticleList articles={popular} />
           <HelpChatEscalate className="rounded-card glass-surface shadow-card p-5" />
-        </div>
+        </main>
       </Container>
       </Section>
     </>

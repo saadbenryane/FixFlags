@@ -47,7 +47,6 @@ describe('ConnectedAccounts', () => {
     expect(screen.getByText(AUTH.connectedAccounts.title)).toBeInTheDocument()
     expect(screen.getByText(AUTH.connectedAccounts.google)).toBeInTheDocument()
     expect(screen.getByText(AUTH.connectedAccounts.signedInVia('Google'))).toBeInTheDocument()
-    expect(screen.queryByText(AUTH.connectedAccounts.passkeyCount(0))).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/passkey name/i)).not.toBeInTheDocument()
     expect(await screen.findByText(AUTH.security.passkeysEmpty)).toBeInTheDocument()
     expect(screen.getByText(AUTH.security.enableTitle)).toBeInTheDocument()

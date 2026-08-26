@@ -14,6 +14,7 @@ import { SectionTitle } from '@/components/ui/typography'
 import {
   getEffectiveScanLimit,
   getPendingCheckCount,
+  getPlanDisplayLimit,
   isDevUnlimitedScans,
   isUnlimitedScanLimit,
 } from '@/lib/auth/permissions'
@@ -46,16 +47,16 @@ export default async function DashboardPage({
   ])
 
   const used = user.auditsUsed
-  const isUnlimited =
+  const scansUnlimited =
     isDevUnlimitedScans() || isUnlimitedScanLimit(getEffectiveScanLimit(user))
-  const effectiveLimit = isUnlimited ? null : getEffectiveScanLimit(user)
+  const displayLimit = getPlanDisplayLimit(user)
   const isEffectivelyFree =
     user.plan === 'FREE' || hasRevokedSubscriptionStatus(user.subscriptionStatus)
   const atAuditLimit =
     isEffectivelyFree &&
-    !isUnlimited &&
-    effectiveLimit !== null &&
-    isAtCheckLimit(used, pending, effectiveLimit)
+    !scansUnlimited &&
+    displayLimit !== null &&
+    isAtCheckLimit(used, pending, displayLimit)
 
   return (
     <Container
@@ -77,7 +78,7 @@ export default async function DashboardPage({
           >
             {planLabel(user.plan)}
           </Badge>
-        ) : !isUnlimited ? (
+        ) : displayLimit !== null ? (
           <UpgradeButton context="free_default" userEmail={user.email ?? undefined} />
         ) : null}
       </PageHeader>
@@ -85,7 +86,7 @@ export default async function DashboardPage({
       <UsageMeter
         variant="compact"
         used={used}
-        limit={isUnlimited ? null : effectiveLimit}
+        limit={displayLimit}
         pending={pending}
         plan={user.plan}
       />
@@ -99,9 +100,9 @@ export default async function DashboardPage({
             <Globe2 className="h-5 w-5" aria-hidden />
           </span>
           <div>
-            <SectionTitle>Review a URL</SectionTitle>
+            <SectionTitle>{REPORT_COPY.workspace.dashboard.reviewUrlTitle}</SectionTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              A new URL creates a Product. Reviewing the same Product adds a fresh observation.
+              {REPORT_COPY.workspace.dashboard.reviewUrlBody}
             </p>
           </div>
         </div>
