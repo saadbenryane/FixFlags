@@ -364,8 +364,8 @@ export function ReportExplorer({
   const listPane = (
     <div className="min-w-0 list-none @[40rem]/pane:min-h-0 @[40rem]/pane:overflow-y-auto @[40rem]/pane:pr-2 scrollbar-thin [&_ul]:list-none [&_li]:list-none">
       <div className="mb-3 border-b border-border/30 pb-3">
-        <h2 className="text-sm font-semibold text-foreground">Your priorities</h2>
-        <p className="text-xs text-muted-foreground">Ranked by customer impact</p>
+        <h2 className="text-sm font-semibold text-foreground">{REPORT_COPY.explorer.prioritiesTitle}</h2>
+        <p className="text-xs text-muted-foreground">{REPORT_COPY.explorer.prioritiesHint}</p>
       </div>
       {flagCount === 0 ? (
         <p className="text-sm text-muted-foreground">

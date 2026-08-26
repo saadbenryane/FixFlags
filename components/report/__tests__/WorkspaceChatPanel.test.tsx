@@ -9,6 +9,11 @@ const startScanWithHandoff = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/audit/start-scan-handoff', () => ({
   startScanWithHandoff,
 }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  usePathname: () => '/report/a1',
+  useSearchParams: () => ({ get: () => null }),
+}))
 vi.mock('@/components/auth/AuthFlow', () => ({
   AuthFlow: ({ dialogTitle }: { dialogTitle?: string }) => <div>{dialogTitle}</div>,
 }))
@@ -180,7 +185,11 @@ describe('WorkspaceChatPanel', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Review history' }))
-    expect(screen.getAllByText('Create a free account to continue').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Create your free account').length).toBeGreaterThan(0)
+    expect(
+      screen.getAllByText(/Get every fix prompt and keep this report/i).length
+    ).toBeGreaterThan(0)
+    expect(screen.queryByText(/already used your anonymous product review/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/upgrade/i)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /close/i }))
@@ -188,7 +197,7 @@ describe('WorkspaceChatPanel', () => {
       target: { value: 'What first?' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Sign in to chat' }))
-    expect(screen.getAllByText('Create a free account to continue').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Create your free account').length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('button', { name: /close/i }))
     fireEvent.click(screen.getByRole('button', { name: 'New review' }))
@@ -198,5 +207,6 @@ describe('WorkspaceChatPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start review' }))
     await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalled())
     expect(screen.getAllByText('Create a free account to continue').length).toBeGreaterThan(0)
+    expect(screen.getByLabelText('URL to review')).toHaveValue('https://other.com')
   })
 })

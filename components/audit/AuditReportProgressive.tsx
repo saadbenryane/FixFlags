@@ -93,6 +93,7 @@ interface AuditReportProgressiveProps {
     rubric: string
     checkId?: string | null
     source?: string | null
+    fix?: string | null
   }>
   screenshots?: AuditScreenshot[]
   screenshotCapture?: ScreenshotCaptureStatus
@@ -129,7 +130,11 @@ export function AuditReportProgressive({
   agentMessages = [],
 }: AuditReportProgressiveProps) {
   const isOwnerAccess = accessContext === 'owner'
-  const canClaimAccess = accessContext === 'anonymous_teaser' || (!accessContext && !auditId)
+  const canClaimAccess = accessContext === 'anonymous_teaser'
+  const fixPromptLocked = canClaimAccess
+  const signUpHref = auditId
+    ? `/sign-up?next=/report/${auditId}&from=report`
+    : '/sign-up?from=report'
   const chatGateReason = canClaimAccess ? 'sign-in' : 'owner'
   const isFailed = status === 'FAILED'
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
@@ -198,6 +203,7 @@ export function AuditReportProgressive({
   const prevFlagsRef = useRef(partialFlags)
   const prevScreenshotsRef = useRef(screenshots)
   const prevRubricsRef = useRef(rubrics)
+  const prevOwnerAccessRef = useRef(isOwnerAccess)
   const prevModelRef = useRef<ReturnType<
     typeof buildPartialExplorerModel
   > | null>(null)
@@ -207,13 +213,15 @@ export function AuditReportProgressive({
       prevModelRef.current &&
       partialFlags === prevFlagsRef.current &&
       screenshots === prevScreenshotsRef.current &&
-      rubrics === prevRubricsRef.current
+      rubrics === prevRubricsRef.current &&
+      isOwnerAccess === prevOwnerAccessRef.current
     ) {
       return prevModelRef.current
     }
     prevFlagsRef.current = partialFlags
     prevScreenshotsRef.current = screenshots
     prevRubricsRef.current = rubrics
+    prevOwnerAccessRef.current = isOwnerAccess
     const model = buildPartialExplorerModel({
       url,
       pageType,
@@ -221,10 +229,11 @@ export function AuditReportProgressive({
       flags: partialFlags,
       screenshots,
       rubrics,
+      promptAccess: isOwnerAccess ? 'all' : 'none',
     })
     prevModelRef.current = model
     return model
-  }, [url, pageType, score, partialFlags, screenshots, rubrics])
+  }, [url, pageType, score, partialFlags, screenshots, rubrics, isOwnerAccess])
 
   const showContract = Boolean(productContract)
   const flagCount = explorerModel.flagCount
@@ -277,7 +286,7 @@ export function AuditReportProgressive({
       agentMessages.length > 0
         ? agentMessages
         : buildFixFlagsScanMessages({
-            id: auditId ?? 'handoff',
+            id: auditId ?? 'pending',
             status,
             progress,
           }),
@@ -340,7 +349,13 @@ export function AuditReportProgressive({
               </div>
             }
           >
-            <LiveReportExplorer model={explorerModel} loading={isLoading} />
+            <LiveReportExplorer
+              model={explorerModel}
+              loading={isLoading}
+              aiLocked={fixPromptLocked}
+              signUpHref={signUpHref}
+              auditId={auditId}
+            />
           </ExplorerErrorBoundary>
         </section>
       }
@@ -468,6 +483,9 @@ export function AuditReportProgressive({
                           <LiveReportExplorer
                             model={explorerModel}
                             loading={false}
+                            aiLocked={fixPromptLocked}
+                            signUpHref={signUpHref}
+                            auditId={auditId}
                           />
                         </ExplorerErrorBoundary>
                       </section>

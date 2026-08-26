@@ -22,13 +22,18 @@ function PostLoginRedirect() {
   const isNewOauthUser = searchParams.get('signup') === '1'
   const trackedRef = useRef(false)
   const [showPasskeyEnroll, setShowPasskeyEnroll] = useState(false)
+  const [claimSettled, setClaimSettled] = useState(false)
   const claimStarted = useRef(false)
 
   useEffect(() => {
     if (claimStarted.current) return
     claimStarted.current = true
     void runPostLoginClaimFlow({
-      claim: () => claimAnonymous({ showToast: true }),
+      claim: async () => {
+        const result = await claimAnonymous({ showToast: true })
+        setClaimSettled(true)
+        return result
+      },
       shouldEnroll: shouldShowPasskeyEnroll,
       showEnrollment: () => setShowPasskeyEnroll(true),
       beforeNavigate: () => {
@@ -68,13 +73,30 @@ function PostLoginRedirect() {
     )
   }
 
-  if (error) {
+  const claimEmpty = claimSettled && !isLoading && claimedCount === 0 && !error
+  if (error || claimEmpty) {
     return (
       <div className="flex max-w-sm flex-col items-center gap-3 text-center" role="alert">
         <p className="font-medium">{AUTH.reportContext.saveError}</p>
-        <p className="text-sm text-muted-foreground">{error}</p>
+        {error ? <p className="text-sm text-muted-foreground">{error}</p> : null}
         <div className="flex flex-wrap justify-center gap-2">
-          <Button onClick={() => void claimAnonymous({ showToast: true })} className="min-h-11">
+          <Button
+            onClick={() => {
+              setClaimSettled(false)
+              void runPostLoginClaimFlow({
+                claim: async () => {
+                  const result = await claimAnonymous({ showToast: true })
+                  setClaimSettled(true)
+                  return result
+                },
+                shouldEnroll: shouldShowPasskeyEnroll,
+                showEnrollment: () => setShowPasskeyEnroll(true),
+                beforeNavigate: () => {},
+                navigate: navigateAfterAuth,
+              })
+            }}
+            className="min-h-11"
+          >
             {AUTH.reportContext.retryCta}
           </Button>
           {reportHref ? (

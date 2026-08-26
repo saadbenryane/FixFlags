@@ -57,7 +57,7 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 
 1. Trace `getGatedAuditForRequest` → `promptAccess` → Finish Plan → Copy UI → `/details` explorer.
 2. Assert live anon evidence is real page evidence, not `Create a free account to see evidence…`.
-3. Assert anonymous Copy controls are absent. After authentication, every eligible Copy action must copy a real editor prompt and never a gate placeholder.
+3. Assert live anonymous Copy chrome is visible and locked. Clicking Copy or Fix Prompt opens create-account and must not write the clipboard. After authentication, every eligible Copy action must copy a real editor prompt and never a gate placeholder.
 4. Keep marketing sample unlock on the sample path only (`isPublicMarketingSample` / `variant="sample"`).
 
 ## Do not ship

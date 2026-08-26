@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
+import type { Route } from 'next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
@@ -118,6 +119,7 @@ export function AuditInput({
         gclid: params.get('gclid') ?? undefined,
         fbclid: params.get('fbclid') ?? undefined,
       },
+      replace: (href) => router.replace(href as Route),
       onStarted: (data) => {
         const isLoggedIn =
           typeof data.isLoggedIn === 'boolean' ? data.isLoggedIn : Boolean(user)
@@ -175,36 +177,6 @@ export function AuditInput({
       return
     }
     router.push('/#sample-review')
-  }
-
-  async function handleAuthenticated() {
-    setAuthDialogOpen(false)
-    if (pendingUrl) {
-      setLoading(true)
-      setUrlError('')
-      const params = new URLSearchParams(window.location.search)
-      await startScanWithHandoff({
-        url: pendingUrl,
-        body: {
-          url: pendingUrl,
-          source: auditSource,
-          utmSource: params.get('utm_source') ?? undefined,
-          utmMedium: params.get('utm_medium') ?? undefined,
-          utmCampaign: params.get('utm_campaign') ?? undefined,
-          gclid: params.get('gclid') ?? undefined,
-          fbclid: params.get('fbclid') ?? undefined,
-        },
-        onStarted: () => {
-          trackStartedAudit({
-            source: auditSource,
-            isLoggedIn: true,
-            ctaPlacement: resolvedPlacement,
-            utmSource: params.get('utm_source'),
-            utmCampaign: params.get('utm_campaign'),
-          })
-        },
-      })
-    }
   }
 
   const describedBy = urlError ? errorId : undefined
@@ -358,7 +330,7 @@ export function AuditInput({
               <AuditReportProgressive
                 status="QUEUED"
                 url={url}
-                accessContext="anonymous_teaser"
+                accessContext={user ? 'owner' : 'anonymous_teaser'}
               />
             </AuditShell>
           </div>,
@@ -368,8 +340,13 @@ export function AuditInput({
       <ReportClaimDialog
         open={authDialogOpen}
         onOpenChange={setAuthDialogOpen}
-        from="scan-limit"
-        onAuthenticated={handleAuthenticated}
+        from="report"
+        reason="scan-limit"
+        nextPath={
+          pendingUrl
+            ? `/dashboard?url=${encodeURIComponent(pendingUrl)}`
+            : '/dashboard'
+        }
       />
     </div>
   )

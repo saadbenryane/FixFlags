@@ -382,6 +382,8 @@ export const REPORT_COPY = {
   },
   explorer: {
     fixPrompt: "Fix Prompt",
+    prioritiesTitle: "Your priorities",
+    prioritiesHint: "Ranked by customer impact",
     allPages: "All Pages",
     noMatchFilter: "No flags match this filter.",
     checkingIssues: "Checking for Flags…",

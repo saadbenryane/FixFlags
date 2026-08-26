@@ -162,13 +162,14 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 
 ### First check and account claim
 
-- A homepage URL submission immediately opens the Agent-led progressive report workspace.
+- A homepage URL submission immediately paints the Agent-led progressive report workspace, then replaces history with `/report/[id]` once the review exists.
 - Anonymous visitors receive deterministic FixFlags Agent updates, the progressive and completed Report, all confirmed Flags, screenshots, and public-safe evidence without a blocking authentication overlay.
-- Interactive Agent chat, fix prompts, Timeline playback, account history, Product Memory, update reviews, Canvas, and export remain server-gated.
-- Timeline stays discoverable as an inline sign-in state on live reports, and its event, URL, screenshot, and playback payload is absent from anonymous live-report responses.
-- Curated samples expose only their versioned static Timeline fixtures.
+- Live anonymous reports show the same Fix Prompt and Copy chrome as an owner report. The prompt body stays empty until claim. Copy and the Fix Prompt control open create-account and never write the clipboard.
+- Interactive Agent chat, prompt bodies, Timeline playback, account history, Product Memory, update reviews, Canvas, and export remain server-gated.
+- The default live report route is Agent beside Report. Timeline, Preview, and Canvas stay parked on `/report/[id]` and are not loaded there.
+- Timeline playback remains a shipped capability for entitled viewers off that default route. Curated samples expose only their versioned static Timeline fixtures.
 - Curated samples expose exactly one demonstrated fix prompt and no aggregate Finish Plan prompt.
-- Authentication returns through `/post-login`, verifies the signed anonymous claim, claims the review, and only then restores the same workspace.
+- Authentication returns through `/post-login`, verifies the signed anonymous claim, claims the review, and only then restores the same workspace. A claim that attaches zero reviews stays on `/post-login` with retry.
 - Anonymous API responses never expose gated prompts, and access control never persists gate copy into Flag evidence or fix fields.
 - A successful claim saves the report and makes every eligible fix prompt available, including when the claim happens before triage completes.
 - URLs captured on `Audit` and `Lead` for outbound (`/admin/leads`)
@@ -196,6 +197,7 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 - 90 product reviews per month
 - Unlimited Products
 - Scheduled reviews
+- Watch is Studio only. Free and Pro stop at manual Update review.
 - Invite people to the workspace
 - Unlimited workspace seats for a limited time
 - Shared Product history

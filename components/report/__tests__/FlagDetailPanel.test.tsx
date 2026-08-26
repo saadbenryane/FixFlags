@@ -123,7 +123,8 @@ describe('FlagDetailPanel', () => {
     expect(screen.queryByText('Add an Open Graph image meta tag.')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy prompt' }))
-    expect(await screen.findAllByText('Create a free account to continue')).not.toHaveLength(0)
+    expect(await screen.findAllByText('Create your free account')).not.toHaveLength(0)
+    expect(screen.queryByText(/already used your anonymous product review/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/upgrade/i)).not.toBeInTheDocument()
     expect(screen.queryByText('Add an Open Graph image meta tag.')).not.toBeInTheDocument()
   })

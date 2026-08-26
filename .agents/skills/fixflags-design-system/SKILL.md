@@ -25,6 +25,7 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 
 ## Report rules
 
+- The live `/report/[id]` route is Agent beside Report. Preview, Timeline, and Canvas stay parked there and are not loaded on that route.
 - Active and completed owner/anon reviews share one full-bleed living-review editor: flush split under thin site chrome, no marketing footer, no pane cards (`rounded-card` / `shadow-card` / `glass-surface` on Agent or Product columns). Separation is a single vertical divider.
 - Active desktop defaults to Preview, active mobile defaults to Agent, and completed reviews default to Report on every width. Completed Timeline remains a sibling only when the workspace capability permits it.
 - Desktop grid stays `minmax(280px, 32%)_minmax(0, 1fr)` with `gap-0`. Do not wrap the workspace region in `Container variant="report"` / `max-w-6xl`.

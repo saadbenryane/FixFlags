@@ -10,6 +10,7 @@ import { getWorkerQueuedWarning } from '@/lib/marketing/worker-warning'
 vi.mock('next/navigation', () => ({
   useSearchParams: () => ({ get: () => null }),
   usePathname: () => `/report/${AUDIT_ID}`,
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }))
 
 const URL = 'https://example.com'
@@ -264,6 +265,30 @@ describe('AuditReportProgressive', () => {
     expect(screen.getByText(/Found 2 Flags so far/i)).toBeInTheDocument()
     expect(screen.getByText(/Checks are still running/i)).toBeInTheDocument()
     expect(screen.getAllByText('CTA lacks an outcome').length).toBeGreaterThan(0)
+  })
+
+  it('shows gated Copy chrome on teaser flags without the prompt body', () => {
+    render(
+      <AuditReportProgressive
+        auditId={AUDIT_ID}
+        accessContext="anonymous_teaser"
+        status="CHECKING"
+        progress={45}
+        url={URL}
+        partialFlags={[
+          {
+            id: 'f1',
+            severity: 'CRITICAL',
+            problem: 'CTA lacks an outcome',
+            rubric: 'MESSAGE',
+            fix: 'Name the outcome in the primary CTA.',
+          },
+        ]}
+      />
+    )
+    expect(screen.getByText('Fix Prompt')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeInTheDocument()
+    expect(screen.queryByText('Name the outcome in the primary CTA.')).not.toBeInTheDocument()
   })
 
   it('hides the live findings strip before checks start', () => {

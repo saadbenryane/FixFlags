@@ -247,6 +247,7 @@ export function FlagDetailPanel({
         onOpenChange={setClaimOpen}
         nextPath={claimNextFromHref(signUpHref)}
         from="report"
+        reason="save-report"
       />
     </div>
   )

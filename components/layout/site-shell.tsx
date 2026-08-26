@@ -24,8 +24,6 @@ interface SiteShellProps {
    * static minimal grid. Anonymous work surfaces also pass `minimal`.
    */
   backdrop?: 'full' | 'minimal' | 'off'
-  /** When false, skip header, sidebar, and footer. Prefer `immersive` for reports. */
-  showChrome?: boolean
   /** Living-review editor: slim header, no sidebar, footer, or support bubble. */
   immersive?: boolean
 }
@@ -42,7 +40,6 @@ export function SiteShell({
   showHeaderNavigation = true,
   showSupport,
   backdrop,
-  showChrome = true,
   immersive = false,
 }: SiteShellProps) {
   const supportEnabled = immersive ? false : (showSupport ?? variant !== 'admin')
@@ -67,10 +64,6 @@ export function SiteShell({
               {children}
             </main>
           </>
-        ) : !showChrome ? (
-          <main id="main-content" className="flex-1" tabIndex={-1}>
-            {children}
-          </main>
         ) : hasSidebar ? (
           <div className="flex flex-1">
             <DesktopSidebar showAdmin={showAdmin} />

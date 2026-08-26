@@ -293,6 +293,7 @@ export interface PartialExplorerFlag {
   rubric: string
   checkId?: string | null
   source?: string | null
+  fix?: string | null
 }
 
 /** Build explorer model from in-progress status payload (empty flags still return chrome). */
@@ -307,6 +308,7 @@ export function buildPartialExplorerModel(input: {
     score: number | null
     grade?: string | null
   }>
+  promptAccess?: 'all' | 'one' | 'none'
 }): ReportExplorerModel {
   const rankableFlags: RankableFlag[] = input.flags.map((flag) => ({
     id: flag.id,
@@ -315,6 +317,7 @@ export function buildPartialExplorerModel(input: {
     severity: flag.severity,
     problem: flag.problem,
     source: flag.source ?? 'DETERMINISTIC',
+    fix: flag.fix ?? undefined,
   }))
 
   const rubricRows = RUBRIC_ORDER.map((name) => {
@@ -329,6 +332,7 @@ export function buildPartialExplorerModel(input: {
     flags: rankableFlags,
     screenshots: input.screenshots,
     rubricRows,
+    promptAccess: input.promptAccess ?? 'none',
   })
 }
 

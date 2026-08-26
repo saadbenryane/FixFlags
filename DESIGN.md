@@ -180,7 +180,9 @@ The compact header owns only Score, full-Review history, and active scan progres
 The explorer owns ranking, per-rubric filters, the Fix count, evidence, and fix detail.
 Public curated samples expose the same ranked report design and exactly one demonstrated prompt.
 Their history contains only complete generated observation bundles. Each bundle binds a repository revision and source path to capture hashes, document hash, date, score, Flags, Timeline, and evidence anchors; incomplete or reused comparison captures are a release failure.
-Live anonymous, non-owner, and shared reports expose zero prompts and zero copy controls.
+Live anonymous, non-owner, and shared reports show Fix Prompt and Copy chrome with empty prompt bodies.
+Copy and the Fix Prompt control open create-account and never write the clipboard or leak prompt text.
+Prompt bodies appear only after a successful `/post-login` claim.
 Only a strict `IMPROVED` verification receipt may present an Improvement as verified or write verified Product Memory.
 Raw absence in an update review is “No longer observed in this review.”
 Copy records a handoff and never declares verification.

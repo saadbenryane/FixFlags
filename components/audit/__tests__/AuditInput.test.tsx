@@ -15,6 +15,9 @@ vi.mock('@/lib/audit/start-scan-handoff', () => ({
   trackStartedAudit: vi.fn(),
 }))
 vi.mock('@/lib/analytics/events', () => ({ trackEvent: vi.fn() }))
+vi.mock('@/components/auth/AuthFlow', () => ({
+  AuthFlow: ({ dialogTitle }: { dialogTitle?: string }) => <div>{dialogTitle}</div>,
+}))
 
 import { AuditInput } from '@/components/audit/AuditInput'
 
@@ -127,7 +130,33 @@ describe('AuditInput scan handoff', () => {
           url: 'https://example.com',
           source: 'homepage',
         }),
+        replace: expect.any(Function),
       })
     )
+  })
+
+  it('opens the scan-limit create-account dialog instead of starting a second anonymous scan', async () => {
+    startScanWithHandoff.mockResolvedValue({
+      ok: false,
+      code: 'AUTH_REQUIRED',
+      message: 'Create a free account to continue.',
+    })
+    render(
+      <MeProvider initialUser={null}>
+        <AuditInput variant="landing" idSuffix="-scan-limit" />
+      </MeProvider>
+    )
+
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.change(input, { target: { value: 'example.com' } })
+    fireEvent.submit(input.closest('form')!)
+
+    expect(
+      await screen.findAllByText('Create a free account to continue')
+    ).not.toHaveLength(0)
+    expect(
+      screen.getAllByText(/already used your anonymous product review/i).length
+    ).toBeGreaterThan(0)
   })
 })

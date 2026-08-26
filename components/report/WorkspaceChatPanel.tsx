@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import type { Route } from 'next'
+import { useRouter } from 'next/navigation'
 import { ArrowUp, Flag, History, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -112,6 +114,7 @@ export function WorkspaceChatPanel({
   scanning = false,
   showToolbarActions = true,
 }: WorkspaceChatPanelProps) {
+  const router = useRouter()
   // A curated sample has no report route, so chat, history, and flag deep
   // links stay off while the transcript still shows the deterministic run.
   const canChat = capabilities.canChat && Boolean(auditId)
@@ -136,10 +139,19 @@ export function WorkspaceChatPanel({
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyListError, setHistoryListError] = useState<string | null>(null)
   const [claimOpen, setClaimOpen] = useState(false)
+  const [claimReason, setClaimReason] = useState<'save-report' | 'scan-limit'>('save-report')
+  const [claimNextOverride, setClaimNextOverride] = useState<string | undefined>()
   const transcriptRef = useRef<HTMLDivElement>(null)
   const scanInputRef = useRef<HTMLInputElement>(null)
 
-  const claimNextPath = auditId ? `/report/${auditId}` : undefined
+  const claimNextPath =
+    claimNextOverride ?? (auditId ? `/report/${auditId}` : undefined)
+
+  function openSaveReportClaim() {
+    setClaimReason('save-report')
+    setClaimNextOverride(undefined)
+    setClaimOpen(true)
+  }
 
   async function loadConversation() {
     const reportId = auditId
@@ -216,7 +228,7 @@ export function WorkspaceChatPanel({
   }, [messages.length])
 
   function gateToSignIn() {
-    setClaimOpen(true)
+    openSaveReportClaim()
   }
 
   async function send(text: string) {
@@ -313,11 +325,13 @@ export function WorkspaceChatPanel({
       url,
       body: { url, source: 'report' },
       errorFallback: chatCopy.startError,
+      replace: (href) => router.replace(href as Route),
     })
     if (!result.ok) {
       if (result.code === 'AUTH_REQUIRED') {
+        setClaimReason('scan-limit')
+        setClaimNextOverride(`/dashboard?url=${encodeURIComponent(url)}`)
         setClaimOpen(true)
-        setNewScan(false)
       } else {
         setScanError(result.message)
       }
@@ -384,7 +398,7 @@ export function WorkspaceChatPanel({
                       variant="ghost"
                       size="icon"
                       aria-label={chatCopy.historyLabel}
-                      onClick={() => setClaimOpen(true)}
+                      onClick={() => openSaveReportClaim()}
                     >
                       <History className="h-4 w-4" aria-hidden="true" />
                     </Button>
@@ -608,6 +622,7 @@ export function WorkspaceChatPanel({
         nextPath={claimNextPath}
         from="report"
         auditId={auditId}
+        reason={claimReason}
       />
     </TooltipProvider>
   )

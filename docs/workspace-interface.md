@@ -1,6 +1,9 @@
 # Report workspace interface
 
-> Current product surface: the workspace keeps Agent beside the reviewed Product. Preview shows live capture, Report presents the complete ranked fix list, Timeline replays owner evidence, and Canvas creates private evidence-grounded artifacts. Repository scanning is parked from discovery and new starts; protected historical data and GitHub revocation remain available.
+> Current product surface: the live `/report/[id]` workspace is Agent beside Report.
+> Preview, Timeline, and Canvas stay parked on that route and are not loaded there.
+> Those capabilities remain in the product for entitled surfaces off the default live route.
+> Repository scanning is parked from discovery and new starts; protected historical data and GitHub revocation remain available.
 
 **Status:** Approved interface spec (August 2026). Engineering and design source for report workspace chrome.
 

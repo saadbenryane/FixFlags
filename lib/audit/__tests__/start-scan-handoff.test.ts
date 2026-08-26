@@ -10,9 +10,6 @@ describe('startScanWithHandoff', () => {
     vi.clearAllMocks()
     localStorage.clear()
     sessionStorage.clear()
-    vi.stubGlobal('window', {
-      location: { replace },
-    })
   })
 
   afterEach(() => {
@@ -32,6 +29,7 @@ describe('startScanWithHandoff', () => {
     const result = await startScanWithHandoff({
       url: 'https://example.com',
       body: { url: 'https://example.com' },
+      replace,
     })
 
     expect(result).toEqual({ ok: true, reportId: 'report-1' })
@@ -50,6 +48,7 @@ describe('startScanWithHandoff', () => {
     const result = await startScanWithHandoff({
       url: 'https://example.com',
       body: { url: 'https://example.com' },
+      replace,
     })
 
     expect(result).toEqual(expect.objectContaining({
@@ -69,6 +68,7 @@ describe('startScanWithHandoff', () => {
     const result = await startScanWithHandoff({
       url: 'https://example.com',
       body: { url: 'https://example.com' },
+      replace,
     })
 
     expect(result).toEqual(expect.objectContaining({

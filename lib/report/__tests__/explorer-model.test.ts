@@ -232,6 +232,25 @@ describe('explorer-model', () => {
     assert.equal(model?.flags[0]?.title, 'Generic headline')
   })
 
+  it('redacts prompt text on partial models even when a fix is present', () => {
+    const model = buildPartialExplorerModel({
+      url: 'https://example.com',
+      flags: [
+        {
+          id: 'f1',
+          rubric: 'MESSAGE',
+          severity: 'IMPORTANT',
+          problem: 'Generic headline',
+          fix: 'Name the outcome in the H1.',
+        },
+      ],
+    })
+
+    assert.equal(model.flags[0]?.hasFixPrompt, false)
+    assert.equal(model.flags[0]?.fixPrompt, '')
+    assert.equal(model.flags[0]?.copyFixPrompt, '')
+  })
+
   it('orders same-severity flags by impact and confidence for the default opened fix', () => {
     const model = buildLiveExplorerModel({
       url: 'https://example.com',

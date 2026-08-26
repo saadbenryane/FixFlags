@@ -4,7 +4,7 @@ import { AuditReportProgressive } from '@/components/audit/AuditReportProgressiv
 export default function ReportLoading() {
   return (
     <AuditShell immersive>
-      <AuditReportProgressive status="QUEUED" accessContext="anonymous_teaser" />
+      <AuditReportProgressive status="QUEUED" />
     </AuditShell>
   )
 }

@@ -28,6 +28,7 @@ import type {
 } from '@/lib/products/workspace'
 import { serializeProductHistoryCursor } from '@/lib/products/workspace'
 import { presentProductReview } from '@/lib/products/review-state'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 
 function dateLabel(value: string | null): string {
   if (!value) return 'Not yet'
@@ -439,7 +440,7 @@ function AttentionSection({ workspace }: { workspace: ProductWorkspaceDTO }) {
     <section aria-labelledby="attention-heading" className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <SectionTitle id="attention-heading">Your priorities</SectionTitle>
+          <SectionTitle id="attention-heading">{REPORT_COPY.explorer.prioritiesTitle}</SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">
             Ranked by the effect each issue has on the customer experience.
           </p>

@@ -42,6 +42,7 @@ interface AuthFlowProps {
   /** Override the dialog title/subtitle (defaults to the report-gate copy). */
   dialogTitle?: string
   dialogSubtitle?: string
+  /** Waitlist-only. Report and homepage claim always continue through `/post-login`. */
   onAuthenticated?: () => Promise<void> | void
   auditId?: string
   reportHostname?: string | null

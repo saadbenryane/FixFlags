@@ -5,7 +5,7 @@ import { trackEvent } from '@/lib/analytics/events'
 
 type CreateCheckBody = Record<string, unknown>
 
-type StartScanOptions = {
+type StartScanBase = {
   url: string
   body: CreateCheckBody
   /** POST path. Defaults to /api/checks. */
@@ -13,9 +13,19 @@ type StartScanOptions = {
   /** Analytics after success. */
   onStarted?: (data: Record<string, unknown>) => void
   errorFallback?: string
-  /** Recheck stays on the report they started from. */
-  stayOnPage?: boolean
 }
+
+export type StartScanOptions =
+  | (StartScanBase & {
+      /** Recheck stays on the report they started from. */
+      stayOnPage: true
+      replace?: never
+    })
+  | (StartScanBase & {
+      stayOnPage?: false
+      /** App Router replace so the in-flight shell is not a second document load. */
+      replace: (href: string) => void
+    })
 
 export type CreateCheckResult =
   | { ok: true; reportId?: string }
@@ -61,7 +71,7 @@ export async function startScanWithHandoff(
 
     if (reportId) {
       if (!options.stayOnPage) {
-        window.location.replace(`/report/${reportId}`)
+        options.replace(`/report/${reportId}`)
       }
       return { ok: true, reportId }
     }

@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import type { Route } from 'next'
 import { toast } from 'sonner'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -53,6 +55,7 @@ function dotColor(page: JourneyPage): string {
 }
 
 export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }: JourneyBarProps) {
+  const router = useRouter()
   const [scanning, setScanning] = useState(false)
 
   if (pages.length <= 1) return null
@@ -69,6 +72,7 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
           mode: 'critical_path',
         },
         errorFallback: 'Could not start the Product Review. Try again.',
+        replace: (href) => router.replace(href as Route),
       })
       if (!result.ok) toast.error(result.message)
     } finally {

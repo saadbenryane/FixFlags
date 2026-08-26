@@ -67,6 +67,8 @@ Partial Flags stream into the ranked explorer and appear once in the Agent trans
 Desktop and mobile capture placeholders resolve independently inside Flag detail on mobile; the standalone capture pair stays on large screens only.
 Show honest status and early findings without introducing completed-Review context while the Review is still running.
 Parked Timeline, Preview, and Canvas payloads are not loaded by the default report route.
+The ranked explorer uses the same gated Fix Prompt and Copy chrome as the completed report.
+Prompt bodies stay empty until claim.
 Keep the workspace and transcript mounted until the completed server report replaces progressive data.
 
 ## Samples and public reports
@@ -87,5 +89,5 @@ Keep the workspace and transcript mounted until the completed server report repl
 - Loading, empty, partial, failure, forbidden, expired, revoked, and deleted states are explicit.
 - Visible report chrome lives in `lib/marketing/copy.ts`.
 - Technology profiles expose sanitized evidence labels and evidence bands only. They never grade vendors or leak raw requests, headers, cookies, query strings, or private report existence.
-- Newly submitted anonymous and non-owner live reports expose evidence but never prompts, Product Memory, account history, update-review controls, or export.
+- Newly submitted anonymous and non-owner live reports expose evidence and gated Copy chrome, never prompt bodies, Product Memory, account history, update-review controls, or export.
 - Programmatic Agent messages are stable, monotonic, derived from persisted facts, and excluded from model usage and persisted conversation rows.
