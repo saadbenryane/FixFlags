@@ -107,6 +107,7 @@ function TechnologyMark({
 
   return (
     <span
+      data-technology-logo={icon ? technology.slug : undefined}
       className={cn(
         'grid shrink-0 place-items-center rounded-[var(--radius-control)] border border-border/45 bg-background shadow-sm',
         boxClass,

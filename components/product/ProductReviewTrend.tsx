@@ -23,7 +23,7 @@ function dateLabel(value: string): string {
 
 function reviewLabel(review: ProductReviewSummaryDTO, index: number, total: number): string {
   const score = review.score == null ? 'score unavailable' : `score ${Math.round(review.score)}`
-  return `Open Review ${index + 1} of ${total}, ${dateLabel(review.completedAt || review.createdAt)}, ${score}`
+  return `View score point ${index + 1} of ${total}, ${dateLabel(review.completedAt || review.createdAt)}, ${score}`
 }
 
 export function ProductReviewTrend({
@@ -72,7 +72,12 @@ export function ProductReviewTrend({
         ) : null}
       </div>
 
-      <div className="relative mt-4 h-28 overflow-hidden" aria-label="Review score trend">
+      <div className="mt-4 overflow-x-auto pb-1">
+        <div
+          className="relative h-28"
+          style={{ minWidth: `${Math.max(320, pointCount * 64)}px` }}
+          aria-label="Review score trend"
+        >
         <svg
           aria-hidden="true"
           className="absolute inset-x-0 top-0 h-24 w-full overflow-visible"
@@ -104,7 +109,7 @@ export function ProductReviewTrend({
           ) : null}
           {completed.length < 2 ? (
             <line
-              x1={completed.length === 1 ? positions[0] : positions[0]}
+              x1={positions[0]}
               x2={positions.at(-1)}
               y1={completed.length === 1 ? plotted[0]?.y : plotY(50)}
               y2={completed.length === 1 ? plotted[0]?.y : plotY(50)}
@@ -114,18 +119,6 @@ export function ProductReviewTrend({
               strokeDasharray="4 5"
             />
           ) : null}
-          {positions.slice(completed.length).map((x, index) => (
-            <circle
-              key={`future-${index}`}
-              cx={x}
-              cy={completed.length === 1 ? plotted[0]?.y : plotY(50)}
-              r="2.2"
-              vectorEffect="non-scaling-stroke"
-              className="fill-card stroke-brand/35"
-              strokeWidth="1.5"
-              strokeDasharray="2 2"
-            />
-          ))}
         </svg>
 
         {plotted.map(({ review, x, y }, index) => (
@@ -140,6 +133,18 @@ export function ProductReviewTrend({
               {Math.round(review.score ?? 0)}
             </span>
           </Link>
+        ))}
+
+        {positions.slice(completed.length).map((x, index) => (
+          <span
+            key={`future-${index}`}
+            aria-hidden="true"
+            className="absolute h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-brand/40 bg-card"
+            style={{
+              left: `${x}%`,
+              top: `${completed.length === 1 ? plotted[0]?.y : plotY(50)}px`,
+            }}
+          />
         ))}
 
         {completed.length === 0 ? (
@@ -159,6 +164,7 @@ export function ProductReviewTrend({
             <span>{dateLabel(completed.at(-1)?.completedAt || completed.at(-1)?.createdAt || '')}</span>
           </div>
         )}
+        </div>
       </div>
     </section>
   )

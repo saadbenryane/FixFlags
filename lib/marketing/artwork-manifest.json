@@ -29,15 +29,20 @@
     },
     {
       "id": "homepage-final-cta",
-      "src": "/marketing/visuals/final-cta-gateway-v2.webp",
+      "src": "/marketing/visuals/how-it-works-review-v3.webp",
       "classification": "approved",
-      "width": 1672,
-      "height": 941,
+      "width": 1254,
+      "height": 1254,
       "requiresAlpha": true,
-      "contentBearing": false,
-      "requiredTerms": [],
+      "contentBearing": true,
+      "requiredTerms": [
+        "Reviewing the live product",
+        "Message",
+        "Experience",
+        "Reach"
+      ],
       "consumers": ["components/marketing/landing/LandingFinalCtaSection.tsx"],
-      "replaces": ["/marketing/visuals/pricing-glass-mark.webp"]
+      "replaces": ["/marketing/visuals/final-cta-gateway-v2.webp"]
     },
     {
       "id": "demosite-open-graph-preview",

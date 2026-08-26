@@ -37,6 +37,7 @@ describe('MadeWithProfile', () => {
 
     expect(screen.getByRole('heading', { name: 'Made with' })).toBeInTheDocument()
     expect(screen.getAllByText('Next.js').length).toBeGreaterThan(0)
+    expect(document.querySelector('[data-technology-logo="next-js"]')).toBeInTheDocument()
     expect(screen.getAllByText('Vercel').length).toBeGreaterThan(0)
     expect(screen.queryByText(/Next\.js score/i)).not.toBeInTheDocument()
 

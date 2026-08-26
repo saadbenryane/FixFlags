@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
+import { Globe2 } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { DashboardCheckoutToast } from '@/components/dashboard/DashboardCheckoutToast'
@@ -81,18 +82,28 @@ export default async function DashboardPage({
         ) : null}
       </PageHeader>
 
-      <Surface variant="elevated" className="space-y-4">
-        <div>
-          <SectionTitle>Review a URL</SectionTitle>
+      <Surface
+        variant="elevated"
+        className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-center"
+      >
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--radius-control)] bg-brand-muted text-brand">
+            <Globe2 className="h-5 w-5" aria-hidden />
+          </span>
+          <div>
+            <SectionTitle>Review a URL</SectionTitle>
           <p className="mt-1 text-sm text-muted-foreground">
             A new URL creates a Product. Reviewing the same Product adds a fresh observation.
           </p>
+          </div>
         </div>
-        <AuditInput
-          initialUrl={initialAuditUrl}
-          autoStart={Boolean(initialAuditUrl)}
-          idSuffix="-dashboard"
-        />
+        <div className="min-w-0">
+          <AuditInput
+            initialUrl={initialAuditUrl}
+            autoStart={Boolean(initialAuditUrl)}
+            idSuffix="-dashboard"
+          />
+        </div>
       </Surface>
 
       <ProductOverviewGrid products={products} />

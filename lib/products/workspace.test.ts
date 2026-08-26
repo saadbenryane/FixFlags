@@ -388,6 +388,11 @@ describe('loadProductWorkspace', () => {
         kind: 'WATCH',
         notificationStatus: 'PENDING',
       },
+      reviewHistory: [
+        { id: 'review-watch-running', kind: 'WATCH' },
+        { id: 'review-running', kind: 'UPDATE_REVIEW' },
+        { id: 'review-1', kind: 'PRODUCT_REVIEW' },
+      ],
       attention: [
         {
           id: 'improvement-1',
@@ -424,6 +429,7 @@ describe('loadProductWorkspace', () => {
       truthClass: 'OBSERVED',
       kind: 'ERROR_PATTERN',
     })
+    expect(mocks.loadTechnologyProfile).toHaveBeenCalledWith('review-1')
     expect(mocks.auditFindFirst).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({

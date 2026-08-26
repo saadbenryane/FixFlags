@@ -78,10 +78,14 @@ function SidebarNav({
         onClick={() => handleClick(item.href)}
         aria-current={active ? 'page' : undefined}
         className={cn(
-          'flex min-h-11 items-center rounded-[var(--radius-control)] text-sm font-medium transition-colors duration-150',
+          'relative flex min-h-11 items-center rounded-[var(--radius-control)] text-sm font-medium transition-colors duration-150',
           compact ? 'justify-center px-2' : 'gap-3 px-3 py-2',
           active
-            ? 'bg-accent text-foreground'
+            ? cn(
+                'bg-brand-muted text-foreground',
+                compact &&
+                  'after:absolute after:-left-2 after:h-6 after:w-0.5 after:rounded-full after:bg-brand',
+              )
             : 'text-muted-foreground hover:bg-accent hover:text-foreground'
         )}
       >

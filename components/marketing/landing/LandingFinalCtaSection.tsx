@@ -30,14 +30,13 @@ export function LandingFinalCtaSection() {
           <div className="grid items-stretch lg:grid-cols-[0.92fr_1.08fr]">
             <div className="relative min-h-[15rem] overflow-hidden bg-muted/25 sm:min-h-[18rem] lg:min-h-[23rem]">
               <Image
-                src="/marketing/visuals/final-cta-gateway-v2.webp"
-                alt="A live URL passes through a review gateway and becomes an actionable Flag"
+                src="/marketing/visuals/how-it-works-review-v3.webp"
+                alt="A live product is reviewed across Message, Experience, and Reach"
                 fill
                 sizes="(min-width: 1280px) 620px, (min-width: 1024px) 46vw, 100vw"
-                className="scale-[1.08] object-contain object-left-center drop-shadow-[0_28px_44px_hsl(var(--foreground)/0.1)]"
+                className="scale-[0.92] object-contain object-center drop-shadow-[0_28px_44px_hsl(var(--foreground)/0.1)]"
                 unoptimized
               />
-              <div className="absolute inset-y-0 right-0 w-1/3 bg-[linear-gradient(to_right,transparent,hsl(var(--background)))]" />
             </div>
 
             <div className="flex flex-col justify-center px-5 pb-7 sm:px-8 sm:pb-9 lg:-ml-6 lg:px-12 lg:py-12">

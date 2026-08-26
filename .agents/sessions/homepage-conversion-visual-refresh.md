@@ -14,8 +14,8 @@ The sample-section body no longer names the old Launchpad identity.
 The hero uses a restrained animated evidence path with one moving Flag-orange signal and a reduced-motion fallback.
 The How it works section uses a generated transparent three-stage live page → Flag → update-review composition.
 The Message, Experience, and Reach section uses a generated transparent three-lens review composition.
-The final URL CTA uses a generated transparent gateway composition that fills the left side and blends into the white action area.
-All generated homepage compositions use the FixFlags white, stone, ink, and Flag-orange material language and are registered in `lib/marketing/artwork-manifest.json`.
+The final URL CTA reuses the existing live-review visual, which explicitly shows Message, Experience, and Reach instead of relying on an abstract gateway metaphor.
+The homepage compositions use the FixFlags white, stone, ink, and Flag-orange material language and are registered in `lib/marketing/artwork-manifest.json`.
 
 ## Proof
 
@@ -29,8 +29,8 @@ Desktop and mobile screenshots are stored under `output/playwright/homepage-conv
 
 ## Generated assets
 
-The built-in image generator produced the homepage workflow, review-rubric, final-CTA, and DemoSite Open Graph assets.
-The final homepage WebP assets are `public/marketing/visuals/how-it-works-workflow-v4.webp`, `public/marketing/visuals/review-rubrics-v4.webp`, and `public/marketing/visuals/final-cta-gateway-v2.webp`.
+The built-in image generator produced the homepage workflow, review-rubric, and DemoSite Open Graph assets.
+The final homepage WebP assets are `public/marketing/visuals/how-it-works-workflow-v4.webp`, `public/marketing/visuals/review-rubrics-v4.webp`, and the existing `public/marketing/visuals/how-it-works-review-v3.webp`.
 The DemoSite Open Graph replacement is `public/demo/og-v1.png`.
 
 ## Verification note

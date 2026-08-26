@@ -68,7 +68,7 @@ Do not repeat Pass, Needs Attention, Blocked, or share-readiness labels beside s
 The report URL is public evidence by default. Agent chat, prompts, Product Memory, history, and owner actions remain server-gated.
 Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
 
-**Made with:** Technology evidence lives on the signed-in Product detail page, based on that Product’s latest completed Review. The summary shows at most four detected technologies; expansion groups the stack and exposes short sanitized evidence labels. Technology confidence is “Verified” or “Strong signal,” never a vendor score. Empty, legacy, partial, unavailable, and same-detector update-review diff states are explicit. Use Lucide category icons, not remote logos.
+**Made with:** Technology evidence lives on the signed-in Product detail page, based on that Product’s latest completed Review. The summary shows at most four detected technologies; expansion groups the stack and exposes short sanitized evidence labels. Technology confidence is “Verified” or “Strong signal,” never a vendor score. Empty, legacy, partial, unavailable, and same-detector update-review diff states are explicit. Use locally bundled brand marks when available and Lucide category icons as the fallback; never depend on remote logo delivery.
 
 **Flags chrome:** Meta row is Severity → Rubric → Impact. Only Critical uses the `CircleAlert` icon; Important and Polish use accessible text. The list is ranked by launch impact and supports compact rubric, severity, impact, and page filters. When both captures exist, each selected Flag compares desktop and mobile: affected is red, available unaffected is green, and missing or failed remains neutral.
 
