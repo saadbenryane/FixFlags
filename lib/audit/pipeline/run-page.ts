@@ -657,7 +657,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   // page's screenshot has been captured we must never throw the whole report
   // away: a triage failure degrades to deterministic results and returns with
   // no triage, so the runner can finalize instead of marking the audit FAILED.
-  const shouldRunTriage = input.primary && input.position === 0
+  const shouldRunTriage = true
   let triage: TriageResult | undefined
   let triageFailure: ReturnType<typeof parseTriageFailure> | undefined
 

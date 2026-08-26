@@ -25,6 +25,8 @@ import { parseProductContract, type ProductContract } from '@/lib/audit/product-
 import { parseLaunchReadiness, type LaunchChecklistItem } from '@/lib/audit/launch-readiness'
 import { buildEditorHandoffPrompt } from '@/lib/audit/editor-handoff'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
+import { parseReviewCoverage } from '@/lib/audit/review-depth'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 
 const ACTIVE_IMPROVEMENT_STATUSES: ImprovementStatus[] = [
   'PROPOSED',
@@ -47,6 +49,7 @@ export type ProductReviewSummaryDTO = {
   score: number | null
   reportCompleteness: ReportCompleteness
   unresolvedCount: number
+  coverageLabel: string | null
   createdAt: string
   completedAt: string | null
   failureMessage: string | null
@@ -218,7 +221,7 @@ type ReviewRow = {
   watchNotificationStatus: WatchNotificationStatus
   watchNotificationAttempts: number
   watchNotificationLastError: string | null
-  flags: Array<{ status: string }>
+  reviewCoverage: unknown
 }
 
 type AttemptRow = {
@@ -259,6 +262,9 @@ function reviewSummary(review: ReviewRow): ProductReviewSummaryDTO {
     unresolvedCount: review.flags.filter(
       (flag) => flag.status === 'OPEN' || flag.status === 'REGRESSED'
     ).length,
+    coverageLabel: REPORT_COPY.explorer.productCoverage(
+      parseReviewCoverage(review.reviewCoverage)?.linkedPageCount ?? 0
+    ),
     createdAt: review.createdAt.toISOString(),
     completedAt: review.completedAt?.toISOString() ?? null,
     failureMessage: review.errorMsg,
@@ -323,6 +329,7 @@ const reviewSelect = {
   watchNotificationAttempts: true,
   watchNotificationLastError: true,
   flags: { select: { status: true } },
+  reviewCoverage: true,
 } as const
 
 const overviewReviewSelect = {

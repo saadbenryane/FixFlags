@@ -14,7 +14,7 @@ import type { ExplorerFlag } from '@/lib/report/explorer-model'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import { displayHostname, truncatePreview } from '@/lib/audit/preview-meta'
 import { impactTagIcon } from '@/lib/rubric-icons'
-import { impactTagLabel } from '@/lib/utils'
+import { reviewPathLabel } from '@/lib/audit/url-identity'
 import type { ReportAccessState, ReportSurface } from '@/lib/analytics/events'
 
 export interface ReportOwnerActionContext {
@@ -124,10 +124,13 @@ function FlagEvidenceMeta({ flag }: { flag: ExplorerFlag }) {
           href={pageUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-sm"
+          title={pageUrl}
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-link hover:text-link-hover hover:underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-sm"
         >
-          <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
-          <span className="truncate max-w-[300px]">{pageUrl}</span>
+          <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span className="truncate max-w-[300px]">
+            {REPORT_COPY.explorer.onPath(reviewPathLabel(pageUrl))}
+          </span>
         </a>
       ))}
     </div>

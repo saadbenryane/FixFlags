@@ -525,6 +525,14 @@ model Audit {
   technologyDetectorVersion  String?
   technologyDetectedAt       DateTime?
   deepReviewUsageCountedAt   DateTime?
+  /// How far this Product Review fully judges: 1 this page, 2 linked pages, 3 one level beyond.
+  reviewDepth                Int                          @default(1)
+  /// Structured reachability outcomes for unique eligible public destinations.
+  openCheckResults           Json?
+  /// Compact coverage facts for report and Product copy.
+  reviewCoverage             Json?
+  /// Live stage sentence for progressive UI (Opening public links, Reviewing /pricing, …).
+  progressDetail             String?
   /// *
   ///    * Names of deterministic check modules that threw during this run. Their
   ///    * findings are dropped, so the report shows a callout when this is non-empty.
@@ -883,6 +891,8 @@ model AuditRunCost {
   llmModel                 String?
   llmCostUsd               Decimal  @db.Decimal(10, 6)
   pagespeedCalls           Int      @default(0)
+  pagesReviewed            Int      @default(0)
+  openCheckRequests        Int      @default(0)
   estimatedCostUsd         Decimal  @db.Decimal(10, 6)
   createdAt                DateTime @default(now())
   triageInputTokens        Int      @default(0)
@@ -960,6 +970,8 @@ model Flag {
   verificationRule      String?
   checkId               String?
   pageUrl               String?
+  /// Canonical paths where this Flag was observed. One Flag, many affected paths.
+  affectedPaths         Json?
   fingerprint           String?
   position              Int
   evidenceTargets       Json?

@@ -10,9 +10,12 @@ export const AGENT_SCAN_COPY = {
   ready: 'Your report is ready.',
   partiallyReady: 'Your report is ready with some evidence missing.',
   partialAi: 'The report is ready, but some fix guidance is still unavailable.',
-  confirmedFlag: (rubric: string, problem: string) => {
+  confirmedFlag: (rubric: string, problem: string, pathLabel?: string | null) => {
     const label = rubricLabel(rubric)
     const article = /^[aeiou]/i.test(label) ? 'an' : 'a'
+    if (pathLabel && pathLabel !== 'Home') {
+      return `I found ${article} ${label} Flag on ${pathLabel}: ${problem}`
+    }
     return `I found ${article} ${label} Flag: ${problem}`
   },
   additionalFlags: (count: number) =>

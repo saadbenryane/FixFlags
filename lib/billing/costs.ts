@@ -110,12 +110,22 @@ export interface AuditRunCostMetrics {
   llmModel: string
   pagespeedCalls: number
   phase?: LlmCostPhase
+  pagesReviewed?: number
+  openCheckRequests?: number
   /** Prompt-cache tokens served from cache this run (priced at the cache-read rate). */
   llmCacheReadTokens?: number
   /** Prompt-cache tokens written to cache this run (Anthropic 5-min write premium). */
   llmCacheWriteTokens?: number
 }
 
+function coverageCostFields(metrics: AuditRunCostMetrics) {
+  return {
+    ...(typeof metrics.pagesReviewed === 'number' ? { pagesReviewed: metrics.pagesReviewed } : {}),
+    ...(typeof metrics.openCheckRequests === 'number'
+      ? { openCheckRequests: metrics.openCheckRequests }
+      : {}),
+  }
+}
 const PAGESPEED_COST_PER_CALL = Number(process.env.COST_PAGESPEED_PER_CALL ?? 0.005)
 const BROWSER_COST_PER_SECOND = Number(process.env.COST_BROWSER_PER_SECOND ?? 0.0001)
 
@@ -150,6 +160,7 @@ export async function persistAuditRunCost(
         llmCostUsd: new Prisma.Decimal(llmCostUsd),
         pagespeedCalls: metrics.pagespeedCalls,
         estimatedCostUsd: new Prisma.Decimal(estimatedCostUsd),
+        ...coverageCostFields(metrics),
         triageInputTokens: metrics.llmInputTokens,
         triageOutputTokens: metrics.llmOutputTokens,
         triageModel: metrics.llmModel,
@@ -163,6 +174,7 @@ export async function persistAuditRunCost(
         llmCostUsd: new Prisma.Decimal(llmCostUsd),
         pagespeedCalls: metrics.pagespeedCalls,
         estimatedCostUsd: new Prisma.Decimal(estimatedCostUsd),
+        ...coverageCostFields(metrics),
         triageInputTokens: metrics.llmInputTokens,
         triageOutputTokens: metrics.llmOutputTokens,
         triageModel: metrics.llmModel,
@@ -219,6 +231,7 @@ export async function persistAuditRunCost(
       llmCostUsd: new Prisma.Decimal(llmCostUsd),
       pagespeedCalls: metrics.pagespeedCalls,
       estimatedCostUsd: new Prisma.Decimal(estimatedCostUsd),
+      ...coverageCostFields(metrics),
     },
     update: {
       durationMs: metrics.durationMs,
@@ -228,6 +241,7 @@ export async function persistAuditRunCost(
       llmCostUsd: new Prisma.Decimal(llmCostUsd),
       pagespeedCalls: metrics.pagespeedCalls,
       estimatedCostUsd: new Prisma.Decimal(estimatedCostUsd),
+      ...coverageCostFields(metrics),
     },
   })
 }

@@ -84,8 +84,10 @@ export const REPORT_COPY = {
       allProducts: "All Products",
       currentReview: "Current review",
       ready: "Ready",
-      unresolvedLine: (count: number, date: string) =>
-        `${count} unresolved · ${date}`,
+      unresolvedLine: (count: number, date: string, coverage?: string | null) =>
+        coverage
+          ? `${count} unresolved · ${coverage} · ${date}`
+          : `${count} unresolved · ${date}`,
       reviewToFind: "Review this Product to find what deserves attention.",
       olderReviews: "Older reviews",
       reviewFailedFallback:
@@ -444,6 +446,28 @@ export const REPORT_COPY = {
       "Prompt copied, but FixFlags could not record the handoff",
     prioritiesTitle: "Your priorities",
     prioritiesHint: "Ranked by customer impact",
+    coverageSentence: ({
+      linkedPageCount,
+      openCheckCount,
+      partial,
+    }: {
+      linkedPageCount: number
+      openCheckCount: number
+      partial: boolean
+    }) => {
+      const reviewed =
+        linkedPageCount <= 0
+          ? "Reviewed this page."
+          : `Reviewed this page and ${linkedPageCount} linked ${linkedPageCount === 1 ? "page" : "pages"}.`
+      const opened = `Opened ${openCheckCount} public ${openCheckCount === 1 ? "link" : "links"}.`
+      return partial ? `${reviewed} ${opened} Review was partial.` : `${reviewed} ${opened}`
+    },
+    productCoverage: (linkedPageCount: number) =>
+      linkedPageCount <= 0
+        ? "This page"
+        : `This page and ${linkedPageCount} linked ${linkedPageCount === 1 ? "page" : "pages"}`,
+    onPages: (count: number) => `On ${count} pages`,
+    onPath: (path: string) => `On ${path}`,
     allPages: "All Pages",
     noMatchFilter: "No flags match this filter.",
     checkingIssues: "Checking for Flags…",

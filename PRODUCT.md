@@ -180,6 +180,7 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 
 - 3 product reviews per month (a claimed anonymous teaser counts once)
 - 1 Product
+- Each review fully reviews the pasted page and checks every public link
 - Interactive report Agent with 25,000 input-plus-output tokens per calendar month
 - Saved review history and authenticated Timeline playback
 - CTA flow test (automated click-through with before/after screenshots)
@@ -191,17 +192,21 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 
 - 30 product reviews per month
 - Up to 5 Products
+- Each review covers this page and every public page it links to
 - Product history across releases and release comparison
+- Logged-in review on your computer is waitlisted NEXT, not shipped
 - 500,000 Agent chat tokens per calendar month
 
 ### Studio ($79/mo) — `TEAM` in schema
 
 - 90 product reviews per month
 - Unlimited Products
+- Each review covers this page, its linked pages, and one level beyond
 - Scheduled reviews
 - Watch is Studio only. Free and Pro stop at manual Update review.
 - Invite people to the workspace
 - Unlimited workspace seats for a limited time
+- Logged-in review on your computer is waitlisted NEXT, not shipped
 - Shared Product history
 - 2,000,000 Agent chat tokens per calendar month across Studio projects
 

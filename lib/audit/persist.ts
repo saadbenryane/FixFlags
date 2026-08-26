@@ -21,6 +21,7 @@ import {
 import { RUBRIC_ORDER } from './constants'
 import { PIPELINE_PROGRESS } from './progress'
 import { flagFingerprint } from './deduplicate'
+import { collapseFlagsWithAffectedPaths } from './flag-identity'
 import type { DeterministicFlag, DeterministicFlagRow, AiFlagRow } from './flag-types'
 import { groundedReportVerdict, groundedRubricSummary } from './verdict'
 import { parseProductContract } from './product-contract'
@@ -62,6 +63,10 @@ export function buildDeterministicFlagRow(
       null,
     checkId: flag.checkId,
     pageUrl: flag.pageUrl ?? null,
+    affectedPaths:
+      flag.affectedPaths && flag.affectedPaths.length > 0
+        ? (flag.affectedPaths as unknown as Prisma.InputJsonValue)
+        : undefined,
     fingerprint: flagFingerprint(flag),
     position: i,
     evidenceTargets:
@@ -225,7 +230,8 @@ export async function persistDeterministicFlags(
 
     const rubricIdByName = new Map(rubricRecords.map((record) => [record.name, record.id]))
 
-    const flagRows = deterministicFlags.map((f, i) => ({
+    const collapsed = collapseFlagsWithAffectedPaths(deterministicFlags)
+    const flagRows = collapsed.map((f, i) => ({
       ...buildDeterministicFlagRow(f, i, pageIdByUrl, rubricIdByName),
       auditId,
     }))
@@ -276,6 +282,10 @@ export function buildTriageAiFlagRow(
     verificationRule: null,
     checkId: null,
     pageUrl: flag.pageUrl ?? null,
+    affectedPaths:
+      'affectedPaths' in flag && Array.isArray(flag.affectedPaths) && flag.affectedPaths.length > 0
+        ? (flag.affectedPaths as unknown as Prisma.InputJsonValue)
+        : undefined,
     fingerprint: flagFingerprint(flag),
     position: positionOffset + i,
   }
@@ -389,18 +399,21 @@ export async function persistTriageResults(
 
     const rubricIdByName = new Map(rubricRecords.map((record) => [record.name, record.id]))
 
+    const collapsedDeterministic = collapseFlagsWithAffectedPaths(deterministicFlags)
+    const collapsedAi = collapseFlagsWithAffectedPaths(triageOutput.newFlags)
+
     const flagRows = [
-      ...deterministicFlags.map((f, i) => ({
+      ...collapsedDeterministic.map((f, i) => ({
         ...buildDeterministicFlagRow(f, i, pageIdByUrl, rubricIdByName),
         auditId,
       })),
-      ...triageOutput.newFlags.map((f, i) => ({
+      ...collapsedAi.map((f, i) => ({
         ...buildTriageAiFlagRow(
           f,
           i,
           pageIdByUrl,
           rubricIdByName,
-          deterministicFlags.length
+          collapsedDeterministic.length
         ),
         auditId,
       })),

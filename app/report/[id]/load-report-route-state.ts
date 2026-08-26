@@ -319,6 +319,7 @@ export async function loadReportRouteState(
         boltPrompt: string | null
         verificationRule: string | null
         pageUrl: string | null
+        affectedPaths?: unknown
         confidence: number | null
         source?: string | null
         evidenceTargets?: unknown
@@ -349,6 +350,7 @@ export async function loadReportRouteState(
       boltPrompt: f.boltPrompt,
       verificationRule: f.verificationRule,
       pageUrl: f.pageUrl,
+      affectedPaths: f.affectedPaths,
       confidence: f.confidence,
       source: f.source ?? undefined,
       status: f.status,
@@ -399,6 +401,7 @@ export async function loadReportRouteState(
       shareStatus: audit.shareStatus,
       launchReadiness: audit.launchReadiness,
       reportCompleteness: audit.reportCompleteness,
+      reviewCoverage: audit.reviewCoverage,
       pipelineVersion: audit.pipelineVersion,
       pipelineLog: audit.pipelineLog,
       startedAt: audit.startedAt,

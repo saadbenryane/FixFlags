@@ -31,6 +31,9 @@ import {
   rollUserUsagePeriod,
 } from '@/lib/billing/usage-period'
 import { ProductLimitReached } from '@/lib/billing/product-capacity'
+import { reviewDepthForPlan } from '@/lib/billing/plans'
+import { asReviewDepth, type ReviewDepth } from '@/lib/audit/review-depth'
+import type { Plan } from '@prisma/client'
 
 export interface CreateAuditOptions {
   url: string
@@ -110,7 +113,7 @@ async function assertParentAuditAllowed(
 ): Promise<void> {
   const parent = await prisma.audit.findUnique({
     where: { id: parentId },
-    select: { id: true, userId: true, status: true },
+    select: { id: true, userId: true, status: true, reviewDepth: true },
   })
 
   if (!parent) {
@@ -128,6 +131,27 @@ async function assertParentAuditAllowed(
   if (parent.userId !== userId) {
     throw new ParentAuditError('You can only continue from your own reports', 403)
   }
+}
+
+async function resolveStoredReviewDepth(options: {
+  isAnonTeaser: boolean
+  parentId?: string
+  userId?: string | null
+}): Promise<ReviewDepth> {
+  if (options.isAnonTeaser) return 1
+  if (options.parentId) {
+    const parent = await prisma.audit.findUnique({
+      where: { id: options.parentId },
+      select: { reviewDepth: true },
+    })
+    return asReviewDepth(parent?.reviewDepth)
+  }
+  if (!options.userId) return 1
+  const user = await prisma.user.findUnique({
+    where: { id: options.userId },
+    select: { plan: true },
+  })
+  return reviewDepthForPlan((user?.plan ?? 'FREE') as Plan)
 }
 
 export async function createAndEnqueueAudit(
@@ -153,6 +177,11 @@ export async function createAndEnqueueAudit(
   }
 
   const includeAi = await resolveIncludeAiForNewAudit(userId)
+  const reviewDepth = await resolveStoredReviewDepth({
+    isAnonTeaser,
+    parentId: options.parentId,
+    userId,
+  })
 
   let projectId: string | null = null
   let inheritedScanAccessEncrypted: string | null = null
@@ -212,6 +241,7 @@ export async function createAndEnqueueAudit(
     status: 'QUEUED' as const,
     progress: PIPELINE_PROGRESS.QUEUED,
     includeAi,
+    reviewDepth,
     journeyReviewIncluded: false,
     ...(attribution
       ? {

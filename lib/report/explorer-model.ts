@@ -32,6 +32,8 @@ import type {
 import type { ProductContract } from '@/lib/audit/product-contract'
 import type { FlagVisualEvidenceMap } from '@/lib/audit/persist-visual-evidence'
 import { buildFixList, type FixList } from '@/lib/audit/finish-plan'
+import { parseReviewCoverage } from '@/lib/audit/review-depth'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 
 /**
  * Derive a visitor-facing truth label from the flag's source and checkId.
@@ -129,6 +131,7 @@ export interface ReportExplorerModel {
   flags: ExplorerFlag[]
   allHighlights: EvidenceHighlight[]
   previewMeta: PreviewMeta | null
+  coverageSentence: string | null
 }
 
 function mapLiveFlag(
@@ -213,6 +216,8 @@ export function buildLiveExplorerModel(input: {
   promptAccess?: 'all' | 'one' | 'none'
   demonstratedFlag?: RankableFlag | null
   fixList?: FixList
+  reviewCoverage?: unknown
+  reportCompleteness?: string | null
 }): ReportExplorerModel {
   const fixList =
     input.fixList ??
@@ -290,6 +295,10 @@ export function buildLiveExplorerModel(input: {
       input.evidenceAnchors
     ),
     previewMeta: input.previewMeta ?? null,
+    coverageSentence: coverageSentenceFromReview(
+      input.reviewCoverage,
+      input.reportCompleteness
+    ),
   }
 }
 
@@ -433,5 +442,19 @@ export function buildSampleExplorerModel(
     ),
     allHighlights: report.flags.flatMap((f) => f.evidenceHighlights),
     previewMeta: null,
+    coverageSentence: null,
   }
+}
+
+function coverageSentenceFromReview(
+  reviewCoverage: unknown,
+  reportCompleteness?: string | null
+): string | null {
+  const coverage = parseReviewCoverage(reviewCoverage)
+  if (!coverage) return null
+  return REPORT_COPY.explorer.coverageSentence({
+    linkedPageCount: coverage.linkedPageCount,
+    openCheckCount: coverage.openCheckCount,
+    partial: coverage.partial || reportCompleteness === 'PARTIAL',
+  })
 }

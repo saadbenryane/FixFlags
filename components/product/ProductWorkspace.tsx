@@ -141,6 +141,7 @@ export function ProductWorkspace({
                     ? copy.unresolvedLine(
                         currentReview.unresolvedCount,
                         dateLabel(currentReview.completedAt || currentReview.createdAt),
+                        currentReview.coverageLabel,
                       )
                     : copy.reviewToFind}
                   {currentReview ? (

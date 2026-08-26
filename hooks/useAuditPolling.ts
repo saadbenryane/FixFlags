@@ -18,6 +18,7 @@ async function jsonFetcher(url: string) {
 export interface AuditStatusPayload {
   status: string
   progress: number
+  progressDetail?: string | null
   score?: number | null
   pageType?: string | null
   verdict?: string | null
@@ -42,6 +43,7 @@ export interface AuditStatusPayload {
     rubric: string
     checkId?: string | null
     source?: string | null
+    pageUrl?: string | null
   }>
   actionTimeline?: import('@/lib/audit/action-timeline').ActionTimelineEvent[]
   productContract?: import('@/lib/audit/product-contract').ProductContract | null

@@ -43,7 +43,8 @@ Deep Review is the future repository-connected analysis offer and returns only a
 - Monthly Pro and Studio subscriptions.
 - High-volume pricing by direct conversation.
 - No annual commitment at launch.
-- The report itself stays equally trustworthy on every plan.
+- The report itself stays equally trustworthy on every page FixFlags claims to have reviewed.
+Plans add how far a public review goes: Free reviews this page and checks every public link, Pro also reviews the pages that page links to, and Studio reviews one level beyond.
 
 ## Target customer
 

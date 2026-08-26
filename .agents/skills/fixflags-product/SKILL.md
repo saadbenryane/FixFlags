@@ -34,6 +34,7 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 
 - The user loop is Flag → Fix → Update review; update reviews are fresh, full, and diff against their parent.
 - Completed scheduled Studio reviews meter against the same product-review pool. Watch is Studio only (`canAccessProductWatch` → `plan === 'TEAM'`).
+- Signed-in usage meters show plan allowance (`getPlanDisplayLimit`: used of total). Local unlimited scans may skip enforcement but must not hide the meter. UI unlimited is admin or `auditsLimit === -1` only.
 - Public rubrics are exactly Message, Experience, and Reach.
 - Anonymous users receive one teaser scan with deterministic Agent updates and real evidence for every confirmed Flag. Every fix prompt, interactive Agent request, and Timeline payload stays gated until claim. Never persist signup-gate strings as Flag evidence or fix text.
 - The default live report is Agent beside Report. Preview, Timeline, and Canvas stay parked on `/report/[id]` and are not loaded there (`PRODUCT.md`).

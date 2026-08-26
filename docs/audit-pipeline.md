@@ -24,14 +24,26 @@ A Product-scoped Improvement is the durable judgment and action object across Re
 
 Product Signals and integrations add evidence; they do not become Flags or confirmed claims automatically.
 
-## Audit modes
+## Audit modes and review depth
 
-| Mode          | Enum            | Behavior                                                                                                                                                                                                                                                                                                                                                                                                |
-| ------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Single URL    | `SINGLE`        | Primary page only                                                                                                                                                                                                                                                                                                                                                                                       |
-| Critical path | `CRITICAL_PATH` | Primary page + up to 5 additional same-origin URLs discovered from link metadata (`discoverCriticalPathUrls` in `lib/audit/critical-path.ts`). Categories: pricing, CTA destination, features, trust, resources. Max 6 pages total; category diversity enforced. Each page runs capture + deterministic checks; triage runs on primary only. Rubric scores combine across pages via `combine-pages.ts`. |
+| Mode          | Enum            | Behavior |
+| ------------- | --------------- | -------- |
+| Single URL    | `SINGLE`        | Anonymous teaser. Fully review the pasted page only. Open-check unique eligible public destinations. Reduced pipeline (no slow-3G, no journey templates). |
+| Critical path | `CRITICAL_PATH` | Signed-in default. Stored `reviewDepth` on the Audit decides how far full judgment goes. |
 
-Default for new audits: `CRITICAL_PATH` unless the client passes `mode: single` (`app/api/checks/route.ts`, MCP `fixflags_audit`).
+`reviewDepth` is stored at create time from the owner's plan (`lib/billing/plans.ts` `reviewDepthForPlan`). Update reviews and Watch copy that stored value.
+
+| Depth | Plan | Fully review | Open-check |
+| ----- | ---- | ------------ | ---------- |
+| 1 | Anonymous teaser and Free | The pasted page | Every unique eligible public destination that page exposes |
+| 2 | Pro | The pasted page and eligible public pages it links to | Pasted-page destinations only |
+| 3 | Studio | Pasted page, linked pages, and one level beyond | Pasted page and those linked pages |
+
+Eligible destination: same-origin `http(s)` HTML navigation. Canonical identity (`lib/audit/url-identity.ts`) collapses hashes, trailing slashes, tracking params, locale/pagination/host variants, and duplicate URLs. Open-check (`lib/audit/open-check.ts`) uses GET/render as authority; HEAD is optional. Dead-destination Flags require evidence. Importance order (`lib/audit/review-depth.ts`) ranks pages before expensive review. Every reviewed page runs the same judgment, including triage. Product score comes from Flags, not page averages. Repeated issues collapse via `affectedPaths[]`.
+
+If allowed depth cannot finish inside the deadline and internal ceilings, the Review is `PARTIAL`. Never silently drop eligible pages and call it complete.
+
+Default for new signed-in audits: `CRITICAL_PATH` unless the client passes `mode: single` (`app/api/checks/route.ts`, MCP `fixflags_audit`).
 
 ## Report completeness (`FULL` vs `PARTIAL`)
 

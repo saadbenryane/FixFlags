@@ -9,6 +9,7 @@ import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
 import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
 import { useReportAuthGate } from '@/components/auth/ReportAuthGate'
 import { REPORT_COPY } from '@/lib/marketing/copy'
+import { reviewPathLabel } from '@/lib/audit/url-identity'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import {
   clampFlagIndex,
@@ -382,6 +383,8 @@ export function ReportExplorer({
         impactTag: f.impactTag,
         severity: f.severity,
         hasFixPrompt: f.hasFixPrompt,
+        pathLabel: f.pageUrls[0] ? reviewPathLabel(f.pageUrls[0]) : f.pageUrl ? reviewPathLabel(f.pageUrl) : null,
+        occurrenceCount: f.occurrenceCount,
       })),
     [filteredFlags]
   )
@@ -392,7 +395,9 @@ export function ReportExplorer({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-foreground">{REPORT_COPY.explorer.prioritiesTitle}</h2>
-            <p className="text-xs text-muted-foreground">{REPORT_COPY.explorer.prioritiesHint}</p>
+            <p className="text-xs text-muted-foreground">
+              {model.coverageSentence ?? REPORT_COPY.explorer.prioritiesHint}
+            </p>
           </div>
           {model.polishPassPrompt || aiLocked ? (
             <PromptCopyButton

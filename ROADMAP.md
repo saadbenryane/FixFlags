@@ -89,7 +89,7 @@ Product review, Update review, Funnel, Path, Fix list — from `lib/marketing/co
 - **Customer journey trust close** — Anon evidence placeholders, dishonest Copy toast, score/BLOCKED contradiction, nav CTA clarity. Brand Phase 0 done (`fix-live-images`). Board `customer-journey-completion`.
   *Signal:* Phases 1-3 of customer-journey-completion-plan accepted on production dogfood.
 
-- **Usage pricing and metering** — the complete web product is available on every plan; Free, Pro ($29), and Studio ($79) differ only by monthly Product Review allowance. See [docs/business-model.md](./docs/business-model.md).
+- **Usage pricing and metering** — every plan includes the same judgment quality on pages FixFlags reviews. Free, Pro ($29), and Studio ($79) differ by monthly Product Review allowance and how far a public review goes. See [docs/business-model.md](./docs/business-model.md) and [knowledge/strategy.md](./knowledge/strategy.md).
 
 - **Growth distribution** — anon → signed-up → paying conversion; upsell timing; re-engagement.
   *Signal:* >5% free-to-paid conversion.
@@ -118,6 +118,7 @@ Monetization blockers (regression fixtures, judge contract, persist layer, pipel
 
 ## Next
 
+- **Logged-in review on your computer** — unpark a local authenticated browser or session so Pro and Studio can review pages behind sign-in on the user’s machine. No cloud production passwords. Do not claim this shipped until the flow is real. Parked CLI/MCP setup stays parked until that unpark.
 - **Judgment quality** — use Product Contract, verified history, release linkage, frequency, affected outcomes, and source reliability to decide which zero-to-three Improvements deserve attention.
 - **Product history and Agent grounding** — present Review → judgment → attempt → deployment → independent verification → outcome → learning with source provenance, never a raw event stream.
 - **First external adapter** — add Sentry only after native error/release evidence proves a concrete judgment gap; add PostHog/Amplitude, Stripe, support, and GA/GSC one at a time after the preceding source changes a real decision.

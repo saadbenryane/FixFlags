@@ -133,6 +133,12 @@ export const AUDIT_PROGRESS = {
   ariaScore: (score: number) => `Score ${score} percent`,
   ariaScoreUnavailable: 'Score unavailable',
   scoreNa: 'N/A',
+  reviewProgress: {
+    openingLinks: 'Opening public links',
+    reviewingThisPage: 'Reviewing this page',
+    reviewingPath: (path: string) => `Reviewing ${path}`,
+    prioritizingFlags: 'Checking which Flags matter most',
+  },
 } as const
 
 export function formatQueueWaitHint(seconds: number): string {

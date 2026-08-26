@@ -11,7 +11,7 @@ import {
 import { enqueueAiReview } from '@/lib/audit/enqueue-ai-review'
 import { runTriageStep } from '@/lib/audit/pipeline/triage-step'
 import { accumulateTriageUsage } from '@/lib/audit/pipeline/context'
-import { averageScores, buildCombinedTriageOutput } from '@/lib/audit/pipeline/combine-pages'
+import { productScoresFromFlags, buildCombinedTriageOutput, collapsedPageFlags } from '@/lib/audit/pipeline/combine-pages'
 import {
   primaryPageRun,
   resolveAuditOutcome,
@@ -104,8 +104,8 @@ async function finalizeTriageComplete(
 ): Promise<void> {
   const { ctx, auditId, auditUrl, startedAt } = input
   const combinedTriage = buildCombinedTriageOutput(pageRuns)
-  const flags = pageRuns.flatMap((page) => page.flags)
-  const rubricScores = averageScores(pageRuns)
+  const flags = collapsedPageFlags(pageRuns)
+  const rubricScores = productScoresFromFlags(pageRuns)
 
   await logPipelineEvent(auditId, { stage: 'finalizing', event: 'persist_started' })
   await persistTriageResults(auditId, combinedTriage, flags, rubricScores)
@@ -115,6 +115,8 @@ async function finalizeTriageComplete(
     auditId,
     durationMs: Date.now() - startedAt.getTime(),
     pagespeedCalls: ctx.pagespeedCalls,
+    pagesReviewed: pageRuns.length,
+    openCheckRequests: ctx.openCheckCount ?? 0,
     usage: {
       inputTokens: ctx.usage.inputTokens,
       outputTokens: ctx.usage.outputTokens,
@@ -153,6 +155,8 @@ async function finalizeTriageDegradedOutcome(
     auditId,
     durationMs: Date.now() - startedAt.getTime(),
     pagespeedCalls: ctx.pagespeedCalls,
+    pagesReviewed: outcome.pageRuns.length,
+    openCheckRequests: ctx.openCheckCount ?? 0,
     usage: {
       inputTokens: ctx.usage.inputTokens,
       outputTokens: ctx.usage.outputTokens,

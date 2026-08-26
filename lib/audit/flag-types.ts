@@ -63,6 +63,7 @@ export interface FlagData extends AgentPrompts {
   causeCertainty?: CauseCertainty
   source: string
   pageUrl: string | null
+  affectedPaths?: string[] | null
   verificationRule: string | null
   fingerprint: string
   position: number
@@ -89,6 +90,7 @@ export interface DeterministicFlag {
   source: 'DETERMINISTIC'
   impactTag?: string | null
   pageUrl?: string
+  affectedPaths?: string[]
   evidenceTargets?: EvidenceTarget[]
 }
 

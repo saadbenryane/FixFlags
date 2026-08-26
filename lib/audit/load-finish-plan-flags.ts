@@ -1,4 +1,5 @@
 import type { RankableFlag } from '@/lib/audit/priority-flags'
+import { parseAffectedPaths } from '@/lib/audit/flag-identity'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import {
   buildFixArtifacts,
@@ -26,6 +27,7 @@ type LiveFlag = {
   boltPrompt: string | null
   verificationRule: string | null
   pageUrl: string | null
+  affectedPaths?: unknown
   confidence: number | null
   source?: string | null
   status?: string | null
@@ -51,6 +53,7 @@ export function toRankableFlag(flag: LiveFlag): RankableFlag {
     boltPrompt: flag.boltPrompt,
     verificationRule: flag.verificationRule,
     pageUrl: flag.pageUrl,
+    affectedPaths: parseAffectedPaths(flag.affectedPaths),
     confidence: flag.confidence,
     source: flag.source ?? 'DETERMINISTIC',
     status: flag.status,

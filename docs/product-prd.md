@@ -119,10 +119,12 @@ Canonical numbers: `PRICING_COPY` in terminology.ts. Philosophy: [docs/business-
 - Stripe IDs and enforcement: `lib/billing/plans.ts`, [PRODUCT.md](../PRODUCT.md).
 
 Every Product Review includes prioritized Flags, evidence, fix prompts, and a report link.
-Free supports one Product.
-Pro supports up to five Products with history across releases and release comparison.
-Studio supports unlimited Products, scheduled reviews, workspace invitations, and shared Product history.
+Judgment quality per reviewed page is the same on every plan.
+Free supports one Product and reviews the pasted page plus a check of every public link.
+Pro supports up to five Products with history across releases, release comparison, and review of the pages the pasted page links to.
+Studio supports unlimited Products, scheduled reviews, workspace invitations, shared Product history, and one level beyond the linked pages.
 Studio workspace seats are unlimited for a limited time.
+Logged-in review on your computer is a waitlisted Pro and Studio offer, not a shipped capability.
 
 ---
 

@@ -4,6 +4,8 @@ import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '@/lib/audit/progre
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
 import { getUserFacingAuditError } from '@/lib/audit/user-facing-errors'
 import { AGENT_SCAN_COPY } from '@/lib/marketing/copy'
+import { reviewPathLabel } from '@/lib/audit/url-identity'
+import { canonicalizeDestination } from '@/lib/audit/url-identity'
 
 export type ScanAgentFlag = {
   id: string
@@ -12,10 +14,19 @@ export type ScanAgentFlag = {
   severity?: string | null
   checkId?: string | null
   impactTag?: string | null
+  pageUrl?: string | null
 }
 
 /** How many confirmed Flags the Agent names in the transcript. The rest stay in Report. */
 export const ANNOUNCED_FLAG_LIMIT = 3
+
+function flagPathLabel(pageUrl?: string | null, pastedUrl?: string | null): string | null {
+  if (!pageUrl) return null
+  const pageKey = canonicalizeDestination(pageUrl)?.key
+  const pastedKey = pastedUrl ? canonicalizeDestination(pastedUrl)?.key : null
+  if (pageKey && pastedKey && pageKey === pastedKey) return null
+  return reviewPathLabel(pageUrl)
+}
 
 function asRankable(flag: ScanAgentFlag) {
   return {
@@ -41,6 +52,7 @@ export function selectAnnouncedFlags(flags: ScanAgentFlag[]): ScanAgentFlag[] {
 export type FixFlagsScanSnapshot = {
   id: string
   status: string
+  url?: string | null
   progress?: number | null
   startedAt?: Date | string | null
   completedAt?: Date | string | null
@@ -162,7 +174,11 @@ export function buildFixFlagsScanMessages(snapshot: FixFlagsScanSnapshot): Agent
         suffix: `flag:${flag.id}`,
         kind: 'flag',
         state: 'complete',
-        content: AGENT_SCAN_COPY.confirmedFlag(flag.rubric, flag.problem),
+        content: AGENT_SCAN_COPY.confirmedFlag(
+          flag.rubric,
+          flag.problem,
+          flagPathLabel(flag.pageUrl, snapshot.url)
+        ),
         flagId: flag.id,
       }))
     }

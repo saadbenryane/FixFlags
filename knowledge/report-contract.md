@@ -18,7 +18,7 @@ Per-issue prompts are the primary handoff from understanding to improvement.
 
 1. Compact Review header (`#report-status`) with a circular score or honest pending/unavailable state, chronological full-Review history, and the owner Update review action
 2. Update-review result, when present
-3. Complete ranked Fix list (`#report-flags`) with `Your priorities` as the list heading, screenshot evidence, selected detail, and canonical Critical-first ranking
+3. Complete ranked Fix list (`#report-flags`) with `Your priorities` as the list heading, a muted coverage sentence (what was reviewed vs only open-checked), screenshot evidence, selected detail, and canonical Critical-first ranking
 4. One per-issue prompt row: an expandable `Fix Prompt` on the left and an always-visible `Copy prompt` action on the right, docked at the bottom of Flag detail beneath one desktop | mobile capture pair
 5. Report actions: owner Update review, Export (Copy link and Email me this report), sample CTA when this is a curated sample, and at most one contextual signup or upgrade moment
 6. Durable Product context lives on `/products/[id]`, not on the report: Product Contract (`#product-contract`), verified Product Memory (`#product-remember`), and launch gates (`#product-launch-gates`), merged with Made with, Watch, and Signals
@@ -97,6 +97,7 @@ Keep the workspace and transcript mounted until the completed server report repl
 - `CircleAlert` is reserved for Critical Flags. Important and Polish remain available as accessible text.
 - Loading, empty, partial, failure, forbidden, expired, revoked, and deleted states are explicit.
 - Visible report chrome lives in `lib/marketing/copy.ts`.
+- Coverage is one muted sentence under Your priorities plus path labels on Flag rows (`On /pricing`, Home for `/`). No JourneyBar, page map, page filter chips, Coverage dashboard, or per-page scores.
 - Technology profiles expose sanitized evidence labels and evidence bands only. They never grade vendors or leak raw requests, headers, cookies, query strings, or private report existence.
 - Newly submitted anonymous and non-owner live reports expose evidence and gated Copy chrome, never prompt bodies, Product Memory, account history, update-review controls, or export.
 - Programmatic Agent messages are stable, monotonic, derived from persisted facts, and excluded from model usage and persisted conversation rows.

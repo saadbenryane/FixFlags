@@ -117,21 +117,6 @@ export async function runSeoChecks(
     }
   }
 
-  const brokenLinks = await findBrokenInternalLinks(url, meta)
-  if (brokenLinks.length > 0) {
-    findings.push({
-      checkId: 'broken-internal-links',
-      rubric: 'REACH',
-      impactTag: 'SEO',
-      severity: 'IMPORTANT',
-      problem: `${brokenLinks.length} internal link${brokenLinks.length > 1 ? 's' : ''} return errors`,
-      evidence: brokenLinks.slice(0, 3).join('; '),
-      fix: '1. Identify the broken internal links from the evidence\n2. Update href values to valid routes or correct URLs\n3. Add server-side redirects if the target URL has changed',
-      confidence: 1.0,
-      source: 'DETERMINISTIC',
-    })
-  }
-
   const idSet = new Set(meta.elementIds)
   const brokenAnchors: string[] = []
   for (const link of meta.links) {
@@ -156,58 +141,4 @@ export async function runSeoChecks(
   }
 
   return findings
-}
-
-async function fetchWithTimeout(url: string, method: 'HEAD' | 'GET', timeoutMs: number): Promise<Response> {
-  const controller = new AbortController()
-  setTimeout(() => controller.abort(), timeoutMs)
-  return fetch(url, { method, signal: controller.signal })
-}
-
-const MAX_LINK_CHECKS = 8
-
-async function findBrokenInternalLinks(
-  pageUrl: string,
-  meta: PageMetadata
-): Promise<string[]> {
-  const origin = new URL(pageUrl).origin
-  const seen = new Set<string>()
-  const broken: string[] = []
-
-  for (const link of meta.links) {
-    if (broken.length >= 3) break
-    if (!link.href || link.href.startsWith('#') || link.href.startsWith('mailto:')) continue
-
-    let parsed: URL
-    try {
-      parsed = new URL(link.href, pageUrl)
-    } catch {
-      continue
-    }
-
-    if (parsed.origin !== origin) continue
-    const absolute = parsed.toString()
-    if (seen.has(absolute)) continue
-    seen.add(absolute)
-    if (seen.size > MAX_LINK_CHECKS) break
-
-    try {
-      let res = await fetchWithTimeout(absolute, 'HEAD', 4000)
-      // Some servers reject HEAD outright (405/501) regardless of whether the
-      // resource exists -- fall back to GET rather than silently passing a
-      // genuinely dead link on those hosts.
-      if (res.status === 405 || res.status === 501) {
-        res = await fetchWithTimeout(absolute, 'GET', 4000)
-      }
-      if (res.status === 404 || res.status >= 500) {
-        broken.push(`${absolute} (${res.status})`)
-      }
-    } catch {
-      // Transient network errors, timeouts, and anti-bot blocks on the scanner
-      // itself aren't evidence the link is dead for a real visitor -- skip
-      // rather than false-alarm. Mirrors the same call in auth-checkout.ts.
-    }
-  }
-
-  return broken
 }

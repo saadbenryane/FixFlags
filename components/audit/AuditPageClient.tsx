@@ -212,6 +212,7 @@ export function AuditPageClient({
     return {
       status,
       progress,
+      progressDetail: statusPayload?.progressDetail ?? (typeof raw?.progressDetail === 'string' ? raw.progressDetail : null),
       url: resolvedUrl,
       pageType: typeof statusPayload?.pageType === 'string'
         ? statusPayload.pageType
@@ -244,6 +245,7 @@ export function AuditPageClient({
       statusPayload?.agentMessages,
       statusPayload?.screenshotCapture, statusPayload?.url, statusPayload?.pageType,
       statusPayload?.score,
+      statusPayload?.progressDetail,
       initialAudit, workerIdle, id, accessContext, isTeaser, session?.user])
 
   async function handleRetrySameAudit() {

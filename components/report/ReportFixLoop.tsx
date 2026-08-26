@@ -13,6 +13,8 @@ export type FixLoopFlagItem = {
   impactTag?: string | null
   severity: string
   hasFixPrompt?: boolean
+  pathLabel?: string | null
+  occurrenceCount?: number
 }
 
 export type ReportFixLoopProps = {
@@ -39,9 +41,14 @@ function FlagList({
     <ul className="space-y-1" style={{ listStyle: 'none' }} aria-label="Report Flags">
       {flags.map((flag, index) => {
         const selected = selectedFlagId === flag.id
+        const pathMeta =
+          (flag.occurrenceCount ?? 0) > 1
+            ? REPORT_COPY.explorer.onPages(flag.occurrenceCount ?? 0)
+            : flag.pathLabel
         const categoryLabel = [
           severityLabel(flag.severity),
           impactTagLabel(flag.impactTag),
+          pathMeta,
         ]
           .filter(Boolean)
           .join(' · ')

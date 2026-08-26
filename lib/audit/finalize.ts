@@ -20,6 +20,8 @@ type FinalizeBaseInput = {
   auditId: string
   durationMs: number
   pagespeedCalls: number
+  pagesReviewed?: number
+  openCheckRequests?: number
   usage: {
     inputTokens: number
     outputTokens: number
@@ -124,6 +126,8 @@ export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<voi
     llmOutputTokens: input.usage.outputTokens,
     llmModel: input.usage.model,
     pagespeedCalls: input.pagespeedCalls,
+    pagesReviewed: input.pagesReviewed,
+    openCheckRequests: input.openCheckRequests,
     llmCacheReadTokens: input.usage.cacheReadTokens,
     llmCacheWriteTokens: input.usage.cacheWriteTokens,
     phase: 'triage',
@@ -219,6 +223,8 @@ export async function finalizeTriageDegraded(
       llmOutputTokens: input.usage.outputTokens,
       llmModel: input.usage.model || 'none',
       pagespeedCalls: input.pagespeedCalls,
+    pagesReviewed: input.pagesReviewed,
+    openCheckRequests: input.openCheckRequests,
       phase: 'triage',
     })
   } else {
@@ -228,6 +234,8 @@ export async function finalizeTriageDegraded(
       llmOutputTokens: 0,
       llmModel: 'none',
       pagespeedCalls: input.pagespeedCalls,
+    pagesReviewed: input.pagesReviewed,
+    openCheckRequests: input.openCheckRequests,
     })
   }
 
@@ -299,6 +307,8 @@ export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
     llmOutputTokens: input.usage.outputTokens,
     llmModel: input.usage.model,
     pagespeedCalls: input.pagespeedCalls,
+    pagesReviewed: input.pagesReviewed,
+    openCheckRequests: input.openCheckRequests,
     llmCacheReadTokens: input.usage.cacheReadTokens,
     llmCacheWriteTokens: input.usage.cacheWriteTokens,
     phase: 'prescription',
@@ -386,6 +396,8 @@ export async function finalizePartialAudit(input: PartialFinalizeInput): Promise
       llmOutputTokens: input.usage.outputTokens,
       llmModel: input.usage.model || 'none',
       pagespeedCalls: input.pagespeedCalls,
+    pagesReviewed: input.pagesReviewed,
+    openCheckRequests: input.openCheckRequests,
     })
   }
 
@@ -464,6 +476,8 @@ export async function finalizeDeterministicOnly(
     llmOutputTokens: 0,
     llmModel: 'none',
     pagespeedCalls: input.pagespeedCalls,
+    pagesReviewed: input.pagesReviewed,
+    openCheckRequests: input.openCheckRequests,
   })
 
   const completeness =

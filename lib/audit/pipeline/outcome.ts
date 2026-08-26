@@ -10,22 +10,25 @@ export type AuditOutcome =
       message: string
     }
 
-/** Primary page triage is required; secondary critical-path pages are deterministic-only. */
+/** Primary page is the pasted URL; reviewed pages may all carry triage. */
 export function primaryPageRun(pageRuns: PageRun[]): PageRun | undefined {
   return pageRuns[0]
 }
 
-export function hasPrimaryTriage(pageRuns: PageRun[]): boolean {
-  return Boolean(primaryPageRun(pageRuns)?.triage)
+export function hasReviewedPageTriage(pageRuns: PageRun[]): boolean {
+  return pageRuns.some((page) => Boolean(page.triage))
 }
 
+/** @deprecated Use hasReviewedPageTriage. */
+export const hasPrimaryTriage = hasReviewedPageTriage
+
 export function primaryTriageFailure(pageRuns: PageRun[]): TriageFailure | undefined {
-  return primaryPageRun(pageRuns)?.triageFailure
+  return pageRuns.find((page) => page.triageFailure)?.triageFailure
 }
 
 /** Resolve how the audit run should finalize from collected page results. */
 export function resolveAuditOutcome(pageRuns: PageRun[]): AuditOutcome {
-  if (hasPrimaryTriage(pageRuns)) {
+  if (hasReviewedPageTriage(pageRuns)) {
     return { kind: 'triage_complete', pageRuns }
   }
 

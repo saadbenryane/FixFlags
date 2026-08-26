@@ -31,7 +31,7 @@ export interface PageRun {
   detectedTech: DetectedTech[]
   /** Inferred industry from hostname + page content. */
   industryGuess: string | null
-  /** When false, skip triage (secondary critical-path pages). */
+  /** When false, skip triage. Every reviewed page should run triage. */
   runTriage?: boolean
 }
 
@@ -49,7 +49,8 @@ export interface PipelineContext {
     cacheWriteTokens?: number
   }
   includeAi: boolean
-  /** Critical-path pages were discovered but skipped to preserve finalization budget. */
+  /** Critical-path or review-depth pages were discovered but skipped to preserve finalization budget. */
   supplementalPagesSkipped?: boolean
   scanAccess?: import('../scan-access').ScanAccessConfig | null
+  openCheckCount?: number
 }

@@ -1,5 +1,5 @@
 import type { RankableFlag } from './flag-types'
-import { baseCheckId, durableCheckId } from './flag-identity'
+import { baseCheckId, durableCheckId, parseAffectedPaths } from './flag-identity'
 import { severityRank } from '@/lib/utils'
 
 export { baseCheckId, durableCheckId } from './flag-identity'
@@ -85,7 +85,10 @@ export function consolidateFlagsByCheck(
     const representative = selectRepresentative(group, options.demonstratedFlagId)
     const occurrencePageUrls = [
       ...new Set(
-        group.map((flag) => flag.pageUrl).filter((url): url is string => Boolean(url))
+        group.flatMap((flag) => [
+          ...parseAffectedPaths((flag as { affectedPaths?: unknown }).affectedPaths),
+          ...(flag.pageUrl ? [flag.pageUrl] : []),
+        ])
       ),
     ]
     return {

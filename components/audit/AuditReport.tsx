@@ -91,6 +91,7 @@ interface AuditReportProps {
     knownRisks?: string[]
     failedModules?: string[]
     technologyProfile?: TechnologyProfile
+    reviewCoverage?: unknown
     fixList?: FixList
   }
   auditId?: string
@@ -207,6 +208,8 @@ export function AuditReport({
     promptAccess: promptProjection.explorer,
     demonstratedFlag,
     fixList: audit.fixList,
+    reviewCoverage: audit.reviewCoverage,
+    reportCompleteness: audit.reportCompleteness,
   })
   const completedAt =
     audit.completedAt instanceof Date

@@ -78,6 +78,7 @@ interface AuditReportProgressiveProps {
   pageType?: string | null
   score?: number | null
   progress?: number
+  progressDetail?: string | null
   rubrics?: Array<{
     name: string
     grade: string | null
@@ -116,6 +117,7 @@ export function AuditReportProgressive({
   pageType = null,
   score = null,
   progress = 0,
+  progressDetail = null,
   rubrics = [],
   partialFlags = [],
   screenshots = [],
@@ -151,12 +153,13 @@ export function AuditReportProgressive({
   // pipeline's "Preparing Funnel review" substep would be a lie. Keep the
   // stage narrative honest when checks finish on a teaser scan.
   const stageDetail =
-    isTeaser &&
+    progressDetail?.trim() ||
+    (isTeaser &&
     status === 'CHECKING' &&
     progress >= PIPELINE_PROGRESS_SUBSTEP.CHECKS_DONE &&
     progress < PIPELINE_PROGRESS_SUBSTEP.JOURNEY_START
       ? 'Checks finished. Starting AI review…'
-      : stage.detail
+      : stage.detail)
 
   const targetProgress = getProgressPercent(progress, status)
   const [displayProgress, setDisplayProgress] = useState(targetProgress)
