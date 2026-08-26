@@ -6,6 +6,18 @@ import { afterEach, beforeEach, vi } from 'vitest'
 // cleanup never registers; do it explicitly.
 afterEach(() => cleanup())
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+    back: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}))
+
 // jsdom does not implement matchMedia. Components that respond to color
 // scheme or reduced-motion queries (score spine, overlays, reveal-on-view)
 // share one deterministic stub so they render in the light, motion-on state.

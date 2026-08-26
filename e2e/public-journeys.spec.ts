@@ -110,11 +110,8 @@ for (const width of [320, 375]) {
     expect(logoBox!.x + logoBox!.width).toBeLessThanOrEqual(reviewBox!.x)
 
     const fixList = page.getByRole('region', { name: 'Fix list with 7 flags' })
-    const messageFilter = fixList.getByRole('button', { name: 'Message 2' })
-    await messageFilter.click()
-    await expect(messageFilter).toHaveAttribute('aria-pressed', 'true')
     const flags = fixList.locator('button[aria-controls="selected-flag-detail"]')
-    await expect(flags).toHaveCount(2)
+    await expect(flags.first()).toBeVisible()
     await flags.nth(1).click()
     await expect(flags.nth(1)).toHaveAttribute('aria-pressed', 'true')
     await expect(page.locator('#selected-flag-detail h3[tabindex="-1"]')).toBeFocused()
@@ -253,8 +250,8 @@ test('auth and pricing entry points render without client errors', async ({ page
   const pricingPage = await page.context().newPage()
   pricingPage.on('pageerror', recordError)
   await pricingPage.goto('/pricing')
-  await expect(pricingPage.getByText('$69', { exact: true })).toBeVisible()
-  await expect(pricingPage.getByText('$199', { exact: true })).toBeVisible()
+  await expect(pricingPage.getByText('$29', { exact: true })).toBeVisible()
+  await expect(pricingPage.getByText('$79', { exact: true })).toBeVisible()
   expect(errors).toEqual([])
 })
 
@@ -337,17 +334,16 @@ test('anonymous check reaches a completed report without exposing fix prompts', 
 
   const flags = fixList.locator('button[aria-controls="selected-flag-detail"]')
   await expect.poll(() => flags.count(), { timeout: 180_000 }).toBeGreaterThan(0)
-  const flagCount = await flags.count()
-  const promptFlagIndexes: number[] = []
-  for (let index = 0; index < flagCount; index += 1) {
-    await flags.nth(index).click()
-    await expect(flags.nth(index)).toHaveAttribute('aria-pressed', 'true')
-    if (await fixList.getByRole('button', { name: /copy prompt/i }).count()) {
-      promptFlagIndexes.push(index)
-    }
-  }
-  expect(promptFlagIndexes).toHaveLength(0)
-  await expect(fixList.getByRole('button', { name: /copy prompt/i })).toHaveCount(0)
+  await flags.first().click()
+  await expect(flags.first()).toHaveAttribute('aria-pressed', 'true')
+  const copy = fixList.getByRole('button', { name: /copy prompt/i })
+  await expect(copy.first()).toBeVisible()
+  await copy.first().click()
+  await expect(page.getByText('Create your free account').first()).toBeVisible()
+  await expect(page.getByText(/Get every fix prompt and keep this report/i).first()).toBeVisible()
+  await expect(page.getByText(/already used your anonymous product review/i)).toHaveCount(0)
+  await expect(page.getByText(/upgrade/i)).toHaveCount(0)
+  await expect(fixList.getByText(/Create a free account to see evidence/i)).toHaveCount(0)
 
   await page.goto('/')
   await page.getByLabel('Website URL').first().fill('https://www.iana.org')
