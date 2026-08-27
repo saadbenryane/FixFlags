@@ -138,6 +138,7 @@ export const AUTH = {
   postLogin: {
     signingIn: 'Signing you in',
     preparing: 'Preparing your account',
+    continueCta: 'Continue to dashboard',
   },
   error: {
     title: 'Could not load this page',

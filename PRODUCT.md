@@ -171,7 +171,7 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 - The default live report route is Agent beside Report. Timeline, Preview, and Canvas stay parked on `/report/[id]` and are not loaded there.
 - Timeline playback remains a shipped capability for entitled viewers off that default route. Curated samples expose only their versioned static Timeline fixtures.
 - Curated samples expose exactly one demonstrated fix prompt and no aggregate Finish Plan prompt.
-- Authentication returns through `/post-login`, verifies the signed anonymous claim, claims the review, and only then restores the same workspace. A claim that attaches zero reviews stays on `/post-login` with retry.
+- Authentication returns through `/post-login`, verifies the signed anonymous claim, claims the review when an anonymous cookie is present, and then continues to passkey enrollment or the destination. A successful claim with zero attachments (plain login, nothing to claim) continues; only a failed claim stays on the recovery screen with retry and continue.
 - Anonymous API responses never expose gated prompts, and access control never persists gate copy into Flag evidence or fix fields.
 - A successful claim saves the report and makes every eligible fix prompt available, including when the claim happens before triage completes.
 - URLs captured on `Audit` and `Lead` for outbound (`/admin/leads`)

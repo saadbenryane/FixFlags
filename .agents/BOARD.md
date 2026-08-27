@@ -4,6 +4,7 @@ _Active tasks. One owner per scope. Archive completed records._
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| post-login-empty-claim | review | composer | main | Plain login stuck on save-report error when claim returns 0; treat empty claim as success + continue escape | post-login-claim-flow, post-login page, AUTH copy, PRODUCT | Claim-flow + marketing tests green (3+87). Agent verify blocked by unrelated lint in ReportExplorerDetail.test.tsx | 2026-08-27 |
 | product-priorities-report-parity | review | composer | main | Reuse report explorer components (ReportFixLoop + FlagDetailPane) for Product Your priorities | ProductPriorities, explorer-model mapper, tests | ProductPriorities + ReportExplorerDetail tests green | 2026-08-27 |
 | product-page-clarity | review | composer | main | Coverage page counts, Made with scroll row, drop launch gates UI, simplify Watch, Product Intelligence | ProductWorkspace, MadeWithProfile, copy, report-contract, DESIGN | Focused product/watch/copy tests green | 2026-08-27 |
 | app-page-gutters | review | composer | main | Restore horizontal page padding on app dashboard/product pages (remove lg:px-0) | dashboard, products pages | Uses shared Container padding (1.25–2rem) | 2026-08-27 |

@@ -33,8 +33,8 @@ describe('runPostLoginClaimFlow', () => {
     expect(navigate).not.toHaveBeenCalled()
   })
 
-  it('stays on post-login when claim returns zero reports', async () => {
-    const navigate = vi.fn()
+  it('navigates when claim returns zero reports', async () => {
+    const navigate = vi.fn().mockResolvedValue(undefined)
     const completed = await runPostLoginClaimFlow({
       claim: async () => ({ claimedCount: 0 }),
       shouldEnroll: async () => false,
@@ -42,7 +42,7 @@ describe('runPostLoginClaimFlow', () => {
       beforeNavigate: vi.fn(),
       navigate,
     })
-    expect(completed).toBe(false)
-    expect(navigate).not.toHaveBeenCalled()
+    expect(completed).toBe(true)
+    expect(navigate).toHaveBeenCalledOnce()
   })
 })

@@ -1,12 +1,5 @@
 export type ClaimFlowResult = { claimedCount?: number } | null | undefined
 
-function claimedCountOf(result: ClaimFlowResult): number | null {
-  if (!result || typeof result !== 'object') return null
-  if (!('claimedCount' in result)) return null
-  const count = result.claimedCount
-  return typeof count === 'number' && Number.isFinite(count) ? count : null
-}
-
 export async function runPostLoginClaimFlow(input: {
   claim: () => Promise<ClaimFlowResult>
   shouldEnroll: () => Promise<boolean>
@@ -15,9 +8,9 @@ export async function runPostLoginClaimFlow(input: {
   navigate: () => Promise<void>
 }): Promise<boolean> {
   const claimed = await input.claim()
+  // null/undefined = HTTP or client failure. claimedCount 0 is success with
+  // nothing to attach (plain login, no anon cookie).
   if (!claimed) return false
-  const claimedCount = claimedCountOf(claimed)
-  if (claimedCount === 0) return false
   if (await input.shouldEnroll()) {
     input.showEnrollment()
     return true

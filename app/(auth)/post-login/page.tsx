@@ -22,18 +22,13 @@ function PostLoginRedirect() {
   const isNewOauthUser = searchParams.get('signup') === '1'
   const trackedRef = useRef(false)
   const [showPasskeyEnroll, setShowPasskeyEnroll] = useState(false)
-  const [claimSettled, setClaimSettled] = useState(false)
   const claimStarted = useRef(false)
 
   useEffect(() => {
     if (claimStarted.current) return
     claimStarted.current = true
     void runPostLoginClaimFlow({
-      claim: async () => {
-        const result = await claimAnonymous({ showToast: true })
-        setClaimSettled(true)
-        return result
-      },
+      claim: () => claimAnonymous({ showToast: true }),
       shouldEnroll: shouldShowPasskeyEnroll,
       showEnrollment: () => setShowPasskeyEnroll(true),
       beforeNavigate: () => {
@@ -73,22 +68,16 @@ function PostLoginRedirect() {
     )
   }
 
-  const claimEmpty = claimSettled && !isLoading && claimedCount === 0 && !error
-  if (error || claimEmpty) {
+  if (error) {
     return (
       <div className="flex max-w-sm flex-col items-center gap-3 text-center" role="alert">
         <p className="font-medium">{AUTH.reportContext.saveError}</p>
-        {error ? <p className="text-sm text-muted-foreground">{error}</p> : null}
+        <p className="text-sm text-muted-foreground">{error}</p>
         <div className="flex flex-wrap justify-center gap-2">
           <Button
             onClick={() => {
-              setClaimSettled(false)
               void runPostLoginClaimFlow({
-                claim: async () => {
-                  const result = await claimAnonymous({ showToast: true })
-                  setClaimSettled(true)
-                  return result
-                },
+                claim: () => claimAnonymous({ showToast: true }),
                 shouldEnroll: shouldShowPasskeyEnroll,
                 showEnrollment: () => setShowPasskeyEnroll(true),
                 beforeNavigate: () => {},
@@ -103,7 +92,15 @@ function PostLoginRedirect() {
             <Button asChild variant="outline" className="min-h-11">
               <Link href={reportHref as Route}>{AUTH.reportContext.backCta}</Link>
             </Button>
-          ) : null}
+          ) : (
+            <Button
+              variant="outline"
+              className="min-h-11"
+              onClick={() => void navigateAfterAuth()}
+            >
+              {AUTH.postLogin.continueCta}
+            </Button>
+          )}
         </div>
       </div>
     )
