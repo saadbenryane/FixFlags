@@ -1,8 +1,22 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
+const routerReplace = vi.hoisted(() => vi.fn())
+const startScanWithHandoff = vi.hoisted(() => vi.fn())
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn(), replace: routerReplace }),
+}))
 vi.mock('@/components/audit/ExportMenu', () => ({ ExportMenu: () => <div>Export control</div> }))
+vi.mock('@/lib/audit/start-scan-handoff', () => ({
+  startScanWithHandoff,
+}))
+vi.mock('@/lib/analytics/events', () => ({
+  trackEvent: vi.fn(),
+}))
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn() },
+}))
 
 import { AuditPageActions } from '@/components/audit/AuditPageActions'
 
@@ -51,5 +65,34 @@ describe('AuditPageActions access projection', () => {
 
     expect(screen.getByRole('button', { name: 'Update review' })).toBeInTheDocument()
     expect(screen.queryByText('Export control')).not.toBeInTheDocument()
+  })
+
+  it('navigates to the in-flight work report after Update review', async () => {
+    startScanWithHandoff.mockImplementation(async (options: {
+      navigate: (href: string) => void
+    }) => {
+      options.navigate('/report/child-1')
+      return { ok: true, reportId: 'child-1' }
+    })
+
+    render(
+      <AuditPageActions
+        {...baseProps}
+        isLoggedIn
+        isOwner
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Update review' }))
+
+    await waitFor(() => {
+      expect(startScanWithHandoff).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpoint: '/api/reports/review-1/re-check',
+          navigate: expect.any(Function),
+        }),
+      )
+      expect(routerReplace).toHaveBeenCalledWith('/report/child-1')
+    })
   })
 })

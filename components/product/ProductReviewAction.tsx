@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import type { Route } from 'next'
 import { RefreshCw, TriangleAlert } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { Button } from '@/components/ui/button'
@@ -75,7 +76,7 @@ export function ProductReviewAction({
       endpoint: `/api/reports/${baselineReviewId}/re-check`,
       body: {},
       errorFallback: REPORT_COPY.recheck.error,
-      navigate: (href) => router.push(href),
+      navigate: (href) => router.push(href as Route),
       onStarted: () => {
         trackEvent('recheck_started', { audit_id: baselineReviewId })
       },

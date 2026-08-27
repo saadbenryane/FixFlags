@@ -2,12 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getProgressiveAuditForRequest = vi.hoisted(() => vi.fn())
 const getGatedAuditForRequest = vi.hoisted(() => vi.fn())
+const resolveActiveAttachedWorkId = vi.hoisted(() => vi.fn())
 const auditFindMany = vi.hoisted(() => vi.fn())
 const auditFindUnique = vi.hoisted(() => vi.fn())
+const redirect = vi.hoisted(() =>
+  vi.fn((href: string) => {
+    throw new Error(`NEXT_REDIRECT:${href}`)
+  }),
+)
 
 vi.mock('@/lib/audit/fetch-audit', () => ({
   getProgressiveAuditForRequest,
   getGatedAuditForRequest,
+  resolveActiveAttachedWorkId,
 }))
 vi.mock('@/lib/db', () => ({
   prisma: {
@@ -24,6 +31,7 @@ vi.mock('next/navigation', () => ({
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND')
   }),
+  redirect,
 }))
 
 import {
@@ -34,6 +42,16 @@ import {
 describe('loadReportRouteState progressive handoff', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resolveActiveAttachedWorkId.mockImplementation(async (id: string) => id)
+  })
+
+  it('redirects a parent bookmark to the in-flight attached Update review', async () => {
+    resolveActiveAttachedWorkId.mockResolvedValueOnce('child-active')
+
+    await expect(
+      loadReportRouteState(Promise.resolve({ id: 'parent-completed' })),
+    ).rejects.toThrow('NEXT_REDIRECT:/report/child-active')
+    expect(getProgressiveAuditForRequest).not.toHaveBeenCalled()
   })
 
   it('returns the lightweight progressive state without loading the completed graph', async () => {
@@ -64,6 +82,31 @@ describe('loadReportRouteState progressive handoff', () => {
       atAuditLimit: false,
     })
     expect(getGatedAuditForRequest).not.toHaveBeenCalled()
+  })
+
+  it('polls the work audit id when progressive data is for attached work', async () => {
+    const audit = {
+      id: 'child-work',
+      url: 'https://example.com/',
+      status: 'CHECKING',
+      progress: 40,
+      screenshots: [],
+      rubrics: [],
+      flags: [],
+    }
+    getProgressiveAuditForRequest.mockResolvedValue({
+      kind: 'progressive',
+      audit,
+      session: null,
+      accessContext: 'owner',
+    })
+
+    const state = await loadReportRouteState(Promise.resolve({ id: 'child-work' }))
+
+    expect(state).toMatchObject({
+      kind: 'progressive',
+      id: 'child-work',
+    })
   })
 
   it('scopes Product history to the current project without an account-wide cap', async () => {

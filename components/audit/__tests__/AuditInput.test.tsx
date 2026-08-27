@@ -130,7 +130,7 @@ describe('AuditInput scan handoff', () => {
           url: 'https://example.com',
           source: 'homepage',
         }),
-        replace: expect.any(Function),
+        navigate: expect.any(Function),
       })
     )
   })

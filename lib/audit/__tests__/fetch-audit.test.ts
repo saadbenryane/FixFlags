@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 
 const mocks = vi.hoisted(() => ({
   findUnique: vi.fn(),
+  findFirst: vi.fn(),
   getSession: vi.fn(),
   cookies: vi.fn(),
   headers: vi.fn(),
@@ -14,7 +15,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('@/lib/db', () => ({
-  prisma: { audit: { findUnique: mocks.findUnique, findFirst: vi.fn().mockResolvedValue(null) } },
+  prisma: { audit: { findUnique: mocks.findUnique, findFirst: mocks.findFirst } },
 }))
 
 vi.mock('@/lib/auth', () => ({
@@ -51,6 +52,7 @@ import {
   stripInternalAuditFields,
   redactCompletedPrivateReportData,
   resolveIsPaidForAudit,
+  resolveActiveAttachedWorkId,
   getProgressiveAuditForRequest,
   getGatedAuditForRequest,
 } from '../fetch-audit'
@@ -69,6 +71,7 @@ function resetMocks(): void {
   mocks.canViewPrescription.mockResolvedValue(true)
   mocks.canViewDeterministic.mockResolvedValue(true)
   mocks.loadTechnologyProfile.mockResolvedValue({})
+  mocks.findFirst.mockResolvedValue(null)
 }
 
 describe('stripInternalAuditFields', () => {
@@ -147,6 +150,40 @@ describe('resolveIsPaidForAudit', () => {
     assert.equal(await resolveIsPaidForAudit({ userId: null, isPublic: true }), false)
   })
 })
+
+describe('resolveActiveAttachedWorkId', () => {
+  beforeEach(() => resetMocks())
+  afterEach(() => vi.restoreAllMocks())
+
+  it('stays on the requested id when there is no attached child', async () => {
+    assert.equal(await resolveActiveAttachedWorkId('parent-1'), 'parent-1')
+    expectFindFirstActiveChild('parent-1')
+  })
+
+  it('follows an in-flight attached Update review', async () => {
+    mocks.findFirst.mockResolvedValueOnce({ id: 'child-active' })
+    assert.equal(await resolveActiveAttachedWorkId('parent-1'), 'child-active')
+  })
+
+  it('does not hop to a completed child', async () => {
+    mocks.findFirst.mockResolvedValueOnce(null)
+    assert.equal(await resolveActiveAttachedWorkId('parent-1'), 'parent-1')
+    expectFindFirstActiveChild('parent-1')
+  })
+})
+
+function expectFindFirstActiveChild(parentId: string) {
+  assert.deepEqual(mocks.findFirst.mock.calls[0]?.[0], {
+    where: {
+      parentId,
+      status: {
+        in: ['QUEUED', 'CAPTURING', 'CHECKING', 'JUDGING', 'FINALIZING'],
+      },
+    },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    select: { id: true },
+  })
+}
 
 describe('getProgressiveAuditForRequest', () => {
   const row = {

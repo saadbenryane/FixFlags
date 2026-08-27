@@ -3,15 +3,24 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ProductReviewSummaryDTO } from '@/lib/products/workspace'
 
 const routerPush = vi.hoisted(() => vi.fn())
+const startScanWithHandoff = vi.hoisted(() => vi.fn())
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: routerPush }),
+}))
+
+vi.mock('@/lib/audit/start-scan-handoff', () => ({
+  startScanWithHandoff,
 }))
 
 vi.mock('@/components/audit/AuditInput', () => ({
   AuditInput: ({ initialUrl }: { initialUrl: string }) => (
     <div aria-label="Product Review input" data-url={initialUrl} />
   ),
+}))
+
+vi.mock('@/lib/analytics/events', () => ({
+  trackEvent: vi.fn(),
 }))
 
 import { ProductReviewAction } from '@/components/product/ProductReviewAction'
@@ -31,7 +40,7 @@ const completedReview: ProductReviewSummaryDTO = {
 
 afterEach(() => {
   routerPush.mockReset()
-  vi.unstubAllGlobals()
+  startScanWithHandoff.mockReset()
 })
 
 describe('ProductReviewAction', () => {
@@ -104,12 +113,13 @@ describe('ProductReviewAction', () => {
     expect(screen.getByLabelText('Product Review input')).toBeInTheDocument()
   })
 
-  it('starts an update review from the latest completed Review and opens the returned Review', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ reportId: 'review-completed', status: 'QUEUED' }),
+  it('starts an update review and opens the in-flight work report', async () => {
+    startScanWithHandoff.mockImplementation(async (options: {
+      navigate: (href: string) => void
+    }) => {
+      options.navigate('/report/review-child')
+      return { ok: true, reportId: 'review-child' }
     })
-    vi.stubGlobal('fetch', fetchMock)
 
     render(
       <ProductReviewAction
@@ -123,37 +133,23 @@ describe('ProductReviewAction', () => {
     fireEvent.click(screen.getByRole('button', { name: /update review/i }))
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/reports/review-completed/re-check',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: '{}',
-        },
+      expect(startScanWithHandoff).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpoint: '/api/reports/review-completed/re-check',
+          body: {},
+          navigate: expect.any(Function),
+        }),
       )
-      expect(routerPush).toHaveBeenCalledWith(
-        '/report/review-completed',
-      )
+      expect(routerPush).toHaveBeenCalledWith('/report/review-child')
     })
-    expect(
-      screen.getByRole('button', { name: 'Starting update review' }),
-    ).toHaveAttribute('aria-busy', 'true')
   })
 
   it('announces an update-review failure without fabricating navigation', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: false,
-        status: 409,
-        headers: new Headers(),
-        json: async () => ({
-          code: 'REVIEW_ACTIVE',
-          message: 'A Product Review is already in progress.',
-          requestId: 'request-1',
-        }),
-      }),
-    )
+    startScanWithHandoff.mockResolvedValue({
+      ok: false,
+      code: 'REVIEW_ACTIVE',
+      message: 'A Product Review is already in progress.',
+    })
 
     render(
       <ProductReviewAction
@@ -166,9 +162,9 @@ describe('ProductReviewAction', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /update review/i }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'A Product Review is already in progress.',
-    )
+    expect(
+      await screen.findByRole('alert'),
+    ).toHaveTextContent('A Product Review is already in progress.')
     expect(routerPush).not.toHaveBeenCalled()
   })
 })

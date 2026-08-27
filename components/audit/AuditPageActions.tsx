@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import type { Route } from 'next'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -68,7 +69,7 @@ export function AuditPageActions({
         endpoint: `/api/reports/${auditId}/re-check`,
         body: {},
         errorFallback: REPORT_COPY.recheck.error,
-        navigate: (href) => router.replace(href),
+        navigate: (href) => router.replace(href as Route),
         onStarted: () => {
           trackEvent('recheck_started', { audit_id: auditId })
         },
