@@ -2,7 +2,6 @@
 
 import { ReportExplorer } from '@/components/report/ReportExplorer'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
-import type { JourneyPage } from '@/components/audit/JourneyBar'
 import type { ReportOwnerActionContext } from '@/components/report/FlagDetailPanel'
 
 interface LiveReportExplorerProps {
@@ -12,7 +11,6 @@ interface LiveReportExplorerProps {
   aiEnhancementPending?: boolean
   signUpHref?: string
   className?: string
-  pages?: JourneyPage[]
   loading?: boolean
   auditId?: string
   demonstratedFlagId?: string
@@ -26,7 +24,6 @@ export function LiveReportExplorer({
   aiEnhancementPending = false,
   signUpHref,
   className,
-  pages,
   loading = false,
   auditId,
   demonstratedFlagId,
@@ -42,7 +39,6 @@ export function LiveReportExplorer({
       aiEnhancementPending={aiEnhancementPending}
       signUpHref={signUpHref}
       className={className}
-      pages={pages}
       loading={loading}
       auditId={auditId}
       demonstratedFlagId={demonstratedFlagId}

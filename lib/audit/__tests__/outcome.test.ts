@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   resolveAuditOutcome,
-  hasPrimaryTriage,
+  hasReviewedPageTriage,
 } from '@/lib/audit/pipeline/outcome'
 import type { PageRun } from '@/lib/audit/pipeline/types'
 import { healthyMeta } from './check-fixtures'
@@ -49,12 +49,12 @@ describe('resolveAuditOutcome', () => {
     }
   })
 
-  it('hasPrimaryTriage is true when any reviewed page has triage', () => {
+  it('hasReviewedPageTriage is true when any reviewed page has triage', () => {
     const runs = [
       stubPageRun({ triage: { output: {} as never, usage: { inputTokens: 0, outputTokens: 0, model: 't' } } }),
       stubPageRun({ pageId: 'p2', triage: undefined }),
     ]
-    expect(hasPrimaryTriage(runs)).toBe(true)
+    expect(hasReviewedPageTriage(runs)).toBe(true)
   })
 
   it('returns triage_complete when a secondary reviewed page has triage', () => {
@@ -66,6 +66,6 @@ describe('resolveAuditOutcome', () => {
       }),
     ]
     expect(resolveAuditOutcome(runs)).toEqual({ kind: 'triage_complete', pageRuns: runs })
-    expect(hasPrimaryTriage(runs)).toBe(true)
+    expect(hasReviewedPageTriage(runs)).toBe(true)
   })
 })

@@ -137,6 +137,33 @@ describe('buildFixList', () => {
     expect(list.totalCount).toBe(2)
   })
 
+  it('counts unique paths on one collapsed Flag, not row count', () => {
+    const list = buildFixList({
+      flags: [
+        {
+          ...flag('privacy', 'POLISH'),
+          checkId: 'no-privacy-policy',
+          pageUrl: 'https://example.com/pricing',
+          affectedPaths: [
+            'https://example.com/',
+            'https://example.com/pricing',
+            'https://example.com/features',
+            'https://example.com/about',
+            'https://example.com/blog',
+            'https://example.com/docs',
+            'https://example.com/contact',
+            'https://example.com/login',
+          ],
+        },
+      ],
+      promptAccess: 'all',
+    })
+
+    expect(list.totalCount).toBe(1)
+    expect(list.items[0]?.occurrenceCount).toBe(8)
+    expect(list.items[0]?.pageUrls).toHaveLength(8)
+  })
+
   it('consolidates repeated per-page checks into one site fix with all occurrences', () => {
     const list = buildFixList({
       flags: [

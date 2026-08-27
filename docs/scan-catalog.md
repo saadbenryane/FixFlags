@@ -58,7 +58,7 @@ Does the page work, feel good, and work on mobile? Layout, speed, accessibility,
 | **Mobile UX quality scan** | deterministic | `mobile-input-zoom`, `mobile-cta-thumb-zone`, `mobile-cta-weak-label`, `mobile-stuck-loading`, `mobile-load-delay-content` |
 | **AI experience review** | AI | CTA above fold, layout, mobile usability, keyboard/contrast, CWV, broken interactions |
 | **Launch gate: console errors** | deterministic | No critical console errors |
-| **Critical path scan** | agent + deterministic | Up to 6 same-origin URLs: primary + pricing + CTA destination + features + trust + resources (default for all plans) |
+| **How far a review goes** | deterministic + AI | Plan depth: fully review this page (Free), pages it links to (Pro), or one level beyond (Studio). Open-check unique eligible public destinations. |
 
 ### Roadmap
 
@@ -105,8 +105,7 @@ Not rubrics themselves — audit modes that run all three.
 
 | Mode | Status | Description |
 |------|--------|-------------|
-| **Single URL audit** | Live | One page, all rubrics |
-| **Critical path audit** | Live (all plans) | Up to 6 conversion-path URLs (`CRITICAL_PATH` mode, default) |
+| **Product Review** | Live | How far a review goes follows the plan: this page, pages it links to, or one level beyond. Open-check unique eligible public destinations. |
 | **Re-check** | Live | Re-runs checks, diffs flags, marks FIXED / REGRESSED |
 | **CI deploy gate** | Roadmap | Block deploy if launch gates fail |
 | **Weekly pulse** | Roadmap | Scheduled re-check, alert on regressions |

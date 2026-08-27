@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildCombinedTriageOutput, averageScores, productScoresFromFlags } from '../pipeline/combine-pages'
+import { buildCombinedTriageOutput, productScoresFromFlags, reviewedPagesHaveFullPageSpeed } from '../pipeline/combine-pages'
 import type { PageRun } from '../pipeline/types'
 import type { TriageOutput } from '../judge-triage-schema'
 import type { TriageResult } from '../judge-triage'
@@ -118,9 +118,9 @@ describe('buildCombinedTriageOutput', () => {
   })
 })
 
-// ── averageScores ───────────────────────────────────────────────
+// ── productScoresFromFlags ───────────────────────────────────────────────
 
-describe('averageScores', () => {
+describe('productScoresFromFlags', () => {
   function pageRunWithFlags(...flags: DeterministicFlag[]): PageRun {
     return {
       flags,
@@ -150,7 +150,7 @@ describe('averageScores', () => {
       { checkId: 'c3', rubric: 'MESSAGE', severity: 'POLISH', problem: 'p3', evidence: 'e', fix: 'f', confidence: 1, source: 'DETERMINISTIC' },
     )
 
-    const scores = averageScores([page1, page2])
+    const scores = productScoresFromFlags([page1, page2])
     const together = productScoresFromFlags([
       pageRunWithFlags(
         { checkId: 'c1', rubric: 'MESSAGE', severity: 'IMPORTANT', problem: 'p1', evidence: 'e', fix: 'f', confidence: 1, source: 'DETERMINISTIC' },
@@ -196,7 +196,7 @@ describe('averageScores', () => {
       usage: { inputTokens: 0, outputTokens: 0, model: 't' },
     }
 
-    const scores = averageScores([page])
+    const scores = productScoresFromFlags([page])
 
     // computeRubricScores returns 100 for MESSAGE (no flags, no failed modules)
     // EXPERIENCE = 75 (penalized baseline, no PS data)
@@ -211,7 +211,7 @@ describe('averageScores', () => {
     // computeRubricScores always returns a deterministic number,
     // so "no fallback" (the all-null case) can't happen with current code.
     // This test verifies the null-handling logic is in place.
-    const scores = averageScores([
+    const scores = productScoresFromFlags([
       pageRunWithFlags(),
       pageRunWithFlags(),
     ])
@@ -224,7 +224,7 @@ describe('averageScores', () => {
   })
 
   it('returns all nulls for empty page list', () => {
-    const scores = averageScores([])
+    const scores = productScoresFromFlags([])
     expect(scores.MESSAGE).toBeNull()
     expect(scores.EXPERIENCE).toBeNull()
     expect(scores.REACH).toBeNull()
@@ -237,9 +237,23 @@ describe('averageScores', () => {
     const page = pageRunWithFlags()
     page.failedModules = ['content']
 
-    const scores = averageScores([page])
+    const scores = productScoresFromFlags([page])
 
     expect(scores.MESSAGE).toBe(75)
+  })
+
+  it('does not treat PageSpeed as product-complete when a reviewed page is missing it', () => {
+    const withSpeed = pageRunWithFlags()
+    withSpeed.desktop = { score: 90, strategy: 'desktop' } as never
+    withSpeed.mobile = { score: 85, strategy: 'mobile' } as never
+    const withoutSpeed = pageRunWithFlags()
+    withoutSpeed.url = 'https://example.com/pricing'
+
+    expect(reviewedPagesHaveFullPageSpeed([withSpeed, withoutSpeed])).toBe(false)
+    expect(reviewedPagesHaveFullPageSpeed([withSpeed])).toBe(true)
+
+    const scores = productScoresFromFlags([withSpeed, withoutSpeed])
+    expect(scores.EXPERIENCE).toBeDefined()
   })
 })
 

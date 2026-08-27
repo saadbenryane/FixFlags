@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it, vi, beforeEach, expect } from 'vitest'
 import type { PipelineContext, PageRun } from '../types'
 
-const { prismaMock, logPipelineEvent, persistTriageResults, tryResolveEvidenceAnchorsForAudit, mergeFlowCtaEvidenceAnchors, tryCaptureVisualEvidenceForAudit, finalizeTriageAudit, finalizeTriageDegraded, persistAuditFailedModules, enqueueAiReview, runTriageStep, accumulateTriageUsage, averageScores, buildCombinedTriageOutput, primaryPageRun, resolveAuditOutcome, parseTriageFailure } =
+const { prismaMock, logPipelineEvent, persistTriageResults, tryResolveEvidenceAnchorsForAudit, mergeFlowCtaEvidenceAnchors, tryCaptureVisualEvidenceForAudit, finalizeTriageAudit, finalizeTriageDegraded, persistAuditFailedModules, enqueueAiReview, runTriageStep, accumulateTriageUsage, productScoresFromFlags, buildCombinedTriageOutput, primaryPageRun, resolveAuditOutcome, parseTriageFailure } =
   vi.hoisted(() => {
     return {
       prismaMock: {
@@ -20,7 +20,7 @@ const { prismaMock, logPipelineEvent, persistTriageResults, tryResolveEvidenceAn
       enqueueAiReview: vi.fn(async () => {}),
       runTriageStep: vi.fn(),
       accumulateTriageUsage: vi.fn(),
-      averageScores: vi.fn(() => ({})),
+      productScoresFromFlags: vi.fn(() => ({})),
       buildCombinedTriageOutput: vi.fn(() => ({ combined: true })),
       primaryPageRun: vi.fn(),
       resolveAuditOutcome: vi.fn(),
@@ -47,8 +47,7 @@ vi.mock('@/lib/audit/enqueue-ai-review', () => ({ enqueueAiReview }))
 vi.mock('@/lib/audit/pipeline/triage-step', () => ({ runTriageStep }))
 vi.mock('@/lib/audit/pipeline/context', () => ({ accumulateTriageUsage }))
 vi.mock('@/lib/audit/pipeline/combine-pages', () => ({
-  averageScores,
-  productScoresFromFlags: averageScores,
+  productScoresFromFlags,
   collapsedPageFlags: vi.fn(() => []),
   buildCombinedTriageOutput,
 }))

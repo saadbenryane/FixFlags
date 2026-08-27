@@ -90,7 +90,7 @@ Optional async: ai-review (prescription: fix prompts, evidence, whyItMatters)
 | **Onboarding** | No coverage. | Simulate post-signup onboarding, detect friction, incomplete steps. |
 | **Contact/support flows** | Trust scan checks for contact info presence. Cannot test if contact actually works. | Find contact page, fill form, assess response time expectation. |
 | **Checkout flow** | Auth-check smoke test detects dead links. Cannot evaluate the purchase experience. | Navigate to checkout, assess pricing clarity, detect hidden costs. |
-| **Multi-page consistency** | Critical path scans 6 pages independently. Cannot detect cross-page narrative breaks. | Walk the full journey, detect when messaging shifts between pages. |
+| **Multi-page consistency** | Independent page reviews cannot detect cross-page narrative breaks by themselves. | Walk the full journey, detect when messaging shifts between pages. |
 | **Interaction accessibility** | Static accessibility checks (tabindex, labels). Cannot detect keyboard traps during real navigation, focus management during route changes, or screen reader experience during state transitions. | Navigate with keyboard, detect focus loss, tab traps, aria-live region gaps. |
 | **Perceived performance** | PageSpeed gives lab data. Cannot measure how a user *feels* about loading. | Observe loading states, detect skeleton screens, measure perceived wait. |
 | **Dead ends after interaction** | Flow scan catches dead CTAs. Cannot detect dead ends after form submission, after login, after modal close. | Complete partial flows, detect where the user gets stuck. |

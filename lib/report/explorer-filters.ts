@@ -1,36 +1,11 @@
-import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
+import { type RubricName } from '@/lib/audit/constants'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
 
 export type RubricFilter = 'ALL' | RubricName
 
-export function pageFilterLabel(url: string, role: string): string {
-  try {
-    const pathname = new URL(url).pathname
-    if (pathname === '/' || pathname === '') return role
-    const segment = pathname.split('/').filter(Boolean)[0] ?? ''
-    return segment || role
-  } catch {
-    return role
-  }
-}
-
-export function countFlagsByRubric(
-  flags: ExplorerFlag[],
-  options: {
-    pageFilter?: string | null
-    severityFilter?: string | null
-    impactFilter?: string | null
-  } = {}
-): Record<RubricName, number> {
+export function countFlagsByRubric(flags: ExplorerFlag[]): Record<RubricName, number> {
   const counts = { MESSAGE: 0, EXPERIENCE: 0, REACH: 0 } as Record<RubricName, number>
-  const pageFilter = options.pageFilter ?? null
-  const severityFilter = options.severityFilter ?? null
-  const impactFilter = options.impactFilter ?? null
-
   for (const flag of flags) {
-    if (pageFilter && !flag.pageUrls.includes(pageFilter)) continue
-    if (severityFilter && flag.severity !== severityFilter) continue
-    if (impactFilter && flag.impactTag !== impactFilter) continue
     if (flag.rubric in counts) {
       counts[flag.rubric as RubricName] += 1
     }
@@ -42,21 +17,11 @@ export function filterExplorerFlags(
   flags: ExplorerFlag[],
   options: {
     rubricFilter?: RubricFilter
-    pageFilter?: string | null
-    severityFilter?: string | null
-    impactFilter?: string | null
   } = {}
 ): ExplorerFlag[] {
   const rubricFilter = options.rubricFilter ?? 'ALL'
-  const pageFilter = options.pageFilter ?? null
-  const severityFilter = options.severityFilter ?? null
-  const impactFilter = options.impactFilter ?? null
-
   return flags.filter((flag) => {
     if (rubricFilter !== 'ALL' && flag.rubric !== rubricFilter) return false
-    if (pageFilter && !flag.pageUrls.includes(pageFilter)) return false
-    if (severityFilter && flag.severity !== severityFilter) return false
-    if (impactFilter && flag.impactTag !== impactFilter) return false
     return true
   })
 }
@@ -80,13 +45,11 @@ export function clampFlagIndex(index: number, flagCount: number): number {
 export function initialExplorerFlagIndex(
   flags: ExplorerFlag[],
   requestedIndex: number,
-  demonstratedFlagId?: string | null
+  demonstratedFlagId?: string
 ): number {
   if (demonstratedFlagId) {
-    const demonstratedIndex = flags.findIndex((flag) => flag.id === demonstratedFlagId)
-    if (demonstratedIndex >= 0) return demonstratedIndex
+    const demonstrated = flags.findIndex((flag) => flag.id === demonstratedFlagId)
+    if (demonstrated >= 0) return demonstrated
   }
   return clampFlagIndex(requestedIndex, flags.length)
 }
-
-export { RUBRIC_ORDER }

@@ -1,6 +1,5 @@
 'use client'
 
-import type { Route } from 'next'
 import Link from 'next/link'
 import { HELP_CENTER, SUPPORT_CHAT, BRAND } from '@/lib/marketing/copy'
 import { Button } from '@/components/ui/button'

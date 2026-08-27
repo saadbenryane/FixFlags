@@ -513,6 +513,14 @@ describe('finalizeDeterministicOnly', () => {
     })
     expect(mocks.auditUpdate.mock.calls[0][0].data.reportCompleteness).toBe('PARTIAL')
   })
+
+  it('marks partial completeness when a reviewed page is missing PageSpeed', async () => {
+    await finalizeDeterministicOnly({
+      ...detInput,
+      evidence: { ...detInput.evidence, mobilePageSpeed: false },
+    })
+    expect(mocks.auditUpdate.mock.calls[0][0].data.reportCompleteness).toBe('PARTIAL')
+  })
 })
 
 describe('persistFailedAuditCost', () => {

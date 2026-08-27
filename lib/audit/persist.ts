@@ -168,7 +168,11 @@ function journeySeverityPenalty(severity: string): number {
   }
 }
 
-/** Persist deterministic flags and partial rubric scores during the pipeline run. */
+/**
+ * Persist deterministic flags and partial rubric scores during the pipeline run.
+ * Wipe-and-rewrite is valid only when `deterministicFlags` is the collapsed
+ * union of every reviewed page so far. Never pass a single page as the Product.
+ */
 export async function persistDeterministicFlags(
   auditId: string,
   deterministicFlags: DeterministicFlag[],

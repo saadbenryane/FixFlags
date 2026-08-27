@@ -30,18 +30,16 @@ export function productScoresFromFlags(
   const mobile = lowestPagespeed(pageRuns.map((page) => page.mobile))
   return computeRubricScores(collapsed, desktop, mobile, {
     pageSpeedAvailable: {
-      desktop: pageRuns.some((page) => Boolean(page.desktop)),
-      mobile: pageRuns.some((page) => Boolean(page.mobile)),
+      desktop: pageRuns.every((page) => Boolean(page.desktop)),
+      mobile: pageRuns.every((page) => Boolean(page.mobile)),
     },
     failedModules,
   })
 }
 
-/** @deprecated Use productScoresFromFlags. Kept for existing test imports. */
-export function averageScores(
-  pageRuns: PageRun[]
-): Partial<Record<RubricName, number | null>> {
-  return productScoresFromFlags(pageRuns)
+/** True when every fully reviewed page has desktop and mobile PageSpeed. */
+export function reviewedPagesHaveFullPageSpeed(pageRuns: PageRun[]): boolean {
+  return pageRuns.length > 0 && pageRuns.every((page) => Boolean(page.desktop) && Boolean(page.mobile))
 }
 
 /**

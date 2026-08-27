@@ -22,7 +22,6 @@ describe('site share metadata', () => {
 
   it('includes canonical, robots, OG, and Twitter for every SEO registry page', () => {
     for (const [key, copy] of Object.entries(SEO)) {
-      const path = key === 'home' ? '/' : `/${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`
       const metadata =
         key === 'home'
           ? buildPageMetadata('home', '/')

@@ -19,9 +19,6 @@ export function hasReviewedPageTriage(pageRuns: PageRun[]): boolean {
   return pageRuns.some((page) => Boolean(page.triage))
 }
 
-/** @deprecated Use hasReviewedPageTriage. */
-export const hasPrimaryTriage = hasReviewedPageTriage
-
 export function primaryTriageFailure(pageRuns: PageRun[]): TriageFailure | undefined {
   return pageRuns.find((page) => page.triageFailure)?.triageFailure
 }

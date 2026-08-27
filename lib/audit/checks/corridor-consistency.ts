@@ -40,8 +40,8 @@ function normalizeText(value: string | null | undefined): string {
 }
 
 /**
- * Cross-page OG consistency across the critical-path corridor.
- * Compares secondary pages against the primary (homepage) share preview.
+ * Cross-page OG consistency across reviewed pages.
+ * Compares secondary pages against the pasted page share preview.
  */
 export function runCorridorConsistencyChecks(pages: CorridorPageMeta[]): DeterministicFlag[] {
   if (pages.length < 2) return []

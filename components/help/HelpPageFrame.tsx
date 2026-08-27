@@ -1,5 +1,4 @@
 import type { Route } from 'next'
-import Link from 'next/link'
 import type { HelpArticle, HelpCategory } from '@/lib/help/types'
 import { helpCategoryPath } from '@/lib/help/types'
 import { KnowledgePageHeader } from '@/components/knowledge/KnowledgePageHeader'

@@ -7,7 +7,7 @@ import type { DetectedTech } from '../tech-detect'
 
 import type { TriageFailure } from './triage-failure'
 
-/** Result of running the pipeline against a single page (primary or critical-path). */
+/** Result of running the pipeline against a single reviewed page. */
 export interface PageRun {
   pageId: string
   url: string
@@ -49,7 +49,7 @@ export interface PipelineContext {
     cacheWriteTokens?: number
   }
   includeAi: boolean
-  /** Critical-path or review-depth pages were discovered but skipped to preserve finalization budget. */
+  /** Reviewed pages were planned but skipped to preserve finalization budget. */
   supplementalPagesSkipped?: boolean
   scanAccess?: import('../scan-access').ScanAccessConfig | null
   openCheckCount?: number

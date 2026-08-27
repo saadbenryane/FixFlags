@@ -28,8 +28,8 @@ Product Signals and integrations add evidence; they do not become Flags or confi
 
 | Mode          | Enum            | Behavior |
 | ------------- | --------------- | -------- |
-| Single URL    | `SINGLE`        | Anonymous teaser. Fully review the pasted page only. Open-check unique eligible public destinations. Reduced pipeline (no slow-3G, no journey templates). |
-| Critical path | `CRITICAL_PATH` | Signed-in default. Stored `reviewDepth` on the Audit decides how far full judgment goes. |
+| Teaser capture | `SINGLE` | Anonymous teaser. Reduced pipeline (no slow-3G, no flow). Fully review the pasted page. Open-check unique eligible public destinations. Stored `reviewDepth` is 1. |
+| Full capture | `CRITICAL_PATH` | Signed-in and claimed reviews. Full pasted-page capture (flow, slow-3G). How far full judgment goes is stored `reviewDepth`, not this enum. Keep the enum value for existing rows and parked MCP. It is not a 6-URL crawler. |
 
 `reviewDepth` is stored at create time from the owner's plan (`lib/billing/plans.ts` `reviewDepthForPlan`). Update reviews and Watch copy that stored value.
 
@@ -41,9 +41,9 @@ Product Signals and integrations add evidence; they do not become Flags or confi
 
 Eligible destination: same-origin `http(s)` HTML navigation. Canonical identity (`lib/audit/url-identity.ts`) collapses hashes, trailing slashes, tracking params, locale/pagination/host variants, and duplicate URLs. Open-check (`lib/audit/open-check.ts`) uses GET/render as authority; HEAD is optional. Dead-destination Flags require evidence. Importance order (`lib/audit/review-depth.ts`) ranks pages before expensive review. Every reviewed page runs the same judgment, including triage. Product score comes from Flags, not page averages. Repeated issues collapse via `affectedPaths[]`.
 
-If allowed depth cannot finish inside the deadline and internal ceilings, the Review is `PARTIAL`. Never silently drop eligible pages and call it complete.
+If allowed depth cannot finish inside the deadline and internal ceilings, the Review is `PARTIAL`. Never silently drop eligible pages and call it complete. Missing PageSpeed on a fully reviewed page is also `PARTIAL` for that evidence.
 
-Default for new signed-in audits: `CRITICAL_PATH` unless the client passes `mode: single` (`app/api/checks/route.ts`, MCP `fixflags_audit`).
+New signed-in audits store full capture (`CRITICAL_PATH` enum) and `reviewDepth` from the plan. Anonymous teasers store `SINGLE` and `reviewDepth` 1. Expansion never uses a 6-URL crawler.
 
 ## Report completeness (`FULL` vs `PARTIAL`)
 

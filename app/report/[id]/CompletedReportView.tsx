@@ -28,16 +28,6 @@ function parseCaptureStatus(audit: unknown): ScreenshotCaptureStatus | undefined
 }
 
 export function CompletedReportView({ state }: { state: CompletedState }) {
-  const journeyPages = (state.audit.pages ?? []).map((page) => ({
-    id: page.id,
-    url: page.url,
-    title: page.title,
-    role: page.role,
-    position: page.position,
-    flagCount: page.flags.length,
-    criticalCount: page.flags.filter((flag) => flag.severity === 'CRITICAL').length,
-    importantCount: page.flags.filter((flag) => flag.severity === 'IMPORTANT').length,
-  }))
   const journeyReviews = (state.audit.journeyReviews ?? []).map((review) => ({
     id: review.id,
     journeyType: review.journeyType,
@@ -166,7 +156,6 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           triageDegraded={state.triageDegraded}
           prescriptionFailed={state.prescriptionFailed}
           failureCode={state.audit.failureCode ?? null}
-          pages={journeyPages}
           journeyReviews={journeyReviews}
           recheckDiff={state.recheckDiff}
           verificationReceipts={state.verificationReceipts}

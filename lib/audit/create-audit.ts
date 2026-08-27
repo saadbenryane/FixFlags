@@ -234,6 +234,8 @@ export async function createAndEnqueueAudit(
     watchNotificationStatus:
       options.recheckTrigger === 'WATCH' ? ('PENDING' as const) : ('NOT_APPLICABLE' as const),
     skipUsageCount: options.skipUsageCount ?? false,
+    // Capture pipeline only: SINGLE is teaser (reduced). CRITICAL_PATH is full
+    // pasted-page capture. How far judgment goes is reviewDepth, not this enum.
     auditMode: isAnonTeaser
       ? ('SINGLE' as const)
       : (options.auditMode ?? ('CRITICAL_PATH' as const)),

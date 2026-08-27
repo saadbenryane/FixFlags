@@ -139,7 +139,7 @@ describe('createAndEnqueueAudit anonymous teaser stage subset', () => {
     expect(queueAddMock).toHaveBeenCalledTimes(1)
   })
 
-  it('forces SINGLE even when an anonymous caller requests critical-path mode', async () => {
+  it('forces SINGLE even when an anonymous caller requests full capture', async () => {
     await createAndEnqueueAudit({
       url: 'https://example.com',
       auditMode: 'CRITICAL_PATH',
@@ -149,7 +149,7 @@ describe('createAndEnqueueAudit anonymous teaser stage subset', () => {
 })
 
 describe('createAndEnqueueAudit full pipeline for signed-in paths', () => {
-  it('keeps the CRITICAL_PATH default for a signed-in new-URL audit', async () => {
+  it('stores full capture and plan reviewDepth for a signed-in new-URL audit', async () => {
     await createAndEnqueueAudit({ url: 'https://example.com', userId: 'user-1' })
 
     const data = createdAuditData()
@@ -163,7 +163,7 @@ describe('createAndEnqueueAudit full pipeline for signed-in paths', () => {
     expect(gates.trackAnonymousAuditId).not.toHaveBeenCalled()
   })
 
-  it('keeps CRITICAL_PATH and FULL monitoring for re-checks (parented audits)', async () => {
+  it('keeps full capture and copies stored reviewDepth for re-checks', async () => {
     prismaMock.audit.findUnique
       .mockResolvedValueOnce({ id: 'parent-1', userId: 'user-1', status: 'COMPLETED', reviewDepth: 2 })
       .mockResolvedValueOnce({ reviewDepth: 2 })

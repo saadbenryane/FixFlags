@@ -254,6 +254,7 @@ function reviewKind(
 }
 
 function reviewSummary(review: ReviewRow): ProductReviewSummaryDTO {
+  const coverage = parseReviewCoverage(review.reviewCoverage)
   return {
     id: review.id,
     kind: reviewKind(review),
@@ -263,9 +264,9 @@ function reviewSummary(review: ReviewRow): ProductReviewSummaryDTO {
     unresolvedCount: review.flags.filter(
       (flag) => flag.status === 'OPEN' || flag.status === 'REGRESSED'
     ).length,
-    coverageLabel: REPORT_COPY.explorer.productCoverage(
-      parseReviewCoverage(review.reviewCoverage)?.linkedPageCount ?? 0
-    ),
+    coverageLabel: coverage
+      ? REPORT_COPY.explorer.productCoverage(coverage.linkedPageCount)
+      : null,
     createdAt: review.createdAt.toISOString(),
     completedAt: review.completedAt?.toISOString() ?? null,
     failureMessage: review.errorMsg,

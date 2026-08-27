@@ -10,6 +10,12 @@ import { isNonRetryableAuditError } from './pipeline-errors'
 import { JudgeContractError } from './validate-judge-output'
 import { initPipelineLog, logPipelineEvent } from './pipeline-log'
 import { persistFailedAuditCost, persistImprovementCycle } from './finalize'
+import { persistDeterministicFlags } from './persist'
+import {
+  collapsedPageFlags,
+  productScoresFromFlags,
+  reviewedPagesHaveFullPageSpeed,
+} from './pipeline/combine-pages'
 import { runPage } from './pipeline/run-page'
 import {
   sanitizeAuditErrorMessage,
@@ -41,6 +47,15 @@ import {
 } from './open-check'
 import { canonicalizeDestination } from './url-identity'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+
+async function persistReviewedFlagsSoFar(auditId: string, pageRuns: PageRun[]): Promise<void> {
+  if (pageRuns.length === 0) return
+  await persistDeterministicFlags(
+    auditId,
+    collapsedPageFlags(pageRuns),
+    productScoresFromFlags(pageRuns)
+  )
+}
 
 export async function runAudit(auditId: string): Promise<void> {
   return runWithContext({ auditId }, async () => {
@@ -110,6 +125,7 @@ export async function runAudit(auditId: string): Promise<void> {
         primary: true,
       })
       pageRuns.push(primary)
+      await persistReviewedFlagsSoFar(auditId, pageRuns)
 
       const hop1Plan = planReviewTargets({
         pastedUrl: audit.url,
@@ -129,7 +145,10 @@ export async function runAudit(auditId: string): Promise<void> {
       if (openCheckTruncated) ctx.supplementalPagesSkipped = true
 
       const deadFlags = deadDestinationFlags(results, primary.url)
-      if (deadFlags.length > 0) primary.flags.push(...deadFlags)
+      if (deadFlags.length > 0) {
+        primary.flags.push(...deadFlags)
+        await persistReviewedFlagsSoFar(auditId, pageRuns)
+      }
 
       const reviewedKeys = new Set(
         pageRuns
@@ -173,6 +192,7 @@ export async function runAudit(auditId: string): Promise<void> {
         pageRuns.push(pageRun)
         const key = canonicalizeDestination(pageRun.url)?.key
         if (key) reviewedKeys.add(key)
+        await persistReviewedFlagsSoFar(auditId, pageRuns)
       }
 
       if (reviewDepth >= 3) {
@@ -198,7 +218,10 @@ export async function runAudit(auditId: string): Promise<void> {
           ctx.openCheckCount = openCheckResults.length
           if (extra.truncated) ctx.supplementalPagesSkipped = true
           const extraDead = deadDestinationFlags(extra.results, primary.url)
-          if (extraDead.length > 0) primary.flags.push(...extraDead)
+          if (extraDead.length > 0) {
+            primary.flags.push(...extraDead)
+            await persistReviewedFlagsSoFar(auditId, pageRuns)
+          }
         }
         for (const url of hop2Plan.reviewUrls) {
           const key = canonicalizeDestination(url)?.key
@@ -228,6 +251,7 @@ export async function runAudit(auditId: string): Promise<void> {
           })
           pageRuns.push(pageRun)
           if (key) reviewedKeys.add(key)
+          await persistReviewedFlagsSoFar(auditId, pageRuns)
         }
       }
 
@@ -258,6 +282,7 @@ export async function runAudit(auditId: string): Promise<void> {
         )
         if (corridorFlags.length > 0) {
           pageRuns[0].flags.push(...corridorFlags)
+          await persistReviewedFlagsSoFar(auditId, pageRuns)
         }
       }
 
@@ -278,6 +303,7 @@ export async function runAudit(auditId: string): Promise<void> {
             pageRun.flags.push(...gscFlags)
           }
         }
+        await persistReviewedFlagsSoFar(auditId, pageRuns)
       }
 
       const retriedPageRuns = await retryPrimaryTriage(ctx, pageRuns)
@@ -288,7 +314,7 @@ export async function runAudit(auditId: string): Promise<void> {
         pageRuns: retriedPageRuns,
         startedAt,
       })
-      if (ctx.supplementalPagesSkipped) {
+      if (ctx.supplementalPagesSkipped || !reviewedPagesHaveFullPageSpeed(retriedPageRuns)) {
         await prisma.audit.updateMany({
           where: { id: auditId, status: 'COMPLETED' },
           data: { reportCompleteness: 'PARTIAL' },

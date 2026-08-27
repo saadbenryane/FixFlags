@@ -97,6 +97,7 @@ describe('open-check', () => {
       { origin: 'https://example.com/', fetchImpl }
     )
     expect(results).toHaveLength(1)
+    expect(gets).toBeGreaterThan(0)
   })
 
   it('emits a dead-destination Flag only when evidence is enough', () => {

@@ -242,6 +242,7 @@ describe('loadProductOverview', () => {
           kind: 'PRODUCT_REVIEW',
           score: 70,
           unresolvedCount: 1,
+          coverageLabel: null,
         }),
       }),
     ])
@@ -328,6 +329,31 @@ describe('loadProductOverview', () => {
       id: 'review-running',
       status: 'CHECKING',
     })
+  })
+
+  it('labels Product coverage only when reviewCoverage is stored', async () => {
+    mocks.projectFindMany.mockResolvedValue([
+      {
+        ...product({ id: 'product-covered', userId: 'user-1', url: 'https://covered.example' }),
+        audits: [
+          review({
+            id: 'review-covered',
+            reviewCoverage: {
+              reviewedPageCount: 7,
+              linkedPageCount: 6,
+              openCheckCount: 12,
+              partial: false,
+            },
+          }),
+        ],
+        improvements: [],
+      },
+    ])
+
+    const products = await loadProductOverview('user-1')
+    expect(products[0]?.latestManualReview?.coverageLabel).toBe(
+      'This page and 6 linked pages',
+    )
   })
 })
 

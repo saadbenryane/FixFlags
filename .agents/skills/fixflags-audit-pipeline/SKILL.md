@@ -107,7 +107,7 @@ npm run smoke:triage:prod      # post-deploy, requires prod keys
 - **Form silent failure:** `form-submit-silent-failure` when probe/submit gets 2xx but no success UI (or UI success with failed upstream).
 - **Report wiring:** the server assembler passes focused summary/Finish Plan/access data separately from detailed Contract/timeline/explorer data. Preserve flag `source` for evidence truth.
 - **Finish Plan:** always rank through `buildUnifiedFinishPlan` (live flags + Studio repo findings). Do not rebuild ad hoc in MCP, export, or report UI.
-- **Scan access:** thread `scanAccess` through Playwright (`createAuditPage`), fetch helpers (`scanAccessToFetchHeaders`), journey, flow, critical-path discovery, and visual capture side-by-side pages.
+- **Scan access:** thread `scanAccess` through Playwright (`createAuditPage`), fetch helpers (`scanAccessToFetchHeaders`), journey, flow, open-check, review-depth expansion, and visual capture side-by-side pages.
 
 ## Competitive boundary
 

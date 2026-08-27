@@ -323,7 +323,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'The webhook enqueues a non-blocking critical-path check and returns reportId and reportUrl. For manual checks, run fixflags check with --wait from a Railway release command or shell script.',
+        text: 'The webhook enqueues a Product Review and returns reportId and reportUrl. For manual checks, run fixflags check with --wait from a Railway release command or shell script.',
       },
     ],
     related: ['public-urls-only', 'mcp-setup', 'first-check'],

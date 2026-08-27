@@ -5,7 +5,6 @@ import {
   countFlagsByRubric,
   filterExplorerFlags,
   initialExplorerFlagIndex,
-  pageFilterLabel,
   resolveRubricFilter,
 } from '@/lib/report/explorer-filters'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
@@ -43,54 +42,21 @@ const FLAGS: ExplorerFlag[] = [
 ]
 
 describe('explorer-filters', () => {
-  it('pageFilterLabel prefers path segment then role', () => {
-    assert.equal(pageFilterLabel('https://ex.com/', 'Homepage'), 'Homepage')
-    assert.equal(pageFilterLabel('https://ex.com/pricing', 'Pricing'), 'pricing')
-    assert.equal(pageFilterLabel('not-a-url', 'Fallback'), 'Fallback')
-  })
-
-  it('countFlagsByRubric respects page filters', () => {
+  it('countFlagsByRubric totals by rubric', () => {
     assert.deepEqual(countFlagsByRubric(FLAGS), {
       MESSAGE: 2,
       EXPERIENCE: 1,
       REACH: 1,
     })
-    assert.deepEqual(countFlagsByRubric(FLAGS, { pageFilter: 'https://ex.com/pricing' }), {
-      MESSAGE: 1,
-      EXPERIENCE: 0,
-      REACH: 1,
-    })
   })
 
-  it('filterExplorerFlags combines rubric, page, severity, and impact', () => {
+  it('filterExplorerFlags keeps the requested rubric', () => {
     const filtered = filterExplorerFlags(FLAGS, {
       rubricFilter: 'MESSAGE',
-      pageFilter: 'https://ex.com/pricing',
-      severityFilter: 'IMPORTANT',
-      impactFilter: 'TRUST',
     })
     assert.deepEqual(
       filtered.map((f) => f.id),
-      ['2']
-    )
-  })
-
-  it('keeps one consolidated fix discoverable from every affected page', () => {
-    const shared = flag({
-      id: 'shared',
-      rubric: 'EXPERIENCE',
-      severity: 'IMPORTANT',
-      pageUrls: ['https://ex.com/', 'https://ex.com/pricing'],
-      occurrenceCount: 2,
-    })
-
-    assert.equal(
-      filterExplorerFlags([shared], { pageFilter: 'https://ex.com/' }).length,
-      1
-    )
-    assert.equal(
-      filterExplorerFlags([shared], { pageFilter: 'https://ex.com/pricing' }).length,
-      1
+      ['1', '2']
     )
   })
 

@@ -152,6 +152,7 @@ export type RankableFlag = Pick<FlagData, 'id' | 'rubric' | 'severity' | 'proble
     fixConfidence?: FixConfidence | null
     status?: string | null
     evidenceTargets?: unknown
+    affectedPaths?: unknown
   }
 
 /**

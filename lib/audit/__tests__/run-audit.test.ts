@@ -57,6 +57,7 @@ vi.mock('@/lib/audit/finalize', () => ({
   persistImprovementCycle: vi.fn(),
 }))
 vi.mock('@/lib/audit/pipeline/run-page', () => ({ runPage: vi.fn() }))
+vi.mock('@/lib/audit/persist', () => ({ persistDeterministicFlags: vi.fn() }))
 vi.mock('@/lib/audit/pipeline/finalize-from-outcome', () => ({
   finalizeFromOutcome: vi.fn(),
   retryPrimaryTriage: vi.fn(async (ctx: unknown, runs: unknown[]) => runs),
@@ -69,6 +70,7 @@ vi.mock('@/lib/audit/pipeline/failure', () => ({
   deriveAuditFailure: vi.fn(() => ({ failureCode: 'AUDIT_PIPELINE_FAILED', failureStage: 'capturing' })),
 }))
 
+import { persistDeterministicFlags } from '@/lib/audit/persist'
 import { runAudit } from '@/lib/audit/runner'
 import { runPage } from '@/lib/audit/pipeline/run-page'
 import { finalizeFromOutcome } from '@/lib/audit/pipeline/finalize-from-outcome'
@@ -230,5 +232,7 @@ describe('runAudit orchestrator', () => {
     expect(urls[0]).toBe('https://example.com')
     expect(urls).toContain('https://example.com/pricing')
     expect(urls.length).toBeGreaterThan(1)
+    expect(persistDeterministicFlags).toHaveBeenCalled()
+    expect((persistDeterministicFlags as Mock).mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 })

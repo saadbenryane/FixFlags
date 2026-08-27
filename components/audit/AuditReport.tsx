@@ -37,7 +37,6 @@ import type { FlowData } from '@/lib/audit/flow-data'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
-import type { JourneyPage } from '@/components/audit/JourneyBar'
 import type { JourneyReviewSummary } from '@/components/audit/JourneyReviewTimeline'
 import { ReportAuthGateTracker } from '@/components/analytics/ReportAuthGateTracker'
 import type { TechnologyProfile } from '@/lib/audit/technology-profile'
@@ -117,7 +116,6 @@ interface AuditReportProps {
   failureCode?: string | null
   actions?: ReactNode
   toolbarActions?: ReactNode
-  pages?: JourneyPage[]
   journeyReviews?: JourneyReviewSummary[]
   recheckDiff?: RecheckDiffSummary | null
   verificationReceipts?: ProductAttemptDTO[]
@@ -152,7 +150,6 @@ export function AuditReport({
   failureCode = null,
   actions,
   toolbarActions,
-  pages = [],
   journeyReviews: _journeyReviews = [],
   recheckDiff = null,
   verificationReceipts = [],
@@ -261,7 +258,6 @@ export function AuditReport({
         aiLocked={fixPromptLocked}
         aiEnhancementPending={isLoggedIn && aiReviewPending}
         signUpHref={signUpHref}
-        pages={pages}
         auditId={auditId}
         demonstratedFlagId={demonstratedFlag?.id}
         ownerActionContext={

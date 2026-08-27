@@ -8,8 +8,8 @@ import { prisma } from '@/lib/db'
  * the primary page only. Slow-3G replay and the browser flow walk are skipped
  * because together they add 30-60s of waiting that makes anonymous users
  * abandon. Signed-in users (new checks, re-checks, claimed audits) always get
- * the FULL pipeline, including slow replay, the flow walk, critical-path
- * discovery, and journey reviews.
+ * the FULL pasted-page capture, including slow replay and the flow walk.
+ * How far full judgment goes is `reviewDepth`, not a 6-URL crawler.
  */
 export type AuditPipelineMode = 'FULL' | 'TEASER'
 

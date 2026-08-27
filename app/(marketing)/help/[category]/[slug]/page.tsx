@@ -11,7 +11,7 @@ import { HelpChatEscalate } from '@/components/help/HelpChatEscalate'
 import { HelpKnowledgeSearch } from '@/components/help/HelpKnowledgeSearch'
 import { HelpPageFrame } from '@/components/help/HelpPageFrame'
 import { HelpRelatedDocs } from '@/components/help/HelpRelatedDocs'
-import { buildHelpArticleMetadata, buildHelpCategoryMetadata } from '@/lib/help/metadata'
+import { buildHelpArticleMetadata } from '@/lib/help/metadata'
 import { HELP_ARTICLES } from '@/lib/help/catalog'
 import {
   getHelpArticle,

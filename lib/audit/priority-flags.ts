@@ -119,7 +119,7 @@ function corridorBoost(flag: RankableFlag): number {
   if (checkId.startsWith('flow-') || checkId.startsWith('journey-') || checkId.startsWith('scroll-')) {
     return 0
   }
-  // Secondary critical-path pages get ::page:N suffixes
+  // Secondary reviewed pages used to get ::page:N suffixes
   if (checkId.includes('::page:')) return 1
   return 2
 }

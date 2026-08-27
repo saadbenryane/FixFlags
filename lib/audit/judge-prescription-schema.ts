@@ -57,7 +57,7 @@ export const prescriptionOutputSchema = z.object({
     .array(flagPrescriptionSchema)
     .describe(
       'One prescription per UNIQUE flagKey in the provided flags - if the same checkId ' +
-        'appears on more than one page (e.g. a multi-page critical-path scan), it is one ' +
+        'appears on more than one page (a Product Review that fully reviewed linked pages), it is one ' +
         'issue with one flagKey and needs exactly one prescription, not one per occurrence'
     ),
   rubricPrescriptions: z

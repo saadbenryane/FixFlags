@@ -28,7 +28,7 @@ Headers `x-fixflags-api-key`, `x-fixflags-check-url`, and `x-fixflags-webhook-se
 ## Behavior
 
 - Ignores build, failure, and crash events.
-- Enqueues a non-blocking `CRITICAL_PATH` check.
+- Enqueues a non-blocking Product Review.
 - Returns `{ reportId, reportUrl, status }` on success.
 
 ## Alternative: release command

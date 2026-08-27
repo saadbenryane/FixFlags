@@ -95,7 +95,8 @@ export function consolidateFlagsByCheck(
       ...representative,
       checkId: baseCheckId(representative.checkId),
       evidence: consolidateEvidence(group, occurrencePageUrls),
-      occurrenceCount: group.length,
+      occurrenceCount:
+        occurrencePageUrls.length > 0 ? occurrencePageUrls.length : group.length,
       occurrencePageUrls,
     }
   })

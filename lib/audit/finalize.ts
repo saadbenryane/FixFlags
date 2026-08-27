@@ -40,6 +40,20 @@ type FinalizeBaseInput = {
   }
 }
 
+function completenessFromEvidence(evidence: {
+  desktopScreenshot: boolean
+  metadata: boolean
+  desktopPageSpeed: boolean
+  mobilePageSpeed: boolean
+}): 'FULL' | 'PARTIAL' {
+  return evidence.desktopScreenshot &&
+    evidence.metadata &&
+    evidence.desktopPageSpeed &&
+    evidence.mobilePageSpeed
+    ? 'FULL'
+    : 'PARTIAL'
+}
+
 export async function persistImprovementCycle(
   auditId: string,
   parentId: string | null
@@ -141,8 +155,7 @@ export async function finalizeTriageAudit(input: FinalizeBaseInput): Promise<voi
     throw new Error('Required audit evidence is incomplete')
   }
 
-  const completeness =
-    input.evidence.desktopScreenshot && input.evidence.metadata ? 'FULL' : 'PARTIAL'
+  const completeness = completenessFromEvidence(input.evidence)
 
   await logPipelineEvent(input.auditId, { stage: 'finalizing', event: 'triage_completed' })
 
@@ -324,10 +337,7 @@ export async function finalizeAudit(input: FinalizeBaseInput): Promise<void> {
     throw new Error('Required audit evidence is incomplete')
   }
 
-  const completeness =
-    input.evidence.desktopScreenshot && input.evidence.metadata
-      ? 'FULL'
-      : 'PARTIAL'
+  const completeness = completenessFromEvidence(input.evidence)
 
   await logPipelineEvent(input.auditId, { stage: 'finalizing', event: 'completed' })
 
@@ -486,10 +496,7 @@ export async function finalizeDeterministicOnly(
     openCheckRequests: input.openCheckRequests,
   })
 
-  const completeness =
-    input.evidence.desktopScreenshot && input.evidence.metadata
-      ? 'FULL'
-      : 'PARTIAL'
+  const completeness = completenessFromEvidence(input.evidence)
 
   await logPipelineEvent(input.auditId, { stage: 'finalizing', event: 'deterministic_completed' })
 

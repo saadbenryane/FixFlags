@@ -14,7 +14,7 @@ import {
   fetchPageSpeedData,
   toStoredPageSpeedResult,
 } from '../pagespeed'
-import { runAllChecks, computeRubricScores, suppressOverlappingFlags } from '../checks'
+import { runAllChecks, suppressOverlappingFlags } from '../checks'
 import { suppressFlagsForPageRole } from '../suppression'
 import { runFlowChecks } from '../checks/flow'
 import { runSlowReplayChecks } from '../checks/slow-replay'
@@ -23,7 +23,6 @@ import type { FlowScanResult } from '../flow/run-flow-scan'
 import { runFlowScan } from '../flow/run-flow-scan'
 import { runSlowReplay, type SlowReplayResult } from '../flow/slow-replay-probe'
 import { serializeFlowData } from '../flow/flow-url'
-import { persistDeterministicFlags } from '../persist'
 import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '../progress'
 import { logPipelineEvent } from '../pipeline-log'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
@@ -620,22 +619,6 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   )
   flags.splice(0, flags.length, ...flagsWithTargets)
 
-  const partialRubricScores = computeRubricScores(
-    flags,
-    pagespeed?.desktop ?? null,
-    pagespeed?.mobile ?? null,
-    {
-      pageSpeedAvailable: {
-        desktop: Boolean(pagespeed?.desktop),
-        mobile: Boolean(pagespeed?.mobile),
-      },
-      failedModules,
-    }
-  )
-  if (input.primary) {
-    await persistDeterministicFlags(ctx.auditId, flags, partialRubricScores)
-  }
-
   const completeness =
     (screenshots?.mobileUrl || mobileBase64) &&
     pagespeed?.desktop &&
@@ -657,11 +640,10 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   // page's screenshot has been captured we must never throw the whole report
   // away: a triage failure degrades to deterministic results and returns with
   // no triage, so the runner can finalize instead of marking the audit FAILED.
-  const shouldRunTriage = true
   let triage: TriageResult | undefined
   let triageFailure: ReturnType<typeof parseTriageFailure> | undefined
 
-  if (shouldRunTriage && !isTriageProviderConfigured()) {
+  if (!isTriageProviderConfigured()) {
     // No LLM key: don't transition to JUDGING or attempt a call that can only
     // fail. Matches lib/env.ts intent for keyless deploys.
     triageFailure = {
@@ -673,7 +655,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       stage: 'judging',
       event: 'triage_skipped_no_provider',
     })
-  } else if (shouldRunTriage) {
+  } else {
     await prisma.auditPage.update({
       where: { id: page.id },
       data: { status: 'JUDGING' },
@@ -753,7 +735,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     failedModules,
     triage,
     triageFailure,
-    runTriage: shouldRunTriage,
+    runTriage: true,
     detectedTech,
     industryGuess,
   }
