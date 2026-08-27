@@ -20,6 +20,7 @@ import { ProductAttentionImpression } from '@/components/product/ProductAttentio
 import { ProductPriorities } from '@/components/product/ProductPriorities'
 import { ProductIntelligenceTrack } from '@/components/product/ProductIntelligenceTrack'
 import { ScoreRing } from '@/components/report/ScoreRing'
+import { RubricScoreBar } from '@/components/report/RubricScoreBar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Surface } from '@/components/ui/surface'
@@ -29,6 +30,7 @@ import type { ProductWorkspaceDTO } from '@/lib/products/workspace'
 import { serializeProductHistoryCursor } from '@/lib/products/workspace'
 import { presentProductReview } from '@/lib/products/review-state'
 import { REPORT_COPY } from '@/lib/marketing/copy'
+import { rubricLabel } from '@/lib/utils'
 import { displayHostname } from '@/lib/utils/url-helpers'
 
 function dateLabel(value: string | null): string {
@@ -74,6 +76,9 @@ export function ProductWorkspace({
     understanding.decisions.length > 0 ||
     progressEvents.length > 0
   const showIntelligence = Boolean(understanding.productContract) || hasMemory
+  const showRubricSummary =
+    Boolean(latestCompletedManualReview) &&
+    workspace.rubrics.some((rubric) => rubric.score != null)
 
   return (
     <main className="space-y-6">
@@ -177,6 +182,21 @@ export function ProductWorkspace({
               />
             </div>
           </div>
+          {showRubricSummary ? (
+            <div
+              className="grid gap-2 sm:grid-cols-3"
+              aria-label="Message, Experience, and Reach scores"
+            >
+              {workspace.rubrics.map((rubric) => (
+                <RubricScoreBar
+                  key={rubric.name}
+                  name={rubricLabel(rubric.name)}
+                  score={rubric.score}
+                  compact
+                />
+              ))}
+            </div>
+          ) : null}
           <ProductReviewTrend
             reviews={workspace.reviewHistory}
             embedded
@@ -565,6 +585,7 @@ function AttentionSection({ workspace }: { workspace: ProductWorkspaceDTO }) {
       <ProductPriorities
         items={workspace.attention}
         attentionEvidence={workspace.attentionEvidence}
+        productUrl={workspace.product.url}
       />
     </section>
   )

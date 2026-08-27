@@ -15,13 +15,16 @@ import { SHARE_COPY } from '@/lib/marketing/copy'
 export function ProductPriorities({
   items,
   attentionEvidence = {},
+  productUrl = null,
 }: {
   items: ProductAttentionItemDTO[]
   attentionEvidence?: Record<string, ProductAttentionEvidenceDTO>
+  /** Canonical Product URL for the Copy All aggregate bundle. */
+  productUrl?: string | null
 }) {
   const model = useMemo(
-    () => buildAttentionExplorerModel(items, attentionEvidence),
-    [items, attentionEvidence]
+    () => buildAttentionExplorerModel(items, attentionEvidence, { url: productUrl }),
+    [attentionEvidence, items, productUrl]
   )
 
   const itemByFlagId = useMemo(() => {

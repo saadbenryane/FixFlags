@@ -161,6 +161,11 @@ const workspace: ProductWorkspaceDTO = {
       failureMessage: null,
     },
   ],
+  rubrics: [
+    { name: 'MESSAGE', score: 72, grade: 'C' },
+    { name: 'EXPERIENCE', score: 81, grade: 'B' },
+    { name: 'REACH', score: 64, grade: 'D' },
+  ],
   history: {
     events: [
       {
@@ -214,6 +219,38 @@ describe('ProductWorkspace', () => {
     ).toHaveAttribute('href', '/report/watch-review?view=report')
     expect(screen.queryByText(/open any point/i)).not.toBeInTheDocument()
     expect(screen.queryByText('Product review')).not.toBeInTheDocument()
+  })
+
+  it('shows Message, Experience, and Reach under the current score', () => {
+    render(<ProductWorkspace workspace={workspace} />)
+
+    const summary = screen.getByLabelText('Message, Experience, and Reach scores')
+    expect(summary).toBeInTheDocument()
+    expect(summary).toHaveTextContent('Message')
+    expect(summary).toHaveTextContent('Experience')
+    expect(summary).toHaveTextContent('Reach')
+    expect(summary).toHaveTextContent('72')
+    expect(summary).toHaveTextContent('81')
+    expect(summary).toHaveTextContent('64')
+  })
+
+  it('hides rubric summary when the latest completed Review has no scores yet', () => {
+    render(
+      <ProductWorkspace
+        workspace={{
+          ...workspace,
+          rubrics: [
+            { name: 'MESSAGE', score: null, grade: null },
+            { name: 'EXPERIENCE', score: null, grade: null },
+            { name: 'REACH', score: null, grade: null },
+          ],
+        }}
+      />
+    )
+
+    expect(
+      screen.queryByLabelText('Message, Experience, and Reach scores')
+    ).not.toBeInTheDocument()
   })
 
   it('shows the Product purpose without the Help visitors wrapper', () => {

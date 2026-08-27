@@ -109,11 +109,38 @@ describe('ProductPriorities', () => {
       <ProductPriorities
         items={items.slice(0, 1)}
         attentionEvidence={attentionEvidence}
+        productUrl="https://example.com"
       />
     )
     expect(screen.getByRole('list', { name: 'Report Flags' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Fix Prompt' })).toBeInTheDocument()
     expect(screen.getByText('What this means')).toBeInTheDocument()
     expect(container.querySelector('.rounded-card.bg-card.shadow-card')).toBeNull()
+  })
+
+  it('copies every open priority from the Copy All Prompts chevron', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+    render(
+      <ProductPriorities
+        items={items.slice(0, 2)}
+        attentionEvidence={attentionEvidence}
+        productUrl="https://example.com"
+      />
+    )
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: /^Copy All Prompts$/i }), {
+      button: 0,
+      ctrlKey: false,
+    })
+    fireEvent.click(await screen.findByRole('menuitem', { name: /^Copy All Prompts$/i }))
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalled()
+    })
+    const copied = writeText.mock.calls[0]?.[0] as string
+    expect(copied).toMatch(/1\. /)
+    expect(copied).toMatch(/2\. /)
+    expect(copied).toContain('Priority issue 1')
+    expect(copied).toContain('Priority issue 2')
   })
 })

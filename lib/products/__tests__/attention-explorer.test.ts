@@ -99,4 +99,50 @@ describe('attention-explorer', () => {
     expect(model.mobileScreenshot).toBeNull()
     expect(model.capturesByFlagId).toEqual({})
   })
+
+  it('builds polishPassPrompt from open priority prompts for Copy All', () => {
+    const model = buildAttentionExplorerModel(
+      [
+        attentionItem({
+          id: 'i1',
+          title: 'Slow load on 3G',
+          sourceFlagId: 'flag-a',
+          prompt: 'Reduce the JS bundle for 3G.',
+        }),
+        attentionItem({
+          id: 'i2',
+          title: 'Missing OG image',
+          sourceFlagId: 'flag-b',
+          checkId: 'og-image-missing',
+          severity: 'IMPORTANT',
+          prompt: 'Add an Open Graph image.',
+        }),
+      ],
+      {},
+      { url: 'https://example.com' }
+    )
+
+    expect(model.polishPassPrompt).toBeTruthy()
+    expect(model.polishPassPrompt).toMatch(/Slow load on 3G/)
+    expect(model.polishPassPrompt).toMatch(/Missing OG image/)
+    expect(model.polishPassPrompt).toMatch(/1\. /)
+    expect(model.polishPassPrompt).toMatch(/2\. /)
+    expect(model.polishPassPrompt).toContain('https://example.com')
+  })
+
+  it('keeps polishPassPrompt null when no priority has a usable prompt', () => {
+    const model = buildAttentionExplorerModel(
+      [
+        attentionItem({ prompt: null }),
+        attentionItem({
+          id: 'i2',
+          sourceFlagId: 'flag-b',
+          prompt: '   ',
+        }),
+      ],
+      {},
+      { url: 'https://example.com' }
+    )
+    expect(model.polishPassPrompt).toBeNull()
+  })
 })

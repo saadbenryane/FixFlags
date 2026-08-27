@@ -21,4 +21,13 @@ describe('ScoreRing', () => {
     expect(screen.getByText('72')).toBeInTheDocument()
     expect(container.querySelector('style')).toBeNull()
   })
+
+  it('renders a compact ring for dense list rows', () => {
+    const { container } = render(<ScoreRing score={65} size="sm" />)
+    const ring = screen.getByLabelText('Score 65')
+
+    expect(ring).toHaveClass('h-9', 'w-9')
+    expect(screen.getByText('65')).toHaveClass('text-2xs')
+    expect(container.querySelector('style')).toBeNull()
+  })
 })

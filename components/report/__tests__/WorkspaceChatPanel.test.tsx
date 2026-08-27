@@ -245,4 +245,60 @@ describe('WorkspaceChatPanel', () => {
     expect(screen.getAllByText('Create a free account to continue').length).toBeGreaterThan(0)
     expect(screen.getByLabelText('URL to review')).toHaveValue('https://other.com')
   })
+
+  it('shows Review history scores as compact ScoreRings', async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.includes('/api/reports/history')) {
+        return {
+          ok: true,
+          json: async () => ({
+            items: [
+              {
+                id: 'a1',
+                url: 'https://example.com',
+                status: 'COMPLETED',
+                score: 65,
+                unresolvedFlagCount: 15,
+                reviewKind: 'product_review',
+              },
+              {
+                id: 'a2',
+                url: 'https://shinobidubai.com',
+                status: 'CAPTURING',
+                score: null,
+                unresolvedFlagCount: null,
+                reviewKind: 'product_review',
+              },
+            ],
+            nextCursor: null,
+          }),
+        } as Response
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          messages: [],
+          available: true,
+          allowance: { limit: 25_000, used: 0, reserved: 0, remaining: 25_000, resetAt: '2026-09-01T00:00:00.000Z' },
+        }),
+      } as Response
+    })
+
+    render(
+      <WorkspaceChatPanel
+        auditId="a1"
+        capabilities={capabilities(true)}
+        gateReason="owner"
+        reportUrl="https://example.com"
+        agentMessages={scanMessages}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Review history' }))
+    await waitFor(() => expect(screen.getByLabelText('Score 65')).toBeInTheDocument())
+    expect(screen.getByLabelText('Score pending')).toBeInTheDocument()
+    expect(screen.getByLabelText('Score 65')).toHaveClass('h-9', 'w-9')
+    expect(screen.queryByText('CAPTURING')).not.toBeInTheDocument()
+  })
 })

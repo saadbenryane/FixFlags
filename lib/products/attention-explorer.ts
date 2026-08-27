@@ -1,4 +1,4 @@
-import type { RankableFlag } from '@/lib/audit/priority-flags'
+import { buildPlanModePrompt, type RankableFlag } from '@/lib/audit/priority-flags'
 import { buildAllEvidenceHighlights } from '@/lib/audit/evidence-highlights'
 import type { FlagVisualEvidenceMap } from '@/lib/audit/persist-visual-evidence'
 import { devicesForCheck } from '@/lib/marketing/evidence-selectors'
@@ -74,6 +74,7 @@ export function attentionItemToExplorerFlag(
 }
 
 function rankableFromAttentionItem(item: ProductAttentionItemDTO): RankableFlag {
+  const prompt = item.prompt?.trim() || null
   return {
     id: item.sourceFlagId ?? item.id,
     rubric: item.rubric ?? 'EXPERIENCE',
@@ -82,13 +83,21 @@ function rankableFromAttentionItem(item: ProductAttentionItemDTO): RankableFlag 
     checkId: item.checkId ?? undefined,
     pageUrl: item.pageUrl ?? undefined,
     evidenceTargets: item.evidenceTargets,
+    // Editor handoff already built on the Product DTO; feed plan-mode as agentPrompt.
+    agentPrompt: prompt,
   }
+}
+
+export type AttentionExplorerOptions = {
+  /** Canonical Product URL for the aggregate Copy All bundle header. */
+  url?: string | null
 }
 
 /** Build a report explorer model for Product Your priorities. */
 export function buildAttentionExplorerModel(
   items: ProductAttentionItemDTO[],
-  evidence: Record<string, ProductAttentionEvidenceDTO> = {}
+  evidence: Record<string, ProductAttentionEvidenceDTO> = {},
+  options: AttentionExplorerOptions = {}
 ): ReportExplorerModel {
   const flags = items.map((item) =>
     attentionItemToExplorerFlag(
@@ -127,17 +136,24 @@ export function buildAttentionExplorerModel(
         }
       : null
 
+  const rankables = items.map(rankableFromAttentionItem)
+  const polishPassPrompt =
+    buildPlanModePrompt(rankables, {
+      url: options.url,
+      limit: rankables.length,
+    }) || null
+
   return {
     displayHost: firstEvidence?.displayHost ?? '',
     pageType: null,
     score: null,
     flagCount: flags.length,
-    polishPassPrompt: null,
+    polishPassPrompt,
     desktopScreenshot: firstEvidence?.desktopScreenshot ?? null,
     mobileScreenshot: firstEvidence?.mobileScreenshot ?? null,
     rubricScores: [],
     flags,
-    allHighlights: buildAllEvidenceHighlights(items.map(rankableFromAttentionItem)),
+    allHighlights: buildAllEvidenceHighlights(rankables),
     previewMeta: null,
     coverageSentence: null,
     capturesByFlagId,

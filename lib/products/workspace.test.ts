@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   auditFindFirst: vi.fn(),
   auditFindMany: vi.fn(),
   auditFindUnique: vi.fn(),
+  reportRubricFindMany: vi.fn(),
   attemptFindMany: vi.fn(),
   occurrenceFindMany: vi.fn(),
   loadTechnologyProfile: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock('@/lib/db', () => ({
       findMany: mocks.auditFindMany,
       findUnique: mocks.auditFindUnique,
     },
+    reportRubric: { findMany: mocks.reportRubricFindMany },
     improvementAttempt: { findMany: mocks.attemptFindMany },
     improvementOccurrence: { findMany: mocks.occurrenceFindMany },
   },
@@ -126,6 +128,7 @@ beforeEach(() => {
   mocks.auditFindFirst.mockResolvedValue(null)
   mocks.auditFindMany.mockResolvedValue([])
   mocks.auditFindUnique.mockResolvedValue(null)
+  mocks.reportRubricFindMany.mockResolvedValue([])
   mocks.attemptFindMany.mockResolvedValue([])
   mocks.occurrenceFindMany.mockResolvedValue([])
 })
@@ -481,6 +484,11 @@ describe('loadProductWorkspace', () => {
         flagId: 'flag-1',
       },
     ])
+    mocks.reportRubricFindMany.mockResolvedValue([
+      { name: 'MESSAGE', score: 72, grade: 'C' },
+      { name: 'EXPERIENCE', score: 81, grade: 'B' },
+      { name: 'REACH', score: 64, grade: 'D' },
+    ])
 
     const workspace = await loadProductWorkspace('product-1', 'user-1', {
       signalsEligible: true,
@@ -501,6 +509,11 @@ describe('loadProductWorkspace', () => {
         kind: 'WATCH',
         notificationStatus: 'PENDING',
       },
+      rubrics: [
+        { name: 'MESSAGE', score: 72, grade: 'C' },
+        { name: 'EXPERIENCE', score: 81, grade: 'B' },
+        { name: 'REACH', score: 64, grade: 'D' },
+      ],
       reviewHistory: [
         { id: 'review-watch-running', kind: 'WATCH' },
         { id: 'review-running', kind: 'UPDATE_REVIEW' },
@@ -536,6 +549,11 @@ describe('loadProductWorkspace', () => {
         ],
       },
     })
+    expect(mocks.reportRubricFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { auditId: 'review-1' },
+      })
+    )
     const attemptEvent = workspace?.history.events.find(
       (event) => event.kind === 'attempt'
     )

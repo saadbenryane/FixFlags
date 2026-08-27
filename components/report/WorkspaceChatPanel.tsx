@@ -22,6 +22,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { ScoreRing } from '@/components/report/ScoreRing'
 import { WorkspaceTranscript } from '@/components/report/WorkspaceTranscript'
 import {
   WORKSPACE_AGENT_HEADER_CLASS,
@@ -477,7 +478,11 @@ export function WorkspaceChatPanel({
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="truncate text-sm font-medium text-foreground">{displaySiteAddress(item.url)}</span>
-                      <span className="font-mono text-2xs text-muted-foreground">{item.score ?? item.status}</span>
+                      <ScoreRing
+                        size="sm"
+                        score={item.score ?? null}
+                        pending={item.status !== 'COMPLETED' && item.status !== 'FAILED'}
+                      />
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {item.reviewKind === 'update_review' || item.parentId ? chatCopy.updateReview : chatCopy.productReview}

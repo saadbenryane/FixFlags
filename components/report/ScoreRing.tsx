@@ -5,12 +5,30 @@ const SCORE_PENDING_KEYFRAMES = `@keyframes ff-score-spin {
   to { transform: rotate(360deg); }
 }`
 
-function PendingDots() {
+function PendingDots({ size }: { size: 'md' | 'sm' }) {
   return (
-    <span className="flex items-center gap-[3px]" aria-hidden>
-      <span className="h-1 w-1 rounded-full bg-foreground/55" />
-      <span className="h-1 w-1 rounded-full bg-foreground/55" />
-      <span className="h-1 w-1 rounded-full bg-foreground/55" />
+    <span
+      className={cn('flex items-center', size === 'sm' ? 'gap-[2px]' : 'gap-[3px]')}
+      aria-hidden
+    >
+      <span
+        className={cn(
+          'rounded-full bg-foreground/55',
+          size === 'sm' ? 'h-0.5 w-0.5' : 'h-1 w-1'
+        )}
+      />
+      <span
+        className={cn(
+          'rounded-full bg-foreground/55',
+          size === 'sm' ? 'h-0.5 w-0.5' : 'h-1 w-1'
+        )}
+      />
+      <span
+        className={cn(
+          'rounded-full bg-foreground/55',
+          size === 'sm' ? 'h-0.5 w-0.5' : 'h-1 w-1'
+        )}
+      />
     </span>
   )
 }
@@ -18,19 +36,23 @@ function PendingDots() {
 export function ScoreRing({
   score,
   pending = false,
+  size = 'md',
   className,
 }: {
   score: number | null
   pending?: boolean
+  size?: 'md' | 'sm'
   className?: string
 }) {
   const normalized = score == null ? 0 : Math.min(100, Math.max(0, Math.round(score)))
   const label = pending ? 'Score pending' : score == null ? 'Score unavailable' : `Score ${normalized}`
+  const strokeWidth = size === 'sm' ? 4 : 3
 
   return (
     <div
       className={cn(
-        'relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full',
+        'relative flex shrink-0 items-center justify-center rounded-full',
+        size === 'sm' ? 'h-9 w-9' : 'h-16 w-16',
         className
       )}
       role="img"
@@ -40,7 +62,14 @@ export function ScoreRing({
 
       {/* Static track + completed score arc */}
       <svg viewBox="0 0 64 64" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden>
-        <circle cx="32" cy="32" r="28" fill="none" stroke="hsl(var(--border))" strokeWidth="3" />
+        <circle
+          cx="32"
+          cy="32"
+          r="28"
+          fill="none"
+          stroke="hsl(var(--border))"
+          strokeWidth={strokeWidth}
+        />
         {!pending && score != null ? (
           <circle
             cx="32"
@@ -48,7 +77,7 @@ export function ScoreRing({
             r="28"
             fill="none"
             stroke="hsl(var(--brand))"
-            strokeWidth="3"
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
             pathLength="100"
             strokeDasharray={`${normalized} 100`}
@@ -69,7 +98,7 @@ export function ScoreRing({
             r="28"
             fill="none"
             stroke="hsl(var(--brand))"
-            strokeWidth="3"
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
             pathLength="100"
             strokeDasharray="28 100"
@@ -78,8 +107,13 @@ export function ScoreRing({
         </svg>
       ) : null}
 
-      <span className="relative z-[1] flex items-center justify-center font-mono text-lg font-semibold leading-none tabular-nums text-foreground">
-        {pending ? <PendingDots /> : score == null ? '–' : normalized}
+      <span
+        className={cn(
+          'relative z-[1] flex items-center justify-center font-mono font-semibold leading-none tabular-nums text-foreground',
+          size === 'sm' ? 'text-2xs' : 'text-lg'
+        )}
+      >
+        {pending ? <PendingDots size={size} /> : score == null ? '–' : normalized}
       </span>
     </div>
   )

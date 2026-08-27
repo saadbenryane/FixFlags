@@ -33,6 +33,7 @@ import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import { parseReviewCoverage } from '@/lib/audit/review-depth'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { displayHostname } from '@/lib/utils/url-helpers'
+import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
 
 const ACTIVE_IMPROVEMENT_STATUSES: ImprovementStatus[] = [
   'PROPOSED',
@@ -59,6 +60,12 @@ export type ProductReviewSummaryDTO = {
   createdAt: string
   completedAt: string | null
   failureMessage: string | null
+}
+
+export type ProductRubricScoreDTO = {
+  name: RubricName
+  score: number | null
+  grade: string | null
 }
 
 export type ProductWatchReviewDTO = ProductReviewSummaryDTO & {
@@ -206,6 +213,8 @@ export type ProductWorkspaceDTO = {
     launchChecklist: LaunchChecklistItem[]
   }
   reviewHistory: ProductReviewSummaryDTO[]
+  /** Message / Experience / Reach from the latest completed manual Review. */
+  rubrics: ProductRubricScoreDTO[]
   history: ProductHistoryPageDTO
   integrations: ProductIntegrationDTO
 }
@@ -296,6 +305,26 @@ function reviewSummary(review: ReviewRow): ProductReviewSummaryDTO {
     completedAt: review.completedAt?.toISOString() ?? null,
     failureMessage: review.errorMsg,
   }
+}
+
+function emptyProductRubrics(): ProductRubricScoreDTO[] {
+  return RUBRIC_ORDER.map((name) => ({ name, score: null, grade: null }))
+}
+
+function mapProductRubrics(
+  rows: Array<{ name: string; score: number | null; grade: string | null }>
+): ProductRubricScoreDTO[] {
+  const byName = new Map(
+    rows.map((row) => [row.name.toUpperCase(), row] as const)
+  )
+  return RUBRIC_ORDER.map((name) => {
+    const row = byName.get(name)
+    return {
+      name,
+      score: row?.score ?? null,
+      grade: row?.grade ?? null,
+    }
+  })
 }
 
 function watchReviewSummary(review: ReviewRow): ProductWatchReviewDTO {
@@ -799,12 +828,18 @@ export async function loadProductWorkspace(
 
   const memory = parseProductIntelligence(product.productIntelligence)
   const understandingReviewId = latestCompletedManualReviewRow?.id ?? null
-  const understandingRow = understandingReviewId
-    ? await prisma.audit.findUnique({
-        where: { id: understandingReviewId },
-        select: { productContract: true, launchReadiness: true },
-      })
-    : null
+  const [understandingRow, rubricRows] = understandingReviewId
+    ? await Promise.all([
+        prisma.audit.findUnique({
+          where: { id: understandingReviewId },
+          select: { productContract: true, launchReadiness: true },
+        }),
+        prisma.reportRubric.findMany({
+          where: { auditId: understandingReviewId },
+          select: { name: true, score: true, grade: true },
+        }),
+      ])
+    : [null, []]
   const productContract = parseProductContract(understandingRow?.productContract)
   const launchChecklist =
     parseLaunchReadiness(understandingRow?.launchReadiness)?.checklist ?? []
@@ -989,6 +1024,9 @@ export async function loadProductWorkspace(
     reviewHistory: historyReviewRows
       .slice(0, PRODUCT_HISTORY_PAGE_SIZE)
       .map(reviewSummary),
+    rubrics: understandingReviewId
+      ? mapProductRubrics(rubricRows)
+      : emptyProductRubrics(),
     history: {
       events: historyEvents,
       nextCursor,

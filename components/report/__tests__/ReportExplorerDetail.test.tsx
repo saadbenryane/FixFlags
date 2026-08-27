@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
+import Link from 'next/link'
 import { describe, expect, it, vi } from 'vitest'
 import { FlagDetailPane, RubricTabs } from '@/components/report/ReportExplorerDetail'
 import { MeProvider } from '@/hooks/useMe'
@@ -190,7 +191,7 @@ describe('FlagDetailPane', () => {
         onNext={vi.fn()}
         onSelectFlag={vi.fn()}
         secondaryPromptAction={
-          <a href="/report/sample?view=report">View report</a>
+          <Link href="/report/sample?view=report">View report</Link>
         }
       />
     )
