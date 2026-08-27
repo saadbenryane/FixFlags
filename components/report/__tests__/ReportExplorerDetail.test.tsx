@@ -149,4 +149,52 @@ describe('FlagDetailPane', () => {
     expect(screen.queryByLabelText('Previous flag')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Next flag')).not.toBeInTheDocument()
   })
+
+  it('uses per-flag captures when priorities span multiple source reviews', () => {
+    const model = {
+      ...MODEL,
+      desktopScreenshot: null,
+      mobileScreenshot: null,
+      capturesByFlagId: {
+        [FIRST_FLAG.id]: {
+          desktopScreenshot: '/shots/alt-desktop.webp',
+          mobileScreenshot: '/shots/alt-mobile.webp',
+        },
+      },
+      displayHostByFlagId: {
+        [FIRST_FLAG.id]: 'alt.example',
+      },
+    }
+    renderWithProviders(
+      <FlagDetailPane
+        model={model}
+        flag={FIRST_FLAG}
+        flagCount={1}
+        flagPosition={1}
+        onPrevious={vi.fn()}
+        onNext={vi.fn()}
+        onSelectFlag={vi.fn()}
+      />
+    )
+    expect(screen.getAllByRole('img').length).toBeGreaterThan(0)
+  })
+
+  it('renders a secondary prompt action beside the docked prompt row', () => {
+    renderWithProviders(
+      <FlagDetailPane
+        model={MODEL}
+        flag={FIRST_FLAG}
+        flagCount={1}
+        flagPosition={1}
+        onPrevious={vi.fn()}
+        onNext={vi.fn()}
+        onSelectFlag={vi.fn()}
+        secondaryPromptAction={
+          <a href="/report/sample?view=report">View report</a>
+        }
+      />
+    )
+    expect(screen.getByRole('link', { name: 'View report' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy prompt' })).toBeInTheDocument()
+  })
 })

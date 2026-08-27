@@ -21,7 +21,7 @@ beforeEach(() => {
 })
 
 describe('ProductWatchControls', () => {
-  it('renders the durable schedule immediately with 44px radio targets', async () => {
+  it('renders the durable schedule from SSR state without a mount refetch', () => {
     render(
       <ProductWatchControls
         projectId="product-1"
@@ -34,10 +34,9 @@ describe('ProductWatchControls', () => {
     const weekly = screen.getByRole('radio', { name: /weekly/i })
     expect(weekly).toHaveAttribute('aria-checked', 'true')
     expect(weekly).toHaveClass('min-h-11', 'min-w-11')
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      '/api/projects/product-1/watch',
-      expect.objectContaining({ signal: expect.any(AbortSignal) })
-    ))
+    expect(screen.getByText(/Next check:/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Last attempt/i)).not.toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('offers daily only when the Product has Studio access', () => {
@@ -53,9 +52,6 @@ describe('ProductWatchControls', () => {
   })
 
   it('persists a weekly schedule for an ordinary eligible Product', async () => {
-    fetchMock
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ ...watchState, watchInterval: null }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => watchState })
     render(
       <ProductWatchControls
         projectId="product-1"
@@ -65,19 +61,22 @@ describe('ProductWatchControls', () => {
     )
 
     fireEvent.click(screen.getByRole('radio', { name: /weekly/i }))
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
-      '/api/projects/product-1/watch',
-      expect.objectContaining({
-        method: 'PUT',
-        body: JSON.stringify({ interval: 'weekly' }),
-      })
-    ))
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/projects/product-1/watch',
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({ interval: 'weekly' }),
+        })
+      )
+    )
   })
 
-  it('announces a failed state inline', async () => {
-    fetchMock.mockRejectedValueOnce(new Error('offline'))
-    render(<ProductWatchControls projectId="product-1" canWatch initialState={watchState} />)
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/failed to load|could not load/i)
+  it('announces a save failure inline via toast path without a load alert', () => {
+    render(
+      <ProductWatchControls projectId="product-1" canWatch initialState={watchState} />
+    )
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

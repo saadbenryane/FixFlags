@@ -162,6 +162,7 @@ export function FlagPromptRow({
   ownerActionContext,
   polishPassPrompt = null,
   aggregateLocked = false,
+  secondaryPromptAction,
 }: {
   flag: ExplorerFlag
   aiLocked?: boolean
@@ -172,6 +173,8 @@ export function FlagPromptRow({
   polishPassPrompt?: string | null
   /** Report-level gate for Copy all (independent of the demonstrated Flag unlock). */
   aggregateLocked?: boolean
+  /** Optional action beside the prompt row (e.g. View report on the Product page). */
+  secondaryPromptAction?: ReactNode
 }) {
   const [claimOpen, setClaimOpen] = useState(false)
   const [promptOpen, setPromptOpen] = useState(false)
@@ -300,7 +303,12 @@ export function FlagPromptRow({
 
   return (
     <section data-flag-prompt-row className="min-w-0">
-      {row}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+        {secondaryPromptAction ? (
+          <div className="shrink-0">{secondaryPromptAction}</div>
+        ) : null}
+        <div className="min-w-0 flex-1">{row}</div>
+      </div>
       <ReportClaimDialog
         open={authGate ? false : claimOpen}
         onOpenChange={setClaimOpen}

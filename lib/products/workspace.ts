@@ -24,9 +24,15 @@ import {
 import { parseProductContract, type ProductContract } from '@/lib/audit/product-contract'
 import { parseLaunchReadiness, type LaunchChecklistItem } from '@/lib/audit/launch-readiness'
 import { buildEditorHandoffPrompt } from '@/lib/audit/editor-handoff'
+import { parseAffectedPaths } from '@/lib/audit/flag-identity'
+import {
+  parseFlagVisualEvidence,
+  type FlagVisualEvidenceMap,
+} from '@/lib/audit/persist-visual-evidence'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import { parseReviewCoverage } from '@/lib/audit/review-depth'
 import { REPORT_COPY } from '@/lib/marketing/copy'
+import { displayHostname } from '@/lib/utils/url-helpers'
 
 const ACTIVE_IMPROVEMENT_STATUSES: ImprovementStatus[] = [
   'PROPOSED',
@@ -63,6 +69,13 @@ export type ProductWatchReviewDTO = ProductReviewSummaryDTO & {
   notificationError: string | null
 }
 
+export type ProductAttentionEvidenceDTO = {
+  displayHost: string
+  desktopScreenshot: string | null
+  mobileScreenshot: string | null
+  visuals: FlagVisualEvidenceMap
+}
+
 export type ProductAttentionItemDTO = {
   id: string
   title: string
@@ -74,6 +87,12 @@ export type ProductAttentionItemDTO = {
   evidence: string | null
   rubric: string | null
   severity: string | null
+  checkId: string | null
+  pageUrl: string | null
+  pageUrls: string[]
+  impactTag: string | null
+  source: string | null
+  evidenceTargets: unknown
   sourceReviewId: string | null
   sourceFlagId: string | null
   prompt?: string | null
@@ -166,6 +185,7 @@ export type ProductWorkspaceDTO = {
   }
   watch: ProductWatchDTO
   attention: ProductAttentionItemDTO[]
+  attentionEvidence: Record<string, ProductAttentionEvidenceDTO>
   attentionCount: number
   activeManualReview: ProductReviewSummaryDTO | null
   latestManualReview: ProductReviewSummaryDTO | null
@@ -643,6 +663,9 @@ export async function loadProductWorkspace(
                   problem: true,
                   checkId: true,
                   pageUrl: true,
+                  affectedPaths: true,
+                  impactTag: true,
+                  source: true,
                   fix: true,
                   agentPrompt: true,
                   verificationRule: true,
@@ -829,42 +852,93 @@ export async function loadProductWorkspace(
       ? { at: lastHistoryEvent.at, id: lastHistoryEvent.id }
       : null
 
-  const attention = product.improvements.map((improvement) => ({
-    id: improvement.id,
-    title: improvement.title,
-    judgment: improvement.judgment,
-    recommendedChange: improvement.recommendedChange,
-    successCondition: improvement.successCondition,
-    priority: improvement.priority,
-    status: improvement.status,
-    evidence: improvement.occurrences[0]?.flag.evidence ?? null,
-    rubric: improvement.occurrences[0]?.flag.rubric ?? null,
-    severity: improvement.occurrences[0]?.flag.severity ?? null,
-    sourceReviewId: improvement.occurrences[0]?.auditId ?? null,
-    sourceFlagId: improvement.occurrences[0]?.flagId ?? null,
-    prompt: (() => {
-      const source = improvement.occurrences[0]?.flag
-      if (!source) return null
-      return (
-        buildEditorHandoffPrompt(
-          {
-            id: improvement.occurrences[0]?.flagId ?? improvement.id,
-            checkId: source.checkId,
-            rubric: source.rubric,
-            severity: source.severity,
-            problem: source.problem || improvement.title,
-            evidence: source.evidence,
-            fix: source.fix,
-            agentPrompt: source.agentPrompt,
-            verificationRule: source.verificationRule,
-            pageUrl: source.pageUrl,
-            evidenceTargets: source.evidenceTargets,
+  const attentionSourceReviewIds = [
+    ...new Set(
+      product.improvements
+        .map((improvement) => improvement.occurrences[0]?.auditId)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ]
+  const attentionReviewRows =
+    attentionSourceReviewIds.length > 0
+      ? await prisma.audit.findMany({
+          where: { id: { in: attentionSourceReviewIds } },
+          select: {
+            id: true,
+            url: true,
+            performanceData: true,
+            screenshots: {
+              select: { device: true, url: true },
+            },
           },
-          { url: product.url }
-        ) || source.agentPrompt
-      )
-    })(),
-  }))
+        })
+      : []
+  const attentionEvidence: Record<string, ProductAttentionEvidenceDTO> = {}
+  for (const review of attentionReviewRows) {
+    const desktop =
+      review.screenshots.find((shot) => shot.device === 'DESKTOP')?.url ?? null
+    const mobile =
+      review.screenshots.find((shot) => shot.device === 'MOBILE')?.url ?? null
+    attentionEvidence[review.id] = {
+      displayHost: displayHostname(review.url),
+      desktopScreenshot: desktop
+        ? normalizeInternalScreenshotUrl(desktop)
+        : null,
+      mobileScreenshot: mobile ? normalizeInternalScreenshotUrl(mobile) : null,
+      visuals: parseFlagVisualEvidence(review.performanceData),
+    }
+  }
+
+  const attention = product.improvements.map((improvement) => {
+    const source = improvement.occurrences[0]?.flag
+    const pageUrls = source
+      ? [
+          ...(source.pageUrl ? [source.pageUrl] : []),
+          ...parseAffectedPaths(source.affectedPaths),
+        ].filter((url, index, urls) => urls.indexOf(url) === index)
+      : []
+    return {
+      id: improvement.id,
+      title: improvement.title,
+      judgment: improvement.judgment,
+      recommendedChange: improvement.recommendedChange,
+      successCondition: improvement.successCondition,
+      priority: improvement.priority,
+      status: improvement.status,
+      evidence: source?.evidence ?? null,
+      rubric: source?.rubric ?? null,
+      severity: source?.severity ?? null,
+      checkId: source?.checkId ?? null,
+      pageUrl: source?.pageUrl ?? null,
+      pageUrls,
+      impactTag: source?.impactTag ?? null,
+      source: source?.source ?? null,
+      evidenceTargets: source?.evidenceTargets ?? null,
+      sourceReviewId: improvement.occurrences[0]?.auditId ?? null,
+      sourceFlagId: improvement.occurrences[0]?.flagId ?? null,
+      prompt: (() => {
+        if (!source) return null
+        return (
+          buildEditorHandoffPrompt(
+            {
+              id: improvement.occurrences[0]?.flagId ?? improvement.id,
+              checkId: source.checkId,
+              rubric: source.rubric,
+              severity: source.severity,
+              problem: source.problem || improvement.title,
+              evidence: source.evidence,
+              fix: source.fix,
+              agentPrompt: source.agentPrompt,
+              verificationRule: source.verificationRule,
+              pageUrl: source.pageUrl,
+              evidenceTargets: source.evidenceTargets,
+            },
+            { url: product.url }
+          ) || source.agentPrompt
+        )
+      })(),
+    }
+  })
 
   return {
     product: {
@@ -885,6 +959,7 @@ export async function loadProductWorkspace(
       lastError: product.watchLastError,
     },
     attention,
+    attentionEvidence,
     attentionCount: product.improvements.length,
     activeManualReview: activeManualReviewRow
       ? reviewSummary(activeManualReviewRow)

@@ -46,10 +46,24 @@ const workspace: ProductWorkspaceDTO = {
       evidence: 'The action starts below the first view.',
       rubric: 'EXPERIENCE',
       severity: 'IMPORTANT',
+      checkId: 'cta-below-fold',
+      pageUrl: 'https://example.com/',
+      pageUrls: ['https://example.com/'],
+      impactTag: 'conversion',
+      source: 'AI',
+      evidenceTargets: null,
       sourceReviewId: 'source-review',
       sourceFlagId: 'source-flag',
     },
   ],
+  attentionEvidence: {
+    'source-review': {
+      displayHost: 'example.com',
+      desktopScreenshot: '/shots/desktop.webp',
+      mobileScreenshot: '/shots/mobile.webp',
+      visuals: {},
+    },
+  },
   attentionCount: 1,
   activeManualReview: null,
   latestManualReview: {
@@ -395,6 +409,7 @@ describe('ProductWorkspace', () => {
         workspace={{
           ...workspace,
           attention: [],
+          attentionEvidence: {},
           attentionCount: 0,
           activeManualReview: null,
           latestManualReview: failedReview,

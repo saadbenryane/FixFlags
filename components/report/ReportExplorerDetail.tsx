@@ -1,6 +1,6 @@
 'use client'
 
-import type { RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { ChevronLeft, ChevronRight, type LucideIcon } from 'lucide-react'
 import { ScreenshotWithHighlights } from '@/components/audit/ScreenshotWithHighlights'
 import {
@@ -74,6 +74,7 @@ export function FlagDetailPane({
   demonstratedFlagId,
   ownerActionContext,
   headingRef,
+  secondaryPromptAction,
 }: {
   model: ReportExplorerModel
   flag: ReportExplorerModel['flags'][number]
@@ -89,15 +90,22 @@ export function FlagDetailPane({
   demonstratedFlagId?: string
   ownerActionContext?: ReportOwnerActionContext
   headingRef?: RefObject<HTMLHeadingElement | null>
+  /** Optional action beside the docked prompt row (e.g. View report). */
+  secondaryPromptAction?: ReactNode
 }) {
-  const showDesktop = Boolean(model.desktopScreenshot)
-  const showMobile = Boolean(model.mobileScreenshot)
+  const captures = model.capturesByFlagId?.[flag.id]
+  const desktopScreenshot = captures?.desktopScreenshot ?? model.desktopScreenshot
+  const mobileScreenshot = captures?.mobileScreenshot ?? model.mobileScreenshot
+  const displayHost = model.displayHostByFlagId?.[flag.id] ?? model.displayHost
+  const showDesktop = Boolean(desktopScreenshot)
+  const showMobile = Boolean(mobileScreenshot)
   const shareableFlag = isShareableCheck(flag.checkId)
   const promptLocked = Boolean(aiLocked && flag.id !== demonstratedFlagId)
   const showPromptRow = flagHasPromptChrome(flag, {
     aiLocked: promptLocked,
     aiEnhancementPending,
   })
+  const showPromptFooter = showPromptRow || Boolean(secondaryPromptAction)
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col">
@@ -159,9 +167,9 @@ export function FlagDetailPane({
           evidencePair={
             shareableFlag ? null : (
               <ScreenshotWithHighlights
-                host={model.displayHost}
-                desktopScreenshot={model.desktopScreenshot}
-                mobileScreenshot={model.mobileScreenshot}
+                host={displayHost}
+                desktopScreenshot={desktopScreenshot}
+                mobileScreenshot={mobileScreenshot}
                 highlights={model.allHighlights}
                 selectedFlagId={flag.id}
                 onPinSelect={onSelectFlag}
@@ -182,20 +190,25 @@ export function FlagDetailPane({
           }
         />
       </div>
-      {showPromptRow ? (
+      {showPromptFooter ? (
         <footer
           data-flag-prompt-footer
-          className="shrink-0 border-t border-border/30 bg-background pt-3"
+          className="shrink-0 border-t border-border/30 pt-3"
         >
-          <FlagPromptRow
-            flag={flag}
-            aiLocked={promptLocked}
-            aiEnhancementPending={aiEnhancementPending}
-            signUpHref={signUpHref}
-            ownerActionContext={ownerActionContext}
-            polishPassPrompt={model.polishPassPrompt}
-            aggregateLocked={Boolean(aiLocked)}
-          />
+          {showPromptRow ? (
+            <FlagPromptRow
+              flag={flag}
+              aiLocked={promptLocked}
+              aiEnhancementPending={aiEnhancementPending}
+              signUpHref={signUpHref}
+              ownerActionContext={ownerActionContext}
+              polishPassPrompt={model.polishPassPrompt}
+              aggregateLocked={Boolean(aiLocked)}
+              secondaryPromptAction={secondaryPromptAction}
+            />
+          ) : (
+            secondaryPromptAction
+          )}
         </footer>
       ) : null}
     </div>

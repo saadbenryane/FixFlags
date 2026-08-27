@@ -414,6 +414,16 @@ describe('loadProductWorkspace', () => {
                   evidence: 'CTA below the fold',
                   rubric: 'EXPERIENCE',
                   severity: 'IMPORTANT',
+                  problem: 'CTA below the fold',
+                  checkId: 'cta-below-fold',
+                  pageUrl: 'https://example.com/pricing',
+                  affectedPaths: null,
+                  impactTag: 'conversion',
+                  source: 'AI',
+                  fix: null,
+                  agentPrompt: null,
+                  verificationRule: null,
+                  evidenceTargets: null,
                 },
               },
             ],
@@ -446,11 +456,23 @@ describe('loadProductWorkspace', () => {
       .mockResolvedValueOnce(activeManual)
       .mockResolvedValueOnce(completedManual)
       .mockResolvedValueOnce(watch)
-    mocks.auditFindMany.mockResolvedValue([
-      watch,
-      activeManual,
-      completedManual,
-    ])
+    mocks.auditFindMany
+      .mockResolvedValueOnce([
+        watch,
+        activeManual,
+        completedManual,
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'review-2',
+          url: 'https://example.com',
+          performanceData: null,
+          screenshots: [
+            { device: 'DESKTOP', url: '/shots/desktop.webp' },
+            { device: 'MOBILE', url: '/shots/mobile.webp' },
+          ],
+        },
+      ])
     mocks.attemptFindMany.mockResolvedValue([attempt()])
     mocks.occurrenceFindMany.mockResolvedValue([
       {
@@ -489,8 +511,21 @@ describe('loadProductWorkspace', () => {
           id: 'improvement-1',
           sourceReviewId: 'review-2',
           sourceFlagId: 'flag-2',
+          checkId: 'cta-below-fold',
+          pageUrl: 'https://example.com/pricing',
+          pageUrls: ['https://example.com/pricing'],
+          impactTag: 'conversion',
+          source: 'AI',
         },
       ],
+      attentionEvidence: {
+        'review-2': {
+          displayHost: 'example.com',
+          desktopScreenshot: expect.any(String),
+          mobileScreenshot: expect.any(String),
+          visuals: {},
+        },
+      },
       integrations: {
         signalsEligible: true,
         signalKeys: [

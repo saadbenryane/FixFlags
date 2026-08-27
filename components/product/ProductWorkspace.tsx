@@ -562,7 +562,10 @@ function AttentionSection({ workspace }: { workspace: ProductWorkspaceDTO }) {
           {copy.attentionOpen(workspace.attentionCount)}
         </Badge>
       </div>
-      <ProductPriorities items={workspace.attention} />
+      <ProductPriorities
+        items={workspace.attention}
+        attentionEvidence={workspace.attentionEvidence}
+      />
     </section>
   )
 }

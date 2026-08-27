@@ -132,6 +132,16 @@ export interface ReportExplorerModel {
   allHighlights: EvidenceHighlight[]
   previewMeta: PreviewMeta | null
   coverageSentence: string | null
+  /** Per-flag capture pairs when priorities span multiple source reviews. */
+  capturesByFlagId?: Record<
+    string,
+    {
+      desktopScreenshot: string | null
+      mobileScreenshot: string | null
+    }
+  >
+  /** Per-flag hostname when captures come from different source reviews. */
+  displayHostByFlagId?: Record<string, string>
 }
 
 function mapLiveFlag(

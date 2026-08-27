@@ -1,11 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportFixLoop'
 import {
   FlagDetailPane,
 } from '@/components/report/ReportExplorerDetail'
-import { flagHasPromptChrome } from '@/components/report/FlagDetailPanel'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { reviewPathLabel } from '@/lib/audit/url-identity'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
@@ -50,6 +49,14 @@ interface ReportExplorerProps {
   auditId?: string
   demonstratedFlagId?: string
   ownerActionContext?: ReportOwnerActionContext
+  /** Hide the in-list Top Flags heading when a parent section owns the title. */
+  hideListHeading?: boolean
+  /** Resolve owner handoff context for the selected flag (Product page). */
+  resolveOwnerActionContext?: (
+    flagId: string
+  ) => ReportOwnerActionContext | undefined
+  /** Optional action beside the docked prompt row for the selected flag. */
+  secondaryPromptAction?: (flagId: string) => ReactNode
 }
 
 export function ReportExplorer({
@@ -64,6 +71,9 @@ export function ReportExplorer({
   auditId,
   demonstratedFlagId,
   ownerActionContext,
+  hideListHeading = false,
+  resolveOwnerActionContext,
+  secondaryPromptAction,
 }: ReportExplorerProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const detailRef = useRef<HTMLDivElement>(null)
@@ -315,28 +325,29 @@ export function ReportExplorer({
     [filteredFlags]
   )
 
-  const promptLocked = Boolean(
-    aiLocked && currentFlag && currentFlag.id !== visibleDemonstratedFlagId
-  )
-  const showPromptFooterAlign = Boolean(
-    currentFlag &&
-      flagHasPromptChrome(currentFlag, {
-        aiLocked: promptLocked,
-        aiEnhancementPending,
-      })
-  )
+  const effectiveOwnerActionContext =
+    (currentFlag && resolveOwnerActionContext?.(currentFlag.id)) ??
+    ownerActionContext
+  const promptSecondaryAction =
+    currentFlag && secondaryPromptAction
+      ? secondaryPromptAction(currentFlag.id)
+      : null
 
   const listPane = (
     <div className="flex min-h-0 min-w-0 flex-col @[40rem]/pane:h-full">
       <div className="min-h-0 flex-1 list-none overflow-y-auto scrollbar-thin @[40rem]/pane:pr-2 [&_ul]:list-none [&_li]:list-none">
-        <div className="mb-3 border-b border-border/30 pb-3">
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-foreground">{REPORT_COPY.explorer.topFlagsTitle}</h2>
-            <p className="text-xs text-muted-foreground">
-              {model.coverageSentence ?? REPORT_COPY.explorer.prioritiesHint}
-            </p>
+        {hideListHeading ? null : (
+          <div className="mb-3 border-b border-border/30 pb-3">
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-foreground">
+                {REPORT_COPY.explorer.topFlagsTitle}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {model.coverageSentence ?? REPORT_COPY.explorer.prioritiesHint}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
         {flagCount === 0 ? (
           <p className="text-sm text-muted-foreground">
             {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noMatchFilter}
@@ -350,22 +361,18 @@ export function ReportExplorer({
           />
         )}
       </div>
-      {flagCount > 0 && (showPromptFooterAlign || fixLoopFlags.length > 5) ? (
+      {flagCount > 0 && fixLoopFlags.length > 5 ? (
         <footer
           data-flag-list-footer
-          className="shrink-0 border-t border-border/30 bg-background pt-3"
+          className="shrink-0 border-t border-border/30 pt-3"
         >
-          {fixLoopFlags.length > 5 ? (
-            <button
-              type="button"
-              onClick={() => setShowAll((value) => !value)}
-              className="flex min-h-11 w-full items-center justify-center rounded-control px-3 text-sm font-medium text-muted-foreground hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-            >
-              {showAll ? 'Show fewer' : `Show more (${fixLoopFlags.length - 5})`}
-            </button>
-          ) : (
-            <div className="min-h-11" aria-hidden />
-          )}
+          <button
+            type="button"
+            onClick={() => setShowAll((value) => !value)}
+            className="flex min-h-11 w-full items-center justify-center rounded-control px-3 text-sm font-medium text-muted-foreground hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
+            {showAll ? 'Show fewer' : `Show more (${fixLoopFlags.length - 5})`}
+          </button>
         </footer>
       ) : null}
     </div>
@@ -386,8 +393,9 @@ export function ReportExplorer({
         signUpHref={signUpHref}
         onSelectFlag={goToFlag}
         demonstratedFlagId={visibleDemonstratedFlagId}
-        ownerActionContext={ownerActionContext}
+        ownerActionContext={effectiveOwnerActionContext}
         headingRef={detailHeadingRef}
+        secondaryPromptAction={promptSecondaryAction}
       />
     ) : (
       <p className="text-sm text-muted-foreground">
