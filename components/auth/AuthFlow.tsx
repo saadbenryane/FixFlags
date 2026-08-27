@@ -261,11 +261,13 @@ export function AuthFlow({
       aria-live="polite"
     >
       <IconInput
+        ref={emailInputRef}
         type="email"
         name="email"
         label={mode === 'signup' ? AUTH.signUp.emailLabel : AUTH.signIn.emailLabel}
         icon={<Mail className="h-4 w-4" />}
         value={email}
+        onFocus={() => markStarted('email')}
         onChange={(event) => setEmail(event.target.value)}
         placeholder={
           mode === 'signup'

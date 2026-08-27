@@ -4,9 +4,10 @@
  */
 export const GA4_KEY_EVENTS = [
   'started_audit',
+  'viewed_report',
+  'report_signup_cta_clicked',
   'signed_up',
   'audits_claimed',
-  'viewed_report',
   'fix_prompt_copied',
   'recheck_completed',
   'completed_checkout',
