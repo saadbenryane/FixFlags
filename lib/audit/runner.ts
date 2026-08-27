@@ -264,7 +264,9 @@ export async function runAudit(auditId: string): Promise<void> {
           reviewCoverage: buildReviewCoverage({
             reviewedPageCount: pageRuns.length,
             openCheckCount: openCheckResults.length,
-            partial: Boolean(ctx.supplementalPagesSkipped),
+            partial:
+              Boolean(ctx.supplementalPagesSkipped) ||
+              !reviewedPagesHaveFullPageSpeed(pageRuns),
           }) as unknown as Prisma.InputJsonValue,
           progressDetail: AUDIT_PROGRESS.reviewProgress.prioritizingFlags,
         },
