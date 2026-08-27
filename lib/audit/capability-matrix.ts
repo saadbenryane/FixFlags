@@ -252,6 +252,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
       'security-frame-options-too-permissive',
       'security-content-type-options-missing',
       'security-headers-missing',
+      'security-headers-hardening',
       'security-referrer-policy-missing',
       'security-referrer-policy-weak',
       'security-coop-missing',
@@ -448,6 +449,7 @@ export const AUDIT_CAPABILITIES: AuditCapability[] = [
     tool: 'browser-capture',
     status: 'live',
     checkIds: [
+      'heading-order-skipped',
       'axe-aria-required-children',
       'axe-aria-required-parent',
       'axe-duplicate-id-active',

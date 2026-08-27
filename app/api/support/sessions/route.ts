@@ -14,6 +14,8 @@ const postSchema = z.object({
   auditId: z.string().min(1).optional(),
   visitorName: z.string().max(120).optional(),
   visitorEmail: z.string().email().optional(),
+  /** Required to create a new conversation; resume-only when omitted. */
+  firstMessage: z.string().min(1).max(8000).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -37,7 +39,12 @@ export async function POST(req: NextRequest) {
       auditId: parsed.data.auditId ?? null,
       visitorName: parsed.data.visitorName ?? session?.user?.name ?? null,
       visitorEmail: parsed.data.visitorEmail ?? session?.user?.email ?? null,
+      firstMessage: parsed.data.firstMessage ?? null,
     })
+
+    if (!supportSession) {
+      return NextResponse.json({ session: null })
+    }
 
     return NextResponse.json({ session: serializeSession(supportSession) })
   } catch (err) {
@@ -54,6 +61,7 @@ export async function GET() {
         tenantId: tenant.id,
         visitorToken,
         status: { in: ['OPEN', 'WAITING', 'ACTIVE'] },
+        lastMessageAt: { not: null },
       },
       orderBy: { updatedAt: 'desc' },
     })

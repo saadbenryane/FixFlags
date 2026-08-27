@@ -17,6 +17,20 @@ import {
 import type { SupportMessageDto, SupportSessionListItem } from '@/lib/live-support/types'
 import { extractAuditIdFromPageUrl } from '@/lib/live-support/extract-audit-id'
 
+function formatRelativeTime(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return null
+  const deltaSec = Math.round((Date.now() - then) / 1000)
+  if (deltaSec < 60) return 'just now'
+  const mins = Math.round(deltaSec / 60)
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.round(mins / 60)
+  if (hours < 48) return `${hours}h ago`
+  const days = Math.round(hours / 24)
+  return `${days}d ago`
+}
+
 function SessionRow({
   session,
   selected,
@@ -28,6 +42,7 @@ function SessionRow({
 }) {
   const label =
     session.visitorEmail ?? session.user?.email ?? session.visitorName ?? 'Anonymous'
+  const relative = formatRelativeTime(session.lastMessageAt)
   return (
     <button
       type="button"
@@ -49,6 +64,7 @@ function SessionRow({
         <Badge variant="outline" size="sm">
           {session.status}
         </Badge>
+        {relative && <span className="shrink-0 tabular-nums">{relative}</span>}
         {session.lead?.normalizedDomain && (
           <span className="truncate">{session.lead.normalizedDomain}</span>
         )}
@@ -202,7 +218,7 @@ export function AdminInbox() {
             <p className="p-4 text-sm text-muted-foreground">Loading sessions…</p>
           )}
           {!sessionsLoading && sessions.length === 0 && (
-            <p className="p-4 text-sm text-muted-foreground">No sessions yet.</p>
+            <p className="p-4 text-sm text-muted-foreground">No conversations yet.</p>
           )}
           {!sessionsLoading &&
             groupedSessions.map((group) => (

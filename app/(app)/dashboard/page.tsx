@@ -67,10 +67,7 @@ export default async function DashboardPage({
         <DashboardCheckoutToast />
       </Suspense>
 
-      <PageHeader
-        title={REPORT_COPY.workspace.dashboard.title}
-        description={REPORT_COPY.workspace.dashboard.pageDescription}
-      >
+      <PageHeader title={REPORT_COPY.workspace.dashboard.title}>
         {!isEffectivelyFree ? (
           <Badge
             variant="outline"
@@ -95,22 +92,18 @@ export default async function DashboardPage({
         variant="elevated"
         className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-center"
       >
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--radius-control)] bg-brand-muted text-brand">
             <Globe2 className="h-5 w-5" aria-hidden />
           </span>
-          <div>
-            <SectionTitle>{REPORT_COPY.workspace.dashboard.reviewUrlTitle}</SectionTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {REPORT_COPY.workspace.dashboard.reviewUrlBody}
-            </p>
-          </div>
+          <SectionTitle>{REPORT_COPY.workspace.dashboard.reviewUrlTitle}</SectionTitle>
         </div>
         <div className="min-w-0">
           <AuditInput
             initialUrl={initialAuditUrl}
             autoStart={Boolean(initialAuditUrl)}
             idSuffix="-dashboard"
+            showLandingExtras={false}
           />
         </div>
       </Surface>

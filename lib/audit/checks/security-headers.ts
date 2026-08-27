@@ -387,23 +387,25 @@ export function runSecurityHeaderChecks(
     })
   }
 
-  // Consolidate multiple missing-header findings into a single POLISH finding
-  // so they do not dominate the top-5 on every site that lacks standard headers.
-  // Managed hosts always consolidate (even 1–2 findings) and stay POLISH with
-  // an explicit "not settable without custom domain" note.
-  const SECURITY_HEADER_IDS = new Set([
+  // Consolidate only when core security headers are missing/weak. Aspirational
+  // hardening (preload, Referrer-Policy, COOP/COEP, Permissions-Policy, etc.)
+  // stays as individual POLISH findings so we never claim CSP/HSTS/XCTO/frame
+  // are missing when they are already present.
+  const CORE_SECURITY_HEADER_IDS = new Set([
     'security-csp-missing',
+    'security-hsts-missing',
+    'security-hsts-too-short',
+    'security-frame-options-missing',
+    'security-frame-options-too-permissive',
+    'security-content-type-options-missing',
+  ])
+  const ASPIRATIONAL_SECURITY_HEADER_IDS = new Set([
     'security-csp-unsafe-inline',
     'security-csp-unsafe-eval',
     'security-csp-weak-object-src',
     'security-csp-report-only',
-    'security-hsts-missing',
-    'security-hsts-too-short',
     'security-hsts-no-subdomains',
     'security-hsts-no-preload',
-    'security-frame-options-missing',
-    'security-frame-options-too-permissive',
-    'security-content-type-options-missing',
     'security-referrer-policy-missing',
     'security-referrer-policy-weak',
     'security-coop-missing',
@@ -413,39 +415,98 @@ export function runSecurityHeaderChecks(
     'security-permissions-policy-overbroad',
     'security-x-permitted-cross-domain',
   ])
-  const headerFindings = findings.filter((f) => SECURITY_HEADER_IDS.has(f.checkId))
-  const shouldConsolidate =
-    headerFindings.length >= 3 || (managedHostname != null && headerFindings.length >= 1)
-  if (shouldConsolidate) {
-    const names = headerFindings.map((f) => f.problem.replace(/\.$/, '')).join('; ')
+  const coreFindings = findings.filter((f) => CORE_SECURITY_HEADER_IDS.has(f.checkId))
+  const aspirationalFindings = findings.filter((f) =>
+    ASPIRATIONAL_SECURITY_HEADER_IDS.has(f.checkId)
+  )
+  const shouldConsolidateCore =
+    coreFindings.length >= 3 || (managedHostname != null && coreFindings.length >= 1)
+
+  const rollupAspirational = (items: DeterministicFlag[]): DeterministicFlag[] => {
+    if (items.length < 3) return items
+    const names = items.map((f) => f.problem.replace(/\.$/, '')).join('; ')
     const managedNote = managedHostname
       ? ` ${managedHostConstraintNote(managedHostname)}`
       : ''
     return [
       {
-        checkId: 'security-headers-missing',
+        checkId: 'security-headers-hardening',
         rubric: 'REACH' as const,
         impactTag: 'TRUST' as const,
         severity: 'POLISH' as const,
-        problem: `${headerFindings.length} security headers are missing or weak`,
-        evidence: `Missing: ${names}. These headers provide defense-in-depth against common web vulnerabilities.${managedNote}`,
+        problem: `${items.length} security header hardening gaps`,
+        evidence: `Hardening gaps (core CSP/HSTS/XCTO/frame already present or handled separately): ${names}.${managedNote}`,
         fix: managedHostname
-          ? 'These headers usually cannot be set on a managed builder subdomain. Connect a custom domain and configure CSP/HSTS/Permissions-Policy on your DNS/proxy/CDN, or in the host platform\'s custom-header settings.'
-          : 'Add the following HTTP response headers: Content-Security-Policy, Strict-Transport-Security (max-age=31536000), X-Frame-Options: DENY, X-Content-Type-Options: nosniff. Start with restrictive defaults and relax as needed.',
+          ? 'These hardening headers usually cannot be set on a managed builder subdomain. Connect a custom domain and configure Referrer-Policy, COOP/COEP/CORP, and Permissions-Policy on your DNS/proxy/CDN.'
+          : 'Add defense-in-depth headers that are still missing: Referrer-Policy, Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, Cross-Origin-Resource-Policy, and/or Permissions-Policy as appropriate. Tighten HSTS with includeSubDomains/preload only after subdomains are ready. Do not treat this as missing CSP, HSTS, XCTO, or frame protection.',
         confidence: 1.0,
         source: 'DETERMINISTIC' as const,
       },
     ]
   }
 
-  // Remaining single/double findings on managed hosts still must not escalate severity.
+  if (shouldConsolidateCore) {
+    const names = coreFindings.map((f) => f.problem.replace(/\.$/, '')).join('; ')
+    const hardeningNote =
+      aspirationalFindings.length > 0
+        ? ` Additional hardening gaps (${aspirationalFindings.length}) are secondary and omitted from this Flag.`
+        : ''
+    const managedNote = managedHostname
+      ? ` ${managedHostConstraintNote(managedHostname)}`
+      : ''
+    const missingCores = coreFindings.map((f) => f.checkId)
+    const fixParts: string[] = []
+    if (missingCores.includes('security-csp-missing')) {
+      fixParts.push('Content-Security-Policy')
+    }
+    if (
+      missingCores.includes('security-hsts-missing') ||
+      missingCores.includes('security-hsts-too-short')
+    ) {
+      fixParts.push('Strict-Transport-Security (max-age=31536000)')
+    }
+    if (missingCores.includes('security-frame-options-missing')) {
+      fixParts.push('X-Frame-Options: DENY or SAMEORIGIN (or CSP frame-ancestors)')
+    } else if (missingCores.includes('security-frame-options-too-permissive')) {
+      fixParts.push('X-Frame-Options: DENY or SAMEORIGIN')
+    }
+    if (missingCores.includes('security-content-type-options-missing')) {
+      fixParts.push('X-Content-Type-Options: nosniff')
+    }
+    const consolidated: DeterministicFlag = {
+      checkId: 'security-headers-missing',
+      rubric: 'REACH' as const,
+      impactTag: 'TRUST' as const,
+      severity: 'POLISH' as const,
+      problem: `${coreFindings.length} core security headers are missing or weak`,
+      evidence: `Missing or weak core headers: ${names}. These headers provide defense-in-depth against common web vulnerabilities.${hardeningNote}${managedNote}`,
+      fix: managedHostname
+        ? 'These headers usually cannot be set on a managed builder subdomain. Connect a custom domain and configure CSP/HSTS/Permissions-Policy on your DNS/proxy/CDN, or in the host platform\'s custom-header settings.'
+        : `Add the following HTTP response headers: ${fixParts.join('; ')}. Start with restrictive defaults and relax as needed. X-Frame-Options: SAMEORIGIN already satisfies clickjacking protection when present.`,
+      confidence: 1.0,
+      source: 'DETERMINISTIC' as const,
+    }
+    // When cores are missing, one Flag is enough — do not also emit a hardening
+    // rollup that would dominate Finish Plan / accuracy top-3 slots.
+    return [consolidated]
+  }
+
+  const aspirationalOut = rollupAspirational(aspirationalFindings)
+  const remaining = findings.filter(
+    (f) =>
+      !CORE_SECURITY_HEADER_IDS.has(f.checkId) &&
+      !ASPIRATIONAL_SECURITY_HEADER_IDS.has(f.checkId)
+  )
+  const withCores = [...coreFindings, ...aspirationalOut, ...remaining]
+
+  // Remaining findings on managed hosts still must not escalate severity.
   if (managedHostname) {
-    return findings.map((f) => ({
+    return withCores.map((f) => ({
       ...f,
       severity: 'POLISH' as const,
       evidence: `${f.evidence} ${managedHostConstraintNote(managedHostname)}`,
     }))
   }
 
-  return findings
+  return withCores
 }

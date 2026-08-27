@@ -41,22 +41,6 @@ export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
     void fetch(`/api/support/sessions/${sessionId}/messages`, { method: 'PATCH' })
   }, [sessionId, panelOpen, data?.messages?.length])
 
-  async function ensureSession() {
-    if (sessionId) return sessionId
-    const res = await fetch('/api/support/sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        pageUrl: window.location.href,
-        auditId: resolvedAuditId ?? undefined,
-      }),
-    })
-    if (!res.ok) throw new Error('Could not start chat')
-    const json = (await res.json()) as { session: { id: string } }
-    setSessionId(json.session.id)
-    return json.session.id
-  }
-
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
     const text = draft.trim()
@@ -65,19 +49,40 @@ export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
     setSending(true)
     setError(null)
     try {
-      const id = await ensureSession()
-      const res = await fetch(`/api/support/sessions/${id}/messages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: text }),
-      })
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}))
-        throw new Error(json.message ?? 'Failed to send')
-      }
-      setDraft('')
-      await mutate()
-    } catch (err) {
+      if (sessionId) {
+        const res = await fetch(`/api/support/sessions/${sessionId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ body: text }),
+        })
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}))
+          throw new Error(json.message ?? 'Failed to send')
+        }
+        setDraft('')
+        await mutate()
+      } else {
+        const res = await fetch('/api/support/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            pageUrl: window.location.href,
+            auditId: resolvedAuditId ?? undefined,
+            firstMessage: text,
+          }),
+        })
+        if (!res.ok) {
+          const json = await res.json().catch(() => ({}))
+          throw new Error(json.message ?? SUPPORT_CHAT.startError)
+        }
+        const json = (await res.json()) as { session: { id: string } | null }
+        if (!json.session?.id) {
+          throw new Error(SUPPORT_CHAT.startError)
+        }
+        setDraft('')
+        // Setting sessionId switches the SWR key so messages load from the new session.
+        setSessionId(json.session.id)
+      }    } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send')
     } finally {
       setSending(false)
@@ -85,23 +90,29 @@ export function SupportChatPanel({ auditId }: { auditId?: string | null }) {
   }
 
   const messages = data?.messages ?? []
+  // Local welcome only before persistence; after send the server SYSTEM message is the source of truth.
+  const showLocalWelcome = !sessionId
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 space-y-3 overflow-y-auto p-4 min-h-0">
-        {pollError && messages.length === 0 && (
+        {pollError && messages.length === 0 && sessionId && (
           <p className="text-sm text-destructive text-center py-8" role="alert">
             Could not load messages. Try sending a message to reconnect.
           </p>
         )}
-        {!pollError && messages.length === 0 && (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            {SUPPORT_CHAT.emptyState}
+        {showLocalWelcome && (
+          <p className="text-center text-xs text-muted-foreground px-2 py-1">
+            {SUPPORT_CHAT.welcomeMessage}
           </p>
         )}
         {messages.map((m) => {
           if (m.role === 'SYSTEM') {
-            return <p key={m.id} className="text-center text-xs text-muted-foreground px-2 py-1">{m.body}</p>
+            return (
+              <p key={m.id} className="text-center text-xs text-muted-foreground px-2 py-1">
+                {m.body}
+              </p>
+            )
           }
           return (
             <MessageBubble key={m.id} variant={m.role === 'VISITOR' ? 'visitor' : 'agent'}>

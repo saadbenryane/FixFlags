@@ -198,6 +198,8 @@ export const PRICING = {
   pickerBody: 'Pick the plan that matches how often you ship.',
   pickerBodyWithReport:
     'Your review is still running. Pick a plan to keep your report and fix prompts.',
+  pickerCreditNote:
+    'New URLs and update reviews each use 1 product review from your monthly allowance.',
   pickerReportNote: 'Choosing Free returns you to the running report.',
   pickerFootnote: 'Need more detail?',
   pickerCompareLink: 'Open the full comparison.',
@@ -338,13 +340,10 @@ export const USAGE_METER_COPY = {
   remainingCaption: (n: number) =>
     n === 1 ? '1 remaining this month' : `${n} remaining this month`,
   remainingShort: (n: number) => `${n} remaining`,
-  thisPeriod: (used: number) => `${used} this period`,
-  thisPeriodCaption: (n: number) =>
-    `product review${n === 1 ? '' : 's'} this period`,
-  compactNote: 'Update reviews use the same credits.',
-  compactPendingNote: (n: number) =>
-    `${n} in progress. Update reviews use the same credits.`,
-  panelNote: 'Update reviews use the same credits as new URLs.',
+  usedThisMonthCaption: (n: number) =>
+    `product review${n === 1 ? '' : 's'} used this month`,
+  panelNote:
+    'Each update review uses 1 product review from your monthly allowance.',
   progressLabel: (used: number, limit: number) =>
     `${used} of ${limit} product reviews used`,
   pending: (n: number) => `${n} in progress`,

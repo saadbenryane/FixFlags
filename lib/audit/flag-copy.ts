@@ -52,6 +52,7 @@ const CODE_OR_HEAD_CHECKS = new Set<string>([
 const VISUAL_EVIDENCE_CHECKS = new Set<string>([
   'h1-generic',
   'heading-hierarchy-missing',
+  'heading-order-skipped',
   'h1-missing',
   'h1-multiple',
   'no-cta-detected',
@@ -201,6 +202,8 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'Category headlines ("Build X with AI") do not tell visitors what they get - outcome-led H1s convert better.',
   'heading-hierarchy-missing':
     'Without section headings, the page reads as one wall of text and hurts scanability.',
+  'heading-order-skipped':
+    'Skipped heading levels break the outline screen-reader users rely on to navigate sections.',
   'no-cta-detected':
     'Visitors who are ready to act have no obvious next step, so intent dies on the page.',
   'cta-below-fold-mobile':
@@ -233,6 +236,8 @@ const WHY_IT_MATTERS: Record<string, string> = {
     'No visible contact path makes the business feel anonymous when visitors have questions.',
   'cookie-consent-absent':
     'Tracking without consent banners creates compliance risk in the EU and UK.',
+  'security-headers-hardening':
+    'Core headers may already be set, but missing COOP/COEP, Permissions-Policy, or HSTS preload leaves clickjacking and isolation gaps.',
   'console-errors-critical':
     'Runtime errors often break analytics, auth, or checkout scripts silently.',
   'console-errors-some':

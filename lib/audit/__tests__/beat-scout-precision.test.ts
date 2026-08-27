@@ -154,6 +154,22 @@ describe('journey ordering from contract', () => {
     expect(ordered.indexOf('pricing-evaluation')).toBeLessThan(ordered.indexOf('contact-support'))
     expect(ordered.indexOf('signup')).toBeLessThan(ordered.indexOf('contact-support'))
   })
+
+  it('skips pricing and signup for personal/article purpose', () => {
+    const ordered = orderJourneysFromContract(
+      {
+        purpose: 'Advisory portfolio',
+        firstValueJourney: 'Read work, then contact',
+        criticalOutcomes: ['Lead form submitted'],
+        inferredAt: '2026-07-20T00:00:00.000Z',
+        source: 'heuristic',
+      },
+      'article'
+    )
+    expect(ordered).toEqual(['first-visit', 'contact-support', 'multi-step-funnel'])
+    expect(ordered).not.toContain('pricing-evaluation')
+    expect(ordered).not.toContain('signup')
+  })
 })
 
 describe('tooling-path anti-FP', () => {

@@ -9,7 +9,6 @@ import { extractAuditIdFromPath } from '@/lib/live-support/extract-audit-id'
 import { useSupportContext } from '@/components/live-support/SupportProvider'
 import { SupportChatPanel } from '@/components/live-support/SupportChatPanel'
 import { useSupportSession } from '@/components/live-support/useSupportPolling'
-import { toast } from 'sonner'
 
 function SupportWidgetInner() {
   const pathname = usePathname()
@@ -28,29 +27,9 @@ function SupportWidgetInner() {
 
   const unread = data?.session?.unreadByVisitor ?? 0
 
-  async function ensureSession() {
-    const res = await fetch('/api/support/sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        pageUrl: window.location.href,
-        auditId: resolvedAuditId ?? undefined,
-      }),
-    })
-    if (!res.ok) return null
-    const json = (await res.json()) as { session: { id: string } }
-    setSessionId(json.session.id)
-    return json.session.id
-  }
-
-  async function openPanel() {
+  function openPanel() {
+    // UI only — session is created on first visitor message in SupportChatPanel.
     openSupportChat({ auditId: resolvedAuditId })
-    if (!sessionId) {
-      const id = await ensureSession()
-      if (!id) {
-        toast.error(SUPPORT_CHAT.startError)
-      }
-    }
   }
 
   return (
@@ -81,7 +60,7 @@ function SupportWidgetInner() {
 
       {!panelOpen && (
         <Button
-          onClick={() => void openPanel()}
+          onClick={openPanel}
           variant="ink"
           size="icon"
           className="fixed bottom-[calc(var(--floating-action-offset)_+_env(safe-area-inset-bottom))] right-[calc(var(--floating-action-offset)_+_env(safe-area-inset-right))] z-fab h-14 w-14 rounded-full shadow-card"

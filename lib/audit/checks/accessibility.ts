@@ -77,7 +77,7 @@ function axeRuleToCheckId(axeId: string): string {
     'aria-required-parent': 'axe-aria-required-parent',
     'duplicate-id-active': 'axe-duplicate-id-active',
     'duplicate-id-aria': 'axe-duplicate-id-aria',
-    'heading-order': 'heading-hierarchy-missing',
+    'heading-order': 'heading-order-skipped',
     'landmark-banner-is-top-level': 'axe-landmark-banner',
     'landmark-contentinfo-is-top-level': 'axe-landmark-contentinfo',
     'landmark-main-is-top-level': 'axe-landmark-main',

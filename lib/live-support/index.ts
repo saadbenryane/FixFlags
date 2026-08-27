@@ -4,6 +4,8 @@ export {
   resumeOrCreateSession,
   getSessionForVisitor,
   listAdminSessions,
+  countOpenConversations,
+  closeOrphanSupportSessions,
   getAdminUnreadCount,
   updateSessionStatus,
 } from '@/lib/live-support/sessions'

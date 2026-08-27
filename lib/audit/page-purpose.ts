@@ -135,11 +135,9 @@ export function detectPagePurpose(
   }
 
   // 5. Personal / portfolio / advisory page: personal pronouns in the headline,
-  //    case-study or portfolio sections, and the absence of commercial signals
-  //    indicate a personal site that legitimately lacks conversion CTAs.
-  //    Commercial intent is checked only in the headline/title and CTA text,
-  //    NOT in body content, because portfolio pages naturally mention "pricing"
-  //    or "buy" in case-study descriptions without having conversion intent.
+  //    case-study or portfolio sections, and the absence of commercial product
+  //    intent (trial, pricing, buy). Contact and booking CTAs are compatible
+  //    with personal sites and must not force a marketing classification.
   const h1Text = (meta.h1s ?? [])[0] ?? ''
   const titleText = meta.title ?? ''
   const headlineAndTitle = `${h1Text} ${titleText}`.toLowerCase()
@@ -150,12 +148,11 @@ export function detectPagePurpose(
     /(free trial|try free|start free|no credit card|free plan|\bpricing\b|\bbuy\b|\bcart\b|\bcheckout\b|\bpurchase\b|\bbilling\b)/i.test(
       headlineAndCtas
     )
-  const hasNoCommercialIntent = !hasCommercialIntent && ctaCount === 0
-  if (hasPersonalPronouns && hasPortfolioSections && hasNoCommercialIntent) {
+  if (hasPersonalPronouns && hasPortfolioSections && !hasCommercialIntent) {
     return {
       purpose: 'article',
       reasons: [
-        `personal/portfolio signal (pronouns=${hasPersonalPronouns}, portfolio=${hasPortfolioSections}, commercial=${hasCommercialIntent})`,
+        `personal/portfolio signal (pronouns=${hasPersonalPronouns}, portfolio=${hasPortfolioSections}, commercial=${hasCommercialIntent}, ctas=${ctaCount})`,
       ],
     }
   }

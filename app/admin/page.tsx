@@ -7,7 +7,7 @@ import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
 import { formatUsd, sumEstimatedCost, getCostOutliers } from '@/lib/billing/costs'
-import { getAdminUnreadCount } from '@/lib/live-support/sessions'
+import { countOpenConversations, getAdminUnreadCount } from '@/lib/live-support/sessions'
 import { MarginPanel } from '@/components/admin/MarginPanel'
 import { MetricCard } from '@/components/admin/MetricCard'
 import { startOf } from '@/lib/admin/date-ranges'
@@ -49,9 +49,7 @@ export default async function AdminPage() {
     prisma.auditRunCost.count(),
     prisma.lead.count({ where: { firstSeenAt: { gte: weekAgo } } }),
     prisma.lead.count({ where: { status: 'QUALIFIED' } }),
-    prisma.supportSession.count({
-      where: { status: { in: ['OPEN', 'WAITING', 'ACTIVE'] } },
-    }),
+    countOpenConversations(),
     getAdminUnreadCount(),
     getCostOutliers(7),
   ])

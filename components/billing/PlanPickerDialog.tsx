@@ -157,6 +157,9 @@ export function PlanPickerDialog({
             ? PRICING.pickerBodyWithReport
             : PRICING.pickerBody}
         </p>
+        <p className="text-xs text-muted-foreground text-pretty">
+          {PRICING.pickerCreditNote}
+        </p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">

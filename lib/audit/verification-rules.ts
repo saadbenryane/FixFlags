@@ -130,6 +130,8 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
     'H1 should describe a specific product outcome, not a generic welcome or AI-builder category headline.',
   'heading-hierarchy-missing':
     'Add H2 section headings so visitors can scan features, pricing, and proof without reading every paragraph.',
+  'heading-order-skipped':
+    'Heading levels should not skip (for example h1 then h3). Insert the missing intermediate headings so the outline is sequential.',
   'no-cta-detected':
     'A primary CTA button or link should be visible above the fold.',
   'cta-below-fold-mobile':
@@ -243,7 +245,9 @@ export const SECURITY_VERIFICATION_RULES = {
   'security-content-type-options-missing':
     'Open DevTools Network tab, check for X-Content-Type-Options: nosniff.',
   'security-headers-missing':
-    'Open DevTools Network tab, reload the page, and verify Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, and X-Content-Type-Options headers are all present.',
+    'Open DevTools Network tab, reload the page, and verify Content-Security-Policy, Strict-Transport-Security, X-Frame-Options (DENY or SAMEORIGIN), and X-Content-Type-Options headers are all present.',
+  'security-headers-hardening':
+    'Open DevTools Network tab and confirm defense-in-depth headers (Referrer-Policy, COOP/COEP/CORP, Permissions-Policy, HSTS includeSubDomains/preload) without claiming core CSP/HSTS/XCTO/frame are absent.',
   'security-csp-unsafe-eval':
     'In the CSP header, remove unsafe-eval and replace with specific script hashes or nonces.',
   'security-csp-weak-object-src':

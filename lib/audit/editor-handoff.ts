@@ -114,6 +114,10 @@ export function buildEditorHandoffPrompt(
   lines.push('3. Implement only that plan.')
   lines.push(
     '',
+    'Stay within the listed items. Do not invent pricing or signup pages, or expand scope beyond these Flags.'
+  )
+  lines.push(
+    '',
     'Do not invent file paths. Do not change unrelated sections.' + viewportGuard(location)
   )
   if (verify) {
@@ -154,6 +158,9 @@ export function buildPlanBundleHeader(context: EditorHandoffContext): string {
   )
   lines.push(
     '3. Implement only that plan. Do not invent file paths. Do not change unrelated sections.'
+  )
+  lines.push(
+    '4. Stay within the listed items. Do not invent pricing or signup pages, or expand scope beyond these Flags.'
   )
   lines.push('')
   return lines.join('\n')

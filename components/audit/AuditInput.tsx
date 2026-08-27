@@ -9,7 +9,6 @@ import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
 import { ArrowRight, Link2, Loader2 } from 'lucide-react'
 import { HERO, AUDIT_PROGRESS, AUDIT_ERRORS } from '@/lib/marketing/copy'
 import { URL_PLACEHOLDER } from '@/lib/marketing/copy/brand'
-import { SAMPLE_AUDIT_URL } from '@/lib/marketing/display-meta'
 import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics/events'
 import { useMe } from '@/hooks/useMe'
@@ -164,11 +163,6 @@ export function AuditInput({
     await submitUrl()
   }
 
-  async function handleTrySample() {
-    setUrl(SAMPLE_AUDIT_URL)
-    await submitUrl(SAMPLE_AUDIT_URL)
-  }
-
   function handleLandingTrySample() {
     trackEvent('clicked_sample_cta', { placement: 'hero' })
     const target = document.getElementById('sample-review')
@@ -302,14 +296,14 @@ export function AuditInput({
         )}
       </form>
 
-      {showLandingExtras || !isLanding ? (
-        <div className={cn('flex flex-col gap-1', isLanding ? 'items-center' : 'items-start')}>
+      {isLanding && showLandingExtras ? (
+        <div className="flex flex-col items-center gap-1">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             disabled={busy}
-            onClick={isLanding ? handleLandingTrySample : handleTrySample}
+            onClick={handleLandingTrySample}
             className="px-0 text-sm text-muted-foreground hover:text-foreground"
           >
             {HERO.trySampleCta}

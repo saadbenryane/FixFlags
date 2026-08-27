@@ -314,7 +314,7 @@ Five concrete checks from report evidence. Fix before shipping:
 ## Support
 
 - **Help Center** at `/help` — billing, account, privacy, failed reviews, plan questions, and human support. Product Review, report, and update-review guides live under `/docs`.
-- **Live chat** on all non-admin pages — first-party widget; team replies in `/admin/feedback`. Typical reply within a few hours.
+- **Live chat** on help/faq/docs and the authenticated app shell — first-party widget; a conversation is created only when the visitor sends a message; team replies in `/admin/feedback`. Typical reply within a few hours.
 - **FAQ** at `/faq` — short Q&A; links into Help for deeper guides.
 - **Email** `hello@fixflags.com` — privacy, terms, high-volume pricing. Not a ticket system.
 - Do **not** market priority or dedicated support. High-volume is custom pricing via email only.

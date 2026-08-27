@@ -1,9 +1,7 @@
 import Link from 'next/link'
 import type { Route } from 'next'
-import { ArrowRight, CircleAlert, Eye, FileSearch, Flag } from 'lucide-react'
+import { ArrowRight, CircleAlert, Eye, Flag } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { EmptyState } from '@/components/ui/empty-state'
-import { TextLink } from '@/components/ui/text-link'
 import { Surface } from '@/components/ui/surface'
 import { SectionTitle } from '@/components/ui/typography'
 import { ProductCaptureThumb } from '@/components/dashboard/ProductCaptureThumb'
@@ -11,7 +9,10 @@ import { ProductScoreSparkline } from '@/components/dashboard/ProductScoreSparkl
 import type { ProductOverviewDTO } from '@/lib/products/workspace'
 import { presentProductReview } from '@/lib/products/review-state'
 import { REPORT_COPY } from '@/lib/marketing/copy'
+import { DEMO_BRAND } from '@/lib/demo/brand'
 import { displayHostname } from '@/lib/utils/url-helpers'
+
+const SAMPLE_THUMB = '/samples/observations/curated-sample-v1/desktop.webp'
 
 function reviewDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', {
@@ -36,6 +37,44 @@ function productLinkLabel(product: ProductOverviewDTO): string {
   return `${copy.openProductAria(product.name)}${trend}${attention}`
 }
 
+function DemoSampleRow() {
+  const copy = REPORT_COPY.workspace.dashboard
+  return (
+    <Surface variant="elevated" className="overflow-hidden p-0">
+      <Link
+        href={'/samples' as Route}
+        aria-label={copy.sampleOpenAria}
+        className="group grid min-h-28 grid-cols-[7.5rem_minmax(0,1fr)] gap-4 px-4 py-4 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:grid-cols-[7.5rem_minmax(0,1.1fr)_minmax(0,1fr)_auto] sm:items-center sm:px-5"
+      >
+        <ProductCaptureThumb src={SAMPLE_THUMB} />
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-base font-semibold tracking-heading">
+              {DEMO_BRAND.name}
+            </h3>
+            <Badge variant="outline" className="shrink-0">
+              {copy.sampleBadge}
+            </Badge>
+          </div>
+          <p className="mt-1 truncate text-xs text-muted-foreground">
+            {DEMO_BRAND.domainLabel}
+          </p>
+        </div>
+        <div className="col-span-2 min-w-0 sm:col-span-1 sm:border-l sm:border-border/50 sm:pl-4">
+          <p className="text-xs font-medium text-muted-foreground">
+            {copy.attentionLabel}
+          </p>
+          <p className="mt-0.5 text-sm font-medium">{copy.sampleAttention}</p>
+        </div>
+        <ArrowRight
+          className="hidden h-5 w-5 text-brand transition-transform group-hover:translate-x-0.5 sm:block"
+          aria-hidden
+        />
+      </Link>
+    </Surface>
+  )
+}
+
 export function ProductOverviewGrid({
   products,
 }: {
@@ -45,28 +84,14 @@ export function ProductOverviewGrid({
   return (
     <section aria-labelledby="products-heading" className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <SectionTitle id="products-heading">{copy.productsHeading}</SectionTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {copy.productsBody}
-          </p>
-        </div>
+        <SectionTitle id="products-heading">{copy.productsHeading}</SectionTitle>
         <Badge variant="outline" className="font-mono tabular-nums">
           {copy.productCount(products.length)}
         </Badge>
       </div>
 
       {products.length === 0 ? (
-        <EmptyState
-          icon={<FileSearch className="h-6 w-6" aria-hidden />}
-          title={copy.emptyTitle}
-          description={copy.emptyBody}
-          action={
-            <TextLink href={'/help/getting-started/first-check' as Route}>
-              {copy.emptyCta}
-            </TextLink>
-          }
-        />
+        <DemoSampleRow />
       ) : (
         <Surface variant="elevated" className="overflow-hidden p-0">
           <div className="divide-y divide-border/60">

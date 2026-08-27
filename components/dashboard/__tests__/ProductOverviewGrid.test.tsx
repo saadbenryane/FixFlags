@@ -124,14 +124,17 @@ describe('ProductOverviewGrid', () => {
     expect(screen.queryByText(/0 open Improvements/)).not.toBeInTheDocument()
   })
 
-  it('renders the empty Product state without inventing account activity', () => {
+  it('renders a DemoSite sample row when the account has no Products', () => {
     render(<ProductOverviewGrid products={[]} />)
 
     const section = screen.getByRole('region', { name: 'Your Products' })
-    expect(within(section).getByText('No Products yet')).toBeInTheDocument()
+    expect(within(section).getByText('0 Products')).toBeInTheDocument()
+    expect(within(section).getByText('DemoSite')).toBeInTheDocument()
+    expect(within(section).getByText('Sample')).toBeInTheDocument()
     expect(
-      within(section).getByRole('link', { name: 'Run your first product review' }),
-    ).toHaveAttribute('href', '/help/getting-started/first-check')
+      within(section).getByRole('link', { name: 'Open DemoSite sample review.' }),
+    ).toHaveAttribute('href', '/samples')
+    expect(within(section).queryByText('No Products yet')).not.toBeInTheDocument()
     expect(within(section).queryByText('Alpha')).not.toBeInTheDocument()
   })
 })

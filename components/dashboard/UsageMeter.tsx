@@ -49,7 +49,7 @@ export function UsageMeter({
     : Infinity;
   const copy = USAGE_METER_COPY;
   const compactHeadline = isUnlimited
-    ? copy.thisPeriod(used)
+    ? String(used)
     : copy.usedOfLimit(reserved, limit);
 
   if (variant === "compact") {
@@ -84,27 +84,17 @@ export function UsageMeter({
         ) : (
           <span className="hidden sm:block sm:flex-1" />
         )}
-        <p className="text-xs text-muted-foreground sm:max-w-xs sm:text-right">
-          {isUnlimited
-            ? pending > 0
-              ? copy.compactPendingNote(pending)
-              : copy.compactNote
-            : `${copy.remainingShort(remaining)}. ${pending > 0 ? copy.compactPendingNote(pending) : copy.compactNote}`}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:max-w-xs sm:justify-end sm:text-right">
+          {pending > 0 ? <span>{copy.pending(pending)}</span> : null}
           {showUpgradeCta && atLimit && plan === "FREE" && purchasedCredits === 0 ? (
-            <>
-              {" "}
-              <Link href="/pricing" className="text-brand hover:underline">
-                {copy.upgradeToPro}
-              </Link>
-            </>
+            <Link href="/pricing" className="text-brand hover:underline">
+              {copy.upgradeToPro}
+            </Link>
           ) : null}
           {showLimitHelp ? (
-            <>
-              {" "}
-              <TextLink href={limitHelpHref}>{HELP_CENTER.viewHelpCta}</TextLink>
-            </>
+            <TextLink href={limitHelpHref}>{HELP_CENTER.viewHelpCta}</TextLink>
           ) : null}
-        </p>
+        </div>
       </section>
     );
   }
@@ -133,7 +123,7 @@ export function UsageMeter({
             {used}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {copy.thisPeriodCaption(used)}
+            {copy.usedThisMonthCaption(used)}
           </p>
         </div>
       ) : (

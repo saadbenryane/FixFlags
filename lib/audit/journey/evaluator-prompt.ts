@@ -28,7 +28,13 @@ Rules:
 7. Accessibility barriers should reference specific a11y tree elements.
 8. Keep confidence calibrated - lower confidence when evidence is ambiguous.
 
-Focus on the PRIMARY conversion path. Do not flag minor cosmetic issues. Focus on issues that would cause real users to abandon or fail to convert.`
+Focus on the PRIMARY conversion path. Do not flag minor cosmetic issues. Focus on issues that would cause real users to abandon or fail to convert.
+
+Broken-promise rules:
+9. Every broken promise must quote visible on-page strings in evidence (headline, CTA, or section text from the step).
+10. Do not invent commercial expectations (pricing packages, service menus, free trial, signup) unless the journey type and page evidence clearly promise them.
+11. On personal, portfolio, advisory, docs, or OSS sites, judge the contact/lead path — not SaaS pricing or signup completeness.
+12. If the destination headline or primary CTA already matches the prior step’s CTA words, do not emit a broken promise.`
 }
 
 export interface EvaluatorUserPromptInput {
@@ -37,6 +43,8 @@ export interface EvaluatorUserPromptInput {
   goalAchieved: boolean
   steps: JourneyStepDraft[]
   summary: string
+  /** Coarse site purpose when known; steers commercial vs contact-led judgment. */
+  purpose?: string | null
 }
 
 /**
@@ -64,6 +72,7 @@ export function buildEvaluatorUserPrompt(input: EvaluatorUserPromptInput): strin
 
   return `Website: ${input.url}
 Journey type: ${input.journeyType}
+Site purpose: ${input.purpose ?? 'unknown'}
 Goal achieved: ${input.goalAchieved ? 'Yes' : 'No'}
 Steps completed: ${input.steps.length}
 
@@ -72,5 +81,10 @@ ${input.summary ? `Journey summary: ${input.summary}` : ''}
 Step-by-step history:
 ${stepsSection}
 
-Evaluate this journey for UX issues. Focus on friction points, broken promises, and accessibility barriers.`
+Evaluate this journey for UX issues. Focus on friction points, broken promises, and accessibility barriers.
+${
+  input.purpose && input.purpose !== 'marketing' && input.purpose !== 'unknown'
+    ? 'This is not a SaaS marketing conversion site. Do not invent pricing, signup, or packaged-offer expectations.'
+    : ''
+}`
 }

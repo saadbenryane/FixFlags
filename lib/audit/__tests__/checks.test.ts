@@ -1676,6 +1676,17 @@ describe('trigger matrix - one failing signal per checkId', () => {
       }))),
     'security-headers-missing': () =>
       checkIds(runSecurityHeaderChecks('https://example.com', {})),
+    'security-headers-hardening': () =>
+      checkIds(
+        runSecurityHeaderChecks('https://example.com', {
+          'content-security-policy': "default-src 'self'; object-src 'none'",
+          'strict-transport-security': 'max-age=31536000',
+          'x-frame-options': 'SAMEORIGIN',
+          'x-content-type-options': 'nosniff',
+        })
+      ),
+    'heading-order-skipped': () =>
+      checkIds(runAccessibilityChecks(healthyMeta(), null, [axeV('heading-order')])),
     'visual-radius-inconsistent': () =>
       checkIds(runVisualPolishChecks(healthyCaptureMetrics({ buttonBorderRadii: [0, 8, 24] }))),
     'visual-typography-sprawl': () =>

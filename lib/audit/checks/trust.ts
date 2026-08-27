@@ -58,7 +58,7 @@ export function runTrustChecks(
       severity: 'POLISH',
       problem: 'Analytics detected but no cookie consent found',
       evidence: 'Analytics script found but no cookie consent banner or cookie management found',
-      fix: '1. Add a cookie consent banner (Cookiebot, CookieYes, or Osano)\n2. Block analytics and tracking scripts until consent is given\n3. Include a cookie settings link in the footer for preference changes',
+      fix: '1. Add a cookie consent banner (first-party Accept/Reject, or Cookiebot/CookieYes/Osano)\n2. Default analytics denied; load Google Tag Manager / GA only after consent (Consent Mode v2 if using Google)\n3. Include a Cookie settings link in the footer so visitors can change preferences',
       confidence: 0.7,
       source: 'DETERMINISTIC',
     })

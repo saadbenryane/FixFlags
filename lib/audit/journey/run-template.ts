@@ -52,6 +52,35 @@ function finding(
   return { confidence: 0.85, ...partial }
 }
 
+function deadEndFix(journeyType: JourneyType): string {
+  switch (journeyType) {
+    case 'pricing-evaluation':
+      return [
+        '1. Add clear same-origin nav to pricing or plans',
+        '2. Ensure pricing links are crawlable and visible in header or hero',
+        '3. Keep the path consistent from first visit through evaluation',
+      ].join('\n')
+    case 'signup':
+      return [
+        '1. Add clear same-origin nav to signup, trial, or account creation',
+        '2. Ensure signup links are crawlable and visible in header or hero',
+        '3. Keep the path consistent from first visit through registration',
+      ].join('\n')
+    case 'contact-support':
+      return [
+        '1. Add a clear same-origin path to contact, booking, or support',
+        '2. Ensure the link is crawlable and visible in header or hero',
+        '3. Land the visitor on a form or calendar with an obvious next action',
+      ].join('\n')
+    default:
+      return [
+        '1. Add a clear next-step path (contact, product page, or primary CTA)',
+        '2. Ensure links are same-origin and crawlable',
+        '3. Surface the path in both header and hero',
+      ].join('\n')
+  }
+}
+
 async function pageShowsFormSuccess(page: Page): Promise<boolean> {
   return page.evaluate(() => {
     const text = document.body?.innerText?.toLowerCase() ?? ''
@@ -167,7 +196,7 @@ export async function runJourneyTemplate(
           problem: 'Visitor cannot continue the intended journey from this page',
           evidence: `Reproduced at step 1. ${abandonedReason}`,
           whyItMatters: 'Funnel paths that dead-end lose conversions silently.',
-          fix: '1. Add clear nav to pricing, signup, or contact\n2. Ensure links are same-origin and crawlable\n3. Surface the path in both header and hero',
+          fix: deadEndFix(options.journeyType),
           screenshotUrl: before1,
         })
       )

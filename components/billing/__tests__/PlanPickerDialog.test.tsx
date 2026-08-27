@@ -70,6 +70,11 @@ describe('PlanPickerDialog', () => {
     expect(screen.getByText('Free')).toBeInTheDocument()
     expect(screen.getByText('Pro')).toBeInTheDocument()
     expect(screen.getByText('Studio')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'New URLs and update reviews each use 1 product review from your monthly allowance.',
+      ),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Current plan' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Join Pro waitlist' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Join Studio waitlist' })).toBeInTheDocument()

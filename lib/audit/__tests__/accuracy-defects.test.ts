@@ -281,7 +281,7 @@ describe('managed-host security headers', () => {
     expect(isManagedHostingHostname('example.com')).toBe(false)
   })
 
-  it('consolidates missing headers on managed hosts to a single POLISH flag', () => {
+  it('consolidates missing core headers on managed hosts to a single POLISH flag', () => {
     const flags = runSecurityHeaderChecks('https://demo.lovable.app/', {})
     expect(flags).toHaveLength(1)
     expect(flags[0].checkId).toBe('security-headers-missing')

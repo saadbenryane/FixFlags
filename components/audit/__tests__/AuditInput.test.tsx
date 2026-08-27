@@ -159,4 +159,24 @@ describe('AuditInput scan handoff', () => {
       screen.getAllByText(/already used your anonymous product review/i).length
     ).toBeGreaterThan(0)
   })
+
+  it('hides the sample CTA on the dashboard input', () => {
+    render(
+      <MeProvider initialUser={{ id: 'u1', email: 'a@b.com', plan: 'FREE' } as never}>
+        <AuditInput idSuffix="-dashboard" showLandingExtras={false} />
+      </MeProvider>,
+    )
+
+    expect(screen.queryByRole('button', { name: /see a sample review/i })).not.toBeInTheDocument()
+  })
+
+  it('shows the sample CTA on the landing hero', () => {
+    render(
+      <MeProvider initialUser={null}>
+        <AuditInput variant="landing" showLandingExtras idSuffix="-hero-sample" />
+      </MeProvider>,
+    )
+
+    expect(screen.getByRole('button', { name: /see a sample review/i })).toBeInTheDocument()
+  })
 })

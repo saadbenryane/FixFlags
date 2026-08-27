@@ -41,20 +41,13 @@ export const REPORT_COPY = {
     scoreUnavailable: "unavailable",
     dashboard: {
       title: "Products",
-      pageDescription:
-        "See what deserves attention, improve it, and verify whether it worked.",
       reviewUrlTitle: "Review a URL",
-      reviewUrlBody:
-        "A new URL creates a Product. Reviewing the same Product adds a fresh observation.",
       productsHeading: "Your Products",
-      productsBody:
-        "Choose a Product to see what deserves attention and what changed.",
       productCount: (count: number) =>
         `${count} ${count === 1 ? "Product" : "Products"}`,
-      emptyTitle: "No Products yet",
-      emptyBody:
-        "Review a URL above. FixFlags will keep that Product and every future update review together.",
-      emptyCta: "Run your first product review",
+      sampleBadge: "Sample",
+      sampleOpenAria: "Open DemoSite sample review.",
+      sampleAttention: "Explore a curated sample review",
       watching: "Watching",
       latestReview: "Latest Review",
       attentionLabel: "Attention",

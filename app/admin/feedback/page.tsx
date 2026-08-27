@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { FeedbackHub } from '@/components/admin/FeedbackHub'
-import { getAdminUnreadCount } from '@/lib/live-support/sessions'
+import { closeOrphanSupportSessions, getAdminUnreadCount } from '@/lib/live-support/sessions'
 import type { FlagReactionGroup, ReportReactionItem } from '@/components/admin/ReactionsList'
 
 function domainFrom(url: string | null | undefined): string {
@@ -16,6 +16,8 @@ function domainFrom(url: string | null | undefined): string {
 }
 
 export default async function AdminFeedbackPage() {
+  await closeOrphanSupportSessions().catch(() => 0)
+
   const [reportRows, flagRows, unread] = await Promise.all([
     prisma.auditFeedback.findMany({
       orderBy: { createdAt: 'desc' },

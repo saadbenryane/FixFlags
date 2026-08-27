@@ -77,6 +77,7 @@ export const ALL_CHECK_IDS = [
   'h1-generic',
   'no-cta-detected',
   'heading-hierarchy-missing',
+  'heading-order-skipped',
   // layout.ts
   'cta-below-fold-mobile',
   // interaction.ts
@@ -122,6 +123,7 @@ export const ALL_CHECK_IDS = [
   'security-permissions-policy-overbroad',
   'security-x-permitted-cross-domain',
   'security-headers-missing',
+  'security-headers-hardening',
   // search-performance.ts (GSC integration)
   'indexing-failure',
   'soft-404',

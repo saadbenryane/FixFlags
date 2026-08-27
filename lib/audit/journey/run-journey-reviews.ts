@@ -10,15 +10,18 @@ import { runNetworkEngagementChecks } from '@/lib/audit/checks/network-engagemen
 import { filterToolingPathFlags } from '@/lib/audit/tooling-path-filter'
 import { captureAccessibilityTree } from '@/lib/audit/browser/journey-safety'
 import { recordTargetedJourneyVerifierExecutions } from '@/lib/improvements/verifier-provenance'
+import type { PageMetadata } from '@/lib/audit/metadata'
+import { detectPagePurpose, isProductPage, type PagePurpose } from '@/lib/audit/page-purpose'
 import { discoverJourneyLinks } from './discover'
 import { planJourney, isPlannerProviderConfigured } from './planner'
 import { evaluateJourney } from './evaluator'
 import type { JourneyEvaluation } from './evaluator-schema'
+import { accessibilityBarrierFix, frictionFix } from './evaluation-fix'
 import { createJourneyAIGuard } from './ai-guard'
 import { runJourneyTemplate } from './run-template'
 import type { JourneyFindingDraft, JourneyStepDraft, JourneyType } from './types'
 
-const PAID_JOURNEY_TYPES: JourneyType[] = [
+const SAAS_JOURNEY_TYPES: JourneyType[] = [
   'first-visit',
   'pricing-evaluation',
   'signup',
@@ -26,28 +29,61 @@ const PAID_JOURNEY_TYPES: JourneyType[] = [
   'multi-step-funnel',
 ]
 
+/** Contact-led / content sites: no pricing or signup funnel templates. */
+const PERSONAL_JOURNEY_TYPES: JourneyType[] = [
+  'first-visit',
+  'contact-support',
+  'multi-step-funnel',
+]
+
 const JOURNEY_BUDGET_MS = 55_000
 
+const COMMERCIAL_PROMISE_RE =
+  /\b(pricing|price\s+plan|free\s+trial|sign\s*up|service\s+menu|packaged\s+offer|buy\s+now|checkout)\b/i
+
 /** Prefer journey templates that match the Product Contract first-value path. */
-export function orderJourneysFromContract(contract: ProductContract | null): JourneyType[] {
-  const base = [...PAID_JOURNEY_TYPES]
+export function orderJourneysFromContract(
+  contract: ProductContract | null,
+  purpose: PagePurpose | null = null
+): JourneyType[] {
+  const base =
+    purpose != null && !isProductPage(purpose) ? [...PERSONAL_JOURNEY_TYPES] : [...SAAS_JOURNEY_TYPES]
   if (!contract) return base
 
   const text =
     `${contract.firstValueJourney} ${contract.purpose} ${contract.criticalOutcomes.join(' ')}`.toLowerCase()
   const preferred: JourneyType[] = []
-  if (/pric|plan|checkout|buy|purchas/.test(text)) preferred.push('pricing-evaluation')
-  if (/sign.?up|register|trial|onboard|account/.test(text)) preferred.push('signup')
-  if (/contact|support|help|demo/.test(text)) preferred.push('contact-support')
+  if (base.includes('pricing-evaluation') && /pric|plan|checkout|buy|purchas/.test(text)) {
+    preferred.push('pricing-evaluation')
+  }
+  if (base.includes('signup') && /sign.?up|register|trial|onboard|account/.test(text)) {
+    preferred.push('signup')
+  }
+  if (/contact|support|help|demo|book|call|project/.test(text)) preferred.push('contact-support')
 
   const ordered: JourneyType[] = ['first-visit']
   for (const t of preferred) {
-    if (!ordered.includes(t)) ordered.push(t)
+    if (base.includes(t) && !ordered.includes(t)) ordered.push(t)
   }
   for (const t of base) {
     if (!ordered.includes(t)) ordered.push(t)
   }
   return ordered
+}
+
+/** Drop broken promises that invent commercial expectations on non-product pages. */
+export function shouldKeepBrokenPromise(
+  expected: string,
+  actual: string,
+  purpose: PagePurpose | null
+): boolean {
+  if (purpose == null || isProductPage(purpose)) return true
+  if (COMMERCIAL_PROMISE_RE.test(expected)) return false
+  if (/\b(service\s+menu|unique\s+selling|packaged\s+offer|pricing\s+tiers?)\b/i.test(expected)) {
+    return false
+  }
+  void actual
+  return true
 }
 
 async function mergeActionTimeline(
@@ -83,10 +119,11 @@ function withStepEvidence(f: JourneyFindingDraft): JourneyFindingDraft {
   }
 }
 
-function convertEvaluationToFindings(
+export function convertEvaluationToFindings(
   evaluation: JourneyEvaluation,
   steps: JourneyStepDraft[],
-  startUrl: string
+  startUrl: string,
+  purpose: PagePurpose | null = null
 ): JourneyFindingDraft[] {
   const findings: JourneyFindingDraft[] = []
 
@@ -111,7 +148,7 @@ function convertEvaluationToFindings(
               : fp.type === 'unclear-progress'
                 ? 'Visitors lose context when they cannot tell where they are in the flow.'
                 : 'Missing feedback after actions makes visitors uncertain whether anything happened.',
-      fix: '1. Review this step in the journey\n2. Add clearer visual feedback\n3. Reduce cognitive load at this point',
+      fix: frictionFix(fp),
       screenshotUrl: step?.screenshotAfterUrl,
       accessibilityEvidence: step?.accessibilityTree?.slice(0, 2000),
       confidence: evaluation.confidence,
@@ -120,6 +157,7 @@ function convertEvaluationToFindings(
   }
 
   for (const bp of evaluation.brokenPromises) {
+    if (!shouldKeepBrokenPromise(bp.expected, bp.actual, purpose)) continue
     const step = steps.find((s) => s.stepNumber === bp.stepNumber)
     findings.push({
       checkId: 'journey-funnel-broken-promise',
@@ -151,7 +189,7 @@ function convertEvaluationToFindings(
       problem: ab.barrier,
       evidence: ab.evidence,
       whyItMatters: 'Accessibility barriers prevent users with disabilities from completing the journey.',
-      fix: '1. Ensure all interactive elements are keyboard-accessible\n2. Add proper ARIA labels and roles\n3. Test with screen readers',
+      fix: accessibilityBarrierFix(ab),
       screenshotUrl: step?.screenshotAfterUrl,
       accessibilityEvidence: step?.accessibilityTree?.slice(0, 2000),
       confidence: evaluation.confidence,
@@ -296,10 +334,15 @@ export async function runJourneyReviewsForAudit(
 
   const auditRow = await prisma.audit.findUnique({
     where: { id: auditId },
-    select: { productContract: true, userId: true },
+    select: { productContract: true, userId: true, htmlMetadata: true },
   })
   const contract = parseProductContract(auditRow?.productContract)
-  const journeyTypes = orderJourneysFromContract(contract)
+      const metadata =
+    auditRow?.htmlMetadata && typeof auditRow.htmlMetadata === 'object'
+      ? (auditRow.htmlMetadata as unknown as PageMetadata)
+      : null
+  const purpose = metadata ? detectPagePurpose(metadata, startUrl).purpose : null
+  const journeyTypes = orderJourneysFromContract(contract, purpose)
 
   const browser = await getAuditBrowser()
   let findingCount = 0
@@ -412,13 +455,15 @@ export async function runJourneyReviewsForAudit(
               goalAchieved: result.goalAchieved,
               steps: result.steps,
               summary: result.abandonedReason ?? `Completed ${result.steps.length} steps`,
+              purpose,
             },
             Math.min(JOURNEY_BUDGET_MS, remaining())
           )
           const evalFindings = convertEvaluationToFindings(
             evalResult.evaluation,
             result.steps,
-            startUrl
+            startUrl,
+            purpose
           )
           if (evalFindings.length > 0) {
             const persisted = await persistJourneyResult(auditId, {

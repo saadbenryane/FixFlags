@@ -80,20 +80,48 @@ export function validatePrescriptionOutput(
   }
 
   for (const rx of output.flagPrescriptions) {
-    validateFixQuality(rx)
+    const existing = existingFlags.find((f) => f.flagKey === rx.flagKey)
+    validateFixQuality(rx, existing)
   }
 
   return output
 }
 
-function validateFixQuality(rx: {
-  flagKey: string
-  fix: string
+function tokenizeForOverlap(text: string): Set<string> {
+  const tokens = text
+    .toLowerCase()
+    .match(/[a-z0-9]{3,}/g)
+  return new Set(tokens ?? [])
+}
+
+function sharesEvidenceTokens(
+  prompt: string,
+  problem: string,
   evidence: string
-  whyItMatters: string
-  agentPrompt?: string
-  verificationRule: string
-}): void {
+): boolean {
+  const promptTokens = tokenizeForOverlap(prompt)
+  if (promptTokens.size === 0) return false
+  const sourceTokens = tokenizeForOverlap(`${problem} ${evidence}`)
+  let overlap = 0
+  for (const t of promptTokens) {
+    if (sourceTokens.has(t)) overlap += 1
+  }
+  // Require a few shared content tokens so ARIA-heavy prompts cannot pass
+  // when the finding is about an unrelated topic.
+  return overlap >= 2
+}
+
+function validateFixQuality(
+  rx: {
+    flagKey: string
+    fix: string
+    evidence: string
+    whyItMatters: string
+    agentPrompt?: string
+    verificationRule: string
+  },
+  existing?: ExistingFlagForPrescription
+): void {
   const fix = rx.fix.trim()
 
   const lines = fix.split('\n').filter((l) => l.trim().length > 0)
@@ -102,6 +130,12 @@ function validateFixQuality(rx: {
       `fix for ${rx.flagKey} must contain at least 2 numbered steps, got ${lines.length} line(s)`
     )
   }
+
+  const findingLooksLikeA11yInteraction =
+    existing != null &&
+    /\b(keyboard|aria-|screen\s+reader|focus|tabindex|accessible\s+name)\b/i.test(
+      `${existing.problem} ${existing.evidence}`
+    )
 
   const hasSpecificity =
     fix.includes('→') ||
@@ -116,9 +150,11 @@ function validateFixQuality(rx: {
     fix.includes('alt=') ||
     fix.includes('content=') ||
     fix.includes('class=') ||
-    fix.includes('aria-') ||
+    (fix.includes('aria-') && findingLooksLikeA11yInteraction) ||
     fix.includes('`') ||
-    /\b(title|description|og:|meta|h1|h2|button|link|nav|header|footer|section|img|input|form)\b/i.test(fix)
+    /\b(title|description|og:|meta|h1|h2|button|link|nav|header|footer|section|img|input|form)\b/i.test(
+      fix
+    )
   if (!hasSpecificity) {
     throw new JudgeContractError(
       `fix for ${rx.flagKey} lacks specificity: must include element selectors, attribute names, or before/after text`
@@ -143,6 +179,18 @@ function validateFixQuality(rx: {
   if (vr.length < 10) {
     throw new JudgeContractError(
       `verificationRule for ${rx.flagKey} is too brief (${vr.length} chars), must describe how to verify the fix`
+    )
+  }
+
+  const agentPrompt = rx.agentPrompt?.trim()
+  if (
+    existing &&
+    agentPrompt &&
+    agentPrompt.length > 0 &&
+    !sharesEvidenceTokens(agentPrompt, existing.problem, existing.evidence)
+  ) {
+    throw new JudgeContractError(
+      `agentPrompt for ${rx.flagKey} does not share concrete tokens with the finding problem/evidence`
     )
   }
 }

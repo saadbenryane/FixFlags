@@ -235,7 +235,7 @@ Playwright Chromium via `lib/audit/screenshot.ts` + `lib/audit/browser/page-sess
 
 - **Documentation and Help:** public product documentation lives under `/docs` (getting started, reports, troubleshooting). `/help` is the support surface for billing, account, failed checks, privacy, and human support. `/faq` is a searchable FAQ projection with `learnMore` links into Help. Content ownership and cross-link rules live in `docs/knowledge-base-ia.md`.
 - **Unified search:** `KnowledgeSearch` indexes help articles and docs pages via `lib/knowledge/index.ts` (`buildKnowledgeIndex()`). Search appears on `/help`, help category/article pages, and the docs sidebar.
-- **Live chat:** `SupportProvider` wraps knowledge routes (`/help`, `/faq`, `/docs`) and the authenticated app shell. APIs under `/api/support/*`. Admin inbox: `/admin/feedback`. Welcome SYSTEM message from `lib/help/sla.ts` / `SUPPORT_CHAT`.
+- **Live chat:** `SupportProvider` wraps knowledge routes (`/help`, `/faq`, `/docs`) and the authenticated app shell. APIs under `/api/support/*`. Opening the widget is UI-only; `POST /api/support/sessions` with `firstMessage` creates the conversation (SYSTEM welcome + visitor message). Admin inbox: `/admin/feedback` lists sessions with `lastMessageAt` set. Welcome SYSTEM message from `lib/help/sla.ts` / `SUPPORT_CHAT`.
 - **Escalation:** Help articles and stuck surfaces (`AuditFailurePanel`, limit gate, billing, usage meter, report errors) call `openSupportChat` or deep-link to articles via `lib/help/contextual.ts`. `HelpChatEscalate` hides the chat button when no provider is mounted and links to contact-us instead.
 - **Email:** `hello@fixflags.com` for legal/high-volume. Payment failure notifies admin + user (`lib/billing/notify.ts`).
 
