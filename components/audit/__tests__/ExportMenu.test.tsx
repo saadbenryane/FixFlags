@@ -28,7 +28,7 @@ describe('ExportMenu', () => {
       />,
     )
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: /export/i }), {
+    fireEvent.pointerDown(screen.getByRole('button', { name: /share/i }), {
       button: 0,
       ctrlKey: false,
     })
@@ -52,7 +52,7 @@ describe('ExportMenu', () => {
       />,
     )
 
-    fireEvent.pointerDown(screen.getByRole('button', { name: /export/i }), {
+    fireEvent.pointerDown(screen.getByRole('button', { name: /share/i }), {
       button: 0,
       ctrlKey: false,
     })

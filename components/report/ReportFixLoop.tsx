@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import type { Route } from 'next'
 import { cn } from '@/lib/utils'
-import { impactTagLabel, severityLabel } from '@/lib/utils'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 
 export type FixLoopFlagItem = {
@@ -41,21 +40,10 @@ function FlagList({
     <ul className="space-y-1" style={{ listStyle: 'none' }} aria-label="Report Flags">
       {flags.map((flag, index) => {
         const selected = selectedFlagId === flag.id
-        const pathMeta =
-          (flag.occurrenceCount ?? 0) > 1
-            ? REPORT_COPY.explorer.onPages(flag.occurrenceCount ?? 0)
-            : flag.pathLabel
-        const categoryLabel = [
-          severityLabel(flag.severity),
-          impactTagLabel(flag.impactTag),
-          pathMeta,
-        ]
-          .filter(Boolean)
-          .join(' · ')
         const content = (
           <>
             <span className="mt-0.5 font-mono text-2xs font-semibold tabular-nums text-muted-foreground">{index + 1}</span>
-            <span className="min-w-0 flex-1"><span className="line-clamp-2">{flag.title}</span><span className="mt-1 block text-3xs text-muted-foreground">{categoryLabel}</span></span>
+            <span className="min-w-0 flex-1 line-clamp-2">{flag.title}</span>
           </>
         )
         const rowClassName = cn(
@@ -73,7 +61,7 @@ function FlagList({
               <Link
                 href={`${reportHref}?flag=${encodeURIComponent(flag.id)}` as Route}
                 title={flag.title}
-                aria-label={`${categoryLabel}: ${flag.title}`}
+                aria-label={flag.title}
                 className={rowClassName}
               >
                 {content}
@@ -83,7 +71,7 @@ function FlagList({
                 type="button"
                 onClick={() => onSelectFlag?.(flag.id)}
                 title={flag.title}
-                aria-label={`${categoryLabel}: ${flag.title}`}
+                aria-label={flag.title}
                 aria-current={selected ? 'true' : undefined}
                 aria-pressed={selected}
                 aria-controls="selected-flag-detail"

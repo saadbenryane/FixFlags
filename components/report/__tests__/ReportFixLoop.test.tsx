@@ -31,10 +31,11 @@ describe('ReportFixLoop empty / loading states', () => {
     )
 
     const flag = screen.getByRole('button', {
-      name: /Important Flag: Clarify the primary action/i,
+      name: 'Clarify the primary action',
     })
     expect(flag).toHaveAttribute('aria-pressed', 'true')
     expect(flag).toHaveAttribute('aria-controls', 'selected-flag-detail')
+    expect(flag).not.toHaveTextContent(/Important Flag/i)
   })
   
 

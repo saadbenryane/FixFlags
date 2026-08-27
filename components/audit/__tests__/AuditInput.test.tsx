@@ -40,7 +40,7 @@ describe('AuditInput scan handoff', () => {
     fireEvent.submit(input.closest('form')!)
 
     expect(await screen.findByRole('button', { name: /Reviewing/ })).toBeInTheDocument()
-    expect(await screen.findByText('Your priorities')).toBeInTheDocument()
+    expect(await screen.findByText('Top Flags')).toBeInTheDocument()
     expect(
       screen.getByText(/getting ready to experience the Product/i)
     ).toBeInTheDocument()

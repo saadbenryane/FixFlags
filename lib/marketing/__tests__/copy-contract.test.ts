@@ -68,10 +68,12 @@ describe('customer copy contract', () => {
       openCheckCount: 24,
       partial: false,
     })
-    expect(sentence).toBe('Reviewed this page and 4 linked pages. Opened 24 public links.')
+    expect(sentence).toBe('24 public links')
     expect(REPORT_COPY.explorer.onPath('/pricing')).toBe('On /pricing')
     expect(REPORT_COPY.explorer.onPages(8)).toBe('On 8 pages')
     expect(REPORT_COPY.explorer.productCoverage(6)).toBe('This page and 6 linked pages')
+    expect(REPORT_COPY.explorer.topFlagsTitle).toBe('Top Flags')
+    expect(REPORT_COPY.explorer.coverageSentence({ openCheckCount: 1 })).toBe('1 public link')
     const visible = collectStrings(REPORT_COPY.explorer)
     expect(visible.join('\n')).not.toMatch(/\b(hops?|crawler|layers?)\b/i)
   })

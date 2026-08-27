@@ -357,7 +357,7 @@ describe('explorer-model', () => {
     })
     assert.equal(
       model.coverageSentence,
-      'Reviewed this page and 4 linked pages. Opened 24 public links. Review was partial.'
+      '24 public links'
     )
   })
 })

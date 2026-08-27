@@ -26,8 +26,27 @@ export function ScoreHistoryChart({ history, currentAuditId, className, isLoadin
           const score = point.score == null ? '–' : Math.round(point.score)
           const current = point.id === currentAuditId
           return (
-            <li key={point.id} className={cn('relative flex w-20 shrink-0 justify-center pt-1', index > 0 && 'before:absolute before:left-0 before:right-1/2 before:top-4 before:h-px before:bg-border', index < history.length - 1 && 'after:absolute after:left-1/2 after:right-0 after:top-4 after:h-px after:bg-border')}>
-              <Link href={point.href as Route} aria-current={current ? 'page' : undefined} aria-label={pointLabel(point, index, history.length)} className="relative z-10 flex min-h-11 min-w-11 flex-col items-center rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">
+            <li
+              key={point.id}
+              className={cn(
+                'relative flex shrink-0 pt-1',
+                index === 0 ? 'w-auto justify-start pr-8' : 'w-20 justify-center',
+                index > 0 && 'before:absolute before:left-0 before:right-1/2 before:top-4 before:h-px before:bg-border',
+                index < history.length - 1 &&
+                  (index === 0
+                    ? 'after:absolute after:left-3.5 after:right-0 after:top-4 after:h-px after:bg-border'
+                    : 'after:absolute after:left-1/2 after:right-0 after:top-4 after:h-px after:bg-border')
+              )}
+            >
+              <Link
+                href={point.href as Route}
+                aria-current={current ? 'page' : undefined}
+                aria-label={pointLabel(point, index, history.length)}
+                className={cn(
+                  'relative z-10 flex min-h-11 min-w-11 flex-col rounded-control focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+                  index === 0 ? 'items-start' : 'items-center'
+                )}
+              >
                 <span className={cn('grid h-7 w-7 place-items-center rounded-full border bg-card font-mono text-2xs font-semibold tabular-nums', current ? 'border-brand text-brand shadow-sm' : 'border-border text-muted-foreground')}>{score}</span>
                 <span className="mt-1 whitespace-nowrap text-3xs text-muted-foreground">{dateLabel(point.checkedAt)}</span>
               </Link>

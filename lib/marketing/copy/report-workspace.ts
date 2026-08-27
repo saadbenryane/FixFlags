@@ -161,10 +161,11 @@ export const REPORT_COPY = {
       notOwner: "You can only chat on your own reports",
       notFound: "Report not found",
       messageRequired: "Message required",
-      cannedExplain: "Explain this Flag",
       cannedFirst: "What should I fix first?",
+      cannedUnresolved: "What's still open?",
       cannedHint:
         "Quick prompts give instant answers while live chat is off. Open a Flag in the fix list for its evidence and fix prompt.",
+      suggestionsLabel: "Suggested questions",
       capReached: (cap: number) =>
         `Free-form chat is capped at ${cap} replies for this review. Open a Flag in the fix list for its evidence and fix prompt, or use the quick prompts below.`,
       historyLabel: "Review history",
@@ -415,7 +416,7 @@ export const REPORT_COPY = {
     loadingBody: "Your Finish Plan will appear when the review is complete.",
     readyBody: (count: number) =>
       `${count} ${count === 1 ? "Flag" : "Flags"} ranked by impact. Review every confirmed Flag and its evidence.`,
-    copyCta: "Copy all",
+    copyCta: "Copy All Prompts",
     copyLabel: "All fixes",
     previewToggle: "Preview prompt",
     generating: "Generating fix prompts for every Flag…",
@@ -445,23 +446,18 @@ export const REPORT_COPY = {
     promptCopiedRecordFailed:
       "Prompt copied, but FixFlags could not record the handoff",
     prioritiesTitle: "Your priorities",
+    topFlagsTitle: "Top Flags",
     prioritiesHint: "Ranked by customer impact",
+    viewPrompt: "View prompt",
+    whereLabel: "Where",
     coverageSentence: ({
-      linkedPageCount,
       openCheckCount,
-      partial,
     }: {
-      linkedPageCount: number
+      linkedPageCount?: number
       openCheckCount: number
-      partial: boolean
-    }) => {
-      const reviewed =
-        linkedPageCount <= 0
-          ? "Reviewed this page."
-          : `Reviewed this page and ${linkedPageCount} linked ${linkedPageCount === 1 ? "page" : "pages"}.`
-      const opened = `Opened ${openCheckCount} public ${openCheckCount === 1 ? "link" : "links"}.`
-      return partial ? `${reviewed} ${opened} Review was partial.` : `${reviewed} ${opened}`
-    },
+      partial?: boolean
+    }) =>
+      `${openCheckCount} public ${openCheckCount === 1 ? "link" : "links"}`,
     productCoverage: (linkedPageCount: number) =>
       linkedPageCount <= 0
         ? "This page"

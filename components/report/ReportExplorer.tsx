@@ -5,9 +5,7 @@ import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportF
 import {
   FlagDetailPane,
 } from '@/components/report/ReportExplorerDetail'
-import { PromptCopyButton } from '@/components/audit/PromptCopyButton'
-import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
-import { useReportAuthGate } from '@/components/auth/ReportAuthGate'
+import { flagHasPromptChrome } from '@/components/report/FlagDetailPanel'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { reviewPathLabel } from '@/lib/audit/url-identity'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
@@ -25,15 +23,6 @@ import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
 import { cn } from '@/lib/utils'
 import { usePreviewEvidence } from '@/components/report/preview-evidence-context'
 import type { ReportOwnerActionContext } from '@/components/report/FlagDetailPanel'
-
-function claimNextFromHref(href?: string): string | undefined {
-  if (!href) return undefined
-  try {
-    return new URL(href, 'https://fixflags.local').searchParams.get('next') ?? undefined
-  } catch {
-    return undefined
-  }
-}
 
 function firstCategory(counts: Record<RubricName, number>): RubricName {
   return RUBRIC_ORDER.find((rubric) => counts[rubric] > 0) ?? 'MESSAGE'
@@ -87,8 +76,6 @@ export function ReportExplorer({
     defaultRubric,
   )
   const [showAll, setShowAll] = useState(false)
-  const [claimOpen, setClaimOpen] = useState(false)
-  const authGate = useReportAuthGate()
   const initialIndex = initialExplorerFlagIndex(
     model.flags,
     initialFlagIndex,
@@ -100,17 +87,6 @@ export function ReportExplorer({
   const { setSelection } = usePreviewEvidence()
   const demonstratedSelectionApplied = useRef(false)
   const urlStateLoaded = useRef(false)
-
-  function openClaim() {
-    if (authGate) {
-      authGate.open({
-        nextPath: claimNextFromHref(signUpHref),
-        auditId,
-      })
-      return
-    }
-    setClaimOpen(true)
-  }
 
   const writeExplorerUrl = useCallback((state: {
     flag: string | null
@@ -339,45 +315,59 @@ export function ReportExplorer({
     [filteredFlags]
   )
 
+  const promptLocked = Boolean(
+    aiLocked && currentFlag && currentFlag.id !== visibleDemonstratedFlagId
+  )
+  const showPromptFooterAlign = Boolean(
+    currentFlag &&
+      flagHasPromptChrome(currentFlag, {
+        aiLocked: promptLocked,
+        aiEnhancementPending,
+      })
+  )
+
   const listPane = (
-    <div className="min-w-0 list-none @[40rem]/pane:min-h-0 @[40rem]/pane:overflow-y-auto @[40rem]/pane:pr-2 scrollbar-thin [&_ul]:list-none [&_li]:list-none">
-      <div className="mb-3 border-b border-border/30 pb-3">
-        <div className="flex items-start justify-between gap-3">
+    <div className="flex min-h-0 min-w-0 flex-col @[40rem]/pane:h-full">
+      <div className="min-h-0 flex-1 list-none overflow-y-auto scrollbar-thin @[40rem]/pane:pr-2 [&_ul]:list-none [&_li]:list-none">
+        <div className="mb-3 border-b border-border/30 pb-3">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-foreground">{REPORT_COPY.explorer.prioritiesTitle}</h2>
+            <h2 className="text-sm font-semibold text-foreground">{REPORT_COPY.explorer.topFlagsTitle}</h2>
             <p className="text-xs text-muted-foreground">
               {model.coverageSentence ?? REPORT_COPY.explorer.prioritiesHint}
             </p>
           </div>
-          {model.polishPassPrompt || aiLocked ? (
-            <PromptCopyButton
-              prompt={aiLocked ? '' : model.polishPassPrompt ?? ''}
-              onLockedAction={aiLocked ? openClaim : undefined}
-              label={REPORT_COPY.finishPlan.copyCta}
-              kind="plan"
-              compact
-              auditId={auditId}
-              surface="focused"
-              accessState={ownerActionContext?.accessState}
-            />
-          ) : null}
         </div>
-      </div>
-      {flagCount === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noMatchFilter}
-        </p>
-      ) : (
-        <>
+        {flagCount === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {loading ? REPORT_COPY.explorer.checkingIssues : REPORT_COPY.explorer.noMatchFilter}
+          </p>
+        ) : (
           <ReportFixLoop
             flags={showAll ? fixLoopFlags : fixLoopFlags.slice(0, 5)}
             selectedFlagId={currentFlag?.id}
             onSelectFlag={goToFlag}
             loading={loading}
           />
-          {fixLoopFlags.length > 5 ? <button type="button" onClick={() => setShowAll((value) => !value)} className="mt-2 min-h-11 w-full rounded-control px-3 text-sm font-medium text-muted-foreground hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring">{showAll ? 'Show fewer' : `Show more (${fixLoopFlags.length - 5})`}</button> : null}
-        </>
-      )}
+        )}
+      </div>
+      {flagCount > 0 && (showPromptFooterAlign || fixLoopFlags.length > 5) ? (
+        <footer
+          data-flag-list-footer
+          className="shrink-0 border-t border-border/30 bg-background pt-3"
+        >
+          {fixLoopFlags.length > 5 ? (
+            <button
+              type="button"
+              onClick={() => setShowAll((value) => !value)}
+              className="flex min-h-11 w-full items-center justify-center rounded-control px-3 text-sm font-medium text-muted-foreground hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            >
+              {showAll ? 'Show fewer' : `Show more (${fixLoopFlags.length - 5})`}
+            </button>
+          ) : (
+            <div className="min-h-11" aria-hidden />
+          )}
+        </footer>
+      ) : null}
     </div>
   )
 
@@ -425,14 +415,6 @@ export function ReportExplorer({
           {detailPane}
         </div>
       </div>
-      <ReportClaimDialog
-        open={authGate ? false : claimOpen}
-        onOpenChange={setClaimOpen}
-        nextPath={claimNextFromHref(signUpHref)}
-        from="report"
-        auditId={auditId}
-        reason="create-account"
-      />
     </div>
   )
 }

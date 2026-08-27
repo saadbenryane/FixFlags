@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronDown, FileText, Link, Lock, Eye, Mail } from 'lucide-react'
+import { Check, FileText, Link, Lock, Eye, Mail, Share } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -117,18 +117,13 @@ export function ExportMenu({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size={size} className="gap-2">
-            {copied ? (
-              <>
-                <Check className="h-4 w-4" /> Copied
-              </>
-            ) : (
-              <>
-                <FileText className="h-4 w-4" />
-                Export
-                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-              </>
-            )}
+          <Button
+            variant="outline"
+            size={size === 'sm' ? 'icon' : size}
+            className={size === 'sm' ? 'h-9 w-9' : undefined}
+            aria-label={copied ? 'Copied' : 'Share'}
+          >
+            {copied ? <Check className="h-4 w-4" /> : <Share className="h-4 w-4" />}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">

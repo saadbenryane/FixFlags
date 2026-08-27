@@ -287,11 +287,6 @@ export function AuditReport({
   const statusCallouts =
     !isSample && showStatusCallouts ? (
       <div className="space-y-3">
-        {aiReviewPending ? (
-          <Callout variant="info" title={REPORT_COPY.aiPending.title}>
-            {REPORT_COPY.aiPending.body}
-          </Callout>
-        ) : null}
         {prescriptionFailed ? (
           <Callout
             variant="warning"
@@ -315,11 +310,6 @@ export function AuditReport({
             title={REPORT_COPY.triageUnavailable.title}
           >
             {triageUnavailableBody(failureCode, isLoggedIn)}
-          </Callout>
-        ) : null}
-        {isPartialReport && !triageDegraded ? (
-          <Callout variant="warning" title={REPORT_COPY.partialReport.title}>
-            {REPORT_COPY.partialReport.body}
           </Callout>
         ) : null}
         {(audit.failedModules?.length ?? 0) > 0 ? (

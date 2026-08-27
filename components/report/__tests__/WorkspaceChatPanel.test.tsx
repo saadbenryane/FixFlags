@@ -150,6 +150,38 @@ describe('WorkspaceChatPanel', () => {
     expect(screen.getByText('80% left')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Ask about this report')).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument()
+    // Suggestions hide once the transcript already has a user turn.
+    expect(screen.queryByRole('button', { name: 'What should I fix first?' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: "What's still open?" })).not.toBeInTheDocument()
+  })
+
+  it('places suggested questions above the composer, not inside it', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        messages: [],
+        available: true,
+        allowance: { limit: 25_000, used: 0, reserved: 0, remaining: 25_000, resetAt: '2026-09-01T00:00:00.000Z' },
+      }),
+    } as Response)
+
+    render(
+      <WorkspaceChatPanel
+        auditId="a1"
+        capabilities={capabilities(true)}
+        gateReason="owner"
+        agentMessages={scanMessages}
+      />,
+    )
+
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Suggested questions' })).toBeInTheDocument())
+    const suggestions = screen.getByRole('group', { name: 'Suggested questions' })
+    const composer = screen.getByPlaceholderText('Ask about this report').closest('form')
+    expect(composer).toBeTruthy()
+    expect(composer!.contains(suggestions)).toBe(false)
+    expect(screen.getByRole('button', { name: 'What should I fix first?' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: "What's still open?" })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Explain this Flag' })).not.toBeInTheDocument()
   })
 
   it('keeps non-owner chat read-only without pretending sign-in grants access', () => {

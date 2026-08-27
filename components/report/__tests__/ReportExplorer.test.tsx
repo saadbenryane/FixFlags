@@ -12,6 +12,10 @@ vi.mock('@/lib/analytics/events', () => ({
   trackEvent: vi.fn(),
 }))
 
+vi.mock('@/components/auth/AuthFlow', () => ({
+  AuthFlow: ({ dialogTitle }: { dialogTitle?: string }) => <div>{dialogTitle}</div>,
+}))
+
 const writeText = vi.fn().mockResolvedValue(undefined)
 Object.assign(navigator, { clipboard: { writeText } })
 
@@ -248,7 +252,7 @@ describe('ReportExplorer anonymous teaser', () => {
     expect(screen.getByText('Not flagged on mobile')).toBeInTheDocument()
   })
 
-  it('copies every ranked open flag from polishPassPrompt, not one CTA', async () => {
+  it('copies every ranked open flag from polishPassPrompt via Copy prompt chevron', async () => {
     const polishPassPrompt = `${AGENT_COPY_LEAD}
 
 1. [CRITICAL · Experience · HIGH] CTA below fold
@@ -268,8 +272,12 @@ describe('ReportExplorer anonymous teaser', () => {
       </MeProvider>
     )
 
-    const copyAll = screen.getByRole('button', { name: /Copy all/i })
-    fireEvent.click(copyAll)
+    fireEvent.click(screen.getByRole('button', { name: 'Demonstrated fix' }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: /^Copy All Prompts$/i }), {
+      button: 0,
+      ctrlKey: false,
+    })
+    fireEvent.click(await screen.findByRole('menuitem', { name: /^Copy All Prompts$/i }))
     await waitFor(() => {
       expect(writeText).toHaveBeenCalled()
     })
@@ -281,7 +289,7 @@ describe('ReportExplorer anonymous teaser', () => {
     expect(copied).toContain('Generic headline')
   })
 
-  it('gates Copy all to create-account when prompts are locked', async () => {
+  it('gates Copy All Prompts to create-account when prompts are locked', async () => {
     writeText.mockClear()
     render(
       <MeProvider initialUser={null}>
@@ -298,28 +306,31 @@ describe('ReportExplorer anonymous teaser', () => {
       </MeProvider>
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /^Copy all$/i }))
+    fireEvent.pointerDown(screen.getByRole('button', { name: /^Copy All Prompts$/i }), {
+      button: 0,
+      ctrlKey: false,
+    })
+    fireEvent.click(await screen.findByRole('menuitem', { name: /^Copy All Prompts$/i }))
     expect(await screen.findAllByText('Create your free account')).not.toHaveLength(0)
     expect(writeText).not.toHaveBeenCalled()
   })
 
-  it('shows a muted coverage sentence under Your priorities', () => {
+  it('shows a muted coverage sentence under Top Flags', () => {
     render(
       <MeProvider initialUser={null}>
         <ReportExplorer
           model={{
             ...model,
-            coverageSentence: 'Reviewed this page and 4 linked pages. Opened 24 public links.',
+            coverageSentence: '24 public links',
           }}
         />
       </MeProvider>
     )
-    expect(
-      screen.getByText('Reviewed this page and 4 linked pages. Opened 24 public links.')
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Top Flags' })).toBeInTheDocument()
+    expect(screen.getByText('24 public links')).toBeInTheDocument()
   })
 
-  it('labels a Flag row with On /pricing', () => {
+  it('keeps page coverage in Flag detail pills, not the list row', () => {
     render(
       <MeProvider initialUser={null}>
         <ReportExplorer
@@ -338,6 +349,9 @@ describe('ReportExplorer anonymous teaser', () => {
         />
       </MeProvider>
     )
-    expect(screen.getAllByText(/On \/pricing/).length).toBeGreaterThan(0)
+    const list = screen.getByRole('list', { name: 'Report Flags' })
+    expect(list).not.toHaveTextContent(/On \/pricing/)
+    expect(screen.queryByText('Where')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'On /pricing' })).toHaveTextContent('1')
   })
 })

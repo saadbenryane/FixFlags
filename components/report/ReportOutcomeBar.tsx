@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { CircleHelp } from 'lucide-react'
 import { SHIMMER_KEYFRAMES } from '@/components/ui/skeleton'
 import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
 import { REPORT_COPY } from '@/lib/marketing/copy'
@@ -42,14 +43,17 @@ export function ReportOutcomeBar({
       )}
     >
       <div className="flex min-h-20 min-w-0 flex-wrap items-center gap-x-5 gap-y-2 py-1">
-        <div className="flex items-center gap-2">
+        <div className="relative shrink-0">
           <ScoreRing score={score} pending={loading} />
           {!loading && score != null ? (
             <Link
               href={helpHrefForSurface('score_help')}
-              className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="How scores work"
+              className="absolute -right-1 -top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm ring-1 ring-border/50 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
-              How scores work
+              <CircleHelp className="h-3.5 w-3.5" aria-hidden />
             </Link>
           ) : null}
         </div>

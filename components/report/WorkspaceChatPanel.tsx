@@ -576,17 +576,20 @@ export function WorkspaceChatPanel({
             <Button asChild className="w-full"><Link href="/pricing">{chatCopy.allowanceAction}</Link></Button>
           </div>
         ) : (
-          <form
-            className="border-t border-border/40 p-2"
-            onSubmit={(event) => { event.preventDefault(); void send(input) }}
-          >
-            {canChat ? (
-              <div className="mb-2 flex flex-wrap gap-1.5 px-1">
-                {[chatCopy.cannedFirst, chatCopy.cannedExplain].filter(Boolean).map((chip) => (
+          <>
+            {canChat &&
+            meta.available &&
+            !messages.some((message) => message.role === 'user') ? (
+              <div
+                className="flex flex-wrap gap-1.5 px-3 pb-2"
+                role="group"
+                aria-label={chatCopy.suggestionsLabel}
+              >
+                {[chatCopy.cannedFirst, chatCopy.cannedUnresolved].map((chip) => (
                   <button
                     key={chip}
                     type="button"
-                    className="rounded-[var(--radius-control)] bg-muted/55 px-2.5 py-1.5 text-2xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                    className="min-h-9 rounded-full bg-muted/50 px-3 py-1 text-2xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                     onClick={() => void send(chip)}
                   >
                     {chip}
@@ -594,56 +597,61 @@ export function WorkspaceChatPanel({
                 ))}
               </div>
             ) : null}
-            <div className="flex min-w-0 items-center gap-2">
-              <Input
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                placeholder={
-                  canChat
-                    ? chatCopy.placeholder
-                    : gateReason === 'sign-in'
-                      ? chatCopy.sendPlaceholder
-                      : chatCopy.notOwner
-                }
-                disabled={
-                  loading ||
-                  (canChat && !meta.available) ||
-                  (!canChat && gateReason === 'owner')
-                }
-                className="min-h-11 min-w-0 flex-1 text-sm"
-                aria-label={
-                  canChat
-                    ? chatCopy.placeholder
-                    : gateReason === 'sign-in'
-                      ? chatCopy.sendPlaceholder
-                      : chatCopy.notOwner
-                }
-              />
-              <Button
-                type="submit"
-                size="icon"
-                className="h-11 w-11 shrink-0"
-                loading={loading}
-                disabled={
-                  loading ||
-                  (canChat && (!input.trim() || !meta.available)) ||
-                  (!canChat && gateReason === 'owner')
-                }
-                aria-label={
-                  canChat
-                    ? chatCopy.send
-                    : gateReason === 'sign-in'
-                      ? chatCopy.notSignedIn
-                      : chatCopy.notOwner
-                }
-              >
-                <ArrowUp className="h-4 w-4" aria-hidden />
-              </Button>
-            </div>
-            {canChat && remainingLabel ? (
-              <p className="mt-1 px-1 text-right font-mono text-2xs text-muted-foreground">{remainingLabel}</p>
-            ) : null}
-          </form>
+            <form
+              className="border-t border-border/40 p-2"
+              onSubmit={(event) => { event.preventDefault(); void send(input) }}
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <Input
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  placeholder={
+                    canChat
+                      ? chatCopy.placeholder
+                      : gateReason === 'sign-in'
+                        ? chatCopy.sendPlaceholder
+                        : chatCopy.notOwner
+                  }
+                  disabled={
+                    loading ||
+                    (canChat && !meta.available) ||
+                    (!canChat && gateReason === 'owner')
+                  }
+                  className="min-h-11 min-w-0 flex-1 text-sm"
+                  aria-label={
+                    canChat
+                      ? chatCopy.placeholder
+                      : gateReason === 'sign-in'
+                        ? chatCopy.sendPlaceholder
+                        : chatCopy.notOwner
+                  }
+                />
+                <Button
+                  type="submit"
+                  size="icon"
+                  className="h-11 w-11 shrink-0"
+                  loading={loading}
+                  disabled={
+                    loading ||
+                    (canChat && (!input.trim() || !meta.available)) ||
+                    (!canChat && gateReason === 'owner')
+                  }
+                  aria-label={
+                    canChat
+                      ? chatCopy.send
+                      : gateReason === 'sign-in'
+                        ? chatCopy.notSignedIn
+                        : chatCopy.notOwner
+                  }
+                >
+                  <ArrowUp className="h-4 w-4" aria-hidden />
+                </Button>
+              </div>
+              {canChat && remainingLabel ? (
+                <p className="mt-1 px-1 text-right font-mono text-2xs text-muted-foreground">{remainingLabel}</p>
+              ) : null}
+            </form>
+          </>
         )}
       </section>
       <ReportClaimDialog

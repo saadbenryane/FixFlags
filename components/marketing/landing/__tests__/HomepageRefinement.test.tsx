@@ -222,11 +222,15 @@ describe('homepage lean sections', () => {
     ).toBe(true)
   })
 
-  it('gates demo Copy all and send behind create-account', async () => {
+  it('gates demo Copy All Prompts and send behind create-account', async () => {
     render(<SampleReportSection />)
 
+    fireEvent.pointerDown(screen.getByRole('button', { name: /^Copy All Prompts$/i }), {
+      button: 0,
+      ctrlKey: false,
+    })
     expect(
-      screen.getByRole('button', { name: /^Copy all$/i }),
+      await screen.findByRole('menuitem', { name: /^Copy All Prompts$/i }),
     ).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Send a message')).toBeEnabled()
     expect(screen.queryByText('Copy Finish Plan')).not.toBeInTheDocument()
@@ -235,7 +239,7 @@ describe('homepage lean sections', () => {
       screen.queryByPlaceholderText(/You can only chat on your own reports/i),
     ).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: /^Copy all$/i }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /^Copy All Prompts$/i }))
     expect(
       await screen.findAllByText('Create your free account'),
     ).not.toHaveLength(0)
@@ -298,7 +302,7 @@ describe('homepage lean sections', () => {
     render(<SampleReportSection />)
 
     expect(screen.getByRole('region', { name: 'Agent' })).toBeInTheDocument()
-    expect(screen.getByText('Your priorities')).toBeInTheDocument()
+    expect(screen.getByText('Top Flags')).toBeInTheDocument()
     expect(
       screen.getByRole('heading', {
         name: 'Primary CTA is hidden below the fold on mobile',

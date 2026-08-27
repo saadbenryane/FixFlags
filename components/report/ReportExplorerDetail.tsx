@@ -193,6 +193,8 @@ export function FlagDetailPane({
             aiEnhancementPending={aiEnhancementPending}
             signUpHref={signUpHref}
             ownerActionContext={ownerActionContext}
+            polishPassPrompt={model.polishPassPrompt}
+            aggregateLocked={Boolean(aiLocked)}
           />
         </footer>
       ) : null}

@@ -91,7 +91,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
         items: [
           'Start at the top of the Fix list and copy one fix into your editor.',
           'Filter the complete list by rubric, severity, impact, or page.',
-          'Copy one Flag or use Copy all for a plan-mode prompt.',
+          'Copy one Flag or use Copy All Prompts for a plan-mode prompt.',
         ],
       },
       {

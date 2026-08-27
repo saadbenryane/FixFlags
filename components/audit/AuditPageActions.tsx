@@ -82,15 +82,19 @@ export function AuditPageActions({
 
   return (
     <>
-      {variant !== 'secondary' ? <Button
-        size="sm"
-        onClick={handleRecheck}
-        loading={recheckLoading}
-        loadingLabel={REPORT_COPY.recheck.label}
-      >
-        <RefreshCw className="h-4 w-4 mr-2" />
-        {REPORT_COPY.recheck.label}
-      </Button> : null}
+      <div className="flex items-center gap-3">
+      {variant !== 'secondary' ? (
+        <Button
+          size="icon"
+          className="h-9 w-9"
+          onClick={handleRecheck}
+          loading={recheckLoading}
+          loadingLabel={REPORT_COPY.recheck.label}
+          aria-label={REPORT_COPY.recheck.label}
+        >
+          <RefreshCw className="h-4 w-4" aria-hidden />
+        </Button>
+      ) : null}
       {canManage && variant !== 'update' && compareAuditId && (
         <Button variant="outline" size="sm" asChild>
           <Link href={`/compare/${compareAuditId}`}>
@@ -110,6 +114,7 @@ export function AuditPageActions({
         canExportSummary={canExportSummary}
         showFixPrompts={showFixPrompts}
       /> : null}
+      </div>
     </>
   )
 }

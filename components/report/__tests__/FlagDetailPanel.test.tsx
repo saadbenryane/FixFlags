@@ -49,6 +49,7 @@ function makeFlag(overrides: Partial<ExplorerFlag> = {}): ExplorerFlag {
 describe('FlagDetailPanel', () => {
   it('renders the fix prompt when flag has one', () => {
     renderWithProviders(<FlagDetailPanel flag={makeFlag()} />)
+    fireEvent.click(screen.getByRole('button', { name: /^Fix Prompt$/i }))
     expect(screen.getByText('Add an Open Graph image meta tag.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Ready to verify' })).not.toBeInTheDocument()
   })
@@ -66,8 +67,8 @@ describe('FlagDetailPanel', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Copy prompt' })).toHaveClass('bg-brand', 'text-brand-foreground')
-    expect(screen.getByText('Fix Prompt')).toBeInTheDocument()
-    expect(screen.getByText('Fix Prompt').closest('div')).toContainElement(
+    expect(screen.getByRole('button', { name: 'Fix Prompt' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fix Prompt' }).closest('div')).toContainElement(
       screen.getByRole('button', { name: 'Copy prompt' })
     )
   })
@@ -75,7 +76,7 @@ describe('FlagDetailPanel', () => {
   it('expands the fix prompt without a nested Markdown card', () => {
     renderWithProviders(<FlagDetailPanel flag={makeFlag()} />)
 
-    fireEvent.click(screen.getByText('Fix Prompt'))
+    fireEvent.click(screen.getByRole('button', { name: /^Fix Prompt$/i }))
 
     expect(screen.getByLabelText('Fix prompt')).toBeInTheDocument()
     expect(screen.queryByText('Markdown')).not.toBeInTheDocument()
@@ -179,13 +180,9 @@ describe('FlagDetailPanel', () => {
     expect(screen.queryByText('Missing title')).not.toBeInTheDocument()
   })
 
-  it('renders page URLs with external links', () => {
+  it('does not render a Where block under Flag detail', () => {
     renderWithProviders(<FlagDetailPanel flag={makeFlag()} />)
-    const links = screen.getAllByRole('link')
-    const pageLink = links.find((l) => l.getAttribute('href') === 'https://example.com/page')
-    expect(pageLink).toBeTruthy()
-    expect(pageLink).toHaveAttribute('title', 'https://example.com/page')
-    expect(pageLink).toHaveTextContent('On /page')
+    expect(screen.queryByText('Where')).not.toBeInTheDocument()
   })
 
   it('does not render a standalone visualUrl screenshot above the prompt', () => {
@@ -230,6 +227,34 @@ describe('FlagMetaPills', () => {
     render(<FlagMetaPills flag={makeFlag()} />)
     expect(screen.getByText('Reach')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Critical Flag' })).toBeInTheDocument()
+  })
+
+  it('renders a pages pill with link count after impact', () => {
+    render(<FlagMetaPills flag={makeFlag()} />)
+    const pill = screen.getByRole('button', { name: 'On /page' })
+    expect(pill).toHaveTextContent('1')
+    expect(pill.querySelector('svg')).toBeTruthy()
+  })
+
+  it('opens the page URL list from the pages pill', async () => {
+    render(<FlagMetaPills flag={makeFlag()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'On /page' }))
+    expect(await screen.findByRole('link', { name: 'On /page' })).toHaveAttribute(
+      'href',
+      'https://example.com/page'
+    )
+  })
+
+  it('shows multi-page count when several URLs are present', () => {
+    render(
+      <FlagMetaPills
+        flag={makeFlag({
+          pageUrls: ['https://example.com/', 'https://example.com/pricing'],
+          occurrenceCount: 2,
+        })}
+      />
+    )
+    expect(screen.getByRole('button', { name: 'On 2 pages' })).toHaveTextContent('2')
   })
 
   it('renders severity label text for non-CRITICAL flags', () => {
