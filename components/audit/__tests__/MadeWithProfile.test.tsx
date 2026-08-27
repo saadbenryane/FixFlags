@@ -32,7 +32,17 @@ const profile: TechnologyProfile = {
 }
 
 describe('MadeWithProfile', () => {
-  it('shows a compact summary and expandable evidence without grading vendors', () => {
+  it('shows a compact horizontal scroll row of all technologies without a dropdown', () => {
+    render(<MadeWithProfile profile={profile} compact />)
+
+    expect(screen.getByRole('heading', { name: 'Made with' })).toBeInTheDocument()
+    expect(screen.getByText('Next.js')).toBeInTheDocument()
+    expect(screen.getByText('Vercel')).toBeInTheDocument()
+    expect(screen.queryByText('View stack and evidence')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group')).not.toBeInTheDocument()
+  })
+
+  it('shows a full summary and expandable evidence without grading vendors', () => {
     render(<MadeWithProfile profile={profile} />)
 
     expect(screen.getByRole('heading', { name: 'Made with' })).toBeInTheDocument()

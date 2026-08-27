@@ -16,6 +16,7 @@ export type PickerSource =
   | 'post_signin'
   | 'pricing'
   | 'plan_picker'
+  | 'billing'
   | 'unknown'
 
 export interface PickPlanInput {

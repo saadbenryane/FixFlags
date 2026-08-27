@@ -10,6 +10,8 @@ import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { getPurchasedCreditsRemaining } from '@/lib/billing/credits'
 import { getPendingCheckCount, getPlanDisplayLimit } from '@/lib/auth/permissions'
 import { ManageSubscriptionButton } from '@/components/billing/ManageSubscriptionButton'
+import { BillingPlanActions } from '@/components/billing/BillingPlanActions'
+import { BillingPlansSection } from '@/components/billing/BillingPlansSection'
 import { Heading, Muted, SectionTitle } from '@/components/ui/typography'
 import { Callout } from '@/components/ui/callout'
 import { Card } from '@/components/ui/card'
@@ -17,9 +19,10 @@ import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { formatUsd } from '@/lib/billing/costs'
 import { BILLING_PAGE_COPY, HELP_CENTER } from '@/lib/marketing/copy'
-import { helpHrefForSurface } from '@/lib/help/contextual'
+import { helpHrefForSlug, helpHrefForSurface } from '@/lib/help/contextual'
 import { Suspense } from 'react'
 import { BillingCreditsToast } from '@/components/billing/BillingCreditsToast'
+import { TextLink } from '@/components/ui/text-link'
 
 export default async function BillingPage() {
   const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
@@ -58,6 +61,7 @@ export default async function BillingPage() {
   // resyncs it. Billing must show the true current state, not the stale plan field.
   const isPaid = user.plan !== 'FREE' && !hasRevokedSubscriptionStatus(user.subscriptionStatus)
   const isActivating = isPaid && !user.stripeCustomerId
+  const hasStripeCustomer = Boolean(user.stripeCustomerId)
   const copy = BILLING_PAGE_COPY
 
   const displayPlanName =
@@ -82,7 +86,7 @@ export default async function BillingPage() {
         <Callout variant="warning" title={copy.pastDueTitle}>
           <p>{copy.pastDueBody}</p>
           <div className="flex flex-wrap items-center gap-2 pt-1">
-            {user.stripeCustomerId && <ManageSubscriptionButton />}
+            {hasStripeCustomer && <ManageSubscriptionButton />}
             <Button asChild variant="outline" size="sm">
               <Link href={helpHrefForSurface('billing_past_due')}>{HELP_CENTER.viewHelpCta}</Link>
             </Button>
@@ -122,6 +126,7 @@ export default async function BillingPage() {
             pending={pending}
             plan={user.plan}
             purchasedCredits={purchasedCreditsRemaining}
+            showUpgradeCta={false}
           />
         </div>
         {isActivating && (
@@ -132,65 +137,72 @@ export default async function BillingPage() {
             {copy.periodEnds(new Date(user.stripeCurrentPeriodEnd).toLocaleDateString())}
           </p>
         )}
-        {isPaid && user.stripeCustomerId ? (
-          <div className="flex flex-wrap gap-2">
-            <ManageSubscriptionButton />
-            {user.plan === 'BUILDER' && (
-              <Button asChild variant="outline" size="sm">
-                <Link href="/pricing">{copy.compareStudio}</Link>
-              </Button>
-            )}
-          </div>
-        ) : user.stripeCustomerId ? (
-          <ManageSubscriptionButton />
-        ) : isPaid ? (
-          <Button disabled variant="outline">
-            {copy.activating}
-          </Button>
-        ) : (
-          <Button asChild>
-            <Link href="/pricing">{copy.upgradeCta}</Link>
-          </Button>
-        )}
+        <BillingPlanActions
+          isPaid={isPaid}
+          isActivating={isActivating}
+          hasStripeCustomer={hasStripeCustomer}
+          showPlanPickerCta={!isActivating}
+        />
       </Card>
 
-      {isPaid && (
-        <Card variant="subtle" className="space-y-4 p-6" id="credit-packs">
-          <SectionTitle>{copy.creditsTitle}</SectionTitle>
-          {purchasedCreditsRemaining > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {copy.purchasedAvailable(purchasedCreditsRemaining)}
-            </p>
-          )}
-          {purchasedCreditsRemaining === 0 && (
-            <p className="text-xs text-muted-foreground">{copy.creditsUnavailable}</p>
-          )}
+      <BillingPlansSection currentPlan={user.plan} />
 
-          {creditPurchases.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">{copy.purchaseHistory}</p>
-              <div className="space-y-1">
-                {creditPurchases.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between text-xs text-muted-foreground py-1 border-b border-border/20 last:border-0">
-                    <span>{copy.creditsLine(p.creditsPurchased, p.packId)}</span>
-                    <span>{formatUsd(p.priceUsdCents / 100)}</span>
-                    <span className={p.status === 'PAID' ? 'text-success' : ''}>
-                      {p.status === 'PAID'
-                        ? copy.paid
-                        : p.status === 'PENDING'
-                          ? copy.pending
-                          : p.status.toLowerCase()}
-                    </span>
-                    {p.paidAt && (
-                      <span>{new Date(p.paidAt).toLocaleDateString()}</span>
-                    )}
-                  </div>
-                ))}
+      <Card variant="subtle" className="space-y-4 p-6" id="billing-history">
+        <div className="space-y-1">
+          <SectionTitle>{copy.historyTitle}</SectionTitle>
+          <Muted className="text-sm">{copy.historyDescription}</Muted>
+        </div>
+
+        {purchasedCreditsRemaining > 0 && (
+          <p className="text-sm text-muted-foreground">
+            {copy.purchasedAvailable(purchasedCreditsRemaining)}
+          </p>
+        )}
+
+        {creditPurchases.length > 0 ? (
+          <div className="space-y-1">
+            {creditPurchases.map((p) => (
+              <div
+                key={p.id}
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border/20 py-2 text-xs text-muted-foreground last:border-0"
+              >
+                <span>{copy.creditsLine(p.creditsPurchased, p.packId)}</span>
+                <span className="tabular-nums">{formatUsd(p.priceUsdCents / 100)}</span>
+                <span className={p.status === 'PAID' ? 'text-success' : ''}>
+                  {p.status === 'PAID'
+                    ? copy.paid
+                    : p.status === 'PENDING'
+                      ? copy.pending
+                      : p.status.toLowerCase()}
+                </span>
+                {p.paidAt && (
+                  <span className="tabular-nums">{new Date(p.paidAt).toLocaleDateString()}</span>
+                )}
               </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">{copy.historyEmpty}</p>
+        )}
+
+        {hasStripeCustomer ? (
+          <div className="space-y-2 border-t border-border/60 pt-4">
+            <p className="text-xs text-muted-foreground">{copy.historyInvoicesHint}</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <ManageSubscriptionButton label={copy.historyViewInvoices} />
+              <TextLink href={helpHrefForSlug('invoices-and-receipts')}>
+                {copy.historyHelpCta}
+              </TextLink>
             </div>
-          )}
-        </Card>
-      )}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            <TextLink href={helpHrefForSlug('invoices-and-receipts')}>
+              {copy.historyHelpCta}
+            </TextLink>
+          </p>
+        )}
+      </Card>
     </Container>
   )
 }

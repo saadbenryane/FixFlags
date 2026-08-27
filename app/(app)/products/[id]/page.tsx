@@ -47,7 +47,7 @@ export default async function ProductPage({
   return (
     <Container
       variant="report"
-      className="px-4 py-5 pb-24 sm:px-6 sm:py-7 lg:px-0"
+      className="py-5 pb-24 sm:py-7"
     >
       <ProductWorkspace
         workspace={workspace}

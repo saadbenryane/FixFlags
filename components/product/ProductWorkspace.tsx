@@ -12,14 +12,13 @@ import {
 import { ProductWatchControls } from '@/components/audit/ProductWatchControls'
 import { MadeWithProfile } from '@/components/audit/MadeWithProfile'
 import { ProductContractCard } from '@/components/audit/ProductContractCard'
-import { ProductMemoryStrip } from '@/components/audit/ProductMemoryStrip'
-import { LaunchGates } from '@/components/audit/LaunchGates'
 import { ProductSignalsSetup } from '@/components/dashboard/ProductSignalsSetup'
 import { ImprovementReceipt } from '@/components/product/ImprovementReceipt'
 import { ProductReviewAction } from '@/components/product/ProductReviewAction'
 import { ProductReviewTrend } from '@/components/product/ProductReviewTrend'
 import { ProductAttentionImpression } from '@/components/product/ProductAttentionImpression'
 import { ProductPriorities } from '@/components/product/ProductPriorities'
+import { ProductIntelligenceTrack } from '@/components/product/ProductIntelligenceTrack'
 import { ScoreRing } from '@/components/report/ScoreRing'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -64,6 +63,17 @@ export function ProductWorkspace({
   const hostLabel = displayHostname(product.url) || product.url
   const copy = REPORT_COPY.workspace.product
   const dash = REPORT_COPY.workspace.dashboard
+  const understanding = workspace.understanding
+  const hasMemory =
+    understanding.verifiedLearnings.length > 0 ||
+    understanding.intentionalNotes.length > 0 ||
+    understanding.knownRisks.length > 0 ||
+    understanding.importantJourneys.length > 0 ||
+    understanding.successConditions.length > 0 ||
+    understanding.constraints.length > 0 ||
+    understanding.decisions.length > 0 ||
+    progressEvents.length > 0
+  const showIntelligence = Boolean(understanding.productContract) || hasMemory
 
   return (
     <main className="space-y-6">
@@ -108,7 +118,7 @@ export function ProductWorkspace({
           <MadeWithProfile
             profile={workspace.technologyProfile}
             compact
-            className="max-w-xl"
+            className="max-w-full"
           />
         ) : null}
       </header>
@@ -206,93 +216,11 @@ export function ProductWorkspace({
         <AttentionSection workspace={workspace} />
       )}
 
-      {workspace.understanding.productContract ||
-      workspace.understanding.verifiedLearnings.length > 0 ||
-      workspace.understanding.intentionalNotes.length > 0 ||
-      workspace.understanding.knownRisks.length > 0 ||
-      workspace.understanding.launchChecklist.length > 0 ? (
-        <section className="space-y-5" aria-labelledby="product-understanding-heading">
-          <SectionTitle id="product-understanding-heading">
-            {copy.understanding}
-          </SectionTitle>
-          {workspace.understanding.productContract ? (
-            <div id="product-contract">
-              <ProductContractCard
-                contract={workspace.understanding.productContract}
-                auditId={workspace.understanding.reviewId ?? undefined}
-                canEdit
-              />
-            </div>
-          ) : null}
-          {workspace.understanding.reviewId ? (
-            <ProductMemoryStrip
-              auditId={workspace.understanding.reviewId}
-              verifiedLearnings={workspace.understanding.verifiedLearnings}
-              intentionalNotes={workspace.understanding.intentionalNotes}
-              knownRisks={workspace.understanding.knownRisks}
-              sectionId="product-remember"
-            />
-          ) : null}
-          {workspace.understanding.launchChecklist.length > 0 ? (
-            <LaunchGates
-              checklist={workspace.understanding.launchChecklist}
-              sectionId="product-launch-gates"
-            />
-          ) : null}
-        </section>
-      ) : null}
-
-      {progressEvents.length > 0 ? (
-        <section
-          aria-labelledby="product-progress-heading"
-          className="space-y-3"
-        >
-          <div>
-            <SectionTitle id="product-progress-heading">{copy.progress}</SectionTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {copy.progressBody}
-            </p>
-          </div>
-          <Surface variant="elevated">
-            <div className="divide-y divide-border/60">
-              {progressEvents.map((event) => {
-                if (event.kind === 'attempt') {
-                  return (
-                    <div key={event.id} className="space-y-2 py-4">
-                      <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <p className="text-sm font-medium">
-                          {copy.changeDeclared(event.improvementTitle)}
-                        </p>
-                        <span className="text-xs text-muted-foreground">
-                          {dateLabel(event.at)}
-                        </span>
-                      </div>
-                      <ImprovementReceipt attempt={event.attempt} />
-                    </div>
-                  )
-                }
-                return (
-                  <div key={event.id} className="py-4">
-                    <div className="rounded-nested-md bg-success-muted p-3">
-                      <p className="text-xs font-medium uppercase tracking-label text-success">
-                        {copy.verifiedLearning}
-                      </p>
-                      <p className="mt-1 text-sm">{event.learning.summary}</p>
-                      <Link
-                        href={
-                          `/report/${event.learning.auditId}?view=report` as Route
-                        }
-                        className="mt-2 inline-flex min-h-11 items-center text-xs font-medium text-link"
-                      >
-                        {copy.evidenceFrom(dateLabel(event.learning.at))}
-                      </Link>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </Surface>
-        </section>
+      {showIntelligence ? (
+        <ProductIntelligenceSection
+          workspace={workspace}
+          progressEvents={progressEvents}
+        />
       ) : null}
 
       <details className="group rounded-card border border-border/45 bg-card/60 shadow-card">
@@ -300,10 +228,10 @@ export function ProductWorkspace({
           <div>
             <SectionTitle as="h2">{copy.watchAndSignals}</SectionTitle>
             <p className="mt-1 text-sm text-muted-foreground">
-              {product.watching ? copy.watchOn : copy.watchOff}{' '}
+              {product.watching ? copy.watchOn : copy.watchOff}
               {workspace.integrations.signalKeys.length > 0
-                ? copy.signalKeysConnected(workspace.integrations.signalKeys.length)
-                : copy.noSignals}
+                ? ` ${copy.signalKeysConnected(workspace.integrations.signalKeys.length)}`
+                : ''}
             </p>
           </div>
           <ChevronDown
@@ -312,7 +240,7 @@ export function ProductWorkspace({
           />
         </summary>
 
-        <div className="grid gap-4 border-t border-border/45 p-4 sm:p-5 lg:grid-cols-2">
+        <div className="space-y-5 border-t border-border/45 p-4 sm:p-5">
           <div className="space-y-4">
             <div className="flex items-start gap-3">
               <Eye className="mt-0.5 h-5 w-5 text-brand" aria-hidden />
@@ -369,15 +297,6 @@ export function ProductWorkspace({
                       ? copy.regressedIssues(latestWatchReview.regressionCount)
                       : copy.noRegressedIssues}
                 </p>
-                <p className="mt-1">
-                  {copy.notification}{' '}
-                  {latestWatchReview.notificationStatus
-                    .toLowerCase()
-                    .replaceAll('_', ' ')}
-                  {latestWatchReview.notificationAttempts > 0
-                    ? ` · ${copy.attempts(latestWatchReview.notificationAttempts)}`
-                    : ''}
-                </p>
                 {latestWatchReview.notificationError ? (
                   <p role="alert" className="mt-1 text-destructive">
                     {latestWatchReview.notificationError}
@@ -394,7 +313,7 @@ export function ProductWorkspace({
             ) : null}
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 border-t border-border/45 pt-5">
             <div className="flex items-start gap-3">
               <Radio className="mt-0.5 h-5 w-5 text-brand" aria-hidden />
               <div>
@@ -419,14 +338,6 @@ export function ProductWorkspace({
                 ))}
               </div>
             ) : null}
-            <p className="text-xs text-muted-foreground">
-              {workspace.integrations.signalKeys.length > 0
-                ? copy.signalKeysActive(
-                    workspace.integrations.signalKeys.length,
-                    dateLabel(workspace.integrations.lastSignalAt),
-                  )
-                : copy.noSignalKey}
-            </p>
             {workspace.integrations.signalsEligible &&
             latestCompletedManualReview ? (
               <ProductSignalsSetup
@@ -445,6 +356,194 @@ export function ProductWorkspace({
         </div>
       </details>
     </main>
+  )
+}
+
+function ProductIntelligenceSection({
+  workspace,
+  progressEvents,
+}: {
+  workspace: ProductWorkspaceDTO
+  progressEvents: ProductWorkspaceDTO['history']['events']
+}) {
+  const copy = REPORT_COPY.workspace.product
+  const understanding = workspace.understanding
+  const hasTimeline =
+    progressEvents.length > 0 ||
+    understanding.verifiedLearnings.length > 0 ||
+    understanding.intentionalNotes.length > 0 ||
+    understanding.knownRisks.length > 0
+  const hasStructure =
+    understanding.importantJourneys.length > 0 ||
+    understanding.successConditions.length > 0 ||
+    understanding.constraints.length > 0 ||
+    understanding.decisions.length > 0
+
+  return (
+    <section className="space-y-5" aria-labelledby="product-intelligence-heading">
+      <ProductIntelligenceTrack
+        auditId={understanding.reviewId}
+        learningCount={understanding.verifiedLearnings.length}
+      />
+      <SectionTitle id="product-intelligence-heading">
+        {copy.understanding}
+      </SectionTitle>
+      {understanding.productContract ? (
+        <div id="product-contract">
+          <ProductContractCard
+            contract={understanding.productContract}
+            auditId={understanding.reviewId ?? undefined}
+            canEdit
+          />
+        </div>
+      ) : null}
+
+      <div id="product-remember" className="space-y-3">
+        <div>
+          <h3 className="text-base font-semibold tracking-heading text-foreground">
+            {copy.whatWeKnow}
+          </h3>
+          {!hasTimeline && !hasStructure ? (
+            <p className="mt-1 text-sm text-muted-foreground">{copy.memoryGrows}</p>
+          ) : null}
+        </div>
+
+        {hasTimeline || hasStructure ? (
+          <Surface variant="elevated">
+            <div className="divide-y divide-border/60">
+              {progressEvents.map((event) => {
+                if (event.kind === 'attempt') {
+                  return (
+                    <div key={event.id} className="space-y-2 py-4">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <p className="text-sm font-medium">
+                          {copy.changeDeclared(event.improvementTitle)}
+                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          {dateLabel(event.at)}
+                        </span>
+                      </div>
+                      <ImprovementReceipt attempt={event.attempt} />
+                    </div>
+                  )
+                }
+                if (event.kind === 'learning') {
+                  return (
+                    <div key={event.id} className="py-4">
+                      <div className="rounded-nested-md bg-success-muted p-3">
+                        <p className="text-xs font-medium uppercase tracking-label text-success">
+                          {copy.verifiedLearning}
+                        </p>
+                        <p className="mt-1 text-sm">{event.learning.summary}</p>
+                        <Link
+                          href={
+                            `/report/${event.learning.auditId}?view=report` as Route
+                          }
+                          className="mt-2 inline-flex min-h-11 items-center text-xs font-medium text-link"
+                        >
+                          {copy.evidenceFrom(dateLabel(event.learning.at))}
+                        </Link>
+                      </div>
+                    </div>
+                  )
+                }
+                return null
+              })}
+
+              {progressEvents.every((event) => event.kind !== 'learning') &&
+              understanding.verifiedLearnings.length > 0
+                ? understanding.verifiedLearnings.map((learning) => (
+                    <div
+                      key={`${learning.auditId}-${learning.at}-${learning.summary.slice(0, 24)}`}
+                      className="py-4"
+                    >
+                      <div className="rounded-nested-md bg-success-muted p-3">
+                        <p className="text-xs font-medium uppercase tracking-label text-success">
+                          {copy.verifiedLearning}
+                        </p>
+                        <p className="mt-1 text-sm">{learning.summary}</p>
+                        <Link
+                          href={`/report/${learning.auditId}?view=report` as Route}
+                          className="mt-2 inline-flex min-h-11 items-center text-xs font-medium text-link"
+                        >
+                          {copy.evidenceFrom(dateLabel(learning.at))}
+                        </Link>
+                      </div>
+                    </div>
+                  ))
+                : null}
+
+              {understanding.intentionalNotes.length > 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">
+                  {copy.intentionalLabel}:{' '}
+                  {understanding.intentionalNotes.slice(0, 5).join(' · ')}
+                </p>
+              ) : null}
+              {understanding.knownRisks.length > 0 ? (
+                <p className="py-4 text-sm text-muted-foreground">
+                  {copy.acceptedRiskLabel}:{' '}
+                  {understanding.knownRisks.slice(0, 5).join(' · ')}
+                </p>
+              ) : null}
+
+              {understanding.importantJourneys.length > 0 ? (
+                <MemoryList
+                  label={copy.journeysLabel}
+                  items={understanding.importantJourneys}
+                />
+              ) : null}
+              {understanding.successConditions.length > 0 ? (
+                <MemoryList
+                  label={copy.successConditionsLabel}
+                  items={understanding.successConditions}
+                />
+              ) : null}
+              {understanding.constraints.length > 0 ? (
+                <MemoryList
+                  label={copy.constraintsLabel}
+                  items={understanding.constraints}
+                />
+              ) : null}
+              {understanding.decisions.length > 0 ? (
+                <div className="space-y-2 py-4">
+                  <p className="text-xs font-medium uppercase tracking-label text-muted-foreground">
+                    {copy.decisionsLabel}
+                  </p>
+                  <ul className="space-y-2">
+                    {understanding.decisions.map((decision) => (
+                      <li
+                        key={`${decision.at}-${decision.text.slice(0, 24)}`}
+                        className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
+                      >
+                        <span>{decision.text}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {dateLabel(decision.at)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          </Surface>
+        ) : null}
+      </div>
+    </section>
+  )
+}
+
+function MemoryList({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div className="space-y-2 py-4">
+      <p className="text-xs font-medium uppercase tracking-label text-muted-foreground">
+        {label}
+      </p>
+      <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

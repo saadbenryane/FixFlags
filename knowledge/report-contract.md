@@ -21,7 +21,7 @@ Per-issue prompts are the primary handoff from understanding to improvement.
 3. Complete ranked Fix list (`#report-flags`) with `Your priorities` as the list heading, a muted coverage sentence (what was reviewed vs only open-checked), screenshot evidence, selected detail, and canonical Critical-first ranking
 4. One per-issue prompt row: an expandable `Fix Prompt` on the left and an always-visible `Copy prompt` action on the right, docked at the bottom of Flag detail beneath one desktop | mobile capture pair
 5. Report actions: owner Update review, Export (Copy link and Email me this report), sample CTA when this is a curated sample, and at most one contextual signup or upgrade moment
-6. Durable Product context lives on `/products/[id]`, not on the report: Product Contract (`#product-contract`), verified Product Memory (`#product-remember`), and launch gates (`#product-launch-gates`), merged with Made with, Watch, and Signals
+6. Durable Product context lives on `/products/[id]`, not on the report: Product Contract (`#product-contract`) and verified Product Memory (`#product-remember`) under Product Intelligence, merged with Made with and Watch. Launch-gate check failures surface as ordinary Flags in Your priorities, not as a separate checklist.
 7. Anonymous and sample reports have no Product page; they omit durable Product context entirely
 
 The compact header does not repeat Product identity, verdict copy, the Critical count, or instructions already expressed by the ranked Fix list.

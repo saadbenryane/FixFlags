@@ -46,6 +46,8 @@ interface PlanPickerDialogProps {
   onOpenChange: (open: boolean) => void
   source: PickerSource
   fallbackPath?: string
+  /** When false, Escape and outside click close the dialog (billing). Default true for onboarding. */
+  lockDismissal?: boolean
 }
 
 export function PlanPickerDialog({
@@ -53,6 +55,7 @@ export function PlanPickerDialog({
   onOpenChange,
   source,
   fallbackPath,
+  lockDismissal = true,
 }: PlanPickerDialogProps) {
   const router = useRouter()
   const { user, isLoading: meLoading } = useMe({ load: true })
@@ -128,10 +131,12 @@ export function PlanPickerDialog({
 
   function handleOpenChange(next: boolean) {
     if (!next) {
-      try {
-        sessionStorage.setItem(DISMISS_KEY, '1')
-      } catch {
-        // sessionStorage unavailable: still allow the close to register.
+      if (lockDismissal) {
+        try {
+          sessionStorage.setItem(DISMISS_KEY, '1')
+        } catch {
+          // sessionStorage unavailable: still allow the close to register.
+        }
       }
       trackDismissed()
     }
@@ -313,9 +318,15 @@ export function PlanPickerDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="max-h-[calc(100dvh-2rem)] w-[calc(100%-1.5rem)] max-w-3xl overflow-y-auto overscroll-contain p-5 sm:p-6 [&>button]:hidden"
-        onEscapeKeyDown={(event) => event.preventDefault()}
-        onPointerDownOutside={(event) => event.preventDefault()}
-        onInteractOutside={(event) => event.preventDefault()}
+        onEscapeKeyDown={
+          lockDismissal ? (event) => event.preventDefault() : undefined
+        }
+        onPointerDownOutside={
+          lockDismissal ? (event) => event.preventDefault() : undefined
+        }
+        onInteractOutside={
+          lockDismissal ? (event) => event.preventDefault() : undefined
+        }
       >
         <div className="flex items-start justify-between gap-3">
           <div>

@@ -236,15 +236,6 @@ describe('FlagMetaPills', () => {
     expect(pill.querySelector('svg')).toBeTruthy()
   })
 
-  it('opens the page URL list from the pages pill', async () => {
-    render(<FlagMetaPills flag={makeFlag()} />)
-    fireEvent.click(screen.getByRole('button', { name: 'On /page' }))
-    expect(await screen.findByRole('link', { name: 'On /page' })).toHaveAttribute(
-      'href',
-      'https://example.com/page'
-    )
-  })
-
   it('shows multi-page count when several URLs are present', () => {
     render(
       <FlagMetaPills

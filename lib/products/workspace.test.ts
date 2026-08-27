@@ -351,9 +351,7 @@ describe('loadProductOverview', () => {
     ])
 
     const products = await loadProductOverview('user-1')
-    expect(products[0]?.latestManualReview?.coverageLabel).toBe(
-      'This page and 6 linked pages',
-    )
+    expect(products[0]?.latestManualReview?.coverageLabel).toBe('7 pages')
   })
 })
 

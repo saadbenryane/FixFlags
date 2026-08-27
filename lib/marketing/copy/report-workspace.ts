@@ -92,13 +92,22 @@ export const REPORT_COPY = {
       olderReviews: "Older reviews",
       reviewFailedFallback:
         "The latest review did not finish. Start an Update review to try again.",
-      understanding: "Product understanding",
+      understanding: "Product Intelligence",
+      whatWeKnow: "What we know",
+      memoryGrows:
+        "Memory grows after verified fixes and Watch.",
       progress: "Progress",
       progressBody: "Declared changes and what independent verification learned.",
       changeDeclared: (title: string) => `Change declared: ${title}`,
       verifiedLearning: "Verified learning",
+      intentionalLabel: "Intentional",
+      acceptedRiskLabel: "Accepted for now",
+      journeysLabel: "Important journeys",
+      successConditionsLabel: "Success conditions",
+      constraintsLabel: "Constraints",
+      decisionsLabel: "Decisions",
       evidenceFrom: (date: string) => `Evidence from ${date}`,
-      watchAndSignals: "Watch and Signals",
+      watchAndSignals: "Watch",
       watchOn: "Watch is on.",
       watchOff: "Watch is off.",
       signalKeysConnected: (count: number) =>
@@ -115,9 +124,6 @@ export const REPORT_COPY = {
       regressedIssues: (count: number) =>
         `${count} new or regressed issue${count === 1 ? "" : "s"} found.`,
       noRegressedIssues: "No new or regressed issues found.",
-      notification: "Notification:",
-      attempts: (count: number) =>
-        `${count} attempt${count === 1 ? "" : "s"}`,
       openWatchReview: "Open Watch Review",
       signals: "Signals",
       signalsBody:
@@ -458,10 +464,10 @@ export const REPORT_COPY = {
       partial?: boolean
     }) =>
       `${openCheckCount} public ${openCheckCount === 1 ? "link" : "links"}`,
-    productCoverage: (linkedPageCount: number) =>
-      linkedPageCount <= 0
-        ? "This page"
-        : `This page and ${linkedPageCount} linked ${linkedPageCount === 1 ? "page" : "pages"}`,
+    productCoverage: (linkedPageCount: number) => {
+      const pages = linkedPageCount + 1
+      return pages === 1 ? "1 page" : `${pages} pages`
+    },
     onPages: (count: number) => `On ${count} pages`,
     onPath: (path: string) => `On ${path}`,
     allPages: "All Pages",

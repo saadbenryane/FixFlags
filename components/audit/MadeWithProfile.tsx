@@ -172,54 +172,26 @@ export function MadeWithProfile({
         className={cn('scroll-mt-[var(--header-offset)]', className)}
         aria-labelledby="made-with-title"
       >
-        <details className="group rounded-card border border-border/45 bg-card/60 shadow-card">
-          <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-2 px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:px-4 [&::-webkit-details-marker]:hidden">
-            <h2 id="made-with-title" className="text-xs font-medium text-muted-foreground">
-              {MADE_WITH_COPY.title}
-            </h2>
-            {summary.map((technology) => (
-              <span
-                key={technology.slug}
-                className="inline-flex items-center gap-1.5 rounded-full bg-muted/70 py-1 pl-1 pr-2 text-xs font-medium text-foreground"
-              >
-                <TechnologyMark technology={technology} />
-                {technology.name}
-              </span>
-            ))}
-            {profile.technologies.length > summary.length ? (
-              <span className="font-mono text-2xs text-muted-foreground">
-                +{profile.technologies.length - summary.length}
-              </span>
-            ) : null}
-            {emptyCopy ? (
-              <span className="text-xs text-muted-foreground">{emptyCopy}</span>
-            ) : null}
-            <ChevronDown
-              className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
-              aria-hidden
-            />
-          </summary>
-          <div className="space-y-3 border-t border-border/35 px-4 py-3">
-            {groups.map(([category, technologies]) => {
-              const meta = CATEGORY_META[category]
-              const Icon = meta.icon
-              return (
-                <div key={category} className="grid gap-2 sm:grid-cols-[8rem_1fr]">
-                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                    <Icon className="size-3.5" aria-hidden />
-                    {meta.label}
-                  </div>
-                  <p className="text-xs text-foreground">
-                    {technologies.map((technology) => technology.name).join(', ')}
-                  </p>
-                </div>
-              )
-            })}
-            <p className="text-2xs leading-relaxed text-muted-foreground">
-              {MADE_WITH_COPY.disclaimer}
-            </p>
-          </div>
-        </details>
+        <div className="flex min-h-11 items-center gap-2 overflow-x-auto px-0 py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <h2
+            id="made-with-title"
+            className="shrink-0 text-xs font-medium text-muted-foreground"
+          >
+            {MADE_WITH_COPY.title}
+          </h2>
+          {profile.technologies.map((technology) => (
+            <span
+              key={technology.slug}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-muted/70 py-1 pl-1 pr-2 text-xs font-medium text-foreground"
+            >
+              <TechnologyMark technology={technology} />
+              {technology.name}
+            </span>
+          ))}
+          {emptyCopy ? (
+            <span className="shrink-0 text-xs text-muted-foreground">{emptyCopy}</span>
+          ) : null}
+        </div>
       </section>
     )
   }

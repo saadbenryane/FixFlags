@@ -353,6 +353,7 @@ export const USAGE_METER_COPY = {
   upgradeToPro: 'Upgrade to Pro',
   upgradeForMore: 'upgrade for more',
   paidLimitReached: 'Plan limit reached. Upgrade for more product reviews.',
+  limitReached: 'Product review limit reached.',
 } as const
 
 export const BILLING_PAGE_COPY = {
@@ -365,6 +366,7 @@ export const BILLING_PAGE_COPY = {
   pastDuePlanName: (name: string) => `${name} (payment past due: features paused)`,
   paidFeaturesPaused: ' (paid features paused)',
   upgradeCta: 'Upgrade plan',
+  changePlanCta: 'Change plan',
   compareStudio: 'Compare Studio',
   activating: 'Activating subscription…',
   activatingHint: 'This usually takes a few seconds after checkout.',
@@ -372,6 +374,16 @@ export const BILLING_PAGE_COPY = {
   paymentIssueTitle: 'Payment issue',
   canceledBody: 'Your subscription has been canceled. Features may be downgraded.',
   unpaidBody: 'Your subscription is unpaid. Check your payment method.',
+  plansTitle: 'Plans',
+  plansDescription: 'Compare Free, Pro, and Studio. Pick a plan when you are ready.',
+  currentPlanBadge: 'Current',
+  historyTitle: 'Billing history',
+  historyDescription: 'Purchases and receipts for this account.',
+  historyEmpty: 'No purchases yet.',
+  historyInvoicesHint:
+    'Subscription invoices and PDF receipts live in the Stripe customer portal.',
+  historyViewInvoices: 'Open invoices',
+  historyHelpCta: 'How invoices work',
   creditsTitle: 'Credits',
   purchasedAvailable: (n: number) =>
     `${n} purchased check${n !== 1 ? 's' : ''} available`,

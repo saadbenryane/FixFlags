@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { PRODUCT_WATCH_COPY, REPORT_COPY } from '@/lib/marketing/copy'
@@ -51,24 +51,6 @@ export function ProductWatchControls({
     buildInitialState(initialInterval, suppliedInitialState)
   )
   const [saving, setSaving] = useState(false)
-  const [loadError, setLoadError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!canWatch) return
-    const controller = new AbortController()
-    fetch(`/api/projects/${projectId}/watch`, { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(PRODUCT_WATCH_COPY.loadFailed)
-        setState(await response.json() as WatchState)
-        setLoadError(null)
-      })
-      .catch((error) => {
-        if (error instanceof DOMException && error.name === 'AbortError') return
-        setLoadError(PRODUCT_WATCH_COPY.loadFailed)
-        toast.error(PRODUCT_WATCH_COPY.loadFailed)
-      })
-    return () => controller.abort()
-  }, [canWatch, projectId])
 
   async function save(next: Interval) {
     setSaving(true)
@@ -110,6 +92,12 @@ export function ProductWatchControls({
     )
   }
 
+  const statusLine = state.watchInterval
+    ? state.watchNextRunAt
+      ? `${PRODUCT_WATCH_COPY.nextRun}: ${formatDate(state.watchNextRunAt)}`
+      : `${PRODUCT_WATCH_COPY.lastRun}: ${formatDate(state.watchLastRunAt)}`
+    : null
+
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground text-pretty">{PRODUCT_WATCH_COPY.description}</p>
@@ -134,13 +122,12 @@ export function ProductWatchControls({
       {!state.readiness.available ? (
         <p role="alert" className="text-xs text-destructive">{PRODUCT_WATCH_COPY.unavailable}</p>
       ) : null}
-      {loadError ? <p role="alert" className="text-xs text-destructive">{loadError}</p> : null}
-      <dl className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-3">
-        <div><dt>{PRODUCT_WATCH_COPY.nextRun}</dt><dd className="text-foreground">{formatDate(state.watchNextRunAt)}</dd></div>
-        <div><dt>{PRODUCT_WATCH_COPY.lastRun}</dt><dd className="text-foreground">{formatDate(state.watchLastRunAt)}</dd></div>
-        <div><dt>{PRODUCT_WATCH_COPY.lastAttempt}</dt><dd className="text-foreground">{formatDate(state.watchLastAttemptAt)}</dd></div>
-      </dl>
-      {state.watchLastError ? <p role="alert" className="text-xs text-destructive">{state.watchLastError}</p> : null}
+      {statusLine ? (
+        <p className="text-xs text-muted-foreground">{statusLine}</p>
+      ) : null}
+      {state.watchLastError ? (
+        <p role="alert" className="text-xs text-destructive">{state.watchLastError}</p>
+      ) : null}
     </div>
   )
 }

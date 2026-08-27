@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { USAGE_METER_COPY } from '@/lib/marketing/copy'
+import { HELP_CENTER, USAGE_METER_COPY } from '@/lib/marketing/copy'
 import { UsageMeter } from '@/components/dashboard/UsageMeter'
 
 describe('UsageMeter', () => {
@@ -28,12 +28,28 @@ describe('UsageMeter', () => {
     expect(screen.getByText(USAGE_METER_COPY.panelLabel)).toBeInTheDocument()
     expect(screen.getByText(USAGE_METER_COPY.usedOfLimit(2, 3))).toBeInTheDocument()
     expect(screen.getByText(USAGE_METER_COPY.usedCaption)).toBeInTheDocument()
-    expect(screen.getByText(USAGE_METER_COPY.remainingCaption(1))).toBeInTheDocument()
+    expect(screen.queryByText(USAGE_METER_COPY.remainingCaption(1))).not.toBeInTheDocument()
     expect(
       screen.getByRole('progressbar', { name: USAGE_METER_COPY.progressLabel(2, 3) }),
     ).toBeInTheDocument()
     expect(container.querySelector('.shadow-card')).toBeNull()
     expect(screen.queryByText('product reviews remaining')).not.toBeInTheDocument()
+  })
+
+  it('omits inline upgrade links when the page owns the upgrade CTA', () => {
+    render(
+      <UsageMeter
+        used={3}
+        limit={3}
+        pending={0}
+        plan="FREE"
+        showUpgradeCta={false}
+      />,
+    )
+
+    expect(screen.getByText(USAGE_METER_COPY.limitReached)).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: USAGE_METER_COPY.upgradeToPro })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: HELP_CENTER.viewHelpCta })).toBeInTheDocument()
   })
 
   it('keeps an uncapped period count when the plan is unlimited', () => {

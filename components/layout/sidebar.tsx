@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { SignOutButton } from '@/components/auth/SignOutButton'
 import { AvatarMenu } from '@/components/layout/AvatarMenu'
 import { useMe } from '@/hooks/useMe'
 import { isNavActive } from '@/lib/site/nav-active'
@@ -42,13 +41,13 @@ const PRIMARY_ITEMS: SidebarItem[] = [
 ]
 
 const SECONDARY_ITEMS: SidebarItem[] = [
-  { href: '/settings', label: 'Settings', icon: Settings },
   { href: '/billing', label: 'Billing', icon: CreditCard },
   { href: '/docs', label: 'Docs', icon: BookOpen },
   { href: '/help', label: 'Help', icon: CircleHelp },
 ]
 
 const ADMIN_ITEM: SidebarItem = { href: '/admin', label: 'Admin', icon: ShieldCheck }
+const SETTINGS_ITEM: SidebarItem = { href: '/settings', label: 'Settings', icon: Settings }
 
 export function SidebarNav({
   onNav,
@@ -70,7 +69,11 @@ export function SidebarNav({
     }
   }
 
-  const secondaryItems = showAdmin ? [...SECONDARY_ITEMS, ADMIN_ITEM] : SECONDARY_ITEMS
+  const secondaryItems = [
+    ...SECONDARY_ITEMS,
+    ...(showAdmin ? [ADMIN_ITEM] : []),
+    SETTINGS_ITEM,
+  ]
 
   function renderItem(item: SidebarItem) {
     const active = isNavActive(pathname, item.href)
@@ -126,31 +129,36 @@ function SidebarFooter({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className={cn('shrink-0 border-t border-border/60 py-3', compact ? 'px-2' : 'px-4')}>
-      {user && (
-        <div className={cn('flex items-center', compact ? 'justify-center' : 'gap-3')}>
-          {compact ? (
-            <Tooltip>
-              <TooltipTrigger asChild><span><AvatarMenu user={user} /></span></TooltipTrigger>
-              <TooltipContent side="right">
-                {user.name ?? user.email} · {planLabel(user.plan)}
-              </TooltipContent>
-            </Tooltip>
+      <div className={cn('flex', compact ? 'flex-col items-center gap-1' : 'flex-col gap-3')}>
+        {compact ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <ThemeToggle />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="right">Theme</TooltipContent>
+          </Tooltip>
+        ) : (
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Theme</span>
+            <ThemeToggle />
+          </div>
+        )}
+        {user &&
+          (compact ? (
+            <AvatarMenu user={user} side="right" align="end" />
           ) : (
-            <AvatarMenu user={user} />
-          )}
-          {!compact && <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">
-              {user.name ?? user.email}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {planLabel(user.plan)} plan
-            </p>
-          </div>}
-        </div>
-      )}
-      <div className={cn('mt-3 flex items-center', compact ? 'flex-col gap-1' : 'justify-between')}>
-        {!compact && <SignOutButton />}
-        <ThemeToggle />
+            <div className="flex items-center gap-3">
+              <AvatarMenu user={user} side="top" align="start" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{user.name ?? user.email}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {planLabel(user.plan)} plan
+                </p>
+              </div>
+            </div>
+          ))}
       </div>
     </div>
   )
@@ -186,7 +194,7 @@ export function MobileSidebar({ showAdmin }: { showAdmin?: boolean }) {
         <SheetHeader className="sr-only">
           <SheetTitle>Navigation</SheetTitle>
         </SheetHeader>
-      <div className="flex h-[var(--header-height)] items-center px-4 border-b border-border/40 shrink-0">
+        <div className="flex h-[var(--header-height)] shrink-0 items-center border-b border-border/40 px-4">
           <Logo variant="lockup" size="md" href="/dashboard" />
         </div>
         <div className="flex-1 overflow-y-auto px-3 py-4">

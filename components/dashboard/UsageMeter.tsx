@@ -19,6 +19,8 @@ interface Props {
   plan: string;
   purchasedCredits?: number;
   variant?: "compact" | "panel";
+  /** When false, omit inline upgrade links (page already has an upgrade CTA). */
+  showUpgradeCta?: boolean;
 }
 
 export function UsageMeter({
@@ -28,6 +30,7 @@ export function UsageMeter({
   plan,
   purchasedCredits = 0,
   variant = "panel",
+  showUpgradeCta = true,
 }: Props) {
   const isUnlimited = limit === null || limit === Infinity;
   const { atLimit, pct, reserved } = checkUsageProgress(
@@ -87,7 +90,7 @@ export function UsageMeter({
               ? copy.compactPendingNote(pending)
               : copy.compactNote
             : `${copy.remainingShort(remaining)}. ${pending > 0 ? copy.compactPendingNote(pending) : copy.compactNote}`}
-          {atLimit && plan === "FREE" && purchasedCredits === 0 ? (
+          {showUpgradeCta && atLimit && plan === "FREE" && purchasedCredits === 0 ? (
             <>
               {" "}
               <Link href="/pricing" className="text-brand hover:underline">
@@ -135,17 +138,12 @@ export function UsageMeter({
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="font-mono text-3xl font-semibold tabular-nums leading-none">
-                {copy.usedOfLimit(reserved, limit)}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {copy.usedCaption}
-              </p>
-            </div>
-            <p className="text-sm tabular-nums text-muted-foreground">
-              {copy.remainingCaption(remaining)}
+          <div>
+            <p className="font-mono text-3xl font-semibold tabular-nums leading-none">
+              {copy.usedOfLimit(reserved, limit)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {copy.usedCaption}
             </p>
           </div>
           <Progress
@@ -170,7 +168,7 @@ export function UsageMeter({
         </p>
       )}
 
-      {!isUnlimited && plan === "FREE" && remaining === 1 && (
+      {showUpgradeCta && !isUnlimited && plan === "FREE" && remaining === 1 && (
         <p className="text-xs text-muted-foreground">
           <Link href="/pricing" className="text-brand hover:underline">
             {copy.upgradeForMore}
@@ -180,11 +178,17 @@ export function UsageMeter({
 
       {atLimit && plan === "FREE" && purchasedCredits === 0 && (
         <p className="text-xs text-muted-foreground">
-          {UPSELLS.atLimit}{" "}
-          <Link href="/pricing" className="text-brand hover:underline">
-            {copy.upgradeToPro}
-          </Link>
-          {" · "}
+          {showUpgradeCta ? (
+            <>
+              {UPSELLS.atLimit}{" "}
+              <Link href="/pricing" className="text-brand hover:underline">
+                {copy.upgradeToPro}
+              </Link>
+              {" · "}
+            </>
+          ) : (
+            <>{copy.limitReached}{" "}</>
+          )}
           <TextLink href={limitHelpHref}>{HELP_CENTER.viewHelpCta}</TextLink>
         </p>
       )}

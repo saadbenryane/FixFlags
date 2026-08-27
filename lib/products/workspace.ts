@@ -178,6 +178,11 @@ export type ProductWorkspaceDTO = {
     verifiedLearnings: VerifiedLearning[]
     intentionalNotes: string[]
     knownRisks: string[]
+    importantJourneys: string[]
+    successConditions: string[]
+    constraints: string[]
+    decisions: Array<{ text: string; at: string }>
+    /** Persisted checklist; not shown on the Product page (Flags cover failures). */
     launchChecklist: LaunchChecklistItem[]
   }
   reviewHistory: ProductReviewSummaryDTO[]
@@ -900,6 +905,10 @@ export async function loadProductWorkspace(
       verifiedLearnings: memory?.verifiedLearnings ?? [],
       intentionalNotes: memory?.intentionalNotes ?? [],
       knownRisks: memory?.knownRisks ?? [],
+      importantJourneys: memory?.importantJourneys ?? [],
+      successConditions: memory?.successConditions ?? [],
+      constraints: memory?.constraints ?? [],
+      decisions: memory?.decisions ?? [],
       launchChecklist,
     },
     reviewHistory: historyReviewRows

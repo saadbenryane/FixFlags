@@ -61,7 +61,7 @@ export default async function DashboardPage({
   return (
     <Container
       variant="report"
-      className="space-y-6 px-4 py-5 pb-24 sm:px-6 sm:py-7 lg:px-0"
+      className="space-y-6 py-5 pb-24 sm:py-7"
     >
       <Suspense fallback={null}>
         <DashboardCheckoutToast />

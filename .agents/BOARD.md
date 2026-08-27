@@ -4,6 +4,10 @@ _Active tasks. One owner per scope. Archive completed records._
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| product-page-clarity | in-progress | composer | main | Coverage page counts, Made with scroll row, drop launch gates UI, simplify Watch, Product Intelligence | ProductWorkspace, MadeWithProfile, copy, report-contract, DESIGN | — | 2026-08-27 |
+| app-page-gutters | review | composer | main | Restore horizontal page padding on app dashboard/product pages (remove lg:px-0) | dashboard, products pages | Uses shared Container padding (1.25–2rem) | 2026-08-27 |
+| sidebar-account-chrome | review | composer | main | Theme toggle above avatar; Settings last in rail; avatar opens Products/Settings/Help/Log out menu | sidebar, AvatarMenu | Focused layout tests green | 2026-08-27 |
+| billing-page-cleanup | review | composer | main | Clean billing redundancy; show plans below; modal upgrade CTA; billing history section | billing/page, UsageMeter, PlanPicker, BILLING_PAGE_COPY | Tests green for UsageMeter + billing sections + PlanPicker. | 2026-08-27 |
 | agent-chat-suggestions | review | composer | main | Move Agent suggested prompts above composer outside the input box; improve suggestion copy | WorkspaceChatPanel, report-workspace copy | Tests green. Chips: What should I fix first? / What's still open? Outside form. | 2026-08-27 |
 | score-ring-pending-loader | review | composer | main | Center pending score dots; brand rotating loader arc on ScoreRing | ScoreRing, ReportOutcomeBar | Tests green. Pending uses three centered dots + brand arc spinner (motion-safe). | 2026-08-27 |
 | report-explorer-chrome | review | composer | main | Report explorer chrome cleanup: Top Flags, prompt shell, outcome actions, footer align | ReportExplorer, FlagDetailPanel, AuditPageActions, ExportMenu, copy | 108 focused tests green. Update review kept; Export icon-only; Copy all in Fix Prompt menu. | 2026-08-27 |

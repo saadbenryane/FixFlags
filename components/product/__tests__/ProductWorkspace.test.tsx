@@ -59,7 +59,7 @@ const workspace: ProductWorkspaceDTO = {
     score: 78,
     reportCompleteness: 'FULL',
     unresolvedCount: 1,
-    coverageLabel: 'This page and 6 linked pages',
+    coverageLabel: '7 pages',
     createdAt: '2026-08-12T00:00:00.000Z',
     completedAt: '2026-08-12T00:01:00.000Z',
     failureMessage: null,
@@ -71,7 +71,7 @@ const workspace: ProductWorkspaceDTO = {
     score: 78,
     reportCompleteness: 'FULL',
     unresolvedCount: 1,
-    coverageLabel: 'This page and 6 linked pages',
+    coverageLabel: '7 pages',
     createdAt: '2026-08-12T00:00:00.000Z',
     completedAt: '2026-08-12T00:01:00.000Z',
     failureMessage: null,
@@ -125,6 +125,10 @@ const workspace: ProductWorkspaceDTO = {
     ],
     intentionalNotes: [],
     knownRisks: [],
+    importantJourneys: [],
+    successConditions: [],
+    constraints: [],
+    decisions: [],
     launchChecklist: [
       { id: 'https', label: 'Served over HTTPS', passed: true },
     ],
@@ -229,17 +233,17 @@ describe('ProductWorkspace', () => {
     expect(
       screen.getByRole('heading', { level: 2, name: 'Current review' })
     ).toBeInTheDocument()
-    expect(screen.getByText(/1 unresolved · This page and 6 linked pages/)).toBeInTheDocument()
+    expect(screen.getByText(/1 unresolved · 7 pages/)).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Product understanding' })
+      screen.getByRole('heading', { level: 2, name: 'Product Intelligence' })
     ).toBeInTheDocument()
     expect(document.getElementById('product-contract')).not.toBeNull()
     expect(document.getElementById('product-remember')).not.toBeNull()
-    expect(document.getElementById('product-launch-gates')).not.toBeNull()
+    expect(document.getElementById('product-launch-gates')).toBeNull()
     expect(
       screen.getByText('Primary action is now visible on the first screen.')
     ).toBeInTheDocument()
-    expect(screen.getByText('Served over HTTPS')).toBeInTheDocument()
+    expect(screen.queryByText('Served over HTTPS')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'Improvement history' })
     ).not.toBeInTheDocument()
@@ -252,7 +256,7 @@ describe('ProductWorkspace', () => {
     expect(
       screen.getByRole('heading', {
         level: 2,
-        name: 'Watch and Signals',
+        name: 'Watch',
       })
     ).toBeInTheDocument()
     expect(
@@ -309,7 +313,7 @@ describe('ProductWorkspace', () => {
     )
   })
 
-  it('combines Reviews, declared changes, and verified learning in one Product history', () => {
+  it('combines declared changes and verified learning under Product Intelligence', () => {
     render(
       <ProductWorkspace
         workspace={{
@@ -358,8 +362,14 @@ describe('ProductWorkspace', () => {
     )
 
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Progress' })
+      screen.getByRole('heading', { level: 2, name: 'Product Intelligence' })
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'What we know' })
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { level: 2, name: 'Progress' })
+    ).not.toBeInTheDocument()
     expect(
       screen.getByText('Change declared: Clarify signup')
     ).toBeInTheDocument()

@@ -7,7 +7,11 @@ import { parseApiErrorResponse } from '@/lib/api/parse-error'
 import { trackEvent } from '@/lib/analytics/events'
 import { SYSTEM_COPY } from '@/lib/marketing/copy'
 
-export function ManageSubscriptionButton() {
+interface Props {
+  label?: string
+}
+
+export function ManageSubscriptionButton({ label = 'Manage subscription' }: Props) {
   const [loading, setLoading] = useState(false)
 
   async function handleClick() {
@@ -39,7 +43,7 @@ export function ManageSubscriptionButton() {
       loading={loading}
       loadingLabel="Opening billing…"
     >
-      Manage subscription
+      {label}
     </Button>
   )
 }

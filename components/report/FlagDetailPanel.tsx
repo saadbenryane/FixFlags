@@ -392,7 +392,6 @@ function FlagPagesPill({ flag }: { flag: ExplorerFlag }) {
             type="button"
             aria-label={label}
             aria-expanded={open}
-            onClick={() => setOpen((value) => !value)}
             className="inline-flex min-h-8 items-center gap-1 rounded-full bg-muted/50 px-2.5 py-1 text-2xs font-medium tabular-nums text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             <Link2 className="h-3 w-3 shrink-0" aria-hidden />
