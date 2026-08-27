@@ -133,12 +133,26 @@ export async function resolveSessionUser() {
 
 const MAX_ATTACHED_CHILD_HOPS = 20
 
-/** Follow the newest attached Recheck so a bookmarked parent URL still opens this work. */
-export async function resolveLatestAttachedWorkId(id: string): Promise<string> {
+const ACTIVE_ATTACHED_STATUSES = [
+  'QUEUED',
+  'CAPTURING',
+  'CHECKING',
+  'JUDGING',
+  'FINALIZING',
+] as const
+
+/**
+ * Follow only an in-flight attached Update review.
+ * Completed parent bookmarks stay on that parent; active work redirects to the child.
+ */
+export async function resolveActiveAttachedWorkId(id: string): Promise<string> {
   let current = id
   for (let hop = 0; hop < MAX_ATTACHED_CHILD_HOPS; hop += 1) {
     const child = await prisma.audit.findFirst({
-      where: { parentId: current },
+      where: {
+        parentId: current,
+        status: { in: [...ACTIVE_ATTACHED_STATUSES] },
+      },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       select: { id: true },
     })
@@ -216,7 +230,7 @@ export async function getProgressiveAuditForRequest(id: string) {
   const accessContext = await resolveAccessForCookies(requested, session?.user)
   if (accessContext === 'denied') return { kind: 'forbidden' as const }
 
-  const workId = await resolveLatestAttachedWorkId(id)
+  const workId = await resolveActiveAttachedWorkId(id)
   const audit =
     workId === id
       ? requested
@@ -281,7 +295,7 @@ export async function getGatedAuditForRequest(id: string) {
     return { kind: 'forbidden' as const }
   }
 
-  const workId = await resolveLatestAttachedWorkId(id)
+  const workId = await resolveActiveAttachedWorkId(id)
   const audit = workId === id ? requested : await fetchAuditRow(workId)
   if (!audit) {
     return { kind: 'not_found' as const }

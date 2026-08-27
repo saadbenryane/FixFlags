@@ -68,13 +68,12 @@ export function AuditPageActions({
         endpoint: `/api/reports/${auditId}/re-check`,
         body: {},
         errorFallback: REPORT_COPY.recheck.error,
-        stayOnPage: true,
+        navigate: (href) => router.replace(href),
         onStarted: () => {
           trackEvent('recheck_started', { audit_id: auditId })
         },
       })
       if (!result.ok) toast.error(result.message)
-      else router.refresh()
     } finally {
       setRecheckLoading(false)
     }

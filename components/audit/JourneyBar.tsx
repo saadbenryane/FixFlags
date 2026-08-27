@@ -72,7 +72,7 @@ export function JourneyBar({ pages, totalFlags, auditId, primaryUrl, className }
           mode: 'critical_path',
         },
         errorFallback: 'Could not start the Product Review. Try again.',
-        replace: (href) => router.replace(href as Route),
+        navigate: (href) => router.replace(href as Route),
       })
       if (!result.ok) toast.error(result.message)
     } finally {

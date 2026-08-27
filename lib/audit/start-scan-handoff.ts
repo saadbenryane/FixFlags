@@ -5,7 +5,7 @@ import { trackEvent } from '@/lib/analytics/events'
 
 type CreateCheckBody = Record<string, unknown>
 
-type StartScanBase = {
+export type StartScanOptions = {
   url: string
   body: CreateCheckBody
   /** POST path. Defaults to /api/checks. */
@@ -13,19 +13,12 @@ type StartScanBase = {
   /** Analytics after success. */
   onStarted?: (data: Record<string, unknown>) => void
   errorFallback?: string
+  /**
+   * Navigate to the work report URL. Required so Update review and first scan
+   * open the same in-flight audit identity that status polling uses.
+   */
+  navigate: (href: string) => void
 }
-
-export type StartScanOptions =
-  | (StartScanBase & {
-      /** Recheck stays on the report they started from. */
-      stayOnPage: true
-      replace?: never
-    })
-  | (StartScanBase & {
-      stayOnPage?: false
-      /** App Router replace so the in-flight shell is not a second document load. */
-      replace: (href: string) => void
-    })
 
 export type CreateCheckResult =
   | { ok: true; reportId?: string }
@@ -38,8 +31,9 @@ export type CreateCheckResult =
     }
 
 /**
- * Shared check creation used by URL review, Re-check, and scan-deeper actions.
+ * Shared check creation used by URL review, Update review, and scan-deeper actions.
  * Visual pending and error states belong to the control that initiated the request.
+ * Always opens `/report/{reportId}` where `reportId` is the work audit.
  */
 export async function startScanWithHandoff(
   options: StartScanOptions
@@ -70,9 +64,7 @@ export async function startScanWithHandoff(
     options.onStarted?.(data)
 
     if (reportId) {
-      if (!options.stayOnPage) {
-        options.replace(`/report/${reportId}`)
-      }
+      options.navigate(`/report/${reportId}`)
       return { ok: true, reportId }
     }
 

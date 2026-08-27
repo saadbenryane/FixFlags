@@ -118,7 +118,7 @@ export function AuditInput({
         gclid: params.get('gclid') ?? undefined,
         fbclid: params.get('fbclid') ?? undefined,
       },
-      replace: (href) => router.replace(href as Route),
+      navigate: (href) => router.replace(href as Route),
       onStarted: (data) => {
         const isLoggedIn =
           typeof data.isLoggedIn === 'boolean' ? data.isLoggedIn : Boolean(user)

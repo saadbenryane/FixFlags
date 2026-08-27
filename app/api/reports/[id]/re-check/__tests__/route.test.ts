@@ -95,9 +95,8 @@ describe('POST /api/reports/[id]/re-check', () => {
     expect(res.status).toBe(201)
     const body = await res.json()
     expect(body).toEqual({
-      reportId: 'parent-1',
-      workReportId: 'child-1',
-      reportUrl: '/report/parent-1',
+      reportId: 'child-1',
+      reportUrl: '/report/child-1',
       status: 'QUEUED',
       reused: false,
       parentReportId: 'parent-1',
@@ -125,9 +124,8 @@ describe('POST /api/reports/[id]/re-check', () => {
 
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toEqual({
-      reportId: 'parent-1',
-      workReportId: 'active-review',
-      reportUrl: '/report/parent-1',
+      reportId: 'active-review',
+      reportUrl: '/report/active-review',
       status: 'CHECKING',
       reused: true,
       parentReportId: 'parent-1',

@@ -62,14 +62,15 @@ export async function POST(
       clientId,
     })
 
+    const workReportId = outcome.reportId
+    const baselineParentId = outcome.parentReportId ?? parentId
     return NextResponse.json(
       {
-        reportId: outcome.parentReportId ?? parentId,
-        workReportId: outcome.reportId,
-        reportUrl: `/report/${encodeURIComponent(outcome.parentReportId ?? parentId)}`,
+        reportId: workReportId,
+        reportUrl: `/report/${encodeURIComponent(workReportId)}`,
         status: outcome.status,
         reused: outcome.reused,
-        parentReportId: outcome.parentReportId ?? parentId,
+        parentReportId: baselineParentId,
       },
       { status: outcome.reused ? 200 : 201 }
     )

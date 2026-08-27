@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation'
 import { RefreshCw, TriangleAlert } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { Button } from '@/components/ui/button'
-import { parseApiErrorResponse } from '@/lib/api/parse-error'
+import { startScanWithHandoff } from '@/lib/audit/start-scan-handoff'
 import type { ProductReviewSummaryDTO } from '@/lib/products/workspace'
 import { REPORT_COPY } from '@/lib/marketing/copy'
+import { trackEvent } from '@/lib/analytics/events'
 
 type ProductReviewActionProps = {
   productUrl: string
@@ -69,33 +70,19 @@ export function ProductReviewAction({
     setBusy(true)
     setError('')
 
-    try {
-      const response = await fetch(
-        `/api/reports/${baselineReviewId}/re-check`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        },
-      )
+    const result = await startScanWithHandoff({
+      url: productUrl,
+      endpoint: `/api/reports/${baselineReviewId}/re-check`,
+      body: {},
+      errorFallback: REPORT_COPY.recheck.error,
+      navigate: (href) => router.push(href),
+      onStarted: () => {
+        trackEvent('recheck_started', { audit_id: baselineReviewId })
+      },
+    })
 
-      if (!response.ok) {
-        const parsed = await parseApiErrorResponse(response)
-        setError(parsed.message)
-        setBusy(false)
-        return
-      }
-
-      const result = (await response.json()) as { reportId?: unknown }
-      const stayId =
-        typeof result.reportId === 'string' && result.reportId.length > 0
-          ? result.reportId
-          : baselineReviewId
-      router.push(
-        `/report/${encodeURIComponent(stayId)}`,
-      )
-    } catch {
-      setError(REPORT_COPY.recheck.error)
+    if (!result.ok) {
+      setError(result.message)
       setBusy(false)
     }
   }

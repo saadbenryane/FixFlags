@@ -342,7 +342,7 @@ export function WorkspaceChatPanel({
       url,
       body: { url, source: 'report' },
       errorFallback: chatCopy.startError,
-      replace: (href) => router.replace(href as Route),
+      navigate: (href) => router.replace(href as Route),
     })
     if (!result.ok) {
       if (result.code === 'AUTH_REQUIRED') {

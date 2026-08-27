@@ -1,7 +1,8 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import {
   getGatedAuditForRequest,
   getProgressiveAuditForRequest,
+  resolveActiveAttachedWorkId,
 } from '@/lib/audit/fetch-audit'
 import { prisma } from '@/lib/db'
 import { getEntitlements, canAccessCompare, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
@@ -114,7 +115,12 @@ export async function loadReportRouteState(
   params: Promise<{ id: string }>,
   shareToken?: string
 ) {
-  const { id } = await params
+  const { id: requestedId } = await params
+  const activeWorkId = await resolveActiveAttachedWorkId(requestedId)
+  if (activeWorkId !== requestedId) {
+    redirect(`/report/${encodeURIComponent(activeWorkId)}`)
+  }
+  const id = requestedId
   const progressive = await getProgressiveAuditForRequest(id)
 
   if (progressive.kind === 'not_found') {
@@ -158,7 +164,7 @@ export async function loadReportRouteState(
 
     return {
       kind: 'progressive' as const,
-      id,
+      id: progressive.audit.id,
       audit: {
         ...progressive.audit,
         accessContext: progressive.accessContext,
