@@ -4,6 +4,7 @@ _Active tasks. One owner per scope. Archive completed records._
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| changelog-aug-catchup | review | composer | main | Catch public /changelog up from 2026-07-22 through Aug product ships | lib/marketing/copy/faq.ts CHANGELOG_ENTRIES | One combined 2026-08-27 entry; test green | 2026-08-27 |
 | score-rings-product-rubrics | review | composer | main | History ScoreRing sm + product Message/Experience/Reach bars under ScoreRing | ScoreRing, WorkspaceChatPanel, ProductWorkspace, workspace DTO | 32 focused tests green; tsc + ui:drift-guard + eslint clean | 2026-08-27 |
 | product-prompt-chrome-parity | review | composer | main | Wire Product Copy All via polishPassPrompt; lint + report-contract closeout | attention-explorer, ProductPriorities, ReportExplorerDetail test, report-contract | Focused 24 tests green; agent verify passed. Prod smoke: Fix Prompt + Copy + Copy All on /products/[id] | 2026-08-27 |
 | post-login-empty-claim | review | composer | main | Plain login stuck on save-report error when claim returns 0; treat empty claim as success + continue escape | post-login-claim-flow, post-login page, AUTH copy, PRODUCT | Shipped on main; agent verify unblocked | 2026-08-27 |

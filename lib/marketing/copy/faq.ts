@@ -121,6 +121,19 @@ export const FAQ: readonly FaqEntry[] = [
 
 export const CHANGELOG_ENTRIES = [
   {
+    date: '2026-08-27',
+    title: 'A clearer path from URL to Fix',
+    items: [
+      'Paste a public URL and watch Agent chat fill in beside your Report as the evidence lands',
+      'Each Product keeps score history, Your priorities, and Watch together, with Message, Experience, and Reach at a glance',
+      'Fix prompts name the live page and section so you can paste straight into Cursor, Claude Code, Lovable, or Bolt',
+      'Copy all gathers your ranked Fix list in one go; Export holds Copy link and Email me this report',
+      'Flags put Message and Experience ahead of Reach when the stakes are equal',
+      'Try a review without an account: you see the Flags and evidence, then save to unlock the fix prompts',
+      'Billing shows how many product reviews you have used this month, including update reviews and Watch',
+    ],
+  },
+  {
     date: '2026-07-22',
     title: 'A complete Fix list and public report links',
     items: [
