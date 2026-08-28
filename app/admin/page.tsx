@@ -29,7 +29,9 @@ export default async function AdminPage() {
     tokenAgg,
     completedWithCost,
     newLeadsWeek,
-    qualifiedLeads,
+    highPotentialLeads,
+    mediumPotentialLeads,
+    lowPotentialLeads,
     openChatSessions,
     inboxUnread,
     costOutliers,
@@ -48,7 +50,17 @@ export default async function AdminPage() {
     }),
     prisma.auditRunCost.count(),
     prisma.lead.count({ where: { firstSeenAt: { gte: weekAgo } } }),
-    prisma.lead.count({ where: { status: 'QUALIFIED' } }),
+    // Potential is derived: high = signed up + 1+ scans; medium = anon 2+; low = rest
+    prisma.lead.count({ where: { linkedUserId: { not: null }, scanCount: { gte: 1 } } }),
+    prisma.lead.count({ where: { linkedUserId: null, scanCount: { gte: 2 } } }),
+    prisma.lead.count({
+      where: {
+        OR: [
+          { linkedUserId: null, scanCount: { lte: 1 } },
+          { linkedUserId: { not: null }, scanCount: { lte: 0 } },
+        ],
+      },
+    }),
     countOpenConversations(),
     getAdminUnreadCount(),
     getCostOutliers(7),
@@ -63,7 +75,16 @@ export default async function AdminPage() {
 
   const opsStats = [
     { label: 'New leads (7d)', value: newLeadsWeek.toLocaleString(), href: '/admin/leads' },
-    { label: 'Qualified leads', value: qualifiedLeads.toLocaleString(), href: '/admin/leads' },
+    {
+      label: 'High potential',
+      value: highPotentialLeads.toLocaleString(),
+      href: '/admin/leads?potential=high',
+    },
+    {
+      label: 'Potential H/M/L',
+      value: `${highPotentialLeads}/${mediumPotentialLeads}/${lowPotentialLeads}`,
+      href: '/admin/leads',
+    },
     { label: 'Open chat sessions', value: openChatSessions.toLocaleString(), href: '/admin/feedback?tab=conversations' },
     { label: 'Inbox unread', value: inboxUnread.toLocaleString(), href: '/admin/feedback?tab=conversations' },
   ]
@@ -98,7 +119,7 @@ export default async function AdminPage() {
 
       <section className="space-y-4">
         <SectionTitle>Customer ops</SectionTitle>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {opsStats.map((s) => (
             <MetricCard
               key={s.label}

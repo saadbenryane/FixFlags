@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { SectionTitle } from '@/components/ui/typography'
 import { TextLink } from '@/components/ui/text-link'
 import { normalizeDomain } from '@/lib/leads/normalize-domain'
+import { deriveLeadPotential, formatLeadPotential } from '@/lib/leads/qualify'
 import { formatUsd } from '@/lib/billing/costs'
 
 export default async function AdminLeadDetailPage({
@@ -57,6 +58,10 @@ export default async function AdminLeadDetailPage({
 
   const avgCostPerScan =
     lead.scanCount > 0 ? lead.totalCostUsd.toNumber() / lead.scanCount : 0
+  const potential = deriveLeadPotential({
+    linkedUserId: lead.linkedUserId,
+    scanCount: lead.scanCount,
+  })
 
   return (
     <Container variant="report" className="space-y-8 py-8">
@@ -78,6 +83,12 @@ export default async function AdminLeadDetailPage({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Scans</span>
               <span className="font-mono tabular-nums">{lead.scanCount}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Potential</span>
+              <Badge variant={potential === 'high' ? 'default' : 'outline'} className="text-xs">
+                {formatLeadPotential(potential)}
+              </Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Latest score</span>

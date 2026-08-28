@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/db'
 import { decimalCost } from '@/lib/billing/costs'
 import { normalizeDomain } from '@/lib/leads/normalize-domain'
-import { shouldAutoQualifyLead } from '@/lib/leads/qualify'
 
 export function auditPendingLeadSync(audit: { leadSyncedAt: Date | null }): boolean {
   return !audit.leadSyncedAt
@@ -46,18 +45,14 @@ export async function upsertLeadFromAudit(auditId: string): Promise<void> {
     })
 
     if (!existing) {
-      const scanCount = 1
-      const status = shouldAutoQualifyLead({ status: 'NEW', scanCount, latestScore: audit.score })
-        ? 'QUALIFIED'
-        : 'NEW'
-
+      // Status stays NEW; outbound potential is derived at read time from signup + scans.
       await tx.lead.create({
         data: {
           normalizedDomain: domain,
           firstSeenAt: audit.createdAt,
           lastSeenAt: now,
-          scanCount,
-          status,
+          scanCount: 1,
+          status: 'NEW',
           latestScore: audit.score,
           latestAuditId: audit.id,
           latestUrl: audit.url,
@@ -69,22 +64,14 @@ export async function upsertLeadFromAudit(auditId: string): Promise<void> {
       })
     } else {
       const scanCount = existing.scanCount + 1
-      const nextStatus = shouldAutoQualifyLead({
-        status: existing.status,
-        scanCount,
-        latestScore: audit.score,
-      })
-        ? 'QUALIFIED'
-        : existing.status
-
       const nextTotal = existing.totalCostUsd.toNumber() + scanCostUsd
 
+      // Preserve existing workflow status; never auto-write QUALIFIED.
       await tx.lead.update({
         where: { id: existing.id },
         data: {
           lastSeenAt: now,
           scanCount,
-          status: nextStatus,
           latestScore: audit.score,
           latestAuditId: audit.id,
           latestUrl: audit.url,

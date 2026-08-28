@@ -6,7 +6,6 @@ import { PrismaClient } from '@prisma/client'
 import { decimalCost, sumEstimatedCostForDomain } from '../lib/billing/costs'
 import { mergeLeadStatusOnBackfill } from '../lib/leads/merge-status'
 import { normalizeDomain } from '../lib/leads/normalize-domain'
-import { shouldAutoQualifyLead } from '../lib/leads/qualify'
 
 const prisma = new PrismaClient()
 
@@ -119,21 +118,12 @@ async function main() {
       select: { status: true },
     })
 
-    const freshStatus = shouldAutoQualifyLead({
-      status: 'NEW',
-      scanCount: data.scanCount,
-      latestScore: data.latestScore,
-    })
-      ? 'QUALIFIED'
-      : 'NEW'
-
+    // Potential is derived at read time; status stays NEW unless a manual/legacy state exists.
     const status = existingLead
       ? mergeLeadStatusOnBackfill({
           currentStatus: existingLead.status,
-          scanCount: data.scanCount,
-          latestScore: data.latestScore,
         })
-      : freshStatus
+      : 'NEW'
 
     const verifiedCost = await sumEstimatedCostForDomain(normalizedDomain)
 

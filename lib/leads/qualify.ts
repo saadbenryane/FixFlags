@@ -1,15 +1,28 @@
-import { LeadStatus } from '@prisma/client'
+/** Derived outbound potential — not a LeadStatus enum value. */
+export type LeadPotential = 'low' | 'medium' | 'high'
 
-export const LEAD_QUALIFY_MIN_SCANS = 2
-export const LEAD_QUALIFY_MAX_SCORE = 70
-
-export function shouldAutoQualifyLead(input: {
-  status: LeadStatus
+/**
+ * Derive lead potential from signup + scan activity.
+ * LOW: no signup + 1 scan (or fewer)
+ * MEDIUM: no signup + 2+ scans
+ * HIGH: signed up (linkedUserId set) + 1+ scans
+ */
+export function deriveLeadPotential(input: {
+  linkedUserId: string | null | undefined
   scanCount: number
-  latestScore: number | null | undefined
-}): boolean {
-  if (input.status !== 'NEW') return false
-  if (input.scanCount >= LEAD_QUALIFY_MIN_SCANS) return true
-  if (input.latestScore != null && input.latestScore < LEAD_QUALIFY_MAX_SCORE) return true
-  return false
+}): LeadPotential {
+  if (input.linkedUserId && input.scanCount >= 1) return 'high'
+  if (!input.linkedUserId && input.scanCount >= 2) return 'medium'
+  return 'low'
+}
+
+export function formatLeadPotential(potential: LeadPotential): string {
+  switch (potential) {
+    case 'high':
+      return 'High'
+    case 'medium':
+      return 'Medium'
+    case 'low':
+      return 'Low'
+  }
 }

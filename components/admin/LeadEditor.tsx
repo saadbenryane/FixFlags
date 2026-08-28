@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/select'
 import type { LeadStatus } from '@prisma/client'
 
-const STATUSES: LeadStatus[] = ['NEW', 'QUALIFIED', 'CONTACTED', 'CONVERTED', 'DISQUALIFIED']
+/** Workflow statuses first. QUALIFIED remains for legacy rows only. */
+const STATUSES: LeadStatus[] = ['NEW', 'CONTACTED', 'CONVERTED', 'DISQUALIFIED', 'QUALIFIED']
 
 interface LeadEditorProps {
   domain: string
@@ -60,7 +61,7 @@ export function LeadEditor({ domain, initialStatus, initialNotes }: LeadEditorPr
           <SelectContent>
             {STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
-                {s}
+                {s === 'QUALIFIED' ? 'QUALIFIED (legacy)' : s}
               </SelectItem>
             ))}
           </SelectContent>

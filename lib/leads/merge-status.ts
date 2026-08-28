@@ -1,21 +1,19 @@
 import { LeadStatus } from '@prisma/client'
-import { shouldAutoQualifyLead } from '@/lib/leads/qualify'
 
-/** Preserve manual workflow states when backfilling or re-syncing leads. */
+/**
+ * Preserve manual workflow states when backfilling or re-syncing leads.
+ * Never auto-promote to QUALIFIED — potential is derived at read time.
+ */
 export function mergeLeadStatusOnBackfill(input: {
   currentStatus: LeadStatus
-  scanCount: number
-  latestScore: number | null
+  /** @deprecated unused — kept for call-site compatibility during transition */
+  scanCount?: number
+  /** @deprecated unused — kept for call-site compatibility during transition */
+  latestScore?: number | null
 }): LeadStatus {
-  if (input.currentStatus !== 'NEW' && input.currentStatus !== 'QUALIFIED') {
+  // Preserve any non-NEW status (manual workflow or legacy QUALIFIED rows).
+  if (input.currentStatus !== 'NEW') {
     return input.currentStatus
   }
-
-  return shouldAutoQualifyLead({
-    status: 'NEW',
-    scanCount: input.scanCount,
-    latestScore: input.latestScore,
-  })
-    ? 'QUALIFIED'
-    : 'NEW'
+  return 'NEW'
 }

@@ -30,14 +30,14 @@ describe('mergeLeadStatusOnBackfill', () => {
     )
   })
 
-  it('auto-qualifies NEW leads with enough signal', () => {
+  it('keeps NEW leads as NEW regardless of scan count or score', () => {
     assert.equal(
       mergeLeadStatusOnBackfill({
         currentStatus: 'NEW',
         scanCount: 3,
         latestScore: 85,
       }),
-      'QUALIFIED'
+      'NEW'
     )
     assert.equal(
       mergeLeadStatusOnBackfill({
@@ -52,6 +52,17 @@ describe('mergeLeadStatusOnBackfill', () => {
         currentStatus: 'NEW',
         scanCount: 1,
         latestScore: 50,
+      }),
+      'NEW'
+    )
+  })
+
+  it('preserves legacy QUALIFIED rows without promoting NEW to QUALIFIED', () => {
+    assert.equal(
+      mergeLeadStatusOnBackfill({
+        currentStatus: 'QUALIFIED',
+        scanCount: 1,
+        latestScore: 90,
       }),
       'QUALIFIED'
     )
