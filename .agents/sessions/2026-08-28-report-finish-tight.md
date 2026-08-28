@@ -15,8 +15,9 @@
 
 | Check | Result |
 |-------|--------|
-| Deploy SHA | `6f4683e7967c7033d130c6c117a8fc46dba89a36` (`/api/health` matched) |
-| CI follow-up | Comment-only `product:contract-guard` false positive fixed on tip after deploy |
+| Feature SHA | `6f4683e7967c7033d130c6c117a8fc46dba89a36` |
+| Tip at close | `eaf0ee54175c151e39e2cec7f902b2f856332582` (em-dash + schema CI cleanups) |
+| `/api/health` | Matched tip after Railway rolled |
 | Before child | `cmtby9oky000dl720o44n3wfq` |
 | Fresh Update review | **Owner action:** signed-in Update review on saadbenryane.com (CLI/MCP parked) |
 | After Fixed count | _(fill after rescan)_ |
