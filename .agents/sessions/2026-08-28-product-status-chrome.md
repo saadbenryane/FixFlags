@@ -14,5 +14,7 @@
 
 | Check | Result |
 |-------|--------|
-| Deploy SHA | _(fill after push)_ |
-| `/api/health` | _(fill)_ |
+| Deploy SHA | `b3095d0239589ed017ed47e67c0c39f73dc4ce2b` |
+| `/api/health` | Matched tip |
+| Agent verify | Passed |
+| CI full | Pre-existing marketing-trust / metadata failures (unrelated) |
