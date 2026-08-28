@@ -22,7 +22,10 @@ export const AUDIT_ERRORS = {
   unreachable: 'We could not reach this page. Check the URL and try again.',
   notHtml: 'This URL did not return a normal web page. Check the link and try again.',
   aiReviewFailed: 'AI review could not finish. Try again.',
-  partialAiReview: 'AI review could not finish. Deterministic checks are shown below.',
+  partialAiReview:
+    'Enhanced Fix prompts could not finish. Deterministic Tasks and evidence are still shown below — use Copy prompt when a Task is available.',
+  partialAiReviewContract:
+    'Enhanced Fix prompts failed a quality check and were skipped. Deterministic Tasks and evidence are still shown below.',
   triageDegradedAnonymous:
     'Automated checks are complete. AI summary was unavailable for this run. Sign up to retry with full AI review and fix prompts.',
   triageDegradedSignedIn:

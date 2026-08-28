@@ -18,15 +18,35 @@ export const RECHECK_DIFF_COPY = {
   regressed: 'Regressed',
   inconclusive: 'Inconclusive',
   inconclusiveBody: (count: number) =>
-    `${count} ${count === 1 ? 'Flag has' : 'Flags have'} insufficient comparable coverage. Inspect the verification receipt for coverage and remaining risk.`,
+    `${count} ${count === 1 ? 'Flag was' : 'Flags were'} not observed in this update review, but this review is only a partial capture, so we cannot credit clears yet. Score still reflects Flags we did observe.`,
+  inconclusiveBodyPartial: (count: number) =>
+    `${count} ${count === 1 ? 'Flag was' : 'Flags were'} not observed in this update review, but this review is only a partial capture, so we cannot credit clears yet. Score still reflects Flags we did observe.`,
+  inconclusiveBodyGeneric: (count: number) =>
+    `${count} ${count === 1 ? 'Flag has' : 'Flags have'} insufficient comparable coverage between reviews.`,
   empty: 'No Flag changes in this update review.',
-  compareCta: 'Open full before/after',
+  compareCta: 'Compare',
   compareProHint: 'See the evidence side by side.',
-  compareProCta: 'Open comparison',
+  compareProCta: 'Compare',
   outcomesHint:
     'Outcomes: no longer observed, still open, unchanged severity, regressed, or inconclusive.',
   compareProGateDescription:
     'Before/after comparison is included on every plan. Update reviews use the monthly product review allowance.',
+  summaryLine: (parts: {
+    stillOpen: number
+    newlyFound: number
+    inconclusive: number
+    cleared: number
+    regressed: number
+  }) => {
+    const bits: string[] = []
+    if (parts.cleared > 0) bits.push(`${parts.cleared} no longer observed`)
+    if (parts.stillOpen > 0) bits.push(`${parts.stillOpen} still open`)
+    if (parts.newlyFound > 0) bits.push(`${parts.newlyFound} new`)
+    if (parts.regressed > 0) bits.push(`${parts.regressed} regressed`)
+    if (parts.inconclusive > 0) bits.push(`${parts.inconclusive} inconclusive`)
+    return bits.join(' · ')
+  },
+  foundOnNewPage: 'Found on a newly reviewed page',
 } as const
 
 export const FLAG_DISMISS_REASONS = [

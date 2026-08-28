@@ -175,6 +175,9 @@ export type ThemeMatchableFlag = Pick<FlagData, 'problem' | 'evidence'> & {
  */
 export type FlagDiffSummaryItem = Pick<FlagData, 'checkId' | 'problem' | 'rubric' | 'severity'> & {
   status?: string
+  pageUrl?: string | null
+  /** True when this Flag’s pageUrl was not reviewed on the parent audit. */
+  foundOnNewPage?: boolean
 }
 
 /**

@@ -82,6 +82,17 @@ export function validatePrescriptionOutput(
   for (const rx of output.flagPrescriptions) {
     const existing = existingFlags.find((f) => f.flagKey === rx.flagKey)
     validateFixQuality(rx, existing)
+    // Soft-fail mismatched agentPrompt: keep fix/evidence, drop the bad prompt
+    // so the whole prescription job is not aborted after retries.
+    const agentPrompt = rx.agentPrompt?.trim()
+    if (
+      existing &&
+      agentPrompt &&
+      agentPrompt.length > 0 &&
+      !sharesEvidenceTokens(agentPrompt, existing.problem, existing.evidence)
+    ) {
+      rx.agentPrompt = null
+    }
   }
 
   return output
@@ -179,18 +190,6 @@ function validateFixQuality(
   if (vr.length < 10) {
     throw new JudgeContractError(
       `verificationRule for ${rx.flagKey} is too brief (${vr.length} chars), must describe how to verify the fix`
-    )
-  }
-
-  const agentPrompt = rx.agentPrompt?.trim()
-  if (
-    existing &&
-    agentPrompt &&
-    agentPrompt.length > 0 &&
-    !sharesEvidenceTokens(agentPrompt, existing.problem, existing.evidence)
-  ) {
-    throw new JudgeContractError(
-      `agentPrompt for ${rx.flagKey} does not share concrete tokens with the finding problem/evidence`
     )
   }
 }
@@ -401,7 +400,18 @@ function isPrescriptionAttemptRetryable(err: unknown): boolean {
   )
 }
 
-export async function runPrescriptionWithRetry(
+const PRESCRIPTION_BATCH_SIZE = 12
+
+function chunkFlags<T>(items: T[], size: number): T[][] {
+  if (items.length === 0) return [[]]
+  const batches: T[][] = []
+  for (let i = 0; i < items.length; i += size) {
+    batches.push(items.slice(i, i + size))
+  }
+  return batches
+}
+
+async function runPrescriptionBatch(
   context: PrescriptionContext,
   desktopBase64: string | null,
   mobileBase64: string | null,
@@ -414,4 +424,52 @@ export async function runPrescriptionWithRetry(
       runPrescriptionWithProvider(provider, context, desktopBase64, mobileBase64, maxTimeoutMs),
     isRetryable: isPrescriptionAttemptRetryable,
   })
+}
+
+export async function runPrescriptionWithRetry(
+  context: PrescriptionContext,
+  desktopBase64: string | null,
+  mobileBase64: string | null,
+  maxTimeoutMs?: number
+): Promise<PrescriptionResult> {
+  const flags = context.existingFlags
+  if (flags.length <= PRESCRIPTION_BATCH_SIZE) {
+    return runPrescriptionBatch(context, desktopBase64, mobileBase64, maxTimeoutMs)
+  }
+
+  const batches = chunkFlags(flags, PRESCRIPTION_BATCH_SIZE)
+  const flagPrescriptions: PrescriptionOutput['flagPrescriptions'] = []
+  let rubricPrescriptions: PrescriptionOutput['rubricPrescriptions'] = []
+  let inputTokens = 0
+  let outputTokens = 0
+  let model = ''
+
+  for (const batch of batches) {
+    const batchContext: PrescriptionContext = {
+      ...context,
+      existingFlags: batch,
+    }
+    const result = await runPrescriptionBatch(
+      batchContext,
+      desktopBase64,
+      mobileBase64,
+      maxTimeoutMs
+    )
+    flagPrescriptions.push(...result.output.flagPrescriptions)
+    if (rubricPrescriptions.length === 0) {
+      rubricPrescriptions = result.output.rubricPrescriptions
+    }
+    inputTokens += result.usage.inputTokens
+    outputTokens += result.usage.outputTokens
+    model = result.usage.model
+  }
+
+  const merged = validatePrescriptionOutput(
+    { flagPrescriptions, rubricPrescriptions },
+    flags
+  )
+  return {
+    output: merged,
+    usage: { inputTokens, outputTokens, model },
+  }
 }

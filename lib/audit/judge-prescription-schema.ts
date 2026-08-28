@@ -22,17 +22,19 @@ export const flagPrescriptionSchema = z.object({
     .min(1)
     .describe('1-2 sentences on real-world business impact'),
   fix: z.string().min(1).describe('1-3 numbered steps for fixing the issue, each starting with an action verb'),
+  // Nullable+required (not optional) so OpenAI strict mode can list every
+  // property in `required`. Empty string or null means "use fix as the Task".
   agentPrompt: z
     .string()
-    .optional()
+    .nullable()
     .describe(
-      'Short task body: named element, current text or behavior, desired outcome. No file paths. No URL required. Copy-time assembly supplies ground and method.'
+      'Short task body: named element, current text or behavior, desired outcome. No file paths. No URL required. Copy-time assembly supplies ground and method. Null when the fix field is enough.'
     ),
-  cursorPrompt: z.string().optional(),
-  claudePrompt: z.string().optional(),
-  windsurfPrompt: z.string().optional(),
-  lovablePrompt: z.string().optional(),
-  boltPrompt: z.string().optional(),
+  cursorPrompt: z.string().nullable(),
+  claudePrompt: z.string().nullable(),
+  windsurfPrompt: z.string().nullable(),
+  lovablePrompt: z.string().nullable(),
+  boltPrompt: z.string().nullable(),
   verificationRule: z
     .string()
     .min(1)
@@ -45,11 +47,11 @@ export const rubricPrescriptionSchema = z.object({
     .string()
     .min(1)
     .describe('Holistic prompt fixing ALL flags in this rubric at once'),
-  cursorPrompt: z.string().optional(),
-  claudePrompt: z.string().optional(),
-  windsurfPrompt: z.string().optional(),
-  lovablePrompt: z.string().optional(),
-  boltPrompt: z.string().optional(),
+  cursorPrompt: z.string().nullable(),
+  claudePrompt: z.string().nullable(),
+  windsurfPrompt: z.string().nullable(),
+  lovablePrompt: z.string().nullable(),
+  boltPrompt: z.string().nullable(),
 })
 
 export const prescriptionOutputSchema = z.object({

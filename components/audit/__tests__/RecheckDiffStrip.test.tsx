@@ -10,7 +10,7 @@ const flag = {
 }
 
 describe('RecheckDiffStrip', () => {
-  it('describes raw absence without claiming the Flag was fixed or verified', () => {
+  it('summarizes absences without claiming the Flag was fixed or verified', () => {
     render(
       <RecheckDiffStrip
         summary={{
@@ -23,14 +23,17 @@ describe('RecheckDiffStrip', () => {
       />,
     )
 
-    expect(screen.getAllByText('1 Flag no longer observed')).toHaveLength(2)
+    expect(screen.getByText(/1 no longer observed/i)).toBeInTheDocument()
     expect(screen.queryByText(/Flag fixed/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/verified/i)).not.toBeInTheDocument()
+    expect(
+      screen.getByText(/Verification receipts show whether an attempted Improvement worked/i)
+    ).toBeInTheDocument()
   })
 
-  it('keeps incomplete comparison coverage visible as inconclusive', () => {
+  it('names PARTIAL capture when inconclusive Flags cannot be credited as clears', () => {
     render(
       <RecheckDiffStrip
+        childPartial
         summary={{
           fixed: [],
           inconclusive: [flag],
@@ -41,7 +44,7 @@ describe('RecheckDiffStrip', () => {
       />,
     )
 
-    expect(screen.getAllByText('Inconclusive').length).toBeGreaterThan(0)
-    expect(screen.getByText(/insufficient comparable coverage/i)).toBeInTheDocument()
+    expect(screen.getByText(/partial capture/i)).toBeInTheDocument()
+    expect(screen.getByText(/cannot credit clears/i)).toBeInTheDocument()
   })
 })

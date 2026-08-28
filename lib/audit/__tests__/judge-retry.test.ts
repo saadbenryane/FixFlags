@@ -86,6 +86,39 @@ describe('validatePrescriptionOutput', () => {
     assert.equal(result, output)
   })
 
+  it('soft-drops mismatched agentPrompt instead of aborting the job', () => {
+    const output = {
+      flagPrescriptions: [
+        {
+          flagKey: 'flag-a',
+          evidence: 'The page title is missing, showing generic browser default text instead of a descriptive headline.',
+          whyItMatters: 'Without a descriptive title, visitors cannot understand what the page offers, reducing click-through rates from search results.',
+          fix: '1. Open your page layout file and locate the <title> tag in the <head> section.\n2. Replace the generic text with a specific description: <title>Your Product Name - Key Benefit</title>',
+          agentPrompt: 'Add aria-labels to every button and test with a screen reader across the whole app.',
+          verificationRule: 'Reload the page and check the browser tab shows your new title',
+        },
+      ],
+      rubricPrescriptions: [
+        { name: 'MESSAGE' as const, rubricPrompt: 'r' },
+        { name: 'EXPERIENCE' as const, rubricPrompt: 'r' },
+        { name: 'REACH' as const, rubricPrompt: 'r' },
+      ],
+    }
+    const existing = {
+      flagKey: 'flag-a',
+      problem: 'Title tag is missing',
+      evidence: 'Browser tab shows Untitled document',
+      checkId: 'title-missing',
+      source: 'DETERMINISTIC',
+      rubric: 'REACH',
+      severity: 'IMPORTANT',
+      pageUrl: 'https://example.com',
+    }
+    const result = validatePrescriptionOutput(output as any, [existing])
+    assert.equal(result.flagPrescriptions[0]?.agentPrompt, null)
+    assert.match(result.flagPrescriptions[0]?.fix ?? '', /title/i)
+  })
+
   it('throws when flag count does not match', () => {
     const output = {
       flagPrescriptions: [{ flagKey: 'flag-a', evidence: 'e', whyItMatters: 'w', fix: 'f', verificationRule: 'v' }],

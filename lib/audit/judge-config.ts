@@ -11,14 +11,14 @@ export interface ProviderConfig {
 const DEFAULTS: Record<string, ProviderConfig> = {
   openai: {
     model: 'gpt-4o-mini',
-    maxTokens: 4096,
-    timeoutMs: 60_000,
+    maxTokens: 8192,
+    timeoutMs: 90_000,
     imageDetail: 'low',
   },
   anthropic: {
     model: 'claude-sonnet-5',
     maxTokens: 8192,
-    timeoutMs: 45_000,
+    timeoutMs: 60_000,
     imageDetail: 'auto',
   },
 }

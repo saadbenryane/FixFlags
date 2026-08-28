@@ -161,6 +161,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           verificationReceipts={state.verificationReceipts}
           scoreHistory={state.scoreHistory}
           sampleFixFlag={state.sampleFixFlag}
+          reportCompleteness={state.audit.reportCompleteness}
           compareHref={
             state.canAccessCompareView && state.audit.parentId
               ? `/compare/${state.id}`

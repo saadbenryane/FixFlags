@@ -121,6 +121,8 @@ interface AuditReportProps {
   verificationReceipts?: ProductAttemptDTO[]
   scoreHistory?: ReportWorkspaceHistoryPoint[]
   compareHref?: string | null
+  /** Child update review completeness for honest inconclusive copy. */
+  reportCompleteness?: string | null
   sampleFixFlag?: RankableFlag | null
   agentMessages?: AgentMessage[]
   /** Persisted or curated Product name; the hostname stays the fallback. */
@@ -155,6 +157,7 @@ export function AuditReport({
   verificationReceipts = [],
   scoreHistory = [],
   compareHref = null,
+  reportCompleteness = null,
   sampleFixFlag = null,
   agentMessages = [],
   productName = null,
@@ -292,7 +295,9 @@ export function AuditReport({
             variant="warning"
             title={REPORT_COPY.prescriptionUnavailable.title}
           >
-            {AUDIT_ERRORS.partialAiReview}
+            {failureCode === 'AI_CONTRACT_INVALID'
+              ? AUDIT_ERRORS.partialAiReviewContract
+              : AUDIT_ERRORS.partialAiReview}
           </Callout>
         ) : null}
         {triageDegraded && auditId ? (
@@ -332,7 +337,11 @@ export function AuditReport({
               outcome="report_diff"
             />
           ) : null}
-          <RecheckDiffStrip summary={recheckDiff} compareHref={compareHref} />
+          <RecheckDiffStrip
+            summary={recheckDiff}
+            compareHref={compareHref}
+            childPartial={reportCompleteness === 'PARTIAL'}
+          />
         </>
       ) : null}
       {!isSample && verificationReceipts.length > 0 ? (

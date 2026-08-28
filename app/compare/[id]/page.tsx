@@ -12,7 +12,6 @@ import { AuditShell } from '@/components/layout/audit-shell'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { EmptyState } from '@/components/ui/empty-state'
 import { Muted, SectionTitle } from '@/components/ui/typography'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { resolveAuditAccess } from '@/lib/audit/access'
@@ -113,28 +112,36 @@ export default async function ComparePage({ params, searchParams }: Props) {
           />
         </div>
 
-        <Card className="flex items-center gap-6 border-0 p-5 shadow-card sm:p-6">
-          <div className="text-center">
-            <div className="font-mono text-3xl font-medium tabular-nums">{before.score ?? '–'}</div>
-            <div className="text-xs text-muted-foreground mt-1">Before</div>
+        <Card className="flex flex-col gap-4 border-0 p-5 shadow-card sm:p-6">
+          <div className="flex items-center gap-6">
+            <div className="text-center">
+              <div className="font-mono text-3xl font-medium tabular-nums">{before.score ?? '–'}</div>
+              <div className="text-xs text-muted-foreground mt-1">Before</div>
+            </div>
+            <div className="flex-1 text-center">
+              {before.score !== null && after.score !== null ? (
+                <div
+                  className={`font-mono text-2xl font-medium tabular-nums ${after.score > before.score ? 'text-success' : after.score < before.score ? 'text-destructive' : 'text-muted-foreground'}`}
+                >
+                  {after.score > before.score ? '+' : ''}
+                  {after.score - before.score}
+                </div>
+              ) : (
+                <div className="text-2xl text-muted-foreground">–</div>
+              )}
+              <div className="text-xs text-muted-foreground mt-1">Score change</div>
+            </div>
+            <div className="text-center">
+              <div className="font-mono text-3xl font-medium tabular-nums">{after.score ?? '–'}</div>
+              <div className="text-xs text-muted-foreground mt-1">After</div>
+            </div>
           </div>
-          <div className="flex-1 text-center">
-            {before.score !== null && after.score !== null ? (
-              <div
-                className={`font-mono text-2xl font-medium tabular-nums ${after.score > before.score ? 'text-success' : after.score < before.score ? 'text-destructive' : 'text-muted-foreground'}`}
-              >
-                {after.score > before.score ? '+' : ''}
-                {after.score - before.score}
-              </div>
-            ) : (
-              <div className="text-2xl text-muted-foreground">–</div>
-            )}
-            <div className="text-xs text-muted-foreground mt-1">Score change</div>
-          </div>
-          <div className="text-center">
-            <div className="font-mono text-3xl font-medium tabular-nums">{after.score ?? '–'}</div>
-            <div className="text-xs text-muted-foreground mt-1">After</div>
-          </div>
+          {after.reportCompleteness === 'PARTIAL' ? (
+            <p className="text-sm text-muted-foreground">
+              This update review is a partial capture, so Flags that disappeared cannot be credited as
+              clears yet. Score still reflects Flags we did observe.
+            </p>
+          ) : null}
         </Card>
 
         <RubricDiff
@@ -144,22 +151,14 @@ export default async function ComparePage({ params, searchParams }: Props) {
           afterRubrics={afterRubrics}
         />
 
-        {flagDiff.fixed.length === 0 &&
-        flagDiff.unchanged.length === 0 &&
-        flagDiff.regressed.length === 0 &&
-        flagDiff.newIssues.length === 0 ? (
-          <EmptyState
-            title="No changes detected"
-            description="Nothing changed between the two checks."
-          />
-        ) : (
-          <FlagDiff
-            fixed={flagDiff.fixed}
-            unchanged={flagDiff.unchanged}
-            regressed={flagDiff.regressed}
-            newIssues={flagDiff.newIssues}
-          />
-        )}
+        <FlagDiff
+          fixed={flagDiff.fixed}
+          unchanged={flagDiff.unchanged}
+          regressed={flagDiff.regressed}
+          newIssues={flagDiff.newIssues}
+          inconclusive={flagDiff.inconclusive}
+          childPartial={after.reportCompleteness === 'PARTIAL'}
+        />
 
         {beforeDesktop && afterDesktop && (
           <div className="space-y-3">

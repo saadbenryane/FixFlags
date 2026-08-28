@@ -65,8 +65,13 @@ export function ReportOutcomeBar({
             className="min-w-[12rem] flex-1"
           />
         ) : null}
-        {actions ? <div className="ml-auto shrink-0">{actions}</div> : null}
       </div>
+
+      {actions ? (
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 border-t border-border/35 py-2">
+          {actions}
+        </div>
+      ) : null}
 
       {loading ? (
         <div

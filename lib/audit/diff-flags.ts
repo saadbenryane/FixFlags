@@ -243,17 +243,24 @@ export async function getFlagDiffSummary(
     }
   }
 
+  const parentPageUrls = new Set(
+    parentFlags.map((f) => f.pageUrl).filter((u): u is string => Boolean(u))
+  )
+
   for (const monitoringFlag of monitoringFlags) {
     const key = flagMatchKey(monitoringFlag)
     if (parentKeys.has(key)) continue
     // The matching side is also keyed by base check, so a per-page variant of
     // a parent check can never appear here as a brand-new issue.
+    const pageUrl = monitoringFlag.pageUrl ?? null
     newIssues.push({
       checkId: monitoringFlag.checkId,
       problem: monitoringFlag.problem,
       rubric: monitoringFlag.rubric,
       severity: monitoringFlag.severity,
       status: monitoringFlag.status,
+      pageUrl,
+      foundOnNewPage: Boolean(pageUrl && !parentPageUrls.has(pageUrl)),
     })
   }
 

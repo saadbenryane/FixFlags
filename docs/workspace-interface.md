@@ -136,8 +136,9 @@ Below-report Product Contract does not compete with the live Product while scann
 
 ## Update review
 
-- **Update review** appears once in the completed owner report’s canonical action section, never in the compact Score/history header.
+- **Update review** and **Compare** appear in the completed owner report’s compact header action row (second row under Score / Review history), not as a competing hero above Top Flags.
 - Anonymous, shared, non-owner, and static sample workspaces never receive an actionable update-review control.
+- Full before/after buckets and screenshots live on `/compare/[id]`; the in-report signal is a one-line summary plus PARTIAL-aware inconclusive copy when needed.
 - **Compare** is the Pro payoff after an update review; its raw diff says no longer observed, remaining, new, or regressed.
 - Verification receipts separately report `IMPROVED`, `UNCHANGED`, `REGRESSED`, or `INCONCLUSIVE`.
 - Copying a prompt records a handoff and never declares verification.
@@ -196,7 +197,7 @@ Wire from [lib/marketing/copy/terminology.ts](../lib/marketing/copy/terminology.
 | Label          | Use on chrome                                                              |
 | -------------- | -------------------------------------------------------------------------- |
 | Product review | Standard full pass with journey, Funnel, and path evidence where available |
-| Update review  | Fresh owner-triggered review on the same URL (report action section)       |
+| Update review  | Fresh owner-triggered review on the same URL (header action row)       |
 | Funnel         | Report section                                                             |
 | Path           | Playback unit                                                              |
 | Fix list       | Ranked work queue                                                          |

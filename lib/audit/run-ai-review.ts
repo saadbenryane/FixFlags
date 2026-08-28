@@ -106,6 +106,7 @@ export async function runAiReview(auditId: string): Promise<void> {
       where: { id: auditId },
       data: {
         status: 'COMPLETED',
+        progress: PIPELINE_PROGRESS.COMPLETED,
         errorMsg,
         failureCode,
         failureStage: 'judging',

@@ -451,12 +451,18 @@ export const REPORT_COPY = {
     whereLabel: "Where",
     coverageSentence: ({
       openCheckCount,
+      partial,
     }: {
       linkedPageCount?: number
       openCheckCount: number
       partial?: boolean
-    }) =>
-      `${openCheckCount} public ${openCheckCount === 1 ? "link" : "links"}`,
+    }) => {
+      const links = `${openCheckCount} public ${openCheckCount === 1 ? 'link' : 'links'}`
+      if (partial) {
+        return `${links} · Partial capture — clears cannot be credited until a full update review`
+      }
+      return links
+    },
     productCoverage: (linkedPageCount: number) => {
       const pages = linkedPageCount + 1
       return pages === 1 ? "1 page" : `${pages} pages`

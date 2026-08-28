@@ -9,7 +9,7 @@ import { RefreshCw, ArrowLeftRight } from 'lucide-react'
 
 import { ExportMenu } from '@/components/audit/ExportMenu'
 import { trackEvent } from '@/lib/analytics/events'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY, RECHECK_DIFF_COPY } from '@/lib/marketing/copy'
 import { startScanWithHandoff } from '@/lib/audit/start-scan-handoff'
 
 import type { RankableFlag } from '@/lib/audit/priority-flags'
@@ -81,40 +81,45 @@ export function AuditPageActions({
   }
 
   return (
-    <>
-      <div className="flex items-center gap-3">
+    <div className="flex min-h-11 flex-wrap items-center gap-2">
       {variant !== 'secondary' ? (
         <Button
-          size="icon"
-          className="h-9 w-9"
+          size="default"
+          className="min-h-11 rounded-[var(--radius-control)]"
           onClick={handleRecheck}
           loading={recheckLoading}
           loadingLabel={REPORT_COPY.recheck.label}
-          aria-label={REPORT_COPY.recheck.label}
         >
           <RefreshCw className="h-4 w-4" aria-hidden />
+          {REPORT_COPY.recheck.label}
         </Button>
       ) : null}
-      {canManage && variant !== 'update' && compareAuditId && (
-        <Button variant="outline" size="sm" asChild>
+      {canManage && variant !== 'update' && compareAuditId ? (
+        <Button
+          variant="outline"
+          size="default"
+          className="min-h-11 rounded-[var(--radius-control)]"
+          asChild
+        >
           <Link href={`/compare/${compareAuditId}`}>
-            <ArrowLeftRight className="h-4 w-4 mr-2" />
-            View comparison
+            <ArrowLeftRight className="h-4 w-4" aria-hidden />
+            {RECHECK_DIFF_COPY.compareCta}
           </Link>
         </Button>
-      )}
-      {canManage && variant !== 'update' ? <ExportMenu
-        auditId={auditId}
-        url={url}
-        score={score}
-        verdict={verdict}
-        rubrics={rubrics}
-        flags={flags ?? []}
-        contract={contract}
-        canExportSummary={canExportSummary}
-        showFixPrompts={showFixPrompts}
-      /> : null}
-      </div>
-    </>
+      ) : null}
+      {canManage && variant !== 'update' ? (
+        <ExportMenu
+          auditId={auditId}
+          url={url}
+          score={score}
+          verdict={verdict}
+          rubrics={rubrics}
+          flags={flags ?? []}
+          contract={contract}
+          canExportSummary={canExportSummary}
+          showFixPrompts={showFixPrompts}
+        />
+      ) : null}
+    </div>
   )
 }

@@ -75,6 +75,9 @@ describe('customer copy contract', () => {
     expect(REPORT_COPY.explorer.productCoverage(6)).toBe('7 pages')
     expect(REPORT_COPY.explorer.topFlagsTitle).toBe('Top Flags')
     expect(REPORT_COPY.explorer.coverageSentence({ openCheckCount: 1 })).toBe('1 public link')
+    expect(
+      REPORT_COPY.explorer.coverageSentence({ openCheckCount: 24, partial: true })
+    ).toMatch(/Partial capture/)
     const visible = collectStrings(REPORT_COPY.explorer)
     expect(visible.join('\n')).not.toMatch(/\b(hops?|crawler|layers?)\b/i)
   })
