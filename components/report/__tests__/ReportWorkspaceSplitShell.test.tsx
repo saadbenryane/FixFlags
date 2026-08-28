@@ -45,9 +45,13 @@ beforeEach(() => {
 })
 
 describe('ReportWorkspaceSplitShell', () => {
-  it('exposes only Agent and Report', () => {
+  it('exposes only Agent and Report with icons', () => {
     renderShell()
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Agent', 'Report'])
+    const agent = screen.getByRole('tab', { name: 'Agent' })
+    const report = screen.getByRole('tab', { name: 'Report' })
+    expect(agent.querySelector('svg')).not.toBeNull()
+    expect(report.querySelector('svg')).not.toBeNull()
     expect(screen.queryByRole('tab', { name: /timeline|canvas|preview/i })).not.toBeInTheDocument()
   })
 

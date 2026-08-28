@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
+import { FileText, MessageSquare } from 'lucide-react'
 import type { WorkspacePanelView } from '@/components/report/WorkspaceViewTabs'
 import type { PlaybackStep } from '@/lib/audit/playback-steps'
 import { WorkspaceMobileTabs } from '@/components/report/WorkspaceMobileTabs'
@@ -137,6 +138,7 @@ export function ReportWorkspaceSplitShell({
       selected: mobileFocus === 'chat',
       onSelect: () => chooseMobileFocus('chat'),
       controls: agentPanelId,
+      icon: <MessageSquare className="h-3.5 w-3.5" aria-hidden />,
     },
     {
       id: `${mobileTabsId}-report`,
@@ -144,6 +146,7 @@ export function ReportWorkspaceSplitShell({
       selected: mobileFocus === 'product' && view === 'report',
       onSelect: () => chooseMobileFocus('product'),
       controls: productPanelId,
+      icon: <FileText className="h-3.5 w-3.5" aria-hidden />,
     },
   ]
 

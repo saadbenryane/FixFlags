@@ -66,6 +66,48 @@ afterEach(() => {
 })
 
 describe('WorkspaceChatPanel', () => {
+  it('scrolls the Agent transcript to the latest message on open', async () => {
+    const scrollTo = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get() {
+        return 2000
+      },
+    })
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', {
+      configurable: true,
+      get() {
+        return 400
+      },
+    })
+    HTMLElement.prototype.scrollTo = scrollTo as typeof HTMLElement.prototype.scrollTo
+
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        messages: [
+          { id: 'm1', role: 'agent', content: 'Earlier message' },
+          { id: 'm2', role: 'agent', content: 'Latest message' },
+        ],
+        available: true,
+        allowance: { limit: 25_000, used: 0, remaining: 25_000 },
+      }),
+    } as Response)
+
+    render(
+      <WorkspaceChatPanel
+        auditId="a1"
+        capabilities={capabilities(true)}
+        gateReason="owner"
+        reportUrl="https://example.com"
+        agentMessages={scanMessages}
+      />,
+    )
+
+    await waitFor(() => expect(screen.getByText('Latest message')).toBeInTheDocument())
+    expect(scrollTo).toHaveBeenCalledWith({ top: 2000, behavior: 'instant' })
+  })
+
   it('names the reviewed page including its path in the Agent header', () => {
     render(
       <WorkspaceChatPanel

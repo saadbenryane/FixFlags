@@ -1,5 +1,8 @@
+'use client'
+
 import Link from 'next/link'
 import type { Route } from 'next'
+import { useLayoutEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 import { CUSTOMER_TERMS } from '@/lib/marketing/copy'
@@ -16,12 +19,36 @@ function pointLabel(point: ReportWorkspaceHistoryPoint, index: number, total: nu
   return `Review ${index + 1} of ${total}, ${kind}, ${fullDate}, ${status}, ${score}`
 }
 
+function scrollHistoryToLatest(scroller: HTMLDivElement) {
+  const maxLeft = Math.max(0, scroller.scrollWidth - scroller.clientWidth)
+  if (typeof scroller.scrollTo === 'function') {
+    scroller.scrollTo({ left: maxLeft, behavior: 'instant' })
+  } else {
+    scroller.scrollLeft = maxLeft
+  }
+}
+
 export function ScoreHistoryChart({ history, currentAuditId, className, isLoading = false }: { history: ReportWorkspaceHistoryPoint[]; currentAuditId?: string | null; className?: string; isLoading?: boolean }) {
+  const scrollerRef = useRef<HTMLDivElement>(null)
+
+  // Chronology stays oldest → newest (left → right). Pin the viewport to the
+  // latest end so long Review history opens on the current observation.
+  useLayoutEffect(() => {
+    const scroller = scrollerRef.current
+    if (!scroller) return
+    scrollHistoryToLatest(scroller)
+    // Layout can settle after fonts/links; one frame keeps the pin honest.
+    const frame = requestAnimationFrame(() => {
+      if (scrollerRef.current) scrollHistoryToLatest(scrollerRef.current)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [history.length, currentAuditId, isLoading])
+
   if (history.length === 0 && !isLoading) return <p role="status" aria-label="No score history available" className={cn('text-sm text-muted-foreground', className)}>No observations yet</p>
   return (
     <nav className={cn('min-w-0', className)} aria-label="Review history">
       <p className="mb-1 text-2xs font-medium uppercase tracking-label text-muted-foreground">Review history</p>
-      <div className="w-full min-w-0 overflow-x-auto [scrollbar-width:thin]">
+      <div ref={scrollerRef} className="w-full min-w-0 overflow-x-auto [scrollbar-width:thin]">
         <ol className="flex min-w-max items-start pb-1">
           {history.map((point, index) => {
             const score = point.score == null ? '–' : Math.round(point.score)

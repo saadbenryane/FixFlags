@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, type KeyboardEvent } from 'react'
+import { useRef, type KeyboardEvent, type ReactNode } from 'react'
 import type { Route } from 'next'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -12,6 +12,7 @@ export interface WorkspaceMobileTab {
   onSelect: () => void
   controls: string
   href?: string
+  icon?: ReactNode
 }
 
 /**
@@ -56,6 +57,13 @@ export function WorkspaceMobileTabs({
     moveFocus(index, event.key)
   }
 
+  const tabContent = (tab: WorkspaceMobileTab) => (
+    <span className="inline-flex items-center justify-center gap-1.5">
+      {tab.icon ? <span className="shrink-0" aria-hidden>{tab.icon}</span> : null}
+      <span>{tab.label}</span>
+    </span>
+  )
+
   return (
     <div
       className="flex w-full min-w-0 max-w-full shrink-0 gap-0 overflow-x-auto border-b border-border/40 lg:hidden"
@@ -88,7 +96,7 @@ export function WorkspaceMobileTabs({
               tab.onSelect()
             }}
           >
-            {tab.label}
+            {tabContent(tab)}
           </Link>
         ) : (
           <button
@@ -98,7 +106,7 @@ export function WorkspaceMobileTabs({
             type="button"
             onClick={tab.onSelect}
           >
-            {tab.label}
+            {tabContent(tab)}
           </button>
         )
       })}

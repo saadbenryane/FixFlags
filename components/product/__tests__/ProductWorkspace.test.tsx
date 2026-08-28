@@ -161,6 +161,8 @@ const workspace: ProductWorkspaceDTO = {
       failureMessage: null,
     },
   ],
+  latestUpdateDiff: null,
+  latestUpdateDiffPartial: false,
   rubrics: [
     { name: 'MESSAGE', score: 72, grade: 'C' },
     { name: 'EXPERIENCE', score: 81, grade: 'B' },
@@ -251,6 +253,55 @@ describe('ProductWorkspace', () => {
     expect(
       screen.queryByLabelText('Message, Experience, and Reach scores')
     ).not.toBeInTheDocument()
+  })
+
+  it('shows update-review outcome cards under the score chart when a parented diff exists', () => {
+    render(
+      <ProductWorkspace
+        workspace={{
+          ...workspace,
+          latestUpdateDiff: {
+            fixed: [
+              {
+                checkId: 'title-missing',
+                problem: 'Missing title',
+                rubric: 'MESSAGE',
+                severity: 'IMPORTANT',
+              },
+            ],
+            inconclusive: [],
+            unchanged: [
+              {
+                checkId: 'cta-below-fold',
+                problem: 'CTA below fold',
+                rubric: 'EXPERIENCE',
+                severity: 'IMPORTANT',
+              },
+            ],
+            regressed: [],
+            newIssues: [
+              {
+                checkId: 'no-https',
+                problem: 'Not HTTPS',
+                rubric: 'REACH',
+                severity: 'CRITICAL',
+              },
+            ],
+          },
+          latestUpdateDiffPartial: false,
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Fixed')).toBeInTheDocument()
+    expect(screen.getByText('Still open')).toBeInTheDocument()
+    expect(screen.getByText('New')).toBeInTheDocument()
+  })
+
+  it('omits outcome cards when there is no parented update review', () => {
+    render(<ProductWorkspace workspace={workspace} />)
+    expect(screen.queryByText('Fixed')).not.toBeInTheDocument()
+    expect(screen.queryByText('Still open')).not.toBeInTheDocument()
   })
 
   it('shows the Product purpose without the Help visitors wrapper', () => {

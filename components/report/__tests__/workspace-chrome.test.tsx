@@ -19,15 +19,32 @@ describe('workspace chrome primitives', () => {
       <WorkspaceMobileTabs
         label={REPORT_COPY.workspace.panels.mobileTabsLabel}
         tabs={[
-          { id: 'chat', controls: 'agent-panel', label: 'Agent', selected: false, onSelect },
+          {
+            id: 'chat',
+            controls: 'agent-panel',
+            label: 'Agent',
+            selected: false,
+            onSelect,
+            icon: <span data-testid="agent-icon" aria-hidden />,
+          },
           { id: 'browser', controls: 'product-panel', href: '?view=timeline', label: 'Preview', selected: true, onSelect },
-          { id: 'report', controls: 'product-panel', href: '?view=report', label: 'Report', selected: false, onSelect },
+          {
+            id: 'report',
+            controls: 'product-panel',
+            href: '?view=report',
+            label: 'Report',
+            selected: false,
+            onSelect,
+            icon: <span data-testid="report-icon" aria-hidden />,
+          },
         ]}
       />
     )
 
     const tabs = screen.getByRole('tablist', { name: 'Review panels' })
     expect(screen.getByRole('tab', { name: 'Preview' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByTestId('agent-icon')).toBeInTheDocument()
+    expect(screen.getByTestId('report-icon')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('tab', { name: 'Agent' }))
     expect(onSelect).toHaveBeenCalledTimes(1)
     expect(tabs).toBeInTheDocument()

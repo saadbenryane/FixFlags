@@ -16,6 +16,7 @@ import { ProductSignalsSetup } from '@/components/dashboard/ProductSignalsSetup'
 import { ImprovementReceipt } from '@/components/product/ImprovementReceipt'
 import { ProductReviewAction } from '@/components/product/ProductReviewAction'
 import { ProductReviewTrend } from '@/components/product/ProductReviewTrend'
+import { RecheckDiffStrip } from '@/components/audit/RecheckDiffStrip'
 import { ProductAttentionImpression } from '@/components/product/ProductAttentionImpression'
 import { ProductPriorities } from '@/components/product/ProductPriorities'
 import { ProductIntelligenceTrack } from '@/components/product/ProductIntelligenceTrack'
@@ -201,6 +202,12 @@ export function ProductWorkspace({
             reviews={workspace.reviewHistory}
             embedded
           />
+          {workspace.latestUpdateDiff ? (
+            <RecheckDiffStrip
+              summary={workspace.latestUpdateDiff}
+              childPartial={workspace.latestUpdateDiffPartial}
+            />
+          ) : null}
           {workspace.history.nextCursor ? (
             <div className="flex justify-end border-t border-border/50 pt-3">
               <Button asChild variant="ghost" className="w-full sm:w-auto">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { Route } from 'next'
 import { useRouter } from 'next/navigation'
@@ -154,6 +154,7 @@ export function WorkspaceChatPanel({
   const authGate = useReportAuthGate()
   const transcriptRef = useRef<HTMLDivElement>(null)
   const scanInputRef = useRef<HTMLInputElement>(null)
+  const stickToBottomRef = useRef(true)
 
   const claimNextPath =
     claimNextOverride ??
@@ -216,6 +217,7 @@ export function WorkspaceChatPanel({
 
   useEffect(() => {
     void loadConversation()
+    stickToBottomRef.current = true
     // The callback deliberately reloads when the selected observation changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auditId, observationAuditId, canChat])
@@ -230,18 +232,15 @@ export function WorkspaceChatPanel({
     })
   }, [agentMessages, conversation])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const node = transcriptRef.current
-    if (!node) return
-    const nearBottom = node.scrollHeight - node.scrollTop - node.clientHeight < 96
-    if (nearBottom) {
-      if (typeof node.scrollTo === 'function') {
-        node.scrollTo({ top: node.scrollHeight, behavior: 'smooth' })
-      } else {
-        node.scrollTop = node.scrollHeight
-      }
+    if (!node || !stickToBottomRef.current) return
+    if (typeof node.scrollTo === 'function') {
+      node.scrollTo({ top: node.scrollHeight, behavior: 'instant' })
+    } else {
+      node.scrollTop = node.scrollHeight
     }
-  }, [messages.length])
+  }, [messages.length, historyLoaded, loading])
 
   function gateToSignIn() {
     openSaveReportClaim()
@@ -534,6 +533,11 @@ export function WorkspaceChatPanel({
           aria-label="Agent messages"
           aria-live="polite"
           aria-relevant="additions"
+          onScroll={(event) => {
+            const node = event.currentTarget
+            stickToBottomRef.current =
+              node.scrollHeight - node.scrollTop - node.clientHeight < 96
+          }}
         >
           {newScan ? (
             <p className="max-w-[92%] whitespace-pre-line leading-relaxed text-muted-foreground">

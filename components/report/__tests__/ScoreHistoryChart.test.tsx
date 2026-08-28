@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 
@@ -21,6 +21,14 @@ function makePoint(
     status,
   }
 }
+
+afterEach(() => {
+  Reflect.deleteProperty(HTMLElement.prototype, 'scrollWidth')
+  Reflect.deleteProperty(HTMLElement.prototype, 'clientWidth')
+  // Restore native scrollTo if the suite replaced it.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  delete (HTMLElement.prototype as any).scrollTo
+})
 
 describe('ScoreHistoryChart', () => {
   it('renders an honest empty state for empty history', () => {
@@ -95,6 +103,30 @@ describe('ScoreHistoryChart', () => {
     )
     expect(screen.getAllByRole('link')).toHaveLength(1)
     expect(screen.getByRole('status')).toHaveTextContent('Live review in progress')
+  })
+
+  it('scrolls the history scroller to the latest (right) end on mount', () => {
+    const scrollTo = vi.fn()
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', {
+      configurable: true,
+      get() {
+        return 800
+      },
+    })
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      get() {
+        return 320
+      },
+    })
+    HTMLElement.prototype.scrollTo = scrollTo as typeof HTMLElement.prototype.scrollTo
+
+    const history = Array.from({ length: 8 }, (_, index) =>
+      makePoint(`a${index + 1}`, 60 + index, 'update-review', 'completed', 8 - index),
+    )
+    render(<ScoreHistoryChart history={history} currentAuditId="a8" />)
+
+    expect(scrollTo).toHaveBeenCalledWith({ left: 480, behavior: 'instant' })
   })
 
   it('describes no-score Reviews with their honest status', () => {

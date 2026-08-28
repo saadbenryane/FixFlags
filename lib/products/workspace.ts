@@ -31,6 +31,7 @@ import {
 } from '@/lib/audit/persist-visual-evidence'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import { parseReviewCoverage } from '@/lib/audit/review-depth'
+import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
@@ -213,6 +214,13 @@ export type ProductWorkspaceDTO = {
     launchChecklist: LaunchChecklistItem[]
   }
   reviewHistory: ProductReviewSummaryDTO[]
+  /**
+   * Latest completed parented review’s flag diff (update review or watch child).
+   * Null when the product has no parented completed review yet.
+   */
+  latestUpdateDiff: Awaited<ReturnType<typeof getFlagDiffSummary>> | null
+  /** Completeness of the review that owns latestUpdateDiff (drives Partial tooltip). */
+  latestUpdateDiffPartial: boolean
   /** Message / Experience / Reach from the latest completed manual Review. */
   rubrics: ProductRubricScoreDTO[]
   history: ProductHistoryPageDTO
@@ -828,6 +836,33 @@ export async function loadProductWorkspace(
 
   const memory = parseProductIntelligence(product.productIntelligence)
   const understandingReviewId = latestCompletedManualReviewRow?.id ?? null
+
+  // Prefer the newest completed review that has a parent (update review or watch).
+  const parentedCandidates = [
+    latestCompletedManualReviewRow,
+    latestWatchReviewRow,
+    ...historyReviewRows,
+  ].flatMap((row) =>
+    row && row.status === 'COMPLETED' && row.parentId ? [row] : [],
+  )
+
+  const latestParentedCompleted =
+    [...parentedCandidates].sort((a, b) => {
+      const aAt = (a.completedAt ?? a.createdAt).getTime()
+      const bAt = (b.completedAt ?? b.createdAt).getTime()
+      return bAt - aAt || b.id.localeCompare(a.id)
+    })[0] ?? null
+
+  const latestUpdateDiff =
+    latestParentedCompleted?.parentId
+      ? await getFlagDiffSummary(
+          latestParentedCompleted.parentId,
+          latestParentedCompleted.id,
+        )
+      : null
+  const latestUpdateDiffPartial =
+    latestParentedCompleted?.reportCompleteness === 'PARTIAL'
+
   const [understandingRow, rubricRows] = understandingReviewId
     ? await Promise.all([
         prisma.audit.findUnique({
@@ -1024,6 +1059,8 @@ export async function loadProductWorkspace(
     reviewHistory: historyReviewRows
       .slice(0, PRODUCT_HISTORY_PAGE_SIZE)
       .map(reviewSummary),
+    latestUpdateDiff,
+    latestUpdateDiffPartial,
     rubrics: understandingReviewId
       ? mapProductRubrics(rubricRows)
       : emptyProductRubrics(),

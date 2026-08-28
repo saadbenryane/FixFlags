@@ -28,7 +28,6 @@ import type { FixList } from '@/lib/audit/finish-plan'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
 import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
 import {
-  RecheckDiffStrip,
   type RecheckDiffSummary,
 } from '@/components/audit/RecheckDiffStrip'
 import { RecheckCompletedTracker } from '@/components/audit/RecheckCompletedTracker'
@@ -121,8 +120,6 @@ interface AuditReportProps {
   recheckDiff?: RecheckDiffSummary | null
   verificationReceipts?: ProductAttemptDTO[]
   scoreHistory?: ReportWorkspaceHistoryPoint[]
-  /** Child update review completeness for honest inconclusive copy. */
-  reportCompleteness?: string | null
   sampleFixFlag?: RankableFlag | null
   agentMessages?: AgentMessage[]
   /** Persisted or curated Product name; the hostname stays the fallback. */
@@ -156,7 +153,6 @@ export function AuditReport({
   recheckDiff = null,
   verificationReceipts = [],
   scoreHistory = [],
-  reportCompleteness = null,
   sampleFixFlag = null,
   agentMessages = [],
   productName = null,
@@ -330,20 +326,12 @@ export function AuditReport({
   const frameExtras = (
     <>
       {statusCallouts}
-      {!isSample && recheckDiff ? (
-        <>
-          {auditId && audit.parentId ? (
-            <RecheckCompletedTracker
-              auditId={auditId}
-              parentAuditId={audit.parentId}
-              outcome="report_diff"
-            />
-          ) : null}
-          <RecheckDiffStrip
-            summary={recheckDiff}
-            childPartial={reportCompleteness === 'PARTIAL'}
-          />
-        </>
+      {!isSample && recheckDiff && auditId && audit.parentId ? (
+        <RecheckCompletedTracker
+          auditId={auditId}
+          parentAuditId={audit.parentId}
+          outcome="report_diff"
+        />
       ) : null}
       {!isSample && verificationReceipts.length > 0 ? (
         <VerificationReceiptsSection receipts={verificationReceipts} />

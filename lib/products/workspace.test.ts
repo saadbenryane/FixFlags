@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   attemptFindMany: vi.fn(),
   occurrenceFindMany: vi.fn(),
   loadTechnologyProfile: vi.fn(),
+  getFlagDiffSummary: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -33,6 +34,10 @@ vi.mock('@/lib/audit/technology-profile', () => ({
   loadTechnologyProfile: mocks.loadTechnologyProfile,
 }))
 
+vi.mock('@/lib/audit/diff-flags', () => ({
+  getFlagDiffSummary: mocks.getFlagDiffSummary,
+}))
+
 import {
   loadProductOverview,
   loadProductWorkspace,
@@ -52,6 +57,14 @@ beforeEach(() => {
     detectedAt: null,
     technologies: [],
     insight: null,
+  })
+  mocks.getFlagDiffSummary.mockReset()
+  mocks.getFlagDiffSummary.mockResolvedValue({
+    fixed: [],
+    inconclusive: [],
+    unchanged: [],
+    regressed: [],
+    newIssues: [],
   })
 })
 
@@ -519,6 +532,8 @@ describe('loadProductWorkspace', () => {
         { id: 'review-running', kind: 'UPDATE_REVIEW' },
         { id: 'review-1', kind: 'PRODUCT_REVIEW' },
       ],
+      latestUpdateDiff: null,
+      latestUpdateDiffPartial: false,
       attention: [
         {
           id: 'improvement-1',
@@ -603,6 +618,40 @@ describe('loadProductWorkspace', () => {
         }),
       })
     )
+  })
+
+  it('loads latestUpdateDiff for the newest completed parented review', async () => {
+    const parented = review({
+      id: 'review-update',
+      parentId: 'review-1',
+      recheckTrigger: 'MANUAL',
+      reportCompleteness: 'PARTIAL',
+      completedAt: new Date('2026-08-21T12:00:00.000Z'),
+      createdAt: new Date('2026-08-21T12:00:00.000Z'),
+    })
+    const summary = {
+      fixed: [{ checkId: 'title-missing', problem: 'Missing title', rubric: 'MESSAGE', severity: 'IMPORTANT' }],
+      inconclusive: [],
+      unchanged: [],
+      regressed: [],
+      newIssues: [],
+    }
+    mocks.getFlagDiffSummary.mockResolvedValue(summary)
+    mocks.projectFindFirst.mockResolvedValue(product())
+    mocks.auditFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(parented)
+      .mockResolvedValueOnce(parented)
+      .mockResolvedValueOnce(null)
+    mocks.auditFindMany.mockResolvedValueOnce([parented, review()])
+
+    const workspace = await loadProductWorkspace('product-1', 'user-1', {
+      signalsEligible: true,
+    })
+
+    expect(mocks.getFlagDiffSummary).toHaveBeenCalledWith('review-1', 'review-update')
+    expect(workspace?.latestUpdateDiff).toEqual(summary)
+    expect(workspace?.latestUpdateDiffPartial).toBe(true)
   })
 
   it('prefers persisted beforeFlagId over occurrence inference', async () => {

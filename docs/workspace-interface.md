@@ -138,7 +138,7 @@ Below-report Product Contract does not compete with the live Product while scann
 
 - **Update review** and **Export** appear in the completed owner report’s compact header action row (with Score). Review history is its own scrollable row underneath.
 - Anonymous, shared, non-owner, and static sample workspaces never receive an actionable update-review control.
-- Update-review outcome counts render as compact cards under Review history (Fixed / Still open / New / Regressed / Inconclusive). There is no Compare page in the customer report loop; Product score history and these cards cover what changed.
+- Update-review outcome counts (Fixed / Still open / New / Regressed / Inconclusive) render as compact cards on the **Product** page under the score chart when the latest completed review has a parent. The report itself does not repeat those cards. There is no Compare page in the customer report loop; Product score history and these cards cover what changed.
 - Old `/compare/[id]` bookmarks redirect to the report.
 - Verification receipts separately report `IMPROVED`, `UNCHANGED`, `REGRESSED`, or `INCONCLUSIVE`.
 - Copying a prompt records a handoff and never declares verification.

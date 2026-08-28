@@ -35,7 +35,7 @@ type Bucket = {
 }
 
 /**
- * Compact update-review count cards under Review history.
+ * Compact update-review count cards (Product page under score chart).
  * Cards are the outcome story - not links, not a second hero banner.
  */
 export function RecheckDiffStrip({
