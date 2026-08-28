@@ -630,7 +630,10 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     await prisma.auditPage.update({
       where: { id: page.id },
       data: {
-        status: completeness === 'FULL' ? 'COMPLETED' : 'PARTIAL',
+        // Capture succeeded (desktop screenshot required above). PageSpeed gaps
+        // keep completeness PARTIAL for audit honesty but do not mark the page
+        // as failed — Fixed can credit re-observation without PSI.
+        status: 'COMPLETED',
         completeness,
       },
     })
@@ -712,7 +715,10 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   await prisma.auditPage.update({
     where: { id: page.id },
     data: {
-      status: completeness === 'FULL' ? 'COMPLETED' : 'PARTIAL',
+      // Capture succeeded (desktop screenshot required above). PageSpeed gaps
+      // keep completeness PARTIAL for audit honesty but do not mark the page
+      // as failed — Fixed can credit re-observation without PSI.
+      status: 'COMPLETED',
       completeness,
     },
   })

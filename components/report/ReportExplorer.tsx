@@ -1,10 +1,17 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Info } from 'lucide-react'
 import { ReportFixLoop, type FixLoopFlagItem } from '@/components/report/ReportFixLoop'
 import {
   FlagDetailPane,
 } from '@/components/report/ReportExplorerDetail'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { reviewPathLabel } from '@/lib/audit/url-identity'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
@@ -342,8 +349,28 @@ export function ReportExplorer({
               <h2 className="text-sm font-semibold text-foreground">
                 {REPORT_COPY.explorer.topFlagsTitle}
               </h2>
-              <p className="text-xs text-muted-foreground">
-                {model.coverageSentence ?? REPORT_COPY.explorer.prioritiesHint}
+              <p className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                <span>{model.coverageSentence ?? REPORT_COPY.explorer.prioritiesHint}</span>
+                {model.coveragePartial ? (
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="inline-flex h-5 w-5 items-center justify-center rounded-control text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                          aria-label={REPORT_COPY.explorer.coveragePartialLabel}
+                        >
+                          <Info className="h-3 w-3" aria-hidden />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" align="start" className="max-w-xs p-3">
+                        <p className="text-xs text-muted-foreground">
+                          {REPORT_COPY.explorer.coveragePartialTooltip}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : null}
               </p>
             </div>
           </div>

@@ -121,7 +121,6 @@ interface AuditReportProps {
   recheckDiff?: RecheckDiffSummary | null
   verificationReceipts?: ProductAttemptDTO[]
   scoreHistory?: ReportWorkspaceHistoryPoint[]
-  compareHref?: string | null
   /** Child update review completeness for honest inconclusive copy. */
   reportCompleteness?: string | null
   sampleFixFlag?: RankableFlag | null
@@ -157,7 +156,6 @@ export function AuditReport({
   recheckDiff = null,
   verificationReceipts = [],
   scoreHistory = [],
-  compareHref = null,
   reportCompleteness = null,
   sampleFixFlag = null,
   agentMessages = [],
@@ -255,7 +253,6 @@ export function AuditReport({
     (aiReviewPending ||
       triageDegraded ||
       showPrescriptionFailureHero ||
-      isPartialReport ||
       (audit.failedModules?.length ?? 0) > 0)
 
   const flagsExplorer =
@@ -344,7 +341,6 @@ export function AuditReport({
           ) : null}
           <RecheckDiffStrip
             summary={recheckDiff}
-            compareHref={compareHref}
             childPartial={reportCompleteness === 'PARTIAL'}
           />
         </>

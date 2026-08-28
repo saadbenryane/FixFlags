@@ -136,10 +136,10 @@ Below-report Product Contract does not compete with the live Product while scann
 
 ## Update review
 
-- **Update review** and **Compare** appear in the completed owner report’s compact header action row (second row under Score / Review history), not as a competing hero above Top Flags.
+- **Update review** and **Export** appear in the completed owner report’s compact header action row (with Score). Review history is its own scrollable row underneath.
 - Anonymous, shared, non-owner, and static sample workspaces never receive an actionable update-review control.
-- Full before/after buckets and screenshots live on `/compare/[id]`; the in-report signal is a one-line summary plus PARTIAL-aware inconclusive copy when needed.
-- **Compare** is the Pro payoff after an update review; its raw diff says no longer observed, remaining, new, or regressed.
+- Update-review outcome counts render as compact cards under Review history (Fixed / Still open / New / Regressed / Inconclusive). There is no Compare page in the customer report loop; Product score history and these cards cover what changed.
+- Old `/compare/[id]` bookmarks redirect to the report.
 - Verification receipts separately report `IMPROVED`, `UNCHANGED`, `REGRESSED`, or `INCONCLUSIVE`.
 - Copying a prompt records a handoff and never declares verification.
 - Only `IMPROVED` may write verified Product Memory; partial or degraded reviews never do.

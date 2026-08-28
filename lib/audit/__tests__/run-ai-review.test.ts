@@ -195,6 +195,7 @@ describe('runAiReview', () => {
     const update = mocks.auditUpdate.mock.calls[1][0]
     expect(update.data.failureCode).toBe('AI_REVIEW_FAILED')
     expect(update.data.status).toBe('COMPLETED')
+    expect(update.data.progress).toBe(100)
   })
 
   it('records AI_CONTRACT_INVALID for contract errors', async () => {

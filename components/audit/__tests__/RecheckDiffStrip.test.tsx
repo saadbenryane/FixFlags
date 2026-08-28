@@ -10,25 +10,28 @@ const flag = {
 }
 
 describe('RecheckDiffStrip', () => {
-  it('summarizes Fixed absences without claiming verification', () => {
+  it('renders compact count cards for non-empty buckets', () => {
     render(
       <RecheckDiffStrip
         summary={{
           fixed: [flag],
-          inconclusive: [],
-          unchanged: [],
+          inconclusive: [flag],
+          unchanged: [flag, flag],
           regressed: [],
-          newIssues: [],
+          newIssues: [flag],
         }}
       />,
     )
 
-    expect(screen.getByText(/1 Fixed/i)).toBeInTheDocument()
+    expect(screen.getByText('Fixed')).toBeInTheDocument()
+    expect(screen.getByText('Still open')).toBeInTheDocument()
+    expect(screen.getByText('New')).toBeInTheDocument()
+    expect(screen.getByText('Inconclusive')).toBeInTheDocument()
+    expect(screen.queryByText('Regressed')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /What Fixed means/i })).toBeInTheDocument()
-    expect(screen.queryByText(/verified/i)).not.toBeInTheDocument()
   })
 
-  it('names PARTIAL capture when inconclusive Flags cannot be credited as Fixed', () => {
+  it('hides empty buckets and never shows a yellow inconclusive hero', () => {
     render(
       <RecheckDiffStrip
         childPartial
@@ -42,7 +45,9 @@ describe('RecheckDiffStrip', () => {
       />,
     )
 
-    expect(screen.getByText(/not fully re-checked/i)).toBeInTheDocument()
-    expect(screen.getByText(/cannot credit Fixed/i)).toBeInTheDocument()
+    expect(screen.getByText('Inconclusive')).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /inconclusive/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 })

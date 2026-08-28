@@ -9,18 +9,24 @@ export const RECHECK_DIFF_COPY = {
   title: 'See what changed in this update review',
   celebrationTitle: (n: number) =>
     n === 1 ? '1 Flag Fixed' : `${n} Flags Fixed`,
-  celebrationBody:
-    'These Flags were not observed on pages this update review fully re-checked. Verification receipts show whether an attempted Improvement worked.',
+    celebrationBody:
+    'These Flags were not observed on pages this update review re-checked. Verification receipts show whether an attempted Improvement worked.',
   nextFixHint: 'Next up',
   cleared: 'Fixed',
   remaining: 'Still open',
   newIssues: 'New',
   regressed: 'Regressed',
   inconclusive: 'Inconclusive',
+  /** Short muted note under the summary line — not a second hero banner. */
+  inconclusiveNotePartial: (count: number) =>
+    `${count} ${count === 1 ? 'Flag needs' : 'Flags need'} pages that were not re-checked in this review before Fixed can be credited.`,
+  inconclusiveNoteGeneric: (count: number) =>
+    `${count} ${count === 1 ? 'Flag has' : 'Flags have'} insufficient comparable coverage between reviews.`,
+  /** @deprecated Prefer inconclusiveNotePartial; kept for compare page until aligned. */
   inconclusiveBody: (count: number) =>
-    `${count} ${count === 1 ? 'Flag was' : 'Flags were'} not observed in this update review, but their pages were not fully re-checked, so we cannot credit Fixed yet. Score still reflects Flags we did observe.`,
+    `${count} ${count === 1 ? 'Flag needs' : 'Flags need'} pages that were not re-checked in this review before Fixed can be credited.`,
   inconclusiveBodyPartial: (count: number) =>
-    `${count} ${count === 1 ? 'Flag was' : 'Flags were'} not observed in this update review, but their pages were not fully re-checked, so we cannot credit Fixed yet. Score still reflects Flags we did observe.`,
+    `${count} ${count === 1 ? 'Flag needs' : 'Flags need'} pages that were not re-checked in this review before Fixed can be credited.`,
   inconclusiveBodyGeneric: (count: number) =>
     `${count} ${count === 1 ? 'Flag has' : 'Flags have'} insufficient comparable coverage between reviews.`,
   empty: 'No Flag changes in this update review.',
@@ -29,7 +35,7 @@ export const RECHECK_DIFF_COPY = {
   compareProCta: 'Compare',
   fixedInfoLabel: 'What Fixed means',
   fixedInfoIntro:
-    'Not observed in this update review on pages that were fully re-checked:',
+    'Not observed in this update review on pages that were re-checked:',
   compareProGateDescription:
     'Before/after comparison is included on every plan. Update reviews use the monthly product review allowance.',
   summaryLine: (parts: {

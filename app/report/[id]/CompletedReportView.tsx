@@ -38,11 +38,6 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
     steps: review.steps,
   }))
   const captureStatus = parseCaptureStatus(state.audit)
-  const compareAuditId = state.canAccessCompareView
-    ? state.audit.parentId
-      ? state.id
-      : state.latestMonitoring?.id ?? null
-    : null
   const agentMessages = buildFixFlagsScanMessages({
     id: state.id,
     url: state.audit.url,
@@ -86,7 +81,6 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       isLoggedIn={state.isLoggedIn}
       isOwner={state.isOwner}
       isClaimedAnonymous={state.reportAudit.accessContext === 'anonymous_teaser'}
-      compareAuditId={compareAuditId}
       canExportSummary={state.entitlements?.canExportSummary ?? false}
       showFixPrompts={state.showDeterministicFixes}
       variant="all"
@@ -162,11 +156,6 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           scoreHistory={state.scoreHistory}
           sampleFixFlag={state.sampleFixFlag}
           reportCompleteness={state.audit.reportCompleteness}
-          compareHref={
-            state.canAccessCompareView && state.audit.parentId
-              ? `/compare/${state.id}`
-              : null
-          }
           actions={headerActions}
           agentMessages={agentMessages}
         />

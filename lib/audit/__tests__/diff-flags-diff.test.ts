@@ -199,12 +199,12 @@ describe('getFlagDiffSummary', () => {
     expect(summary.inconclusive).toHaveLength(1)
   })
 
-  it('credits Fixed when the Flag page is FULL even if the audit is PARTIAL', async () => {
+  it('credits Fixed when the Flag page was captured even without PageSpeed FULL', async () => {
     prismaMock.audit.findUnique.mockResolvedValue(
       childAudit({
         reportCompleteness: 'PARTIAL',
         pages: [
-          { url: 'https://example.com/pricing', status: 'COMPLETED', completeness: 'FULL' },
+          { url: 'https://example.com/pricing', status: 'COMPLETED', completeness: 'PARTIAL' },
           { url: 'https://example.com/blog', status: 'FAILED', completeness: 'PARTIAL' },
         ],
       })
@@ -223,6 +223,30 @@ describe('getFlagDiffSummary', () => {
     const summary = await getFlagDiffSummary('parent-audit', 'monitoring-audit')
     expect(summary.fixed).toHaveLength(1)
     expect(summary.inconclusive).toEqual([])
+  })
+
+  it('credits Fixed for historical PARTIAL page status when the page was run', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue(
+      childAudit({
+        reportCompleteness: 'PARTIAL',
+        pages: [
+          { url: 'https://example.com/', status: 'PARTIAL', completeness: 'PARTIAL' },
+        ],
+      })
+    )
+    prismaMock.flag.findMany
+      .mockResolvedValueOnce([
+        flag({
+          id: 'p1',
+          checkId: 'home-cta',
+          status: 'OPEN',
+          pageUrl: 'https://example.com/',
+        }),
+      ])
+      .mockResolvedValueOnce([])
+
+    const summary = await getFlagDiffSummary('parent-audit', 'monitoring-audit')
+    expect(summary.fixed).toHaveLength(1)
   })
 
   it('keeps absences inconclusive when the Flag page is missing from the child', async () => {
@@ -250,13 +274,13 @@ describe('getFlagDiffSummary', () => {
     expect(summary.inconclusive).toHaveLength(1)
   })
 
-  it('keeps multi-path absences inconclusive when only some affected pages are FULL', async () => {
+  it('keeps multi-path absences inconclusive when one affected page failed', async () => {
     prismaMock.audit.findUnique.mockResolvedValue(
       childAudit({
         reportCompleteness: 'PARTIAL',
         pages: [
-          { url: 'https://example.com/', status: 'COMPLETED', completeness: 'FULL' },
-          { url: 'https://example.com/pricing', status: 'COMPLETED', completeness: 'PARTIAL' },
+          { url: 'https://example.com/', status: 'COMPLETED', completeness: 'PARTIAL' },
+          { url: 'https://example.com/pricing', status: 'FAILED', completeness: 'PARTIAL' },
         ],
       })
     )
@@ -314,7 +338,7 @@ describe('diffFlagsAgainstParent', () => {
     assert.equal(updates[0].data.resolvedInId, 'monitoring-audit')
   })
 
-  it('marks page-scoped absences FIXED under PARTIAL when that page is FULL', async () => {
+  it('marks page-scoped absences FIXED under PARTIAL when that page was captured', async () => {
     prismaMock.flag.findMany
       .mockResolvedValueOnce([
         flag({
@@ -329,7 +353,7 @@ describe('diffFlagsAgainstParent', () => {
       childAudit({
         reportCompleteness: 'PARTIAL',
         pages: [
-          { url: 'https://example.com/pricing', status: 'COMPLETED', completeness: 'FULL' },
+          { url: 'https://example.com/pricing', status: 'COMPLETED', completeness: 'PARTIAL' },
         ],
       })
     )

@@ -3,13 +3,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Route } from 'next'
 import { toast } from 'sonner'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, ArrowLeftRight } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 
 import { ExportMenu } from '@/components/audit/ExportMenu'
 import { trackEvent } from '@/lib/analytics/events'
-import { REPORT_COPY, RECHECK_DIFF_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY } from '@/lib/marketing/copy'
 import { startScanWithHandoff } from '@/lib/audit/start-scan-handoff'
 
 import type { RankableFlag } from '@/lib/audit/priority-flags'
@@ -32,7 +31,6 @@ interface Props {
   isOwner: boolean
   /** Cookie-claimed anonymous teaser (ff_anon_report_ids). Recheck must work. */
   isClaimedAnonymous?: boolean
-  compareAuditId?: string | null
   canExportSummary?: boolean
   showFixPrompts?: boolean
   variant?: 'all' | 'update' | 'secondary'
@@ -49,7 +47,6 @@ export function AuditPageActions({
   isLoggedIn,
   isOwner,
   isClaimedAnonymous = false,
-  compareAuditId,
   canExportSummary = false,
   showFixPrompts = false,
   variant = 'all',
@@ -92,18 +89,6 @@ export function AuditPageActions({
         >
           <RefreshCw className="h-4 w-4" aria-hidden />
           {REPORT_COPY.recheck.label}
-        </Button>
-      ) : null}
-      {canManage && variant !== 'update' && compareAuditId ? (
-        <Button
-          variant="outline"
-          size="icon"
-          className="min-h-11 min-w-11 rounded-[var(--radius-control)]"
-          asChild
-        >
-          <Link href={`/compare/${compareAuditId}`} aria-label={RECHECK_DIFF_COPY.compareCta}>
-            <ArrowLeftRight className="h-4 w-4" aria-hidden />
-          </Link>
         </Button>
       ) : null}
       {canManage && variant !== 'update' ? (

@@ -70,14 +70,28 @@ function flagPageUrls(flag: Pick<FlagRow, 'pageUrl' | 'affectedPaths'>): string[
   return [...new Set(urls.map(normalizeDiffUrl).filter(Boolean))]
 }
 
-function pageIsFullyComparable(page: ChildPageCoverage | undefined): boolean {
-  return page?.status === 'COMPLETED' && page.completeness === 'FULL'
+function pageIsReobservationComparable(page: ChildPageCoverage | undefined): boolean {
+  if (!page) return false
+  // FAILED / not-started pages were not fairly re-observed.
+  if (
+    page.status === 'FAILED' ||
+    page.status === 'QUEUED' ||
+    page.status === 'CAPTURING' ||
+    page.status === 'JUDGING'
+  ) {
+    return false
+  }
+  // COMPLETED = captured (post capture/PSI split). PARTIAL status historically
+  // meant the page ran but optional evidence (e.g. PageSpeed) was incomplete —
+  // still a fair re-observation for Flag absence.
+  return page.status === 'COMPLETED' || page.status === 'PARTIAL'
 }
 
 /**
  * Credit Fixed when the Flag is absent and every page that owned it was
- * COMPLETED + FULL on the child. Product-scoped Flags (no page) still need
- * audit-level FULL. Never invent clears for pages that were not re-observed.
+ * re-observed on the child. PageSpeed gaps may leave completeness PARTIAL and
+ * the audit PARTIAL — that does not block Fixed. Product-scoped Flags (no page)
+ * still need audit-level FULL. Never invent clears for pages that were not run.
  */
 export function isPageComparableAbsence(input: {
   auditStatus: string | undefined
@@ -95,7 +109,7 @@ export function isPageComparableAbsence(input: {
   const byUrl = new Map(
     input.childPages.map((page) => [normalizeDiffUrl(page.url), page])
   )
-  return ownedUrls.every((url) => pageIsFullyComparable(byUrl.get(url)))
+  return ownedUrls.every((url) => pageIsReobservationComparable(byUrl.get(url)))
 }
 
 async function loadChildCoverage(monitoringAuditId: string): Promise<{

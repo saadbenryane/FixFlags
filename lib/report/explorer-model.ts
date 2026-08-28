@@ -132,6 +132,8 @@ export interface ReportExplorerModel {
   allHighlights: EvidenceHighlight[]
   previewMeta: PreviewMeta | null
   coverageSentence: string | null
+  /** True when capture was partial — show coveragePartialTooltip next to the links sentence. */
+  coveragePartial: boolean
   /** Per-flag capture pairs when priorities span multiple source reviews. */
   capturesByFlagId?: Record<
     string,
@@ -309,6 +311,7 @@ export function buildLiveExplorerModel(input: {
       input.reviewCoverage,
       input.reportCompleteness
     ),
+    coveragePartial: coverageIsPartial(input.reviewCoverage, input.reportCompleteness),
   }
 }
 
@@ -453,7 +456,16 @@ export function buildSampleExplorerModel(
     allHighlights: report.flags.flatMap((f) => f.evidenceHighlights),
     previewMeta: null,
     coverageSentence: null,
+    coveragePartial: false,
   }
+}
+
+function coverageIsPartial(
+  reviewCoverage: unknown,
+  reportCompleteness?: string | null
+): boolean {
+  const coverage = parseReviewCoverage(reviewCoverage)
+  return Boolean(coverage?.partial || reportCompleteness === 'PARTIAL')
 }
 
 function coverageSentenceFromReview(
@@ -465,6 +477,6 @@ function coverageSentenceFromReview(
   return REPORT_COPY.explorer.coverageSentence({
     linkedPageCount: coverage.linkedPageCount,
     openCheckCount: coverage.openCheckCount,
-    partial: coverage.partial || reportCompleteness === 'PARTIAL',
+    partial: coverageIsPartial(reviewCoverage, reportCompleteness),
   })
 }

@@ -52,6 +52,7 @@ function buildModel(): ReportWorkspaceModel {
       allHighlights: [],
       previewMeta: null,
       coverageSentence: null,
+      coveragePartial: false,
     },
     capabilities: {
       promptAccess: 'none',

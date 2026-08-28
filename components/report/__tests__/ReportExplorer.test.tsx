@@ -79,6 +79,7 @@ const model: ReportExplorerModel = {
   allHighlights: [],
   previewMeta: null,
   coverageSentence: null,
+  coveragePartial: false,
 }
 
 afterEach(() => {

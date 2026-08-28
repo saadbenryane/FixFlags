@@ -96,20 +96,17 @@ describe('AuditPageActions access projection', () => {
     })
   })
 
-  it('offers icon-only Compare next to Update review for owners with a compare target', () => {
+  it('does not offer Compare — outcome cards under history cover what changed', () => {
     render(
       <AuditPageActions
         {...baseProps}
         isLoggedIn
         isOwner
-        compareAuditId="child-1"
       />,
     )
 
     expect(screen.getByRole('button', { name: 'Update review' })).toBeInTheDocument()
-    const compare = screen.getByRole('link', { name: 'Compare' })
-    expect(compare).toBeInTheDocument()
-    expect(compare).toHaveAttribute('href', '/compare/child-1')
-    expect(compare.textContent?.trim()).toBe('')
+    expect(screen.queryByRole('link', { name: 'Compare' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Compare')).not.toBeInTheDocument()
   })
 })

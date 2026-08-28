@@ -451,18 +451,17 @@ export const REPORT_COPY = {
     whereLabel: "Where",
     coverageSentence: ({
       openCheckCount,
-      partial,
     }: {
       linkedPageCount?: number
       openCheckCount: number
+      /** @deprecated Partial honesty lives in coveragePartialTooltip, not the subtitle. */
       partial?: boolean
     }) => {
-      const links = `${openCheckCount} public ${openCheckCount === 1 ? 'link' : 'links'}`
-      if (partial) {
-        return `${links} · Partial capture — clears cannot be credited until a full update review`
-      }
-      return links
+      return `${openCheckCount} public ${openCheckCount === 1 ? 'link' : 'links'}`
     },
+    coveragePartialTooltip:
+      'Some optional evidence was unavailable. Clears credit only for pages this review re-checked.',
+    coveragePartialLabel: 'About this capture',
     productCoverage: (linkedPageCount: number) => {
       const pages = linkedPageCount + 1
       return pages === 1 ? "1 page" : `${pages} pages`

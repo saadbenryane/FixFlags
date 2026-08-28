@@ -355,9 +355,7 @@ describe('explorer-model', () => {
       },
       reportCompleteness: 'PARTIAL',
     })
-    assert.equal(
-      model.coverageSentence,
-      '24 public links · Partial capture — clears cannot be credited until a full update review'
-    )
+    assert.equal(model.coverageSentence, '24 public links')
+    assert.equal(model.coveragePartial, true)
   })
 })

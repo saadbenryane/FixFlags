@@ -78,8 +78,10 @@ describe('customer copy contract', () => {
     expect(REPORT_COPY.explorer.coverageSentence({ openCheckCount: 1 })).toBe('1 public link')
     expect(
       REPORT_COPY.explorer.coverageSentence({ openCheckCount: 24, partial: true })
-    ).toMatch(/Partial capture/)
+    ).toBe('24 public links')
+    expect(REPORT_COPY.explorer.coveragePartialTooltip).toMatch(/Clears credit only for pages/i)
     const visible = collectStrings(REPORT_COPY.explorer)
     expect(visible.join('\n')).not.toMatch(/\b(hops?|crawler|layers?)\b/i)
+    expect(visible.join('\n')).not.toMatch(/clears cannot be credited/i)
   })
 })

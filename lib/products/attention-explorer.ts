@@ -156,6 +156,7 @@ export function buildAttentionExplorerModel(
     allHighlights: buildAllEvidenceHighlights(rankables),
     previewMeta: null,
     coverageSentence: null,
+    coveragePartial: false,
     capturesByFlagId,
     displayHostByFlagId,
   }

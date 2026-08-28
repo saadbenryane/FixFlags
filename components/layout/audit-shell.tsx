@@ -31,7 +31,7 @@ export function AuditShell({
           logoHref={session ? '/dashboard' : '/'}
           headerRight={<ReportHeaderAuth />}
           showAdmin={showAdmin}
-          backdrop="minimal"
+          backdrop="off"
         >
           {actions && (
             <div className="bg-muted/20">
