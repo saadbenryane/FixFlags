@@ -4,6 +4,7 @@ _Active tasks. One owner per scope. Archive completed records._
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| report-detail-overlay-truth | review | composer | main | Detail-only report Flag viewer; orange nav; outline Update review; consent overlay truth | ReportExplorer, FlagDetailPane, AuditPageActions, overlay-probe, journey | Agent verify passed; accuracy:eval green; probe saadbenryane.com no overlay-blocks-form | 2026-08-28 |
 | product-status-chrome | review | composer | main | Mobile Agent/Report icons; move outcome cards to Product under chart; ship scroll WIP | WorkspaceMobileTabs, ProductWorkspace, RecheckDiffStrip, ScoreHistoryChart | Agent verify passed; session `.agents/sessions/2026-08-28-product-status-chrome.md` | 2026-08-28 |
 | report-scroll-latest | review | composer | main | Auto-scroll Review history to right + Agent chat to bottom on load | ScoreHistoryChart, WorkspaceChatPanel | Focused tests green | 2026-08-28 |
 | report-finish-tight | review | composer | main | Outcome cards, remove Compare, Top Flags tooltip, capture Fixed, ship | RecheckDiffStrip, AuditPageActions, compare redirect, diff-flags | Deploy live (`f38c04ee` tip / feature `6f4683e7`); owner Update review for Fixed proof - session `.agents/sessions/2026-08-28-report-finish-tight.md` | 2026-08-28 |

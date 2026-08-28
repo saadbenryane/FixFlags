@@ -82,6 +82,7 @@ export function AuditPageActions({
       {variant !== 'secondary' ? (
         <Button
           size="default"
+          variant="outline"
           className="min-h-11 rounded-[var(--radius-control)]"
           onClick={handleRecheck}
           loading={recheckLoading}

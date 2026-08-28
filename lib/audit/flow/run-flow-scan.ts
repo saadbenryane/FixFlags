@@ -15,6 +15,7 @@ import { runDestinationUXProbes, type DestinationUXQuality } from './destination
 import {
   detectObscuringElementAtPoint,
   detectOverlayAtPoint,
+  dismissConsentChrome,
   dismissOpenDialogs,
   type OverlayBlockerInfo,
 } from '@/lib/audit/browser/overlay-probe'
@@ -186,6 +187,7 @@ async function runFlowScanWithinBudget(
   // Form/nav probes can leave auth or result dialogs open (dogfood: GradLoom
   // "Show My Career Path" opens a Saved Career Paths modal). Dismiss residue
   // before ranking/clicking the primary CTA so we do not self-inflict overlay FPs.
+  await dismissConsentChrome(page)
   await dismissOpenDialogs(page)
 
   const candidates = await discoverFlowCtasWithFallback(page, pageUrl)

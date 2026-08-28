@@ -43,6 +43,8 @@ function resolveCategory(
   return firstCategory(counts)
 }
 
+export type ReportExplorerLayout = 'list-detail' | 'detail'
+
 interface ReportExplorerProps {
   model: ReportExplorerModel
   className?: string
@@ -56,6 +58,11 @@ interface ReportExplorerProps {
   auditId?: string
   demonstratedFlagId?: string
   ownerActionContext?: ReportOwnerActionContext
+  /**
+   * `list-detail` keeps the ranked Top Flags list (Product priorities).
+   * `detail` is report-first: full-width Flag detail with prev/next only.
+   */
+  layout?: ReportExplorerLayout
   /** Hide the in-list Top Flags heading when a parent section owns the title. */
   hideListHeading?: boolean
   /** Resolve owner handoff context for the selected flag (Product page). */
@@ -78,10 +85,12 @@ export function ReportExplorer({
   auditId,
   demonstratedFlagId,
   ownerActionContext,
+  layout = 'list-detail',
   hideListHeading = false,
   resolveOwnerActionContext,
   secondaryPromptAction,
 }: ReportExplorerProps) {
+  const detailOnly = layout === 'detail'
   const rootRef = useRef<HTMLDivElement>(null)
   const detailRef = useRef<HTMLDivElement>(null)
   const detailHeadingRef = useRef<HTMLHeadingElement>(null)
@@ -438,18 +447,30 @@ export function ReportExplorer({
       aria-label={`Fix list with ${model.flags.length} flags`}
       className={cn('flex h-full min-h-0 min-w-0 flex-col gap-3.5', className)}
     >
-      <div className="grid min-h-0 flex-1 gap-5 @[40rem]/pane:grid-cols-[minmax(13rem,32%)_minmax(0,1fr)]">
-        {listPane}
+      {detailOnly ? (
         <div
           ref={detailRef}
           id="selected-flag-detail"
           aria-live="polite"
           aria-atomic="true"
-          className="flex min-h-0 min-w-0 flex-col border-t border-border/30 pt-5 @[40rem]/pane:border-t-0 @[40rem]/pane:pt-0"
+          className="flex min-h-0 min-w-0 flex-1 flex-col"
         >
           {detailPane}
         </div>
-      </div>
+      ) : (
+        <div className="grid min-h-0 flex-1 gap-5 @[40rem]/pane:grid-cols-[minmax(13rem,32%)_minmax(0,1fr)]">
+          {listPane}
+          <div
+            ref={detailRef}
+            id="selected-flag-detail"
+            aria-live="polite"
+            aria-atomic="true"
+            className="flex min-h-0 min-w-0 flex-col border-t border-border/30 pt-5 @[40rem]/pane:border-t-0 @[40rem]/pane:pt-0"
+          >
+            {detailPane}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

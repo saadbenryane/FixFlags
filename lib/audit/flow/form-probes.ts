@@ -1,5 +1,9 @@
 import type { Page } from 'playwright'
-import { detectOverlayAtPoint, type OverlayBlockerInfo } from '@/lib/audit/browser/overlay-probe'
+import {
+  detectOverlayAtPoint,
+  dismissConsentChrome,
+  type OverlayBlockerInfo,
+} from '@/lib/audit/browser/overlay-probe'
 import type { ProbeOutcome } from './nav-probes'
 
 export interface FormProbeResult {
@@ -93,6 +97,7 @@ export async function probeFormValidation(page: Page): Promise<FormProbeResult> 
   const urlBefore = page.url()
 
   try {
+    await dismissConsentChrome(page)
     const submit = await page.$(submitSelector)
     if (!submit) {
       return { formValidation: 'broken', formLabel: formMeta.label }
@@ -163,6 +168,7 @@ export async function probeFormValidation(page: Page): Promise<FormProbeResult> 
     }
     return { formValidation: 'broken', formLabel: formMeta.label }
   } catch {
+    await dismissConsentChrome(page)
     const overlay = await detectOverlayAtPoint(page, submitSelector)
     return { formValidation: 'broken', formLabel: formMeta.label, formOverlay: overlay }
   }

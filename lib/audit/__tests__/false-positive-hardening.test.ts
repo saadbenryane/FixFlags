@@ -162,7 +162,7 @@ describe('flow-cta-unclickable probe reliability', () => {
     expect(checkIds(flags)).not.toContain('overlay-blocks-cta')
   })
 
-  it('still fires the overlay flag when an overlay blocked the CTA', () => {
+  it('does not treat dismissible cookie consent as an overlay blocker', () => {
     const flags = runFlowChecks({
       status: 'unclickable',
       steps: [],
@@ -172,9 +172,34 @@ describe('flow-cta-unclickable probe reliability', () => {
         tag: 'div',
         id: 'cookie-banner',
         className: 'banner',
-        role: null,
-        text: 'Accept cookies',
+        role: 'dialog',
+        text: 'Accept cookies Reject cookies',
         zIndex: '999',
+        coverageFraction: 0.8,
+        looksLikeOverlay: true,
+        looksLikeConsentChrome: true,
+      },
+    })
+    expect(checkIds(flags)).not.toContain('overlay-blocks-cta')
+    expect(checkIds(flags)).toContain('flow-cta-unclickable')
+  })
+
+  it('still fires the overlay flag when a non-consent overlay blocked the CTA', () => {
+    const flags = runFlowChecks({
+      status: 'unclickable',
+      steps: [],
+      finalUrl: 'https://app.profilium.co/',
+      ctaText: 'Get started',
+      overlayBlocker: {
+        tag: 'div',
+        id: 'promo-modal',
+        className: 'banner',
+        role: 'dialog',
+        text: 'Join the waitlist',
+        zIndex: '999',
+        coverageFraction: 1,
+        looksLikeOverlay: true,
+        looksLikeConsentChrome: false,
       },
     })
     expect(checkIds(flags)).toContain('overlay-blocks-cta')

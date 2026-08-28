@@ -158,6 +158,33 @@ describe('overlay severity + evidence', () => {
       'covers ~72% of target'
     )
   })
+
+  it('suppresses dismissible consent chrome even at full coverage', () => {
+    expect(
+      severityForOverlayBlocker(
+        overlay({
+          className: 'fixed inset-x-0 bottom-0',
+          role: 'dialog',
+          text: 'Cookies and analytics Reject Accept',
+          coverageFraction: 0.9,
+          looksLikeConsentChrome: true,
+        })
+      )
+    ).toBeNull()
+    expect(
+      runOverlayBlockerChecks(
+        'form',
+        overlay({
+          className: 'fixed inset-x-0 bottom-0',
+          role: 'dialog',
+          text: 'Cookies and analytics Reject Accept',
+          coverageFraction: 0.9,
+          looksLikeConsentChrome: true,
+        }),
+        'Contact'
+      )
+    ).toEqual([])
+  })
 })
 
 describe('CTA click-failure severity', () => {

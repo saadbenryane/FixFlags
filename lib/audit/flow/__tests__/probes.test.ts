@@ -293,11 +293,11 @@ describe('probeFormValidation', () => {
   it('reports broken when a valid form navigates away without feedback', async () => {
     document.body.innerHTML =
       '<main><form><input name="email" type="email" required value="a@b.com"><button type="submit">Subscribe</button></form></main>'
-    // formMeta + nativeCheck evaluate in the real DOM, then queue: clickStart=0,
-    // elapsed=2500 (> deadline) so the loop breaks without feedback, url changes.
+    // formMeta + nativeCheck evaluate in the real DOM, then dismissConsent=false,
+    // clickStart=0, elapsed=2500 (> deadline) so the loop breaks without feedback, url changes.
     const result = await probeFormValidation(
       makePage({
-        evaluateQueue: [0, 2500],
+        evaluateQueue: [false, 0, 2500],
         queueStart: 2,
         url: 'https://example.com/thanks',
         queryResult: { click: vi.fn(async () => {}) },
@@ -309,10 +309,10 @@ describe('probeFormValidation', () => {
   it('reports ok with feedback when validation feedback appears', async () => {
     document.body.innerHTML =
       '<main><form><input name="email" type="email" required value="a@b.com"><button type="submit">Subscribe</button></form></main>'
-    // formMeta + nativeCheck real; then clickStart=0, elapsed=0, hasFeedback=true
+    // formMeta + nativeCheck real; then dismissConsent=false, clickStart=0, elapsed=0, hasFeedback=true
     const result = await probeFormValidation(
       makePage({
-        evaluateQueue: [0, 0, true],
+        evaluateQueue: [false, 0, 0, true],
         queueStart: 2,
         queryResult: { click: vi.fn(async () => {}) },
       })

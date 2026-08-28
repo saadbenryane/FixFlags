@@ -9,8 +9,9 @@ import {
 } from '@/lib/audit/browser/journey-safety'
 import {
   detectOverlayAtPoint,
-  formatOverlayEvidence,
+  dismissConsentChrome,
 } from '@/lib/audit/browser/overlay-probe'
+import { runOverlayBlockerChecks } from '@/lib/audit/checks/overlay'
 import { createActionTimeline } from '@/lib/audit/action-timeline'
 import { logger } from '@/lib/logger'
 import {
@@ -235,21 +236,28 @@ export async function runJourneyTemplate(
           screenshot: beforeClick,
         })
       } catch {
+        await dismissConsentChrome(page)
         const overlay = await detectOverlayAtPoint(page, clickSelector)
-        if (overlay) {
+        const overlayFlags = runOverlayBlockerChecks(
+          'nav',
+          overlay,
+          `target "${target.text || target.href}"`
+        )
+        if (overlayFlags.length > 0) {
+          const flag = overlayFlags[0]!
           timeline.push('overlay', 'Overlay blocked journey nav', { url: page.url() })
           findings.push(
             finding({
-              checkId: 'overlay-blocks-nav',
+              checkId: flag.checkId,
               stepNumber: 2,
               url: page.url(),
               rubric: 'EXPERIENCE',
-              severity: 'CRITICAL',
+              severity: flag.severity as 'CRITICAL' | 'IMPORTANT' | 'POLISH',
               impactTag: 'CONVERSION',
-              problem: 'Overlay blocks primary navigation',
-              evidence: `Reproduced at step 2. ${formatOverlayEvidence(overlay)} · target "${target.text || target.href}"`,
+              problem: flag.problem,
+              evidence: `Reproduced at step 2. ${flag.evidence}`,
               whyItMatters: 'Visitors cannot continue the funnel when nav is covered.',
-              fix: '1. Ensure modals and sticky ads do not cover primary navigation without a clear dismiss control.\n2. Lower z-index or relocate the overlay so nav stays clickable.\n3. Re-check the click path after the change.',
+              fix: flag.fix,
               screenshotUrl: beforeClick,
             })
           )
@@ -396,21 +404,27 @@ export async function runJourneyTemplate(
               await page.evaluate((el) => {
                 el.setAttribute('data-fixflags-journey-submit', '1')
               }, submitHandle)
-              const overlay = await detectOverlayAtPoint(page, '[data-fixflags-journey-submit="1"]')
-              if (overlay) {
+              await dismissConsentChrome(page)
+              const overlay = await detectOverlayAtPoint(
+                page,
+                '[data-fixflags-journey-submit="1"]'
+              )
+              const overlayFlags = runOverlayBlockerChecks('form', overlay)
+              for (const flag of overlayFlags) {
                 timeline.push('overlay', 'Overlay blocked form submit', { url: page.url() })
                 findings.push(
                   finding({
-                    checkId: 'overlay-blocks-form',
+                    checkId: flag.checkId,
                     stepNumber: 3,
                     url: page.url(),
                     rubric: 'EXPERIENCE',
-                    severity: 'CRITICAL',
+                    severity: flag.severity as 'CRITICAL' | 'IMPORTANT' | 'POLISH',
                     impactTag: 'CONVERSION',
-                    problem: 'Overlay blocks form controls',
-                    evidence: `Reproduced at step 3. ${formatOverlayEvidence(overlay)}`,
-                    whyItMatters: 'Users cannot submit when sticky ads or modals cover the form.',
-                    fix: '1. Ensure modals and sticky ads do not cover form controls without a clear dismiss control.\n2. Lower z-index or relocate the overlay so primary actions stay clickable.\n3. Re-check the click path after the change.',
+                    problem: flag.problem,
+                    evidence: `Reproduced at step 3. ${flag.evidence}`,
+                    whyItMatters:
+                      'Users cannot submit when sticky ads or modals cover the form.',
+                    fix: flag.fix,
                     screenshotUrl: afterClick,
                   })
                 )
@@ -635,21 +649,29 @@ export async function runJourneyTemplate(
             screenshot: beforeShot,
           })
         } catch {
+          await dismissConsentChrome(page)
           const overlay = await detectOverlayAtPoint(page, clickSelector)
-          if (overlay) {
+          const overlayFlags = runOverlayBlockerChecks(
+            'nav',
+            overlay,
+            `target "${target.text || target.href}"`
+          )
+          if (overlayFlags.length > 0) {
+            const flag = overlayFlags[0]!
             timeline.push('overlay', 'Overlay blocked funnel nav', { url: page.url() })
             findings.push(
               finding({
-                checkId: 'overlay-blocks-nav',
+                checkId: flag.checkId,
                 stepNumber: currentStep + 1,
                 url: page.url(),
                 rubric: 'EXPERIENCE',
-                severity: 'CRITICAL',
+                severity: flag.severity as 'CRITICAL' | 'IMPORTANT' | 'POLISH',
                 impactTag: 'CONVERSION',
-                problem: 'Overlay blocks funnel navigation',
-                evidence: `Reproduced at step ${currentStep + 1}. ${formatOverlayEvidence(overlay)} · target "${target.text || target.href}"`,
-                whyItMatters: 'Visitors cannot continue the funnel when navigation is covered.',
-                fix: '1. Ensure modals and sticky ads do not cover primary navigation without a clear dismiss control.\n2. Lower z-index or relocate the overlay so nav stays clickable.\n3. Re-check the click path after the change.',
+                problem: flag.problem,
+                evidence: `Reproduced at step ${currentStep + 1}. ${flag.evidence}`,
+                whyItMatters:
+                  'Visitors cannot continue the funnel when navigation is covered.',
+                fix: flag.fix,
                 screenshotUrl: beforeShot,
               })
             )

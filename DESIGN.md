@@ -78,7 +78,7 @@ Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
 
 **Report pane:** Report mode uses a fixed compact `ReportOutcomeBar` with circular score, chronological Review history, and the owner Update review action.
 The shared `ReportPane` starts its ranked list with `Your priorities`, shows the five highest-ranked issues by default, and places the selected-issue evidence beside it without a separate filter bar.
-Each issue uses one desktop | mobile evidence pair, then a docked prompt row with an expandable `Fix Prompt` and a branded copy action on the right.
+Each issue uses one desktop | mobile evidence pair. The prompt row (expandable `Fix Prompt` and branded copy on the right) sits under the Flag title and navigation, above that pair.
 The prompt expands in normal flow without a nested card.
 The web report does not render the aggregate Fix plan or a Review context disclosure.
 Only the explorer body sits inside `data-report-frame` using `WORKSPACE_REPORT_FRAME_CLASS`, so a wide pane gives the body exactly one pane height and each column scrolls itself, while a narrow pane releases that height and scrolls as one column.
@@ -170,7 +170,7 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 ## States
 
 Report information architecture is defined once in [`knowledge/report-contract.md`](./knowledge/report-contract.md).
-The canonical report is one calm, dense-enough workspace: compact Score/history header, then a ranked master/detail Fix list containing every unresolved Flag, then collapsed review context.
+The canonical report is one calm, dense-enough workspace: compact Score/history header, then detail-first Flag browsing (prev/next through every unresolved Flag). Product Your priorities keeps a ranked list beside detail.
 Identity belongs to the Agent activity and Product Preview surfaces, not to a duplicate Report title row.
 Each column scrolls itself in a wide pane; a narrow pane stacks the list above the selected detail.
 

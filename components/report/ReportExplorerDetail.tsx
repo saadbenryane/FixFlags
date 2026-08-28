@@ -135,7 +135,7 @@ export function FlagDetailPane({
                   onClick={onPrevious}
                   disabled={flagPosition <= 1}
                   aria-label="Previous flag"
-                  className="border border-border/45 bg-background text-muted-foreground shadow-sm hover:text-foreground"
+                  className="border border-brand/40 bg-background text-brand shadow-sm hover:bg-brand/10 hover:text-brand disabled:border-border/45 disabled:text-muted-foreground"
                 >
                   <ChevronLeft aria-hidden />
                 </Button>
@@ -146,13 +146,31 @@ export function FlagDetailPane({
                   onClick={onNext}
                   disabled={flagPosition >= flagCount}
                   aria-label="Next flag"
-                  className="border border-border/45 bg-background text-muted-foreground shadow-sm hover:text-foreground"
+                  className="border border-brand/40 bg-background text-brand shadow-sm hover:bg-brand/10 hover:text-brand disabled:border-border/45 disabled:text-muted-foreground"
                 >
                   <ChevronRight aria-hidden />
                 </Button>
               </nav>
             ) : null}
           </div>
+          {showPromptFooter ? (
+            <div data-flag-prompt-row className="mt-4 border-t border-border/30 pt-4">
+              {showPromptRow ? (
+                <FlagPromptRow
+                  flag={flag}
+                  aiLocked={promptLocked}
+                  aiEnhancementPending={aiEnhancementPending}
+                  signUpHref={signUpHref}
+                  ownerActionContext={ownerActionContext}
+                  polishPassPrompt={model.polishPassPrompt}
+                  aggregateLocked={Boolean(aiLocked)}
+                  secondaryPromptAction={secondaryPromptAction}
+                />
+              ) : (
+                secondaryPromptAction
+              )}
+            </div>
+          ) : null}
         </header>
 
         <FlagDetailPanel
@@ -190,27 +208,6 @@ export function FlagDetailPane({
           }
         />
       </div>
-      {showPromptFooter ? (
-        <footer
-          data-flag-prompt-footer
-          className="shrink-0 border-t border-border/30 pt-3"
-        >
-          {showPromptRow ? (
-            <FlagPromptRow
-              flag={flag}
-              aiLocked={promptLocked}
-              aiEnhancementPending={aiEnhancementPending}
-              signUpHref={signUpHref}
-              ownerActionContext={ownerActionContext}
-              polishPassPrompt={model.polishPassPrompt}
-              aggregateLocked={Boolean(aiLocked)}
-              secondaryPromptAction={secondaryPromptAction}
-            />
-          ) : (
-            secondaryPromptAction
-          )}
-        </footer>
-      ) : null}
     </div>
   )
 }

@@ -95,6 +95,40 @@
       },
       "expectedCheckId": null,
       "expectedSeverity": null
+    },
+    {
+      "name": "dismissible consent chrome suppressed",
+      "overlay": {
+        "tag": "div",
+        "id": null,
+        "className": "fixed inset-x-0 bottom-0 z-[60]",
+        "role": "dialog",
+        "text": "Cookies and analytics Reject analytics Accept analytics",
+        "zIndex": "60",
+        "coverageFraction": 0.76,
+        "looksLikeOverlay": true,
+        "looksLikeConsentChrome": true,
+        "persisted": true
+      },
+      "expectedCheckId": null,
+      "expectedSeverity": null
+    },
+    {
+      "name": "sticky ad without consent choice stays CRITICAL",
+      "overlay": {
+        "tag": "div",
+        "id": "sticky-ad",
+        "className": "fixed inset-x-0 bottom-0 z-50",
+        "role": null,
+        "text": "Download our app now",
+        "zIndex": "50",
+        "coverageFraction": 0.9,
+        "looksLikeOverlay": true,
+        "looksLikeConsentChrome": false,
+        "persisted": true
+      },
+      "expectedCheckId": "overlay-blocks-cta",
+      "expectedSeverity": "CRITICAL"
     }
   ],
   "flowScanCases": [

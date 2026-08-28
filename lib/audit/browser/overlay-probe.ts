@@ -16,6 +16,11 @@ export interface OverlayBlockerInfo {
    * False for plain content overlap (e.g. an H2 sitting on a button center).
    */
   looksLikeOverlay?: boolean
+  /**
+   * True when the cover is dismissible cookie/consent chrome (Accept + Reject).
+   * Those banners are required compliance UI, not conversion overlays.
+   */
+  looksLikeConsentChrome?: boolean
 }
 
 /** Re-probe delay so transient loading/entrance overlays are not reported. */
@@ -29,6 +34,14 @@ export const OVERLAY_COVERAGE_PARTIAL = 0.85
 
 function blockerSignature(info: OverlayBlockerInfo): string {
   return `${info.tag}|${info.id ?? ''}|${info.className}|${info.role ?? ''}|${info.zIndex}`
+}
+
+/**
+ * Dismissible consent chrome must not emit overlay-blocks-* Flags.
+ * Sites that load analytics are also expected to show consent (`cookie-consent-absent`).
+ */
+export function isDismissibleConsentChrome(overlay: OverlayBlockerInfo): boolean {
+  return overlay.looksLikeConsentChrome === true
 }
 
 /**
@@ -155,6 +168,30 @@ async function probeCoverAtPoint(
           `${node.id} ${node.className} ${node.getAttribute('role') || ''}`
         )
 
+      const consentBlob = `${node.id} ${node.className} ${node.getAttribute('role') || ''} ${node.getAttribute('aria-label') || ''} ${(node.innerText || '').slice(0, 240)}`
+      const consentCue = /cookie|consent|analytics|gdpr|ccpa|privacy preference/i.test(consentBlob)
+      let looksLikeConsentChrome = false
+      if (consentCue) {
+        const controls = Array.from(
+          node.querySelectorAll('button, [role="button"], a[href]')
+        ) as HTMLElement[]
+        const labels = controls.map((control) =>
+          `${control.textContent || ''} ${control.getAttribute('aria-label') || ''}`
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase()
+        )
+        const hasAccept = labels.some((label) =>
+          /accept|allow|agree|consent|got it|i agree|ok,?\s*continue/.test(label)
+        )
+        const hasReject = labels.some((label) =>
+          /reject|deny|decline|refuse|necessary only|essential only|no thanks|disagree|reject analytics/.test(
+            label
+          )
+        )
+        looksLikeConsentChrome = hasAccept && hasReject
+      }
+
       return {
         tag: node.tagName.toLowerCase(),
         id: node.id || null,
@@ -164,6 +201,7 @@ async function probeCoverAtPoint(
         zIndex: nodeStyle.zIndex,
         coverageFraction,
         looksLikeOverlay: finalLooksLikeOverlay,
+        looksLikeConsentChrome,
       }
     },
     { selector: targetSelector, requireOverlayLook }
@@ -181,6 +219,7 @@ export function formatOverlayEvidence(info: OverlayBlockerInfo): string {
     typeof info.coverageFraction === 'number'
       ? `covers ~${Math.round(info.coverageFraction * 100)}% of target`
       : null,
+    info.looksLikeConsentChrome ? 'consent-chrome' : null,
   ].filter(Boolean)
   return parts.join(' ')
 }
@@ -192,11 +231,69 @@ export function formatOverlayEvidence(info: OverlayBlockerInfo): string {
 export function severityForOverlayBlocker(
   overlay: OverlayBlockerInfo
 ): 'CRITICAL' | 'IMPORTANT' | null {
+  if (isDismissibleConsentChrome(overlay)) return null
   const coverage = overlay.coverageFraction ?? 1
   if (coverage < OVERLAY_COVERAGE_SUPPRESS) return null
   if (overlay.looksLikeOverlay === false) return 'IMPORTANT'
   if (coverage < OVERLAY_COVERAGE_PARTIAL) return 'IMPORTANT'
   return 'CRITICAL'
+}
+
+/**
+ * Dismiss cookie/consent banners with Accept + Reject before interaction probes.
+ * Prefers Reject so analytics stay off during the scan.
+ */
+export async function dismissConsentChrome(page: Page): Promise<boolean> {
+  try {
+    const rejected = await page.evaluate(() => {
+      const roots = Array.from(
+        document.querySelectorAll(
+          '[role="dialog"], [aria-modal="true"], [class*="cookie" i], [id*="cookie" i], [class*="consent" i], [id*="consent" i]'
+        )
+      ) as HTMLElement[]
+
+      for (const root of roots) {
+        const style = window.getComputedStyle(root)
+        const rect = root.getBoundingClientRect()
+        if (
+          rect.width < 8 ||
+          rect.height < 8 ||
+          style.visibility === 'hidden' ||
+          style.display === 'none' ||
+          style.opacity === '0'
+        ) {
+          continue
+        }
+        const blob = `${root.id} ${root.className} ${root.getAttribute('aria-label') || ''} ${(root.innerText || '').slice(0, 240)}`
+        if (!/cookie|consent|analytics|gdpr|ccpa/i.test(blob)) continue
+
+        const controls = Array.from(
+          root.querySelectorAll('button, [role="button"]')
+        ) as HTMLElement[]
+        const reject = controls.find((control) =>
+          /reject|deny|decline|refuse|necessary only|essential only|no thanks|disagree|reject analytics/i.test(
+            `${control.textContent || ''} ${control.getAttribute('aria-label') || ''}`
+          )
+        )
+        const accept = controls.find((control) =>
+          /accept|allow|agree|consent|got it|i agree/i.test(
+            `${control.textContent || ''} ${control.getAttribute('aria-label') || ''}`
+          )
+        )
+        const choice = reject ?? accept
+        if (!choice) continue
+        choice.click()
+        return true
+      }
+      return false
+    })
+    if (rejected) {
+      await page.waitForTimeout(300)
+    }
+    return rejected
+  } catch {
+    return false
+  }
 }
 
 /**

@@ -302,7 +302,7 @@ describe('homepage lean sections', () => {
     render(<SampleReportSection />)
 
     expect(screen.getByRole('region', { name: 'Agent' })).toBeInTheDocument()
-    expect(screen.getByText('Top Flags')).toBeInTheDocument()
+    expect(screen.queryByText('Top Flags')).not.toBeInTheDocument()
     expect(
       screen.getByRole('heading', {
         name: 'Primary CTA is hidden below the fold on mobile',

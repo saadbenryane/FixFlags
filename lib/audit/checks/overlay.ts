@@ -1,6 +1,7 @@
 import type { OverlayBlockerInfo } from '../browser/overlay-probe'
 import {
   formatOverlayEvidence,
+  isDismissibleConsentChrome,
   severityForOverlayBlocker,
 } from '../browser/overlay-probe'
 import type { DeterministicFlag } from '../flag-types'
@@ -31,6 +32,7 @@ export function runOverlayBlockerChecks(
   contextLabel?: string
 ): DeterministicFlag[] {
   if (!overlay) return []
+  if (isDismissibleConsentChrome(overlay)) return []
 
   const severity = severityForOverlayBlocker(overlay)
   if (!severity) return []

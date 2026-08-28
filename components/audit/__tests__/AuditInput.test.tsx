@@ -40,11 +40,14 @@ describe('AuditInput scan handoff', () => {
     fireEvent.submit(input.closest('form')!)
 
     expect(await screen.findByRole('button', { name: /Reviewing/ })).toBeInTheDocument()
-    expect(await screen.findByText('Top Flags')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('region', { name: /Fix list with/i })
+    ).toBeInTheDocument()
     expect(
       screen.getByText(/getting ready to experience the Product/i)
     ).toBeInTheDocument()
     expect(screen.queryByText(/Opening your report/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('Top Flags')).not.toBeInTheDocument()
   })
 
   it('returns to the URL field after a creation error without submitting again', async () => {

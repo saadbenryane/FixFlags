@@ -42,5 +42,6 @@ describe('report pane geometry', () => {
     expect(explorer).not.toContain('overflow-clip')
     expect(explorer).not.toMatch(/\blg:/)
     expect(explorer).toContain('@[40rem]/pane:grid-cols-')
+    expect(explorer).toContain("layout === 'detail'")
   })
 })

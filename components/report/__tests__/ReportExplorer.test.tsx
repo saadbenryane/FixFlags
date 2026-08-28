@@ -355,4 +355,24 @@ describe('ReportExplorer anonymous teaser', () => {
     expect(screen.queryByText('Where')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'On /pricing' })).toHaveTextContent('1')
   })
+
+  it('hides the Top Flags list in detail layout while keeping prev/next', async () => {
+    window.history.replaceState({}, '', '/report/a1?flag=locked')
+    render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer model={model} auditId="a1" layout="detail" />
+      </MeProvider>
+    )
+
+    expect(screen.queryByRole('heading', { name: 'Top Flags' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Report Flags' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Locked first flag/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Previous flag' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next flag' }))
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /Demonstrated fix/ })).toBeInTheDocument()
+    })
+    expect(window.location.search).toContain('flag=demonstrated')
+  })
 })
