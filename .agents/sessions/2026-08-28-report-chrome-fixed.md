@@ -13,9 +13,19 @@
 
 ## Deploy / dogfood
 
-- Deploy SHA: _(fill after push)_
-- Fresh update review of https://saadbenryane.com/: _(fill after rescan)_
-- Prod checks: icon Compare, history scroll, no 5-card strip, no outcomes footer, Fixed > 0 only for fairly re-checked pages, no false Fix-prompts hero when Tasks exist.
+| Check | Result |
+|-------|--------|
+| Deploy SHA | `a1991098da6ff031c4728deebcf2ba60797620ba` on `/api/health` |
+| Bundle | Prod JS includes `What Fixed means` and `cannot credit Fixed`; no `View comparison` / `no longer observed` customer bucket |
+| Stale child | Still `cmtby9oky000dl720o44n3wfq` (Fixed cannot rewrite history) |
+| Anon probe | [`cmtd71n7m0001oz20ednd3pbo`](https://fixflags.com/report/cmtd71n7m0001oz20ednd3pbo) COMPLETED score 98, progress 100, no `AI_REVIEW_FAILED` (anon `includeAi: false`, so not a Fix-prompt proof) |
+| Fresh Update review | **Blocked here:** no owner session for `saadbenryane` / prod credentials. Click **Update review** on the product or parent report while signed in. |
+
+## Operator closeout (one click)
+
+1. Sign in as owner of saadbenryane.com product.
+2. Open parent or latest owned report → **Update review**.
+3. Confirm: icon Compare, history scrolls, Fixed > 0 only for pages fully re-checked, no false Fix-prompts hero when Tasks exist, New Flags still visible.
 
 ## Do not cheat
 
