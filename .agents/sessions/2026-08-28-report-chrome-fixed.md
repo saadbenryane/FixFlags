@@ -19,7 +19,7 @@
 | Bundle | Prod JS includes `What Fixed means` and `cannot credit Fixed`; no `View comparison` / `no longer observed` customer bucket |
 | Stale child | Still `cmtby9oky000dl720o44n3wfq` (Fixed cannot rewrite history) |
 | Anon probe | [`cmtd71n7m0001oz20ednd3pbo`](https://fixflags.com/report/cmtd71n7m0001oz20ednd3pbo) COMPLETED score 98, progress 100, no `AI_REVIEW_FAILED` (anon `includeAi: false`, so not a Fix-prompt proof) |
-| Fresh Update review | **Blocked here:** no owner session for `saadbenryane` / prod credentials. Click **Update review** on the product or parent report while signed in. |
+| Fresh Update review | **Blocked here:** CLI/MCP auth returns 404 on prod (parked). No owner browser session available. Click **Update review** on the product or parent report while signed in. |
 
 ## Operator closeout (one click)
 
