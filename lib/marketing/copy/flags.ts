@@ -1,6 +1,6 @@
 export const FLAG_STATUS_LABELS = {
   OPEN: { label: 'Open', description: 'Not fixed yet' },
-  FIXED: { label: 'No longer observed', description: 'Not observed in this update review' },
+  FIXED: { label: 'Fixed', description: 'Not observed in this update review' },
   IGNORED: { label: 'Ignored', description: 'Acknowledged and skipped' },
   REGRESSED: { label: 'Regressed', description: 'Same Flag, worse than before' },
 } as const
@@ -8,27 +8,28 @@ export const FLAG_STATUS_LABELS = {
 export const RECHECK_DIFF_COPY = {
   title: 'See what changed in this update review',
   celebrationTitle: (n: number) =>
-    n === 1 ? '1 Flag no longer observed' : `${n} Flags no longer observed`,
+    n === 1 ? '1 Flag Fixed' : `${n} Flags Fixed`,
   celebrationBody:
-    'This review did not observe these Flags. Verification receipts show whether an attempted Improvement worked.',
+    'These Flags were not observed on pages this update review fully re-checked. Verification receipts show whether an attempted Improvement worked.',
   nextFixHint: 'Next up',
-  cleared: 'No longer observed',
+  cleared: 'Fixed',
   remaining: 'Still open',
   newIssues: 'New',
   regressed: 'Regressed',
   inconclusive: 'Inconclusive',
   inconclusiveBody: (count: number) =>
-    `${count} ${count === 1 ? 'Flag was' : 'Flags were'} not observed in this update review, but this review is only a partial capture, so we cannot credit clears yet. Score still reflects Flags we did observe.`,
+    `${count} ${count === 1 ? 'Flag was' : 'Flags were'} not observed in this update review, but their pages were not fully re-checked, so we cannot credit Fixed yet. Score still reflects Flags we did observe.`,
   inconclusiveBodyPartial: (count: number) =>
-    `${count} ${count === 1 ? 'Flag was' : 'Flags were'} not observed in this update review, but this review is only a partial capture, so we cannot credit clears yet. Score still reflects Flags we did observe.`,
+    `${count} ${count === 1 ? 'Flag was' : 'Flags were'} not observed in this update review, but their pages were not fully re-checked, so we cannot credit Fixed yet. Score still reflects Flags we did observe.`,
   inconclusiveBodyGeneric: (count: number) =>
     `${count} ${count === 1 ? 'Flag has' : 'Flags have'} insufficient comparable coverage between reviews.`,
   empty: 'No Flag changes in this update review.',
   compareCta: 'Compare',
   compareProHint: 'See the evidence side by side.',
   compareProCta: 'Compare',
-  outcomesHint:
-    'Outcomes: no longer observed, still open, unchanged severity, regressed, or inconclusive.',
+  fixedInfoLabel: 'What Fixed means',
+  fixedInfoIntro:
+    'Not observed in this update review on pages that were fully re-checked:',
   compareProGateDescription:
     'Before/after comparison is included on every plan. Update reviews use the monthly product review allowance.',
   summaryLine: (parts: {
@@ -39,7 +40,7 @@ export const RECHECK_DIFF_COPY = {
     regressed: number
   }) => {
     const bits: string[] = []
-    if (parts.cleared > 0) bits.push(`${parts.cleared} no longer observed`)
+    if (parts.cleared > 0) bits.push(`${parts.cleared} Fixed`)
     if (parts.stillOpen > 0) bits.push(`${parts.stillOpen} still open`)
     if (parts.newlyFound > 0) bits.push(`${parts.newlyFound} new`)
     if (parts.regressed > 0) bits.push(`${parts.regressed} regressed`)

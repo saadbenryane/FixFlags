@@ -184,7 +184,7 @@ Live anonymous, non-owner, and shared reports show Fix Prompt and Copy chrome wi
 Copy and the Fix Prompt control open create-account and never write the clipboard or leak prompt text.
 Prompt bodies appear only after a successful `/post-login` claim.
 Only a strict `IMPROVED` verification receipt may present an Improvement as verified or write verified Product Memory.
-Raw absence in an update review is “No longer observed in this review.”
+Update-review absences whose pages were fully re-checked are Fixed (not observed), not verified. Verification receipts stay separate.
 Copy records a handoff and never declares verification.
 
 Every interactive element must define: rest, hover, focus, active, disabled.

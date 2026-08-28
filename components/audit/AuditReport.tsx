@@ -45,6 +45,7 @@ import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import type { AgentMessage } from '@/lib/audit/agent-message'
 import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
+import { flagHasFixPrompt } from '@/lib/audit/priority-flags'
 import { resolveReportSurfaceCapabilities, type AuditAccessContext } from '@/lib/audit/access-capabilities'
 
 interface RubricRow {
@@ -245,11 +246,15 @@ export function AuditReport({
   })
   const showFeedback = workspace.capabilities.canGiveFeedback
   const unresolvedFlagCount = workspace.outcome.unresolvedCount
+  // Deterministic Tasks still copy when AI enrichment failed — do not scare the owner
+  // with a Fix-prompts hero unless nothing usable exists at all.
+  const hasUsableFixPrompts = audit.flags.some(flagHasFixPrompt)
+  const showPrescriptionFailureHero = Boolean(prescriptionFailed && !hasUsableFixPrompts)
   const showStatusCallouts =
     !isSample &&
     (aiReviewPending ||
       triageDegraded ||
-      prescriptionFailed ||
+      showPrescriptionFailureHero ||
       isPartialReport ||
       (audit.failedModules?.length ?? 0) > 0)
 
@@ -290,7 +295,7 @@ export function AuditReport({
   const statusCallouts =
     !isSample && showStatusCallouts ? (
       <div className="space-y-3">
-        {prescriptionFailed ? (
+        {showPrescriptionFailureHero ? (
           <Callout
             variant="warning"
             title={REPORT_COPY.prescriptionUnavailable.title}

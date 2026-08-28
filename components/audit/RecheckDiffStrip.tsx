@@ -1,6 +1,15 @@
+'use client'
+
 import type { Route } from 'next'
 import Link from 'next/link'
+import { Info } from 'lucide-react'
 import { Callout } from '@/components/ui/callout'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { RECHECK_DIFF_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 import type { FlagDiffSummaryItem } from '@/lib/audit/flag-types'
@@ -51,7 +60,7 @@ export function RecheckDiffStrip({
       aria-label={RECHECK_DIFF_COPY.title}
       className={cn('space-y-2', className)}
     >
-      <p className="text-sm text-muted-foreground">
+      <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm text-muted-foreground">
         {compareHref ? (
           <Link
             href={compareHref as Route}
@@ -63,9 +72,29 @@ export function RecheckDiffStrip({
           <span>{line}</span>
         )}
         {fixed.length > 0 ? (
-          <span className="mt-1 block text-xs text-muted-foreground">
-            {RECHECK_DIFF_COPY.celebrationBody}
-          </span>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-control text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                  aria-label={RECHECK_DIFF_COPY.fixedInfoLabel}
+                >
+                  <Info className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="start" className="max-w-xs space-y-1.5 p-3">
+                <p className="text-xs font-medium text-foreground">
+                  {RECHECK_DIFF_COPY.fixedInfoIntro}
+                </p>
+                <ul className="space-y-1 text-xs text-muted-foreground">
+                  {fixed.map((item, i) => (
+                    <li key={`${item.checkId ?? item.problem}-${i}`}>{item.problem}</li>
+                  ))}
+                </ul>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         ) : null}
       </p>
       {inconclusive.length > 0 ? (

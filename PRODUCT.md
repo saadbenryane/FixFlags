@@ -127,7 +127,7 @@ Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
 - Marking an owned Improvement ready or calling `ff_mark_fix_attempted` records an Improvement Attempt.
 - Only a fresh child Update Review can record `IMPROVED`, `UNCHANGED`, `REGRESSED`, or `INCONCLUSIVE`.
 - Verified Product Memory is written only from an `IMPROVED` attempt with Review and evidence provenance.
-- Raw absence is presented as “No longer observed in this review.”
+- Update-review absences whose pages were fully re-checked are presented as Fixed (not verified). Verification receipts stay separate.
 - Partial or degraded child Reviews never create verified Product Memory.
 - The Product workspace leads with a circular current score, chronological Review history, and `Your priorities`, while allowing the honest result that nothing important requires action.
 

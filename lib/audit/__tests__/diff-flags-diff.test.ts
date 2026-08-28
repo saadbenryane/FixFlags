@@ -58,6 +58,8 @@ type FlagRow = {
   rubric: string
   severity: Severity
   status: FlagStatus
+  pageUrl?: string | null
+  affectedPaths?: unknown
 }
 
 function flag(overrides: Partial<FlagRow>): FlagRow {
@@ -68,6 +70,21 @@ function flag(overrides: Partial<FlagRow>): FlagRow {
     rubric: 'EXPERIENCE',
     severity: 'IMPORTANT',
     status: 'OPEN',
+    pageUrl: null,
+    affectedPaths: null,
+    ...overrides,
+  }
+}
+
+function childAudit(overrides: {
+  status?: string
+  reportCompleteness?: 'FULL' | 'PARTIAL' | 'UNKNOWN'
+  pages?: Array<{ url: string; status: string; completeness: 'FULL' | 'PARTIAL' | 'UNKNOWN' }>
+} = {}) {
+  return {
+    status: 'COMPLETED' as const,
+    reportCompleteness: 'FULL' as const,
+    pages: [] as Array<{ url: string; status: string; completeness: 'FULL' | 'PARTIAL' | 'UNKNOWN' }>,
     ...overrides,
   }
 }
@@ -91,10 +108,7 @@ describe('getFlagDiffSummary', () => {
   beforeEach(() => {
     prismaMock.flag.findMany.mockReset()
     prismaMock.audit.findUnique.mockReset()
-    prismaMock.audit.findUnique.mockResolvedValue({
-      status: 'COMPLETED',
-      reportCompleteness: 'FULL',
-    })
+    prismaMock.audit.findUnique.mockResolvedValue(childAudit())
   })
 
   it('buckets fixed, unchanged, regressed, and new issues', async () => {
@@ -111,17 +125,14 @@ describe('getFlagDiffSummary', () => {
 
     const summary = await getFlagDiffSummary('parent-audit', 'monitoring-audit')
 
-    // p1 matches m1 with same severity: unchanged
     assert.deepEqual(
       summary.unchanged.map((i) => i.checkId),
       ['a']
     )
-    // p2 and p3 (FIXED parent, no monitoring match) land in the fixed bucket
     assert.deepEqual(
       summary.fixed.map((i) => i.checkId).sort(),
       ['b', 'c']
     )
-    // m2 has no parent: new issue
     assert.deepEqual(
       summary.newIssues.map((i) => i.checkId),
       ['d']
@@ -174,17 +185,94 @@ describe('getFlagDiffSummary', () => {
     })
   })
 
-  it('does not call a missing Flag fixed when the update Review is partial', async () => {
-    prismaMock.audit.findUnique.mockResolvedValue({
-      status: 'COMPLETED',
-      reportCompleteness: 'PARTIAL',
-    })
+  it('keeps product-scoped absences inconclusive when the update Review is partial', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue(
+      childAudit({ reportCompleteness: 'PARTIAL' })
+    )
     prismaMock.flag.findMany
-      .mockResolvedValueOnce([flag({ id: 'p1', checkId: 'a', status: 'OPEN' })])
+      .mockResolvedValueOnce([flag({ id: 'p1', checkId: 'a', status: 'OPEN', pageUrl: null })])
       .mockResolvedValueOnce([])
 
     const summary = await getFlagDiffSummary('parent-audit', 'monitoring-audit')
 
+    expect(summary.fixed).toEqual([])
+    expect(summary.inconclusive).toHaveLength(1)
+  })
+
+  it('credits Fixed when the Flag page is FULL even if the audit is PARTIAL', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue(
+      childAudit({
+        reportCompleteness: 'PARTIAL',
+        pages: [
+          { url: 'https://example.com/pricing', status: 'COMPLETED', completeness: 'FULL' },
+          { url: 'https://example.com/blog', status: 'FAILED', completeness: 'PARTIAL' },
+        ],
+      })
+    )
+    prismaMock.flag.findMany
+      .mockResolvedValueOnce([
+        flag({
+          id: 'p1',
+          checkId: 'pricing-cta',
+          status: 'OPEN',
+          pageUrl: 'https://example.com/pricing/',
+        }),
+      ])
+      .mockResolvedValueOnce([])
+
+    const summary = await getFlagDiffSummary('parent-audit', 'monitoring-audit')
+    expect(summary.fixed).toHaveLength(1)
+    expect(summary.inconclusive).toEqual([])
+  })
+
+  it('keeps absences inconclusive when the Flag page is missing from the child', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue(
+      childAudit({
+        reportCompleteness: 'PARTIAL',
+        pages: [
+          { url: 'https://example.com/', status: 'COMPLETED', completeness: 'FULL' },
+        ],
+      })
+    )
+    prismaMock.flag.findMany
+      .mockResolvedValueOnce([
+        flag({
+          id: 'p1',
+          checkId: 'pricing-cta',
+          status: 'OPEN',
+          pageUrl: 'https://example.com/pricing',
+        }),
+      ])
+      .mockResolvedValueOnce([])
+
+    const summary = await getFlagDiffSummary('parent-audit', 'monitoring-audit')
+    expect(summary.fixed).toEqual([])
+    expect(summary.inconclusive).toHaveLength(1)
+  })
+
+  it('keeps multi-path absences inconclusive when only some affected pages are FULL', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue(
+      childAudit({
+        reportCompleteness: 'PARTIAL',
+        pages: [
+          { url: 'https://example.com/', status: 'COMPLETED', completeness: 'FULL' },
+          { url: 'https://example.com/pricing', status: 'COMPLETED', completeness: 'PARTIAL' },
+        ],
+      })
+    )
+    prismaMock.flag.findMany
+      .mockResolvedValueOnce([
+        flag({
+          id: 'p1',
+          checkId: 'shared-chrome',
+          status: 'OPEN',
+          pageUrl: 'https://example.com/',
+          affectedPaths: ['https://example.com/', 'https://example.com/pricing'],
+        }),
+      ])
+      .mockResolvedValueOnce([])
+
+    const summary = await getFlagDiffSummary('parent-audit', 'monitoring-audit')
     expect(summary.fixed).toEqual([])
     expect(summary.inconclusive).toHaveLength(1)
   })
@@ -194,10 +282,7 @@ describe('diffFlagsAgainstParent', () => {
   beforeEach(() => {
     prismaMock.flag.findMany.mockReset()
     prismaMock.audit.findUnique.mockReset()
-    prismaMock.audit.findUnique.mockResolvedValue({
-      status: 'COMPLETED',
-      reportCompleteness: 'FULL',
-    })
+    prismaMock.audit.findUnique.mockResolvedValue(childAudit())
     prismaMock.$transaction.mockReset()
     prismaMock.$transaction.mockImplementation(async (queries: unknown[]) =>
       Promise.all(queries as Promise<unknown>[])
@@ -217,11 +302,7 @@ describe('diffFlagsAgainstParent', () => {
         flag({ id: 'p1', checkId: 'dead-link', status: 'OPEN' }),
       ])
       .mockResolvedValueOnce([])
-    prismaMock.audit.findUnique.mockResolvedValue({
-      projectId: 'proj-1',
-      status: 'COMPLETED',
-      reportCompleteness: 'FULL',
-    })
+    prismaMock.audit.findUnique.mockResolvedValue(childAudit({ reportCompleteness: 'FULL' }))
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
 
@@ -233,6 +314,60 @@ describe('diffFlagsAgainstParent', () => {
     assert.equal(updates[0].data.resolvedInId, 'monitoring-audit')
   })
 
+  it('marks page-scoped absences FIXED under PARTIAL when that page is FULL', async () => {
+    prismaMock.flag.findMany
+      .mockResolvedValueOnce([
+        flag({
+          id: 'p1',
+          checkId: 'pricing-cta',
+          status: 'OPEN',
+          pageUrl: 'https://example.com/pricing',
+        }),
+      ])
+      .mockResolvedValueOnce([])
+    prismaMock.audit.findUnique.mockResolvedValue(
+      childAudit({
+        reportCompleteness: 'PARTIAL',
+        pages: [
+          { url: 'https://example.com/pricing', status: 'COMPLETED', completeness: 'FULL' },
+        ],
+      })
+    )
+
+    await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
+
+    const updates = (await prismaMock.$transaction.mock.results[0].value) as Array<{
+      data: { status: string; resolvedInId?: string }
+    }>
+    assert.equal(updates.length, 1)
+    assert.equal(updates[0].data.status, 'FIXED')
+  })
+
+  it('does not mark absences FIXED when the Flag page was not fully re-checked', async () => {
+    prismaMock.flag.findMany
+      .mockResolvedValueOnce([
+        flag({
+          id: 'p1',
+          checkId: 'pricing-cta',
+          status: 'OPEN',
+          pageUrl: 'https://example.com/pricing',
+        }),
+      ])
+      .mockResolvedValueOnce([])
+    prismaMock.audit.findUnique.mockResolvedValue(
+      childAudit({
+        reportCompleteness: 'PARTIAL',
+        pages: [
+          { url: 'https://example.com/', status: 'COMPLETED', completeness: 'FULL' },
+        ],
+      })
+    )
+
+    await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
+
+    expect(prismaMock.$transaction).not.toHaveBeenCalled()
+  })
+
   it('keeps matched flags OPEN when severity is unchanged', async () => {
     prismaMock.flag.findMany
       .mockResolvedValueOnce([
@@ -241,7 +376,6 @@ describe('diffFlagsAgainstParent', () => {
       .mockResolvedValueOnce([
         flag({ id: 'm1', checkId: 'a', problem: 'Still broken', severity: 'IMPORTANT', status: 'OPEN' }),
       ])
-    prismaMock.audit.findUnique.mockResolvedValue({ projectId: 'proj-1' })
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
 
@@ -263,7 +397,6 @@ describe('diffFlagsAgainstParent', () => {
       .mockResolvedValueOnce([
         flag({ id: 'm1', checkId: 'a', problem: 'Now critical', severity: 'CRITICAL', status: 'OPEN' }),
       ])
-    prismaMock.audit.findUnique.mockResolvedValue({ projectId: 'proj-1' })
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
 
@@ -280,9 +413,6 @@ describe('diffFlagsAgainstParent', () => {
         flag({ id: 'p2', checkId: 'b', status: 'IGNORED' }),
       ])
       .mockResolvedValueOnce([])
-    prismaMock.audit.findUnique
-      .mockResolvedValueOnce({ projectId: 'proj-1' })
-      .mockResolvedValueOnce({ productContract: { name: 'Example' } })
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
 
@@ -308,7 +438,6 @@ describe('diffFlagsAgainstParent', () => {
         flag({ id: 'p1', checkId: 'a', status: 'OPEN' }),
       ])
       .mockResolvedValueOnce([])
-    prismaMock.audit.findUnique.mockResolvedValue({ projectId: 'proj-1', productContract: null })
 
     await diffFlagsAgainstParent('monitoring-audit', 'parent-audit')
     expect(mutateProjectIntelligence).not.toHaveBeenCalled()
@@ -317,7 +446,7 @@ describe('diffFlagsAgainstParent', () => {
   it('surfaces watch persistence errors so the completion projection can retry', async () => {
     notifyWatchRegression.mockRejectedValue(new Error('email down'))
     prismaMock.flag.findMany.mockResolvedValue([])
-    prismaMock.audit.findUnique.mockResolvedValue({ projectId: null })
+    prismaMock.audit.findUnique.mockResolvedValue(childAudit())
 
     await expect(
       diffFlagsAgainstParent('monitoring-audit', 'parent-audit')

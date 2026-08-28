@@ -38,11 +38,7 @@ export function FlagDiff({
     newIssues.length +
     inconclusive.length
   if (total === 0) {
-    return (
-      <Callout variant="neutral" title={RECHECK_DIFF_COPY.empty}>
-        {RECHECK_DIFF_COPY.outcomesHint}
-      </Callout>
-    )
+    return <Callout variant="neutral" title={RECHECK_DIFF_COPY.empty} />
   }
 
   return (
@@ -89,7 +85,8 @@ export function FlagDiff({
 
 function FixedSection({ items }: { items: FlagDiffItem[] }) {
   return (
-    <Callout variant="success" title={items.length === 1 ? '1 flag fixed' : `${items.length} flags fixed`}>
+    <Callout variant="success" title={RECHECK_DIFF_COPY.celebrationTitle(items.length)}>
+      <p className="mb-3 text-sm text-muted-foreground">{RECHECK_DIFF_COPY.celebrationBody}</p>
       <ul className="space-y-2">
         {items.map((item, i) => (
           <li

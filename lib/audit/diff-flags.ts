@@ -1,8 +1,9 @@
 import { prisma } from '@/lib/db'
 import { buildAiFlagMatchKey } from '@/lib/audit/validate-judge-output'
 import { resolveMonitoringFlagStatus } from '@/lib/audit/flag-status-resolution'
+import { parseAffectedPaths } from '@/lib/audit/flag-identity'
 import { severityRank } from '@/lib/utils'
-import type { FlagStatus, Severity } from '@prisma/client'
+import type { FlagStatus, ReportCompleteness, Severity } from '@prisma/client'
 import type { FlagDiffSummaryItem } from './flag-types'
 
 export type { FlagDiffSummaryItem } from './flag-types'
@@ -14,6 +15,14 @@ type FlagRow = {
   rubric: string
   severity: Severity
   status: FlagStatus
+  pageUrl?: string | null
+  affectedPaths?: unknown
+}
+
+type ChildPageCoverage = {
+  url: string
+  status: string
+  completeness: ReportCompleteness
 }
 
 function flagMatchKey(f: Pick<FlagRow, 'checkId' | 'problem' | 'rubric'>): string {
@@ -43,24 +52,85 @@ function baseCheckIdForMatch(checkId: string): string {
   return checkId.split('::page:')[0] ?? checkId
 }
 
+/** Normalize URLs for page-comparable Fixed matching (hash stripped, trailing slash). */
+export function normalizeDiffUrl(value: string): string {
+  try {
+    const url = new URL(value)
+    url.hash = ''
+    return url.toString().replace(/\/$/, '')
+  } catch {
+    return value.replace(/\/$/, '')
+  }
+}
+
+function flagPageUrls(flag: Pick<FlagRow, 'pageUrl' | 'affectedPaths'>): string[] {
+  const fromPaths = parseAffectedPaths(flag.affectedPaths)
+  const urls = [...fromPaths]
+  if (flag.pageUrl) urls.push(flag.pageUrl)
+  return [...new Set(urls.map(normalizeDiffUrl).filter(Boolean))]
+}
+
+function pageIsFullyComparable(page: ChildPageCoverage | undefined): boolean {
+  return page?.status === 'COMPLETED' && page.completeness === 'FULL'
+}
+
+/**
+ * Credit Fixed when the Flag is absent and every page that owned it was
+ * COMPLETED + FULL on the child. Product-scoped Flags (no page) still need
+ * audit-level FULL. Never invent clears for pages that were not re-observed.
+ */
+export function isPageComparableAbsence(input: {
+  auditStatus: string | undefined
+  reportCompleteness: ReportCompleteness | null | undefined
+  childPages: ChildPageCoverage[]
+  parentFlag: Pick<FlagRow, 'pageUrl' | 'affectedPaths'>
+}): boolean {
+  if (input.auditStatus !== 'COMPLETED') return false
+
+  const ownedUrls = flagPageUrls(input.parentFlag)
+  if (ownedUrls.length === 0) {
+    return input.reportCompleteness === 'FULL'
+  }
+
+  const byUrl = new Map(
+    input.childPages.map((page) => [normalizeDiffUrl(page.url), page])
+  )
+  return ownedUrls.every((url) => pageIsFullyComparable(byUrl.get(url)))
+}
+
+async function loadChildCoverage(monitoringAuditId: string): Promise<{
+  status: string | undefined
+  reportCompleteness: ReportCompleteness | null | undefined
+  pages: ChildPageCoverage[]
+}> {
+  const monitoringAudit = await prisma.audit.findUnique({
+    where: { id: monitoringAuditId },
+    select: {
+      status: true,
+      reportCompleteness: true,
+      pages: { select: { url: true, status: true, completeness: true } },
+    },
+  })
+  return {
+    status: monitoringAudit?.status,
+    reportCompleteness: monitoringAudit?.reportCompleteness,
+    pages: monitoringAudit?.pages ?? [],
+  }
+}
+
 export async function diffFlagsAgainstParent(
   monitoringAuditId: string,
   parentAuditId: string
 ): Promise<void> {
-  const [parentFlags, monitoringFlags, monitoringAudit] = await Promise.all([
+  const [parentFlags, monitoringFlags, child] = await Promise.all([
     prisma.flag.findMany({
       where: { auditId: parentAuditId },
     }),
     prisma.flag.findMany({
       where: { auditId: monitoringAuditId },
     }),
-    prisma.audit.findUnique({
-      where: { id: monitoringAuditId },
-      select: { status: true, reportCompleteness: true },
-    }),
+    loadChildCoverage(monitoringAuditId),
   ])
-  const comparableAbsence =
-    monitoringAudit?.status === 'COMPLETED' && monitoringAudit.reportCompleteness === 'FULL'
 
   const monitoringByKey = new Map(monitoringFlags.map((f) => [flagMatchKey(f), f]))
   const updates: Array<{
@@ -74,7 +144,14 @@ export async function diffFlagsAgainstParent(
     const monitoringFlag = monitoringByKey.get(key)
 
     if (!monitoringFlag) {
-      if (comparableAbsence) {
+      if (
+        isPageComparableAbsence({
+          auditStatus: child.status,
+          reportCompleteness: child.reportCompleteness,
+          childPages: child.pages,
+          parentFlag,
+        })
+      ) {
         updates.push({
           id: parentFlag.id,
           data: { status: 'FIXED', resolvedInId: monitoringAuditId },
@@ -172,16 +249,11 @@ export async function getFlagDiffSummary(
   regressed: FlagDiffSummaryItem[]
   newIssues: FlagDiffSummaryItem[]
 }> {
-  const [parentFlags, monitoringFlags, monitoringAudit] = await Promise.all([
+  const [parentFlags, monitoringFlags, child] = await Promise.all([
     prisma.flag.findMany({ where: { auditId: parentAuditId } }),
     prisma.flag.findMany({ where: { auditId: monitoringAuditId } }),
-    prisma.audit.findUnique({
-      where: { id: monitoringAuditId },
-      select: { status: true, reportCompleteness: true },
-    }),
+    loadChildCoverage(monitoringAuditId),
   ])
-  const comparableAbsence =
-    monitoringAudit?.status === 'COMPLETED' && monitoringAudit.reportCompleteness === 'FULL'
 
   const monitoringByKey = new Map(monitoringFlags.map((f) => [flagMatchKey(f), f]))
   const parentKeys = new Set(parentFlags.map((f) => flagMatchKey(f)))
@@ -210,8 +282,18 @@ export async function getFlagDiffSummary(
     }
 
     if (!monitoringFlag) {
-      if (comparableAbsence) fixed.push(item)
-      else inconclusive.push(item)
+      if (
+        isPageComparableAbsence({
+          auditStatus: child.status,
+          reportCompleteness: child.reportCompleteness,
+          childPages: child.pages,
+          parentFlag,
+        })
+      ) {
+        fixed.push(item)
+      } else {
+        inconclusive.push(item)
+      }
       continue
     }
 

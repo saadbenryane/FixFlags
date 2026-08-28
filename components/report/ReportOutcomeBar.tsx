@@ -10,8 +10,8 @@ import { ScoreRing } from '@/components/report/ScoreRing'
 import type { ReactNode } from 'react'
 
 /**
- * Compact Review header. Product identity and owner actions intentionally live
- * elsewhere; this is the single Score, Review history, and progress surface.
+ * Compact Review header: score + owner actions on row 1; Review history owns
+ * a full-width horizontally scrollable band on row 2.
  */
 export function ReportOutcomeBar({
   model,
@@ -42,7 +42,7 @@ export function ReportOutcomeBar({
         className,
       )}
     >
-      <div className="flex min-h-20 min-w-0 flex-wrap items-center gap-x-5 gap-y-2 py-1">
+      <div className="flex min-h-14 min-w-0 flex-wrap items-center gap-x-4 gap-y-2 py-1">
         <div className="relative shrink-0">
           <ScoreRing score={score} pending={loading} />
           {!loading && score != null ? (
@@ -57,19 +57,21 @@ export function ReportOutcomeBar({
             </Link>
           ) : null}
         </div>
-        {history ? (
+        {actions ? (
+          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+            {actions}
+          </div>
+        ) : null}
+      </div>
+
+      {history ? (
+        <div className="w-full min-w-0 border-t border-border/35 py-2">
           <ScoreHistoryChart
             history={history}
             currentAuditId={model.identity.auditId}
             isLoading={loading}
-            className="min-w-[12rem] flex-1"
+            className="w-full"
           />
-        ) : null}
-      </div>
-
-      {actions ? (
-        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 border-t border-border/35 py-2">
-          {actions}
         </div>
       ) : null}
 

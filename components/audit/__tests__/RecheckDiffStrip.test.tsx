@@ -10,7 +10,7 @@ const flag = {
 }
 
 describe('RecheckDiffStrip', () => {
-  it('summarizes absences without claiming the Flag was fixed or verified', () => {
+  it('summarizes Fixed absences without claiming verification', () => {
     render(
       <RecheckDiffStrip
         summary={{
@@ -23,14 +23,12 @@ describe('RecheckDiffStrip', () => {
       />,
     )
 
-    expect(screen.getByText(/1 no longer observed/i)).toBeInTheDocument()
-    expect(screen.queryByText(/Flag fixed/i)).not.toBeInTheDocument()
-    expect(
-      screen.getByText(/Verification receipts show whether an attempted Improvement worked/i)
-    ).toBeInTheDocument()
+    expect(screen.getByText(/1 Fixed/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /What Fixed means/i })).toBeInTheDocument()
+    expect(screen.queryByText(/verified/i)).not.toBeInTheDocument()
   })
 
-  it('names PARTIAL capture when inconclusive Flags cannot be credited as clears', () => {
+  it('names PARTIAL capture when inconclusive Flags cannot be credited as Fixed', () => {
     render(
       <RecheckDiffStrip
         childPartial
@@ -44,7 +42,7 @@ describe('RecheckDiffStrip', () => {
       />,
     )
 
-    expect(screen.getByText(/partial capture/i)).toBeInTheDocument()
-    expect(screen.getByText(/cannot credit clears/i)).toBeInTheDocument()
+    expect(screen.getByText(/not fully re-checked/i)).toBeInTheDocument()
+    expect(screen.getByText(/cannot credit Fixed/i)).toBeInTheDocument()
   })
 })

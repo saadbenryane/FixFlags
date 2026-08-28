@@ -97,13 +97,12 @@ export function AuditPageActions({
       {canManage && variant !== 'update' && compareAuditId ? (
         <Button
           variant="outline"
-          size="default"
-          className="min-h-11 rounded-[var(--radius-control)]"
+          size="icon"
+          className="min-h-11 min-w-11 rounded-[var(--radius-control)]"
           asChild
         >
-          <Link href={`/compare/${compareAuditId}`}>
+          <Link href={`/compare/${compareAuditId}`} aria-label={RECHECK_DIFF_COPY.compareCta}>
             <ArrowLeftRight className="h-4 w-4" aria-hidden />
-            {RECHECK_DIFF_COPY.compareCta}
           </Link>
         </Button>
       ) : null}

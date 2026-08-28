@@ -95,4 +95,21 @@ describe('AuditPageActions access projection', () => {
       expect(routerReplace).toHaveBeenCalledWith('/report/child-1')
     })
   })
+
+  it('offers icon-only Compare next to Update review for owners with a compare target', () => {
+    render(
+      <AuditPageActions
+        {...baseProps}
+        isLoggedIn
+        isOwner
+        compareAuditId="child-1"
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Update review' })).toBeInTheDocument()
+    const compare = screen.getByRole('link', { name: 'Compare' })
+    expect(compare).toBeInTheDocument()
+    expect(compare).toHaveAttribute('href', '/compare/child-1')
+    expect(compare.textContent?.trim()).toBe('')
+  })
 })

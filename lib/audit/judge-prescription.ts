@@ -128,7 +128,7 @@ function validateFixQuality(
     fix: string
     evidence: string
     whyItMatters: string
-    agentPrompt?: string
+    agentPrompt?: string | null
     verificationRule: string
   },
   existing?: ExistingFlagForPrescription

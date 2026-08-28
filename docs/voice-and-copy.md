@@ -23,7 +23,8 @@ This document preserves the operator voice principles from the design system spe
 - **Industry vernacular:** *paste into Cursor*, *what's broken*, *before you share the link*, *copy the fix*, *update review*, *product review*.
 - **Copy is a handoff:** `Copy` means the user sent a fix prompt to their builder. It never means the change worked.
 - **Verification is receipt-bound:** Only an `IMPROVED` receipt from a fresh completed update review may say an Improvement is verified or improved.
-- **Raw review absence:** Say “No longer observed in this review.” Do not turn absence alone into “Fixed,” “Verified,” or “Improved.”
+- **Fixed (update-review absence):** Customer bucket for Flags not observed on pages that were fully re-checked. Tooltip/help: “Not observed in this update review.” Do not equate Fixed with “Verified” or “Improved.”
+- **Verification receipts:** Only `IMPROVED` may say verified. Raw receipt absence copy may still say “No longer observed in this review.”
 - **Honest uncertainty:** `INCONCLUSIVE`, `UNCHANGED`, and `REGRESSED` keep their coverage, evidence, and remaining risk visible.
 - **Metering:** Every signed-in manual update review uses one product-review credit. Do not promise a hidden free update review or unlimited update reviews.
 

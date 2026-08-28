@@ -53,7 +53,7 @@ It records one idempotent `HANDOFF_COPIED` event.
 The web report, MCP, and CLI use the same strict verification receipts.
 Only receipt outcome `IMPROVED` may say an Improvement is verified or improved and write verified Product Memory.
 `INCONCLUSIVE`, `UNCHANGED`, and `REGRESSED` must preserve coverage, evidence, and remaining risk.
-A Flag absent from a raw child review is “No longer observed in this review,” not verified.
+A Flag absent from a child update review is **Fixed** when every page that owned that Flag was fully re-checked on the child. Fixed means not observed on comparable pages, not verified. Only receipt outcome `IMPROVED` may say an Improvement is verified. Product-scoped Flags with no page still require a FULL child review. Absences whose pages were not fully re-checked stay Inconclusive.
 Partial or degraded reviews never create verified Product Memory.
 
 `/report/[id]/details` redirects to `/report/[id]`. Shared and sample detail URLs likewise redirect to their canonical report surfaces.
