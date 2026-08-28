@@ -4,7 +4,7 @@ _Active tasks. One owner per scope. Archive completed records._
 
 | Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| report-finish-tight | in-progress | composer | main | Outcome cards, remove Compare, Top Flags tooltip, capture Fixed, ship | RecheckDiffStrip, AuditPageActions, compare redirect, diff-flags | Plan report_finish_tight | 2026-08-28 |
+| report-finish-tight | review | composer | main | Outcome cards, remove Compare, Top Flags tooltip, capture Fixed, ship | RecheckDiffStrip, AuditPageActions, compare redirect, diff-flags | Deploy `6f4683e7` live; owner Update review for Fixed proof — session `.agents/sessions/2026-08-28-report-finish-tight.md` | 2026-08-28 |
 | report-trust-polish-game-on | review | composer | main | Flush report canvas, single outcome band, capture-comparable Fixed, prod dogfood | audit-shell, SplitShell, RecheckDiffStrip, diff-flags, run-page | Superseded by report-finish-tight | 2026-08-28 |
 | report-chrome-fixed-game-on | review | composer | main | Icon Compare, history row, Fixed bucket+tooltip, page-comparable clears, prod deploy a1991098 | OutcomeBar, AuditPageActions, RecheckDiffStrip, diff-flags | Deploy live; owner Update review still needed for Fixed dogfood — session `.agents/sessions/2026-08-28-report-chrome-fixed.md` | 2026-08-28 |
 | update-review-trust-game-on | review | composer | main | PARTIAL trust copy, prescription reliability, Compare IA next to Update review | diff-flags, OutcomeBar, run-ai-review, compare, RecheckDiffStrip | Session `.agents/sessions/2026-08-27-update-review-trust.md`; focused tests + accuracy:eval green | 2026-08-28 |
