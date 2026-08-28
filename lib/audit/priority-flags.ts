@@ -400,7 +400,7 @@ export function resolveFixConfidence(flag: RankableFlag): FixConfidence {
 /**
  * Copyable agent prompt: finding lead, reviewed page, then ranked issues.
  * Defaults to every Flag that has a prompt. Pass `limit` only for transport-specific
- * Finish Plan truncation (MCP/CLI still use `buildFinishPlan`).
+ * Finish Plan truncation (MCP/CLI still use the legacy finish-plan builder).
  */
 export function buildPlanModePrompt(
   flags: RankableFlag[],
