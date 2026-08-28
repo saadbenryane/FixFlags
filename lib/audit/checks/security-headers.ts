@@ -486,7 +486,7 @@ export function runSecurityHeaderChecks(
       confidence: 1.0,
       source: 'DETERMINISTIC' as const,
     }
-    // When cores are missing, one Flag is enough — do not also emit a hardening
+    // When cores are missing, one Flag is enough - do not also emit a hardening
     // rollup that would dominate Finish Plan / accuracy top-3 slots.
     return [consolidated]
   }

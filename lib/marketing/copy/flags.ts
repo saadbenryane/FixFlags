@@ -17,7 +17,7 @@ export const RECHECK_DIFF_COPY = {
   newIssues: 'New',
   regressed: 'Regressed',
   inconclusive: 'Inconclusive',
-  /** Short muted note under the summary line — not a second hero banner. */
+  /** Short muted note under the summary line - not a second hero banner. */
   inconclusiveNotePartial: (count: number) =>
     `${count} ${count === 1 ? 'Flag needs' : 'Flags need'} pages that were not re-checked in this review before Fixed can be credited.`,
   inconclusiveNoteGeneric: (count: number) =>

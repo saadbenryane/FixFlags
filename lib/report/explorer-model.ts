@@ -132,7 +132,7 @@ export interface ReportExplorerModel {
   allHighlights: EvidenceHighlight[]
   previewMeta: PreviewMeta | null
   coverageSentence: string | null
-  /** True when capture was partial — show coveragePartialTooltip next to the links sentence. */
+  /** True when capture was partial - show coveragePartialTooltip next to the links sentence. */
   coveragePartial: boolean
   /** Per-flag capture pairs when priorities span multiple source reviews. */
   capturesByFlagId?: Record<

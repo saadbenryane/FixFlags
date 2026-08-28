@@ -33,7 +33,7 @@ Focus on the PRIMARY conversion path. Do not flag minor cosmetic issues. Focus o
 Broken-promise rules:
 9. Every broken promise must quote visible on-page strings in evidence (headline, CTA, or section text from the step).
 10. Do not invent commercial expectations (pricing packages, service menus, free trial, signup) unless the journey type and page evidence clearly promise them.
-11. On personal, portfolio, advisory, docs, or OSS sites, judge the contact/lead path — not SaaS pricing or signup completeness.
+11. On personal, portfolio, advisory, docs, or OSS sites, judge the contact/lead path - not SaaS pricing or signup completeness.
 12. If the destination headline or primary CTA already matches the prior step’s CTA words, do not emit a broken promise.`
 }
 

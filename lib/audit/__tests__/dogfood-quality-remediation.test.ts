@@ -147,7 +147,7 @@ describe('personal page purpose with contact CTAs', () => {
   it('classifies portfolio sites with booking CTAs as article, not marketing', () => {
     const result = detectPagePurpose(
       healthyMeta({
-        title: "I'm Saad — product and brand",
+        title: "I'm Saad - product and brand",
         h1s: ["I'm Saad Benryane"],
         ctaTexts: ['Start a project', 'Book a call', 'Get in touch'],
         navLandmarkCount: 2,

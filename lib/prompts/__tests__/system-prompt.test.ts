@@ -145,6 +145,11 @@ describe('system-prompt triage contract', () => {
       whyItMatters: 'Visitors bounce without an outcome.',
       fix: 'Name the audience and outcome in the H1.',
       agentPrompt: 'Replace the H1 with an audience-and-outcome statement.',
+      cursorPrompt: null,
+      claudePrompt: null,
+      windsurfPrompt: null,
+      lovablePrompt: null,
+      boltPrompt: null,
       verificationRule: 'Reload the page and read the H1.',
     })
     assert.equal(parsed.agentPrompt?.includes('http'), false)

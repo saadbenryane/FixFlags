@@ -19,7 +19,7 @@ export async function resumeOrCreateSession(input: {
   auditId?: string | null
   visitorName?: string | null
   visitorEmail?: string | null
-  /** Required to create a new session — never persist empty OPEN rows. */
+  /** Required to create a new session - never persist empty OPEN rows. */
   firstMessage?: string | null
 }) {
   const tenant = await getDefaultSupportTenant()

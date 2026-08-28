@@ -244,7 +244,7 @@ export function AuditReport({
   })
   const showFeedback = workspace.capabilities.canGiveFeedback
   const unresolvedFlagCount = workspace.outcome.unresolvedCount
-  // Deterministic Tasks still copy when AI enrichment failed — do not scare the owner
+  // Deterministic Tasks still copy when AI enrichment failed - do not scare the owner
   // with a Fix-prompts hero unless nothing usable exists at all.
   const hasUsableFixPrompts = audit.flags.some(flagHasFixPrompt)
   const showPrescriptionFailureHero = Boolean(prescriptionFailed && !hasUsableFixPrompts)

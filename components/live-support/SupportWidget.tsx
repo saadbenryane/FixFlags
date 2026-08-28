@@ -28,7 +28,7 @@ function SupportWidgetInner() {
   const unread = data?.session?.unreadByVisitor ?? 0
 
   function openPanel() {
-    // UI only — session is created on first visitor message in SupportChatPanel.
+    // UI only - session is created on first visitor message in SupportChatPanel.
     openSupportChat({ auditId: resolvedAuditId })
   }
 

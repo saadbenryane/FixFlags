@@ -82,7 +82,7 @@ function pageIsReobservationComparable(page: ChildPageCoverage | undefined): boo
     return false
   }
   // COMPLETED = captured (post capture/PSI split). PARTIAL status historically
-  // meant the page ran but optional evidence (e.g. PageSpeed) was incomplete —
+  // meant the page ran but optional evidence (e.g. PageSpeed) was incomplete -
   // still a fair re-observation for Flag absence.
   return page.status === 'COMPLETED' || page.status === 'PARTIAL'
 }
@@ -90,7 +90,7 @@ function pageIsReobservationComparable(page: ChildPageCoverage | undefined): boo
 /**
  * Credit Fixed when the Flag is absent and every page that owned it was
  * re-observed on the child. PageSpeed gaps may leave completeness PARTIAL and
- * the audit PARTIAL — that does not block Fixed. Product-scoped Flags (no page)
+ * the audit PARTIAL - that does not block Fixed. Product-scoped Flags (no page)
  * still need audit-level FULL. Never invent clears for pages that were not run.
  */
 export function isPageComparableAbsence(input: {

@@ -23,7 +23,7 @@ export const AUDIT_ERRORS = {
   notHtml: 'This URL did not return a normal web page. Check the link and try again.',
   aiReviewFailed: 'AI review could not finish. Try again.',
   partialAiReview:
-    'Enhanced Fix prompts could not finish. Deterministic Tasks and evidence are still shown below — use Copy prompt when a Task is available.',
+    'Enhanced Fix prompts could not finish. Deterministic Tasks and evidence are still shown below - use Copy prompt when a Task is available.',
   partialAiReviewContract:
     'Enhanced Fix prompts failed a quality check and were skipped. Deterministic Tasks and evidence are still shown below.',
   triageDegradedAnonymous:

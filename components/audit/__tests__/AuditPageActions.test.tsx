@@ -96,7 +96,7 @@ describe('AuditPageActions access projection', () => {
     })
   })
 
-  it('does not offer Compare — outcome cards under history cover what changed', () => {
+  it('does not offer Compare - outcome cards under history cover what changed', () => {
     render(
       <AuditPageActions
         {...baseProps}
