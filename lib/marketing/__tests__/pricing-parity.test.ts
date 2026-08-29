@@ -72,9 +72,11 @@ describe('pricing parity', () => {
     const studio = PLANS.find((plan) => plan.plan === 'TEAM')!
 
     expect(pro.features.join('\n')).toMatch(/history across releases/i)
-    expect(pro.features.join('\n')).toMatch(/compare releases/i)
+    expect(pro.features.join('\n')).toMatch(/update-review outcomes/i)
+    expect(pro.features.join('\n')).toMatch(/logged-in review on your computer \(waitlisted\)/i)
     expect(studio.features.join('\n')).toMatch(/scheduled reviews/i)
     expect(studio.features.join('\n')).toMatch(/invite people/i)
+    expect(studio.features.join('\n')).toMatch(/logged-in review on your computer \(waitlisted\)/i)
     expect(studio.accountModel).toMatch(/unlimited workspace seats.*limited time/i)
   })
 
@@ -122,18 +124,19 @@ describe('pricing parity', () => {
 
     expect(free.features).toContain('This page, plus every public link to see if it loads')
     expect(pro.features).toContain('This page and every public page it links to')
-    expect(pro.features).toContain('Logged-in review on your computer')
+    expect(pro.features).toContain('Logged-in review on your computer (waitlisted)')
     expect(studio.features).toContain('This page, its linked pages, and one level beyond')
-    expect(studio.features).toContain('Logged-in review on your computer')
+    expect(studio.features).toContain('Logged-in review on your computer (waitlisted)')
 
     const howFar = PRICING_FAQ.find((entry) => entry.question === 'How far does a review go?')
     expect(howFar?.answer).toMatch(/page you paste/i)
     expect(howFar?.answer).toMatch(/linked pages/i)
-    expect(howFar?.answer).toMatch(/logged-in review on your computer/i)
+    expect(howFar?.answer).toMatch(/logged-in review on your computer is waitlisted NEXT/i)
 
     const surfaces = JSON.stringify({ PLANS, PRICING, PRICING_FAQ })
     expect(surfaces).not.toMatch(/\b(hops?|crawler|layers?)\b/i)
     expect(surfaces).not.toMatch(/deep review/i)
+    expect(surfaces).not.toMatch(/Compare releases/i)
 
     const comparison = readFileSync(
       join(process.cwd(), 'components/pricing/PricingComparisonTable.tsx'),

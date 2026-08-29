@@ -90,7 +90,6 @@ export {
   canUseApiKeys,
   canAccessBasicMcp,
   canAccessMonitoring,
-  canAccessCompare,
   canSharePublicly,
   canExportSummary,
   getEntitlements,

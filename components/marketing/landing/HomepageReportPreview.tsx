@@ -2,17 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
-import type { PreviewDevice } from '@/components/report/preview-device'
-import type { WorkspacePanelView } from '@/components/report/WorkspaceViewTabs'
 import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
 import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
 import { ReportPane } from '@/components/report/ReportPane'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
-import { buildPlaybackSteps } from '@/lib/audit/playback-steps'
 import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 import { DEMO_BRAND } from '@/lib/demo/brand'
-import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
-import { explorerScreenshots } from '@/lib/report/explorer-model'
 import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
 import { MeProvider } from '@/hooks/useMe'
@@ -26,8 +21,6 @@ const story = LANDING_PAGE.sampleReport.story
 /**
  * Marketing frame keeps its rounded card. Overflow lives on this wrapper so
  * both panes clip to the radius; the editor shell itself stays flush.
- * The fixed editor height stops the section from jumping when the story
- * swaps the desktop and mobile capture.
  */
 const STORY_FRAME_CLASS =
   'isolate overflow-hidden rounded-card bg-background shadow-glass-hero ring-1 ring-border/55 lg:h-[38rem]'
@@ -40,10 +33,9 @@ function storyStatus(phase: number): string {
 }
 
 /**
- * Curated homepage emulation of the living review editor. It replays one
- * snapshot of the demo Product through the deterministic scan messages and
- * never starts a real scan. The first toggle click hands control to the
- * visitor and settles the replay on the completed review.
+ * Curated homepage emulation of the Agent|Report editor. It replays one
+ * snapshot of the demo Product through deterministic scan messages and never
+ * starts a real scan. Preview/Timeline playback props are not used.
  */
 export function HomepageReportPreview({
   model,
@@ -52,9 +44,6 @@ export function HomepageReportPreview({
 }) {
   const [phase, setPhase] = useState(0)
   const [playing, setPlaying] = useState(true)
-  const [chosenView, setChosenView] = useState<WorkspacePanelView | null>(null)
-  const [chosenDevice, setChosenDevice] = useState<PreviewDevice | null>(null)
-  const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null)
 
   const selectedFlag =
     model.explorer.flags.find(
@@ -62,11 +51,6 @@ export function HomepageReportPreview({
     ) ??
     model.explorer.flags.find((flag) => flag.severity === 'CRITICAL') ??
     model.explorer.flags[0]
-
-  const steps = useMemo(
-    () => buildPlaybackSteps(getStaticSampleAudit().actionTimeline ?? []),
-    [],
-  )
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -110,60 +94,22 @@ export function HomepageReportPreview({
     [phase, selectedFlag],
   )
 
-  const screenshots = useMemo(
-    () => explorerScreenshots(model.explorer),
-    [model.explorer],
-  )
-
-  const storyView: WorkspacePanelView = phase >= 3 ? 'report' : 'browser'
-  const storyDevice: PreviewDevice =
-    phase >= 2 && selectedFlag?.affectedDevices.includes('mobile')
-      ? 'mobile'
-      : 'desktop'
-  const view = chosenView ?? storyView
-  const device = chosenDevice ?? storyDevice
   const capturing = phase < LAST_PHASE && playing
 
-  const takeOver = () => {
-    if (!playing) return
-    setPlaying(false)
-    setPhase(LAST_PHASE)
-    setChosenView((current) => current ?? view)
-  }
-
   return (
-    <div className={STORY_FRAME_CLASS}>
+    <div
+      className={STORY_FRAME_CLASS}
+      onPointerDown={() => {
+        if (!playing) return
+        setPlaying(false)
+        setPhase(LAST_PHASE)
+      }}
+    >
       <ReportWorkspaceSplitShell
         ariaLabel={story.label}
-        browserUrl={model.identity.url ?? DEMO_BRAND.sampleUrl}
-        browserScreenshots={screenshots}
-        controlledDevice={device}
-        onDeviceChange={(next) => {
-          takeOver()
-          setChosenDevice(next)
-        }}
-        controlledView={view}
-        onViewChange={(next) => {
-          takeOver()
-          setChosenView(next)
-        }}
         syncViewToUrl={false}
         initialMobileFocus="product"
         scanning={capturing}
-        capabilities={model.capabilities}
-        steps={steps}
-        activeStepIndex={activeStepIndex}
-        onSelectStep={(index) => {
-          takeOver()
-          setActiveStepIndex((current) => (current === index ? null : index))
-          setChosenView('browser')
-        }}
-        onScrub={(index) => {
-          takeOver()
-          setActiveStepIndex(index)
-          setChosenView('browser')
-        }}
-        onBackToLive={() => setActiveStepIndex(null)}
         className="h-full min-h-0"
         leftPanel={
           <WorkspaceChatPanel
@@ -177,18 +123,6 @@ export function HomepageReportPreview({
             scanning={capturing}
             showToolbarActions={false}
           />
-        }
-        previewOverlay={
-          phase === 2 && selectedFlag && playing ? (
-            <div className="absolute inset-x-6 bottom-6 rounded-[var(--radius-inner)] border-l-2 border-brand bg-background/95 p-4 shadow-raised ring-1 ring-border/55 backdrop-blur motion-safe:animate-soft-reveal sm:inset-x-auto sm:right-6 sm:max-w-sm">
-              <p className="text-xs font-semibold uppercase tracking-label text-brand">
-                {story.evidenceLabel}
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-foreground">
-                {selectedFlag.evidence || selectedFlag.whyItMatters}
-              </p>
-            </div>
-          ) : null
         }
         reportHeader={<ReportOutcomeBar model={model} />}
         reportPanel={

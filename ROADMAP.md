@@ -11,44 +11,31 @@ Descriptive spec for the report workspace chrome (not a priority stack). Full de
 | Region | Purpose |
 |--------|---------|
 | **Left — Chat** | Persistent conversation with FixFlags: steering, Flag Q&A, what to fix first, lightweight product corrections. Activity stream may live here or above chat. Cheap router model (not judge pipeline). |
-| **Right — Browser** | Dominant panel. Toggle **Browser view** vs **Report view** in the same workspace (not a separate route). |
-| **Bottom — Playback** | Timeline/scrub strip for path replay and step evidence. Syncs with browser when a path or Flag evidence is selected. |
+| **Right — Report** | Dominant panel. Public-safe Fix list and Flag detail. Preview, Timeline, and Canvas stay parked on `/report/[id]`. |
 
 ```mermaid
 flowchart TB
   subgraph workspace [ReportWorkspace]
     Chat[Left_Chat]
-    subgraph right [Right_Toggle]
-      BrowserView[BrowserView]
-      ReportView[ReportView]
-    end
-    Playback[Bottom_Playback]
+    ReportView[Right_Report]
   end
-  Chat --- right
-  right --- Playback
+  Chat --- ReportView
 ```
-
-### Browser view modes
-
-**Product review** — programmatic Playwright capture with screenshot-forward evidence (today’s pipeline). Live or stepped captures aligned to checks; not full agent autonomy.
-
-**Deep Review** — future repository-connected analysis that combines live-product evidence with source-code context. It remains parked with repository scanning and is not a current pricing feature.
 
 ### Report view
 
-Finish Plan surfaces: progress band, Fix list, Flag detail, Funnel, Contract, previews, update review affordances. Same review record; switching views does not lose context.
+Finish Plan surfaces: progress band, Fix list, Flag detail, Funnel where available, update review affordances. Durable Contract, Memory, Watch, and update-review outcome cards live on `/products/[id]`.
 
 ### Morph behavior
 
 - **During active review:** Agent left, public-safe Report right, and mobile defaults to Agent.
-- **After complete:** the same transcript and Report remain mounted. Authenticated Timeline and Canvas are secondary right-panel modes.
+- **After complete:** the same transcript and Report remain mounted. Preview, Timeline, and Canvas stay parked.
 
 Evolve `ReportWorkspaceShell` and progressive report parity; do not fork a second report app.
 
 ### Mobile
 
 Full parity uses the **Agent ↔ Report** primary switch.
-Authenticated Timeline uses the adapted inline playback layout on small screens.
 
 ### Customer labels
 
@@ -77,11 +64,11 @@ Product review, Update review, Funnel, Path, Fix list — from `lib/marketing/co
 - **Minimal native Product Signals** — origin-bound browser context for navigation, named actions/outcomes, runtime errors, Core Web Vitals, and releases, with strict privacy and 30-day raw retention.
   *Signal:* undeclared or sensitive fields are rejected; missing instrumentation never blocks URL Review; signals remain `OBSERVED` evidence until judgment uses them.
 
-- **Agent-led Report Workspace (release proof)** — Unified Agent transcript left; public-safe Report, authenticated Timeline, and Canvas right. Deterministic scan messages are free; authenticated model chat is metered monthly. Mobile uses Agent ↔ Report. Canon: [docs/workspace-interface.md](./docs/workspace-interface.md), [docs/product-prd.md](./docs/product-prd.md). Completion: [`.agents/sessions/agent-workspace-completion.md`](./.agents/sessions/agent-workspace-completion.md).
-  *Signal:* paste URL → truthful Agent updates on phone and desktop → complete public evidence report → authenticate into the same workspace → chat, Timeline, and Canvas → update review.
+- **Agent-led Report Workspace (release proof)** — Unified Agent transcript left; public-safe Report right. Preview, Timeline, and Canvas stay parked on `/report/[id]`. Deterministic scan messages are free; authenticated model chat is metered monthly. Mobile uses Agent ↔ Report. Canon: [docs/workspace-interface.md](./docs/workspace-interface.md), [docs/product-prd.md](./docs/product-prd.md). Completion: [`.agents/sessions/agent-workspace-completion.md`](./.agents/sessions/agent-workspace-completion.md).
+  *Signal:* paste URL → truthful Agent updates on phone and desktop → complete public evidence report → authenticate into the same workspace → chat → update review → Product outcome cards.
 
-- **Product Hunt completion release** — canonical complete Fix list workspace, deterministic curated sample, claim retry integrity, scoped share grants, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`. First-value dogfood: [`.agents/sessions/archive/customer-journey-completion-plan.md`](./.agents/sessions/archive/customer-journey-completion-plan.md).
-  *Signal:* anonymous URL → progressive evidence teaser with no prompts → successful claim → complete report, fix prompts, and Timeline → update review → diff → protected share → revoke.
+- **Product Hunt completion release** — canonical complete Fix list workspace, deterministic curated sample, claim retry integrity, public report evidence URL, responsive/accessibility checks, route guards, and release verification. Canonical acceptance contract: `knowledge/report-contract.md`. First-value dogfood: [`.agents/sessions/archive/customer-journey-completion-plan.md`](./.agents/sessions/archive/customer-journey-completion-plan.md).
+  *Signal:* anonymous URL → progressive evidence teaser with gated prompts → successful claim → complete report and fix prompts → update review → Product outcomes.
 
 - **Launch Check Completeness** — every unresolved Flag ranked in one report, Contract merge-not-wipe, Remember UI, claim→Project, dogfood twin suppressions, protected share honesty, and scheduled Product Watch. Board `current-product-completion`.
   *Signal:* Contract edit keeps learnings; Copy all fixes includes every unresolved prompt; watch enqueues FULL re-check; regression email on watched projects.

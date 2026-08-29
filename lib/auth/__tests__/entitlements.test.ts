@@ -22,7 +22,6 @@ import {
   canExportSummary,
   canScanRepositories,
   canAccessProductWatch,
-  canAccessCompare,
   canUseApiKeys,
   canAccessMonitoring,
   hasRevokedSubscriptionStatus,
@@ -288,24 +287,6 @@ describe('canUseApiKeys', () => {
 describe('canAccessMonitoring', () => {
   it('always returns true', () => {
     expect(canAccessMonitoring()).toBe(true)
-  })
-})
-
-describe('canAccessCompare', () => {
-  it('returns true for BUILDER plan', () => {
-    expect(canAccessCompare(makeUser({ plan: 'BUILDER' }))).toBe(true)
-  })
-
-  it('returns true for TEAM plan', () => {
-    expect(canAccessCompare(makeUser({ plan: 'TEAM' }))).toBe(true)
-  })
-
-  it('returns true for FREE plan', () => {
-    expect(canAccessCompare(makeUser({ plan: 'FREE' }))).toBe(true)
-  })
-
-  it('returns true for admin', () => {
-    expect(canAccessCompare(makeUser({ role: 'admin', plan: 'FREE' }))).toBe(true)
   })
 })
 

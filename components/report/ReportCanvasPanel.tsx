@@ -1,5 +1,11 @@
 'use client'
 
+/**
+ * PARKED: not mounted on the live Agent|Report shell.
+ * Keep for a future Canvas unpark. Do not rewire into ReportWorkspaceSplitShell
+ * without an explicit product decision.
+ */
+
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { RotateCcw } from 'lucide-react'

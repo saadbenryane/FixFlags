@@ -112,11 +112,11 @@ Paste your live URL. FixFlags tests the paths that matter, shows exactly where t
 5. User pastes fix prompts into their AI editor.
 6. User ships fixes.
 7. User runs an update review on the same URL (metered; uses a product review credit).
-8. User sees before/after comparison and cleared Flags.
+8. User sees what changed on the Product page: Fixed / Still open / New / Regressed / Inconclusive outcome cards under Review history, plus score history.
 9. User upgrades to Pro or Studio when they need more monthly reviews.
 10. User enables scheduled Watch for recurring regression detection.
 
-Steps 4-10 are the differentiator. Update review plus compare is the habit loop.
+Steps 4-10 are the differentiator. Update review plus Product outcomes is the habit loop.
 
 ### Durable Improvement cycle
 
@@ -151,7 +151,7 @@ Pro and Studio remain waitlist-gated while checkout stays in test mode.
 | Plan                | Price  | Product reviews | Products  | Added value                                                          |
 | ------------------- | ------ | --------------- | --------- | -------------------------------------------------------------------- |
 | **Free**            | $0     | 3/month         | 1         | This page plus every public link; Flags, evidence, fix prompts, public report link |
-| **Pro** (`BUILDER`) | $29/mo | 30/month        | Up to 5   | Linked public pages, product history, release comparison. Logged-in review on your computer is waitlisted NEXT |
+| **Pro** (`BUILDER`) | $29/mo | 30/month        | Up to 5   | Linked public pages, product history, update-review outcomes. Logged-in review on your computer is waitlisted NEXT |
 | **Studio** (`TEAM`) | $79/mo | 90/month        | Unlimited | One level beyond linked pages, scheduled reviews, workspace. Logged-in review on your computer is waitlisted NEXT |
 
 New URLs, update reviews, and completed scheduled Watch reviews use the same monthly product review allowance.
@@ -167,9 +167,9 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 - Anonymous visitors receive deterministic FixFlags Agent updates, the progressive and completed Report, all confirmed Flags, screenshots, and public-safe evidence without a blocking authentication overlay.
 - The live report uses the same product chrome as a signed-in completed review: brand Sign up CTA, app rail, and Agent composer. Private destinations open create-account in place. Signing in does not grant another person’s chat.
 - Live anonymous reports show the same Fix Prompt and Copy chrome as an owner report. The prompt body stays empty until claim. Copy and the Fix Prompt control open create-account and never write the clipboard.
-- Interactive Agent chat, prompt bodies, Timeline playback, account history, Product Memory, update reviews, Canvas, and export remain server-gated.
-- The default live report route is Agent beside Report. Timeline, Preview, and Canvas stay parked on `/report/[id]` and are not loaded there.
-- Timeline playback remains a shipped capability for entitled viewers off that default route. Curated samples expose only their versioned static Timeline fixtures.
+- Interactive Agent chat, prompt bodies, account history, Product Memory, update reviews, and export remain server-gated.
+- The default live report route is Agent beside Report. Timeline, Preview, and Canvas stay parked on `/report/[id]`, are not loaded there, and are not customer-reachable elsewhere until unparked.
+- Curated samples may keep versioned static Timeline fixtures for demo playback only. They are not a live Timeline product surface.
 - Curated samples expose exactly one demonstrated fix prompt and no aggregate Finish Plan prompt.
 - Authentication returns through `/post-login`, verifies the signed anonymous claim, claims the review when an anonymous cookie is present, and then continues to passkey enrollment or the destination. A successful claim with zero attachments (plain login, nothing to claim) continues; only a failed claim stays on the recovery screen with retry and continue.
 - Anonymous API responses never expose gated prompts, and access control never persists gate copy into Flag evidence or fix fields.
@@ -182,18 +182,19 @@ Detail: `docs/business-model.md`, `lib/marketing/copy/terminology.ts`.
 - 1 Product
 - Each review fully reviews the pasted page and checks every public link
 - Interactive report Agent with 25,000 input-plus-output tokens per calendar month
-- Saved review history and authenticated Timeline playback
-- CTA flow test (automated click-through with before/after screenshots)
-- Preview cards (Google snippet + social link preview)
+- Saved review history on the Product page
+- CTA flow test (automated click-through with capture evidence)
+- Preview cards (Google snippet + social link preview checks)
 - Fix prompts tuned for Cursor, Claude Code, Lovable, Bolt
-- Review changes, public report links, Canvas, and Product Signals
+- Update-review outcomes on the Product page, public report links, and Product Signals
+- Browser Preview, Timeline playback, and Canvas stay parked (not loaded on the live report)
 
 ### Pro ($29/mo) — `BUILDER` in schema
 
 - 30 product reviews per month
 - Up to 5 Products
 - Each review covers this page and every public page it links to
-- Product history across releases and release comparison
+- Product history across releases and update-review outcomes (what Fixed / still open / new)
 - Logged-in review on your computer is waitlisted NEXT, not shipped
 - 500,000 Agent chat tokens per calendar month
 

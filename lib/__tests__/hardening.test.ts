@@ -1,7 +1,6 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
 import {
-  canAccessCompare,
   canExportSummary,
   canScanRepositories,
   canSharePublicly,
@@ -134,33 +133,6 @@ describe('canScanRepositories', () => {
 describe('plan limits', () => {
   it('sets Free to 3 checks per monthly usage period', () => {
     assert.equal(scanLimitForPlan('FREE'), 3)
-  })
-})
-
-describe('canAccessCompare', () => {
-  const freeUser = {
-    id: 'u1',
-    role: 'user' as const,
-    plan: 'FREE' as const,
-    subscriptionStatus: 'NONE' as const,
-  }
-  const builderUser = {
-    id: 'u1',
-    role: 'user' as const,
-    plan: 'BUILDER' as const,
-    subscriptionStatus: 'ACTIVE' as const,
-  }
-
-  it('allows paid users', () => {
-    process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(canAccessCompare(builderUser), true)
-    delete process.env.DEV_SIMULATE_BILLING
-  })
-
-  it('allows free authenticated users to compare', () => {
-    process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(canAccessCompare(freeUser), true)
-    delete process.env.DEV_SIMULATE_BILLING
   })
 })
 

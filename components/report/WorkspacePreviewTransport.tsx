@@ -27,6 +27,10 @@ interface WorkspacePreviewTransportProps {
 const TRANSPORT_HEIGHT_CLASS = 'h-12'
 
 /**
+ * PARKED: not mounted on the live Agent|Report shell (`/report/[id]`).
+ * Keep for a future Preview unpark. Do not rewire into ReportWorkspaceSplitShell
+ * without an explicit product decision.
+ *
  * Docked timeline transport under the Product stage.
  * A horizontal line with dot markers at each step position, like a video
  * timeline. Scrubbing happens by clicking dots or dragging along the track.

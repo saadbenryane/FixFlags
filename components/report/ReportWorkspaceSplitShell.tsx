@@ -3,50 +3,27 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { FileText, MessageSquare } from 'lucide-react'
-import type { WorkspacePanelView } from '@/components/report/WorkspaceViewTabs'
-import type { PlaybackStep } from '@/lib/audit/playback-steps'
 import { WorkspaceMobileTabs } from '@/components/report/WorkspaceMobileTabs'
 import {
   WORKSPACE_PANEL_HEADER_CLASS,
   WORKSPACE_PANE_SCROLL_CLASS,
   WORKSPACE_SPLIT_GRID_CLASS,
 } from '@/components/report/workspace-geometry'
-import type {
-  AuditScreenshot,
-  ScreenshotCaptureStatus,
-} from '@/lib/audit/screenshot-types'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
-import type { ReportWorkspaceCapabilities } from '@/lib/report/workspace-model'
-import type { PreviewDevice } from '@/components/report/preview-device'
 
 interface ReportWorkspaceSplitShellProps {
   ariaLabel?: string
-  isActiveReview?: boolean
   scanning?: boolean
   leftPanel: ReactNode
-  browserUrl: string
-  browserScreenshots?: AuditScreenshot[]
-  browserCaptureStatus?: ScreenshotCaptureStatus | null
   reportHeader?: ReactNode
   reportPanel: ReactNode
-  findingCount?: number
-  steps: PlaybackStep[]
-  controlledView?: WorkspacePanelView
-  onViewChange?: (view: WorkspacePanelView) => void
-  controlledDevice?: PreviewDevice
-  onDeviceChange?: (device: PreviewDevice) => void
-  activeStepIndex?: number | null
-  onSelectStep?: (index: number) => void
-  onScrub?: (index: number) => void
-  onBackToLive?: () => void
+  /** When provided, used only to delay `data-workspace-ready` until controlled state settles on Report. */
+  controlledView?: 'report' | string
+  onViewChange?: (view: 'report') => void
   syncViewToUrl?: boolean
   initialMobileFocus?: MobileFocus
-  previewOverlay?: ReactNode
   footer?: ReactNode
-  capabilities: ReportWorkspaceCapabilities
-  timelineGateActionHref?: string
-  canvasPanel?: ReactNode
   className?: string
 }
 
@@ -80,7 +57,6 @@ export function ReportWorkspaceSplitShell({
   const productPanelId = `${shellId}-product-panel`
   const mobileTabsId = `${shellId}-mobile-tab`
   const requestedView = searchParams?.get('view') ?? null
-  const view: WorkspacePanelView = 'report'
   const [hydrated, setHydrated] = useState(false)
   const [mobileFocus, setMobileFocus] = useState<MobileFocus>(
     initialMobileFocus ?? (scanning ? 'chat' : 'product')
@@ -143,7 +119,7 @@ export function ReportWorkspaceSplitShell({
     {
       id: `${mobileTabsId}-report`,
       label: REPORT_COPY.workspace.panels.productTab,
-      selected: mobileFocus === 'product' && view === 'report',
+      selected: mobileFocus === 'product',
       onSelect: () => chooseMobileFocus('product'),
       controls: productPanelId,
       icon: <FileText className="h-3.5 w-3.5" aria-hidden />,

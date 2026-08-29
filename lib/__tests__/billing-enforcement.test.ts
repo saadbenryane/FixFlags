@@ -25,7 +25,6 @@ import {
   shouldEnforcePlanGates,
   canAccessPaidFeatures,
   canUseApiKeys,
-  canAccessCompare,
   getEntitlements,
 } from '@/lib/auth/entitlements'
 import { CREDIT_PACKS, getCreditPack } from '@/lib/billing/credits'
@@ -360,26 +359,6 @@ describe('canUseApiKeys', () => {
   it('allows MCP API keys for admins', () => {
     _env.NODE_ENV = 'production'
     assert.equal(canUseApiKeys(gateUser('FREE', 'admin')), true)
-  })
-})
-
-// ── canAccessCompare ──────────────────────────────────────────────
-
-describe('canAccessCompare', () => {
-  it('allows free authenticated users when gates enforce', () => {
-    _env.NODE_ENV = 'production'
-    assert.equal(
-      canAccessCompare({ id: 'u1', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' }),
-      true
-    )
-  })
-
-  it('allows paid users', () => {
-    _env.NODE_ENV = 'production'
-    assert.equal(
-      canAccessCompare({ id: 'u2', role: 'user', plan: 'BUILDER', subscriptionStatus: 'ACTIVE' }),
-      true
-    )
   })
 })
 

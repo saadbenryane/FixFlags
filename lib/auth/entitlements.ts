@@ -94,13 +94,6 @@ export function canAccessMonitoring(): boolean {
   return true
 }
 
-export function canAccessCompare(
-  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
-): boolean {
-  void user
-  return true
-}
-
 export interface UserEntitlements {
   reportTier: ReportTier
   canSharePublicly: boolean

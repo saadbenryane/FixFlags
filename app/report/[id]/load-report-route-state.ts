@@ -5,7 +5,7 @@ import {
   resolveActiveAttachedWorkId,
 } from '@/lib/audit/fetch-audit'
 import { prisma } from '@/lib/db'
-import { getEntitlements, canAccessCompare, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
+import { getEntitlements, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { isAtCheckLimit } from '@/lib/audit/usage'
 import { isPublicMarketingSample } from '@/lib/audit/report-access'
@@ -285,17 +285,6 @@ export async function loadReportRouteState(
       })
     : null
 
-  const compareMonitoringAudit = audit.parentId
-    ? { parentId: audit.parentId, userId: session?.user?.id ?? null }
-    : latestMonitoring
-      ? { parentId: id, userId: session?.user?.id ?? null }
-      : null
-
-  const canAccessCompareView =
-    user && compareMonitoringAudit
-      ? canAccessCompare(user)
-      : false
-
   const viewerIsPaid = entitlements?.canAccessPaidFeatures ?? false
 
   if (audit.status === 'COMPLETED') {
@@ -449,7 +438,6 @@ export async function loadReportRouteState(
       scoreHistory,
       atAuditLimit,
       entitlements,
-      canAccessCompareView,
       viewerIsPaid,
       rubricRows,
       flags: canonicalFlags,

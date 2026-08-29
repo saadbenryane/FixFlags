@@ -34,7 +34,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Pipeline failures mid-audit | ✅ DONE | QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED. Fail at any step. Timeout halfway. Retry after crash. | `run-audit.test.ts` drives `runAudit` across every path |
 | Billing enforcement leaks | ✅ DONE | Free user gets 402 on paid endpoint. Paying user never gets blocked on owned features. | Route tests for api-keys + projects assert 402/allow |
 | API route contracts | 🔶 IMPORTANT | Critical path: 200/400/401/402/403/404 on checks, status, re-check, api-keys, projects | Critical path covered; remaining routes pending |
-| Rate limiting | 🔶 IMPORTANT | Anonymous: 1 teaser scan (cookie + IP soft ceiling). Free account: 3 lifetime new URL checks. Paid: plan limit. Redis outage fail-open is intentional availability tradeoff. | Partially implemented |
+| Rate limiting | 🔶 IMPORTANT | Anonymous: 1 teaser scan (cookie + IP soft ceiling). Free account: 3 product reviews per month. Paid: plan limit. Redis outage fail-open is intentional availability tradeoff. | Partially implemented |
 | Auth / session integrity | 🔶 IMPORTANT | Claim-before-next, entitlements, re-check never gated | Claim + redirect + monitoring tests; full login/logout E2E still open |
 | CI pipeline | ✅ DONE | CI and local full verification use `scripts/validate.mjs`. | GitHub Actions runs `npm run validate:full` plus browser journeys |
 | Migration safety | ⚠️ CRITICAL | `npm run verify` runs `db:check` + `db:drift`. Drift detection passes. | Passes |

@@ -4,7 +4,6 @@ import { prisma } from '../../db'
 import { User } from '@prisma/client'
 import { RUBRIC_ORDER } from '../../audit/constants'
 import { computeRubricsFromRows } from '../../audit/rubric'
-import { canAccessCompare } from '../../auth/entitlements'
 import { assertAuditAccess, assertMcpAccess } from '@/lib/mcp/access'
 import { buildAiFlagMatchKey } from '../../audit/validate-judge-output'
 import { classifyArbitraryReportFlagDiff } from '../../audit/diff-flags'
@@ -40,12 +39,6 @@ export function registerCompareTools(server: McpServer, user: User) {
       if (!before || !after) throw new Error('One or both reports not found')
       await assertAuditAccess(before, user.id)
       await assertAuditAccess(after, user.id)
-
-      const freshUser = await prisma.user.findUnique({ where: { id: user.id } })
-      if (!freshUser) throw new Error('User not found')
-      if (!canAccessCompare(freshUser)) {
-        throw new Error('Upgrade to Pro for before/after compare')
-      }
 
       const scoreDelta = (after.score ?? 0) - (before.score ?? 0)
 

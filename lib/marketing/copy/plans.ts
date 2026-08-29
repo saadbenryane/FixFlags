@@ -50,10 +50,10 @@ export const PLANS = [
     features: [
       'Up to 5 products',
       'Product history across releases',
-      'Compare releases and see what improved',
+      'Update-review outcomes: Fixed, still open, and new',
       'A public report link',
       'This page and every public page it links to',
-      'Logged-in review on your computer',
+      'Logged-in review on your computer (waitlisted)',
     ],
     cta: 'Join Pro waitlist',
     href: '/sign-up?plan=BUILDER',
@@ -76,7 +76,7 @@ export const PLANS = [
       'Unlimited workspace seats for a limited time',
       'Shared product history',
       'This page, its linked pages, and one level beyond',
-      'Logged-in review on your computer',
+      'Logged-in review on your computer (waitlisted)',
     ],
     cta: 'Join Studio waitlist',
     href: '/sign-up?plan=TEAM',
@@ -120,7 +120,7 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
   {
     question: 'Are screenshots stored?',
     answer:
-      'Yes. We store screenshots and page evidence needed to show Flags and before/after comparisons. See the Privacy Policy for retention details.',
+      'Yes. We store screenshots and page evidence needed to show Flags and update-review outcomes. See the Privacy Policy for retention details.',
     learnMore: {
       href: '/help/checks-and-reports/evidence-and-screenshots',
       label: 'Evidence and screenshots',
@@ -165,7 +165,7 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
   {
     question: 'How far does a review go?',
     answer:
-      'Every review fully reviews the page you paste and checks whether its public links load. Pro also reviews those linked pages. Studio reviews the next pages after that. Pro and Studio include logged-in review on your computer when those plans open.',
+      'Every review fully reviews the page you paste and checks whether its public links load. Pro also reviews those linked pages. Studio reviews the next pages after that. Logged-in review on your computer is waitlisted NEXT for Pro and Studio, not shipped yet.',
     learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
   },
   {

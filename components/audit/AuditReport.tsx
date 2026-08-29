@@ -140,7 +140,7 @@ export function AuditReport({
   canDailyWatch = false,
   watchInterval = null,
   atAuditLimit = false,
-  captureStatus = null,
+  captureStatus: _captureStatus = null,
   showPrescription = true,
   showDeterministicFixes = true,
   aiReviewPending = false,
@@ -406,7 +406,6 @@ export function AuditReport({
         >
           <Suspense fallback={null}>
             <ReportWorkspaceSplitShell
-              capabilities={workspace.capabilities}
               reportHeader={
                 <ReportOutcomeBar model={workspace} actions={actions} />
               }
@@ -421,11 +420,7 @@ export function AuditReport({
                   productName={productName}
                 />
               }
-              browserUrl={audit.url}
-              browserScreenshots={audit.screenshots}
-              browserCaptureStatus={captureStatus}
               reportPanel={livingReportPanel}
-              steps={[]}
               className="h-full"
             />
           </Suspense>
@@ -440,7 +435,6 @@ export function AuditReport({
     <div className="flex h-full min-h-[32rem] min-w-0 flex-col">
       <Suspense fallback={null}>
         <ReportWorkspaceSplitShell
-          capabilities={workspace.capabilities}
           reportHeader={
             <ReportOutcomeBar model={workspace} actions={actions} />
           }
@@ -453,11 +447,7 @@ export function AuditReport({
               productName={productName}
             />
           }
-          browserUrl={audit.url}
-          browserScreenshots={audit.screenshots}
-          browserCaptureStatus={captureStatus}
           reportPanel={livingReportPanel}
-          steps={[]}
           className="h-full min-h-[32rem]"
         />
       </Suspense>

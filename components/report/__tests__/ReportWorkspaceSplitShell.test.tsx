@@ -1,7 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
-import type { ReportWorkspaceCapabilities } from '@/lib/report/workspace-model'
 
 const values = new Map<string, string>()
 vi.mock('next/navigation', () => ({
@@ -12,29 +11,13 @@ vi.mock('next/navigation', () => ({
   }),
 }))
 
-const capabilities: ReportWorkspaceCapabilities = {
-  promptAccess: 'all',
-  canCopyPrompts: true,
-  canReplayTimeline: true,
-  canChat: true,
-  canUseCanvas: true,
-  canShare: true,
-  canExport: true,
-  canRecheck: true,
-  canGiveFeedback: true,
-  demonstratedFlagId: null,
-}
-
 function renderShell(scanning = false) {
   return render(
     <ReportWorkspaceSplitShell
       scanning={scanning}
       leftPanel={<div>Agent content</div>}
-      browserUrl="https://example.com"
       reportHeader={<div>Score and history</div>}
       reportPanel={<div>Report content</div>}
-      capabilities={capabilities}
-      steps={[]}
     />
   )
 }

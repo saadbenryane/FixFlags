@@ -58,7 +58,7 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 | Identity       | Product pane header and `WorkspaceChatPanel` | Product name with hostname fallback, reviewed address, and current review activity. No score.                                                             |
 | Review status  | `ReportOutcomeBar` (fixed Report header)     | Visible `Score N`, honest pending/unavailable state, chronological full-Review history, and scan progress while a review runs                             |
 | Working triage | `ReportExplorer` (Report body)               | Complete ranked Flag list plus rubric, severity, impact, and page filters; Critical Flags lead through canonical ranking rather than a duplicate shortcut |
-| Product page   | `/products/[id]` Product Intelligence        | Contract and compounding Product Memory live with Made with and Watch. Failed launch-gate checks appear as Flags in Your priorities. The report has no Review context drawer. |
+| Product page   | `/products/[id]` Product Intelligence        | Contract and compounding Product Memory live with Made with and Watch. Failed launch-gate checks appear as Flags in Your priorities. Update-review outcome cards sit under the score chart. The report has no Review context drawer. |
 
 The compact Review header is the single score surface.
 It uses one compact circular score with an accessible pending or unavailable label beside the chronological Review history.
@@ -77,7 +77,7 @@ Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
 **Product stage and transport:** Preview, Timeline, and Canvas stay parked on `/report/[id]`. The default Product pane is the Report: compact `ReportOutcomeBar` plus the ranked Fix list. Do not mount Preview stage, device toggle, or playback transport on that route. The immersive shell carries no floating support bubble.
 
 **Report pane:** Report mode uses a fixed compact `ReportOutcomeBar` with circular score, chronological Review history, and the owner Update review action.
-The shared `ReportPane` starts its ranked list with `Your priorities`, shows the five highest-ranked issues by default, and places the selected-issue evidence beside it without a separate filter bar.
+The shared `ReportPane` starts its ranked list with `Your priorities`, shows the five highest-ranked issues by default with Show more for the rest, and places the selected-issue evidence beside it without a separate filter bar.
 Each issue uses one desktop | mobile evidence pair. The prompt row (expandable `Fix Prompt` and branded copy on the right) sits under the Flag title and navigation, above that pair.
 The prompt expands in normal flow without a nested card.
 The web report does not render the aggregate Fix plan or a Review context disclosure.

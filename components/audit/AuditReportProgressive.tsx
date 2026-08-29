@@ -121,7 +121,7 @@ export function AuditReportProgressive({
   rubrics = [],
   partialFlags = [],
   screenshots = [],
-  screenshotCapture,
+  screenshotCapture: _screenshotCapture,
   workerIdle = false,
   productContract = null,
   sectionId = 'report-flags',
@@ -243,7 +243,6 @@ export function AuditReportProgressive({
   }, [url, pageType, score, partialFlags, screenshots, rubrics, isOwnerAccess])
 
   void productContract
-  const flagCount = explorerModel.flagCount
 
   // Live findings stream: deterministic flags become visible as their check
   // modules finish (persisted at CHECKS_DONE), so the progressive report shows
@@ -374,9 +373,7 @@ export function AuditReportProgressive({
   const scanWorkspace = (
     <Suspense fallback={null}>
       <ReportWorkspaceSplitShell
-        isActiveReview
         scanning
-        capabilities={workspace.capabilities}
         reportHeader={
           <ReportOutcomeBar
             model={workspace}
@@ -396,12 +393,7 @@ export function AuditReportProgressive({
             className="h-full"
           />
         }
-        browserUrl={url}
-        browserScreenshots={screenshots}
-        browserCaptureStatus={screenshotCapture}
         reportPanel={scanReportPanel}
-        findingCount={flagCount}
-        steps={[]}
         className="h-full"
       />
     </Suspense>
@@ -446,8 +438,6 @@ export function AuditReportProgressive({
         <div className="min-h-0 flex-1">
           <Suspense fallback={null}>
             <ReportWorkspaceSplitShell
-              isActiveReview
-              capabilities={workspace.capabilities}
               reportHeader={<ReportOutcomeBar model={workspace} />}
               leftPanel={
                 <WorkspaceChatPanel
@@ -459,9 +449,6 @@ export function AuditReportProgressive({
                   reportUrl={url}
                 />
               }
-              browserUrl={url}
-              browserScreenshots={screenshots}
-              browserCaptureStatus={screenshotCapture}
               reportPanel={
                 <>
                   <ReportPane
@@ -494,7 +481,6 @@ export function AuditReportProgressive({
                   />
                 </>
               }
-              steps={[]}
               className="h-full"
             />
           </Suspense>
