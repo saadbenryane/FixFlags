@@ -114,44 +114,60 @@ export function FlagDetailPane({
         className="min-h-0 flex-1 overflow-y-auto scrollbar-thin @[40rem]/pane:pr-1"
       >
         <header className="mb-5">
-          <h3
-            ref={headingRef}
-            tabIndex={-1}
-            className="text-lg font-semibold leading-snug tracking-heading text-balance outline-none"
-          >
-            {flag.title}
-          </h3>
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <FlagMetaPills flag={flag} />
+          <div className="flex items-start justify-between gap-3">
+            <h3
+              ref={headingRef}
+              tabIndex={-1}
+              className="min-w-0 flex-1 text-lg font-semibold leading-snug tracking-heading text-balance outline-none"
+            >
+              {flag.title}
+            </h3>
             {flagCount > 1 ? (
-              <nav className="flex shrink-0 items-center gap-1" aria-label="Flag navigation">
-                <span className="mr-1 font-mono text-2xs tabular-nums text-muted-foreground" aria-live="polite">
+              <nav
+                className="flex shrink-0 items-center gap-1 pt-0.5"
+                aria-label="Flag navigation"
+              >
+                <span
+                  className="mr-1 font-mono text-2xs tabular-nums text-muted-foreground"
+                  aria-live="polite"
+                >
                   {flagPosition} of {flagCount}
                 </span>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant={flagPosition <= 1 ? 'outline' : 'brand'}
                   size="icon"
                   onClick={onPrevious}
                   disabled={flagPosition <= 1}
                   aria-label="Previous flag"
-                  className="border border-brand/40 bg-background text-brand shadow-sm hover:bg-brand/10 hover:text-brand disabled:border-border/45 disabled:text-muted-foreground"
+                  className={
+                    flagPosition <= 1
+                      ? 'border-brand/35 text-brand disabled:opacity-55'
+                      : undefined
+                  }
                 >
                   <ChevronLeft aria-hidden />
                 </Button>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant={flagPosition >= flagCount ? 'outline' : 'brand'}
                   size="icon"
                   onClick={onNext}
                   disabled={flagPosition >= flagCount}
                   aria-label="Next flag"
-                  className="border border-brand/40 bg-background text-brand shadow-sm hover:bg-brand/10 hover:text-brand disabled:border-border/45 disabled:text-muted-foreground"
+                  className={
+                    flagPosition >= flagCount
+                      ? 'border-brand/35 text-brand disabled:opacity-55'
+                      : undefined
+                  }
                 >
                   <ChevronRight aria-hidden />
                 </Button>
               </nav>
             ) : null}
+          </div>
+          <div className="mt-2 flex items-center gap-3">
+            <FlagMetaPills flag={flag} />
           </div>
           {showPromptFooter ? (
             <div data-flag-prompt-row className="mt-4 border-t border-border/30 pt-4">

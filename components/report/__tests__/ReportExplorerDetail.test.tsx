@@ -64,7 +64,7 @@ describe('FlagDetailPane', () => {
     expect(screen.getByText(FIRST_FLAG.rubricLabel)).toBeInTheDocument()
   })
 
-  it('renders bounded previous and next controls in the detail header', () => {
+  it('renders bounded previous and next controls aligned with the title', () => {
     const onPrevious = vi.fn()
     const onNext = vi.fn()
     renderWithProviders(
@@ -78,8 +78,17 @@ describe('FlagDetailPane', () => {
         onSelectFlag={vi.fn()}
       />
     )
-    expect(screen.getByLabelText('Previous flag')).toBeDisabled()
-    fireEvent.click(screen.getByLabelText('Next flag'))
+    const heading = screen.getByRole('heading', { name: FIRST_FLAG.title })
+    const next = screen.getByLabelText('Next flag')
+    const previous = screen.getByLabelText('Previous flag')
+    expect(previous).toBeDisabled()
+    expect(next).not.toBeDisabled()
+    expect(previous.className).toMatch(/border/)
+    expect(next.className).toMatch(/bg-brand/)
+    expect(
+      heading.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy()
+    fireEvent.click(next)
     expect(onNext).toHaveBeenCalledOnce()
     expect(screen.getByText(`1 of ${MODEL.flags.length}`)).toBeInTheDocument()
   })
