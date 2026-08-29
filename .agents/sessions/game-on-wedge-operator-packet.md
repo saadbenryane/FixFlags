@@ -2,28 +2,31 @@
 
 This is not code completion. Do not treat it as MET.
 
-The code-owned customer loop (claim, gated Copy chrome, designed handoff, docs honesty) is implemented on `main` in this working tree.
-Release attestation is still operator-owned on `game-on-release-evidence`.
+Updated 2026-08-29 with `game-on-wedge-honesty` (Agent|Report park-clean, Compare residue removed, product-truth lock).
+
+The code-owned customer loop (claim, gated Copy chrome, designed handoff, Agent|Report park honesty, Product outcome cards) is implemented on `main`.
+Release attestation remains operator-owned on `game-on-release-evidence`.
 
 ## Still required from the operator
 
 1. Railway Wait for CI on web and worker.
-2. Prove `/api/health` reports the exact SHA that GitHub CI passed.
-3. Credentialed release matrix with disposable-database reset consent: auth, Free/Pro/Studio, billing, Watch email, GitHub, deployment triggers.
-4. Publish `fixflags@1.0.5` under `candidate`, install clean, production dogfood with a real `IMPROVED` and an honest `INCONCLUSIVE`, then promote that exact version to `latest`.
-5. Stripe sandbox and production webhook proof.
+2. Prove `/api/health` reports the exact SHA that GitHub CI passed (production tip at last check: `b6bd1547`; local tree has uncommitted wedge-honesty commits until pushed).
+3. Credentialed release matrix with disposable-database reset consent: auth, Free/Pro/Studio, billing, Watch email.
+4. Owner Fixed dogfood: signed-in **Update review** after Free monthly renewal (or with a credit). Fill Fixed count + child id in `.agents/sessions/2026-08-29-game-on-wedge-honesty.md`.
+5. Stripe waitlist vs paid-open honesty; webhook receipts when opening checkout.
+6. CLI candidate→latest only if CLI promotion is still a release goal; otherwise keep CLI parked and document it is not a launch dependency.
 
 ## Not code, and not shipped as Free
 
 - Watch (scheduled reviews) is Studio/`TEAM` only.
 - Free and Pro stop at manual Update review.
-- Preview, Timeline, and Canvas stay parked on the default live `/report/[id]` route.
+- Preview, Timeline, and Canvas stay parked on the default live `/report/[id]` route (no customer alternate route).
+- Compare page is removed; `/compare/[id]` redirects to the report.
 
 ## Local proof that is not production proof
 
-- `npm run agent -- verify` passed after the wedge changes.
-- UI vitest project: 231 passed.
-- Browser at 375/768/1280: header 56px, leftover 0, Log in carries `next=/report/{id}`, Copy opens save-report create-account copy.
-- Local `NODE_ENV=development` sets `isDevUnlimitedScans()`, so the second anonymous homepage scan is not blocked here. The AUTH_REQUIRED dialog is covered by unit tests. Production and `DEV_SIMULATE_BILLING=true` still enforce one teaser.
-- Public journeys: 37 passed, 1 skipped (`E2E_FULL`), 7 failed before E2E contract updates; after updates, mobile Flag selection and pricing `$29`/`$79` pass. Remaining Axe failures are brand-orange-on-white contrast (`#ff5900` / `#ffffff` at 14px, 3.14:1) on the marketing header Review CTA. That is a brand-token decision, not a claim-loop defect.
-- `E2E_FULL` queue-backed anonymous journey was not run in this session.
+- Product truth lock: PRODUCT Free bullets, plans copy, QUALITY monthly wording, workspace-interface Agent|Report, pricing-parity tests.
+- Park-clean: SplitShell Agent|Report-only props; HomepageReportPreview without Preview theater; Compare UI deleted; `canAccessCompare` removed.
+- `npm run ui:drift-guard` passed.
+- Focused vitest (pricing-parity, SplitShell, entitlements, hardening, billing-enforcement) passed.
+- Fixed algorithm unit tests remain the code proof until owner Update review runs.
