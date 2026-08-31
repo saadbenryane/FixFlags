@@ -533,7 +533,7 @@ export default async function AdminAnalyticsPage() {
           <p><code className="text-foreground font-mono text-xs">audit_limit_reached</code>: Free check limit reached</p>
           <p><code className="text-foreground font-mono text-xs">fix_prompt_copied</code>: Fix prompt copied to clipboard</p>
           <p><code className="text-foreground font-mono text-xs">recheck_started</code>: Owner started a re-check</p>
-          <p><code className="text-foreground font-mono text-xs">recheck_completed</code>: Re-check result viewed (compare page or report diff strip)</p>
+          <p><code className="text-foreground font-mono text-xs">recheck_completed</code>: Update review result viewed on the Product or report outcome path</p>
           <p><code className="text-foreground font-mono text-xs">audit_intent</code>: Landing URL field focused (hero/final CTA)</p>
           <p><code className="text-foreground font-mono text-xs">viewed_report</code>: Completed report viewed</p>
           <p><code className="text-foreground font-mono text-xs">viewed_sample</code>: Sample report section viewed</p>

@@ -30,6 +30,7 @@ export const RECHECK_DIFF_COPY = {
   inconclusiveBodyGeneric: (count: number) =>
     `${count} ${count === 1 ? 'Flag has' : 'Flags have'} insufficient comparable coverage between reviews.`,
   empty: 'No Flag changes in this update review.',
+  scoreOffsetLabel: 'Why the score moved',
   compareCta: 'Compare',
   compareProHint: 'See the evidence side by side.',
   compareProCta: 'Compare',

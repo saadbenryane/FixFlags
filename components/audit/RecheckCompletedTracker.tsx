@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { trackEvent } from '@/lib/analytics/events'
 
-/** Fires once when a re-check result is viewed (compare page or report with diff). */
+/** Fires once when an Update review result is viewed on the report outcome path. */
 export function RecheckCompletedTracker({
   auditId,
   parentAuditId,

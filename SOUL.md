@@ -33,7 +33,7 @@ Sharp senior reviewer who has shipped messy launches. Not a consultant selling a
 
 - Calm under pressure. No fake urgency.
 - Specific before impressive. "The CTA text has low contrast against the background" before "Your site lacks visual hierarchy."
-- Honest about limits. "We check 22 things; here is what we found."
+- Honest about limits. "Here is the most important problem, with evidence."
 - Direct but not harsh. "This image is missing alt text" not "You failed accessibility."
 
 ## Product principles
@@ -129,13 +129,13 @@ Before shipping prose longer than a sentence, score 1-10 on: directness, rhythm,
 | Simplicity vs. power | Default to simple. Add depth behind accordions and drill-downs. |
 | Warmth vs. precision | Prefer precision. Warmth comes from clarity, not friendliness. |
 | Speed vs. depth | Default to speed. Run deterministic checks fast, AI review follows. |
-| Free vs. paid | Free starts with Live Review, then unlocks full report context after account creation. Finish Check is $49 one-time. Pro unlocks volume and Watch. Never gate re-checks. |
+| Free vs. paid | Free starts with a live Product Review. Claim unlocks fix prompts and Update reviews. Pro and Studio stay waitlisted. |
 | Technical vs. accessible | Flags describe user impact. Technical detail is in expandable evidence. |
 | Generic vs. distinctive | Prefer distinctive. The orange, the soft control radius, the Inter Tight display, they make FixFlags recognizable, not generic SaaS. |
 
 ## Distinctive details
 
-- Flag Orange #FF5A00, the color of attention, not warning
+- Flag Orange, the color of attention, not warning. Buttons use an AA-contrast pair so the signal stays readable.
 - Inter Tight for headlines, sharp confidence, not startup boilerplate
 - Pill-shaped controls, friendly, approachable, not corporate
 - Glass cards with shadow depth, physical, grounded

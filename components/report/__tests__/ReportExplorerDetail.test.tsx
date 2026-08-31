@@ -60,7 +60,7 @@ describe('FlagDetailPane', () => {
         onSelectFlag={vi.fn()}
       />
     )
-    expect(screen.getByRole('heading', { name: FIRST_FLAG.title })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: FIRST_FLAG.title })).toBeInTheDocument()
     expect(screen.getByText(FIRST_FLAG.rubricLabel)).toBeInTheDocument()
   })
 

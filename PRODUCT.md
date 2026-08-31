@@ -95,7 +95,7 @@ FixFlags reduces that uncertainty with observable evidence.
 
 ## Promise
 
-Paste your live URL. FixFlags tests the paths that matter, shows exactly where they fail, and gives your AI the fix. Run an update review after you ship. Keep Watch on a schedule.
+Review a live product, see the most important problems with evidence, and copy a fix into your AI editor. Run an update review after you ship. Keep Watch on a schedule. The Review score is an issue-weighted diagnostic, not a prediction of conversion or revenue.
 
 ## Core loop
 

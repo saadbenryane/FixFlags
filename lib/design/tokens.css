@@ -2,7 +2,7 @@
  * FixFlags design tokens - Brand sheet 2026-07
  *
  * Palette: white canvas, stone surfaces, ink structure, orange accent (signal only)
- * Primary: #FF5A00 | Type: Inter Tight (display) + Inter (UI) | Controls: 10px | Cards: glass
+ * Primary CTA fill: #C24400 (AA vs white) | Type: Inter Tight (display) + Inter (UI) | Controls: 10px | Cards: glass
  */
 
 :root {
@@ -17,12 +17,11 @@
   --border: 240 4% 90%;
   --border-subtle: 210 14% 96%;
 
-  /* ── Brand orange (Flag #FF5A00) ── */
-  --brand: 21 100% 50%;
+  /* ── Brand orange: AA CTA fill vs white (#C24400, ~5.1:1) ── */
+  --brand: 21 100% 38%;
   --brand-foreground: 0 0% 100%;
-  /* Darker orange for accessible small text/CTAs: 5.1:1 vs white (#c24400) */
-  --brand-strong: 21 100% 38%;
-  --brand-hover: 21 100% 58%;
+  --brand-strong: 21 100% 32%;
+  --brand-hover: 21 100% 40%;
   --brand-muted: 21 100% 96%;
   --brand-border: 21 90% 88%;
 
@@ -93,7 +92,7 @@
   /* Links & focus */
   --link: 217 91% 60%;
   --link-hover: 217 91% 52%;
-  --focus-ring: 21 100% 50%;
+  --focus-ring: 21 100% 38%;
   --ring: var(--focus-ring);
 
   --popover: 0 0% 100%;
@@ -249,9 +248,10 @@
   --border: 220 6% 18%;
   --border-subtle: 220 7% 10%;
 
-  --brand: 18 100% 55%;
+  --brand: 18 100% 38%;
   --brand-foreground: 0 0% 100%;
-  --brand-hover: 18 100% 63%;
+  --brand-strong: 18 100% 32%;
+  --brand-hover: 18 100% 40%;
   --brand-muted: 21 30% 12%;
   --brand-border: 21 35% 24%;
 
@@ -310,7 +310,7 @@
     transparent 72%
   );
 
-  --primary: 21 100% 50%;
+  --primary: 18 100% 38%;
   --primary-foreground: 0 0% 100%;
   --secondary: 220 7% 12%;
   --secondary-foreground: 210 14% 97%;
@@ -319,7 +319,7 @@
 
   --link: 213 94% 72%;
   --link-hover: 213 94% 80%;
-  --focus-ring: 18 100% 55%;
+  --focus-ring: 18 100% 38%;
   --ring: var(--focus-ring);
 
   --popover: 220 7% 12%;

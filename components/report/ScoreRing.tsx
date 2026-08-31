@@ -1,3 +1,4 @@
+import { SCORE_HELP } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
 /** Colocated like ScanWorkingMark so ScoreRing stays free of global keyframes. */
@@ -45,7 +46,8 @@ export function ScoreRing({
   className?: string
 }) {
   const normalized = score == null ? 0 : Math.min(100, Math.max(0, Math.round(score)))
-  const label = pending ? 'Score pending' : score == null ? 'Score unavailable' : `Score ${normalized}`
+  const valueLabel = pending ? 'Score pending' : score == null ? 'Score unavailable' : `Score ${normalized}`
+  const label = `${valueLabel}. ${SCORE_HELP.diagnostic}`
   const strokeWidth = size === 'sm' ? 4 : 3
 
   return (

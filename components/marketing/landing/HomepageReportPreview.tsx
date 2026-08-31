@@ -86,6 +86,7 @@ export function HomepageReportPreview({
                   severity: selectedFlag.severity,
                   checkId: selectedFlag.checkId,
                   impactTag: selectedFlag.impactTag,
+                  fix: selectedFlag.fixPrompt || selectedFlag.copyFixPrompt,
                 },
               ]
             : [],

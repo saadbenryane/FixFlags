@@ -1,3 +1,4 @@
+import type { FlagDiffSummaryItem } from '@/lib/audit/flag-types'
 import { RUBRIC_ORDER, type RubricName } from '@/lib/audit/constants'
 import { computeRubricStatus, type RubricStatus } from '@/lib/audit/rubric'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
@@ -38,6 +39,14 @@ export type ReportWorkspaceCapabilityInput = Omit<
   'canCopyPrompts'
 >
 
+export type ReportWorkspaceUpdateDiff = {
+  fixed: FlagDiffSummaryItem[]
+  inconclusive: FlagDiffSummaryItem[]
+  unchanged: FlagDiffSummaryItem[]
+  regressed: FlagDiffSummaryItem[]
+  newIssues: FlagDiffSummaryItem[]
+}
+
 export type ReportWorkspaceHistoryPoint = {
   id: string
   /** Canonical destination for the complete Review. */
@@ -77,6 +86,7 @@ export interface ReportWorkspaceModel {
     score: number | null
     rubrics: ReportWorkspaceRubric[]
     history: ReportWorkspaceHistoryPoint[] | null
+    updateDiff?: ReportWorkspaceUpdateDiff | null
   }
   explorer: ReportExplorerModel
   capabilities: ReportWorkspaceCapabilities
@@ -96,6 +106,7 @@ export interface BuildReportWorkspaceModelInput {
   status?: ReportWorkspaceStatus
   loading?: boolean
   history?: ReportWorkspaceHistoryPoint[]
+  updateDiff?: ReportWorkspaceUpdateDiff | null
   capabilities: ReportWorkspaceCapabilityInput
 }
 
@@ -205,6 +216,7 @@ export function buildReportWorkspaceModel(
       score: input.explorer.score,
       rubrics,
       history: normalizeWorkspaceHistory(input.history),
+      updateDiff: input.updateDiff ?? null,
     },
     explorer: input.explorer,
     capabilities: {

@@ -209,5 +209,21 @@
     "status": "fixed",
     "evidence": "linear-app.html textarea tabindex=-1 placeholder composer; replit hero composer; shopify region-selector-close icon button",
     "fixedDate": "2026-08-17"
+  },
+  {
+    "id": "fp-014",
+    "checkId": "buttons-no-text",
+    "module": "accessibility.ts",
+    "pattern": "Accessible-name Flag prescriptions told builders to add visible text to icon-only buttons",
+    "rootCause": "HTML fallback and axe button-name fixes led with visible text. Copying that prompt into an AI editor turns hamburger, close, and social icon chrome into labeled buttons and wrecks the layout.",
+    "affectedSites": [
+      "shopify.com",
+      "linear.app"
+    ],
+    "fixType": "prescription",
+    "fixDescription": "Name the control with aria-label or a visually hidden label. Keep the current visual. Do not add visible text that changes the layout.",
+    "status": "fixed",
+    "evidence": "shopify-com.html region-selector-close icon button; Linear empty chrome buttons",
+    "fixedDate": "2026-08-31"
   }
 ]

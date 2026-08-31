@@ -280,6 +280,24 @@ describe('runAccessibilityChecks', () => {
     ])
     const flag = findings.find((finding) => finding.checkId === 'buttons-no-text')
     assert.equal(flag?.severity, 'IMPORTANT')
+    assert.match(flag?.fix ?? '', /Keep the current icon or visual/)
+    assert.match(flag?.fix ?? '', /Do not add visible text that changes the layout/)
+    assert.doesNotMatch(flag?.fix ?? '', /Add visible text to icon-only buttons/)
+  })
+
+  it('tells builders to name icon chrome without rewriting the visual', () => {
+    const findings = runAccessibilityChecks(
+      healthyMeta({ buttonsWithoutText: 1, linksWithoutText: 1, inputsWithoutLabel: 1 }),
+      null
+    )
+    const button = findings.find((finding) => finding.checkId === 'buttons-no-text')
+    const link = findings.find((finding) => finding.checkId === 'links-no-text')
+    const input = findings.find((finding) => finding.checkId === 'form-inputs-no-label')
+    assert.match(button?.fix ?? '', /Keep the current icon or visual/)
+    assert.match(link?.fix ?? '', /Keep the current icon or visual/)
+    assert.match(input?.fix ?? '', /Keep the current field visual/)
+    assert.doesNotMatch(button?.fix ?? '', /Add visible text to icon-only buttons/)
+    assert.doesNotMatch(link?.fix ?? '', /Add visible text or aria-label to every link/)
   })
 })
 

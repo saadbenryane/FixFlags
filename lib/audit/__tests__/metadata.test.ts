@@ -140,6 +140,20 @@ describe('parseMetadataFromHtml', () => {
     assert.equal(meta.buttonsWithoutText, 1)
   })
 
+  it('does not count aria-label icon buttons as unnamed', () => {
+    const html = `<!DOCTYPE html>
+<html>
+<head><title>Named icon button chrome test page</title></head>
+<body>
+  <button aria-label="Open menu"><svg></svg></button>
+  <button aria-label="Close dialog"><svg></svg></button>
+  <button><svg></svg></button>
+</body>
+</html>`
+    const meta = parseMetadataFromHtml(html, BASE_URL)
+    assert.equal(meta.buttonsWithoutText, 1)
+  })
+
   it('deduplicates responsive duplicate h1 text', () => {
     const html = `<!DOCTYPE html>
 <html>

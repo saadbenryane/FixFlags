@@ -1,6 +1,12 @@
 import type { RubricGrade, RubricName, RubricStatus } from '@prisma/client'
 import { GRADE_THRESHOLDS } from './rubric'
 
+/** Issue-weighted diagnostic. Not a conversion or revenue prediction. */
+export const SCORE_FORMULA_VERSION = 1 as const
+
+export const SCORE_FORMULA_EXPLANATION =
+  'An issue-weighted summary of this Review. It is not a prediction of conversion or revenue.'
+
 export const RUBRIC_WEIGHTS: Record<RubricName, number> = {
   MESSAGE: 0.35,
   EXPERIENCE: 0.4,

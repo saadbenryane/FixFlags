@@ -33,7 +33,7 @@ const trackClasses = {
 } as const
 
 const itemClasses = {
-  md: 'min-h-9 rounded-[calc(var(--radius-control)-4px)] px-3 py-1 text-sm font-medium',
+  md: 'min-h-11 min-w-11 rounded-[calc(var(--radius-control)-4px)] px-3 py-1 text-sm font-medium',
   lg: 'min-h-11 min-w-11 rounded-[calc(var(--radius-card)-4px)] px-2 py-1',
 } as const
 

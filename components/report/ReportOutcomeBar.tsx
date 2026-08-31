@@ -1,10 +1,16 @@
 import Link from 'next/link'
 import { CircleHelp } from 'lucide-react'
+import { RecheckDiffStrip } from '@/components/audit/RecheckDiffStrip'
 import { SHIMMER_KEYFRAMES } from '@/components/ui/skeleton'
 import { ScoreHistoryChart } from '@/components/report/ScoreHistoryChart'
-import { REPORT_COPY } from '@/lib/marketing/copy'
+import { REPORT_COPY, SCORE_HELP } from '@/lib/marketing/copy'
 import { helpHrefForSurface } from '@/lib/help/contextual'
 import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
+import {
+  countsFromUpdateDiff,
+  previousScoreFromHistory,
+  scoreOffsetExplanation,
+} from '@/lib/audit/update-review-progress'
 import { cn } from '@/lib/utils'
 import { ScoreRing } from '@/components/report/ScoreRing'
 import type { ReactNode } from 'react'
@@ -29,6 +35,15 @@ export function ReportOutcomeBar({
   const loading = model.context.loading
   const score = model.summary.score
   const history = model.summary.history
+  const updateDiff = model.summary.updateDiff ?? null
+  const scoreNote =
+    updateDiff && !loading
+      ? scoreOffsetExplanation({
+          previousScore: previousScoreFromHistory(history, model.identity.auditId),
+          currentScore: score,
+          counts: countsFromUpdateDiff(updateDiff),
+        })
+      : null
   const progress = typeof scanProgress === 'number'
     ? Math.min(100, Math.max(0, Math.round(scanProgress)))
     : null
@@ -43,7 +58,7 @@ export function ReportOutcomeBar({
       )}
     >
       <div className="flex min-h-14 min-w-0 flex-wrap items-center gap-x-4 gap-y-2 py-1">
-        <div className="relative shrink-0">
+        <div className="flex shrink-0 items-center">
           <ScoreRing score={score} pending={loading} />
           {!loading && score != null ? (
             <Link
@@ -51,9 +66,10 @@ export function ReportOutcomeBar({
               target="_blank"
               rel="noopener noreferrer"
               aria-label="How scores work"
-              className="absolute -right-1 -top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm ring-1 ring-border/50 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              title={SCORE_HELP.diagnostic}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
             >
-              <CircleHelp className="h-3.5 w-3.5" aria-hidden />
+              <CircleHelp className="h-4 w-4" aria-hidden />
             </Link>
           ) : null}
         </div>
@@ -72,6 +88,15 @@ export function ReportOutcomeBar({
             isLoading={loading}
             className="w-full"
           />
+        </div>
+      ) : null}
+
+      {updateDiff && !loading ? (
+        <div className="space-y-2 border-t border-border/35 py-3">
+          <RecheckDiffStrip summary={updateDiff} />
+          {scoreNote ? (
+            <p className="text-sm text-muted-foreground">{scoreNote}</p>
+          ) : null}
         </div>
       ) : null}
 

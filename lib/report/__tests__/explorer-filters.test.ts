@@ -83,4 +83,14 @@ describe('explorer-filters', () => {
     assert.equal(initialExplorerFlagIndex(FLAGS, 0, '3'), 2)
     assert.equal(initialExplorerFlagIndex(FLAGS, 1, 'missing'), 1)
   })
+
+  it('opens the first worthwhile Flag instead of a leading Polish observation', () => {
+    const polishFirst = [
+      flag({ id: 'cookie', rubric: 'REACH', severity: 'POLISH' }),
+      flag({ id: 'headline', rubric: 'MESSAGE', severity: 'IMPORTANT' }),
+    ]
+    assert.equal(initialExplorerFlagIndex(polishFirst, 0), 1)
+    assert.equal(initialExplorerFlagIndex(polishFirst, 0, 'cookie'), 0)
+    assert.equal(initialExplorerFlagIndex(polishFirst, 0), 1)
+  })
 })

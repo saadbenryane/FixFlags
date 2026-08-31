@@ -19,7 +19,7 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 | Plans and quotas | `lib/billing/plans.ts`, `lib/auth/entitlements.ts`, `lib/auth/permissions.ts` |
 | Access and sharing | `lib/audit/report-access.ts`, `lib/security/share-grant.ts`, `SECURITY.md` |
 | Check/re-check task outcomes | `lib/audit/task-contracts.ts` |
-| Finish Plan (all surfaces) | `lib/audit/load-finish-plan-flags.ts`, `lib/audit/finish-plan.ts` |
+| Finish Plan (all surfaces) | `lib/audit/attention.ts`, `lib/audit/load-finish-plan-flags.ts`, `lib/audit/finish-plan.ts` |
 | Durable Product attention and verification | `lib/improvements/service.ts`, Prisma `Improvement*`, `/api/projects/[id]/improvements` |
 | Product Signals and releases | `lib/signals/`, `/api/products/[id]/signals`, `/fixflags.js` |
 | Preview scan access (Studio) | `lib/audit/scan-access.ts`, `app/api/projects/[id]/scan-access/route.ts` |
@@ -38,6 +38,8 @@ Read `AGENTS.md` first. This skill routes work; canonical sources own detailed t
 - Public rubrics are exactly Message, Experience, and Reach.
 - Anonymous users receive one teaser scan with deterministic Agent updates and real evidence for every confirmed Flag. Every fix prompt, interactive Agent request, and Timeline payload stays gated until claim. Never persist signup-gate strings as Flag evidence or fix text.
 - The default live report is Agent beside Report. Preview, Timeline, and Canvas stay parked on `/report/[id]` and are not loaded there (`PRODUCT.md`).
+- Agent names up to three Attention candidates while a Review runs (not Polish, not low-confidence). On a fully completed Review it names the same worthwhile Flags as Finish Plan, which also require a recommended change. Partial Reviews never claim that nothing deserves action.
+- An Update review is a diff against its parent. The child report header and Agent transcript name Fixed / Still open / New. A flat score must say when New observations offset Fixed work. Outcome cards also stay on `/products/[id]`.
 - Flag evidence overlays, when Preview is unparked, are Flag-owned measurements (`Flag.evidenceTargets`). Never draw a preset box.
 - Authentication returns through `/post-login` so claim occurs before checkout or onward navigation.
 - HTTP, MCP, CLI, watch, and UI transports call shared task/application services; routes validate access and adapt responses.

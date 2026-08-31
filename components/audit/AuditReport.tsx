@@ -18,27 +18,18 @@ import { REPORT_COPY, HERO, AUDIT_ERRORS } from '@/lib/marketing/copy'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import { triageUnavailableBody } from '@/lib/audit/triage-unavailable'
-import type {
-  AuditScreenshot,
-  ScreenshotCaptureStatus,
-} from '@/lib/audit/screenshot-types'
-import type { PipelineLogEvent } from '@/lib/audit/pipeline-log'
-import type { RubricComputed, ShareStatus } from '@/lib/audit/rubric'
+import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import type { FixList } from '@/lib/audit/finish-plan'
 import type { RankableFlag } from '@/lib/audit/priority-flags'
-import type { LaunchReadinessData } from '@/lib/audit/launch-readiness'
 import {
   type RecheckDiffSummary,
 } from '@/components/audit/RecheckDiffStrip'
 import { RecheckCompletedTracker } from '@/components/audit/RecheckCompletedTracker'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
-import type { FlowData } from '@/lib/audit/flow-data'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
 import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
-import type { JourneyReviewSummary } from '@/components/audit/JourneyReviewTimeline'
 import { ReportAuthGateTracker } from '@/components/analytics/ReportAuthGateTracker'
-import type { TechnologyProfile } from '@/lib/audit/technology-profile'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import type { AgentMessage } from '@/lib/audit/agent-message'
@@ -65,31 +56,17 @@ interface AuditReportProps {
     score: number | null
     url: string
     screenshots?: AuditScreenshot[]
-    screenshotCapture?: ScreenshotCaptureStatus
-    rubrics: RubricComputed[]
     rubricRows: RubricRow[]
     flags: RankableFlag[]
-    shareStatus: ShareStatus
-    launchReadiness?: LaunchReadinessData | null
     reportCompleteness?: 'FULL' | 'PARTIAL' | 'UNKNOWN'
-    pipelineVersion?: string | null
-    pipelineLog?: PipelineLogEvent[] | null
-    startedAt?: string | Date | null
     completedAt?: string | Date | null
     parentId?: string | null
-    pageSpeedCoverage?: import('@/lib/audit/pagespeed-coverage').PageSpeedCoverage
     previewMeta?: PreviewMeta | null
-    flowData?: FlowData | null
     evidenceAnchors?: EvidenceAnchorMap
     flagVisualEvidence?: import('@/lib/audit/persist-visual-evidence').FlagVisualEvidenceMap
-    actionTimeline?: import('@/lib/audit/action-timeline').ActionTimelineEvent[]
     productContract?:
       import('@/lib/audit/product-contract').ProductContract | null
-    verifiedLearnings?: import('@/lib/audit/product-intelligence').VerifiedLearning[]
-    intentionalNotes?: string[]
-    knownRisks?: string[]
     failedModules?: string[]
-    technologyProfile?: TechnologyProfile
     reviewCoverage?: unknown
     fixList?: FixList
   }
@@ -100,14 +77,7 @@ interface AuditReportProps {
   viewerPlan?: string
   isLoggedIn: boolean
   variant?: 'default' | 'sample'
-  showMonitoringHint?: boolean
-  projectId?: string | null
-  canWatchProduct?: boolean
-  canDailyWatch?: boolean
-  watchInterval?: 'weekly' | 'daily' | null
   atAuditLimit?: boolean
-  /** Per-device capture outcome, so the stage can say "failed" instead of spinning. */
-  captureStatus?: ScreenshotCaptureStatus | null
   showPrescription?: boolean
   showDeterministicFixes?: boolean
   aiReviewPending?: boolean
@@ -115,8 +85,6 @@ interface AuditReportProps {
   prescriptionFailed?: boolean
   failureCode?: string | null
   actions?: ReactNode
-  toolbarActions?: ReactNode
-  journeyReviews?: JourneyReviewSummary[]
   recheckDiff?: RecheckDiffSummary | null
   verificationReceipts?: ProductAttemptDTO[]
   scoreHistory?: ReportWorkspaceHistoryPoint[]
@@ -134,13 +102,7 @@ export function AuditReport({
   viewerPlan = 'FREE',
   isLoggedIn,
   variant = 'default',
-  showMonitoringHint = false,
-  projectId = null,
-  canWatchProduct = false,
-  canDailyWatch = false,
-  watchInterval = null,
   atAuditLimit = false,
-  captureStatus: _captureStatus = null,
   showPrescription = true,
   showDeterministicFixes = true,
   aiReviewPending = false,
@@ -148,8 +110,6 @@ export function AuditReport({
   prescriptionFailed = false,
   failureCode = null,
   actions,
-  toolbarActions,
-  journeyReviews: _journeyReviews = [],
   recheckDiff = null,
   verificationReceipts = [],
   scoreHistory = [],
@@ -172,13 +132,6 @@ export function AuditReport({
     ? `/sign-up?next=/report/${auditId}&from=report`
     : '/sign-up?from=report'
   const chatGateReason = chatGate.gateReason
-  void showMonitoringHint
-  void canWatchProduct
-  void canDailyWatch
-  void watchInterval
-  void _journeyReviews
-  void projectId
-  void toolbarActions
 
   // Server strip is the only entitlement; never unlock via client sessionStorage.
   const fixPromptLocked = !showDeterministicFixes
@@ -226,6 +179,7 @@ export function AuditReport({
         ? 'degraded'
         : 'completed',
     history: scoreHistory,
+    updateDiff: recheckDiff,
     capabilities: {
       promptAccess: promptProjection.workspace,
       canReplayTimeline: false,

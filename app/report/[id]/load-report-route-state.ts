@@ -14,6 +14,7 @@ import { toRankableFlag } from '@/lib/audit/load-finish-plan-flags'
 import { historyPointFromAudit } from '@/lib/report/workspace-model'
 import { buildFixList } from '@/lib/audit/finish-plan'
 import { loadVerificationReceiptsForReview } from '@/lib/products/workspace'
+import type { ReportWorkspaceAuditDTO } from '@/lib/report/workspace'
 
 const MAX_REVIEW_HISTORY_HOPS = 60
 
@@ -382,35 +383,22 @@ export async function loadReportRouteState(
     })
     const topIssue = topIssueFromFlags(canonicalFlags)
 
-    const reportAudit = {
+    const reportAudit: ReportWorkspaceAuditDTO = {
       accessContext,
       pageType: audit.pageType,
-      verdict: audit.verdict,
       score: audit.score,
       url: audit.url,
       screenshots: audit.screenshots,
-      screenshotCapture: audit.screenshotCapture,
-      rubrics: audit.rubrics,
       rubricRows,
       flags: canonicalFlags,
-      shareStatus: audit.shareStatus,
-      launchReadiness: audit.launchReadiness,
       reportCompleteness: audit.reportCompleteness,
       reviewCoverage: audit.reviewCoverage,
-      pipelineVersion: audit.pipelineVersion,
-      pipelineLog: audit.pipelineLog,
-      startedAt: audit.startedAt,
       completedAt: audit.completedAt,
       parentId: audit.parentId,
-      pageSpeedCoverage: audit.pageSpeedCoverage,
       previewMeta: audit.previewMeta,
-      flowData: audit.flowData,
       evidenceAnchors: audit.evidenceAnchors,
       flagVisualEvidence: audit.flagVisualEvidence,
       productContract: audit.productContract,
-      verifiedLearnings: audit.verifiedLearnings,
-      intentionalNotes: audit.intentionalNotes,
-      knownRisks: audit.knownRisks,
       failedModules: Array.isArray(audit.failedModules)
         ? audit.failedModules.filter((module): module is string => typeof module === 'string')
         : [],

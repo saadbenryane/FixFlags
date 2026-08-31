@@ -5,7 +5,7 @@ export const HERO = {
   headlineDisplay: "Finish what your AI started",
   headlineAccentPeriod: true,
   subhead:
-    "Paste your live URL. See the problems most likely to cost trust or conversions, ranked with evidence from the product.",
+    "Review a live product, see the most important problems with evidence, and copy a fix into your AI editor.",
   primaryCta: "Review my site",
   compactPrimaryCta: "Review site",
   trySampleCta: "See a sample review",
@@ -37,7 +37,7 @@ export const DIFFERENTIATION = {
   ],
   rows: [
     {
-      feature: "Says why each Flag hurts conversion",
+      feature: "Shows why each Flag matters, with evidence",
       lighthouse: "Partial",
       manual: "Yes",
       fixflags: "Yes",
@@ -93,7 +93,7 @@ export const DIFFERENTIATION = {
   ],
   comparisonRows: [
     {
-      feature: "Says why each Flag hurts conversion",
+      feature: "Shows why each Flag matters, with evidence",
       lighthouse: "Partial",
       manual: "Yes",
       fixflags: "Yes",

@@ -15,7 +15,7 @@ Source: FixFlags brand guidelines. Reference assets in `public/brand/`.
 
 | Token | Light | Dark | Use |
 |-------|-------|------|-----|
-| Flag (primary) | `#FF5A00` | `#FF5C1A` | Flags, marketing CTAs, active states, focus rings. Signal, not decoration |
+| Flag (primary) | `#C24400` | `#C23A00` | Flags, marketing CTAs, active states, focus rings. AA against white button text |
 | Flag hover | tint of primary | tint of primary | Button hover |
 | Background | White `#FFFFFF` | Ink `#0B0B0D` | Page canvas |
 | Foreground | Ink `#0B0B0D` | Soft White `#F5F6F7` | Headings, body |

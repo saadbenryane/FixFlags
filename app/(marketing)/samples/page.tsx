@@ -58,6 +58,9 @@ export default async function SamplesPage({ searchParams }: SamplesPageProps) {
       severity: flag.severity,
       checkId: flag.checkId,
       impactTag: flag.impactTag,
+      confidence: flag.confidence,
+      status: flag.status,
+      fix: flag.fix,
     })),
   })
 

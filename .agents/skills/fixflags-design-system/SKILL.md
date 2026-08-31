@@ -27,29 +27,22 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 
 - The live `/report/[id]` route is Agent beside Report. Preview, Timeline, and Canvas stay parked there and are not loaded on that route.
 - Active and completed owner/anon reviews share one full-bleed living-review editor: flush split under thin site chrome, no marketing footer, no pane cards (`rounded-card` / `shadow-card` / `glass-surface` on Agent or Product columns). Separation is a single vertical divider.
-- Active desktop defaults to Preview, active mobile defaults to Agent, and completed reviews default to Report on every width. Completed Timeline remains a sibling only when the workspace capability permits it.
+- Desktop and mobile expose only Agent and Report. Active mobile defaults to Agent; completed reviews default to Report. Do not mount Preview stage, device toggle, or playback transport on `/report/[id]`.
 - Desktop grid stays `minmax(280px, 32%)_minmax(0, 1fr)` with `gap-0`. Do not wrap the workspace region in `Container variant="report"` / `max-w-6xl`.
-- Treat the panes as **FixFlags understanding** (identity, activity, observation, judgment, conversation) and **Product reality** (live experience, interaction, evidence). Never reduce them to generic chat and dashboard.
-- Active desktop reviews default to Preview; completed reviews default to Report. The Product-pane header owns that switch. Completed reports must not jump to a hero/summary document above the split.
-- The Product pane is three fixed rows: header (Product name + reviewed address via `displaySiteAddress` + Preview-first Eye/FileText toggle + Monitor/Smartphone device icons when Preview is active), stage (`WORKSPACE_STAGE_CLASS`), transport (`WorkspacePreviewTransport` path-only). Hard checks before you call Preview work done:
-  1. **No chrome in chrome.** Inside the editor `BrowserFrame` must be `chrome="none" fill`. Traffic lights and URL pills belong only to marketing and compare surfaces.
-  2. **Constant stage.** Switching Desktop to Mobile, selecting a step, or loading a capture must leave the stage container's classes and measured box identical. Captures letterbox with `object-contain object-center`; entry motion is opacity-only (`capture-fade`), never `fade-in-up`. Measure the capture, not only the stage: a stacked pane takes its height from the stage floor, so the stage must stay a flex column or an `h-full` capture inside it measures zero.
-  3. **Docked transport.** Whenever Preview is active the transport is the last row of the pane at every width, with one fixed height in every state. It never lives inside the scroll area and never disappears for anonymous, scanning, mobile, or zero-step cases. Device icons belong in the header, not the transport.
-  4. **Honest gating.** Gated live-report viewers keep header device icons and the Timeline gate only. No step chips, no scrub, no step payload. Repository-owned samples may replay only complete versioned static Timeline fixtures.
-  5. **Reserved space.** Anything that streams in mid-review (findings strip, progress readout, finding-count action) holds its slot from the start and uses `tabular-nums`.
-  6. **One mobile shell.** Small screens use a single tab bar (Agent, Preview/Timeline, Report, Canvas) over the same Product pane, driven by the same `view` state as the desktop toggle. The bar must not change shape when a scan completes, and the immersive shell carries no floating support bubble over the transport.
-  7. **Agent is chat.** One Flag mark (animated while scanning), bubble transcript, one-row ArrowUp composer. Anonymous submit gates to sign-in. No "Working · N%" strip. Homepage Report mode uses `ReportExplorer` detail-first + real `FixPromptBlock`, never a hand-rolled Flag card.
-  8. **Measured spotlight.** Selecting a Flag overlays `EvidenceSpotlight` on the Product Preview capture for that device. The rectangle is a capture-time measurement. Page-scope and unmeasured Flags get `EvidenceChip`, never a guessed hero box. Overlay must not resize the stage. `object-contain object-center` only.
+- Treat the panes as **FixFlags understanding** (identity, activity, observation, judgment, conversation) and **the Report** (score, Flags, evidence, prompts). Never reduce them to generic chat and dashboard.
+- Completed reports must not jump to a hero/summary document above the split.
+- Small screens use a single tab bar (Agent, Report) over the same Report pane. The immersive shell carries no floating support bubble.
+- Agent is chat: one Flag mark (animated while scanning), bubble transcript, one-row ArrowUp composer. Anonymous submit gates to sign-in. No "Working · N%" strip. Homepage Report mode uses `ReportExplorer` detail-first, never a hand-rolled Flag card.
 - Report mode uses a fixed compact `ReportOutcomeBar` and the shared `ReportPane` with `ReportExplorer` detail-first (`layout="detail"`). Product Your priorities keeps `list-detail`. Only the explorer body lives inside `data-report-frame` using `WORKSPACE_REPORT_FRAME_CLASS`. Hard checks before you call Report work done:
   1. **Pane-relative, never viewport-relative.** Container queries only (`@container/pane`, `@[40rem]/pane:`). No `lg:` breakpoint, `100vh` cap, `--header-offset` sticky, or `overflow-clip` inside the explorer. A 1280px viewport can still be a 527px pane.
-  2. **One score surface.** Visible Score, honest pending/unavailable state, full-Review history, and scan progress live only in the compact header. Ranking, the Fix count, Critical-first order, evidence, and next action live only in the explorer. No circular gauge, Critical shortcut, duplicated verdict, or instructional summary.
+  2. **One score surface.** Accessible `Score N` (or pending/unavailable), diagnostic help text, full-Review history, and scan progress live only in the compact header. Ranking, the Fix count, Critical-first order, evidence, and next action live only in the explorer. No circular gauge, Critical shortcut, duplicated verdict, or instructional summary.
   3. **Detail scrolls inside the pane.** Live report is full-width Flag detail with prev/next; Product list-detail keeps list and detail columns each `min-h-0 overflow-y-auto` at wide pane widths. Fix Prompt / Copy prompt sit under the Flag title/meta/nav row, above the capture pair. `goToFlag` and anchors scroll the nearest scroll parent.
   4. **Filters always visible.** Rubric, severity, impact, and page filters stay in the bar at every pane width when the list-detail layout is active.
   5. **Product context is on the Product page.** Contract, memory, and launch gates live on `/products/[id]` with Made with, Watch, and Signals. The report does not mount a Review context disclosure. Flag detail is one desktop|mobile pair; GIF/overlay plays in the affected frame.
   6. **One of each.** One CTA per surface, at most one contextual signup or upgrade moment, one owner update-review entry point, and `rounded-card` on every in-pane box. The canonical aggregate surface is `ReportFinishPlan`.
   Guards: `npm run ui:drift-guard`, `components/report/__tests__/workspace-geometry.test.ts`, and `node scripts/report-pane-proof.mjs`.
 - Honest pending/failed states for the active device only.
-- Agent activity is customer-meaningful and evidence-bound. Never expose technical execution logs, simulated reasoning, or noisy stage churn.
+- Agent activity is customer-meaningful and evidence-bound. Name up to three worthwhile Flags (not Polish, not low-confidence). Never expose technical execution logs, simulated reasoning, or noisy stage churn.
 - Homepage playback must emulate the live editor visual language and tell one finite value story: experience Product → notice issue → show evidence → surface Flag → recommend improvement. Drive from curated sample + `buildFixFlagsScanMessages` only; never live `/api/checks`. Identity is Launchpad / `fixflags.com/demo`. Publish a history point only when the generator binds its repository revision and source path to distinct real WebPs, capture and document hashes, date, score, Flags, Timeline, and evidence anchors. An explicit unknown sample observation returns not found. Reduced motion shows the complete final state.
 - The canonical detailed workspace owns the complete ranked Fix list and the bounded zero-to-three Finish Plan. Funnel, Flow, Timeline, previews, and secondary controls remain subordinate context or sibling capabilities.
 - Progressive, focused, detailed, shared, and sample reports consume shared report/access models while retaining intentional density differences.
@@ -57,7 +50,7 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 - Evidence remains device-specific. Never invent a healthy twin capture as filler. If both captures exist, show both. Unaffected viewports keep their real pixels and a “Not flagged” badge.
 - Sample evidence must identify itself as a curated fixture and keep URL, brand, screenshots, copy, and metadata consistent.
 - Live anonymous, shared, and non-owner reports show real evidence and the per-issue Fix Prompt / Copy prompt chrome. Expand and copy open create-account; prompt bodies, update-review actions, lifecycle mutations, and Timeline payload stay gated.
-- Repository-owned curated samples may expose exactly one demonstrated per-Flag prompt and their versioned static Timeline. They expose no aggregate Finish Plan prompt or update-review action.
+- Repository-owned curated samples may expose exactly one demonstrated per-Flag prompt. They expose no aggregate Finish Plan prompt, Timeline, or update-review action.
 - Copying an owner prompt records a handoff. Only a strict `IMPROVED` receipt may present an Improvement as verified or write verified Product Memory.
 - Rubric score and Pass / Needs Attention / Blocked must not contradict; fix scoring or presentation at the shared model, not with per-page copy.
 - Customer-facing Flow/Timeline never shows `chrome-error://` or other browser-internal URLs.
@@ -65,7 +58,7 @@ Use this skill for UI implementation, responsive review, accessibility, or visua
 ## Living-review checklist
 
 - [ ] No Agent/Product pane cards; full-width flush split; left thinner than right
-- [ ] Scanning Preview selected; Monitor/Smartphone icons in Product header; transport path-only
+- [ ] Agent | Report only; Preview, Timeline, and Canvas stay parked
 - [ ] Completed stays in the same shell with Report selected
 - [ ] Homepage shows Launchpad / `fixflags.com/demo`, real demo captures, `ReportExplorer` in Report mode, emulated story (no network scan)
 - [ ] Agent: chat bubbles + gate-on-send composer; one Flag working mark; no Working percent strip

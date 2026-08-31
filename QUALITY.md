@@ -51,7 +51,7 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Loading / progress UI | 🔶 IMPORTANT | Progress bar, skeleton screens, polling behavior | Progressive tests + AiReviewPendingRefresh timeout UX |
 | Mobile-responsive layout | ✅ DONE | Canonical report at 375px, 768px, 1280px, plus 200% text and reduced motion | Isolated production Playwright matrix passes at 320/375/768/1280px; 200% reflow and reduced motion pass |
 | Screenshot display | 🔶 IMPORTANT | Load, fail gracefully, placeholder fallback | `ScreenshotWithHighlights` component test (error/retry/success) + E2E stubbed-endpoint test (placeholder, Retry, recovery) |
-| Accessibility basics | ✅ DONE | Keyboard nav, 44px targets, screen reader names, zoom/reflow, reduced motion | Light/dark axe matrix passes for homepage, pricing, and samples at 375/768/1280px; isolated report journeys pass 44px target checks |
+| Accessibility basics | ⚠️ CRITICAL | Keyboard nav, 44px targets, screen reader names, zoom/reflow, reduced motion, AA brand contrast | Brand CTA pair is token-level AA; segmented and prompt chrome are 44px; Flag headings are contextual h2/h3. Full launch-width axe remains a release proof gate |
 | Page load performance | 🔶 IMPORTANT | Canonical report loads without unnecessary duplicate report bundles | Production build route output |
 | Coverage thresholds | ✅ DONE | Vitest coverage config | Enforced in full and release validation. Measured 71.01% statements, 65.09% branches, 71.60% functions, and 72.39% lines on 2026-08-11 |
 

@@ -3,9 +3,9 @@ import { gradeFromScore } from '@/lib/audit/scoring'
 // Hex values for non-CSS consumers (OG, email, manifest). Brand sheet 2026-07.
 // Mesh/orb gradients live in lib/design/tokens.css only.
 export const BRAND_HEX = {
-  primary: '#FF5A00',
-  primaryLight: '#FF7A33',
-  primaryDepth: '#C44700',
+  primary: '#C24400',
+  primaryLight: '#CC4A00',
+  primaryDepth: '#A33800',
   background: '#FFFFFF',
   foreground: '#0B0B0D',
   muted: '#F5F6F7',
@@ -23,8 +23,8 @@ export const BRAND_HEX = {
 } as const
 
 export const BRAND_HEX_DARK = {
-  primary: '#FF5C1A',
-  primaryLight: '#FF7A33',
+  primary: '#C23A00',
+  primaryLight: '#CC4A00',
   background: '#0B0B0D',
   foreground: '#F5F6F7',
   muted: '#1D2024',
@@ -120,3 +120,31 @@ export const manifestColors = {
   background_color: brandLight.background,
   theme_color: brandLight.brand,
 } as const
+
+function channelLuminance(channel: number): number {
+  const value = channel / 255
+  return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+}
+
+export function relativeLuminance(hex: string): number {
+  const raw = hex.replace('#', '')
+  const normalized = raw.length === 3
+    ? raw.split('').map((part) => `${part}${part}`).join('')
+    : raw
+  const red = Number.parseInt(normalized.slice(0, 2), 16)
+  const green = Number.parseInt(normalized.slice(2, 4), 16)
+  const blue = Number.parseInt(normalized.slice(4, 6), 16)
+  return (
+    0.2126 * channelLuminance(red) +
+    0.7152 * channelLuminance(green) +
+    0.0722 * channelLuminance(blue)
+  )
+}
+
+export function contrastRatio(foreground: string, background: string): number {
+  const first = relativeLuminance(foreground)
+  const second = relativeLuminance(background)
+  const lighter = Math.max(first, second)
+  const darker = Math.min(first, second)
+  return (lighter + 0.05) / (darker + 0.05)
+}

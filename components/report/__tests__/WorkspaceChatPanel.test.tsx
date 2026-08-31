@@ -338,9 +338,9 @@ describe('WorkspaceChatPanel', () => {
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Review history' }))
-    await waitFor(() => expect(screen.getByLabelText('Score 65')).toBeInTheDocument())
-    expect(screen.getByLabelText('Score pending')).toBeInTheDocument()
-    expect(screen.getByLabelText('Score 65')).toHaveClass('h-9', 'w-9')
+    await waitFor(() => expect(screen.getByLabelText(/^Score 65/)).toBeInTheDocument())
+    expect(screen.getByLabelText(/^Score pending/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Score 65/)).toHaveClass('h-9', 'w-9')
     expect(screen.queryByText('CAPTURING')).not.toBeInTheDocument()
   })
 })

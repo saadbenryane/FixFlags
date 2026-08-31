@@ -40,6 +40,15 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
+  async redirects() {
+    return [
+      {
+        source: '/help/mcp',
+        destination: '/help',
+        permanent: true,
+      },
+    ]
+  },
   async rewrites() {
     return [
       {

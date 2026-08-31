@@ -49,6 +49,7 @@ npm run agent -- eval accuracy
 - **HTML-only vs browser:** Never adjudicate missing UI, visibility, geometry, or accessibility bypasses from raw response HTML. Client-rendered sites can contain real CTAs and skip links only after hydration.
 - **Do not** remove checks that fire on correct practice
 - **Do not** add URL-specific logic in production to satisfy fixtures
+- **Do not** prescribe visible text on icon-only buttons, links, or chrome. Accessible name (`aria-label` or a visually hidden label) must keep the current visual. A wrong prescription can wreck a working layout even when the Flag is true.
 
 ## Live vs offline limits
 

@@ -1,3 +1,7 @@
+# SUPERSEDED — Game On product completion handoff
+
+**Superseded 2026-08-31 by `game-on-url-first-complete`.** Timeline, Canvas, CLI 1.0.5, and protected-sharing launch gates in this document are parked and are not launch scope.
+
 # Game On product completion handoff
 
 ## State at close

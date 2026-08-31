@@ -12,7 +12,7 @@ for (const width of [375, 390, 1086, 1144]) {
     ).toBeVisible()
     await expect(page.getByText('Works where you build').last()).toBeVisible()
     await expect(
-      page.getByRole('heading', { name: /FixFlags in your workflow/i })
+      page.getByText(/Review a live product, see the most important problems with evidence/i).first()
     ).toBeVisible()
 
     const geometry = await page.evaluate(() => ({

@@ -225,4 +225,236 @@ describe('buildFixFlagsScanMessages', () => {
       /I found an Experience Flag on \/checkout: Checkout is unclear/
     )
   })
+
+  it('names the worthwhile Flag and leaves Polish observations in the Report', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      flags: [
+        {
+          id: 'cookie',
+          problem: 'Analytics detected but no cookie consent found',
+          rubric: 'REACH',
+          severity: 'POLISH',
+          checkId: 'cookie-consent-absent',
+          impactTag: 'TRUST',
+        },
+        {
+          id: 'schema',
+          problem: 'No structured data (JSON-LD) found',
+          rubric: 'REACH',
+          severity: 'POLISH',
+          checkId: 'no-structured-data',
+          impactTag: 'SEO',
+        },
+        {
+          id: 'headline',
+          problem: 'The headline is unclear',
+          rubric: 'MESSAGE',
+          severity: 'IMPORTANT',
+          checkId: 'headline-unclear',
+          impactTag: 'CLARITY',
+        },
+      ],
+    })
+
+    const announced = messages.filter((item) => item.kind === 'flag')
+    expect(announced).toHaveLength(1)
+    expect(announced[0]).toMatchObject({ flagId: 'headline' })
+    expect(messages.find((item) => item.id.endsWith(':additional-flags'))).toBeUndefined()
+  })
+
+  it('does not claim nothing needs action while checks are still running', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      flags: [
+        {
+          id: 'cookie',
+          problem: 'Analytics detected but no cookie consent found',
+          rubric: 'REACH',
+          severity: 'POLISH',
+          checkId: 'cookie-consent-absent',
+        },
+      ],
+    })
+
+    expect(messages.filter((item) => item.kind === 'flag')).toHaveLength(0)
+    expect(messages.some((item) => item.id.endsWith(':no-attention'))).toBe(false)
+  })
+
+  it('does not claim nothing needs action when a completed Review has a worthwhile Flag', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      status: 'COMPLETED',
+      progress: 100,
+      flags: [
+        {
+          id: 'headline',
+          problem: 'The headline is unclear',
+          rubric: 'MESSAGE',
+          severity: 'IMPORTANT',
+          fix: '1. Rewrite the headline\n2. Keep the offer',
+        },
+        {
+          id: 'cookie',
+          problem: 'Analytics detected but no cookie consent found',
+          rubric: 'REACH',
+          severity: 'POLISH',
+        },
+      ],
+    })
+
+    expect(messages.filter((item) => item.kind === 'flag').map((item) => item.flagId)).toEqual([
+      'headline',
+    ])
+    expect(messages.some((item) => item.id.endsWith(':no-attention'))).toBe(false)
+  })
+
+  it('says nothing needs action when a completed Review has only Polish observations', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      status: 'COMPLETED',
+      progress: 100,
+      reportCompleteness: 'FULL',
+      flags: [
+        {
+          id: 'cookie',
+          problem: 'Analytics detected but no cookie consent found',
+          rubric: 'REACH',
+          severity: 'POLISH',
+          checkId: 'cookie-consent-absent',
+        },
+        {
+          id: 'schema',
+          problem: 'No structured data (JSON-LD) found',
+          rubric: 'REACH',
+          severity: 'POLISH',
+          checkId: 'no-structured-data',
+        },
+      ],
+    })
+
+    expect(messages.filter((item) => item.kind === 'flag')).toHaveLength(0)
+    expect(messages.find((item) => item.id.endsWith(':no-attention'))?.content).toBe(
+      'I didn’t find anything that deserves action yet. 2 observations are in the Report.'
+    )
+    expect(messages.at(-1)).toMatchObject({
+      kind: 'completion',
+      content: 'Your report is ready.',
+    })
+  })
+
+  it('names Fixed versus New when an update review completes with a flat score', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      status: 'COMPLETED',
+      progress: 100,
+      reportCompleteness: 'FULL',
+      score: 72,
+      previousScore: 72,
+      updateDiff: {
+        fixed: [{ id: 'a' }, { id: 'b' }, { id: 'c' }],
+        unchanged: [{ id: 'd' }],
+        newIssues: [{ id: 'e' }, { id: 'f' }],
+        regressed: [],
+        inconclusive: [],
+      },
+    })
+    const outcome = messages.find((item) => item.id.endsWith(':update-outcome'))
+    expect(outcome?.content).toContain('3 Flags from last time are gone')
+    expect(outcome?.content).toContain('2 new observations appeared')
+    expect(outcome?.content).toContain('Score stayed at 72')
+    expect(messages.some((item) => item.id.endsWith(':no-attention'))).toBe(false)
+  })
+
+  it('does not say nothing needs action when completed evidence is only partial', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      status: 'COMPLETED',
+      progress: 100,
+      reportCompleteness: 'PARTIAL',
+      flags: [
+        {
+          id: 'cookie',
+          problem: 'Analytics detected but no cookie consent found',
+          rubric: 'REACH',
+          severity: 'POLISH',
+        },
+      ],
+    })
+
+    expect(messages.some((item) => item.id.endsWith(':no-attention'))).toBe(false)
+    expect(messages.at(-1)?.content).toBe('Your report is ready with some evidence missing.')
+  })
+
+  it('names a Critical Flag without a fix while checking, then drops it from completed Attention', () => {
+    const flag = {
+      id: 'empty-fix',
+      problem: 'The signup path is blocked',
+      rubric: 'EXPERIENCE',
+      severity: 'CRITICAL',
+      fix: '',
+    }
+    const checking = buildFixFlagsScanMessages({
+      ...base,
+      flags: [flag],
+    })
+    const completed = buildFixFlagsScanMessages({
+      ...base,
+      status: 'COMPLETED',
+      progress: 100,
+      reportCompleteness: 'FULL',
+      flags: [flag],
+    })
+
+    expect(checking.filter((item) => item.kind === 'flag').map((item) => item.flagId)).toEqual([
+      'empty-fix',
+    ])
+    expect(completed.filter((item) => item.kind === 'flag')).toHaveLength(0)
+    expect(completed.find((item) => item.id.endsWith(':no-attention'))?.content).toContain(
+      '1 observation is in the Report'
+    )
+  })
+
+  it('keeps a Flag at the confidence floor and excludes a near miss', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      flags: [
+        {
+          id: 'floor',
+          problem: 'The headline is unclear',
+          rubric: 'MESSAGE',
+          severity: 'IMPORTANT',
+          confidence: 0.65,
+        },
+        {
+          id: 'low',
+          problem: 'Primary CTA is weak',
+          rubric: 'EXPERIENCE',
+          severity: 'IMPORTANT',
+          confidence: 0.64,
+        },
+      ],
+    })
+
+    expect(messages.filter((item) => item.kind === 'flag').map((item) => item.flagId)).toEqual([
+      'floor',
+    ])
+  })
+
+  it('counts only leftover Attention candidates as additional Flags', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      flags: Array.from({ length: 5 }, (_, index) => ({
+        id: `important-${index + 1}`,
+        problem: `Grounded issue ${index + 1}`,
+        rubric: 'EXPERIENCE',
+        severity: 'IMPORTANT',
+      })),
+    })
+
+    expect(messages.filter((item) => item.kind === 'flag')).toHaveLength(3)
+    expect(messages.find((item) => item.id.endsWith(':additional-flags'))?.content).toContain(
+      '2 more Flags'
+    )
+  })
 })

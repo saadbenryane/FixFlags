@@ -11,6 +11,7 @@ import {
   LATEST_STATIC_SAMPLE_OBSERVATION_ID,
 } from '@/lib/marketing/static-sample'
 import { resolveDisplayScores } from '@/lib/marketing/sample-report-display'
+import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 
 describe('isEligibleMarketingSample', () => {
   it('requires completeness, flags, rubrics, and a desktop screenshot', () => {
@@ -97,6 +98,35 @@ describe('curated sample provenance', () => {
       UnknownCuratedObservationError
     )
     await assert.rejects(getCuratedSampleAudit(''), UnknownCuratedObservationError)
+  })
+
+  it('names worthwhile Flags and leaves the Polish canonical observation in the Report', async () => {
+    const { audit } = await getCuratedSampleAudit()
+    const messages = buildFixFlagsScanMessages({
+      id: audit.id,
+      url: audit.url,
+      status: 'COMPLETED',
+      progress: 100,
+      flags: audit.flags.map((flag) => ({
+        id: flag.id,
+        problem: flag.problem,
+        rubric: flag.rubric,
+        severity: flag.severity,
+        checkId: flag.checkId,
+        impactTag: flag.impactTag,
+        confidence: flag.confidence,
+        status: flag.status,
+        fix: flag.fix,
+      })),
+    })
+    const announced = messages.filter((item) => item.kind === 'flag').map((item) => item.flagId)
+
+    assert.ok(announced.includes('flag-experience-mobile-cta'))
+    assert.equal(announced.includes('flag-reach-canonical'), false)
+    assert.equal(
+      messages.some((item) => item.id.endsWith(':no-attention')),
+      false
+    )
   })
 
 })

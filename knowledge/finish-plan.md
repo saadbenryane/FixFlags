@@ -53,6 +53,7 @@ Full anatomy and examples: [evidence-rules.md](./evidence-rules.md).
 
 - Every persisted unresolved Flag is present exactly once
 - Attention contains zero-to-three worthwhile items; low-confidence imperfection may produce no recommendation
+- Agent names Attention candidates while a Review runs, then the same worthwhile Flags as Finish Plan when the Review is fully complete. The complete Fix list remains visible.
 - Ranking makes the next action clear without hiding lower-priority work
 - Tied to Product identity (Contract / PI) when available
 - Each item has problem, impact, fix path, verify path

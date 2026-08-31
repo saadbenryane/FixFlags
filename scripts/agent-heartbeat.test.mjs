@@ -142,6 +142,31 @@ withFixture((dir) => {
 });
 
 withFixture((dir) => {
+  const boardPath = path.join(dir, ".agents", "BOARD.md");
+  const compactSeparatorBoard = `# Task Board
+
+| Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| task-proposed | proposed | agent-d | main | Scope D | files-d | none | 2026-08-31 |
+| task-claimed | claimed | agent-e | main | Scope E | files-e | none | 2026-08-31 |
+| task-underscore | in_progress | agent-f | main | Scope F | files-f | none | 2026-08-31 |
+
+## Completed
+
+| Task ID | Owner | Scope | Completed |
+| --- | --- | --- | --- |
+| old-task | agent-x | old | 2026-07-01 |
+`;
+  fs.writeFileSync(boardPath, compactSeparatorBoard, "utf8");
+  const out = JSON.parse(runReadout(dir, ["--json"]));
+  assert(out.warnings.length === 0, `json: compact Markdown separators are ignored (warnings=${JSON.stringify(out.warnings)})`);
+  assert(out.board.counts.proposed === 1, `json: proposed is a valid board status (got ${JSON.stringify(out.board.counts)})`);
+  assert(out.board.counts.claimed === 1, "json: claimed is a valid board status");
+  assert(out.board.counts["in-progress"] === 1, "json: in_progress normalizes to in-progress");
+  assert(!Object.keys(out.board.counts).includes("---"), "json: separator cells are not treated as task ids");
+});
+
+withFixture((dir) => {
   fs.unlinkSync(path.join(dir, ".agents", "GOAL.md"));
   const out = JSON.parse(runReadout(dir, ["--json"]));
   assert(out.goal.status === "unavailable", "json: missing GOAL.md → explicit unavailable");

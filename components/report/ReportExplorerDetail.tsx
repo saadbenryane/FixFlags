@@ -74,6 +74,7 @@ export function FlagDetailPane({
   demonstratedFlagId,
   ownerActionContext,
   headingRef,
+  headingLevel = 'h2',
   secondaryPromptAction,
 }: {
   model: ReportExplorerModel
@@ -90,9 +91,12 @@ export function FlagDetailPane({
   demonstratedFlagId?: string
   ownerActionContext?: ReportOwnerActionContext
   headingRef?: RefObject<HTMLHeadingElement | null>
+  /** Standalone and sample details use h2. Nested Product lists may use h3 under a real h2. */
+  headingLevel?: 'h2' | 'h3'
   /** Optional action beside the docked prompt row (e.g. View report). */
   secondaryPromptAction?: ReactNode
 }) {
+  const Heading = headingLevel
   const captures = model.capturesByFlagId?.[flag.id]
   const desktopScreenshot = captures?.desktopScreenshot ?? model.desktopScreenshot
   const mobileScreenshot = captures?.mobileScreenshot ?? model.mobileScreenshot
@@ -115,13 +119,13 @@ export function FlagDetailPane({
       >
         <header className="mb-5">
           <div className="flex items-start justify-between gap-3">
-            <h3
+            <Heading
               ref={headingRef}
               tabIndex={-1}
               className="min-w-0 flex-1 text-lg font-semibold leading-snug tracking-heading text-balance outline-none"
             >
               {flag.title}
-            </h3>
+            </Heading>
             {flagCount > 1 ? (
               <nav
                 className="flex shrink-0 items-center gap-1 pt-0.5"

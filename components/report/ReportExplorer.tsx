@@ -19,6 +19,7 @@ import {
   clampFlagIndex,
   countFlagsByRubric,
   filterExplorerFlags,
+  firstAttentionFlagIndex,
   initialExplorerFlagIndex,
   type RubricFilter,
 } from '@/lib/report/explorer-filters'
@@ -113,6 +114,7 @@ export function ReportExplorer({
   const { setSelection } = usePreviewEvidence()
   const demonstratedSelectionApplied = useRef(false)
   const urlStateLoaded = useRef(false)
+  const selectionLockedByUser = useRef(false)
 
   const writeExplorerUrl = useCallback((state: {
     flag: string | null
@@ -150,22 +152,30 @@ export function ReportExplorer({
     })
     const requestedFlag = params.get('flag')
     const requestedVisibleFlag = visible.find((flag) => flag.id === requestedFlag)
-    const nextFlag =
-      requestedVisibleFlag?.id ??
-      (requestedFlag
-        ? visible[0]?.id
-        : visible.find((flag) => flag.id === visibleDemonstratedFlagId)?.id) ??
+    const defaultFlagId =
+      visible.find((flag) => flag.id === visibleDemonstratedFlagId)?.id ??
+      visible[firstAttentionFlagIndex(visible)]?.id ??
       visible[0]?.id ??
       null
+    const userChoseFlag = Boolean(requestedVisibleFlag)
+    selectionLockedByUser.current = userChoseFlag
+    const nextFlag = requestedVisibleFlag?.id ?? defaultFlagId
     demonstratedSelectionApplied.current = Boolean(
-      requestedFlag || visible.some((flag) => flag.id === visibleDemonstratedFlagId)
+      userChoseFlag || visible.some((flag) => flag.id === visibleDemonstratedFlagId)
     )
     setRubricFilter(nextRubric)
     setSelectedFlagId(nextFlag)
-    writeExplorerUrl({
-      flag: nextFlag,
-      rubric: nextRubric,
-    })
+    if (userChoseFlag) {
+      writeExplorerUrl({
+        flag: nextFlag,
+        rubric: nextRubric,
+      })
+    } else if (requestedFlag) {
+      writeExplorerUrl({
+        flag: null,
+        rubric: nextRubric,
+      })
+    }
   }, [defaultRubric, model.flags, visibleDemonstratedFlagId, writeExplorerUrl])
 
   useEffect(() => {
@@ -237,6 +247,13 @@ export function ReportExplorer({
     writeExplorerUrl,
   ])
 
+  useEffect(() => {
+    if (selectionLockedByUser.current || visibleDemonstratedFlagId) return
+    const nextId = model.flags[firstAttentionFlagIndex(model.flags)]?.id ?? null
+    if (!nextId) return
+    setSelectedFlagId((current) => (current === nextId ? current : nextId))
+  }, [model.flags, visibleDemonstratedFlagId])
+
   const filteredFlags = useMemo(
     () =>
       filterExplorerFlags(model.flags, {
@@ -269,6 +286,7 @@ export function ReportExplorer({
     if (safeFlagIndex <= 0) return
     const next = filteredFlags[safeFlagIndex - 1]
     if (!next) return
+    selectionLockedByUser.current = true
     setSelectedFlagId(next.id)
     writeExplorerUrl({
       flag: next.id,
@@ -280,6 +298,7 @@ export function ReportExplorer({
     if (safeFlagIndex >= flagCount - 1) return
     const next = filteredFlags[safeFlagIndex + 1]
     if (!next) return
+    selectionLockedByUser.current = true
     setSelectedFlagId(next.id)
     writeExplorerUrl({
       flag: next.id,
@@ -290,6 +309,7 @@ export function ReportExplorer({
   const goToFlag = useCallback(
     (flagId: string) => {
       if (!filteredFlags.some((flag) => flag.id === flagId)) return
+      selectionLockedByUser.current = true
       setSelectedFlagId(flagId)
       writeExplorerUrl({
         flag: flagId,
@@ -431,6 +451,7 @@ export function ReportExplorer({
         demonstratedFlagId={visibleDemonstratedFlagId}
         ownerActionContext={effectiveOwnerActionContext}
         headingRef={detailHeadingRef}
+        headingLevel={layout === 'list-detail' ? 'h3' : 'h2'}
         secondaryPromptAction={promptSecondaryAction}
       />
     ) : (

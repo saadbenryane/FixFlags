@@ -133,7 +133,7 @@ describe('ReportExplorer anonymous teaser', () => {
     window.history.replaceState({}, '', '/report/a1?flag=deleted')
     render(
       <MeProvider initialUser={null}>
-        <ReportExplorer model={model} aiLocked auditId="a1" />
+        <ReportExplorer model={model} auditId="a1" />
       </MeProvider>
     )
     await waitFor(() => {
@@ -143,8 +143,77 @@ describe('ReportExplorer anonymous teaser', () => {
         })
       ).toHaveAttribute('aria-pressed', 'true')
     })
-    expect(window.location.search).toContain('flag=locked')
     expect(window.location.search).not.toContain('deleted')
+    expect(window.location.search).not.toContain('flag=')
+  })
+
+  it('moves from a streamed Polish Flag to the first Attention candidate', async () => {
+    const polish: ExplorerFlag = {
+      ...flag('cookie', 'No cookie consent', false),
+      severity: 'POLISH',
+      severityLabel: 'Polish Flag',
+      rubric: 'REACH',
+      rubricLabel: 'Reach',
+      impactTag: 'TRUST',
+    }
+    const headline = flag('headline', 'Headline is unclear', true)
+    const { rerender } = render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer
+          model={{ ...model, flags: [polish], flagCount: 1 }}
+          auditId="a1"
+        />
+      </MeProvider>
+    )
+
+    expect(
+      screen.getByRole('button', { name: /No cookie consent/ })
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(window.location.search).not.toContain('flag=cookie')
+
+    rerender(
+      <MeProvider initialUser={null}>
+        <ReportExplorer
+          model={{ ...model, flags: [polish, headline], flagCount: 2 }}
+          auditId="a1"
+        />
+      </MeProvider>
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /Headline is unclear/ })
+      ).toHaveAttribute('aria-pressed', 'true')
+    })
+    expect(window.location.search).not.toContain('flag=cookie')
+  })
+
+  it('keeps a Polish Flag when the URL asked for it', async () => {
+    const polish: ExplorerFlag = {
+      ...flag('cookie', 'No cookie consent', false),
+      severity: 'POLISH',
+      severityLabel: 'Polish Flag',
+      rubric: 'REACH',
+      rubricLabel: 'Reach',
+      impactTag: 'TRUST',
+    }
+    const headline = flag('headline', 'Headline is unclear', true)
+    window.history.replaceState({}, '', '/report/a1?flag=cookie')
+    render(
+      <MeProvider initialUser={null}>
+        <ReportExplorer
+          model={{ ...model, flags: [polish, headline], flagCount: 2 }}
+          auditId="a1"
+        />
+      </MeProvider>
+    )
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: /No cookie consent/ })
+      ).toHaveAttribute('aria-pressed', 'true')
+    })
+    expect(window.location.search).toContain('flag=cookie')
   })
 
   it('does not write explorer state onto the homepage URL without a live audit id', async () => {

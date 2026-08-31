@@ -7,6 +7,10 @@ import {
   type RankableFlag,
 } from '@/lib/audit/priority-flags'
 import { consolidateFlagsByCheck } from '@/lib/audit/consolidate-flags'
+import {
+  isWorthwhileAttentionFlag,
+  MAX_ATTENTION_ITEMS,
+} from '@/lib/audit/attention'
 
 export type FinishPlanPromptAccess = 'all' | 'one' | 'none'
 type FixListFlag = RankableFlag & { status?: string | null }
@@ -48,7 +52,7 @@ export interface FixList extends FinishPlan {
   totalCount: number
 }
 
-export const MAX_FINISH_PLAN_ITEMS = 3
+export const MAX_FINISH_PLAN_ITEMS = MAX_ATTENTION_ITEMS
 
 export interface FixArtifacts {
   fixList: FixList
@@ -187,10 +191,15 @@ export function buildFixArtifacts(input: PlanInput): FixArtifacts {
     const flag = ranked.rankedFlags[index]
     if (!flag) return []
     if (
-      item.severity === 'POLISH' ||
-      (flag.confidence ?? 1) < 0.65 ||
-      item.recommendedChange.trim().length === 0
-    ) return []
+      !isWorthwhileAttentionFlag({
+        severity: item.severity,
+        confidence: flag.confidence,
+        status: flag.status,
+        recommendedChange: item.recommendedChange,
+      })
+    ) {
+      return []
+    }
     return [{ item, flag }]
   })
   const finishItems = worthwhile.slice(0, selectedCount).map(({ item }) => item)

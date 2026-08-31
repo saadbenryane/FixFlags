@@ -27,4 +27,4 @@ Runtime hero glass: `public/marketing/visuals/home-hero-glass.webp` (RGBA).
 
 ## Canonical hexes
 
-Primary `#FF5A00`, Accent Light `#FF7A33`, Ink `#0B0B0D`, White `#FFFFFF`, Stone `#F5F6F7`, Gray 200 `#E6E6E8`, Gray 400 `#A7A8B2`, Gray 600 `#61646B`, Gray 800 `#1D2024`, Success `#22C55E`, Warning `#FACC15`, Error `#FF4444`, Info `#3B82F6`.
+Primary `#C24400`, Accent Light `#CC4A00`, Ink `#0B0B0D`, White `#FFFFFF`, Stone `#F5F6F7`, Gray 200 `#E6E6E8`, Gray 400 `#A7A8B2`, Gray 600 `#61646B`, Gray 800 `#1D2024`, Success `#22C55E`, Warning `#FACC15`, Error `#FF4444`, Info `#3B82F6`.

@@ -8,6 +8,7 @@ import type { loadReportRouteState } from './load-report-route-state'
 import { ReportPromptsUnlockedTracker } from '@/components/report/ReportPromptsUnlockedTracker'
 import { ReportViewedTracker } from '@/components/analytics/ReportViewedTracker'
 import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
+import { previousScoreFromHistory } from '@/lib/audit/update-review-progress'
 import { BRAND } from '@/lib/marketing/copy'
 import { publicReportStructuredData } from '@/lib/marketing/structured-data'
 import { displayHostname } from '@/lib/utils/url-helpers'
@@ -28,15 +29,6 @@ function parseCaptureStatus(audit: unknown): ScreenshotCaptureStatus | undefined
 }
 
 export function CompletedReportView({ state }: { state: CompletedState }) {
-  const journeyReviews = (state.audit.journeyReviews ?? []).map((review) => ({
-    id: review.id,
-    journeyType: review.journeyType,
-    status: review.status,
-    goalAchieved: review.goalAchieved,
-    completedSteps: review.completedSteps,
-    findingsCount: review._count.findings,
-    steps: review.steps,
-  }))
   const captureStatus = parseCaptureStatus(state.audit)
   const agentMessages = buildFixFlagsScanMessages({
     id: state.id,
@@ -50,6 +42,9 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
     journeyReviewIncluded: state.audit.journeyReviewIncluded,
     journeyReviewAt: state.audit.journeyReviewAt,
     screenshotCapture: captureStatus,
+    score: state.audit.score,
+    previousScore: previousScoreFromHistory(state.scoreHistory, state.id),
+    updateDiff: state.recheckDiff,
     flags: state.flags.map((flag) => ({
       id: flag.id,
       problem: flag.problem,
@@ -58,6 +53,9 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
       checkId: flag.checkId,
       impactTag: flag.impactTag,
       pageUrl: flag.pageUrl,
+      confidence: flag.confidence,
+      status: flag.status,
+      fix: flag.fix,
     })),
   })
   const headerActions = (
@@ -133,24 +131,13 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           viewerPlan={state.user?.plan ?? 'FREE'}
           isLoggedIn={state.isLoggedIn}
           variant={state.isMarketingSample ? 'sample' : 'default'}
-          showMonitoringHint={state.isLoggedIn && state.isOwner}
-          projectId={state.audit.projectId}
-          canWatchProduct={state.entitlements?.canWatchProduct ?? false}
-          canDailyWatch={state.isLoggedIn && state.isOwner}
-          watchInterval={
-            state.audit.watchInterval === 'weekly' || state.audit.watchInterval === 'daily'
-              ? state.audit.watchInterval
-              : null
-          }
           atAuditLimit={state.atAuditLimit}
-          captureStatus={captureStatus}
           showPrescription={state.showPrescription}
           showDeterministicFixes={state.showDeterministicFixes}
           aiReviewPending={state.aiReviewPending}
           triageDegraded={state.triageDegraded}
           prescriptionFailed={state.prescriptionFailed}
           failureCode={state.audit.failureCode ?? null}
-          journeyReviews={journeyReviews}
           recheckDiff={state.recheckDiff}
           verificationReceipts={state.verificationReceipts}
           scoreHistory={state.scoreHistory}

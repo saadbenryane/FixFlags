@@ -20,6 +20,48 @@ export const AGENT_SCAN_COPY = {
   },
   additionalFlags: (count: number) =>
     `I confirmed ${count} more ${count === 1 ? 'Flag' : 'Flags'}. They’re available in the Report while I finish judging what matters most.`,
+  updateOutcome: (counts: {
+    fixed: number
+    unchanged: number
+    newIssues: number
+    regressed: number
+    inconclusive: number
+  }) => {
+    const parts: string[] = []
+    if (counts.fixed > 0) {
+      parts.push(
+        `${counts.fixed} ${counts.fixed === 1 ? 'Flag from last time is gone' : 'Flags from last time are gone'}`
+      )
+    }
+    if (counts.unchanged > 0) {
+      parts.push(
+        `${counts.unchanged} ${counts.unchanged === 1 ? 'is still open' : 'are still open'}`
+      )
+    }
+    if (counts.newIssues > 0) {
+      parts.push(
+        `${counts.newIssues} new ${counts.newIssues === 1 ? 'observation appeared' : 'observations appeared'}`
+      )
+    }
+    if (counts.regressed > 0) {
+      parts.push(
+        `${counts.regressed} ${counts.regressed === 1 ? 'Flag got worse' : 'Flags got worse'}`
+      )
+    }
+    if (counts.inconclusive > 0) {
+      parts.push(
+        `${counts.inconclusive} ${counts.inconclusive === 1 ? 'Flag could not be compared' : 'Flags could not be compared'}`
+      )
+    }
+    if (parts.length === 0) return 'This update review matches the last snapshot.'
+    return `Update review: ${parts.join(', ')}.`
+  },
+  noAttention: (observationCount: number) =>
+    observationCount > 0
+      ? `I didn’t find anything that deserves action yet. ${observationCount} ${
+          observationCount === 1 ? 'observation is' : 'observations are'
+        } in the Report.`
+      : 'I didn’t find anything that deserves action yet.',
 } as const
 
 function rubricLabel(rubric: string): string {

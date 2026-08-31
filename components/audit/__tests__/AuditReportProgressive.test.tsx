@@ -130,7 +130,7 @@ describe('AuditReportProgressive', () => {
     expect(screen.getAllByText('example.com').length).toBeGreaterThan(0)
     // The hold frame matches the completed report: outcome bar and Flag explorer.
     expect(screen.getByRole('region', { name: REPORT_COPY.workspace.summaryLabel })).toBeInTheDocument()
-    expect(screen.getByLabelText('Score 82')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Score 82/)).toBeInTheDocument()
     expect(screen.queryByText('Review context')).not.toBeInTheDocument()
     expect(screen.queryByRole('navigation', { name: 'Report sections' })).not.toBeInTheDocument()
   })

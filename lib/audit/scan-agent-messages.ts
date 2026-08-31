@@ -1,4 +1,14 @@
 import type { AgentMessage, AgentMessageKind, AgentMessageState } from '@/lib/audit/agent-message'
+import {
+  isAttentionCandidate,
+  isWorthwhileAttentionFlag,
+  MAX_ATTENTION_ITEMS,
+} from '@/lib/audit/attention'
+import {
+  countsFromUpdateDiff,
+  scoreOffsetExplanation,
+  type UpdateReviewDiffLike,
+} from '@/lib/audit/update-review-progress'
 import { compareFlagsByPriority } from '@/lib/audit/priority-flags'
 import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '@/lib/audit/progress'
 import type { ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
@@ -14,10 +24,13 @@ export type ScanAgentFlag = {
   checkId?: string | null
   impactTag?: string | null
   pageUrl?: string | null
+  confidence?: number | null
+  status?: string | null
+  fix?: string | null
 }
 
-/** How many confirmed Flags the Agent names in the transcript. The rest stay in Report. */
-export const ANNOUNCED_FLAG_LIMIT = 3
+/** How many worthwhile Flags the Agent names. The rest stay in Report. */
+export const ANNOUNCED_FLAG_LIMIT = MAX_ATTENTION_ITEMS
 
 function flagPathLabel(pageUrl?: string | null, pastedUrl?: string | null): string | null {
   if (!pageUrl) return null
@@ -35,15 +48,24 @@ function asRankable(flag: ScanAgentFlag) {
     problem: flag.problem,
     checkId: flag.checkId ?? null,
     impactTag: flag.impactTag ?? null,
+    confidence: flag.confidence ?? null,
   }
 }
 
 /**
- * Choose the Flags the Agent should name. Same comparator as Finish Plan
- * and the Report list, so the first thing said is the first thing shown.
+ * Choose the Flags the Agent should name.
+ * During a Review: Attention candidates (not Polish, not low-confidence).
+ * After a completed Review: the same worthwhile rule as Finish Plan, including
+ * a recommended change.
  */
-export function selectAnnouncedFlags(flags: ScanAgentFlag[]): ScanAgentFlag[] {
-  return [...flags]
+export function selectAnnouncedFlags(
+  flags: ScanAgentFlag[],
+  options: { requireChange?: boolean } = {}
+): ScanAgentFlag[] {
+  const eligible = options.requireChange
+    ? flags.filter((flag) => isWorthwhileAttentionFlag(flag))
+    : flags.filter((flag) => isAttentionCandidate(flag))
+  return eligible
     .sort((a, b) => compareFlagsByPriority(asRankable(a), asRankable(b)))
     .slice(0, ANNOUNCED_FLAG_LIMIT)
 }
@@ -61,6 +83,9 @@ export type FixFlagsScanSnapshot = {
   journeyReviewAt?: Date | string | null
   screenshotCapture?: ScreenshotCaptureStatus | null
   flags?: ScanAgentFlag[] | null
+  score?: number | null
+  previousScore?: number | null
+  updateDiff?: UpdateReviewDiffLike | null
 }
 
 type MessageInput = {
@@ -168,7 +193,9 @@ export function buildFixFlagsScanMessages(snapshot: FixFlagsScanSnapshot): Agent
     }))
 
     const flags = snapshot.flags ?? []
-    for (const flag of selectAnnouncedFlags(flags)) {
+    const requireChange = snapshot.status === 'COMPLETED'
+    const announced = selectAnnouncedFlags(flags, { requireChange })
+    for (const flag of announced) {
       result.push(message(snapshot, {
         suffix: `flag:${flag.id}`,
         kind: 'flag',
@@ -181,12 +208,17 @@ export function buildFixFlagsScanMessages(snapshot: FixFlagsScanSnapshot): Agent
         flagId: flag.id,
       }))
     }
-    if (flags.length > 3) {
+    const remainingAttention =
+      (requireChange
+        ? flags.filter((flag) => isWorthwhileAttentionFlag(flag))
+        : flags.filter((flag) => isAttentionCandidate(flag))
+      ).length - announced.length
+    if (announced.length > 0 && remainingAttention > 0) {
       result.push(message(snapshot, {
         suffix: 'additional-flags',
         kind: 'progress',
         state: 'complete',
-        content: AGENT_SCAN_COPY.additionalFlags(flags.length - 3),
+        content: AGENT_SCAN_COPY.additionalFlags(remainingAttention),
       }))
     }
   }
@@ -235,6 +267,32 @@ export function buildFixFlagsScanMessages(snapshot: FixFlagsScanSnapshot): Agent
         kind: 'warning',
         state: 'warning',
         content: AGENT_SCAN_COPY.partialAi,
+      }))
+    }
+    const flags = snapshot.flags ?? []
+    if (snapshot.updateDiff) {
+      const counts = countsFromUpdateDiff(snapshot.updateDiff)
+      const offset = scoreOffsetExplanation({
+        previousScore: snapshot.previousScore ?? null,
+        currentScore: snapshot.score ?? null,
+        counts,
+      })
+      const tracking = AGENT_SCAN_COPY.updateOutcome(counts)
+      result.push(message(snapshot, {
+        suffix: 'update-outcome',
+        kind: 'progress',
+        state: 'complete',
+        content: offset ? `${tracking} ${offset}` : tracking,
+      }))
+    } else if (
+      selectAnnouncedFlags(flags, { requireChange: true }).length === 0 &&
+      snapshot.reportCompleteness === 'FULL'
+    ) {
+      result.push(message(snapshot, {
+        suffix: 'no-attention',
+        kind: 'progress',
+        state: 'complete',
+        content: AGENT_SCAN_COPY.noAttention(flags.length),
       }))
     }
     result.push(message(snapshot, {

@@ -15,6 +15,7 @@ import {
 } from '@/lib/audit/validate-judge-output'
 import { resolveFreeUserUpgradeMoment } from '@/lib/billing/upgrade-moments'
 import {
+  SCORE_FORMULA_VERSION,
   calculateOverallScore,
   gradeFromScore,
 } from '@/lib/audit/scoring'
@@ -221,6 +222,7 @@ describe('validateJudgeOutput', () => {
 
 describe('production hardening primitives', () => {
   it('uses the documented weighted score and grade thresholds', () => {
+    assert.equal(SCORE_FORMULA_VERSION, 1)
     assert.equal(gradeFromScore(90), 'A')
     assert.equal(gradeFromScore(75), 'B')
     assert.equal(gradeFromScore(60), 'C')
@@ -234,6 +236,27 @@ describe('production hardening primitives', () => {
       }),
       71
     )
+  })
+
+  it('does not let a more severe rubric improve the overall score', () => {
+    const baseline = calculateOverallScore({
+      MESSAGE: 80,
+      EXPERIENCE: 70,
+      REACH: 60,
+    })
+    const worseExperience = calculateOverallScore({
+      MESSAGE: 80,
+      EXPERIENCE: 40,
+      REACH: 60,
+    })
+    const worseMessage = calculateOverallScore({
+      MESSAGE: 40,
+      EXPERIENCE: 70,
+      REACH: 60,
+    })
+    assert.ok(typeof baseline === 'number' && typeof worseExperience === 'number')
+    assert.ok(worseExperience < baseline)
+    assert.ok(typeof worseMessage === 'number' && worseMessage < baseline)
   })
 
   it('rejects private protocols and addresses', () => {

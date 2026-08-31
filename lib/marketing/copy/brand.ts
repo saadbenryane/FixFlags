@@ -140,12 +140,14 @@ export const OFFER = {
     'Report evidence is public at its link. Agent chat, fix prompts, Product Memory, and account history stay available only to the report owner.',
 } as const
 
-/** User-facing score explanation. Must match lib/audit/checks/rubric.ts + scoring.ts. */
+/** User-facing score explanation. Must match lib/audit/scoring.ts. */
 export const SCORE_HELP = {
+  diagnostic:
+    'An issue-weighted summary of this Review. It is not a prediction of conversion or revenue.',
   short:
-    'Each rubric starts at 100 and drops based on the number and severity of unresolved flags across Message, Experience, and Reach.',
+    'An issue-weighted summary of this Review. It is not a prediction of conversion or revenue. Each rubric starts at 100 and drops with the number and severity of unresolved Flags across Message, Experience, and Reach.',
   detail:
-    'Each rubric starts at 100. Critical flags subtract more than Important, which subtract more than Polish. The overall score weights Experience highest, then Message, then Reach. Experience may also blend in PageSpeed when available.',
+    'An issue-weighted summary of this Review. It is not a prediction of conversion or revenue. Each rubric starts at 100. Critical Flags subtract more than Important, which subtract more than Polish. The overall score weights Experience highest, then Message, then Reach. Experience may also blend in PageSpeed when available.',
   /** Canonical deep link via lib/help contextual surfaces */
   faqHref: helpHrefForSurface('score_help'),
 } as const

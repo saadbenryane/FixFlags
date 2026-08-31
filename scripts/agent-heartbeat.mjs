@@ -16,8 +16,19 @@ const repoRoot = process.cwd();
 const boardPath = path.join(repoRoot, ".agents", "BOARD.md");
 const goalPath = path.join(repoRoot, ".agents", "GOAL.md");
 
-const statusOrder = ["in-progress", "review", "blocked", "queued", "done", "abandoned"];
+const statusOrder = [
+  "proposed",
+  "claimed",
+  "in-progress",
+  "review",
+  "blocked",
+  "queued",
+  "done",
+  "abandoned",
+];
 const statusEmojis = {
+  proposed: "💡",
+  claimed: "📌",
   "in-progress": "🟡",
   review: "👀",
   blocked: "🚫",
@@ -25,6 +36,19 @@ const statusEmojis = {
   done: "✅",
   abandoned: "🗑️",
 };
+
+const STATUS_ALIASES = {
+  "in_progress": "in-progress",
+};
+
+function normalizeBoardStatus(raw) {
+  const trimmed = String(raw ?? "").trim().toLowerCase();
+  return STATUS_ALIASES[trimmed] ?? trimmed;
+}
+
+function isMarkdownSeparatorRow(cols) {
+  return cols.length > 0 && cols.every((cell) => /^:?-{3,}:?$/.test(cell));
+}
 
 /** @typedef {{id?: string, task: string, status: string, owner: string, scope: string, updated?: string}} BoardRow */
 /** @typedef {{type: string, message: string, row?: string}} HeartbeatWarning */
@@ -50,13 +74,14 @@ function parseBoard(text) {
 
   for (const [index, rawLine] of activeSection.split("\n").entries()) {
     const line = rawLine.trim();
-    if (!line.startsWith("|") || !line.includes(" | ")) continue;
-    if (line.includes("Task ID") || line.includes("-----") || line.startsWith("| ----------------")) continue;
+    if (!line.startsWith("|") || !line.includes("|")) continue;
 
     const cols = line
       .split("|")
       .map((c) => c.trim())
       .filter((c, i, a) => i !== 0 && i !== a.length - 1);
+
+    if (line.includes("Task ID") || isMarkdownSeparatorRow(cols)) continue;
 
     if (cols.length < 3) {
       warnings.push({
@@ -72,8 +97,9 @@ function parseBoard(text) {
     const owner = cols[2];
     const scope = cols[4] ?? "n/a";
     const updated = cols.at(-1);
+    const status = normalizeBoardStatus(statusRaw);
 
-    if (!statusRaw || !statusOrder.includes(statusRaw.trim())) {
+    if (!status || !statusOrder.includes(status)) {
       warnings.push({
         type: "board_row_invalid",
         message: `Skipping board row with unknown status "${statusRaw ?? 'n/a'}"`,
@@ -81,8 +107,6 @@ function parseBoard(text) {
       });
       continue;
     }
-
-    const status = statusRaw.trim();
     counts[status] = (counts[status] ?? 0) + 1;
     rows.push({
       id: (task ?? `row-${index + 1}`).trim().split(/\s+/)[0],
@@ -146,7 +170,7 @@ function byStatus(rows, status) {
 }
 
 function chooseNextAction(rows) {
-  const priority = ["blocked", "review", "in-progress", "queued", "done"];
+  const priority = ["blocked", "review", "in-progress", "claimed", "proposed", "queued", "done"];
   for (const status of priority) {
     const hit = rows.find((row) => row.status === status);
     if (hit) return hit;

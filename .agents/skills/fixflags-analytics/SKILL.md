@@ -29,7 +29,7 @@ Growth thresholds and deferred work live in `ROADMAP.md` and the launch funnel h
 | `audit_completed` / `viewed_report` / `first_finding_viewed` | Report clients |
 | `fix_prompt_copied` | `PromptCopyButton` / `ExportMenu` |
 | `recheck_started` | `ReportRecheckButton` / detailed `AuditPageActions` |
-| `recheck_completed` | Compare page **and** report with `recheckDiff` |
+| `recheck_completed` | Report outcome path with `recheckDiff` (`RecheckCompletedTracker`) |
 | `report_signup_cta_clicked` | `ReportSignupCta` (`from`: `value_strip` \| `sample_fix` \| `limit_gate`), `AuditLimitGate` |
 | `audits_claimed` | `useMe.claimAnonymous` after successful claim |
 | `audit_limit_reached` | `ContextualUpgradeCard` when free limit gate shows |

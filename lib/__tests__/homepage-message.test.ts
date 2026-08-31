@@ -132,13 +132,14 @@ describe('homepage message guardrails', () => {
   })
 
   it('hero subhead explains the visitor outcome in plain language', () => {
-    assert.match(HERO.subhead, /^Paste your live URL/i)
-    assert.match(HERO.subhead, /trust or conversions/i)
-    assert.match(HERO.subhead, /ranked with evidence/i)
+    assert.match(HERO.subhead, /^Review a live product/i)
+    assert.match(HERO.subhead, /evidence/i)
+    assert.match(HERO.subhead, /AI editor/i)
     assert.equal(
       HERO.subhead,
-      'Paste your live URL. See the problems most likely to cost trust or conversions, ranked with evidence from the product.',
+      'Review a live product, see the most important problems with evidence, and copy a fix into your AI editor.',
     )
+    assert.doesNotMatch(HERO.subhead, /trust or conversions/i)
     assert.ok(
       !HERO.subhead.toLowerCase().includes('finish what your ai started'),
     )

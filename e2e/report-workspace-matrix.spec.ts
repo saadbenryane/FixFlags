@@ -15,8 +15,12 @@ test('canonical Review shell works at cross-browser launch widths', async ({ bro
 
       const scoreHeader = page.locator('#report-status')
       await expect(scoreHeader).toBeVisible()
-      await expect(scoreHeader.getByText('Score', { exact: true })).toBeVisible()
-      await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
+      await expect(scoreHeader.getByRole('img', { name: /^Score /i })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 2 })).toBeVisible()
+      await expect(page.getByText(/of 7/)).toBeVisible()
+      await expect(page.getByRole('tab', { name: 'Timeline' })).toHaveCount(0)
+      await expect(page.getByRole('tab', { name: 'Preview' })).toHaveCount(0)
+      await expect(page.getByRole('tab', { name: 'Canvas' })).toHaveCount(0)
 
       const history = page.getByRole('navigation', { name: 'Review history' }).getByRole('link')
       await expect(history).toHaveCount(2)
@@ -70,20 +74,9 @@ test('sample history uses native destinations and browser history', async ({ pag
   await expect(page).toHaveURL(/\/samples\?view=report$/, { timeout: 60_000 })
   await page.goForward()
   await expect(page).toHaveURL(/observation=curated-sample-v0.*view=report/, { timeout: 60_000 })
-  await page.getByRole('tab', { name: 'Timeline' }).click()
-  await expect(page).toHaveURL(/view=timeline/, { timeout: 60_000 })
-  await expect(page.getByRole('slider', { name: 'Scrub through the review path' })).toBeVisible()
-  await page.goBack()
-  await expect(page).toHaveURL(/view=report/, { timeout: 60_000 })
-
-  const reportTab = page.getByRole('tab', { name: 'Report', exact: true })
-  await reportTab.focus()
-  await reportTab.press('ArrowLeft')
-  await expect(page).toHaveURL(/view=timeline/, { timeout: 60_000 })
-  const timelineTab = page.getByRole('tab', { name: 'Timeline', exact: true })
-  await expect(timelineTab).toBeFocused()
-  await timelineTab.press('End')
-  await expect(page).toHaveURL(/view=report/, { timeout: 60_000 })
+  await expect(page.getByRole('tab', { name: 'Timeline' })).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Agent' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Report', exact: true })).toBeVisible()
 })
 
 test('sample route rejects unpublished observations', async ({ page }) => {
@@ -92,11 +85,12 @@ test('sample route rejects unpublished observations', async ({ page }) => {
   await expect(page.locator('#report-status')).toHaveCount(0)
 })
 
-test('sample allows replay while chat and Canvas stay locked', async ({ page }) => {
-  await page.goto('/samples?view=timeline')
+test('sample keeps Agent and Report only, with chat locked', async ({ page }) => {
+  await page.goto('/samples?view=report')
   await expect(page.locator('[data-workspace-ready="true"]')).toBeVisible({ timeout: 60_000 })
-  await expect(page.getByRole('slider', { name: 'Scrub through the review path' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Timeline' })).toHaveCount(0)
   await expect(page.getByRole('tab', { name: 'Canvas' })).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Preview' })).toHaveCount(0)
   const chat = page.locator('input[aria-label*="Ask about this report"]').first()
   if (!(await chat.isVisible())) await page.getByRole('tab', { name: 'Agent' }).click()
   await expect(chat).toBeDisabled()

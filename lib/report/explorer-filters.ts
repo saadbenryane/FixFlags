@@ -1,5 +1,11 @@
+import { isAttentionCandidate } from '@/lib/audit/attention'
 import { type RubricName } from '@/lib/audit/constants'
 import type { ExplorerFlag } from '@/lib/report/explorer-model'
+
+export function firstAttentionFlagIndex(flags: ExplorerFlag[]): number {
+  const index = flags.findIndex((flag) => isAttentionCandidate(flag))
+  return index >= 0 ? index : 0
+}
 
 export type RubricFilter = 'ALL' | RubricName
 
@@ -51,5 +57,6 @@ export function initialExplorerFlagIndex(
     const demonstrated = flags.findIndex((flag) => flag.id === demonstratedFlagId)
     if (demonstrated >= 0) return demonstrated
   }
-  return clampFlagIndex(requestedIndex, flags.length)
+  if (requestedIndex !== 0) return clampFlagIndex(requestedIndex, flags.length)
+  return clampFlagIndex(firstAttentionFlagIndex(flags), flags.length)
 }

@@ -402,7 +402,7 @@ describe('ProductWorkspace', () => {
       />
     )
 
-    expect(screen.getByLabelText('Score pending')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Score pending/)).toBeInTheDocument()
     expect(screen.queryByText('-')).not.toBeInTheDocument()
     expect(
       screen.getByText(
@@ -517,7 +517,7 @@ describe('ProductWorkspace', () => {
       />
     )
 
-    expect(screen.getByLabelText('Score unavailable')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^Score unavailable/)).toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent(
       'The capture timed out.'
     )

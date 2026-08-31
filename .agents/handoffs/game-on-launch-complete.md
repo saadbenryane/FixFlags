@@ -1,3 +1,7 @@
+# SUPERSEDED — Game On launch continuation
+
+**Superseded 2026-08-31 by `game-on-url-first-complete`.** Credentialed exact-SHA proof remains operator-owned on `game-on-release-evidence`. Parked CLI/MCP/Canvas/protected-sharing journeys are not launch scope.
+
 # Game On launch continuation
 
 **State:** Local implementation and full local verification pass.

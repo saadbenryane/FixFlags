@@ -91,11 +91,33 @@ function axeRuleToCheckId(axeId: string): string {
   return mapping[axeId] ?? `axe-${axeId}`
 }
 
+/**
+ * Accessible-name fixes must not tell a builder to add visible text to icon
+ * chrome. That rewrite is how a working header, close control, or social row
+ * becomes a cluttered layout.
+ */
+export const ACCESSIBLE_NAME_BUTTON_FIX =
+  '1. Keep the current icon or visual. Do not add visible text that changes the layout.\n2. Give the control an accessible name with aria-label or a visually hidden label that names the action.\n3. Confirm the name in a screen reader or the accessibility tree before shipping.'
+
+export const ACCESSIBLE_NAME_LINK_FIX =
+  '1. Keep the current icon or visual. Do not add visible text that changes the layout.\n2. Give the link an accessible name with aria-label, a child img alt, or a visually hidden label that names the destination.\n3. Confirm the name in a screen reader or the accessibility tree before shipping.'
+
+export const ACCESSIBLE_NAME_INPUT_FIX =
+  '1. Keep the current field visual. Do not replace the design with a placeholder-only label.\n2. Associate a visible label, or add aria-label for icon-only search and filter fields.\n3. Confirm the name in a screen reader or the accessibility tree before shipping.'
+
+const ACCESSIBLE_NAME_FIX_BY_CHECK_ID: Record<string, string> = {
+  'buttons-no-text': ACCESSIBLE_NAME_BUTTON_FIX,
+  'links-no-text': ACCESSIBLE_NAME_LINK_FIX,
+  'form-inputs-no-label': ACCESSIBLE_NAME_INPUT_FIX,
+}
+
 /** Build a human-readable fix suggestion from an axe violation. */
 function buildAxeFix(violation: AxeViolation): string {
   const nodeCount = violation.nodes.length
   const example = violation.nodes[0]
   const selector = example?.target?.join(' > ') ?? 'unknown element'
+  const checkId = axeRuleToCheckId(violation.id)
+  const safeNameFix = ACCESSIBLE_NAME_FIX_BY_CHECK_ID[checkId]
 
   const lines = [
     violation.help,
@@ -112,6 +134,10 @@ function buildAxeFix(violation: AxeViolation): string {
 
   if (nodeCount > 3) {
     lines.push(`  ... and ${nodeCount - 3} more`)
+  }
+
+  if (safeNameFix) {
+    lines.push('', safeNameFix)
   }
 
   return lines.join('\n')
@@ -193,7 +219,7 @@ export function runAccessibilityChecks(
         severity: 'POLISH',
         problem: `${meta.inputsWithoutLabel} form input(s) missing associated labels`,
         evidence: `${meta.inputsWithoutLabel} inputs without label or aria-label in the captured HTML. Confirm on the rendered page before treating this as a blocker.`,
-        fix: '1. Add <label for="id"> to every visible input\n2. Or add aria-label to icon-only inputs\n3. Placeholder text is not a label replacement',
+        fix: ACCESSIBLE_NAME_INPUT_FIX,
         confidence: 0.7,
         source: 'DETERMINISTIC',
       })
@@ -207,7 +233,7 @@ export function runAccessibilityChecks(
         severity: 'POLISH',
         problem: `${meta.buttonsWithoutText} button(s) missing accessible text`,
         evidence: `${meta.buttonsWithoutText} buttons without visible text or aria-label in the captured HTML. Confirm on the rendered page before treating this as a blocker.`,
-        fix: '1. Add visible text to icon-only buttons\n2. Or add aria-label describing the action\n3. Ensure button text is descriptive (not "click here")',
+        fix: ACCESSIBLE_NAME_BUTTON_FIX,
         confidence: 0.7,
         source: 'DETERMINISTIC',
       })
@@ -221,7 +247,7 @@ export function runAccessibilityChecks(
         severity: 'POLISH',
         problem: `${meta.linksWithoutText} link(s) missing accessible text`,
         evidence: `${meta.linksWithoutText} links without visible text or aria-label in the captured HTML. Confirm on the rendered page before treating this as a blocker.`,
-        fix: '1. Add visible text or aria-label to every link\n2. Icon links must have aria-label describing the destination\n3. Avoid empty <a> tags without any accessible name',
+        fix: ACCESSIBLE_NAME_LINK_FIX,
         confidence: 0.7,
         source: 'DETERMINISTIC',
       })
