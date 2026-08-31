@@ -18,22 +18,57 @@ export function parseAffectedPaths(value: unknown): string[] {
   return [...new Set(value.filter((item): item is string => typeof item === 'string' && item.length > 0))]
 }
 
-export function flagFingerprint(input: {
-  checkId: string | null
-  problem: string
-  rubric: string
-}): string {
-  const checkId = durableCheckId(input.checkId)
-  return checkId ? `check:${checkId}` : buildAiFlagMatchKey(input.problem, input.rubric)
-}
-
-function identityKey(flag: {
+export type ObservationIdentityInput = {
   checkId?: string | null
   problem: string
   rubric: string
+  fingerprint?: string | null
+}
+
+const SHA256_HEX = /^[a-f0-9]{64}$/i
+
+function isStableStoredIdentity(value: string): boolean {
+  if (value.startsWith('check:')) return true
+  if (value.startsWith('ai:') && value.includes('::')) return true
+  return value.includes('::') && !SHA256_HEX.test(value)
+}
+
+/**
+ * One Product-level identity for persist, collapse, diff, and Improvements.
+ * Deterministic Flags use the durable check. AI Flags keep a stable stored
+ * identity when one exists; otherwise they key on rubric plus normalized title.
+ */
+export function observationIdentity(input: ObservationIdentityInput): string {
+  const checkId = durableCheckId(input.checkId)
+  if (checkId) return `check:${checkId}`
+  const stored = input.fingerprint?.trim()
+  if (stored && isStableStoredIdentity(stored)) {
+    return stored.startsWith('ai:') ? stored.slice(3) : stored
+  }
+  return buildAiFlagMatchKey(input.problem, input.rubric)
+}
+
+/** Every key that should match this observation, including legacy stored hashes. */
+export function observationMatchKeys(input: ObservationIdentityInput): string[] {
+  const keys = new Set<string>()
+  keys.add(observationIdentity({ ...input, fingerprint: undefined }))
+  keys.add(observationIdentity(input))
+  const stored = input.fingerprint?.trim()
+  if (stored) {
+    keys.add(stored)
+    if (stored.startsWith('ai:')) keys.add(stored.slice(3))
+    else keys.add(`ai:${stored}`)
+  }
+  return [...keys]
+}
+
+export function flagFingerprint(input: {
+  checkId?: string | null
+  problem: string
+  rubric: string
+  fingerprint?: string | null
 }): string {
-  const checkId = durableCheckId(flag.checkId)
-  return checkId ? `check:${checkId}` : `text:${flag.rubric}:${flag.problem.trim().toLowerCase()}`
+  return observationIdentity(input)
 }
 
 function severityWeight(severity: string): number {
@@ -59,7 +94,7 @@ export function collapseFlagsWithAffectedPaths<
 >(flags: T[]): Array<T & { affectedPaths: string[] }> {
   const groups = new Map<string, T[]>()
   for (const flag of flags) {
-    const key = identityKey(flag)
+    const key = observationIdentity(flag)
     const group = groups.get(key)
     if (group) group.push(flag)
     else groups.set(key, [flag])

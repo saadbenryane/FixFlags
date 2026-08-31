@@ -12,6 +12,18 @@ vi.mock('../pipeline-log', () => ({
   logPipelineEvent: vi.fn(),
 }))
 
+const { auditFindUnique, flagFindMany } = vi.hoisted(() => ({
+  auditFindUnique: vi.fn(),
+  flagFindMany: vi.fn(),
+}))
+
+vi.mock('@/lib/db', () => ({
+  prisma: {
+    audit: { findUnique: auditFindUnique },
+    flag: { findMany: flagFindMany },
+  },
+}))
+
 import { runTriageWithRetry } from '../judge-triage'
 import { logPipelineEvent } from '../pipeline-log'
 import { runTriageStep } from '../pipeline/triage-step'
@@ -74,6 +86,8 @@ function stubPageRun(overrides?: Partial<PageRun>): PageRun {
 describe('runTriageStep', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    auditFindUnique.mockResolvedValue({ parentId: null })
+    flagFindMany.mockResolvedValue([])
   })
 
   it('calls runTriageWithRetry with the input and returns its result', async () => {
@@ -101,6 +115,7 @@ describe('runTriageStep', () => {
       input.desktopBase64,
       input.mobileBase64,
       expect.any(Number),
+      undefined,
     )
     expect(result).toBe(mockResult)
   })

@@ -104,6 +104,38 @@ describe('diffMatchKey', () => {
     const key = diffMatchKey({ checkId: null, problem: 'Headline is vague', rubric: 'MESSAGE' })
     assert.match(key, /headline/i)
   })
+
+  it('collapses journey aliases onto one durable check', () => {
+    assert.equal(
+      diffMatchKey({
+        checkId: 'journey-signup-hidden-cta',
+        problem: 'No obvious primary CTA',
+        rubric: 'EXPERIENCE',
+      }),
+      diffMatchKey({
+        checkId: 'journey-pricing-evaluation-hidden-cta',
+        problem: 'Primary action is hard to find',
+        rubric: 'EXPERIENCE',
+      })
+    )
+  })
+
+  it('matches restated AI Flags through the stored identity', () => {
+    const stored = diffMatchKey({
+      checkId: null,
+      problem: 'Headline is vague',
+      rubric: 'MESSAGE',
+    })
+    assert.equal(
+      diffMatchKey({
+        checkId: null,
+        problem: 'Hero title still does not name the offer',
+        rubric: 'MESSAGE',
+        fingerprint: stored,
+      }),
+      stored
+    )
+  })
 })
 
 describe('isFoundOnNewlyReviewedPage', () => {

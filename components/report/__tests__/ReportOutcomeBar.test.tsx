@@ -138,6 +138,7 @@ describe('ReportOutcomeBar', () => {
         'Score stayed at 70. 1 Flag from last time is gone, and 1 new observation appeared on pages already reviewed.'
       )
     ).toBeVisible()
+    expect(screen.getByText("On last Review's Flags")).toBeVisible()
   })
 
   it('announces honest progress and a pending Score while scanning', () => {

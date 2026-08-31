@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  comparableScoreFromDiff,
   countsFromUpdateDiff,
   previousScoreFromHistory,
   scoreOffsetExplanation,
@@ -40,6 +41,17 @@ describe('update-review-progress', () => {
         'b'
       )
     ).toBe(64)
+  })
+
+  it('raises comparable score when parent Flags are gone even if New holds the diagnostic flat', () => {
+    const comparable = comparableScoreFromDiff({
+      ...empty,
+      fixed: [{ rubric: 'MESSAGE', severity: 'IMPORTANT' }],
+      unchanged: [],
+      newIssues: [{ foundOnNewPage: false }],
+      regressed: [],
+    })
+    expect(comparable).toBeGreaterThan(90)
   })
 
   it('names newly reviewed pages separately from pages already reviewed', () => {

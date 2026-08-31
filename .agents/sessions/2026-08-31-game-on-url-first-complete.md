@@ -53,3 +53,12 @@ Gold HTML gate remains 0 CRITICAL/IMPORTANT. The wreck-the-product risk was not 
 ## Next constraint (if this holds)
 
 Whether the first worthwhile Flag is *true* on a rendered page, and whether remaining IMPORTANT Flags (`trust-unsupported-claims`, `form-missing-validation`, `h1-missing`) have equally safe prescriptions. Live axe confirmation still owns IMPORTANT name findings.
+
+## Identity, offer, and comparable score (same day)
+
+- One `observationIdentity` for persist, collapse, diff, Improvements, and parked compare.
+- Studio purpose for consulting/personal pages. First-step check uses offer-aware prescriptions. Add to Cart counts as a first step.
+- Comparable score in the report header. New card shows already-reviewed vs new-page split.
+- Update-review triage user content includes parent AI identities.
+- Product observation ledger table is still not shipped. New is still vs the parent Review, not vs Product lifetime.
+- Live saadbenryane.com prerender still shows Start a project, not Book a call. Owner Update review waits on that deploy.

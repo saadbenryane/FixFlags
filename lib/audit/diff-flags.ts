@@ -1,7 +1,10 @@
 import { prisma } from '@/lib/db'
-import { buildAiFlagMatchKey } from '@/lib/audit/validate-judge-output'
 import { resolveMonitoringFlagStatus } from '@/lib/audit/flag-status-resolution'
-import { parseAffectedPaths } from '@/lib/audit/flag-identity'
+import {
+  observationIdentity,
+  observationMatchKeys,
+  parseAffectedPaths,
+} from '@/lib/audit/flag-identity'
 import { severityRank } from '@/lib/utils'
 import type { FlagStatus, ReportCompleteness, Severity } from '@prisma/client'
 import type { FlagDiffSummaryItem } from './flag-types'
@@ -17,6 +20,7 @@ type FlagRow = {
   status: FlagStatus
   pageUrl?: string | null
   affectedPaths?: unknown
+  fingerprint?: string | null
 }
 
 type ChildPageCoverage = {
@@ -25,31 +29,44 @@ type ChildPageCoverage = {
   completeness: ReportCompleteness
 }
 
-function flagMatchKey(f: Pick<FlagRow, 'checkId' | 'problem' | 'rubric'>): string {
+function flagMatchKey(
+  f: Pick<FlagRow, 'checkId' | 'problem' | 'rubric' | 'fingerprint'>
+): string {
   return diffMatchKey(f)
+}
+
+function indexByMatchKeys<T extends Pick<FlagRow, 'checkId' | 'problem' | 'rubric' | 'fingerprint'>>(
+  flags: T[]
+): Map<string, T> {
+  const map = new Map<string, T>()
+  for (const flag of flags) {
+    for (const key of observationMatchKeys(flag)) {
+      if (!map.has(key)) map.set(key, flag)
+    }
+  }
+  return map
+}
+
+function parentMatchKeySet(
+  flags: Array<Pick<FlagRow, 'checkId' | 'problem' | 'rubric' | 'fingerprint'>>
+): Set<string> {
+  return new Set(flags.flatMap((flag) => observationMatchKeys(flag)))
 }
 
 /**
  * Match key for diffing flags across reports. Per-page `::page:N` variants of
  * the same deterministic check collapse onto one site-level key so page-order
  * shifts do not make every variant look newly fixed/regressed and leak
- * duplicate findings into the re-check diff.
+ * duplicate findings into the re-check diff. Journey aliases and stored AI
+ * identities use the same observation identity as persist and Improvements.
  */
 export function diffMatchKey(input: {
   checkId: string | null
   problem: string
   rubric: string
+  fingerprint?: string | null
 }): string {
-  if (input.checkId) return `check:${baseCheckIdForMatch(input.checkId)}`
-  return buildAiFlagMatchKey(input.problem, input.rubric)
-}
-
-/**
- * Strip the per-page `::page:N` suffix before matching so a parent flag like
- * `cta-dead-link::page:2` matches the re-check's `cta-dead-link::page:1`.
- */
-function baseCheckIdForMatch(checkId: string): string {
-  return checkId.split('::page:')[0] ?? checkId
+  return observationIdentity(input)
 }
 
 /** Normalize URLs for page-comparable Fixed matching (hash stripped, trailing slash). */
@@ -169,7 +186,7 @@ export async function diffFlagsAgainstParent(
     loadAuditCoverage(monitoringAuditId),
   ])
 
-  const monitoringByKey = new Map(monitoringFlags.map((f) => [flagMatchKey(f), f]))
+  const monitoringByKey = indexByMatchKeys(monitoringFlags)
   const updates: Array<{
     id: string
     data: { status: FlagStatus; resolvedInId?: string | null }
@@ -177,8 +194,9 @@ export async function diffFlagsAgainstParent(
   const seenMonitoringIds = new Set<string>()
 
   for (const parentFlag of parentFlags) {
-    const key = flagMatchKey(parentFlag)
-    const monitoringFlag = monitoringByKey.get(key)
+    const monitoringFlag = observationMatchKeys(parentFlag)
+      .map((key) => monitoringByKey.get(key))
+      .find(Boolean)
 
     if (!monitoringFlag) {
       if (
@@ -293,8 +311,8 @@ export async function getFlagDiffSummary(
     loadAuditCoverage(parentAuditId),
   ])
 
-  const monitoringByKey = new Map(monitoringFlags.map((f) => [flagMatchKey(f), f]))
-  const parentKeys = new Set(parentFlags.map((f) => flagMatchKey(f)))
+  const monitoringByKey = indexByMatchKeys(monitoringFlags)
+  const parentKeys = parentMatchKeySet(parentFlags)
 
   const fixed: FlagDiffSummaryItem[] = []
   const inconclusive: FlagDiffSummaryItem[] = []
@@ -310,7 +328,9 @@ export async function getFlagDiffSummary(
     // into the re-check diff as separate entries.
     if (seenParentKeys.has(key)) continue
     seenParentKeys.add(key)
-    const monitoringFlag = monitoringByKey.get(key)
+    const monitoringFlag = observationMatchKeys(parentFlag)
+      .map((matchKey) => monitoringByKey.get(matchKey))
+      .find(Boolean)
     const item: FlagDiffSummaryItem = {
       checkId: parentFlag.checkId,
       problem: parentFlag.problem,
@@ -369,8 +389,7 @@ export async function getFlagDiffSummary(
   })
 
   for (const monitoringFlag of monitoringFlags) {
-    const key = flagMatchKey(monitoringFlag)
-    if (parentKeys.has(key)) continue
+    if (observationMatchKeys(monitoringFlag).some((key) => parentKeys.has(key))) continue
     // The matching side is also keyed by base check, so a per-page variant of
     // a parent check can never appear here as a brand-new issue.
     const pageUrl = monitoringFlag.pageUrl ?? null

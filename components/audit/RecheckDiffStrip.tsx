@@ -8,6 +8,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { RECHECK_DIFF_COPY } from '@/lib/marketing/copy'
+import { countsFromUpdateDiff } from '@/lib/audit/update-review-progress'
 import { cn } from '@/lib/utils'
 import type { FlagDiffSummaryItem } from '@/lib/audit/flag-types'
 import type { ReactNode } from 'react'
@@ -31,6 +32,7 @@ type Bucket = {
   key: string
   label: string
   count: number
+  detail?: string
   info?: ReactNode
 }
 
@@ -47,6 +49,7 @@ export function RecheckDiffStrip({
   const total =
     fixed.length + inconclusive.length + unchanged.length + regressed.length + newIssues.length
   if (total === 0) return null
+  const newCounts = countsFromUpdateDiff(summary)
 
   const buckets: Bucket[] = [
     {
@@ -76,6 +79,12 @@ export function RecheckDiffStrip({
       key: 'new',
       label: RECHECK_DIFF_COPY.newIssues,
       count: newIssues.length,
+      detail:
+        newCounts.newOnReviewedPage > 0 && newCounts.newOnNewPage > 0
+          ? RECHECK_DIFF_COPY.newSplit(newCounts.newOnReviewedPage, newCounts.newOnNewPage)
+          : newCounts.newOnNewPage > 0 && newCounts.newOnReviewedPage === 0
+            ? RECHECK_DIFF_COPY.foundOnNewPage
+            : undefined,
       info:
         newIssues.length > 0 ? (
           <TooltipContent side="bottom" align="start" className="max-w-xs space-y-1.5 p-3">
@@ -158,6 +167,9 @@ export function RecheckDiffStrip({
               <span className="font-mono text-lg font-semibold tabular-nums text-foreground">
                 {bucket.count}
               </span>
+              {bucket.detail ? (
+                <span className="text-2xs leading-snug text-muted-foreground">{bucket.detail}</span>
+              ) : null}
             </li>
           ))}
         </ul>

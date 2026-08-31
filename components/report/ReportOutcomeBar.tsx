@@ -7,6 +7,7 @@ import { REPORT_COPY, SCORE_HELP } from '@/lib/marketing/copy'
 import { helpHrefForSurface } from '@/lib/help/contextual'
 import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
 import {
+  comparableScoreFromDiff,
   countsFromUpdateDiff,
   previousScoreFromHistory,
   scoreOffsetExplanation,
@@ -44,6 +45,8 @@ export function ReportOutcomeBar({
           counts: countsFromUpdateDiff(updateDiff),
         })
       : null
+  const comparableScore =
+    updateDiff && !loading ? comparableScoreFromDiff(updateDiff) : null
   const progress = typeof scanProgress === 'number'
     ? Math.min(100, Math.max(0, Math.round(scanProgress)))
     : null
@@ -58,7 +61,7 @@ export function ReportOutcomeBar({
       )}
     >
       <div className="flex min-h-14 min-w-0 flex-wrap items-center gap-x-4 gap-y-2 py-1">
-        <div className="flex shrink-0 items-center">
+        <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-x-3 gap-y-1">
           <ScoreRing score={score} pending={loading} />
           {!loading && score != null ? (
             <Link
@@ -71,6 +74,16 @@ export function ReportOutcomeBar({
             >
               <CircleHelp className="h-4 w-4" aria-hidden />
             </Link>
+          ) : null}
+          {comparableScore != null && !loading ? (
+            <p
+              className="min-w-0 text-sm text-muted-foreground"
+              title={SCORE_HELP.comparableHelp}
+            >
+              <span className="uppercase tracking-label text-2xs">{SCORE_HELP.comparableLabel}</span>
+              {' '}
+              <span className="font-mono tabular-nums text-foreground">{comparableScore}</span>
+            </p>
           ) : null}
         </div>
         {actions ? (

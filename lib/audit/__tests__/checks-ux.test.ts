@@ -176,12 +176,50 @@ describe('runConversionFrictionChecks', () => {
     )
   })
 
+  it('uses a studio prescription when a consulting page has no first step', () => {
+    const findings = runConversionFrictionChecks(
+      healthyMeta({
+        ctaTexts: ['View case studies'],
+        links: [{ href: '/work', text: 'Work', rel: null }],
+        pageText: 'I build products, brands, and companies. Selected case studies.',
+      }),
+      { purpose: 'studio', reasons: ['studio signal'] }
+    )
+    const missing = findings.find((f) => f.checkId === 'friction-no-commitment-path')
+    assert.ok(missing)
+    assert.match(missing.fix, /start a project/i)
+    assert.doesNotMatch(missing.fix, /start a trial/i)
+  })
+
+  it('does not flag a studio page that already has a contact path', () => {
+    assert.ok(
+      !checkIds(runConversionFrictionChecks(
+        healthyMeta({
+          ctaTexts: ['Start a project'],
+          links: [{ href: '/contact', text: 'Get in touch', rel: null }],
+          pageText: 'I build products, brands, and companies. Start a project. View case studies.',
+        }),
+        { purpose: 'studio', reasons: ['studio signal'] }
+      )).includes('friction-no-commitment-path')
+    )
+  })
+
   it('treats start a project and get in touch as a conversion path', () => {
     assert.ok(
       !checkIds(runConversionFrictionChecks(healthyMeta({
         ctaTexts: ['Start a project'],
         links: [{ href: '/contact', text: 'Get in touch', rel: null }],
         pageText: 'I build products, brands, and companies. Start a project. View case studies.',
+      }))).includes('friction-no-commitment-path')
+    )
+  })
+
+  it('treats add to cart as a commerce conversion path', () => {
+    assert.ok(
+      !checkIds(runConversionFrictionChecks(healthyMeta({
+        ctaTexts: ['Add to Cart'],
+        links: [{ href: '/cart', text: 'Cart', rel: null }],
+        pageText: 'Premium outdoor gear. Trailblazer Waterproof Jacket. Add to Cart.',
       }))).includes('friction-no-commitment-path')
     )
   })

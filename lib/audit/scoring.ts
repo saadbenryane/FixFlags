@@ -1,5 +1,5 @@
 import type { RubricGrade, RubricName, RubricStatus } from '@prisma/client'
-import { GRADE_THRESHOLDS } from './rubric'
+import { BLOCKED_RUBRIC_SCORE_CEILING, GRADE_THRESHOLDS } from './rubric'
 
 /** Issue-weighted diagnostic. Not a conversion or revenue prediction. */
 export const SCORE_FORMULA_VERSION = 1 as const
@@ -89,4 +89,44 @@ export function calculateOverallScore(
       0
     )
   )
+}
+
+function rubricScoreFromSeverities(severities: string[]): number {
+  const counts = { CRITICAL: 0, IMPORTANT: 0, POLISH: 0 }
+  for (const severity of severities) {
+    if (severity === 'CRITICAL' || severity === 'IMPORTANT' || severity === 'POLISH') {
+      counts[severity] += 1
+    }
+  }
+  let score = 100
+  score -= counts.CRITICAL * Math.log(1 + counts.CRITICAL) * 10
+  score -= counts.IMPORTANT * Math.log(1 + counts.IMPORTANT) * 6
+  score -= counts.POLISH * Math.log(1 + counts.POLISH) * 2
+  const clamped = clampScore(Math.round(score))
+  if (counts.CRITICAL > 0) return Math.min(clamped, BLOCKED_RUBRIC_SCORE_CEILING)
+  return clamped
+}
+
+/**
+ * Same issue-weighted diagnostic over a Flag subset. Used for like-for-like
+ * Update review progress on identities from last time, never as a replacement
+ * for the full Review score.
+ */
+export function comparableScoreFromFlags(
+  flags: Array<{ rubric: string; severity: string }>
+): number {
+  const byRubric: Record<RubricName, string[]> = {
+    MESSAGE: [],
+    EXPERIENCE: [],
+    REACH: [],
+  }
+  for (const flag of flags) {
+    const name = flag.rubric.toUpperCase() as RubricName
+    if (name in byRubric) byRubric[name].push(flag.severity)
+  }
+  return calculateOverallScore({
+    MESSAGE: rubricScoreFromSeverities(byRubric.MESSAGE),
+    EXPERIENCE: rubricScoreFromSeverities(byRubric.EXPERIENCE),
+    REACH: rubricScoreFromSeverities(byRubric.REACH),
+  }) as number
 }

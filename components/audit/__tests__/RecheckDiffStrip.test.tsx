@@ -51,4 +51,23 @@ describe('RecheckDiffStrip', () => {
     expect(screen.queryByRole('heading', { name: /inconclusive/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
+
+  it('shows New split counts on the card when both page kinds exist', () => {
+    render(
+      <RecheckDiffStrip
+        summary={{
+          fixed: [],
+          inconclusive: [],
+          unchanged: [],
+          regressed: [],
+          newIssues: [
+            { ...flag, foundOnNewPage: false },
+            { ...flag, checkId: 'h1-generic', foundOnNewPage: true },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByText('1 on pages already reviewed · 1 on newly reviewed pages')).toBeInTheDocument()
+  })
 })

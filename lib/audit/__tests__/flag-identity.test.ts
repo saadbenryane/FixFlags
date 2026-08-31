@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { baseCheckId, durableCheckId, flagFingerprint, collapseFlagsWithAffectedPaths } from '@/lib/audit/flag-identity'
+import {
+  baseCheckId,
+  collapseFlagsWithAffectedPaths,
+  durableCheckId,
+  flagFingerprint,
+  observationIdentity,
+  observationMatchKeys,
+} from '@/lib/audit/flag-identity'
 
 describe('Flag identity', () => {
   it('removes page occurrence suffixes without losing the durable check', () => {
@@ -25,6 +32,39 @@ describe('Flag identity', () => {
       rubric: 'MESSAGE',
     })
     expect(fingerprint).toContain('MESSAGE')
+  })
+
+  it('keeps a stored AI identity when the title is restated', () => {
+    const stored = observationIdentity({
+      checkId: null,
+      problem: 'The promise is unclear',
+      rubric: 'MESSAGE',
+    })
+    expect(
+      observationIdentity({
+        checkId: null,
+        problem: 'Homepage promise still does not name who it is for',
+        rubric: 'MESSAGE',
+        fingerprint: stored,
+      })
+    ).toBe(stored)
+  })
+
+  it('matches journey aliases and stored hashes onto one identity', () => {
+    const keys = observationMatchKeys({
+      checkId: 'journey-signup-hidden-cta',
+      problem: 'No obvious primary CTA',
+      rubric: 'EXPERIENCE',
+    })
+    expect(keys).toContain('check:journey-hidden-cta')
+    expect(
+      observationMatchKeys({
+        checkId: null,
+        problem: 'Headline is vague',
+        rubric: 'MESSAGE',
+        fingerprint: 'a'.repeat(64),
+      })
+    ).toContain('a'.repeat(64))
   })
 
   it('collapses the same check across pages into one Flag with affectedPaths', () => {

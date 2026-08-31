@@ -6,7 +6,7 @@ import {
   QUALITY_TRIAGE_TOOL,
   type TriageOutput,
 } from './judge-triage-schema'
-import { buildTriageSystemPrompt, buildTriageUserPrompt } from '../prompts/system-prompt'
+import { buildTriageSystemPrompt, buildTriageUserPrompt, type TriageContext } from '../prompts/system-prompt'
 import { PageMetadata } from './metadata'
 import { PageSpeedResult } from './pagespeed'
 import { DeterministicFlag } from './checks'
@@ -39,7 +39,8 @@ function buildTriageContext(
   metadata: PageMetadata,
   desktop: PageSpeedResult | null,
   mobile: PageSpeedResult | null,
-  flags: DeterministicFlag[]
+  flags: DeterministicFlag[],
+  knownObservations?: TriageContext['knownObservations']
 ) {
   return {
     url,
@@ -71,6 +72,7 @@ function buildTriageContext(
       rubric: f.rubric,
       severity: f.severity,
     })),
+    knownObservations,
   }
 }
 
@@ -324,9 +326,17 @@ export async function runTriageWithRetry(
   flags: DeterministicFlag[],
   desktopBase64: string | null,
   mobileBase64: string | null,
-  maxTimeoutMs?: number
+  maxTimeoutMs?: number,
+  knownObservations?: TriageContext['knownObservations']
 ): Promise<TriageResult> {
-  const context = buildTriageContext(url, metadata, desktop, mobile, flags)
+  const context = buildTriageContext(
+    url,
+    metadata,
+    desktop,
+    mobile,
+    flags,
+    knownObservations
+  )
 
   return runLlmWithRetry({
     label: 'triage',

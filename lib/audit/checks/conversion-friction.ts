@@ -1,6 +1,12 @@
 import { PageMetadata } from '../metadata'
 import { CHECK_TEXT_LIMIT } from '../page-text-limits'
-import { type PagePurposeResult, isProductPage } from '../page-purpose'
+import {
+  type OfferType,
+  type PagePurposeResult,
+  detectOfferType,
+  isProductPage,
+  needsFirstStep,
+} from '../page-purpose'
 import type { DeterministicFlag } from '../flag-types'
 import { hasLogoWall } from './utils'
 
@@ -24,53 +30,99 @@ const GUARANTEE_MARKERS = /(money.back|guarantee|satisfied guaranteed|refund|ris
 const SOCIAL_MARKERS =
   /(github\s+stars|\d[\d,.]*\+?\s*(users|customers|teams|stars|downloads|companies|businesses|developers|creators|brands|sites|websites|members)|rated\s+\d|\d(\.\d)?\s*(\/\s*5|out of 5|stars)|g2\b|capterra|trustpilot|product hunt|reviewed\s+by|reviews?\b|case stud(y|ies)|customer stor(y|ies)|testimonial|trusted by|backed by|as seen (in|on)|loved by|powering|join (thousands|millions|over|\d)|our (customers|clients|users)|wall of love|in numbers|community|showcase)/i
 
+const COMMERCE_MARKERS = /\b(add to cart|buy now|shop now|checkout)\b/i
+
+type FirstStepKind = 'trial' | 'demo' | 'pricing' | 'booking' | 'contact' | 'commerce'
+
+function detectFirstSteps(input: {
+  bodyText: string
+  combinedAboveFold: string
+  ctaTexts: string[]
+  links: Array<{ href: string; text: string }>
+}): Set<FirstStepKind> {
+  const steps = new Set<FirstStepKind>()
+  if (FREE_TRIAL_MARKERS.test(input.bodyText) || FREE_TRIAL_MARKERS.test(input.combinedAboveFold)) {
+    steps.add('trial')
+  }
+  if (DEMO_MARKERS.test(input.bodyText)) steps.add('demo')
+  if (
+    PRICING_MARKERS.test(input.bodyText) ||
+    PRICING_MARKERS.test(input.combinedAboveFold) ||
+    input.links.some((link) => PRICING_MARKERS.test(link.href) || PRICING_MARKERS.test(link.text))
+  ) {
+    steps.add('pricing')
+  }
+  if (BOOKING_MARKERS.test(input.bodyText) || BOOKING_MARKERS.test(input.combinedAboveFold)) {
+    steps.add('booking')
+  }
+  if (
+    CONTACT_PATH_MARKERS.test(input.bodyText) ||
+    CONTACT_PATH_MARKERS.test(input.combinedAboveFold) ||
+    input.ctaTexts.some((cta) => CONTACT_PATH_MARKERS.test(cta))
+  ) {
+    steps.add('contact')
+  }
+  if (
+    COMMERCE_MARKERS.test(input.bodyText) ||
+    COMMERCE_MARKERS.test(input.combinedAboveFold) ||
+    input.ctaTexts.some((cta) => COMMERCE_MARKERS.test(cta))
+  ) {
+    steps.add('commerce')
+  }
+  return steps
+}
+
+function missingFirstStepCopy(offer: OfferType): { evidence: string; fix: string } {
+  if (offer === 'studio') {
+    return {
+      evidence:
+        'Page has no contact, booking, or start-a-project path. Visitors have no clear first step to engage.',
+      fix: '1. Add a next step that matches the offer: start a project, book a call, or get in touch\n2. Do not add a fake free trial if you do not offer one\n3. Keep the current visual and put that action next to the primary CTA or on the first screen',
+    }
+  }
+  return {
+    evidence:
+      'Page has no free trial, demo, pricing, booking, or contact path. Visitors have no clear first step to engage.',
+    fix: '1. Add a low-commitment next step that matches the offer: request a demo, view pricing, start a trial, book a call, or get in touch\n2. Do not add a fake free trial if you do not offer one\n3. Keep the current visual and put that action next to the primary CTA or on the first screen',
+  }
+}
+
 export function runConversionFrictionChecks(
   meta: PageMetadata,
   purpose: PagePurposeResult = { purpose: 'marketing', reasons: [] }
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
   const productPage = isProductPage(purpose.purpose)
+  const offer = detectOfferType(purpose.purpose)
   const bodyText = (meta.pageText ?? '').slice(0, CHECK_TEXT_LIMIT)
   const ctaTexts = meta.ctaTexts ?? []
   const links = meta.links ?? []
   const h1s = meta.h1s ?? []
   const combinedAboveFold = [...h1s, ...ctaTexts].filter(Boolean).join(' ')
-
-  const hasFreeTrial = FREE_TRIAL_MARKERS.test(bodyText) || FREE_TRIAL_MARKERS.test(combinedAboveFold)
-  const hasDemo = DEMO_MARKERS.test(bodyText)
-  const hasPricing = PRICING_MARKERS.test(bodyText) || PRICING_MARKERS.test(combinedAboveFold)
-  const hasBooking = BOOKING_MARKERS.test(bodyText) || BOOKING_MARKERS.test(combinedAboveFold)
-  const hasContactPath =
-    CONTACT_PATH_MARKERS.test(bodyText) ||
-    CONTACT_PATH_MARKERS.test(combinedAboveFold) ||
-    ctaTexts.some((cta) => CONTACT_PATH_MARKERS.test(cta))
+  const firstSteps = detectFirstSteps({
+    bodyText,
+    combinedAboveFold,
+    ctaTexts,
+    links,
+  })
+  const hasFreeTrial = firstSteps.has('trial')
   const hasGuarantee = GUARANTEE_MARKERS.test(bodyText)
   const hasSocialProof = SOCIAL_MARKERS.test(bodyText) || hasLogoWall(meta.images ?? [])
-  const hasPricingLinks = links.some((l) => PRICING_MARKERS.test(l.href) || PRICING_MARKERS.test(l.text))
+  const hasPricingLinks = firstSteps.has('pricing')
 
-  // Only flag a missing conversion path when the page is actually a
-  // marketing/product page. Docs, articles, placeholder domains, and OSS
-  // project pages legitimately have no trial/demo/pricing CTA, and flagging
-  // them produces a top-3 false positive on pages that are not trying to
-  // convert (e.g. nextjs.org, example.com).
-  if (
-    !hasFreeTrial &&
-    !hasDemo &&
-    !hasPricing &&
-    !hasPricingLinks &&
-    !hasBooking &&
-    !hasContactPath &&
-    productPage
-  ) {
+  // First-step checks run on marketing and studio pages. Content pages
+  // legitimately have no conversion path. Any matching first step is enough;
+  // offer type only changes the missing-path prescription.
+  if (needsFirstStep(purpose.purpose) && firstSteps.size === 0) {
+    const copy = missingFirstStepCopy(offer)
     findings.push({
       checkId: 'friction-no-commitment-path',
       rubric: 'EXPERIENCE',
       impactTag: 'CONVERSION',
       severity: 'IMPORTANT',
       problem: 'No clear low-commitment conversion path found',
-      evidence:
-        'Page has no free trial, demo, pricing, booking, or contact path. Visitors have no clear first step to engage.',
-      fix: '1. Add a low-commitment next step that matches the offer: book a call, start a project, get in touch, request a demo, or view pricing\n2. Do not add a fake free trial if you do not offer one\n3. Keep the current visual and put that action next to the primary CTA or on the first screen',
+      evidence: copy.evidence,
+      fix: copy.fix,
       confidence: 0.85,
       source: 'DETERMINISTIC',
     })

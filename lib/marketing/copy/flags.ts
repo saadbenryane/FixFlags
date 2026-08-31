@@ -55,6 +55,9 @@ export const RECHECK_DIFF_COPY = {
     return bits.join(' · ')
   },
   foundOnNewPage: 'Found on a newly reviewed page',
+  foundOnReviewedPage: 'Found on a page already reviewed',
+  newSplit: (reviewed: number, fresh: number) =>
+    `${reviewed} on pages already reviewed · ${fresh} on newly reviewed pages`,
   newInfoLabel: 'What New means',
   newInfoIntro:
     'Not observed in the previous Review. Pages already reviewed should have been caught the first time. Newly reviewed pages are extra coverage.',

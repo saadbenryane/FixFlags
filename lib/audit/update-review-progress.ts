@@ -1,3 +1,5 @@
+import { comparableScoreFromFlags } from '@/lib/audit/scoring'
+
 /**
  * Update Review is a diff against the last Review, not a second first impression.
  * Score can stay flat when New Flags offset Fixed ones. Explain that instead of
@@ -17,13 +19,17 @@ export type UpdateReviewCounts = {
 export type UpdateReviewDiffLike = {
   fixed: unknown[]
   unchanged: unknown[]
-  newIssues: Array<{ foundOnNewPage?: boolean }>
+  newIssues: unknown[]
   regressed: unknown[]
   inconclusive: unknown[]
 }
 
+function isFoundOnNewPage(item: unknown): boolean {
+  return Boolean(item && typeof item === 'object' && 'foundOnNewPage' in item && item.foundOnNewPage)
+}
+
 export function countsFromUpdateDiff(diff: UpdateReviewDiffLike): UpdateReviewCounts {
-  const newOnNewPage = diff.newIssues.filter((item) => item.foundOnNewPage).length
+  const newOnNewPage = diff.newIssues.filter(isFoundOnNewPage).length
   return {
     fixed: diff.fixed.length,
     unchanged: diff.unchanged.length,
@@ -114,4 +120,17 @@ export function scoreOffsetExplanation(input: {
   }
 
   return `Score moved from ${previousScore} to ${currentScore}.`
+}
+
+/**
+ * Diagnostic over identities from last time that are still open or worse.
+ * Fixed work raises this number even when New observations hold the full score flat.
+ */
+export function comparableScoreFromDiff(diff: UpdateReviewDiffLike): number {
+  const remaining = [...diff.unchanged, ...diff.regressed].flatMap((flag) => {
+    if (!flag || typeof flag !== 'object') return []
+    const row = flag as { rubric?: string; severity?: string }
+    return row.rubric && row.severity ? [{ rubric: row.rubric, severity: row.severity }] : []
+  })
+  return comparableScoreFromFlags(remaining)
 }

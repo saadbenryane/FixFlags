@@ -169,6 +169,22 @@ describe('buildTriageUserPrompt', () => {
     assert.match(prompt, /desktop and mobile screenshots/)
   })
 
+  it('names previous Review identities so AI Flags can match', () => {
+    const prompt = buildTriageUserPrompt({
+      ...basicTriageContext,
+      knownObservations: [
+        {
+          identity: 'MESSAGE::headline is vague',
+          problem: 'Headline is vague',
+          rubric: 'MESSAGE',
+        },
+      ],
+    })
+    assert.match(prompt, /Known observations from the previous Review/)
+    assert.match(prompt, /MESSAGE::headline is vague/)
+    assert.match(prompt, /keep that problem title/)
+  })
+
   it('handles no-screenshot hint', () => {
     const ctx: TriageContext = { ...basicTriageContext, screenshotHint: 'no-screenshot' }
     const prompt = buildTriageUserPrompt(ctx)

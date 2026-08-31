@@ -51,8 +51,9 @@ export async function runAllChecks(
 
   // Detect the page's high-level purpose once. Conversion-friction, content,
   // and trust-psychology checks gate on this so they do not fire on docs,
-  // articles, placeholder domains, or open-source project pages where the
-  // "missing trial / contact / authority signal" is not actionable.
+  // articles, placeholder domains, or open-source project pages where a
+  // first-step or authority signal is not the job. Studio pages still get a
+  // first-step check, with a contact/booking prescription instead of SaaS trial.
   const purpose = detectPagePurpose(metadata, url)
 
   // Group checks into independent buckets for parallel execution.

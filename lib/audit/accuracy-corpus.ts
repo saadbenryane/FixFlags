@@ -189,7 +189,11 @@ export const ACCURACY_HTML_FIXTURES: AccuracyHtmlFixture[] = [
     url: 'https://minimalgear.co',
     tier: 'structural',
     maxImportantFalseBlockers: 99,
-    expectedTop3: ['friction-no-commitment-path'],
+    expectedTop3: [
+      'messaging-no-audience',
+      'trust-no-authority-signals',
+      'measurement-ga-gtm-posthog-missing',
+    ],
     knownFalsePositives: ['og-image-broken', 'broken-internal-links', 'robots-txt-missing', 'sitemap-missing'],
     expectedPresent: ['measurement-ga-gtm-posthog-missing'],
     brokenLinks: true,

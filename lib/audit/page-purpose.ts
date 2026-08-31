@@ -18,8 +18,11 @@ export type PagePurpose =
   | 'docs' // documentation / API reference / guide
   | 'article' // blog post / changelog / news
   | 'oss' // open-source project page centered on a code repository
+  | 'studio' // personal, portfolio, or consulting offer
   | 'marketing' // product / marketing landing (default): conversion checks fire
   | 'unknown'
+
+export type OfferType = 'saas' | 'studio' | 'content' | 'unknown'
 
 export interface PagePurposeResult {
   purpose: PagePurpose
@@ -141,7 +144,10 @@ export function detectPagePurpose(
   const h1Text = (meta.h1s ?? [])[0] ?? ''
   const titleText = meta.title ?? ''
   const headlineAndTitle = `${h1Text} ${titleText}`.toLowerCase()
-  const hasPersonalPronouns = /\b(i'm|i am|my\s+(?:work|story|journey|portfolio|approach)|from vision|case stud)\b/i.test(headlineAndTitle)
+  const hasPersonalPronouns =
+    /\b(i'm|i am|i build|i help|i design|i lead|my\s+(?:work|story|journey|portfolio|approach)|from vision|case stud)\b/i.test(
+      headlineAndTitle
+    )
   const hasPortfolioSections = /\b(case stud|portfolio|selected work|journal|blog)\b/i.test(pageText.slice(0, 2000))
   const headlineAndCtas = `${headlineAndTitle} ${(meta.ctaTexts ?? []).join(' ')}`.toLowerCase()
   const hasCommercialIntent =
@@ -150,9 +156,9 @@ export function detectPagePurpose(
     )
   if (hasPersonalPronouns && hasPortfolioSections && !hasCommercialIntent) {
     return {
-      purpose: 'article',
+      purpose: 'studio',
       reasons: [
-        `personal/portfolio signal (pronouns=${hasPersonalPronouns}, portfolio=${hasPortfolioSections}, commercial=${hasCommercialIntent}, ctas=${ctaCount})`,
+        `studio signal (pronouns=${hasPersonalPronouns}, portfolio=${hasPortfolioSections}, commercial=${hasCommercialIntent}, ctas=${ctaCount})`,
       ],
     }
   }
@@ -163,7 +169,26 @@ export function detectPagePurpose(
   }
 }
 
-/** True when product-conversion checks should run. */
+/** True when SaaS-shaped product conversion checks should run. */
 export function isProductPage(p: PagePurpose): boolean {
   return p === 'marketing' || p === 'unknown'
+}
+
+export function detectOfferType(purpose: PagePurpose): OfferType {
+  if (purpose === 'studio') return 'studio'
+  if (
+    purpose === 'docs' ||
+    purpose === 'article' ||
+    purpose === 'oss' ||
+    purpose === 'placeholder'
+  ) {
+    return 'content'
+  }
+  if (purpose === 'marketing') return 'saas'
+  return 'unknown'
+}
+
+/** Marketing, studio, and unclassified pages need a first step. Content pages do not. */
+export function needsFirstStep(purpose: PagePurpose): boolean {
+  return purpose === 'marketing' || purpose === 'studio' || purpose === 'unknown'
 }

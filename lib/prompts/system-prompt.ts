@@ -109,6 +109,11 @@ export interface TriageContext {
     rubric: string
     severity: string
   }>
+  knownObservations?: Array<{
+    identity: string
+    problem: string
+    rubric: string
+  }>
 }
 
 /** Per-request triage data. Everything here varies per audit - keep it OUT of the cached system block. */
@@ -148,7 +153,14 @@ ${context.topOpportunities.map((o) => `- ${o.title}: ${Math.round(o.savings / 10
 
 Deterministic flags already identified (do NOT restate these as new flags):
 ${context.deterministicFlags.map((f) => `[${f.severity}] ${f.checkId} (${f.rubric}): ${f.problem}`).join('\n') || 'None'}
-
+${
+  context.knownObservations && context.knownObservations.length > 0
+    ? `
+Known observations from the previous Review of this Product. If the same issue is still present, keep that problem title so it matches the stored identity. Do not restate it as a new flag.
+${context.knownObservations.map((item) => `[${item.rubric}] ${item.identity}: ${item.problem}`).join('\n')}
+`
+    : ''
+}
 ${screenshotEvidence}`
 }
 

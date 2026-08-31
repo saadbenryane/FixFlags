@@ -144,7 +144,7 @@ describe('security header consolidation honesty', () => {
 })
 
 describe('personal page purpose with contact CTAs', () => {
-  it('classifies portfolio sites with booking CTAs as article, not marketing', () => {
+  it('classifies portfolio sites with booking CTAs as studio, not SaaS marketing', () => {
     const result = detectPagePurpose(
       healthyMeta({
         title: "I'm Saad - product and brand",
@@ -167,6 +167,30 @@ describe('personal page purpose with contact CTAs', () => {
       }),
       'https://example.com/'
     )
-    expect(result.purpose).toBe('article')
+    expect(result.purpose).toBe('studio')
+  })
+
+  it('classifies I-build consulting homepages as studio', () => {
+    const result = detectPagePurpose(
+      healthyMeta({
+        title: 'Saad Benryane | I build products, brands, and companies',
+        h1s: ['I build products, brands, and companies.'],
+        ctaTexts: ['Start a project', 'View case studies'],
+        navLandmarkCount: 2,
+        links: [
+          { href: '/work', text: 'Work', rel: null },
+          { href: '/contact', text: 'Start a project', rel: null },
+          { href: '/journal', text: 'Journal', rel: null },
+        ],
+        images: [
+          { src: '/hero.png', alt: 'Portrait' },
+          { src: '/work-1.png', alt: 'Case study' },
+        ],
+        pageText:
+          'I build products, brands, and companies. Selected Case Studies. Journal. Start a project.',
+      }),
+      'https://saadbenryane.com/'
+    )
+    expect(result.purpose).toBe('studio')
   })
 })

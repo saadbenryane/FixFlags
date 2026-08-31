@@ -5,13 +5,12 @@ import { User } from '@prisma/client'
 import { RUBRIC_ORDER } from '../../audit/constants'
 import { computeRubricsFromRows } from '../../audit/rubric'
 import { assertAuditAccess, assertMcpAccess } from '@/lib/mcp/access'
-import { buildAiFlagMatchKey } from '../../audit/validate-judge-output'
 import { classifyArbitraryReportFlagDiff } from '../../audit/diff-flags'
+import { observationIdentity } from '../../audit/flag-identity'
 import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 
 function flagMatchKey(flag: { checkId: string | null; problem: string; rubric: string }): string {
-  if (flag.checkId) return `check:${flag.checkId}`
-  return buildAiFlagMatchKey(flag.problem, flag.rubric)
+  return observationIdentity(flag)
 }
 
 export function registerCompareTools(server: McpServer, user: User) {

@@ -56,7 +56,6 @@ export function improvementFingerprint(input: {
   rubric: string
   fingerprint?: string | null
 }): string {
-  if (!input.checkId && input.fingerprint?.trim()) return `ai:${input.fingerprint.trim()}`
   return flagFingerprint(input)
 }
 
