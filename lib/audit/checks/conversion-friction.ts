@@ -12,6 +12,9 @@ const PRICING_MARKERS = /\b(pricing|plans|see pricing|view pricing|compare plans
 
 const BOOKING_MARKERS = /\b(book (?:a )?call|book now|book online|book appointment|schedule|make a reservation|schedule visit|request appointment|request quote|get quote|find near you|search by|browse|explore)\b/i
 
+const CONTACT_PATH_MARKERS =
+  /\b(start a project|get in touch|contact (us|me)|work with me|hire me|talk to (us|me)|send a message)\b/i
+
 const GUARANTEE_MARKERS = /(money.back|guarantee|satisfied guaranteed|refund|risk.free|cancel anytime)/i
 
 // Text signals of social proof. Broadened because logo walls ("trusted by" +
@@ -37,6 +40,10 @@ export function runConversionFrictionChecks(
   const hasDemo = DEMO_MARKERS.test(bodyText)
   const hasPricing = PRICING_MARKERS.test(bodyText) || PRICING_MARKERS.test(combinedAboveFold)
   const hasBooking = BOOKING_MARKERS.test(bodyText) || BOOKING_MARKERS.test(combinedAboveFold)
+  const hasContactPath =
+    CONTACT_PATH_MARKERS.test(bodyText) ||
+    CONTACT_PATH_MARKERS.test(combinedAboveFold) ||
+    ctaTexts.some((cta) => CONTACT_PATH_MARKERS.test(cta))
   const hasGuarantee = GUARANTEE_MARKERS.test(bodyText)
   const hasSocialProof = SOCIAL_MARKERS.test(bodyText) || hasLogoWall(meta.images ?? [])
   const hasPricingLinks = links.some((l) => PRICING_MARKERS.test(l.href) || PRICING_MARKERS.test(l.text))
@@ -46,15 +53,24 @@ export function runConversionFrictionChecks(
   // project pages legitimately have no trial/demo/pricing CTA, and flagging
   // them produces a top-3 false positive on pages that are not trying to
   // convert (e.g. nextjs.org, example.com).
-  if (!hasFreeTrial && !hasDemo && !hasPricing && !hasPricingLinks && !hasBooking && productPage) {
+  if (
+    !hasFreeTrial &&
+    !hasDemo &&
+    !hasPricing &&
+    !hasPricingLinks &&
+    !hasBooking &&
+    !hasContactPath &&
+    productPage
+  ) {
     findings.push({
       checkId: 'friction-no-commitment-path',
       rubric: 'EXPERIENCE',
       impactTag: 'CONVERSION',
       severity: 'IMPORTANT',
       problem: 'No clear low-commitment conversion path found',
-      evidence: 'Page has no free trial, demo request, or pricing link. Visitors have no clear first step to engage with the product.',
-      fix: '1. Add a free trial CTA ("Start free trial - no credit card required")\n2. OR add a demo booking option ("Book a demo")\n3. OR add a visible pricing link so visitors can evaluate cost before committing\n4. Position the low-friction option as the primary CTA above the fold',
+      evidence:
+        'Page has no free trial, demo, pricing, booking, or contact path. Visitors have no clear first step to engage.',
+      fix: '1. Add a low-commitment next step that matches the offer: book a call, start a project, get in touch, request a demo, or view pricing\n2. Do not add a fake free trial if you do not offer one\n3. Keep the current visual and put that action next to the primary CTA or on the first screen',
       confidence: 0.85,
       source: 'DETERMINISTIC',
     })

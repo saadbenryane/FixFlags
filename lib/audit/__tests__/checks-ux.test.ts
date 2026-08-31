@@ -176,6 +176,16 @@ describe('runConversionFrictionChecks', () => {
     )
   })
 
+  it('treats start a project and get in touch as a conversion path', () => {
+    assert.ok(
+      !checkIds(runConversionFrictionChecks(healthyMeta({
+        ctaTexts: ['Start a project'],
+        links: [{ href: '/contact', text: 'Get in touch', rel: null }],
+        pageText: 'I build products, brands, and companies. Start a project. View case studies.',
+      }))).includes('friction-no-commitment-path')
+    )
+  })
+
   it('treats booking a call as a low-commitment conversion path', () => {
     assert.ok(
       !checkIds(runConversionFrictionChecks(healthyMeta({

@@ -225,5 +225,20 @@
     "status": "fixed",
     "evidence": "shopify-com.html region-selector-close icon button; Linear empty chrome buttons",
     "fixedDate": "2026-08-31"
+  },
+  {
+    "id": "fp-015",
+    "checkId": "friction-no-commitment-path",
+    "module": "conversion-friction.ts",
+    "pattern": "Consulting and personal-brand sites with Start a project / Get in touch CTAs were flagged as missing a free trial",
+    "rootCause": "The check only accepted SaaS trial, demo, pricing, or booking phrases. A studio site with a real contact path was treated as having no first step.",
+    "affectedSites": [
+      "saadbenryane.com"
+    ],
+    "fixType": "threshold",
+    "fixDescription": "Contact paths (start a project, get in touch, contact, work with me) count as a conversion path. Prescriptions must not invent a free trial.",
+    "status": "fixed",
+    "evidence": "https://fixflags.com/report/cmtgkvqd50001n020ae6okywu IMPORTANT friction-no-commitment-path on a homepage whose primary CTA is Start a project",
+    "fixedDate": "2026-08-31"
   }
 ]
