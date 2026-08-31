@@ -112,13 +112,13 @@ export function isPageComparableAbsence(input: {
   return ownedUrls.every((url) => pageIsReobservationComparable(byUrl.get(url)))
 }
 
-async function loadChildCoverage(monitoringAuditId: string): Promise<{
+async function loadAuditCoverage(auditId: string): Promise<{
   status: string | undefined
   reportCompleteness: ReportCompleteness | null | undefined
   pages: ChildPageCoverage[]
 }> {
-  const monitoringAudit = await prisma.audit.findUnique({
-    where: { id: monitoringAuditId },
+  const audit = await prisma.audit.findUnique({
+    where: { id: auditId },
     select: {
       status: true,
       reportCompleteness: true,
@@ -126,10 +126,33 @@ async function loadChildCoverage(monitoringAuditId: string): Promise<{
     },
   })
   return {
-    status: monitoringAudit?.status,
-    reportCompleteness: monitoringAudit?.reportCompleteness,
-    pages: monitoringAudit?.pages ?? [],
+    status: audit?.status,
+    reportCompleteness: audit?.reportCompleteness,
+    pages: audit?.pages ?? [],
   }
+}
+
+export function reviewedPageUrls(input: {
+  pages: ChildPageCoverage[]
+  flags: Array<Pick<FlagRow, 'pageUrl' | 'affectedPaths'>>
+}): Set<string> {
+  const urls = new Set<string>()
+  for (const page of input.pages) {
+    if (pageIsReobservationComparable(page)) urls.add(normalizeDiffUrl(page.url))
+  }
+  for (const flag of input.flags) {
+    for (const url of flagPageUrls(flag)) urls.add(url)
+  }
+  return urls
+}
+
+export function isFoundOnNewlyReviewedPage(input: {
+  pageUrl: string | null
+  parentReviewedUrls: Set<string>
+}): boolean {
+  if (!input.pageUrl) return false
+  if (input.parentReviewedUrls.size === 0) return false
+  return !input.parentReviewedUrls.has(normalizeDiffUrl(input.pageUrl))
 }
 
 export async function diffFlagsAgainstParent(
@@ -143,7 +166,7 @@ export async function diffFlagsAgainstParent(
     prisma.flag.findMany({
       where: { auditId: monitoringAuditId },
     }),
-    loadChildCoverage(monitoringAuditId),
+    loadAuditCoverage(monitoringAuditId),
   ])
 
   const monitoringByKey = new Map(monitoringFlags.map((f) => [flagMatchKey(f), f]))
@@ -263,10 +286,11 @@ export async function getFlagDiffSummary(
   regressed: FlagDiffSummaryItem[]
   newIssues: FlagDiffSummaryItem[]
 }> {
-  const [parentFlags, monitoringFlags, child] = await Promise.all([
+  const [parentFlags, monitoringFlags, child, parent] = await Promise.all([
     prisma.flag.findMany({ where: { auditId: parentAuditId } }),
     prisma.flag.findMany({ where: { auditId: monitoringAuditId } }),
-    loadChildCoverage(monitoringAuditId),
+    loadAuditCoverage(monitoringAuditId),
+    loadAuditCoverage(parentAuditId),
   ])
 
   const monitoringByKey = new Map(monitoringFlags.map((f) => [flagMatchKey(f), f]))
@@ -339,9 +363,10 @@ export async function getFlagDiffSummary(
     }
   }
 
-  const parentPageUrls = new Set(
-    parentFlags.map((f) => f.pageUrl).filter((u): u is string => Boolean(u))
-  )
+  const parentReviewedUrls = reviewedPageUrls({
+    pages: parent.pages,
+    flags: parentFlags,
+  })
 
   for (const monitoringFlag of monitoringFlags) {
     const key = flagMatchKey(monitoringFlag)
@@ -356,7 +381,10 @@ export async function getFlagDiffSummary(
       severity: monitoringFlag.severity,
       status: monitoringFlag.status,
       pageUrl,
-      foundOnNewPage: Boolean(pageUrl && !parentPageUrls.has(pageUrl)),
+      foundOnNewPage: isFoundOnNewlyReviewedPage({
+        pageUrl,
+        parentReviewedUrls,
+      }),
     })
   }
 

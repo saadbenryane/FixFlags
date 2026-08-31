@@ -22,6 +22,8 @@ Show the already-computed diff on the child report header, and have Agent name i
 
 ### Layer 2 — Detect everything on the first Review
 
+Started: New Flags on a page the parent already reviewed are named separately from Flags on a newly reviewed page. Trailing-slash URL variants are not new pages. The New card tooltip says which is which.
+
 - Same checks, pages, and judgment on parent and child.
 - Unchanged-site eval: two scans of an unmodified URL must not invent new IMPORTANT Flags.
 - AI Flags match by fingerprint, not prose.

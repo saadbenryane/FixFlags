@@ -18,10 +18,15 @@ describe('update-review-progress', () => {
     const note = scoreOffsetExplanation({
       previousScore: 72,
       currentScore: 72,
-      counts: { ...countsFromUpdateDiff(empty), fixed: 3, newIssues: 2, unchanged: 1 },
+      counts: countsFromUpdateDiff({
+        ...empty,
+        fixed: [{}, {}, {}],
+        unchanged: [{}],
+        newIssues: [{}, {}],
+      }),
     })
     expect(note).toBe(
-      'Score stayed at 72. 3 Flags from last time are gone, and 2 new observations appeared.'
+      'Score stayed at 72. 3 Flags from last time are gone, and 2 new observations appeared on pages already reviewed.'
     )
   })
 
@@ -35,5 +40,19 @@ describe('update-review-progress', () => {
         'b'
       )
     ).toBe(64)
+  })
+
+  it('names newly reviewed pages separately from pages already reviewed', () => {
+    const note = scoreOffsetExplanation({
+      previousScore: 72,
+      currentScore: 72,
+      counts: countsFromUpdateDiff({
+        ...empty,
+        fixed: [{}],
+        newIssues: [{ foundOnNewPage: true }, { foundOnNewPage: false }],
+      }),
+    })
+    expect(note).toContain('on pages already reviewed')
+    expect(note).toContain('on newly reviewed pages')
   })
 })

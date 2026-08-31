@@ -29,6 +29,7 @@ describe('RecheckDiffStrip', () => {
     expect(screen.getByText('Inconclusive')).toBeInTheDocument()
     expect(screen.queryByText('Regressed')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /What Fixed means/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /What New means/i })).toBeInTheDocument()
   })
 
   it('hides empty buckets and never shows a yellow inconclusive hero', () => {

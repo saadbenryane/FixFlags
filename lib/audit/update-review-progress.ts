@@ -8,6 +8,8 @@ export type UpdateReviewCounts = {
   fixed: number
   unchanged: number
   newIssues: number
+  newOnReviewedPage: number
+  newOnNewPage: number
   regressed: number
   inconclusive: number
 }
@@ -15,19 +17,41 @@ export type UpdateReviewCounts = {
 export type UpdateReviewDiffLike = {
   fixed: unknown[]
   unchanged: unknown[]
-  newIssues: unknown[]
+  newIssues: Array<{ foundOnNewPage?: boolean }>
   regressed: unknown[]
   inconclusive: unknown[]
 }
 
 export function countsFromUpdateDiff(diff: UpdateReviewDiffLike): UpdateReviewCounts {
+  const newOnNewPage = diff.newIssues.filter((item) => item.foundOnNewPage).length
   return {
     fixed: diff.fixed.length,
     unchanged: diff.unchanged.length,
     newIssues: diff.newIssues.length,
+    newOnNewPage,
+    newOnReviewedPage: diff.newIssues.length - newOnNewPage,
     regressed: diff.regressed.length,
     inconclusive: diff.inconclusive.length,
   }
+}
+
+function newObservationClause(counts: UpdateReviewCounts): string {
+  if (counts.newOnReviewedPage > 0 && counts.newOnNewPage > 0) {
+    return `${counts.newOnReviewedPage} new ${
+      counts.newOnReviewedPage === 1 ? 'observation appeared' : 'observations appeared'
+    } on pages already reviewed, and ${counts.newOnNewPage} on newly reviewed pages`
+  }
+  if (counts.newOnNewPage > 0 && counts.newOnReviewedPage === 0) {
+    return `${counts.newOnNewPage} new ${
+      counts.newOnNewPage === 1 ? 'observation appeared' : 'observations appeared'
+    } on pages this update review checked for the first time`
+  }
+  if (counts.newIssues > 0) {
+    return `${counts.newIssues} new ${
+      counts.newIssues === 1 ? 'observation appeared' : 'observations appeared'
+    } on pages already reviewed`
+  }
+  return `${counts.newIssues} new observations appeared`
 }
 
 export function previousScoreFromHistory(
@@ -63,9 +87,7 @@ export function scoreOffsetExplanation(input: {
   if (currentScore === previousScore && counts.fixed > 0 && counts.newIssues > 0) {
     return `Score stayed at ${currentScore}. ${counts.fixed} ${
       counts.fixed === 1 ? 'Flag from last time is gone' : 'Flags from last time are gone'
-    }, and ${counts.newIssues} new ${
-      counts.newIssues === 1 ? 'observation appeared' : 'observations appeared'
-    }.`
+    }, and ${newObservationClause(counts)}.`
   }
 
   if (currentScore === previousScore && counts.fixed > 0 && counts.newIssues === 0) {
@@ -75,6 +97,9 @@ export function scoreOffsetExplanation(input: {
   }
 
   if (currentScore < previousScore && counts.newIssues > 0) {
+    if (counts.newOnReviewedPage > 0) {
+      return `Score moved from ${previousScore} to ${currentScore}. New observations on pages already reviewed outweighed what was Fixed.`
+    }
     return `Score moved from ${previousScore} to ${currentScore}. New observations outweighed what was Fixed.`
   }
 

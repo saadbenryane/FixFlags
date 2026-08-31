@@ -55,6 +55,9 @@ export const RECHECK_DIFF_COPY = {
     return bits.join(' · ')
   },
   foundOnNewPage: 'Found on a newly reviewed page',
+  newInfoLabel: 'What New means',
+  newInfoIntro:
+    'Not observed in the previous Review. Pages already reviewed should have been caught the first time. Newly reviewed pages are extra coverage.',
 } as const
 
 export const FLAG_DISMISS_REASONS = [

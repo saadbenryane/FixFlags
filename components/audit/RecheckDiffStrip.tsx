@@ -76,6 +76,22 @@ export function RecheckDiffStrip({
       key: 'new',
       label: RECHECK_DIFF_COPY.newIssues,
       count: newIssues.length,
+      info:
+        newIssues.length > 0 ? (
+          <TooltipContent side="bottom" align="start" className="max-w-xs space-y-1.5 p-3">
+            <p className="text-xs font-medium text-foreground">
+              {RECHECK_DIFF_COPY.newInfoIntro}
+            </p>
+            <ul className="space-y-1 text-xs text-muted-foreground">
+              {newIssues.map((item, i) => (
+                <li key={`${item.checkId ?? item.problem}-${i}`}>
+                  {item.problem}
+                  {item.foundOnNewPage ? ` (${RECHECK_DIFF_COPY.foundOnNewPage})` : ''}
+                </li>
+              ))}
+            </ul>
+          </TooltipContent>
+        ) : null,
     },
     {
       key: 'regressed',
@@ -127,7 +143,9 @@ export function RecheckDiffStrip({
                         aria-label={
                           bucket.key === 'fixed'
                             ? RECHECK_DIFF_COPY.fixedInfoLabel
-                            : RECHECK_DIFF_COPY.inconclusive
+                            : bucket.key === 'new'
+                              ? RECHECK_DIFF_COPY.newInfoLabel
+                              : RECHECK_DIFF_COPY.inconclusive
                         }
                       >
                         <Info className="h-3 w-3" aria-hidden />

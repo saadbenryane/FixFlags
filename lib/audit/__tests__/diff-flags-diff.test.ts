@@ -49,6 +49,8 @@ import {
   diffFlagsAgainstParent,
   getFlagDiffSummary,
   diffMatchKey,
+  isFoundOnNewlyReviewedPage,
+  reviewedPageUrls,
 } from '../diff-flags'
 
 type FlagRow = {
@@ -101,6 +103,36 @@ describe('diffMatchKey', () => {
   it('keys AI flags by problem and rubric', () => {
     const key = diffMatchKey({ checkId: null, problem: 'Headline is vague', rubric: 'MESSAGE' })
     assert.match(key, /headline/i)
+  })
+})
+
+describe('isFoundOnNewlyReviewedPage', () => {
+  it('does not treat a trailing-slash variant as a new page', () => {
+    const parentReviewedUrls = reviewedPageUrls({
+      pages: [{ url: 'https://example.com/', status: 'COMPLETED', completeness: 'FULL' }],
+      flags: [],
+    })
+    assert.equal(
+      isFoundOnNewlyReviewedPage({
+        pageUrl: 'https://example.com',
+        parentReviewedUrls,
+      }),
+      false
+    )
+  })
+
+  it('marks a path the parent never reviewed as new', () => {
+    const parentReviewedUrls = reviewedPageUrls({
+      pages: [{ url: 'https://example.com/', status: 'COMPLETED', completeness: 'FULL' }],
+      flags: [],
+    })
+    assert.equal(
+      isFoundOnNewlyReviewedPage({
+        pageUrl: 'https://example.com/pricing',
+        parentReviewedUrls,
+      }),
+      true
+    )
   })
 })
 

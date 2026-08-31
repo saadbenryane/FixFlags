@@ -135,7 +135,7 @@ describe('ReportOutcomeBar', () => {
     expect(screen.getByText('New')).toBeVisible()
     expect(
       screen.getByText(
-        'Score stayed at 70. 1 Flag from last time is gone, and 1 new observation appeared.'
+        'Score stayed at 70. 1 Flag from last time is gone, and 1 new observation appeared on pages already reviewed.'
       )
     ).toBeVisible()
   })
