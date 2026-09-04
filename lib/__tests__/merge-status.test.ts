@@ -1,6 +1,9 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
-import { mergeLeadStatusOnBackfill } from '@/lib/leads/merge-status'
+import {
+  mergeLeadStatusOnBackfill,
+  resolveLeadStatusForBackfill,
+} from '@/lib/leads/merge-status'
 
 describe('mergeLeadStatusOnBackfill', () => {
   it('preserves manual workflow states', () => {
@@ -66,5 +69,23 @@ describe('mergeLeadStatusOnBackfill', () => {
       }),
       'QUALIFIED'
     )
+  })
+})
+
+describe('resolveLeadStatusForBackfill (backfill-leads write path)', () => {
+  it('creates missing leads as NEW (never QUALIFIED)', () => {
+    assert.equal(resolveLeadStatusForBackfill(null), 'NEW')
+    assert.equal(resolveLeadStatusForBackfill(undefined), 'NEW')
+  })
+
+  it('never invents QUALIFIED from activity signals (status-only merge)', () => {
+    assert.equal(resolveLeadStatusForBackfill('NEW'), 'NEW')
+    assert.equal(resolveLeadStatusForBackfill('CONTACTED'), 'CONTACTED')
+    assert.equal(resolveLeadStatusForBackfill('CONVERTED'), 'CONVERTED')
+    assert.equal(resolveLeadStatusForBackfill('DISQUALIFIED'), 'DISQUALIFIED')
+  })
+
+  it('preserves legacy QUALIFIED only when already stored', () => {
+    assert.equal(resolveLeadStatusForBackfill('QUALIFIED'), 'QUALIFIED')
   })
 })

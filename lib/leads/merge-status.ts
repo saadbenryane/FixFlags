@@ -17,3 +17,14 @@ export function mergeLeadStatusOnBackfill(input: {
   }
   return 'NEW'
 }
+
+/**
+ * Status for lead create/upsert during backfill.
+ * Missing lead → NEW. Existing lead → merge only (never invent QUALIFIED).
+ */
+export function resolveLeadStatusForBackfill(
+  currentStatus: LeadStatus | null | undefined
+): LeadStatus {
+  if (!currentStatus) return 'NEW'
+  return mergeLeadStatusOnBackfill({ currentStatus })
+}
