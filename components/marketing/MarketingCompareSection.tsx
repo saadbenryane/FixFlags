@@ -48,7 +48,11 @@ function QuestionLabel({
   tooltip?: string;
 }) {
   if (!tooltip) {
-    return <span className="text-sm font-medium text-foreground text-pretty">{question}</span>;
+    return (
+      <span className="text-sm font-medium text-foreground text-pretty">
+        {question}
+      </span>
+    );
   }
   return (
     <span className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground text-pretty">
@@ -71,130 +75,109 @@ function QuestionLabel({
   );
 }
 
+function CompareTable() {
+  const copy = SITE_COMPARE;
+
+  return (
+    <div className="overflow-hidden rounded-card border border-border/60 bg-background/80 shadow-card">
+      <div className="overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]">
+        <table className="w-full min-w-[36rem] border-collapse text-left md:min-w-0">
+          <caption className="sr-only">{copy.headline}</caption>
+          <thead>
+            <tr className="border-b border-border/60">
+              <th
+                scope="col"
+                className="sticky left-0 z-20 bg-background/95 px-4 py-4 text-xs font-medium uppercase tracking-label text-muted-foreground backdrop-blur sm:px-5"
+              >
+                Question
+              </th>
+              {copy.columns.map((col) => {
+                const highlight = "highlight" in col && col.highlight;
+                return (
+                  <th
+                    key={col.id}
+                    scope="col"
+                    className={cn(
+                      "min-w-[7.5rem] px-3 py-4 text-center text-sm font-semibold tracking-heading sm:min-w-[9rem] sm:px-4",
+                      highlight ? "bg-brand/[0.04] text-brand" : "text-foreground",
+                    )}
+                  >
+                    {col.label}
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {copy.rows.map((row) => (
+              <tr
+                key={row.id}
+                className="border-b border-border/50 last:border-b-0"
+              >
+                <th
+                  scope="row"
+                  className="sticky left-0 z-10 bg-background/95 px-4 py-3.5 text-left align-middle font-normal backdrop-blur sm:px-5"
+                >
+                  <QuestionLabel
+                    question={row.question}
+                    tooltip={"tooltip" in row ? row.tooltip : undefined}
+                  />
+                </th>
+                {copy.columns.map((col) => {
+                  const yes = row.values[col.id as ColumnId];
+                  const highlight = "highlight" in col && col.highlight;
+                  return (
+                    <td
+                      key={col.id}
+                      className={cn(
+                        "px-3 py-3.5 text-center align-middle sm:px-4",
+                        highlight && "bg-brand/[0.04]",
+                      )}
+                    >
+                      <div className="flex justify-center">
+                        <CellMark yes={yes} highlight={Boolean(highlight)} />
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="border-t border-border/50 px-4 py-2 text-xs text-muted-foreground md:hidden">
+        Swipe sideways to compare all three.
+      </p>
+    </div>
+  );
+}
+
 function CompareBody() {
   const copy = SITE_COMPARE;
 
   return (
-        <TooltipProvider delayDuration={120}>
-          <RevealOnView>
-            <LandingSectionHeader
-              align="left"
-              label={copy.label}
-              headline={copy.headlineDisplay}
-              accentPeriod={copy.headlineAccentPeriod}
-              size="lg"
-              className="max-w-2xl"
-            />
-          </RevealOnView>
+    <TooltipProvider delayDuration={120}>
+      <RevealOnView>
+        <LandingSectionHeader
+          align="left"
+          label={copy.label}
+          headline={copy.headlineDisplay}
+          accentPeriod={copy.headlineAccentPeriod}
+          size="lg"
+          className="max-w-2xl"
+        />
+      </RevealOnView>
 
-          {/* Desktop table */}
-          <RevealOnView className="mt-10 hidden md:block">
-            <div className="overflow-hidden rounded-card border border-border/60 bg-background/80 shadow-card">
-              <table className="w-full border-collapse text-left">
-                <caption className="sr-only">{copy.headline}</caption>
-                <thead>
-                  <tr className="border-b border-border/60">
-                    <th scope="col" className="px-5 py-4 text-xs font-medium uppercase tracking-label text-muted-foreground">
-                      Question
-                    </th>
-                    {copy.columns.map((col) => (
-                      <th
-                        key={col.id}
-                        scope="col"
-                        className={cn(
-                          "px-4 py-4 text-center text-sm font-semibold tracking-heading",
-                          "highlight" in col && col.highlight
-                            ? "bg-brand/[0.04] text-brand"
-                            : "text-foreground",
-                        )}
-                      >
-                        {col.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {copy.rows.map((row) => (
-                    <tr key={row.id} className="border-b border-border/50 last:border-b-0">
-                      <th scope="row" className="px-5 py-3.5 align-middle font-normal">
-                        <QuestionLabel
-                          question={row.question}
-                          tooltip={"tooltip" in row ? row.tooltip : undefined}
-                        />
-                      </th>
-                      {copy.columns.map((col) => {
-                        const yes = row.values[col.id as ColumnId];
-                        const highlight = "highlight" in col && col.highlight;
-                        return (
-                          <td
-                            key={col.id}
-                            className={cn(
-                              "px-4 py-3.5 text-center align-middle",
-                              highlight && "bg-brand/[0.04]",
-                            )}
-                          >
-                            <div className="flex justify-center">
-                              <CellMark yes={yes} highlight={Boolean(highlight)} />
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </RevealOnView>
+      <RevealOnView className="mt-10">
+        <CompareTable />
+      </RevealOnView>
 
-          {/* Mobile cards */}
-          <div className="mt-10 grid gap-4 md:hidden">
-            {copy.columns.map((col) => {
-              const highlight = "highlight" in col && col.highlight;
-              return (
-                <RevealOnView key={col.id}>
-                  <article
-                    className={cn(
-                      "rounded-card border border-border/60 bg-background/80 p-5 shadow-card",
-                      highlight && "ring-1 ring-brand/25",
-                    )}
-                  >
-                    <p
-                      className={cn(
-                        "font-mono text-xs font-semibold uppercase tracking-label",
-                        highlight ? "text-brand" : "text-muted-foreground",
-                      )}
-                    >
-                      {col.label}
-                    </p>
-                    <ul className="mt-4 space-y-3">
-                      {copy.rows.map((row) => (
-                        <li
-                          key={row.id}
-                          className="flex items-start justify-between gap-3"
-                        >
-                          <QuestionLabel
-                            question={row.question}
-                            tooltip={"tooltip" in row ? row.tooltip : undefined}
-                          />
-                          <CellMark
-                            yes={row.values[col.id as ColumnId]}
-                            highlight={Boolean(highlight)}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                  </article>
-                </RevealOnView>
-              );
-            })}
-          </div>
-
-          <RevealOnView>
-            <p className="mt-6 max-w-2xl text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
-              {copy.subline}
-            </p>
-          </RevealOnView>
-        </TooltipProvider>
+      <RevealOnView>
+        <p className="mt-6 max-w-2xl text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
+          {copy.subline}
+        </p>
+      </RevealOnView>
+    </TooltipProvider>
   );
 }
 
