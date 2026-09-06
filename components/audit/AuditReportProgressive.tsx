@@ -121,7 +121,6 @@ export function AuditReportProgressive({
   rubrics = [],
   partialFlags = [],
   screenshots = [],
-  screenshotCapture: _screenshotCapture,
   workerIdle = false,
   productContract = null,
   sectionId = 'report-flags',
