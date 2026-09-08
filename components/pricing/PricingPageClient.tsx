@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card";
 import { PricingCTAButton } from "@/components/pricing/PricingCTAButton";
 import { PricingComparisonTable } from "@/components/pricing/PricingComparisonTable";
+import { MarketingCompareSection } from "@/components/marketing/MarketingCompareSection";
 import { FaqSection } from "@/components/marketing/FaqSection";
 import { MarketingPageViewTracker } from "@/components/marketing/MarketingPageViewTracker";
 import { MarketingEyebrow } from "@/components/marketing/MarketingEyebrow";
@@ -201,6 +202,8 @@ export function PricingPageClient() {
           </div>
           <PricingComparisonTable />
         </div>
+
+        <MarketingCompareSection embedded />
 
         <div className="mx-auto max-w-3xl">
           <FaqSection

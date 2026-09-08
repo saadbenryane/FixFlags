@@ -20,5 +20,6 @@ export * from './copy/terminology'
 export * from './copy/legal'
 export * from './copy/shopify'
 export * from './copy/agent'
-
 export * from './copy/care-homepage'
+export * from './copy/compare'
+
