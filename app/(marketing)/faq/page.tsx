@@ -5,7 +5,7 @@ import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Body } from '@/components/ui/typography'
 import { TextLink } from '@/components/ui/text-link'
-import { FAQ, FAQ_PAGE, HELP_CENTER } from '@/lib/marketing/copy'
+import { FAQ, FAQ_PAGE, FAQ_SECTION, HELP_CENTER } from '@/lib/marketing/copy'
 import { buildPageMetadata } from '@/lib/marketing/metadata'
 import { faqPageSchema } from '@/lib/marketing/structured-data'
 
@@ -25,7 +25,7 @@ export default function FaqPage() {
         <Container>
           <div className="mx-auto max-w-3xl space-y-10 sm:space-y-12">
             <div className="text-center">
-              <LandingSectionHeader label="FAQ" headline={FAQ_PAGE.title} as="h1" />
+              <LandingSectionHeader label={FAQ_SECTION.label} headline={FAQ_PAGE.title} as="h1" />
               <Body className="mt-4 text-muted-foreground text-pretty">{FAQ_PAGE.subhead}</Body>
               <Body className="mt-2 text-sm text-muted-foreground">
                 Prefer step-by-step guides?{' '}
