@@ -6,38 +6,41 @@ Branch: main
 
 ## Outcome
 
-The Site loop is designed, not wrapped. Coverage-honest health, Flag verify with READY_TO_VERIFY, watch pause/quota on the board, one public story, and production Next lint blockers that stopped Railway `next build` are fixed.
+The Site loop is designed, not wrapped. A stranger can enter a URL, land on `/sites/{id}`, see coverage-honest status, open a Flag, copy a fix, Verify with `READY_TO_VERIFY`, and Keep watching with an honest schedule. Production runs this code.
 
-## Production
+## Production proof
 
-Railway `FixFlags` / `FixFlags Worker` failed `next build` on four ESLint errors:
+| Check | Result |
+| --- | --- |
+| Game On commits | `6024ce85` Site loop + Next lint; `e76ef09f` www→apex 308 |
+| Live `/api/health` | `6e9c14291dbcd7894ca79bd0f5c3d7cd61b28b22` matches `origin/main` |
+| Railway **FixFlags** | SUCCESS on that SHA |
+| Railway **FixFlags Worker** | SUCCESS on that SHA |
+| `web` service | Left alone (Aug 19 SUCCESS, no custom domain) |
+| `npm run growth:verify-live` | pass: www 308, homepage “looked after”, sitemap `::page:` = 0, `/pricing` and `/partners` titles, issue 200 |
 
-- unused `initialAuditUrl` in dashboard
-- Shopify walk `<video>` captions
-- unescaped apostrophe in OG template
-- unused `_reportCompleteness`
+Stranger dogfood (production POST `/api/checks` `https://www.iana.org`):
 
-Those are fixed. `npx tsc --noEmit --incremental false` and `npx next lint` pass. `web` (Aug 19) was left alone.
-
-Live `/api/health` must equal this commit SHA after deploy. Then `npm run growth:verify-live` and one stranger URL → `/sites/...`.
+- Response: `siteId` `p_cmtt3ssok0005o7207bjy5lly`, `siteUrl` `/sites/p_...`, not a `/report` fallback
+- Claim cookie `ff_anon_report_ids` required; curl without it 404s (tenancy)
+- With cookie, Site board 200: “Learning your website”, Checking, Coverage, Keep watching. Not “Looking good”
 
 ## Loop
 
 - Site card is not healthy from zero Flags when starter areas are unknown. `PARTIAL` is not an AuditStatus.
-- Verify records `READY_TO_VERIFY`, scopes capture to the Flag page (`SINGLE`), and copy never resolves.
-- Watch: Free weekly stays allowed. Pause keeps the interval and clears `nextRunAt`. Board shows watching / paused / delayed / quota. "You're covered" only after a schedule write.
-- Status and keep-email use provisional `p_*` Site ids. `/products/[id]` stays a redirect. ProductWorkspace is parked.
+- Verify records `READY_TO_VERIFY`, scopes capture to the Flag page (`SINGLE`), copy never resolves.
+- Watch: Free weekly allowed. Pause keeps interval, clears `nextRunAt`. Board shows watching / paused / delayed / quota. “You’re covered” only after a schedule write.
+- Status and keep-email use provisional `p_*` ids. `/products/[id]` stays a redirect. ProductWorkspace is parked.
+- www.fixflags.com 308 to https://fixflags.com/
 
 ## Public story
 
-`marketing-care-alignment` finished homepage/FAQ chrome. This pass aligned Help getting-started, Docs, llms notes, auth, keep-email, nurture, billing pause, usage meter, root metadata, roast (noindex, Site CTA), and leftover FAQ changelog / plans upsell language. Shopify remains a connection.
+Help getting-started, Docs, llms notes, auth, keep-email, nurture, billing pause, usage meter, root metadata, roast (noindex, Site CTA), FAQ changelog, and plans upsell language match URL-first care. Shopify remains a connection. Homepage CSS left to other owners.
 
-## Proof
+## Proof (local)
 
-`npx vitest run` slices: `app/api`, `app/`, `lib/audit/`, `components/`, `lib/marketing/` all passed. Focused locks: coverage-bounded health, verify attempt lifecycle, provisional siteId, keep-email Site URL, watch pause/quota copy. `copy-drift-check` and `help:catalog-guard` passed. `ui:drift-guard` still fails on pre-existing SiteBoard / `/new` / ShopifyWorkspace `font-display` and `rounded-xl` (not introduced as the product loop). Full-repo `npm run lint` still fails on `prototypes/fixflags-board/dist`; Railway uses `next lint`.
+`npx tsc --noEmit --incremental false` and `npx next lint` passed. Vitest slices `app/api`, `app/`, `lib/audit/`, `components/`, `lib/marketing/` passed. `copy-drift-check` and `help:catalog-guard` passed. Full-repo `npm run lint` still fails on `prototypes/fixflags-board/dist`; Railway uses `next lint`. `ui:drift-guard` still fails on pre-existing SiteBoard `/new` ShopifyWorkspace `font-display`.
 
-Owned fixture: homepage contact-form evidence (`public/marketing/evidence/contact-*.png`) is the controlled broken/healthy sibling. Live worker+browser of that fixture is the production dogfood after SHA match.
+## Gaps
 
-## Not done until live SHA matches HEAD
-
-Record SHA, `growth:verify-live` output, and stranger dogfood gaps below after Railway SUCCESS.
+Owned contact-form fixture through worker+browser was not a separate lab Site; homepage evidence images remain the controlled sibling. Later `main` commits from other owners rode the same Railway train; Game On behavior is in the ancestry of the matched SHA.
