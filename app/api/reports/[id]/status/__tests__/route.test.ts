@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server'
 const prismaMock = vi.hoisted(() => ({
   audit: { findUnique: vi.fn() },
   flag: { count: vi.fn() },
+  provisionalSite: { findFirst: vi.fn() },
 }))
 const resolveSessionUser = vi.hoisted(() => vi.fn())
 const resolveAuditAccess = vi.hoisted(() => vi.fn())
@@ -43,6 +44,8 @@ function getReq() {
 }
 
 const baseAudit = {
+  id: 'a1',
+  projectId: 'proj_1',
   status: 'CHECKING',
   progress: 40,
   score: null,
@@ -106,6 +109,7 @@ describe('GET /api/reports/[id]/status', () => {
     resolveSessionUser.mockResolvedValue({ user: { id: 'u1' } })
     resolveAuditAccess.mockResolvedValue('owner')
     prismaMock.flag.count.mockResolvedValue(1)
+    prismaMock.provisionalSite.findFirst.mockResolvedValue(null)
     prismaMock.audit.findUnique.mockResolvedValue(baseAudit)
   })
 
@@ -128,6 +132,7 @@ describe('GET /api/reports/[id]/status', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.status).toBe('CHECKING')
+    expect(body.siteId).toBe('proj_1')
     expect(body).not.toHaveProperty('actionTimeline')
     expect(body.productContract?.purpose).toBe('Ship cleaner sites')
     expect(body.technologyProfile).toBeUndefined()
@@ -217,5 +222,16 @@ describe('GET /api/reports/[id]/status', () => {
       id: 'scan:a1:complete',
       kind: 'completion',
     })
+  })
+
+  it('returns a provisional p_ siteId instead of projectId', async () => {
+    prismaMock.audit.findUnique.mockResolvedValue({
+      ...baseAudit,
+      projectId: null,
+    })
+    prismaMock.provisionalSite.findFirst.mockResolvedValue({ id: 'abc' })
+    const res = await GET(getReq(), { params: Promise.resolve({ id: 'a1' }) })
+    const body = await res.json()
+    expect(body.siteId).toBe('p_abc')
   })
 })

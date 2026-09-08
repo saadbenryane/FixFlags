@@ -1,28 +1,25 @@
-## Path health
+## Site board
 
-A walk is Can buy, Can't buy, or Unclear. Health is a fact about the purchase path, not a design score. We never invent conversion percentages.
+A Site board is the current picture of one website. Cards stay unknown until that area has evidence. Zero Flags is not healthy if required areas were not checked.
 
-## Watch verification
+## Flags and evidence
 
-Each walk keeps video of the FixFlags session when encoding works. If video is missing, we keep a GIF of the key steps when we can, plus screenshots of product, cart, and checkout or the failed step.
+A Flag is something worth your attention. It names what happened, where, and how sure we are. Missing evidence is stated, not invented.
 
-This is our walk, not a recording of your shoppers. We stop before payment.
+## Verify
 
-## Recheck
+Verify is a fresh independent check of the same page and action. Copying a fix never closes the Flag. Blocked, skipped, or incomparable captures stay inconclusive. Absence after a comparable scan is not enough on its own.
 
-Recheck is a fresh mobile walk of the same path. Use it after you fix a theme or app. Free stores get five manual rechecks per day.
+## Watch
 
-## Improve
+Keep watching only after a schedule is written. Free watches weekly. Pause means you are not covered until watching starts again.
 
-Improve is a short secondary list. It never goes in email or Slack. Protect is the alarm.
+## Shopify connection
 
-## Alerts
-
-Email (and optional Slack) fire when a path is confirmed Can't buy on two walks, and again when that path can take orders. Unclear stays in the app. The message includes a proof URL.
+Purchase-path walks remain available after you install on Shopify. They are proof for that connection, not a second home.
 
 ## Get help
 
-- [How to read path health](/help/getting-started/reading-your-report)
-- [Path health](/help/checks-and-reports/scores-and-severity)
-- [Protect vs Improve](/help/checks-and-reports/finish-plan-vs-fix-list)
+- [Check a website URL](/help/getting-started/first-check)
+- [Save this Site to your account](/help/getting-started/claiming-a-report)
 - [Watch verification](/help/checks-and-reports/evidence-and-screenshots)

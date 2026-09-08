@@ -125,6 +125,8 @@ describe('createAndEnqueueAudit', () => {
       watchInterval: null,
       watchNextRunAt: null,
       watchLastRunAt: null,
+      watchLastError: null,
+      watchConsecutiveFailures: 0,
       userId: 'user-1',
     })
     assertPublicAuditUrl.mockResolvedValue(new URL(AUDIT_URL))

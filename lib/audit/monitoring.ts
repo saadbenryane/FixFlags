@@ -31,12 +31,12 @@ export function validateMonitoringParent(
   const claimedAnonymous = Boolean(actor.claimedAnonymous) && parent.userId === null
   if (!signedInOwner && !claimedAnonymous) {
     if (!actor.userId) {
-      return { ok: false, status: 401, error: 'Sign in to run an update review' }
+      return { ok: false, status: 401, error: 'Sign in to run an update check' }
     }
-    return { ok: false, status: 403, error: 'You can only re-check your own reports' }
+      return { ok: false, status: 403, error: 'You can only check your own Sites' }
   }
   if (parent.status !== 'COMPLETED') {
-    return { ok: false, status: 400, error: 'You can only re-check completed reports' }
+    return { ok: false, status: 400, error: 'You can only check completed Sites' }
   }
   return { ok: true }
 }

@@ -1,3 +1,7 @@
+/**
+ * PARKED: the customer object is Site (`/sites/[siteId]`). `/products/[id]`
+ * redirects into that board. Keep this file undiscoverable; do not wire new CTAs here.
+ */
 import Link from 'next/link'
 import type { Route } from 'next'
 import {

@@ -95,7 +95,7 @@ export const ROAST_COPY = {
   shareBadge: 'Share your quality badge',
   downloadSvg: 'Download SVG',
   copyMarkdown: 'Copy markdown',
-  fullReport: 'Full report',
+  fullReport: 'Open Site board',
   wantFixes: 'Want a fix prompt for every Flag?',
   runFullAudit: 'Run a full FixFlags check',
   taglines: {

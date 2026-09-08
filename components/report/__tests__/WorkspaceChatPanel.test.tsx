@@ -261,7 +261,7 @@ describe('WorkspaceChatPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Review history' }))
     expect(screen.getAllByText('Create your free account').length).toBeGreaterThan(0)
     expect(
-      screen.getAllByText(/Get every fix prompt and keep this report/i).length
+      screen.getAllByText(/Get every fix prompt and keep this Site/i).length
     ).toBeGreaterThan(0)
     expect(screen.queryByText(/already used your anonymous product review/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/upgrade/i)).not.toBeInTheDocument()

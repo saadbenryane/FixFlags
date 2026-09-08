@@ -1,27 +1,30 @@
 ## Quick start
 
-Install FixFlags on your Shopify store. We pick up to two buyable products and walk the path to checkout on a phone-sized browser.
+Enter a public website URL. FixFlags opens a Site board for that website: what is known, what needs attention, and what to do next.
 
-1. Install from [/install](/install) or the Shopify App Store.
-2. Open the embedded app. The first walk starts on its own.
-3. Watch the verification. Can buy, Can't buy, or Unclear.
-4. Leave monitoring on. Email arrives only when a path is confirmed down or recovered.
+1. Enter a URL on the homepage or [/new](/new).
+2. Stay on the Site board while cards fill in.
+3. Open a Flag, copy the fix, then Verify the same page and action.
+4. Keep watching after you claim the Site. Free watches weekly.
 
-[Install on Shopify](/docs/getting-started) or [read how a walk is judged](/docs/reports).
+Shopify is a [connection](/install), not the product. Use it when you sell on Shopify and want purchase-path walks.
+
+[Getting started](/docs/getting-started) or [how a Site check is judged](/docs/reports).
 
 ## The product loop
 
-FixFlags follows one loop: **Protect → Prove → Understand → Improve**.
+FixFlags follows one loop: **Find → Understand → Fix → Verify**, then Watch.
 
-- **Protect** whether a stranger can still buy.
-- **Prove** with video of the walk FixFlags ran.
-- **Understand** the named step. Store-wide percentages wait for real Shopify data.
-- **Improve** is a short secondary list. It never goes in alerts.
+- **Find** problems on the live website.
+- **Understand** with evidence, certainty, and coverage.
+- **Fix** in the tools you already use.
+- **Verify** with a fresh independent check of the same behavior.
+- **Watch** only after a schedule exists.
 
 ## Choose your path
 
-- [Getting started](/docs/getting-started) for install and the first walk.
-- [Paths and proof](/docs/reports) for health, video, Recheck, and Improve.
-- [Troubleshooting](/docs/troubleshooting) for password gates, bot walls, and install errors.
+- [Getting started](/docs/getting-started) for a URL check and the first Site board.
+- [Paths and proof](/docs/reports) for Flags, evidence, Verify, and Watch.
+- [Troubleshooting](/docs/troubleshooting) for blocked pages and incomplete coverage.
 
 For billing, privacy, or human support, use the [Help Center](/help).

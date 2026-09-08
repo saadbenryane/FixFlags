@@ -1,28 +1,27 @@
 ## Before you start
 
-You need a Shopify store you can install apps on. FixFlags walks the public storefront a customer uses. A password-gated storefront stays Unclear until that password is off.
+You need a public website URL. Password gates, bot walls, and localhost are out of scope for the first check.
 
-## Install on Shopify
+## Check a website
 
-Open [/install](/install), enter `your-store.myshopify.com`, and approve the app. The embedded admin app is the product. We pick up to two buyable products with storefront URLs and start the first walk.
+Open the homepage or [/new](/new), enter the URL, and wait on the Site board. Cards stay unknown until that area has evidence. Zero Flags is not healthy if required areas were not checked.
 
-You do not submit a website address. You do not run Playwright.
+## Shopify connection
 
-## Watch the first walk
+If you sell on Shopify, you can also [install the app](/install). That walk is a connection: purchase-path proof, not a second product.
 
-Overview says when we are still walking. When the walk finishes you get Can buy, Can't buy, or Unclear, with video of our session or a GIF of the key steps if video encoding failed.
+## Verify a Flag
 
-We stop before payment.
+Open the Flag, copy the fix into your editor, then Verify. Copying never closes the Flag. Verify checks the same page and action again and stays inconclusive when the page is blocked or incomparable.
 
-## Recheck after a fix
+## Keep watching
 
-If the path cannot buy, fix the theme or app, then Recheck. Free stores get five manual rechecks per day. Scheduled walks continue about every six hours.
+Claim the Site, then Keep watching. Free Sites watch weekly. Pro and Studio can watch daily. Pause is an explicit action and means you are not covered until a schedule exists again.
 
 ## Get help
 
 For step-by-step guides, visit the [Help Center](/help).
 
-- [Install FixFlags on Shopify](/help/getting-started/first-check)
-- [How to read path health](/help/getting-started/reading-your-report)
-- [Recheck a path](/help/getting-started/flag-fix-recheck)
+- [Check a website URL](/help/getting-started/first-check)
+- [Save this Site to your account](/help/getting-started/claiming-a-report)
 - [Storefront access](/help/checks-and-reports/public-urls-only)

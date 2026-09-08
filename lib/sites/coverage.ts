@@ -75,11 +75,11 @@ export function evidencedAreasFromCoverage(
 
 export function isAuditInFlight(status: string | null | undefined): boolean {
   if (!status) return true
-  return !['COMPLETED', 'FAILED', 'PARTIAL'].includes(status)
+  return !['COMPLETED', 'FAILED'].includes(status)
 }
 
 export function isAuditFinished(status: string | null | undefined): boolean {
-  return status === 'COMPLETED' || status === 'PARTIAL'
+  return status === 'COMPLETED'
 }
 
 export function buildCoverageFacts(input: {

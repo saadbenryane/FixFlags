@@ -221,6 +221,8 @@ export function ShopifyWorkspace({
               </Button>
             </div>
             {path.videoUrl ? (
+              // Storefront walk recordings do not ship captions; the walk label is adjacent.
+              // eslint-disable-next-line jsx-a11y/media-has-caption
               <video className="w-full rounded-nested-md bg-black" src={path.videoUrl} controls playsInline />
             ) : path.gifUrl ? (
               <div className="space-y-2">

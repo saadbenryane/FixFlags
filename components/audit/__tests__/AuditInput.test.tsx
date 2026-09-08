@@ -63,7 +63,7 @@ describe('AuditInput scan handoff', () => {
     fireEvent.submit(input.closest('form')!)
 
     expect(await screen.findByText('Could not start this check.')).toBeInTheDocument()
-    const retryButton = screen.getByRole('button', { name: /Review my site/i })
+    const retryButton = screen.getByRole('button', { name: /Check my website/i })
     expect(retryButton).toBeEnabled()
     expect(startScanWithHandoff).toHaveBeenCalledOnce()
 
@@ -155,7 +155,7 @@ describe('AuditInput scan handoff', () => {
       await screen.findAllByText('Create a free account to continue')
     ).not.toHaveLength(0)
     expect(
-      screen.getAllByText(/already used your anonymous product review/i).length
+      screen.getAllByText(/already used your anonymous Site check/i).length
     ).toBeGreaterThan(0)
   })
 
@@ -166,7 +166,7 @@ describe('AuditInput scan handoff', () => {
       </MeProvider>,
     )
 
-    expect(screen.queryByRole('button', { name: /see a sample review/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /see how it works/i })).not.toBeInTheDocument()
   })
 
   it('shows the sample CTA on the landing hero', () => {
@@ -176,6 +176,6 @@ describe('AuditInput scan handoff', () => {
       </MeProvider>,
     )
 
-    expect(screen.getByRole('button', { name: /see a sample review/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /see how it works/i })).toBeInTheDocument()
   })
 })

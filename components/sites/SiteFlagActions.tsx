@@ -44,7 +44,7 @@ export function SiteFlagActions({
         setMessage(body.error || 'Could not start verification')
         return
       }
-      setMessage('Verification started. The board will update when it finishes.')
+      setMessage('Verification started. This Flag stays open until the same page and action pass.')
       router.refresh()
     } finally {
       setBusy(false)

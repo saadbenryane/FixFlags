@@ -67,7 +67,7 @@ describe('ScoreHistoryChart', () => {
 
     const links = screen.getAllByRole('link')
     expect(links[0]).toHaveAccessibleName(
-      'Review 1 of 3, Product review, Jul 21, 2026, Completed, score 60',
+      'Review 1 of 3, Site, Jul 21, 2026, Completed, score 60',
     )
     expect(links[1]).toHaveAccessibleName(
       'Review 2 of 3, Update review, Jul 25, 2026, Partial capture, score 65',

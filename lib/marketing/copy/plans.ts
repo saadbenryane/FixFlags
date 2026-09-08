@@ -293,8 +293,8 @@ export const BILLING_ACTION_COPY = {
 
 export const UPSELLS = {
   anon: {
-    headline: 'Save this report and run more reviews',
-    body: 'Create a free account to save this report and unlock its fix prompts. Free includes three product reviews every month for one product.',
+    headline: 'Save this Site and keep checking',
+    body: 'Create a free account to save this Site and unlock its fix prompts. Free includes three Site checks every month for one website.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
@@ -306,13 +306,13 @@ export const UPSELLS = {
     headline: 'Fix steps are below',
     body: 'AI summary did not finish for this run. You still have evidence and fix steps for every Flag below. Run an update review to retry the AI pass.',
   },
-  atLimit: 'Product review limit reached. Upgrade to continue',
+  atLimit: 'Site check limit reached. Upgrade to continue',
 } as const
 
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
-    headline: 'You\u2019ve used your free product reviews',
-    body: 'Join the Pro waitlist for 30 monthly reviews across up to five products.',
+    headline: 'You\u2019ve used your free Site checks',
+    body: 'Join the Pro waitlist for 30 monthly Site checks across up to five websites.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
@@ -321,7 +321,7 @@ export const UPGRADE_MOMENTS = {
       void scoreDelta
       return 'Update review complete'
     },
-    body: 'Keep reviewing every release with more product reviews each month.',
+    body: 'Keep checking each release with more Site checks each month.',
     cta: proUpgradeCta('Join Pro waitlist'),
     plan: 'BUILDER' as const,
   },
@@ -338,8 +338,8 @@ export const UPGRADE_MOMENTS = {
     plan: 'BUILDER' as const,
   },
   free_default: {
-    headline: 'Shipping more products?',
-    body: 'Pro gives you 30 product reviews per month across up to five products, with history across releases.',
+    headline: 'Shipping more websites?',
+    body: 'Pro gives you 30 Site checks per month across up to five Sites, with history across releases.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
@@ -352,27 +352,27 @@ export const UPGRADE_MOMENTS = {
 } as const
 
 export const USAGE_METER_COPY = {
-  regionLabel: 'Product review usage',
-  compactLabel: 'Product reviews',
-  panelLabel: 'Product reviews',
+  regionLabel: 'Site check usage',
+  compactLabel: 'Site checks',
+  panelLabel: 'Site checks',
   usedOfLimit: (used: number, limit: number) => `${used} of ${limit}`,
   usedCaption: 'used this month',
   remainingCaption: (n: number) =>
     n === 1 ? '1 remaining this month' : `${n} remaining this month`,
   remainingShort: (n: number) => `${n} remaining`,
   usedThisMonthCaption: (n: number) =>
-    `product review${n === 1 ? '' : 's'} used this month`,
+    `Site check${n === 1 ? '' : 's'} used this month`,
   panelNote:
-    'Each update review uses 1 product review from your monthly allowance.',
+    'Each update review uses 1 Site check from your monthly allowance.',
   progressLabel: (used: number, limit: number) =>
-    `${used} of ${limit} product reviews used`,
+    `${used} of ${limit} Site checks used`,
   pending: (n: number) => `${n} in progress`,
   purchasedCredits: (n: number) =>
     `${n} purchased credit${n === 1 ? '' : 's'} available`,
   upgradeToPro: 'Upgrade to Pro',
   upgradeForMore: 'upgrade for more',
-  paidLimitReached: 'Plan limit reached. Upgrade for more product reviews.',
-  limitReached: 'Product review limit reached.',
+  paidLimitReached: 'Plan limit reached. Upgrade for more Site checks.',
+  limitReached: 'Site check limit reached.',
 } as const
 
 export const BILLING_PAGE_COPY = {
@@ -380,7 +380,7 @@ export const BILLING_PAGE_COPY = {
   description: 'Manage your plan and subscription',
   pastDueTitle: 'Payment past due: features paused',
   pastDueBody:
-    "Update your card to restore your paid monthly usage allowance. We'll retry automatically. Product reviews resume when payment succeeds.",
+    "Update your card to restore your paid monthly usage allowance. We'll retry automatically. Site checks resume when payment succeeds.",
   planName: (name: string) => `${name} plan`,
   pastDuePlanName: (name: string) => `${name} (payment past due: features paused)`,
   paidFeaturesPaused: ' (paid features paused)',

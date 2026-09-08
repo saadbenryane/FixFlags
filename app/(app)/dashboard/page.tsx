@@ -26,17 +26,7 @@ import { REPORT_COPY } from '@/lib/marketing/copy'
 import { loadProductOverview } from '@/lib/products/workspace'
 import { Badge } from '@/components/ui/badge'
 
-type DashboardSearchParams = {
-  url?: string | string[]
-}
-
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams?: Promise<DashboardSearchParams>
-}) {
-  const params = searchParams ? await searchParams : {}
-  const initialAuditUrl = typeof params.url === 'string' ? params.url : ''
+export default async function DashboardPage() {
   const viewer = await getAppViewer()
   if (!viewer) redirect('/sign-in')
   const { user } = viewer
@@ -88,6 +78,8 @@ export default async function DashboardPage({
         plan={user.plan}
       />
 
+      <ProductOverviewGrid products={products} />
+
       <Surface
         variant="elevated"
         className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-center"
@@ -96,17 +88,15 @@ export default async function DashboardPage({
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--radius-control)] bg-brand-muted text-brand">
             <Globe2 className="h-5 w-5" aria-hidden />
           </span>
-          <SectionTitle>Install on Shopify</SectionTitle>
+          <SectionTitle>Shopify connection</SectionTitle>
         </div>
         <div className="min-w-0">
           <p className="mb-3 text-sm text-muted-foreground">
-            Know when customers can&apos;t buy. We walk the path to checkout and show the video.
+            Optional. Walk the path to checkout when you sell on Shopify.
           </p>
           <ShopifyInstallCta idSuffix="-dashboard" />
         </div>
       </Surface>
-
-      <ProductOverviewGrid products={products} />
 
       {atAuditLimit ? (
         <ContextualUpgradeCard

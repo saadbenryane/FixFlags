@@ -17,6 +17,7 @@ import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { progressiveAuditSelect } from '@/lib/audit/progressive-audit-select'
 import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
+import { customerSiteIdForAudit } from '@/lib/sites/site-id-for-audit'
 
 const NON_TERMINAL = new Set([
   'QUEUED',
@@ -152,6 +153,11 @@ export async function GET(
       pages: reviewedPages,
     })
 
+    const customerSiteId = await customerSiteIdForAudit({
+      id: audit.id,
+      projectId: audit.projectId,
+    })
+
     return NextResponse.json(
       {
         ...rest,
@@ -167,7 +173,7 @@ export async function GET(
           ? rest.journeyReviewAt
           : undefined,
         status: effectiveStatus,
-        siteId: audit.projectId ?? undefined,
+        siteId: customerSiteId,
         projectId: canUsePrivateReportData ? audit.projectId : undefined,
         errorMsg: canUsePrivateReportData
           ? (refreshed?.errorMsg ?? audit.errorMsg)

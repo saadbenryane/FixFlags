@@ -409,10 +409,11 @@ describe('ProductWorkspace', () => {
         /Ranked by the effect each issue has on the customer experience/i
       )
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /open review/i })).toHaveAttribute(
-      'href',
-      '/report/review-running?view=report'
-    )
+    expect(
+      screen.getAllByRole('link', { name: /open site/i }).some((link) =>
+        link.getAttribute('href') === '/sites/product-1'
+      )
+    ).toBe(true)
   })
 
   it('combines declared changes and verified learning under Product Intelligence', () => {

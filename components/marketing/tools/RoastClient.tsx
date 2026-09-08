@@ -16,6 +16,8 @@ interface RubricResult {
 interface RoastData {
   url: string
   auditId?: string
+  siteId?: string
+  siteUrl?: string
   reportUrl?: string
   overallGrade: string
   overallScore: number
@@ -105,7 +107,9 @@ export function RoastClient() {
   }
 
   const reportHref =
-    result?.reportUrl || (result?.auditId ? `/report/${result.auditId}` : null)
+    result?.siteUrl ||
+    (result?.siteId ? `/sites/${result.siteId}` : null) ||
+    (result?.auditId ? `/sites/${result.auditId}` : null)
 
   return (
     <div className="space-y-8">

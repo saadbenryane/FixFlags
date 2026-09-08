@@ -24,23 +24,23 @@ function layout(content: string): string {
 
 export const NURTURE_EMAILS = {
   welcome: {
-    subject: `Your first product review is ready`,
+    subject: `Your first Site check is ready`,
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
-  <p>You have ${PRICING_COPY.freeProductReviewsPerMonth} product reviews each month. Each one gives you Flags across Message, Experience, and Reach, plus a fix prompt you can paste into Cursor, Claude, Lovable, or Bolt.</p>
+  <p>You have ${PRICING_COPY.freeProductReviewsPerMonth} Site checks each month. Each one opens a Site board with Flags, evidence, and a fix you can paste into Cursor, Claude, Lovable, or Bolt.</p>
   <p>Paste the URL you are about to share. That is what this is for.</p>
-  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Run your first product review</a></p>
-  <p style="font-size: 13px; color: hsl(212 10% 46%);">Common first reviews: your Product Hunt page, your demo day landing page, a client site before handoff.</p>
+  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Check your first website</a></p>
+  <p style="font-size: 13px; color: hsl(212 10% 46%);">Common first checks: your landing page, a client site before handoff, a store that should still take orders.</p>
 `),
   },
   firstAuditNudge: {
-    subject: `Your ${PRICING_COPY.freeProductReviewsPerMonth} monthly product reviews are waiting`,
+    subject: `Your ${PRICING_COPY.freeProductReviewsPerMonth} monthly Site checks are waiting`,
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
-  <p>You signed up for ${BRAND.name} yesterday. Your ${PRICING_COPY.freeProductReviewsPerMonth} monthly product reviews are still waiting.</p>
-  <p>Paste any public URL. You will get ranked Flags with evidence and a fix prompt for each one.</p>
+  <p>You signed up for ${BRAND.name} yesterday. Your ${PRICING_COPY.freeProductReviewsPerMonth} monthly Site checks are still waiting.</p>
+  <p>Paste any public URL. You will get Flags with evidence and a fix for each one.</p>
   <p><a href="${SITE_URL}" style="${ctaStyle}">Paste a URL</a></p>
 `),
   },
@@ -49,9 +49,9 @@ export const NURTURE_EMAILS = {
     html: (name: string) =>
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
-  <p>You ran a ${BRAND.name} product review a few days ago. AI editors are fast but they do not always fix what you think they fixed. Mobile layout, share previews, and performance are the usual misses.</p>
-  <p>An update review runs the same URL again and shows exactly what cleared and what is still open.</p>
-  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Run an update review</a></p>
+  <p>You ran a ${BRAND.name} Site check a few days ago. AI editors are fast but they do not always fix what you think they fixed. Mobile layout, share previews, and performance are the usual misses.</p>
+  <p>Verify runs the same page and action again and shows whether the Flag passed, failed, or stayed inconclusive.</p>
+  <p><a href="${SITE_URL}/dashboard" style="${ctaStyle}">Open your Sites</a></p>
 `),
   },
   launchChecklist: {
@@ -80,7 +80,7 @@ export const BILLING_EMAILS = {
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
   <p>We could not process your latest subscription payment. Paid features are paused until the payment succeeds.</p>
-  <p>Update your card in Billing. Product reviews resume when payment succeeds.</p>
+  <p>Update your card in Billing. Site checks resume when payment succeeds.</p>
   <p><a href="${SITE_URL}/billing" style="${ctaStyle}">Update payment method</a></p>
   <p style="font-size: 13px; color: hsl(212 10% 46%);">Need a walkthrough? <a href="${SITE_URL}/help/billing-and-plans/payment-past-due" style="color: ${p.link};">Payment past due help</a> or reply to this email.</p>
 `),
@@ -122,11 +122,11 @@ export const NEWSLETTER_EMAIL = {
 } as const
 
 export const KEEP_REPORT_EMAIL = {
-  subject: 'Your FixFlags results',
+  subject: 'Your FixFlags Site',
   html: (reportUrl: string) =>
     layout(`
-  <p>Here are the results you asked us to email.</p>
-  <p><a href="${reportUrl}" style="${ctaStyle}">Open your results</a></p>
+  <p>Here is the Site board you asked us to email.</p>
+  <p><a href="${reportUrl}" style="${ctaStyle}">Open your Site</a></p>
 `),
 } as const
 

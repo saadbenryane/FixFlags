@@ -71,9 +71,7 @@ describe('PlanPickerDialog', () => {
     expect(screen.getByText('Pro')).toBeInTheDocument()
     expect(screen.getByText('Studio')).toBeInTheDocument()
     expect(
-      screen.getByText(
-        'New URLs and update reviews each use 1 product review from your monthly allowance.',
-      ),
+      screen.getByText('Free starts with one public website. Pro extras are waitlisted.'),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Current plan' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Join Pro waitlist' })).toBeInTheDocument()
@@ -100,12 +98,16 @@ describe('PlanPickerDialog', () => {
     expect(currentButton).toBeDisabled()
   })
 
-  it('returns the user to the active report when they pick Free', async () => {
+  it('returns the user to the active Site when they pick Free', async () => {
     useMe.mockReturnValue({
       user: { id: 'u1', email: 'a@b.com', plan: 'TEAM' },
       isLoading: false,
     })
-    getActiveAudit.mockReturnValue({ auditId: 'audit-1', url: 'https://example.com' })
+    getActiveAudit.mockReturnValue({
+      auditId: 'audit-1',
+      siteId: 'site-1',
+      url: 'https://example.com',
+    })
 
     const push = vi.fn()
     useRouter.mockReturnValue({ push, replace: vi.fn() })
@@ -117,7 +119,7 @@ describe('PlanPickerDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Start free' }))
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/report/audit-1'))
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/sites/site-1'))
     expect(onOpenChange).toHaveBeenCalledWith(false)
     expect(trackEvent).toHaveBeenCalledWith(
       'plan_picker_picked',

@@ -17,6 +17,13 @@ import { listSiteOutcomes, syncOutcomesFromAudit } from '@/lib/sites/outcomes'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import type { SiteRecord } from '@/lib/sites/types'
+import { siteCardHealth } from '@/lib/sites/site-health'
+import {
+  watchBoardLabel,
+  watchBoardState,
+  watchIsCovered,
+  type WatchBoardState,
+} from '@/lib/sites/watch-state'
 
 export type BoardCardView = {
   id: SiteCardArea
@@ -47,6 +54,14 @@ export type SiteHomeView = {
   flags: SiteFlagSeed[]
   outcomes: SiteOutcomeView[]
   watching: boolean
+  watch: {
+    state: WatchBoardState
+    interval: 'weekly' | 'daily' | null
+    nextRunAt: string | null
+    lastError: string | null
+    covered: boolean
+    label: string
+  }
   coverageSummary: string
 }
 
@@ -160,21 +175,14 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
   const coverageByArea = new Map(coverage.map((c) => [c.area, c]))
 
   const finished = isAuditFinished(audit?.status)
-  const siteCardState: CardHealthState = inFlight
-    ? lastKnownFacts
-      ? flags.some((f) => f.severity === 'CRITICAL')
-        ? 'problem'
-        : flags.length > 0
-          ? 'attention'
-          : 'checking'
-      : 'checking'
-    : flags.some((f) => f.severity === 'CRITICAL')
-      ? 'problem'
-      : flags.length > 0
-        ? 'attention'
-        : finished
-          ? 'healthy'
-          : 'unknown'
+  const health = siteCardHealth({
+    inFlight,
+    finished,
+    hasLastKnown: Boolean(lastKnownFacts),
+    flags,
+    coverage,
+  })
+  const siteCardState = health.state
 
   const cards: BoardCardView[] = STARTER_BOARD_CARDS.map((area) => {
     if (area === 'site') {
@@ -185,11 +193,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
         state: siteCardState,
         answer: inFlight && !lastKnownFacts
           ? 'Learning your website'
-          : flags.length > 0
-            ? `${flags.length} thing${flags.length === 1 ? '' : 's'} need attention`
-            : finished || lastKnownFacts
-              ? 'Looking good'
-              : 'Learning your website',
+          : health.answer,
         detail: inFlight
           ? lastKnownFacts
             ? 'Checking again — last known kept'
@@ -221,7 +225,13 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     }
   })
 
-  const watching = Boolean(site.watchInterval && site.watchNextRunAt)
+  const watchState = watchBoardState({
+    interval: site.watchInterval,
+    nextRunAt: site.watchNextRunAt,
+    lastError: site.watchLastError,
+    consecutiveFailures: site.watchConsecutiveFailures,
+  })
+  const watching = watchIsCovered(watchState)
 
   return {
     site,
@@ -234,7 +244,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
         ? 'Needs attention'
         : watching
           ? 'Looking after this Site'
-          : 'First look',
+          : health.statusLabel,
     statusState: siteCardState,
     audit: {
       id: audit?.id ?? null,
@@ -246,11 +256,21 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     flags,
     outcomes,
     watching,
+    watch: {
+      state: watchState,
+      interval: site.watchInterval,
+      nextRunAt: site.watchNextRunAt?.toISOString() ?? null,
+      lastError: site.watchLastError,
+      covered: watching,
+      label: watchBoardLabel(watchState, site.watchInterval),
+    },
     coverageSummary: inFlight
       ? lastKnownFacts
         ? 'Checking again. Prior answers stay until this finishes.'
         : 'Learning your website. Cards update as each area finishes.'
-      : `Checked ${audit?.completedAt ? 'recently' : 'once'} · ${flags.length} open Flag${flags.length === 1 ? '' : 's'}`,
+      : health.state === 'unknown'
+        ? health.answer
+        : `Checked ${audit?.completedAt ? 'recently' : 'once'} · ${flags.length} open Flag${flags.length === 1 ? '' : 's'}`,
   }
 }
 

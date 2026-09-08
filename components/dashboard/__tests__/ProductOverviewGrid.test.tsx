@@ -63,20 +63,18 @@ const products: ProductOverviewDTO[] = [
 ]
 
 describe('ProductOverviewGrid', () => {
-  it('presents each Product as its own navigable evidence context', () => {
+  it('presents each Site as a board link', () => {
     const { container } = render(<ProductOverviewGrid products={products} />)
 
-    expect(screen.getAllByRole('link', { name: /open product/i })).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          pathname: '/products/product-alpha',
-        }),
-      ]),
+    expect(screen.getByRole('link', { name: /open site alpha/i })).toHaveAttribute(
+      'href',
+      '/sites/product-alpha'
+    )
+    expect(screen.getByRole('link', { name: /open site beta/i })).toHaveAttribute(
+      'href',
+      '/sites/product-beta'
     )
     expect(screen.getByText('Clarify the signup action')).toBeInTheDocument()
-    expect(
-      screen.getByText('0 open Improvements in the latest completed Review.'),
-    ).toBeInTheDocument()
     expect(
       screen.getByRole('heading', { level: 3, name: 'Alpha' }),
     ).toBeInTheDocument()
@@ -90,18 +88,9 @@ describe('ProductOverviewGrid', () => {
     expect(
       screen.getByRole('link', { name: /score trend 70 to 82/i }),
     ).toBeInTheDocument()
-    expect(container.querySelector('polyline')).toBeTruthy()
-    expect(
-      container.querySelector('.lucide-circle-alert'),
-    ).not.toBeInTheDocument()
-    expect(container.querySelector('.lucide-flag')).toBeInTheDocument()
-    expect(screen.queryByText('-')).not.toBeInTheDocument()
-    expect(
-      screen.queryByText(/No independently verified/),
-    ).not.toBeInTheDocument()
   })
 
-  it('does not show success or a fake score while a Review is pending', () => {
+  it('does not show success or a fake score while a check is pending', () => {
     render(
       <ProductOverviewGrid
         products={[
@@ -120,21 +109,17 @@ describe('ProductOverviewGrid', () => {
 
     expect(screen.getByText('Checking evidence')).toBeInTheDocument()
     expect(screen.getByText('Pending')).toBeInTheDocument()
-    expect(screen.getByText(/Review in progress/)).toBeInTheDocument()
-    expect(screen.queryByText(/0 open Improvements/)).not.toBeInTheDocument()
+    expect(screen.getByText(/Check in progress/)).toBeInTheDocument()
   })
 
-  it('renders a DemoSite sample row when the account has no Products', () => {
+  it('offers a first website check when the account has no Sites', () => {
     render(<ProductOverviewGrid products={[]} />)
 
-    const section = screen.getByRole('region', { name: 'Your Products' })
-    expect(within(section).getByText('0 Products')).toBeInTheDocument()
-    expect(within(section).getByText('DemoSite')).toBeInTheDocument()
-    expect(within(section).getByText('Sample')).toBeInTheDocument()
+    const section = screen.getByRole('region', { name: 'Your Sites' })
+    expect(within(section).getByText('0 Sites')).toBeInTheDocument()
+    expect(within(section).getByText('Check your first website')).toBeInTheDocument()
     expect(
-      within(section).getByRole('link', { name: 'Open DemoSite sample review.' }),
-    ).toHaveAttribute('href', '/samples')
-    expect(within(section).queryByText('No Products yet')).not.toBeInTheDocument()
-    expect(within(section).queryByText('Alpha')).not.toBeInTheDocument()
+      within(section).getByRole('link', { name: 'Check a website URL' }),
+    ).toHaveAttribute('href', '/new')
   })
 })

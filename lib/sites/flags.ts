@@ -8,7 +8,7 @@ export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
     const improvements = await prisma.improvement.findMany({
       where: {
         projectId: site.projectId,
-        status: { in: ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS'] },
+        status: { in: ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS', 'READY_TO_VERIFY', 'UNVERIFIED'] },
       },
       orderBy: [{ priority: 'asc' }, { updatedAt: 'desc' }],
       take: 50,
@@ -96,10 +96,90 @@ export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
   }))
 }
 
+export type SiteFlagAttemptView = {
+  id: string
+  createdAt: string
+  builder: string
+  outcome: string | null
+  comparable: boolean | null
+  reason: string | null
+  changeSummary: string | null
+}
+
+export type SiteFlagDetail = SiteFlagSeed & {
+  confidence: number | null
+  causeCertainty: string | null
+  expectedBehavior: string
+  evidenceMissing: boolean
+  viewport: string | null
+  attempts: SiteFlagAttemptView[]
+  verifying: boolean
+}
+
+function viewportFromEvidence(targets: unknown): string | null {
+  if (!targets || typeof targets !== 'object') return null
+  const value = targets as { viewport?: string; device?: string }
+  return value.viewport ?? value.device ?? null
+}
+
 export async function loadSiteFlagDetail(
   site: SiteRecord,
   flagId: string
-): Promise<SiteFlagSeed | null> {
+): Promise<SiteFlagDetail | null> {
   const flags = await loadSiteFlags(site)
-  return flags.find((f) => f.id === flagId || f.improvementId === flagId) ?? null
+  const seed = flags.find((f) => f.id === flagId || f.improvementId === flagId)
+  if (!seed) return null
+
+  const flagRow = await prisma.flag.findUnique({
+    where: { id: seed.id },
+    select: {
+      confidence: true,
+      causeCertainty: true,
+      verificationRule: true,
+      evidence: true,
+      evidenceTargets: true,
+      problem: true,
+    },
+  })
+
+  const improvementId = seed.improvementId
+  const attempts = improvementId
+    ? await prisma.improvementAttempt.findMany({
+        where: { improvementId },
+        orderBy: { createdAt: 'desc' },
+        take: 12,
+        select: {
+          id: true,
+          createdAt: true,
+          builder: true,
+          outcome: true,
+          comparable: true,
+          verificationReason: true,
+          changeSummary: true,
+        },
+      })
+    : []
+
+  const expectedBehavior =
+    flagRow?.verificationRule?.trim() ||
+    `A fresh check of the same page and action no longer observes: ${seed.problem}`
+
+  return {
+    ...seed,
+    confidence: flagRow?.confidence ?? null,
+    causeCertainty: flagRow?.causeCertainty ?? null,
+    expectedBehavior,
+    evidenceMissing: !(flagRow?.evidence ?? seed.evidence)?.trim(),
+    viewport: viewportFromEvidence(flagRow?.evidenceTargets),
+    attempts: attempts.map((attempt) => ({
+      id: attempt.id,
+      createdAt: attempt.createdAt.toISOString(),
+      builder: attempt.builder,
+      outcome: attempt.outcome,
+      comparable: attempt.comparable,
+      reason: attempt.verificationReason,
+      changeSummary: attempt.changeSummary,
+    })),
+    verifying: attempts.some((attempt) => attempt.outcome == null),
+  }
 }

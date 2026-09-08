@@ -98,6 +98,24 @@ describe('Product Watch', () => {
     expect(mocks.projectUpdate).not.toHaveBeenCalled()
   })
 
+  it('pauses without wiping the interval', async () => {
+    const result = await setProjectWatch({
+      projectId: 'project-1',
+      userId: 'user-1',
+      interval: null,
+    })
+
+    expect(result).toEqual({ ok: true })
+    expect(mocks.projectUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'project-1' },
+      data: expect.objectContaining({
+        watchNextRunAt: null,
+        watchLastError: 'Paused. This Site is not on a check schedule.',
+      }),
+    }))
+    expect(mocks.projectUpdate.mock.calls[0][0].data.watchInterval).toBeUndefined()
+  })
+
   it('enables weekly watching on Free', async () => {
     mocks.projectFindFirst.mockResolvedValue({
       id: 'project-1',
@@ -186,7 +204,7 @@ describe('Product Watch', () => {
         watchLeaseUntil: null,
         watchNextRunAt: renewalAt,
         watchLastError:
-          'Watch paused because this month’s Product Review allowance is used. It will resume after renewal or an upgrade.',
+          'Watch paused because this month’s Site check allowance is used. It will resume after renewal or an upgrade.',
       },
     })
   })

@@ -307,10 +307,7 @@ export function buildLiveExplorerModel(input: {
       input.evidenceAnchors
     ),
     previewMeta: input.previewMeta ?? null,
-    coverageSentence: coverageSentenceFromReview(
-      input.reviewCoverage,
-      input.reportCompleteness
-    ),
+    coverageSentence: coverageSentenceFromReview(input.reviewCoverage),
     coveragePartial: coverageIsPartial(input.reviewCoverage),
   }
 }
@@ -465,10 +462,7 @@ function coverageIsPartial(reviewCoverage: unknown): boolean {
   return Boolean(coverage?.partial)
 }
 
-function coverageSentenceFromReview(
-  reviewCoverage: unknown,
-  _reportCompleteness?: string | null
-): string | null {
+function coverageSentenceFromReview(reviewCoverage: unknown): string | null {
   const coverage = parseReviewCoverage(reviewCoverage)
   if (!coverage) return null
   return REPORT_COPY.explorer.coverageSentence({

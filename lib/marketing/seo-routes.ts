@@ -33,7 +33,6 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/tools/placeholder-detector', seoKey: 'placeholderDetector', priority: 0.6, changeFrequency: 'monthly' },
   { path: '/issues', seoKey: 'issues', priority: 0.6, changeFrequency: 'weekly' },
   { path: '/partners', seoKey: 'partners', priority: 0.5, changeFrequency: 'monthly' },
-  { path: '/roast', seoKey: 'roast', priority: 0.6, changeFrequency: 'monthly' },
 ] as const
 
 export const LLMS_TXT_PATH = '/llms.txt'
@@ -49,20 +48,20 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
     title: 'Product',
     links: [
       { path: '/', label: 'Home', note: 'Your website, looked after' },
-      { path: '/protect', label: 'Protect', note: 'Purchase path health and video proof' },
-      { path: '/install', label: 'Install', note: 'Install FixFlags on Shopify' },
-      { path: '/how-it-works', label: 'How it works', note: 'Walk, video, alert' },
+      { path: '/protect', label: 'Protect', note: 'Shopify connection: purchase path health' },
+      { path: '/install', label: 'Install', note: 'Shopify connection, not the company product' },
+      { path: '/how-it-works', label: 'How it works', note: 'URL in, Site board, Flags, Verify, Watch' },
       { path: '/pricing', label: 'Pricing', note: 'Free website analysis. Paid plans when you need more' },
-      { path: '/docs', label: 'Documentation', note: 'Install, walk, and alerts' },
+      { path: '/docs', label: 'Documentation', note: 'Site checks, Flags, Verify, and Watch' },
       {
         path: '/docs/getting-started',
         label: 'Getting started',
-        note: 'Install on Shopify and watch the first walk',
+        note: 'Enter a URL and open the Site board',
       },
-      { path: '/docs/reports', label: 'Paths and proof', note: 'Health, video, Recheck, and Improve' },
-      { path: '/docs/troubleshooting', label: 'Troubleshooting', note: 'Password gates, missing video, uninstall' },
-      { path: '/help', label: 'Help Center', note: 'Install, alerts, and contact' },
-      { path: '/help/getting-started/first-check', label: 'Install on Shopify' },
+      { path: '/docs/reports', label: 'Flags and proof', note: 'Coverage, evidence, Verify, and Watch' },
+      { path: '/docs/troubleshooting', label: 'Troubleshooting', note: 'Blocked pages and incomplete coverage' },
+      { path: '/help', label: 'Help Center', note: 'URL checks, Sites, and contact' },
+      { path: '/help/getting-started/first-check', label: 'Check a website URL' },
       { path: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
       { path: '/help/checks-and-reports/why-check-failed', label: 'Why a walk is Unclear or failed' },
       { path: '/help/account/contact-us', label: 'Contact support' },
@@ -72,7 +71,7 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
     title: 'Support',
     links: [
       { path: '/help', label: 'Help Center', note: 'Searchable guides + chat' },
-      { path: '/faq', label: 'FAQ', note: 'Purchase path, health, and what is free' },
+      { path: '/faq', label: 'FAQ', note: 'Site checks, Flags, Watch, and Shopify as a connection' },
       { path: '/privacy', label: 'Privacy' },
       { path: '/terms', label: 'Terms' },
     ],

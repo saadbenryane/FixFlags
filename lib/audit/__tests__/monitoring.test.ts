@@ -34,7 +34,7 @@ describe('validateMonitoringParent', () => {
     assert.equal(result.ok, false)
     if (!result.ok) {
       assert.equal(result.status, 403)
-      assert.equal(result.error, 'You can only re-check your own reports')
+      assert.equal(result.error, 'You can only check your own Sites')
     }
   })
 
@@ -46,7 +46,7 @@ describe('validateMonitoringParent', () => {
     assert.equal(result.ok, false)
     if (!result.ok) {
       assert.equal(result.status, 400)
-      assert.equal(result.error, 'You can only re-check completed reports')
+      assert.equal(result.error, 'You can only check completed Sites')
     }
   })
 
@@ -66,7 +66,7 @@ describe('validateMonitoringParent', () => {
     assert.equal(result.ok, false)
     if (!result.ok) {
       assert.equal(result.status, 401)
-      assert.equal(result.error, 'Sign in to run an update review')
+      assert.equal(result.error, 'Sign in to run an update check')
     }
   })
 

@@ -54,7 +54,7 @@ export async function setProjectWatch(input: {
     where: { id: input.projectId, userId: input.userId },
     select: { id: true, user: true },
   })
-  if (!project) return { ok: false, error: 'Product not found' }
+  if (!project) return { ok: false, error: 'Site not found' }
 
   if (input.interval) {
     if (!canAccessProductWatch(project.user)) {
@@ -92,11 +92,11 @@ export async function setProjectWatch(input: {
           watchLastError: null,
         }
       : {
-          watchInterval: null,
           watchNextRunAt: null,
           watchLeaseUntil: null,
-          watchConsecutiveFailures: 0,
-          watchLastError: null,
+          watchLastError: project.user
+            ? 'Paused. This Site is not on a check schedule.'
+            : null,
         },
   })
   return { ok: true }
@@ -160,7 +160,7 @@ export async function processDueProjectWatches(
           watchInterval: null,
           watchNextRunAt: null,
           watchLeaseUntil: null,
-          watchLastError: 'Scheduled reviews require Studio.',
+          watchLastError: 'Watching is not available on this account.',
         },
       })
       continue
@@ -207,7 +207,7 @@ export async function processDueProjectWatches(
         await recordWatchFailure(
           project.id,
           project.watchConsecutiveFailures + 1,
-          'No completed report exists for this Product',
+          'No completed Site check exists for this website',
           now
         )
         continue
@@ -240,7 +240,7 @@ export async function processDueProjectWatches(
                 ? usageLimit.renewalAt
                 : calcWatchNextRun(interval, now),
             watchLastError:
-              'Watch paused because this month’s Product Review allowance is used. It will resume after renewal or an upgrade.',
+              'Watch paused because this month’s Site check allowance is used. It will resume after renewal or an upgrade.',
           },
         })
         continue

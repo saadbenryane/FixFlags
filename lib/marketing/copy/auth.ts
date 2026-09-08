@@ -2,22 +2,22 @@ import { PRICING_COPY } from './terminology'
 
 export const AUTH = {
   reportGate: {
-    title: 'Your site review is underway',
+    title: 'Your site check is underway',
     subtitle: (hostname?: string | null) =>
       hostname
-        ? `Create a free account while FixFlags reviews ${hostname}. Your report will be saved here.`
-        : 'Create a free account while FixFlags reviews your site. Your report will be saved here.',
+        ? `Create a free account while FixFlags checks ${hostname}. Your Site will be saved here.`
+        : 'Create a free account while FixFlags checks your website. Your Site will be saved here.',
     preparingOptions: 'Preparing sign-in options',
     backHome: 'Back to home',
-    exit: 'Leave this report',
-    saving: 'Saving your report',
-    savingBody: 'Your account is ready. We are attaching this review and preparing the fix prompts.',
+    exit: 'Leave this Site',
+    saving: 'Saving your Site',
+    savingBody: 'Your account is ready. We are attaching this Site and preparing the fix prompts.',
   },
   reportContext: {
     title: (hostname: string) => `Save ${hostname}`,
-    loadingTitle: 'Save this report',
-    body: 'Get every fix prompt and keep this report for update reviews on the same URL.',
-    backCta: 'Back to report',
+    loadingTitle: 'Save this Site',
+    body: 'Get every fix prompt and keep this Site for Verify and Watch on the same URL.',
+    backCta: 'Back to Site',
     saving: (hostname?: string | null) => hostname ? `Saving ${hostname}` : 'Saving your report',
     unlocking: 'Preparing your fix list',
     redirecting: 'Your report is saved. Taking you back to the fixes.',
@@ -30,8 +30,8 @@ export const AUTH = {
   },
   signIn: {
     title: 'Sign in to your account',
-    subtitle: 'Access your reports and continue where you left off',
-    trustLine: 'Sign in to access your saved reports and product reviews',
+    subtitle: 'Access your Sites and continue where you left off',
+    trustLine: 'Sign in to access your saved Sites',
     tryWithoutAccount: 'Try without an account',
     cta: 'Sign in',
     passkeyCta: 'Use a passkey',
@@ -112,8 +112,8 @@ export const AUTH = {
   },
   signUp: {
     title: 'Create your free account',
-    subtitle: `${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month. Keep this report and unlock every fix prompt.`,
-    fromPricing: `Create your free account: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month included.`,
+    subtitle: `${PRICING_COPY.freeProductReviewsPerMonth} Site checks per month. Keep this Site and unlock every fix prompt.`,
+    fromPricing: `Create your free account: ${PRICING_COPY.freeProductReviewsPerMonth} Site checks per month included.`,
     oauthNote: 'Social sign-in is used only to identify your account.',
     cta: 'Create account',
     footer: 'Already have an account?',
@@ -126,8 +126,8 @@ export const AUTH = {
     passwordLabel: 'Password',
     planStepsTitle: 'What happens next',
     planTitles: {
-      BUILDER: `You\u2019re signing up for Pro, with ${PRICING_COPY.proProductReviewsPerMonth} product reviews per month`,
-      TEAM: `You\u2019re signing up for Studio, with ${PRICING_COPY.studioProductReviewsPerMonth} product reviews per month`,
+      BUILDER: `You\u2019re signing up for Pro, with ${PRICING_COPY.proProductReviewsPerMonth} Site checks per month`,
+      TEAM: `You\u2019re signing up for Studio, with ${PRICING_COPY.studioProductReviewsPerMonth} Site checks per month`,
     },
     planSteps: [
       'Create your account',
@@ -230,9 +230,9 @@ export const AUTH = {
     },
   },
   valueProps: [
-    { icon: 'history' as const, text: 'Report history saved to your account' },
-    { icon: 'reports' as const, text: 'Re-open reports and copy fix prompts anytime' },
-    { icon: 'recheck' as const, text: 'Run update reviews after fixes to see what changed' },
+    { icon: 'history' as const, text: 'Site history saved to your account' },
+    { icon: 'reports' as const, text: 'Re-open Sites and copy fix prompts anytime' },
+    { icon: 'recheck' as const, text: 'Verify after fixes to see what actually changed' },
   ],
   passkeyErrors: {
     cancelled: 'Passkey sign-in was cancelled or failed. Try another method.',
@@ -336,21 +336,21 @@ export const SAMPLE_FIX = {
   label: 'Example fix',
   fixTitle: 'Fix',
   signInCta: 'Sign in',
-  subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save reports, run update reviews, and get more product reviews each month.`,
+  subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save this Site, run update reviews, and get more Site checks each month.`,
   primaryCta: 'Create free account',
 } as const
 
 export const SCAN_LIMIT_GATE = {
   signup: {
     title: 'Create a free account to continue',
-    body: `You have already used your anonymous product review. Create a free account for fix prompts, saved reports, and ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month.`,
+    body: `You have already used your anonymous Site check. Create a free account for fix prompts, saved Sites, and ${PRICING_COPY.freeProductReviewsPerMonth} Site checks per month.`,
     primaryCta: 'Create free account',
     secondaryCta: 'Sign in',
     exit: 'Leave this page',
   },
   upgrade: {
-    title: 'Product review limit reached',
-    body: `You have used all the product reviews in your current monthly allowance. Upgrade to Pro for ${PRICING_COPY.proProductReviewsPerMonth} product reviews per month, or wait for renewal.`,
+    title: 'Site check limit reached',
+    body: `You have used all the Site checks in your current monthly allowance. Upgrade to Pro for ${PRICING_COPY.proProductReviewsPerMonth} Site checks per month, or wait for renewal.`,
     primaryCta: 'Upgrade to Pro',
     secondaryCta: 'See plans',
     exit: 'Leave this page',
@@ -358,8 +358,8 @@ export const SCAN_LIMIT_GATE = {
 } as const
 
 export const REPORT_UPGRADE_GATE = {
-  title: 'Upgrade to continue reviewing',
-  body: 'You have used all the product reviews in your current plan. Upgrade for more product reviews each month.',
+  title: 'Upgrade to keep checking this Site',
+  body: 'You have used all the Site checks in your current plan. Upgrade for more Site checks each month.',
   primaryCta: 'Upgrade to Pro',
   saving: 'Preparing your upgrade',
   savingBody: 'Taking you to checkout.',

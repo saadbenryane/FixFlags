@@ -30,6 +30,8 @@ export async function ensureSiteForAudit(input: {
         watchInterval: true,
         watchNextRunAt: true,
         watchLastRunAt: true,
+        watchLastError: true,
+        watchConsecutiveFailures: true,
       },
     })
     if (!project) throw new Error('Project not found for Site')
@@ -45,6 +47,8 @@ export async function ensureSiteForAudit(input: {
       watchInterval: fromStoredWatchInterval(project.watchInterval),
       watchNextRunAt: project.watchNextRunAt,
       watchLastRunAt: project.watchLastRunAt,
+      watchLastError: project.watchLastError,
+      watchConsecutiveFailures: project.watchConsecutiveFailures,
       userId: project.userId,
     }
   }
@@ -66,6 +70,8 @@ export async function ensureSiteForAudit(input: {
         watchInterval: true,
         watchNextRunAt: true,
         watchLastRunAt: true,
+        watchLastError: true,
+        watchConsecutiveFailures: true,
       },
     })
     if (project) {
@@ -81,6 +87,8 @@ export async function ensureSiteForAudit(input: {
         watchInterval: fromStoredWatchInterval(project.watchInterval),
         watchNextRunAt: project.watchNextRunAt,
         watchLastRunAt: project.watchLastRunAt,
+        watchLastError: project.watchLastError,
+        watchConsecutiveFailures: project.watchConsecutiveFailures,
         userId: project.userId,
       }
     }
@@ -118,6 +126,8 @@ export async function ensureSiteForAudit(input: {
     watchInterval: null,
     watchNextRunAt: null,
     watchLastRunAt: null,
+    watchLastError: null,
+    watchConsecutiveFailures: 0,
     userId: null,
   }
 }
@@ -139,6 +149,8 @@ export async function loadSiteRecord(siteId: string): Promise<SiteRecord | null>
         watchInterval: true,
         watchNextRunAt: true,
         watchLastRunAt: true,
+        watchLastError: true,
+        watchConsecutiveFailures: true,
         audits: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -159,6 +171,8 @@ export async function loadSiteRecord(siteId: string): Promise<SiteRecord | null>
       watchInterval: fromStoredWatchInterval(project.watchInterval),
       watchNextRunAt: project.watchNextRunAt,
       watchLastRunAt: project.watchLastRunAt,
+      watchLastError: project.watchLastError,
+      watchConsecutiveFailures: project.watchConsecutiveFailures,
       userId: project.userId,
     }
   }
@@ -182,6 +196,8 @@ export async function loadSiteRecord(siteId: string): Promise<SiteRecord | null>
     watchInterval: null,
     watchNextRunAt: null,
     watchLastRunAt: null,
+    watchLastError: null,
+    watchConsecutiveFailures: 0,
     userId: null,
   }
 }

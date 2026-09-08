@@ -86,7 +86,7 @@ export const CHANGELOG_ENTRIES = [
       'Copy all gathers your ranked Fix list in one go; Export holds Copy link and Email me this report',
       'Flags put Message and Experience ahead of Reach when the stakes are equal',
       'Try a review without an account: you see the Flags and evidence, then save to unlock the fix prompts',
-      'Billing shows how many product reviews you have used this month, including update reviews and Watch',
+      'Billing shows how many Site checks you have used this month, including update reviews and Watch',
     ],
   },
   {
@@ -116,7 +116,7 @@ export const CHANGELOG_ENTRIES = [
     title: 'FixFlags launches in open beta',
     items: [
       'Sign up and create your account to start testing your sites',
-      'Run free product reviews on any live or preview URL',
+      'Run free Site checks on any live or preview URL',
       'See Critical Flag counts across Message, Experience, and Reach',
       'Fix prompts for Cursor, Claude Code, Lovable, Bolt, Windsurf, and Devin',
       'View your report history and AI tool usage from your dashboard',

@@ -41,6 +41,7 @@ export async function POST(
       type: 'VERIFY_FLAG',
       siteId: resolvedId,
       userId: session.user.id,
+      flagId,
       sourceAuditId,
     })
 

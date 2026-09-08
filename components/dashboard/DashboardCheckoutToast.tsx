@@ -12,8 +12,8 @@ const POLL_MS = 800
 const MAX_ATTEMPTS = 12
 
 const ACTIVATION_SUMMARY: Record<string, string> = {
-  BUILDER: 'More Product Reviews and before/after compare are now active.',
-  TEAM: 'More Product Reviews, client sharing, and projects are now active.',
+  BUILDER: 'More Site checks and before/after compare are now active.',
+  TEAM: 'More Site checks, client sharing, and Sites are now active.',
 }
 
 function activationSummary(plan: string): string {

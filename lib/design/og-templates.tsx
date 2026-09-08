@@ -186,7 +186,7 @@ export function ReportOgImage({
             letterSpacing: '-0.01em',
           }}
         >
-          Know when customers can't buy
+          Know when customers cannot buy
         </div>
         <div
           style={{

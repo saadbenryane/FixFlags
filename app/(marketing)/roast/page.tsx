@@ -1,9 +1,15 @@
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { RoastClient } from '@/components/marketing/tools/RoastClient'
-import { buildPageMetadata } from '@/lib/marketing/metadata'
+import { buildIndexableMetadata } from '@/lib/marketing/metadata'
+import { SEO } from '@/lib/marketing/copy'
 
-export const metadata = buildPageMetadata('roast', '/roast')
+export const metadata = buildIndexableMetadata({
+  title: SEO.roast.title,
+  description: SEO.roast.description,
+  path: '/roast',
+  robots: { index: false, follow: false },
+})
 
 export default function RoastPage() {
   return (

@@ -37,7 +37,7 @@ export const SEO = {
   examples: {
     title: 'Example Reports',
     description:
-      'Automated FixFlags product reviews of recognizable sites like web.dev, Vercel, and Wikipedia.',
+      'FixFlags Site checks of recognizable sites like web.dev, Vercel, and Wikipedia.',
   },
   faq: {
     title: 'FAQ',

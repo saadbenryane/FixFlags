@@ -75,8 +75,16 @@ export function SiteBoard({
   const [toast, setToast] = useState<string | null>(null)
   const checking =
     view.audit.status != null &&
-    !['COMPLETED', 'FAILED', 'PARTIAL'].includes(view.audit.status)
+    !['COMPLETED', 'FAILED'].includes(view.audit.status)
   const learningCopy = 'Learning your website'
+  const watch = view.watch ?? {
+    state: view.watching ? 'watching' : 'off',
+    interval: null,
+    nextRunAt: null,
+    lastError: null,
+    covered: view.watching,
+    label: view.watching ? 'Watching weekly' : 'Not watching',
+  }
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/sites/${siteId}`)
@@ -138,11 +146,37 @@ export function SiteBoard({
         setToast(body.error || 'Could not start watching yet')
         return
       }
-      setToast(
-        body.interval === 'daily'
-          ? 'You’re covered. We’ll check this Site daily.'
-          : 'You’re covered. We’ll check this Site weekly.'
-      )
+      if (body.interval) {
+        setToast(
+          body.interval === 'daily'
+            ? 'You’re covered. We’ll check this Site daily.'
+            : 'You’re covered. We’ll check this Site weekly.'
+        )
+      }
+      await refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function pauseWatching() {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/sites/${siteId}/watch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ interval: null }),
+      })
+      const body = (await res.json().catch(() => ({}))) as { error?: string; signup?: boolean }
+      if (res.status === 401 || body.signup) {
+        router.push(`/sign-up?next=${encodeURIComponent(`/sites/${siteId}`)}`)
+        return
+      }
+      if (!res.ok) {
+        setToast(body.error || 'Could not pause watching')
+        return
+      }
+      setToast('Watch paused. This Site is not on a check schedule.')
       await refresh()
     } finally {
       setBusy(false)
@@ -197,7 +231,7 @@ export function SiteBoard({
     : []
 
   return (
-    <div className="min-h-screen bg-[var(--canvas,#f4f5f7)] text-foreground">
+    <div className="min-h-screen bg-[var(--canvas)] text-foreground">
       <div className="mx-auto flex max-w-6xl gap-6 px-4 py-6 lg:px-6">
         <aside className="hidden w-56 shrink-0 flex-col gap-6 lg:flex">
           <Logo variant="lockup" size="sm" />
@@ -236,14 +270,29 @@ export function SiteBoard({
             ))}
           </nav>
           <div className="mt-auto space-y-3 border-t border-border/70 pt-4">
-            <StatusLabel state={view.watching ? 'healthy' : 'unknown'}>
-              {view.watching ? 'Keeping watch' : 'First look'}
+            <StatusLabel
+              state={
+                watch.covered
+                  ? 'healthy'
+                  : watch.state === 'off'
+                    ? 'unknown'
+                    : 'attention'
+              }
+            >
+              {watch.label}
             </StatusLabel>
-            {!view.watching ? (
+            {watch.lastError ? (
+              <p className="text-xs text-muted-foreground">{watch.lastError}</p>
+            ) : null}
+            {watch.state === 'watching' || watch.state === 'delayed' || watch.state === 'quota' ? (
+              <Button variant="outline" size="sm" disabled={busy} onClick={() => void pauseWatching()}>
+                Pause watching
+              </Button>
+            ) : (
               <Button variant="brand" size="sm" disabled={busy} onClick={() => void keepWatching()}>
                 Keep watching
               </Button>
-            ) : null}
+            )}
             <Link href="/dashboard" className="block text-sm text-muted-foreground hover:text-foreground">
               All Sites
             </Link>
@@ -266,7 +315,9 @@ export function SiteBoard({
                     ? `${learningCopy}. Cards update as each area finishes.`
                     : view.flags.length
                       ? 'Issues show up by area. Open a card to dig in.'
-                      : 'Everything we’re watching looks good.'
+                      : view.statusState === 'healthy'
+                        ? 'Checked areas look good. Unchecked areas stay unknown.'
+                        : view.coverageSummary
                   : nav === 'Flags'
                     ? 'The things worth your attention.'
                     : 'What FixFlags knows, and what it’s watching.'}
@@ -279,7 +330,7 @@ export function SiteBoard({
                   {learningCopy}
                 </span>
               ) : null}
-              {!view.watching ? (
+              {!watch.covered ? (
                 <Button
                   variant="brand"
                   className="lg:hidden"
@@ -288,7 +339,16 @@ export function SiteBoard({
                 >
                   Keep watching
                 </Button>
-              ) : null}
+              ) : (
+                <Button
+                  variant="outline"
+                  className="lg:hidden"
+                  disabled={busy}
+                  onClick={() => void pauseWatching()}
+                >
+                  Pause
+                </Button>
+              )}
             </div>
           </header>
 
@@ -352,8 +412,14 @@ export function SiteBoard({
             <div className="space-y-3">
               {view.flags.length === 0 ? (
                 <div className="rounded-2xl border border-border/80 bg-background p-8 text-center">
-                  <Check className="mx-auto h-8 w-8 text-success" />
-                  <h2 className="mt-3 font-display text-xl font-semibold">Nothing needs you right now.</h2>
+                  {view.statusState === 'healthy' ? (
+                    <Check className="mx-auto h-8 w-8 text-success" />
+                  ) : null}
+                  <h2 className="mt-3 font-display text-xl font-semibold">
+                    {view.statusState === 'healthy'
+                      ? 'Nothing needs you right now.'
+                      : 'No Flags yet. Coverage is still incomplete.'}
+                  </h2>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {view.coverageSummary}
                   </p>

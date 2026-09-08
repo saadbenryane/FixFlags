@@ -65,6 +65,24 @@ vi.mock('@/lib/audit/usage', () => gates)
 vi.mock('@/lib/audit/ensure-product-project', () => ({
   ensureProductProject: vi.fn(async () => ({ id: 'project-1' })),
 }))
+vi.mock('@/lib/sites/ensure-site', () => ({
+  ensureSiteForAudit: vi.fn(async () => ({
+    siteId: 'p_test',
+    kind: 'provisional',
+    url: 'https://example.com',
+    canonicalHost: 'example.com',
+    name: 'example.com',
+    projectId: null,
+    provisionalSiteId: 'test',
+    primaryAuditId: 'audit-new',
+    watchInterval: null,
+    watchNextRunAt: null,
+    watchLastRunAt: null,
+    watchLastError: null,
+    watchConsecutiveFailures: 0,
+    userId: null,
+  })),
+}))
 
 function createdAuditData(): Record<string, unknown> {
   const call = prismaMock.audit.create.mock.calls.at(-1)?.[0] as {

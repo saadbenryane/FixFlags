@@ -18,7 +18,9 @@ import { severityRank } from '@/lib/utils'
 interface RoastResult {
   url: string
   auditId: string
-  reportUrl: string
+  siteId: string
+  siteUrl: string
+  reportUrl?: string
   overallGrade: string
   overallScore: number
   tagline: string
@@ -85,7 +87,7 @@ export async function POST(req: NextRequest) {
       searchParams: req.nextUrl.searchParams,
     })
 
-    const { auditId } = await createAndEnqueueAudit({
+    const { auditId, siteId } = await createAndEnqueueAudit({
       url,
       userId: session?.user?.id ?? null,
       auditMode: 'SINGLE',
@@ -113,9 +115,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           code: 'HTTP_504',
-          message: 'Roast timed out. Open the report to continue waiting.',
+          message: 'Check timed out. Open the Site board to continue waiting.',
           auditId,
-          reportUrl: `/report/${auditId}`,
+          siteId,
+          siteUrl: `/sites/${siteId}`,
         },
         { status: 504 }
       )
@@ -158,7 +161,8 @@ export async function POST(req: NextRequest) {
     const result: RoastResult = {
       url: audit.url,
       auditId,
-      reportUrl: `/report/${auditId}`,
+      siteId,
+      siteUrl: `/sites/${siteId}`,
       overallGrade,
       overallScore,
       tagline: taglineFromGrade(overallGrade),

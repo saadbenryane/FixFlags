@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest'
 import { FAQ, FAQ_PAGE, FINAL_CTA, HERO, HOW_IT_WORKS_PAGE, LANDING_PAGE, PLANS, PRICING, PRICING_FAQ, SEO } from '@/lib/marketing/copy'
 import { HELP_ARTICLES, HELP_CATEGORIES } from '@/lib/help/catalog'
 import { FOOTER_COLUMNS, MARKETING_LINKS } from '@/lib/site/nav'
-import { SHOPIFY_APP } from '@/lib/marketing/copy/shopify'
 
 function collectStrings(value: unknown, out: string[] = []): string[] {
   if (typeof value === 'string') {
@@ -71,14 +70,12 @@ const STRANGER_SURFACES = collectStrings({
   HELP_ARTICLES,
 })
 
-describe('stranger-facing Shopify product', () => {
-  it('sells Install on Shopify as the start', () => {
-    expect(HERO.primaryCta).toBe(SHOPIFY_APP.installCta)
-    expect(HERO.primaryHref).toBe('/install')
-    expect(HERO.headlineDisplay).toMatch(/can't buy/i)
-    expect(HERO.subhead).toMatch(/walks your product page to checkout/i)
-    expect(FINAL_CTA.body).toMatch(/path to checkout/i)
-    expect(MARKETING_LINKS[0]).toMatchObject({ href: '/protect', label: 'Protect' })
+describe('stranger-facing website care', () => {
+  it('starts with a website URL, not Shopify-only', () => {
+    expect(HERO.primaryHref).toBe('/#audit')
+    expect(PRICING.headline).toMatch(/waitlist/i)
+    expect(PLANS.find((plan) => plan.plan === 'FREE')?.cta).toBe('Check my website')
+    expect(MARKETING_LINKS.some((link) => link.href === '/pricing')).toBe(true)
   })
 
   it('does not advertise parked Product Review, Roast, CLI, or MCP', () => {
@@ -94,19 +91,20 @@ describe('stranger-facing Shopify product', () => {
     expect(footerHrefs).not.toContain('/examples')
   })
 
-  it('FAQ, Help, and Docs explain the purchase-path walk', () => {
+  it('FAQ explains a live website check and keeps Shopify as a connection', () => {
     const faq = FAQ.map((entry) => `${entry.question} ${entry.answer}`).join('\n')
-    expect(faq).toMatch(/install on shopify/i)
+    expect(faq).toMatch(/live website/i)
     expect(faq).toMatch(/before payment/i)
+    expect(faq).toMatch(/shopify is a connection/i)
     expect(faq).not.toMatch(/\$29|\$99/)
     expect(HELP_ARTICLES.some((article) => /install/i.test(article.title))).toBe(true)
-    expect(docsMarkdown()).toMatch(/Install FixFlags on your Shopify store/)
-    expect(docsMarkdown()).toMatch(/Protect → Prove → Understand → Improve/)
+    expect(docsMarkdown()).toMatch(/Shopify is a \[connection\]/i)
+    expect(docsMarkdown()).toMatch(/Find → Understand → Fix → Verify/)
   })
 
-  it('pricing is free plus waitlist, with no Shopify SKU prices', () => {
-    expect(PRICING.headline).toMatch(/Free on Shopify/i)
-    expect(PLANS.find((plan) => plan.plan === 'FREE')?.cta).toBe('Install on Shopify')
+  it('pricing is free plus waitlist, with no billed SKU prices', () => {
+    expect(PRICING.headline).toMatch(/waitlist/i)
+    expect(PLANS.find((plan) => plan.plan === 'FREE')?.cta).toBe('Check my website')
     expect(PLANS.find((plan) => plan.plan === 'BUILDER')?.price).toBe('Waitlist')
     expect(JSON.stringify({ PLANS, PRICING, PRICING_FAQ })).not.toMatch(/\$29|\$99/)
   })
@@ -118,5 +116,6 @@ describe('pricing comparison table source', () => {
     expect(source).not.toMatch(/PLAN_DEFINITIONS/)
     expect(source).not.toMatch(/product reviews/)
     expect(source).toMatch(/PLANS/)
+    expect(source).toMatch(/PRICING_COMPARISON/)
   })
 })

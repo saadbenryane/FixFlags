@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { cardAreaForCheck, STARTER_BOARD_CARDS } from '@/lib/sites/card-areas'
 import { buildCoverageFacts } from '@/lib/sites/coverage'
 import { encodeSiteId, parseSiteId } from '@/lib/sites/types'
+import { siteCardHealth } from '@/lib/sites/site-health'
 
 describe('site card packaging', () => {
   it('maps security and performance checks to board areas', () => {
@@ -110,5 +111,59 @@ describe('site card packaging', () => {
     const conversion = facts.find((f) => f.area === 'conversion')
     expect(conversion?.state).toBe('problem')
     expect(conversion?.openFlagCount).toBe(1)
+  })
+
+  it('does not call a finished scan healthy when starter areas are unknown', () => {
+    const coverage = buildCoverageFacts({
+      auditStatus: 'COMPLETED',
+      completedAt: new Date('2026-09-08T12:00:00Z'),
+      evidenceCoverage: { desktopScreenshot: true },
+      flags: [],
+      rubrics: [],
+    })
+    const health = siteCardHealth({
+      inFlight: false,
+      finished: true,
+      hasLastKnown: false,
+      flags: [],
+      coverage,
+    })
+    expect(health.state).toBe('unknown')
+    expect(health.answer).not.toMatch(/looking good/i)
+  })
+
+  it('can be healthy only when required starter areas were evidenced', () => {
+    const coverage = buildCoverageFacts({
+      auditStatus: 'COMPLETED',
+      completedAt: new Date('2026-09-08T12:00:00Z'),
+      evidenceCoverage: { desktopScreenshot: true },
+      flags: [],
+      rubrics: [],
+    }).map((fact) => ({
+      ...fact,
+      state: 'healthy' as const,
+      evidenced: true,
+      label: 'Looking good',
+    }))
+    const health = siteCardHealth({
+      inFlight: false,
+      finished: true,
+      hasLastKnown: false,
+      flags: [],
+      coverage,
+    })
+    expect(health.state).toBe('healthy')
+    expect(health.answer).toMatch(/looking good/i)
+  })
+
+  it('does not treat PARTIAL as a finished AuditStatus', () => {
+    const facts = buildCoverageFacts({
+      auditStatus: 'PARTIAL',
+      completedAt: null,
+      evidenceCoverage: null,
+      flags: [],
+      rubrics: [],
+    })
+    expect(facts.every((f) => f.state === 'checking')).toBe(true)
   })
 })

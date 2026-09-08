@@ -4,27 +4,27 @@
  */
 
 export const REVIEW_ENTRY = {
-  cta: 'Review my site',
-  compactCta: 'Review site',
+  cta: 'Check my website',
+  compactCta: 'Check site',
   href: '/new',
-  urlPlaceholder: 'yourproduct.com',
-  trySampleCta: 'See a sample review',
+  urlPlaceholder: 'yoursite.com',
+  trySampleCta: 'See how it works',
 } as const
 
 export const CUSTOMER_TERMS = {
-  category: 'Website intelligence',
+  category: 'Website care',
   categoryLine: 'Your website, looked after.',
   tagline: 'Know how your website is doing, what needs attention, and what to do next.',
-  primaryCta: 'Review my site',
-  compactPrimaryCta: 'Review',
-  productReview: 'product review',
-  productReviews: 'product reviews',
-  productReviewTitle: 'Product review',
+  primaryCta: 'Check my website',
+  compactPrimaryCta: 'Check',
+  productReview: 'Site check',
+  productReviews: 'Site checks',
+  productReviewTitle: 'Site',
   updateReview: 'Update review',
   updateReviews: 'Update reviews',
   watchRun: 'Watch run',
-  watchReview: 'Watch review',
-  funnel: 'Funnel',
+  watchReview: 'Watch check',
+  funnel: 'Path',
   path: 'path',
   flag: 'Flag',
   flags: 'Flags',
@@ -41,7 +41,7 @@ export const PRICING_COPY = {
   studioProductReviewsPerMonth: 90,
 } as const
 
-export const CORE_LOOP_LABEL = 'Product Review → Fix → Verify → Watch'
+export const CORE_LOOP_LABEL = 'Find → Understand → Fix → Verify'
 
 /** Regex patterns that must not appear in customer-facing copy surfaces. */
 export const BANNED_CUSTOMER_PHRASES = [

@@ -22,7 +22,7 @@ import {
   resolveToolPrompt,
   type PromptToolKey,
 } from '@/lib/mcp/builders'
-import { encodeSiteId } from '@/lib/sites/types'
+import { customerSiteFieldsForAudit, siteBoardUrl } from '@/lib/sites/site-id-for-audit'
 import type { FlagDiffSummaryItem } from '@/lib/audit/diff-flags'
 
 export interface TaskRubricSummary {
@@ -158,27 +158,11 @@ function reportUrl(reportId: string): string {
   return `${appUrl.replace(/\/$/, '')}/report/${reportId}`
 }
 
-function siteBoardUrl(siteId: string): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fixflags.com'
-  return `${appUrl.replace(/\/$/, '')}/sites/${siteId}`
-}
-
 async function siteFieldsForAudit(audit: {
   id: string
   projectId: string | null
 }): Promise<{ siteId: string; siteUrl: string }> {
-  if (audit.projectId) {
-    const siteId = encodeSiteId({ kind: 'project', projectId: audit.projectId })
-    return { siteId, siteUrl: siteBoardUrl(siteId) }
-  }
-  const provisional = await prisma.provisionalSite.findFirst({
-    where: { primaryAuditId: audit.id },
-    select: { id: true },
-  })
-  const siteId = provisional
-    ? encodeSiteId({ kind: 'provisional', provisionalSiteId: provisional.id })
-    : audit.id
-  return { siteId, siteUrl: siteBoardUrl(siteId) }
+  return customerSiteFieldsForAudit(audit)
 }
 
 function parseFailedModules(value: unknown): string[] {

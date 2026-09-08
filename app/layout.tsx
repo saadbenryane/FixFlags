@@ -7,7 +7,7 @@ import { ConversionScripts } from '@/components/analytics/ConversionScripts'
 import '@/lib/design/tokens.css'
 import './globals.css'
 import { Providers } from '@/components/providers'
-import { BRAND, HERO, SITE_URL } from '@/lib/marketing/copy'
+import { BRAND, SITE_URL, SEO } from '@/lib/marketing/copy'
 import { DEFAULT_OG_IMAGE } from '@/lib/marketing/metadata'
 import { fontVariables } from '@/lib/design/fonts'
 
@@ -20,15 +20,15 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: `${BRAND.name} - ${HERO.headline}`,
-  description: HERO.subhead,
+  title: SEO.home.title,
+  description: SEO.home.description,
   ...(googleSiteVerification
     ? { verification: { google: googleSiteVerification } }
     : {}),
   manifest: '/manifest.webmanifest',
   openGraph: {
     title: BRAND.name,
-    description: HERO.subhead,
+    description: SEO.home.description,
     type: 'website',
     url: SITE_URL,
     siteName: BRAND.name,
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: BRAND.name,
-    description: HERO.subhead,
+    description: SEO.home.description,
     images: [DEFAULT_OG_IMAGE.url],
   },
   icons: {
