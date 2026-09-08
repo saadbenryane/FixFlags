@@ -25,8 +25,8 @@ export function LandingLayersSection() {
         <div className="mt-12 grid gap-4 lg:grid-cols-2">
           {copy.cards.map((layer) => (
             <RevealOnView key={layer.id}>
-              <article className="rounded-card bg-background/80 p-5 shadow-card sm:p-6">
-                <p className="font-mono text-xs font-semibold uppercase tracking-label text-brand">
+              <article className="rounded-[13px] border border-border/65 bg-background p-5 sm:p-6">
+                <p className="section-label">
                   {layer.title}
                 </p>
                 <h3 className="mt-3 font-display text-xl font-semibold leading-heading">

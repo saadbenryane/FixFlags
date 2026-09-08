@@ -22,63 +22,111 @@ export const PLANS = [
     plan: 'FREE' as const,
     price: '$0',
     period: '',
-    persona: 'One Shopify store',
-    outcome: 'Know if customers can still buy',
-    audits: '1 or 2 auto paths, walk every 6 hours',
-    products: '1 store',
+    persona: 'One website',
+    outcome: 'Know what needs attention',
+    audits: 'Start with a public URL',
+    products: '1 Site',
     features: [
-      '1 or 2 auto purchase paths',
-      'Mobile walk with video',
-      'Email alerts on confirmed RED and recovery',
-      'Optional Slack incoming webhook',
-      '5 rechecks per day',
+      'Checks on your live website',
+      'Flags with evidence',
+      'A clear next step to fix',
+      'Independent verify after you publish',
+      'Optional Shopify connection',
     ],
-    cta: 'Install on Shopify',
-    href: '/install',
+    cta: 'Check my website',
+    href: '/new',
     highlight: false,
-    accountModel: 'One account for one product.',
+    badge: '',
+    accountModel: 'One account for one Site.',
   },
   {
     name: 'Pro',
     plan: 'BUILDER' as const,
     price: 'Waitlist',
     period: '',
-    persona: 'Stores that need more than the free cap',
-    outcome: 'More paths, faster walks, funnel numbers when approved',
+    persona: 'Teams that need more coverage',
+    outcome: 'More Sites and faster checking when approved',
     audits: 'Waitlist',
-    products: 'More paths and stores',
+    products: 'More Sites',
     features: [
-      'Extra purchase paths',
-      'Faster cadence',
-      'Funnel analytics when reports access is approved',
-      'Longer video history',
-      'Full Improve list',
+      'More Sites',
+      'Faster checking',
+      'Longer evidence history',
+      'Priority when paid extras open',
     ],
     cta: 'Join Pro waitlist',
     href: '/waitlist',
     highlight: true,
-    accountModel: 'One account across up to 5 products.',
+    badge: 'Best for more coverage',
+    accountModel: 'One account across more than one Site.',
   },
   {
     name: 'Studio',
     plan: 'TEAM' as const,
     price: 'Waitlist',
     period: '',
-    persona: 'Agencies watching more than one store',
-    outcome: 'Multiple stores on one login, later',
+    persona: 'Agencies watching more than one website',
+    outcome: 'Multiple Sites on one login, later',
     audits: 'Waitlist',
-    products: 'Multiple stores',
+    products: 'Multiple Sites',
     features: [
-      'Multiple stores',
-      'Shared alert destination',
-      'Same walk, video, and alerts as Free',
+      'Multiple Sites',
+      'Shared workspace later',
+      'Same Flags, evidence, and verify as Free',
     ],
     cta: 'Join Studio waitlist',
     href: '/waitlist',
     highlight: false,
-    accountModel: 'Waitlist for agencies with more than one store.',
+    badge: '',
+    accountModel: 'Waitlist for agencies with more than one Site.',
   },
 ] as const
+
+const FREE = PLANS[0]
+const PRO = PLANS[1]
+const STUDIO = PLANS[2]
+
+export const PRICING_COMPARISON = {
+  includedLabel: 'What is included',
+  rows: [
+    {
+      feature: 'Who it is for',
+      free: FREE.persona,
+      pro: PRO.persona,
+      studio: STUDIO.persona,
+    },
+    {
+      feature: 'Coverage',
+      free: 'One public website',
+      pro: 'More Sites on the waitlist',
+      studio: 'Multiple Sites on the waitlist',
+    },
+    {
+      feature: 'Checking',
+      free: 'Live website checks',
+      pro: 'Faster checking on the waitlist',
+      studio: 'Same checking as Free until extras open',
+    },
+    {
+      feature: 'Evidence',
+      free: 'Flags with captures and a next step',
+      pro: 'Longer evidence history on the waitlist',
+      studio: 'Same evidence as Free',
+    },
+    {
+      feature: 'Verify',
+      free: 'Fresh check after you publish',
+      pro: 'Higher verify capacity on the waitlist',
+      studio: 'Same verify as Free until extras open',
+    },
+    {
+      feature: 'Shopify',
+      free: 'Optional connection',
+      pro: 'Richer store context when approved',
+      studio: 'Multiple stores later',
+    },
+  ],
+} as const
 
 export const PRICING_FAQ: readonly FaqEntry[] = [
   {
@@ -90,9 +138,9 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
     },
   },
   {
-    question: 'What does the free install include?',
+    question: 'What does free include?',
     answer:
-      'One or two auto purchase paths, a mobile walk with video, email on confirmed Can\'t buy and recovery, optional Slack, and five rechecks per day. Walks run about every six hours.',
+      'A Site check on a public URL, Flags with evidence, a clear next step to fix, and an independent verify after you publish. Shopify is an optional connection, not the only way to start.',
     learnMore: {
       href: '/help/billing-and-plans/what-counts-as-a-check',
       label: 'What the free plan includes',
@@ -101,82 +149,78 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
   {
     question: 'What is on the Pro waitlist?',
     answer:
-      'Extra purchase paths, a faster cadence, funnel numbers when Shopify reports access is approved, longer video history, and the full Improve list.',
+      'More Sites, faster checking, and longer evidence history. We will email you when those extras open. We are not charging yet.',
     learnMore: {
       href: '/help/billing-and-plans/upgrade-or-downgrade',
       label: 'Join the Pro waitlist',
     },
   },
   {
-    question: 'Are verification videos public?',
+    question: 'Is evidence public?',
     answer:
-      'No. Video and screenshots belong to the installed store and stay in the Shopify app.',
-    learnMore: { href: '/help/account/report-privacy', label: 'Alerts and proof' },
+      'A completed check has a canonical link. Screenshots and captures belong to that Site. We do not invent proof or show other people\'s websites as if they were yours.',
+    learnMore: { href: '/help/account/report-privacy', label: 'Evidence and privacy' },
   },
   {
-    question: 'Do you store screenshots and video?',
+    question: 'Do you store screenshots?',
     answer:
-      'Yes. We keep the last successful walk, and broken or unclear walks for 14 days. See the Privacy Policy for details.',
+      'Yes. Evidence stays attached to the check that captured it. See the Privacy Policy for how long we keep it.',
     learnMore: {
       href: '/help/checks-and-reports/evidence-and-screenshots',
-      label: 'Watch verification',
+      label: 'Evidence and screenshots',
     },
   },
   {
-    question: 'What happens if I uninstall?',
+    question: 'How do I verify a fix?',
     answer:
-      'Walks stop. A shop redact request deletes the stored shop record and verification artifacts.',
-    learnMore: {
-      href: '/help/account/delete-account',
-      label: 'Uninstall and data',
-    },
-  },
-  {
-    question: 'How do I recheck a path?',
-    answer:
-      'Open the path in the app and choose Recheck. Free stores get five manual rechecks per day. Scheduled walks continue on their own.',
+      'Publish the change, then run a fresh check on the same behavior. Absence of the old Flag is not enough. FixFlags has to see the success state.',
     learnMore: {
       href: '/help/getting-started/flag-fix-recheck',
-      label: 'Recheck a path',
+      label: 'Verify a fix',
     },
   },
   {
     question: 'Do you invent conversion percentages?',
     answer:
-      'No. Funnel numbers appear only with real Shopify data after reports access is approved. Until then, Understand shows the steps from our last walk.',
+      'No. Connected store numbers appear only with real data after access is approved. Until then, FixFlags shows what the live website actually did.',
     learnMore: {
       href: '/help/getting-started/reading-your-report',
-      label: 'Understand and Improve',
+      label: 'Reading your Site',
     },
   },
 ] as const
 
 export const PRICING = {
   label: 'Simple pricing',
-  headline: 'Free on Shopify. Pro on a waitlist.',
+  headline: 'Start free with your website. Pro is waitlisted.',
   subhead:
-    'Install and watch the purchase path. Video and email alerts are included. Paid extras are waitlisted. We are not charging yet.',
-  trustBadge: 'Walk, video, and alerts on the free plan',
+    'Enter a URL. See what needs attention. Paid extras are waitlisted. We are not charging yet.',
+  trustBadge: 'Flags, evidence, and a clear next step',
   assurances: [
-    'One or two auto paths',
-    'Walk every six hours',
-    'Email plus optional Slack',
+    'Live website checks',
+    'Evidence with every Flag',
+    'Not charging yet',
   ] as const,
+  shopifyNote: 'Running Shopify?',
+  shopifyCta: 'Connect Shopify',
+  shopifyHref: '/install',
+  compareTitle: 'Compare plans',
+  faqTitle: 'Pricing questions',
   upgradeSteps: 'Create account → Stripe checkout → Dashboard',
   upgradeStepsLoggedIn: 'Stripe checkout → Dashboard',
   checkoutRedirecting: 'Redirecting to checkout…',
   allPlansInclude:
-    'Every install includes the purchase-path walk, video, and email alerts. Pro extras are waitlisted.',
+    'Every start includes a Site check, Flags, and evidence. Pro extras are waitlisted.',
   pickerEyebrow: 'Pick a plan',
   pickerTitle: 'Choose how you want to start',
   pickerSubtitle:
-    'Install free on Shopify. Join the Pro waitlist if you need more paths or funnel numbers.',
-  pickerBody: 'Install free. Join the waitlist if you need more paths.',
+    'Start free with a website URL. Join the Pro waitlist if you need more Sites or faster checking.',
+  pickerBody: 'Start free. Join the waitlist if you need more coverage.',
   pickerBodyWithReport:
-    'The first walk can start as soon as the app is installed.',
+    'The first check can start as soon as you enter a URL.',
   pickerCreditNote:
-    'Free includes one or two auto paths and five rechecks per day.',
-  pickerReportNote: 'Choosing Free returns you to the Shopify app.',
+    'Free starts with one public website. Pro extras are waitlisted.',
+  pickerReportNote: 'Choosing Free returns you to your Site.',
   pickerFootnote: 'Need more detail?',
   pickerCompareLink: 'Open the full comparison.',
   pickerCurrentPlan: 'Current plan',
@@ -194,9 +238,9 @@ export const WAITLIST_PAGE = {
     'Pro and Studio open in order. The first 500 waitlisters per plan get 25% off for 12 months from launch. The next 500 get 15% off.',
   planProLabel: 'Pro',
   planStudioLabel: 'Studio',
-  planProDetail: '30 reviews each month across up to 5 products',
+  planProDetail: 'More Sites and faster checking when Pro opens',
   planStudioDetail:
-    '90 reviews, unlimited products, scheduling, and workspace access',
+    'Multiple Sites on one login when Studio opens',
   emailPlaceholder: 'you@example.com',
   joinCta: 'Join the waitlist',
   signUpRequired: 'Sign up required',

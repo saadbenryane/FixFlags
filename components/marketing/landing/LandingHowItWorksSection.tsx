@@ -44,16 +44,15 @@ export function LandingHowItWorksSection() {
             ))}
           </ol>
 
-          <RevealOnView className="relative min-h-[15rem] rounded-card bg-muted/20 p-6 shadow-card sm:min-h-[21rem] lg:min-h-[25rem]">
-            <p className="font-mono text-xs font-semibold uppercase tracking-label text-brand">
-              Watch verification
+          <RevealOnView className="relative min-h-[15rem] rounded-[13px] border border-border/65 bg-background p-6 sm:min-h-[21rem] lg:min-h-[25rem]">
+            <p className="section-label">
+              {copy.previewLabel}
             </p>
             <p className="mt-4 font-display text-2xl font-semibold">
-              Video of the walk FixFlags ran
+              {copy.previewTitle}
             </p>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-              Product, add to cart, cart, checkout. We stop before payment. If the path fails, you
-              see the step.
+              {copy.previewBody}
             </p>
           </RevealOnView>
         </div>

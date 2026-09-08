@@ -8,7 +8,7 @@ interface MarketingEyebrowProps {
   dot?: boolean
 }
 
-/** Mono uppercase marketing eyebrow with the brand dot, colored by .marketing-eyebrow. */
+/** Sentence-case marketing eyebrow with the brand dot, matching homepage labels. */
 export function MarketingEyebrow({ children, className, dot = true }: MarketingEyebrowProps) {
   return (
     <p className={cn('marketing-eyebrow inline-flex items-center gap-2', className)}>

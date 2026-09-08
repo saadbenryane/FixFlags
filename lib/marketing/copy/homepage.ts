@@ -151,12 +151,12 @@ export const MCP_SECTION = BUILDER_WORKFLOW_SECTION;
 
 export const HOW_IT_WORKS_PAGE = {
   hero: {
-    eyebrow: 'Website intelligence',
-    headline: 'Find what is getting in the way of your next customer.',
-    headlineAccentPeriod: true,
+    eyebrow: 'How it works',
+    headline: 'See the problem. Fix it. Know it works.',
+    headlineAccentPeriod: false,
     subhead:
-      'FixFlags starts with your URL, turns evidence into Flags, and keeps learning about the Site as you verify improvements and add context.',
-    primaryCta: 'Review my site',
+      'FixFlags does the checking, keeps the evidence together, and returns to the live website after the change.',
+    primaryCta: 'Check my website',
     primaryHref: '/#audit',
     secondaryCta: 'See a sample review',
     secondaryHref: '/samples',
@@ -260,22 +260,33 @@ export const HOW_IT_WORKS_PAGE = {
       'A Site keeps its Flags, verification, context, and history together over time.',
   },
   loop: {
-    label: "The operating loop",
-    title: 'Find. Understand. Fix. Verify.',
+    label: 'How FixFlags works',
+    title: 'See the problem. Fix it. Know it works.',
     steps: [
       {
-        title: 'Find',
-        body: 'Surface the website problems that matter with evidence you can inspect.',
+        title: 'Check',
+        body: 'FixFlags opens pages, follows important actions, and records what actually happens.',
       },
       {
-        title: 'Understand',
-        body: 'See what happened, where, and why it deserves attention.',
+        title: 'Flag',
+        body: 'One important action fails. You see what happened, where, and why it matters.',
+      },
+      {
+        title: 'Fix',
+        body: 'The next step comes with context. Read it, share it, or give the evidence to the AI tool you already use.',
       },
       {
         title: 'Verify',
-        body: 'Return to the live Site after a change and keep watching for meaningful regressions.',
+        body: 'FixFlags repeats the same action on the live website and confirms the success state appears.',
       },
     ],
+  },
+  shopify: {
+    label: 'Shopify connection',
+    title: 'Add commerce context when your Site needs it.',
+    body: 'Shopify adds product structure and purchase-path checks to the same FixFlags Site.',
+    cta: 'Connect Shopify',
+    href: '/install',
   },
   mcp: {
     label: 'Work with your agent',
@@ -534,28 +545,36 @@ export const LANDING_PAGE = {
     ] as const,
   },
   howItWorks: {
-    label: "How it works",
-    headlineDisplay: 'Enter your site. See what matters. Keep watching',
+    label: 'How it works',
+    headlineDisplay: 'See the problem. Fix it. Know it works',
     headlineAccentPeriod: true,
-    headline: 'Enter your site. See what matters. Keep watching.',
+    headline: 'See the problem. Fix it. Know it works.',
     subhead:
-      'Start with public website evidence. Add more truth only when it makes the next decision clearer.',
+      'FixFlags does the checking, keeps the evidence together, and returns to the live website after the change.',
     sampleLink: 'See a sample review',
+    previewLabel: 'A Flag with evidence',
+    previewTitle: 'No confirmation after contact',
+    previewBody: 'The form sends. Visitors never see that it worked.',
     steps: [
       {
         step: 1,
-        title: 'Enter your website',
-        body: 'FixFlags finds important pages, actions, technology, and the first problems worth your attention.',
+        title: 'Check',
+        body: 'FixFlags opens pages, follows important actions, and records what actually happens.',
       },
       {
         step: 2,
-        title: 'Understand the Flag',
-        body: 'Inspect the page, path, and evidence behind the problem. FixFlags explains what to change next.',
+        title: 'Flag',
+        body: 'One important action fails. You see what happened, where, and why it matters.',
       },
       {
         step: 3,
-        title: 'Keep the Site watching',
-        body: 'Save the Site, verify fixes, and add sources such as Shopify or Analytics when they improve the answer.',
+        title: 'Fix',
+        body: 'The next step comes with context. Read it, share it, or give the evidence to the AI tool you already use.',
+      },
+      {
+        step: 4,
+        title: 'Verify',
+        body: 'FixFlags repeats the same action on the live website and confirms the success state appears.',
       },
     ] as const,
   },
@@ -861,8 +880,8 @@ export const LANDING_PAGE = {
 
 export const EXAMPLES_PAGE = {
   label: "Examples",
-  headline: "Example reports from recognizable sites",
-  body: "Real reports from recognizable sites. Each card shows top Flags and a fix prompt.",
+  headline: "Example checks from recognizable sites",
+  body: "Real checks from recognizable sites. Each card shows top Flags and what to do next.",
 } as const;
 
 export const BLOG_INDEX = {

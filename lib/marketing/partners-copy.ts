@@ -1,14 +1,14 @@
 export const PARTNERS_COPY = {
   eyebrow: 'Expert program',
   title: 'FixFlags Expert Program',
-  subtitle: 'For Lovable, Bolt, and MVP studios delivering client work.',
+  subtitle: 'For studios delivering client websites.',
   body:
-    'Use FixFlags as your delivery review: catch issues before handoff, share a credible Finish Plan, and prove fixes with an update review.',
+    'Use FixFlags as the delivery check: catch Flags before handoff, share the evidence, and prove the fix with a fresh verify.',
   perksTitle: 'What experts get',
   perks: [
     'Referral revenue on paying clients you introduce',
-    'Verified Delivery report template for handoffs',
-    'Scheduled Watch reviews and regression evidence',
+    'A clear Flag report for handoffs',
+    'A way to prove the fix after publish',
   ],
   cta: 'Apply for the expert program',
   email: 'hello@fixflags.com',

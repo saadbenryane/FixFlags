@@ -12,7 +12,7 @@ interface LandingSectionHeaderProps {
   className?: string
   align?: 'center' | 'left'
   showLabel?: boolean
-  /** Brand orange-dot mono eyebrow (homepage marketing). Default false keeps blog/faq section-label. */
+  /** Homepage-style eyebrow with brand dot. Default false keeps a plain section label. */
   brandEyebrow?: boolean
   /** Render a brand-colored period after the headline. */
   accentPeriod?: boolean

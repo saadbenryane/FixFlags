@@ -161,7 +161,7 @@ export const SCORE_HELP = {
 export const HELP_CENTER = {
   label: 'Help Center',
   title: 'How can we help?',
-  subhead: 'Search guides for install, purchase-path walks, alerts, and your store. Still stuck? Chat with us.',
+  subhead: 'Search guides for website checks, Flags, verification, and your account. Still stuck? Chat with us.',
   searchPlaceholder: 'Search help and docs…',
   categoriesHeading: 'Browse by topic',
   popularHeading: 'Popular articles',

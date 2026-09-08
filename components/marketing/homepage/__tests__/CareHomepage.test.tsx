@@ -18,37 +18,45 @@ describe('homepage example', () => {
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
   })
 
-  it('identifies the example Site in the board chrome without duplicated status', () => {
+  it('identifies the example Site once in the board chrome', () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
-    expect(within(board).getAllByText(C.boardHost)).toHaveLength(2)
+    expect(within(board).getAllByText(C.boardHost)).toHaveLength(1)
     expect(within(board).getByText(C.boardMeta)).toBeInTheDocument()
     expect(within(board).queryAllByText(/just now/i)).toHaveLength(1)
     expect(within(board).queryByText('How this website is doing')).not.toBeInTheDocument()
     expect(within(board).queryByText('Example Site')).not.toBeInTheDocument()
+    expect(within(board).queryByText('Contact needs you')).not.toBeInTheDocument()
     expect(within(board).queryByText('1 Flag needs attention')).not.toBeInTheDocument()
-    expect(within(board).queryByText('12 pages checked')).not.toBeInTheDocument()
     expect(within(board).queryByText('Buy')).not.toBeInTheDocument()
+    expect(board.parentElement?.querySelector('[class*="attentionPulse"]')).toBeNull()
   })
 
-  it('anchors the board with Site and Flag, then five cards and Add card last', () => {
+  it('anchors the board with Experience and Conversion, then four cards and Add card last', () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
-    const site = within(board).getByRole('article', { name: C.siteSummary.label })
-    expect(within(site).getByRole('img', { name: C.siteSummary.imageAlt })).toBeInTheDocument()
-    expect(within(site).getByText(C.siteSummary.status)).toBeInTheDocument()
-    expect(within(site).getByText(C.siteSummary.pages)).toBeInTheDocument()
-    expect(within(site).getByText(C.siteSummary.flags)).toBeInTheDocument()
-    expect(within(board).getByRole('link', { name: new RegExp(C.flag.title) })).toBeInTheDocument()
-    expect(within(board).getByText(C.flag.body)).toBeInTheDocument()
+    const experience = within(board).getByRole('article', { name: C.experience.label })
+    expect(within(experience).getByRole('img', { name: C.experience.imageAlt })).toBeInTheDocument()
+    expect(within(experience).getByText(C.experience.status)).toBeInTheDocument()
+    expect(within(experience).getByText(C.experience.pages)).toBeInTheDocument()
+    expect(within(experience).getByText(C.experience.flags)).toBeInTheDocument()
+    const conversion = within(board).getByRole('link', { name: new RegExp(C.flag.title) })
+    expect(conversion).toHaveAttribute('href', '#flag-example')
+    expect(within(conversion).getByText(C.flag.name)).toBeInTheDocument()
+    expect(within(conversion).getByText(C.flag.outcome)).toBeInTheDocument()
+    expect(within(conversion).getByText(C.flag.body)).toBeInTheDocument()
+    expect(within(conversion).getByText(C.flag.status)).toBeInTheDocument()
     expect(within(board).getByRole('img', { name: C.flag.cropAlt })).toBeInTheDocument()
-    expect(within(board).queryByText('Contact page · Submit form')).not.toBeInTheDocument()
-    const buttons = within(board).getAllByRole('button')
-    expect(buttons).toHaveLength(6)
-    expect(buttons.slice(0, 5).map(button => button.textContent)).toEqual(
+    const metricButtons = within(board).getAllByRole('button').filter(button => button.getAttribute('aria-label') !== C.boardAdd.title)
+    expect(metricButtons).toHaveLength(4)
+    expect(metricButtons.map(button => button.textContent)).toEqual(
       C.cards.map(card => expect.stringContaining(card.name)),
     )
-    expect(buttons.at(-1)).toHaveAccessibleName(C.boardAdd.title)
+    for (const card of C.cards) {
+      expect(within(board).getByRole('button', { name: new RegExp(`^${card.name}`) }).textContent).toContain(card.status)
+    }
+    expect(within(board).getByRole('button', { name: C.boardAdd.title })).toBeInTheDocument()
+    expect(within(board).queryByRole('button', { name: /^Conversion/ })).not.toBeInTheDocument()
   })
 
   it('adds another card to the hero board and prevents duplicate additions', async () => {
@@ -77,14 +85,13 @@ describe('homepage example', () => {
     expect(within(dialog).queryByText('What next')).not.toBeInTheDocument()
   })
 
-  it('opens the Flag story from Conversion instead of a separate essay', () => {
+  it('opens Conversion as the Flag story instead of a second metric essay', () => {
     render(<CareHomepage />)
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${C.cards[3].name}`) }))
-    const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByText(C.cards[3].question)).toBeInTheDocument()
-    expect(within(dialog).getByText(C.cards[3].answer)).toBeInTheDocument()
-    expect(within(dialog).getByText(C.flag.title)).toBeInTheDocument()
-    expect(within(dialog).getByRole('link', { name: C.flag.action })).toHaveAttribute('href', '#flag-example')
+    const board = screen.getByRole('region', { name: C.boardAria })
+    const conversion = within(board).getByRole('link', { name: new RegExp(C.flag.title) })
+    expect(conversion).toHaveAttribute('href', '#flag-example')
+    expect(within(conversion).getByText(C.flag.outcome)).toBeInTheDocument()
+    expect(within(board).queryByRole('button', { name: /^Conversion/ })).not.toBeInTheDocument()
   })
 
   it('restores focus to the card that opened the dialog', async () => {

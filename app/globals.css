@@ -96,20 +96,14 @@
   }
 
   .section-label {
-    @apply font-mono text-xs font-medium uppercase text-muted-foreground;
-    letter-spacing: var(--tracking-label);
+    @apply text-xs font-semibold text-muted-foreground;
+    letter-spacing: 0.015em;
   }
 
-  /* Marketing eyebrows are small text, so the display orange needs a stronger
-     light-mode value. Dark mode can use the brighter brand orange directly. */
+  /* Homepage-matched marketing eyebrow: Inter, sentence case, muted ink. */
   .marketing-eyebrow {
-    @apply font-mono text-xs font-medium uppercase;
-    color: hsl(var(--brand-strong));
-    letter-spacing: var(--tracking-label);
-  }
-
-  .dark .marketing-eyebrow {
-    color: hsl(var(--brand));
+    @apply text-xs font-semibold text-muted-foreground;
+    letter-spacing: 0.015em;
   }
 
   .marketing-accent-text {

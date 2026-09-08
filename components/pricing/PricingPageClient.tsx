@@ -1,24 +1,11 @@
 "use client";
 import type { Route } from "next";
 import Image from "next/image";
-import {
-  CheckCircle2,
-  CreditCard,
-  LockKeyhole,
-  ShieldCheck,
-  Timer,
-  Users,
-  Zap,
-} from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import Link from "next/link";
+import { Check, Flag, ShieldCheck, Users } from "lucide-react";
 import { PricingCTAButton } from "@/components/pricing/PricingCTAButton";
 import { PricingComparisonTable } from "@/components/pricing/PricingComparisonTable";
+import { PlanPrice } from "@/components/pricing/PlanPrice";
 import { MarketingCompareSection } from "@/components/marketing/MarketingCompareSection";
 import { FaqSection } from "@/components/marketing/FaqSection";
 import { MarketingPageViewTracker } from "@/components/marketing/MarketingPageViewTracker";
@@ -34,11 +21,9 @@ import { trackEvent } from "@/lib/analytics/events";
 
 const PLAN_ICONS = {
   FREE: ShieldCheck,
-  BUILDER: Zap,
+  BUILDER: Flag,
   TEAM: Users,
 } as const;
-
-const ASSURANCE_ICONS = [Timer, CreditCard, LockKeyhole] as const;
 
 export function PricingPageClient() {
   useEffect(() => {
@@ -60,7 +45,7 @@ export function PricingPageClient() {
             <MarketingEyebrow>{PRICING.label}</MarketingEyebrow>
             <Heading
               as="h1"
-              className="mt-4 max-w-[17ch] font-display text-balance text-4xl font-bold leading-display tracking-display sm:text-5xl"
+              className="mt-4 max-w-[18ch] font-display text-balance text-4xl font-bold leading-display tracking-display sm:text-5xl"
             >
               {PRICING.headline}
             </Heading>
@@ -68,24 +53,10 @@ export function PricingPageClient() {
               {PRICING.subhead}
             </Body>
 
-
-            <ul className="mt-6 grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
-              {PRICING.assurances.map((assurance, index) => {
-                const Icon = ASSURANCE_ICONS[index]!;
-                return (
-                  <li
-                    key={assurance}
-                    className="flex min-h-11 items-center gap-2.5"
-                  >
-                    <Icon
-                      className="h-4 w-4 shrink-0 text-foreground/70"
-                      strokeWidth={1.75}
-                      aria-hidden
-                    />
-                    <span>{assurance}</span>
-                  </li>
-                );
-              })}
+            <ul className="mt-6 space-y-2 text-sm text-muted-foreground">
+              {PRICING.assurances.map((assurance) => (
+                <li key={assurance}>{assurance}</li>
+              ))}
             </ul>
           </div>
 
@@ -105,99 +76,107 @@ export function PricingPageClient() {
 
         <h2 className="sr-only">Plans</h2>
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
-          {PLANS.map((plan) =>
-            (() => {
-              const PlanIcon = PLAN_ICONS[plan.plan];
-              return (
-                <Card
-                  key={plan.name}
-                  className={cn(
-                    "relative flex h-full min-h-[31rem] flex-col overflow-hidden bg-background/88 shadow-card",
-                    plan.highlight &&
-                      "bg-[linear-gradient(180deg,hsl(var(--brand)/0.055),hsl(var(--background)/0.94))] shadow-card-hover ring-1 ring-brand/30",
-                  )}
-                >
-                  <CardHeader className="space-y-4 p-5 pb-4 sm:p-6 sm:pb-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <span
-                        className={cn(
-                          "inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] bg-muted/70 text-foreground shadow-sm",
-                          plan.highlight && "bg-brand/10 text-brand",
-                        )}
-                      >
-                        <PlanIcon
-                          className="h-5 w-5"
-                          strokeWidth={1.75}
-                          aria-hidden
-                        />
+          {PLANS.map((plan) => {
+            const PlanIcon = PLAN_ICONS[plan.plan];
+            return (
+              <article
+                key={plan.name}
+                className={cn(
+                  "relative flex h-full min-h-[31rem] flex-col overflow-hidden rounded-[13px] border border-border/65 bg-background",
+                  plan.highlight && "border-brand",
+                )}
+              >
+                <div className="space-y-4 p-5 pb-4 sm:p-6 sm:pb-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <span
+                      className={cn(
+                        "inline-flex h-11 w-11 items-center justify-center rounded-[10px] bg-muted/70 text-foreground",
+                        plan.highlight && "bg-brand/10 text-brand",
+                      )}
+                    >
+                      <PlanIcon
+                        className="h-5 w-5"
+                        strokeWidth={1.75}
+                        aria-hidden
+                      />
+                    </span>
+                    {plan.badge ? (
+                      <span className="rounded-full border border-brand/40 px-2.5 py-1 text-xs font-semibold text-foreground">
+                        {plan.badge}
                       </span>
-                      {plan.highlight ? (
-                        <span className="marketing-brand-badge rounded-full px-2.5 py-1 text-xs font-semibold">
-                          Best for more paths and faster walks
-                        </span>
-                      ) : null}
-                    </div>
+                    ) : null}
+                  </div>
 
-                    <div>
-                      <CardTitle className="text-xl">{plan.name}</CardTitle>
-                      <CardDescription className="mt-1">
-                        {plan.persona}
-                      </CardDescription>
-                    </div>
-
-                    <p className="text-sm font-medium leading-snug text-pretty">
-                      {plan.outcome}
+                  <div>
+                    <h3 className="font-display text-xl font-semibold tracking-tight">
+                      {plan.name}
+                    </h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {plan.persona}
                     </p>
+                  </div>
 
-                    <div>
-                      <div className="flex items-end gap-1">
-                        <span className="font-mono text-4xl font-semibold tabular-nums tracking-display">
-                          {plan.price}
-                        </span>
+                  <p className="text-sm font-medium leading-snug text-pretty">
+                    {plan.outcome}
+                  </p>
+
+                  <div>
+                    <div className="flex items-end gap-1">
+                      <PlanPrice price={plan.price} />
+                      {plan.period ? (
                         <span className="pb-1 text-sm text-muted-foreground">
                           {plan.period}
                         </span>
-                      </div>
-                      <p className="mt-1 text-xs font-medium text-muted-foreground">
-                        {plan.audits}
-                      </p>
+                      ) : null}
                     </div>
-                  </CardHeader>
+                    <p className="mt-1 text-xs font-medium text-muted-foreground">
+                      {plan.audits}
+                    </p>
+                  </div>
+                </div>
 
-                  <CardContent className="flex flex-1 flex-col gap-6 p-5 pt-0 sm:p-6 sm:pt-0">
-                    <ul className="flex-1 space-y-3">
-                      {plan.features.map((feature) => (
-                        <li
-                          key={feature}
-                          className="flex items-start gap-2.5 text-sm leading-snug"
-                        >
-                          <CheckCircle2
-                            className="mt-0.5 h-4 w-4 shrink-0 text-brand"
-                            aria-hidden
-                          />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <PricingCTAButton
-                      plan={plan.plan}
-                      cta={plan.cta}
-                      signUpHref={plan.href as Route}
-                      highlight={plan.highlight}
-                      isLoggedIn={isLoggedIn}
-                      currentPlan={currentPlan}
-                      userEmail={user?.email ?? undefined}
-                    />
-                  </CardContent>
-                </Card>
-              );
-            })(),
-          )}
+                <div className="flex flex-1 flex-col gap-6 p-5 pt-0 sm:p-6 sm:pt-0">
+                  <ul className="flex-1 space-y-3">
+                    {plan.features.map((feature) => (
+                      <li
+                        key={feature}
+                        className="flex items-start gap-2.5 text-sm leading-snug"
+                      >
+                        <Check
+                          className="mt-0.5 h-4 w-4 shrink-0 text-foreground"
+                          aria-hidden
+                        />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <PricingCTAButton
+                    plan={plan.plan}
+                    cta={plan.cta}
+                    signUpHref={plan.href as Route}
+                    highlight={plan.highlight}
+                    isLoggedIn={isLoggedIn}
+                    currentPlan={currentPlan}
+                    userEmail={user?.email ?? undefined}
+                  />
+                </div>
+              </article>
+            );
+          })}
         </div>
+
+        <p className="text-sm text-muted-foreground">
+          {PRICING.shopifyNote}{" "}
+          <Link href={PRICING.shopifyHref} className="font-medium text-foreground underline-offset-4 hover:underline">
+            {PRICING.shopifyCta}
+          </Link>
+        </p>
 
         <div className="space-y-6">
           <div className="max-w-2xl">
-            <Heading as="h2">Compare plans</Heading>
+            <Heading as="h2" className="font-display">
+              {PRICING.compareTitle}
+            </Heading>
             <Muted className="mt-2 text-sm">{PRICING.allPlansInclude}</Muted>
           </div>
           <PricingComparisonTable />
@@ -208,7 +187,7 @@ export function PricingPageClient() {
         <div className="mx-auto max-w-3xl">
           <FaqSection
             items={PRICING_FAQ}
-            title="Pricing questions"
+            title={PRICING.faqTitle}
             sectionLabel={null}
           />
         </div>

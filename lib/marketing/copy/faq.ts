@@ -9,7 +9,7 @@ export const FAQ_SECTION = {
 export const FAQ_PAGE = {
   title: 'Frequently asked questions',
   subhead:
-    'How FixFlags walks the Shopify purchase path, what Can buy and Can\'t buy mean, and what is free.',
+    'How FixFlags checks a live website, what a Flag means, and what is free.',
 } as const
 
 export type FaqEntry = {
@@ -22,61 +22,55 @@ export const FAQ: readonly FaqEntry[] = [
   {
     question: 'What does FixFlags actually check?',
     answer:
-      'FixFlags walks the purchase path on a phone-sized browser: product, add to cart, cart, checkout. It tells you whether a stranger can still buy. It is not an uptime ping, a Lighthouse score, or a recording of real shoppers.',
-    learnMore: { href: '/help/checks-and-reports/vs-lighthouse', label: 'Walk vs uptime' },
+      'FixFlags opens your live website, follows important pages and actions, and records what actually happens. It is not an uptime ping, a Lighthouse score, or a recording of your visitors.',
+    learnMore: { href: '/help/checks-and-reports/vs-lighthouse', label: 'What FixFlags checks' },
   },
   {
-    question: 'What do Can buy, Can\'t buy, and Unclear mean?',
+    question: 'What is a Flag?',
     answer:
-      'Can buy means a stranger reached checkout and we stopped before payment. Can\'t buy means the path failed twice on independent walks. Unclear means we could not prove it: a bot wall, password gate, missing buy button, or a flake. Unclear stays in the app. We do not email Unclear.',
-    learnMore: { href: '/help/checks-and-reports/scores-and-severity', label: 'Path health' },
+      'A Flag is something important that needs attention, with evidence. It says what happened, where it happened, and what should happen next. Healthy pages stay quiet.',
+    learnMore: { href: '/help/checks-and-reports/scores-and-severity', label: 'Reading Flags' },
   },
   {
-    question: 'Do you charge or complete checkout?',
+    question: 'Is it free?',
     answer:
-      'No. The walk stops when checkout or Shop Pay is visible. We never enter payment details or place an order. The Shopify app is free to install. Pro extras are on a waitlist. We are not charging yet.',
+      'Yes. Start with a free website analysis. Pro extras are on a waitlist. We are not charging yet. Shopify is an optional connection, not the only way to start.',
     learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
   },
   {
-    question: 'What is included for free?',
+    question: 'How do I start?',
     answer:
-      'One Shopify store, one or two auto-discovered buyable products, a mobile walk with video, email on confirmed Can\'t buy and recovery, optional Slack, and five manual rechecks per day. Walks run about every six hours.',
-    learnMore: { href: '/help/billing-and-plans/what-counts-as-a-check', label: 'What the free plan includes' },
+      'Enter a public website URL. FixFlags checks the live site and shows Flags with evidence. You can add Shopify later if you need store context.',
+    learnMore: { href: '/help/getting-started/first-check', label: 'Start a check' },
   },
   {
-    question: 'When do you email or Slack me?',
+    question: 'How do I verify a fix?',
     answer:
-      'Only after a path is confirmed broken on two walks, and again when that path can take orders. The message includes a proof link. Unclear stays in the app. Improve items never go in alerts.',
-    learnMore: { href: '/help/account/report-privacy', label: 'Alerts and proof' },
+      'Publish the change, then run a fresh check on the same behavior. The old Flag is not resolved just because it disappeared from a list. FixFlags has to see the success state.',
+    learnMore: { href: '/help/getting-started/flag-fix-recheck', label: 'Verify a fix' },
   },
   {
-    question: 'What if my store is password gated or has no products yet?',
+    question: 'Do you charge or complete checkout on a store?',
     answer:
-      'We show an honest state in the app. Publish an active product with a storefront URL, or remove the password from the storefront you want watched. We do not guess a buy path that is not there.',
-    learnMore: { href: '/help/checks-and-reports/public-urls-only', label: 'Storefront access' },
+      'No. When FixFlags checks a purchase path, it stops before payment. It never enters card details or places an order.',
+    learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
   },
   {
-    question: 'Can I watch what FixFlags saw?',
+    question: 'What about Shopify?',
     answer:
-      'Yes. Each walk keeps video of our session, or a GIF of the key steps if video encoding fails, plus step screenshots. This is our walk, not session replay of your customers.',
-    learnMore: { href: '/help/checks-and-reports/evidence-and-screenshots', label: 'Watch verification' },
+      'Shopify is a connection for the same Site. It can add product structure and independent purchase-path checks. Install it when that context would help, not as a separate product.',
+    learnMore: { href: '/install', label: 'Connect Shopify' },
   },
   {
-    question: 'How do I recheck after I fix the theme or an app?',
+    question: 'Can I see what FixFlags saw?',
     answer:
-      'Open the path and choose Recheck. Free stores get five manual rechecks per day. Scheduled walks continue on their own.',
-    learnMore: { href: '/help/getting-started/flag-fix-recheck', label: 'Recheck a path' },
-  },
-  {
-    question: 'How do I start using FixFlags?',
-    answer:
-      'Install on Shopify. We discover buyable products from your catalog. The public site does not ask you to paste a website.',
-    learnMore: { href: '/help/getting-started/first-check', label: 'Install on Shopify' },
+      'Yes. Each Flag keeps the capture, reproduction, and expected result. This is FixFlags\' own check, not session replay of your visitors.',
+    learnMore: { href: '/help/checks-and-reports/evidence-and-screenshots', label: 'Evidence' },
   },
   {
     question: 'Who is FixFlags for?',
     answer:
-      'Shopify store owners who need to know the buy path still works. Store up is not the same as can buy.',
+      'Anyone who needs to know how their website is doing, what needs attention, and what to do next. Sell, book, collect a lead, or run a tool. FixFlags follows the pages behind that result.',
     learnMore: { href: '/how-it-works', label: 'How it works' },
   },
 ] as const

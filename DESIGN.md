@@ -28,9 +28,13 @@ _Validated visual and interaction standards. Code-enforced where possible, docum
 | Display (marketing hero only) | Inter Tight (var-font-display) | 600–700 | text-5xl (3.5rem) |
 | Heading                       | Inter Tight                    | 600     | text-2xl/3xl/4xl  |
 | Body                          | Inter (var-font-sans)          | 400     | text-base         |
-| Labels (uppercase)            | JetBrains Mono (var-font-mono) | 500     | text-xs           |
+| Marketing labels / eyebrows   | Inter                          | 600     | text-xs           |
 | Score numbers                 | JetBrains Mono                 | 500–600 | tabular-nums      |
+| Code, IDs, dates, step index  | JetBrains Mono (var-font-mono) | 500     | text-xs           |
 
+- Marketing eyebrows and section labels are sentence case, muted, not uppercase, not mono
+- Plan prices use Inter Tight with `tabular-nums`; status words such as Waitlist use the same display face
+- JetBrains Mono is not a marketing display face
 - `text-balance` on headings, `text-pretty` on body
 - `tabular-nums` on all numeric scores
 - Inter is UI font everywhere; Inter Tight reserved for marketing headings and display
@@ -146,7 +150,7 @@ Every interactive element must define: rest, hover, focus, active, disabled.
 ## Icons
 
 - Library: lucide-react (via `optimizePackageImports`)
-- Sentence case labels. No all-caps except `section-label` (mono uppercase).
+- Sentence case labels. No all-caps on marketing eyebrows or section labels.
 - No zap/lightning badge icons. No checkmark pill rows.
 
 ## Accessibility

@@ -1,54 +1,10 @@
-import { PLANS } from "@/lib/marketing/copy";
+import { PLANS, PRICING_COMPARISON } from "@/lib/marketing/copy";
+import { PlanPrice } from "@/components/pricing/PlanPrice";
 import { cn } from "@/lib/utils";
 
 const FREE = PLANS.find((plan) => plan.plan === "FREE")!;
 const PRO = PLANS.find((plan) => plan.plan === "BUILDER")!;
 const STUDIO = PLANS.find((plan) => plan.plan === "TEAM")!;
-
-const ROWS = [
-  {
-    feature: "Who it's for",
-    free: FREE.persona,
-    pro: PRO.persona,
-    studio: STUDIO.persona,
-  },
-  {
-    feature: "Paths",
-    free: "1 or 2 auto purchase paths",
-    pro: "Extra paths on the waitlist",
-    studio: "Multiple stores on the waitlist",
-  },
-  {
-    feature: "Walk",
-    free: "About every 6 hours, mobile",
-    pro: "Faster cadence on the waitlist",
-    studio: "Same walk as Free",
-  },
-  {
-    feature: "Proof",
-    free: "Video, GIF fallback, screenshots",
-    pro: "Longer video history on the waitlist",
-    studio: "Same proof as Free",
-  },
-  {
-    feature: "Alerts",
-    free: "Email on confirmed Can't buy and recovery. Optional Slack.",
-    pro: "Same alerts",
-    studio: "Shared alert destination later",
-  },
-  {
-    feature: "Recheck",
-    free: "5 per day",
-    pro: "Higher cap on the waitlist",
-    studio: "5 per day until extras open",
-  },
-  {
-    feature: "Funnel numbers",
-    free: "Steps from our walk. No invented %.",
-    pro: "Real Shopify data when approved",
-    studio: "Waitlist",
-  },
-] as const;
 
 const COLUMNS = [
   { key: "free" as const, name: FREE.name, price: FREE.price, highlight: false },
@@ -65,23 +21,18 @@ export function PricingComparisonTable() {
             key={key}
             aria-labelledby={`comparison-${key}`}
             className={cn(
-              "overflow-hidden rounded-card bg-card shadow-card",
-              highlight && "ring-1 ring-brand/25",
+              "overflow-hidden rounded-[13px] border border-border/65 bg-background",
+              highlight && "border-brand",
             )}
           >
-            <div
-              className={cn(
-                "flex items-end justify-between gap-4 p-4",
-                highlight && "bg-brand/[0.045]",
-              )}
-            >
-              <h3 id={`comparison-${key}`} className="font-semibold">
+            <div className="flex items-end justify-between gap-4 p-4">
+              <h3 id={`comparison-${key}`} className="font-display font-semibold">
                 {name}
               </h3>
-              <p className="font-mono text-sm font-semibold tabular-nums">{price}</p>
+              <PlanPrice price={price} size="sm" className="text-muted-foreground" />
             </div>
             <dl className="divide-y divide-border/30">
-              {ROWS.map((row) => (
+              {PRICING_COMPARISON.rows.map((row) => (
                 <div
                   key={row.feature}
                   className="grid grid-cols-[7.5rem_1fr] gap-4 px-4 py-3 text-sm"
@@ -95,15 +46,15 @@ export function PricingComparisonTable() {
         ))}
       </div>
 
-      <div className="hidden overflow-hidden rounded-card bg-card shadow-card md:block">
+      <div className="hidden overflow-hidden rounded-[13px] border border-border/65 bg-background md:block">
         <table className="w-full table-fixed text-sm">
           <thead>
             <tr className="border-b border-border/30">
               <th
-                className="w-[22%] p-5 text-left text-xs font-medium uppercase tracking-label text-muted-foreground"
+                className="w-[22%] p-5 text-left text-xs font-semibold text-muted-foreground"
                 scope="col"
               >
-                What is included
+                {PRICING_COMPARISON.includedLabel}
               </th>
               {COLUMNS.map(({ key, name, price, highlight }) => (
                 <th
@@ -113,21 +64,23 @@ export function PricingComparisonTable() {
                 >
                   <span
                     className={cn(
-                      "block font-semibold",
+                      "block font-display font-semibold",
                       highlight && "marketing-accent-text",
                     )}
                   >
                     {name}
                   </span>
-                  <span className="mt-1 block font-mono text-xs font-normal tabular-nums text-muted-foreground">
-                    {price}
-                  </span>
+                  <PlanPrice
+                    price={price}
+                    size="sm"
+                    className="mt-1 block font-normal text-muted-foreground"
+                  />
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {ROWS.map((row) => (
+            {PRICING_COMPARISON.rows.map((row) => (
               <tr key={row.feature} className="border-t border-border/25">
                 <th className="p-5 text-left font-medium" scope="row">
                   {row.feature}

@@ -25,7 +25,7 @@ export function LandingProofSection() {
         <div className="mt-12 grid gap-4 md:grid-cols-3">
           {copy.states.map((state) => (
             <RevealOnView key={state.id}>
-              <article className="rounded-card bg-background p-5 shadow-card">
+              <article className="rounded-[13px] border border-border/65 bg-background p-5">
                 <h3
                   className={
                     state.id === 'GREEN'

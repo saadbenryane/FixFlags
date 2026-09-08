@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Loader2, ShieldCheck, Sparkles, Users, X, Zap } from 'lucide-react'
+import { CheckCircle2, Flag, Loader2, ShieldCheck, Sparkles, Users, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useMe } from '@/hooks/useMe'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { PLANS, PRICING } from '@/lib/marketing/copy'
+import { PlanPrice } from '@/components/pricing/PlanPrice'
 import { SYSTEM_COPY } from '@/lib/marketing/copy/errors'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { trackEvent } from '@/lib/analytics/events'
@@ -35,7 +36,7 @@ import { cn } from '@/lib/utils'
 
 const PLAN_ICONS: Record<PickerPlan, typeof ShieldCheck> = {
   FREE: ShieldCheck,
-  BUILDER: Zap,
+  BUILDER: Flag,
   TEAM: Users,
 }
 
@@ -149,7 +150,7 @@ export function PlanPickerDialog({
   const body = (
     <div className="space-y-5">
       <div className="space-y-1.5 text-center sm:text-left">
-        <p className="font-mono text-2xs font-medium uppercase tracking-label text-muted-foreground">
+        <p className="section-label">
           {PRICING.pickerEyebrow}
         </p>
         <p className="text-sm text-muted-foreground text-pretty">
@@ -206,9 +207,7 @@ export function PlanPickerDialog({
 
               <div>
                 <div className="flex items-end gap-1">
-                  <span className="font-mono text-2xl font-semibold tabular-nums tracking-display text-foreground">
-                    {plan.price}
-                  </span>
+                  <PlanPrice price={plan.price} size="md" className="text-foreground" />
                   {plan.period ? (
                     <span className="pb-0.5 text-xs text-muted-foreground">
                       {plan.period}

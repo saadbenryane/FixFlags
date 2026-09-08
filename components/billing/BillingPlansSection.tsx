@@ -1,17 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { CheckCircle2, ShieldCheck, Users, Zap } from 'lucide-react'
+import { CheckCircle2, Flag, ShieldCheck, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Heading, Muted, SectionTitle } from '@/components/ui/typography'
 import { PlanPickerDialog } from '@/components/billing/PlanPickerDialog'
 import { BILLING_PAGE_COPY, PLANS, PRICING } from '@/lib/marketing/copy'
+import { PlanPrice } from '@/components/pricing/PlanPrice'
 import { cn } from '@/lib/utils'
 
 const PLAN_ICONS = {
   FREE: ShieldCheck,
-  BUILDER: Zap,
+  BUILDER: Flag,
   TEAM: Users,
 } as const
 
@@ -73,9 +74,7 @@ export function BillingPlansSection({ currentPlan }: Props) {
 
               <div>
                 <div className="flex items-end gap-1">
-                  <span className="font-mono text-2xl font-semibold tabular-nums tracking-display">
-                    {plan.price}
-                  </span>
+                  <PlanPrice price={plan.price} size="md" />
                   {plan.period ? (
                     <span className="pb-0.5 text-xs text-muted-foreground">{plan.period}</span>
                   ) : null}
