@@ -53,17 +53,18 @@ describe('homepage lean sections', () => {
     expect(screen.queryByText(/%/)).not.toBeInTheDocument()
   })
 
-  it('presents How it works as Site Intelligence', () => {
+  it('presents How it works as Check, Flag, Fix, Verify', () => {
     render(<LandingHowItWorksSection />)
     expect(
       screen.getByRole('heading', {
-        name: /Enter your site\. See what matters\. Keep watching/,
+        name: /See the problem\. Fix it\. Know it works/,
       }),
     ).toBeInTheDocument()
-    expect(screen.getAllByRole('listitem')).toHaveLength(3)
-    expect(screen.getByRole('heading', { name: 'Enter your website' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Understand the Flag' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Keep the Site watching' })).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(4)
+    expect(screen.getByRole('heading', { name: 'Check' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Flag' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Fix' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Verify' })).toBeInTheDocument()
   })
 
   it('explains Find, Understand, Fix, and Verify', () => {

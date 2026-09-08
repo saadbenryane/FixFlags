@@ -217,12 +217,12 @@ describe('homepage message guardrails', () => {
     }
     assert.match(
       LANDING_PAGE.howItWorks.steps.at(-1)?.body ?? '',
-      /Shopify or Analytics/i,
+      /live website/i,
     )
   })
 
-  it('pricing sells the free Shopify app with a Pro waitlist', () => {
-    assert.match(PRICING.trustBadge, /Walk, video, and alerts/i)
+  it('pricing sells a free website check with a Pro waitlist', () => {
+    assert.match(PRICING.trustBadge, /Flags, evidence/i)
     assert.doesNotMatch(PRICING.trustBadge, /unlimited re-checks/i)
     assert.match(PLAN_DEFINITIONS.FREE.auditLimitLabel, /3 product reviews \/ month/i)
     assert.doesNotMatch(
@@ -272,28 +272,24 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('how it works section has 3-step loop copy', () => {
+  it('how it works section has the Check, Flag, Fix, Verify loop', () => {
     assert.ok(!('problemBar' in LANDING_PAGE.howItWorks))
     assert.equal(
       LANDING_PAGE.howItWorks.headline,
-      'Enter your site. See what matters. Keep watching.',
+      'See the problem. Fix it. Know it works.',
     )
     assert.ok(LANDING_PAGE.howItWorks.subhead.length > 0)
-    assert.equal(LANDING_PAGE.howItWorks.steps.length, 3)
+    assert.equal(LANDING_PAGE.howItWorks.steps.length, 4)
   })
 
-  it('how it works steps keep the Site Intelligence loop', () => {
+  it('how it works steps keep the Check, Flag, Fix, Verify loop', () => {
     assert.deepEqual(
       LANDING_PAGE.howItWorks.steps.map((s) => s.title),
-      [
-        'Enter your website',
-        'Understand the Flag',
-        'Keep the Site watching',
-      ],
+      ['Check', 'Flag', 'Fix', 'Verify'],
     )
-    const walk = LANDING_PAGE.howItWorks.steps[1]!
-    assert.match(walk.body, /evidence/i)
-    assert.doesNotMatch(walk.body, /performance, accessibility, SEO/i)
+    const flag = LANDING_PAGE.howItWorks.steps[1]!
+    assert.match(flag.body, /happened/i)
+    assert.doesNotMatch(flag.body, /performance, accessibility, SEO/i)
     assert.ok(
       LANDING_PAGE.howItWorks.steps.every((step) => !('visual' in step)),
     )
@@ -416,7 +412,7 @@ describe('homepage message guardrails', () => {
     )
     assert.equal(
       LANDING_PAGE.howItWorks.headline,
-      'Enter your site. See what matters. Keep watching.',
+      'See the problem. Fix it. Know it works.',
     )
     assert.match(LANDING_PAGE.logoCloud.label, /works where you build/i)
     assert.deepEqual(

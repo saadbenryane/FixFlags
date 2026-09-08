@@ -16,9 +16,14 @@ describe('site card packaging', () => {
   })
 
   it('keeps starter board order', () => {
-    expect(STARTER_BOARD_CARDS[0]).toBe('site')
-    expect(STARTER_BOARD_CARDS).toContain('conversion')
-    expect(STARTER_BOARD_CARDS).toContain('tracking')
+    expect(STARTER_BOARD_CARDS).toEqual([
+      'site',
+      'conversion',
+      'security',
+      'search',
+      'performance',
+      'tracking',
+    ])
   })
 
   it('encodes provisional site ids without touching graph Site', () => {

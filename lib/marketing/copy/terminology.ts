@@ -11,6 +11,16 @@ export const REVIEW_ENTRY = {
   trySampleCta: 'See how it works',
 } as const
 
+export const SITE_BOARD_COPY = {
+  openFlag: 'See what happened',
+  fixThis: 'Fix this',
+  verifyFix: 'Verify fix',
+  flagStatus: 'Needs a fix',
+  pagesLoading: 'Pages are loading',
+  learning: 'Learning your website',
+  lookingGood: 'Looking good',
+} as const
+
 export const CUSTOMER_TERMS = {
   category: 'Website care',
   categoryLine: 'Your website, looked after.',

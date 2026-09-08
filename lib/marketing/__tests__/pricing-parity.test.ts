@@ -44,11 +44,11 @@ describe('pricing parity', () => {
     expect(PRICING_COPY.studioProductReviewsPerMonth).toBe(TEAM.auditLimit)
   })
 
-  it('drives the marketing plan cards from the Shopify free offer', () => {
+  it('drives the marketing plan cards from the URL-first free offer', () => {
     expect(PLANS.find((plan) => plan.plan === 'FREE')).toMatchObject({
       price: '$0',
-      products: '1 store',
-      cta: 'Install on Shopify',
+      products: '1 Site',
+      cta: 'Check my website',
     })
     expect(PLANS.find((plan) => plan.plan === 'BUILDER')).toMatchObject({
       price: 'Waitlist',
@@ -63,10 +63,9 @@ describe('pricing parity', () => {
     const pro = PLANS.find((plan) => plan.plan === 'BUILDER')!
     const studio = PLANS.find((plan) => plan.plan === 'TEAM')!
 
-    expect(pro.features.join('\n')).toMatch(/extra purchase paths/i)
-    expect(pro.features.join('\n')).toMatch(/faster cadence/i)
-    expect(pro.features.join('\n')).toMatch(/funnel analytics/i)
-    expect(studio.features.join('\n')).toMatch(/multiple stores/i)
+    expect(pro.features.join('\n')).toMatch(/more Sites/i)
+    expect(pro.features.join('\n')).toMatch(/faster checking/i)
+    expect(studio.features.join('\n')).toMatch(/multiple Sites/i)
     expect(studio.price).toBe('Waitlist')
   })
 
@@ -100,22 +99,22 @@ describe('pricing parity', () => {
     expect(SCAN_LIMIT_GATE.signup.body).not.toMatch(/upgrade/i)
   })
 
-  it('sells the free Shopify walk without a current deep-review quota', () => {
+  it('sells the free Site check without a current deep-review quota', () => {
     const customerSurfaces = [JSON.stringify(PLANS), JSON.stringify(PRICING), HELP_CATALOG].join('\n')
 
     expect(customerSurfaces).not.toMatch(/deep reviews? (?:per month|included|allowance)/i)
-    expect(customerSurfaces).toMatch(/purchase paths/i)
+    expect(customerSurfaces).toMatch(/Flags/i)
     expect(customerSurfaces).not.toMatch(/\$29/)
     expect(customerSurfaces).not.toMatch(/\$99/)
   })
 
-  it('describes the free Shopify path without crawler jargon', () => {
+  it('describes the free website check without crawler jargon', () => {
     const free = PLANS.find((plan) => plan.plan === 'FREE')!
     const pro = PLANS.find((plan) => plan.plan === 'BUILDER')!
 
-    expect(free.features.join('\n')).toMatch(/purchase paths/i)
-    expect(free.features.join('\n')).toMatch(/video/i)
-    expect(pro.features.join('\n')).toMatch(/extra purchase paths/i)
+    expect(free.features.join('\n')).toMatch(/live website/i)
+    expect(free.features.join('\n')).toMatch(/Flags/i)
+    expect(pro.features.join('\n')).toMatch(/more Sites/i)
 
     const surfaces = JSON.stringify({ PLANS, PRICING })
     expect(surfaces).not.toMatch(/\b(hops?|crawler)\b/i)
@@ -127,10 +126,10 @@ describe('pricing parity', () => {
     expect(PRICING_FAQ.every((entry) => entry.learnMore?.href && entry.learnMore.label)).toBe(true)
 
     const includedPlanAnswer = PRICING_FAQ.find(
-      (entry) => entry.question === 'What does the free install include?',
+      (entry) => entry.question === 'What does free include?',
     )!
-    expect(includedPlanAnswer.answer).toMatch(/video/i)
-    expect(includedPlanAnswer.answer).toMatch(/rechecks/i)
+    expect(includedPlanAnswer.answer).toMatch(/Flags/i)
+    expect(includedPlanAnswer.answer).toMatch(/verify/i)
     expect(PRICING_FAQ.map((entry) => entry.answer).join('\n')).not.toMatch(/\$29|\$99/)
   })
 })

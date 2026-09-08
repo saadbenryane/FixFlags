@@ -1,28 +1,22 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import {
-  Activity, ArrowRight, Check, ChevronRight, CircleCheck, Copy, Eye,
-  Gauge, GitBranch, Globe2, MousePointer2, Plus, Search,
-  Share2, ShieldCheck, ShoppingBag, Sparkles, Users,
+  ArrowRight, Check, ChevronRight, CircleCheck, Copy, Eye,
+  Globe2, Share2, ShoppingBag, Sparkles,
 } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { Logo } from '@/components/brand/Logo'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { BoardCard, BoardGrid, BOARD_CARD_ICONS } from '@/components/sites/BoardCard'
 import { CARE_HOME as C } from '@/lib/marketing/copy'
 import s from './CareHomepage.module.css'
+import Image from 'next/image'
 
 type PreviewCard = (typeof C.cards)[number]
-type ExtraCard = (typeof C.addCards.options)[number]
-type CopySource = 'read' | 'share' | 'ai' | 'mcp' | 'connect'
-const cardIcons = {
-  security: ShieldCheck, search: Search, performance: Gauge, tracking: Activity,
-}
-const extraIcons = {
-  availability: Globe2, accessibility: Users, changes: GitBranch, commerce: ShoppingBag,
-}
+type DetailCard = PreviewCard | 'site'
+type CopySource = 'read' | 'share' | 'ai' | 'mcp'
 const actionIcons = { read: Eye, share: Share2, ai: Sparkles }
 const failedEvidencePath = '/marketing/evidence/contact-no-confirmation.png'
 const passedEvidencePath = '/marketing/evidence/contact-confirmed.png'
@@ -30,52 +24,6 @@ const siteImagePath = '/marketing/evidence/site-home.png'
 
 function Signal({ tone, children }: { tone: 'good' | 'warn' | 'bad'; children: React.ReactNode }) {
   return <span className={`${s.signal} ${s[tone]}`}><i aria-hidden="true" />{children}</span>
-}
-
-function Card({ card, onClick }: { card: PreviewCard; onClick: () => void }) {
-  const Icon = cardIcons[card.id]
-  return <button className={s.card} onClick={onClick}>
-    <span className={s.cardTop}><Icon size={17} aria-hidden="true" />{card.name}<Signal tone={card.tone}>{card.status}</Signal></span>
-    <strong>{card.value}</strong>
-    <span className={s.cardDetail}>{card.detail}</span>
-    {card.chart === 'bars' && <span className={s.bars} aria-hidden="true">{Array.from({ length: 7 }, (_, i) => <i key={i} />)}</span>}
-  </button>
-}
-
-function AddedCard({ card }: { card: ExtraCard }) {
-  const Icon = extraIcons[card.id]
-  return <article className={`${s.card} ${s.addedCard}`}>
-    <span className={s.cardTop}><Icon size={17} aria-hidden="true" />{card.name}</span>
-    <strong>{C.addCards.added}</strong>
-    <span className={s.cardDetail}>{card.detail}</span>
-  </article>
-}
-
-function ExperienceCard() {
-  return <article className={s.siteSummary} aria-label={C.experience.label}>
-    <div className={s.siteSummaryHeader}><span><Globe2 size={16} aria-hidden="true" />{C.experience.label}</span><Signal tone="good">{C.experience.status}</Signal></div>
-    <div className={s.siteSummaryBody}>
-      <div className={s.siteCapture}>
-        <Image src={siteImagePath} alt={C.experience.imageAlt} fill sizes="(max-width: 767px) calc(100vw - 88px), (max-width: 1023px) calc(50vw - 64px), 360px" style={{ objectFit: 'cover', objectPosition: 'center top' }} />
-      </div>
-      <div className={s.siteSummaryCopy}>
-        <div className={s.siteFacts}><span>{C.experience.pages}</span><span>{C.experience.flags}</span></div>
-      </div>
-    </div>
-  </article>
-}
-
-function ConversionFlag() {
-  return <a className={s.primaryFlag} href="#flag-example">
-    <span className={s.flagTop}><span><MousePointer2 size={17} aria-hidden="true" />{C.flag.name}</span><Signal tone="warn">{C.flag.status}</Signal></span>
-    <strong>{C.flag.title}</strong>
-    <p>{C.flag.body}</p>
-    <span className={s.flagOutcome}>{C.flag.outcome}</span>
-    <span className={s.flagCrop}>
-      <Image src={failedEvidencePath} alt={C.flag.cropAlt} fill sizes="(max-width: 767px) calc(100vw - 88px), 280px" style={{ objectFit: 'cover', objectPosition: 'center 70%' }} />
-    </span>
-    <span className={s.flagLink}>{C.flag.action}<ArrowRight size={18} aria-hidden="true" /></span>
-  </a>
 }
 
 function Intro({ label, title, body }: { label?: string; title: string; body?: string }) {
@@ -90,37 +38,29 @@ function UrlEntry({ final = false }: { final?: boolean }) {
 }
 
 export function CareHomepage() {
-  const [selected, setSelected] = useState<PreviewCard | null>(null)
-  const [adding, setAdding] = useState(false)
-  const [extra, setExtra] = useState<ExtraCard['id'][]>([])
+  const [selected, setSelected] = useState<DetailCard | null>(null)
   const [outcome, setOutcome] = useState<(typeof C.outcomes.options)[number]['id']>('lead')
   const [showInstructions, setShowInstructions] = useState(false)
-  const [showConnect, setShowConnect] = useState(false)
   const [copyResult, setCopyResult] = useState<{ source: CopySource; message: string } | null>(null)
   const dialogOpener = useRef<HTMLElement | null>(null)
   const activeOutcome = C.outcomes.options.find(item => item.id === outcome)!
+  const selectedPreview = selected && selected !== 'site' ? selected : null
 
-  const openCard = (card: PreviewCard) => {
+  const openCard = (card: DetailCard) => {
     dialogOpener.current = document.activeElement as HTMLElement
     setSelected(card)
-  }
-  const openAdd = () => {
-    dialogOpener.current = document.activeElement as HTMLElement
-    setAdding(true)
   }
   const restoreFocus = (event: Event) => {
     event.preventDefault()
     dialogOpener.current?.focus()
   }
   const copyFix = async (source: CopySource) => {
-    const text = source === 'connect' ? C.mcp.connectBody : C.workflow.instructions
     try {
-      await navigator.clipboard.writeText(text)
-      setCopyResult({ source, message: source === 'connect' ? C.mcp.copiedConnect : C.actions.copied })
+      await navigator.clipboard.writeText(C.workflow.instructions)
+      setCopyResult({ source, message: C.actions.copied })
     } catch {
       setCopyResult({ source, message: C.actions.copyFailed })
-      if (source === 'connect') setShowConnect(true)
-      else setShowInstructions(true)
+      setShowInstructions(true)
     }
   }
 
@@ -136,13 +76,45 @@ export function CareHomepage() {
         <div className={s.board} role="region" aria-label={C.boardAria}>
           <span className={s.boardScan} aria-hidden="true" />
           <div className={s.boardHeader}><span><Globe2 size={16} aria-hidden="true" />{C.boardHost}</span><span className={s.boardMeta}>{C.boardMeta}</span></div>
-          <div className={s.boardGrid}>
-            <ExperienceCard />
-            <ConversionFlag />
-            {C.cards.map(card => <Card key={card.id} card={card} onClick={() => openCard(card)} />)}
-            {extra.map(id => <AddedCard key={id} card={C.addCards.options.find(item => item.id === id)!} />)}
-            <button className={s.previewAdd} aria-label={C.boardAdd.title} onClick={openAdd}><Plus size={20} aria-hidden="true" /><span><b>{C.boardAdd.title}</b><small>{C.boardAdd.body}</small></span></button>
-          </div>
+          <BoardGrid>
+            <BoardCard
+              name={C.site.label}
+              status={C.site.status}
+              state="healthy"
+              answer={C.site.answer}
+              footer={`${C.site.pages} · ${C.site.flags}`}
+              visual={{ src: siteImagePath, alt: C.site.imageAlt }}
+              wide
+              icon={BOARD_CARD_ICONS.site}
+              onOpen={() => openCard('site')}
+            />
+            <BoardCard
+              name={C.flag.name}
+              status={C.flag.status}
+              state="problem"
+              answer={C.flag.title}
+              detail={C.flag.body}
+              outcome={C.flag.outcome}
+              action={C.flag.action}
+              href="#flag-example"
+              crop={{ src: failedEvidencePath, alt: C.flag.cropAlt }}
+              icon={BOARD_CARD_ICONS.conversion}
+            />
+            {C.cards.map(card => (
+              <BoardCard
+                key={card.id}
+                name={card.name}
+                status={card.status}
+                state={card.tone === 'attention' ? 'attention' : 'healthy'}
+                answer={card.value}
+                detail={card.detail}
+                chart={card.chart}
+                metric
+                icon={BOARD_CARD_ICONS[card.id]}
+                onOpen={() => openCard(card)}
+              />
+            ))}
+          </BoardGrid>
           <p className={s.boardFooter}>{C.previewNote}</p>
         </div>
       </div>
@@ -159,7 +131,7 @@ export function CareHomepage() {
         </ol>
         <div className={s.evidenceStory}>
           <figure className={`${s.evidenceCard} ${s.failedEvidence}`}>
-            <div className={s.evidenceHeader}><Signal tone="warn">{C.workflow.failedLabel}</Signal><span>{C.flag.outcome}</span></div>
+            <div className={s.evidenceHeader}><Signal tone="bad">{C.workflow.failedLabel}</Signal><span>{C.flag.outcome}</span></div>
             <a href={failedEvidencePath} target="_blank" rel="noopener noreferrer" aria-label={C.workflow.failedLink}>
               <Image src={failedEvidencePath} alt={C.workflow.failedAlt} width={720} height={440} sizes="(max-width: 767px) calc(100vw - 72px), 560px" />
             </a>
@@ -216,15 +188,13 @@ export function CareHomepage() {
         <Intro label={C.mcp.label} title={C.mcp.title} body={C.mcp.body} />
         <div className={s.mcpActions}>
           <button className={s.darkButton} onClick={() => void copyFix('mcp')}><Copy size={16} aria-hidden="true" />{C.mcp.copy}</button>
-          <button className={s.outlineButton} aria-expanded={showConnect} aria-controls="mcp-connect" onClick={() => { setShowConnect(true); void copyFix('connect') }}>{C.mcp.connect}</button>
         </div>
-        <p className={s.copyStatus} role="status">{copyResult?.source === 'mcp' || copyResult?.source === 'connect' ? copyResult.message : ''}</p>
-        <div id="mcp-connect" hidden={!showConnect} className={s.expandedInstructions}><p>{C.mcp.connectBody}</p></div>
+        <p className={s.copyStatus} role="status">{copyResult?.source === 'mcp' ? copyResult.message : ''}</p>
         <p className={s.scope}>{C.mcp.note}</p>
       </div>
       <ol className={s.mcpFlow}>
         {C.mcp.flow.map((item, index) => {
-          const tone = index === 0 ? 'warn' : index === 2 ? 'good' : undefined
+          const tone = index === 0 ? 'bad' : index === 2 ? 'good' : undefined
           return <li key={item.title} className={`${s.mcpStep} ${index === 0 ? s.mcpFlag : index === 1 ? s.mcpAi : s.mcpVerify}`}>
             <span>{index === 1 ? <Sparkles size={20} aria-hidden="true" /> : <Logo variant="mark" size="sm" />}</span>
             <div>
@@ -240,11 +210,14 @@ export function CareHomepage() {
 
     <section className={`${s.section} ${s.quiet}`}>
       <Intro title={C.quiet.title} body={C.quiet.body} />
-      <div className={s.notificationStack}>
-        {C.quiet.notifications.map((item, index) => <article key={item.title} className={`${s.notification} ${s[`notification${index}`]}`}>
-          <div className={s.notificationTop}><Logo variant="mark" size="sm" /><b>{C.brand}</b><span>{item.time}</span></div>
-          <Signal tone={item.tone}>{item.status}</Signal><h3>{item.title}</h3><p>{item.detail}</p>
-        </article>)}
+      <div>
+        <p className={s.exampleNote}>{C.quiet.exampleNote}</p>
+        <div className={s.notificationStack}>
+          {C.quiet.notifications.map((item, index) => <article key={item.title} className={`${s.notification} ${s[`notification${index}`]}`}>
+            <div className={s.notificationTop}><Logo variant="mark" size="sm" /><b>{C.brand}</b><span>{item.time}</span></div>
+            <Signal tone={item.tone}>{item.status}</Signal><h3>{item.title}</h3><p>{item.detail}</p>
+          </article>)}
+        </div>
       </div>
     </section>
 
@@ -252,17 +225,17 @@ export function CareHomepage() {
     <section className={`${s.section} ${s.final}`} id="plans"><h2>{C.close.title}</h2><p>{C.close.body}</p><UrlEntry final /><Link href="/pricing" className={s.textLink}>{C.close.pricing}<ArrowRight size={16} aria-hidden="true" /></Link></section>
 
     <Dialog open={selected !== null} onOpenChange={open => { if (!open) setSelected(null) }}><DialogContent className={s.dialog} onCloseAutoFocus={restoreFocus}>
-      <DialogTitle>{selected?.name}</DialogTitle>
-      <DialogDescription>{selected?.question}</DialogDescription>
-      {selected && <>
-        <p className={s.detailAnswer}>{selected.answer}</p>
-        <ul className={s.detailFacts}>{selected.facts.map(fact => <li key={fact}>{fact}</li>)}</ul>
-        <p className={s.scope}>{selected.coverage}</p>
-      </>}
-    </DialogContent></Dialog>
-    <Dialog open={adding} onOpenChange={setAdding}><DialogContent className={s.dialog} onCloseAutoFocus={restoreFocus}>
-      <DialogTitle>{C.addCards.title}</DialogTitle><DialogDescription>{C.addCards.drawer}</DialogDescription>
-      <div className={s.recommendations}>{C.addCards.options.map(item => { const Icon = extraIcons[item.id]; return <button key={item.id} disabled={extra.includes(item.id)} onClick={() => { setExtra(values => values.includes(item.id) ? values : [...values, item.id]); setAdding(false) }}><Icon size={20} aria-hidden="true" /><span><b>{item.name}</b><small>{extra.includes(item.id) ? C.addCards.added : item.detail}</small></span>{extra.includes(item.id) ? <Check size={18} aria-hidden="true" /> : <Plus size={18} aria-hidden="true" />}</button> })}</div>
+      <DialogTitle>{selected === 'site' ? C.site.label : selectedPreview?.name}</DialogTitle>
+      <DialogDescription>{selected === 'site' ? C.site.question : selectedPreview?.question}</DialogDescription>
+      {selected === 'site' ? <>
+        <p className={s.detailAnswer}>{C.site.answer}</p>
+        <ul className={s.detailFacts}>{C.site.facts.map(fact => <li key={fact}>{fact}</li>)}</ul>
+        <p className={s.scope}>{C.site.coverage}</p>
+      </> : selectedPreview ? <>
+        <p className={s.detailAnswer}>{selectedPreview.answer}</p>
+        <ul className={s.detailFacts}>{selectedPreview.facts.map(fact => <li key={fact}>{fact}</li>)}</ul>
+        <p className={s.scope}>{selectedPreview.coverage}</p>
+      </> : null}
     </DialogContent></Dialog>
   </div>
 }

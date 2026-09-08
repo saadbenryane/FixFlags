@@ -15,10 +15,10 @@ export type SiteCardArea = (typeof SITE_CARD_AREAS)[number]
 
 export const STARTER_BOARD_CARDS: SiteCardArea[] = [
   'site',
+  'conversion',
   'security',
   'search',
   'performance',
-  'conversion',
   'tracking',
 ]
 

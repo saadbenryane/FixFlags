@@ -1,10 +1,5 @@
 import { prisma } from '@/lib/db'
-import {
-  CARD_CATALOG,
-  STARTER_BOARD_CARDS,
-  type CardHealthState,
-  type SiteCardArea,
-} from '@/lib/sites/card-areas'
+import { type CardHealthState } from '@/lib/sites/card-areas'
 import {
   buildCoverageFacts,
   isAuditFinished,
@@ -24,20 +19,10 @@ import {
   watchIsCovered,
   type WatchBoardState,
 } from '@/lib/sites/watch-state'
+import { buildBoardCards, type BoardCardView } from '@/lib/sites/board-card'
+import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 
-export type BoardCardView = {
-  id: SiteCardArea
-  name: string
-  question: string
-  state: CardHealthState
-  answer: string
-  detail: string | null
-  score: number | null
-  openFlagCount: number
-  checkedAt: string | null
-  flagIds: string[]
-  activity?: 'checking' | null
-}
+export type { BoardCardView }
 
 export type SiteHomeView = {
   site: SiteRecord
@@ -134,6 +119,27 @@ function factsFromAudit(
   })
 }
 
+async function countSitePages(site: SiteRecord): Promise<number> {
+  if (site.projectId) {
+    return prisma.sitePage.count({ where: { projectId: site.projectId } })
+  }
+  if (site.provisionalSiteId) {
+    return prisma.sitePage.count({ where: { provisionalSiteId: site.provisionalSiteId } })
+  }
+  return 0
+}
+
+async function latestDesktopCapture(auditId: string | null): Promise<string | null> {
+  if (!auditId) return null
+  const shot = await prisma.screenshot.findFirst({
+    where: { auditId, device: 'DESKTOP' },
+    orderBy: { id: 'desc' },
+    select: { url: true },
+  })
+  if (!shot?.url) return null
+  return normalizeInternalScreenshotUrl(shot.url)
+}
+
 export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null> {
   const site = await loadSiteRecord(siteId)
   if (!site) return null
@@ -147,9 +153,10 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     }).catch(() => [])
   }
 
-  const [flags, outcomes] = await Promise.all([
+  const [flags, outcomes, pageCount] = await Promise.all([
     loadSiteFlags(site),
     listSiteOutcomes(site),
+    countSitePages(site),
   ])
 
   const inFlight = isAuditInFlight(audit?.status)
@@ -183,46 +190,21 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     coverage,
   })
   const siteCardState = health.state
+  const captureUrl =
+    (await latestDesktopCapture(audit?.id ?? null)) ??
+    (await latestDesktopCapture(prior?.id ?? null))
 
-  const cards: BoardCardView[] = STARTER_BOARD_CARDS.map((area) => {
-    if (area === 'site') {
-      return {
-        id: 'site',
-        name: site.canonicalHost,
-        question: CARD_CATALOG.site.question,
-        state: siteCardState,
-        answer: inFlight && !lastKnownFacts
-          ? 'Learning your website'
-          : health.answer,
-        detail: inFlight
-          ? lastKnownFacts
-            ? 'Checking again — last known kept'
-            : 'Getting to know what matters'
-          : `${outcomes.length} outcome${outcomes.length === 1 ? '' : 's'} · Latest analysis`,
-        score: null,
-        openFlagCount: flags.length,
-        checkedAt: (prior ?? audit)?.completedAt?.toISOString() ?? null,
-        flagIds: flags.map((f) => f.id),
-        activity: inFlight ? 'checking' : null,
-      }
-    }
-
-    const fact = coverageByArea.get(area)
-    const areaFlags = flags.filter((f) => f.area === area)
-    const showCheckingActivity = inFlight
-    return {
-      id: area,
-      name: CARD_CATALOG[area].name,
-      question: CARD_CATALOG[area].question,
-      state: fact?.state ?? 'unknown',
-      answer: fact?.label ?? 'Not checked yet',
-      detail: fact?.detail ?? null,
-      score: null,
-      openFlagCount: areaFlags.length,
-      checkedAt: fact?.checkedAt ?? null,
-      flagIds: areaFlags.map((f) => f.id),
-      activity: showCheckingActivity ? 'checking' : null,
-    }
+  const cards: BoardCardView[] = buildBoardCards({
+    siteId,
+    inFlight,
+    hasLastKnown: Boolean(lastKnownFacts),
+    health,
+    coverageByArea,
+    flags,
+    outcomes,
+    pageCount,
+    captureUrl,
+    checkedAt: (prior ?? audit)?.completedAt?.toISOString() ?? null,
   })
 
   const watchState = watchBoardState({

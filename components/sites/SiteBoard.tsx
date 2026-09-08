@@ -4,16 +4,10 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  Activity,
   Flag,
-  Gauge,
   Globe2,
   LayoutGrid,
-  Radio,
   RefreshCw,
-  Search,
-  ShieldCheck,
-  Target,
   Check,
   CircleAlert,
   ChevronRight,
@@ -24,16 +18,8 @@ import { Logo } from '@/components/brand/Logo'
 import { cn } from '@/lib/utils'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
-
-const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  site: Globe2,
-  security: ShieldCheck,
-  search: Search,
-  performance: Gauge,
-  conversion: Target,
-  tracking: Radio,
-  uptime: Activity,
-}
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { BoardGrid, ProductBoardCard } from '@/components/sites/BoardCard'
 
 function StatusDot({ state }: { state: CardHealthState }) {
   return (
@@ -42,7 +28,7 @@ function StatusDot({ state }: { state: CardHealthState }) {
         'inline-block h-2 w-2 rounded-full',
         state === 'healthy' && 'bg-success',
         state === 'attention' && 'bg-warning',
-        state === 'problem' && 'bg-destructive',
+        state === 'problem' && 'bg-brand',
         state === 'checking' && 'bg-brand animate-pulse',
         state === 'unknown' && 'bg-muted-foreground/40'
       )}
@@ -353,59 +339,15 @@ export function SiteBoard({
           </header>
 
           {nav === 'Dashboard' ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {view.cards.map((card) => {
-                const Icon = ICONS[card.id] ?? Globe2
-                return (
-                  <button
-                    key={card.id}
-                    type="button"
-                    onClick={() => setSelectedCard(card.id)}
-                    className={cn(
-                      'flex min-h-[180px] flex-col rounded-2xl border border-border/80 bg-background p-5 text-left shadow-sm transition hover:border-foreground/20',
-                      card.id === 'site' && 'sm:col-span-2 xl:col-span-2',
-                      card.state === 'problem' && 'border-destructive/40',
-                      (card.state === 'checking' || card.activity === 'checking') &&
-                        'border-brand/35 ring-1 ring-brand/20'
-                    )}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-2 text-sm font-medium">
-                        <Icon className="h-4 w-4" />
-                        {card.name}
-                      </span>
-                      {card.state === 'checking' || card.activity === 'checking' ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-brand">
-                          <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                          Checking
-                        </span>
-                      ) : (
-                        <StatusDot state={card.state} />
-                      )}
-                    </div>
-                    <p className="mt-4 font-display text-xl font-semibold tracking-tight">
-                      {card.answer}
-                    </p>
-                    {card.detail ? (
-                      <p className="mt-2 text-sm text-muted-foreground">{card.detail}</p>
-                    ) : null}
-                    {card.state === 'checking' && !card.checkedAt ? (
-                      <p className="mt-auto pt-4 text-xs text-muted-foreground">
-                        Waiting for the first result
-                      </p>
-                    ) : (
-                      <p className="mt-auto pt-4 text-xs text-muted-foreground">
-                        {card.openFlagCount
-                          ? `${card.openFlagCount} Flag${card.openFlagCount === 1 ? '' : 's'}`
-                          : card.checkedAt
-                            ? 'Checked'
-                            : 'Not checked yet'}
-                      </p>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
+            <BoardGrid>
+              {view.cards.map((card) => (
+                <ProductBoardCard
+                  key={card.id}
+                  card={card}
+                  onOpen={() => setSelectedCard(card.id)}
+                />
+              ))}
+            </BoardGrid>
           ) : null}
 
           {nav === 'Flags' ? (
@@ -535,6 +477,16 @@ export function SiteBoard({
                 {selected.detail ? (
                   <p className="mt-1 text-sm text-muted-foreground">{selected.detail}</p>
                 ) : null}
+                {selected.facts.length > 0 ? (
+                  <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                    {selected.facts.map((fact) => (
+                      <li key={fact}>{fact}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {selected.coverage ? (
+                  <p className="mt-3 text-xs text-muted-foreground">{selected.coverage}</p>
+                ) : null}
                 <div className="mt-5 space-y-3">
                   {selectedFlags.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No open Flags in this area.</p>
@@ -550,10 +502,10 @@ export function SiteBoard({
                             onClick={() => void copyFix(flag.fix, flag.id)}
                           >
                             <Copy className="mr-1 h-3.5 w-3.5" />
-                            Fix this
+                            {SITE_BOARD_COPY.fixThis}
                           </Button>
                           <Button size="sm" variant="brand" disabled={busy} onClick={() => void verifyFlag(flag.id)}>
-                            Verify fix
+                            {SITE_BOARD_COPY.verifyFix}
                           </Button>
                           <Button size="sm" variant="ghost" asChild>
                             <Link href={`/sites/${siteId}/flags/${flag.id}`}>Open Flag</Link>
