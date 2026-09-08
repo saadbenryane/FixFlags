@@ -16,7 +16,7 @@ function Signal({ tone, label }: { tone: string; label: string }) {
   return <span className={`${s.signal} ${s[tone]}`}><i aria-hidden="true" />{label}</span>
 }
 function Chart({ bars, warn = false }: { bars?: boolean; warn?: boolean }) {
-  return bars ? <div className={s.bars} aria-hidden="true">{Array.from({ length: 36 }, (_, i) => <i key={i} />)}</div> :
+  return bars ? <div className={s.bars} aria-hidden="true">{Array.from({ length: 7 }, (_, i) => <i key={i} />)}</div> :
     <svg className={`${s.sparkline} ${warn ? s.warn : s.good}`} viewBox="0 0 240 40" fill="none" aria-hidden="true"><path d={warn ? 'M0 30L12 28L24 31L36 24L48 28L60 21L72 25L84 25L96 29L108 21L120 24L132 15L144 18L156 10L168 15L180 12L192 20L204 9L216 14L228 5L240 8' : 'M0 30L12 30L24 25L36 28L48 24L60 27L72 17L84 19L96 17L108 22L120 16L132 20L144 10L156 14L168 10L180 12L192 6L204 10L216 5L228 8L240 4'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" /></svg>
 }
 function Card({ card, index = 0, onClick }: { card: PreviewCard; index?: number; onClick?: () => void }) {
