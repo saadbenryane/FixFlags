@@ -14,6 +14,7 @@ export const CARE_HOME = {
   boardHost: EXAMPLE_HOST,
   boardAria: `${EXAMPLE_HOST} board`,
   previewNote: 'Controlled example, not a live assessment.',
+  boardChecking: 'Checking',
   boardMeta: 'Checked just now',
   site: {
     label: CARD_CATALOG.site.name,

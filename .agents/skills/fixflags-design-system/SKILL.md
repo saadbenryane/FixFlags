@@ -32,6 +32,6 @@ Keep copy centralized in lib/marketing/copy.ts. Use product evidence to replace 
 
 ## Homepage care narrative
 
-The September 8 homepage is implemented by `components/marketing/homepage/CareHomepage.tsx` with scoped styles and centralized `CARE_HOME` copy exported through `lib/marketing/copy.ts`. Keep its board, connection metrics and monitoring examples explicitly illustrative until backed by released Site behavior. Use the existing `AuditInput` for real URL submission; preview Fix/Verify controls must not imply a live recovery. Preserve dialog keyboard focus and responsive board behavior when refining it.
+The September 8 homepage is implemented by `components/marketing/homepage/CareHomepage.tsx` with scoped styles and centralized `CARE_HOME` copy exported through `lib/marketing/copy.ts`. The example board uses the same `BoardCard` contract and `CARD_CATALOG` names as the live Site: Site, Conversion, Security, Search, Performance, Tracking. Keep the board, workflow evidence and monitoring examples explicitly illustrative until backed by released Site behavior. Do not sell Add-card or Connect MCP. Use the existing `AuditInput` for real URL submission. Preserve dialog keyboard focus and responsive board behavior when refining it.
 
 Owner palette correction (September 8): use bright Flag Orange from the canonical brand token for brand buttons in both themes. Pair it with white labels as explicitly requested by the owner, and use the lighter orange hover token. Preserve the bright fill and separate status colors.

@@ -67,16 +67,29 @@ export function CareHomepage() {
   return <div className={s.home}>
     <section className={s.hero}>
       <div className={s.heroContent}>
-        <Logo variant="mark" size="md" />
-        <h1>{C.headlineLines[0]}<br /><span>{C.headlineLines[1]}</span></h1>
+        <span className={s.heroMark}><Logo variant="mark" size="md" /></span>
+        <h1>
+          <span className={s.headlineLead}>{C.headlineLines[0]}</span>
+          <br />
+          <span className={s.headlineAccent}>{C.headlineLines[1]}</span>
+        </h1>
         <p className={s.heroBody}>{C.hero.body}</p>
         <UrlEntry />
       </div>
       <div className={s.heroBoard} id="product">
         <div className={s.board} role="region" aria-label={C.boardAria}>
-          <span className={s.boardScan} aria-hidden="true" />
-          <div className={s.boardHeader}><span><Globe2 size={16} aria-hidden="true" />{C.boardHost}</span><span className={s.boardMeta}>{C.boardMeta}</span></div>
-          <BoardGrid>
+          <span className={s.boardScan} aria-hidden="true" data-hero-scan="">
+            <span className={s.scanVeil}><span className={s.scanEdge} /></span>
+          </span>
+          <div className={s.boardHeader}>
+            <span><Globe2 size={16} aria-hidden="true" />{C.boardHost}</span>
+            <span className={s.boardMeta}>
+              <span className={s.metaChecking} aria-hidden="true">{C.boardChecking}</span>
+              <span className={s.metaChecked}>{C.boardMeta}</span>
+            </span>
+          </div>
+          <div className={s.boardStage}>
+            <BoardGrid>
             <BoardCard
               name={C.site.label}
               status={C.site.status}
@@ -115,6 +128,7 @@ export function CareHomepage() {
               />
             ))}
           </BoardGrid>
+          </div>
           <p className={s.boardFooter}>{C.previewNote}</p>
         </div>
       </div>

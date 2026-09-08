@@ -37,7 +37,8 @@
     ".next-verify/types/**/*.ts",
     ".next-wave2/types/**/*.ts",
     ".next/types/**/*.ts",
-    "next-env.d.ts"
+    "next-env.d.ts",
+    ".next-site-loop/types/**/*.ts"
   ],
   "exclude": [
     ".next",

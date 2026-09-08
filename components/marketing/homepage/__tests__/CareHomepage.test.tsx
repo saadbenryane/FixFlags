@@ -25,6 +25,8 @@ describe('homepage example', () => {
     expect(within(board).getAllByText(C.boardHost)).toHaveLength(1)
     expect(within(board).getByText(C.boardMeta)).toBeInTheDocument()
     expect(within(board).queryAllByText(/just now/i)).toHaveLength(1)
+    expect(within(board).getByText(C.boardChecking)).toHaveAttribute('aria-hidden', 'true')
+    expect(board.querySelector('[data-hero-scan]')).not.toBeNull()
     expect(within(board).queryByText('How this website is doing')).not.toBeInTheDocument()
     expect(within(board).queryByText('Example Site')).not.toBeInTheDocument()
     expect(within(board).queryByText('Experience')).not.toBeInTheDocument()
