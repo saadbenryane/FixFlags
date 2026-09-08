@@ -9,7 +9,7 @@ import {
   loadProductWorkspace,
   parseProductHistoryCursor,
 } from '@/lib/products/workspace'
-import { recordRecommendedImprovements } from '@/lib/improvements/service'
+import { executeProductCommand } from '@/lib/products/application/commands'
 
 type ProductPageProps = {
   params: Promise<{ id: string }>
@@ -37,7 +37,8 @@ export default async function ProductPage({
     'use server'
     const currentViewer = await getAppViewer()
     if (!currentViewer) return
-    await recordRecommendedImprovements({
+    await executeProductCommand({
+      type: 'RECORD_RECOMMENDATIONS',
       projectId: id,
       userId: currentViewer.user.id,
       improvementIds: attentionIds,

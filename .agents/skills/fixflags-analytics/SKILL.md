@@ -41,6 +41,13 @@ Growth thresholds and deferred work live in `ROADMAP.md` and the launch funnel h
 | `help_search_no_results` | `KnowledgeSearch` when a query returns zero hits (deduped per query+filter) |
 | `help_search_result_clicked` | `KnowledgeSearch` when the user clicks a search result |
 | `marketing_page_view` | `MarketingPageViewTracker` on `/help`, `/faq`, `/docs/*`, pricing, samples, etc. |
+| `shopify_install_started` | `/install` CTA and `/api/shopify/auth` |
+| `shopify_install_completed` | `persistInstalledShop` after OAuth |
+| `shopify_first_verification` | `runIntegrityPathJob` on first walk with evidence |
+| `shopify_monitoring_on` | `runIntegrityPathJob` after that first walk |
+| `shopify_alert_sent` / `shopify_recovery_sent` | `sendIntegrityAlert` (UNKNOWN never emits) |
+| `shopify_uninstalled` | `uninstallShop` |
+| `waitlist_joined` | Pro waitlist landing and Shopify app waitlist |
 
 **GA4 key events:** Run `npm run growth:configure-ga4-key-events` (requires `GA4_PROPERTY_ID` + service account with `analytics.edit`). Canonical names: `lib/growth/ga-key-events.ts`.
 

@@ -90,6 +90,14 @@ const baseAudit = {
       source: 'DETERMINISTIC',
     },
   ],
+  pages: [
+    {
+      url: 'https://example.com',
+      status: 'CHECKING',
+      role: 'primary',
+      position: 0,
+    },
+  ],
 }
 
 describe('GET /api/reports/[id]/status', () => {
@@ -138,6 +146,10 @@ describe('GET /api/reports/[id]/status', () => {
         role: 'agent',
       }),
       expect.objectContaining({ id: 'scan:a1:capturing' }),
+      expect.objectContaining({
+        id: 'scan:a1:page:0',
+        content: 'I’m reviewing this page.',
+      }),
       expect.objectContaining({ id: 'scan:a1:checking' }),
       expect.objectContaining({
         id: 'scan:a1:flag:f1',
@@ -153,9 +165,7 @@ describe('GET /api/reports/[id]/status', () => {
 
   it.each([
     'anonymous_teaser',
-    'marketing_sample',
     'public_viewer',
-    'studio_public',
     'share_grant',
   ])(
     'keeps Agent updates public-safe while omitting Timeline and private data for %s access',

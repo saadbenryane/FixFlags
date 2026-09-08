@@ -1,46 +1,15 @@
 # Execution
 
-**FixFlags’ own execution plan** (what we build next). Priority artifact: [finish-plan.md](./finish-plan.md). Roadmap: [ROADMAP.md](../ROADMAP.md).
+Start new product work with [ROADMAP.md](../ROADMAP.md), [the PRD](../docs/product-prd.md), and [the migration design](../docs/site-v2-migration.md). The complete [vision](vision.md) is accepted. This file routes execution rather than maintaining a second backlog.
 
-## Strategic wedge
+## Next task
 
-Launch as: **Before you share the product, run it through FixFlags.**
+Begin Phase 1: one private customer Site, tenant-scoped pages/actions and inferred Outcomes, normalized evidence/coverage, and durable Flag identity using existing foundations. Carry this into the URL-to-Site vertical slice in Phase 2. Use an owned contact-flow fixture with healthy, broken and unverified behavior.
 
-Job to be done: tell a builder what users will hit first and what to fix.
+The current code still contains the report product and separate Shopify work. Reuse evidence and commercial foundations. Neither old surface dictates the new interface.
 
-Acquisition language remains **Product Review**; the category is continuous product improvement powered by Product Intelligence.
+## Work discipline
 
-## Core loop (current wedge)
+Claim non-overlapping scope on [.agents/BOARD.md](../.agents/BOARD.md), inspect the dirty workspace, and preserve other work. Record phase completion only after its actual acceptance scenarios pass. Subsequent integration, pricing and rollout decisions have deadlines at their phase in the roadmap; they do not block starting the Site foundation.
 
-Paste URL → Product Review → Fix → Update review → Watch.
-
-This is the simple customer wedge for **Observe → Understand → Judge → Improve → Verify → Learn**.
-
-## Active priorities (ordered)
-
-1. Make the URL-first Review produce honest zero-to-three worthwhile Improvements.
-2. Make every builder handoff a durable Improvement Attempt.
-3. Make fresh Update Review verification and receipts first-class.
-4. Make verified outcomes and explicit decisions improve Product Memory.
-5. Add only privacy-bounded Product Signals that improve judgment or verification.
-6. Keep Product, Agent, Watch, MCP, CLI, and integrations on the same Improvement contract.
-7. Preserve public evidence, private access boundaries, release reliability, and current pricing gates.
-
-## Later (after wedge stable)
-
-- tighter repository loop,
-- benchmarked CLI and MCP loops,
-- one external source adapter at a time against a proven judgment need,
-- packaging around active Products, Watch, integration depth, and improvement throughput after usage evidence.
-
-## What not to build now
-
-- replacement coding agent,
-- generalized AI coding platform,
-- destructive production automation,
-- broad enterprise scorecard platform,
-- security certification claims.
-- generic analytics dashboards, event explorers, funnels, cohorts, heatmaps, replay, experiments, or feature flags,
-- broad ingestion infrastructure,
-- Product Graph database,
-- pricing migration before verified-improvement economics exist.
+Current release verification and historical blockers stay with their original sessions. They are not evidence that this new version has shipped.

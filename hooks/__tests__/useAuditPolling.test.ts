@@ -44,4 +44,29 @@ describe('progressivePayloadFingerprint', () => {
       progressivePayloadFingerprint(withFlag)
     )
   })
+
+  it('changes when the current page sentence or page ledger changes', () => {
+    const withDetail: AuditStatusPayload = {
+      ...base,
+      progressDetail: 'Reviewing /pricing',
+    }
+    const withPage: AuditStatusPayload = {
+      ...withDetail,
+      pages: [
+        {
+          url: 'https://example.com/pricing',
+          status: 'CAPTURING',
+          role: 'linked',
+          position: 1,
+        },
+      ],
+    }
+
+    expect(progressivePayloadFingerprint(base)).not.toBe(
+      progressivePayloadFingerprint(withDetail)
+    )
+    expect(progressivePayloadFingerprint(withDetail)).not.toBe(
+      progressivePayloadFingerprint(withPage)
+    )
+  })
 })

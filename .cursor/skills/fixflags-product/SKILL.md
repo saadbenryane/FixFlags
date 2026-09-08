@@ -1,6 +1,6 @@
 ---
 name: fixflags-product
-description: Route FixFlags product changes to canonical behavior, access, billing, report, task, and deployment sources while preserving launch-contract invariants.
+description: Route FixFlags product work to the Site vision, target behavior, migration, current access and billing contracts, shared application services and verification.
 ---
 
 Canonical source: `.agents/skills/fixflags-product/SKILL.md`

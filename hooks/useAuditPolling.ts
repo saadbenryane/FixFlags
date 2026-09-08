@@ -1,6 +1,8 @@
 'use client'
+import { useCallback, useEffect, useState } from 'react'
 import useSWR from 'swr'
 import type { AuditScreenshot, ScreenshotCaptureStatus } from '@/lib/audit/screenshot-types'
+import { PIPELINE_PROGRESS } from '@/lib/audit/progress'
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED'])
 
@@ -49,6 +51,12 @@ export interface AuditStatusPayload {
   productContract?: import('@/lib/audit/product-contract').ProductContract | null
   technologyProfile?: import('@/lib/audit/technology-profile').TechnologyProfile
   agentMessages?: import('@/lib/audit/agent-message').AgentMessage[]
+  pages?: Array<{
+    url: string
+    status: string
+    role?: string | null
+    position: number
+  }>
 }
 
 interface UseAuditPollingOptions {
@@ -70,6 +78,7 @@ export function progressivePayloadFingerprint(value: AuditStatusPayload): string
   return JSON.stringify({
     status: value.status,
     progress: value.progress,
+    progressDetail: value.progressDetail ?? null,
     score: value.score,
     pageType: value.pageType,
     verdict: value.verdict,
@@ -90,6 +99,7 @@ export function progressivePayloadFingerprint(value: AuditStatusPayload): string
       flag.checkId,
       flag.source,
     ]),
+    pages: value.pages?.map((page) => [page.position, page.url, page.status]),
     actionTimeline: value.actionTimeline,
     productContract: value.productContract,
     technologyProfile: value.technologyProfile,
@@ -107,11 +117,14 @@ export function progressivePayloadFingerprint(value: AuditStatusPayload): string
  */
 export function useAuditPolling(auditId: string, options: UseAuditPollingOptions = {}) {
   const { initialAudit, pollStatus = true } = options
-  const initialTerminal =
-    initialAudit?.status && TERMINAL_STATUSES.has(initialAudit.status as string)
+  const [pendingRestart, setPendingRestart] = useState(false)
+  const initialStatus = (initialAudit?.status ?? 'QUEUED') as string
+  const initialTerminal = TERMINAL_STATUSES.has(initialStatus)
+  const [keepPolling, setKeepPolling] = useState(!initialTerminal)
+  const statusKey = `/api/reports/${auditId}/status`
 
-  const { data: statusData, error: statusError, isLoading: statusLoading } = useSWR(
-    pollStatus && !initialTerminal ? `/api/reports/${auditId}/status` : null,
+  const { data: statusData, error: statusError, isLoading: statusLoading, isValidating } = useSWR(
+    pollStatus && (pendingRestart || keepPolling) ? statusKey : null,
     jsonFetcher,
     {
       refreshInterval: (latest) => pollIntervalMs(latest as AuditStatusPayload | undefined),
@@ -124,17 +137,46 @@ export function useAuditPolling(auditId: string, options: UseAuditPollingOptions
     }
   )
 
-  const currentStatus = (statusData?.status ?? initialAudit?.status ?? 'QUEUED') as string
+  useEffect(() => {
+    if (pendingRestart) setKeepPolling(true)
+  }, [pendingRestart])
+
+  useEffect(() => {
+    if (!statusData) return
+    if (pendingRestart && isValidating) return
+    if (pendingRestart) setPendingRestart(false)
+    setKeepPolling(!TERMINAL_STATUSES.has(statusData.status))
+  }, [pendingRestart, isValidating, statusData])
+
+  const currentStatus = (
+    pendingRestart && (!statusData || TERMINAL_STATUSES.has(statusData.status))
+      ? 'QUEUED'
+      : (statusData?.status ?? initialStatus)
+  ) as string
   const isFailed = currentStatus === 'FAILED'
   const isComplete = currentStatus === 'COMPLETED'
+  const terminalNow = TERMINAL_STATUSES.has(currentStatus)
 
-  const audit = initialTerminal ? initialAudit : null
+  const audit = initialTerminal && !pendingRestart ? initialAudit : null
 
   const error = statusError
   const errStatus = (error as Error & { status?: number })?.status
-  const isLoading = !initialTerminal && pollStatus && statusLoading && !statusData
+  const isLoading = pollStatus && !terminalNow && statusLoading && !statusData
 
-  const statusPayload = statusData as AuditStatusPayload | undefined
+  const statusPayload = pendingRestart && (!statusData || TERMINAL_STATUSES.has(statusData.status))
+    ? {
+        status: 'QUEUED',
+        progress: PIPELINE_PROGRESS.QUEUED,
+        failureCode: null,
+        url: (statusData?.url ?? initialAudit?.url ?? '') as string,
+        agentMessages: [],
+      }
+    : statusData as AuditStatusPayload | undefined
+
+  const resumePolling = useCallback(() => {
+    setPendingRestart(true)
+    setKeepPolling(true)
+  }, [])
 
   return {
     audit,
@@ -146,9 +188,14 @@ export function useAuditPolling(auditId: string, options: UseAuditPollingOptions
     isForbidden: errStatus === 403,
     fetchError: error ? (error as Error).message : null,
     status: currentStatus,
-    progress: (statusData?.progress ?? initialAudit?.progress ?? 0) as number,
+    progress: (
+      pendingRestart && (!statusData || TERMINAL_STATUSES.has(statusData.status))
+        ? PIPELINE_PROGRESS.QUEUED
+        : (statusData?.progress ?? initialAudit?.progress ?? 0)
+    ) as number,
     url: (statusData?.url ?? initialAudit?.url) as string | undefined,
     startedAt: (statusData?.startedAt ?? initialAudit?.startedAt) as string | null | undefined,
     statusPayload,
+    resumePolling,
   }
 }

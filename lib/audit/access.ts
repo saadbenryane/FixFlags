@@ -1,6 +1,5 @@
 import { Audit } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { canSharePublicly } from '@/lib/auth/entitlements'
 import { verifyShareGrant } from '@/lib/security/share-grant'
 import type { AuditAccessContext } from '@/lib/audit/access-context'
 
@@ -47,7 +46,7 @@ export function canRetryAnonymousAudit(
 
 /** One live access decision for report pages, APIs, screenshots, and prompts.
  * Unclaimed + cookie → anonymous_teaser. Unclaimed without cookie, or owned public
- * and not the owner → public_viewer. marketing_sample is never assigned here.
+ * and not the owner → public_viewer. Curated samples never enter this path.
  */
 export async function resolveAuditAccess(
   audit: Pick<Audit, 'id' | 'userId' | 'isPublic'>,
@@ -62,11 +61,7 @@ export async function resolveAuditAccess(
   }
 
   if (audit.isPublic) {
-    const owner = await prisma.user.findUnique({
-      where: { id: audit.userId },
-      select: { id: true, role: true, plan: true, subscriptionStatus: true },
-    })
-    if (owner && canSharePublicly(owner)) return 'public_viewer'
+    return 'public_viewer'
   }
 
   const claims = verifyShareGrant(shareGrantValue)
@@ -78,11 +73,6 @@ export async function resolveAuditAccess(
       version: true,
       revoked: true,
       expiresAt: true,
-      audit: {
-        select: {
-          user: { select: { id: true, role: true, plan: true, subscriptionStatus: true } },
-        },
-      },
     },
   })
   if (
@@ -90,9 +80,7 @@ export async function resolveAuditAccess(
     link.auditId !== audit.id ||
     link.version !== claims.linkVersion ||
     link.revoked ||
-    Boolean(link.expiresAt && link.expiresAt <= new Date()) ||
-    !link.audit.user ||
-    !canSharePublicly(link.audit.user)
+    Boolean(link.expiresAt && link.expiresAt <= new Date())
   ) return 'denied'
   return 'share_grant'
 }

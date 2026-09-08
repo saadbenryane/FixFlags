@@ -1,39 +1,28 @@
-## Report structure
+## Path health
 
-A FixFlags Finish Plan starts with the release status and highest-impact work, then groups Flags under exactly three rubrics: Message, Experience, and Reach.
+A walk is Can buy, Can't buy, or Unclear. Health is a fact about the purchase path, not a design score. We never invent conversion percentages.
 
-## Flags and evidence
+## Watch verification
 
-A Flag is an observed product problem, not a generic suggestion. Each Flag keeps the evidence that caused it, why it matters, its impact, and a focused fix prompt.
+Each walk keeps video of the FixFlags session when encoding works. If video is missing, we keep a GIF of the key steps when we can, plus screenshots of product, cart, and checkout or the failed step.
 
-- **Message** covers clarity, hierarchy, positioning, and content quality.
-- **Experience** covers usability, flows, interaction, and interface quality.
-- **Reach** covers discoverability, performance, metadata, and technical health.
+This is our walk, not a recording of your shoppers. We stop before payment.
 
-## Scores and priority
+## Recheck
 
-The score summarizes current release readiness. Use priority and evidence to choose the next fix. Do not treat the score as a substitute for reading the underlying Flags.
+Recheck is a fresh mobile walk of the same path. Use it after you fix a theme or app. Free stores get five manual rechecks per day.
 
-## Fix prompts
+## Improve
 
-Fix prompts are written for implementation. Copy one into your editor, keep the scope focused on that Flag, and review the change before deployment.
+Improve is a short secondary list. It never goes in email or Slack. Protect is the alarm.
 
-The anonymous report shows every confirmed Flag and its evidence but no fix prompts.
-Create an account or sign in to claim the report and access eligible fix prompts.
+## Alerts
 
-## Update review and compare
-
-After a deployment, an update review captures the live product again and compares it with its parent report. A resolved Flag should disappear or be marked resolved because the underlying evidence changed.
-
-## Sharing and Watch
-
-Use Copy link in the Export menu to share the public report evidence. Agent chat, fix prompts, Product Memory, account history, and owner actions are not included for other viewers. Scheduled Watch reviews are included on every plan and consume the monthly product review allowance when they complete. If no allowance remains, Watch pauses until renewal or upgrade.
+Email (and optional Slack) fire when a path is confirmed Can't buy on two walks, and again when that path can take orders. Unclear stays in the app. The message includes a proof URL.
 
 ## Get help
 
-For scores, evidence, and report questions, visit the [Help Center](/help).
-
-- [How to read your report](/help/getting-started/reading-your-report)
-- [Scores and severity](/help/checks-and-reports/scores-and-severity)
-- [Finish Plan vs full Fix list](/help/checks-and-reports/finish-plan-vs-fix-list)
-- [Evidence and screenshots](/help/checks-and-reports/evidence-and-screenshots)
+- [How to read path health](/help/getting-started/reading-your-report)
+- [Path health](/help/checks-and-reports/scores-and-severity)
+- [Protect vs Improve](/help/checks-and-reports/finish-plan-vs-fix-list)
+- [Watch verification](/help/checks-and-reports/evidence-and-screenshots)

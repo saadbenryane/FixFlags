@@ -9,6 +9,10 @@ const DOWNLOAD_EXTENSION_PATTERN = /\.(?:zip|pdf|dmg|exe|msi|apk|ipa|gz|tgz|rar|
 const ENGAGEMENT_PATH_PATTERN =
   /newsletter|subscribe|signup|sign-up|register|contact|demo|waitlist|join|update-user/i
 
+/** Same-origin cart/checkout POSTs that a buy-path walk must be allowed to fire. */
+const CART_MUTATION_PATH_PATTERN =
+  /\/(?:cart(?:\/add(?:\.js)?)?|checkouts?|wallets|payments)(?:\/|$|\?|\.js)/i
+
 export interface FormProbeResult {
   url: string
   method: string
@@ -20,6 +24,11 @@ export interface JourneyRouteGuardOptions {
   originHost?: string
   /** Collect at most one engagement POST probe result. */
   formProbe?: { result: FormProbeResult | null; probed: boolean }
+  /**
+   * Allow same-origin POST/PUT/PATCH to cart and checkout endpoints so a
+   * buy-path walk can add to cart. Payment hosts stay blocked.
+   */
+  allowCartMutations?: boolean
 }
 
 export function isBlockedPaymentUrl(url: string): boolean {
@@ -35,6 +44,14 @@ export function isLikelyDownloadUrl(url: string): boolean {
     return DOWNLOAD_EXTENSION_PATTERN.test(new URL(url).pathname)
   } catch {
     return DOWNLOAD_EXTENSION_PATTERN.test(url)
+  }
+}
+
+export function isCartMutationPath(url: string): boolean {
+  try {
+    return CART_MUTATION_PATH_PATTERN.test(new URL(url).pathname)
+  } catch {
+    return CART_MUTATION_PATH_PATTERN.test(url)
   }
 }
 
@@ -73,6 +90,11 @@ export async function applyJourneyRouteGuards(
         sameOrigin = Boolean(options?.originHost) && new URL(url).hostname === options?.originHost
       } catch {
         sameOrigin = false
+      }
+
+      if (options?.allowCartMutations && sameOrigin && isCartMutationPath(url)) {
+        await continueFn()
+        return
       }
 
       if (

@@ -1,8 +1,11 @@
 import { SCORE_HELP } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 
-/** Colocated like ScanWorkingMark so ScoreRing stays free of global keyframes. */
+/** Colocated like ScanWorkingMark so ScoreRing stays free of global keyframes.
+ *  from/to must both be explicit. A `to`-only spin on the same node as
+ *  `-rotate-90` interpolates -90deg → 360deg and snaps at the bottom. */
 const SCORE_PENDING_KEYFRAMES = `@keyframes ff-score-spin {
+  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }`
 
@@ -62,8 +65,9 @@ export function ScoreRing({
     >
       {pending ? <style>{SCORE_PENDING_KEYFRAMES}</style> : null}
 
-      {/* Static track + completed score arc */}
-      <svg viewBox="0 0 64 64" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden>
+      {/* Static track + completed score arc. Start-angle is an SVG attribute
+          so CSS animation never shares a transform with it. */}
+      <svg viewBox="0 0 64 64" className="absolute inset-0 h-full w-full" aria-hidden>
         <circle
           cx="32"
           cy="32"
@@ -83,30 +87,34 @@ export function ScoreRing({
             strokeLinecap="round"
             pathLength="100"
             strokeDasharray={`${normalized} 100`}
+            transform="rotate(-90 32 32)"
           />
         ) : null}
       </svg>
 
-      {/* Brand arc spinner while the score is still loading */}
+      {/* Brand arc spinner: CSS rotates a wrapper; SVG rotate(-90) starts at 12 o'clock. */}
       {pending ? (
-        <svg
-          viewBox="0 0 64 64"
-          className="absolute inset-0 h-full w-full -rotate-90 motion-safe:animate-[ff-score-spin_1.15s_linear_infinite]"
+        <div
+          className="absolute inset-0 motion-safe:animate-[ff-score-spin_1.15s_linear_infinite]"
           aria-hidden
+          data-score-spinner
         >
-          <circle
-            cx="32"
-            cy="32"
-            r="28"
-            fill="none"
-            stroke="hsl(var(--brand))"
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            pathLength="100"
-            strokeDasharray="28 100"
-            opacity="0.95"
-          />
-        </svg>
+          <svg viewBox="0 0 64 64" className="h-full w-full">
+            <circle
+              cx="32"
+              cy="32"
+              r="28"
+              fill="none"
+              stroke="hsl(var(--brand))"
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+              pathLength="100"
+              strokeDasharray="28 72"
+              opacity="0.95"
+              transform="rotate(-90 32 32)"
+            />
+          </svg>
+        </div>
       ) : null}
 
       <span

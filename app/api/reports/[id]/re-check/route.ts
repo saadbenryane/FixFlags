@@ -5,8 +5,8 @@ import { handleRouteError, apiError } from '@/lib/api/errors'
 import { recheckAndCompare } from '@/lib/audit/task-contracts'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { RateLimitError, recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
-import { prisma } from '@/lib/db'
-import { claimsAnonymousReport, readClaimedAnonymousIds } from '@/lib/audit/usage'
+import { readClaimedAnonymousIds } from '@/lib/audit/usage'
+import { resolveRecheckActor } from '@/lib/audit/application/recheck-actor'
 
 export async function POST(
   req: NextRequest,
@@ -17,18 +17,11 @@ export async function POST(
 
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
     const claimedIds = await readClaimedAnonymousIds()
-    const parent = await prisma.audit.findUnique({
-      where: { id: parentId },
-      select: { userId: true, parentId: true },
+    const { user, claimedAnonymous } = await resolveRecheckActor({
+      parentReportId: parentId,
+      sessionUserId: session?.user?.id ?? null,
+      claimedAnonymousIds: claimedIds,
     })
-    const claimedAnonymous =
-      Boolean(parent) &&
-      parent!.userId === null &&
-      claimsAnonymousReport(claimedIds, parentId, parent!.parentId)
-
-    const user = session?.user?.id
-      ? await prisma.user.findUnique({ where: { id: session.user.id } })
-      : null
     if (session?.user?.id && !user) {
       return apiError('User not found', 404)
     }

@@ -7,9 +7,9 @@ describe('marketing nav labels', () => {
     assert.deepEqual(
       MARKETING_LINKS.map((link) => [link.label, link.href]),
       [
-        ['How it works', '/how-it-works'],
-        ['Examples', '/samples'],
+        ['Product', '/#product'],
         ['Pricing', '/pricing'],
+        ['For Shopify', '/install'],
         ['Docs', '/docs'],
       ]
     )
@@ -21,10 +21,19 @@ describe('marketing nav labels', () => {
     assert.equal(changelog.href, '/changelog')
   })
 
-  it('keeps Examples nav pointed at the canonical samples Finish Plan', () => {
-    const sample = MARKETING_LINKS.find((link) => link.label === 'Examples')
-    assert.ok(sample)
-    assert.equal(sample.href, '/samples')
+  it('keeps the Site and Shopify product paths discoverable in the footer', () => {
+    const hrefs = [
+      ...FOOTER_COLUMNS.product,
+      ...FOOTER_COLUMNS.resources,
+      ...FOOTER_COLUMNS.company,
+    ].map((link) => link.href)
+    assert.ok(hrefs.includes('/how-it-works'))
+    assert.ok(hrefs.includes('/install'))
+    assert.ok(hrefs.includes('/install'))
+  })
+
+  it('leads the product footer with the Site product', () => {
+    assert.equal(FOOTER_COLUMNS.product[0]?.href, '/how-it-works')
   })
 })
 

@@ -1,5 +1,3 @@
-import { canSharePublicly } from '@/lib/auth/entitlements'
-import { prisma } from '@/lib/db'
 import { flagHasFixPrompt, type RankableFlag } from '@/lib/audit/priority-flags'
 import { severityRank } from '@/lib/utils'
 
@@ -7,15 +5,6 @@ type AiAccessAudit = {
   userId: string | null
   aiReviewAt: Date | null
   isPublic?: boolean
-}
-
-/**
- * Live unclaimed public reports are not marketing samples.
- * Curated fixtures use the sample route and `repository_sample`, never this helper.
- */
-export function isPublicMarketingSample(audit: AiAccessAudit): boolean {
-  void audit
-  return false
 }
 
 export function canViewPrescriptionContent(
@@ -40,25 +29,11 @@ export function canViewDeterministicFixes(
   return audit.userId === viewer.id
 }
 
-export function canViewAiViaStudioPublicShare(
-  audit: AiAccessAudit,
-  ownerCanSharePublicly: boolean
-): boolean {
-  if (!audit.aiReviewAt || !audit.isPublic || !audit.userId) return false
-  return ownerCanSharePublicly
-}
-
 export async function canViewPrescriptionContentForAudit(
   audit: AiAccessAudit,
   viewer: { id: string } | null | undefined
 ): Promise<boolean> {
-  if (canViewPrescriptionContent(audit, viewer)) return true
-  if (!audit.aiReviewAt || !audit.isPublic || !audit.userId) return false
-  const owner = await prisma.user.findUnique({
-    where: { id: audit.userId },
-    select: { id: true, role: true, plan: true, subscriptionStatus: true },
-  })
-  return canViewAiViaStudioPublicShare(audit, owner ? canSharePublicly(owner) : false)
+  return canViewPrescriptionContent(audit, viewer)
 }
 
 export async function canViewDeterministicFixesForAudit(

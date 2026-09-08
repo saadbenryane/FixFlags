@@ -3,7 +3,7 @@ import { AGENT_COPY_LEAD } from '@/lib/audit/priority-flags'
 import { buildSampleReportDisplay } from '@/lib/marketing/sample-report-display'
 import { getStaticSampleAudit } from '@/lib/marketing/static-sample'
 import { buildSampleExplorerModel } from '@/lib/report/explorer-model'
-import { buildCuratedSampleWorkspaceModel } from '@/lib/report/workspace-adapters'
+import { buildCuratedSampleReviewWorkspaceProjection } from '@/lib/report/workspace-adapters'
 import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
 
 function contentSignature(model: ReturnType<typeof buildReportWorkspaceModel>) {
@@ -29,7 +29,8 @@ describe('Report workspace adapters', () => {
   it('keeps Report content identical while access capabilities vary by surface', () => {
     const report = buildSampleReportDisplay(getStaticSampleAudit())
     const explorer = buildSampleExplorerModel(report, { promptAccess: 'one' })
-    const sample = buildCuratedSampleWorkspaceModel(report)
+    const sampleProjection = buildCuratedSampleReviewWorkspaceProjection(report)
+    const sample = sampleProjection.workspace
     const variants = [
       buildReportWorkspaceModel({
         kind: 'completed',

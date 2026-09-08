@@ -1,23 +1,22 @@
 import type { HelpArticle, HelpCategory } from './types'
-import { PRICING_COPY } from '@/lib/marketing/copy/terminology'
 
 const ALL_HELP_CATEGORIES: readonly HelpCategory[] = [
   {
     id: 'getting-started',
     title: 'Getting started',
-    description: 'Run your first product review and read the report.',
+    description: 'Install on Shopify and watch the purchase path.',
     icon: 'rocket',
   },
   {
     id: 'checks-and-reports',
-    title: 'Checks and reports',
-    description: 'Scores, severity, failures, and what we can reach.',
+    title: 'Paths and proof',
+    description: 'Can buy, Can\'t buy, Unclear, video, and storefront access.',
     icon: 'flag',
   },
   {
     id: 'billing-and-plans',
     title: 'Billing and plans',
-    description: 'Free vs Pro, credits, update reviews, and payments.',
+    description: 'Free install, Pro waitlist, and what happens if you uninstall.',
     icon: 'creditCard',
   },
   {
@@ -38,31 +37,26 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'first-check',
     categoryId: 'getting-started',
-    title: 'Run your first product review',
-    excerpt: 'Paste a public URL. Get Flags across Message, Experience, and Reach.',
+    title: 'Install FixFlags on Shopify',
+    excerpt: 'Install the app. We walk the path to checkout and tell you if customers can still buy.',
     popular: true,
-    searchTokens: ['scan', 'audit', 'start', 'url', 'anonymous'],
+    searchTokens: ['scan', 'audit', 'start', 'url', 'anonymous', 'install', 'shopify'],
     body: [
       {
         type: 'p',
-        text: 'Paste any publicly accessible URL on the homepage or dashboard. FixFlags captures screenshots, checks the product, and builds a ranked Fix list with evidence.',
+        text: 'Install FixFlags from the Shopify App Store or /install. We pick up to two buyable products and walk the path to checkout on a phone-sized browser. You get Can buy, Can\'t buy, or Unclear, with video of the walk.',
       },
       {
         type: 'p',
-        text: `Your report opens immediately while the product review runs. If you are signed out, inspect the evidence, then create an account or sign in to save it and unlock the complete report. A free account includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month. New URLs, update reviews, and completed Watch reviews share the allowance.`,
+        text: 'The first walk starts on its own. You do not submit a website address. You do not run Playwright. Watch the verification when it finishes, then leave monitoring on.',
       },
       {
         type: 'ol',
         items: [
-          'Paste your live URL (or a public preview URL).',
-          'Create an account or sign in on the report. Desktop and mobile captures appear independently as the check runs.',
-          'Open the Fix list. Select any Flag to inspect its screenshot, evidence, and available fix prompt.',
+          'Install on Shopify from /install or the App Store.',
+          'Open the embedded app. The first walk is already in progress if a buyable product exists.',
+          'Watch the video. GREEN means a stranger reached checkout. We stop before payment.',
         ],
-      },
-      {
-        type: 'image',
-        src: '/samples/demo-original-desktop.webp',
-        alt: 'FixFlags report with ranked Fix list and evidence panel',
       },
     ],
     related: ['reading-your-report', 'public-urls-only', 'flag-fix-recheck'],
@@ -73,31 +67,26 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'reading-your-report',
     categoryId: 'getting-started',
-    title: 'How to read your report',
-    excerpt: 'Three rubrics, severity, evidence, and fix prompts.',
+    title: 'How to read path health',
+    excerpt: 'Can buy, Can\'t buy, Unclear, video, and the next action.',
     popular: true,
-    searchTokens: ['report', 'rubric', 'message', 'experience', 'reach'],
+    searchTokens: ['report', 'rubric', 'message', 'experience', 'reach', 'green', 'red', 'unclear'],
     body: [
       {
         type: 'p',
-        text: 'Every report groups Flags into three sections. Message covers copy and positioning. Experience covers layout, usability, and performance. Reach covers SEO metadata and link previews.',
+        text: 'Overview is the store right now. A path is Can buy, Can\'t buy, or Unclear. Open a path to watch the walk and see the named step.',
       },
       {
         type: 'p',
-        text: 'The Fix list contains every unresolved Flag, ranked by launch impact. Select a Flag to inspect its evidence, screenshot, and editor-ready prompt. Contract and Product Memory live on the signed-in Product page under Product Intelligence.',
+        text: 'Understand shows the steps from our last walk. Store-wide conversion numbers appear only with real Shopify data. Improve is a short secondary list and never goes in email or Slack.',
       },
       {
         type: 'ul',
         items: [
-          'Start at the top of the Fix list and copy one fix into your editor.',
-          'Filter the complete list by rubric, severity, impact, or page.',
-          'Copy one Flag or use Copy All Prompts for a plan-mode prompt.',
+          'Can buy: a stranger reached checkout. We stopped before payment.',
+          'Can\'t buy: confirmed on a second independent walk. Fix the named step, then Recheck.',
+          'Unclear: bot wall, password, missing buy button, or a flake. It stays in the app.',
         ],
-      },
-      {
-        type: 'image',
-        src: '/samples/demo-original-mobile.webp',
-        alt: 'FixFlags mobile report view with Fix list and evidence',
       },
     ],
     related: ['scores-and-severity', 'flag-fix-recheck', 'first-check'],
@@ -108,22 +97,22 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'flag-fix-recheck',
     categoryId: 'getting-started',
-    title: 'Flag, fix, and update review',
-    excerpt: 'The core loop. Update reviews use product review credits.',
+    title: 'Recheck a path',
+    excerpt: 'After you fix the theme or an app, walk the path again.',
     popular: true,
-    searchTokens: ['recheck', 'update review', 'fix prompt', 'loop'],
+    searchTokens: ['recheck', 'walk again', 'loop'],
     body: [
       {
         type: 'p',
-        text: 'FixFlags is built around one loop: Flag → Fix → update review. Copy a fix prompt into your editor, apply the change, then update review the same report.',
+        text: 'FixFlags is built around one loop: walk, watch, fix the store, recheck. Recheck is a fresh mobile walk of the same purchase path.',
       },
       {
         type: 'p',
-        text: 'Update reviews use product review credits on every plan. They count toward the same monthly product review allowance.',
+        text: 'Free stores get five manual rechecks per day. Scheduled walks continue about every six hours even if you do not press Recheck.',
       },
       {
         type: 'callout',
-        text: 'Before/after comparison is included on every plan so you can prove what cleared and what is still open.',
+        text: 'If Recheck is greyed out, the daily cap was hit. Wait for the next scheduled walk or try again tomorrow.',
       },
     ],
     related: ['update-review-credits', 'reading-your-report', 'what-counts-as-a-check'],
@@ -134,17 +123,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'anonymous-report-access',
     categoryId: 'getting-started',
-    title: 'Anonymous vs signed-in report access',
-    excerpt: 'What you can see before sign-in and what unlocks after you claim the report.',
-    searchTokens: ['anonymous', 'signed out', 'teaser', 'claim', 'gate'],
+    title: 'What you see after install',
+    excerpt: 'The embedded app is the product. No extra FixFlags account is required to watch the first walk.',
+    searchTokens: ['anonymous', 'signed out', 'teaser', 'claim', 'gate', 'install'],
     body: [
       {
         type: 'p',
-        text: 'Your report opens immediately while the product review runs. You can inspect real evidence, scores, and Flags before you create an account.',
+        text: 'After a successful Shopify install you land in the embedded app. The first walk starts on its own. You can watch health, video, and the named step there.',
       },
       {
         type: 'p',
-        text: 'Fix prompts, Agent chat, update reviews, and account history unlock after you sign in and claim the report to your account.',
+        text: 'There is no website form to claim. Pro extras use the waitlist inside the app.',
       },
       {
         type: 'link',
@@ -160,26 +149,21 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'claiming-a-report',
     categoryId: 'getting-started',
-    title: 'Claim your report after sign-in',
-    excerpt: 'Save an anonymous report to your account without losing evidence or progress.',
-    searchTokens: ['claim', 'attach', 'post-login', 'save report'],
+    title: 'Finish Shopify install',
+    excerpt: 'If install does not open the app, retry from /install or email support.',
+    searchTokens: ['claim', 'attach', 'post-login', 'save report', 'install'],
     body: [
       {
         type: 'p',
-        text: 'After sign-in you land on post-login so a running check can finish claiming before navigation. The report attaches to your account automatically when you return.',
+        text: 'Install returns you to the Shopify admin app. If that redirect fails, open /install and try again, or email hello@fixflags.com with the shop domain.',
       },
       {
         type: 'steps',
         items: [
-          'Run a product review while signed out.',
-          'Create an account or sign in from the report.',
-          'Return to the same report URL. Fix prompts and owner tools unlock.',
+          'Enter your-store.myshopify.com on /install.',
+          'Approve the app in Shopify.',
+          'Wait for the first walk in Overview.',
         ],
-      },
-      {
-        type: 'image',
-        src: '/samples/stripe-desktop.webp',
-        alt: 'FixFlags report after sign-in with fix prompts unlocked',
       },
     ],
     related: ['anonymous-report-access', 'sign-in-and-security', 'first-check'],
@@ -190,17 +174,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'sharing-a-report',
     categoryId: 'getting-started',
-    title: 'Share a report link',
-    excerpt: 'Copy the canonical report URL to share evidence with teammates or stakeholders.',
+    title: 'Who can see the walk',
+    excerpt: 'Verification stays in the Shopify app for the installed store.',
     searchTokens: ['share', 'link', 'copy link', 'public'],
     body: [
       {
         type: 'p',
-        text: 'Every report has one canonical URL. Anyone with the link can inspect public-safe evidence, scores, and Flags.',
+        text: 'Video and screenshots belong to the installed store. Staff who can open the app in Shopify admin can watch them.',
       },
       {
         type: 'p',
-        text: 'Fix prompts, Agent chat, and update reviews stay available only to the report owner. Use Export → Copy link from a report you own.',
+        text: 'We do not publish public report links for purchase-path walks. Alert email includes a proof URL for the merchant.',
       },
     ],
     related: ['report-privacy', 'reading-your-report'],
@@ -211,28 +195,28 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'scores-and-severity',
     categoryId: 'checks-and-reports',
-    title: 'Scores and severity',
-    excerpt: 'How the overall score is calculated and what Critical, Important, and Polish mean.',
-    searchTokens: ['score', 'critical', 'important', 'polish', 'grade'],
+    title: 'Path health',
+    excerpt: 'Can buy, Can\'t buy, and Unclear. We do not score the store.',
+    searchTokens: ['score', 'critical', 'important', 'polish', 'grade', 'green', 'red'],
     body: [
       {
         type: 'p',
-        text: 'The score starts at 100 and drops based on the number and severity of unresolved Flags across Message, Experience, and Reach.',
+        text: 'Health is a fact about the purchase path, not a design score. We never invent conversion percentages.',
       },
       {
         type: 'p',
-        text: 'Critical Flags subtract more than Important Flags, which subtract more than Polish Flags. The compact Review header shows the Score and links to complete earlier Reviews. Critical Flags lead the ranked Fix list, where filters open the matching evidence and fix detail. The overall score weights Experience highest, then Message, then Reach. Experience may also include PageSpeed when available.',
+        text: 'Can\'t buy is confirmed twice before we email you. Unclear stays in the app. Improve items are not health and never go in alerts.',
       },
       {
         type: 'h2',
-        text: 'Severity meanings',
+        text: 'The three states',
       },
       {
         type: 'ul',
         items: [
-          'Critical: Prevents a core user outcome (blocking).',
-          'Important: Materially harms conversion, access, or acquisition.',
-          'Polish: Meaningful improvement or best practice.',
+          'Can buy: checkout was reached. We stopped before payment.',
+          'Can\'t buy: the named step failed on two independent walks.',
+          'Unclear: we could not prove the path. We do not guess.',
         ],
       },
     ],
@@ -244,14 +228,14 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'why-check-failed',
     categoryId: 'checks-and-reports',
-    title: 'Why a product review failed',
-    excerpt: 'Unreachable pages, blocked bots, timeouts, and what to try next.',
+    title: 'Why a walk is Unclear or failed',
+    excerpt: 'Bot walls, passwords, timeouts, and what to try next.',
     popular: true,
     searchTokens: ['failed', 'error', 'timeout', 'unreachable', 'blocked', 'retry'],
     body: [
       {
         type: 'p',
-        text: 'A check can fail when the URL is unreachable, blocks automated visits, returns a non-HTML response, or takes longer than our timeout. Retry after confirming the page loads in a normal browser.',
+        text: 'A walk can finish Unclear when a bot check, password gate, missing buy button, or timeout stops us from proving checkout. That stays in the app. We do not email Unclear.',
       },
       {
         type: 'h2',
@@ -260,15 +244,15 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       {
         type: 'ul',
         items: [
-          'The URL requires a login or VPN (we only check public URLs).',
-          'The site is rate-limiting or blocking bots.',
-          'Temporary scanner or network issues on our side. Wait a few minutes and retry.',
-          'The link does not return a normal HTML page.',
+          'The storefront is password gated.',
+          'A bot wall blocked the walk.',
+          'No add to cart or buy control was found.',
+          'The walk timed out before checkout.',
         ],
       },
       {
         type: 'p',
-        text: 'If automated checks finish but AI summary is missing, deterministic Flags and screenshots still appear. You can retry or ask us in chat with the report link.',
+        text: 'If video is missing, step screenshots still appear when we captured them. Recheck after you remove the block, or email hello@fixflags.com with the shop domain.',
       },
     ],
     related: ['public-urls-only', 'contact-us', 'first-check'],
@@ -279,21 +263,21 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'public-urls-only',
     categoryId: 'checks-and-reports',
-    title: 'Public URLs only',
-    excerpt: 'FixFlags reviews public HTTPS URLs on every plan.',
+    title: 'Storefront access',
+    excerpt: 'We walk the public storefront a customer uses. Password gates stay Unclear.',
     searchTokens: ['localhost', 'staging', 'password', 'vpn', 'private', 'preview', 'basic auth'],
     body: [
       {
         type: 'p',
-        text: 'FixFlags checks publicly reachable HTTPS URLs. Localhost and private networks are not supported.',
+        text: 'FixFlags walks the public product page Shopify gives us. A password-gated storefront is Unclear until the password is off that storefront.',
       },
       {
         type: 'p',
-        text: 'Use a publicly reachable HTTPS preview URL from your host when production is not ready.',
+        text: 'We do not log in as a customer, complete payment, or walk a store that has no buyable product with a storefront URL.',
       },
       {
         type: 'p',
-        text: 'Password-only, localhost, and private-network pages are not part of the public URL review experience.',
+        text: 'If no buyable product exists yet, Overview says so. Publish an active product and we will walk it.',
       },
     ],
     related: ['why-check-failed', 'first-check'],
@@ -331,17 +315,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'vs-lighthouse',
     categoryId: 'checks-and-reports',
-    title: 'FixFlags vs Lighthouse',
-    excerpt: 'Lighthouse scores performance and a11y. FixFlags adds message, experience, and reach review with fix prompts.',
-    searchTokens: ['lighthouse', 'pagespeed', 'difference'],
+    title: 'Walk vs uptime',
+    excerpt: 'Store up is not the same as can buy. Uptime misses a dead add to cart.',
+    searchTokens: ['lighthouse', 'pagespeed', 'difference', 'uptime'],
     body: [
       {
         type: 'p',
-        text: 'Lighthouse scores performance, accessibility, and SEO. FixFlags adds an AI reviewer that reads your screenshots for message, experience, and reach gaps, including trust and credibility signals.',
+        text: 'An HTTP uptime check can return 200 while add to cart does nothing. FixFlags walks the path a customer uses to buy and shows you the video if that path is down.',
       },
       {
         type: 'p',
-        text: 'Every Flag includes evidence and a fix prompt. Results are grouped into Message, Experience, and Reach. We may use PageSpeed data inside Experience when it is available, but FixFlags is not a Lighthouse replacement.',
+        text: 'This is not session replay of real shoppers, not a Lighthouse wrapper, and not an ads attribution suite.',
       },
     ],
     related: ['scores-and-severity', 'reading-your-report'],
@@ -352,21 +336,21 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'finish-plan-vs-fix-list',
     categoryId: 'checks-and-reports',
-    title: 'Finish Plan vs full Fix list',
-    excerpt: 'The Fix list holds every unresolved Flag. The Finish Plan focuses your next one-to-three moves.',
-    searchTokens: ['finish plan', 'fix list', 'priority', 'top three'],
+    title: 'Protect vs Improve',
+    excerpt: 'The alarm is the buy path. Improve is a short secondary list.',
+    searchTokens: ['finish plan', 'fix list', 'priority', 'top three', 'improve'],
     body: [
       {
         type: 'p',
-        text: 'The Fix list ranks every unresolved Flag by launch impact. Open any Flag to inspect evidence, screenshots, and fix prompts.',
+        text: 'Protect is whether customers can still buy. Prove is the video of our walk. Understand is the named step. Improve is optional and never goes in Slack or email.',
       },
       {
         type: 'p',
-        text: 'The Finish Plan is the focused next move: typically one to three highest-impact Flags to fix before your update review.',
+        text: 'Do not treat Improve as the reason to install. Install to know the purchase path still works.',
       },
       {
         type: 'link',
-        text: 'Read about report structure in Docs',
+        text: 'Read the purchase path guide',
         href: '/docs/reports',
       },
     ],
@@ -378,22 +362,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'evidence-and-screenshots',
     categoryId: 'checks-and-reports',
-    title: 'Evidence and screenshots',
-    excerpt: 'How FixFlags captures desktop and mobile evidence and attaches it to each Flag.',
-    searchTokens: ['screenshot', 'evidence', 'mobile', 'desktop', 'capture'],
+    title: 'Watch verification',
+    excerpt: 'Video of our walk, GIF fallback, and step screenshots.',
+    searchTokens: ['screenshot', 'evidence', 'mobile', 'desktop', 'capture', 'video', 'gif'],
     body: [
       {
         type: 'p',
-        text: 'Each Flag links to screenshot evidence matched to the finding. Desktop and mobile captures appear independently as the review completes.',
+        text: 'Each walk keeps video of the FixFlags session when encoding works. If video is missing, we keep a GIF of the key steps when we can, plus screenshots of product, cart, and checkout or the failed step.',
       },
       {
         type: 'p',
-        text: 'Evidence anchors point to the exact copy, element, or metadata the check flagged. Use them to confirm the issue before copying a fix prompt.',
-      },
-      {
-        type: 'image',
-        src: '/samples/demo-original-desktop.webp',
-        alt: 'Sample FixFlags report screenshot showing ranked Flags and evidence',
+        text: 'This is our walk, not a recording of your shoppers. We stop before payment.',
       },
     ],
     related: ['reading-your-report', 'why-check-failed'],
@@ -404,20 +383,20 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'stuck-running-review',
     categoryId: 'checks-and-reports',
-    title: 'Review stuck on Running',
-    excerpt: 'What to do when a product review takes longer than expected or never completes.',
-    searchTokens: ['running', 'stuck', 'loading', 'timeout', 'queued'],
+    title: 'Walk still in progress',
+    excerpt: 'What to do when the first walk takes longer than expected.',
+    searchTokens: ['running', 'stuck', 'loading', 'timeout', 'queued', 'walking'],
     body: [
       {
         type: 'p',
-        text: 'Most product reviews finish within a few minutes. A long-running review may still be capturing pages, running checks, or waiting in the queue.',
+        text: 'The first walk usually finishes in a few minutes. Overview says Walking the path to checkout until the first result lands.',
       },
       {
         type: 'ul',
         items: [
-          'Refresh the report page after a few minutes. Progress and partial Flags may already be visible.',
-          'Confirm the URL loads in a normal browser without login.',
-          'If the review fails, open the failure message for the specific cause.',
+          'Leave the app open. It refreshes while a walk is in progress.',
+          'If the storefront is password gated, the result will be Unclear.',
+          'If nothing appears after a long wait, Recheck or email hello@fixflags.com.',
         ],
       },
       {
@@ -435,29 +414,21 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'free-vs-pro',
     categoryId: 'billing-and-plans',
     title: 'Free vs Pro',
-    excerpt: 'What you get on Free, Pro, and Studio.',
+    excerpt: 'Free on Shopify. Pro extras are waitlisted. We are not charging yet.',
     popular: true,
     searchTokens: ['pricing', 'upgrade', 'studio', 'plan'],
     body: [
       {
         type: 'p',
-        text: `Free: ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month for one product. Each review covers the page you paste and checks every public link.`,
+        text: 'Free: one Shopify store, one or two auto purchase paths, mobile walk with video, email on confirmed Can\'t buy and recovery, optional Slack, five rechecks per day.',
       },
       {
         type: 'p',
-        text: `Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}): ${PRICING_COPY.proProductReviewsPerMonth} product reviews per month across up to five products, with history across releases. Each review covers this page and every public page it links to.`,
+        text: 'Pro waitlist: extra paths, faster cadence, funnel numbers when reports access is approved, longer video history, and the full Improve list.',
       },
       {
         type: 'p',
-        text: `Studio (${PRICING_COPY.studioPrice}${PRICING_COPY.studioPeriod}): ${PRICING_COPY.studioProductReviewsPerMonth} product reviews per month, unlimited products, scheduled reviews, and a shared workspace. Each review covers this page, its linked pages, and one level beyond. Workspace seats are unlimited for a limited time.`,
-      },
-      {
-        type: 'p',
-        text: 'Pro and Studio include logged-in review on your computer when those plans open. That is not available yet.',
-      },
-      {
-        type: 'p',
-        text: 'Every Product Review includes prioritized Flags, evidence, and fix prompts. Plans add how far a review goes, product capacity, release history, scheduled reviews, and workspace access. Usage does not roll over.',
+        text: 'Studio waitlist is for agencies that need more than one store later. There is no price on the Shopify app today.',
       },
     ],
     related: ['what-counts-as-a-check', 'cancel-or-manage'],
@@ -468,17 +439,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'upgrade-or-downgrade',
     categoryId: 'billing-and-plans',
-    title: 'Upgrade or downgrade your plan',
-    excerpt: 'Change plans from Pricing or the Stripe customer portal.',
-    searchTokens: ['upgrade', 'downgrade', 'change plan', 'switch'],
+    title: 'Join the Pro waitlist',
+    excerpt: 'Pro extras are waitlisted. We are not charging yet.',
+    searchTokens: ['upgrade', 'downgrade', 'change plan', 'switch', 'waitlist'],
     body: [
       {
         type: 'p',
-        text: 'Open Pricing while signed in to upgrade. Downgrades and plan changes also run through the Stripe customer portal from Billing → Manage subscription.',
+        text: 'Open Pricing or Settings in the Shopify app and join the Pro waitlist. We email you when paid extras open.',
       },
       {
         type: 'p',
-        text: 'When you upgrade, paid usage applies after checkout completes. When you downgrade or cancel, access continues through the current billing period.',
+        text: 'Joining the waitlist does not charge a card. The free install keeps walking the purchase path.',
       },
     ],
     related: ['free-vs-pro', 'cancel-or-manage'],
@@ -490,16 +461,16 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'invoices-and-receipts',
     categoryId: 'billing-and-plans',
     title: 'Invoices and receipts',
-    excerpt: 'Download invoices from the Stripe customer portal.',
+    excerpt: 'There is no charge on the Shopify app today.',
     searchTokens: ['invoice', 'receipt', 'billing history', 'download'],
     body: [
       {
         type: 'p',
-        text: 'Open Billing and choose Manage subscription. The Stripe customer portal lists past invoices and lets you download PDF receipts.',
+        text: 'FixFlags is free to install. We are not charging yet, so there are no invoices for the Shopify app.',
       },
       {
         type: 'p',
-        text: 'Invoice emails also go to the billing email on your Stripe customer record.',
+        text: 'If a paid plan opens later, receipts will go to the email on the store.',
       },
     ],
     related: ['cancel-or-manage', 'payment-past-due'],
@@ -510,17 +481,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'when-credits-run-out',
     categoryId: 'billing-and-plans',
-    title: 'When product reviews run out',
-    excerpt: 'What happens at your monthly limit and how to continue.',
-    searchTokens: ['limit', 'quota', 'run out', 'no reviews left'],
+    title: 'When the recheck cap is hit',
+    excerpt: 'Free stores get five manual rechecks per day. Scheduled walks continue.',
+    searchTokens: ['limit', 'quota', 'run out', 'no reviews left', 'recheck'],
     body: [
       {
         type: 'p',
-        text: 'When you reach your monthly product review allowance, new reviews and update reviews pause until the next billing cycle or until you upgrade.',
+        text: 'If Recheck says the daily limit was reached, wait for the next scheduled walk or try again tomorrow. Monitoring stays on.',
       },
       {
         type: 'p',
-        text: 'Failed reviews that never produce a report do not consume a credit. Existing purchased credit packs still apply if you have a balance.',
+        text: 'Join the Pro waitlist if you need a faster cadence or extra paths.',
       },
     ],
     related: ['what-counts-as-a-check', 'free-vs-pro', 'upgrade-or-downgrade'],
@@ -531,18 +502,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'what-counts-as-a-check',
     categoryId: 'billing-and-plans',
-    title: 'What counts as a product review',
-    excerpt:
-      'New URLs and update reviews use product review credits. Failed runs that never produce a report do not.',
+    title: 'What the free plan includes',
+    excerpt: 'Walks, video, alerts, and a daily recheck cap. Install is the start.',
     searchTokens: ['quota', 'limit', 'credit', 'usage', 'scan'],
     body: [
       {
         type: 'p',
-        text: 'A completed review counts toward your monthly allowance. This includes the first review of a product, a review after changes, and a completed scheduled review on Studio.',
+        text: 'The free Shopify install includes one or two auto purchase paths, a mobile walk with video, email on confirmed Can\'t buy and recovery, optional Slack, and five rechecks per day.',
       },
       {
         type: 'p',
-        text: 'Failed product reviews that never produce a report do not use a credit.',
+        text: 'Scheduled walks run about every six hours. A walk that cannot start does not spend a recheck.',
       },
     ],
     related: ['update-review-credits', 'free-vs-pro'],
@@ -553,17 +523,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'update-review-credits',
     categoryId: 'billing-and-plans',
-    title: 'How update reviews use credits',
-    excerpt: 'Update reviews on reports you own use one product review credit each time.',
+    title: 'How Recheck works',
+    excerpt: 'Recheck is a fresh walk of the same purchase path. Five per day on Free.',
     searchTokens: ['update review', 'recheck', 'quota', 'credit'],
     body: [
       {
         type: 'p',
-        text: 'An update review runs a fresh capture on the same report and compares it with the previous result. Each update review uses one product review credit on every plan.',
+        text: 'Recheck runs a fresh mobile walk of the same path. It is how you confirm a theme or app fix after a Can\'t buy result.',
       },
       {
         type: 'callout',
-        text: 'You must own the report (signed-in account that ran or claimed the product review). Anonymous private links cannot update review until you save the report to an account.',
+        text: 'If the daily cap is hit, scheduled walks still run. Recheck becomes available again the next day.',
       },
     ],
     related: ['flag-fix-recheck', 'what-counts-as-a-check'],
@@ -575,16 +545,16 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'credits',
     categoryId: 'billing-and-plans',
     title: 'Credit packs',
-    excerpt: 'Credit packs are no longer available for purchase. Existing credits remain active.',
+    excerpt: 'Credit packs are not part of the Shopify app. We are not charging yet.',
     searchTokens: ['credit pack', 'buy credits', 'overflow'],
     body: [
       {
         type: 'p',
-        text: 'Credit packs are no longer available for purchase. Existing credits remain active and never expire.',
+        text: 'Credit packs are not sold for the Shopify purchase-path app. Existing leftover credits from older billing, if any, stay unused here.',
       },
       {
         type: 'p',
-        text: 'New product reviews still follow your plan allowance first.',
+        text: 'The Shopify app is free to install. Pro extras are waitlisted.',
       },
     ],
     related: ['what-counts-as-a-check', 'free-vs-pro', 'payment-past-due'],
@@ -595,17 +565,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'cancel-or-manage',
     categoryId: 'billing-and-plans',
-    title: 'Cancel or manage billing',
-    excerpt: 'Use the Stripe customer portal from Billing. Access continues through the period end.',
-    searchTokens: ['cancel', 'subscription', 'portal', 'invoice', 'receipt'],
+    title: 'Uninstall the app',
+    excerpt: 'Uninstall from Shopify admin. Walks stop. A redact request deletes stored shop data.',
+    searchTokens: ['cancel', 'subscription', 'portal', 'invoice', 'receipt', 'uninstall'],
     body: [
       {
         type: 'p',
-        text: 'Open Billing in the app and use Manage subscription. That opens the Stripe customer portal where you can update payment methods, download invoices, or cancel.',
+        text: 'Uninstall FixFlags from Shopify admin. That stops scheduled walks and pulses. Verification artifacts are removed when the shop is redacted.',
       },
       {
         type: 'p',
-        text: 'If you cancel, you keep access through the end of the current billing period. You can upgrade or downgrade from Pricing when you are ready.',
+        text: 'There is no Stripe subscription on the Shopify app today.',
       },
     ],
     related: ['payment-past-due', 'free-vs-pro', 'contact-us'],
@@ -617,16 +587,16 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'payment-past-due',
     categoryId: 'billing-and-plans',
     title: 'Payment past due',
-    excerpt: 'Update your card in the billing portal to restore your paid usage allowance.',
+    excerpt: 'The Shopify app is not charging, so there is no past-due card state.',
     searchTokens: ['past due', 'failed payment', 'card declined'],
     body: [
       {
         type: 'p',
-        text: 'If a subscription payment fails, the account returns to the Free monthly usage allowance until payment succeeds. Open Billing and update your payment method in the Stripe customer portal.',
+        text: 'The Shopify app is free to install. There is no card on file and no past-due state for this product.',
       },
       {
         type: 'p',
-        text: 'Stripe will retry the charge after you update your card. If you need help, open chat from any page or email hello@fixflags.com.',
+        text: 'If something looks wrong on a waitlist or alert email, write to hello@fixflags.com.',
       },
     ],
     related: ['cancel-or-manage', 'contact-us', 'credits'],
@@ -701,20 +671,16 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'sign-in-and-security',
     categoryId: 'account',
     title: 'Sign-in and security',
-    excerpt: 'Email, OAuth, password reset, and passkey two-factor.',
-    searchTokens: ['login', 'password', '2fa', 'passkey', 'oauth'],
+    excerpt: 'The Shopify app uses your Shopify admin session. We do not keep a separate password.',
+    searchTokens: ['login', 'password', '2fa', 'passkey', 'oauth', 'shopify'],
     body: [
       {
         type: 'p',
-        text: 'Sign in with email or OAuth. Forgot password sends a reset link to your email. Invalid or expired links can be replaced by requesting a new one.',
+        text: 'Open FixFlags from Shopify admin. The embedded app authenticates with an App Bridge session token. There is no separate FixFlags password for the store app.',
       },
       {
         type: 'p',
-        text: 'You can enable passkey-based two-factor authentication in Settings → Sign-in methods. Passkeys live there with 2FA. Keep backup codes somewhere safe.',
-      },
-      {
-        type: 'p',
-        text: 'After sign-in you always land on post-login so a check that is still running can be claimed before navigation. You then return to the same report.',
+        text: 'Staff access follows who can open apps in that Shopify store.',
       },
     ],
     related: ['report-privacy', 'contact-us'],
@@ -725,17 +691,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'report-privacy',
     categoryId: 'account',
-    title: 'Report access',
-    excerpt: 'Report evidence is public. Owner tools and account data stay gated.',
-    searchTokens: ['private', 'share', 'public', 'anonymous'],
+    title: 'Alerts and proof',
+    excerpt: 'Email and optional Slack on confirmed Can\'t buy and recovery. Unclear stays in the app.',
+    searchTokens: ['private', 'share', 'public', 'anonymous', 'alert', 'slack'],
     body: [
       {
         type: 'p',
-        text: 'Anyone with the canonical report URL can inspect its score, Flags, screenshots, and public-safe evidence.',
+        text: 'Email goes to the store owner when a path is confirmed broken, and again when it can take orders. Optional Slack uses an incoming webhook you paste in Settings.',
       },
       {
         type: 'p',
-        text: 'Agent chat, fix prompts, Product Memory, account history, update reviews, and export remain available only to the report owner. Use Copy link in Export to share the report evidence.',
+        text: 'The message includes a proof URL. Improve items never go in alerts. Unclear stays in the app.',
       },
     ],
     related: ['free-vs-pro', 'sign-in-and-security'],
@@ -760,12 +726,12 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
         items: [
           'Chat: open the chat button, or use Open chat on any Help article.',
           'Email: hello@fixflags.com for privacy, terms, or high-volume pricing.',
-          'Include your report URL when asking about a specific check.',
+          'Include the shop domain when asking about a specific walk.',
         ],
       },
       {
         type: 'p',
-        text: 'We do not offer phone support. Product feedback on reports (thumbs up/down) also reaches the team.',
+        text: 'We do not offer phone support. Email hello@fixflags.com for privacy or uninstall questions.',
       },
     ],
     related: ['why-check-failed', 'payment-past-due', 'free-vs-pro'],
@@ -775,17 +741,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'delete-account',
     categoryId: 'account',
-    title: 'Delete your account',
-    excerpt: 'Delete your account from Settings. A confirmation email follows.',
-    searchTokens: ['delete', 'remove account', 'close account', 'gdpr'],
+    title: 'Uninstall and shop data',
+    excerpt: 'Uninstall stops walks. A shop redact request deletes stored shop artifacts.',
+    searchTokens: ['delete', 'remove account', 'close account', 'gdpr', 'uninstall'],
     body: [
       {
         type: 'p',
-        text: 'To delete your FixFlags account and associated data, open Settings and choose Delete account. We send a confirmation email after deletion.',
+        text: 'Uninstall FixFlags from Shopify admin to stop walks. Shopify also sends shop/redact, which deletes the stored shop record and verification artifacts.',
       },
       {
         type: 'p',
-        text: 'If you cannot reach Settings, open chat or email hello@fixflags.com from the address on the account. Include whether you also want report links revoked.',
+        text: 'Customer personal data is not stored at launch. For privacy questions, email hello@fixflags.com.',
       },
     ],
     related: ['contact-us', 'report-privacy'],
@@ -795,17 +761,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'change-email',
     categoryId: 'account',
-    title: 'Change your email address',
-    excerpt: 'Update the email on your FixFlags account or billing record.',
+    title: 'Change alert email',
+    excerpt: 'Alerts go to the store owner email Shopify gives us at install.',
     searchTokens: ['email', 'change email', 'update email'],
     body: [
       {
         type: 'p',
-        text: 'Sign-in email changes run through your account settings when email/password auth is enabled. OAuth accounts use the provider email.',
+        text: 'Integrity alerts use the store owner email from Shopify. Update that email in Shopify admin if you need alerts somewhere else.',
       },
       {
         type: 'p',
-        text: 'Billing receipt email may differ from sign-in email. Update payment contact details in the Stripe customer portal from Billing.',
+        text: 'Optional Slack is a separate incoming webhook in FixFlags Settings.',
       },
     ],
     related: ['sign-in-and-security', 'contact-us'],
@@ -816,20 +782,20 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'oauth-sign-in-issues',
     categoryId: 'account',
-    title: 'OAuth sign-in issues',
-    excerpt: 'Recover when Google or GitHub sign-in fails or lands on the wrong account.',
-    searchTokens: ['oauth', 'google', 'github', 'sign in failed', 'wrong account'],
+    title: 'Install or session issues',
+    excerpt: 'Retry install from /install, or reopen the app from Shopify admin.',
+    searchTokens: ['oauth', 'google', 'github', 'sign in failed', 'wrong account', 'install'],
     body: [
       {
         type: 'p',
-        text: 'If OAuth sign-in fails, try an incognito window and confirm you are using the intended provider account.',
+        text: 'If install does not finish, open /install, enter the shop domain, and approve the app again.',
       },
       {
         type: 'ul',
         items: [
-          'Clear cookies for fixflags.com and retry.',
-          'If you previously used email sign-in, use the same email or link accounts through support.',
-          'After sign-in, post-login claims any anonymous report before navigating away.',
+          'Reopen FixFlags from Shopify admin if the embedded session expired.',
+          'Confirm the shop domain looks like your-store.myshopify.com.',
+          'Email hello@fixflags.com with the shop domain if the error repeats.',
         ],
       },
     ],

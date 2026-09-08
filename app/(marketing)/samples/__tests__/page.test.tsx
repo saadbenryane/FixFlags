@@ -15,16 +15,16 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/components/audit/AuditReport', () => ({
   AuditReport: (props: {
-    observationId?: string
-    variant?: string
-    scoreHistory?: Array<{ id: string; href: string }>
+    projection?: {
+      review: { id: string | null }
+      workspace: { summary: { history: Array<{ id: string; href: string }> | null } }
+    }
   }) => (
     <div
       data-testid="sample-report"
-      data-observation={props.observationId}
-      data-variant={props.variant}
+      data-observation={props.projection?.review.id}
     >
-      {(props.scoreHistory ?? []).map((point) => (
+      {(props.projection?.workspace.summary.history ?? []).map((point) => (
         <a key={point.id} href={point.href}>{point.id}</a>
       ))}
     </div>
@@ -43,7 +43,6 @@ describe('/samples', () => {
       'data-observation',
       'curated-sample-v0',
     )
-    expect(screen.getByTestId('sample-report')).toHaveAttribute('data-variant', 'sample')
     expect(screen.getAllByRole('link')).toHaveLength(2)
     expect(screen.getByRole('link', { name: 'curated-sample-v0' })).toHaveAttribute(
       'href',

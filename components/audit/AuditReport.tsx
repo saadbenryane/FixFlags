@@ -27,16 +27,13 @@ import {
 import { RecheckCompletedTracker } from '@/components/audit/RecheckCompletedTracker'
 import type { PreviewMeta } from '@/lib/audit/preview-meta'
 import type { EvidenceAnchorMap } from '@/lib/marketing/resolve-evidence-anchors'
-import { buildLiveExplorerModel } from '@/lib/report/explorer-model'
-import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
 import { ReportAuthGateTracker } from '@/components/analytics/ReportAuthGateTracker'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
-import type { AgentMessage } from '@/lib/audit/agent-message'
-import type { ReportWorkspaceHistoryPoint } from '@/lib/report/workspace-model'
 import { cn } from '@/lib/utils'
 import { flagHasFixPrompt } from '@/lib/audit/priority-flags'
-import { resolveReportSurfaceCapabilities, type AuditAccessContext } from '@/lib/audit/access-capabilities'
+import type { AuditAccessContext } from '@/lib/audit/access-capabilities'
+import type { ReviewWorkspaceVisibleProjection } from '@/lib/report/review-workspace-projection'
 
 interface RubricRow {
   id: string
@@ -49,9 +46,10 @@ interface RubricRow {
 }
 
 interface AuditReportProps {
+  projection: ReviewWorkspaceVisibleProjection
   audit: {
     /** Exact validated access decision. Repository fixtures opt in explicitly. */
-    accessContext: Exclude<AuditAccessContext, 'denied'> | 'repository_sample'
+    accessContext: Exclude<AuditAccessContext, 'denied'> | 'curated_sample'
     pageType: string | null
     score: number | null
     url: string
@@ -71,12 +69,9 @@ interface AuditReportProps {
     fixList?: FixList
   }
   auditId?: string
-  /** Immutable curated observation identity. Never treated as a live audit id. */
-  observationId?: string
   viewerIsPaid: boolean
   viewerPlan?: string
   isLoggedIn: boolean
-  variant?: 'default' | 'sample'
   atAuditLimit?: boolean
   showPrescription?: boolean
   showDeterministicFixes?: boolean
@@ -87,21 +82,17 @@ interface AuditReportProps {
   actions?: ReactNode
   recheckDiff?: RecheckDiffSummary | null
   verificationReceipts?: ProductAttemptDTO[]
-  scoreHistory?: ReportWorkspaceHistoryPoint[]
-  sampleFixFlag?: RankableFlag | null
-  agentMessages?: AgentMessage[]
   /** Persisted or curated Product name; the hostname stays the fallback. */
   productName?: string | null
 }
 
 export function AuditReport({
+  projection,
   audit,
   auditId,
-  observationId,
   viewerIsPaid,
   viewerPlan = 'FREE',
   isLoggedIn,
-  variant = 'default',
   atAuditLimit = false,
   showPrescription = true,
   showDeterministicFixes = true,
@@ -112,22 +103,11 @@ export function AuditReport({
   actions,
   recheckDiff = null,
   verificationReceipts = [],
-  scoreHistory = [],
-  sampleFixFlag = null,
-  agentMessages = [],
   productName = null,
 }: AuditReportProps) {
-  const isSample = variant === 'sample'
-  const isRepositorySample =
-    isSample && audit.accessContext === 'repository_sample'
+  const isSample = projection.kind === 'sample'
   const isOwnerAccess = audit.accessContext === 'owner'
-  const surface = resolveReportSurfaceCapabilities({
-    accessContext: audit.accessContext,
-    isLoggedIn,
-    isRepositorySample,
-  })
-  const chatGate = surface.chat
-  const promptProjection = surface.prompt
+  const chatGate = projection.chat
   const signUpHref = auditId
     ? `/sign-up?next=/report/${auditId}&from=report`
     : '/sign-up?from=report'
@@ -135,63 +115,15 @@ export function AuditReport({
 
   // Server strip is the only entitlement; never unlock via client sessionStorage.
   const fixPromptLocked = !showDeterministicFixes
-  const demonstratedFlag = sampleFixFlag
+  const demonstratedFlagId = projection.workspace.capabilities.demonstratedFlagId
 
   const upgradeMoment =
     !isSample && isLoggedIn && !viewerIsPaid
       ? resolveFreeUserUpgradeMoment({ atAuditLimit })
       : null
 
-  const explorerModel = buildLiveExplorerModel({
-    url: audit.url,
-    pageType: audit.pageType,
-    score: audit.score,
-    flags: audit.flags,
-    screenshots: audit.screenshots,
-    rubricRows: audit.rubricRows,
-    evidenceAnchors: audit.evidenceAnchors,
-    previewMeta: audit.previewMeta,
-    flagVisualEvidence: audit.flagVisualEvidence,
-    productContract: audit.productContract ?? null,
-    promptAccess: promptProjection.explorer,
-    demonstratedFlag,
-    fixList: audit.fixList,
-    reviewCoverage: audit.reviewCoverage,
-    reportCompleteness: audit.reportCompleteness,
-  })
-  const completedAt =
-    audit.completedAt instanceof Date
-      ? audit.completedAt
-      : audit.completedAt
-        ? new Date(audit.completedAt)
-        : null
-  const isPartialReport = audit.reportCompleteness === 'PARTIAL'
-  const workspace = buildReportWorkspaceModel({
-    kind: isSample ? 'sample' : 'completed',
-    explorer: explorerModel,
-    auditId: auditId ?? observationId,
-    url: audit.url,
-    pageType: audit.pageType,
-    checkedAt: completedAt,
-    status: isPartialReport
-      ? 'partial'
-      : triageDegraded
-        ? 'degraded'
-        : 'completed',
-    history: scoreHistory,
-    updateDiff: recheckDiff,
-    capabilities: {
-      promptAccess: promptProjection.workspace,
-      canReplayTimeline: false,
-      canChat: !isSample && chatGate.canChat && Boolean(auditId),
-      canUseCanvas: false,
-      canShare: !isSample && isLoggedIn && isOwnerAccess,
-      canExport: !isSample && isLoggedIn && isOwnerAccess,
-      canRecheck: !isSample && isLoggedIn && isOwnerAccess,
-      canGiveFeedback: !isSample && isLoggedIn && isOwnerAccess,
-      demonstratedFlagId: demonstratedFlag?.id ?? null,
-    },
-  })
+  const explorerModel = projection.explorer
+  const workspace = projection.workspace
   const showFeedback = workspace.capabilities.canGiveFeedback
   const unresolvedFlagCount = workspace.outcome.unresolvedCount
   // Deterministic Tasks still copy when AI enrichment failed - do not scare the owner
@@ -214,7 +146,7 @@ export function AuditReport({
         aiEnhancementPending={isLoggedIn && aiReviewPending}
         signUpHref={signUpHref}
         auditId={auditId}
-        demonstratedFlagId={demonstratedFlag?.id}
+        demonstratedFlagId={demonstratedFlagId ?? undefined}
         ownerActionContext={
           auditId && isLoggedIn && isOwnerAccess && !isSample
             ? { auditId, surface: 'focused', accessState: 'owner' }
@@ -369,7 +301,7 @@ export function AuditReport({
                   capabilities={workspace.capabilities}
                   gateReason={chatGateReason}
                   claimReason={chatGate.claimReason}
-                  agentMessages={agentMessages}
+                  agentMessages={projection.agentMessages}
                   reportUrl={audit.url}
                   productName={productName}
                 />
@@ -396,7 +328,7 @@ export function AuditReport({
             <WorkspaceChatPanel
               capabilities={workspace.capabilities}
               gateReason="owner"
-              agentMessages={agentMessages}
+              agentMessages={projection.agentMessages}
               reportUrl={audit.url}
               productName={productName}
             />

@@ -1,19 +1,11 @@
 import assert from 'node:assert/strict'
-import { describe, it, vi } from 'vitest'
-
-const prismaMock = vi.hoisted(() => ({
-  user: { findUnique: vi.fn() },
-}))
-
-vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
+import { describe, it } from 'vitest'
 
 import {
   canViewPrescriptionContent,
   canViewDeterministicFixes,
-  canViewAiViaStudioPublicShare,
   canViewPrescriptionContentForAudit,
   canViewDeterministicFixesForAudit,
-  isPublicMarketingSample,
   stripAiPrescriptionFromFlags,
   stripDeterministicFixesFromFlags,
   stripAiPrescriptionFromRubrics,
@@ -25,25 +17,6 @@ import {
 const aiReviewAt = new Date('2026-01-01')
 
 describe('report-access', () => {
-  it('never treats live unclaimed public reports as marketing samples', () => {
-    assert.equal(
-      isPublicMarketingSample({ userId: null, aiReviewAt, isPublic: true }),
-      false
-    )
-    assert.equal(
-      isPublicMarketingSample({ userId: 'user-1', aiReviewAt, isPublic: true }),
-      false
-    )
-    assert.equal(
-      isPublicMarketingSample({ userId: null, aiReviewAt: null, isPublic: true }),
-      false
-    )
-    assert.equal(
-      isPublicMarketingSample({ userId: null, aiReviewAt, isPublic: false }),
-      false
-    )
-  })
-
   it('grants prescription content to the signed-in owner', () => {
     assert.equal(
       canViewPrescriptionContent(
@@ -76,30 +49,6 @@ describe('report-access', () => {
       canViewPrescriptionContent(
         { userId: 'owner-1', aiReviewAt, isPublic: true },
         { id: 'other-user' }
-      ),
-      false
-    )
-  })
-
-  it('allows prescription content on any public share whose owner can share', () => {
-    assert.equal(
-      canViewAiViaStudioPublicShare(
-        { userId: 'owner-1', aiReviewAt, isPublic: true },
-        true
-      ),
-      true
-    )
-    assert.equal(
-      canViewAiViaStudioPublicShare(
-        { userId: 'owner-1', aiReviewAt, isPublic: true },
-        false
-      ),
-      false
-    )
-    assert.equal(
-      canViewAiViaStudioPublicShare(
-        { userId: null, aiReviewAt, isPublic: true },
-        true
       ),
       false
     )
@@ -278,7 +227,6 @@ describe('report-access async resolution', () => {
       ),
       false
     )
-    assert.equal(prismaMock.user.findUnique.mock.calls.length, 0)
   })
 
   it('allows the signed-in owner without a database lookup', async () => {
@@ -286,38 +234,6 @@ describe('report-access async resolution', () => {
       await canViewPrescriptionContentForAudit(
         { userId: 'owner-1', aiReviewAt, isPublic: false },
         { id: 'owner-1' }
-      ),
-      true
-    )
-  })
-
-  it('allows AI content on a public share when the owner can share publicly', async () => {
-    prismaMock.user.findUnique.mockResolvedValueOnce({
-      id: 'owner-1',
-      role: 'user',
-      plan: 'TEAM',
-      subscriptionStatus: 'ACTIVE',
-    })
-    assert.equal(
-      await canViewPrescriptionContentForAudit(
-        { userId: 'owner-1', aiReviewAt, isPublic: true },
-        { id: 'stranger' }
-      ),
-      true
-    )
-  })
-
-  it('allows AI content on a public share when the owner is on Free', async () => {
-    prismaMock.user.findUnique.mockResolvedValueOnce({
-      id: 'owner-1',
-      role: 'user',
-      plan: 'FREE',
-      subscriptionStatus: 'NONE',
-    })
-    assert.equal(
-      await canViewPrescriptionContentForAudit(
-        { userId: 'owner-1', aiReviewAt, isPublic: true },
-        { id: 'stranger' }
       ),
       true
     )
@@ -334,17 +250,6 @@ describe('report-access async resolution', () => {
     assert.equal(
       await canViewPrescriptionContentForAudit(
         { userId: 'owner-1', aiReviewAt: null, isPublic: true },
-        { id: 'stranger' }
-      ),
-      false
-    )
-  })
-
-  it('denies AI content when the owner row is gone', async () => {
-    prismaMock.user.findUnique.mockResolvedValueOnce(null)
-    assert.equal(
-      await canViewPrescriptionContentForAudit(
-        { userId: 'owner-1', aiReviewAt, isPublic: true },
         { id: 'stranger' }
       ),
       false

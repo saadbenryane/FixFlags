@@ -21,7 +21,7 @@ function renderPanel() {
 }
 
 describe('ScreenshotWithHighlights fallback chain', () => {
-  it('draws comparison state inside the capture so scrollports cannot clip it', () => {
+  it('draws a border around the capture so the image cannot cover it', () => {
     render(
       <ScreenshotWithHighlights
         host={HOST}
@@ -32,7 +32,13 @@ describe('ScreenshotWithHighlights fallback chain', () => {
       />
     )
 
-    expect(document.querySelector('.ring-inset.ring-destructive')).not.toBeNull()
+    const frame = document.querySelector('[data-screenshot-frame]')
+    expect(frame).not.toBeNull()
+    expect(frame?.className).toContain('border-destructive')
+    expect(frame?.className).toContain('overflow-hidden')
+    expect(frame?.getAttribute('style') ?? '').toContain('aspect-ratio')
+    expect(frame?.getAttribute('style') ?? '').toContain('28rem')
+    expect(document.querySelector('.ring-inset')).toBeNull()
     expect(document.querySelector('.ring-offset-2')).toBeNull()
   })
 

@@ -84,14 +84,3 @@ export async function getCheckUsage(
     totalAvailable,
   }
 }
-
-export {
-  canAccessPaidFeatures,
-  canUseApiKeys,
-  canAccessBasicMcp,
-  canAccessMonitoring,
-  canSharePublicly,
-  canExportSummary,
-  getEntitlements,
-  shouldEnforcePlanGates,
-} from '@/lib/auth/entitlements'

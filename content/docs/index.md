@@ -1,26 +1,27 @@
 ## Quick start
 
-Paste the public URL of the product you want to review into FixFlags. The first result ranks what matters across Message, Experience, and Reach, then gives you one clear place to begin.
+Install FixFlags on your Shopify store. We pick up to two buyable products and walk the path to checkout on a phone-sized browser.
 
-1. Run a product review from the homepage.
-2. Open the highest-ranked Flag and inspect its evidence.
-3. Copy the fix prompt into the builder you already use.
-4. Deploy the change and run an update review.
+1. Install from [/install](/install) or the Shopify App Store.
+2. Open the embedded app. The first walk starts on its own.
+3. Watch the verification. Can buy, Can't buy, or Unclear.
+4. Leave monitoring on. Email arrives only when a path is confirmed down or recovered.
 
-[Run your first product review](/docs/getting-started) or [open a full sample report](/samples).
+[Install on Shopify](/docs/getting-started) or [read how a walk is judged](/docs/reports).
 
 ## The product loop
 
-FixFlags follows one loop: **Product review → Fix → Update review**.
+FixFlags follows one loop: **Protect → Prove → Understand → Improve**.
 
-- **Product review** the live product the way a user experiences it.
-- **Fix** the highest-impact Flag with an evidence-backed prompt.
-- **Update review** after deployment to confirm what changed.
+- **Protect** whether a stranger can still buy.
+- **Prove** with video of the walk FixFlags ran.
+- **Understand** the named step. Store-wide percentages wait for real Shopify data.
+- **Improve** is a short secondary list. It never goes in alerts.
 
 ## Choose your path
 
-- [Getting started](/docs/getting-started) for your first product review.
-- [Finish Plans and reports](/docs/reports) for Flags, evidence, scores, and comparisons.
-- [Troubleshooting](/docs/troubleshooting) for setup and runtime problems.
+- [Getting started](/docs/getting-started) for install and the first walk.
+- [Paths and proof](/docs/reports) for health, video, Recheck, and Improve.
+- [Troubleshooting](/docs/troubleshooting) for password gates, bot walls, and install errors.
 
-For billing, account, privacy, or human support, use the [Help Center](/help).
+For billing, privacy, or human support, use the [Help Center](/help).

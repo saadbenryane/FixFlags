@@ -1,6 +1,38 @@
 import { google } from 'googleapis'
 import { googleServiceAccount } from '@/lib/growth/google-auth'
 import { persistGrowthArtifact } from '@/lib/growth/artifacts'
+import {
+  type GrowthPullOptions,
+  growthArtifactSegment,
+  resolveGrowthPullDays,
+} from '@/lib/growth/pull-options'
+
+export type { GrowthPullOptions } from '@/lib/growth/pull-options'
+
+const GSC_COUNTRY_CODES: Record<string, string> = {
+  morocco: 'mar',
+}
+
+function toGscCountryCode(country: string): string {
+  const normalized = country.trim().toLowerCase()
+  if (GSC_COUNTRY_CODES[normalized]) return GSC_COUNTRY_CODES[normalized]
+  if (/^[a-z]{3}$/.test(normalized)) return normalized
+  throw new Error(`Unknown GSC country for exclusion: ${country}`)
+}
+
+function gscCountryExclusionFilter(excludeCountries: string[]) {
+  if (excludeCountries.length === 0) return undefined
+  return [
+    {
+      groupType: 'and',
+      filters: excludeCountries.map((country) => ({
+        dimension: 'country',
+        operator: 'notEquals',
+        expression: toGscCountryCode(country),
+      })),
+    },
+  ]
+}
 
 function getGscProperty(): string {
   const prop = process.env.GSC_PROPERTY
@@ -38,14 +70,18 @@ async function queryGsc(
   startDate: string,
   endDate: string,
   dimension: 'query' | 'page',
+  options: GrowthPullOptions,
   rowLimit = 25_000,
 ): Promise<GscRow[]> {
+  const dimensionFilterGroups = gscCountryExclusionFilter(options.excludeCountries ?? [])
   const allRows: GscRow[] = []
   let startRow = 0
   for (;;) {
+    const requestBody: Record<string, unknown> = { startDate, endDate, dimensions: [dimension], rowLimit, startRow }
+    if (dimensionFilterGroups) requestBody.dimensionFilterGroups = dimensionFilterGroups
     const response = await searchconsole.searchanalytics.query({
       siteUrl: getGscProperty(),
-      requestBody: { startDate, endDate, dimensions: [dimension], rowLimit, startRow },
+      requestBody,
     })
     const rows = (response.data.rows ?? []) as GscRow[]
     allRows.push(...rows)
@@ -54,7 +90,7 @@ async function queryGsc(
   }
 }
 
-export async function runGscPull(): Promise<GscPullResult | null> {
+export async function runGscPull(options: GrowthPullOptions = {}): Promise<GscPullResult | null> {
   const auth = await googleServiceAccount(['https://www.googleapis.com/auth/webmasters.readonly'])
   if (!auth) return null
   // googleapis-common bundles its own google-auth-library type instance.
@@ -62,10 +98,12 @@ export async function runGscPull(): Promise<GscPullResult | null> {
   const now = new Date()
   const fetchedAt = now.toISOString()
   const endDate = fetchedAt.slice(0, 10)
-  const startDate = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const startDate = new Date(now.getTime() - resolveGrowthPullDays(options) * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10)
 
-  const queryRows = await queryGsc(searchconsole, startDate, endDate, 'query')
-  const pageRows = await queryGsc(searchconsole, startDate, endDate, 'page')
+  const queryRows = await queryGsc(searchconsole, startDate, endDate, 'query', options)
+  const pageRows = await queryGsc(searchconsole, startDate, endDate, 'page', options)
   const queries = queryRows.slice(0, 50).map((row) => ({
     query: row.keys[0], clicks: row.clicks, impressions: row.impressions, ctr: row.ctr, position: row.position,
   }))
@@ -95,10 +133,11 @@ export async function runGscPull(): Promise<GscPullResult | null> {
     pages: { fetchedAt, pages },
     summary,
   }
+  const segment = growthArtifactSegment(options)
   await Promise.all([
-    persistGrowthArtifact('gsc-queries', 'gsc/rolling-28d/queries', result.queries),
-    persistGrowthArtifact('gsc-pages', 'gsc/rolling-28d/pages', result.pages),
-    persistGrowthArtifact('gsc-summary', 'gsc/rolling-28d/summary', result.summary),
+    persistGrowthArtifact('gsc-queries', `gsc/${segment}/queries`, result.queries),
+    persistGrowthArtifact('gsc-pages', `gsc/${segment}/pages`, result.pages),
+    persistGrowthArtifact('gsc-summary', `gsc/${segment}/summary`, result.summary),
   ])
   return result
 }

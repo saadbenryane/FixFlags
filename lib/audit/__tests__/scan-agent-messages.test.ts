@@ -180,6 +180,21 @@ describe('buildFixFlagsScanMessages', () => {
     expect(failed.at(-1)?.content).not.toContain('BROWSER_LAUNCH_FAILED')
     expect(partial.at(-1)).toMatchObject({
       kind: 'completion',
+      content: 'Your report is ready.',
+    })
+  })
+
+  it('only says evidence is missing when a screenshot capture failed', () => {
+    const missingCapture = buildFixFlagsScanMessages({
+      ...base,
+      status: 'COMPLETED',
+      progress: 100,
+      reportCompleteness: 'PARTIAL',
+      screenshotCapture: { desktop: 'ok', mobile: 'failed' },
+    })
+
+    expect(missingCapture.at(-1)).toMatchObject({
+      kind: 'completion',
       content: 'Your report is ready with some evidence missing.',
     })
   })
@@ -206,6 +221,75 @@ describe('buildFixFlagsScanMessages', () => {
       actionTimeline: [{ label: 'Opened page' }],
     } as typeof base & { actionTimeline: Array<{ label: string }> })
     expect(messages.some((item) => item.content.includes('Opened page'))).toBe(false)
+  })
+
+  it('names persisted AuditPage rows while they are under review', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      url: 'https://example.com/',
+      status: 'CAPTURING',
+      progress: 20,
+      pages: [
+        {
+          url: 'https://example.com/',
+          status: 'CAPTURING',
+          role: 'primary',
+          position: 0,
+        },
+        {
+          url: 'https://example.com/pricing',
+          status: 'CAPTURING',
+          role: 'linked',
+          position: 1,
+        },
+      ],
+    })
+
+    expect(messages.map((item) => item.id)).toEqual([
+      'scan:audit-1:preparing',
+      'scan:audit-1:capturing',
+      'scan:audit-1:page:0',
+      'scan:audit-1:page:1',
+    ])
+    expect(messages.find((item) => item.id.endsWith(':page:0'))).toMatchObject({
+      state: 'active',
+      content: 'I’m reviewing this page.',
+    })
+    expect(messages.find((item) => item.id.endsWith(':page:1'))).toMatchObject({
+      state: 'active',
+      content: 'I’m reviewing /pricing.',
+    })
+  })
+
+  it('marks reviewed pages complete and never invents open-check probes', () => {
+    const messages = buildFixFlagsScanMessages({
+      ...base,
+      url: 'https://example.com/',
+      pages: [
+        {
+          url: 'https://example.com/',
+          status: 'COMPLETED',
+          role: 'primary',
+          position: 0,
+        },
+        {
+          url: 'https://example.com/about',
+          status: 'CHECKING',
+          role: 'linked',
+          position: 1,
+        },
+      ],
+    })
+
+    expect(messages.find((item) => item.id.endsWith(':page:0'))).toMatchObject({
+      state: 'complete',
+      content: 'I reviewed this page.',
+    })
+    expect(messages.find((item) => item.id.endsWith(':page:1'))).toMatchObject({
+      state: 'active',
+      content: 'I’m reviewing /about.',
+    })
+    expect(messages.some((item) => item.content.includes('http'))).toBe(false)
   })
 
   it('names a Flag path when it is not the pasted page', () => {
@@ -383,7 +467,7 @@ describe('buildFixFlagsScanMessages', () => {
     })
 
     expect(messages.some((item) => item.id.endsWith(':no-attention'))).toBe(false)
-    expect(messages.at(-1)?.content).toBe('Your report is ready with some evidence missing.')
+    expect(messages.at(-1)?.content).toBe('Your report is ready.')
   })
 
   it('names a Critical Flag without a fix while checking, then drops it from completed Attention', () => {

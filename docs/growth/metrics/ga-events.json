@@ -1,97 +1,69 @@
 {
-  "fetchedAt": "2026-08-06T10:35:51.494Z",
+  "fetchedAt": "2026-09-03T20:39:25.827Z",
   "events": [
     {
       "eventName": "page_view",
-      "eventCount": 776
+      "eventCount": 123
     },
     {
       "eventName": "session_start",
-      "eventCount": 542
+      "eventCount": 79
     },
     {
       "eventName": "first_visit",
-      "eventCount": 456
+      "eventCount": 73
     },
     {
       "eventName": "user_engagement",
-      "eventCount": 163
-    },
-    {
-      "eventName": "scroll",
-      "eventCount": 86
+      "eventCount": 68
     },
     {
       "eventName": "landing_view",
-      "eventCount": 83
-    },
-    {
-      "eventName": "viewed_sample",
-      "eventCount": 71
-    },
-    {
-      "eventName": "form_start",
-      "eventCount": 29
-    },
-    {
-      "eventName": "viewed_report",
-      "eventCount": 29
-    },
-    {
-      "eventName": "started_audit",
-      "eventCount": 27
+      "eventCount": 47
     },
     {
       "eventName": "first_finding_viewed",
-      "eventCount": 25
+      "eventCount": 46
     },
     {
-      "eventName": "audit_intent",
-      "eventCount": 23
-    },
-    {
-      "eventName": "viewed_pricing",
-      "eventCount": 18
-    },
-    {
-      "eventName": "audit_completed",
-      "eventCount": 13
-    },
-    {
-      "eventName": "signup_started",
-      "eventCount": 9
-    },
-    {
-      "eventName": "audit_limit_reached",
-      "eventCount": 5
+      "eventName": "scroll",
+      "eventCount": 43
     },
     {
       "eventName": "marketing_page_view",
-      "eventCount": 5
+      "eventCount": 29
     },
     {
-      "eventName": "report_auth_method_selected",
+      "eventName": "viewed_sample",
+      "eventCount": 23
+    },
+    {
+      "eventName": "audit_intent",
+      "eventCount": 6
+    },
+    {
+      "eventName": "flag_detail_viewed",
       "eventCount": 4
     },
     {
-      "eventName": "audits_claimed",
+      "eventName": "report_progress_viewed",
+      "eventCount": 4
+    },
+    {
+      "eventName": "form_start",
       "eventCount": 3
     },
     {
-      "eventName": "plan_picker_dismissed",
+      "eventName": "viewed_pricing",
       "eventCount": 3
     },
     {
-      "eventName": "plan_picker_viewed",
-      "eventCount": 3
+      "eventName": "audit_completed",
+      "eventCount": 2
     },
     {
-      "eventName": "report_auth_gate_viewed",
-      "eventCount": 3
-    },
-    {
-      "eventName": "scan_validation_failed",
-      "eventCount": 3
+      "eventName": "audit_limit_reached",
+      "eventCount": 2
     },
     {
       "eventName": "clicked_sample_cta",
@@ -102,36 +74,24 @@
       "eventCount": 2
     },
     {
-      "eventName": "recheck_started",
+      "eventName": "report_auth_gate_viewed",
       "eventCount": 2
     },
     {
-      "eventName": "flag_detail_viewed",
-      "eventCount": 1
+      "eventName": "report_auth_method_selected",
+      "eventCount": 2
     },
     {
-      "eventName": "recheck_completed",
-      "eventCount": 1
+      "eventName": "signup_started",
+      "eventCount": 2
     },
     {
-      "eventName": "remember_shown",
-      "eventCount": 1
+      "eventName": "started_audit",
+      "eventCount": 2
     },
     {
-      "eventName": "report_progress_viewed",
-      "eventCount": 1
-    },
-    {
-      "eventName": "report_signup_cta_clicked",
-      "eventCount": 1
-    },
-    {
-      "eventName": "signed_up",
-      "eventCount": 1
-    },
-    {
-      "eventName": "started_checkout",
-      "eventCount": 1
+      "eventName": "viewed_report",
+      "eventCount": 2
     }
   ]
 }

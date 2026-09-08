@@ -1,9 +1,7 @@
 "use client";
 import type { Route } from "next";
 import Image from "next/image";
-import Link from "next/link";
 import {
-  ArrowRight,
   CheckCircle2,
   CreditCard,
   LockKeyhole,
@@ -26,11 +24,8 @@ import { MarketingPageViewTracker } from "@/components/marketing/MarketingPageVi
 import { MarketingEyebrow } from "@/components/marketing/MarketingEyebrow";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
-import { Surface } from "@/components/ui/surface";
 import { Body, Heading, Muted } from "@/components/ui/typography";
-import { Button } from "@/components/ui/button";
-import { PLANS, PRICING, PRICING_FAQ, BILLING_ACTION_COPY } from "@/lib/marketing/copy";
-import { CONTACT_PLAN } from "@/lib/billing/plans";
+import { PLANS, PRICING, PRICING_FAQ } from "@/lib/marketing/copy";
 import { cn } from "@/lib/utils";
 import { useMe } from "@/hooks/useMe";
 import { useEffect } from "react";
@@ -71,9 +66,7 @@ export function PricingPageClient() {
             <Body className="mt-5 max-w-2xl text-muted-foreground text-pretty sm:text-lg">
               {PRICING.subhead}
             </Body>
-            <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-              {BILLING_ACTION_COPY.tierOffers.pricingCallout}
-            </p>
+
 
             <ul className="mt-6 grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
               {PRICING.assurances.map((assurance, index) => {
@@ -139,7 +132,7 @@ export function PricingPageClient() {
                       </span>
                       {plan.highlight ? (
                         <span className="marketing-brand-badge rounded-full px-2.5 py-1 text-xs font-semibold">
-                          Best for frequent reviews
+                          Best for more paths and faster walks
                         </span>
                       ) : null}
                     </div>
@@ -208,45 +201,6 @@ export function PricingPageClient() {
           </div>
           <PricingComparisonTable />
         </div>
-
-        <Surface
-          variant="elevated"
-          className="grid overflow-hidden p-0 shadow-card md:grid-cols-[11rem_minmax(0,1fr)_auto] md:items-stretch"
-        >
-          <div className="relative hidden min-h-40 overflow-hidden bg-muted/30 md:block">
-            <Image
-              src="/marketing/visuals/pricing-glass-mark.webp"
-              alt=""
-              fill
-              sizes="11rem"
-              className="object-cover object-center mix-blend-multiply"
-            />
-          </div>
-          <div className="p-5 sm:p-6">
-            <p className="text-lg font-semibold tracking-heading">
-              {CONTACT_PLAN.name}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {CONTACT_PLAN.outcome}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
-              {CONTACT_PLAN.features.map((feature) => (
-                <span key={feature} className="inline-flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-brand" aria-hidden />
-                  {feature}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center p-5 pt-0 sm:p-6 sm:pt-0 md:pt-6">
-            <Button variant="ink" className="w-full md:w-auto" asChild>
-              <Link href={CONTACT_PLAN.href}>
-                {CONTACT_PLAN.cta}
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </Link>
-            </Button>
-          </div>
-        </Surface>
 
         <div className="mx-auto max-w-3xl">
           <FaqSection

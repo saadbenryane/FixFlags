@@ -1,89 +1,19 @@
-# Brand & Positioning
+# Brand positioning
 
-*Last updated: 2026-07-10*
+**TARGET, 2026-09-08.** [The owner's vision](../knowledge/vision.md) is authoritative; [SOUL.md](../SOUL.md) owns personality and [voice-and-copy.md](voice-and-copy.md) owns wording.
 
-**Canonical sources:**
-- Product loop: `PRODUCT.md` → Core loop
-- Target audience: `PRODUCT.md` → Users and their context
-- Competitive landscape: `knowledge/market.md` → Competitive Landscape
+FixFlags is the place a business connects its website once and trusts to notice when something needs attention. The brand promise is “Your website, looked after.”
 
-## Category
+## Communication structure
 
-Product QA for what you shipped. AI tools ship fast. Products look done before they are actually ready. FixFlags catches what they still miss: broken flows, weak mobile UX, slow pages, unclear CTAs, SEO gaps, accessibility problems, trust issues, and conversion friction.
+Lead with continued care for the website. Demonstrate a real Site answer, an important Outcome and a Flag with evidence and verified recovery. Explain monitoring through visible coverage and quiet healthy states. Offer more context only when it makes an existing answer more useful.
 
-It is the missing quality layer after Cursor, Claude Code, Lovable, Bolt, Replit, v0, and Codex.
+Keep one product. General websites and Shopify use the same Site, Outcomes and Flags. “FixFlags for Shopify” is a focused use case and native distribution route. Marketing may tailor examples and entry paths without creating a second product taxonomy.
 
-## One-Liner
+## Brand continuity
 
-FixFlags is Product QA for AI-built products.
+Preserve FixFlags' approved orange, logo, typography and visual foundations. Restore consistency through canonical design tokens when implementing surfaces. The new experience does not require another orange or a rebrand.
 
-## Tagline
+Replace weak how-it-works/review illustrations with clear product evidence or explanatory visuals tied to real behavior. Never manufacture report results, money saved, customer counts or integrations. Validate screenshots and captions against the actual released capability.
 
-Finish what your AI started.
-
-## Anchoring / Campaign Line
-
-Finish what your AI started.
-
-## Pitch (Canonical)
-
-**Product QA on your live URL: review, flag, fix, update review. Every issue includes a fix prompt.**
-
-### Five-Audience Stress Test
-
-Run this before changing hero copy.
-
-| Persona | Cares about | Passes if… |
-|---------|-------------|------------|
-| AI shipper (Cursor) | Fix loop in editor | Mentions fix prompts + update review |
-| Live site founder | Why traffic doesn't convert | Mentions AI reads page / conversion |
-| Studio designer | Not generic audit tool | Shows screenshot review, not Lighthouse clone |
-| Skeptic dev | Real pipeline | Capture → review → judge is explicit |
-| Non-technical founder | Plain language | No jargon; clear what happens on paste |
-
-If any persona fails, fix that gap before polishing design.
-
-## Positioning
-
-- **FixFlags completes the AI loop.** AI coding tools (Cursor, Claude Code, Lovable, Bolt) ship fast. They ship UIs that look right at a glance. FixFlags is the calm reviewer that catches what speed skipped: message gaps, UX issues, missing metadata. With fix prompts your AI can run immediately.
-- **The fix prompt is the differentiator, not the AI.** Anyone can screenshot a page and ask GPT what is wrong. The unique value is: evidence + fix prompt tuned for your AI editor in one step. Paste and ship.
-- **Update review proves improvement.** Not just finding issues, but verifying they are resolved. Before/after comparison is the proof.
-- **Not a Lighthouse wrapper.** Lighthouse scores performance and best practices. FixFlags reads screenshots for message clarity, UX gaps, and shareability.
-- **Not a consulting service.** No manual QA, no enterprise dashboards, no compliance reports.
-
-## Owned Moment
-
-"Shipping this week? Run the checklist." High stakes moments:
-- Product Hunt launch
-- Demo day (YC, Techstars)
-- Launch week / ship announcement
-- Client deliverable handoff (agency use case)
-
-Tied to the AI loop: your AI built it, FixFlags checks it before you share the link.
-
-## Voice Guardrails
-
-- No em dashes ever. Use periods, commas, or colons.
-- Sharp reviewer who has shipped messy launches, not a consultant selling a methodology.
-- Clear before clever. Calm before loud. Specific before impressive.
-- See [voice-and-copy.md](./voice-and-copy.md) for full guidelines.
-
-## Design Anti-Patterns (Cheesy)
-
-Avoid on marketing pages:
-
-- Grid/dot backgrounds behind hero
-- Checkmark pill rows (Free · No account · checkmarks)
-- Rotated cards with blur halos
-- Left amber stripe on every pain card
-- Traffic-light window chrome unless showing real product UI
-- Zap/lightning badge icons
-- Staggered translate-y on grid items for fake depth
-
-Prefer: editorial serif italics, mono labels, shadow depth, mechanism strips, AI verdict excerpts.
-
-## Brand Name
-
-FixFlags. Not QualityOS (rebrand complete).
-
-The name is concrete and action-oriented. "Flags" is the unit of value. "Fix" is the outcome. Keep everything aligned around this: Flags, not Findings. Rubrics, not Areas. Re-check, not Re-audit.
+The phased communication rollout, including pricing, help, metadata and Shopify, belongs in [ROADMAP.md](../ROADMAP.md).

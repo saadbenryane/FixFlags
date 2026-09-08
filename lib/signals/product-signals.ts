@@ -49,6 +49,23 @@ export function sanitizeSignalRoute(value: string | undefined, origin: string): 
   return url.pathname.slice(0, 300) || '/'
 }
 
+/** Preflight capability query. It intentionally reveals only allow/deny. */
+export async function isProductSignalOriginAllowed(input: {
+  projectId: string
+  origin: string
+}): Promise<boolean> {
+  const origin = normalizeSignalOrigin(input.origin)
+  const allowed = await prisma.productSignalKey.findFirst({
+    where: {
+      projectId: input.projectId,
+      allowedOrigin: origin,
+      revokedAt: null,
+    },
+    select: { id: true },
+  })
+  return Boolean(allowed)
+}
+
 function hashSession(projectId: string, session: string | undefined): string | null {
   if (!session) return null
   return createHash('sha256').update(`${projectId}:${session}`, 'utf8').digest('hex')

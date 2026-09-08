@@ -47,7 +47,7 @@ async function run() {
   await mkdir(outDir, { recursive: true })
   const browser = await chromium.launch()
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
-  await page.goto(base, { waitUntil: 'domcontentloaded' })
+  await page.goto(`${base}/new`, { waitUntil: 'domcontentloaded' })
   await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' })
 
   const input = page.getByLabel('Website URL').first()

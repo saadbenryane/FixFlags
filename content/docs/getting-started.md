@@ -1,32 +1,28 @@
 ## Before you start
 
-Use a deployed, publicly reachable `http` or `https` URL. FixFlags cannot review localhost, private preview links, password-protected pages, or internal network addresses.
+You need a Shopify store you can install apps on. FixFlags walks the public storefront a customer uses. A password-gated storefront stays Unclear until that password is off.
 
-## Run your first product review
+## Install on Shopify
 
-Open the FixFlags homepage, paste the URL, and choose **Review my product**. FixFlags captures the page, reviews it, judges the evidence, and builds a Finish Plan.
+Open [/install](/install), enter `your-store.myshopify.com`, and approve the app. The embedded admin app is the product. We pick up to two buyable products with storefront URLs and start the first walk.
 
-Keep the report open while the product review runs. The progress state shows whether FixFlags is capturing, checking, judging, or finalizing.
+You do not submit a website address. You do not run Playwright.
 
-## Claim your report
+## Watch the first walk
 
-An anonymous first product review shows genuine progress and safe evidence. Sign in from the report to claim it, unlock the complete report and fix prompts, and return to the same place.
+Overview says when we are still walking. When the walk finishes you get Can buy, Can't buy, or Unclear, with video of our session or a GIF of the key steps if video encoding failed.
 
-## Fix the first Flag
+We stop before payment.
 
-Start with the highest-ranked Flag. Read the evidence before copying its prompt. The prompt is designed to give your editor enough context to make a focused change without rewriting unrelated parts of the product.
+## Recheck after a fix
 
-Paste that prompt directly into Lovable or the builder you already use.
-
-## Update review
-
-Deploy the change first, then choose **Update review**. An update review performs a fresh capture and compares the new result with the original report. Each update review uses one product review credit.
+If the path cannot buy, fix the theme or app, then Recheck. Free stores get five manual rechecks per day. Scheduled walks continue about every six hours.
 
 ## Get help
 
-For step-by-step walkthroughs and common questions, visit the [Help Center](/help).
+For step-by-step guides, visit the [Help Center](/help).
 
-- [Run your first product review](/help/getting-started/first-check)
-- [Claim your report after sign-in](/help/getting-started/claiming-a-report)
-- [Flag, fix, and update review](/help/getting-started/flag-fix-recheck)
-- [Anonymous vs signed-in report access](/help/getting-started/anonymous-report-access)
+- [Install FixFlags on Shopify](/help/getting-started/first-check)
+- [How to read path health](/help/getting-started/reading-your-report)
+- [Recheck a path](/help/getting-started/flag-fix-recheck)
+- [Storefront access](/help/checks-and-reports/public-urls-only)

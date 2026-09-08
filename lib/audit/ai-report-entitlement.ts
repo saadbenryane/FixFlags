@@ -43,7 +43,7 @@ export async function resolveIncludeAiForNewAudit(userId: string | null): Promis
   // Without this, a user with a declined card keeps getting full LLM-judge audits
   // (real per-call cost) at zero subscription revenue for however long that lag lasts.
   // A revoked subscription forfeits the plan's included AI quota entirely (matches
-  // canAccessPaidFeatures / canSharePublicly, which also revoke access on a lapsed
+  // paid access rules, which also revoke access on a lapsed
   // subscription) - but credit packs the user separately paid real money for
   // (lib/billing/credits.ts) are a distinct transaction and remain spendable
   // regardless of subscription state, same as for a FREE-plan user below.

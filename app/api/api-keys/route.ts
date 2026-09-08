@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
-import { canUseApiKeys } from '@/lib/auth/permissions'
+import { canUseApiKeys } from '@/lib/auth/entitlements'
 import {
   generateApiKey,
   MAX_ACTIVE_API_KEYS,

@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { LandingSectionHeader } from "@/components/marketing/landing/LandingSectionHeader";
 import { RevealOnView } from "@/components/marketing/landing/RevealOnView";
 import { Container } from "@/components/ui/container";
@@ -45,15 +44,17 @@ export function LandingHowItWorksSection() {
             ))}
           </ol>
 
-          <RevealOnView className="relative min-h-[15rem] sm:min-h-[21rem] lg:min-h-[25rem]">
-            <Image
-              src="/marketing/visuals/how-it-works-workflow-v4.webp"
-              alt="A live product becomes an evidence-backed Flag and then a verified update review"
-              fill
-              sizes="(min-width: 1280px) 720px, (min-width: 1024px) 58vw, 100vw"
-              className="object-contain object-center drop-shadow-[0_24px_40px_hsl(var(--foreground)/0.08)]"
-              unoptimized
-            />
+          <RevealOnView className="relative min-h-[15rem] rounded-card bg-muted/20 p-6 shadow-card sm:min-h-[21rem] lg:min-h-[25rem]">
+            <p className="font-mono text-xs font-semibold uppercase tracking-label text-brand">
+              Watch verification
+            </p>
+            <p className="mt-4 font-display text-2xl font-semibold">
+              Video of the walk FixFlags ran
+            </p>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+              Product, add to cart, cart, checkout. We stop before payment. If the path fails, you
+              see the step.
+            </p>
           </RevealOnView>
         </div>
       </Container>

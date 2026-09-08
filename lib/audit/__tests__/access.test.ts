@@ -2,30 +2,21 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import type { Audit } from '@prisma/client'
 
 const dbMocks = vi.hoisted(() => ({
-  userFindUnique: vi.fn<() => Promise<unknown>>(),
   shareLinkFindUnique: vi.fn<() => Promise<unknown>>(),
 }))
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    user: {
-      findUnique: dbMocks.userFindUnique,
-    },
     shareLink: {
       findUnique: dbMocks.shareLinkFindUnique,
     },
   },
 }))
 
-vi.mock('@/lib/auth/entitlements', () => ({
-  canSharePublicly: vi.fn(),
-}))
-
 vi.mock('@/lib/security/share-grant', () => ({
   verifyShareGrant: vi.fn(),
 }))
 
-import { canSharePublicly } from '@/lib/auth/entitlements'
 import { verifyShareGrant } from '@/lib/security/share-grant'
 import type { ShareGrantClaims } from '@/lib/security/share-grant'
 import {
@@ -36,9 +27,7 @@ import {
   resolveReportChatGate,
 } from '@/lib/audit/access'
 
-const mockedUserFindUnique = dbMocks.userFindUnique
 const mockedShareLinkFindUnique = dbMocks.shareLinkFindUnique
-const mockedCanSharePublicly = vi.mocked(canSharePublicly)
 const mockedVerifyShareGrant = vi.mocked(verifyShareGrant)
 
 type AuditPick = Pick<Audit, 'id' | 'userId' | 'isPublic'>
@@ -139,9 +128,7 @@ describe('canRetryAnonymousAudit', () => {
 
 describe('resolveAuditAccess', () => {
   beforeEach(() => {
-    mockedUserFindUnique.mockResolvedValue(null)
     mockedShareLinkFindUnique.mockResolvedValue(null)
-    mockedCanSharePublicly.mockReturnValue(false)
     mockedVerifyShareGrant.mockReturnValue(null)
   })
 
@@ -174,38 +161,37 @@ describe('resolveAuditAccess', () => {
   })
 
   it('returns public_viewer when audit is public and the viewer is not the owner', async () => {
-    mockedUserFindUnique.mockResolvedValue({
-      id: 'user-1',
-      role: 'user',
-      plan: 'TEAM',
-      subscriptionStatus: 'ACTIVE',
-    })
-    mockedCanSharePublicly.mockReturnValue(true)
-
     const result = await resolveAuditAccess(
       makeAudit({ userId: 'user-1', isPublic: true }),
       { id: 'user-2' },
       undefined
     )
     expect(result).toBe('public_viewer')
-    expect(mockedUserFindUnique).toHaveBeenCalledWith({
-      where: { id: 'user-1' },
-      select: { id: true, role: true, plan: true, subscriptionStatus: true },
+    expect(mockedShareLinkFindUnique).not.toHaveBeenCalled()
+  })
+
+  it('returns share_grant for a valid private share link', async () => {
+    mockedVerifyShareGrant.mockReturnValue(grantClaims())
+    mockedShareLinkFindUnique.mockResolvedValue({
+      auditId: 'audit-1',
+      version: 1,
+      revoked: false,
+      expiresAt: null,
     })
+
+    const result = await resolveAuditAccess(
+      makeAudit({ userId: 'user-1', isPublic: false }),
+      { id: 'user-2' },
+      'grant'
+    )
+    expect(result).toBe('share_grant')
   })
 
   it('returns denied when share grant verification fails', async () => {
-    mockedUserFindUnique.mockResolvedValue({
-      id: 'user-1',
-      role: 'user',
-      plan: 'FREE',
-      subscriptionStatus: 'NONE',
-    })
-    mockedCanSharePublicly.mockReturnValue(false)
     mockedVerifyShareGrant.mockReturnValue(null)
 
     const result = await resolveAuditAccess(
-      makeAudit({ userId: 'user-1', isPublic: true }),
+      makeAudit({ userId: 'user-1', isPublic: false }),
       { id: 'user-2' },
       'invalid-grant'
     )
@@ -216,7 +202,7 @@ describe('resolveAuditAccess', () => {
     mockedVerifyShareGrant.mockReturnValue(grantClaims({ auditId: 'other-audit' }))
 
     const result = await resolveAuditAccess(
-      makeAudit({ userId: 'user-1', isPublic: true }),
+      makeAudit({ userId: 'user-1', isPublic: false }),
       { id: 'user-2' },
       'grant'
     )
@@ -228,7 +214,7 @@ describe('resolveAuditAccess', () => {
     mockedShareLinkFindUnique.mockResolvedValue(null)
 
     const result = await resolveAuditAccess(
-      makeAudit({ userId: 'user-1', isPublic: true }),
+      makeAudit({ userId: 'user-1', isPublic: false }),
       { id: 'user-2' },
       'grant'
     )
@@ -246,7 +232,7 @@ describe('resolveAuditAccess', () => {
     })
 
     const result = await resolveAuditAccess(
-      makeAudit({ userId: 'user-1', isPublic: true }),
+      makeAudit({ userId: 'user-1', isPublic: false }),
       { id: 'user-2' },
       'grant'
     )
@@ -264,7 +250,7 @@ describe('resolveAuditAccess', () => {
     })
 
     const result = await resolveAuditAccess(
-      makeAudit({ userId: 'user-1', isPublic: true }),
+      makeAudit({ userId: 'user-1', isPublic: false }),
       { id: 'user-2' },
       'grant'
     )
@@ -282,7 +268,7 @@ describe('resolveAuditAccess', () => {
     })
 
     const result = await resolveAuditAccess(
-      makeAudit({ userId: 'user-1', isPublic: true }),
+      makeAudit({ userId: 'user-1', isPublic: false }),
       { id: 'user-2' },
       'grant'
     )
@@ -300,33 +286,7 @@ describe('resolveAuditAccess', () => {
     })
 
     const result = await resolveAuditAccess(
-      makeAudit({ userId: 'user-1', isPublic: true }),
-      { id: 'user-2' },
-      'grant'
-    )
-    expect(result).toBe('denied')
-  })
-
-  it('returns denied when share link user cannot share publicly', async () => {
-    mockedVerifyShareGrant.mockReturnValue(grantClaims())
-    mockedShareLinkFindUnique.mockResolvedValue({
-      auditId: 'audit-1',
-      version: 1,
-      revoked: false,
-      expiresAt: null,
-      audit: {
-        user: {
-          id: 'user-1',
-          role: 'user',
-          plan: 'FREE',
-          subscriptionStatus: 'NONE',
-        },
-      },
-    })
-    mockedCanSharePublicly.mockReturnValue(false)
-
-    const result = await resolveAuditAccess(
-      makeAudit({ userId: 'user-1', isPublic: true }),
+      makeAudit({ userId: 'user-1', isPublic: false }),
       { id: 'user-2' },
       'grant'
     )

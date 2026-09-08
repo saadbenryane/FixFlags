@@ -8,13 +8,16 @@ import { prisma } from '@/lib/db'
 import { getEntitlements, hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { getEffectiveScanLimit, getPendingCheckCount, isUnlimitedScanLimit } from '@/lib/auth/permissions'
 import { isAtCheckLimit } from '@/lib/audit/usage'
-import { isPublicMarketingSample } from '@/lib/audit/report-access'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { toRankableFlag } from '@/lib/audit/load-finish-plan-flags'
 import { historyPointFromAudit } from '@/lib/report/workspace-model'
 import { buildFixList } from '@/lib/audit/finish-plan'
 import { loadVerificationReceiptsForReview } from '@/lib/products/workspace'
 import type { ReportWorkspaceAuditDTO } from '@/lib/report/workspace'
+import { buildLiveExplorerModel, buildPartialExplorerModel } from '@/lib/report/explorer-model'
+import { buildReviewWorkspaceProjection } from '@/lib/report/review-workspace-projection'
+import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
+import { previousScoreFromHistory } from '@/lib/audit/update-review-progress'
 
 const MAX_REVIEW_HISTORY_HOPS = 60
 
@@ -106,12 +109,6 @@ export async function loadCompletedReviewHistoryRows(input: {
   return [...rows.values()]
 }
 
-function topIssueFromFlags(
-  flags: Array<{ severity: string; problem: string }>
-): string | undefined {
-  return flags.find((f) => f.severity === 'CRITICAL' || f.severity === 'IMPORTANT')?.problem
-}
-
 export async function loadReportRouteState(
   params: Promise<{ id: string }>,
   shareToken?: string
@@ -163,8 +160,42 @@ export async function loadReportRouteState(
       !isUnlimitedScanLimit(progressiveEffectiveLimit) &&
       isAtCheckLimit(progressiveUser.auditsUsed, progressivePending, progressiveEffectiveLimit)
 
+    const routeKind: 'failed' | 'running' =
+      progressive.audit.status === 'FAILED' ? 'failed' : 'running'
+    const projection = buildReviewWorkspaceProjection({
+      kind: routeKind,
+      explorer: buildPartialExplorerModel({
+        url: progressive.audit.url,
+        pageType: progressive.audit.pageType,
+        score: progressive.audit.score,
+        flags: progressive.audit.flags,
+        screenshots: progressive.audit.screenshots,
+        rubrics: progressive.audit.rubrics,
+        promptAccess: progressive.capabilities.canViewPromptBodies ? 'all' : 'none',
+      }),
+      visibility: progressive.accessContext,
+      isAuthenticated: Boolean(progressive.session?.user),
+      reviewId: progressive.audit.id,
+      parentId: progressive.audit.parentId,
+      url: progressive.audit.url,
+      pageType: progressive.audit.pageType,
+      loading: progressive.audit.status !== 'FAILED',
+      agentMessages: buildFixFlagsScanMessages({
+        id: progressive.audit.id,
+        url: progressive.audit.url,
+        status: progressive.audit.status,
+        progress: progressive.audit.progress,
+        startedAt: progressive.audit.startedAt,
+        completedAt: progressive.audit.completedAt,
+        failureCode: progressive.audit.failureCode,
+        reportCompleteness: progressive.audit.reportCompleteness,
+        flags: progressive.audit.flags,
+        pages: progressive.audit.pages,
+      }),
+    })
     return {
-      kind: 'progressive' as const,
+      kind: routeKind,
+      projection,
       id: progressive.audit.id,
       audit: {
         ...progressive.audit,
@@ -198,11 +229,7 @@ export async function loadReportRouteState(
     sampleFixFlag,
   } = result
   const isOwner = accessContext === 'owner'
-  const isMarketingSample = isPublicMarketingSample({
-    userId: audit.userId,
-    aiReviewAt: audit.aiReviewAt,
-    isPublic: audit.isPublic,
-  })
+  const isMarketingSample = false
 
   const [
     user,
@@ -381,8 +408,6 @@ export async function loadReportRouteState(
           }]
         : []
     })
-    const topIssue = topIssueFromFlags(canonicalFlags)
-
     const reportAudit: ReportWorkspaceAuditDTO = {
       accessContext,
       pageType: audit.pageType,
@@ -404,9 +429,73 @@ export async function loadReportRouteState(
         : [],
       fixList,
     }
+    const explorer = buildLiveExplorerModel({
+      url: reportAudit.url,
+      pageType: reportAudit.pageType,
+      score: reportAudit.score,
+      flags: reportAudit.flags,
+      screenshots: reportAudit.screenshots,
+      rubricRows: reportAudit.rubricRows,
+      evidenceAnchors: reportAudit.evidenceAnchors,
+      previewMeta: reportAudit.previewMeta,
+      flagVisualEvidence: reportAudit.flagVisualEvidence,
+      productContract: reportAudit.productContract ?? null,
+      promptAccess: showDeterministicFixes ? 'all' : 'none',
+      fixList: reportAudit.fixList,
+      reviewCoverage: reportAudit.reviewCoverage,
+      reportCompleteness: reportAudit.reportCompleteness,
+    })
+    const agentMessages = buildFixFlagsScanMessages({
+      id,
+      url: audit.url,
+      status: audit.status,
+      progress: audit.progress,
+      startedAt: audit.startedAt,
+      completedAt: audit.completedAt,
+      reportCompleteness: audit.reportCompleteness,
+      failureCode: audit.failureCode,
+      journeyReviewIncluded: audit.journeyReviewIncluded,
+      journeyReviewAt: audit.journeyReviewAt,
+      screenshotCapture: audit.screenshotCapture,
+      score: audit.score,
+      previousScore: previousScoreFromHistory(scoreHistory, id),
+      updateDiff: recheckDiff,
+      flags: canonicalFlags.map((flag) => ({
+        id: flag.id,
+        problem: flag.problem,
+        rubric: flag.rubric,
+        severity: flag.severity,
+        checkId: flag.checkId,
+        impactTag: flag.impactTag,
+        pageUrl: flag.pageUrl,
+        confidence: flag.confidence,
+        status: flag.status,
+        fix: flag.fix,
+      })),
+    })
+    const projectionKind: 'partial' | 'completed' =
+      reportAudit.reportCompleteness === 'PARTIAL' ? 'partial' : 'completed'
+    const projection = buildReviewWorkspaceProjection({
+      kind: projectionKind,
+      explorer,
+      visibility: accessContext,
+      isAuthenticated: isLoggedIn,
+      reviewId: id,
+      parentId: audit.parentId,
+      url: audit.url,
+      pageType: audit.pageType,
+      checkedAt: audit.completedAt,
+      freshComparableUpdate:
+        Boolean(audit.parentId) && audit.reportCompleteness === 'FULL',
+      history: scoreHistory,
+      updateDiff: recheckDiff,
+      agentMessages,
+      dataGaps: reportAudit.failedModules ?? [],
+    })
 
     return {
-      kind: 'completed' as const,
+      kind: projectionKind,
+      projection,
       id,
       audit,
       session,
@@ -430,15 +519,40 @@ export async function loadReportRouteState(
       rubricRows,
       flags: canonicalFlags,
       reportAudit,
-      topIssue,
       shareToken,
     }
   }
   // The lightweight read observed COMPLETED. If the row changed underneath the
   // completed loader, render its latest state rather than assembling a partial
   // completed report.
+  const routeKind: 'failed' | 'running' =
+    audit.status === 'FAILED' ? 'failed' : 'running'
+  const projection = buildReviewWorkspaceProjection({
+    kind: routeKind,
+    explorer: buildPartialExplorerModel({
+      url: audit.url,
+      pageType: audit.pageType,
+      score: audit.score,
+      flags: audit.flags,
+      screenshots: audit.screenshots,
+      rubrics: audit.rubrics.map((rubric) => ({
+        name: rubric.name,
+        score: rubric.score ?? null,
+        grade: rubric.grade ?? null,
+      })),
+      promptAccess: result.capabilities.canViewPromptBodies ? 'all' : 'none',
+    }),
+    visibility: accessContext,
+    isAuthenticated: isLoggedIn,
+    reviewId: id,
+    parentId: audit.parentId,
+    url: audit.url,
+    pageType: audit.pageType,
+    loading: audit.status !== 'FAILED',
+  })
   return {
-    kind: 'progressive' as const,
+    kind: routeKind,
+    projection,
     id,
     audit: {
       ...audit,

@@ -80,7 +80,7 @@ describe('curated sample provenance', () => {
     const selected = await getCuratedSampleAudit('curated-sample-v0')
 
     assert.equal(selected.source, 'curated')
-    assert.equal(selected.audit.accessContext, 'repository_sample')
+    assert.equal(selected.audit.accessContext, 'curated_sample')
     assert.equal(selected.audit.id, 'curated-sample-v0')
     assert.equal(selected.completedAt?.toISOString(), '2026-06-09T14:30:00.000Z')
     assert.ok((selected.audit.actionTimeline?.length ?? 0) > 0)

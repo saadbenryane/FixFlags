@@ -1,33 +1,21 @@
 import type { SampleReportDisplay } from '@/lib/marketing/sample-report-display'
 import { buildSampleExplorerModel } from '@/lib/report/explorer-model'
-import {
-  buildReportWorkspaceModel,
-  type ReportWorkspaceModel,
-} from '@/lib/report/workspace-model'
+import { buildReviewWorkspaceProjection } from '@/lib/report/review-workspace-projection'
 
-export function buildCuratedSampleWorkspaceModel(
+export function buildCuratedSampleReviewWorkspaceProjection(
   report: SampleReportDisplay
-): ReportWorkspaceModel {
+) {
   const explorer = buildSampleExplorerModel(report, { promptAccess: 'one' })
-  return buildReportWorkspaceModel({
+  return buildReviewWorkspaceProjection({
     kind: 'sample',
     explorer,
-    auditId: report.id,
+    visibility: 'curated_sample',
+    isAuthenticated: false,
+    reviewId: report.id,
     url: report.url,
     pageType: report.pageType,
     checkedAt: report.completedAt,
-    status: 'completed',
     history: report.scoreHistory,
-    capabilities: {
-      canReplayTimeline: false,
-      canChat: false,
-      canUseCanvas: false,
-      canShare: false,
-      canExport: false,
-      canRecheck: false,
-      canGiveFeedback: false,
-      promptAccess: 'demonstrated',
-      demonstratedFlagId: report.demonstratedFlagId,
-    },
+    demonstratedFlagId: report.demonstratedFlagId,
   })
 }

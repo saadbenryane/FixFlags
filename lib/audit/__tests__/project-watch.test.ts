@@ -39,6 +39,7 @@ import {
   processDueProjectWatches,
   setProjectWatch,
 } from '@/lib/audit/project-watch'
+import { fixedClock } from '@/lib/time/clock'
 
 const project = {
   id: 'project-1',
@@ -116,7 +117,9 @@ describe('Product Watch', () => {
       .mockResolvedValueOnce({ id: 'parent-1' })
     mocks.startMonitoringAudit.mockResolvedValue({ ok: true, auditId: 'child-1' })
 
-    const result = await processDueProjectWatches()
+    const result = await processDueProjectWatches(20, {
+      clock: fixedClock(new Date('2026-08-25T00:00:00.000Z')),
+    })
 
     expect(result).toEqual({ processed: 1, enqueued: 1, errors: 0 })
     expect(mocks.projectFindMany).toHaveBeenCalledWith(expect.objectContaining({
@@ -132,7 +135,9 @@ describe('Product Watch', () => {
   it('does not enqueue an overlapping scheduled re-check', async () => {
     mocks.auditFindFirst.mockResolvedValueOnce({ id: 'active-child' })
 
-    const result = await processDueProjectWatches()
+    const result = await processDueProjectWatches(20, {
+      clock: fixedClock(new Date('2026-08-25T00:00:00.000Z')),
+    })
 
     expect(result).toEqual({ processed: 1, enqueued: 0, errors: 0 })
     expect(mocks.startMonitoringAudit).not.toHaveBeenCalled()
@@ -154,7 +159,9 @@ describe('Product Watch', () => {
       })
     )
 
-    const result = await processDueProjectWatches()
+    const result = await processDueProjectWatches(20, {
+      clock: fixedClock(new Date('2026-08-25T00:00:00.000Z')),
+    })
 
     expect(result).toEqual({ processed: 1, enqueued: 0, errors: 0 })
     expect(mocks.projectUpdate).toHaveBeenCalledWith({

@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   auditFindUnique: vi.fn(),
   loadCompletedTaskOutcome: vi.fn(),
-  isPublicMarketingSample: vi.fn(),
   assertAuditAccess: vi.fn(),
   assertMcpAccess: vi.fn(),
 }))
@@ -18,9 +17,6 @@ vi.mock('@/lib/db', () => ({
 }))
 vi.mock('@/lib/audit/task-contracts', () => ({
   loadCompletedTaskOutcome: mocks.loadCompletedTaskOutcome,
-}))
-vi.mock('@/lib/audit/report-access', () => ({
-  isPublicMarketingSample: mocks.isPublicMarketingSample,
 }))
 vi.mock('@/lib/mcp/access', () => ({
   assertAuditAccess: mocks.assertAuditAccess,
@@ -74,7 +70,7 @@ describe('MCP Finish Plan access', () => {
     })
   })
 
-  it('requests no prompts for a live anonymous report and one only for the curated sample', async () => {
+  it('never requests prompts for a live anonymous report', async () => {
     const live = fakeServer()
     registerAnonCheckStatusTools(live.server as never)
     await live.handlers.get('ff_get_report')?.({ reportId: 'report-1' })
@@ -82,14 +78,6 @@ describe('MCP Finish Plan access', () => {
       'report-1',
       undefined,
       { promptAccess: 'none' }
-    )
-
-    mocks.isPublicMarketingSample.mockReturnValue(true)
-    await live.handlers.get('ff_get_report')?.({ reportId: 'report-1' })
-    expect(mocks.loadCompletedTaskOutcome).toHaveBeenLastCalledWith(
-      'report-1',
-      undefined,
-      { promptAccess: 'one' }
     )
   })
 

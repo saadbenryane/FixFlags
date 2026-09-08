@@ -1,19 +1,18 @@
 import { cookies, headers } from 'next/headers'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { resolveAuditAccess } from '@/lib/audit/access'
+import { resolveReviewCapabilities } from '@/lib/auth/access-policy'
 import { SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
 import { readAnonAuditIdsFromStore } from '@/lib/audit/usage'
 import {
-  canViewPrescriptionContentForAudit,
-  canViewDeterministicFixesForAudit,
   stripAiPrescriptionFromRubrics,
   stripAiPrescriptionFromFlags,
   stripDeterministicFixesFromRubrics,
   stripDeterministicFixesFromFlags,
   stripLegacyDeterministicAudit,
 } from '@/lib/audit/report-access'
-import { resolveReportTierForAudit } from '@/lib/auth/entitlements'
 import {
   deriveScreenshotCaptureStatus,
   parseScreenshotCaptureStatus,
@@ -84,7 +83,14 @@ export const auditFullInclude = {
       watchInterval: true,
     },
   },
-} as const
+  pipelineEvents: {
+    orderBy: [
+      { attempt: 'asc' as const },
+      { occurredAt: 'asc' as const },
+      { id: 'asc' as const },
+    ],
+  },
+} satisfies Prisma.AuditInclude
 
 async function fetchAuditRow(id: string) {
   return prisma.audit.findUnique({
@@ -110,6 +116,7 @@ export function stripInternalAuditFields<T extends Record<string, unknown>>(
     utmMedium,
     utmCampaign,
     failureMetadata,
+    pipelineEvents,
     ...rest
   } = audit
   void htmlMetadata
@@ -124,6 +131,7 @@ export function stripInternalAuditFields<T extends Record<string, unknown>>(
   void utmMedium
   void utmCampaign
   void failureMetadata
+  void pipelineEvents
   return rest
 }
 
@@ -160,14 +168,6 @@ export async function resolveActiveAttachedWorkId(id: string): Promise<string> {
     current = child.id
   }
   return current
-}
-
-export async function resolveIsPaidForAudit(audit: {
-  userId: string | null
-  isPublic: boolean
-}): Promise<boolean> {
-  const tier = await resolveReportTierForAudit(audit)
-  return tier === 'paid'
 }
 
 export function redactCompletedPrivateReportData<
@@ -229,6 +229,10 @@ export async function getProgressiveAuditForRequest(id: string) {
 
   const accessContext = await resolveAccessForCookies(requested, session?.user)
   if (accessContext === 'denied') return { kind: 'forbidden' as const }
+  const capabilities = resolveReviewCapabilities({
+    visibility: accessContext,
+    isAuthenticated: Boolean(session?.user),
+  })
 
   const workId = await resolveActiveAttachedWorkId(id)
   const audit =
@@ -268,14 +272,17 @@ export async function getProgressiveAuditForRequest(id: string) {
   return {
     kind: 'progressive' as const,
     accessContext,
+    capabilities,
     session,
     audit: {
       ...publicAudit,
       screenshotCapture,
       actionTimeline:
-        accessContext === 'owner' ? parseActionTimeline(performanceData) : [],
+        capabilities.canViewPrivateProductContext
+          ? parseActionTimeline(performanceData)
+          : [],
       productContract:
-        accessContext === 'owner'
+        capabilities.canViewPrivateProductContext
           ? parseProductContract(productContract)
           : null,
     },
@@ -294,34 +301,19 @@ export async function getGatedAuditForRequest(id: string) {
   if (accessContext === 'denied') {
     return { kind: 'forbidden' as const }
   }
+  const capabilities = resolveReviewCapabilities({
+    visibility: accessContext,
+    isAuthenticated: Boolean(session?.user),
+  })
 
   const workId = await resolveActiveAttachedWorkId(id)
   const audit = workId === id ? requested : await fetchAuditRow(workId)
   if (!audit) {
     return { kind: 'not_found' as const }
   }
-  const isPaid = await resolveIsPaidForAudit(audit)
-  const mayViewPrompts = accessContext === 'owner'
   const showPrescription =
-    mayViewPrompts &&
-    (await canViewPrescriptionContentForAudit(
-      {
-        userId: audit.userId,
-        aiReviewAt: audit.aiReviewAt,
-        isPublic: audit.isPublic,
-      },
-      session?.user
-    ))
-  const showDeterministicFixes =
-    mayViewPrompts &&
-    (await canViewDeterministicFixesForAudit(
-      {
-        userId: audit.userId,
-        aiReviewAt: audit.aiReviewAt,
-        isPublic: audit.isPublic,
-      },
-      session?.user
-    ))
+    capabilities.canViewPromptBodies && Boolean(audit.aiReviewAt)
+  const showDeterministicFixes = capabilities.canViewPromptBodies
   const hasTriage = Boolean(audit.triageAt)
   const isLegacyDeterministic =
     !hasTriage && !audit.aiReviewAt && !audit.failureCode
@@ -376,7 +368,8 @@ export async function getGatedAuditForRequest(id: string) {
     rubrics: sanitizedRubrics,
     flags: reportFlags,
   })
-  const canAccessPrivateReportData = accessContext === 'owner'
+  const canAccessPrivateReportData =
+    capabilities.canViewPrivateProductContext
   const launchReadiness =
     hasTriage || showPrescription
       ? parseLaunchReadiness(audit.launchReadiness)
@@ -495,7 +488,7 @@ export async function getGatedAuditForRequest(id: string) {
       project: stripped.project,
       pages: stripped.pages,
       journeyReviews: stripped.journeyReviews,
-      pipelineLog: parsePipelineLog(audit.pipelineLog),
+      pipelineLog: parsePipelineLog(audit.pipelineEvents),
       watchInterval,
       triageAt: audit.triageAt,
       flowData,
@@ -508,6 +501,7 @@ export async function getGatedAuditForRequest(id: string) {
   return {
     kind: 'ok' as const,
     accessContext,
+    capabilities,
     audit: {
       ...stripped,
       project: privateProjection.project,
@@ -536,7 +530,6 @@ export async function getGatedAuditForRequest(id: string) {
       isLegacyDeterministic,
       rubricRows,
     },
-    isPaid,
     isLoggedIn: !!session?.user,
     showPrescription,
     showDeterministicFixes,

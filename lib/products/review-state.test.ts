@@ -33,6 +33,12 @@ describe('presentProductReview', () => {
       label: 'Completed',
       score: '82',
     })
+    expect(
+      presentProductReview({ ...base, reportCompleteness: 'PARTIAL' }),
+    ).toMatchObject({
+      label: 'Completed',
+      score: '82',
+    })
     expect(presentProductReview({ ...base, status: 'FAILED' })).toMatchObject({
       label: 'Review failed',
       score: 'Unavailable',

@@ -8,10 +8,6 @@ vi.mock('../judge-triage', () => ({
   runTriageWithRetry: vi.fn(),
 }))
 
-vi.mock('../pipeline-log', () => ({
-  logPipelineEvent: vi.fn(),
-}))
-
 const { auditFindUnique, flagFindMany } = vi.hoisted(() => ({
   auditFindUnique: vi.fn(),
   flagFindMany: vi.fn(),
@@ -25,7 +21,6 @@ vi.mock('@/lib/db', () => ({
 }))
 
 import { runTriageWithRetry } from '../judge-triage'
-import { logPipelineEvent } from '../pipeline-log'
 import { runTriageStep } from '../pipeline/triage-step'
 
 // ── tryPartialFinalize mocks ─────────────────────────────────────
@@ -43,13 +38,19 @@ import { finalizePartialAudit, persistAuditFailedModules } from '../finalize'
 import { deriveAuditFailure } from '../pipeline/failure'
 import { tryPartialFinalize, accumulateTriageUsage } from '../pipeline/context'
 import type { PipelineContext, PageRun } from '../pipeline/types'
+import { systemClock } from '@/lib/time/clock'
 
 // ── Helpers ──────────────────────────────────────────────────────
+
+const eventLog = vi.fn(async () => undefined)
 
 const BASE_CTX: PipelineContext = {
   auditId: 'test-audit',
   deadline: Date.now() + 60_000,
   startedAt: new Date(),
+  clock: systemClock,
+  trace: { executionId: 'test-audit:1', traceId: 'trace-test', attempt: 1 },
+  events: { log: eventLog },
   pagespeedCalls: 0,
   usage: { inputTokens: 0, outputTokens: 0, models: [] },
   includeAi: true,
@@ -142,8 +143,8 @@ describe('runTriageStep', () => {
       mobileBase64: null,
     })
 
-    expect(logPipelineEvent).toHaveBeenCalledWith('test-audit', { stage: 'judging', event: 'triage_started' })
-    expect(logPipelineEvent).toHaveBeenCalledWith('test-audit', expect.objectContaining({ stage: 'judging', event: 'triage_completed', durationMs: expect.any(Number) }))
+    expect(eventLog).toHaveBeenCalledWith({ stage: 'judging', event: 'triage_started' })
+    expect(eventLog).toHaveBeenCalledWith(expect.objectContaining({ stage: 'judging', event: 'triage_completed', durationMs: expect.any(Number) }))
   })
 })
 

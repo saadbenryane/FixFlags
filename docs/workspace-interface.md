@@ -1,204 +1,70 @@
-# Report workspace interface
+# Site interface contract
 
-> Current product surface: the live `/report/[id]` workspace is Agent beside Report.
-> Preview, Timeline, and Canvas stay parked on that route and are not loaded there.
-> They are not customer-reachable on another live route until explicitly unparked.
-> Repository scanning is parked from discovery and new starts; protected historical data and GitHub revocation remain available.
+**TARGET, 2026-09-08.** Replaces the report/chat interface specification. Behavior: [PRD](product-prd.md). Intent: [vision](../knowledge/vision.md). Tokens: [DESIGN.md](../DESIGN.md). Current report routes retain their [legacy contract](../knowledge/report-contract.md) during migration.
 
-**Status:** Approved interface spec (August 2026). Engineering and design source for report workspace chrome.
+## One persistent place
 
-**Canonical for:** layout regions, view modes, mobile behavior, and on-screen terminology.
+First analysis loads directly into the Site shell and becomes its dashboard. Preserve identity and useful discoveries across loading, completion, refresh, retry and account claim. No disposable report followed by another workspace.
 
-**Related:** Product requirements live in [product-prd.md](./product-prd.md). Visual tokens and component rules live in [DESIGN.md](../DESIGN.md). Report section order and anchors follow [knowledge/report-contract.md](../knowledge/report-contract.md). Durable Product context lives on `/products/[id]`.
+Design mobile-first. Desktop reveals more information using the same mental model and routes.
 
-**Implementation:** The interactive split workspace lives in [ReportWorkspaceSplitShell](../components/report/ReportWorkspaceSplitShell.tsx) with progressive parity in [AuditReportProgressive](../components/audit/AuditReportProgressive.tsx). Do not fork a second report app.
+## Primary navigation
 
----
+| Destination | Customer question | Contents |
+| --- | --- | --- |
+| Home | Does anything need me? | Bounded current status, important Outcomes, worthwhile open Flags, recent meaningful changes and last verification |
+| Flags | What needs fixing? | Prioritized attention, clear scope/certainty and progressive detail; resolved history remains accessible without polluting current attention |
+| Site | What is FixFlags responsible for? | Outcomes, pages/actions, coverage, connections, history and configuration |
 
-## Layout regions (desktop)
+Account, billing and Site switching are supporting controls, not competing product modes. No Agent | Report split, scores-first hero, raw-check grid, arbitrary dashboard builder or integration marketplace. Capability cards summarize meaning; underlying checks stay in progressive detail.
 
-| Region                                 | Purpose                                                                                                                                                                                                                            |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Left — FixFlags understanding**      | Product identity, customer-meaningful review activity, observations, confirmed Flag announcements, judgment, and authenticated report conversation. Technical execution logs and simulated reasoning never appear here.            |
-| **Right — Report** | The completed public-safe Report: score/history chrome, Fix list / Flag detail, and owner Update review. Preview, Timeline, and Canvas stay parked and are not loaded. |
+## Home hierarchy
 
-**Editor chrome (locked):**
+The [card-board experience](card-board-experience.md) is the detailed design source. Home/Dashboard is one flat customizable grid with a permanent compact Site card. Security, Search, Performance, Conversion and Tracking form the initial board. A quiet Add card opens the personalized library; categories belong only there. Desktop uses Dashboard · Flags · Site; mobile uses Home · Flags · Site. Public evidence works before connections, which enrich these same cards.
 
-- Full-bleed under thin site chrome plus the compact app rail: `h-[calc(100dvh-header)] w-full`. Do not inset the split in `Container variant="report"` / `max-w-6xl`.
-- Signed-out reports use the same rail. Products, Settings, and Billing open the in-place signup/login dialog. Help stays public. The header Sign up CTA stays on the report.
-- No pane cards. Agent and Report columns are flat surfaces separated by a single vertical divider (`border-r`), not `rounded-card`, `shadow-card`, `glass-surface`, or pane rings.
-- Desktop grid: `minmax(280px, 32%)_minmax(0, 1fr)` with `gap-0`. Left is thinner than right. Both panes `min-h-0` with internal scroll.
-- Scanning and completed reviews share one continuous shell. Completed reports do not jump to a hero/summary document above the split; score, Flags, and actions live in Report mode.
-- Homepage marketing preview emulates this same Agent|Report editor with curated sample evidence (`getCuratedSampleAudit` / static sample + `buildFixFlagsScanMessages`). Never call `/api/checks` from marketing. Demo identity is **Launchpad** / `fixflags.com/demo`.
-- Agent column is chat: one Flag mark (animated `ScanWorkingMark` while scanning), bubble transcript, one-row composer with ArrowUp send. Anonymous viewers see the composer; submit opens the in-place create-account dialog and never posts chat.
-- Report mode uses `ReportExplorer` detail-first layout on live and homepage Report surfaces (full-width Flag detail + prev/next). Product Your priorities keeps list-detail with the five highest-ranked Flags shown first and Show more for the rest. Homepage and samples reuse that explorer; they do not hand-roll Flag cards.
-- Small screens use `WorkspaceMobileTabs` (Agent, Report) over one Product pane.
-- `/samples` fills its marketing card (`h-full`). The live report route is the only surface that uses `h-[calc(100dvh-var(--header-height))]`.
-- An absent `observation` selects the current curated Review. An explicit unpublished ID returns not found; it never substitutes a different Review or queries production.
-- The immersive shell carries no floating support bubble (`AuditShell` passes `showSupport={false}`). The Agent column is the chat surface.
+Site identity and a human status lead. Important Outcomes provide meaning. Attention appears prominently when needed; a healthy Site can remain short and quiet. Always make coverage and freshness discoverable near health language.
 
-```mermaid
-flowchart TB
-  subgraph shell [ImmersiveEditorShell]
-    Header[Slim_FixFlags_header]
-    subgraph split [FullBleedSplit]
-      Left[FixFlags_understanding]
-      Right[Report]
-    end
-  end
-  Left --> Identity[Name_plus_hostname]
-  Left --> Activity[Customer_meaningful_activity]
-  Left --> Judgment[Curated_Flags]
-  Right --> ReportView[Report_Fix_list]
-```
+Do not force a green overall label when an important Outcome is unverified or stale. A site can be reachable while a purchase behavior is failing. Distinguish those facts. Numeric scores may explain a specific measurement in detail; they do not define Site health.
 
----
+## Outcome and Page
 
-## Report view
+Use understandable Outcome names and the smallest useful confirmation. Looks right / Edit corrects inferred intent; it is not a funnel-design task. Preserve edited understanding across future analysis.
 
-Report is the default and only live right-panel mode. It shows the ranked Fix list and Flag detail inside `#report-flags`.
-Prompt actions remain authenticated even when their evidence is public.
+Show relevant pages/actions and verification limits on expansion. A page may belong to multiple Outcomes or none. Pages outside Outcomes remain checkable. Coverage lists actual responsibility and gaps without hundreds of toggles.
 
-**Report mode anatomy (locked):**
+## Flag detail
 
-| Row            | Rule                                                                                                                                                                                                                                                                                                                       |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Review header  | [ReportOutcomeBar](../components/report/ReportOutcomeBar.tsx) is the fixed compact header and owns only visible Score, honest pending/unavailable state, full-Review history, and determinate scan progress. It contains no gauge, verdict excerpt, Critical shortcut, or next-step prose.                                 |
-| Body           | [ReportPane](../components/report/ReportPane.tsx) wraps the explorer with `data-report-frame` and `WORKSPACE_REPORT_FRAME_CLASS`. Live report uses detail-first Flag browsing (prev/next, brand-orange arrows). Product Your priorities keeps the list-detail split with container queries. Flag detail places Fix Prompt and Copy prompt under the title/meta/nav row, then one desktop \| mobile pair. Motion evidence plays in the affected frame. |
-| Product page   | Contract (`#product-contract`) and verified memory (`#product-remember`) live under Product Intelligence on `/products/[id]` with Made with and Watch. Launch-gate failures appear as Flags in Your priorities, rendered through the shared `ReportExplorer` list-detail stack. View report opens the originating Review. The report does not mount a Review context disclosure. Anonymous and sample reports omit durable Product context. |
+Start with what happened and where. Show certainty, impact explanation, evidence and Fix this. Add context and technical detail progressively. Evidence matches the claimed page, viewport and time; missing evidence has an honest state.
 
-**Pane-relative, never viewport-relative.**
-The explorer lives inside a pane whose width has nothing to do with the viewport, so `ReportExplorer` uses container queries (`@container/pane` from `WORKSPACE_PANE_SCROLL_CLASS`, `@[40rem]/pane:` for the Product list-detail split) and carries no `lg:` breakpoint, no `100vh` cap, no `--header-offset` sticky, and no `overflow-clip` shell.
-Severity, impact, and page filters are always visible, because hiding them at narrow viewports hid them exactly where the pane needed them.
-Anchors and `goToFlag` scroll the nearest scroll parent through [scroll-to-section.ts](../lib/report/scroll-to-section.ts), never the document.
+Fix this may expose Send to my AI, Share and View technical details. Keep fix instructions and safe export structured around reproduction, expected result and verification criteria. Never automatically message another person or tool.
 
-Guarded by [workspace-geometry.test.ts](../components/report/__tests__/workspace-geometry.test.ts), `npm run ui:drift-guard`, and `node scripts/report-pane-proof.mjs`.
+Verify fix shows real progress and retains prior attempts. Resolved shows fresh independent proof and time. Neither copying nor “Done” resolves the issue.
 
----
+## State requirements
 
-## Morph behavior
+| State | Required presentation |
+| --- | --- |
+| Learning | Persisted discoveries and genuine running work; no generic fake progress or invented results |
+| Partial | Useful confirmed facts plus explicit missing scope; retry where possible |
+| Healthy | Scope, latest relevant verification, cadence and gaps; quiet successful state |
+| Needs attention | Ranked meaningful Flags, understandable next action |
+| Couldn't verify | What prevented a reliable answer and useful recovery/context action |
+| Stale or delayed | Last known evidence distinguished from current coverage; never quietly green |
+| No Outcome inferred | Useful page checks plus lightweight intent correction; no fabricated journey |
+| No Flags | Successful when coverage supports it; separate from “nothing checked” |
+| Fix verification | Running, persistent failure, inconclusive, verified recovery and recurrence |
+| Watch activation | Account/claim progress and actual scheduling result; retry activation independently of login |
+| Connection absent/revoked | Existing answer remains usable; missing context explicit |
+| Error | Preserve Site/history and offer recovery; no dead-end alternate report page |
 
-| Phase              | Default right panel | Chrome                                                                                                        |
-| ------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------- |
-| **Active review**  | Report              | Agent on the left; Report fills in as findings arrive; mobile defaults to Agent                               |
-| **After complete** | Report              | Agent remains mounted. Preview, Timeline, and Canvas stay parked on this route                                |
+## Connections and history
 
-The workspace fills the available viewport beneath thin site chrome and has no marketing footer.
-During an active review, Product name and hostname live in the FixFlags pane instead of a separate report hero.
-Below-report Product Contract does not compete with the live Product while scanning. Technology, contract, memory, and Watch appear only on the signed-in Product detail page.
+Offer context where its purpose is obvious: commerce inside Buy, Search Console beside a search concern, Meta beside a paid landing page. The Site settings area can manage connections but should not become a logo marketplace.
 
----
+Show significant changes and recoveries with source/time. Avoid event-log noise in Home. Deployment correlation is phrased as timing until evidence supports causality.
 
-## Update review
+## Visual and interaction quality
 
-- **Update review** and **Export** appear in the completed owner report’s compact header action row (with Score). Review history is its own scrollable row underneath.
-- Anonymous, shared, non-owner, and static sample workspaces never receive an actionable update-review control.
-- Update-review outcome counts (Fixed / Still open / New / Regressed / Inconclusive) render as compact cards on the **Product** page under the score chart when the latest completed review has a parent. The report itself does not repeat those cards. There is no Compare page in the customer report loop; Product score history and these cards cover what changed.
-- Old `/compare/[id]` bookmarks redirect to the report.
-- Verification receipts separately report `IMPROVED`, `UNCHANGED`, `REGRESSED`, or `INCONCLUSIVE`.
-- Copying a prompt records a handoff and never declares verification.
-- Only `IMPROVED` may write verified Product Memory; partial or degraded reviews never do.
-- Customer term: **Update review** (not re-check). Internal route `/re-check` may remain until API migration.
-- Every signed-in manual update review consumes exactly one product-review credit.
-- Completed scheduled Studio reviews consume one product-review credit.
+Keep approved brand tokens and existing accessible primitives. Replace decorative review/how-it-works art with real Site and Flag proof when available. No fake examples presented as live customer output.
 
----
-
-## Agent policy
-
-- Deterministic Agent scan messages are visible with the authorized anonymous evidence report and consume no model tokens.
-- Interactive Agent conversation is authenticated and scoped to the selected report session.
-- Programmatic and model responses use one message envelope and transcript while retaining internal source metadata for truth and accounting.
-- Scope: accept a URL through the canonical check path, explain Flags, answer what to fix first, and apply lightweight corrections to product understanding.
-- The Agent is not a general coding agent.
-- **Model:** cheapest viable chat model, configured separately from judge and triage. `CHAT_MODEL` / `CHAT_MAX_TOKENS` / `CHAT_TIMEOUT_MS` default to the cheapest model per provider; `CHAT_BASE_URL` routes chat through an OpenAI-compatible gateway (for example the opencode gateway) as the router equivalent.
-- Requirements: separate chat model config from judge/triage; monthly account usage measured from provider-reported input and output tokens; programmatic messages excluded from usage; explicit provider failure and retry states; deterministic actions grounded in report Flags remain available where no model is required.
-- The title-free Agent toolbar exposes History immediately left of New scan.
-- New scan switches the composer to URL mode and reuses `/api/checks`; it never creates a second scan pipeline.
-
----
-
-## Mobile
-
-Full parity. No degraded subset.
-
-| Capability                      | Requirement    |
-| ------------------------------- | -------------- |
-| Start product review            | Yes            |
-| Watch progress / activity       | Yes            |
-| Chat with FixFlags              | Yes            |
-| Browse Fix list and Flag detail | Yes            |
-| View Flag evidence captures     | Yes            |
-| Run update review and see outcomes on Product | Yes |
-| Account, billing, usage meters  | Yes            |
-
-**Primary switch:** one tab bar for the whole review — Agent and Report.
-The same bar and the same Product pane serve a running scan and a completed report, so nothing about the mobile shell changes at completion.
-Active scans default to Agent on mobile.
-When the completed server report replaces the active review, Report becomes the default on mobile and desktop.
-
----
-
-## Customer labels on chrome
-
-Wire from [lib/marketing/copy/terminology.ts](../lib/marketing/copy/terminology.ts):
-
-| Label          | Use on chrome                                                              |
-| -------------- | -------------------------------------------------------------------------- |
-| Product review | Standard full pass with journey and path evidence where available |
-| Update review  | Fresh owner-triggered review on the same URL (header action row)       |
-| Funnel         | Report section                                                             |
-| Path           | Evidence unit                                                              |
-| Fix list       | Ranked work queue                                                          |
-
-Do not show **re-check** in customer UI.
-
----
-
-## In-product help and escalation
-
-Contextual help links route through `lib/help/contextual.ts` (`helpHrefForSurface`, `helpHrefForFailureCode`, `helpHrefForLimitAction`).
-
-| Surface | Help entry | Escalation |
-| ------- | ---------- | ------------ |
-| App sidebar | `/help` (public) | — |
-| Usage meter at limit | `what-counts-as-a-check`, `when-credits-run-out` | `SupportProvider` on app shell |
-| Report score tooltip | `how-scores-work` via `score_help` | — |
-| Scan / report failure | `why-check-failed` + `HelpSupportActions` | `openSupportChat` |
-| Deleted / missing report | `why-check-failed` | contact link |
-| Report error boundary | contextual help article | — |
-| Dashboard empty products | `first-check` | — |
-| Billing / limit gates | contextual billing articles | `openSupportChat` |
-
-The immersive report workspace keeps `showSupport={false}` on the report shell so the Agent column stays the chat surface.
-Knowledge routes (`/help`, `/faq`, `/docs`) and the authenticated app shell mount `SupportProvider` so `HelpChatEscalate` and billing help actions can open live chat.
-
----
-
-## Shipped vs target (interface)
-
-| Area        | Today                                                                                                                                              | Target                                               |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Layout      | Full-bleed flush split; no pane cards; same shell scan→complete                                                                                    | Same                                                 |
-| Right panel | Report only on live `/report/[id]`                                                                                                                 | Same until Preview/Timeline/Canvas are unparked      |
-| Agent       | One transcript; programmatic output is public-safe and free, model conversation is authenticated and metered monthly                               | Same                                                 |
-| Mobile      | One tab bar (Agent, Report) over the same Product pane, scanning and completed                                                                     | Same                                                 |
-| View toggle | Completed and active live reviews use Report; Preview/Timeline/Canvas parked                                                                       | Unpark only with an explicit product decision        |
-
-## Parked surfaces (not live)
-
-The following remain in the codebase for a future unpark. They are **not** loaded on `/report/[id]`, have no customer alternate route today, and must not appear in Free/Pro feature lists as shipped:
-
-- **Preview** — BrowserFrame stage, device toggle, evidence spotlight, transport scrub
-- **Timeline** — entitled path playback / journey replay
-- **Canvas** — paid visual artifact from an authorized evidence bundle
-
-Curated sample fixtures may still include static Timeline demo data for marketing samples only.
-
-## Resolved design questions
-
-1. Mobile uses one tab bar for Agent and Report, identical while scanning and after completion.
-2. Preview, Timeline, and Canvas stay parked on the live report until an explicit unpark ships a discoverable path.
-3. Anonymous live-report and non-owner viewers receive no Timeline payload or journey playback.
-4. Repository-owned samples may expose only complete, versioned static Timeline fixtures for demo.
-5. There is no Compare page; Product outcome cards and score history cover what changed.
+Use clear focus order, 44px touch targets, status text alongside color, readable text, keyboard access, reduced motion and loading announcements without excessive screen-reader chatter. Verify at 375, 768 and 1280px, plus zoom/reflow. Desktop must not add essential actions unavailable on mobile.

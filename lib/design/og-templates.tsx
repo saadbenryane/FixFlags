@@ -186,7 +186,7 @@ export function ReportOgImage({
             letterSpacing: '-0.01em',
           }}
         >
-          Finish what your AI started
+          Know when customers can't buy
         </div>
         <div
           style={{
@@ -196,7 +196,7 @@ export function ReportOgImage({
             fontFamily: ogFontFamilies.sans,
           }}
         >
-          Message · Experience · Reach
+          Protect the path that makes money
         </div>
       </div>
     )

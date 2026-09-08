@@ -141,14 +141,23 @@ if (!sampleRoute.includes('UnknownCuratedObservationError') || !sampleRoute.incl
 }
 
 const workspaceAdapters = readFileSync(join(ROOT, 'lib/report/workspace-adapters.ts'), 'utf8')
+for (const required of ["kind: 'sample'", "visibility: 'curated_sample'"]) {
+  if (!workspaceAdapters.includes(required)) {
+    violations.push(`lib/report/workspace-adapters.ts: curated sample projection drift (${required})`)
+  }
+}
+const reviewProjection = readFileSync(
+  join(ROOT, 'lib/report/review-workspace-projection.ts'),
+  'utf8'
+)
 for (const required of [
   'canReplayTimeline: false',
-  'canChat: false',
   'canUseCanvas: false',
-  "promptAccess: 'demonstrated'",
+  "input.kind === 'sample'",
+  'surface.prompt.workspace',
 ]) {
-  if (!workspaceAdapters.includes(required)) {
-    violations.push(`lib/report/workspace-adapters.ts: curated sample capability drift (${required})`)
+  if (!reviewProjection.includes(required)) {
+    violations.push(`lib/report/review-workspace-projection.ts: canonical capability drift (${required})`)
   }
 }
 

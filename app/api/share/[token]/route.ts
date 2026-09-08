@@ -4,7 +4,6 @@ import { handleRouteError, apiError } from '@/lib/api/errors'
 import { verifySharePassword } from '@/lib/security/share-password'
 import { createShareGrant, SHARE_GRANT_COOKIE } from '@/lib/security/share-grant'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
-import { canSharePublicly } from '@/lib/auth/entitlements'
 
 async function authorize(token: string, password?: string) {
   const link = await prisma.shareLink.findUnique({
@@ -21,7 +20,6 @@ async function authorize(token: string, password?: string) {
       audit: {
         select: {
           status: true,
-          user: { select: { id: true, role: true, plan: true, subscriptionStatus: true } },
         },
       },
     },
@@ -29,9 +27,6 @@ async function authorize(token: string, password?: string) {
 
   if (!link) return { error: apiError('Share link not found', 404, { code: 'SHARE_NOT_FOUND' }) }
   if (link.revoked) return { error: apiError('Share link revoked', 410, { code: 'SHARE_REVOKED' }) }
-  if (!link.audit.user || !canSharePublicly(link.audit.user)) {
-    return { error: apiError('This share link is no longer available', 403) }
-  }
   if (link.audit.status !== 'COMPLETED') return { error: apiError('Report is not ready', 409) }
   if (link.expiresAt && link.expiresAt < new Date()) return { error: apiError('Share link expired', 410, { code: 'SHARE_EXPIRED' }) }
   if (link.maxViews !== null && link.viewCount >= link.maxViews) {

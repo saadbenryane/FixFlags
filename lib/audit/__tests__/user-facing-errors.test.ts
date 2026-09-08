@@ -10,6 +10,11 @@ describe('user-facing audit errors', () => {
   it('maps failure codes to stable copy', () => {
     assert.equal(getUserFacingAuditError('AUDIT_TIMEOUT'), AUDIT_ERRORS.timeout)
     assert.equal(getUserFacingAuditError('DESKTOP_CAPTURE_FAILED'), AUDIT_ERRORS.captureFailed)
+    assert.equal(getUserFacingAuditError('SITE_FORBIDDEN'), AUDIT_ERRORS.siteBlocked)
+    assert.equal(getUserFacingAuditError('HTTP_FORBIDDEN'), AUDIT_ERRORS.siteBlocked)
+    assert.equal(getUserFacingAuditError('SITE_RATE_LIMITED'), AUDIT_ERRORS.rateLimited)
+    assert.equal(getUserFacingAuditError('SITE_UNREACHABLE'), AUDIT_ERRORS.unreachable)
+    assert.equal(getUserFacingAuditError('SITE_NOT_HTML'), AUDIT_ERRORS.notHtml)
   })
 
   it('never returns raw backend messages', () => {

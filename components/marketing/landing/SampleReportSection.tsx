@@ -11,7 +11,7 @@ import { LANDING_PAGE } from "@/lib/marketing/copy";
 import type { CuratedSampleAudit } from "@/lib/marketing/curated-sample";
 import { buildSampleReportDisplay } from "@/lib/marketing/sample-report-display";
 import { getStaticSampleAudit } from "@/lib/marketing/static-sample";
-import { buildCuratedSampleWorkspaceModel } from "@/lib/report/workspace-adapters";
+import { buildCuratedSampleReviewWorkspaceProjection } from "@/lib/report/workspace-adapters";
 
 interface SampleReportSectionProps {
   audit?: CuratedSampleAudit;
@@ -20,7 +20,7 @@ interface SampleReportSectionProps {
 export function SampleReportSection({ audit }: SampleReportSectionProps) {
   const copy = LANDING_PAGE.sampleReport;
   const report = buildSampleReportDisplay(audit ?? getStaticSampleAudit());
-  const workspace = buildCuratedSampleWorkspaceModel(report);
+  const projection = buildCuratedSampleReviewWorkspaceProjection(report);
 
   return (
     <Section
@@ -48,7 +48,7 @@ export function SampleReportSection({ audit }: SampleReportSectionProps) {
           </RevealOnView>
 
           <RevealOnView className="w-full min-w-0 max-w-6xl">
-            <HomepageReportPreview model={workspace} />
+            <HomepageReportPreview projection={projection} />
           </RevealOnView>
 
           <RevealOnView>

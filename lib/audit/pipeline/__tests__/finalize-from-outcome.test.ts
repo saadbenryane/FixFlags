@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it, vi, beforeEach, expect } from 'vitest'
 import type { PipelineContext, PageRun } from '../types'
+import { systemClock } from '@/lib/time/clock'
 
 const { prismaMock, logPipelineEvent, persistTriageResults, tryResolveEvidenceAnchorsForAudit, mergeFlowCtaEvidenceAnchors, tryCaptureVisualEvidenceForAudit, finalizeTriageAudit, finalizeTriageDegraded, persistAuditFailedModules, enqueueAiReview, runTriageStep, accumulateTriageUsage, productScoresFromFlags, buildCombinedTriageOutput, primaryPageRun, resolveAuditOutcome, parseTriageFailure } =
   vi.hoisted(() => {
@@ -64,6 +65,9 @@ function ctx(): PipelineContext {
     auditId: 'audit-1',
     deadline: 0,
     startedAt: new Date(),
+    clock: systemClock,
+    trace: { executionId: 'audit-1:1', traceId: 'trace-1', attempt: 1 },
+    events: { log: logPipelineEvent },
     pagespeedCalls: 2,
     usage: {
       inputTokens: 100,
@@ -147,7 +151,7 @@ describe('retryPrimaryTriage', () => {
     const runs = [pageRun({ triageFailure: { reason: 'provider_exhausted', message: 'x', retryable: true } })]
     const result = await retryPrimaryTriage(ctx(), runs)
     assert.equal(result[0].triageFailure?.reason, 'provider_exhausted')
-    expect(logPipelineEvent).toHaveBeenCalledWith('audit-1', expect.objectContaining({ event: 'triage_runner_retry_failed' }))
+    expect(logPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ event: 'triage_runner_retry_failed' }))
   })
 })
 
@@ -223,7 +227,7 @@ describe('finalizeFromOutcome', () => {
       startedAt: new Date(),
     })
     assert.equal(ok, false)
-    expect(logPipelineEvent).toHaveBeenCalledWith('audit-1', expect.objectContaining({ event: 'triage_persist_failed' }))
+    expect(logPipelineEvent).toHaveBeenCalledWith(expect.objectContaining({ event: 'triage_persist_failed' }))
     expect(finalizeTriageDegraded).toHaveBeenCalled()
   })
 

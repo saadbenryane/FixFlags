@@ -24,15 +24,10 @@ import { runFlowScan } from '../flow/run-flow-scan'
 import { runSlowReplay, type SlowReplayResult } from '../flow/slow-replay-probe'
 import { serializeFlowData } from '../flow/flow-url'
 import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '../progress'
-import { logPipelineEvent } from '../pipeline-log'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
-import { assertDeadline, accumulateTriageUsage } from './context'
-import { runTriageStep } from './triage-step'
-import { isTriageProviderConfigured, type TriageResult } from '../judge-triage'
-import { parseTriageFailure } from './triage-failure'
-import { MIN_JUDGE_BUDGET_MS, SLOW_REPLAY_MIN_BUDGET_MS } from '../pipeline-config'
+import { assertDeadline } from './context'
+import { SLOW_REPLAY_MIN_BUDGET_MS } from '../pipeline-config'
 import { resolveAuditPipelineMode, type AuditPipelineMode } from './mode'
-import { AuditDeadlineError } from '../pipeline-errors'
 import { detectTechnologies, inferIndustry } from '../tech-detect'
 import { persistTechnologyObservations } from '../technology-profile'
 import { inferProductContract } from '../product-contract'
@@ -50,6 +45,7 @@ import {
   flowExtraFromAnchor,
 } from '@/lib/audit/evidence-targets'
 import { flowCheckIdForStatus } from '@/lib/audit/flow/flow-evidence'
+import { judgePageStage } from '@/lib/audit/pipeline/stages/judge-page'
 
 interface CaptureOutage {
   failureCode: string
@@ -108,9 +104,9 @@ function buildCaptureOutageMessage(
 }
 
 /** Create an AbortSignal that fires when the deadline is approaching (≤15s remaining). */
-function createDeadlineSignal(deadline: number): AbortSignal {
+function createDeadlineSignal(deadline: number, nowMs: number): AbortSignal {
   const controller = new AbortController()
-  const remaining = deadline - Date.now()
+  const remaining = deadline - nowMs
   const triggerMs = Math.max(0, remaining - 15_000)
   if (triggerMs <= 0) {
     controller.abort()
@@ -161,19 +157,19 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   let desktopBase64 = ''
   let mobileBase64: string | null = null
 
-  await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'capture_started' })
+  await ctx.events.log({ stage: 'capturing', event: 'capture_started' })
   if (input.primary && input.position === 0) {
     if (isTeaserScan) {
-      await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'flow_skipped_teaser' })
+      await ctx.events.log({ stage: 'capturing', event: 'flow_skipped_teaser' })
     } else {
-      await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'flow_deferred' })
+      await ctx.events.log({ stage: 'capturing', event: 'flow_deferred' })
     }
   }
-  const captureStart = Date.now()
+  const captureStart = ctx.clock.now().getTime()
 
   const shouldRunFlow = input.primary && input.position === 0 && !isTeaserScan
   const hasDeadlineBudgetForFlow =
-    input.primary && input.position === 0 && ctx.deadline - Date.now() > 60_000
+    input.primary && input.position === 0 && ctx.deadline - ctx.clock.now().getTime() > 60_000
 
   let initialScreenshotPersisted = false
   const onInitialScreenshot = input.primary
@@ -195,7 +191,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
             where: { id: ctx.auditId },
             data: { progress: PIPELINE_PROGRESS_SUBSTEP.CAPTURE_DONE },
           })
-          await logPipelineEvent(ctx.auditId, {
+          await ctx.events.log({
             stage: 'capturing',
             event: 'initial_screenshot_persisted',
           })
@@ -212,47 +208,50 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       deadline: ctx.deadline,
       onInitialScreenshot,
     }),
-    fetchPageSpeedData(normalizedUrl, createDeadlineSignal(ctx.deadline)),
+    fetchPageSpeedData(
+      normalizedUrl,
+      createDeadlineSignal(ctx.deadline, ctx.clock.now().getTime())
+    ),
   ])
   screenshots = captured
   pagespeed = speed
   flowResult = captured.flowResult ?? null
   if (flowResult && input.primary) {
-    await logPipelineEvent(ctx.auditId, {
+    await ctx.events.log({
       stage: 'capturing',
       event: 'flow_completed',
     })
   }
 
   if (input.primary && input.position === 0 && isTeaserScan) {
-    await logPipelineEvent(ctx.auditId, {
+    await ctx.events.log({
       stage: 'capturing',
       event: 'slow_replay_skipped_teaser',
     })
   } else if (
     input.primary &&
     input.position === 0 &&
-    ctx.deadline - Date.now() > SLOW_REPLAY_MIN_BUDGET_MS
+    ctx.deadline - ctx.clock.now().getTime() > SLOW_REPLAY_MIN_BUDGET_MS
   ) {
-    await logPipelineEvent(ctx.auditId, { stage: 'capturing', event: 'slow_replay_started' })
-    const slowReplayStart = Date.now()
+    await ctx.events.log({ stage: 'capturing', event: 'slow_replay_started' })
+    const slowReplayStart = ctx.clock.now().getTime()
     try {
       const browser = await getAuditBrowser()
       slowReplayResult = await runSlowReplay(browser, ctx.auditId, normalizedUrl)
-      await logPipelineEvent(ctx.auditId, {
+      await ctx.events.log({
         stage: 'capturing',
         event: 'slow_replay_completed',
-        durationMs: Date.now() - slowReplayStart,
+        durationMs: ctx.clock.now().getTime() - slowReplayStart,
       })
     } catch (err) {
-      await logPipelineEvent(ctx.auditId, {
+      await ctx.events.log({
         stage: 'capturing',
         event: 'slow_replay_failed',
         error: err instanceof Error ? err.message : String(err),
       })
     }
   } else if (input.primary && input.position === 0) {
-    await logPipelineEvent(ctx.auditId, {
+    await ctx.events.log({
       stage: 'capturing',
       event: 'slow_replay_skipped_deadline',
     })
@@ -260,10 +259,10 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
 
   ctx.pagespeedCalls += Number(Boolean(speed.desktop)) + Number(Boolean(speed.mobile))
 
-  await logPipelineEvent(ctx.auditId, {
+  await ctx.events.log({
     stage: 'capturing',
     event: 'capture_completed',
-    durationMs: Date.now() - captureStart,
+    durationMs: ctx.clock.now().getTime() - captureStart,
   })
 
   if (!screenshots.desktopUrl || !screenshots.desktopBase64) {
@@ -413,7 +412,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
         counts[tech.kind] = (counts[tech.kind] ?? 0) + 1
         return counts
       }, {})
-      await logPipelineEvent(ctx.auditId, {
+      await ctx.events.log({
         stage: 'checking',
         event: 'technology_detection_completed',
         detail: JSON.stringify({
@@ -424,7 +423,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       })
     } catch (error) {
       await persistTechnologyObservations(ctx.auditId, [], 'UNAVAILABLE')
-      await logPipelineEvent(ctx.auditId, {
+      await ctx.events.log({
         stage: 'checking',
         event: 'technology_detection_failed',
         error: error instanceof Error ? error.message : 'Technology detection failed',
@@ -450,7 +449,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   }
 
   assertDeadline(ctx, 'checking')
-  await logPipelineEvent(ctx.auditId, { stage: 'checking', event: 'checks_started' })
+  await ctx.events.log({ stage: 'checking', event: 'checks_started' })
   if (input.primary) {
     // Streaming anchor: from here the progressive report may show live
     // findings as deterministic check modules complete (flags persist at
@@ -460,7 +459,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       data: { progress: PIPELINE_PROGRESS_SUBSTEP.CHECKS_STARTED },
     })
   }
-  const checksStart = Date.now()
+  const checksStart = ctx.clock.now().getTime()
 
   const { flags: detFlags, failedModules } = await runAllChecks(
     normalizedUrl,
@@ -470,7 +469,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     screenshots?.consoleErrors ?? [],
     input.primary
       ? (index) => {
-          void logPipelineEvent(ctx.auditId, {
+          void ctx.events.log({
             stage: 'checking',
             event: `check_${index + 1}`,
           })
@@ -482,7 +481,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   )
 
   for (const mod of failedModules) {
-    await logPipelineEvent(ctx.auditId, {
+    await ctx.events.log({
       stage: 'checking',
       event: `check_failed`,
       detail: mod,
@@ -530,10 +529,10 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     ],
   })
 
-  await logPipelineEvent(ctx.auditId, {
+  await ctx.events.log({
     stage: 'checking',
     event: 'checks_completed',
-    durationMs: Date.now() - checksStart,
+    durationMs: ctx.clock.now().getTime() - checksStart,
   })
 
   // Nudge progress mid-CHECKING so the ring keeps moving through the (opaque)
@@ -549,14 +548,14 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   // This moves ~20s of flow scanning out of the critical path so checks and
   // triage start sooner. Flow flags merge into the flag array for triage.
   if (shouldRunFlow && hasDeadlineBudgetForFlow && !captured.flowResult) {
-    await logPipelineEvent(ctx.auditId, { stage: 'checking', event: 'flow_started_deferred' })
+    await ctx.events.log({ stage: 'checking', event: 'flow_started_deferred' })
     if (input.primary) {
       await prisma.audit.update({
         where: { id: ctx.auditId },
         data: { progress: PIPELINE_PROGRESS_SUBSTEP.FLOW_RUNNING },
       })
     }
-    const flowStart = Date.now()
+    const flowStart = ctx.clock.now().getTime()
     try {
       const browser = await getAuditBrowser()
       const flowSession = await createAuditPage(browser, normalizedUrl, {
@@ -574,15 +573,18 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       flowResult = await runFlowScan(flowSession.page, ctx.auditId, normalizedUrl, {
         landingStep,
         fetchHeaders: scanAccessToFetchHeaders(ctx.scanAccess),
-        deadlineMs: Math.max(1, Math.min(20_000, ctx.deadline - Date.now() - 15_000)),
+        deadlineMs: Math.max(
+          1,
+          Math.min(20_000, ctx.deadline - ctx.clock.now().getTime() - 15_000)
+        ),
       })
       flowSession.disposeNetwork()
       await flowSession.page.close().catch(() => {})
       await flowSession.page.context().close().catch(() => {})
-      await logPipelineEvent(ctx.auditId, {
+      await ctx.events.log({
         stage: 'checking',
         event: 'flow_completed_deferred',
-        durationMs: Date.now() - flowStart,
+        durationMs: ctx.clock.now().getTime() - flowStart,
       })
       const flowFlags = runFlowChecks(flowResult).map((flag) => ({
         ...flag,
@@ -592,14 +594,14 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
         flags.push(...flowFlags)
       }
     } catch (err) {
-      await logPipelineEvent(ctx.auditId, {
+      await ctx.events.log({
         stage: 'checking',
         event: 'flow_failed_deferred',
         error: err instanceof Error ? err.message : String(err),
       })
     }
   } else if (shouldRunFlow && !hasDeadlineBudgetForFlow) {
-    await logPipelineEvent(ctx.auditId, {
+    await ctx.events.log({
       stage: 'checking',
       event: 'flow_skipped_deadline_deferred',
     })
@@ -626,102 +628,19 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       ? 'FULL'
       : 'PARTIAL'
 
-  if (!ctx.includeAi) {
-    await prisma.auditPage.update({
-      where: { id: page.id },
-      data: {
-        // Capture succeeded (desktop screenshot required above). PageSpeed gaps
-        // keep completeness PARTIAL for audit honesty but do not mark the page
-        // as failed - Fixed can credit re-observation without PSI.
-        status: 'COMPLETED',
-        completeness,
-      },
-    })
-  }
-
-  // Triage is the only per-page step that depends on an external LLM. Once a
-  // page's screenshot has been captured we must never throw the whole report
-  // away: a triage failure degrades to deterministic results and returns with
-  // no triage, so the runner can finalize instead of marking the audit FAILED.
-  let triage: TriageResult | undefined
-  let triageFailure: ReturnType<typeof parseTriageFailure> | undefined
-
-  if (!isTriageProviderConfigured()) {
-    // No LLM key: don't transition to JUDGING or attempt a call that can only
-    // fail. Matches lib/env.ts intent for keyless deploys.
-    triageFailure = {
-      reason: 'no_provider_keys',
-      message: 'No AI provider keys configured for triage',
-      retryable: false,
-    }
-    await logPipelineEvent(ctx.auditId, {
-      stage: 'judging',
-      event: 'triage_skipped_no_provider',
-    })
-  } else {
-    await prisma.auditPage.update({
-      where: { id: page.id },
-      data: { status: 'JUDGING' },
-    })
-    await prisma.audit.update({
-      where: { id: ctx.auditId },
-      data: { status: 'JUDGING', progress: PIPELINE_PROGRESS.JUDGING },
-    })
-
-    const remainingMs = ctx.deadline - Date.now()
-    const triageBudgetMs = remainingMs - MIN_JUDGE_BUDGET_MS
-    await logPipelineEvent(ctx.auditId, {
-      stage: 'judging',
-      event: 'triage_budget_ms',
-      detail: String(Math.max(0, triageBudgetMs)),
-    })
-
-    if (remainingMs < MIN_JUDGE_BUDGET_MS) {
-      triageFailure = parseTriageFailure(new AuditDeadlineError('judging'))
-      await logPipelineEvent(ctx.auditId, {
-        stage: 'judging',
-        event: 'triage_skipped_deadline',
-        error: triageFailure.message,
-      })
-    } else {
-      try {
-        const triageResult = await runTriageStep(ctx, {
-          url: normalizedUrl,
-          metadata,
-          desktop: pagespeed?.desktop ?? null,
-          mobile: pagespeed?.mobile ?? null,
-          flags,
-          desktopBase64,
-          mobileBase64,
-        })
-        accumulateTriageUsage(ctx, triageResult)
-        triageResult.output.newFlags = triageResult.output.newFlags.map((flag) => ({
-          ...flag,
-          pageUrl: normalizedUrl,
-        }))
-        triage = triageResult
-      } catch (err) {
-        triageFailure = parseTriageFailure(err)
-        await logPipelineEvent(ctx.auditId, {
-          stage: 'judging',
-          event: 'triage_step_failed',
-          error: triageFailure.message,
-          detail: triageFailure.reason,
-        })
-      }
-    }
-  }
-
-  await prisma.auditPage.update({
-    where: { id: page.id },
-    data: {
-      // Capture succeeded (desktop screenshot required above). PageSpeed gaps
-      // keep completeness PARTIAL for audit honesty but do not mark the page
-      // as failed - Fixed can credit re-observation without PSI.
-      status: 'COMPLETED',
-      completeness,
-    },
+  const judgeResult = await judgePageStage(ctx, {
+    pageId: page.id,
+    url: normalizedUrl,
+    metadata,
+    desktop: pagespeed?.desktop ?? null,
+    mobile: pagespeed?.mobile ?? null,
+    flags,
+    desktopBase64,
+    mobileBase64,
+    completeness,
   })
+  const triage = judgeResult.artifact?.triage
+  const triageFailure = judgeResult.artifact?.triageFailure
 
   return {
     pageId: page.id,

@@ -25,6 +25,9 @@ import {
   type ImprovementRejectionReason,
 } from '@/lib/improvements/rejection-reasons'
 import { appendImprovementCycleEvent } from '@/lib/improvements/cycle-ledger'
+import { systemClock, type Clock } from '@/lib/time/clock'
+
+type ImprovementServiceDependencies = { clock?: Clock }
 
 type ImprovementFlag = {
   id: string
@@ -185,7 +188,8 @@ export async function createImprovementAttempt(input: {
   pullRequestReference?: string
   deploymentReference?: string
   changeSummary: string
-}) {
+}, dependencies: ImprovementServiceDependencies = {}) {
+  const clock = dependencies.clock ?? systemClock
   const changeSummary = input.changeSummary.trim()
   if (!changeSummary) throw new Error('Describe the implemented change before verification')
   const improvement = await prisma.improvement.findFirst({
@@ -210,7 +214,7 @@ export async function createImprovementAttempt(input: {
     `
     const accepted = await tx.improvement.updateMany({
       where: { id: improvement.id, acceptedAt: null },
-      data: { acceptedAt: new Date(), acceptedByChannel: input.builder },
+      data: { acceptedAt: clock.now(), acceptedByChannel: input.builder },
     })
     const existing = await tx.improvementAttempt.findFirst({
       where: {
@@ -282,7 +286,8 @@ export async function recordFlagImprovementAttempt(input: {
   rejectionRevisitAt?: Date
   contextCorrection?: Prisma.InputJsonValue
   rejectionStatus?: 'REJECTED' | 'SUPERSEDED'
-}) {
+}, dependencies: ImprovementServiceDependencies = {}) {
+  const clock = dependencies.clock ?? systemClock
   const flag = await prisma.flag.findFirst({
     where: { id: input.flagId, audit: { userId: input.userId } },
     include: {
@@ -351,7 +356,7 @@ export async function recordFlagImprovementAttempt(input: {
           status: input.rejectionStatus ?? 'REJECTED',
           rejectionReason: input.rejectionReason,
           rejectionNote: input.rejectionNote?.trim() || null,
-          rejectedAt: new Date(),
+          rejectedAt: clock.now(),
         },
       })
       await appendImprovementCycleEvent({
@@ -409,7 +414,7 @@ export async function recordFlagImprovementAttempt(input: {
     await prisma.$transaction(async (tx) => {
       await tx.improvement.updateMany({
         where: { id: improvementId, acceptedAt: null },
-        data: { acceptedAt: new Date(), acceptedByChannel: input.builder },
+        data: { acceptedAt: clock.now(), acceptedByChannel: input.builder },
       })
       await tx.improvement.updateMany({
         where: { id: improvementId, status: { in: ['PROPOSED', 'ACCEPTED'] } },
@@ -449,7 +454,7 @@ export async function recordFlagImprovementAttempt(input: {
     handoffReference: `flag:${flag.id}`,
     deploymentReference: input.deploymentReference,
     changeSummary: input.changeSummary ?? '',
-  })
+  }, { clock })
   return {
     flagId: flag.id,
     action: input.action,
@@ -469,7 +474,8 @@ export async function recordOwnerFlagFeedbackDecision(input: {
   userId: string
   reason: string
   note?: string
-}) {
+}, dependencies: ImprovementServiceDependencies = {}) {
+  const clock = dependencies.clock ?? systemClock
   const flag = await prisma.flag.findFirst({
     where: { id: input.flagId, audit: { userId: input.userId } },
     select: {
@@ -506,7 +512,7 @@ export async function recordOwnerFlagFeedbackDecision(input: {
         actor: input.userId,
         action: 'READY_TO_VERIFY',
         changeSummary: note || 'The owner reports this change is ready to verify.',
-      })
+      }, { clock })
     : await recordFlagImprovementAttempt({
         flagId: input.flagId,
         userId: input.userId,
@@ -517,7 +523,7 @@ export async function recordOwnerFlagFeedbackDecision(input: {
           normalizeImprovementRejectionReason(input.reason) ?? 'WEAK_RECOMMENDATION',
         rejectionNote: note,
         rejectionStatus: input.reason === 'duplicate' ? 'SUPERSEDED' : 'REJECTED',
-      })
+      }, { clock })
 
   await prisma.flag.update({
     where: { id: input.flagId },
@@ -532,7 +538,7 @@ export async function recordOwnerFlagFeedbackDecision(input: {
           purpose: 'Help visitors get value from this product',
           firstValueJourney: 'Complete the primary journey',
           criticalOutcomes: ['Primary outcomes work'],
-          inferredAt: new Date().toISOString(),
+          inferredAt: clock.now().toISOString(),
           source: 'heuristic',
         })
     const decisionNote = note ? `${flag.problem} - ${note}` : flag.problem
@@ -608,7 +614,8 @@ type VerificationResult = {
 export async function reconcileImprovementVerification(input: {
   parentAuditId: string
   verificationAuditId: string
-}): Promise<VerificationResult[]> {
+}, dependencies: ImprovementServiceDependencies = {}): Promise<VerificationResult[]> {
+  const clock = dependencies.clock ?? systemClock
   const [verificationAudit, parentOccurrences, currentFlags] = await Promise.all([
     prisma.audit.findUnique({
       where: { id: input.verificationAuditId },
@@ -791,7 +798,7 @@ export async function reconcileImprovementVerification(input: {
             auditId: input.verificationAuditId,
             improvementId: result.improvementId,
             attemptId: result.attemptId,
-            at: new Date().toISOString(),
+            at: clock.now().toISOString(),
           })
         }
         return memory

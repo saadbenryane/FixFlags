@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { config as loadEnv } from 'dotenv'
 import { runGaPull } from '@/lib/growth/ga-pull'
+import { parseGrowthPullCliArgs } from '@/lib/growth/pull-options'
 import { prisma } from '@/lib/db'
 
 loadEnv({ path: process.env.DOTENV_CONFIG_PATH ?? '.env.local' })
@@ -15,7 +16,8 @@ async function save(filename: string, payload: unknown): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const result = await runGaPull()
+  const options = parseGrowthPullCliArgs(process.argv.slice(2))
+  const result = await runGaPull(options)
   if (!result) throw new Error('GSC_SERVICE_ACCOUNT_KEY is required for the GA export')
   await Promise.all([
     save('ga-summary.json', result.summary),

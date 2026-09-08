@@ -135,6 +135,26 @@ describe('AuditReportProgressive', () => {
     expect(screen.queryByRole('navigation', { name: 'Report sections' })).not.toBeInTheDocument()
   })
 
+  it('keeps a failed Review in the Agent | Report shell with Retry in the pane', () => {
+    render(
+      <AuditReportProgressive
+        auditId={AUDIT_ID}
+        accessContext="anonymous_teaser"
+        status="FAILED"
+        url={URL}
+        failureCode="SITE_FORBIDDEN"
+        onRetry={async () => undefined}
+      />,
+    )
+
+    expect(screen.getByRole('tab', { name: 'Agent' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Report' })).toBeInTheDocument()
+    expect(screen.getByText('Check failed')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+    expect(screen.queryByText('Check another site')).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: REPORT_COPY.workspace.summaryLabel })).toBeInTheDocument()
+  })
+
   it('requires an auditId to render a completed report', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(() =>
@@ -217,7 +237,6 @@ describe('AuditReportProgressive', () => {
         screenshots={[
           { device: 'DESKTOP', url: '/desktop.png', width: 1280, height: 900 },
         ]}
-        screenshotCapture={{ desktop: 'ok', mobile: 'failed' }}
       />
     )
     expect(screen.queryByRole('tab', { name: 'Preview' })).not.toBeInTheDocument()

@@ -1,5 +1,8 @@
 # Scan Roadmap
 
+**HISTORICAL PLAN / IMPLEMENTATION REFERENCE, superseded as direction on 2026-09-08.** The complete vision at knowledge/vision.md and phased ROADMAP.md govern new work. Old scope, hero, commercial-loop, rubric and layout decisions below are not active instructions. Reuse technical evidence through docs/site-v2-migration.md; do not treat historical readiness as current release proof.
+
+
 *Last updated: 2026-07-14*
 
 Phased plan to expand FixFlags scans. Every phase must serve the core loop: **check → fix → re-check → prove**.

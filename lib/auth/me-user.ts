@@ -28,8 +28,6 @@ export async function serializeMeUser(
   const checks = await getCheckUsage(currentUser)
   const internalEntitlements = getEntitlements(currentUser)
   const entitlements = {
-    reportTier: internalEntitlements.reportTier,
-    canSharePublicly: internalEntitlements.canSharePublicly,
     canExportSummary: internalEntitlements.canExportSummary,
     canAccessPaidFeatures: internalEntitlements.canAccessPaidFeatures,
     canMonitor: internalEntitlements.canMonitor,

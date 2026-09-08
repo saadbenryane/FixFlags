@@ -18,4 +18,7 @@ export * from './copy/auth'
 export * from './copy/tools'
 export * from './copy/terminology'
 export * from './copy/legal'
+export * from './copy/shopify'
 export * from './copy/agent'
+
+export * from './copy/care-homepage'

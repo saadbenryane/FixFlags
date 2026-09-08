@@ -358,4 +358,22 @@ describe('explorer-model', () => {
     assert.equal(model.coverageSentence, '24 public links')
     assert.equal(model.coveragePartial, true)
   })
+
+  it('does not treat PageSpeed-only PARTIAL completeness as a capture warning', () => {
+    const model = buildLiveExplorerModel({
+      url: 'https://example.com',
+      pageType: 'Landing page',
+      score: 70,
+      flags: [],
+      rubricRows: [],
+      reviewCoverage: {
+        reviewedPageCount: 1,
+        linkedPageCount: 0,
+        openCheckCount: 1,
+        partial: false,
+      },
+      reportCompleteness: 'PARTIAL',
+    })
+    assert.equal(model.coveragePartial, false)
+  })
 })

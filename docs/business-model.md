@@ -1,5 +1,8 @@
 # Business Model
 
+**Existing commercial implementation reference, 2026-09-08.** This document's prior plan/review mechanics are compatibility context only. [knowledge/strategy.md](../knowledge/strategy.md) owns new responsibility-based direction, and code owns current prices/entitlements. Preserve accounts, billing and paid rights; do not carry old teaser-only/free-watch restrictions into the target or silently change existing subscriptions.
+
+
 *Last updated: 2026-08-25*
 
 FixFlags sells Product Reviews with a clear capacity and workflow ladder.

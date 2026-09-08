@@ -1,22 +1,7 @@
-# FixFlags Design Brief
+# FixFlags design brief
 
-FixFlags checks AI-built products before they reach users. People paste URLs and get graded reports with Flags, screenshots, and fix prompts. Tone: **sharp senior reviewer**, clear and direct, not generic SaaS template.
+Your website, looked after. Design the persistent Site experience from [the interface contract](../docs/workspace-interface.md) and [PRD](../docs/product-prd.md). The [complete vision](../knowledge/vision.md) owns intent.
 
-## Product context
+Keep the approved FixFlags identity and orange from [DESIGN.md](../DESIGN.md). Human status, Outcomes, worthwhile Flags and explicit coverage lead. Home · Flags · Site is mobile-first and consistent on desktop. Technical evidence reveals progressively. Healthy can be quiet and short.
 
-- Core object: **Flag** (issue worth fixing)
-- Rubrics: **Message**, **Experience**, **Reach**
-- Loop: Flag → Fix → Re-check
-
-## Visual direction
-
-- Editorial + technical credibility
-- Letter grades per rubric (A–F)
-- Severity groups: Critical, Important, Polish
-
-## Skills
-
-- `.cursor/skills/fixflags-design-system/SKILL.md`
-- `lib/design/brand-rules.md` — palette, typography, file layout
-- `.cursor/skills/fixflags-marketing/lean-visual.md`
-- `.cursor/skills/fixflags-marketing/writing-simple.md`
+The old graded report and Agent/Report split are retired as target design. Existing report maintenance uses [its compatibility contract](../knowledge/report-contract.md). Use the [design-system skill](../.agents/skills/fixflags-design-system/SKILL.md) for implementation.

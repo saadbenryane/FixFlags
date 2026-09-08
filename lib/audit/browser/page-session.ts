@@ -15,6 +15,7 @@ import {
   type NetworkMonitor,
   type TechnologyResourceRecord,
 } from './network-monitor'
+import { isBotInterstitialPage, PageCaptureError } from './page-capture'
 
 export const PAGE_TIMEOUT_MS = 30_000
 
@@ -28,6 +29,8 @@ export interface AuditPageSession {
   page: Page
   /** Shared console error buffer (mutated by page listeners). */
   consoleErrors: Array<{ type: string; text: string }>
+  /** HTTP status from the initial navigation, if known. */
+  httpStatus: number | null
   /** Response headers from the initial page navigation. */
   responseHeaders: Record<string, string>
   /** Same-origin / engagement network failures collected during the session. */
@@ -49,6 +52,13 @@ export interface CreateAuditPageOptions {
   settle?: boolean
   /** Extra journey guards: block payments, downloads, and mutating form posts (with one engagement probe). */
   journeySafe?: boolean
+  /**
+   * Buy-path walks: keep payment/download blocks, but allow same-origin cart
+   * POSTs and do not preventDefault native form submit.
+   */
+  buyPath?: boolean
+  /** Directory for Playwright recordVideo. Finalized when the context closes. */
+  recordVideoDir?: string
   /** HTTP basic auth, cookies, or headers for preview/staging targets. */
   scanAccess?: ScanAccessConfig | null
   /** Absolute audit deadline. Navigation never receives more than the remaining budget. */
@@ -75,8 +85,15 @@ export async function createAuditPage(
     viewport: { width: options.profile.width, height: options.profile.height },
     userAgent: options.profile.userAgent,
     deviceScaleFactor: options.profile.deviceScaleFactor ?? 1,
+    isMobile: options.profile.isMobile ?? false,
     locale: 'en-US',
     bypassCSP: true,
+    recordVideo: options.recordVideoDir
+      ? {
+          dir: options.recordVideoDir,
+          size: { width: options.profile.width, height: options.profile.height },
+        }
+      : undefined,
     ...playwrightAccess,
   })
 
@@ -91,12 +108,17 @@ export async function createAuditPage(
     originHost = ''
   }
 
-  const formProbeState: JourneyRouteGuardOptions['formProbe'] = options.journeySafe
+  const journeyGuards = options.journeySafe || options.buyPath
+  const formProbeState: JourneyRouteGuardOptions['formProbe'] = journeyGuards
     ? { result: null, probed: false }
     : undefined
 
-  const guardOptions: JourneyRouteGuardOptions | undefined = options.journeySafe
-    ? { originHost, formProbe: formProbeState }
+  const guardOptions: JourneyRouteGuardOptions | undefined = journeyGuards
+    ? {
+        originHost,
+        formProbe: formProbeState,
+        allowCartMutations: options.buyPath === true,
+      }
     : undefined
 
   await page.route('**', async (route) => {
@@ -107,7 +129,7 @@ export async function createAuditPage(
       return
     }
     if (options.allowLocalhost && isLocalhostAuditUrl(requestUrl)) {
-      if (options.journeySafe) {
+      if (journeyGuards) {
         await applyJourneyRouteGuards(route, () => route.continue(), guardOptions)
         return
       }
@@ -116,7 +138,7 @@ export async function createAuditPage(
     }
     try {
       await assertPublicAuditUrl(requestUrl)
-      if (options.journeySafe) {
+      if (journeyGuards) {
         await applyJourneyRouteGuards(route, () => route.continue(), guardOptions)
         return
       }
@@ -164,7 +186,6 @@ export async function createAuditPage(
       contentType.includes('text/html') || contentType.includes('application/xhtml+xml')
 
     if (!statusOk || (!contentTypeOk && !hasHtmlDocument)) {
-      const { PageCaptureError } = await import('./page-capture')
       network.dispose()
       throw new PageCaptureError('Destination did not return a successful HTML document', {
         code:
@@ -180,19 +201,41 @@ export async function createAuditPage(
         finalUrl: page.url(),
       })
     }
+
+    if (isBotInterstitialPage({ cfMitigated: rawHeaders['cf-mitigated'] })) {
+      network.dispose()
+      throw new PageCaptureError('Destination presented a bot challenge instead of the Product', {
+        code: 'HTTP_FORBIDDEN',
+        httpStatus: httpStatus === 200 ? 403 : httpStatus,
+        contentType: contentType || null,
+        finalUrl: page.url(),
+      })
+    }
   }
 
   if (options.settle !== false) {
     await settleAuditPage(page)
   }
 
-  if (options.journeySafe) {
+  const pageTitle = await page.title().catch(() => '')
+  if (isBotInterstitialPage({ title: pageTitle })) {
+    network.dispose()
+    throw new PageCaptureError('Destination presented a bot challenge instead of the Product', {
+      code: 'HTTP_FORBIDDEN',
+      httpStatus: 403,
+      contentType: 'text/html',
+      finalUrl: page.url(),
+    })
+  }
+
+  if (options.journeySafe && !options.buyPath) {
     await blockFormSubmits(page)
   }
 
   return {
     page,
     consoleErrors,
+    httpStatus: response?.status() ?? null,
     responseHeaders,
     networkFailures: network.failures,
     technologyResources: network.resources,

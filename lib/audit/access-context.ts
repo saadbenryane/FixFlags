@@ -1,19 +1,15 @@
-export type AuditAccessContext =
-  | 'owner'
-  | 'anonymous_teaser'
-  | 'public_viewer'
-  | 'marketing_sample'
-  | 'studio_public'
-  | 'share_grant'
-  | 'denied'
+import {
+  resolveReviewCapabilities,
+  type ReviewVisibility,
+} from '@/lib/auth/access-policy'
 
-/** Browser-safe chat/claim gate. marketing_sample is curated fixtures only. */
+export type AuditAccessContext = Exclude<ReviewVisibility, 'curated_sample'>
 
 export type ReportChatGateReason = 'sign-in' | 'owner'
 export type ReportClaimReason = 'save-report' | 'scan-limit' | 'create-account'
 
 export function resolveReportChatGate(input: {
-  accessContext: AuditAccessContext | 'repository_sample' | null
+  accessContext: AuditAccessContext | 'curated_sample' | null
   isLoggedIn: boolean
 }): {
   canChat: boolean
@@ -21,7 +17,11 @@ export function resolveReportChatGate(input: {
   canClaim: boolean
   claimReason: Exclude<ReportClaimReason, 'scan-limit'>
 } {
-  if (input.accessContext === 'owner') {
+  const capabilities = resolveReviewCapabilities({
+    visibility: input.accessContext ?? 'denied',
+    isAuthenticated: input.isLoggedIn,
+  })
+  if (capabilities.canUseAgent) {
     return {
       canChat: true,
       gateReason: 'owner',
@@ -29,7 +29,7 @@ export function resolveReportChatGate(input: {
       claimReason: 'create-account',
     }
   }
-  if (!input.isLoggedIn) {
+  if (capabilities.canClaim) {
     return {
       canChat: false,
       gateReason: 'sign-in',

@@ -6,7 +6,6 @@ const prismaMock = vi.hoisted(() => ({
 }))
 const verifySharePassword = vi.hoisted(() => vi.fn())
 const enforceRateLimit = vi.hoisted(() => vi.fn())
-const canSharePublicly = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/security/share-password', () => ({ verifySharePassword }))
@@ -15,7 +14,6 @@ vi.mock('@/lib/security/rate-limit', () => ({
   requestClientId: () => 'test-client',
   RateLimitError: class RateLimitError extends Error { retryAfter = 60 },
 }))
-vi.mock('@/lib/auth/entitlements', () => ({ canSharePublicly }))
 
 import { GET, POST } from '@/app/api/share/[token]/route'
 
@@ -30,7 +28,6 @@ const baseLink = {
   version: 1,
   audit: {
     status: 'COMPLETED',
-    user: { id: 'owner-1', role: 'user', plan: 'TEAM', subscriptionStatus: 'ACTIVE' },
   },
 }
 
@@ -43,7 +40,6 @@ describe('/api/share/[token]', () => {
     prismaMock.shareLink.findUnique.mockResolvedValue(baseLink)
     prismaMock.shareLink.updateMany.mockResolvedValue({ count: 1 })
     verifySharePassword.mockResolvedValue(true)
-    canSharePublicly.mockReturnValue(true)
   })
 
   afterEach(() => {
@@ -80,15 +76,6 @@ describe('/api/share/[token]', () => {
       params: Promise.resolve({ token: 'token-1' }),
     }))!
     expect(response.status).toBe(410)
-    expect(prismaMock.shareLink.updateMany).not.toHaveBeenCalled()
-  })
-
-  it('invalidates links when the owner loses Studio entitlement', async () => {
-    canSharePublicly.mockReturnValue(false)
-    const response = (await GET(new NextRequest('http://localhost/api/share/token-1'), {
-      params: Promise.resolve({ token: 'token-1' }),
-    }))!
-    expect(response.status).toBe(403)
     expect(prismaMock.shareLink.updateMany).not.toHaveBeenCalled()
   })
 

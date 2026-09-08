@@ -1,6 +1,6 @@
 ---
 name: fixflags-design-system
-description: Design, review, and polish FixFlags product and marketing interfaces using the canonical tokens, report contract, interaction standards, and evidence-first visual language.
+description: Design FixFlags Site and marketing surfaces using the retained brand tokens, mobile-first Home Flags Site interface, honest coverage and progressive evidence.
 ---
 
 Canonical source: `.agents/skills/fixflags-design-system/SKILL.md`

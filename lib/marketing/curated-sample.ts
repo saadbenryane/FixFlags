@@ -19,7 +19,7 @@ export class UnknownCuratedObservationError extends Error {
 }
 
 export type CuratedSampleAudit = {
-  accessContext: 'repository_sample'
+  accessContext: 'curated_sample'
   id: string
   url: string
   pageJob: string | null

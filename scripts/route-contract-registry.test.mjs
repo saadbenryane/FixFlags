@@ -57,3 +57,22 @@ test('high-risk routes point to handler or credentialed journey evidence', () =>
     )
   }
 })
+
+test('customer-loop success contracts require real fixture-backed evidence', () => {
+  const declared = collectRouteContracts().flatMap(
+    ({ customerContracts, evidence, file }) =>
+      (customerContracts ?? []).map((contract) => ({ contract, evidence, file })),
+  )
+  assert.ok(declared.length >= 9)
+  for (const { contract, evidence, file } of declared) {
+    assert.ok(contract.input.length > 0, file)
+    assert.ok(contract.success.length > 0, file)
+    assert.ok(contract.fixture.length > 0, file)
+    assert.ok(contract.idempotency.length > 0, file)
+    assert.ok(contract.failures.length > 0, file)
+    assert.ok(
+      evidence.some(({ kind }) => kind === 'handler-test' || kind === 'journey-e2e'),
+      `${file}: boundary smoke is not success evidence`,
+    )
+  }
+})

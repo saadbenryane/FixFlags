@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { resolveSessionUser } from '@/lib/audit/fetch-audit'
-import { parsePipelineLog } from '@/lib/audit/pipeline-log'
+import { listPipelineEvents } from '@/lib/audit/pipeline-log'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
 import { isAdminUser } from '@/lib/auth/permissions'
 
@@ -32,7 +32,6 @@ export async function GET(
         failureStage: true,
         failureMetadata: true,
         pipelineVersion: true,
-        pipelineLog: true,
         runCost: {
           select: {
             durationMs: true,
@@ -59,7 +58,7 @@ export async function GET(
       failureCode: audit.failureCode,
       failureStage: audit.failureStage,
       failureMetadata: audit.failureMetadata,
-      events: parsePipelineLog(audit.pipelineLog),
+      events: await listPipelineEvents(audit.id),
       cost: audit.runCost,
     }
 

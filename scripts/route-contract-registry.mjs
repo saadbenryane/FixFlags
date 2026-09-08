@@ -4,6 +4,10 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import {
+  CUSTOMER_ROUTE_CONTRACTS,
+  customerContractFor,
+} from '../lib/api/customer-route-contracts.mjs'
 
 const HTTP_METHOD = /export\s+(?:async\s+)?function\s+(GET|POST|PUT|PATCH|DELETE)\b|export\s+const\s+(GET|POST|PUT|PATCH|DELETE)\b/g
 
@@ -29,13 +33,21 @@ function boundaryFor(file) {
   if (file === 'app/api/stripe/waitlist/route.ts') return 'public'
   if (file === 'app/api/me/route.ts') return 'public'
   if (file === 'app/api/support/sessions/route.ts') return 'public'
+  if (file === 'app/api/shopify/webhooks/route.ts') return 'webhook'
+  if (
+    file === 'app/api/shopify/auth/route.ts' ||
+    file === 'app/api/shopify/callback/route.ts'
+  ) return 'public'
+  if (file.startsWith('app/api/shopify/')) return 'session'
+  if (file.startsWith('app/api/integrity/')) return 'session'
   if (file.includes('/admin/')) return 'admin'
   if (file.includes('/cron/') || file.includes('/email/welcome/')) return 'secret'
   if (file.includes('/webhooks/')) return 'webhook'
   if (file.includes('/api/integrations/')) return 'session'
   if (
     file.includes('/health/') || file.endsWith('/health/route.ts') || file.includes('/badge/') ||
-    file.includes('/share/') || file.includes('/screenshots/') || file.includes('/well-known/') ||
+    file.includes('/share/') || file.includes('/screenshots/') || file.includes('/integrity-assets/') ||
+    file.includes('/well-known/') ||
     file.includes('/auth/') || file.includes('/newsletter/') || file.includes('/tools/') ||
     file.endsWith('/checks/route.ts') ||
     file.endsWith('/cli/release/route.ts')
@@ -129,6 +141,10 @@ export function collectRouteContracts(root = process.cwd()) {
       boundary,
       cases: casesFor(boundary, methods, file),
       evidence: collectExecutableEvidence(root, file),
+      customerContracts: methods.flatMap((method) => {
+        const declared = customerContractFor(file, method)
+        return declared ? [declared] : []
+      }),
     }
   })
 }
@@ -151,6 +167,28 @@ export function validateRouteContracts(contracts) {
     if (!contract.evidence?.some(({ kind }) => kind.endsWith('test') || kind.endsWith('e2e'))) {
       errors.push(`${contract.file}: missing executable handler or E2E evidence`)
     }
+    for (const declared of contract.customerContracts ?? []) {
+      if (!declared.fixture?.trim()) {
+        errors.push(`${contract.file} ${declared.method}: missing success fixture state`)
+      }
+      if (!declared.success?.trim()) {
+        errors.push(`${contract.file} ${declared.method}: missing success output contract`)
+      }
+      if (!declared.idempotency?.trim()) {
+        errors.push(`${contract.file} ${declared.method}: missing idempotency contract`)
+      }
+      if (!contract.evidence.some(({ kind }) =>
+        kind === 'handler-test' || kind === 'journey-e2e'
+      )) {
+        errors.push(`${contract.file} ${declared.method}: generic boundary probe cannot prove success`)
+      }
+    }
+  }
+  for (const declared of CUSTOMER_ROUTE_CONTRACTS) {
+    const discovered = contracts.find(({ file, methods }) =>
+      file === declared.file && methods.includes(declared.method)
+    )
+    if (!discovered) errors.push(`${declared.file} ${declared.method}: declared customer contract has no route`)
   }
   return errors
 }

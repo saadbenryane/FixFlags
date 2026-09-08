@@ -8,23 +8,23 @@ PiWeb is the session interface for this repository. Product work happens here. S
 
 ## Product
 
-FixFlags is the independent Product Intelligence System for AI-built software. A user submits a URL and receives a Fix list across Message, Experience, and Reach, with fix prompts for their AI editor.
+**Your website, looked after.** The accepted [September 8 vision](knowledge/vision.md) replaces the report experience with a persistent Site, inferred Outcomes, meaningful Flags and ongoing care.
 
-- Customer loop: **Product Review → Fix → Verify → Watch**. Internal loop: Observe → Understand → Judge → Improve → Verify → Learn ([knowledge/vision.md](knowledge/vision.md)).
-- Report hierarchy: [knowledge/report-contract.md](knowledge/report-contract.md). Do not duplicate route or section order in skills.
-- Plans meter completed product reviews (first reviews, update reviews, scheduled Studio reviews) against one monthly pool.
-- Customer copy uses **update review**; internal routes may still use `re-check`.
-- Stage: pre-revenue testing. Distribution has priority over additional product depth.
-- Shipped truth: [PRODUCT.md](PRODUCT.md). Vocabulary: [knowledge/README.md](knowledge/README.md).
+- Target loop: **Find → Understand → Fix → Verify**, continued by monitoring.
+- New interface and acceptance: [docs/workspace-interface.md](docs/workspace-interface.md), [docs/product-prd.md](docs/product-prd.md).
+- Next work: [ROADMAP.md](ROADMAP.md); reuse and ownership: [docs/site-v2-migration.md](docs/site-v2-migration.md).
+- Preserve the brand, accounts, billing, plans and useful evidence infrastructure. Shopify is a connection and distribution wedge in one product.
+- [PRODUCT.md](PRODUCT.md) is the existing implementation baseline, not the new target. [knowledge/report-contract.md](knowledge/report-contract.md) governs legacy report compatibility only.
+- Older task plans, rubric locks, report/chat layouts and Shopify-only commercial bets are superseded as new-product instructions.
 
 ## Task router
 
 | Area | Start here | Agent command |
 |------|------------|---------------|
 | Repository orientation | [CODEMAP.md](CODEMAP.md), [ROADMAP.md](ROADMAP.md) | `npm run agent -- context orientation` |
-| Report or application UI | [DESIGN.md](DESIGN.md), [knowledge/report-contract.md](knowledge/report-contract.md), `components/audit/`, `components/report/` | `npm run agent -- context ui` |
-| Report hierarchy or sharing | [knowledge/report-contract.md](knowledge/report-contract.md), [SECURITY.md](SECURITY.md) | `npm run agent -- context ui` |
-| First-value / anon dogfood | [PRODUCT.md](PRODUCT.md), [knowledge/report-contract.md](knowledge/report-contract.md) | `npm run agent -- context ui` |
+| New Site or application UI | [DESIGN.md](DESIGN.md), [docs/workspace-interface.md](docs/workspace-interface.md), [docs/product-prd.md](docs/product-prd.md) | `npm run agent -- context ui` |
+| Legacy report or sharing | [knowledge/report-contract.md](knowledge/report-contract.md), [SECURITY.md](SECURITY.md) | `npm run agent -- context ui` |
+| First-value / anon dogfood | [docs/product-prd.md](docs/product-prd.md), [SECURITY.md](SECURITY.md); legacy routes also use the report contract | `npm run agent -- context ui` |
 | Audit pipeline and checks | [docs/audit-pipeline.md](docs/audit-pipeline.md), `lib/audit/` | `npm run agent -- context audit` |
 | Browser capture (Playwright) | [`.agents/skills/fixflags-browser-capture/SKILL.md`](.agents/skills/fixflags-browser-capture/SKILL.md), `lib/audit/screenshot.ts` | `npm run agent -- context audit` |
 | Scan accuracy and fixtures | `lib/audit/accuracy-corpus.ts`, [`.agents/skills/fixflags-scan-accuracy/SKILL.md`](.agents/skills/fixflags-scan-accuracy/SKILL.md) | `npm run agent -- context accuracy` |
@@ -54,9 +54,9 @@ Commands: `npm run agent`, `npm run agent -- context <area>`, `npm run agent -- 
 - Never inject unsolicited prompts into users' AI tools. Verification is a fresh independent evaluation.
 - Decision filter: a major feature must improve understanding of a product or make that understanding more useful.
 - Marketing copy lives in `lib/marketing/copy.ts`. Do not hardcode it in components.
-- Exactly three report rubrics: Message, Experience, Reach.
-- Customer loop language lives in `lib/marketing/copy/terminology.ts`. Deep Review is not a current plan feature.
-- One anonymous teaser scan. Evidence and deterministic Agent updates stay visible; fix prompts, interactive Agent, and Timeline stay gated until claim. Do not persist signup-gate strings as evidence or fix text.
+- Site health requires explicit coverage, scope and freshness. No Flags does not mean untested behavior is healthy. Use [knowledge/evidence-rules.md](knowledge/evidence-rules.md).
+- Customer loop language lives in `lib/marketing/copy/terminology.ts`. Change public claims only with corresponding behavior; roadmap capabilities are not shipped.
+- Legacy report compatibility: one anonymous teaser scan. Evidence and deterministic Agent updates stay visible; fix prompts, interactive Agent, and Timeline stay gated until claim. Do not persist signup-gate strings as evidence or fix text.
 - Auth lands on `/post-login` so anonymous audits are claimed before checkout or `next` navigation.
 - Real product output is the proof surface. No invented testimonials, member counts, or fake reports.
 - Visible language: [SOUL.md](SOUL.md) and [docs/voice-and-copy.md](docs/voice-and-copy.md). No em dashes or banned marketing filler.
@@ -67,10 +67,10 @@ Commands: `npm run agent`, `npm run agent -- context <area>`, `npm run agent -- 
 - Checks register through `lib/audit/checks/index.ts`; identities live in `lib/audit/check-ids.ts`.
 - Playwright is the audit browser. Do not reintroduce Puppeteer or chrome-devtools-mcp on the scan path.
 - Journey and network evidence must survive persistence attached to the originating source.
-- Manual re-check is a fresh full capture that diffs against its parent.
-- Public graph reads go through `lib/graph/queries.ts`.
+- Legacy manual re-check is a fresh full capture that diffs against its parent. Target Verify fix must freshly exercise the relevant behavior and prove recovery; absence alone cannot resolve a Flag.
+- Public graph reads go through `lib/graph/queries.ts`. Prisma Site/Page are global graph models, not the private customer Site; preserve tenant isolation.
 - Edge middleware must not import Prisma or Node-only modules.
-- Shared report behavior belongs in existing audit/report utilities.
+- Shared legacy report behavior belongs in existing audit/report utilities. New Site behavior belongs in a coherent domain/application boundary, not duplicate report and Shopify projections.
 - Check-to-plan and re-check-to-diff live in `lib/audit/task-contracts.ts`.
 - Public Review HTTP: `/api/checks` and `/api/reports/[id]/*`. Product Signals: `/api/products/[id]/signals`. No `/api/audits` compatibility routes.
 - Do not keep off-by-default feature flags for unused code. Parked power-tools stay undiscoverable, not env-gated.
@@ -94,7 +94,7 @@ Commands: `npm run agent`, `npm run agent -- context <area>`, `npm run agent -- 
 
 | Question | Source |
 |----------|--------|
-| What ships today? | [PRODUCT.md](PRODUCT.md) |
+| What is implemented today? | [PRODUCT.md](PRODUCT.md) |
 | Why and for whom? | [knowledge/vision.md](knowledge/vision.md), [SOUL.md](SOUL.md) |
 | Where is code? | [CODEMAP.md](CODEMAP.md) |
 | How does the system work? | [ARCHITECTURE.md](ARCHITECTURE.md), [docs/audit-pipeline.md](docs/audit-pipeline.md) |

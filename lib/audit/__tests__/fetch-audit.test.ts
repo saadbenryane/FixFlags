@@ -8,9 +8,6 @@ const mocks = vi.hoisted(() => ({
   cookies: vi.fn(),
   headers: vi.fn(),
   resolveAuditAccess: vi.fn(),
-  resolveReportTierForAudit: vi.fn(),
-  canViewPrescription: vi.fn(),
-  canViewDeterministic: vi.fn(),
   loadTechnologyProfile: vi.fn(),
 }))
 
@@ -31,19 +28,6 @@ vi.mock('@/lib/audit/access', () => ({
   resolveAuditAccess: mocks.resolveAuditAccess,
 }))
 
-vi.mock('@/lib/auth/entitlements', () => ({
-  resolveReportTierForAudit: mocks.resolveReportTierForAudit,
-}))
-
-vi.mock('@/lib/audit/report-access', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/audit/report-access')>()
-  return {
-    ...actual,
-    canViewPrescriptionContentForAudit: mocks.canViewPrescription,
-    canViewDeterministicFixesForAudit: mocks.canViewDeterministic,
-  }
-})
-
 vi.mock('@/lib/audit/technology-profile', () => ({
   loadTechnologyProfile: mocks.loadTechnologyProfile,
 }))
@@ -51,7 +35,6 @@ vi.mock('@/lib/audit/technology-profile', () => ({
 import {
   stripInternalAuditFields,
   redactCompletedPrivateReportData,
-  resolveIsPaidForAudit,
   resolveActiveAttachedWorkId,
   getProgressiveAuditForRequest,
   getGatedAuditForRequest,
@@ -67,9 +50,6 @@ function resetMocks(): void {
   mocks.headers.mockResolvedValue(new Headers())
   mocks.cookies.mockReturnValue({ get: () => undefined })
   mocks.resolveAuditAccess.mockResolvedValue('owner')
-  mocks.resolveReportTierForAudit.mockResolvedValue('free')
-  mocks.canViewPrescription.mockResolvedValue(true)
-  mocks.canViewDeterministic.mockResolvedValue(true)
   mocks.loadTechnologyProfile.mockResolvedValue({})
   mocks.findFirst.mockResolvedValue(null)
 }
@@ -133,21 +113,6 @@ describe('redactCompletedPrivateReportData', () => {
     assert.equal(out.flowData, null)
     assert.deepEqual(out.actionTimeline, [])
     assert.equal(out.productContract, null)
-  })
-})
-
-describe('resolveIsPaidForAudit', () => {
-  beforeEach(() => resetMocks())
-  afterEach(() => vi.restoreAllMocks())
-
-  it('is true when the report tier is paid', async () => {
-    mocks.resolveReportTierForAudit.mockResolvedValue('paid')
-    assert.equal(await resolveIsPaidForAudit({ userId: 'u1', isPublic: false }), true)
-  })
-
-  it('is false for free tiers', async () => {
-    mocks.resolveReportTierForAudit.mockResolvedValue('free')
-    assert.equal(await resolveIsPaidForAudit({ userId: null, isPublic: true }), false)
   })
 })
 
@@ -259,7 +224,7 @@ describe('getProgressiveAuditForRequest', () => {
   })
 
   it('hides private fields from non-owners', async () => {
-    mocks.resolveAuditAccess.mockResolvedValue('viewer')
+    mocks.resolveAuditAccess.mockResolvedValue('public_viewer')
     mocks.findUnique.mockResolvedValue({
       ...row,
       performanceData: {
@@ -308,7 +273,7 @@ describe('getGatedAuditForRequest', () => {
     performanceData: null,
     flowData: null,
     productContract: null,
-    pipelineLog: null,
+    pipelineEvents: [],
     flags: [],
     rubrics: [
       {
@@ -357,9 +322,7 @@ describe('getGatedAuditForRequest', () => {
   })
 
   it('strips prescription content when access cannot view prompts', async () => {
-    mocks.resolveAuditAccess.mockResolvedValue('viewer')
-    mocks.canViewPrescription.mockResolvedValue(false)
-    mocks.canViewDeterministic.mockResolvedValue(false)
+    mocks.resolveAuditAccess.mockResolvedValue('public_viewer')
     mocks.findUnique.mockResolvedValue(fullRow)
     const result = await getGatedAuditForRequest('a1')
     assert.equal(result.kind, 'ok')
@@ -369,8 +332,8 @@ describe('getGatedAuditForRequest', () => {
     }
   })
 
-  it('never projects prompt access into a live public marketing sample', async () => {
-    mocks.resolveAuditAccess.mockResolvedValue('marketing_sample')
+  it('never projects prompt access into a live public report', async () => {
+    mocks.resolveAuditAccess.mockResolvedValue('public_viewer')
     mocks.findUnique.mockResolvedValue(fullRow)
 
     const result = await getGatedAuditForRequest('a1')

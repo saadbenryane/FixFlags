@@ -31,6 +31,21 @@ export interface PageCaptureFailure {
   finalUrl: string | null
 }
 
+/**
+ * Cloudflare bot interstitials often return HTML 200 with a challenge
+ * document. That is not the Product. Do not treat a Turnstile widget on a
+ * real page as a block; those keep the Product title.
+ */
+export function isBotInterstitialPage(input: {
+  title?: string | null
+  cfMitigated?: string | null
+}): boolean {
+  if ((input.cfMitigated ?? '').trim().toLowerCase() === 'challenge') return true
+  const title = (input.title ?? '').trim().toLowerCase()
+  if (!title) return false
+  return title.startsWith('just a moment') || title.startsWith('attention required')
+}
+
 export function pageCaptureFailureFromError(
   device: 'desktop' | 'mobile',
   err: unknown

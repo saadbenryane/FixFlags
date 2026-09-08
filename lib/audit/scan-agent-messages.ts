@@ -29,8 +29,23 @@ export type ScanAgentFlag = {
   fix?: string | null
 }
 
+/** Compact reviewed-page row from the AuditPage ledger. Open-check probes are not pages. */
+export type ScanAgentPage = {
+  url: string
+  status: string
+  role?: string | null
+  position: number
+}
+
+const ACTIVE_PAGE_STATUSES = new Set(['CAPTURING', 'CHECKING'])
+
 /** How many worthwhile Flags the Agent names. The rest stay in Report. */
 export const ANNOUNCED_FLAG_LIMIT = MAX_ATTENTION_ITEMS
+
+function hasFailedCapture(capture?: ScreenshotCaptureStatus | null): boolean {
+  if (!capture) return false
+  return capture.desktop === 'failed' || capture.mobile === 'failed'
+}
 
 function flagPathLabel(pageUrl?: string | null, pastedUrl?: string | null): string | null {
   if (!pageUrl) return null
@@ -83,6 +98,7 @@ export type FixFlagsScanSnapshot = {
   journeyReviewAt?: Date | string | null
   screenshotCapture?: ScreenshotCaptureStatus | null
   flags?: ScanAgentFlag[] | null
+  pages?: ScanAgentPage[] | null
   score?: number | null
   previousScore?: number | null
   updateDiff?: UpdateReviewDiffLike | null
@@ -167,6 +183,20 @@ export function buildFixFlagsScanMessages(snapshot: FixFlagsScanSnapshot): Agent
         ? 'active'
         : 'complete',
       content: AGENT_SCAN_COPY.capturing,
+    }))
+  }
+
+  const pages = [...(snapshot.pages ?? [])].sort((a, b) => a.position - b.position)
+  for (const page of pages) {
+    const pathLabel = flagPathLabel(page.url, snapshot.url)
+    const active = ACTIVE_PAGE_STATUSES.has(page.status)
+    result.push(message(snapshot, {
+      suffix: `page:${page.position}`,
+      kind: 'progress',
+      state: active ? 'active' : 'complete',
+      content: active
+        ? AGENT_SCAN_COPY.reviewingPage(pathLabel)
+        : AGENT_SCAN_COPY.reviewedPage(pathLabel),
     }))
   }
 
@@ -299,7 +329,7 @@ export function buildFixFlagsScanMessages(snapshot: FixFlagsScanSnapshot): Agent
       suffix: 'complete',
       kind: 'completion',
       state: 'complete',
-      content: snapshot.reportCompleteness === 'PARTIAL'
+      content: hasFailedCapture(snapshot.screenshotCapture)
         ? AGENT_SCAN_COPY.partiallyReady
         : AGENT_SCAN_COPY.ready,
       createdAt: snapshot.completedAt,

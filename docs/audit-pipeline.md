@@ -24,6 +24,22 @@ A Product-scoped Improvement is the durable judgment and action object across Re
 
 Product Signals and integrations add evidence; they do not become Flags or confirmed claims automatically.
 
+## Execution context and ledger
+
+Every run receives one `ReviewExecutionContext` with its clock, deadline, event
+sink, scan access, and trace identity. Stage boundaries return a typed
+`ReviewStageResult` of `complete`, `partial`, `failed`, or `skipped`, including
+artifacts, duration, evidence gaps, and a structured failure when applicable.
+Partial evidence remains partial; it is never promoted to manufactured success.
+
+Pipeline history is stored as append-only `AuditPipelineEvent` rows. Each row
+contains the Review and execution identifiers, trace, attempt, stage, event,
+status, timestamp, duration, and sanitized details. Writers insert events rather
+than reading and replacing a JSON array, so concurrent worker and recovery events
+cannot overwrite each other. Retry attempts use a PostgreSQL advisory lock to
+allocate a stable next attempt. The migration copied and counted all legacy JSON
+events before dropping `Audit.pipelineLog`; there is no dual-write path.
+
 ## Audit modes and review depth
 
 | Mode          | Enum            | Behavior |
@@ -149,7 +165,7 @@ Constants: `AUDIT_DEADLINE_MS` (180s), `POLL_FORCE_FAIL_GRACE_MS` (15s), `WORKER
 1. `curl https://fixflags.com/api/health/ready` — confirm `ok: true`
 2. Check Railway worker env: `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` on the dedicated worker service
 3. Redeploy after setting keys (SDK clients init at module load)
-4. Pipeline log events: `triage_step_failed`, `triage_degraded`, `triage_runner_retry`, `recovery_force_failed`
+4. Execution ledger events: `triage_step_failed`, `triage_degraded`, `triage_runner_retry`, `recovery_force_failed`
 5. Post-deploy: `npm run smoke:triage:prod`
 
 ## Canonical files
@@ -157,7 +173,10 @@ Constants: `AUDIT_DEADLINE_MS` (180s), `POLL_FORCE_FAIL_GRACE_MS` (15s), `WORKER
 | File                                          | Role                                      |
 | --------------------------------------------- | ----------------------------------------- |
 | `lib/audit/runner.ts`                         | Top-level orchestrator                    |
-| `lib/audit/pipeline/run-page.ts`              | Per-page capture/checks/triage            |
+| `lib/audit/pipeline/run-page.ts`              | Per-page stage orchestration              |
+| `lib/audit/pipeline/stages/judge-page.ts`     | Typed Judge stage                         |
+| `lib/audit/pipeline/types.ts`                 | Execution context and stage result types  |
+| `lib/audit/pipeline-log.ts`                   | Append-only event ledger                  |
 | `lib/audit/pipeline/finalize-from-outcome.ts` | Outcome → finalize routing                |
 | `lib/audit/pipeline/outcome.ts`               | Resolve triage_complete vs degraded       |
 | `lib/audit/judge-triage.ts`                   | Triage LLM + retry                        |

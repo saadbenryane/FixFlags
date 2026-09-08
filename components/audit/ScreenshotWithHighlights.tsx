@@ -11,8 +11,8 @@ import {
 import { createPortal } from 'react-dom'
 import { CheckCircle2, CircleAlert, ImageOff, RotateCw } from 'lucide-react'
 import {
+  huggedScreenshotFrameStyle,
   mobileViewportSizeForHeight,
-  viewportAspectStyle,
 } from '@/lib/audit/viewports'
 import type { EvidenceHighlight } from '@/lib/audit/evidence-highlights'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
@@ -454,7 +454,7 @@ function ScreenshotPanel({
   const panelRef = useRef<HTMLDivElement>(null)
   const panelStyle: CSSProperties = size
     ? { width: size.width, height: size.height, maxHeight: size.height, flexShrink: 0 }
-    : viewportAspectStyle(device)
+    : huggedScreenshotFrameStyle(device)
 
   const active = highlights.some((h) => h.device === device && h.flagId === selectedFlagId)
 
@@ -524,14 +524,16 @@ function ScreenshotPanel({
   return (
     <div
       ref={setRefs}
+      data-screenshot-frame=""
       data-comparison-state={resolvedComparisonState}
       className={cn(
-        'relative overflow-hidden rounded-md bg-muted/30 shadow-card',
-        resolvedComparisonState === 'affected' &&
-          'ring-2 ring-inset ring-destructive',
-        resolvedComparisonState === 'unaffected' &&
-          'ring-2 ring-inset ring-success',
-        size ? 'shrink-0' : 'w-full',
+        'relative box-border overflow-hidden rounded-md border-2 bg-muted/30 shadow-card',
+        resolvedComparisonState === 'affected'
+          ? 'border-destructive'
+          : resolvedComparisonState === 'unaffected'
+            ? 'border-success'
+            : 'border-border/60',
+        size ? 'shrink-0' : 'w-fit max-w-full',
         className
       )}
       style={panelStyle}
@@ -720,8 +722,8 @@ export function ScreenshotWithHighlights({
 
   return (
     <div className={cn('w-full', className)}>
-      <div className="grid w-full min-w-0 grid-cols-1 items-start gap-3 sm:grid-cols-[minmax(0,1.422222fr)_minmax(0,0.461823fr)] sm:gap-6 [&>div]:max-h-[28rem]">
-        <div className="min-w-0 flex-1">
+      <div className="grid w-full min-w-0 grid-cols-1 items-start justify-items-start gap-3 sm:grid-cols-[minmax(0,1.422222fr)_minmax(0,0.461823fr)] sm:gap-6">
+        <div className="min-w-0 w-full">
           <ScreenshotPanel
             imageUrl={desktopImage!}
             device="desktop"
@@ -736,11 +738,10 @@ export function ScreenshotWithHighlights({
                   : 'unaffected'
                 : 'neutral'
             }
-            className="max-h-[28rem]"
             useMobileTooltip
           />
         </div>
-        <div className="mx-auto min-w-0 w-[32.4719%] sm:w-full">
+        <div className="min-w-0 w-full">
           <ScreenshotPanel
             imageUrl={mobileImage!}
             device="mobile"
@@ -755,7 +756,6 @@ export function ScreenshotWithHighlights({
                   : 'unaffected'
                 : 'neutral'
             }
-            className="max-h-[28rem]"
             useMobileTooltip
           />
         </div>

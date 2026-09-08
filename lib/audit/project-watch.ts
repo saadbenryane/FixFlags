@@ -6,6 +6,7 @@ import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { resend } from '@/lib/email/client'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { canAccessProductWatch } from '@/lib/auth/entitlements'
+import { systemClock, type Clock } from '@/lib/time/clock'
 
 export type WatchInterval = 'weekly' | 'daily'
 
@@ -47,7 +48,8 @@ export async function setProjectWatch(input: {
   projectId: string
   userId: string
   interval: WatchInterval | null
-}): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
+}, dependencies: { clock?: Clock } = {}): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
+  const clock = dependencies.clock ?? systemClock
   const project = await prisma.project.findFirst({
     where: { id: input.projectId, userId: input.userId },
     select: { id: true, user: true },
@@ -73,7 +75,7 @@ export async function setProjectWatch(input: {
     data: input.interval
       ? {
           watchInterval: toStoredWatchInterval(input.interval),
-          watchNextRunAt: calcWatchNextRun(input.interval),
+          watchNextRunAt: calcWatchNextRun(input.interval, clock.now()),
           watchLeaseUntil: null,
           watchConsecutiveFailures: 0,
           watchLastError: null,
@@ -106,12 +108,15 @@ async function recordWatchFailure(projectId: string, failures: number, error: st
 }
 
 /** Claim due watches with a lease before enqueueing exactly one WATCH child. */
-export async function processDueProjectWatches(limit = 20): Promise<{
+export async function processDueProjectWatches(
+  limit = 20,
+  dependencies: { clock?: Clock } = {}
+): Promise<{
   processed: number
   enqueued: number
   errors: number
 }> {
-  const now = new Date()
+  const now = (dependencies.clock ?? systemClock).now()
   const due = await prisma.project.findMany({
     where: {
       watchInterval: { not: null },

@@ -3,8 +3,8 @@ import { gradeFromScore } from '@/lib/audit/scoring'
 // Hex values for non-CSS consumers (OG, email, manifest). Brand sheet 2026-07.
 // Mesh/orb gradients live in lib/design/tokens.css only.
 export const BRAND_HEX = {
-  primary: '#C24400',
-  primaryLight: '#CC4A00',
+  primary: '#FF5A00',
+  primaryLight: '#FF6E1F',
   primaryDepth: '#A33800',
   background: '#FFFFFF',
   foreground: '#0B0B0D',
@@ -23,8 +23,8 @@ export const BRAND_HEX = {
 } as const
 
 export const BRAND_HEX_DARK = {
-  primary: '#C23A00',
-  primaryLight: '#CC4A00',
+  primary: '#FF5A00',
+  primaryLight: '#FF6E1F',
   background: '#0B0B0D',
   foreground: '#F5F6F7',
   muted: '#1D2024',

@@ -317,7 +317,7 @@ function buildStaticSampleAudit(definition: StaticObservationDefinition): Curate
   const [opened, captured, judged] = bundle.timeline
 
   return {
-    accessContext: 'repository_sample',
+    accessContext: 'curated_sample',
     id: definition.id,
     url: SAMPLE_URL,
     pageJob: 'Curated demo fixture',

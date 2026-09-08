@@ -39,10 +39,7 @@ export function presentProductReview(
     return { label: 'Finalizing report', score: 'Pending', tone: 'secondary' }
   }
   return {
-    label:
-      review.reportCompleteness === 'PARTIAL'
-        ? 'Completed with partial evidence'
-        : 'Completed',
+    label: 'Completed',
     score: review.score === null ? 'Unavailable' : String(review.score),
     tone: 'outline',
   }

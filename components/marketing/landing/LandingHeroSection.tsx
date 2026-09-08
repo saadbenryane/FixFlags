@@ -1,5 +1,5 @@
-import { AuditInput } from "@/components/audit/AuditInput";
-import { EditorToolMarks } from "@/components/marketing/landing/EditorToolMarks";
+import Link from "next/link";
+import { AuditInput } from '@/components/audit/AuditInput'
 import { MarketingEyebrow } from "@/components/marketing/MarketingEyebrow";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
@@ -40,20 +40,15 @@ export function LandingHeroSection() {
             id="audit"
             className="w-full max-w-2xl scroll-mt-[calc(var(--header-offset)+1rem)] pt-1"
           >
-            <AuditInput
-              variant="landing"
-              idSuffix="-hero"
-              ctaPlacement="hero"
-              showLandingExtras
-            />
+            <AuditInput variant="landing" idSuffix="-hero" ctaPlacement="hero" />
           </div>
 
-          <EditorToolMarks
-            variant="hero"
-            showLabel
-            label={HERO.trustLine}
-            className="mt-3 text-center [&_ul]:justify-center sm:mt-4 lg:mt-6"
-          />
+          <p className="mt-3 max-w-xl text-center text-sm text-muted-foreground sm:mt-4">
+            {HERO.trustLine}{" "}
+            <Link href={HERO.secondaryHref} className="text-link">
+              {HERO.trySampleCta}
+            </Link>
+          </p>
         </div>
       </Container>
     </Section>

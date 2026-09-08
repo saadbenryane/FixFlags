@@ -7,7 +7,6 @@ import { fileURLToPath } from 'node:url'
 export const PARKED_PUBLIC_PREFIXES = [
   '/.well-known/mcp.json',
   '/.well-known/mcp-server.json',
-  '/.well-known/skills/fixflags',
   '/api/api-keys',
   '/api/cli',
   '/api/integrations/github',

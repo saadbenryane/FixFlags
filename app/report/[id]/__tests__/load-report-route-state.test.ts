@@ -70,16 +70,22 @@ describe('loadReportRouteState progressive handoff', () => {
       audit,
       session,
       accessContext: 'owner',
+      capabilities: { canViewPromptBodies: true },
     })
 
     const state = await loadReportRouteState(Promise.resolve({ id: 'audit-1' }))
 
-    expect(state).toEqual({
-      kind: 'progressive',
+    expect(state).toMatchObject({
+      kind: 'running',
       id: 'audit-1',
       audit: { ...audit, accessContext: 'owner' },
       session,
       atAuditLimit: false,
+      projection: {
+        kind: 'running',
+        visibility: 'owner',
+        review: { id: 'audit-1' },
+      },
     })
     expect(getGatedAuditForRequest).not.toHaveBeenCalled()
   })
@@ -99,12 +105,13 @@ describe('loadReportRouteState progressive handoff', () => {
       audit,
       session: null,
       accessContext: 'owner',
+      capabilities: { canViewPromptBodies: true },
     })
 
     const state = await loadReportRouteState(Promise.resolve({ id: 'child-work' }))
 
     expect(state).toMatchObject({
-      kind: 'progressive',
+      kind: 'running',
       id: 'child-work',
     })
   })

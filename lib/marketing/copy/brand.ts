@@ -3,13 +3,14 @@ import { helpHrefForSurface } from '@/lib/help/contextual'
 export const BRAND = {
   name: 'FixFlags',
   domain: 'fixflags.com',
-  tagline: 'Finish what your AI started.',
-  category: 'Product QA for AI-built products.',
-  oneLiner: 'Product QA for what you shipped: review, fix, update review, and verify before you share.',
+  tagline: 'Find what is getting in the way of your next customer.',
+  category: 'Website intelligence for conversion, reliability, and growth.',
+  oneLiner:
+    'FixFlags finds the website problems that matter, shows why they matter, and keeps watching.',
   supportEmail: 'hello@fixflags.com',
   mcpServerKey: 'fixflags',
   exportPrefix: 'FixFlags Report',
-  tribeBadge: 'Finish what your AI started',
+  tribeBadge: 'Website intelligence that keeps watching',
 } as const
 
 export const SITE_URL =
@@ -31,7 +32,7 @@ export const TOOLS = {
     subhead:
       'See how your page looks when shared on Slack, X, LinkedIn, and Discord. Enter a URL to check its og:image, title, and description tags.',
     ctaCheck: 'Check preview',
-    ctaAudit: 'Run a product review on this URL',
+    ctaAudit: 'Install FixFlags on Shopify',
     socialPreviewHeading: 'Social Preview',
     metaTagsHeading: 'Meta Tags',
     metaFieldLabels: {
@@ -49,9 +50,9 @@ export const TOOLS = {
     canonicalMissing: 'No canonical',
     robotsPresent: 'Robots meta',
     robotsMissing: 'No robots meta',
-    auditHeading: 'Run a product review',
+    auditHeading: 'Watch the purchase path',
     auditSubhead:
-      'Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.',
+      'Install on Shopify. FixFlags walks product to checkout and alerts you if customers cannot buy.',
   },
   placeholderDetector: {
     badge: 'Free Tool',
@@ -71,15 +72,15 @@ export const TOOLS = {
       'template-token': 'Template Token',
       'social-proof': 'Social proof',
     },
-    auditHeading: 'Run a product review',
+    auditHeading: 'Watch the purchase path',
     auditSubhead:
-      'Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.',
+      'Install on Shopify. FixFlags walks product to checkout and alerts you if customers cannot buy.',
   },
   shared: {
-    auditHeading: 'Run a product review',
+    auditHeading: 'Watch the purchase path',
     auditSubhead:
-      'Get a complete report across Message, Experience, and Reach with fix prompts your AI agent can run.',
-    ctaAudit: 'Run a product review on this URL',
+      'Install on Shopify. FixFlags walks product to checkout and alerts you if customers cannot buy.',
+    ctaAudit: 'Install FixFlags on Shopify',
   },
 } as const
 
@@ -132,12 +133,13 @@ export const ROAST_COPY = {
 
 /** Canonical free-tier offer. Wire every surface from here; do not paraphrase. */
 export const OFFER = {
-  line: 'Free product review. See what needs attention. Sign up when you want fix prompts and update reviews.',
-  short: 'Free product review. See what needs attention before you share the link.',
+  line: 'Start with a free website analysis. Keep one Site watching when you are ready.',
+  short: 'Start with a free website analysis.',
   /** Privacy page / FAQ only. Do not render on marketing heroes. */
-  privacy: 'We scan your live URL. We do not change your site or touch your code.',
+  privacy:
+    'We visit your storefront as a shopper. We record our own walk, not your customers. We stop before payment.',
   reportAccess:
-    'Report evidence is public at its link. Agent chat, fix prompts, Product Memory, and account history stay available only to the report owner.',
+    'Verification video and screenshots are of the FixFlags walk. They stay in your Shopify app.',
 } as const
 
 /** User-facing score explanation. Must match lib/audit/scoring.ts. */
@@ -159,7 +161,7 @@ export const SCORE_HELP = {
 export const HELP_CENTER = {
   label: 'Help Center',
   title: 'How can we help?',
-  subhead: 'Search guides for Product Reviews, billing, and your account. Still stuck? Chat with us.',
+  subhead: 'Search guides for install, purchase-path walks, alerts, and your store. Still stuck? Chat with us.',
   searchPlaceholder: 'Search help and docs…',
   categoriesHeading: 'Browse by topic',
   popularHeading: 'Popular articles',
@@ -169,7 +171,7 @@ export const HELP_CENTER = {
   emailCta: 'Email us',
   relatedHeading: 'Related articles',
   backToHelp: 'Back to Help Center',
-  mcpGuideCta: 'Open the report guide',
+  mcpGuideCta: 'Open the purchase path guide',
   askSupportCta: 'Ask support',
   viewHelpCta: 'View help article',
 } as const
@@ -178,7 +180,7 @@ export const HELP_CENTER = {
 export const SUPPORT_CHAT = {
   title: 'Chat with FixFlags',
   subtitle: 'We typically reply within a few hours',
-  emptyState: 'Ask us anything about FixFlags, your report, or getting started.',
+  emptyState: 'Ask us anything about FixFlags, a walk, or getting started.',
   startError: 'Could not start chat. Try again in a moment.',
   welcomeMessage:
     "You're chatting with the FixFlags team. We typically reply within a few hours.",

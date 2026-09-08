@@ -57,7 +57,6 @@ vi.mock('@/lib/audit/checks/network-engagement', () => ({
   runNetworkEngagementChecks: vi.fn(() => []),
 }))
 vi.mock('@/lib/audit/persist', () => ({ persistDeterministicFlags: vi.fn() }))
-vi.mock('@/lib/audit/pipeline-log', () => ({ logPipelineEvent: vi.fn() }))
 vi.mock('@/lib/audit/pipeline/triage-step', () => ({ runTriageStep: vi.fn() }))
 vi.mock('@/lib/audit/judge-triage', () => ({
   isTriageProviderConfigured: vi.fn(() => false),
@@ -90,8 +89,24 @@ vi.mock('@/lib/audit/metadata', () => ({
 
 import { runPage } from '@/lib/audit/pipeline/run-page'
 import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
-import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { captureScreenshots } from '@/lib/audit/screenshot'
+import type { PipelineContext } from '@/lib/audit/pipeline/types'
+import { systemClock } from '@/lib/time/clock'
+
+function pipelineContext(deadlineMs = 120_000): PipelineContext {
+  const startedAt = systemClock.now()
+  return {
+    auditId: 'audit-1',
+    deadline: startedAt.getTime() + deadlineMs,
+    startedAt,
+    clock: systemClock,
+    trace: { executionId: 'audit-1:1', traceId: 'trace-test', attempt: 1 },
+    events: { log: vi.fn(async () => undefined) },
+    pagespeedCalls: 0,
+    usage: { inputTokens: 0, outputTokens: 0, models: [] },
+    includeAi: false,
+  }
+}
 
 describe('runPage production capture path', () => {
   beforeEach(() => {
@@ -121,14 +136,7 @@ describe('runPage production capture path', () => {
   })
 
   it('runs slow replay on the primary page and merges slow-replay flags', async () => {
-    const ctx = {
-      auditId: 'audit-1',
-      deadline: Date.now() + 120_000,
-      startedAt: new Date(),
-      pagespeedCalls: 0,
-      usage: { inputTokens: 0, outputTokens: 0, models: [] },
-      includeAi: false,
-    }
+    const ctx = pipelineContext()
 
     const result = await runPage(ctx, {
       url: 'https://example.com',
@@ -140,20 +148,13 @@ describe('runPage production capture path', () => {
     expect(slowReplayMock).toHaveBeenCalledWith(expect.anything(), 'audit-1', 'https://example.com/')
     expect(runSlowReplayChecks).toHaveBeenCalled()
     expect(result.flags.some((flag) => flag.checkId === 'slow-3g-blank-screen')).toBe(true)
-    expect((logPipelineEvent as Mock).mock.calls.some((call) => call[1]?.event === 'slow_replay_completed')).toBe(
+    expect((ctx.events.log as Mock).mock.calls.some((call) => call[0]?.event === 'slow_replay_completed')).toBe(
       true
     )
   })
 
   it('defers the flow walk: capture runs without flow, flow runs after checks when budget allows', async () => {
-    const ctx = {
-      auditId: 'audit-1',
-      deadline: Date.now() + 120_000,
-      startedAt: new Date(),
-      pagespeedCalls: 0,
-      usage: { inputTokens: 0, outputTokens: 0, models: [] },
-      includeAi: false,
-    }
+    const ctx = pipelineContext()
 
     await runPage(ctx, {
       url: 'https://example.com',
@@ -174,14 +175,7 @@ describe('runPage production capture path', () => {
       userId: null,
       parentId: null,
     })
-    const ctx = {
-      auditId: 'audit-1',
-      deadline: Date.now() + 120_000,
-      startedAt: new Date(),
-      pagespeedCalls: 0,
-      usage: { inputTokens: 0, outputTokens: 0, models: [] },
-      includeAi: false,
-    }
+    const ctx = pipelineContext()
 
     await runPage(ctx, {
       url: 'https://example.com',
@@ -197,10 +191,10 @@ describe('runPage production capture path', () => {
     expect(slowReplayMock).not.toHaveBeenCalled()
     expect(runSlowReplayChecks).not.toHaveBeenCalled()
     expect(
-      (logPipelineEvent as Mock).mock.calls.some((call) => call[1]?.event === 'slow_replay_skipped_teaser')
+      (ctx.events.log as Mock).mock.calls.some((call) => call[0]?.event === 'slow_replay_skipped_teaser')
     ).toBe(true)
     expect(
-      (logPipelineEvent as Mock).mock.calls.some((call) => call[1]?.event === 'flow_skipped_teaser')
+      (ctx.events.log as Mock).mock.calls.some((call) => call[0]?.event === 'flow_skipped_teaser')
     ).toBe(true)
     // The reduced pipeline still streams: checks-start progress anchor is written.
     expect(
@@ -211,14 +205,7 @@ describe('runPage production capture path', () => {
   })
 
   it('skips slow replay when the audit deadline is too tight', async () => {
-    const ctx = {
-      auditId: 'audit-1',
-      deadline: Date.now() + 5_000,
-      startedAt: new Date(),
-      pagespeedCalls: 0,
-      usage: { inputTokens: 0, outputTokens: 0, models: [] },
-      includeAi: false,
-    }
+    const ctx = pipelineContext(5_000)
 
     await runPage(ctx, {
       url: 'https://example.com',
@@ -228,7 +215,7 @@ describe('runPage production capture path', () => {
     })
 
     expect(slowReplayMock).not.toHaveBeenCalled()
-    expect((logPipelineEvent as Mock).mock.calls.some((call) => call[1]?.event === 'slow_replay_skipped_deadline')).toBe(
+    expect((ctx.events.log as Mock).mock.calls.some((call) => call[0]?.event === 'slow_replay_skipped_deadline')).toBe(
       true
     )
   })

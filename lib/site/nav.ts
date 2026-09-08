@@ -1,37 +1,30 @@
 import { BRAND } from '@/lib/marketing/copy'
 
 export const MARKETING_LINKS = [
-  { href: '/how-it-works', label: 'How it works' },
-  { href: '/samples', label: 'Examples' },
+  { href: '/#product', label: 'Product' },
   { href: '/pricing', label: 'Pricing' },
+  { href: '/install', label: 'For Shopify' },
   { href: '/docs', label: 'Docs' },
 ] as const
 
-export const MARKETING_NAV = [
-  ...MARKETING_LINKS,
-  { href: '/help', label: 'Help' },
-] as const
+export const MARKETING_NAV = [...MARKETING_LINKS] as const
 
 export const FOOTER_COLUMNS = {
   product: [
+    { href: '/how-it-works', label: 'Product' },
+    { href: '/install', label: 'Shopify' },
     { href: '/how-it-works', label: 'How it works' },
-    { href: '/samples', label: 'Sample report' },
     { href: '/pricing', label: 'Pricing' },
     { href: '/changelog', label: 'Changelog' },
   ],
   resources: [
-    { href: '/roast', label: 'Website Roast' },
+    { href: '/install', label: 'Install' },
     { href: '/help', label: 'Help Center' },
     { href: '/docs', label: 'Docs' },
-    { href: '/examples', label: 'Examples' },
     { href: '/faq', label: 'FAQ' },
-    { href: '/blog', label: 'Blog' },
   ],
   company: [
-    { href: '/partners', label: 'Expert program' },
-    { href: `mailto:${BRAND.supportEmail}?subject=Careers`, label: 'Careers' },
     { href: `mailto:${BRAND.supportEmail}`, label: 'Contact' },
-    { href: '/privacy', label: 'Privacy Policy' },
   ],
 } as const
 
@@ -44,6 +37,7 @@ export const ADMIN_NAV = [
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/waitlist', label: 'Waitlist' },
   { href: '/admin/audits', label: 'Audits' },
+  { href: '/admin/shops', label: 'Shops' },
 ] as const
 
 export const LEGAL_LINKS = [

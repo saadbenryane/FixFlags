@@ -1,5 +1,8 @@
 # Multi-Agent Coordination
 
+**Product direction, 2026-09-08:** [knowledge/vision.md](../knowledge/vision.md) is the complete accepted owner revision. [ROADMAP.md](../ROADMAP.md), [Site PRD](../docs/product-prd.md) and [migration design](../docs/site-v2-migration.md) govern new work. Older report/Shopify session plans are historical and may supply reusable implementation evidence, not competing product direction.
+
+
 ## Overview
 
 This directory enables safe parallel work by multiple AI agents (Cursor, Claude Code, Codex, Hermes, etc.). Read `AGENTS.md` (the canonical entry point) first, then consult this system before any substantial write task.

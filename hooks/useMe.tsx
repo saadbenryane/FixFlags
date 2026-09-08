@@ -32,8 +32,6 @@ export interface MeUser {
     periodEnd: string
   }
   entitlements: {
-    reportTier: 'free' | 'paid'
-    canSharePublicly: boolean
     canExportSummary: boolean
     canAccessPaidFeatures: boolean
     canMonitor: boolean

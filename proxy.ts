@@ -6,6 +6,14 @@ function isProtectedPath(pathname: string): boolean {
   return pathname.startsWith('/admin/') || pathname.startsWith('/settings/')
 }
 
+function isShopifyEmbeddedPath(pathname: string): boolean {
+  return (
+    pathname === '/shopify' ||
+    pathname.startsWith('/shopify/') ||
+    pathname.startsWith('/api/shopify/')
+  )
+}
+
 const PARKED_POWER_TOOL_PREFIXES = [
   '/report/repo',
   '/dashboard/mcp-analytics',
@@ -27,7 +35,6 @@ const PARKED_POWER_TOOL_PREFIXES = [
   '/api/well-known/mcp-json',
   '/.well-known/mcp.json',
   '/.well-known/mcp-server.json',
-  '/.well-known/skills/fixflags',
 ] as const
 
 export function isParkedPowerToolPath(pathname: string): boolean {
@@ -57,13 +64,13 @@ function buildCsp(): string {
     "default-src 'self'",
     // 'unsafe-eval' is required by GTM in dev but should NOT be in production
     // 'unsafe-inline' is needed for inline styles from Tailwind/next-themes
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://*.stripe.com https://js.stripe.com https://www.googletagmanager.com https://static.cloudflareinsights.com https://connect.facebook.net`,
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''} https://*.stripe.com https://js.stripe.com https://www.googletagmanager.com https://static.cloudflareinsights.com https://connect.facebook.net https://cdn.shopify.com`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' blob: data: https:",
     "font-src 'self' https://fonts.gstatic.com",
     // ws://localhost:* only needed for dev hot-reload WebSocket
-    `connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.resend.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://cloudflareinsights.com https://www.facebook.com https://connect.facebook.net${isDev ? ' ws://localhost:*' : ''}`,
-    "frame-src https://*.stripe.com https://js.stripe.com https://www.facebook.com",
+    `connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.resend.com https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://cloudflareinsights.com https://www.facebook.com https://connect.facebook.net https://admin.shopify.com https://*.myshopify.com https://cdn.shopify.com${isDev ? ' ws://localhost:*' : ''}`,
+    "frame-src https://*.stripe.com https://js.stripe.com https://www.facebook.com https://admin.shopify.com https://*.myshopify.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -98,9 +105,17 @@ export async function middleware(request: NextRequest) {
     request: { headers: requestHeaders },
   })
 
-  response.headers.set('Content-Security-Policy', buildCsp())
+  const shopifyEmbed = isShopifyEmbeddedPath(request.nextUrl.pathname)
+  response.headers.set(
+    'Content-Security-Policy',
+    shopifyEmbed
+      ? `${buildCsp()}; frame-ancestors https://admin.shopify.com https://*.myshopify.com`
+      : buildCsp()
+  )
   response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
-  response.headers.set('X-Frame-Options', 'DENY')
+  if (!shopifyEmbed) {
+    response.headers.set('X-Frame-Options', 'DENY')
+  }
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set(

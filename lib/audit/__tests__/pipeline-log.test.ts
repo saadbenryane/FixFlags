@@ -1,110 +1,148 @@
 import assert from 'node:assert/strict'
 import { describe, it, vi, beforeEach, expect } from 'vitest'
+import { fixedClock } from '@/lib/time/clock'
 
-const { prismaMock } = vi.hoisted(() => ({
-  prismaMock: {
-    audit: { findUnique: vi.fn(), update: vi.fn() },
-  },
-}))
+const { prismaMock, transactionMock } = vi.hoisted(() => {
+  const transactionMock = {
+    $executeRaw: vi.fn(),
+    audit: { update: vi.fn() },
+    auditPipelineEvent: { findFirst: vi.fn(), create: vi.fn() },
+  }
+  return {
+    transactionMock,
+    prismaMock: {
+      auditPipelineEvent: {
+        findFirst: vi.fn(),
+        findMany: vi.fn(),
+        create: vi.fn(),
+      },
+      $transaction: vi.fn(
+        async (callback: (tx: typeof transactionMock) => unknown) => callback(transactionMock)
+      ),
+    },
+  }
+})
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 
-import { parsePipelineLog, logPipelineEvent, initPipelineLog } from '../pipeline-log'
+import {
+  parsePipelineLog,
+  listPipelineEvents,
+  logPipelineEvent,
+  initPipelineLog,
+} from '../pipeline-log'
 
 describe('parsePipelineLog', () => {
   it('returns an empty array for non-array input', () => {
     assert.deepEqual(parsePipelineLog(null), [])
     assert.deepEqual(parsePipelineLog('nope'), [])
-    assert.deepEqual(parsePipelineLog({ ts: 'x', stage: 'y', event: 'z' }), [])
   })
 
-  it('filters out malformed entries', () => {
+  it('normalizes stored ledger rows and filters malformed entries', () => {
     const parsed = parsePipelineLog([
-      { ts: '2026-01-01', stage: 'queued', event: 'started', durationMs: 5 },
-      { ts: '2026-01-01', stage: 'capturing' }, // missing event
-      { ts: '2026-01-01', event: 'started' }, // missing stage
-      'not-an-object',
-      null,
+      {
+        occurredAt: new Date('2026-01-01T00:00:00.000Z'),
+        stage: 'judging',
+        event: 'judge_failed',
+        status: 'failed',
+        executionId: 'audit-1:2',
+        traceId: 'trace-1',
+        attempt: 2,
+        durationMs: 42,
+        detail: { error: 'boom', detail: 'extra' },
+      },
+      { occurredAt: new Date(), stage: 'capturing' },
     ])
     assert.equal(parsed.length, 1)
-    assert.equal(parsed[0].event, 'started')
-  })
-
-  it('keeps optional fields', () => {
-    const parsed = parsePipelineLog([
-      { ts: '2026-01-01', stage: 'judging', event: 'ai_review', durationMs: 42, error: 'boom', detail: 'extra' },
-    ])
-    assert.equal(parsed[0].durationMs, 42)
-    assert.equal(parsed[0].error, 'boom')
-    assert.equal(parsed[0].detail, 'extra')
+    assert.deepEqual(parsed[0], {
+      ts: '2026-01-01T00:00:00.000Z',
+      stage: 'judging',
+      event: 'judge_failed',
+      status: 'failed',
+      executionId: 'audit-1:2',
+      traceId: 'trace-1',
+      attempt: 2,
+      durationMs: 42,
+      error: 'boom',
+      detail: 'extra',
+    })
   })
 })
 
-describe('logPipelineEvent', () => {
+describe('pipeline event ledger', () => {
   beforeEach(() => {
-    prismaMock.audit.findUnique.mockReset()
-    prismaMock.audit.update.mockReset()
+    vi.clearAllMocks()
+    prismaMock.auditPipelineEvent.findFirst.mockResolvedValue({
+      executionId: 'audit-1:1',
+      traceId: 'trace-1',
+      attempt: 1,
+    })
+    prismaMock.auditPipelineEvent.create.mockResolvedValue({ id: 'event-1' })
+    transactionMock.auditPipelineEvent.findFirst.mockResolvedValue(null)
+    transactionMock.auditPipelineEvent.create.mockResolvedValue({ id: 'event-1' })
+    transactionMock.audit.update.mockResolvedValue({ id: 'audit-1' })
   })
 
-  it('appends the event to the existing pipeline log', async () => {
-    prismaMock.audit.findUnique.mockResolvedValue({
-      pipelineLog: [{ ts: '2026-01-01', stage: 'queued', event: 'pipeline_started' }],
-    })
-    prismaMock.audit.update.mockResolvedValue({ id: 'audit-1' })
+  it('appends one immutable event without reading or rewriting prior events', async () => {
+    await logPipelineEvent(
+      'audit-1',
+      { stage: 'checking', event: 'checks_completed', durationMs: 12 },
+      { clock: fixedClock(new Date('2026-01-01T00:00:00.000Z')) }
+    )
 
-    await logPipelineEvent('audit-1', {
-      stage: 'checking',
-      event: 'checks_completed',
-      durationMs: 12,
-    })
-
-    expect(prismaMock.audit.update).toHaveBeenCalledWith({
-      where: { id: 'audit-1' },
+    expect(prismaMock.auditPipelineEvent.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        pipelineVersion: expect.any(String),
+        auditId: 'audit-1',
+        executionId: 'audit-1:1',
+        traceId: 'trace-1',
+        attempt: 1,
+        stage: 'checking',
+        event: 'checks_completed',
+        status: 'completed',
+        durationMs: 12,
+        occurredAt: new Date('2026-01-01T00:00:00.000Z'),
       }),
     })
-    const data = prismaMock.audit.update.mock.calls[0][0].data as {
-      pipelineLog: Array<{ stage: string; event: string }>
-    }
-    assert.equal(data.pipelineLog.length, 2)
-    assert.equal(data.pipelineLog[1].stage, 'checking')
-    assert.equal(data.pipelineLog[1].event, 'checks_completed')
   })
 
-  it('starts from an empty log when the audit has none', async () => {
-    prismaMock.audit.findUnique.mockResolvedValue(null)
-    prismaMock.audit.update.mockResolvedValue({ id: 'audit-1' })
-
-    await logPipelineEvent('audit-1', { stage: 'queued', event: 'pipeline_started' })
-    const data = prismaMock.audit.update.mock.calls[0][0].data as {
-      pipelineLog: unknown[]
-    }
-    assert.equal(data.pipelineLog.length, 1)
+  it('returns events in execution order', async () => {
+    prismaMock.auditPipelineEvent.findMany.mockResolvedValue([
+      {
+        occurredAt: new Date('2026-01-01T00:00:00.000Z'),
+        stage: 'queued',
+        event: 'pipeline_started',
+        status: 'started',
+      },
+    ])
+    const events = await listPipelineEvents('audit-1')
+    expect(events).toHaveLength(1)
+    expect(prismaMock.auditPipelineEvent.findMany).toHaveBeenCalledWith({
+      where: { auditId: 'audit-1' },
+      orderBy: [{ attempt: 'asc' }, { occurredAt: 'asc' }, { id: 'asc' }],
+    })
   })
-})
 
-describe('initPipelineLog', () => {
-  beforeEach(() => {
-    prismaMock.audit.findUnique.mockReset()
-    prismaMock.audit.update.mockReset()
-  })
+  it('starts a new locked execution attempt without deleting history', async () => {
+    const trace = await initPipelineLog('audit-1', {
+      traceId: 'trace-new',
+      clock: fixedClock(new Date('2026-01-02T00:00:00.000Z')),
+    })
 
-  it('resets the log then writes the pipeline_started event', async () => {
-    prismaMock.audit.update.mockResolvedValue({ id: 'audit-1' })
-    prismaMock.audit.findUnique.mockResolvedValue(null)
-
-    await initPipelineLog('audit-1')
-
-    expect(prismaMock.audit.update).toHaveBeenCalledTimes(2)
-    const firstData = prismaMock.audit.update.mock.calls[0][0].data as {
-      pipelineLog: unknown[]
-    }
-    assert.deepEqual(firstData.pipelineLog, [])
-    const secondData = prismaMock.audit.update.mock.calls[1][0].data as {
-      pipelineLog: Array<{ stage: string; event: string }>
-    }
-    assert.equal(secondData.pipelineLog[0].stage, 'queued')
-    assert.equal(secondData.pipelineLog[0].event, 'pipeline_started')
+    expect(trace).toEqual({
+      executionId: 'audit-1:1',
+      traceId: 'trace-new',
+      attempt: 1,
+    })
+    expect(transactionMock.audit.update).toHaveBeenCalledWith({
+      where: { id: 'audit-1' },
+      data: { pipelineVersion: expect.any(String) },
+    })
+    expect(transactionMock.auditPipelineEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        auditId: 'audit-1',
+        event: 'pipeline_started',
+        status: 'started',
+      }),
+    })
   })
 })

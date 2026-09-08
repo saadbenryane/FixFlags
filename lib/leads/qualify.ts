@@ -1,4 +1,4 @@
-/** Derived outbound potential — not a LeadStatus enum value. */
+/** Derived outbound potential, not a LeadStatus enum value. */
 export type LeadPotential = 'low' | 'medium' | 'high'
 
 /**

@@ -6,7 +6,6 @@ import { BRAND, REPORT_COPY, SITE_URL } from '@/lib/marketing/copy'
 import { displayHostname } from '@/lib/utils/url-helpers'
 import { SHARE_GRANT_COOKIE, verifyShareGrant } from '@/lib/security/share-grant'
 import { ReportRoute } from '@/app/report/[id]/page'
-import { canSharePublicly } from '@/lib/auth/entitlements'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { ReportWorkspaceState } from '@/components/report/ReportWorkspaceState'
 
@@ -30,7 +29,6 @@ async function loadLink(token: string) {
           score: true,
           verdict: true,
           status: true,
-          user: { select: { id: true, role: true, plan: true, subscriptionStatus: true } },
         },
       },
     },
@@ -39,7 +37,6 @@ async function loadLink(token: string) {
 
 function isUnavailable(link: Awaited<ReturnType<typeof loadLink>>): boolean {
   return !link || link.revoked || link.audit.status !== 'COMPLETED' ||
-    !link.audit.user || !canSharePublicly(link.audit.user) ||
     Boolean(link.expiresAt && link.expiresAt < new Date())
 }
 

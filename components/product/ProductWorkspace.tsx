@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button'
 import { Surface } from '@/components/ui/surface'
 import { SectionTitle } from '@/components/ui/typography'
 import { displayProductPurpose } from '@/lib/audit/product-contract'
-import type { ProductWorkspaceDTO } from '@/lib/products/workspace'
+import type { ProductWorkspaceProjection } from '@/lib/products/workspace'
 import { serializeProductHistoryCursor } from '@/lib/products/workspace'
 import { presentProductReview } from '@/lib/products/review-state'
 import { REPORT_COPY } from '@/lib/marketing/copy'
@@ -47,7 +47,7 @@ export function ProductWorkspace({
   workspace,
   onAttentionVisible,
 }: {
-  workspace: ProductWorkspaceDTO
+  workspace: ProductWorkspaceProjection
   onAttentionVisible?: () => Promise<void>
 }) {
   const {
@@ -390,8 +390,8 @@ function ProductIntelligenceSection({
   workspace,
   progressEvents,
 }: {
-  workspace: ProductWorkspaceDTO
-  progressEvents: ProductWorkspaceDTO['history']['events']
+  workspace: ProductWorkspaceProjection
+  progressEvents: ProductWorkspaceProjection['history']['events']
 }) {
   const copy = REPORT_COPY.workspace.product
   const understanding = workspace.understanding
@@ -574,7 +574,7 @@ function MemoryList({ label, items }: { label: string; items: string[] }) {
   )
 }
 
-function AttentionSection({ workspace }: { workspace: ProductWorkspaceDTO }) {
+function AttentionSection({ workspace }: { workspace: ProductWorkspaceProjection }) {
   const copy = REPORT_COPY.workspace.product
   return (
     <section aria-labelledby="attention-heading" className="space-y-3">

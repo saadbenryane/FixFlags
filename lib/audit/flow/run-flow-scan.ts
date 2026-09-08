@@ -7,7 +7,10 @@ import { urlsMeaningfullyChanged, isSamePageHashHref } from './flow-url'
 import { anchorFromViewportRect } from './flow-evidence'
 import type { EvidenceAnchor } from '@/lib/marketing/resolve-evidence-anchors'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
-import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
+import {
+  DESKTOP_CAPTURE_PROFILE,
+  type CaptureProfile,
+} from '@/lib/audit/browser/capture-profile'
 import { runMultiStepProbes, type MultiStepProbeResult } from './nav-probes'
 import { measurePostClickLoading, type PostClickMetrics } from './post-click-probes'
 import { fetchAndParseMetadata } from '@/lib/audit/metadata'
@@ -456,12 +459,12 @@ export async function runFlowScanStandalone(
   browser: Browser,
   auditId: string,
   pageUrl: string,
-  options: Pick<RunFlowScanOptions, 'allowLocalhost'> = {}
+  options: Pick<RunFlowScanOptions, 'allowLocalhost'> & { profile?: CaptureProfile } = {}
 ): Promise<FlowScanResult> {
   let page: Page | null = null
   try {
     const session = await createAuditPage(browser, pageUrl, {
-      profile: DESKTOP_CAPTURE_PROFILE,
+      profile: options.profile ?? DESKTOP_CAPTURE_PROFILE,
       allowLocalhost: options.allowLocalhost,
     })
     page = session.page

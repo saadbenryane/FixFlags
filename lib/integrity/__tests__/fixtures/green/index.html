@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Canvas Tote</title>
+  </head>
+  <body>
+    <h1>Canvas Tote</h1>
+    <p>$48</p>
+    <label>
+      Size
+      <select name="id" aria-label="Size">
+        <option value="" disabled>Select</option>
+        <option value="small">Small</option>
+        <option value="sold" disabled>Medium — sold out</option>
+        <option value="large">Large</option>
+      </select>
+    </label>
+    <button type="button" id="add">Add to cart</button>
+    <div id="CartDrawer" hidden>
+      <p>Item added</p>
+      <p>Your cart (1)</p>
+      <a href="/checkout">Checkout</a>
+    </div>
+    <script>
+      document.getElementById('add').addEventListener('click', function () {
+        document.getElementById('CartDrawer').hidden = false
+      })
+    </script>
+  </body>
+</html>

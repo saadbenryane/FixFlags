@@ -21,7 +21,7 @@ export function sanitizeAuditErrorMessage(message: string): string {
 
 /** Throw if the audit has exceeded its end-to-end deadline. */
 export function assertDeadline(ctx: PipelineContext, stage: string): void {
-  if (Date.now() > ctx.deadline) {
+  if (ctx.clock.now().getTime() > ctx.deadline) {
     throw new AuditDeadlineError(stage)
   }
 }
@@ -66,7 +66,7 @@ export async function tryPartialFinalize(
 
   await finalizePartialAudit({
     auditId: ctx.auditId,
-    durationMs: Date.now() - ctx.startedAt.getTime(),
+    durationMs: ctx.clock.now().getTime() - ctx.startedAt.getTime(),
     pagespeedCalls: ctx.pagespeedCalls,
     usage: {
       inputTokens: ctx.usage.inputTokens,

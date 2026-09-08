@@ -1,71 +1,39 @@
 ---
 name: fixflags-product
-description: Route FixFlags product changes to canonical behavior, access, billing, report, task, and deployment sources while preserving launch-contract invariants.
+description: Route FixFlags product work to the Site vision, target behavior, migration, current access and billing contracts, shared application services and verification.
 ---
 
 # FixFlags product
 
-Read `AGENTS.md` first. This skill routes work; canonical sources own detailed truth.
+Read AGENTS.md and claim non-overlapping scope. Keep current implementation distinct from the new product target.
 
-## Route by concern
+## Canonical routing
 
-| Concern | Canonical source |
-|---|---|
-| Shipped promise | `PRODUCT.md` |
-| Product direction | `knowledge/vision.md`, `ROADMAP.md` |
-| Report hierarchy | `knowledge/report-contract.md` |
-| Report workspace | `knowledge/report-contract.md`, `docs/workspace-interface.md`, `DESIGN.md` |
-| Audit stages and recovery | `docs/audit-pipeline.md`, `lib/audit/` |
-| Plans and quotas | `lib/billing/plans.ts`, `lib/auth/entitlements.ts`, `lib/auth/permissions.ts` |
-| Access and sharing | `lib/audit/report-access.ts`, `lib/security/share-grant.ts`, `SECURITY.md` |
-| Check/re-check task outcomes | `lib/audit/task-contracts.ts` |
-| Finish Plan (all surfaces) | `lib/audit/attention.ts`, `lib/audit/load-finish-plan-flags.ts`, `lib/audit/finish-plan.ts` |
-| Durable Product attention and verification | `lib/improvements/service.ts`, Prisma `Improvement*`, `/api/projects/[id]/improvements` |
-| Product Signals and releases | `lib/signals/`, `/api/products/[id]/signals`, `/fixflags.js` |
-| Preview scan access (Studio) | `lib/audit/scan-access.ts`, `app/api/projects/[id]/scan-access/route.ts` |
-| CI deploy checks | `app/api/webhooks/railway/route.ts`, `docs/railway-deploy-check.md` |
-| Product Contract and Remember | `lib/audit/product-contract.ts`, `lib/audit/product-intelligence.ts` |
-| Marketing copy | `lib/marketing/copy.ts` |
-| Runtime requirements | `lib/env.ts`, `lib/health/readiness.ts`, `DEVELOPMENT.md` |
-| Runtime and release execution | `.agents/skills/fixflags-runtime-release/SKILL.md` |
-| Verification | `scripts/validate.mjs`, `QUALITY.md` |
+| Concern | Source |
+| --- | --- |
+| Accepted direction and phase | knowledge/vision.md, ROADMAP.md |
+| New behavior and interface | docs/product-prd.md, docs/workspace-interface.md |
+| Existing code and reuse | PRODUCT.md, docs/site-v2-migration.md |
+| Evidence and resolution | knowledge/evidence-rules.md |
+| Current report compatibility | knowledge/report-contract.md |
+| Capture and recovery | docs/audit-pipeline.md, lib/audit/ |
+| Existing plans/access | lib/billing/plans.ts, lib/auth/entitlements.ts, SECURITY.md |
+| Application commands/queries | lib/products/application/, lib/audit/application/ |
+| Attempts and verification foundations | lib/improvements/, lib/audit/task-contracts.ts |
+| Signals and Shopify foundations | lib/signals/, lib/shopify/, lib/integrity/ |
+| Runtime and release | QUALITY.md, fixflags-runtime-release skill |
+| Copy | lib/marketing/copy.ts, docs/voice-and-copy.md |
 
-## Invariants
+## Implementation discipline
 
-- The user loop is Flag → Fix → Update review; update reviews are fresh, full, and diff against their parent.
-- Completed scheduled Studio reviews meter against the same product-review pool. Watch is Studio only (`canAccessProductWatch` → `plan === 'TEAM'`).
-- Signed-in usage meters show plan allowance (`getPlanDisplayLimit`: used of total). Local unlimited scans may skip enforcement but must not hide the meter. UI unlimited is admin or `auditsLimit === -1` only.
-- Public rubrics are exactly Message, Experience, and Reach.
-- Anonymous users receive one teaser scan with deterministic Agent updates and real evidence for every confirmed Flag. Every fix prompt, interactive Agent request, and Timeline payload stays gated until claim. Never persist signup-gate strings as Flag evidence or fix text.
-- The default live report is Agent beside Report. Preview, Timeline, and Canvas stay parked on `/report/[id]` and are not loaded there (`PRODUCT.md`).
-- Agent names up to three Attention candidates while a Review runs (not Polish, not low-confidence). On a fully completed Review it names the same worthwhile Flags as Finish Plan, which also require a recommended change. Partial Reviews never claim that nothing deserves action.
-- An Update review is a diff against its parent. The child report header and Agent transcript name Fixed / Still open / New. A flat score must say when New observations offset Fixed work. Outcome cards also stay on `/products/[id]`.
-- Flag evidence overlays, when Preview is unparked, are Flag-owned measurements (`Flag.evidenceTargets`). Never draw a preset box.
-- Authentication returns through `/post-login` so claim occurs before checkout or onward navigation.
-- HTTP, MCP, CLI, watch, and UI transports call shared task/application services; routes validate access and adapt responses.
-- Public boundaries remain `/api/checks` and `/api/reports/[id]/*`; do not add legacy audit routes.
-- Plan, ownership, report access, Stripe, and deterministic product truth are never delegated to an LLM.
-- Production starts only when launch-required capabilities are configured and `/api/health/ready` is healthy.
+Trace route, application service, persistence, tenancy, entitlements and UI together. Business facts and access are deterministic. Reuse shared services rather than creating separate report/Shopify/Site truths.
 
-## Workflow
+The new Site replaces the report experience. Existing rubrics, full update-review diff, anonymous gating and Studio Watch are scoped compatibility contracts, not permanent v2 requirements. Maintain current behavior until explicit migration and regression evidence. Useful free ongoing care needs real implementation.
 
-1. Load focused context with `npm run agent -- context <area>`.
-2. Trace the outcome through route, service, persistence, access/entitlement, UI, and transport reuse.
-3. Add tests at the business boundary first, then route-contract and journey coverage where behavior is exposed.
-4. Preserve public HTTP paths, MCP tool names, CLI commands, and entitlement semantics unless the user explicitly changes the contract.
-5. Run `npm run agent -- verify --dry-run`, the focused evaluation, and `npm run agent -- verify`.
-6. Update canonical Markdown only after behavior passes.
+Never reuse graph Site/Page as private customer objects or infer ownership from hostname alone. Preserve credentials, subscriptions, customer corrections and historical evidence.
 
-## Anonymous wedge checklist
+Use the PRD acceptance scenarios for new Site work. Use the report contract for old report maintenance. Do not treat old screenshot/layout tests as the target design specification.
 
-1. Trace `getGatedAuditForRequest` → `promptAccess` → Copy UI on `/report/[id]`. Do not rebuild a second explorer.
-2. Assert live anon evidence is real page evidence, not `Create a free account to see evidence…`.
-3. Assert live anonymous Copy chrome is visible and locked. Clicking Copy or Fix Prompt opens create-account and must not write the clipboard. After authentication, every eligible Copy action must copy a real editor prompt and never a gate placeholder.
-4. Keep marketing sample unlock on the sample path only (`isPublicMarketingSample` / `variant="sample"`).
+Run npm run agent -- verify --dry-run, appropriate checks and real-path verification. Documentation-only direction work needs source fidelity, routing, links and drift checks; it must not claim runtime completion.
 
-## Do not ship
-
-- Roadmap "Next" or "Later" work disguised as completion.
-- Silent production degradation, hardcoded provider answers, fake proof, duplicated canonical facts, or compatibility fallbacks.
-- A UI-only gate without matching server access control, or a route-only implementation unavailable to other transports.
-- Preview/Timeline/Canvas UI on the default report route while PRODUCT parks those panes.
+Never ship fake progress, evidence, successful coverage, verified recovery, unsupported revenue claims or roadmap-only connections. External sends and consequential protective actions need user authorization.

@@ -1,6 +1,6 @@
 ---
 name: fixflags-marketing
-description: Research, write, and validate FixFlags positioning and conversion copy without drifting from shipped product behavior, voice, or evidence.
+description: Write and review FixFlags communication against the accepted website-care vision and actually released capabilities, with one brand, one Site product and evidence-backed proof.
 ---
 
 Canonical source: `.agents/skills/fixflags-marketing/SKILL.md`

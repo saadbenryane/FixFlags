@@ -1,5 +1,4 @@
 import { runTriageWithRetry, type TriageResult } from '../judge-triage'
-import { logPipelineEvent } from '../pipeline-log'
 import { FINALIZE_RESERVE_MS, MIN_JUDGE_BUDGET_MS } from '../pipeline-config'
 import { AuditDeadlineError } from '../pipeline-errors'
 import { assertDeadline } from './context'
@@ -26,14 +25,14 @@ export async function runTriageStep(
   input: TriageStepInput
 ): Promise<TriageResult> {
   assertDeadline(ctx, 'judging')
-  if (ctx.deadline - Date.now() < MIN_JUDGE_BUDGET_MS) {
+  if (ctx.deadline - ctx.clock.now().getTime() < MIN_JUDGE_BUDGET_MS) {
     throw new AuditDeadlineError('judging')
   }
 
-  const triageStart = Date.now()
-  await logPipelineEvent(ctx.auditId, { stage: 'judging', event: 'triage_started' })
+  const triageStart = ctx.clock.now().getTime()
+  await ctx.events.log({ stage: 'judging', event: 'triage_started' })
 
-  const maxTimeoutMs = Math.max(0, ctx.deadline - Date.now() - FINALIZE_RESERVE_MS)
+  const maxTimeoutMs = Math.max(0, ctx.deadline - ctx.clock.now().getTime() - FINALIZE_RESERVE_MS)
   const knownObservations = await loadKnownObservations(ctx.auditId)
   const result = await runTriageWithRetry(
     input.url,
@@ -47,10 +46,10 @@ export async function runTriageStep(
     knownObservations
   )
 
-  await logPipelineEvent(ctx.auditId, {
+  await ctx.events.log({
     stage: 'judging',
     event: 'triage_completed',
-    durationMs: Date.now() - triageStart,
+    durationMs: ctx.clock.now().getTime() - triageStart,
   })
   return result
 }

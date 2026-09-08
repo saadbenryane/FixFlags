@@ -1,6 +1,3 @@
-import { auditDemoFixture } from '@/lib/demo/audit-demo-fixtures'
-import type { DemoFixtureKey } from '@/lib/demo/audit-demo-fixtures'
-
 const LOCALHOST_PATTERN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i
 
 export class DemoPageUnavailableError extends Error {
@@ -34,11 +31,4 @@ export async function fetchDemoPageHtml(url: string): Promise<{ html: string; fi
   } finally {
     clearTimeout(timeout)
   }
-}
-
-export async function auditDemoUrl(url: string, key: DemoFixtureKey = 'v1') {
-  const path = key === 'original' ? '/demo' : '/demo/v1'
-  const base = url.replace(path, '')
-  const result = await auditDemoFixture(key, { mode: 'live', baseUrl: base })
-  return result.flags
 }

@@ -490,7 +490,6 @@ model Audit {
   failureCode                String?
   failureStage               String?
   failureMetadata            Json?
-  pipelineLog                Json?
   pipelineVersion            String?
   monitoringMode             MonitoringMode               @default(FULL)
   flowData                   Json?
@@ -560,6 +559,7 @@ model Audit {
   verificationAttempts       ImprovementAttempt[]         @relation("ImprovementVerificationReview")
   verifierExecutions         AuditVerifierExecution[]
   sourceImprovementCycles    ImprovementCycle[]           @relation("ImprovementCycleSourceReview")
+  pipelineEvents             AuditPipelineEvent[]
 
   @@index([userId])
   @@index([status])
@@ -570,6 +570,25 @@ model Audit {
   @@index([normalizedDomain])
   @@index([siteId])
   @@map("audits")
+}
+
+model AuditPipelineEvent {
+  id          String   @id @default(cuid())
+  auditId     String
+  executionId String
+  traceId     String
+  attempt     Int
+  stage       String
+  event       String
+  status      String
+  durationMs  Int?
+  detail      Json?
+  occurredAt  DateTime @default(now())
+  audit       Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@index([auditId, attempt, occurredAt])
+  @@index([traceId, occurredAt])
+  @@map("audit_pipeline_events")
 }
 
 model ReportCanvas {
@@ -1557,6 +1576,124 @@ model GrowthArtifact {
 
   @@index([kind, writtenAt])
   @@map("graph_artifact")
+}
+
+model ShopifyShop {
+  id                      String          @id @default(cuid())
+  shopDomain              String          @unique
+  name                    String?
+  email                   String?
+  primaryUrl              String?
+  encryptedAccessToken    String
+  encryptedRefreshToken   String?
+  tokenExpiresAt          DateTime?
+  refreshExpiresAt        DateTime?
+  scopes                  String          @default("read_products")
+  slackWebhookEncrypted   String?
+  installedAt             DateTime        @default(now())
+  uninstalledAt           DateTime?
+  lastProbeAt             DateTime?
+  activationTrackedAt     DateTime?
+  paths                   RevenuePath[]
+  waitlist                IntegrityWaitlist[]
+  gdprRequests            ShopifyGdprRequest[]
+
+  @@index([uninstalledAt])
+  @@map("shopify_shops")
+}
+
+model RevenuePath {
+  id                   String             @id @default(cuid())
+  shopId               String
+  productGid           String?
+  storefrontUrl        String
+  label                String
+  source               String             @default("auto")
+  taggedPaidTraffic    Boolean            @default(false)
+  health               IntegrityHealth    @default(UNKNOWN)
+  reason               String?
+  failedStep           String?
+  lastVerifiedAt       DateTime?
+  lastTransitionAt     DateTime?
+  lastVideoUrl         String?
+  lastGifUrl           String?
+  lastScreenshotUrl    String?
+  watchNextRunAt       DateTime?
+  watchLeaseUntil      DateTime?
+  pulseNextRunAt       DateTime?
+  pulseLeaseUntil      DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  shop                 ShopifyShop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  runs                 VerificationRun[]
+  improveItems         ImproveItem[]
+
+  @@index([shopId])
+  @@index([watchNextRunAt])
+  @@index([pulseNextRunAt])
+  @@map("revenue_paths")
+}
+
+model VerificationRun {
+  id          String          @id @default(cuid())
+  pathId      String
+  health      IntegrityHealth
+  reason      String
+  confirmed   Boolean         @default(false)
+  trigger     String
+  videoUrl    String?
+  gifUrl      String?
+  evidence    Json?
+  createdAt   DateTime        @default(now())
+  path        RevenuePath     @relation(fields: [pathId], references: [id], onDelete: Cascade)
+
+  @@index([pathId, createdAt])
+  @@map("verification_runs")
+}
+
+model ImproveItem {
+  id          String      @id @default(cuid())
+  pathId      String
+  group       String
+  title       String
+  why         String
+  checkId     String?
+  evidenceUrl String?
+  createdAt   DateTime    @default(now())
+  path        RevenuePath @relation(fields: [pathId], references: [id], onDelete: Cascade)
+
+  @@index([pathId, createdAt])
+  @@map("improve_items")
+}
+
+model ShopifyGdprRequest {
+  id        String       @id @default(cuid())
+  shopId    String?
+  topic     String
+  payload   Json
+  createdAt DateTime     @default(now())
+  shop      ShopifyShop? @relation(fields: [shopId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@map("shopify_gdpr_requests")
+}
+
+model IntegrityWaitlist {
+  id          String      @id @default(cuid())
+  shopId      String
+  featureKey  String
+  email       String
+  createdAt   DateTime    @default(now())
+  shop        ShopifyShop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, featureKey])
+  @@map("integrity_waitlist")
+}
+
+enum IntegrityHealth {
+  GREEN
+  RED
+  UNKNOWN
 }
 
 enum Plan {

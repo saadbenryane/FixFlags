@@ -45,4 +45,13 @@ export const progressiveAuditSelect = {
     },
     orderBy: { position: 'asc' as const },
   },
+  pages: {
+    select: {
+      url: true,
+      status: true,
+      role: true,
+      position: true,
+    },
+    orderBy: { position: 'asc' as const },
+  },
 } as const

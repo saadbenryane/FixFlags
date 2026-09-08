@@ -26,6 +26,10 @@ if (!response.ok) {
 const pageHtml = await response.text()
 const layoutMatch = pageHtml.match(/href="([^"]*\/app\/layout\.css\?v=[^"]+)"/)
 if (!layoutMatch) {
+  if (optional && !/font-variables|FixFlags/i.test(pageHtml)) {
+    skip('port is serving a different application')
+    process.exit(0)
+  }
   fail('could not find app layout stylesheet link in HTML')
 }
 

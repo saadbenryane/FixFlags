@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
-import { recordFlagImprovementAttempt } from '@/lib/improvements/service'
+import { executeProductCommand } from '@/lib/products/application/commands'
 import { IMPROVEMENT_REJECTION_REASONS } from '@/lib/improvements/rejection-reasons'
 
 const schema = z.object({
@@ -49,7 +49,8 @@ export async function POST(request: Request, context: RouteContext) {
       limit: 40,
       windowSeconds: 60,
     })
-    const attempt = await recordFlagImprovementAttempt({
+    const attempt = await executeProductCommand({
+      type: 'RECORD_FLAG_ACTION',
       flagId: id,
       userId: session.user.id,
       ...parsed.data,

@@ -1,163 +1,44 @@
-# Evidence and Severity Rules
+# Evidence, health and Flag truth
 
-**Canonical home for evidence classification, severity definitions, and the Finish Plan anatomy.** Integrity Engine: [integrity-engine.md](./integrity-engine.md). Report contract: [report-contract.md](./report-contract.md).
+**TARGET contract for the September 8 vision.** Existing serializers and stored enums require explicit adapters; this document does not claim they already implement these rules.
 
-## Evidence classes
+## Four customer statements
 
-### Confirmed
+| Statement | Meaning | Required discipline |
+| --- | --- | --- |
+| Confirmed | Sufficient evidence establishes a specific problem | Show relevant behavior, source, scope and time; “confirmed twice” needs two real confirmations |
+| Likely | Evidence strongly suggests a problem but does not prove the full failure | Explain the inference and missing proof; never inflate to Confirmed for copy |
+| Couldn't verify | An attempt could not establish a reliable answer | Identify the gap and next useful action; a gap need not become a Flag |
+| Healthy | A specific behavior passed the latest relevant check | Show scope, freshness and exclusions; not a permanent or whole-site guarantee |
 
-A reproducible, observable condition.
+These statements are not one catch-all Flag lifecycle enum. Healthy usually describes checked behavior/coverage, not a new issue. Check results can exist without Flags. Certainty, severity, priority and lifecycle are distinct dimensions.
 
-Examples:
-- Broken link
-- Failed request
-- Console error tied to a task
-- Form does not submit
-- Incorrect redirect
-- Missing required metadata
-- Journey success assertion fails
-- Accessibility rule violation
-- Mobile control cannot be reached or activated
+## Evidence and coverage
 
-### Observed
+Each factual result retains its Site, page/Outcome/action, expected behavior, actual observation, source, timestamp, viewport/context, capture/execution reference and limitations. Keep deterministic browser/network evidence attached to its originating source through persistence.
 
-A measurable interaction issue.
+Coverage distinguishes configured responsibility, attempted checks, successful checks, cadence, freshness, missing permissions/context, skipped scope and failures. A healthy homepage response cannot certify a purchase. Desktop success cannot certify mobile. No Flags does not certify untested behavior.
 
-Examples:
-- Repeated attempts were required
-- The agent reached an empty state without guidance
-- An action produced no immediate feedback
-- The primary action was unavailable in the tested viewport
-- Labels contradicted the destination
-- Recovery required returning several steps
+Keep last known success and latest attempt separate. A stale pass or failed new attempt cannot silently display as current all-clear. Aggregate Site language must be bounded by relevant coverage; explicitly show unverified important Outcomes.
 
-### Suggested
+## Creating and prioritizing a Flag
 
-A judgment-based recommendation.
+An observation becomes a Flag only when it deserves attention. Explain what happened, where, certainty, why it matters, proof and next action. Deduplicate repeated evidence without merging distinct failures. Prioritize with certainty, impact, Outcome importance, exposure, business context, change and persistence.
 
-Examples:
-- Headline may be too broad
-- Trust evidence may appear too late
-- Plan differences may be difficult to compare
-- The visual hierarchy may dilute the primary action
+Connection data is attributed and timestamped. Correlation after a deployment is a useful clue, not proof that the deployment caused a failure. Estimated exposure must not be presented as measured lost revenue.
 
-## Severity levels
+## Fix and recovery
 
-### Blocker
-Must be confirmed and must prevent an agreed goal.
+A proposed lifecycle is open → fix attempted → verification pending → resolved, with inconclusive/failed attempts retained and recurrence able to reopen the issue. Exact storage states belong to the implementation; do not conflate them with certainty labels.
 
-### High
-Must be confirmed or strongly observed and directly affect an important path.
+Copy, share, agent completion, deployed code and a customer Done action cannot establish resolution. Fresh independent verification must exercise the relevant behavior after the change, in matching scope, and satisfy recorded criteria. Preserve failure and pass evidence with time and deployment/context attribution.
 
-### Medium
-Affects clarity, effort, trust or discoverability without blocking the task.
+If the affected page disappears, a check is skipped, authentication blocks the path, or scope is incomparable, verification is inconclusive rather than resolved. An intentional removal may end a monitoring responsibility through an explicit recorded change; it is not a verified repair of that behavior.
 
-### Polish
-A lower-impact suggestion.
+Legacy full update reviews and IMPROVED receipts retain their current semantics on old routes. New targeted verification may reuse the engine but must meet the relevant behavior contract. Never convert old “not observed” or “Fixed” diff labels into v2 verified recovery without evidence.
 
-**Rule:** An LLM-only opinion can never receive Blocker severity.
+## Safety and privacy
 
-## Critical Flag policy
+Use independent safe browser actions and minimized evidence. Do not submit real orders, payments or lead messages as routine public checks. Use owned fixtures/test modes or explicitly authorized bounded actions; otherwise record the limit. Sanitize shared/exported evidence, keep tenant data private and enforce access server-side.
 
-Before a Flag can be critical:
-- The failure must reproduce
-- The success assertion must be explicit
-- Evidence must be saved
-- The finding must survive a deterministic review
-- The run must not contain a known infrastructure failure
-
-## Finish Plan anatomy
-
-### Report header
-> Fix these before you share it
-> 1 blocker found in the paths we tested
-> Checked: 14 routes, 51 links and actions, Desktop and mobile, 3 important journeys
-
-### Journey summary
-Each journey receives one status:
-- Passed
-- Passed with friction
-- Blocked
-- Could not verify
-
-### Flag order
-
-1. **Confirmed blockers** — Failures that prevent a defined goal
-2. **Observed friction** — The task completed, but an observable problem increased effort or uncertainty
-3. **Suggestions** — Heuristic improvements that may strengthen clarity or polish
-
-### Flag anatomy
-
-Every Flag contains:
-
-- **What happened** — A factual description
-- **Evidence** — Replay, screenshot, request, error or page state
-- **Why it matters** — The goal or system requirement affected
-- **Confidence** — Confirmed, observed or suggested
-- **Fix** — The smallest useful change
-- **Scope** — What should remain unchanged
-- **Verify** — The exact condition FixFlags will test again
-
-### Example
-
-**Account creation gives no visible response on mobile**
-
-*Confirmed blocker*
-
-**What happened:** FixFlags entered a valid email and selected Continue twice. The page did not navigate, show a confirmation or issue the expected request.
-
-**Why it matters:** A new visitor cannot complete account creation on the tested mobile viewport.
-
-**Fix:** Ensure the submit action fires once, display a loading state immediately, and show either a success state or actionable error.
-
-**Verify:** Repeat the journey at the same viewport and confirm that the account is created and the dashboard is reached.
-
-## Evaluation system
-
-FixFlags must evaluate itself more rigorously than it evaluates customers.
-
-### Seeded benchmark
-
-Build at least 100 controlled web products containing known problems across: navigation, authentication, forms, mobile layout, empty states, errors, loading, accessibility, metadata, performance, trust, copy clarity, goal completion.
-
-### Measures
-
-- Detection recall
-- Precision
-- Severity accuracy
-- Goal-completion accuracy
-- Reproduction success
-- Fix usefulness
-- Re-check accuracy
-- Cost per useful Flag
-- Cost per verified fix
-
-### Human calibration
-
-Regularly sample: confirmed Flags, dismissed Flags, suggestions, failed journeys, could-not-verify journeys. Use expert review to update the rubric.
-
-### No composite score at launch
-
-Do not lead with a 0-100 score until FixFlags can demonstrate that the score is stable, interpretable and correlated with validated product outcomes.
-
-## Measurement
-
-### Core value metric
-
-**Verified fixes.** A verified fix requires:
-1. A Flag was created
-2. The customer viewed the evidence
-3. The customer accepted or attempted the fix
-4. The product changed
-5. FixFlags reran the same verification
-6. The original problem no longer occurred
-
-### Trust metrics
-- False critical rate
-- Confirmed Flag precision
-- Reproduction success
-- Journey flake rate
-- "Could not verify" rate
-- Suggested Flag acceptance
-- Dismissal reasons
-- Support complaints caused by incorrect findings
+AI may infer intent, correlate signals, explain and propose fixes. It cannot fabricate captures, requests, timings, customer behavior, or verification success.

@@ -12,11 +12,12 @@ import {
 import { SUPPORT_CHAT } from '@/lib/marketing/copy'
 
 describe('help catalog', () => {
-  it('keeps public help focused on URL reviews and accounts', () => {
+  it('keeps public help focused on the Shopify purchase path', () => {
     expect(HELP_CATEGORIES).toHaveLength(4)
     expect(HELP_CATEGORIES.some((category) => category.id === 'mcp-and-editors')).toBe(false)
     expect(HELP_ARTICLES.every((article) => article.categoryId !== 'mcp-and-editors')).toBe(true)
     expect(HELP_ARTICLES.length).toBeGreaterThanOrEqual(25)
+    expect(getHelpArticle('first-check')?.title).toMatch(/Install FixFlags on Shopify/)
   })
 
   it('resolves every article slug', () => {
@@ -34,6 +35,8 @@ describe('help catalog', () => {
 
   it('maps failure and limit surfaces to help hrefs', () => {
     expect(helpHrefForFailureCode('HTTP_FORBIDDEN')).toContain('public-urls-only')
+    expect(helpHrefForFailureCode('SITE_FORBIDDEN')).toContain('public-urls-only')
+    expect(helpHrefForFailureCode('SITE_UNREACHABLE')).toContain('why-check-failed')
     expect(helpHrefForFailureCode('AUDIT_TIMEOUT')).toContain('why-check-failed')
     expect(helpHrefForLimitAction('buy_credits')).toContain('credits')
     expect(helpHrefForSurface('billing_past_due')).toContain('payment-past-due')

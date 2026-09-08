@@ -1,61 +1,15 @@
 ---
-description: FixFlags UI craft, tokens, color theory, anti-slop. Read AGENTS.md first.
+description: FixFlags UI uses the accepted Site contract and retained brand tokens. Read AGENTS.md first.
 globs: "**/*.{tsx,css}"
 alwaysApply: false
 ---
 
 # FixFlags UI
 
-Before editing UI, read `/AGENTS.md`, `lib/design/brand-rules.md`, `lib/design/tokens.css`, and `DESIGN.md`.
+Read AGENTS.md, DESIGN.md, docs/workspace-interface.md and docs/product-prd.md. The canonical workflow is .agents/skills/fixflags-design-system/SKILL.md.
 
-## Stack
+Keep approved brand tokens from lib/design/tokens.css and lib/design/brand-spec.ts. Use existing accessible primitives. Home · Flags · Site defines the new experience; coverage and evidence constrain status. First analysis becomes the same Site dashboard.
 
-Tailwind + shadcn. Use semantic tokens (`bg-card`, `text-brand`, `shadow-card`, `rounded-card`), never raw hex except `grade.*`.
+The old Agent | Report split, scores and rubric presentation are legacy compatibility only on existing report routes. See knowledge/report-contract.md when maintaining those routes. Do not carry their layout into new Site work.
 
-## Color
-
-60% canvas (`background` white / dark ink) · 30% structure (`foreground`, stone `card`/`muted`) · 10% brand orange (`brand`). One accent per surface. Product primary CTAs = ink on light; marketing accent CTAs = `variant="brand"`; dark-mode primary CTAs = orange.
-
-## Depth
-
-Shadow-first. Cards: `border-0 shadow-card glass-surface`. Sections: `bg-muted/35`, not `border-y`. Borders only on inputs and table rows.
-
-## Type
-
-`font-sans` (Inter) body · `font-display` / `font-serif` (Inter Tight) for marketing headlines and wordmark · `font-mono` (JetBrains Mono) for scores, grades, uppercase labels. `text-balance` headings, `text-pretty` body, `tabular-nums` on numbers. Never display weight on dense report UI.
-
-## Layout
-
-Report pages: `Container variant="report"` (`max-w-6xl`). Marketing: `default` (`max-w-5xl`). Marketing full mesh (`GlobalMeshBackdrop intensity="full"`) has no hero grid.
-
-## Report hierarchy
-
-Read `knowledge/report-contract.md`. That file is the only report IA source.
-
-`/report/[id]` is Agent beside Report with the complete ranked Fix list. Preview, Timeline, and Canvas stay parked on the default route and are not loaded there.
-
-Anonymous viewers see evidence and gated Copy chrome; prompt bodies stay omitted until claim. Verify 375, 768, and 1280px plus keyboard, zoom/reflow, loading, partial, error, and reduced-motion states.
-
-## Radius
-
-Concentric: inner = outer − padding. Controls/buttons/inputs: `rounded-[var(--radius-control)]` (~10px). Cards/panels: `rounded-card`. Filter chips / avatars / switches may stay fully round as geometric shapes.
-
-## Mark
-
-Official brand-sheet mark raster only (`/brand/logo-mark.png`). Do not invent SVG geometry or reintroduce the old 3D pennant.
-
-## Marketing visuals
-
-Never soft-key black-background plates into alpha without unmatting — dark RGB on partial alpha creates a black fringe. On mesh/gradient marketing pages, ship properly unmated RGBA (despill edges; no dark semi-transparent pixels). Opaque bake onto `#FFFFFF` only when the canvas is flat white.
-
-Prefer a true RGBA PNG saved into `docs/brand/reference/` or `public/marketing/visuals/` (chat uploads often flatten to JPEG-on-black). If a true RGBA master exists, preserve its alpha; only despill dark underside/rim fringe — do not redraw text glyphs.
-
-Homepage hero glass (`home-hero-glass.webp`) is landscape (~1.49). Size to the right column width with `object-contain` / `object-right`. Do not height-scale so wide that it overlaps the left copy column. Use `Container variant="marketing"` (`--container-max-marketing` 92rem); grid is copy column (`34–36rem`) + `1fr` illustration. Logo strip: `EditorToolMarks variant="hero"`.
-
-## Anti-slop
-
-No icon grids, gradient heroes, colored trend pills, `transition: all`, or default blue stacks. Sentence case. Real product screenshots over illustrations.
-
-## Polish
-
-`active:scale-[0.98]` on buttons · layered shadows · `prefers-reduced-motion` · focus rings on `--ring` · 44×44px min hit targets (`min-h-11 min-w-11`).
+Verify real rendering, keyboard/focus, touch targets, contrast, reduced motion, partial/error/stale states and mobile/desktop parity. No fabricated proof, healthy state or recovery.

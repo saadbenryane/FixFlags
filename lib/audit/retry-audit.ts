@@ -42,7 +42,6 @@ export async function retryAudit(auditId: string): Promise<{ status: string }> {
       failureMetadata: undefined,
       completedAt: null,
       finalizedAt: null,
-      pipelineLog: [],
       failedModules: undefined,
     },
   })

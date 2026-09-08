@@ -86,10 +86,11 @@ export async function ReportRoute({ params, shareToken }: Props & { shareToken?:
       </AuditShell>
     )
   }
-  if (state.kind === 'progressive') {
+  if (state.kind === 'running' || state.kind === 'failed') {
     return (
       <AuditPageClient
         id={state.id}
+        initialProjection={state.projection}
         initialAudit={state.audit}
         pollStatus
         session={state.session}
@@ -98,7 +99,11 @@ export async function ReportRoute({ params, shareToken }: Props & { shareToken?:
     )
   }
 
-  return <CompletedReportView state={state} />
+  if (state.kind === 'completed' || state.kind === 'partial') {
+    return <CompletedReportView state={state} />
+  }
+
+  return null
 }
 
 export default ReportRoute

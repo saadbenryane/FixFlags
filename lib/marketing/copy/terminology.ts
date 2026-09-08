@@ -3,12 +3,20 @@
  * Internal code may still use re-check, scan, audit, journey enums.
  */
 
+export const REVIEW_ENTRY = {
+  cta: 'Review my site',
+  compactCta: 'Review site',
+  href: '/new',
+  urlPlaceholder: 'yourproduct.com',
+  trySampleCta: 'See a sample review',
+} as const
+
 export const CUSTOMER_TERMS = {
-  category: 'Product QA',
-  categoryLine: 'Product QA for what you shipped',
-  tagline: 'Finish what your AI started.',
+  category: 'Website intelligence',
+  categoryLine: 'Find what matters. Keep watching.',
+  tagline: 'Find what is getting in the way of your next customer.',
   primaryCta: 'Review my site',
-  compactPrimaryCta: 'Review site',
+  compactPrimaryCta: 'Review',
   productReview: 'product review',
   productReviews: 'product reviews',
   productReviewTitle: 'Product review',

@@ -1,14 +1,19 @@
 # Quality
 
+**Version boundary, 2026-09-08:** the [new Site PRD](docs/product-prd.md) and [roadmap](ROADMAP.md) add target acceptance. Existing report matrices below verify legacy behavior and reusable infrastructure. Their prior readiness labels do not establish new-version completion.
+
+For new Site work, exercise URL-to-Site continuity, tenant isolation, Outcome correction, scoped coverage/freshness, independent relevant recovery, idempotent Keep watching, quiet monitoring and entitlement migration. For documentation-only vision preparation, source-fidelity, link, skill and drift checks are the scoped verification equivalent; no deployed readiness claim follows.
+
+
 *Verification matrix: risks, required checks, and evidence.*
 
 ## The three tiers
 
 | Tier | Question | Current readiness |
 |------|----------|-------------------|
-| Truth | Are audits accurate? | ~95% |
-| Strength | Does the platform work reliably? | ~85% |
-| Touch | Does the product feel world-class? | Local launch matrix passed; credentialed production journeys pending |
+| Truth | Are audits accurate? | Determine from current accuracy evidence |
+| Strength | Does the platform work reliably? | Determine from current runtime evidence |
+| Touch | Does the product feel world-class? | Legacy receipts do not prove the new Site experience |
 
 Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn within 30d), IMPORTANT (🔶 → affects satisfaction), POLISH (🔵 → nice to have).
 
@@ -33,7 +38,8 @@ Ratings: BLOCKER (🚫 → ships to no one), CRITICAL (⚠️ → causes churn w
 | Data corruption on persist | ✅ DONE | `persistDeterministicFlags` and `persistTriageResults`: 0 flags, 100 flags, duplicates, AI failures, enrichments | `persist-functions.test.ts` covers all five |
 | Pipeline failures mid-audit | ✅ DONE | QUEUED → CAPTURING → CHECKING → JUDGING → FINALIZING → COMPLETED. Fail at any step. Timeout halfway. Retry after crash. | `run-audit.test.ts` drives `runAudit` across every path |
 | Billing enforcement leaks | ✅ DONE | Free user gets 402 on paid endpoint. Paying user never gets blocked on owned features. | Route tests for api-keys + projects assert 402/allow |
-| API route contracts | 🔶 IMPORTANT | Critical path: 200/400/401/402/403/404 on checks, status, re-check, api-keys, projects | Critical path covered; remaining routes pending |
+| Customer-loop route contracts | ✅ DONE | Checks, report/status/update-review/retry/chat, Watch, Product Signals, and Flag attempts declare method, auth, schema, success, failures, idempotency, and fixture | `lib/api/customer-route-contracts.mjs`; registry rejects validation-only probes as success evidence |
+| Remaining operational route contracts | 🔶 IMPORTANT | Every non-customer route must acquire a real success fixture before it can count as release evidence | Route inventory remains exhaustive; explicit success contracts expand as operational routes enter release scope |
 | Rate limiting | 🔶 IMPORTANT | Anonymous: 1 teaser scan (cookie + IP soft ceiling). Free account: 3 product reviews per month. Paid: plan limit. Redis outage fail-open is intentional availability tradeoff. | Partially implemented |
 | Auth / session integrity | 🔶 IMPORTANT | Claim-before-next, entitlements, re-check never gated | Claim + redirect + monitoring tests; full login/logout E2E still open |
 | CI pipeline | ✅ DONE | CI and local full verification use `scripts/validate.mjs`. | GitHub Actions runs `npm run validate:full` plus browser journeys |
@@ -69,6 +75,8 @@ Credentialed forbidden, expired, and revoked report paths remain part of the rel
 | UI drift | `npm run ui:drift-guard` | Design system drift | Yes |
 | Product contract | `npm run product:contract-guard` | Stale routes, homepage bloat, prompt/sample/share regressions, focused deep imports | Yes |
 | Parked visibility | `npm run power-tools:visibility-guard` | Power-tool routes remain uniformly unavailable and absent from customer discovery | Yes |
+| Module boundaries | `npm run module:boundary-guard` | Client/server separation, thin customer-loop routes, no runtime dependency cycles, and no parked Canvas APIs | Yes |
+| Route contracts | `npm run routes:contract-guard` | Typed route inventory plus genuine fixture-backed success evidence for the customer loop | Yes |
 | Scan accuracy | `npm run accuracy:eval` | Gold 0 false blockers, builder top-3, demo v1 repair, non-HTML regression | Yes (via `validate.mjs` full gate) |
 | Rendered dogfood accuracy | `npm run accuracy:browser` | Curated live mobile CTA selection, fold geometry, input zoom candidates, and visual-metric false positives | On demand |
 | SEO | `npm run seo:guard` | SEO compliance | Yes |
@@ -90,7 +98,7 @@ All five now have automated coverage, run in CI via `npm run test:unit`:
 4. ✅ Pipeline state machine — `run-audit.test.ts` (transitions, fail-at-step, timeout, retry-after-crash)
 5. ✅ Billing gating enforcement — route tests assert 402 for free, allow for paid (`/api/checks`, api-keys, projects)
 
-Remaining hardening (not blocking): freeze screenshot/flow/PageSpeed modules into the regression suite; extend route contract tests to the remaining API endpoints; run manual report contract smoke (below); full-browser adjudication for SSR sites (e.g. linear.app).
+Remaining hardening (not blocking): freeze screenshot/flow/PageSpeed modules into the regression suite; promote remaining operational routes to explicit fixture-backed contracts as they enter release scope; run manual report contract smoke (below); full-browser adjudication for SSR sites (e.g. linear.app).
 
 **Accuracy completion plan:** [`.agents/sessions/launch-readiness-completion-plan.md`](.agents/sessions/launch-readiness-completion-plan.md)
 

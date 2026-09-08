@@ -15,7 +15,7 @@ import type { CuratedSampleAudit } from '@/lib/marketing/curated-sample'
 
 function baseAudit(overrides: Partial<CuratedSampleAudit> = {}): CuratedSampleAudit {
   return {
-    accessContext: 'repository_sample',
+    accessContext: 'curated_sample',
     id: 'audit-1',
     url: 'https://example.com',
     pageJob: null,

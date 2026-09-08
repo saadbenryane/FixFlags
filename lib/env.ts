@@ -74,6 +74,10 @@ const envSchema = z.object({
   NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_LABEL: z.string().optional(),
   NEXT_PUBLIC_META_PIXEL_ID: z.string().optional(),
   META_CAPI_TOKEN: z.string().optional(),
+  SHOPIFY_API_KEY: z.string().optional(),
+  SHOPIFY_API_SECRET: z.string().optional(),
+  SHOPIFY_REQUIRED: z.enum(['true', 'false']).optional(),
+  FIXFLAGS_SHOPIFY_FIXTURE: z.enum(['true', '1', 'false']).optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

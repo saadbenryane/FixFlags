@@ -1,5 +1,4 @@
-import { OFFER, SCORE_HELP, SEVERITY_MEANINGS } from './brand'
-import { CORE_LOOP_LABEL, PRICING_COPY } from './terminology'
+import { CORE_LOOP_LABEL } from './terminology'
 
 export const FAQ_SECTION = {
   title: 'Common questions',
@@ -10,7 +9,7 @@ export const FAQ_SECTION = {
 export const FAQ_PAGE = {
   title: 'Frequently asked questions',
   subhead:
-    'Everything you need to know about FixFlags product reviews, Flags, fix prompts, and plans.',
+    'How FixFlags walks the Shopify purchase path, what Can buy and Can\'t buy mean, and what is free.',
 } as const
 
 export type FaqEntry = {
@@ -21,100 +20,63 @@ export type FaqEntry = {
 
 export const FAQ: readonly FaqEntry[] = [
   {
-    question: 'What does FixFlags check that Lighthouse doesn\u2019t?',
+    question: 'What does FixFlags actually check?',
     answer:
-      'Lighthouse scores performance, accessibility, and SEO. FixFlags adds message, experience, and reach review with evidence and fix prompts.',
-    learnMore: { href: '/help/checks-and-reports/vs-lighthouse', label: 'FixFlags vs Lighthouse' },
+      'FixFlags walks the purchase path on a phone-sized browser: product, add to cart, cart, checkout. It tells you whether a stranger can still buy. It is not an uptime ping, a Lighthouse score, or a recording of real shoppers.',
+    learnMore: { href: '/help/checks-and-reports/vs-lighthouse', label: 'Walk vs uptime' },
   },
   {
-    question: 'How are FixFlags reviews organized?',
+    question: 'What do Can buy, Can\'t buy, and Unclear mean?',
     answer:
-      'Every report groups Flags into Message, Experience, and Reach. Each Flag includes evidence and a fix prompt.',
-    learnMore: { href: '/docs/reports', label: 'Finish Plans and reports' },
+      'Can buy means a stranger reached checkout and we stopped before payment. Can\'t buy means the path failed twice on independent walks. Unclear means we could not prove it: a bot wall, password gate, missing buy button, or a flake. Unclear stays in the app. We do not email Unclear.',
+    learnMore: { href: '/help/checks-and-reports/scores-and-severity', label: 'Path health' },
   },
   {
-    question: 'What does the Message section check?',
+    question: 'Do you charge or complete checkout?',
     answer:
-      'Headline clarity, placeholder copy, dead CTA links, audience fit, and pricing confidence.',
-    learnMore: { href: '/docs/reports#flags-and-evidence', label: 'Flags and evidence' },
-  },
-  {
-    question: 'What does the Experience section check?',
-    answer:
-      'Layout, mobile usability, accessibility basics, Core Web Vitals, and automated CTA click-through.',
-    learnMore: { href: '/docs/reports#flags-and-evidence', label: 'Flags and evidence' },
-  },
-  {
-    question: 'What does the Reach section check?',
-    answer:
-      'SEO metadata, live search and social preview cards, og:image validation, and indexability.',
-    learnMore: { href: '/docs/reports#flags-and-evidence', label: 'Flags and evidence' },
-  },
-  {
-    question: 'How are scores calculated?',
-    answer: SCORE_HELP.short,
-    learnMore: { href: SCORE_HELP.faqHref, label: 'Scores and severity' },
-  },
-  {
-    question: 'What do Critical, Important, and Polish mean?',
-    answer: `Critical: ${SEVERITY_MEANINGS.CRITICAL} Important: ${SEVERITY_MEANINGS.IMPORTANT} Polish: ${SEVERITY_MEANINGS.POLISH}`,
-    learnMore: { href: SCORE_HELP.faqHref, label: 'Scores and severity' },
-  },
-  {
-    question: 'Do I need an account for my first product review?',
-    answer: `No. Your report opens immediately while the product review runs. Free includes ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month after you sign in.`,
-    learnMore: { href: '/help/getting-started/first-check', label: 'Run your first product review' },
-  },
-  {
-    question: 'What\u2019s included in the free plan vs Pro?',
-    answer: `Free includes ${PRICING_COPY.freeProductReviewsPerMonth} reviews per month for one product. Pro (${PRICING_COPY.proPrice}${PRICING_COPY.proPeriod}) includes ${PRICING_COPY.proProductReviewsPerMonth} reviews across up to five products. Studio (${PRICING_COPY.studioPrice}${PRICING_COPY.studioPeriod}) includes ${PRICING_COPY.studioProductReviewsPerMonth} reviews per month with unlimited products, scheduled reviews, and a shared workspace.`,
+      'No. The walk stops when checkout or Shop Pay is visible. We never enter payment details or place an order. The Shopify app is free to install. Pro extras are on a waitlist. We are not charging yet.',
     learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
   },
   {
-    question: 'Do I need a specific AI builder?',
+    question: 'What is included for free?',
     answer:
-      'No. Fix prompts copy into Lovable or any other editor, ticket, or brief.',
-    learnMore: { href: '/docs/getting-started#fix-the-first-flag', label: 'Fix the first Flag' },
+      'One Shopify store, one or two auto-discovered buyable products, a mobile walk with video, email on confirmed Can\'t buy and recovery, optional Slack, and five manual rechecks per day. Walks run about every six hours.',
+    learnMore: { href: '/help/billing-and-plans/what-counts-as-a-check', label: 'What the free plan includes' },
   },
   {
-    question: 'Can it review sites built with Lovable/Bolt/v0/Devin?',
+    question: 'When do you email or Slack me?',
     answer:
-      'Yes. FixFlags reviews any publicly accessible URL regardless of how it was built.',
-    learnMore: { href: '/help/checks-and-reports/public-urls-only', label: 'Public URLs only' },
+      'Only after a path is confirmed broken on two walks, and again when that path can take orders. The message includes a proof link. Unclear stays in the app. Improve items never go in alerts.',
+    learnMore: { href: '/help/account/report-privacy', label: 'Alerts and proof' },
   },
   {
-    question: 'How do fix prompts work with Cursor/Claude?',
+    question: 'What if my store is password gated or has no products yet?',
     answer:
-      'Each Flag includes a fix prompt with specific evidence from your page. Paste it into your AI builder.',
-    learnMore: { href: '/docs/reports#fix-prompts', label: 'Fix prompts' },
+      'We show an honest state in the app. Publish an active product with a storefront URL, or remove the password from the storefront you want watched. We do not guess a buy path that is not there.',
+    learnMore: { href: '/help/checks-and-reports/public-urls-only', label: 'Storefront access' },
   },
   {
-    question: 'Can I run an update review after my agent fixes Flags?',
+    question: 'Can I watch what FixFlags saw?',
     answer:
-      'Yes. Update reviews use one product review from your monthly allowance. Before/after comparison is included on every plan.',
-    learnMore: { href: '/help/getting-started/flag-fix-recheck', label: 'Flag, fix, and update review' },
+      'Yes. Each walk keeps video of our session, or a GIF of the key steps if video encoding fails, plus step screenshots. This is our walk, not session replay of your customers.',
+    learnMore: { href: '/help/checks-and-reports/evidence-and-screenshots', label: 'Watch verification' },
   },
   {
-    question: 'Are my reports public?',
-    answer: OFFER.reportAccess,
-    learnMore: { href: '/help/account/report-privacy', label: 'Report access' },
+    question: 'How do I recheck after I fix the theme or an app?',
+    answer:
+      'Open the path and choose Recheck. Free stores get five manual rechecks per day. Scheduled walks continue on their own.',
+    learnMore: { href: '/help/getting-started/flag-fix-recheck', label: 'Recheck a path' },
   },
   {
-    question: 'Does it work on staging/password-protected sites?',
+    question: 'How do I start using FixFlags?',
     answer:
-      'FixFlags can review a publicly reachable HTTPS preview URL. Localhost and password-only pages are not supported.',
-    learnMore: { href: '/help/checks-and-reports/public-urls-only', label: 'Public URLs only' },
-  },
-  {
-    question: 'We already have a live site. Is this only for pre-launch?',
-    answer:
-      'No. FixFlags reviews any public page, live or new. You get a prioritized fix list with screenshots.',
-    learnMore: { href: '/docs/getting-started', label: 'Getting started' },
+      'Install on Shopify. We discover buyable products from your catalog. The public site does not ask you to paste a website.',
+    learnMore: { href: '/help/getting-started/first-check', label: 'Install on Shopify' },
   },
   {
     question: 'Who is FixFlags for?',
     answer:
-      'Builders shipping with AI tools and teams with a live site that gets traffic but weak conversion.',
+      'Shopify store owners who need to know the buy path still works. Store up is not the same as can buy.',
     learnMore: { href: '/how-it-works', label: 'How it works' },
   },
 ] as const

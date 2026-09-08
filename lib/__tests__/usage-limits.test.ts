@@ -30,9 +30,7 @@ import {
   canAccessMonitoring,
   canAccessPaidFeatures,
   canExportSummary,
-  canSharePublicly,
   getEntitlements,
-  getReportTierForUser,
 } from '@/lib/auth/entitlements'
 import {
   canViewPrescriptionContent,
@@ -178,23 +176,20 @@ describe('wouldBlockNewCheck', () => {
   })
 })
 
-describe('share and export entitlements', () => {
+describe('export entitlements', () => {
   const freeUser = { id: 'u1', role: 'user' as const, plan: 'FREE' as const, subscriptionStatus: 'NONE' as const }
   const proUser = { id: 'u2', role: 'user' as const, plan: 'BUILDER' as const, subscriptionStatus: 'ACTIVE' as const }
   const agencyUser = { id: 'u3', role: 'user' as const, plan: 'TEAM' as const, subscriptionStatus: 'ACTIVE' as const }
 
-  it('allows public share and export for free and pro', () => {
+  it('allows export for free and pro', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(canSharePublicly(freeUser), true)
-    assert.equal(canSharePublicly(proUser), true)
     assert.equal(canExportSummary(freeUser), true)
     assert.equal(canExportSummary(proUser), true)
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('allows public share for Studio', () => {
+  it('allows export for Studio', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(canSharePublicly(agencyUser), true)
     assert.equal(canExportSummary(agencyUser), true)
     delete process.env.DEV_SIMULATE_BILLING
   })
@@ -219,20 +214,6 @@ describe('revoked subscription behavior', () => {
   const revokedStates = ['PAST_DUE', 'CANCELED', 'UNPAID'] as const
 
   for (const status of revokedStates) {
-    it(`getReportTierForUser preserves full report content for ${status}`, () => {
-      process.env.DEV_SIMULATE_BILLING = 'true'
-      const tier = getReportTierForUser({
-        id: 'u',
-        plan: 'BUILDER',
-        role: 'user',
-        subscriptionStatus: status,
-      })
-      assert.equal(tier, 'paid')
-      delete process.env.DEV_SIMULATE_BILLING
-    })
-  }
-
-  for (const status of revokedStates) {
     it(`canAccessPaidFeatures returns false for ${status}`, () => {
       process.env.DEV_SIMULATE_BILLING = 'true'
       const paid = canAccessPaidFeatures({
@@ -245,15 +226,6 @@ describe('revoked subscription behavior', () => {
       delete process.env.DEV_SIMULATE_BILLING
     })
   }
-
-  it('keeps public sharing available after Studio cancellation', () => {
-    process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(
-      canSharePublicly({ id: 'u', plan: 'TEAM', role: 'user', subscriptionStatus: 'CANCELED' }),
-      true
-    )
-    delete process.env.DEV_SIMULATE_BILLING
-  })
 
   it('purchased credits remain spendable after revocation', async () => {
     // Purchased credit packs are a distinct, already-paid-for transaction

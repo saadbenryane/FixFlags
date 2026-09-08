@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
 import { ArrowRight, Link2, Loader2 } from 'lucide-react'
-import { HERO, AUDIT_PROGRESS, AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { REVIEW_ENTRY, AUDIT_PROGRESS, AUDIT_ERRORS } from '@/lib/marketing/copy'
 import { URL_PLACEHOLDER } from '@/lib/marketing/copy/brand'
 import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics/events'
@@ -30,6 +30,8 @@ export function AuditInput({
   autoStart = false,
   ctaPlacement,
   showLandingExtras = true,
+  submitLabel = REVIEW_ENTRY.cta,
+  urlPlaceholder = REVIEW_ENTRY.urlPlaceholder,
 }: {
   variant?: 'default' | 'landing'
   /** Audit attribution source sent to POST /api/checks (defaults from variant). */
@@ -42,6 +44,8 @@ export function AuditInput({
   ctaPlacement?: 'hero' | 'final'
   /** Landing-only sample CTA. */
   showLandingExtras?: boolean
+  submitLabel?: string
+  urlPlaceholder?: string
 }) {
   const inputId = `audit-url${idSuffix}`
   const errorId = `audit-url-error${idSuffix}`
@@ -201,7 +205,7 @@ export function AuditInput({
                 type="text"
                 inputMode="url"
                 autoComplete="url"
-                placeholder={HERO.urlPlaceholder}
+                placeholder={urlPlaceholder}
                 value={url}
                 onFocus={() => {
                   if (resolvedPlacement === 'hero' || resolvedPlacement === 'final') {
@@ -237,7 +241,7 @@ export function AuditInput({
                 </>
               ) : (
                 <>
-                  {HERO.primaryCta}
+                  {submitLabel}
                   <ArrowRight />
                 </>
               )}
@@ -282,7 +286,7 @@ export function AuditInput({
                 </>
               ) : (
                 <>
-                  {HERO.primaryCta}
+                  {submitLabel}
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -306,7 +310,7 @@ export function AuditInput({
             onClick={handleLandingTrySample}
             className="px-0 text-sm text-muted-foreground hover:text-foreground"
           >
-            {HERO.trySampleCta}
+            {REVIEW_ENTRY.trySampleCta}
             <ArrowRight className="ml-1 h-3.5 w-3.5" />
           </Button>
         </div>

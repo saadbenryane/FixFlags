@@ -13,6 +13,22 @@ import { sanitizeAuditErrorMessage } from '@/lib/audit/pipeline/context'
 import { assertDeadline } from '@/lib/audit/pipeline/context'
 import { AUDIT_DEADLINE_MS, MIN_JUDGE_BUDGET_MS, FINALIZE_RESERVE_MS, STUCK_AUDIT_MINUTES } from '@/lib/audit/pipeline-config'
 import { JudgeContractError } from '@/lib/audit/validate-judge-output'
+import type { PipelineContext } from '@/lib/audit/pipeline/types'
+import { fixedClock, systemClock } from '@/lib/time/clock'
+
+function pipelineContext(deadline: number, clock = systemClock): PipelineContext {
+  return {
+    auditId: 'test',
+    deadline,
+    startedAt: clock.now(),
+    clock,
+    trace: { executionId: 'test:1', traceId: 'trace-test', attempt: 1 },
+    events: { log: vi.fn(async () => undefined) },
+    pagespeedCalls: 0,
+    usage: { inputTokens: 0, outputTokens: 0, models: [] },
+    includeAi: true,
+  }
+}
 
 // ── AuditDeadlineError ──────────────────────────────────────────
 
@@ -39,17 +55,17 @@ describe('AuditDeadlineError', () => {
 
 describe('assertDeadline', () => {
   it('does not throw when within the deadline', () => {
-    const ctx = { auditId: 'test', deadline: Date.now() + 60_000, startedAt: new Date(), pagespeedCalls: 0, usage: { inputTokens: 0, outputTokens: 0, models: [] }, includeAi: true }
+    const ctx = pipelineContext(Date.now() + 60_000)
     assert.doesNotThrow(() => assertDeadline(ctx, 'checking'))
   })
 
   it('throws AuditDeadlineError when past the deadline', () => {
-    const ctx = { auditId: 'test', deadline: Date.now() - 1, startedAt: new Date(), pagespeedCalls: 0, usage: { inputTokens: 0, outputTokens: 0, models: [] }, includeAi: true }
+    const ctx = pipelineContext(Date.now() - 1)
     assert.throws(() => assertDeadline(ctx, 'capturing'), AuditDeadlineError)
   })
 
   it('includes the stage name in the thrown error', () => {
-    const ctx = { auditId: 'test', deadline: Date.now() - 1, startedAt: new Date(), pagespeedCalls: 0, usage: { inputTokens: 0, outputTokens: 0, models: [] }, includeAi: true }
+    const ctx = pipelineContext(Date.now() - 1)
     try {
       assertDeadline(ctx, 'finalizing')
       assert.fail('should have thrown')
@@ -65,13 +81,9 @@ describe('assertDeadline', () => {
     // freezing, the wall clock can advance past the captured deadline between
     // building ctx and the call, making this test flaky.)
     const now = Date.now()
-    const spy = vi.spyOn(Date, 'now').mockReturnValue(now)
-    try {
-      const ctx = { auditId: 'test', deadline: now, startedAt: new Date(now), pagespeedCalls: 0, usage: { inputTokens: 0, outputTokens: 0, models: [] }, includeAi: true }
-      assert.doesNotThrow(() => assertDeadline(ctx, 'checking'))
-    } finally {
-      spy.mockRestore()
-    }
+    const clock = fixedClock(new Date(now))
+    const ctx = pipelineContext(now, clock)
+    assert.doesNotThrow(() => assertDeadline(ctx, 'checking'))
   })
 })
 

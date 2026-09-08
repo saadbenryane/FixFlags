@@ -183,7 +183,7 @@ export type ProductHistoryPageDTO = {
   nextCursor: ProductHistoryCursorDTO | null
 }
 
-export type ProductWorkspaceDTO = {
+export type ProductOverviewProjection = {
   product: {
     id: string
     name: string
@@ -191,15 +191,24 @@ export type ProductWorkspaceDTO = {
     purpose: string | null
     watching: boolean
   }
-  watch: ProductWatchDTO
-  attention: ProductAttentionItemDTO[]
-  attentionEvidence: Record<string, ProductAttentionEvidenceDTO>
-  attentionCount: number
   activeManualReview: ProductReviewSummaryDTO | null
   latestManualReview: ProductReviewSummaryDTO | null
   latestCompletedManualReview: ProductReviewSummaryDTO | null
-  latestWatchReview: ProductWatchReviewDTO | null
   technologyProfile: TechnologyProfile | null
+  reviewHistory: ProductReviewSummaryDTO[]
+  /** Latest completed parented Review diff. */
+  latestUpdateDiff: Awaited<ReturnType<typeof getFlagDiffSummary>> | null
+  latestUpdateDiffPartial: boolean
+  rubrics: ProductRubricScoreDTO[]
+}
+
+export type ProductAttentionProjection = {
+  attention: ProductAttentionItemDTO[]
+  attentionEvidence: Record<string, ProductAttentionEvidenceDTO>
+  attentionCount: number
+}
+
+export type ProductMemoryProjection = {
   understanding: {
     reviewId: string | null
     productContract: ProductContract | null
@@ -213,19 +222,29 @@ export type ProductWorkspaceDTO = {
     /** Persisted checklist; not shown on the Product page (Flags cover failures). */
     launchChecklist: LaunchChecklistItem[]
   }
-  reviewHistory: ProductReviewSummaryDTO[]
-  /**
-   * Latest completed parented review’s flag diff (update review or watch child).
-   * Null when the product has no parented completed review yet.
-   */
-  latestUpdateDiff: Awaited<ReturnType<typeof getFlagDiffSummary>> | null
-  /** Completeness of the review that owns latestUpdateDiff (drives Partial tooltip). */
-  latestUpdateDiffPartial: boolean
-  /** Message / Experience / Reach from the latest completed manual Review. */
-  rubrics: ProductRubricScoreDTO[]
+}
+
+export type ProductWatchProjection = {
+  watch: ProductWatchDTO
+  latestWatchReview: ProductWatchReviewDTO | null
+}
+
+export type ProductHistoryProjection = {
   history: ProductHistoryPageDTO
+}
+
+export type ProductIntegrationsProjection = {
   integrations: ProductIntegrationDTO
 }
+
+/** Stable owner-only projection assembled from focused Product read models. */
+export type ProductWorkspaceProjection =
+  & ProductOverviewProjection
+  & ProductAttentionProjection
+  & ProductMemoryProjection
+  & ProductWatchProjection
+  & ProductHistoryProjection
+  & ProductIntegrationsProjection
 
 export type ProductScorePointDTO = {
   id: string
@@ -661,7 +680,7 @@ export async function loadProductWorkspace(
     canDailyWatch?: boolean
     historyCursor?: ProductHistoryCursorDTO | null
   }
-): Promise<ProductWorkspaceDTO | null> {
+): Promise<ProductWorkspaceProjection | null> {
   const product = await prisma.project.findFirst({
     where: { id: productId, userId },
     select: {

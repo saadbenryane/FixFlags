@@ -13,12 +13,12 @@ test('homepage first-value entry is usable by keyboard', async ({ page }) => {
   const hydrated = page.waitForResponse((response) => response.url().includes('/api/me'))
   await page.goto('/')
   await hydrated
-  const urlInput = page.getByLabel('Website URL').first()
-  await expect(urlInput).toBeVisible()
-  await urlInput.focus()
+  const shopInput = page.getByLabel('Shopify store domain').first()
+  await expect(shopInput).toBeVisible()
+  await shopInput.focus()
   await page.keyboard.press('Tab')
   await page.keyboard.press('Enter')
-  await expect(page.getByText('Enter a URL like https://yoursite.com')).toBeVisible()
+  await expect(page.getByText(/Enter your store/i)).toBeVisible()
 })
 
 for (const width of widths) {
@@ -98,7 +98,7 @@ for (const width of [320, 375]) {
 
     const header = page.getByRole('banner')
     const logo = header.getByRole('link', { name: 'FixFlags' })
-    const review = header.getByRole('link', { name: 'Review my site' })
+    const review = header.getByRole('link', { name: 'Install on Shopify' })
     await expect(logo).toBeVisible()
     await expect(review).toBeVisible()
     const [logoBox, reviewBox] = await Promise.all([
@@ -236,6 +236,21 @@ test('parked power-tool docs and setup surfaces return not found', async ({ requ
   }
 })
 
+test('public agent skill distribution surfaces remain fetchable', async ({ request }) => {
+  const skill = await request.get('/.well-known/skills/fixflags/SKILL.md', { maxRedirects: 0 })
+  expect(skill.status()).toBe(200)
+  const skillBody = await skill.text()
+  expect(skillBody).toContain('name: fixflags')
+  expect(skillBody).toContain('skill-first')
+  expect(skillBody).toContain('https://fixflags.com/.well-known/skills/fixflags/SKILL.md')
+
+  const index = await request.get('/.well-known/skills/index.json', { maxRedirects: 0 })
+  expect(index.status()).toBe(200)
+  const payload = await index.json()
+  expect(payload.stance).toBe('skill-first-distribution')
+  expect(payload.skills?.[0]?.path).toBe('/.well-known/skills/fixflags/SKILL.md')
+})
+
 test('/help/mcp redirects to the help hub', async ({ request }) => {
   const response = await request.get('/help/mcp', { maxRedirects: 0 })
   expect(response.status()).toBe(308)
@@ -308,7 +323,7 @@ test('anonymous check reaches a completed report without exposing fix prompts', 
   test.setTimeout(240_000)
 
   const targetUrl = process.env.E2E_AUDIT_URL ?? 'https://example.com'
-  await page.goto('/')
+  await page.goto('/new')
   await page.getByLabel('Website URL').first().fill(targetUrl)
   await page.getByRole('button', { name: 'Review my site' }).first().click()
   await page.waitForURL(/\/report\//, { timeout: 30_000 })
@@ -350,7 +365,7 @@ test('anonymous check reaches a completed report without exposing fix prompts', 
   await expect(page.getByText(/upgrade/i)).toHaveCount(0)
   await expect(fixList.getByText(/Create a free account to see evidence/i)).toHaveCount(0)
 
-  await page.goto('/')
+  await page.goto('/new')
   await page.getByLabel('Website URL').first().fill('https://www.iana.org')
   await page.getByRole('button', { name: 'Review my site' }).first().click()
   await expect(page.getByText(/Create (a free )?account/i).first()).toBeVisible()

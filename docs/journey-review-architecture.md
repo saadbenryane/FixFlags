@@ -1,5 +1,8 @@
 # Journey Review: AI-Powered User Journey Simulation for FixFlags
 
+**HISTORICAL PLAN / IMPLEMENTATION REFERENCE, superseded as direction on 2026-09-08.** The complete vision at knowledge/vision.md and phased ROADMAP.md govern new work. Old scope, hero, commercial-loop, rubric and layout decisions below are not active instructions. Reuse technical evidence through docs/site-v2-migration.md; do not treat historical readiness as current release proof.
+
+
 **Status:** MVP shipped (template journeys + DB + report timeline). LLM planner/evaluator and separate queue job are not built.  
 **Author:** Agent session  
 **Date:** 2026-07-19  

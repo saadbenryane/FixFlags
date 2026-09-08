@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/db'
-import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { persistTriageResults } from '@/lib/audit/persist'
 import { mergeFlowCtaEvidenceAnchors } from '@/lib/audit/persist-evidence-anchors'
 import { tryCaptureVisualEvidenceForAudit } from '@/lib/audit/persist-visual-evidence'
@@ -107,13 +106,13 @@ async function finalizeTriageComplete(
   const flags = collapsedPageFlags(pageRuns)
   const rubricScores = productScoresFromFlags(pageRuns)
 
-  await logPipelineEvent(auditId, { stage: 'finalizing', event: 'persist_started' })
+  await ctx.events.log({ stage: 'finalizing', event: 'persist_started' })
   await persistTriageResults(auditId, combinedTriage, flags, rubricScores)
   await persistEvidenceAnchors(auditId, auditUrl, pageRuns)
 
   await finalizeTriageAudit({
     auditId,
-    durationMs: Date.now() - startedAt.getTime(),
+    durationMs: ctx.clock.now().getTime() - startedAt.getTime(),
     pagespeedCalls: ctx.pagespeedCalls,
     pagesReviewed: pageRuns.length,
     openCheckRequests: ctx.openCheckCount ?? 0,
@@ -144,7 +143,7 @@ async function finalizeTriageDegradedOutcome(
   outcome: Extract<AuditOutcome, { kind: 'triage_degraded' }>
 ): Promise<void> {
   const { ctx, auditId, auditUrl, startedAt } = input
-  await logPipelineEvent(auditId, {
+  await ctx.events.log({
     stage: 'finalizing',
     event: 'triage_degraded',
     detail: outcome.reason,
@@ -153,7 +152,7 @@ async function finalizeTriageDegradedOutcome(
   await persistEvidenceAnchors(auditId, auditUrl, outcome.pageRuns)
   await finalizeTriageDegraded({
     auditId,
-    durationMs: Date.now() - startedAt.getTime(),
+    durationMs: ctx.clock.now().getTime() - startedAt.getTime(),
     pagespeedCalls: ctx.pagespeedCalls,
     pagesReviewed: outcome.pageRuns.length,
     openCheckRequests: ctx.openCheckCount ?? 0,
@@ -178,7 +177,7 @@ export async function retryPrimaryTriage(
     return pageRuns
   }
 
-  await logPipelineEvent(ctx.auditId, {
+  await ctx.events.log({
     stage: 'judging',
     event: 'triage_runner_retry',
     detail: primary.triageFailure.reason,
@@ -202,7 +201,7 @@ export async function retryPrimaryTriage(
     return [{ ...primary, triage: triageResult, triageFailure: undefined }, ...pageRuns.slice(1)]
   } catch (err) {
     const failure = parseTriageFailure(err)
-    await logPipelineEvent(ctx.auditId, {
+    await ctx.events.log({
       stage: 'judging',
       event: 'triage_runner_retry_failed',
       error: failure.message,
@@ -231,7 +230,7 @@ export async function finalizeFromOutcome(input: FinalizeFromOutcomeInput): Prom
       await finalizeTriageComplete(input, outcome.pageRuns)
       return true
     } catch (err) {
-      await logPipelineEvent(input.auditId, {
+      await input.ctx.events.log({
         stage: 'finalizing',
         event: 'triage_persist_failed',
         error: err instanceof Error ? err.message : String(err),

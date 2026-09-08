@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { Globe2 } from 'lucide-react'
-import { AuditInput } from '@/components/audit/AuditInput'
+import { ShopifyInstallCta } from '@/components/marketing/ShopifyInstallCta'
 import { ContextualUpgradeCard } from '@/components/billing/ContextualUpgradeCard'
 import { DashboardCheckoutToast } from '@/components/dashboard/DashboardCheckoutToast'
 import { ProductOverviewGrid } from '@/components/dashboard/ProductOverviewGrid'
@@ -96,15 +96,13 @@ export default async function DashboardPage({
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--radius-control)] bg-brand-muted text-brand">
             <Globe2 className="h-5 w-5" aria-hidden />
           </span>
-          <SectionTitle>{REPORT_COPY.workspace.dashboard.reviewUrlTitle}</SectionTitle>
+          <SectionTitle>Install on Shopify</SectionTitle>
         </div>
         <div className="min-w-0">
-          <AuditInput
-            initialUrl={initialAuditUrl}
-            autoStart={Boolean(initialAuditUrl)}
-            idSuffix="-dashboard"
-            showLandingExtras={false}
-          />
+          <p className="mb-3 text-sm text-muted-foreground">
+            Know when customers can&apos;t buy. We walk the path to checkout and show the video.
+          </p>
+          <ShopifyInstallCta idSuffix="-dashboard" />
         </div>
       </Surface>
 

@@ -16,9 +16,9 @@ import { ReportOutcomeBar } from '@/components/report/ReportOutcomeBar'
 import { REPORT_SECTION_SCROLL_MT } from '@/components/report/workspace-geometry'
 import { ReportPane } from '@/components/report/ReportPane'
 import { LiveReportExplorer } from '@/components/audit/LiveReportExplorer'
+import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
 import type {
   AuditScreenshot,
-  ScreenshotCaptureStatus,
 } from '@/lib/audit/screenshot-types'
 import {
   getProgressPercent,
@@ -34,7 +34,10 @@ import { getActiveAudit } from '@/lib/audit/active-audit'
 import type { ActionTimelineEvent } from '@/lib/audit/action-timeline'
 import type { ProductContract } from '@/lib/audit/product-contract'
 import { buildPartialExplorerModel } from '@/lib/report/explorer-model'
-import { buildReportWorkspaceModel } from '@/lib/report/workspace-model'
+import {
+  buildReviewWorkspaceProjection,
+  type ReviewWorkspaceVisibleProjection,
+} from '@/lib/report/review-workspace-projection'
 import { ReportWorkspaceSplitShell } from '@/components/report/ReportWorkspaceSplitShell'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import { WORKSPACE_VIEWPORT_CLASS } from '@/components/report/workspace-geometry'
@@ -43,7 +46,7 @@ import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 import { cn } from '@/lib/utils'
 import { useOneShotEvent } from '@/lib/hooks/useOneShotEvent'
 import type { AgentMessage } from '@/lib/audit/agent-message'
-import { resolveReportSurfaceCapabilities, type AuditAccessContext } from '@/lib/audit/access-capabilities'
+import type { AuditAccessContext } from '@/lib/audit/access-capabilities'
 
 /** Catches crashes in the explorer subtree so the scanning UI stays visible. */
 class ExplorerErrorBoundary extends Component<
@@ -95,7 +98,6 @@ interface AuditReportProgressiveProps {
     fix?: string | null
   }>
   screenshots?: AuditScreenshot[]
-  screenshotCapture?: ScreenshotCaptureStatus
   workerIdle?: boolean
   /** Retained for compatibility while Timeline is parked; never rendered or loaded. */
   actionTimeline?: ActionTimelineEvent[]
@@ -109,6 +111,10 @@ interface AuditReportProgressiveProps {
   /** Anonymous teaser scan: reduced pipeline (no journey walk). */
   isTeaser?: boolean
   agentMessages?: AgentMessage[]
+  initialProjection?: ReviewWorkspaceVisibleProjection
+  failureCode?: string | null
+  onRetry?: () => Promise<void>
+  retryLoading?: boolean
 }
 
 export function AuditReportProgressive({
@@ -121,7 +127,6 @@ export function AuditReportProgressive({
   rubrics = [],
   partialFlags = [],
   screenshots = [],
-  screenshotCapture: _screenshotCapture,
   workerIdle = false,
   productContract = null,
   sectionId = 'report-flags',
@@ -130,18 +135,17 @@ export function AuditReportProgressive({
   isLoggedIn = false,
   isTeaser = false,
   agentMessages = [],
+  initialProjection,
+  failureCode = null,
+  onRetry,
+  retryLoading = false,
 }: AuditReportProgressiveProps) {
-  const isOwnerAccess = accessContext === 'owner'
-  const surface = resolveReportSurfaceCapabilities({
-    accessContext,
-    isLoggedIn: isLoggedIn || isOwnerAccess,
-  })
-  const chatGate = surface.chat
+  const resolvedVisibility = initialProjection?.visibility ?? accessContext
+  const isOwnerAccess = resolvedVisibility === 'owner'
   const fixPromptLocked = !isOwnerAccess
   const signUpHref = auditId
     ? `/sign-up?next=/report/${auditId}&from=report`
     : '/sign-up?from=report'
-  const chatGateReason = chatGate.gateReason
   const isFailed = status === 'FAILED'
   const isLoading = status !== 'COMPLETED' && status !== 'FAILED'
   const stage = useMemo(
@@ -267,39 +271,43 @@ export function AuditReportProgressive({
       </span>
     </div>
   ) : null
-  const workspace = buildReportWorkspaceModel({
-    kind: 'progressive',
+  const scanTranscript = useMemo(() => {
+    if (agentMessages.length > 0) return agentMessages
+    const projected = initialProjection?.agentMessages ?? []
+    if (isLoading && initialProjection?.kind === 'failed') {
+      return buildFixFlagsScanMessages({
+        id: auditId ?? 'pending',
+        url,
+        status,
+        progress,
+        flags: partialFlags,
+        failureCode,
+      })
+    }
+    if (projected.length > 0) return projected
+    return buildFixFlagsScanMessages({
+      id: auditId ?? 'pending',
+      url,
+      status,
+      progress,
+      flags: partialFlags,
+      failureCode,
+    })
+  }, [agentMessages, initialProjection, auditId, url, status, progress, partialFlags, failureCode, isLoading])
+  const projection = buildReviewWorkspaceProjection({
+    kind: isFailed ? 'failed' : isLoading ? 'running' : 'completed',
     explorer: explorerModel,
-    auditId,
+    visibility: resolvedVisibility ?? 'public_viewer',
+    isAuthenticated: isLoggedIn || isOwnerAccess,
+    reviewId: auditId,
     url,
     pageType,
-    status: isFailed ? 'failed' : isLoading ? 'checking' : 'completed',
     loading: isLoading,
-    capabilities: {
-      promptAccess: 'none',
-      canReplayTimeline: false,
-      canChat: chatGate.canChat && Boolean(auditId),
-      canUseCanvas: false,
-      canShare: false,
-      canExport: false,
-      canRecheck: false,
-      canGiveFeedback: false,
-      demonstratedFlagId: null,
-    },
+    agentMessages: scanTranscript,
   })
-  const scanTranscript = useMemo(
-    () =>
-      agentMessages.length > 0
-        ? agentMessages
-        : buildFixFlagsScanMessages({
-            id: auditId ?? 'pending',
-            url,
-            status,
-            progress,
-            flags: partialFlags,
-          }),
-    [agentMessages, auditId, url, status, progress, partialFlags]
-  )
+  const workspace = projection.workspace
+  const chatGate = projection.chat
+  const chatGateReason = chatGate.gateReason
   const queuedWarnings =
     workerIdle || showWorkerWarning || showQueueWait ? (
       <div className="space-y-3">
@@ -387,7 +395,7 @@ export function AuditReportProgressive({
             capabilities={workspace.capabilities}
             gateReason={chatGateReason}
             claimReason={chatGate.claimReason}
-            agentMessages={scanTranscript}
+            agentMessages={projection.agentMessages}
             reportUrl={url}
             scanning
             className="h-full"
@@ -445,12 +453,30 @@ export function AuditReportProgressive({
                   capabilities={workspace.capabilities}
                   gateReason={chatGateReason}
                   claimReason={chatGate.claimReason}
-                  agentMessages={agentMessages}
+                  agentMessages={projection.agentMessages}
                   reportUrl={url}
                 />
               }
               reportPanel={
-                <>
+                isFailed ? (
+                  <ReportPane
+                    explorer={
+                      <section
+                        id={sectionId}
+                        className={cn(
+                          REPORT_SECTION_SCROLL_MT,
+                          'flex min-h-0 flex-1 flex-col px-4 py-6'
+                        )}
+                      >
+                        <AuditFailurePanel
+                          failureCode={failureCode}
+                          onRetry={onRetry}
+                          retryLoading={retryLoading}
+                        />
+                      </section>
+                    }
+                  />
+                ) : (
                   <ReportPane
                     explorer={
                       <section
@@ -479,7 +505,7 @@ export function AuditReportProgressive({
                       </section>
                     }
                   />
-                </>
+                )
               }
               className="h-full"
             />

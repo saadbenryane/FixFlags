@@ -1,22 +1,8 @@
-import dynamic from 'next/dynamic'
-import Image from 'next/image'
 import { LandingSectionHeader } from '@/components/marketing/landing/LandingSectionHeader'
+import { AuditInput } from '@/components/audit/AuditInput'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { FINAL_CTA } from '@/lib/marketing/copy'
-
-const AuditInput = dynamic(
-  () => import('@/components/audit/AuditInput').then((m) => m.AuditInput),
-  {
-    ssr: true,
-    loading: () => (
-      <div
-        aria-hidden
-        className="h-14 w-full animate-pulse rounded-[var(--radius-control)] bg-muted/45"
-      />
-    ),
-  },
-)
 
 export function LandingFinalCtaSection() {
   return (
@@ -38,19 +24,14 @@ export function LandingFinalCtaSection() {
               />
 
               <div className="mt-6 w-full max-w-2xl">
-                <AuditInput
-                  variant="landing"
-                  idSuffix="-final-cta"
-                  ctaPlacement="final"
-                  showLandingExtras={false}
-                />
+                <AuditInput variant="landing" idSuffix="-final-cta" ctaPlacement="final" />
               </div>
             </div>
 
             <div className="relative min-h-[15rem] overflow-hidden bg-muted/25 sm:min-h-[18rem] lg:-ml-6 lg:min-h-[23rem]">
               <Image
                 src="/marketing/visuals/how-it-works-review-v3.webp"
-                alt="A live product is reviewed across Message, Experience, and Reach"
+                alt="A website review with evidence-backed Flags and an independent update review"
                 fill
                 sizes="(min-width: 1280px) 620px, (min-width: 1024px) 46vw, 100vw"
                 className="scale-[0.92] object-contain object-center drop-shadow-[0_28px_44px_hsl(var(--foreground)/0.1)]"
@@ -63,3 +44,4 @@ export function LandingFinalCtaSection() {
     </Section>
   )
 }
+import Image from 'next/image'

@@ -11,7 +11,7 @@ import type { ProductContract } from '@/lib/audit/product-contract'
  * UI components must not infer entitlement or verification from leftover audit fields.
  */
 export type ReportWorkspaceAuditDTO = {
-  accessContext: Exclude<AuditAccessContext, 'denied'> | 'repository_sample'
+  accessContext: Exclude<AuditAccessContext, 'denied'> | 'curated_sample'
   pageType: string | null
   score: number | null
   url: string
@@ -37,18 +37,3 @@ export type ReportWorkspaceAuditDTO = {
   failedModules?: string[]
   fixList?: FixList
 }
-
-export type ReportWorkspaceDTO =
-  | { kind: 'forbidden' }
-  | {
-      kind: 'progressive'
-      id: string
-      audit: Record<string, unknown> & { accessContext: AuditAccessContext }
-      session: unknown
-      atAuditLimit?: boolean
-    }
-  | {
-      kind: 'completed'
-      id: string
-      reportAudit: ReportWorkspaceAuditDTO
-    }

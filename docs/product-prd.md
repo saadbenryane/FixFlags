@@ -1,567 +1,85 @@
-# FixFlags product requirements
-
-**Status:** Canonical product PRD (August 2026). Defines FixFlags as the continuous improvement system for software.
-
-**Not in this document:** implementation phases, milestone ordering, or “what to build first.” Sequencing lives in [ROADMAP.md](../ROADMAP.md) and [knowledge/execution.md](../knowledge/execution.md). Shipped facts only: [PRODUCT.md](../PRODUCT.md).
-
-**Workspace UI detail:** [workspace-interface.md](./workspace-interface.md) (chat left, browser right, playback bottom, Browser view ↔ Report view toggle, Product Review path evidence, mobile parity).
-
----
-
-## 1) Product vision
-
-FixFlags is the continuous improvement system for software.
-
-It independently experiences a Product, judges what deserves attention, prepares evidence-grounded Improvements for the customer’s builder, verifies the result through a fresh Review, and learns what good means for that Product.
-
-The experience should feel familiar to users of Lovable and other AI builders:
-
-- conversation on the left,
-- the live product on the right,
-- immediate visual feedback,
-- visible progress,
-- one continuous workspace from review to fix.
-
-FixFlags does not build the product. It experiences the product independently.
-
-North star and system layers: [knowledge/vision.md](../knowledge/vision.md).
-
----
-
-## 2) Category and positioning
-
-**Category:** Continuous product improvement.
-
-**Tagline:** Finish what your AI started.
-
-**Primary entry:**
-
-- Headline: Finish what your AI started.
-- Support line: Watch FixFlags use your product, find what is holding it back, and give your agent the next fix.
-- Input: Paste your live product URL.
-- Action: Review my product.
-
-No scan type selection, agent configuration, project setup, or repository connection before first value.
-
-**Competitive frame:**
-
-| We are                                                          | We are not                                         |
-| --------------------------------------------------------------- | -------------------------------------------------- |
-| An independent Product judgment and verification system         | A generic analytics, QA, testing, or replay suite  |
-| URL-first product experience with replayable evidence           | A Lighthouse-only score dump                       |
-| Durable Improvements with builder handoff and verified outcomes | A PostHog clone or disconnected feature collection |
-
-Direct peer war: Scout-class live product QA. CodeRabbit is adjacent (pre-merge code gate), not partner GTM.
-
-Voice and banned phrases: [docs/voice-and-copy.md](./voice-and-copy.md), [lib/marketing/copy/terminology.ts](../lib/marketing/copy/terminology.ts).
-
----
-
-## 3) Product statement and core loop
-
-FixFlags is a live product-review workspace where users watch an AI product expert use their website, discuss what it sees, replay every important finding, send evidence-backed work to their builder, and verify that the product actually improved.
-
-**Canonical loop:**
-
-1. Observe
-2. Understand
-3. Judge
-4. Improve
-5. Verify
-6. Learn
-
-Customer shorthand: **Product Review → Fix → Verify → Watch**.
-
-Product progression: **Look at my Product → Keep FixFlags watching → Connect more context**.
-
-Each cycle improves both the customer product and FixFlags judgment quality.
-
----
-
-## 4) Terminology (customer-facing)
-
-Canonical source: `lib/marketing/copy/terminology.ts`.
-
-| Customer term        | Meaning                                                                                                               |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Product              | The long-lived customer object                                                                                        |
-| Product review       | One full pass on a URL: checks, report, fix prompts                                                                   |
-| Update review        | Re-run on the same URL after fixes (uses product review credit)                                                       |
-| Deep Review          | Future repository-connected analysis that combines live-product evidence with source-code context; not currently sold |
-| Funnel               | Report section listing journeys                                                                                       |
-| Path                 | Recorded journey unit for playback                                                                                    |
-| Flag                 | Confirmed finding with evidence                                                                                       |
-| Improvement          | Durable Product-scoped judgment and worthwhile recommended action                                                     |
-| Improvement Attempt  | Builder handoff or declared implementation awaiting independent verification                                          |
-| Verification outcome | Improved, unchanged, regressed, or inconclusive result from a fresh Review                                            |
-| Product Signal       | Privacy-bounded observed context that is not a Flag or causal claim by default                                        |
-
-**Banned in customer copy:** re-check, unlimited re-checks, new URL checks, journeys per month, polish pass/scan. Internal code may still use `re-check`, `audit`, `scan`, `monitoring`.
-
----
-
-## 5) Pricing and metering (story)
-
-Canonical numbers: `PRICING_COPY` in terminology.ts. Philosophy: [docs/business-model.md](./business-model.md).
-
-| Plan   | Price  | Product reviews/mo |
-| ------ | ------ | ------------------ |
-| Free   | $0     | 3                  |
-| Pro    | $29/mo | 30                 |
-| Studio | $79/mo | 90                 |
-
-**Rules:**
-
-- Product reviews meter **new URLs, update reviews, and completed scheduled Watch reviews** from the same monthly pool.
-- At product review limit, new runs pause until upgrade or cycle reset.
-- Unused monthly allowance does not roll over.
-- Re-check is not free unlimited in customer language; implementation may lag marketing (see shipped gap table).
-- Stripe IDs and enforcement: `lib/billing/plans.ts`, [PRODUCT.md](../PRODUCT.md).
-
-Every Product Review includes prioritized Flags, evidence, fix prompts, and a report link.
-Judgment quality per reviewed page is the same on every plan.
-Free supports one Product and reviews the pasted page plus a check of every public link.
-Pro supports up to five Products with history across releases, release comparison, and review of the pages the pasted page links to.
-Studio supports unlimited Products, scheduled reviews, workspace invitations, shared Product history, and one level beyond the linked pages.
-Studio workspace seats are unlimited for a limited time.
-Logged-in review on your computer is a waitlisted Pro and Studio offer, not a shipped capability.
-
----
-
-## 6) Primary users
-
-Founders and small teams using AI product-building tools:
-
-- Lovable, Replit, Cursor, Claude Code, Codex, Bolt, and similar AI builders.
-
-Initial wedge: Lovable users, with broad builder support from day one.
-
-**Acquisition user:** Built with AI tools, about to share a link. Thought: “It works for me. What did I miss?”
-
-**Recurring buyer:** Freelancer/agency shipping repeatedly, or small product team shipping weekly.
-
----
-
-## 7) Entry and account model
-
-- URL-first entry for anonymous users.
-- Workspace opens immediately with honest progress (stages, partial Flags, capture placeholders).
-- The progressive and completed Report, all confirmed Flags, screenshots, textual evidence, and rubric results remain visible while logged out. Technology context belongs to the signed-in Product detail page.
-
-Account unlock includes:
-
-- all confirmed findings,
-- saved evidence,
-- fix preparation,
-- update reviews (metered),
-- report history,
-- persistent product understanding.
-
-Anonymous wedge: one teaser scan with the free programmatic Agent transcript and real Report evidence. Interactive chat, fix prompts, Timeline payloads, private history, Product Memory, update reviews, and Canvas stay gated. Public APIs must not leak those private fields.
-
-Authentication flows land on `/post-login` so anonymous audits are claimed before checkout or `next` navigation.
-
----
-
-## 8) Workspace interface (summary)
-
-Full spec: [workspace-interface.md](./workspace-interface.md).
-
-- **Left:** one Product-scoped FixFlags Agent transcript grounded in current Improvements, Review evidence, verification, Product Memory, and provenance.
-- **Right:** dominant **Report** with authenticated **Timeline** and paid private **Canvas** modes.
-- The left panel has no redundant title. Its right-aligned toolbar contains History followed by New scan.
-- **Product review browser:** Playwright programmatic capture, screenshot-forward.
-- **Product Review path exploration:** journey, Funnel, and path evidence are part of the same review product where available.
-- **Mobile:** Agent ↔ Report is the primary switch. Active reviews default to Agent and preserve the chosen tab through completion.
-
----
-
-## 9) Workspace views (logical)
-
-All share one Product, with a selected Review supplying observation context:
-
-- **Live** — observe active review and ask questions.
-- **Attention** — zero-to-three Improvements that deserve action now.
-- **Report** — immutable observation and complete supporting evidence.
-- **Improve** — prepare, export, and track builder attempts.
-- **History** — Review, judgment, attempt, release, verification, outcome, and learning.
-
----
-
-## 10) Starting a review
-
-The workspace appears immediately after URL submission.
-
-Visible stream and browser state stay synchronized to real scan/browser events, not synthetic narration.
-
----
-
-## 11) Review engine
-
-### Stage 1: instant checks
-
-Objective signals: structure, metadata, links, headings, accessibility basics, loading behavior, responsive states, CTA visibility, forms, trust/security indicators, social and search signals.
-
-### Stage 2: product understanding
-
-Infer product type, audience, promise, primary action, key routes, critical journey. Ask for lightweight correction when confidence is limited.
-
-### Stage 3: journey planning
-
-Pick one high-value journey first, with viewport priorities and likely interaction points.
-
-### Stage 4: targeted exploration
-
-Use the product in-browser with deterministic steps, targeted model decisions, and explicit evidence capture.
-
-**Product review:** programmatic Playwright steps dominate.
-
-**Target Product Review depth:** agent-class browsing for multi-step journeys and funnel traversal remains part of the Product Review, not a separate plan meter.
-
-### Stage 5: judgment
-
-Fuse checks, behavior, intent, user corrections, prior knowledge, and false-positive signals into confirmed findings only.
-
-Pipeline detail: [docs/audit-pipeline.md](./audit-pipeline.md).
-
----
-
-## 12) Review boundaries
-
-Initial coverage:
-
-- homepage,
-- primary CTA,
-- one critical journey,
-- desktop and mobile,
-- Message, Experience, Reach rubrics,
-- public states by default,
-- authenticated states only via user takeover.
-
-Do not claim untested scope.
-
----
-
-## 13) Live activity stream
-
-Translate observed actions into concise product-language updates.
-
-Stream must be action-observable, not internal chain-of-thought.
-
----
-
-## 14) User steering
-
-Users can send short directives during review. The system acknowledges material scope shifts and continues with a new plan.
-
----
-
-## 15) Browser control
-
-Default mode is automated control.
-
-User may take control to navigate, solve auth, dismiss blockers, or surface issues, then hand back control with continuation from current state.
-
----
-
-## 16) Progress model
-
-Show elapsed time and stage intent/coverage. Avoid false completion percentages.
-
-Track completed/next stages and coverage counters.
-
----
-
-## 17) Flag lifecycle
-
-Observed → Investigating → Confirmed → accepted/challenged → fix prep → verification pending → resolved/unchanged/regressed.
-
-Show only meaningful live states to the user.
-
----
-
-## 18) Complete report
-
-Reporting order:
-
-1. Verdict on overall state.
-2. What matters now (top impact first).
-3. Full findings.
-4. Coverage transparency: what was and was not reviewed.
-
-No fixed finding cap in complete view.
-
-Report contract: [knowledge/report-contract.md](../knowledge/report-contract.md).
-
----
-
-## 19) Finding model
-
-Required fields: flag type, rubric, severity, confidence, page, viewport, journey, goal, problem and observed behavior, why it matters, recommendation and agent task, definition of done, verification rule, related findings, current status.
-
-A finding is valid only when evidenced and scoped.
-
----
-
-## 20) Evidence experience
-
-Selecting a finding shows synchronized explanation and browser evidence: screenshot, state and viewport, prior interaction, deterministic support, actions (Replay, Before, Current, Inspect).
-
-Evidence must stand on its own.
-
----
-
-## 21) Replay timeline and paths
-
-Each review creates a sequence of structured events: action → observation → evidence → flag.
-
-Timeline supports replay to state with evidence continuity.
-
-**Funnel** lists journeys in the report. **Path** opens from Funnel or Flag evidence with bottom playback strip sync.
-
----
-
-## 22) Update review and compare
-
-- Update review is a primary header action on completed reports.
-- Uses one product review credit (same pool as new URL).
-- Pro **compare** shows before/after proof; diff strip on child reports (cleared / remaining / new).
-
-Internal route `/re-check` may persist until API migration.
-
----
-
-## 23) In-app chat policy
-
-- Deterministic scan messages are always on, reconstructed from persisted audit facts, and consume no model tokens.
-- Interactive chat requires the authenticated report owner and uses provider-configured chat separately from judge/triage.
-- Monthly input-plus-output allowances are 25,000 on Free, 500,000 on Pro, and 2,000,000 on Studio.
-- Allowance is reserved atomically before a model request and reconciled against provider-reported usage.
-- Scope: Flag Q&A, steering, “what to fix first”, lightweight product corrections. Not general coding agent.
-- Degrade to canned actions if provider unavailable.
-
----
-
-## 24) Mobile parity
-
-Full feature parity on phone: start review, Agent progress and chat, Report, Flag detail, evidence, authenticated Timeline, update review and diff, account, billing, and Canvas.
-
-Agent ↔ Report is the primary view switch.
-
----
-
-## 25) FixFlags intelligence
-
-### Product Passport (per product)
-
-Private memory: purpose, audience, priorities, open and resolved findings, accepted corrections, protected behaviors, verification history.
-
-### Global Flag Library
-
-De-identified cross-product pattern store with context, risk, evidence requirements, typical severity, fix outcomes, regression risks.
-
-### Regression Evaluation Set
-
-Quality gate for deterministic checks, flags, ranking, prompts, and verification behavior changes.
-
-Detail: [knowledge/vision.md](../knowledge/vision.md), [knowledge/product.md](../knowledge/product.md).
-
----
-
-## 26) Knowledge learning pipeline
-
-Observed findings enter global patterns only when repeated and verified, not on private assumptions or unresolved signals.
-
-No hardcoded per-customer exceptions.
-
----
-
-## 27) Cross-product privacy
-
-Global learning uses de-identified, non-sensitive signals only.
-
-Retention controls for deletion, auth state, repository links, and revocation.
-
-No private model training/fine-tuning without explicit permission.
-
-See [knowledge/privacy.md](../knowledge/privacy.md), [SECURITY.md](../SECURITY.md).
-
----
-
-## 28) Context for development agents
-
-Agent context should be task-specific and minimal.
-
-Each task receives: goal, evidence, affected journey, priority, constraints, protected behaviors, and verification link.
-
----
-
-## 29) Integration levels
-
-The current public product stops at copyable tasks for Lovable and other AI builders.
-Knowledge export, MCP, CLI, and repository integrations are parked power-user layers and must remain unavailable until the URL-to-report wedge converts consistently.
-Closed-loop verification after deployment remains part of the Product Review experience and does not require a repository connection.
-
----
-
-## 30) Fixes view
-
-Group related findings into one coherent change path when possible.
-
-Primary action remains first-class; secondary options do not compete.
-
----
-
-## 31) Verification loop
-
-After fix prep: state “Waiting for updated product”; action “Verify now” (update review).
-
-Targeted re-check verifies affected flow, related findings, protected behaviors, regressions, and returns deterministic outcomes.
-
----
-
-## 32) Verification receipt
-
-Structured outcome record: original evidence, reviewed version, actions, before/after, protected checks, result, unresolved concerns, timestamp.
-
-Outcomes: resolved, partially resolved, unchanged, regressed, unable to verify.
-
----
-
-## 33) Product history
-
-History is continuity of improvement over time, not just a pile of reports.
-
----
-
-## 34) Persistent review conversation
-
-Conversation remains available after report to answer follow-up questions tied to evidence and history. No blank general chat mode.
-
----
-
-## 35) Runtime architecture (requirements)
-
-**Persistent state:** product config, passport, reports, findings, screenshots, evidence, timeline, re-check receipts, auth flags when authorized.
-
-**Ephemeral compute:** isolated workers for checks, browser sessions, narration/judgment, replays, synthesis, re-checks. Workers terminate after completion or inactivity.
-
-Architecture detail: [ARCHITECTURE.md](../ARCHITECTURE.md).
-
----
-
-## 36) Security requirements
-
-Session isolation, bounded network, explicit auth consent, easy revocation, cleanup, safe file/content handling.
-
-No autonomous sensitive actions by default.
-
----
-
-## 37) Cost strategy
-
-- cheap deterministic checks first,
-- targeted model use,
-- strong model only for judgment and ambiguity,
-- reuse captured evidence,
-- targeted verification,
-- bounded context per model call,
-- cheap chat model separate from judge pipeline.
-
----
-
-## 38) Visual design (product)
-
-- calm and evidence-led,
-- warm white palette and neutral browser frame,
-- orange for active focus and primary actions,
-- red reserved for real blockers or regressions.
-
-Motion only for causal cause-and-effect feedback.
-
-Tokens: [DESIGN.md](../DESIGN.md).
-
----
-
-## 39) Product states
-
-Ready, Reviewing, Needs guidance, User control, Review complete, Report unlocked, Fix prepared, Verifying, Improved, Protected.
-
----
-
-## 40) Primary and supporting metrics
-
-**Primary:** verified meaningful improvements per active Product.
-
-**Supporting:** review activation and completion, report open + evidence replay + fix preparation, takeover usage, fix export and verification completion, resolved findings and return retention.
-
----
-
-## 41) Quality measures
-
-Precision, false-positive handling, duplicate suppression, evidence completeness, severity calibration, ranking quality, re-check consistency, regression detection, resolved-return behavior.
-
----
-
-## 42) Release acceptance criteria
-
-- event-grounded narration,
-- evidence-backed confirmed findings,
-- explicit coverage and non-tested gaps,
-- coherent fix tasks,
-- repeatable verification states,
-- stable findings across unchanged scans,
-- complete loop available on desktop/mobile,
-- meaningful value without pre-review setup.
-
----
-
-## 43) Shipped vs target (facts)
-
-Canonical interface table: [docs/workspace-interface.md](../docs/workspace-interface.md) (Shipped vs target).
-
-| Area                      | Shipped today                                                                                                                        | Target                                              |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
-| Workspace layout          | Unified Agent left; Report, authenticated Timeline, and Canvas right                                                                 | Same                                                |
-| Browser in UI             | Authenticated Timeline screenshot replay and step scrub                                                                              | Richer live path exploration inside Product Reviews |
-| In-app chat               | Owner-only model chat plus free deterministic scan messages; monthly usage ledger                                                    | Same                                                |
-| Product review capture    | Playwright programmatic with workspace sync                                                                                          | Same                                                |
-| Product Review path depth | Journey capture in pipeline; Funnel + path playback in workspace                                                                     | Richer live browser mode in the workspace panel     |
-| Customer metering         | One Product Review quota enforced in `lib/billing/plans.ts` and `lib/audit/usage.ts`; legacy deep-review fields are persistence-only | Same                                                |
-| Update review billing     | Metered product review credits; internal route `/re-check`                                                                           | Public API rename to update-review (open)           |
-| Pricing display           | $29 / $79 in marketing and Stripe plans                                                                                              | Same                                                |
-| Funnel + path UI          | Funnel section + Replay path into workspace                                                                                          | Full session-style takeover replay                  |
-| Mobile                    | Agent ↔ Report tabs; authenticated adapted playback                                                                                  | Full-screen path replay                             |
-| Compare                   | Before/after comparison after update review on every plan                                                                            | Primary payoff surface                              |
-
-Shipped truth detail: [PRODUCT.md](../PRODUCT.md).
-
----
-
-## 44) Open questions
-
-1. When should full-screen Timeline playback be evaluated beyond the shipped adapted inline layout?
-2. When should browser takeover be considered after the Agent-led report workspace has production evidence?
-3. When should the public API migrate from `re-check` naming to `update-review`?
-
----
-
-## 45) Why this direction can win
-
-AI builders get review continuity and proof that cannot be produced inside the editor itself: independent judgment + replayable evidence + verified outcome.
-
----
-
-## 46) Final experience
-
-URL input opens workspace, review runs live, findings evolve from observation into confirmed evidence-backed recommendations, the best issue becomes clear, fixes are prepared and exported, and verification confirms improvement.
-
-The outcome is a continuous, evidence-first improvement story.
-
----
-
-## Changelog
-
-| Date       | Change                                                                                                                                              |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-08-01 | Canonical merge: live-review PRD, product-ui-intent, Product QA positioning, workspace interface spec. Removed implementation phases from PRD body. |
+# FixFlags next version: product requirements
+
+**TARGET, accepted direction 2026-09-08.** Implements the [full vision](../knowledge/vision.md); delivery order lives in [ROADMAP.md](../ROADMAP.md). This replaces the old report/chat PRD. Current compatibility behavior remains in [PRODUCT.md](../PRODUCT.md).
+
+## Product outcome
+
+A business enters a URL, understands what its website needs, resolves a meaningful Flag, and asks FixFlags to keep watching the same Site. A quiet, recently verified healthy Site is success. The system must show what it knows and what it could not check.
+
+## Domain contract
+
+| Object | Requirement |
+| --- | --- |
+| Site | Permanent, private to its owning account or provisional anonymous session; stable identity, canonical address, understanding, coverage, history and connections |
+| Page and action | Belong to a Site; retain URL and evidence provenance. A page can contribute to several Outcomes or none |
+| Outcome | A business result such as Buy or Get in touch; inferred with confidence and small Looks right / Edit confirmation; related pages/actions and verification scope |
+| Check execution | Timestamped observation with source, viewport, expected behavior, actual result, coverage limits and evidence; never itself a demand for attention |
+| Flag | Durable customer attention item associated with Site and relevant page/Outcome; evidence occurrences over time, priority, next action and recovery history |
+| Coverage | Which pages/behaviors/contexts can be checked, which actually were, cadence, latest attempt and latest relevant success, freshness, exclusions and failures |
+| Connection | Tenant-authorized context source with provenance, purpose, health, permissions and revocation; enriches existing objects |
+| History event | Relevant change, detection, attempted fix, verification, recovery, or context update with time and source; correlation does not establish causation |
+
+Physical schema choices and reusable models are in [site-v2-migration.md](site-v2-migration.md). Do not interpret customer Site as permission to reuse the existing global graph Site table.
+
+## Primary journey requirements
+
+1. **Enter a URL.** “Your website, looked after.” with URL field and “Check my website.” Validate unsafe/private network targets using the existing security boundary. No installation prerequisite. Useful anonymous results remain the target; resource limits are explicit.
+2. **Learn visibly.** Create or resume a provisional Site before analysis. Persist discovered facts and render them as progress. Show failures and partial results in the same shell. No invented page counts, outcomes, pixels or completed checks.
+3. **Confirm understanding.** Infer important Outcomes. Offer Looks right / Edit with minimal interruption; an uncertain inference is clearly editable. Users can correct intent without configuring a funnel builder.
+4. **Become the dashboard.** Keep the same Site identity and navigation. Home answers whether anything needs attention. Show Outcome state, prioritized Flags, coverage, latest checks and meaningful changes. No redirect into a separate report application.
+5. **Open a Flag.** Show what happened, where, certainty, business meaning, proof, and next step before technical detail. Evidence matches the affected URL and viewport; missing captures are explicit. Detail progressively serves owner, marketer, developer and agent.
+6. **Fix this.** Offer copy/send to AI, controlled sharing and technical evidence according to actual capabilities and access. A copy records handoff, not implementation. External sending requires the user's action/authorization. Avoid sensitive data in share/export.
+7. **Verify fix.** Run fresh, relevant independent behavior against the changed deployment. Preserve failed and inconclusive attempts. Resolve only when required verification criteria pass; absence from a new scan is insufficient.
+8. **Keep watching.** Save/claim this Site through account creation/login without losing history or creating a duplicate. Activate durable checking before stating “You're covered.” Show paused, delayed, quota-limited or unconfigured states honestly.
+9. **Continue quietly.** Relevant failures produce or update a Flag. Interruptions pass a separate alert policy. Healthy runs update scoped coverage/history without manufacturing work.
+10. **Enrich when useful.** Suggest a connection beside the existing Outcome or Flag it can explain better. Same Site after Shopify native install; no parallel Shopify-only dashboard concept.
+
+## Truth and access
+
+[Evidence rules](../knowledge/evidence-rules.md) own certainty, health, lifecycle and verification semantics. UI status cannot infer “healthy” from zero Flags or a successful HTTP fetch. Unknown and stale required coverage remains visible even when the last known behavior passed.
+
+A provisional Site is private to its session. Authentication and claim are server-side, idempotent and ownership checked. Existing public report evidence is a separate compatibility surface; it cannot expose a new private Site, connections or history. Phase 1 defines these boundaries before new routes expose data. Sharing must select a deliberately sanitized Flag projection, not entire Site state.
+
+Keep current billing and prompt-access protections working during development. The first useful analysis must show evidence and an understandable next action; existing plan restrictions must not silently determine the new free monitoring design. Define any v2 capability gates explicitly before public rollout.
+
+## Phase 1–2 implementation backlog
+
+| Order | Work item | Completion evidence |
+| --- | --- | --- |
+| 1 | Add Site-domain projection and tenancy contract over current persistence; anonymous identity and claim design | Ownership and cross-tenant tests; duplicate/retry behavior; no graph model access |
+| 2 | Add Site pages/actions, inferred Outcomes and editable confirmation; retain inference provenance | One page in two Outcomes; a page in none; corrected Outcome survives fresh analysis |
+| 3 | Adapt current browser/check evidence to normalized coverage and truth | Pass/fail/partial/blocked/stale fixtures; no loss of source, viewport or evidence |
+| 4 | Project durable Flags and match repeated observations conservatively | Repeated same failure updates one Flag; different variant/viewport is not incorrectly merged; old occurrences retained |
+| 5 | Build mobile-first Home · Flags · Site using existing brand tokens | Useful healthy, needs-attention, couldn't-verify, loading, empty and failure views at mobile and desktop sizes |
+| 6 | Connect URL submission and real persisted progress to the same Site | Refresh/retry/recovery does not spawn another Site; first result is already its dashboard |
+| 7 | Exercise the slice through the actual worker and browser | Owned test site with broken contact behavior, healthy sibling behavior, evidence and real timestamps |
+
+Proposed customer routes for this slice are /sites/[siteId], /sites/[siteId]/flags, /sites/[siteId]/flags/[flagId], and /sites/[siteId]/site. These are an implementation default, not existing endpoints. Keep API boundary details with the application module and route registry when implemented.
+
+## Acceptance scenarios for the complete core
+
+| Scenario | Required outcome |
+| --- | --- |
+| All relevant checked behavior passes | Scoped healthy state, current coverage and latest verification; no fabricated Flag |
+| No important behavior could be verified | Explicit gap and retry/context action; no reassuring all-clear |
+| A mobile action fails while desktop works | Mobile evidence and scope; desktop pass does not cancel mobile failure |
+| Potential tracking failure without purchase proof | Qualified certainty; commerce and measurement facts stay distinct |
+| Customer edits inferred Outcome | New intent retained; old evidence remains historically attributable |
+| Fix attempted but problem persists | Flag remains open with failed verification evidence |
+| Check disappears or becomes blocked | No resolution from absence; inconclusive verification and coverage gap |
+| Exact behavior passes after fix | Durable resolved record with independent evidence, time and scope |
+| Failure recurs | Same recognizable issue reopens with a new occurrence and history |
+| Anonymous user signs in twice or a request retries | One claimed Site and one schedule; no duplicate usage or lost evidence |
+| Watch restarts, runs late, or hits resource limits | Durable recovery; coverage accurately describes delay; no false “covered” claim |
+| Repeated low-priority warning | Visible when worth attention, no repeated alert noise |
+| Important failure persists | Prioritized Flag and deduplicated, actionable notification |
+| Connection revoked or telemetry absent | Core browser analysis still usable; affected context marked unavailable |
+| Existing subscriber enters new version | Billing identity, access and history survive the explicit migration mapping |
+
+## Scope limits and evaluation
+
+The full vision is not Phase 1 scope. General analytics, session replay, broad SEO dashboards, ad management, arbitrary funnels, chat-first navigation and an integration marketplace remain outside the product. Protective actions require separate authorization and evidence design.
+
+Measure useful first value, valid Outcome corrections, false-positive and unverifiable rates, verified recovery, time to attention, alert relevance, ongoing free value and cost per watched Site. Numeric targets follow baseline measurement. No conversion or revenue-uplift guarantees.
+
+Use real fixture and browser evidence for each phase. Update public copy only to the capability level actually released. [UI contract](workspace-interface.md), [migration](site-v2-migration.md), [strategy](../knowledge/strategy.md), and [privacy](../knowledge/privacy.md) provide the supporting constraints.

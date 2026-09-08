@@ -4,7 +4,6 @@ import { prisma } from '../db'
 import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 import { PROMPT_TOOL_KEYS } from '@/lib/mcp/builders'
 import { loadCompletedTaskOutcome } from '../audit/task-contracts'
-import { isPublicMarketingSample } from '@/lib/audit/report-access'
 
 export function registerAnonCheckStatusTools(server: McpServer) {
   server.tool(
@@ -45,7 +44,7 @@ export function registerAnonCheckStatusTools(server: McpServer) {
       }
 
       const outcome = await loadCompletedTaskOutcome(reportId, tool, {
-        promptAccess: isPublicMarketingSample(audit) ? 'one' : 'none',
+        promptAccess: 'none',
       })
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(outcome) }],

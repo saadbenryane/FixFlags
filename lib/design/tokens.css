@@ -2,7 +2,7 @@
  * FixFlags design tokens - Brand sheet 2026-07
  *
  * Palette: white canvas, stone surfaces, ink structure, orange accent (signal only)
- * Primary CTA fill: #C24400 (AA vs white) | Type: Inter Tight (display) + Inter (UI) | Controls: 10px | Cards: glass
+ * Primary CTA fill: bright Flag Orange with white labels | Type: Inter Tight (display) + Inter (UI) | Controls: 10px | Cards: glass
  */
 
 :root {
@@ -17,11 +17,11 @@
   --border: 240 4% 90%;
   --border-subtle: 210 14% 96%;
 
-  /* ── Brand orange: AA CTA fill vs white (#C24400, ~5.1:1) ── */
-  --brand: 21 100% 38%;
+  /* Owner palette: bright Flag Orange with white button labels. */
+  --brand: 21.1765 100% 50%;
   --brand-foreground: 0 0% 100%;
   --brand-strong: 21 100% 32%;
-  --brand-hover: 21 100% 40%;
+  --brand-hover: 21.1765 100% 56%;
   --brand-muted: 21 100% 96%;
   --brand-border: 21 90% 88%;
 
@@ -248,10 +248,10 @@
   --border: 220 6% 18%;
   --border-subtle: 220 7% 10%;
 
-  --brand: 18 100% 38%;
+  --brand: 21.1765 100% 50%;
   --brand-foreground: 0 0% 100%;
   --brand-strong: 18 100% 32%;
-  --brand-hover: 18 100% 40%;
+  --brand-hover: 21.1765 100% 56%;
   --brand-muted: 21 30% 12%;
   --brand-border: 21 35% 24%;
 

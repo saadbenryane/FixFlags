@@ -138,7 +138,7 @@ async function proveLiveReview(browser) {
   const rows = []
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
   page.setDefaultTimeout(60000)
-  await page.goto(base, { waitUntil: 'domcontentloaded' })
+  await page.goto(`${base}/new`, { waitUntil: 'domcontentloaded' })
   await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' })
 
   const input = page.getByLabel('Website URL').first()

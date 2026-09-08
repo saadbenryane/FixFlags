@@ -1,54 +1,21 @@
-# Pricing and Revenue
+# Business and plan strategy
 
-**Canonical home for FixFlags pricing philosophy, tier structure, revenue model, and unit economics.**
+**TARGET direction from the September 8 vision.** Existing billing and plans are reusable infrastructure. Current prices, identifiers, quotas and checkout behavior are owned by lib/billing/, lib/auth/entitlements.ts and their tests; this document does not silently change customer entitlements.
 
-## Pricing
+## Free relationship
 
-| Tier | Plan enum | Price | Product reviews |
-|------|-----------|-------|-----------------|
-| Free | `FREE` | $0 | 3/month |
-| Pro | `BUILDER` | $29/month | 30/month |
-| Studio | `TEAM` | $79/month | 90/month |
+A URL gives useful understanding before installation and ideally before account creation. Keeping the Site creates the relationship and provides enough real ongoing monitoring to demonstrate care. The free product is not merely a static report or a signup teaser.
 
-Display name **Studio** maps to the existing `TEAM` enum.
-Enforcement lives in `lib/billing/plans.ts` and `lib/audit/usage.ts`.
+Observation should increase usefulness at sustainable cost. Avoid treating installation itself as an immediate paywall trigger. Bounded abuse protection, collection limits and transparent retention are compatible with meaningful free value.
 
-## Packaging principle
+## Paid responsibility
 
-Every Product Review includes prioritized Flags, evidence, and fix prompts.
-Plans add how far a public review goes as well as monthly volume and workflow: Free reviews this page and checks every public link, Pro also reviews the pages that page links to, and Studio reviews one level beyond.
-Judgment quality per reviewed page stays the same.
-An upgrade buys more of the Product, not better intelligence.
+Paid plans deepen how much responsibility FixFlags takes: checking frequency, page and Outcome coverage, verification depth, history, observation scale, useful premium context, alert speed, Sites, collaboration and agent workflows. The same underlying evidence standards apply at every tier.
 
-New URLs, update reviews, and completed scheduled Watch reviews consume the same product review allowance.
-Unused monthly allowance does not roll over.
-Existing purchased overflow credits remain compatible but are not promoted.
+Do not invent new prices, quotas or SLAs from vision examples. Keep existing billing infrastructure and accounts. Before Phase 4 release, measure per-Site execution/collection cost, define the minimum useful free responsibility and paid limits, and reconcile recurring scheduling with budget enforcement. Before migration, map legacy subscribers and usage explicitly without silent downgrade or double billing.
 
-## Upgrade logic
+## Distribution and positioning
 
-- **Free:** three monthly reviews for one Product. Each review covers this page and checks every public link.
-- **Pro:** thirty monthly reviews across up to five Products, with history across releases, release comparison, and review of the pages the pasted page links to.
-- **Studio:** ninety monthly reviews across unlimited Products, scheduled reviews, shared Product history, workspace invitations, and one level beyond the linked pages.
-- **Studio launch offer:** unlimited workspace seats for a limited time.
-- **High volume:** handled through a direct conversation after the Studio allowance is demonstrably insufficient.
+One product with URL-first discovery, useful Flag sharing, agent handoffs, agency/client loops and continued care. Shopify is the first focused commerce wedge and a native installation route into the same Site. It is not a second company-wide product architecture.
 
-An upgrade adds capacity, how far a public review goes, and workflow leverage.
-Judgment quality on every page FixFlags claims to have reviewed stays the same.
-
-## Revenue model
-
-- Monthly Pro and Studio subscriptions.
-- Existing overflow-credit balances remain usable.
-- Annual billing waits until retention evidence supports it.
-- Power-user tooling is parked and is not part of the current shipped product.
-Logged-in review on your computer is a waitlisted Pro and Studio offer (NEXT), not a shipped capability.
-
-## Unit economics
-
-- Deterministic checks run before expensive AI work.
-- Product Review admission is bounded by an explicit monthly allowance.
-- Scheduled Watch pauses when no product review allowance remains.
-- Gross-margin reporting must include browser, model, storage, queue, and support costs.
-- Target gross margin remains above 80% across paid usage.
-
-Near-term operating assumptions live in [docs/year-1-operating-plan.md](../docs/year-1-operating-plan.md).
+Phase order and pending commercial decisions live in [ROADMAP.md](../ROADMAP.md). Claiming adoption, uplift or revenue saved requires actual evidence.

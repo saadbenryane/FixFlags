@@ -127,6 +127,7 @@ export async function GET(
       flags: partialFlags,
       performanceData,
       productContract,
+      pages,
       ...rest
     } = audit
     const canUsePrivateReportData = access === 'owner'
@@ -134,6 +135,7 @@ export async function GET(
     const contract = canUsePrivateReportData
       ? parseProductContract(productContract)
       : null
+    const reviewedPages = pages ?? []
     const agentMessages = buildFixFlagsScanMessages({
       id,
       url: audit.url,
@@ -147,6 +149,7 @@ export async function GET(
       journeyReviewAt: audit.journeyReviewAt,
       screenshotCapture,
       flags: showPartialFlags ? partialFlags : [],
+      pages: reviewedPages,
     })
 
     return NextResponse.json(
@@ -174,6 +177,7 @@ export async function GET(
         shareStatus,
         partialFlags: showPartialFlags ? partialFlags : undefined,
         agentMessages,
+        pages: reviewedPages,
         productContract: contract,
       },
       {

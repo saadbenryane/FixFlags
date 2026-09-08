@@ -2,19 +2,15 @@
 
 _Validated visual and interaction standards. Code-enforced where possible, documented where not._
 
-**Customer vs internal language:** Customer surfaces use Product QA, product review, update review, Funnel, and path. Internal code may still use re-check routes, recheck components, monitoring implementation names, and legacy deep-review fields. Deep Review is reserved for the future repository-connected analysis offer.
-
-**Product UI direction (locked):** Layout modes, chat, funnel/path replay, and mobile parity live in [docs/workspace-interface.md](../docs/workspace-interface.md). Product requirements: [docs/product-prd.md](../docs/product-prd.md). Visual tokens and component rules stay in this file.
+**Target experience:** [docs/workspace-interface.md](docs/workspace-interface.md) defines Home · Flags · Site. [docs/product-prd.md](docs/product-prd.md) owns behavior. [knowledge/vision.md](knowledge/vision.md) owns direction. Current report layout rules are compatibility-only in [knowledge/report-contract.md](knowledge/report-contract.md).
 
 ## Design principles
 
-1. **Editorial + technical credibility** — the product looks like a sharp review, not a SaaS dashboard. Inter Tight display, glass cards, shadow depth, mono labels.
-2. **Calm authority** — no gradients competing with content, no animations that distract. Motion serves understanding.
-3. **Physical, not flat** — glass surfaces, layered shadows, concentric radii. Cards feel like they have depth.
-4. **Contained, not sprawling** — three rubrics, not forty categories. Soft control radius, not sharp corners.
-5. **Recognizable, not generic** — Flag Orange, Inter Tight headlines, mono labels. Unmistakably FixFlags.
-
-These five compress Dieter Rams' ten principles of good design. The standing review of how well the product lives up to them, and the rules it produced (motion policy, status-component altitudes, durable core vs. treatment), lives in `docs/design-rams-review.md`.
+1. Calm, clear care for the website. Human status and evidence lead.
+2. Preserve FixFlags' brand identity and approved orange through canonical tokens.
+3. Mobile-first simplicity. Desktop shares the same mental model.
+4. Progressive depth: understandable Flag first, technical detail when needed.
+5. Coverage and freshness make healthy states trustworthy; scores remain secondary.
 
 ## Authoritative sources (in priority order)
 
@@ -45,62 +41,30 @@ These five compress Dieter Rams' ten principles of good design. The standing rev
 | ---------- | --------------------- | ----------------------------------------------------- |
 | 60%        | Background / canvas   | `--background` (white `#FFFFFF` / dark ink `#0B0B0D`) |
 | 30%        | Foreground / ink      | `--foreground`, `--card`, `--muted` (stone `#F5F6F7`) |
-| 10%        | Brand orange (signal) | `--brand` Flag Orange `#C24400` / dark `#C23A00`, AA against white CTA text |
+| 10%        | Brand orange (signal) | `--brand` Flag Orange `#FF5A00` in both themes, with white CTA text |
 
 - Dark mode: fully re-authored, not inverted. Graphite canvas, charcoal glass, warm orbs.
 - One accent per surface. Do not layer multiple accent colors.
 - Grade colors (A-F) used only in report score contexts, not marketing.
 
-### Report altitude (score ownership)
+### Status and evidence
 
-| Altitude       | Surface                                      | Score treatment                                                                                                                                           |
-| -------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Identity       | Product pane header and `WorkspaceChatPanel` | Product name with hostname fallback, reviewed address, and current review activity. No score.                                                             |
-| Review status  | `ReportOutcomeBar` (fixed Report header)     | Visible `Score N`, honest pending/unavailable state, chronological full-Review history, and scan progress while a review runs                             |
-| Working triage | `ReportExplorer` (Report body)               | Complete ranked Flag list plus rubric, severity, impact, and page filters; Critical Flags lead through canonical ranking rather than a duplicate shortcut |
-| Product page   | `/products/[id]` Product Intelligence        | Contract and compounding Product Memory live with Made with and Watch. Failed launch-gate checks appear as Flags in Your priorities. Update-review outcome cards sit under the score chart. The report has no Review context drawer. |
-
-The compact Review header is the single score surface.
-It uses one compact circular score with an accessible name (`Score N`, pending, or unavailable) and diagnostic help: an issue-weighted summary, not a conversion or revenue prediction.
-Each history point has a complete Review destination, chronological placement, a 44px target, and an accessible label containing Review number, kind, date, and score or status.
-The explorer owns the complete ranked Fix list count and every Flag navigation action.
-Do not repeat Pass, Needs Attention, Blocked, or share-readiness labels beside severity counts.
-The report URL is public evidence by default. Agent chat, prompts, Product Memory, history, and owner actions remain server-gated.
-Tokens: `--header-height` (3.5rem), `--header-offset` (6.5rem) for `scroll-mt`.
-
-**Made with:** Technology evidence lives on the signed-in Product detail page, based on that Product’s latest completed Review. Product Contract and verified Product Memory share that page. On the Product page, Made with is one horizontally scrollable row of detected technologies (no dropdown). The full evidence card (when used elsewhere) shows at most four summary chips; expansion groups the stack and exposes short sanitized evidence labels. Technology confidence is “Verified” or “Strong signal,” never a vendor score. Empty, legacy, partial, unavailable, and same-detector update-review diff states are explicit. Use locally bundled brand marks when available and Lucide category icons as the fallback; never depend on remote logo delivery.
-
-**Flags chrome:** Meta row is Severity → Rubric → Impact. Only Critical uses the `CircleAlert` icon; Important and Polish use accessible text. The list is ranked by launch impact and supports compact rubric, severity, impact, and page filters. When both captures exist, each selected Flag compares desktop and mobile in one pair: affected is red with “Flagged on {device},” available unaffected is green with “Not flagged on {device}” on the real screenshot, and missing or failed remains “Screenshot unavailable.” Motion evidence (GIF or overlay) replaces the static image in the affected frame. Never invent a healthy twin capture as filler.
-
-**Progressive / loading:** The living review is editor chrome, not a carded report page. Full-bleed under thin immersive header (`showFooter={false}`) with the same compact app rail as the signed-in product (Products, Settings, Billing, Help). Signed-out private destinations open the create-account dialog. Flush Agent | Product split with a divider only (no pane cards), left thinner than right. FixFlags understanding is chat on the left; the Product pane renders the Report immediately and fills in score, priorities, and evidence as findings arrive. Desktop keeps Agent and Report side by side; mobile switches only between Agent and Report. Anonymous reports keep public-safe evidence visible and use a brand Sign up CTA plus contextual sign-in for private capabilities.
-
-**Product stage and transport:** Preview, Timeline, and Canvas stay parked on `/report/[id]`. The default Product pane is the Report: compact `ReportOutcomeBar` plus the ranked Fix list. Do not mount Preview stage, device toggle, or playback transport on that route. The immersive shell carries no floating support bubble.
-
-**Report pane:** Report mode uses a fixed compact `ReportOutcomeBar` with circular score, chronological Review history, and the owner Update review action.
-Live `/report/[id]` is detail-first: full-width Flag detail with prev/next and `N of M`. Product Your priorities keeps the ranked list-detail split, shows the five highest-ranked issues by default with Show more for the rest, and places the selected-issue evidence beside it.
-Each issue uses one desktop | mobile evidence pair. The prompt row (expandable `Fix Prompt` and branded copy on the right) sits under the Flag title and navigation, above that pair.
-The prompt expands in normal flow without a nested card.
-The web report does not render the aggregate Fix plan or a Review context disclosure.
-Only the explorer body sits inside `data-report-frame` using `WORKSPACE_REPORT_FRAME_CLASS`, so a wide pane gives the body exactly one pane height and each column scrolls itself, while a narrow pane releases that height and scrolls as one column.
-Everything inside the pane is pane-relative: container queries (`@container/pane`, `@[40rem]/pane:`), never `lg:`, `100vh`, `--header-offset` sticky, or `overflow-clip`.
-Filters stay visible at every pane width, and `goToFlag` scrolls the nearest scroll parent instead of the document.
-Guards: `npm run ui:drift-guard` and `node scripts/report-pane-proof.mjs`.
+Site status, Outcome state and Flag certainty follow [knowledge/evidence-rules.md](knowledge/evidence-rules.md). Brand and severity are different roles; include text with status color. Keep evidence matched to source, viewport and time. Never invent a healthy twin capture or guess an overlay rectangle.
 
 See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/brand-spec.ts` for non-CSS consumers.
 
 ## Shapes and radius
 
-- Cards: `border-0 shadow-card glass-surface` + `rounded-card` (~24px / `--radius-card`)
+- Target board cards: thin subtle borders, approximately 13px radius and restrained shadows; see [card-board contract](docs/card-board-experience.md). Existing 24px glass/shadow cards are compatibility-only until migrated.
 - Controls: `rounded-[var(--radius-control)]` (~10px)
 - Concentric radii: inner = outer minus padding (`--radius-nested-md` = `--radius-card` − `--gap-nested-md`)
 - Inputs: `--radius-input` (= control radius)
 
 ## Depth
 
-- Shadow-first layering. Cards get `shadow-card` resting and `shadow-card-hover` on interaction.
-- Glass surfaces: `glass-shadow` with subtle border inset.
-- Borders on inputs, tables, and outlined controls. Cards prefer shadows.
-- Sections separated by `bg-muted/35`, not `border-y`.
+- Target board: white/neutral surfaces, subtle borders and nearly imperceptible resting shadows. Avoid glass effects, excessive gradients and loud healthy fills.
+- Borders remain appropriate on inputs, tables, controls and board cards.
+- The dashboard has no visual sections. Library categories must not become dashboard boundaries.
 - Marketing surfaces group content with whitespace, surface tone, and type hierarchy before strokes. Do not use divider lines between marketing rows, metrics, or narrative steps. Keep borders for controls and functional data boundaries only.
 - Floating action offset: `--floating-action-offset` (1.25rem).
 
@@ -142,7 +106,7 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 - Layered shadow on hover
 - Min 44×44px hit target (`min-h-11 min-w-11`); carousel prev/next controls follow same rule
 - Focus ring on `--ring`
-- Light mode product primary: ink. Marketing accent CTAs: brand orange (`variant="brand"`).
+- Light mode product primary: ink. Marketing accent CTAs: bright brand orange with white labels (`variant="brand"`). The owner’s September 8 palette replaces the former dark orange button fill.
 
 ### Card (`glass-surface`)
 
@@ -169,30 +133,14 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 
 ## States
 
-Report information architecture is defined once in [`knowledge/report-contract.md`](./knowledge/report-contract.md).
-The canonical report is one calm, dense-enough workspace: compact Score/history header, then detail-first Flag browsing (prev/next through every unresolved Flag). Product Your priorities keeps a ranked list beside detail.
-Identity belongs to the Agent activity and Product Preview surfaces, not to a duplicate Report title row.
-Each column scrolls itself in a wide pane; a narrow pane stacks the list above the selected detail.
-
-`ReportWorkspaceModel` composes the canonical `ReportExplorerModel` with identity, unresolved and Critical counts, rubric coverage, chronological Review history, and capabilities. Completed, progressive, curated sample, shared, update-review, and homepage proof surfaces project this same model. Density changes spacing and available actions, never ranking, evidence, access policy, or scoring semantics.
-
-The compact header owns only Score, full-Review history, and active scan progress.
-The explorer owns ranking, per-rubric filters, the Fix count, evidence, and fix detail.
-Public curated samples expose the same ranked report design and exactly one demonstrated prompt.
-Their history contains only complete generated observation bundles. Each bundle binds a repository revision and source path to capture hashes, document hash, date, score, Flags, Timeline, and evidence anchors; incomplete or reused comparison captures are a release failure.
-Live anonymous, non-owner, and shared reports show Fix Prompt and Copy chrome with empty prompt bodies.
-Copy and the Fix Prompt control open create-account and never write the clipboard or leak prompt text.
-Prompt bodies appear only after a successful `/post-login` claim.
-Only a strict `IMPROVED` verification receipt may present an Improvement as verified or write verified Product Memory.
-Update-review absences whose pages were fully re-checked are Fixed (not observed), not verified. Verification receipts stay separate.
-Copy records a handoff and never declares verification.
+The Site state matrix is in [docs/workspace-interface.md](docs/workspace-interface.md). The first analysis and completed Site share one persistent shell. Healthy, partial, unverified, stale, failed and paused states need truthful coverage and useful recovery actions.
 
 Every interactive element must define: rest, hover, focus, active, disabled.
 
 - Focus: `--focus-ring` (Flag Orange)
 - Disabled: muted opacity, no shadow
 - Error: `--destructive` color
-- Loading: progressive report chrome (same altitudes as completed) + Skeleton for captures; not a separate loading route aesthetic
+- Loading: the same Site shell with persisted discoveries and skeletons for unavailable captures.
 - Empty: EmptyState component with clear message + next action
 
 ## Icons

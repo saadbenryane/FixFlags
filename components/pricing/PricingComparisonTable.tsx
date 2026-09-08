@@ -1,68 +1,66 @@
-import { PLAN_DEFINITIONS } from "@/lib/billing/plans";
+import { PLANS } from "@/lib/marketing/copy";
 import { cn } from "@/lib/utils";
+
+const FREE = PLANS.find((plan) => plan.plan === "FREE")!;
+const PRO = PLANS.find((plan) => plan.plan === "BUILDER")!;
+const STUDIO = PLANS.find((plan) => plan.plan === "TEAM")!;
 
 const ROWS = [
   {
     feature: "Who it's for",
-    free: PLAN_DEFINITIONS.FREE.persona,
-    pro: PLAN_DEFINITIONS.BUILDER.persona,
-    studio: PLAN_DEFINITIONS.TEAM.persona,
+    free: FREE.persona,
+    pro: PRO.persona,
+    studio: STUDIO.persona,
   },
   {
-    feature: "Products",
-    free: PLAN_DEFINITIONS.FREE.projectLimitLabel,
-    pro: PLAN_DEFINITIONS.BUILDER.projectLimitLabel,
-    studio: PLAN_DEFINITIONS.TEAM.projectLimitLabel,
+    feature: "Paths",
+    free: "1 or 2 auto purchase paths",
+    pro: "Extra paths on the waitlist",
+    studio: "Multiple stores on the waitlist",
   },
   {
-    feature: "Product reviews",
-    free: PLAN_DEFINITIONS.FREE.auditLimitLabel,
-    pro: PLAN_DEFINITIONS.BUILDER.auditLimitLabel,
-    studio: PLAN_DEFINITIONS.TEAM.auditLimitLabel,
+    feature: "Walk",
+    free: "About every 6 hours, mobile",
+    pro: "Faster cadence on the waitlist",
+    studio: "Same walk as Free",
   },
   {
-    feature: "How far a review goes",
-    free: "This page. Checks every public link.",
-    pro: "This page and the pages it links to",
-    studio: "This page, linked pages, and one level beyond",
+    feature: "Proof",
+    free: "Video, GIF fallback, screenshots",
+    pro: "Longer video history on the waitlist",
+    studio: "Same proof as Free",
   },
   {
-    feature: "Release history",
-    free: "Latest changes",
-    pro: "Across releases",
-    studio: "Shared across the workspace",
+    feature: "Alerts",
+    free: "Email on confirmed Can't buy and recovery. Optional Slack.",
+    pro: "Same alerts",
+    studio: "Shared alert destination later",
   },
   {
-    feature: "Scheduled reviews",
-    free: "No",
-    pro: "No",
-    studio: "Yes",
+    feature: "Recheck",
+    free: "5 per day",
+    pro: "Higher cap on the waitlist",
+    studio: "5 per day until extras open",
   },
   {
-    feature: "Workspace seats",
-    free: PLAN_DEFINITIONS.FREE.workspaceSeatsLabel,
-    pro: PLAN_DEFINITIONS.BUILDER.workspaceSeatsLabel,
-    studio: PLAN_DEFINITIONS.TEAM.workspaceSeatsLabel,
-  },
-  {
-    feature: "Report link",
-    free: "Included",
-    pro: "Included",
-    studio: "Included",
+    feature: "Funnel numbers",
+    free: "Steps from our walk. No invented %.",
+    pro: "Real Shopify data when approved",
+    studio: "Waitlist",
   },
 ] as const;
 
 const COLUMNS = [
-  { key: "free", plan: PLAN_DEFINITIONS.FREE, highlight: false },
-  { key: "pro", plan: PLAN_DEFINITIONS.BUILDER, highlight: true },
-  { key: "studio", plan: PLAN_DEFINITIONS.TEAM, highlight: false },
-] as const;
+  { key: "free" as const, name: FREE.name, price: FREE.price, highlight: false },
+  { key: "pro" as const, name: PRO.name, price: PRO.price, highlight: true },
+  { key: "studio" as const, name: STUDIO.name, price: STUDIO.price, highlight: false },
+];
 
 export function PricingComparisonTable() {
   return (
     <>
       <div className="grid gap-3 md:hidden">
-        {COLUMNS.map(({ key, plan, highlight }) => (
+        {COLUMNS.map(({ key, name, price, highlight }) => (
           <section
             key={key}
             aria-labelledby={`comparison-${key}`}
@@ -78,14 +76,9 @@ export function PricingComparisonTable() {
               )}
             >
               <h3 id={`comparison-${key}`} className="font-semibold">
-                {plan.name}
+                {name}
               </h3>
-              <p className="font-mono text-sm font-semibold tabular-nums">
-                {plan.price}
-                <span className="font-sans text-xs font-normal text-muted-foreground">
-                  {plan.period}
-                </span>
-              </p>
+              <p className="font-mono text-sm font-semibold tabular-nums">{price}</p>
             </div>
             <dl className="divide-y divide-border/30">
               {ROWS.map((row) => (
@@ -93,9 +86,7 @@ export function PricingComparisonTable() {
                   key={row.feature}
                   className="grid grid-cols-[7.5rem_1fr] gap-4 px-4 py-3 text-sm"
                 >
-                  <dt className="font-medium text-muted-foreground">
-                    {row.feature}
-                  </dt>
+                  <dt className="font-medium text-muted-foreground">{row.feature}</dt>
                   <dd className="text-right leading-snug">{row[key]}</dd>
                 </div>
               ))}
@@ -114,13 +105,10 @@ export function PricingComparisonTable() {
               >
                 What is included
               </th>
-              {COLUMNS.map(({ key, plan, highlight }) => (
+              {COLUMNS.map(({ key, name, price, highlight }) => (
                 <th
                   key={key}
-                  className={cn(
-                    "p-5 text-center",
-                    highlight && "bg-brand/[0.04]",
-                  )}
+                  className={cn("p-5 text-center", highlight && "bg-brand/[0.04]")}
                   scope="col"
                 >
                   <span
@@ -129,11 +117,10 @@ export function PricingComparisonTable() {
                       highlight && "marketing-accent-text",
                     )}
                   >
-                    {plan.name}
+                    {name}
                   </span>
                   <span className="mt-1 block font-mono text-xs font-normal tabular-nums text-muted-foreground">
-                    {plan.price}
-                    {plan.period}
+                    {price}
                   </span>
                 </th>
               ))}

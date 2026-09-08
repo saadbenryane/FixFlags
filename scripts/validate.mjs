@@ -258,6 +258,7 @@ export function fullCommands() {
     command('image:artwork-guard', 'npm', ['run', 'image:artwork-guard']),
     command('product:contract-guard', 'npm', ['run', 'product:contract-guard']),
     command('power-tools:visibility-guard', 'npm', ['run', 'power-tools:visibility-guard']),
+    command('module:boundary-guard', 'npm', ['run', 'module:boundary-guard']),
     command('routes:contract-guard', 'npm', ['run', 'routes:contract-guard']),
     command('skills:validate', 'npm', ['run', 'skills:validate']),
     command('seo:guard', 'npm', ['run', 'seo:guard']),

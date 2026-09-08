@@ -311,7 +311,7 @@ export function buildLiveExplorerModel(input: {
       input.reviewCoverage,
       input.reportCompleteness
     ),
-    coveragePartial: coverageIsPartial(input.reviewCoverage, input.reportCompleteness),
+    coveragePartial: coverageIsPartial(input.reviewCoverage),
   }
 }
 
@@ -460,23 +460,20 @@ export function buildSampleExplorerModel(
   }
 }
 
-function coverageIsPartial(
-  reviewCoverage: unknown,
-  reportCompleteness?: string | null
-): boolean {
+function coverageIsPartial(reviewCoverage: unknown): boolean {
   const coverage = parseReviewCoverage(reviewCoverage)
-  return Boolean(coverage?.partial || reportCompleteness === 'PARTIAL')
+  return Boolean(coverage?.partial)
 }
 
 function coverageSentenceFromReview(
   reviewCoverage: unknown,
-  reportCompleteness?: string | null
+  _reportCompleteness?: string | null
 ): string | null {
   const coverage = parseReviewCoverage(reviewCoverage)
   if (!coverage) return null
   return REPORT_COPY.explorer.coverageSentence({
     linkedPageCount: coverage.linkedPageCount,
     openCheckCount: coverage.openCheckCount,
-    partial: coverageIsPartial(reviewCoverage, reportCompleteness),
+    partial: coverageIsPartial(reviewCoverage),
   })
 }

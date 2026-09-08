@@ -9,9 +9,15 @@ describe('ScoreRing', () => {
     expect(screen.getByLabelText(/^Score pending/)).toBeInTheDocument()
     const dots = container.querySelectorAll('[aria-hidden] span.h-1.w-1')
     expect(dots).toHaveLength(3)
-    expect(container.querySelector('style')?.textContent).toContain('ff-score-spin')
-    const spinner = container.querySelector('svg.motion-safe\\:animate-\\[ff-score-spin_1\\.15s_linear_infinite\\]')
-    expect(spinner).toBeTruthy()
+    const keyframes = container.querySelector('style')?.textContent ?? ''
+    expect(keyframes).toContain('ff-score-spin')
+    expect(keyframes).toContain('from { transform: rotate(0deg); }')
+    expect(keyframes).toContain('to { transform: rotate(360deg); }')
+    const spinner = container.querySelector('[data-score-spinner]')
+    expect(spinner).toHaveClass('motion-safe:animate-[ff-score-spin_1.15s_linear_infinite]')
+    expect(spinner).not.toHaveClass('-rotate-90')
+    expect(spinner?.querySelector('circle')?.getAttribute('transform')).toBe('rotate(-90 32 32)')
+    expect(spinner?.querySelector('circle')?.getAttribute('stroke-dasharray')).toBe('28 72')
   })
 
   it('shows the numeric score without a spinner when complete', () => {
@@ -20,6 +26,10 @@ describe('ScoreRing', () => {
     expect(screen.getByLabelText(/^Score 72/)).toBeInTheDocument()
     expect(screen.getByText('72')).toBeInTheDocument()
     expect(container.querySelector('style')).toBeNull()
+    expect(container.querySelector('[data-score-spinner]')).toBeNull()
+    expect(container.querySelector('circle[stroke-dasharray="72 100"]')?.getAttribute('transform')).toBe(
+      'rotate(-90 32 32)'
+    )
   })
 
   it('renders a compact ring for dense list rows', () => {

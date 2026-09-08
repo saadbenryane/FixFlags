@@ -1,13 +1,13 @@
 # FixFlags Brand Rules: Brand sheet 2026-07
 
-Source: FixFlags brand guidelines. Reference assets in `public/brand/`.
+Source: FixFlags brand guidelines. Reference assets in `public/brand/`. Identity and palette stay; the September 8 vision replaces prior positioning. Target interface: docs/workspace-interface.md. Report-specific details below are legacy compatibility only.
 
 ## Identity
 
 - **Name:** FixFlags
-- **One-liner:** Finish what your AI started.
-- **Campaign line:** Finish what your AI started.
-- **Product loop:** Flag → Fix → Re-check.
+- **One-liner:** Your website, looked after.
+- **Campaign line:** Your website, looked after.
+- **Product loop:** Find → Understand → Fix → Verify, continued by monitoring.
 - **Mark:** Official geometric folded-F from brand sheet raster (`public/brand/logo-mark.png`). Do not regenerate or invent SVG geometry. Icon-left, Inter Tight wordmark-right lockup via `components/brand/Logo.tsx`.
 - **Wordmark:** Inter Tight, title case `FixFlags`, Fix heavier than Flags, tracking ~-0.02em.
 

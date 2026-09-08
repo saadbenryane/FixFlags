@@ -1,57 +1,27 @@
 # Completeness drift review
 
-Use this checklist after automated validation. Canonical product, report, security,
-design, and quality sources remain authoritative; this file only routes the
-manual review that scripts cannot fully prove.
+Canonical direction: knowledge/vision.md. Target acceptance: docs/product-prd.md. Current implementation: PRODUCT.md. Never let historical report or Shopify launch instructions override the new version.
 
-## Shipped truth
+## Direction and claims
 
-- Compare visible capabilities and claims with `PRODUCT.md`.
-- Reject invented proof, unsupported counts, placeholder evidence, and
-  aspirational behavior presented as shipped.
-- Confirm visible language follows `SOUL.md` and `docs/voice-and-copy.md`.
+Check VISION/NEXT/SHIPPED labeling. Reject fake proof, unsupported counts, future connections and inferred monitoring availability. The complete owner revision must survive documentation reconciliation without substantive omissions.
 
-## Product and report contracts
+For planning-only changes, verify fidelity, canonical links, roadmap dependencies, reusable foundations, migration risks and relevant skill routing. No runtime release claim follows from these checks.
 
-- Trace Product Review → Fix → Update review → Watch through the UI, HTTP boundary,
-  and shared task contracts. CLI and MCP stay parked unless the task is explicitly
-  `npm run agent -- context cli`.
-- Confirm ranking, report access, anonymous redaction, evidence, and prompt
-  availability agree with `knowledge/report-contract.md` and `SECURITY.md`.
-- Confirm Message, Experience, and Reach remain the only customer-facing
-  report rubrics.
-- Default `/report/[id]` is Agent beside Report. Preview, Timeline, and Canvas
-  stay parked there and must not be loaded on that route.
-- Legacy `/share/[token]` is compatibility-only. New sharing is Copy link on the
-  public report URL. Do not reintroduce protected-share create/manage UX.
+## New Site behavior
 
-## Evidence overlay
+Trace URL → same Site → Outcome/Flag understanding → fix → fresh relevant verification → Keep watching. Check ownership, privacy, stable identity, coverage/freshness, inconclusive recovery, quiet healthy days and separate alert decisions. Use the PRD's real-path scenarios.
 
-- Live Flag highlights must come from `Flag.evidenceTargets` measured at capture time.
-- A missing measurement is a chip, not a preset hero rectangle.
-- Product Preview overlays apply only if Preview is unparked. Do not rebuild Preview
-  chrome on the default report route.
+## Legacy compatibility
 
-## Interface behavior
+For old report routes, preserve access, prompt redaction, evidence, stored IDs, fresh full update-review semantics and transport contracts until migration is proven. knowledge/report-contract.md owns those details. They are not requirements to preserve the old interface in the new product.
 
-- Exercise loading, empty, partial, error, forbidden, completed, and Update review
-  states that apply to the changed surface.
-- Check keyboard order, focus visibility, semantic names, 44px targets, reduced
-  motion, 200% reflow, and responsive behavior at 375, 768, and 1280px.
-- Inspect the rendered artifact and browser console, not only test exit codes.
+## UI and evidence
+
+Exercise applicable learning, healthy, partial, attention, stale, failed, verification and claim states. Inspect source-matched captures and real timestamps. No guessed overlay rectangles or false healthy twins.
+
+Check keyboard, focus, accessible names, touch targets, reduced motion, reflow and mobile/desktop behavior. Review rendered artifacts, not only test exits.
 
 ## Runtime and release
 
-- Verify web and worker roles start independently with their own health
-  boundaries and do not compete for local verification resources.
-- Treat missing release credentials, sandbox accounts, reset consent, mailbox
-  assertions, and deployed URLs as explicit blockers.
-- Do not replace credentialed release evidence with local mocks or skipped
-  checks.
-
-## Knowledge reconciliation
-
-- Put new facts in the canonical source named by `knowledge/README.md`.
-- Remove obsolete instructions instead of adding compatibility prose.
-- Record durable, measured failures and their prevention in
-  `.agents/learnings/`.
+Web/worker independence, recovery, credentialed account/billing/share journeys and exact-revision release receipts still govern deployment. Missing required release evidence blocks release readiness. Never substitute mocks or a planning receipt for production proof.

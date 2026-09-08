@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { prisma } from '@/lib/db'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
-import { ingestProductSignals, normalizeSignalOrigin } from '@/lib/signals/product-signals'
+import {
+  ingestProductSignals,
+  isProductSignalOriginAllowed,
+  normalizeSignalOrigin,
+} from '@/lib/signals/product-signals'
 
 interface RouteContext {
   params: Promise<{ id: string }>
@@ -23,10 +26,7 @@ export async function OPTIONS(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params
     const origin = normalizeSignalOrigin(request.headers.get('origin') ?? '')
-    const allowed = await prisma.productSignalKey.findFirst({
-      where: { projectId: id, allowedOrigin: origin, revokedAt: null },
-      select: { id: true },
-    })
+    const allowed = await isProductSignalOriginAllowed({ projectId: id, origin })
     if (!allowed) return new NextResponse(null, { status: 403 })
     return new NextResponse(null, { status: 204, headers: cors(origin) })
   } catch {

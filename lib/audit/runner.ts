@@ -8,7 +8,7 @@ import {
 } from './pipeline-config'
 import { isNonRetryableAuditError } from './pipeline-errors'
 import { JudgeContractError } from './validate-judge-output'
-import { initPipelineLog, logPipelineEvent } from './pipeline-log'
+import { createPipelineEventSink, initPipelineLog } from './pipeline-log'
 import { persistFailedAuditCost, persistImprovementCycle } from './finalize'
 import { persistDeterministicFlags } from './persist'
 import {
@@ -47,6 +47,7 @@ import {
 } from './open-check'
 import { canonicalizeDestination } from './url-identity'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
+import { systemClock } from '@/lib/time/clock'
 
 async function persistReviewedFlagsSoFar(auditId: string, pageRuns: PageRun[]): Promise<void> {
   if (pageRuns.length === 0) return
@@ -70,18 +71,9 @@ export async function runAudit(auditId: string): Promise<void> {
     }
 
     const reviewDepth = asReviewDepth(audit.reviewDepth)
-    const startedAt = new Date()
+    const clock = systemClock
+    const startedAt = clock.now()
     const scanAccess = await resolveAuditScanAccess(auditId)
-    const ctx: PipelineContext = {
-      auditId,
-      deadline: Date.now() + auditDeadlineMsForDepth(reviewDepth),
-      startedAt,
-      pagespeedCalls: 0,
-      usage: { inputTokens: 0, outputTokens: 0, models: [] },
-      includeAi: audit.includeAi,
-      scanAccess,
-      openCheckCount: 0,
-    }
 
     // Always fresh capture, including parented re-checks.
     await prisma.$transaction([
@@ -107,7 +99,20 @@ export async function runAudit(auditId: string): Promise<void> {
       },
     })
 
-    await initPipelineLog(auditId)
+    const trace = await initPipelineLog(auditId, { clock })
+    const ctx: PipelineContext = {
+      auditId,
+      deadline: clock.now().getTime() + auditDeadlineMsForDepth(reviewDepth),
+      startedAt,
+      clock,
+      trace,
+      events: createPipelineEventSink(auditId, trace, clock),
+      pagespeedCalls: 0,
+      usage: { inputTokens: 0, outputTokens: 0, models: [] },
+      includeAi: audit.includeAi,
+      scanAccess,
+      openCheckCount: 0,
+    }
 
     const pageRuns: PageRun[] = []
     let openCheckResults: OpenCheckResult[] = []
@@ -115,7 +120,7 @@ export async function runAudit(auditId: string): Promise<void> {
     try {
       await prisma.audit.update({
         where: { id: auditId },
-        data: { progressDetail: AUDIT_PROGRESS.reviewProgress.openingLinks },
+        data: { progressDetail: progressReviewingDetail(audit.url) },
       })
 
       const primary = await runPage(ctx, {
@@ -126,6 +131,11 @@ export async function runAudit(auditId: string): Promise<void> {
       })
       pageRuns.push(primary)
       await persistReviewedFlagsSoFar(auditId, pageRuns)
+
+      await prisma.audit.update({
+        where: { id: auditId },
+        data: { progressDetail: AUDIT_PROGRESS.reviewProgress.openingLinks },
+      })
 
       const hop1Plan = planReviewTargets({
         pastedUrl: audit.url,
@@ -166,9 +176,9 @@ export async function runAudit(auditId: string): Promise<void> {
       })
 
       for (const url of reviewQueue) {
-        if (ctx.deadline - Date.now() < secondaryStartReserveMs) {
+        if (ctx.deadline - ctx.clock.now().getTime() < secondaryStartReserveMs) {
           ctx.supplementalPagesSkipped = true
-          await logPipelineEvent(auditId, {
+          await ctx.events.log({
             stage: 'capturing',
             event: 'review_depth_skipped_deadline',
             detail: String(reviewQueue.length - pageRuns.length + 1),
@@ -181,7 +191,7 @@ export async function runAudit(auditId: string): Promise<void> {
         })
         const secondaryCtx: PipelineContext = {
           ...ctx,
-          deadline: Math.min(ctx.deadline, Date.now() + secondaryPageBudgetMs),
+          deadline: Math.min(ctx.deadline, ctx.clock.now().getTime() + secondaryPageBudgetMs),
         }
         const pageRun = await runPage(secondaryCtx, {
           url,
@@ -226,9 +236,9 @@ export async function runAudit(auditId: string): Promise<void> {
         for (const url of hop2Plan.reviewUrls) {
           const key = canonicalizeDestination(url)?.key
           if (key && reviewedKeys.has(key)) continue
-          if (ctx.deadline - Date.now() < secondaryStartReserveMs) {
+          if (ctx.deadline - ctx.clock.now().getTime() < secondaryStartReserveMs) {
             ctx.supplementalPagesSkipped = true
-            await logPipelineEvent(auditId, {
+            await ctx.events.log({
               stage: 'capturing',
               event: 'review_depth_skipped_deadline',
               detail: 'hop2',
@@ -241,7 +251,7 @@ export async function runAudit(auditId: string): Promise<void> {
           })
           const secondaryCtx: PipelineContext = {
             ...ctx,
-            deadline: Math.min(ctx.deadline, Date.now() + secondaryPageBudgetMs),
+            deadline: Math.min(ctx.deadline, ctx.clock.now().getTime() + secondaryPageBudgetMs),
           }
           const pageRun = await runPage(secondaryCtx, {
             url,
@@ -340,13 +350,13 @@ export async function runAudit(auditId: string): Promise<void> {
           error instanceof Error ? error.message : String(error)
         )
 
-        await logPipelineEvent(auditId, {
+        await ctx.events.log({
           stage: failureStage,
           event: 'failed',
           error: errorMsg,
         })
 
-        await persistFailedAuditCost(auditId, Date.now() - startedAt.getTime(), ctx.pagespeedCalls, {
+        await persistFailedAuditCost(auditId, ctx.clock.now().getTime() - startedAt.getTime(), ctx.pagespeedCalls, {
           inputTokens: ctx.usage.inputTokens,
           outputTokens: ctx.usage.outputTokens,
           model: ctx.usage.models.join(','),

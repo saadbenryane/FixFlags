@@ -1,5 +1,8 @@
 # Good Design, Reviewed: Dieter Rams' Ten Principles Applied to FixFlags
 
+**HISTORICAL PLAN / IMPLEMENTATION REFERENCE, superseded as direction on 2026-09-08.** The complete vision at knowledge/vision.md and phased ROADMAP.md govern new work. Old scope, hero, commercial-loop, rubric and layout decisions below are not active instructions. Reuse technical evidence through docs/site-v2-migration.md; do not treat historical readiness as current release proof.
+
+
 *A standing design review of FixFlags against Dieter Rams' ten principles of good design. Reference tier: `DESIGN.md` remains the constitution; this doc is the audit of how well we live up to it, and the rules we adopted as a result. Last full pass: 2026-07.*
 
 FixFlags sells design judgment. The product audits AI-built sites for the exact failures Rams warned about: noise, dishonesty, arbitrariness, decoration without purpose. That makes this review load-bearing: the product must survive its own audit.

@@ -24,7 +24,6 @@ describe('URL-first public product scope', () => {
     '/api/well-known/mcp-json',
     '/.well-known/mcp.json',
     '/.well-known/mcp-server.json',
-    '/.well-known/skills/fixflags/SKILL.md',
   ])('parks the power-user entry point %s', (pathname) => {
     expect(isParkedPowerToolPath(pathname)).toBe(true)
   })
@@ -36,6 +35,8 @@ describe('URL-first public product scope', () => {
     '/api/checks',
     '/api/reports/review-1/status',
     '/report/review-1',
+    '/.well-known/skills/fixflags/SKILL.md',
+    '/.well-known/skills/index.json',
   ])('preserves the URL review path %s', (pathname) => {
     expect(isParkedPowerToolPath(pathname)).toBe(false)
   })

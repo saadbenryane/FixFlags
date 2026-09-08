@@ -41,6 +41,13 @@ export type FunnelEvent =
   | 'managed_subscription'
   | 'marketing_page_view'
   | 'waitlist_joined'
+  | 'shopify_install_started'
+  | 'shopify_install_completed'
+  | 'shopify_first_verification'
+  | 'shopify_monitoring_on'
+  | 'shopify_alert_sent'
+  | 'shopify_recovery_sent'
+  | 'shopify_uninstalled'
   | 'plan_picker_viewed'
   | 'plan_picker_picked'
   | 'plan_picker_dismissed'
@@ -144,6 +151,13 @@ type EventParams = {
     device?: string
   }
   waitlist_joined: { plan: string; source?: string }
+  shopify_install_started: { shop?: string }
+  shopify_install_completed: { shop?: string }
+  shopify_first_verification: { shop?: string; health?: string; has_evidence?: boolean }
+  shopify_monitoring_on: { shop?: string }
+  shopify_alert_sent: { shop?: string; health?: string }
+  shopify_recovery_sent: { shop?: string }
+  shopify_uninstalled: { shop?: string }
   plan_picker_viewed: { source?: string; current_plan?: string }
   plan_picker_picked: { plan: string; source?: string }
   plan_picker_dismissed: { source?: string }
@@ -206,6 +220,16 @@ export function trackEvent<T extends FunnelEvent>(
   event: T,
   params?: EventParams[T],
 ) {
+  if (typeof window === 'undefined') {
+    console.info(
+      JSON.stringify({
+        event: 'funnel_event',
+        name: event,
+        ...(params as Record<string, unknown> | undefined),
+      })
+    )
+    return
+  }
   if (!ensureGtagStub()) return
   if (!isGaConfigured() && process.env.NODE_ENV === 'production') return
 

@@ -8,7 +8,7 @@ import { ReportPane } from '@/components/report/ReportPane'
 import { WorkspaceChatPanel } from '@/components/report/WorkspaceChatPanel'
 import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 import { DEMO_BRAND } from '@/lib/demo/brand'
-import type { ReportWorkspaceModel } from '@/lib/report/workspace-model'
+import type { ReviewWorkspaceVisibleProjection } from '@/lib/report/review-workspace-projection'
 import { LANDING_PAGE } from '@/lib/marketing/copy'
 import { MeProvider } from '@/hooks/useMe'
 
@@ -38,10 +38,11 @@ function storyStatus(phase: number): string {
  * starts a real scan. Preview/Timeline playback props are not used.
  */
 export function HomepageReportPreview({
-  model,
+  projection,
 }: {
-  model: ReportWorkspaceModel
+  projection: ReviewWorkspaceVisibleProjection
 }) {
+  const model = projection.workspace
   const [phase, setPhase] = useState(0)
   const [playing, setPlaying] = useState(true)
 

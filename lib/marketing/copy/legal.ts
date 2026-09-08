@@ -4,19 +4,19 @@
 
 export const LEGAL_PAGE_META = {
   termsUpdated: 'August 2026',
-  privacyUpdated: 'August 2026',
+  privacyUpdated: 'September 2026',
 } as const
 
 export const TERMS_SECTIONS = {
   service: {
     title: 'Service',
     body:
-      'FixFlags provides Product QA reviews and fix prompts for AI-built products. The service is provided as-is. Report results are guidance for your own review, not guarantees of production readiness, compliance, accessibility certification, or legal advice.',
+      'FixFlags provides purchase-path monitoring for Shopify stores, including automated storefront walks, verification video of our own session, and alerts. The service is provided as-is. Results are guidance for your own operations, not a guarantee that every customer can complete checkout.',
   },
   accountsAndBilling: {
     title: 'Accounts and billing',
     body:
-      'Paid plans renew monthly unless you cancel through the Stripe billing portal. Product review limits apply per plan. New URLs, update reviews, and completed scheduled Watch reviews each use one product review from the monthly allowance. Unused allowance does not roll over. Downgrades and cancellations take effect at the end of the current billing period unless Stripe indicates otherwise.',
+      'The Shopify purchase-path app is free to install. Pro extras are waitlisted and are not charged today. If paid billing opens later, those terms will be shown before you subscribe. Uninstalling the Shopify app stops walks.',
   },
   discountTiers: {
     title: 'Launch discount tiers',
@@ -49,21 +49,21 @@ export const PRIVACY_SECTIONS = {
   collect: {
     title: 'What we collect',
     body:
-      'When you create an account, we store your email and name. When you run a check, we store the URL you submit, screenshots, automated check results, and AI-generated Flags. If you join a paid plan waitlist, we store your waitlist plan choice and related campaign metadata.',
+      'When you install the Shopify app, we store the shop domain, store name, store owner email, product titles and storefront URLs we monitor, and verification artifacts (screenshots, GIFs, and video of the FixFlags walk). We do not store customer personal data at launch. If you join a waitlist, we store the feature you asked for and the email we should notify.',
   },
   use: {
     title: 'How we use it',
     body:
-      'We use this data to generate reports, enforce plan limits, operate waitlists and promotional offers, and improve the product. We do not sell your personal data.',
+      'We use this data to walk purchase paths, send alerts, operate waitlists, and improve the product. We do not sell your personal data. Uninstalling stops walks. A shop redact request deletes the store record.',
   },
   reportAccess: {
     title: 'Report access',
     body:
-      'Report evidence is public at its link. Agent chat, fix prompts, Product Memory, account history, and owner actions remain account-gated.',
+      'Verification video and screenshots belong to the installed store. They are shown in the Shopify app. We do not publish them as public report links.',
   },
   thirdParties: {
     title: 'Third parties',
     body:
-      'We use service providers for hosting, payments (Stripe), email (Resend), screenshot storage (Cloudflare R2), and AI analysis (OpenAI or Anthropic). Stripe may collect billing address and tax information at checkout. These providers process data on our behalf under their own terms.',
+      'We use service providers for hosting, email (Resend), and verification storage (Cloudflare R2). Shopify provides shop identity and product catalog access under your install. These providers process data on our behalf under their own terms.',
   },
 } as const

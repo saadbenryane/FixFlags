@@ -25,9 +25,13 @@ const FAILURE_CODE_ARTICLES: Record<string, HelpArticleSlug> = {
   STORAGE_NOT_CONFIGURED: 'why-check-failed',
   STORAGE_UPLOAD_FAILED: 'why-check-failed',
   HTTP_FORBIDDEN: 'public-urls-only',
+  SITE_FORBIDDEN: 'public-urls-only',
   HTTP_RATE_LIMIT: 'why-check-failed',
+  SITE_RATE_LIMITED: 'why-check-failed',
   HTTP_ERROR: 'why-check-failed',
+  SITE_UNREACHABLE: 'why-check-failed',
   NON_HTML_RESPONSE: 'why-check-failed',
+  SITE_NOT_HTML: 'why-check-failed',
   CAPTURE_FAILED: 'why-check-failed',
 }
 

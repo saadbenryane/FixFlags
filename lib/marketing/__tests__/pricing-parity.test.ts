@@ -44,40 +44,30 @@ describe('pricing parity', () => {
     expect(PRICING_COPY.studioProductReviewsPerMonth).toBe(TEAM.auditLimit)
   })
 
-  it('drives the marketing plan cards from PRICING_COPY', () => {
+  it('drives the marketing plan cards from the Shopify free offer', () => {
     expect(PLANS.find((plan) => plan.plan === 'FREE')).toMatchObject({
       price: '$0',
-      audits: `${PRICING_COPY.freeProductReviewsPerMonth} product reviews / month`,
-      products: '1 product',
-      cta: 'Start free',
+      products: '1 store',
+      cta: 'Install on Shopify',
     })
     expect(PLANS.find((plan) => plan.plan === 'BUILDER')).toMatchObject({
-      price: PRICING_COPY.proPrice,
-      period: PRICING_COPY.proPeriod,
-      audits: `${PRICING_COPY.proProductReviewsPerMonth} product reviews / month`,
-      products: 'Up to 5 products',
+      price: 'Waitlist',
       cta: 'Join Pro waitlist',
     })
     expect(PLANS.find((plan) => plan.plan === 'TEAM')).toMatchObject({
-      price: PRICING_COPY.studioPrice,
-      period: PRICING_COPY.studioPeriod,
-      audits: `${PRICING_COPY.studioProductReviewsPerMonth} product reviews / month`,
-      products: 'Unlimited products',
       cta: 'Join Studio waitlist',
     })
   })
 
-  it('gives each paid plan a concrete reason to upgrade', () => {
+  it('gives each paid plan a concrete reason to join the waitlist', () => {
     const pro = PLANS.find((plan) => plan.plan === 'BUILDER')!
     const studio = PLANS.find((plan) => plan.plan === 'TEAM')!
 
-    expect(pro.features.join('\n')).toMatch(/history across releases/i)
-    expect(pro.features.join('\n')).toMatch(/update-review outcomes/i)
-    expect(pro.features.join('\n')).toMatch(/logged-in review on your computer \(waitlisted\)/i)
-    expect(studio.features.join('\n')).toMatch(/scheduled reviews/i)
-    expect(studio.features.join('\n')).toMatch(/invite people/i)
-    expect(studio.features.join('\n')).toMatch(/logged-in review on your computer \(waitlisted\)/i)
-    expect(studio.accountModel).toMatch(/unlimited workspace seats.*limited time/i)
+    expect(pro.features.join('\n')).toMatch(/extra purchase paths/i)
+    expect(pro.features.join('\n')).toMatch(/faster cadence/i)
+    expect(pro.features.join('\n')).toMatch(/funnel analytics/i)
+    expect(studio.features.join('\n')).toMatch(/multiple stores/i)
+    expect(studio.price).toBe('Waitlist')
   })
 
   it('avoids inheritance shorthand and internal metering language', () => {
@@ -110,55 +100,37 @@ describe('pricing parity', () => {
     expect(SCAN_LIMIT_GATE.signup.body).not.toMatch(/upgrade/i)
   })
 
-  it('sells one Product Review allowance without a current deep-review quota', () => {
+  it('sells the free Shopify walk without a current deep-review quota', () => {
     const customerSurfaces = [JSON.stringify(PLANS), JSON.stringify(PRICING), HELP_CATALOG].join('\n')
 
     expect(customerSurfaces).not.toMatch(/deep reviews? (?:per month|included|allowance)/i)
-    expect(customerSurfaces).toMatch(/product reviews? per month/i)
+    expect(customerSurfaces).toMatch(/purchase paths/i)
+    expect(customerSurfaces).not.toMatch(/\$29/)
+    expect(customerSurfaces).not.toMatch(/\$99/)
   })
 
-  it('describes how far a review goes without crawler jargon', () => {
+  it('describes the free Shopify path without crawler jargon', () => {
     const free = PLANS.find((plan) => plan.plan === 'FREE')!
     const pro = PLANS.find((plan) => plan.plan === 'BUILDER')!
-    const studio = PLANS.find((plan) => plan.plan === 'TEAM')!
 
-    expect(free.features).toContain('This page, plus every public link to see if it loads')
-    expect(pro.features).toContain('This page and every public page it links to')
-    expect(pro.features).toContain('Logged-in review on your computer (waitlisted)')
-    expect(studio.features).toContain('This page, its linked pages, and one level beyond')
-    expect(studio.features).toContain('Logged-in review on your computer (waitlisted)')
+    expect(free.features.join('\n')).toMatch(/purchase paths/i)
+    expect(free.features.join('\n')).toMatch(/video/i)
+    expect(pro.features.join('\n')).toMatch(/extra purchase paths/i)
 
-    const howFar = PRICING_FAQ.find((entry) => entry.question === 'How far does a review go?')
-    expect(howFar?.answer).toMatch(/page you paste/i)
-    expect(howFar?.answer).toMatch(/linked pages/i)
-    expect(howFar?.answer).toMatch(/logged-in review on your computer is waitlisted NEXT/i)
-
-    const surfaces = JSON.stringify({ PLANS, PRICING, PRICING_FAQ })
-    expect(surfaces).not.toMatch(/\b(hops?|crawler|layers?)\b/i)
+    const surfaces = JSON.stringify({ PLANS, PRICING })
+    expect(surfaces).not.toMatch(/\b(hops?|crawler)\b/i)
     expect(surfaces).not.toMatch(/deep review/i)
-    expect(surfaces).not.toMatch(/Compare releases/i)
-
-    const comparison = readFileSync(
-      join(process.cwd(), 'components/pricing/PricingComparisonTable.tsx'),
-      'utf8',
-    )
-    expect(comparison).toContain('How far a review goes')
-    expect(comparison).toContain('This page. Checks every public link.')
-    expect(comparison).toContain('This page and the pages it links to')
-    expect(comparison).toContain('This page, linked pages, and one level beyond')
   })
 
-  it('links pricing FAQ entries to help articles with PRICING_COPY numbers', () => {
+  it('links pricing FAQ entries to help articles without charging copy', () => {
     expect(PRICING_FAQ.length).toBeGreaterThan(0)
     expect(PRICING_FAQ.every((entry) => entry.learnMore?.href && entry.learnMore.label)).toBe(true)
 
     const includedPlanAnswer = PRICING_FAQ.find(
-      (entry) => entry.question === 'What\u2019s included in every plan?',
+      (entry) => entry.question === 'What does the free install include?',
     )!
-    expect(includedPlanAnswer.answer).toContain(String(PRICING_COPY.freeProductReviewsPerMonth))
-    expect(includedPlanAnswer.answer).toContain(PRICING_COPY.proPrice)
-    expect(includedPlanAnswer.answer).toContain(String(PRICING_COPY.proProductReviewsPerMonth))
-    expect(includedPlanAnswer.answer).toContain(PRICING_COPY.studioPrice)
-    expect(includedPlanAnswer.answer).toContain(String(PRICING_COPY.studioProductReviewsPerMonth))
+    expect(includedPlanAnswer.answer).toMatch(/video/i)
+    expect(includedPlanAnswer.answer).toMatch(/rechecks/i)
+    expect(PRICING_FAQ.map((entry) => entry.answer).join('\n')).not.toMatch(/\$29|\$99/)
   })
 })

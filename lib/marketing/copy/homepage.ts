@@ -1,39 +1,41 @@
 export const HERO = {
-  badge: "Product QA",
-  headline: "Finish what your AI started.",
+  badge: 'Website intelligence',
+  headline: 'Find what is getting in the way of your next customer.',
   /** Full headline without the period; period is rendered in brand orange. */
-  headlineDisplay: "Finish what your AI started",
+  headlineDisplay: 'Find what is getting in the way of your next customer',
   headlineAccentPeriod: true,
   subhead:
-    "Review a live product, see the most important problems with evidence, and copy a fix into your AI editor.",
-  primaryCta: "Review my site",
-  compactPrimaryCta: "Review site",
-  trySampleCta: "See a sample review",
-  urlPlaceholder: "yourproduct.com",
+    'Enter your website. FixFlags finds problems in the pages and paths that drive leads, signups, and sales, then shows you what to fix first.',
+  primaryCta: 'Review my site',
+  compactPrimaryCta: 'Review',
+  primaryHref: '/#audit',
+  trySampleCta: 'See how it works',
+  secondaryHref: '/how-it-works',
+  urlPlaceholder: 'yoursite.com',
   /** Product-true trust line only. No invented member counts or stock avatars. */
-  trustLine: "Works with your favourite vibe coding tools",
+  trustLine: 'Start with a URL. No installation required.',
   scrollHint: "Scroll to discover",
 } as const;
 
 export const DIFFERENTIATION = {
   label: "Why FixFlags",
-  headline: "More than a Lighthouse score",
-  subhead: "Automated checks miss what a reviewer sees in a screenshot.",
-  lighthouseLinkText: "Compare FixFlags checks with Google Lighthouse",
+  headline: "Store up is not the same as can buy",
+  subhead: "Uptime checks miss a dead add to cart. FixFlags walks the path a customer uses.",
+  lighthouseLinkText: "Compare a live walk with an HTTP uptime check",
   is: [
-    "A review layer that finishes what your AI started",
-    "Flags with evidence, impact, and a demonstrated fix prompt",
-    "Update reviews show what changed after you publish",
+    "A mobile walk of the path to checkout",
+    "Video of what FixFlags saw, not a score",
+    "Alerts only when the path is confirmed broken",
   ],
   isNot: [
-    "Not a generic Lighthouse wrapper",
-    "Not manual QA-as-a-service",
-    "Not an enterprise test suite",
+    "Not a Lighthouse wrapper",
+    "Not session replay of real shoppers",
+    "Not an ads attribution suite",
   ],
   bullets: [
-    "AI reads screenshots for message, experience, and reach gaps",
-    "Sign up to get a fix prompt for every Flag",
-    "Update reviews compare the live product after a change",
+    "Walks product, cart, and checkout on a phone-sized browser",
+    "Confirms RED twice before it emails you",
+    "Keeps Improve off the alarm",
   ],
   rows: [
     {
@@ -93,55 +95,55 @@ export const DIFFERENTIATION = {
   ],
   comparisonRows: [
     {
-      feature: "Shows why each Flag matters, with evidence",
-      lighthouse: "Partial",
-      manual: "Yes",
-      fixflags: "Yes",
-    },
-    {
-      feature: "AI reads screenshots for UX gaps",
+      feature: "Walks add to cart on a real mobile browser",
       lighthouse: "No",
       manual: "Yes",
       fixflags: "Yes",
     },
     {
-      feature: "Identifies missing social preview image",
-      lighthouse: "Partial",
-      manual: "Yes",
+      feature: "Video of the failed walk",
+      lighthouse: "No",
+      manual: "Sometimes",
       fixflags: "Yes",
     },
     {
-      feature: "Checks mobile button placement",
+      feature: "Retries before it calls the path broken",
       lighthouse: "No",
       manual: "Yes",
       fixflags: "Yes",
     },
     {
-      feature: "Writes fix prompts your agent runs after signup",
+      feature: "Installs from the Shopify App Store",
       lighthouse: "No",
       manual: "No",
+      fixflags: "Yes",
+    },
+    {
+      feature: "Stops before payment",
+      lighthouse: "n/a",
+      manual: "Depends",
       fixflags: "Yes",
     },
   ],
 } as const;
 
 export const FINAL_CTA = {
-  headlineDisplay: "Paste a URL. See what to fix",
+  headlineDisplay: 'Enter your site. See what matters first',
   headlineAccentPeriod: true,
-  body: "Get a ranked Product Review with evidence from the live page.",
+  body: 'Start with a free website analysis. Save the Site when you want FixFlags to keep watching.',
 } as const;
 
 export const BUILDER_WORKFLOW_SECTION = {
-  headline: "Fix the highest-impact Flag first",
-  body: "Copy the evidence-backed fix prompt into the builder you already use. Publish the change, then run an update review for independent verification.",
-  intro: "The workflow stays focused:",
-  closing: "The fresh review records what changed and what still needs work.",
+  headline: "Watch the walk. Fix the store. Recheck",
+  body: "Open the verification, fix the theme or app that blocked checkout, then walk the path again.",
+  intro: "The loop stays focused:",
+  closing: "A recovery notice is sent when the path can take orders again.",
   cta: "See how it works",
-  workflow: `1. Paste the live URL into FixFlags.
-2. Inspect the highest-impact Flag and its evidence.
-3. Copy the fix prompt into your builder.
-4. Publish the change.
-5. Run an update review and compare the result.`,
+  workflow: `1. Install FixFlags on Shopify.
+2. Watch the first walk to checkout.
+3. If the path is down, fix the theme or app.
+4. Recheck.
+5. Keep monitoring on.`,
 } as const;
 
 /** @deprecated Internal compatibility alias; the section is URL-first and contains no MCP offer. */
@@ -149,155 +151,153 @@ export const MCP_SECTION = BUILDER_WORKFLOW_SECTION;
 
 export const HOW_IT_WORKS_PAGE = {
   hero: {
-    eyebrow: "The AI Gap",
-    headline: "AI can build the product. FixFlags checks what it missed.",
+    eyebrow: 'Website intelligence',
+    headline: 'Find what is getting in the way of your next customer.',
     headlineAccentPeriod: true,
     subhead:
-      "Run a live URL, review the Flags, copy the fix prompts, then run an update review.",
-    primaryCta: "Review my site",
-    primaryHref: "/#audit",
-    secondaryCta: "See a full report",
-    secondaryHref: "/samples",
+      'FixFlags starts with your URL, turns evidence into Flags, and keeps learning about the Site as you verify improvements and add context.',
+    primaryCta: 'Review my site',
+    primaryHref: '/#audit',
+    secondaryCta: 'See a sample review',
+    secondaryHref: '/samples',
     annotations: [
       {
-        id: "ai-build",
-        title: "AI Build",
+        id: 'website-live',
+        title: 'Website live',
         percent: "",
-        body: "The draft is live.",
+        body: 'Traffic can still arrive.',
         tone: "muted" as const,
       },
       {
-        id: "gap",
-        title: "The Gap",
+        id: 'friction',
+        title: 'Friction',
         percent: "",
-        body: "The unchecked details.",
+        body: 'The next customer can still get stuck.',
         tone: "muted" as const,
       },
       {
         id: "fixflags",
         title: "FixFlags",
         percent: "",
-        body: "Flags, evidence, and fix prompts.",
+        body: 'Flags, evidence, and verification.',
         tone: "brand" as const,
       },
     ],
     features: [
       {
-        title: "AI builds fast",
-        body: "Ship features, pages, and entire products.",
+        title: 'A website can look finished',
+        body: 'The page loads and traffic can still arrive.',
         icon: "sparkles" as const,
       },
       {
-        title: "But misses critical signals",
-        body: "Flags that affect trust, performance, and reach.",
+        title: 'The important path can still fail',
+        body: 'A form stalls, a CTA goes nowhere, a page gets slow, or tracking disappears.',
         icon: "warning" as const,
       },
       {
-        title: "FixFlags checks the live result",
-        body: "Message, Experience, and Reach on desktop and mobile.",
+        title: 'FixFlags finds what matters',
+        body: 'It inspects the site and independently verifies important paths.',
         icon: "shield" as const,
       },
       {
-        title: "You get the next fix",
-        body: "Clear evidence and a prompt for your builder.",
+        title: 'You get the evidence',
+        body: 'See what happened, where it happened, and why it deserves attention.',
         icon: "check" as const,
       },
       {
-        title: "Run an update review",
-        body: "See which Flags are no longer observed and inspect the verification receipts.",
+        title: 'Then verify the change',
+        body: 'FixFlags returns to the live Site and keeps watching for meaningful regressions.',
         icon: "rocket" as const,
       },
     ],
   },
   reportPreview: {
-    label: "What the report gives you",
-    title: "A fix queue, not a score dump.",
-    body: "Each Flag explains what broke, where we saw it, why it matters, and what to paste into your builder.",
+    label: 'What you get',
+    title: 'A Flag with evidence, not a score dump.',
+    body: 'Each Flag says what happened, where it happened, why it matters, and what should happen next.',
     rubricLine:
-      "Message is what the page says. Experience is how it works. Reach is how people find and share it.",
-    sampleLabel: "Sample Finish Plan",
-    sampleCta: "Explore a full sample",
-    sampleHref: "/samples",
+      'Pages, funnels, source context, verification, and history make the same Site smarter over time.',
+    sampleLabel: 'Sample Site',
+    sampleCta: 'Explore a sample review',
+    sampleHref: '/samples',
     flags: [
       {
-        rubric: "Experience",
-        severity: "Important",
-        finding: "Primary action starts below the first mobile viewport.",
+        rubric: "Protect",
+        severity: "Can't buy",
+        finding: "Add to cart did not put the product in the cart.",
         evidence:
-          "Mobile screenshot (375px) shows the CTA after 1,080px of scrolling.",
+          "Two independent mobile walks. The cart stayed empty after the click.",
       },
       {
-        rubric: "Reach",
-        severity: "Critical",
-        finding: "The page has no share preview image.",
-        evidence: "Social and Slack previews render as a blank card.",
+        rubric: "Prove",
+        severity: "Video",
+        finding: "Watch the walk FixFlags ran.",
+        evidence: "Product, add to cart, failed cart. We stopped there.",
       },
       {
-        rubric: "Message",
-        severity: "Important",
-        finding: "Hero copy says what the product is, not who it helps.",
-        evidence:
-          "Headline and subhead do not name the buyer, task, or outcome.",
+        rubric: "Understand",
+        severity: "Step",
+        finding: "The named step is add to cart.",
+        evidence: "Store-wide conversion numbers wait for approved reports access.",
       },
     ],
   },
   reviewTypes: {
-    label: "One complete review",
-    title: "No depth tier. No second review product.",
-    body: "Every Product Review checks the live URL across Message, Experience, and Reach, then gives you one ranked Fix List with evidence and fix prompts.",
+    label: 'One Site',
+    title: 'Start with a URL. Keep the Site getting smarter.',
+    body: 'FixFlags starts with public website evidence and adds verification or connected context only when it improves an answer.',
     completeReview: {
-      title: "What every review includes",
-      body: "Live desktop and mobile capture, key-page checks, ranked Flags, evidence, and fix prompts you can paste into your builder.",
+      title: 'What every first review includes',
+      body: 'Important pages, safe paths, Flags, and evidence you can inspect immediately.',
     },
     verification: {
-      title: "How you verify the fix",
-      body: "Publish the change, then use another Product Review as an update review. FixFlags captures the live result again and shows what changed.",
+      title: 'How you verify a fix',
+      body: 'Publish the change, then let FixFlags independently revisit the live Site.',
     },
-    docsCta: "Read the Product Review guide",
+    docsCta: 'Read the website review guide',
     docsHref: "/docs/reports",
     analogyLine:
-      "New URLs, update reviews, and completed Watch reviews all use the same Product Review allowance.",
+      'A Site keeps its Flags, verification, context, and history together over time.',
   },
   loop: {
     label: "The operating loop",
-    title: "Review. Fix. Verify. Keep watch.",
+    title: 'Find. Understand. Fix. Verify.',
     steps: [
       {
-        title: "Flag",
-        body: "Find Flags across Message, Experience, and Reach with evidence you can inspect.",
+        title: 'Find',
+        body: 'Surface the website problems that matter with evidence you can inspect.',
       },
       {
-        title: "Fix",
-        body: "Copy the evidence-backed prompt into the builder you already use.",
+        title: 'Understand',
+        body: 'See what happened, where, and why it deserves attention.',
       },
       {
-        title: "Update review",
-        body: "Review the live URL again and see what changed after you publish.",
+        title: 'Verify',
+        body: 'Return to the live Site after a change and keep watching for meaningful regressions.',
       },
     ],
   },
   mcp: {
-    label: "Builder workflow",
-    title: "Take one evidence-backed fix at a time.",
-    body: "Copy a focused fix prompt from the report into the builder you already use. Publish when you are ready, then let FixFlags independently review the live result.",
-    setupCta: "Read the report guide",
+    label: 'Work with your agent',
+    title: 'Give your AI the evidence. FixFlags verifies the result.',
+    body: 'Use a focused Flag in the coding agent you already use, then let FixFlags independently revisit the live Site.',
+    setupCta: 'Read the website review guide',
     setupHref: "/docs/reports",
     plansCta: "See plans",
     plansHref: "/pricing",
-    transcript: `FixFlags: "The primary action falls below the fold on mobile."
-You: copy the focused fix prompt into your builder
-Builder: applies the mobile CTA layout fix
-You: publish the change and run an update review
-FixFlags: "The original evidence is no longer observed. Open the comparison for details."`,
+    transcript: `FixFlags: "The primary action is hidden below the first mobile viewport."
+You: use the evidence in your coding agent
+You: publish the change
+FixFlags: "The original problem is no longer observed in this update review."`,
   },
   finalCta: {
-    headline: "Close the AI gap on a live URL.",
-    body: "Paste your site, get Flags with evidence and fix prompts, then run an update review to see what changed.",
-    primaryCta: "Review my site",
-    primaryHref: "/#audit",
-    secondaryCta: "See a full report",
-    secondaryHref: "/samples",
-    tryLabel: "Try it on a live URL",
+    headline: 'Enter your site. See what matters first.',
+    body: 'Start with a free website analysis. Save the Site when you want FixFlags to keep watching.',
+    primaryCta: 'Review my site',
+    primaryHref: '/#audit',
+    secondaryCta: "See how it works",
+    secondaryHref: '/how-it-works',
+    tryLabel: 'Try it on a live website',
   },
 } as const;
 
@@ -535,27 +535,86 @@ export const LANDING_PAGE = {
   },
   howItWorks: {
     label: "How it works",
-    headlineDisplay: "Find the issues. Fix them. See what improved",
+    headlineDisplay: 'Enter your site. See what matters. Keep watching',
     headlineAccentPeriod: true,
-    headline: "Find the issues. Fix them. See what improved.",
+    headline: 'Enter your site. See what matters. Keep watching.',
     subhead:
-      "From live page to evidence-backed fix, every step stays connected.",
-    sampleLink: "Explore a full report",
+      'Start with public website evidence. Add more truth only when it makes the next decision clearer.',
+    sampleLink: 'See a sample review',
     steps: [
       {
         step: 1,
-        title: "Show us the real product",
-        body: "Paste the live URL. FixFlags experiences the page on desktop and mobile.",
+        title: 'Enter your website',
+        body: 'FixFlags finds important pages, actions, technology, and the first problems worth your attention.',
       },
       {
         step: 2,
-        title: "See what matters first",
-        body: "Get the highest-impact Flags in order, each tied to the screen and behavior behind it.",
+        title: 'Understand the Flag',
+        body: 'Inspect the page, path, and evidence behind the problem. FixFlags explains what to change next.',
       },
       {
         step: 3,
-        title: "Fix it. Check it again",
-        body: "Take the fix to your AI editor, publish it, then run a fresh update review.",
+        title: 'Keep the Site watching',
+        body: 'Save the Site, verify fixes, and add sources such as Shopify or Analytics when they improve the answer.',
+      },
+    ] as const,
+  },
+  proof: {
+    label: 'Find what matters',
+    headlineDisplay: 'One website. Evidence that gets smarter over time',
+    headlineAccentPeriod: true,
+    headline: 'One website. Evidence that gets smarter over time.',
+    subhead:
+      'FixFlags starts with public evidence, independently verifies important paths, and adds connected context when it changes what you should do.',
+    states: [
+      {
+        id: 'GREEN' as const,
+        title: 'Observe',
+        body: 'Understand what the public website and real visitor signals can tell you.',
+      },
+      {
+        id: 'RED' as const,
+        title: 'Verify',
+        body: 'Use FixFlags’ browser to reproduce important paths and independently check the fix.',
+      },
+      {
+        id: 'UNKNOWN' as const,
+        title: 'Connect',
+        body: 'Add Shopify, Analytics, Search Console, Meta, or deployment context only when it improves an existing answer.',
+      },
+    ] as const,
+  },
+  layers: {
+    label: 'One system, not a toolbox',
+    headlineDisplay: 'Find. Understand. Fix. Verify',
+    headlineAccentPeriod: true,
+    headline: 'Find. Understand. Fix. Verify.',
+    subhead:
+      'Monitoring keeps the loop running. Connections enrich the same Site. AI helps operate it.',
+    cards: [
+      {
+        id: 'find',
+        title: 'Find',
+        question: 'What deserves attention?',
+        body: 'Surface the website problems that matter, with evidence rather than a score dump.',
+      },
+      {
+        id: 'understand',
+        title: 'Understand',
+        question: 'What happened, where, and why?',
+        body: 'See the page, path, source, and independent evidence behind each Flag.',
+      },
+      {
+        id: 'fix',
+        title: 'Fix',
+        question: 'What should change next?',
+        body: 'Prioritize the action that removes the most important customer friction first.',
+      },
+      {
+        id: 'verify',
+        title: 'Verify',
+        question: 'Did the change solve it?',
+        body: 'Revisit the live website after a change and keep watching for meaningful regressions.',
       },
     ] as const,
   },
@@ -777,11 +836,11 @@ export const LANDING_PAGE = {
   },
   footer: {
     tagline:
-      "Product QA for AI-built products. We review what blocks the release so you can fix it.",
-    madeWith: "Built for people shipping with AI.",
-    buildersTitle: "Built for builders",
+      'FixFlags finds the website problems that matter, shows why they matter, and keeps watching.',
+    madeWith: 'Built for businesses that depend on their website.',
+    buildersTitle: 'Built for website operators',
     buildersBody:
-      "FixFlags works where you build. Paste fixes into the editor you already use.",
+      'Start with a URL. Add context only when it makes the next decision clearer.',
     buildersCta: "See how it works",
     buildersHref: "/how-it-works",
     newsletter: {

@@ -3,9 +3,7 @@ import assert from 'node:assert/strict'
 import {
   canExportSummary,
   canScanRepositories,
-  canSharePublicly,
   getEntitlements,
-  getReportTierForUser,
 } from '@/lib/auth/entitlements'
 import { scanLimitForPlan } from '@/lib/billing/plans'
 import {
@@ -60,39 +58,6 @@ const validRubrics = ['MESSAGE', 'EXPERIENCE', 'REACH'].map((name) => ({
   rubricPrompt: `Improve ${name}`,
 }))
 
-describe('getReportTierForUser', () => {
-  it('returns free for null user', () => {
-    assert.equal(getReportTierForUser(null), 'free')
-  })
-
-  it('returns paid for builder plan', () => {
-    assert.equal(
-      getReportTierForUser({ id: 'u1', plan: 'BUILDER', role: 'user', subscriptionStatus: 'ACTIVE' }),
-      'paid'
-    )
-  })
-
-  it('returns paid for admin role', () => {
-    assert.equal(
-      getReportTierForUser({ id: 'u1', plan: 'FREE', role: 'admin', subscriptionStatus: 'NONE' }),
-      'paid'
-    )
-  })
-
-  it('preserves full report access when a subscription lapses', () => {
-    process.env.DEV_SIMULATE_BILLING = 'true'
-    assert.equal(
-      getReportTierForUser({ id: 'u1', plan: 'BUILDER', role: 'user', subscriptionStatus: 'PAST_DUE' }),
-      'paid'
-    )
-    assert.equal(
-      getReportTierForUser({ id: 'u1', plan: 'TEAM', role: 'user', subscriptionStatus: 'CANCELED' }),
-      'paid'
-    )
-    delete process.env.DEV_SIMULATE_BILLING
-  })
-})
-
 describe('getEntitlements', () => {
   it('grants unlimited monitoring for free users', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
@@ -106,10 +71,9 @@ describe('getEntitlements', () => {
     delete process.env.DEV_SIMULATE_BILLING
   })
 
-  it('allows share/export for pro users', () => {
+  it('allows export for pro users', () => {
     process.env.DEV_SIMULATE_BILLING = 'true'
     const user = { id: 'u1', role: 'user' as const, plan: 'BUILDER' as const, subscriptionStatus: 'ACTIVE' as const }
-    assert.equal(canSharePublicly(user), true)
     assert.equal(canExportSummary(user), true)
     delete process.env.DEV_SIMULATE_BILLING
   })

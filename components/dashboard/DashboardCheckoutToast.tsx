@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { useMe } from '@/hooks/useMe'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
-import { Plan } from '@prisma/client'
+import type { Plan } from '@prisma/client'
 import { trackEvent } from '@/lib/analytics/events'
 
 const POLL_MS = 800

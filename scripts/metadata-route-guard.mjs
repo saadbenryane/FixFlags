@@ -9,6 +9,8 @@ const ROOT = process.cwd()
 
 const ROUTE_TO_PAGE = {
   '/': 'app/(marketing)/page.tsx',
+  '/protect': 'app/(marketing)/protect/page.tsx',
+  '/install': 'app/(marketing)/install/page.tsx',
   '/waitlist': 'app/(marketing)/waitlist/page.tsx',
   '/how-it-works': 'app/(marketing)/how-it-works/page.tsx',
   '/pricing': 'app/(marketing)/pricing/page.tsx',

@@ -1,6 +1,14 @@
 export const AGENT_SCAN_COPY = {
   preparing: 'I’m getting ready to experience the Product as a customer would.',
   capturing: 'I’m opening the Product on desktop and mobile to see what customers see.',
+  reviewingPage: (pathLabel?: string | null) =>
+    pathLabel && pathLabel !== 'Home'
+      ? `I’m reviewing ${pathLabel}.`
+      : 'I’m reviewing this page.',
+  reviewedPage: (pathLabel?: string | null) =>
+    pathLabel && pathLabel !== 'Home'
+      ? `I reviewed ${pathLabel}.`
+      : 'I reviewed this page.',
   capturePartial: 'I captured part of the experience. The report will identify what is missing.',
   captureUnavailable: 'I couldn’t capture the page evidence.',
   checking: 'I’m checking whether the message is clear, the experience works, and the Product can be reached.',

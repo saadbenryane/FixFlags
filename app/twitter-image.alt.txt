@@ -1,1 +1,1 @@
-FixFlags - Finish what your AI started.
+FixFlags - Know when customers can't buy.

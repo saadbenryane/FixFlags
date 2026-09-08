@@ -1,11 +1,14 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { Footer } from '@/components/layout/footer'
 import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
 import { LandingHowItWorksSection } from '@/components/marketing/landing/LandingHowItWorksSection'
-import { LandingRubricsSection } from '@/components/marketing/landing/LandingRubricsSection'
-import { SampleReportSection } from '@/components/marketing/landing/SampleReportSection'
-import { WORKSPACE_SPLIT_GRID_CLASS } from '@/components/report/workspace-geometry'
+import { LandingLayersSection } from '@/components/marketing/landing/LandingLayersSection'
+import { LandingProofSection } from '@/components/marketing/landing/LandingProofSection'
+
+vi.mock('@/components/audit/AuditInput', () => ({
+  AuditInput: () => <div data-testid="audit-input" />,
+}))
 
 beforeAll(() => {
   vi.stubGlobal(
@@ -39,277 +42,74 @@ afterAll(() => {
 })
 
 describe('homepage lean sections', () => {
-  it('keeps the sample review on the same canvas as the hero', () => {
-    const { container } = render(<SampleReportSection />)
-    const section = container.querySelector('#sample-review')?.closest('section')
-    expect(section?.className).not.toMatch(/bg-muted/)
-    expect(section?.className).toMatch(/bg-background/)
+  it('explains Observe, Verify, and Connect without invented percentages', () => {
+    render(<LandingProofSection />)
+    expect(
+      screen.getByRole('heading', { name: /Evidence that gets smarter over time/ }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Observe' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Verify' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Connect' })).toBeInTheDocument()
+    expect(screen.queryByText(/%/)).not.toBeInTheDocument()
   })
 
-  it('clips both panes of the sample review to the rounded card', () => {
-    render(<SampleReportSection />)
-    const story = screen.getByLabelText('FixFlags review story')
-    expect(story.parentElement?.className).toMatch(/overflow-hidden/)
-    expect(story.parentElement?.className).toMatch(/rounded-card/)
-  })
-
-  it('explains Message, Experience, and Reach through customer questions', () => {
-    render(<LandingRubricsSection />)
-
-    expect(
-      screen.getByRole('heading', {
-        name: 'See your product through your users’ eyes',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', {
-        name: 'Do people understand what this is and why it matters?',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', {
-        name: 'Can people do what they came to do?',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', {
-        name: 'Can people find it and share it clearly?',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('list', { name: 'Message checks' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('list', { name: 'Experience checks' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('list', { name: 'Reach checks' }),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('Example Flag')).not.toBeInTheDocument()
-  })
-
-  it('presents How it works as one connected review workflow', () => {
+  it('presents How it works as Site Intelligence', () => {
     render(<LandingHowItWorksSection />)
-
     expect(
       screen.getByRole('heading', {
-        name: 'Find the issues. Fix them. See what improved',
+        name: /Enter your site\. See what matters\. Keep watching/,
       }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('list')).toBeInTheDocument()
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
-    expect(
-      screen.getByRole('heading', { name: 'Show us the real product' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: 'See what matters first' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: 'Fix it. Check it again' }),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('FixFlags review')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Enter your website' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Understand the Flag' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Keep the Site watching' })).toBeInTheDocument()
   })
 
-  it('keeps the final CTA copy and URL field before the review plaque', () => {
+  it('explains Find, Understand, Fix, and Verify', () => {
+    render(<LandingLayersSection />)
+    expect(
+      screen.getByRole('heading', { name: /Find\. Understand\. Fix\. Verify/ }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'What deserves attention?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'What happened, where, and why?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'What should change next?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Did the change solve it?' })).toBeInTheDocument()
+  })
+
+  it('keeps the final CTA copy before the review evidence', () => {
     const { container } = render(<LandingFinalCtaSection />)
     const finalCta = container.querySelector('#final-cta')
     expect(finalCta).not.toBeNull()
-
     const heading = within(finalCta as HTMLElement).getByRole('heading', {
-      name: /Paste a URL\. See what to fix/,
+      name: /Enter your site\. See what matters first/,
     })
-    const plaque = within(finalCta as HTMLElement).getByRole('img', {
-      name: 'A live product is reviewed across Message, Experience, and Reach',
-    })
+    const evidence = within(finalCta as HTMLElement).getByAltText(
+      'A website review with evidence-backed Flags and an independent update review',
+    )
     expect(
       Boolean(
-        heading.compareDocumentPosition(plaque) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
+        heading.compareDocumentPosition(evidence) & Node.DOCUMENT_POSITION_FOLLOWING,
       ),
     ).toBe(true)
   })
 
-  it('keeps repeated assurances and sample metrics out of the final CTA and footer', () => {
+  it('keeps repeated assurances out of the final CTA and footer', () => {
     const { container } = render(
       <>
         <LandingFinalCtaSection />
         <Footer />
       </>,
     )
-
     const finalCta = container.querySelector('#final-cta')
     const footer = container.querySelector('footer')
     expect(finalCta).not.toBeNull()
     expect(footer).not.toBeNull()
     expect(
-      within(finalCta as HTMLElement).queryByText(
-        'Evidence from your live site',
-      ),
-    ).not.toBeInTheDocument()
-    expect(
-      within(finalCta as HTMLElement).queryByText('3 reviews included free'),
+      within(finalCta as HTMLElement).queryByText('Evidence from your live site'),
     ).not.toBeInTheDocument()
     expect(
       within(footer as HTMLElement).queryByText('Fix prompt'),
-    ).not.toBeInTheDocument()
-    expect(
-      within(footer as HTMLElement).queryByText('Update review'),
-    ).not.toBeInTheDocument()
-  })
-
-  it('renders the shared-model Product review story instead of a flattened screenshot', () => {
-    render(<SampleReportSection />)
-
-    const story = screen.getByLabelText('FixFlags review story')
-    expect(story).toBeInTheDocument()
-    expect(screen.getByText('DemoSite')).toBeInTheDocument()
-    // The reviewed host names both panes now that no fake browser bar carries it.
-    expect(screen.getAllByText('fixflags.com/demo').length).toBeGreaterThan(0)
-    expect(screen.getByRole('tab', { name: 'Agent' })).toBeInTheDocument()
-    expect(
-      screen.queryByRole('tab', { name: 'Preview' }),
-    ).not.toBeInTheDocument()
-    expect(screen.getAllByRole('tab', { name: 'Report' })).not.toHaveLength(0)
-    expect(
-      screen.getByRole('heading', {
-        name: 'Primary CTA is hidden below the fold on mobile',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('link', { name: 'Review my site' }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.getAllByRole('link', { name: /Explore a full report/i }),
-    ).toHaveLength(1)
-    expect(
-      screen.getByRole('link', { name: /Explore a full report/i }),
-    ).toHaveAttribute('href', '/samples')
-    expect(screen.queryByText('199+')).not.toBeInTheDocument()
-    expect(screen.queryByText('Flags in this sample')).not.toBeInTheDocument()
-    expect(
-      screen.queryByAltText(/Generated FixFlags sample Finish Plan/i),
-    ).not.toBeInTheDocument()
-
-    const grid = Array.from(story.querySelectorAll('div')).find((node) =>
-      node.className.includes(WORKSPACE_SPLIT_GRID_CLASS),
-    )
-    expect(grid).toBeDefined()
-  })
-
-  it('centers the sample review and puts the report CTA under the preview', () => {
-    render(<SampleReportSection />)
-
-    const heading = screen.getByRole('heading', {
-      name: /See what gets in your users’ way/i,
-    })
-    expect(heading.parentElement?.className).toMatch(/text-center/)
-    expect(
-      screen.getByText(/Explore a curated demo review/i).className,
-    ).toMatch(/text-center|mx-auto/)
-
-    const story = screen.getByLabelText('FixFlags review story')
-    const cta = screen.getByRole('link', { name: /Explore a full report/i })
-    expect(
-      Boolean(
-        heading.compareDocumentPosition(story) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ),
-    ).toBe(true)
-    expect(
-      Boolean(
-        story.compareDocumentPosition(cta) & Node.DOCUMENT_POSITION_FOLLOWING,
-      ),
-    ).toBe(true)
-  })
-
-  it('gates demo Copy All Prompts and send behind create-account', async () => {
-    render(<SampleReportSection />)
-
-    fireEvent.pointerDown(screen.getByRole('button', { name: /^Copy All Prompts$/i }), {
-      button: 0,
-      ctrlKey: false,
-    })
-    expect(
-      await screen.findByRole('menuitem', { name: /^Copy All Prompts$/i }),
-    ).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Send a message')).toBeEnabled()
-    expect(screen.queryByText('Copy Finish Plan')).not.toBeInTheDocument()
-    expect(screen.queryByText('Copy Mega Prompt')).not.toBeInTheDocument()
-    expect(
-      screen.queryByPlaceholderText(/You can only chat on your own reports/i),
-    ).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('menuitem', { name: /^Copy All Prompts$/i }))
-    expect(
-      await screen.findAllByText('Create your free account'),
-    ).not.toHaveLength(0)
-    expect(screen.queryByText(/upgrade/i)).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: /close/i }))
-    fireEvent.click(screen.getByRole('button', { name: 'Sign in to chat' }))
-    expect(screen.getAllByText('Create your free account').length).toBeGreaterThan(
-      0,
-    )
-  })
-
-  it('gives the visitor the real Agent and Report workspace toggle', () => {
-    render(<SampleReportSection />)
-
-    const mobileTabs = screen.getByRole('tablist', { name: 'Review panels' })
-    expect(
-      within(mobileTabs).getByRole('tab', { name: 'Report' }),
-    ).toHaveAttribute('aria-selected', 'true')
-
-    fireEvent.click(within(mobileTabs).getByRole('tab', { name: 'Agent' }))
-
-    expect(
-      within(mobileTabs).getByRole('tab', { name: 'Agent' }),
-    ).toHaveAttribute('aria-selected', 'true')
-    expect(
-      within(mobileTabs).getByRole('tab', { name: 'Report' }),
-    ).toBeInTheDocument()
-  })
-
-  it('shows the complete value story without timed motion for reduced-motion users', async () => {
-    vi.mocked(globalThis.matchMedia).mockImplementation((query: string) => ({
-      matches: query === '(prefers-reduced-motion: reduce)',
-      media: query,
-      onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn(),
-    }))
-
-    render(<SampleReportSection />)
-
-    fireEvent.click(
-      within(screen.getByRole('tablist', { name: 'Review panels' })).getByRole(
-        'tab',
-        {
-          name: 'Report',
-        },
-      ),
-    )
-    expect(
-      screen.queryByRole('tab', { name: 'Desktop' }),
-    ).not.toBeInTheDocument()
-    expect(window.location.search).not.toMatch(/flag=/)
-  })
-
-  it('shows the sample Agent and the report-first priority surface', () => {
-    render(<SampleReportSection />)
-
-    expect(screen.getByRole('region', { name: 'Agent' })).toBeInTheDocument()
-    expect(screen.queryByText('Top Flags')).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', {
-        name: 'Primary CTA is hidden below the fold on mobile',
-      }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('tab', { name: 'Preview' }),
     ).not.toBeInTheDocument()
   })
 })

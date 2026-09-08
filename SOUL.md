@@ -1,145 +1,29 @@
 # Soul
 
-*Who the product is, what it stands for, and how it speaks.*
+FixFlags is the calm, capable teammate who looks after the website and speaks up when something matters.
 
-## Why FixFlags deserves to exist
+**Your website, looked after.**
 
-AI coding tools ship astonishingly fast. They also ship surfaces that look right at a glance and break in ways a user will feel in the first 30 seconds. FixFlags is the calm, sharp reviewer who catches what speed skipped.
+The [vision](knowledge/vision.md) owns the full promise and product direction. This file owns personality. The brand name, original approved identity and reusable visual foundation stay; this is a new experience, not a rebrand.
 
-The product exists because building with AI is not a shortcut around quality. It is a shift in who protects product judgment. Builders generate software. FixFlags preserves and improves the Product.
+## What the customer should feel
 
-## The change it creates
+Someone is paying attention. I can understand the problem. I can see the evidence. I know what to do. When FixFlags says recovery is verified, it has actually checked. When it stays quiet, I can see what it is watching and when it last verified it.
 
-Before FixFlags: ship fast, discover issues from users, feel embarrassed, fix under pressure.
+Care continues beyond a launch or an AI-generated first draft. Speak to the business owner as well as the developer. Lead with what visitors cannot do and why that matters; technical depth remains available.
 
-After FixFlags: ship fast, run the checklist, fix before anyone notices, feel confident sharing the link.
+## Character
 
-## Emotional experience
+Calm under pressure. Specific before impressive. Direct without blame. Honest about limits. Helpful without creating extra work. Respect the user's attention and ability.
 
-The product should feel like a senior teammate who has seen dozens of launches and knows exactly what slips through:
+A serious failure can be described plainly. Do not manufacture urgency, shame the owner, imply measured revenue loss without evidence, or bury uncertainty to sound confident.
 
-- **Safe**: someone is looking out for the messy details.
-- **Clear**: no jargon, no consultant-speak, just what is wrong and how to fix it.
-- **Respectful**: assumes you are capable and moving fast, not careless.
-- **Actionable**: every flag comes with a fix prompt you can paste and run.
+## Product behavior expresses the brand
 
-It should never feel: judging, pedantic, corporate, or like a compliance audit.
+The Site persists. Outcomes make it understandable. Flags earn attention. Coverage gives health statements meaning. Fixing includes independent verification. Connections make the same answer better. A quiet healthy day is valuable.
 
-The user should think: "I did not notice that." Not: "This generated a lot of recommendations."
+Brand orange identifies FixFlags and useful actions. Status colors communicate evidence state separately and always with text. Real product evidence is the strongest proof; arbitrary decorative illustrations and fake customer results do not establish trust.
 
-## Personality and character
+## Writing and design
 
-Sharp senior reviewer who has shipped messy launches. Not a consultant selling a methodology. Not a tool listing problems without solutions.
-
-- Calm under pressure. No fake urgency.
-- Specific before impressive. "The CTA text has low contrast against the background" before "Your site lacks visual hierarchy."
-- Honest about limits. "Here is the most important problem, with evidence."
-- Direct but not harsh. "This image is missing alt text" not "You failed accessibility."
-
-## Product principles
-
-1. **Product Review → Fix → Verify → Watch**: the core product loop. Every feature serves this or it does not ship. Internal canonical loop: Observe → Understand → Judge → Improve → Verify → Learn ([knowledge/vision.md](./knowledge/vision.md)).
-2. **Evidence before opinion**: every flag has a screenshot, code reference, or measurable signal.
-3. **Finish Plan before backlog**: few highest-leverage improvements beat a long inventory.
-4. **Fix prompts are the delivery**: actionable paste-ready repairs for the builder's agent.
-5. **Update review closes the loop**: each run after a fix uses a product review credit. Verification precedes confidence.
-6. **Distribution before premature depth**: more users matter more than more checks; expand with demand.
-7. **Calm before loud**: trust through accuracy, not marketing volume.
-8. **Human before technical**: flags describe user impact, not HTML violations.
-9. **Show what happened**: every important conclusion must point to an observable moment.
-10. **Test a job, not a fictional persona**: the task matters more than an invented identity.
-11. **Never hide uncertainty**: say "Could not verify" when it cannot prove success or failure.
-12. **Critical means confirmed**: a finding cannot be critical because a language model dislikes something.
-13. **Outside-in first**: test the product that customers can actually access.
-14. **Fix and verify in the same loop**: a recommendation without an update review is incomplete.
-15. **Earn the right to run continuously**: do not ask for GitHub access before demonstrating value on a public URL.
-16. **Make scope visible**: the user must know exactly what was and was not checked.
-
-## Brand promise
-
-FixFlags helps you finish AI-built products. Not perfect, not enterprise-grade, but better than shipping without independent judgment. Paste your URL, see what a sharp reviewer would notice, get the Finish Plan and fix text, run an update review, and keep Product Intelligence current.
-
-**The unit of value is a verified fix.**
-
-## Voice and tone
-
-*Derived from `docs/voice-and-copy.md`, tested against live copy in `lib/marketing/copy.ts`. See voice-and-copy.md for full guidelines.*
-
-### Core voice
-
-Speaks like an operator who has seen the messy middle and does not inflate it.
-
-Priority order: Clear before clever · Calm before loud · Specific before impressive · Useful before polished · Human before professional · Strategic, not consultant-speak · Commercial, not eager.
-
-### Tone by context
-
-| Context | Tone | Example |
-|---------|------|---------|
-| Homepage | Outcome-focused, direct | "Paste your site. We review the live page, show what visitors notice, and give fix prompts your builder can use." |
-| Report / Flags | Clinical, evidence-driven | "The primary CTA link scrolls to #features, which does not exist on the page." |
-| Fix prompts | Instructional, pasteable | "Replace `background-color: #fff` with a high-contrast value (minimum 4.5:1 ratio against the text color)." |
-| Error states | Apologetic but calm | "Something went wrong. Your report is still saved; try again." |
-| Upsells | Value-first, not urgent | "Upgrade to compare before and after. See your fix prompts side by side." |
-| Social / SEO | Plain, grounded | "FixFlags is the release readiness layer for AI-built products." |
-
-### What the product would never say
-
-- "Unlock your site's potential"
-- "10x your conversion rate"
-- "Leverage our comprehensive AI-powered platform"
-- "Book a demo"
-- "Start your free trial today" (try sample first, then sign up)
-- "Game-changing insights"
-- "World-class analysis"
-- "We found 47 issues" (sounds exhausting; bundle by severity)
-- "Release readiness layer"
-- "AI gets you 80%. FixFlags gets you to 100%."
-- "Complete audit"
-- "Every dimension of release readiness"
-- "Trained on real product standards" (until substantiated)
-- "Your users will…" (when only an AI agent was tested)
-- Any sentence containing an em dash
-
-### Naming preferences
-
-- "Flags" not "Findings" or "Issues"
-- "Rubrics" not "Categories" or "Areas"
-- "Update review" not "Re-audit" (internal code may still use "re-check")
-- "Fix prompt" not "Action item" or "Recommendation"
-- Report summaries lead with Critical counts. Rubric statuses belong only where score semantics require them.
-
-### Sentence style
-
-- Start with what the reader already recognizes.
-- Short sentences when the point is sharp.
-- Active voice. Name the actor.
-- Cut filler adverbs: really, just, literally, actually.
-- Cut throat-clearing: "in today's world," "as a founder," "let me be clear."
-- No em dashes. Use periods, commas, or colons.
-- Lead with outcome or recommendation, not negation.
-
-### Anti-slop scoring
-
-Before shipping prose longer than a sentence, score 1-10 on: directness, rhythm, trust, authenticity, density. Revise if total below 35/50.
-
-## Tensions and trade-offs
-
-| Tension | How we resolve |
-|---------|---------------|
-| Simplicity vs. power | Default to simple. Add depth behind accordions and drill-downs. |
-| Warmth vs. precision | Prefer precision. Warmth comes from clarity, not friendliness. |
-| Speed vs. depth | Default to speed. Run deterministic checks fast, AI review follows. |
-| Free vs. paid | Free starts with a live Product Review. Claim unlocks fix prompts and Update reviews. Pro and Studio stay waitlisted. |
-| Technical vs. accessible | Flags describe user impact. Technical detail is in expandable evidence. |
-| Generic vs. distinctive | Prefer distinctive. The orange, the soft control radius, the Inter Tight display, they make FixFlags recognizable, not generic SaaS. |
-
-## Distinctive details
-
-- Flag Orange, the color of attention, not warning. Buttons use an AA-contrast pair so the signal stays readable.
-- Inter Tight for headlines, sharp confidence, not startup boilerplate
-- Pill-shaped controls, friendly, approachable, not corporate
-- Glass cards with shadow depth, physical, grounded
-- Letter grades (A-F), instantly readable, emotionally resonant
-- Three rubrics only, contained, not sprawling
-- Fix prompts as the output, not just a score, the next move
-- The update review arrow, the loop visualized, not a static report
+Follow [docs/voice-and-copy.md](docs/voice-and-copy.md) for language and [DESIGN.md](DESIGN.md) for visual tokens. Marketing copy comes from lib/marketing/copy.ts. Do not invent a new orange, logo or separate Shopify identity while building the new experience.

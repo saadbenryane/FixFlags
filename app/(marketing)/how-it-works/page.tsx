@@ -1,16 +1,10 @@
-import Link from 'next/link'
-import {
-  ArrowRight,
-  Flag,
-  RefreshCcw,
-  Wrench,
-} from 'lucide-react'
-import { AuditInput } from '@/components/audit/AuditInput'
-import { AiGapHero } from '@/components/marketing/how-it-works/AiGapHero'
+import { LandingFinalCtaSection } from '@/components/marketing/landing/LandingFinalCtaSection'
+import { LandingHowItWorksSection } from '@/components/marketing/landing/LandingHowItWorksSection'
+import { LandingLayersSection } from '@/components/marketing/landing/LandingLayersSection'
+import { LandingProofSection } from '@/components/marketing/landing/LandingProofSection'
 import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
-import { Badge } from '@/components/ui/badge'
+import { AuditInput } from '@/components/audit/AuditInput'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
 import { Heading } from '@/components/ui/typography'
@@ -19,185 +13,48 @@ import { HOW_IT_WORKS_PAGE } from '@/lib/marketing/copy'
 
 export const metadata = buildPageMetadata('howItWorks', '/how-it-works')
 
-const LOOP_ICONS = [Flag, Wrench, RefreshCcw] as const
-
 export default function HowItWorksPage() {
-  const { reportPreview, reviewTypes, loop, finalCta } = HOW_IT_WORKS_PAGE
+  const { hero } = HOW_IT_WORKS_PAGE
 
   return (
     <>
       <MarketingPageViewTracker page="/how-it-works" />
-      <AiGapHero />
-
-      <Section spacing="marketing">
-        <Container variant="wide" className="grid gap-8 lg:grid-cols-[0.75fr_1fr] lg:items-start">
-          <div className="space-y-4">
-            <Badge variant="outline" className="w-fit">
-              {reportPreview.label}
-            </Badge>
-            <Heading as="h2" className="max-w-xl">
-              {reportPreview.title}
-            </Heading>
-            <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
-              {reportPreview.body}
-            </p>
-            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-              {reportPreview.rubricLine}
-            </p>
-            <Button variant="outline" asChild>
-              <Link href={reportPreview.sampleHref}>
-                {reportPreview.sampleCta}
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </Link>
-            </Button>
-          </div>
-
-          <Card variant="strong" className="overflow-hidden p-0">
-            <div className="border-b border-border/40 px-5 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Flag className="h-4 w-4 text-brand" aria-hidden />
-                  <p className="font-mono text-xs font-semibold">{reportPreview.sampleLabel}</p>
-                </div>
-                <Badge variant="secondary" size="sm">
-                  {reportPreview.flags.length} Flags
-                </Badge>
-              </div>
-            </div>
-            <div className="divide-y divide-border/35">
-              {reportPreview.flags.map((flag) => (
-                <div key={flag.finding} className="grid gap-3 p-5 sm:grid-cols-[9rem_1fr]">
-                  <div className="space-y-2">
-                    <Badge
-                      variant={flag.severity === 'Critical' ? 'destructive' : 'secondary'}
-                      size="sm"
-                      className="w-fit"
-                    >
-                      {flag.severity}
-                    </Badge>
-                    <p className="text-xs font-semibold text-muted-foreground">{flag.rubric}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="font-semibold leading-snug">{flag.finding}</p>
-                    <p className="text-sm leading-relaxed text-muted-foreground">{flag.evidence}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </Container>
-      </Section>
-
-      <Section spacing="marketing">
-        <Container variant="wide" className="space-y-8">
-          <div className="mx-auto max-w-3xl space-y-3 text-center">
-            <Badge variant="outline" className="mx-auto w-fit">
-              {reviewTypes.label}
-            </Badge>
-            <Heading as="h2">{reviewTypes.title}</Heading>
-            <p className="text-base leading-relaxed text-muted-foreground">{reviewTypes.body}</p>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <Card variant="strong" className="p-5 sm:p-6">
-              <Heading as="h3">
-                {reviewTypes.completeReview.title}
-              </Heading>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {reviewTypes.completeReview.body}
-              </p>
-            </Card>
-            <Card variant="strong" className="p-5 sm:p-6">
-              <Heading as="h3">
-                {reviewTypes.verification.title}
-              </Heading>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {reviewTypes.verification.body}
-              </p>
-            </Card>
-          </div>
-          <p className="mx-auto max-w-2xl text-center text-sm leading-relaxed text-muted-foreground">
-            {reviewTypes.analogyLine}
+      <Section spacing="hero" className="!pb-10 !pt-10">
+        <Container variant="marketing" className="max-w-3xl px-4 sm:px-6">
+          <p className="text-sm font-medium text-brand">{hero.eyebrow}</p>
+          <Heading as="h1" className="mt-3 font-display text-4xl font-bold tracking-display sm:text-5xl">
+            {hero.headline.replace(/\.$/, '')}
+            {hero.headlineAccentPeriod ? <span className="text-brand">.</span> : null}
+          </Heading>
+          <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground">
+            {hero.subhead}
           </p>
-          <div className="flex justify-center">
+          <div className="mt-8 max-w-2xl">
+            <AuditInput variant="landing" idSuffix="-how-it-works" />
+          </div>
+        </Container>
+      </Section>
+      <LandingProofSection />
+      <LandingHowItWorksSection />
+      <LandingLayersSection />
+      <Section spacing="compact" className="bg-muted/15">
+        <Container variant="marketing" className="px-4 sm:px-6 lg:px-12">
+          <div className="grid gap-5 rounded-card bg-background p-6 shadow-card md:grid-cols-[1fr_auto] md:items-center sm:p-8">
+            <div>
+              <p className="font-mono text-xs font-semibold uppercase tracking-label text-brand">Shopify connection</p>
+              <h2 className="mt-2 font-display text-2xl font-semibold">Add commerce context when your Site needs it.</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                Shopify adds product structure and independent purchase-path verification to the same FixFlags Site.
+              </p>
+            </div>
             <Button variant="outline" asChild>
-              <Link href={reviewTypes.docsHref}>
-                {reviewTypes.docsCta}
-                <ArrowRight className="h-4 w-4" aria-hidden />
-              </Link>
+              <Link href="/install">Connect Shopify</Link>
             </Button>
           </div>
         </Container>
       </Section>
-
-      <Section spacing="marketing">
-        <Container variant="wide" className="space-y-8">
-          <div className="mx-auto max-w-3xl space-y-3 text-center">
-            <Badge variant="outline" className="mx-auto w-fit">
-              {loop.label}
-            </Badge>
-            <Heading as="h2">{loop.title}</Heading>
-          </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {loop.steps.map((step, index) => {
-              const Icon = LOOP_ICONS[index]
-
-              return (
-                <Card key={step.title} variant="strong" className="p-5 sm:p-6">
-                  <div className="mb-5 flex items-center justify-between">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-nested-md bg-muted">
-                      <Icon className="h-5 w-5 text-brand" aria-hidden />
-                    </span>
-                    <span className="font-mono text-3xl font-bold tabular-nums text-muted-foreground/20">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
-                  </div>
-                  <Heading as="h3">{step.title}</Heading>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
-                </Card>
-              )
-            })}
-          </div>
-        </Container>
-      </Section>
-
-      <Section spacing="marketing">
-        <Container variant="wide">
-          <Card
-            variant="strong"
-            className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[0.9fr_1fr] lg:items-center lg:p-10"
-          >
-            <div className="space-y-4">
-              <div className="inline-flex h-11 w-11 items-center justify-center rounded-nested-md bg-brand text-brand-foreground">
-                <Flag className="h-5 w-5" aria-hidden />
-              </div>
-              <Heading as="h2" className="max-w-2xl">
-                {finalCta.headline}
-              </Heading>
-              <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
-                {finalCta.body}
-              </p>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button variant="brand" asChild>
-                  <Link href={finalCta.primaryHref}>
-                    {finalCta.primaryCta}
-                    <ArrowRight className="h-4 w-4" aria-hidden />
-                  </Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href={finalCta.secondaryHref}>{finalCta.secondaryCta}</Link>
-                </Button>
-              </div>
-            </div>
-            <div className="rounded-card bg-background/55 p-4 shadow-inner">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                <Flag className="h-4 w-4 text-brand" aria-hidden />
-                {finalCta.tryLabel}
-              </div>
-              <AuditInput source="homepage" idSuffix="-how-it-works" />
-            </div>
-          </Card>
-        </Container>
-      </Section>
+      <LandingFinalCtaSection />
     </>
   )
 }
+import Link from 'next/link'

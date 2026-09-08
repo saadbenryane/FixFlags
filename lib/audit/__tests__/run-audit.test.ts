@@ -29,8 +29,12 @@ vi.mock('@/lib/logger/context', () => ({
   runWithContext: (_ctx: unknown, fn: () => unknown) => fn(),
 }))
 vi.mock('@/lib/audit/pipeline-log', () => ({
-  initPipelineLog: vi.fn(),
-  logPipelineEvent: vi.fn(),
+  initPipelineLog: vi.fn(async (auditId: string) => ({
+    executionId: `${auditId}:1`,
+    traceId: 'trace-test',
+    attempt: 1,
+  })),
+  createPipelineEventSink: vi.fn(() => ({ log: vi.fn(async () => undefined) })),
 }))
 vi.mock('@/lib/audit/scan-access-store', () => ({
   resolveAuditScanAccess: vi.fn(async () => null),
@@ -146,6 +150,10 @@ describe('runAudit orchestrator', () => {
 
     const first = prismaMock.audit.update.mock.calls[0][0] as { data: { status: string } }
     expect(first.data.status).toBe('CAPTURING')
+    const details = prismaMock.audit.update.mock.calls.map(
+      (c: unknown[]) => (c[0] as { data: { progressDetail?: string } }).data.progressDetail
+    )
+    expect(details).toContain('Reviewing this page')
     expect(finalizeFromOutcome).toHaveBeenCalledTimes(1)
     expect(updateStatuses()).not.toContain('FAILED')
   })

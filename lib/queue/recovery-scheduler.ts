@@ -5,6 +5,7 @@ import {
 } from '@/lib/audit/recover-audit-job'
 import { runNurtureSweep } from '@/lib/leads/run-nurture'
 import { processDueProjectWatches, retryPendingWatchNotifications } from '@/lib/audit/project-watch'
+import { processIntegrityMaintenance } from '@/lib/integrity/watch'
 import { runIssueRollup } from '@/lib/growth/issue-rollup'
 import { runGscPull } from '@/lib/growth/gsc-pull'
 import { runGaPull } from '@/lib/growth/ga-pull'
@@ -40,6 +41,16 @@ async function recoveryTick(): Promise<void> {
     if (projections.checked > 0) logger.info('Improvement projection recovery sweep', projections)
   } catch (err) {
     logger.error('Recovery sweep failed', err instanceof Error ? err : new Error(String(err)))
+  }
+}
+
+async function integrityWatchTick(): Promise<void> {
+  if (!(await tryAcquireLock('integrity-watches', WATCH_LOCK_TTL_MS))) return
+  try {
+    const result = await processIntegrityMaintenance()
+    if (result.walks > 0 || result.pulseWalks > 0) logger.info('Integrity maintenance', result)
+  } catch (err) {
+    logger.error('Integrity watch sweep failed', err instanceof Error ? err : new Error(String(err)))
   }
 }
 
@@ -119,6 +130,11 @@ export function startRecoveryScheduler(): void {
   initialWatch.unref?.()
   const watchTimer = setInterval(() => void projectWatchTick(), WATCH_INTERVAL_MS)
   watchTimer.unref?.()
+
+  const initialIntegrityWatch = setTimeout(() => void integrityWatchTick(), 50_000)
+  initialIntegrityWatch.unref?.()
+  const integrityWatchTimer = setInterval(() => void integrityWatchTick(), WATCH_INTERVAL_MS)
+  integrityWatchTimer.unref?.()
 
   const initialNurture = setTimeout(() => void nurtureTick(), 60_000)
   initialNurture.unref?.()

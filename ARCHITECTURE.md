@@ -1,18 +1,8 @@
 # Architecture
 
-*Current system, documented as implemented. Target Product Intelligence layers are marked **Target** and must not be confused with shipped code.*
+**Existing implementation and reusable infrastructure.** The [September 8 vision](knowledge/vision.md) is the target; [docs/site-v2-migration.md](docs/site-v2-migration.md) replaces the old local-runtime/protocol/network roadmap.
 
-**Vision / layers:** [knowledge/vision.md](./knowledge/vision.md). **Integrity Engine:** [knowledge/integrity-engine.md](./knowledge/integrity-engine.md).
-
-## Target system layers (not fully shipped)
-
-| Layer | Intent | Today |
-|-------|--------|-------|
-| **Local runtime** | Repo inspect, portable PI, CLI, hooks, local verify | Thin `fixflags-cli` (remote MCP client); IDE skill docs |
-| **Product Intelligence Protocol** | Vendor-neutral read/contribute for humans/agents | MCP tools (`lib/mcp/`); not yet a neutral published protocol |
-| **FixFlags Intelligence Network** | Cloud compounding intelligence, dashboards, team | Main Next.js app + audit worker + growth graph |
-
-Customer **Product Intelligence** (Project-scoped) is separate from the growth `graph_*` knowledge graph. See [knowledge/product-intelligence.md](./knowledge/product-intelligence.md).
+New customer Site behavior is governed by [the PRD](docs/product-prd.md). Current Project, Audit, Improvement, report and graph sections below describe compatibility and foundations, not a mandate to retain the old experience. The global graph Site/Page models are distinct from private customer Sites.
 
 ## System overview
 
@@ -23,6 +13,22 @@ Next.js 15 application (App Router) with:
 - Redis worker heartbeats for browser readiness and active-context diagnostics
 - Edge middleware for security headers + auth gating
 - Docker-based local development
+
+FixFlags is a modular monolith. Customer-loop code is divided into Reviews,
+Product Intelligence, Reporting, Accounts and Billing, Support, Growth, and
+Admin bounded contexts. HTTP routes validate and serialize; application
+commands and queries own use-case orchestration; repositories and domain
+services own persistence. `npm run module:boundary-guard` prevents client code
+from importing database runtime modules, prevents core customer routes from
+bypassing application boundaries, detects runtime dependency cycles, and keeps
+parked Canvas APIs absent.
+
+The Review UI has one server-built `ReviewWorkspaceProjection`. Its union states
+are running, completed, partial, failed, forbidden, and curated sample. Access
+is decided once by the pure policy in `lib/auth/access-policy.ts`, then the same
+workspace shell renders the appropriately redacted projection. Product reads
+compose `ProductWorkspaceProjection`; Product mutations enter through the typed
+commands in `lib/products/application/commands.ts`.
 
 ## Directory structure
 
@@ -100,7 +106,10 @@ Each page in an audit progresses through these stages independently.
 | File | Role |
 |------|------|
 | `lib/audit/runner.ts` | Top-level `runAudit()` orchestrator |
-| `lib/audit/pipeline/run-page.ts` | Per-page processing |
+| `lib/audit/pipeline/run-page.ts` | Per-page Capture, Check, and Judge stage orchestration |
+| `lib/audit/pipeline/stages/judge-page.ts` | Typed Judge stage boundary |
+| `lib/audit/pipeline/types.ts` | Execution context and typed stage results |
+| `lib/audit/pipeline-log.ts` | Append-only execution event sink and reader |
 | `lib/audit/pipeline/combine-pages.ts` | Multi-page result merging |
 | `lib/audit/pipeline-config.ts` | Version (v2.4.0), deadlines (180s) |
 | `lib/audit/deterministic-audit.ts` | 22 check modules via barrel |
@@ -183,7 +192,7 @@ Target marketing prices (Stripe price IDs may lag until a revenue ops change):
 | Pro (`BUILDER`) | `STRIPE_BUILDER_PRICE_ID` | $29/mo | 30 product reviews |
 | Studio (`TEAM`) | `STRIPE_TEAM_PRICE_ID` | $79/mo | 90 product reviews |
 
-Customer copy: **product review** and **update review** (same credit pool). Every plan exposes the same web capabilities and differs only by monthly Product Review usage. Deep Review is reserved for future repository-connected analysis. Internal: `/re-check` route, `recheck_*` analytics, and legacy deep-review persistence fields.
+Existing review metering and plan access are compatibility behavior. Actual current limits and capabilities come from lib/billing/plans.ts and lib/auth/entitlements.ts. Target responsibility-based plans and meaningful free monitoring are defined in knowledge/strategy.md and require explicit implementation.
 
 - Stripe: hosted Checkout + Customer Portal + webhooks (`docs/stripe-setup.md`)
 - Cost tracking: `AuditRunCost` per audit phase (LLM tokens + estimated USD)
@@ -243,31 +252,11 @@ Playwright Chromium via `lib/audit/screenshot.ts` + `lib/audit/browser/page-sess
 1. Anonymous user: triage + deterministic flags → upsell at sign up for fix prompts
 2. Authenticated user with credits: triage → prescription job → full report with fix prompts
 3. Triage degraded: COMPLETED with flags/screenshots and honest partial-AI message (see `docs/audit-pipeline.md`)
-4. Update reviews use product review credits on every plan (customer copy). Internal re-check route remains ungated by ownership only until billing enforcement ships.
+4. Existing update-review requests must follow the current server-side ownership and entitlement policy; inspect shared application/task services for enforcement. The new Site verification and monitoring model is an explicit migration.
 
-## Vision alignment and architecture review
+## Next-version architecture
 
-Vision evolution (2026-08): [knowledge/vision.md](./knowledge/vision.md). The Product is the long-term object, Reviews and Flags are observations, Improvements are durable decisions, and the canonical loop is Observe → Understand → Judge → Improve → Verify → Learn. The customer wedge loop (Product Review → Fix → Verify → Watch) is unchanged.
-
-Review of the current architecture against the vision direction. **Proposals only — no code changed by this review.** Prefer reversible evolution over a speculative rewrite.
-
-| Vision requirement | Current support | Smallest clean change (proposed) |
-|---|---|---|
-| Product as persistent first-class object | `Project` (`canonicalHost`, `isManaged`, `productIntelligence`) is the Product anchor | Keep `Project` as the anchor; extend `Project.productIntelligence`, do not add a new entity |
-| Review as observation/version | `Audit` + `parentId` for update reviews | Keep `Audit` as the observation record; every observation already links to its Project |
-| Evidence across multiple sources | Flags originate from Review checks, AI, and journeys; Product Signals are stored separately | Normalize each source into bounded provenance, then let judgment decide whether it supports an Improvement, warrants investigation, or is noise |
-| Durable improvement lifecycle/history | `FlagFeedback` and update-review Flag status provide observation-level history | Add Product-scoped Improvements, occurrences, attempts, and independent verification outcomes without rewriting Flags |
-| Evidence provenance | `evidenceAnchors`, `networkFailures`, visual evidence on the flag | Keep evidence attached to the Flag; no migration now |
-| Product Memory | `Project.productIntelligence` JSON (Contract seed) | Keep compact Contract and learned facts in JSON; normalize only high-query Improvement history |
-| Conversation / timeline | Report chat + activity timeline | Build the timeline concept; do not create a second memory store |
-| Before/after verification | `diffFlagsAgainstParent` on update review | Reuse for every fix-verify flow |
-| Deployment linkage | Product watch (`watchInterval` / `watchNextRunAt`) + Railway webhook | Link Flags to deployments when watch reports regressions |
-| GitHub fixes/PRs | Studio repo scan + `repo-fix-pr` jobs | Extend to the GitHub-native "Fix it for me" trust model (branch/PR + independent verification) |
-| Future customer/user signals | Not collected | Add a narrow privacy-bounded substrate; signals remain observations until judgment promotes them |
-| Agent/API access | MCP + CLI | Already aligned |
-| Private vs generalized learning | Growth graph is internal-only; customer PI is separate | Maintain the boundary; never merge ([product-intelligence.md](./knowledge/product-intelligence.md)) |
-
-Conclusion: no structural rewrite. Evolve the existing relational system with a durable Improvement cycle first, then add only the Product Signals that improve judgment or verification.
+The old Improvement-cycle-first architecture proposal is superseded. [docs/site-v2-migration.md](docs/site-v2-migration.md) owns the current reuse and migration design; [docs/product-prd.md](docs/product-prd.md) owns Site/Outcome/Flag/coverage requirements. Keep the modular application and independent evidence foundations while replacing the report experience.
 
 ## Technical invariants
 

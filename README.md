@@ -1,16 +1,14 @@
 # FixFlags
 
-The release readiness layer for AI-built products. Finish what your AI started: paste a URL, get Flags across Message, Experience, and Reach, with fix prompts for your AI editor.
+**Your website, looked after.** FixFlags is moving to a persistent Site experience that understands important Outcomes, raises meaningful Flags and keeps watching.
 
-## About FixedFlex
+The [complete owner vision](knowledge/vision.md) is the accepted destination, not a claim that the next version already ships. Start implementation with [ROADMAP.md](ROADMAP.md), [the PRD](docs/product-prd.md) and [migration/reuse](docs/site-v2-migration.md). [PRODUCT.md](PRODUCT.md) inventories the current code. Brand, accounts, billing, plans and useful checking foundations remain.
 
-FixFlags is a product of **FixedFlex**, the parent product intelligence platform for AI-built software.
-
-> **Note on PiWeb:** PiWeb is solely the interface layer used to manage agent sessions (maintained by FirstMate). It is not part of the product suite. When working on PiWeb interface issues, route through FirstMate. All agent development ultimately serves FixedFlex, not PiWeb.
+FixFlags is the product. PiWeb is a development/session interface, not a customer product or parent platform.
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - Docker (for local Postgres + Redis)
 
 ## Local setup
@@ -36,7 +34,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000), enter a public URL, and wait ~60s for results.
 
-**Report surfaces:** `/report/{id}` is the focused three-part Fix list. `/report/{id}/details` contains Product context, journey and flow evidence, the full Flag explorer, previews, gates, and advanced actions. See `knowledge/report-contract.md`.
+**Current report compatibility:** see [knowledge/report-contract.md](knowledge/report-contract.md). The next version replaces the report experience with the Site; existing report links remain during deliberate migration.
 
 **Screenshots (local dev):** Audits persist desktop and mobile viewport captures to `.data/screenshots/` and serve them at `/api/screenshots/{auditId}/{device}`. Set `NEXT_PUBLIC_APP_URL` (defaults to `http://localhost:3000` in `.env.example`). Production uploads to Cloudflare R2 instead.
 
@@ -99,7 +97,7 @@ FixFlags exposes an HTTP MCP endpoint at `/api/mcp`. Create an API key at `/sett
 }
 ```
 
-See [MCP docs](/docs/mcp) for full tool reference.
+See the [current customer skill](public/.well-known/skills/fixflags/SKILL.md) for existing command contracts. These are compatibility transports, not the next version's primary acquisition flow.
 
 ### Agent CLI
 

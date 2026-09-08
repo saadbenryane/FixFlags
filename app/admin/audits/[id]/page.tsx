@@ -8,7 +8,7 @@ import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { formatUsd } from '@/lib/billing/costs'
 import { PIPELINE_VERSION } from '@/lib/audit/pipeline-config'
-import { parsePipelineLog } from '@/lib/audit/pipeline-log'
+import { listPipelineEvents } from '@/lib/audit/pipeline-log'
 import { RUBRIC_ORDER } from '@/lib/audit/constants'
 import { computeShareStatusFromRubrics, computeRubricsFromRows } from '@/lib/audit/rubric'
 import { rubricLabel, rubricStatusColor, shareStatusLabel, shareStatusColor } from '@/lib/utils'
@@ -37,7 +37,7 @@ export default async function AdminAuditDetailPage({
 
   if (!audit) notFound()
 
-  const events = parsePipelineLog(audit.pipelineLog)
+  const events = await listPipelineEvents(audit.id)
 
   return (
     <Container variant="report" className="py-8 space-y-6">

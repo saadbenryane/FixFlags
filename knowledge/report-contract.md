@@ -1,6 +1,9 @@
 # Report Contract
 
-This is the canonical hierarchy for report code, copy, tests, documentation, and agent skills.
+**LEGACY COMPATIBILITY, 2026-09-08.** This contract applies to existing report routes while they remain. The owner has retired the report as the next-version experience. [The complete vision](vision.md), [Site PRD](../docs/product-prd.md) and [Site interface](../docs/workspace-interface.md) govern all new product work. Rubric, score, Agent/Report, prompt and diff rules below preserve old behavior only; they cannot constrain the new Site surface.
+
+
+This is the canonical compatibility hierarchy for existing report code, copy and tests. It is not the new Site interface contract.
 
 ## First-use loop
 
@@ -64,6 +67,7 @@ After `/api/checks` returns an ID, navigation history is replaced with `/report/
 Progressive UI uses the same `ReportWorkspaceShell` and Agent transcript as the completed report.
 The progress band shows honest 0–100% pipeline progress and stage detail.
 Deterministic Agent messages use the same UI message envelope as authenticated model conversation but consume no model tokens and are reconstructed from persisted scan facts.
+Agent names the page under review from `AuditPage` rows (not invented hop logs). Failed Reviews stay in the same Agent | Report shell with recovery in the Report pane.
 Partial Flags stream into the ranked explorer. While a Review is running, Agent names up to three Attention candidates (not Polish, not low-confidence). On a fully completed Review it names the same worthwhile Flags as Finish Plan, which also require a recommended change. Leftover Attention candidates may be summarized; Polish observations stay in the Report without being counted as confirmed next actions. A fully completed Review with no worthwhile Flag says it did not find anything that deserves action yet. Partial or degraded Reviews never make that claim.
 Desktop and mobile capture placeholders resolve independently inside Flag detail on mobile; the standalone capture pair stays on large screens only.
 Show honest status and early findings without introducing completed-Review context while the Review is still running.

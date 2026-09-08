@@ -6,6 +6,30 @@ import type { TriageResult } from '../judge-triage'
 import type { DetectedTech } from '../tech-detect'
 
 import type { TriageFailure } from './triage-failure'
+import type {
+  ReviewExecutionEventSink,
+  ReviewExecutionTrace,
+} from '../pipeline-log'
+import type { Clock } from '@/lib/time/clock'
+
+export type ReviewStageResultStatus =
+  | 'complete'
+  | 'partial'
+  | 'failed'
+  | 'skipped'
+
+export interface ReviewStageResult<TArtifact = unknown> {
+  status: ReviewStageResultStatus
+  artifact?: TArtifact
+  evidenceGaps: string[]
+  durationMs: number
+  failure?: {
+    code: string
+    stage: string
+    message: string
+    retryable: boolean
+  }
+}
 
 /** Result of running the pipeline against a single reviewed page. */
 export interface PageRun {
@@ -36,10 +60,13 @@ export interface PageRun {
 }
 
 /** Shared state threaded through one audit run. */
-export interface PipelineContext {
+export interface ReviewExecutionContext {
   auditId: string
   deadline: number
   startedAt: Date
+  clock: Clock
+  trace: ReviewExecutionTrace
+  events: ReviewExecutionEventSink
   pagespeedCalls: number
   usage: {
     inputTokens: number
@@ -54,3 +81,6 @@ export interface PipelineContext {
   scanAccess?: import('../scan-access').ScanAccessConfig | null
   openCheckCount?: number
 }
+
+/** Current name retained inside the pipeline while call sites migrate by domain. */
+export type PipelineContext = ReviewExecutionContext

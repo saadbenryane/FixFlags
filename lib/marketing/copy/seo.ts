@@ -1,14 +1,23 @@
-import { PRICING_COPY } from './terminology'
-
 export const SEO = {
   home: {
-    title: 'FixFlags - Catch what your AI missed before launch',
+    title: 'FixFlags - Your website, looked after.',
     description:
-      'Your AI says it\u2019s done. Paste a URL and FixFlags runs Product QA for Message, Experience, and Reach Flags. Fix prompts for Cursor, Claude, Lovable, Bolt, and Devin. Free product review.',
+      'FixFlags finds the website problems that matter, shows why they matter, and keeps watching. Start with a free URL analysis.',
+  },
+  protect: {
+    title: "Protect the path that makes money",
+    description:
+      'FixFlags walks your Shopify purchase path and tells you if customers can still buy. Video proof. Email when a confirmed path is down.',
+  },
+  install: {
+    title: 'Install FixFlags on Shopify',
+    description:
+      'Install FixFlags on your Shopify store. We walk the path to checkout and alert you if customers cannot buy.',
   },
   pricing: {
     title: 'Pricing',
-    description: `Every plan includes the complete FixFlags Product Review. Start free with ${PRICING_COPY.freeProductReviewsPerMonth} product reviews per month. Pro includes ${PRICING_COPY.proProductReviewsPerMonth} product reviews per month.`,
+    description:
+      'Start with a free website analysis. Choose more Sites, deeper monitoring, and richer context when FixFlags becomes part of your operating loop.',
   },
   waitlist: {
     title: 'Join the waitlist',
@@ -18,7 +27,7 @@ export const SEO = {
   howItWorks: {
     title: 'How FixFlags Works',
     description:
-      'Paste a live URL and get a complete Product Review across Message, Experience, and Reach with evidence-backed fix prompts.',
+      'Enter a website URL, inspect evidence-backed Flags, verify improvements, and add context only when it makes the next decision clearer.',
   },
   samples: {
     title: 'Sample Report',
@@ -33,17 +42,17 @@ export const SEO = {
   faq: {
     title: 'FAQ',
     description:
-      'Answers about FixFlags Product Reviews, Flags, fix prompts, free vs paid plans, and who it\u2019s for.',
+      'Answers about FixFlags website analysis, Flags, evidence, verification, Site monitoring, and Shopify connections.',
   },
   help: {
     title: 'Help Center',
     description:
-      'Guides for FixFlags Product Reviews, reports, billing, and your account. Chat with us when you need a human.',
+      'Guides for website analysis, Flags, verification, Site monitoring, connections, and account support.',
   },
   docs: {
     title: 'FixFlags Documentation',
     description:
-      'Learn FixFlags Product Reviews, Fix lists, reports, and update reviews.',
+      'Learn how FixFlags analyzes a Site, verifies important paths, uses evidence, and progressively adds context.',
   },
   changelog: {
     title: 'Changelog',

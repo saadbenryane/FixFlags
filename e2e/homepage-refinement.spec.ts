@@ -8,11 +8,10 @@ for (const width of [375, 390, 1086, 1144]) {
     await page.goto('/')
 
     await expect(
-      page.getByRole('heading', { level: 1, name: /Finish what your AI started/i })
+      page.getByRole('heading', { level: 1, name: /Know when customers can't buy/i })
     ).toBeVisible()
-    await expect(page.getByText('Works where you build').last()).toBeVisible()
     await expect(
-      page.getByText(/Review a live product, see the most important problems with evidence/i).first()
+      page.getByText(/FixFlags walks your product page to checkout/i).first()
     ).toBeVisible()
 
     const geometry = await page.evaluate(() => ({
@@ -24,24 +23,16 @@ for (const width of [375, 390, 1086, 1144]) {
   })
 }
 
-test('homepage navigation, tabs, and mobile menu use their real destinations', async ({ page }) => {
+test('homepage navigation and mobile menu use their real destinations', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/')
   await page.waitForTimeout(500)
 
+  const protect = page.getByRole('link', { name: 'Protect', exact: true }).first()
+  await expect(protect).toHaveAttribute('href', '/protect')
+
   const howItWorks = page.getByRole('link', { name: 'How it works', exact: true }).first()
   await expect(howItWorks).toHaveAttribute('href', '/how-it-works')
-
-  await expect(page.getByRole('tab', { name: 'Message' })).toHaveAttribute(
-    'aria-selected',
-    'true'
-  )
-  const experience = page.getByRole('tab', { name: 'Experience' })
-  await experience.click()
-  await expect(experience).toHaveAttribute('aria-selected', 'true')
-  await expect(
-    page.getByRole('heading', { name: 'Make every next step obvious.' })
-  ).toBeVisible()
 
   await page.setViewportSize({ width: 375, height: 812 })
   await page.getByRole('button', { name: 'Open menu' }).click()
@@ -57,9 +48,8 @@ test('homepage controls keep practical hit targets and reduced motion', async ({
 
   const primaryControls = [
     page.getByRole('button', { name: 'Open menu' }),
-    page.getByRole('button', { name: 'Review my site' }).first(),
-    page.getByPlaceholder('Paste your site or app URL').first(),
-    ...(await page.getByRole('tab').all()),
+    page.getByRole('button', { name: /Install|Continue to Shopify/i }).first(),
+    page.getByLabel('Shopify store domain').first(),
   ]
 
   for (const control of primaryControls) {

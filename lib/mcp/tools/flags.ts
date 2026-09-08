@@ -382,8 +382,9 @@ export function registerFlagTools(server: McpServer, user: User) {
             { code: 'INVALID_INPUT', action: 'choose_rejection_reason' }
           )
         }
-        const { recordFlagImprovementAttempt } = await import('@/lib/improvements/service')
-        const result = await recordFlagImprovementAttempt({
+        const { executeProductCommand } = await import('@/lib/products/application/commands')
+        const result = await executeProductCommand({
+          type: 'RECORD_FLAG_ACTION',
           flagId,
           userId: user.id,
           builder: 'MCP',

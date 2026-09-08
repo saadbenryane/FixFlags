@@ -2,10 +2,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { diffFlagsAgainstParent } from '@/lib/audit/diff-flags'
-import {
-  materializeAttentionForAudit,
-  reconcileImprovementVerification,
-} from '@/lib/improvements/service'
+import { executeProductCommand } from '@/lib/products/application/commands'
 import { incrementUsageOnCompleteForAudit } from '@/lib/audit/usage'
 import { logPipelineEvent } from '@/lib/audit/pipeline-log'
 import { upsertLeadFromAudit } from '@/lib/leads/upsert-from-audit'
@@ -66,9 +63,10 @@ export async function persistImprovementCycle(
 
   try {
     if (parentId) await diffFlagsAgainstParent(auditId, parentId)
-    await materializeAttentionForAudit(auditId)
+    await executeProductCommand({ type: 'MATERIALIZE_ATTENTION', auditId })
     if (parentId) {
-      await reconcileImprovementVerification({
+      await executeProductCommand({
+        type: 'RECONCILE_UPDATE_REVIEW',
         parentAuditId: parentId,
         verificationAuditId: auditId,
       })

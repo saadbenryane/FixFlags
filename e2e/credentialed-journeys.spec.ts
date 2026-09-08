@@ -185,7 +185,7 @@ test.describe('credentialed revenue journeys', () => {
     const email = `release-${Date.now()}@example.test`
     const password = requiredEnv('E2E_SIGNUP_PASSWORD')
 
-    await page.goto('/')
+    await page.goto('/new')
     await page.getByLabel('Website URL').first().fill(targetUrl)
     await page.getByRole('button', { name: 'Review my site' }).first().click()
     await page.waitForURL(/\/report\/([^/?#]+)/, { timeout: 30_000 })
@@ -343,24 +343,6 @@ test.describe('credentialed revenue journeys', () => {
     const report = await revoked.page.request.get(`/api/reports/${requiredEnv('E2E_REVOKED_REPORT_ID')}/status`)
     expect(report.ok(), await report.text()).toBe(true)
     await revoked.close()
-  })
-
-  test('[journey:shared-canvas] an authenticated owner creates and revises an evidence-grounded Canvas', async ({ browser }) => {
-    test.setTimeout(180_000)
-    const pro = await signedInPage(browser, 'E2E_PRO_EMAIL', 'E2E_PRO_PASSWORD')
-    const reportId = requiredEnv('E2E_PRO_REPORT_ID')
-    const created = await pro.page.request.post(`/api/reports/${reportId}/canvases`, {
-      data: { title: 'Release evidence', instruction: 'Summarize the highest-priority verified evidence.' },
-    })
-    expect(created.status(), await created.text()).toBe(201)
-    const result = (await created.json()) as { canvas: { id: string }; current: { version: number } }
-    const revised = await pro.page.request.post(
-      `/api/reports/${reportId}/canvases/${result.canvas.id}/versions`,
-      { data: { action: 'revise', instruction: 'Make the next action explicit and preserve evidence.' } },
-    )
-    expect(revised.status(), await revised.text()).toBe(201)
-    expect(((await revised.json()) as { version: number }).version).toBeGreaterThan(result.current.version)
-    await pro.close()
   })
 
   test('[journey:shared-product-boundary] Studio and Free can both create a Product', async ({ browser }) => {

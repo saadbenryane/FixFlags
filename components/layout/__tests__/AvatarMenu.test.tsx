@@ -42,8 +42,6 @@ const user: MeUser = {
     periodEnd: '2026-09-01',
   },
   entitlements: {
-    reportTier: 'paid',
-    canSharePublicly: true,
     canExportSummary: true,
     canAccessPaidFeatures: true,
     canMonitor: true,

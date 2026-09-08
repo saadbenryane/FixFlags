@@ -1,34 +1,34 @@
-## Sign-in and account access
+## Install did not finish
 
-If your report asks you to sign in again, return through the sign-in flow and FixFlags will bring you back through `/post-login` so the Product Review can be claimed before onward navigation.
+Open [/install](/install) and try again. If Shopify returns you without opening the app, email hello@fixflags.com with the shop domain.
 
-## Product review access
+## No buyable product
 
-Your plan controls how many Product Reviews you can run each month.
-If you reach the limit, use the upgrade action shown in the product or wait for the monthly allowance to renew.
+Overview says when the catalog has no active product with a storefront URL. Publish one and we will walk it.
 
-## Public URL requirements
+## Password or bot wall
 
-FixFlags reviews deployed `http` or `https` pages.
-Localhost, loopback, private-network addresses, and inaccessible preview URLs are rejected for safety and accuracy.
+Those results are Unclear. They stay in the app. We do not email Unclear. Remove the password from the storefront you want watched, or wait out a bot check, then Recheck.
 
-## Timeouts and queues
+## Walk still in progress
 
-A Product Review may still be capturing, checking, judging, or finalizing.
-Read the current status before retrying.
-If a run has failed, use the recovery action shown in the product instead of creating repeated parallel reviews.
+Leave the app open. It refreshes while a walk is running. If video is missing when the walk finishes, step screenshots still appear when we captured them.
 
-## Report recovery
+## Recheck cap
 
-Open the Product from your dashboard to return to its latest Product Review.
-If a report is still running, keep that report open while its current state updates.
+Free stores get five manual rechecks per day. If the button is disabled, scheduled walks still run.
+
+## Slack URL rejected
+
+Paste a Slack incoming webhook URL that starts with `https://hooks.slack.com/`. Other URLs are rejected.
+
+## Uninstall
+
+Uninstall from Shopify admin. Walks stop. A shop redact request deletes stored shop artifacts.
 
 ## Get help
 
-For billing, account, privacy, failed Product Reviews, or human support, visit the [Help Center](/help).
-
-- [Why a product review failed](/help/checks-and-reports/why-check-failed)
-- [Public URLs only](/help/checks-and-reports/public-urls-only)
-- [Review stuck on Running](/help/checks-and-reports/stuck-running-review)
-- [Payment past due](/help/billing-and-plans/payment-past-due)
+- [Why a walk is Unclear or failed](/help/checks-and-reports/why-check-failed)
+- [Storefront access](/help/checks-and-reports/public-urls-only)
+- [Walk still in progress](/help/checks-and-reports/stuck-running-review)
 - [Contact us](/help/account/contact-us)

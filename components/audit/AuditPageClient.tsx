@@ -1,11 +1,9 @@
 'use client'
 import { Component, useState, useEffect, useRef, useMemo, type ErrorInfo, type ReactNode } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuditPolling, type AuditStatusPayload } from '@/hooks/useAuditPolling'
 import { useWorkerIdleDetection } from '@/hooks/useWorkerIdleDetection'
 import { AuditReportProgressive } from '@/components/audit/AuditReportProgressive'
-import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/ui/container'
@@ -27,6 +25,7 @@ import {
 import type { AuditScreenshot } from '@/lib/audit/screenshot-types'
 import { Heading, Muted } from '@/components/ui/typography'
 import type { AuditAccessContext } from '@/lib/audit/access-context'
+import type { ReviewWorkspaceVisibleProjection } from '@/lib/report/review-workspace-projection'
 
 /** Catches crashes in the progressive report view so the page doesn't go white. */
 class ProgressiveErrorBoundary extends Component<
@@ -60,6 +59,7 @@ interface Props {
   pollStatus?: boolean
   session?: { user: { id: string } } | null
   atAuditLimit?: boolean
+  initialProjection?: ReviewWorkspaceVisibleProjection
 }
 
 type PartialFlag = NonNullable<AuditStatusPayload['partialFlags']>[number]
@@ -68,9 +68,7 @@ type ViewableAuditAccessContext = Exclude<AuditAccessContext, 'denied'>
 function isViewableAuditAccessContext(value: unknown): value is ViewableAuditAccessContext {
   return value === 'owner' ||
     value === 'anonymous_teaser' ||
-    value === 'marketing_sample' ||
     value === 'public_viewer' ||
-    value === 'studio_public' ||
     value === 'share_grant'
 }
 
@@ -93,6 +91,7 @@ export function AuditPageClient({
   pollStatus = true,
   session,
   atAuditLimit: _atAuditLimit = false,
+  initialProjection,
 }: Props) {
   void _atAuditLimit
   const router = useRouter()
@@ -109,6 +108,7 @@ export function AuditPageClient({
     progress,
     url,
     statusPayload,
+    resumePolling,
   } = useAuditPolling(id, { initialAudit, pollStatus })
   const workerIdle = useWorkerIdleDetection(status)
   const [retryLoading, setRetryLoading] = useState(false)
@@ -227,13 +227,12 @@ export function AuditPageClient({
       rubrics,
       partialFlags,
       screenshots,
-      screenshotCapture:
-        statusPayload?.screenshotCapture ??
-        (raw?.screenshotCapture as AuditStatusPayload['screenshotCapture']),
       workerIdle,
       productContract: statusPayload?.productContract ?? null,
       technologyProfile: statusPayload?.technologyProfile,
       agentMessages: statusPayload?.agentMessages ?? [],
+      failureCode: statusPayload?.failureCode
+        ?? (typeof raw?.failureCode === 'string' ? raw.failureCode : null),
       auditId: id,
       accessContext,
       isLoggedIn: Boolean(session?.user),
@@ -243,9 +242,10 @@ export function AuditPageClient({
       statusPayload?.screenshots, statusPayload?.rubrics,
       statusPayload?.productContract, statusPayload?.technologyProfile,
       statusPayload?.agentMessages,
-      statusPayload?.screenshotCapture, statusPayload?.url, statusPayload?.pageType,
+      statusPayload?.url, statusPayload?.pageType,
       statusPayload?.score,
       statusPayload?.progressDetail,
+      statusPayload?.failureCode,
       initialAudit, workerIdle, id, accessContext, isTeaser, session?.user])
 
   async function handleRetrySameAudit() {
@@ -257,6 +257,7 @@ export function AuditPageClient({
         toast.error(parsed.message)
         return
       }
+      resumePolling()
       router.refresh()
     } catch {
       toast.error(SYSTEM_COPY.errors.genericRetry)
@@ -291,27 +292,11 @@ export function AuditPageClient({
     )
   }
 
-  if (isFailed) {
-    return (
-      <AuditShell session={session} immersive claimReason={isTeaser ? 'save-report' : 'create-account'}>
-        <Container variant="report" className="mx-auto max-w-lg space-y-4 py-24 text-center">
-          <AuditFailurePanel
-            failureCode={statusPayload?.failureCode}
-            onRetry={handleRetrySameAudit}
-            retryLoading={retryLoading}
-          />
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/">{AUDIT_ERRORS.checkAnotherSite}</Link>
-          </Button>
-        </Container>
-      </AuditShell>
-    )
-  }
-
-  // In-progress and COMPLETED hold share the progressive frame until SSR swap.
+  // Failed stays in the same living-review shell. Retry resumes polling
+  // without a marketing-width error page.
   return (
     <AuditShell session={session} immersive claimReason={isTeaser ? 'save-report' : 'create-account'}>
-      {!isNotFound && !isForbidden && !isFailed ? (
+      {!isNotFound && !isForbidden ? (
         <ReportViewedTracker
           auditId={id}
           isOwner={accessContext === 'owner'}
@@ -326,7 +311,12 @@ export function AuditPageClient({
       ) : null}
       <div>
         <ProgressiveErrorBoundary onRetry={() => router.refresh()}>
-          <AuditReportProgressive {...progressiveProps} />
+          <AuditReportProgressive
+            {...progressiveProps}
+            initialProjection={initialProjection}
+            onRetry={handleRetrySameAudit}
+            retryLoading={retryLoading}
+          />
         </ProgressiveErrorBoundary>
       </div>
     </AuditShell>

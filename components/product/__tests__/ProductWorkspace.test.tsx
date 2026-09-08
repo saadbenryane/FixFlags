@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { ProductWorkspace } from '@/components/product/ProductWorkspace'
-import type { ProductWorkspaceDTO } from '@/lib/products/workspace'
+import type { ProductWorkspaceProjection } from '@/lib/products/workspace'
 
 vi.mock('@/components/audit/AuditInput', () => ({
   AuditInput: () => <div aria-label="Review input" />,
@@ -16,7 +16,7 @@ vi.mock('@/components/dashboard/ProductSignalsSetup', () => ({
   ProductSignalsSetup: () => <div aria-label="Product Signal controls" />,
 }))
 
-const workspace: ProductWorkspaceDTO = {
+const workspace: ProductWorkspaceProjection = {
   product: {
     id: 'product-1',
     name: 'Example Product',

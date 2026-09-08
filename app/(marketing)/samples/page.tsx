@@ -12,6 +12,8 @@ import { buildFixFlagsScanMessages } from '@/lib/audit/scan-agent-messages'
 import { DEMO_BRAND } from '@/lib/demo/brand'
 import { REPORT_COPY } from '@/lib/marketing/copy'
 import { notFound } from 'next/navigation'
+import { buildSampleExplorerModel } from '@/lib/report/explorer-model'
+import { buildReviewWorkspaceProjection } from '@/lib/report/review-workspace-projection'
 
 export const metadata = buildPageMetadata('samples', '/samples')
 
@@ -63,6 +65,19 @@ export default async function SamplesPage({ searchParams }: SamplesPageProps) {
       fix: flag.fix,
     })),
   })
+  const projection = buildReviewWorkspaceProjection({
+    kind: 'sample',
+    explorer: buildSampleExplorerModel(display, { promptAccess: 'one' }),
+    visibility: 'curated_sample',
+    isAuthenticated: false,
+    reviewId: audit.id,
+    url: audit.url,
+    pageType: audit.pageType,
+    checkedAt: audit.completedAt,
+    history: audit.scoreHistory,
+    demonstratedFlagId: sampleFixFlag?.id ?? null,
+    agentMessages,
+  })
 
   return (
     <Section spacing="report">
@@ -79,15 +94,11 @@ export default async function SamplesPage({ searchParams }: SamplesPageProps) {
         </header>
         <div className="h-[min(calc(100dvh-16rem),54rem)] overflow-hidden rounded-card bg-background shadow-glass-deep ring-1 ring-border/55">
           <AuditReport
+            projection={projection}
             audit={audit}
-            observationId={audit.id}
-            variant="sample"
             viewerIsPaid={false}
             isLoggedIn={false}
             productName={DEMO_BRAND.displayLabel}
-            sampleFixFlag={sampleFixFlag}
-            scoreHistory={audit.scoreHistory}
-            agentMessages={agentMessages}
           />
         </div>
       </Container>

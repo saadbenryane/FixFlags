@@ -12,6 +12,9 @@ import { logger } from '../logger'
 import { WORKER_CONCURRENCY } from './estimate'
 import { getBrowserDiagnostics } from '../audit/screenshot'
 import { runBestEffort } from '../observability/best-effort'
+import { runIntegrityPathJob } from '../integrity/run-path-job'
+import { runIntegrityImprove } from '../integrity/improve'
+import { reportOperationalError } from '../observability/report-error'
 
 const HEARTBEAT_INTERVAL_MS = 20_000
 
@@ -49,6 +52,26 @@ export function startWorker() {
       if (job.name === 'repo-fix-pr') {
         const { repoFixPrId } = job.data as { repoFixPrId: string }
         await runFixPr(repoFixPrId)
+        return
+      }
+      if (job.name === 'integrity-probe') {
+        const { pathId, trigger } = job.data as { pathId: string; trigger?: string }
+        try {
+          await runIntegrityPathJob(pathId, trigger ?? 'schedule')
+        } catch (error) {
+          reportOperationalError('integrity-probe', error, { pathId, trigger })
+          throw error
+        }
+        return
+      }
+      if (job.name === 'integrity-improve') {
+        const { pathId } = job.data as { pathId: string }
+        try {
+          await runIntegrityImprove(pathId)
+        } catch (error) {
+          reportOperationalError('integrity-improve', error, { pathId })
+          throw error
+        }
         return
       }
       try {
@@ -98,7 +121,11 @@ export function startWorker() {
       () => touchWorkerHeartbeat(workerBrowserDiagnostics()),
       { operation: 'worker_heartbeat', logger, context: { phase: 'completed', jobId: String(job.id) } },
     )
-    logger.info(`Audit job ${job.id} completed`, { auditId: job.data.auditId })
+    logger.info(`Audit job ${job.id} completed`, {
+      name: job.name,
+      auditId: (job.data as { auditId?: string }).auditId,
+      pathId: (job.data as { pathId?: string }).pathId,
+    })
   })
 
   worker.on('failed', async (job, err) => {
@@ -121,6 +148,8 @@ export function startWorker() {
       })
       return
     }
+
+    if (job.name === 'integrity-probe' || job.name === 'integrity-improve') return
 
     const auditId = (job.data as { auditId: string }).auditId
     const audit = await prisma.audit.findUnique({
