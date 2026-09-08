@@ -61,6 +61,8 @@ export async function POST(
       {
         reportId: workReportId,
         reportUrl: `/report/${encodeURIComponent(workReportId)}`,
+        siteId: outcome.siteId,
+        siteUrl: `/sites/${encodeURIComponent(outcome.siteId)}`,
         status: outcome.status,
         reused: outcome.reused,
         parentReportId: baselineParentId,

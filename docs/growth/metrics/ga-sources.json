@@ -1,24 +1,36 @@
 {
-  "fetchedAt": "2026-09-03T20:39:25.827Z",
+  "fetchedAt": "2026-09-08T17:20:27.414Z",
   "sources": [
     {
       "sessionSource": "(direct)",
-      "sessions": 69
+      "sessions": 473
+    },
+    {
+      "sessionSource": "homepage",
+      "sessions": 41
+    },
+    {
+      "sessionSource": "dashboard",
+      "sessions": 14
+    },
+    {
+      "sessionSource": "google",
+      "sessions": 10
+    },
+    {
+      "sessionSource": "(not set)",
+      "sessions": 7
     },
     {
       "sessionSource": "producthunt.com",
       "sessions": 3
     },
     {
-      "sessionSource": "google",
-      "sessions": 2
-    },
-    {
-      "sessionSource": "homepage",
-      "sessions": 2
-    },
-    {
       "sessionSource": "ig",
+      "sessions": 2
+    },
+    {
+      "sessionSource": "linkedin.com",
       "sessions": 1
     },
     {

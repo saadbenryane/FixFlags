@@ -1,24 +1,152 @@
 {
-  "fetchedAt": "2026-09-03T20:39:25.827Z",
+  "fetchedAt": "2026-09-08T17:20:27.414Z",
   "pages": [
     {
-      "pagePath": "/",
-      "screenPageViews": 55
+      "pagePath": "/samples",
+      "screenPageViews": 371
     },
     {
-      "pagePath": "/samples",
-      "screenPageViews": 12
+      "pagePath": "/",
+      "screenPageViews": 282
+    },
+    {
+      "pagePath": "/pricing",
+      "screenPageViews": 56
+    },
+    {
+      "pagePath": "/report/cmt1q68sm0007onnxedjvujf0",
+      "screenPageViews": 50
+    },
+    {
+      "pagePath": "/sign-in",
+      "screenPageViews": 38
+    },
+    {
+      "pagePath": "/dashboard",
+      "screenPageViews": 23
+    },
+    {
+      "pagePath": "/report/cmtby9oky000dl720o44n3wfq",
+      "screenPageViews": 23
+    },
+    {
+      "pagePath": "/report/cmtcn36m30001pv205zcxjsf3",
+      "screenPageViews": 16
+    },
+    {
+      "pagePath": "/products/cmt1q4j0v0001onnxu8evtmue",
+      "screenPageViews": 14
+    },
+    {
+      "pagePath": "/report/cmtbk4p970001gpthbrbqxe72",
+      "screenPageViews": 14
     },
     {
       "pagePath": "/how-it-works",
-      "screenPageViews": 6
+      "screenPageViews": 12
+    },
+    {
+      "pagePath": "/report/cmtaaytw30001gumg6ol4wxxb",
+      "screenPageViews": 10
+    },
+    {
+      "pagePath": "/admin/leads",
+      "screenPageViews": 9
+    },
+    {
+      "pagePath": "/get-app",
+      "screenPageViews": 9
+    },
+    {
+      "pagePath": "/report/cmsw94rjv0001on9v2f8m9257",
+      "screenPageViews": 9
+    },
+    {
+      "pagePath": "/report/cmtlyu31q0005n020zjp9zxu7",
+      "screenPageViews": 9
+    },
+    {
+      "pagePath": "/docs",
+      "screenPageViews": 8
+    },
+    {
+      "pagePath": "/post-login",
+      "screenPageViews": 8
+    },
+    {
+      "pagePath": "/report/cmszlcdn30009qu200j9idlwz",
+      "screenPageViews": 8
+    },
+    {
+      "pagePath": "/report/report-that-does-not-exist",
+      "screenPageViews": 8
     },
     {
       "pagePath": "/help",
+      "screenPageViews": 7
+    },
+    {
+      "pagePath": "/products/cmrvalz5u0037mq3vzm36dx3f",
+      "screenPageViews": 7
+    },
+    {
+      "pagePath": "/admin",
+      "screenPageViews": 6
+    },
+    {
+      "pagePath": "/admin/feedback",
+      "screenPageViews": 6
+    },
+    {
+      "pagePath": "/share/revoked-or-unknown-share-token",
+      "screenPageViews": 6
+    },
+    {
+      "pagePath": "/admin/users",
+      "screenPageViews": 5
+    },
+    {
+      "pagePath": "/report/cmswa9qj60003on9v4gri44os",
+      "screenPageViews": 5
+    },
+    {
+      "pagePath": "/report/cmto6hp3w0011n02017jzgesc",
+      "screenPageViews": 5
+    },
+    {
+      "pagePath": "/admin/analytics",
       "screenPageViews": 4
     },
     {
+      "pagePath": "/admin/waitlist",
+      "screenPageViews": 4
+    },
+    {
+      "pagePath": "/report/cmtbw4a35000hph20kqswww0x",
+      "screenPageViews": 4
+    },
+    {
+      "pagePath": "/roast",
+      "screenPageViews": 4
+    },
+    {
+      "pagePath": "/admin/operating-plan",
+      "screenPageViews": 3
+    },
+    {
+      "pagePath": "/billing",
+      "screenPageViews": 3
+    },
+    {
+      "pagePath": "/docs/troubleshooting",
+      "screenPageViews": 3
+    },
+    {
       "pagePath": "/kingsisland/honda2026",
+      "screenPageViews": 3
+    },
+    {
+      "pagePath": "/onboarding/plans",
       "screenPageViews": 3
     },
     {
@@ -26,11 +154,15 @@
       "screenPageViews": 3
     },
     {
-      "pagePath": "/pricing",
+      "pagePath": "/privacy",
       "screenPageViews": 3
     },
     {
-      "pagePath": "/privacy",
+      "pagePath": "/report/cmssppxlh0001rw20g7v5svq3",
+      "screenPageViews": 3
+    },
+    {
+      "pagePath": "/report/cmta1s0fi0001guk25pva01cs",
       "screenPageViews": 3
     },
     {
@@ -38,7 +170,11 @@
       "screenPageViews": 3
     },
     {
-      "pagePath": "/roast",
+      "pagePath": "/settings",
+      "screenPageViews": 3
+    },
+    {
+      "pagePath": "/settings/integrations",
       "screenPageViews": 3
     },
     {
@@ -46,15 +182,19 @@
       "screenPageViews": 3
     },
     {
+      "pagePath": "/waitlist/pro",
+      "screenPageViews": 3
+    },
+    {
       "pagePath": "/changelog",
       "screenPageViews": 2
     },
     {
-      "pagePath": "/docs",
+      "pagePath": "/docs/getting-started",
       "screenPageViews": 2
     },
     {
-      "pagePath": "/docs/troubleshooting",
+      "pagePath": "/docs/reports",
       "screenPageViews": 2
     },
     {
@@ -66,12 +206,40 @@
       "screenPageViews": 2
     },
     {
+      "pagePath": "/help/checks-and-reports/scores-and-severity",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/report/cmsxg69or0001p620j243ctpc",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/report/cmt1q4j150003onnxxd9d7q3e",
+      "screenPageViews": 2
+    },
+    {
       "pagePath": "/report/cmt584rjd0001tl2077t832na",
       "screenPageViews": 2
     },
     {
-      "pagePath": "/sign-in",
+      "pagePath": "/report/cmtluf0km0003n02044a04dx4",
       "screenPageViews": 2
+    },
+    {
+      "pagePath": "/report/cmtmx6bwy000nn020lea9zclr",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/settings/api-keys",
+      "screenPageViews": 2
+    },
+    {
+      "pagePath": "/admin/audits",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/admin/leads/unrav.io",
+      "screenPageViews": 1
     },
     {
       "pagePath": "/blog",
@@ -82,11 +250,7 @@
       "screenPageViews": 1
     },
     {
-      "pagePath": "/docs/getting-started",
-      "screenPageViews": 1
-    },
-    {
-      "pagePath": "/docs/reports",
+      "pagePath": "/compare/cmtby9oky000dl720o44n3wfq",
       "screenPageViews": 1
     },
     {
@@ -98,11 +262,19 @@
       "screenPageViews": 1
     },
     {
-      "pagePath": "/help/checks-and-reports/scores-and-severity",
+      "pagePath": "/help/getting-started",
       "screenPageViews": 1
     },
     {
-      "pagePath": "/help/getting-started",
+      "pagePath": "/pass",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/report/cmsytb75o0001r1204slqag3a",
+      "screenPageViews": 1
+    },
+    {
+      "pagePath": "/samples/details",
       "screenPageViews": 1
     },
     {

@@ -48,11 +48,11 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
   {
     title: 'Product',
     links: [
-      { path: '/', label: 'Home', note: 'Know when customers can\'t buy' },
+      { path: '/', label: 'Home', note: 'Your website, looked after' },
       { path: '/protect', label: 'Protect', note: 'Purchase path health and video proof' },
       { path: '/install', label: 'Install', note: 'Install FixFlags on Shopify' },
       { path: '/how-it-works', label: 'How it works', note: 'Walk, video, alert' },
-      { path: '/pricing', label: 'Pricing', note: 'Free on Shopify. Pro waitlist' },
+      { path: '/pricing', label: 'Pricing', note: 'Free website analysis. Paid plans when you need more' },
       { path: '/docs', label: 'Documentation', note: 'Install, walk, and alerts' },
       {
         path: '/docs/getting-started',

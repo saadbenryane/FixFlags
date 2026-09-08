@@ -1,8 +1,14 @@
 # Architecture
 
-_Last updated: 2026-07-10_
+_Last reconciled: 2026-09-08_
 
-Status: **Growth system active. GSC/GA4 data pulling. Knowledge graph seeding in progress.**
+Status: **Growth system active. GSC/GA4 exports, sample-gated issue pages,
+related issue links, structured data, and dynamic issue sitemap inclusion
+exist in code. Recurring experiment closure and production ranking proof are
+still incomplete.**
+
+The accepted Site, Outcomes, Flags, and ongoing-care direction in the root
+`ROADMAP.md` supersedes legacy Product/report wording in historical sections.
 
 This document is the living design for FixFlags' organic growth system. It
 covers the knowledge graph, the public knowledge layer derived from it, and
@@ -80,7 +86,7 @@ latest complete snapshot reconciles `graph_technology` /
 `graph_site_technology`. Current site technology rows feed `topFrameworks`;
 per-Product technology context is owner-only on the Product detail page.
 
-### 1b. Search Console (NOT IMPLEMENTED — blocked on access)
+### 1b. Search Console (IMPLEMENTED FOR PROJECT EXPORTS)
 
 **Purpose:** Measure which queries drive impressions, clicks, and signups.
 
@@ -91,14 +97,16 @@ per-Product technology context is owner-only on the Product detail page.
 - `sitemaps` — submitted vs. indexed counts
 
 **Script:** `scripts/growth/pull-gsc.ts`
-**Output:** `docs/growth/metrics/gsc-rolling-30d.json` + feeds `opportunities.md`
-**Schedule:** Daily (once access is granted)
+**Output:** dated query, page, and summary snapshots in
+`docs/growth/metrics/`, plus `GrowthArtifact` records keyed by segment.
+**Schedule:** manual. The SEO growth-loop skill defines the recurring review
+contract; unattended scheduling is not part of its first version.
 
 **Why it matters:** Without GSC data, every prioritization decision in
 `backlog.md` is structural reasoning, not measured demand. This is the single
 highest-leverage unlock for Layer 2.
 
-### 1c. Analytics (client funnel shipped; organic attribution blocked)
+### 1c. Analytics (GA4 exports and client funnel shipped)
 
 **Purpose:** Track the conversion funnel: organic visit → audit → signup → paid.
 
@@ -107,8 +115,10 @@ highest-leverage unlock for Layer 2.
 - Full launch funnel including `landing_view`, `audit_intent`, `started_audit`, `signup_started` (email + OAuth), `fix_prompt_copied`, `recheck_*`
 - See `.cursor/skills/fixflags-analytics/SKILL.md`
 
-**Missing:** Organic attribution rollup (GSC/GA access). Currently no way to trace which public page
-(or search query) led to which audit. See Layer 4 for the attribution design.
+**Still incomplete:** end-to-end organic attribution reporting. Source/UTM
+capture and GA4 exports exist, but the weekly review must not present
+independently sourced search, Site, signup, and revenue totals as one causal
+funnel until the joins are verified.
 
 ### 1d. Competitive intelligence (NOT IMPLEMENTED)
 
@@ -183,14 +193,14 @@ advantages.
 **Output:** Updated `competitors.md` with real SERP data
 **Schedule:** Monthly
 
-### 2e. Automated weekly review (NOT IMPLEMENTED)
+### 2e. Weekly review loop (MANUAL CONTRACT IMPLEMENTED)
 
-**Purpose:** Compose `weekly-review/YYYY-Www.md` from live data instead of
-manual entry.
+**Purpose:** Compose `weekly-review/YYYY-Www.md` from comparable live data,
+close the prior intervention, and pre-register one next intervention.
 
-**Script:** `scripts/growth/weekly-review.ts`
-**Output:** Weekly review file + updated `metrics.md`
-**Schedule:** Weekly (Sunday evening)
+**Current path:** `.agents/skills/fixflags-seo-growth-loop/SKILL.md`
+**Future automation:** `scripts/growth/weekly-review.ts` only after the manual
+artifact and decision contract proves stable.
 
 **What it pulls:**
 
@@ -268,8 +278,9 @@ smoke test and `--dry-run` for a no-write pass.
 
 ## Layer 3: Public surfaces (derived, indexable)
 
-**Not built yet — Phase 2+.** Design captured here so implementation follows
-one plan.
+Issue pages and two focused tools exist in code. Benchmark, comparison, and
+public report-index families remain future work and are governed by the root
+product roadmap and evidence gates.
 
 Read models live in `lib/graph/queries.ts`. Public pages call these functions
 — **never** query `graph_*` tables directly from a page component. This is
@@ -310,7 +321,7 @@ FixFlags can produce:
 If a template can't satisfy this, it doesn't ship. No exceptions for
 "it'll rank anyway."
 
-### Internal linking engine (NOT IMPLEMENTED)
+### Internal linking engine (IMPLEMENTED FOR RELATED ISSUES)
 
 **Purpose:** Build topical authority clusters by linking related public pages.
 
@@ -326,28 +337,28 @@ related pages based on:
 | Free tool      | Related issue pages                           | Tool detects same check IDs                           |
 | Free tool      | Audit CTA                                     | Always — every tool page ends with "Run a full audit" |
 
-**Implementation:** A `lib/graph/related.ts` module that queries the graph
-and returns an array of `{ type, slug, title, reason }` for the page
-template to render as "Related reading" or "See also" sections.
+**Implementation:** `lib/graph/related.ts` supplies sample-gated related issue
+links to the issue detail template. Cross-family links remain future work.
 
-### Dynamic sitemap (NOT IMPLEMENTED — replaces static sitemap)
+### Dynamic sitemap (IMPLEMENTED FOR ISSUES)
 
 **Purpose:** As issues cross `MIN_SAMPLE_SIZE`, they automatically appear in
 the sitemap without manual intervention.
 
-**Design:** `app/sitemap.ts` reads from the knowledge graph:
+**Current design:** `app/sitemap.ts` reads from the knowledge graph:
 
 - Static routes (from `INDEXABLE_ROUTES`) — unchanged
 - Issue routes: `Issue.findMany({ where: { siteCount: { gte: MIN_SAMPLE_SIZE } } })`
-- Benchmark routes: `BenchmarkSnapshot.findMany(...)` with dedup by scope
+- Benchmark routes: future, when the public family exists and passes its gate
 - Tool routes: hardcoded (small, stable set)
 
 **Quality gate:** Only routes backed by a graph entity with sufficient sample
 appear in the sitemap. This prevents thin pages from being indexed.
 
-### Structured data expansion (NOT IMPLEMENTED)
+### Structured data expansion (PARTIAL)
 
-Current: Organization, WebSite, SoftwareApplication, FAQPage.
+Current issue pages emit their code-owned schema from
+`lib/marketing/structured-data.ts`. Other future page families remain gated.
 
 Add per page family:
 
@@ -367,12 +378,12 @@ research-backed pages — it signals "this page contains original data."
 The layer that makes the system self-improving. Every iteration should
 produce measurable learning that feeds back into Layer 1 and Layer 2.
 
-### Attribution system (NOT IMPLEMENTED)
+### Attribution system (PARTIAL)
 
 **Problem:** We can't trace which public page (or search query) led to which
 audit, signup, or payment.
 
-**Design:** Two mechanisms:
+**Implemented foundation:** two mechanisms:
 
 **1. UTM parameters on all public surface links:**
 
@@ -391,7 +402,9 @@ The `Audit.source` enum already exists (`HOMEPAGE`, `DASHBOARD`, `REPORT`,
 - `TOOL_PAGE` — audit started from a free tool
 - `REPORT_INDEX` — audit started from the reports index
 
-This traces the full funnel: `source page → audit → signup → payment`.
+Source values and UTM capture exist. A verified rollup joining the complete
+`source page -> Site analysis -> signup -> payment` path is still missing, so
+weekly reviews must keep independently sourced totals separate.
 
 ### Experiment framework (PARTIALLY IMPLEMENTED)
 
@@ -520,10 +533,12 @@ The system should automatically:
 
 ## Open questions (tracked, not blocking)
 
-See `decision-log.md` for anything that needs an explicit decision, and
-`opportunities.md` once analytics access exists. Current open items:
+See `decision-log.md` for anything that needs an explicit decision and
+`opportunities.md` for dated measured and structural opportunities. Current
+open items:
 
-- GSC / GA / PostHog access — not yet granted (see `decision-log.md`)
+- recurring experiment execution and end-to-end attribution proof
+- optional PostHog and backlink tooling; neither blocks the first SEO loop
 - Industry/tech detection heuristics — currently stubbed to `null`/`[]` in
   `lib/graph/snapshot.ts`; needs real detection logic before benchmark pages
   can be built (Phase 2/3 dependency)

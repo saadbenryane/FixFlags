@@ -30,6 +30,7 @@ PiWeb is the session interface for this repository. Product work happens here. S
 | Scan accuracy and fixtures | `lib/audit/accuracy-corpus.ts`, [`.agents/skills/fixflags-scan-accuracy/SKILL.md`](.agents/skills/fixflags-scan-accuracy/SKILL.md) | `npm run agent -- context accuracy` |
 | AI prompts and models | `lib/prompts/system-prompt.ts`, `lib/audit/judge-config.ts` | `npm run agent -- context prompts` |
 | Billing and entitlements | `lib/billing/`, `lib/auth/entitlements.ts` | `npm run agent -- context billing` |
+| SEO growth loop and organic measurement | `docs/growth/`, `lib/growth/`, [`.agents/skills/fixflags-seo-growth-loop/SKILL.md`](.agents/skills/fixflags-seo-growth-loop/SKILL.md) | `npm run agent -- context growth` |
 | Parked CLI / MCP / repo-scan | `fixflags-cli/`, [`.agents/skills/fixflags-npm-operations/SKILL.md`](.agents/skills/fixflags-npm-operations/SKILL.md) | `npm run agent -- context cli` |
 | Canonical knowledge | [CANONICAL-SOURCES.md](CANONICAL-SOURCES.md), [EVOLUTION-RULES.md](EVOLUTION-RULES.md) | `npm run agent -- context docs` |
 | Failures and recovery | [QUALITY.md](QUALITY.md), `lib/queue/`, `.agents/learnings/` | `npm run agent -- context recovery` |

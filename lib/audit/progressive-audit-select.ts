@@ -17,6 +17,7 @@ export const progressiveAuditSelect = {
   createdAt: true,
   url: true,
   userId: true,
+  projectId: true,
   isPublic: true,
   parentId: true,
   aiReviewAt: true,

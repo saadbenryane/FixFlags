@@ -7,7 +7,11 @@ export type SiteRef =
   | { kind: 'project'; siteId: string; projectId: string }
   | { kind: 'provisional'; siteId: string; provisionalSiteId: string }
 
-export function encodeSiteId(ref: Omit<SiteRef, 'siteId'>): string {
+export type SiteRefInput =
+  | { kind: 'project'; projectId: string }
+  | { kind: 'provisional'; provisionalSiteId: string }
+
+export function encodeSiteId(ref: SiteRefInput): string {
   if (ref.kind === 'project') return ref.projectId
   return `p_${ref.provisionalSiteId}`
 }

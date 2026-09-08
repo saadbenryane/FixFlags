@@ -1,97 +1,145 @@
 {
-  "fetchedAt": "2026-09-03T20:39:25.827Z",
+  "fetchedAt": "2026-09-08T17:20:27.414Z",
   "events": [
     {
       "eventName": "page_view",
-      "eventCount": 123
+      "eventCount": 1120
     },
     {
       "eventName": "session_start",
-      "eventCount": 79
+      "eventCount": 544
     },
     {
       "eventName": "first_visit",
-      "eventCount": 73
-    },
-    {
-      "eventName": "user_engagement",
-      "eventCount": 68
-    },
-    {
-      "eventName": "landing_view",
-      "eventCount": 47
-    },
-    {
-      "eventName": "first_finding_viewed",
-      "eventCount": 46
-    },
-    {
-      "eventName": "scroll",
-      "eventCount": 43
+      "eventCount": 462
     },
     {
       "eventName": "marketing_page_view",
-      "eventCount": 29
+      "eventCount": 350
+    },
+    {
+      "eventName": "user_engagement",
+      "eventCount": 295
+    },
+    {
+      "eventName": "landing_view",
+      "eventCount": 263
+    },
+    {
+      "eventName": "first_finding_viewed",
+      "eventCount": 232
+    },
+    {
+      "eventName": "scroll",
+      "eventCount": 177
     },
     {
       "eventName": "viewed_sample",
-      "eventCount": 23
-    },
-    {
-      "eventName": "audit_intent",
-      "eventCount": 6
+      "eventCount": 119
     },
     {
       "eventName": "flag_detail_viewed",
-      "eventCount": 4
-    },
-    {
-      "eventName": "report_progress_viewed",
-      "eventCount": 4
-    },
-    {
-      "eventName": "form_start",
-      "eventCount": 3
+      "eventCount": 66
     },
     {
       "eventName": "viewed_pricing",
-      "eventCount": 3
+      "eventCount": 59
     },
     {
-      "eventName": "audit_completed",
-      "eventCount": 2
-    },
-    {
-      "eventName": "audit_limit_reached",
-      "eventCount": 2
-    },
-    {
-      "eventName": "clicked_sample_cta",
-      "eventCount": 2
-    },
-    {
-      "eventName": "fix_prompt_copied",
-      "eventCount": 2
-    },
-    {
-      "eventName": "report_auth_gate_viewed",
-      "eventCount": 2
+      "eventName": "report_progress_viewed",
+      "eventCount": 33
     },
     {
       "eventName": "report_auth_method_selected",
-      "eventCount": 2
-    },
-    {
-      "eventName": "signup_started",
-      "eventCount": 2
-    },
-    {
-      "eventName": "started_audit",
-      "eventCount": 2
+      "eventCount": 29
     },
     {
       "eventName": "viewed_report",
+      "eventCount": 27
+    },
+    {
+      "eventName": "audit_intent",
+      "eventCount": 25
+    },
+    {
+      "eventName": "form_start",
+      "eventCount": 23
+    },
+    {
+      "eventName": "started_audit",
+      "eventCount": 19
+    },
+    {
+      "eventName": "recheck_completed",
+      "eventCount": 18
+    },
+    {
+      "eventName": "audit_completed",
+      "eventCount": 14
+    },
+    {
+      "eventName": "report_auth_gate_viewed",
+      "eventCount": 14
+    },
+    {
+      "eventName": "signup_started",
+      "eventCount": 12
+    },
+    {
+      "eventName": "fix_prompt_copied",
+      "eventCount": 9
+    },
+    {
+      "eventName": "remember_shown",
+      "eventCount": 7
+    },
+    {
+      "eventName": "audit_limit_reached",
+      "eventCount": 5
+    },
+    {
+      "eventName": "plan_picker_viewed",
+      "eventCount": 5
+    },
+    {
+      "eventName": "scan_validation_failed",
+      "eventCount": 5
+    },
+    {
+      "eventName": "audits_claimed",
+      "eventCount": 3
+    },
+    {
+      "eventName": "clicked_sample_cta",
+      "eventCount": 3
+    },
+    {
+      "eventName": "polish_pass_copied",
+      "eventCount": 3
+    },
+    {
+      "eventName": "plan_picker_dismissed",
       "eventCount": 2
+    },
+    {
+      "eventName": "signed_up",
+      "eventCount": 2
+    },
+    {
+      "eventName": "plan_picker_picked",
+      "eventCount": 1
+    },
+    {
+      "eventName": "recheck_started",
+      "eventCount": 1
+    },
+    {
+      "eventName": "report_auth_gate_completed",
+      "eventCount": 1
+    },
+    {
+      "eventName": "signed_in",
+      "eventCount": 1
     }
   ]
 }

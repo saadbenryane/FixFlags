@@ -1,6 +1,5 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import type { Route } from 'next'
 import { Button } from '@/components/ui/button'
@@ -16,8 +15,6 @@ import {
   startScanWithHandoff,
   trackStartedAudit,
 } from '@/lib/audit/start-scan-handoff'
-import { AuditShell } from '@/components/layout/audit-shell'
-import { AuditReportProgressive } from '@/components/audit/AuditReportProgressive'
 import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
 
 const AUTOSTART_DONE_KEY = 'ff:autostart-url'
@@ -146,6 +143,7 @@ export function AuditInput({
         setLoading(false)
       }
     }
+    // On success, navigation replaces this page with the Site board.
   }
 
   useEffect(() => {
@@ -179,7 +177,6 @@ export function AuditInput({
 
   const describedBy = urlError ? errorId : undefined
   const busy = loading
-  const showHandoff = hydrated && busy && !authDialogOpen
 
   const fieldHeightClass = 'h-12 min-h-12'
   const fieldHeightInputClass = 'h-12 min-h-12 py-0 leading-none'
@@ -315,26 +312,6 @@ export function AuditInput({
           </Button>
         </div>
       ) : null}
-
-      {showHandoff &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[var(--z-modal)] bg-background"
-            role="status"
-            aria-live="polite"
-            aria-label="Starting your review"
-          >
-            <AuditShell immersive>
-              <AuditReportProgressive
-                status="QUEUED"
-                url={url}
-                accessContext={user ? 'owner' : 'anonymous_teaser'}
-                isLoggedIn={Boolean(user)}
-              />
-            </AuditShell>
-          </div>,
-          document.body
-        )}
 
       <ReportClaimDialog
         open={authDialogOpen}

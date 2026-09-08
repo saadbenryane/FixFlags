@@ -103,7 +103,8 @@ The deployment receipt requires every GitHub check to pass, a successful post-CI
 | `npm run backfill:leads` | Backfill lead data |
 | `npm run graph:backfill` | Backfill knowledge graph from historical audits |
 | `npm run growth:rollup-issues` | Compute issue frequency rollups |
-| `npm run growth:pull-gsc` | Pull Google Search Console data |
+| `npm run growth:pull-gsc` | Pull Google Search Console data, including page×query rows |
+| `npm run growth:verify-live` | Check production titles, www→apex, and sitemap variants |
 | `npm run growth:self-seed` | Self-seed knowledge graph with known sites |
 | `npm run growth:backfill-tech` | Backfill technology detection |
 

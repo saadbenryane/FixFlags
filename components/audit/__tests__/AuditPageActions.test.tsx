@@ -67,12 +67,12 @@ describe('AuditPageActions access projection', () => {
     expect(screen.queryByText('Export control')).not.toBeInTheDocument()
   })
 
-  it('navigates to the in-flight work report after Update review', async () => {
+  it('navigates to the Site board after Update review', async () => {
     startScanWithHandoff.mockImplementation(async (options: {
       navigate: (href: string) => void
     }) => {
-      options.navigate('/report/child-1')
-      return { ok: true, reportId: 'child-1' }
+      options.navigate('/sites/project-1')
+      return { ok: true, reportId: 'child-1', siteId: 'project-1' }
     })
 
     render(
@@ -92,7 +92,7 @@ describe('AuditPageActions access projection', () => {
           navigate: expect.any(Function),
         }),
       )
-      expect(routerReplace).toHaveBeenCalledWith('/report/child-1')
+      expect(routerReplace).toHaveBeenCalledWith('/sites/project-1')
     })
   })
 

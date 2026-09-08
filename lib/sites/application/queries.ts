@@ -5,7 +5,12 @@ import {
   type CardHealthState,
   type SiteCardArea,
 } from '@/lib/sites/card-areas'
-import { buildCoverageFacts } from '@/lib/sites/coverage'
+import {
+  buildCoverageFacts,
+  isAuditFinished,
+  isAuditInFlight,
+  type CoverageFact,
+} from '@/lib/sites/coverage'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail, loadSiteFlags } from '@/lib/sites/flags'
 import { listSiteOutcomes, syncOutcomesFromAudit } from '@/lib/sites/outcomes'
@@ -24,6 +29,7 @@ export type BoardCardView = {
   openFlagCount: number
   checkedAt: string | null
   flagIds: string[]
+  activity?: 'checking' | null
 }
 
 export type SiteHomeView = {
@@ -44,36 +50,72 @@ export type SiteHomeView = {
   coverageSummary: string
 }
 
+const auditSelect = {
+  id: true,
+  status: true,
+  progress: true,
+  score: true,
+  completedAt: true,
+  evidenceCoverage: true,
+  url: true,
+  rubrics: { select: { name: true, score: true } },
+} as const
+
 async function resolveLatestAudit(site: SiteRecord) {
   if (site.kind === 'project' && site.projectId) {
     return prisma.audit.findFirst({
       where: { projectId: site.projectId },
       orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        status: true,
-        progress: true,
-        score: true,
-        completedAt: true,
-        evidenceCoverage: true,
-        url: true,
-        rubrics: { select: { name: true, score: true } },
-      },
+      select: auditSelect,
     })
   }
   if (!site.primaryAuditId) return null
   return prisma.audit.findUnique({
     where: { id: site.primaryAuditId },
-    select: {
-      id: true,
-      status: true,
-      progress: true,
-      score: true,
-      completedAt: true,
-      evidenceCoverage: true,
-      url: true,
-      rubrics: { select: { name: true, score: true } },
-    },
+    select: auditSelect,
+  })
+}
+
+async function resolvePriorCompletedAudit(site: SiteRecord, currentId: string | null) {
+  if (site.kind === 'project' && site.projectId) {
+    return prisma.audit.findFirst({
+      where: {
+        projectId: site.projectId,
+        status: 'COMPLETED',
+        ...(currentId ? { id: { not: currentId } } : {}),
+      },
+      orderBy: { completedAt: 'desc' },
+      select: auditSelect,
+    })
+  }
+  return null
+}
+
+function factsFromAudit(
+  audit: {
+    status: string
+    completedAt: Date | null
+    evidenceCoverage: unknown
+    rubrics: Array<{ name: string; score: number | null }>
+  } | null,
+  flags: SiteFlagSeed[],
+  lastKnown?: CoverageFact[] | null,
+  retainLastKnownWhileChecking?: boolean
+) {
+  return buildCoverageFacts({
+    auditStatus: audit?.status ?? 'QUEUED',
+    completedAt: audit?.completedAt ?? null,
+    evidenceCoverage: audit?.evidenceCoverage,
+    flags: flags.map((f) => ({
+      checkId: f.checkId,
+      rubric: f.rubric,
+      severity: f.severity,
+      impactTag: f.impactTag,
+      status: 'OPEN',
+    })),
+    rubrics: (audit?.rubrics ?? []).map((r) => ({ name: r.name, score: r.score })),
+    lastKnown,
+    retainLastKnownWhileChecking,
   })
 }
 
@@ -95,30 +137,42 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     listSiteOutcomes(site),
   ])
 
-  const coverage = buildCoverageFacts({
-    auditStatus: audit?.status ?? 'QUEUED',
-    completedAt: audit?.completedAt ?? null,
-    evidenceCoverage: audit?.evidenceCoverage,
-    flags: flags.map((f) => ({
-      checkId: f.checkId,
-      rubric: f.rubric,
-      severity: f.severity,
-      impactTag: f.impactTag,
-      status: 'OPEN',
-    })),
-    rubrics: (audit?.rubrics ?? []).map((r) => ({ name: r.name, score: r.score })),
-  })
+  const inFlight = isAuditInFlight(audit?.status)
+  const prior =
+    inFlight && site.kind === 'project'
+      ? await resolvePriorCompletedAudit(site, audit?.id ?? null)
+      : null
+
+  const lastKnownFacts =
+    prior != null
+      ? factsFromAudit(prior, flags)
+      : isAuditFinished(audit?.status)
+        ? null
+        : null
+
+  const coverage = factsFromAudit(
+    audit,
+    flags,
+    lastKnownFacts,
+    Boolean(inFlight && lastKnownFacts)
+  )
 
   const coverageByArea = new Map(coverage.map((c) => [c.area, c]))
-  const checking = !audit || !['COMPLETED', 'FAILED'].includes(audit.status)
 
-  const siteCardState: CardHealthState = checking
-    ? 'checking'
+  const finished = isAuditFinished(audit?.status)
+  const siteCardState: CardHealthState = inFlight
+    ? lastKnownFacts
+      ? flags.some((f) => f.severity === 'CRITICAL')
+        ? 'problem'
+        : flags.length > 0
+          ? 'attention'
+          : 'checking'
+      : 'checking'
     : flags.some((f) => f.severity === 'CRITICAL')
       ? 'problem'
       : flags.length > 0
         ? 'attention'
-        : audit?.status === 'COMPLETED'
+        : finished
           ? 'healthy'
           : 'unknown'
 
@@ -129,23 +183,29 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
         name: site.canonicalHost,
         question: CARD_CATALOG.site.question,
         state: siteCardState,
-        answer: checking
+        answer: inFlight && !lastKnownFacts
           ? 'Learning your website'
           : flags.length > 0
             ? `${flags.length} thing${flags.length === 1 ? '' : 's'} need attention`
-            : 'Looking good',
-        detail: checking
-          ? 'Getting to know what matters'
+            : finished || lastKnownFacts
+              ? 'Looking good'
+              : 'Learning your website',
+        detail: inFlight
+          ? lastKnownFacts
+            ? 'Checking again — last known kept'
+            : 'Getting to know what matters'
           : `${outcomes.length} outcome${outcomes.length === 1 ? '' : 's'} · Latest analysis`,
-        score: audit?.score ?? null,
+        score: null,
         openFlagCount: flags.length,
-        checkedAt: audit?.completedAt?.toISOString() ?? null,
+        checkedAt: (prior ?? audit)?.completedAt?.toISOString() ?? null,
         flagIds: flags.map((f) => f.id),
+        activity: inFlight ? 'checking' : null,
       }
     }
 
     const fact = coverageByArea.get(area)
     const areaFlags = flags.filter((f) => f.area === area)
+    const showCheckingActivity = inFlight
     return {
       id: area,
       name: CARD_CATALOG[area].name,
@@ -153,10 +213,11 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
       state: fact?.state ?? 'unknown',
       answer: fact?.label ?? 'Not checked yet',
       detail: fact?.detail ?? null,
-      score: fact?.score ?? null,
+      score: null,
       openFlagCount: areaFlags.length,
       checkedAt: fact?.checkedAt ?? null,
       flagIds: areaFlags.map((f) => f.id),
+      activity: showCheckingActivity ? 'checking' : null,
     }
   })
 
@@ -165,8 +226,10 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
   return {
     site,
     host: site.canonicalHost,
-    statusLabel: checking
-      ? 'Checking your Site'
+    statusLabel: inFlight
+      ? lastKnownFacts
+        ? 'Checking again'
+        : 'Learning your website'
       : flags.length > 0
         ? 'Needs attention'
         : watching
@@ -177,14 +240,16 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
       id: audit?.id ?? null,
       status: audit?.status ?? null,
       progress: audit?.progress ?? 0,
-      score: audit?.score ?? null,
+      score: inFlight ? null : (audit?.score ?? null),
     },
     cards,
     flags,
     outcomes,
     watching,
-    coverageSummary: checking
-      ? 'Analysis in progress'
+    coverageSummary: inFlight
+      ? lastKnownFacts
+        ? 'Checking again. Prior answers stay until this finishes.'
+        : 'Learning your website. Cards update as each area finishes.'
       : `Checked ${audit?.completedAt ? 'recently' : 'once'} · ${flags.length} open Flag${flags.length === 1 ? '' : 's'}`,
   }
 }

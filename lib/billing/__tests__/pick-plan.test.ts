@@ -23,7 +23,22 @@ afterEach(() => {
 })
 
 describe('pickPlan', () => {
-  it('routes free plan to active report when available', async () => {
+  it('routes free plan to active Site when siteId is present', async () => {
+    const { getActiveAudit } = await import('@/lib/audit/active-audit')
+    ;(getActiveAudit as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
+      auditId: 'report-1',
+      siteId: 'site-1',
+    })
+
+    await expect(
+      pickPlan({
+        plan: 'FREE',
+        isLoggedIn: true,
+      } as PickPlanInput)
+    ).resolves.toEqual({ kind: 'free_report', url: '/sites/site-1' })
+  })
+
+  it('does not fall back to /report from auditId alone', async () => {
     const { getActiveAudit } = await import('@/lib/audit/active-audit')
     ;(getActiveAudit as unknown as { mockReturnValue: (value: unknown) => void }).mockReturnValue({
       auditId: 'report-1',
@@ -34,7 +49,7 @@ describe('pickPlan', () => {
         plan: 'FREE',
         isLoggedIn: true,
       } as PickPlanInput)
-    ).resolves.toEqual({ kind: 'free_report', url: '/report/report-1' })
+    ).resolves.toEqual({ kind: 'free_dashboard', url: '/dashboard' })
   })
 
   it('routes free plan to report fallback path when no active report', async () => {

@@ -9,6 +9,7 @@ function notifyActiveAuditChange(): void {
 
 export interface ActiveAuditSnapshot {
   auditId: string
+  siteId?: string
   queue?: QueueStatus
 }
 
@@ -29,7 +30,7 @@ export function getActiveAudit(): ActiveAuditSnapshot | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<ActiveAuditSnapshot> & { url?: unknown }
     if (typeof parsed.auditId !== 'string') return null
-    return { auditId: parsed.auditId, queue: parsed.queue }
+    return { auditId: parsed.auditId, siteId: typeof parsed.siteId === 'string' ? parsed.siteId : undefined, queue: parsed.queue }
   } catch {
     return null
   }

@@ -12,7 +12,7 @@ export default function NewReviewPage() {
           {REVIEW_ENTRY.cta}
         </Heading>
         <p className="mt-3 text-sm text-muted-foreground">
-          Unadvertised URL review. The public product is the Shopify purchase path monitor.
+          Paste a website URL. FixFlags opens your Site board and starts looking after what matters.
         </p>
         <div className="mt-6">
           <AuditInput variant="landing" idSuffix="-new" showLandingExtras={false} />

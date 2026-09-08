@@ -21,7 +21,7 @@ The Site contract replaces the old report/chat experience. For maintenance on ex
 - A Flag progressively exposes business context, proof, technical detail, fixing and verification.
 - Healthy can be short and quiet; no filler Flags, decorative analytics or invented activity.
 - Missing evidence, partial coverage, blocked checks, stale checks and watch activation failures must be visibly honest.
-- Context connections enrich existing cards. The dashboard is one flat card grid with a permanent Site card; categories belong only in Add Card. Checks stay underneath cards. Orange means brand/activity, amber means attention.
+- Context connections enrich existing cards. The dashboard is one flat card grid with a permanent Site card; categories belong only in Add Card. Checks stay underneath cards. Homepage Flag chrome uses undiluted Flag Orange `--brand` (`#FF5A00`). Do not fade it with alpha or `--brand-muted`; that reads brown. Keep `--warning` amber for product caution.
 - Reuse real evidence displays when appropriate. Capture highlights must come from actual measurements.
 
 ## Verification

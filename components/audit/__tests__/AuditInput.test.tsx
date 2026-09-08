@@ -26,11 +26,11 @@ describe('AuditInput scan handoff', () => {
     vi.clearAllMocks()
   })
 
-  it('shows an in-flight submit button while the scan request is pending', async () => {
+  it('shows an in-flight submit button while the scan request is pending without report chrome', async () => {
     startScanWithHandoff.mockReturnValue(new Promise(() => {}))
     render(
       <MeProvider initialUser={null}>
-        <AuditInput variant="landing" idSuffix="-report-handoff" />
+        <AuditInput variant="landing" idSuffix="-site-handoff" />
       </MeProvider>
     )
 
@@ -40,12 +40,8 @@ describe('AuditInput scan handoff', () => {
     fireEvent.submit(input.closest('form')!)
 
     expect(await screen.findByRole('button', { name: /Reviewing/ })).toBeInTheDocument()
-    expect(
-      await screen.findByRole('region', { name: /Fix list with/i })
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(/getting ready to experience the Product/i)
-    ).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: /Fix list with/i })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Preparing your review/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/Opening your report/i)).not.toBeInTheDocument()
     expect(screen.queryByText('Top Flags')).not.toBeInTheDocument()
   })

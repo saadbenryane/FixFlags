@@ -3,7 +3,12 @@
 Phase-based, not date-based. We move to the next phase when the current
 phase's exit criteria are met — not on a calendar.
 
-## Phase 1 — Foundations (current)
+This is the organic-growth subsystem roadmap. The product direction and
+release sequence in the root `ROADMAP.md` take precedence. Status below
+distinguishes code present in the repository from production and ranking
+evidence.
+
+## Phase 1 — Foundations (implemented in code)
 
 **Goal:** the knowledge graph exists, fills automatically, and nothing
 public has shipped yet. No marketing claims until there's real data behind
@@ -25,7 +30,8 @@ them.
 | Migration applied to production DB | ✅ Done 2026-07-09 |
 | Backfill run against production | ✅ Done 2026-07-09 |
 | Rollup wired into self-hosted scheduler | ✅ Done 2026-07-09 |
-| Analytics access (GSC/GA/PostHog) | ⬜ Still awaiting decision |
+| GSC and GA4 read/export path | ✅ Implemented; dated exports exist in `docs/growth/metrics/` |
+| PostHog and backlink access | ⬜ Optional and unresolved; not required for the SEO loop |
 | Self-seed knowledge graph | ✅ Done — 4-phase script queues, polls, rolls up, and reports readiness |
 | Industry/tech detection in snapshot.ts | ✅ Done — already implemented, verified connected end-to-end |
 
@@ -41,7 +47,7 @@ them.
   writes `SiteTechnology`, `Industry`, `Site.industryGuess`). Already
   implemented — just needs real audit data to populate.
 
-## Phase 2 — First public artifacts (not started)
+## Phase 2 — First public artifacts (partially implemented)
 
 **Goal:** ship the *smallest possible* real thing per family, gated by
 MIN_SAMPLE_SIZE, and measure before scaling.
@@ -52,23 +58,24 @@ MIN_SAMPLE_SIZE, and measure before scaling.
 |---|---|---|
 | `/tools/meta-preview` — first free tool | ✅ Done | P0 |
 | `/tools/placeholder-copy-detector` — second free tool | ✅ Done | P0 |
-| `/issues/[checkId]` — first issue page | Sample size | P0 |
+| `/issues/[checkId]` — sample-gated issue page | ✅ Implemented in code; production indexing evidence still required | P0 |
 | Attribution parameter system | ✅ Done — `ISSUE_PAGE`, `BENCHMARK_PAGE`, `TOOL_PAGE` added | P1 |
 | Extend `INDEXABLE_ROUTES` + `sitemap.ts` + `llms.txt` | ✅ Done — tools registered, issues/benchmarks ready for templates | P1 |
 | `seo-guard.mjs` assertions for new route registries | ✅ Done | P1 |
-| Internal linking engine (`lib/graph/related.ts`) | Issue page template | P2 |
-| Structured data for issue pages | Issue page template | P2 |
-| Basic analytics wiring | GSC access | P2 |
+| Internal linking engine (`lib/graph/related.ts`) | ✅ Implemented for related issues | P2 |
+| Structured data for issue pages | ✅ Implemented with the issue template | P2 |
+| Basic GSC and GA4 analytics wiring | ✅ Implemented; recurring review loop still manual | P2 |
 
 ### Exit criteria for Phase 2
 
-- One issue page live, indexed, receiving impressions in GSC (if access
-  granted) or at minimum verified crawlable via `curl` + robots checks.
+- One sample-gated issue page production-verified, indexed, and receiving
+  impressions in GSC, or explicitly recorded as awaiting recrawl.
 - Two free tools live (`/tools/meta-preview`, `/tools/placeholder-detector`),
   `ToolUsage` rows accumulating.
 - Attribution parameters on all public surface links (`AuditSource` enum
   extended with `TOOL_PAGE` / `ISSUE_PAGE` / `BENCHMARK_PAGE`).
-- A full weekly-review cycle completed at least once.
+- A full `fixflags-seo-growth-loop` cycle completed with a pre-registered
+  intervention and a comparable follow-up decision.
 
 ## Phase 3 — Scale the families (not started)
 
@@ -84,8 +91,8 @@ measurement layer.
 | `/reports` public index (opt-in reports only) | Enough `isPublic` audits + PII redaction audit |
 | Third free tool: `/tools/cta-above-fold` | Audit pipeline reuse |
 | `scripts/growth/rollup-benchmarks.ts` | Tech detection |
-| `scripts/growth/opportunity-scoring.ts` | GSC access |
-| `scripts/growth/weekly-review.ts` | GSC access + analytics |
+| `scripts/growth/opportunity-scoring.ts` | Sufficient non-brand GSC signal |
+| `scripts/growth/weekly-review.ts` | Proven manual SEO loop and stable artifact contract |
 | Sitemap split (static, issues, benchmarks, tools) | All page families |
 | Structured data for benchmark pages | Benchmark template |
 | Dynamic sitemap from knowledge graph | All page families |

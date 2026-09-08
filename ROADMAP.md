@@ -1,12 +1,12 @@
 # Roadmap
 
-**Direction accepted 2026-09-08. Phase 0 complete: documentation and implementation preparation. Phases 1 onward are unimplemented target work unless backed by a completion receipt.**
+**Direction accepted 2026-09-08.** Phase 0 documentation is complete. **Board-first cutover (URL → `/sites` checking board) shipped** — receipt: [`.agents/sessions/board-first-site-2026-09-08.md`](.agents/sessions/board-first-site-2026-09-08.md). Integrity work (tenancy, honest coverage, claim migration, Sites IA) continues under `site-game-on-integrity`.
 
 The [owner's complete vision](knowledge/vision.md) is authoritative. This roadmap replaces earlier Shopify-only launch, Product Review completion, and two-product roadmaps. Existing tasks may supply reusable work; their earlier interface and commercial decisions do not govern this version.
 
 Phase 0 evidence: [readiness receipt](.agents/sessions/site-v2-readiness-2026-09-08.md). Full-source coverage: [vision-to-phase map](docs/site-v2-vision-coverage.md).
 
-Experience design is concrete in the [card-board contract](docs/card-board-experience.md) and interactive prototype at `prototypes/fixflags-board`. This is design evidence for Phase 2, not completion of production Phases 1–5. Phase 2 includes the flat starter board, in-board discovery, predefined card footprints, add/remove/pin/reorder, mobile priority, personalized library and progressive card detail. Phase 3 owns real cross-card Flag verification; Phase 5 enriches the same cards with connected data.
+Experience design is concrete in the [card-board contract](docs/card-board-experience.md) and interactive prototype at `prototypes/fixflags-board`. Prototype parity for Add-card library, connections, and layout customization remains later phases. Production Phases 1–4 integrity (private Site, honest coverage, Fix/Verify/Watch on the board) is the active Game On bar.
 
 ## Destination and boundaries
 

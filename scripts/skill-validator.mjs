@@ -10,6 +10,8 @@ const AGENT_SKILLS_ROOT = '.agents/skills'
 const CUSTOMER_SKILLS_ROOT = 'public/.well-known/skills'
 const DEPRECATED_SKILLS_ROOT = '.opencode/skills'
 const IDE_INTEGRATIONS_ROOT = 'ide-integrations'
+const SEO_SKILL = '.agents/skills/fixflags-seo-growth-loop/SKILL.md'
+const SEO_CURSOR_SKILL = '.cursor/skills/fixflags-seo-growth-loop/SKILL.md'
 const MAX_SKILL_LINES = 260
 const STALE = [
   /AGENTS\.md Project facts/i,
@@ -138,6 +140,40 @@ export function validateSkills(root = process.cwd()) {
     // Check "suggest Watch" section exists
     if (!/suggest.*[Ww]atch/i.test(customerSkill) && !/enable Watch/i.test(customerSkill)) {
       errors.push(`${path.relative(root, canonicalPath)}: missing "suggest Watch" or "enable Watch" guidance`)
+    }
+  }
+
+  // === SEO growth-loop process contract ===
+  const seoSkillPath = path.join(root, SEO_SKILL)
+  const seoCursorSkillPath = path.join(root, SEO_CURSOR_SKILL)
+  if (!existsSync(seoSkillPath)) {
+    errors.push(`${SEO_SKILL}: canonical SEO growth-loop skill is missing`)
+  } else {
+    const seoSkill = readFileSync(seoSkillPath, 'utf8')
+    for (const required of [
+      /GSC average position is not an exact rank/,
+      /implemented.*baseline.*blocked/s,
+      /docs\/growth\/experiments\.md/,
+      /references\/google-search-principles\.md/,
+      /references\/opportunity-playbook\.md/,
+      /references\/ranking-strategy\.md/,
+      /Do not require a paid SERP provider/,
+    ]) {
+      if (!required.test(seoSkill)) {
+        errors.push(`${SEO_SKILL}: missing SEO loop contract ${required}`)
+      }
+    }
+  }
+
+  if (!existsSync(seoCursorSkillPath)) {
+    errors.push(`${SEO_CURSOR_SKILL}: thin Cursor wrapper is missing`)
+  } else {
+    const seoCursorSkill = readFileSync(seoCursorSkillPath, 'utf8')
+    if (!seoCursorSkill.includes(`Canonical source: \`${SEO_SKILL}\``)) {
+      errors.push(`${SEO_CURSOR_SKILL}: must point to canonical SEO skill`)
+    }
+    if (!/thin wrapper/i.test(seoCursorSkill)) {
+      errors.push(`${SEO_CURSOR_SKILL}: must remain a thin wrapper`)
     }
   }
 

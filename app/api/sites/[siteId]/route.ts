@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { loadSiteHome } from '@/lib/sites/application/queries'
+import { requireSiteAccess } from '@/lib/sites/request-access'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 
 export async function GET(
@@ -8,7 +9,10 @@ export async function GET(
 ) {
   try {
     const { siteId } = await context.params
-    const home = await loadSiteHome(siteId)
+    const access = await requireSiteAccess(siteId)
+    if (!access.ok) return apiError(access.message, access.status)
+
+    const home = await loadSiteHome(access.decision.site.siteId)
     if (!home) return apiError('Site not found', 404)
     return NextResponse.json(home)
   } catch (error) {

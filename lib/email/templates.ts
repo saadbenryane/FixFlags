@@ -122,11 +122,11 @@ export const NEWSLETTER_EMAIL = {
 } as const
 
 export const KEEP_REPORT_EMAIL = {
-  subject: 'Your FixFlags report',
+  subject: 'Your FixFlags results',
   html: (reportUrl: string) =>
     layout(`
-  <p>Here is the report you asked us to email.</p>
-  <p><a href="${reportUrl}" style="${ctaStyle}">Open your report</a></p>
+  <p>Here are the results you asked us to email.</p>
+  <p><a href="${reportUrl}" style="${ctaStyle}">Open your results</a></p>
 `),
 } as const
 

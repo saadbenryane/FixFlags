@@ -46,6 +46,51 @@ describe('site card packaging', () => {
     expect(facts.every((f) => f.state === 'checking')).toBe(true)
   })
 
+  it('keeps completed areas unknown when there was no evidence', () => {
+    const facts = buildCoverageFacts({
+      auditStatus: 'COMPLETED',
+      completedAt: new Date('2026-09-08T12:00:00Z'),
+      evidenceCoverage: { desktopScreenshot: true },
+      flags: [],
+      rubrics: [],
+    })
+    expect(facts.every((f) => f.state === 'unknown')).toBe(true)
+    expect(facts.every((f) => f.evidenced === false)).toBe(true)
+  })
+
+  it('marks performance evidenced from page speed coverage', () => {
+    const facts = buildCoverageFacts({
+      auditStatus: 'COMPLETED',
+      completedAt: new Date('2026-09-08T12:00:00Z'),
+      evidenceCoverage: { desktopPageSpeed: true },
+      flags: [],
+      rubrics: [],
+    })
+    expect(facts.find((f) => f.area === 'performance')?.state).toBe('healthy')
+    expect(facts.find((f) => f.area === 'security')?.state).toBe('unknown')
+  })
+
+  it('retains last known health while checking', () => {
+    const prior = buildCoverageFacts({
+      auditStatus: 'COMPLETED',
+      completedAt: new Date('2026-09-01T12:00:00Z'),
+      evidenceCoverage: { desktopPageSpeed: true },
+      flags: [],
+      rubrics: [],
+    })
+    const facts = buildCoverageFacts({
+      auditStatus: 'CHECKING',
+      completedAt: null,
+      evidenceCoverage: null,
+      flags: [],
+      rubrics: [],
+      lastKnown: prior,
+      retainLastKnownWhileChecking: true,
+    })
+    expect(facts.find((f) => f.area === 'performance')?.state).toBe('healthy')
+    expect(facts.find((f) => f.area === 'performance')?.detail).toMatch(/Checking now/)
+  })
+
   it('marks problem when open critical flags exist after completion', () => {
     const facts = buildCoverageFacts({
       auditStatus: 'COMPLETED',

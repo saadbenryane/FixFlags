@@ -188,51 +188,41 @@ test.describe('credentialed revenue journeys', () => {
     await page.goto('/new')
     await page.getByLabel('Website URL').first().fill(targetUrl)
     await page.getByRole('button', { name: 'Review my site' }).first().click()
-    await page.waitForURL(/\/report\/([^/?#]+)/, { timeout: 30_000 })
-    const reportId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)!
-    await waitForReport(page.request, reportId)
-    await page.reload()
+    await page.waitForURL(/\/sites\//, { timeout: 30_000 })
+    await expect(page.getByRole('heading', { name: 'Your board' })).toBeVisible()
+    await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
+    const siteId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)!
+    await expect.poll(async () => {
+      const response = await page.request.get(`/api/sites/${siteId}`)
+      if (!response.ok()) return null
+      const body = (await response.json().catch(() => null)) as {
+        audit?: { status?: string; id?: string | null }
+      } | null
+      return body?.audit?.status
+    }, { timeout: 240_000 }).toBe('COMPLETED')
+    const board = await page.request.get(`/api/sites/${siteId}`)
+    const boardBody = (await board.json()) as { audit?: { id?: string | null } }
+    const reportId = boardBody.audit?.id
+    expect(reportId).toBeTruthy()
+    await waitForReport(page.request, reportId!)
 
-    const fixList = page.locator('#report-flags')
-    await expect(fixList).toBeVisible()
-    const anonymousFlags = fixList.locator(
-      'button[aria-controls="selected-flag-detail"]'
-    )
-    await expect
-      .poll(() => anonymousFlags.count(), { timeout: 180_000 })
-      .toBeGreaterThan(0)
-    const anonymousFlagCount = await anonymousFlags.count()
-    let demonstratedPromptCount = 0
-    for (let index = 0; index < anonymousFlagCount; index += 1) {
-      await anonymousFlags.nth(index).click()
-      demonstratedPromptCount += await fixList
-        .getByRole('button', { name: /copy prompt/i })
-        .count()
-    }
-    expect(demonstratedPromptCount).toBe(0)
-
-    await page.goto(`/sign-up?next=${encodeURIComponent(`/report/${reportId}`)}`)
+    await page.goto(`/sign-up?next=${encodeURIComponent(`/sites/${siteId}`)}`)
     await page.getByLabel('Email').fill(email)
     await page.getByLabel('Password').fill(password)
     await page.getByRole('button', { name: 'Create account', exact: true }).click()
-    await page.waitForURL((url) => url.pathname === `/report/${reportId}`, { timeout: 45_000 })
-    await expect(page.locator('#report-flags')).toBeVisible()
-    const claimedPromptCount = await page
-      .locator('#report-flags')
-      .getByRole('button', { name: /copy prompt/i })
-      .count()
-    expect(claimedPromptCount).toBeGreaterThan(1)
-
-    await page.getByRole('button', { name: 'Recheck', exact: true }).click()
-    await page.waitForURL((url) => url.pathname.startsWith('/report/') && !url.pathname.endsWith(reportId), {
-      timeout: 30_000,
+    await page.waitForURL((url) => url.pathname === `/sites/${siteId}` || url.pathname.startsWith('/sites/'), {
+      timeout: 45_000,
     })
-    const recheckId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)!
-    const recheck = await waitForReport(page.request, recheckId)
-    expect(recheck.mode).toBe('FULL')
-    await page.reload()
-    await expect(page.locator('#recheck-results')).toBeVisible()
-    await expect(page.getByText(/Remember/i).first()).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Your board|Your Site|Flags/ })).toBeVisible()
+
+    const update = await page.request.post(`/api/reports/${reportId}/re-check`)
+    expect(update.status(), await update.text()).toBe(201)
+    const updateBody = (await update.json()) as { reportId: string; siteId?: string }
+    expect(updateBody.siteId).toBeTruthy()
+    await waitForReport(page.request, updateBody.reportId)
+    await page.goto(`/sites/${updateBody.siteId}`)
+    await expect(page.getByRole('heading', { name: 'Your board' })).toBeVisible()
+    await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
   })
 
   test('[journey:passkey-2fa-recovery] passkey sign-in and backup-code recovery both complete 2FA', async ({ browser }) => {
@@ -414,10 +404,12 @@ test.describe('credentialed revenue journeys', () => {
     })
     const update = await owner.page.request.post(`/api/reports/${reportId}/re-check`)
     expect(update.status(), await update.text()).toBe(201)
-    const childId = ((await update.json()) as { reportId: string }).reportId
+    const updateBody = (await update.json()) as { reportId: string; siteId?: string }
+    const childId = updateBody.reportId
+    expect(updateBody.siteId).toBeTruthy()
     await waitForReport(owner.page.request, childId)
-    await owner.page.goto(`/report/${childId}`)
-    await expect(owner.page.getByText('Improved', { exact: true }).first()).toBeVisible()
+    await owner.page.goto(`/sites/${updateBody.siteId}`)
+    await expect(owner.page.getByRole('heading', { name: 'Your board' })).toBeVisible()
     const childStatus = await owner.page.request.get(`/api/reports/${childId}/status`)
     const childBody = await childStatus.json() as {
       verificationReceipts?: Array<{

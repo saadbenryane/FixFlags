@@ -1,26 +1,61 @@
 {
-  "fetchedAt": "2026-09-03T20:39:33.469Z",
+  "fetchedAt": "2026-09-08T18:50:20.747Z",
   "pages": [
     {
       "page": "https://fixflags.com/",
-      "clicks": 2,
-      "impressions": 18,
-      "ctr": 0.1111111111111111,
-      "position": 1.8888888888888888
+      "clicks": 5,
+      "impressions": 67,
+      "ctr": 0.07462686567164178,
+      "position": 6.686567164179104
+    },
+    {
+      "page": "https://www.fixflags.com/",
+      "clicks": 3,
+      "impressions": 14,
+      "ctr": 0.21428571428571427,
+      "position": 2.357142857142857
+    },
+    {
+      "page": "https://fixflags.com/docs",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 10
+    },
+    {
+      "page": "https://fixflags.com/how-it-works",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 10
+    },
+    {
+      "page": "https://fixflags.com/issues/no-structured-data",
+      "clicks": 0,
+      "impressions": 2,
+      "ctr": 0,
+      "position": 1.5
     },
     {
       "page": "https://fixflags.com/partners",
       "clicks": 0,
-      "impressions": 12,
+      "impressions": 23,
       "ctr": 0,
-      "position": 8.916666666666668
+      "position": 7.043478260869565
     },
     {
-      "page": "https://www.fixflags.com/",
+      "page": "https://fixflags.com/pricing",
       "clicks": 0,
-      "impressions": 3,
+      "impressions": 33,
       "ctr": 0,
-      "position": 1
+      "position": 6.666666666666667
+    },
+    {
+      "page": "https://fixflags.com/samples",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 10
     }
   ]
 }

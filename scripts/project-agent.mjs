@@ -83,9 +83,15 @@ export const contexts = {
     commands: ['npm run agent:release-continuity', 'npm run agent -- eval release', 'npm run verify:release'],
   },
   growth: {
-    description: 'Change scheduled acquisition, analytics artifacts, nurture, or growth reporting safely.',
-    files: ['lib/growth/', 'lib/analytics/', 'lib/queue/recovery-scheduler.ts', 'app/admin/analytics/'],
-    commands: ['npm run agent -- eval growth', 'npm run agent -- verify --dry-run'],
+    description: 'Improve organic discovery through measured SEO cycles, analytics artifacts, and growth reporting.',
+    files: [
+      '.agents/skills/fixflags-seo-growth-loop/SKILL.md',
+      'docs/growth/',
+      'lib/growth/',
+      'lib/analytics/',
+      'scripts/seo-guard.mjs',
+    ],
+    commands: ['npm run agent -- eval growth', 'npm run seo:guard', 'npm run agent -- verify --dry-run'],
   },
   auth: {
     description: 'Change authentication, anonymous claiming, sessions, recovery, or entitlements.',

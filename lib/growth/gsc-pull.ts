@@ -2,6 +2,11 @@ import { google } from 'googleapis'
 import { googleServiceAccount } from '@/lib/growth/google-auth'
 import { persistGrowthArtifact } from '@/lib/growth/artifacts'
 import {
+  focusPageQueryRows,
+  toPageQueryRecord,
+  type GscPageQueryRecord,
+} from '@/lib/growth/gsc-page-queries'
+import {
   type GrowthPullOptions,
   growthArtifactSegment,
   resolveGrowthPullDays,
@@ -59,9 +64,17 @@ export interface GscSummary {
   fetchedAt: string
 }
 
+export interface GscPageQueryExport {
+  fetchedAt: string
+  focusPaths: ['/', '/pricing', '/partners']
+  rows: GscPageQueryRecord[]
+  focusRows: GscPageQueryRecord[]
+}
+
 export interface GscPullResult {
   queries: { fetchedAt: string; queries: Array<Record<string, string | number | undefined>> }
   pages: { fetchedAt: string; pages: Array<Record<string, string | number | undefined>> }
+  pageQueries: GscPageQueryExport
   summary: GscSummary
 }
 
@@ -69,7 +82,7 @@ async function queryGsc(
   searchconsole: ReturnType<typeof google.searchconsole>,
   startDate: string,
   endDate: string,
-  dimension: 'query' | 'page',
+  dimensions: readonly string[],
   options: GrowthPullOptions,
   rowLimit = 25_000,
 ): Promise<GscRow[]> {
@@ -77,7 +90,13 @@ async function queryGsc(
   const allRows: GscRow[] = []
   let startRow = 0
   for (;;) {
-    const requestBody: Record<string, unknown> = { startDate, endDate, dimensions: [dimension], rowLimit, startRow }
+    const requestBody: Record<string, unknown> = {
+      startDate,
+      endDate,
+      dimensions: [...dimensions],
+      rowLimit,
+      startRow,
+    }
     if (dimensionFilterGroups) requestBody.dimensionFilterGroups = dimensionFilterGroups
     const response = await searchconsole.searchanalytics.query({
       siteUrl: getGscProperty(),
@@ -102,14 +121,22 @@ export async function runGscPull(options: GrowthPullOptions = {}): Promise<GscPu
     .toISOString()
     .slice(0, 10)
 
-  const queryRows = await queryGsc(searchconsole, startDate, endDate, 'query', options)
-  const pageRows = await queryGsc(searchconsole, startDate, endDate, 'page', options)
+  const queryRows = await queryGsc(searchconsole, startDate, endDate, ['query'], options)
+  const pageRows = await queryGsc(searchconsole, startDate, endDate, ['page'], options)
+  const pageQueryRows = await queryGsc(searchconsole, startDate, endDate, ['page', 'query'], options)
   const queries = queryRows.slice(0, 50).map((row) => ({
     query: row.keys[0], clicks: row.clicks, impressions: row.impressions, ctr: row.ctr, position: row.position,
   }))
   const pages = pageRows.map((row) => ({
     page: row.keys[0], clicks: row.clicks, impressions: row.impressions, ctr: row.ctr, position: row.position,
   }))
+  const pageQueryRecords = pageQueryRows.map(toPageQueryRecord)
+  const pageQueries: GscPageQueryExport = {
+    fetchedAt,
+    focusPaths: ['/', '/pricing', '/partners'],
+    rows: pageQueryRecords,
+    focusRows: focusPageQueryRows(pageQueryRecords),
+  }
   const totalClicks = queryRows.reduce((sum, row) => sum + row.clicks, 0)
   const totalImpressions = queryRows.reduce((sum, row) => sum + row.impressions, 0)
   const brandedClicks = queryRows
@@ -131,12 +158,14 @@ export async function runGscPull(options: GrowthPullOptions = {}): Promise<GscPu
   const result: GscPullResult = {
     queries: { fetchedAt, queries },
     pages: { fetchedAt, pages },
+    pageQueries,
     summary,
   }
   const segment = growthArtifactSegment(options)
   await Promise.all([
     persistGrowthArtifact('gsc-queries', `gsc/${segment}/queries`, result.queries),
     persistGrowthArtifact('gsc-pages', `gsc/${segment}/pages`, result.pages),
+    persistGrowthArtifact('gsc-page-queries', `gsc/${segment}/page-queries`, result.pageQueries),
     persistGrowthArtifact('gsc-summary', `gsc/${segment}/summary`, result.summary),
   ])
   return result

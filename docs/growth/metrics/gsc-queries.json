@@ -1,12 +1,12 @@
 {
-  "fetchedAt": "2026-09-03T20:39:33.469Z",
+  "fetchedAt": "2026-09-08T18:50:20.747Z",
   "queries": [
     {
       "query": "fixflags",
-      "clicks": 2,
-      "impressions": 17,
-      "ctr": 0.11764705882352941,
-      "position": 1.2352941176470589
+      "clicks": 7,
+      "impressions": 49,
+      "ctr": 0.14285714285714285,
+      "position": 1.6530612244897958
     },
     {
       "query": "fix flag",

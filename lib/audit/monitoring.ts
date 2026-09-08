@@ -8,6 +8,7 @@ export interface MonitoringResult {
   status: AuditStatus
   reused: boolean
   parentAuditId: string | null
+  siteId: string
 }
 
 export interface StartMonitoringOptions {
@@ -61,7 +62,7 @@ export async function startMonitoringAudit(
     return validation
   }
 
-  const { auditId, status, reused, parentId: parentAuditId } = await createAndEnqueueAudit({
+  const { auditId, status, reused, parentId: parentAuditId, siteId } = await createAndEnqueueAudit({
     url: parent!.url,
     userId: user?.id ?? null,
     parentId,
@@ -78,6 +79,6 @@ export async function startMonitoringAudit(
 
   return {
     ok: true,
-    result: { auditId, status, reused, parentAuditId },
+    result: { auditId, status, reused, parentAuditId, siteId },
   }
 }

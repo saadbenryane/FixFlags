@@ -1,8 +1,9 @@
 # Metrics
 
-KPI definitions, current values, and the measurement framework. Updated weekly
-once analytics access and the rollup job are live. Until then, this file
-defines what we'll measure and why — not live numbers.
+KPI definitions, dated snapshots, and the measurement framework. GSC and GA4
+exports exist in `docs/growth/metrics/`; each JSON file's `fetchedAt` is the
+source of truth for freshness. Values in this narrative are historical until
+their date is stated and should not be presented as live.
 
 ## Measurement framework
 
@@ -86,8 +87,9 @@ Organic visitor → Tool result → Audit start → Audit complete → Signup �
 
 ## How to update this file
 
-1. **Weekly (automated once `weekly-review.ts` exists):** Graph stats and
-   surface performance numbers are pulled automatically.
-2. **Weekly (manual until analytics access):** Fill in GSC/analytics rows
-   once access is granted.
+1. **Each SEO loop:** Pull matching GSC and GA4 windows when credentials are
+   authorized, then record their `fetchedAt`, segments, and caveats in the
+   weekly review.
+2. **Weekly:** Refresh narrative values only from attributable exports. Keep
+   GSC average position labeled as impression-weighted, not an exact rank.
 3. **Monthly:** Review target vs. actual, adjust targets based on trajectory.

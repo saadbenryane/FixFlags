@@ -14,7 +14,7 @@ export const REVIEW_ENTRY = {
 export const CUSTOMER_TERMS = {
   category: 'Website intelligence',
   categoryLine: 'Your website, looked after.',
-  tagline: 'Find what is getting in the way of your next customer.',
+  tagline: 'Know how your website is doing, what needs attention, and what to do next.',
   primaryCta: 'Review my site',
   compactPrimaryCta: 'Review',
   productReview: 'product review',

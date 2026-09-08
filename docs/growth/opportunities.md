@@ -1,23 +1,44 @@
 # Opportunities
 
-Weekly GSC/analytics-derived opportunities. Populated once
-`scripts/growth/pull-gsc.ts` exists and analytics access is granted (see
-`decision-log.md`). Until then, this file lists **structural** opportunities
-inferred from the codebase and market context, clearly marked as
-unvalidated.
+Weekly GSC/analytics-derived opportunities plus clearly labeled structural
+hypotheses. `scripts/growth/pull-gsc.ts` and `scripts/growth/pull-ga.ts`
+produce dated snapshots; do not treat this narrative as fresher than those
+artifacts.
 
-## Structural opportunities (no analytics access yet)
+## Latest measured state
 
-These are hypotheses, not measured opportunities. They will be
-re-prioritized against real GSC/GA data once access exists.
+GSC export fetched 2026-09-08T18:50Z for a rolling 28-day window, now
+including page×query rows in `docs/growth/metrics/gsc-page-queries.json`:
+
+- 7 clicks, 53 query impressions, 13.21% CTR, 1.83 impression-weighted
+  average position
+- 100% of query clicks from `fixflags` or close misspellings
+- page×query shows `/pricing` (19 impressions, 0 clicks) and `/partners`
+  (21 impressions, 0 clicks) appear only for `fixflags`. They are brand
+  sitelinks, not separate commercial queries
+- page totals still exceed joined rows, so some low-volume queries remain
+  hidden. Do not invent them
+- live sitemap still advertised invalid `::page:N` Flag URLs on production
+  at this date
+
+This is enough to justify brand-sitelink titles. It is not enough to
+estimate non-brand demand or to justify a category-keyword campaign.
+
+Refresh this section from the latest `docs/growth/metrics/` files, not from
+memory.
+
+## Structural opportunities
+
+These are hypotheses, not measured opportunities. Re-prioritize them against
+fresh GSC/GA data, a timestamped free SERP sample, current product truth, and
+the graph's sample gates.
 
 ### Category ownership
 
-- **"AI website audit" / "AI-built site QA" category ownership.** No
-  competitor currently seems to explicitly own this framing based on our
-  earlier product research (FixFlags' own positioning is "the QA layer for
-  AI-built products" — a genuinely underserved framing as of this writing).
-  Validate with real SERP research once `competitors.md` is filled in.
+- **"AI website audit" / "SEO audit" / "website audit".** Parked until
+  ranking-strategy Phase C. Current GSC is branded-only. Those SERPs are
+  occupied by Lighthouse, Ahrefs, Semrush, and generic scanners. Do not
+  publish category pages to chase that volume.
 
 ### Builder-specific audiences
 
@@ -54,7 +75,7 @@ re-prioritized against real GSC/GA data once access exists.
 
 ## How to fill this in for real
 
-Once `pull-gsc.ts` runs:
+On each fresh GSC pull:
 1. Pull all queries with impressions > 0 but clicks = 0 and position 5-20 —
    these are "almost ranking" opportunities, typically the highest ROI fix
    (title/meta/content tweaks vs. building something new).

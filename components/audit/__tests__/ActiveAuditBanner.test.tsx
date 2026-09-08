@@ -16,22 +16,23 @@ describe('ActiveAuditBanner', () => {
     useActiveAudit.mockReturnValue({
       active: {
         auditId: 'audit-1',
+        siteId: 'site-1',
       },
       dismiss,
     })
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ status: 'CHECKING', url: 'https://southernia.com' }),
+      json: async () => ({ status: 'CHECKING', url: 'https://southernia.com', siteId: 'site-1' }),
     }))
   })
 
-  it('never renders on the active report itself', () => {
-    usePathname.mockReturnValue('/report/audit-1')
+  it('never renders on the active Site board itself', () => {
+    usePathname.mockReturnValue('/sites/site-1')
 
     render(<ActiveAuditBanner />)
 
-    expect(screen.queryByText('Return to report')).not.toBeInTheDocument()
+    expect(screen.queryByText('Return to Site')).not.toBeInTheDocument()
   })
 
   it('derives the hostname from the authorized status response', async () => {
@@ -40,9 +41,9 @@ describe('ActiveAuditBanner', () => {
     render(<ActiveAuditBanner />)
 
     expect(await screen.findByText('southernia.com')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Return to report' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Return to Site' })).toHaveAttribute(
       'href',
-      '/report/audit-1'
+      '/sites/site-1'
     )
   })
 })

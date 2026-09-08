@@ -26,4 +26,15 @@ describe('getIndexableIssueCheckIds', () => {
     expect(result).toEqual(rows)
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(1)
   })
+
+  it('defensively excludes per-page check variants from public URLs', async () => {
+    prismaMock.$queryRaw.mockResolvedValue([
+      { checkId: 'cta-dead-link', siteCount: 8, lastSeenAt: new Date('2026-09-08T10:00:00Z') },
+      { checkId: 'cta-dead-link::page:1', siteCount: 7, lastSeenAt: new Date('2026-09-08T09:00:00Z') },
+    ])
+
+    await expect(getIndexableIssueCheckIds()).resolves.toEqual([
+      { checkId: 'cta-dead-link', siteCount: 8, lastSeenAt: new Date('2026-09-08T10:00:00Z') },
+    ])
+  })
 })

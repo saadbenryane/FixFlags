@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
+import { requireSiteAccess } from '@/lib/sites/request-access'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 
 const schema = z.object({
@@ -15,12 +16,15 @@ export async function POST(
 ) {
   try {
     const { siteId } = await context.params
+    const access = await requireSiteAccess(siteId)
+    if (!access.ok) return apiError(access.message, access.status)
+
     const body = schema.safeParse(await req.json().catch(() => ({})))
     if (!body.success) return apiError('Invalid outcome update', 400)
 
     const result = await executeSiteCommand({
       type: 'CONFIRM_OUTCOME',
-      siteId,
+      siteId: access.decision.site.siteId,
       outcomeId: body.data.outcomeId,
       confirmed: body.data.confirmed,
       name: body.data.name,

@@ -13,6 +13,7 @@ import { REPORT_COPY } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
 
 type ProductReviewActionProps = {
+  productId: string
   productUrl: string
   activeManualReview: ProductReviewSummaryDTO | null
   latestManualReview: ProductReviewSummaryDTO | null
@@ -20,6 +21,7 @@ type ProductReviewActionProps = {
 }
 
 export function ProductReviewAction({
+  productId,
   productUrl,
   activeManualReview,
   latestManualReview,
@@ -33,8 +35,8 @@ export function ProductReviewAction({
     return (
       <div className="flex w-full items-center justify-end">
         <Button asChild variant="brand" className="w-full shrink-0 sm:w-auto">
-          <Link href={`/report/${activeManualReview.id}?view=report`}>
-            Open review
+          <Link href={`/sites/${productId}`}>
+            Open Site
           </Link>
         </Button>
       </div>

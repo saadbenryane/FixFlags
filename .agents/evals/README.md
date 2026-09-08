@@ -25,6 +25,7 @@ Each eval file should define:
 | Billing | `npm run agent -- eval billing` | Entitlement and billing behavior tests |
 | Prompt contract | `npm run agent -- eval prompts` | Prompt composition and provider contract tests |
 | Knowledge | `npm run agent -- eval docs` | Canonical knowledge duplication guard |
+| SEO growth-loop skill | `.agents/evals/seo-growth-loop.md` | Fresh-session routing, measurement honesty, anti-spam boundaries, experiment closure |
 
 The release bar is `npm run verify:release`. Missing credentials or infrastructure are failures, not skipped successes.
 

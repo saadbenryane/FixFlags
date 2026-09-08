@@ -74,7 +74,9 @@ export function SiteBoard({
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const checking =
-    view.audit.status != null && !['COMPLETED', 'FAILED'].includes(view.audit.status)
+    view.audit.status != null &&
+    !['COMPLETED', 'FAILED', 'PARTIAL'].includes(view.audit.status)
+  const learningCopy = 'Learning your website'
 
   const refresh = useCallback(async () => {
     const res = await fetch(`/api/sites/${siteId}`)
@@ -117,12 +119,17 @@ export function SiteBoard({
   async function keepWatching() {
     setBusy(true)
     try {
+      // Server picks the best allowed interval for the signed-in plan.
       const res = await fetch(`/api/sites/${siteId}/watch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ interval: 'weekly' }),
+        body: JSON.stringify({ interval: 'daily' }),
       })
-      const body = (await res.json().catch(() => ({}))) as { error?: string; signup?: boolean }
+      const body = (await res.json().catch(() => ({}))) as {
+        error?: string
+        signup?: boolean
+        interval?: string
+      }
       if (res.status === 401 || body.signup) {
         router.push(`/sign-up?next=${encodeURIComponent(`/sites/${siteId}`)}`)
         return
@@ -131,7 +138,11 @@ export function SiteBoard({
         setToast(body.error || 'Could not start watching yet')
         return
       }
-      setToast('You’re covered. We’ll check this Site again.')
+      setToast(
+        body.interval === 'daily'
+          ? 'You’re covered. We’ll check this Site daily.'
+          : 'You’re covered. We’ll check this Site weekly.'
+      )
       await refresh()
     } finally {
       setBusy(false)
@@ -252,7 +263,7 @@ export function SiteBoard({
               <p className="mt-1 max-w-xl text-sm text-muted-foreground">
                 {nav === 'Dashboard'
                   ? checking
-                    ? 'Your website, already being looked after.'
+                    ? `${learningCopy}. Cards update as each area finishes.`
                     : view.flags.length
                       ? 'Issues show up by area. Open a card to dig in.'
                       : 'Everything we’re watching looks good.'
@@ -263,9 +274,9 @@ export function SiteBoard({
             </div>
             <div className="flex items-center gap-2">
               {checking ? (
-                <span className="inline-flex items-center gap-2 text-sm text-brand">
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  Checking…
+                <span className="inline-flex items-center gap-2 text-sm text-brand" role="status">
+                  <RefreshCw className="h-4 w-4 animate-spin" aria-hidden />
+                  {learningCopy}
                 </span>
               ) : null}
               {!view.watching ? (
@@ -293,7 +304,9 @@ export function SiteBoard({
                     className={cn(
                       'flex min-h-[180px] flex-col rounded-2xl border border-border/80 bg-background p-5 text-left shadow-sm transition hover:border-foreground/20',
                       card.id === 'site' && 'sm:col-span-2 xl:col-span-2',
-                      card.state === 'problem' && 'border-destructive/40'
+                      card.state === 'problem' && 'border-destructive/40',
+                      (card.state === 'checking' || card.activity === 'checking') &&
+                        'border-brand/35 ring-1 ring-brand/20'
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -301,8 +314,11 @@ export function SiteBoard({
                         <Icon className="h-4 w-4" />
                         {card.name}
                       </span>
-                      {card.state === 'checking' ? (
-                        <RefreshCw className="h-4 w-4 animate-spin text-brand" />
+                      {card.state === 'checking' || card.activity === 'checking' ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-brand">
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                          Checking
+                        </span>
                       ) : (
                         <StatusDot state={card.state} />
                       )}
@@ -313,26 +329,22 @@ export function SiteBoard({
                     {card.detail ? (
                       <p className="mt-2 text-sm text-muted-foreground">{card.detail}</p>
                     ) : null}
-                    {card.score != null ? (
-                      <p className="mt-auto pt-4 text-xs text-muted-foreground">Score {card.score}</p>
+                    {card.state === 'checking' && !card.checkedAt ? (
+                      <p className="mt-auto pt-4 text-xs text-muted-foreground">
+                        Waiting for the first result
+                      </p>
                     ) : (
                       <p className="mt-auto pt-4 text-xs text-muted-foreground">
                         {card.openFlagCount
                           ? `${card.openFlagCount} Flag${card.openFlagCount === 1 ? '' : 's'}`
                           : card.checkedAt
                             ? 'Checked'
-                            : '—'}
+                            : 'Not checked yet'}
                       </p>
                     )}
                   </button>
                 )
               })}
-              <div className="flex min-h-[180px] flex-col items-start justify-center rounded-2xl border border-dashed border-border/80 bg-background/60 p-5 text-left">
-                <p className="font-medium">Add card</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Connections enrich these same cards. More cards come as we learn your Site.
-                </p>
-              </div>
             </div>
           ) : null}
 
@@ -394,6 +406,11 @@ export function SiteBoard({
                         <p className="text-xs text-muted-foreground">
                           {outcome.confirmedAt ? 'Confirmed' : 'Inferred'} · {outcome.inferenceSource}
                         </p>
+                        {outcome.pageUrls?.[0] ? (
+                          <p className="mt-1 truncate text-xs text-muted-foreground">
+                            {outcome.pageUrls[0]}
+                          </p>
+                        ) : null}
                       </div>
                       {!outcome.confirmedAt ? (
                         <Button

@@ -21,9 +21,13 @@ export async function getRelatedIssues(checkId: string): Promise<RelatedLink[]> 
   const sameRubric = await prisma.issue.findMany({
     where: {
       rubric: current.rubric,
-      checkId: { not: checkId },
+      AND: [
+        { checkId: { not: checkId } },
+        { checkId: { not: { contains: '::page:' } } },
+      ],
       siteCount: { gte: MIN_SAMPLE_SIZE },
     },
+    distinct: ['checkId'],
     orderBy: { siteCount: 'desc' },
     take: 3,
     select: { checkId: true, problemTemplate: true, siteCount: true },
@@ -31,13 +35,19 @@ export async function getRelatedIssues(checkId: string): Promise<RelatedLink[]> 
 
   const label = rubricLabel(current.rubric)
 
-  const links: RelatedLink[] = sameRubric.map((i) => ({
-    type: 'issue' as const,
-    href: `/issues/${i.checkId}`,
-    title: i.problemTemplate,
-    reason: `Same ${label} rubric`,
-    siteCount: i.siteCount,
-  }))
+  const links: RelatedLink[] = []
+  for (const issue of sameRubric) {
+    if (issue.checkId.includes('::page:')) continue
+    const href = `/issues/${issue.checkId}`
+    if (links.some((link) => link.href === href)) continue
+    links.push({
+      type: 'issue',
+      href,
+      title: issue.problemTemplate,
+      reason: `Same ${label} rubric`,
+      siteCount: issue.siteCount,
+    })
+  }
 
   if (links.length < 3) {
     const frameworkRows = await prisma.$queryRaw<
@@ -52,6 +62,7 @@ export async function getRelatedIssues(checkId: string): Promise<RelatedLink[]> 
       JOIN "graph_site_technology" st ON st."siteId" = io."siteId"
       WHERE st."isCurrent" = true
         AND i."checkId" != ${checkId}
+        AND i."checkId" NOT LIKE '%::page:%'
         AND i."siteCount" >= ${MIN_SAMPLE_SIZE}
         AND st."technologyId" IN (
           SELECT st2."technologyId"
@@ -66,6 +77,7 @@ export async function getRelatedIssues(checkId: string): Promise<RelatedLink[]> 
     `
 
     for (const row of frameworkRows) {
+      if (row.checkId.includes('::page:')) continue
       if (!links.some((l) => l.href === `/issues/${row.checkId}`)) {
         links.push({
           type: 'issue',

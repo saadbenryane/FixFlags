@@ -41,9 +41,14 @@ export interface PickPlanResult {
 }
 
 const REPORT_PATH = /^\/report\/[^/?#]+$/
+const SITE_PATH = /^\/sites\/[^/?#]+$/
 
 function isReportPath(value: string | null | undefined): value is string {
   return typeof value === 'string' && REPORT_PATH.test(value)
+}
+
+function isSitePath(value: string | null | undefined): value is string {
+  return typeof value === 'string' && SITE_PATH.test(value)
 }
 
 /**
@@ -70,11 +75,16 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
   if (plan === 'FREE') {
     if (respectActiveReport) {
       const active = getActiveAudit()
-      if (active?.auditId) {
-        return { kind: 'free_report', url: `/report/${active.auditId}` }
+      if (active?.siteId) {
+        return { kind: 'free_report', url: `/sites/${active.siteId}` }
       }
+      // No silent /report bounce — Site board is the product.
+    }
+    if (isSitePath(fallbackPath)) {
+      return { kind: 'free_report', url: fallbackPath }
     }
     if (isReportPath(fallbackPath)) {
+      // Legacy share/compat next paths only — do not invent report from audit id.
       return { kind: 'free_report', url: fallbackPath }
     }
     return { kind: 'free_dashboard', url: fallbackPath ?? '/dashboard' }

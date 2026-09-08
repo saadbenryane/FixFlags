@@ -15,6 +15,8 @@ agent) picks it back up.
 3. **`growth-roadmap.md`** — current phase and what's next.
 4. **`growth-memory.md`** — the running log. Read the last 3 entries before
    starting new work; they tell you what was tried and what happened.
+5. **`.agents/skills/fixflags-seo-growth-loop/SKILL.md`** — the canonical
+   measure, research, build, verify, observe, and learn workflow.
 
 ## The four-layer architecture
 
@@ -51,6 +53,10 @@ what Layer 1 collects.
 | `growth-memory.md` | Append-only weekly digest (the brain) | Weekly |
 | `decision-log.md` | Major decisions with review dates | Per decision |
 | `weekly-review/` | Per-week detail files | Weekly |
+
+The first version of the SEO loop is intentionally agent-run and
+reviewable. It does not install a second runtime or require a paid SERP
+provider.
 
 ## Rules
 

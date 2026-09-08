@@ -95,19 +95,24 @@ is.
 
 ---
 
-## [OPEN] Analytics access (GSC / GA / PostHog / Bing / backlink tooling)
+## [2026-07-09, resolved 2026-09-08] Analytics access
 
 **Problem:** The growth system's prioritization (backlog ranking,
 opportunity identification, weekly review) depends on real search and
 funnel data. None of GSC, GA read access, PostHog, or a backlink tool has
 been granted access as of this entry.
 
-**Status:** Open — asked the project owner, no decision recorded yet.
-Recommended minimum: GSC read-only access (highest signal-to-effort ratio
-per the options discussed).
+**Original status:** Open. The recommended minimum was GSC read-only access.
 
-**Review date:** Before Phase 2 begins — this blocks real (vs. structural)
-prioritization of the backlog.
+**Resolution:** GSC and GA4 read/export paths are implemented and dated
+artifacts exist in `docs/growth/metrics/`. PostHog, Bing, and backlink
+tooling remain optional future inputs, not blockers for the first SEO growth
+loop. Competitive SERP research uses timestamped free web observations; no
+paid provider is required.
+
+**Review condition:** Revisit external tooling only when a measured
+opportunity cannot be evaluated with GSC, GA4, current product evidence, and
+free web research.
 
 ---
 
@@ -280,3 +285,32 @@ threshold (e.g., due to data cleanup). No manual intervention needed.
 
 **Review date:** After first dynamic sitemap generation — verify correct
 routes are included and thin pages are excluded.
+
+---
+
+## [2026-09-08] Do not chase category keywords during foundation
+
+**Problem:** Older growth notes suggested owning "AI website audit" /
+"SEO audit" as a near-term opportunity, while live GSC is branded-only.
+
+**Alternatives considered:**
+1. Publish category or comparison pages before the new site is live.
+2. Keep foundation work (crawl truth, brand sitelink titles) and park
+   category terms until non-brand impressions exist.
+
+**Chosen solution:** Option 2.
+
+**Reasoning:** Page×query data from 2026-09-08 shows the only clicked
+query is `fixflags`. Pricing and partners impressions are sitelinks for
+that same query. Category SERPs are occupied by scanners and SEO suites.
+Publishing keyword pages would violate people-first rules and the current
+ranking-strategy phase.
+
+**Confidence:** high for "not now"; low for whether those terms ever
+become worth a unique FixFlags page.
+
+**Expected outcome:** Next organic work deploys current titles and crawl
+repairs, then observes brand CTR, then considers one Flag or tool page.
+
+**Review date:** After the 2026-09-15 GSC compare, or when a non-brand
+query cluster appears in page×query data.

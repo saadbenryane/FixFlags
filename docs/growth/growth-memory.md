@@ -307,3 +307,39 @@ reached the public-surface phase.
 4. Resolve analytics access decision (#5) — highest-leverage unlock for
    measurement
 5. Then: first issue page, attribution system, internal linking engine
+
+---
+
+## [2026-09-08] Brand sitelinks, not category keywords
+
+**Objective:** Make the unpublished care-site the official Google answer
+for people who already search `fixflags`.
+
+**Changes made:**
+- Added a GSC page×query export (`docs/growth/metrics/gsc-page-queries.json`).
+- Pre-registered and implemented `SEO-SNIPPET-001` titles for home,
+  pricing, and partners.
+- Recorded timestamped SERP leftovers (Founder DB, AgentSpot, FFlags
+  collision) and parked category-keyword backlog advice.
+
+**Reasoning:** Joined GSC rows proved `/pricing` and `/partners` appear
+only for the brand query. Vague sitelink titles waste the only measured
+demand. Category terms still have no GSC evidence.
+
+**Expected impact:** After deploy and recrawl, clearer official snippets
+and some sitelink CTR. No near-term non-brand ranking claim.
+
+**Measured impact:** Not yet. Next compare 2026-09-15.
+
+**What worked:** Page×query removed the need to invent pricing keywords.
+
+**What failed:** Production still serves the retired homepage tagline, so
+this pass cannot be observed live.
+
+**What we learned:** Extra URLs with impressions for a brand query are
+sitelinks until proven otherwise. Title those pages with the brand name.
+
+**Recommended next steps:**
+1. Deploy `SEO-CRAWL-001` and `SEO-SNIPPET-001` together.
+2. Run `npm run growth:verify-live`.
+3. Compare page×query on 2026-09-15 before any Flag or tool title pass.

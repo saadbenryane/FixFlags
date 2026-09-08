@@ -17,18 +17,25 @@ export function ActiveAuditBanner() {
   const pathname = usePathname()
   const [stillRunning, setStillRunning] = useState(true)
   const [hostname, setHostname] = useState<string | null>(null)
-  const isActiveReport = Boolean(active && pathname === `/report/${active.auditId}`)
+  const [siteId, setSiteId] = useState<string | null>(active?.siteId ?? null)
+  const boardHref = siteId ? `/sites/${siteId}` : null
+  const isActiveBoard = Boolean(
+    active &&
+      ((boardHref && pathname === boardHref) ||
+        pathname === `/report/${active.auditId}`)
+  )
 
   useEffect(() => {
     if (!active) {
       setStillRunning(false)
       return
     }
-    if (isActiveReport) {
+    if (isActiveBoard) {
       setStillRunning(false)
       return
     }
     setHostname(null)
+    setSiteId(active.siteId ?? null)
     setStillRunning(true)
     const activeAudit = active
     let cancelled = false
@@ -50,8 +57,18 @@ export function ActiveAuditBanner() {
           return
         }
         if (response.ok) {
-          const data = await response.json() as { status?: string; url?: string }
+          const data = (await response.json()) as {
+            status?: string
+            url?: string
+            siteId?: string
+            projectId?: string | null
+          }
           if (typeof data.url === 'string') setHostname(auditHostname(data.url))
+          if (typeof data.siteId === 'string' && data.siteId.trim()) {
+            setSiteId(data.siteId)
+          } else if (typeof data.projectId === 'string' && data.projectId.trim()) {
+            setSiteId(data.projectId)
+          }
           if (data.status && TERMINAL_STATUSES.has(data.status)) {
             dismiss(activeAudit.auditId)
             setStillRunning(false)
@@ -71,9 +88,9 @@ export function ActiveAuditBanner() {
       controller?.abort()
       if (timeout) clearTimeout(timeout)
     }
-  }, [active, dismiss, isActiveReport])
+  }, [active, dismiss, isActiveBoard])
 
-  if (!active || !stillRunning || isActiveReport) return null
+  if (!active || !stillRunning || isActiveBoard) return null
 
   return (
     <div className="pointer-events-none px-3 pb-2 pt-0">
@@ -84,12 +101,14 @@ export function ActiveAuditBanner() {
             {AUDIT_PROGRESS.bannerScanning}{' '}
             <span className="font-medium text-foreground">{hostname ?? 'your page'}</span>
           </span>
-          <Link
-            href={`/report/${active.auditId}`}
-            className="font-medium text-brand transition-colors duration-200 hover:text-brand/80"
-          >
-            Return to report
-          </Link>
+          {boardHref ? (
+            <Link
+              href={boardHref}
+              className="font-medium text-brand transition-colors duration-200 hover:text-brand/80"
+            >
+              Return to Site
+            </Link>
+          ) : null}
         </div>
       </Container>
     </div>

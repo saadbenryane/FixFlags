@@ -1,30 +1,167 @@
 # Experiments
 
-Hypothesis → implementation → outcome log. One entry per significant
-improvement we treat as an experiment rather than a certainty.
+Append-only hypothesis to implementation to outcome log. Pre-register an
+intervention before editing, then append dated observations and the final
+decision to the same entry. Never rewrite the baseline after seeing results.
 
-Template for new entries:
+Template for new SEO entries:
 
 ```md
-## [YYYY-MM-DD] Title
+## SEO-[TYPE]-[NNN] - [title]
 
-**Hypothesis:** what we believe and why
+**Registered:** YYYY-MM-DD
+**Status:** planned | implemented | observing | concluded
+**Target:** query, canonical page, audience, and intent
+**Evidence window:** exact dates, property, country/device/search-type filters
+**Baseline:** clicks, impressions, CTR, impression-weighted average position,
+and one product/business guardrail
+**Data caveats:** missing rows, small sample, partial period, attribution limits
 
-**Implementation:** what we actually shipped
+**Hypothesis:** If we make [exact change], then [primary metric] should move
+because [causal mechanism], without harming [guardrail].
 
-**Success metric:** the single number that decides this
+**Exact implementation:** files and visible behavior to change
+**Primary metric:** one search metric
+**Guardrail:** one qualified product or business metric
+**Observation window:** next comparable measurement date or recrawl condition
+**Decision rule:** what means keep, revise, revert, or inconclusive
+**Confidence and evidence:** low | medium | high, with dated sources
 
-**Outcome:** what happened (fill in after enough time has passed)
+### YYYY-MM-DD observation
 
-**Lessons learned:** what we'd do differently
+- Applied/deployed:
+- Crawled/reprocessed:
+- Comparable result:
+- Confounders:
+- Next action:
 
-**Future recommendations:** what this unlocks or forecloses
+### Conclusion
+
+**Decision:** keep | revise | revert | inconclusive
+**Outcome:** baseline to result for the primary metric and guardrail
+**Lessons learned:** reusable finding, if any
+**Future recommendation:** what this unlocks or rules out
 ```
+
+Search Console average position is not an exact live rank. Keep manual SERP
+observations timestamped and separate from first-party performance metrics.
 
 ---
 
-No experiments run yet — Phase 1 is foundational infrastructure, not a
-testable claim. The experiments below are planned for Phase 2.
+## SEO-SNIPPET-001 - Brand sitelink titles for the new care story
+
+**Registered:** 2026-09-08
+**Status:** implemented, awaiting deployment and recrawl
+**Target:** query `fixflags`; canonical pages `/`, `/pricing`, and
+`/partners`; people who already know the name and need the official product,
+cost, or studio-delivery answer
+**Evidence window:** GSC web data pulled 2026-09-08T18:50Z for a rolling
+28-day window, including page×query rows; free SERP samples the same evening
+**Baseline:** 7 query clicks, 53 query impressions, all branded.
+Page×query shows `/pricing` (19 impressions, 0 clicks, position 9.37) and
+`/partners` (21 impressions, 0 clicks, position 7.43) appear only for
+`fixflags`, not for distinct commercial queries. Homepage CTR for
+`fixflags` is 10.5% on apex and 27.3% on www. Production titles still use
+the retired AI-QA story; Google still shows directory leftovers on the
+retired tagline.
+**Data caveats:** page totals still exceed joined page×query rows, so some
+low-volume queries remain hidden. Sample is tiny. GA4 cannot join Google
+sessions to Site starts.
+
+**Hypothesis:** If the official homepage, pricing, and partners snippets
+name FixFlags, describe the live-website check with evidence and a fix
+path, and drop vague labels (`Pricing`, `Expert program`) plus retired
+tagline language, then brand searchers will recognize the same product
+under the care story and click the official sitelinks, without harming
+brand clicks or Site starts.
+
+**Exact implementation:** Update `lib/marketing/copy/seo.ts` titles and
+descriptions for home, pricing, and partners; align roast metadata away
+from grade language; replace the Shopify-only pricing note in
+`lib/marketing/seo-routes.ts` llms copy. Do not rewrite homepage editorial
+sections.
+**Primary metric:** combined CTR on `/pricing` and `/partners` for query
+`fixflags` after recrawl, from a 0% baseline
+**Guardrail:** homepage `fixflags` clicks and GA4 Google sessions do not
+collapse versus the 2026-09-08 baseline
+**Observation window:** immediate production title check after deploy;
+first GSC page×query compare on 2026-09-15 or after a confirmed recrawl
+**Decision rule:** keep if official titles are live and sitelink CTR does
+not fall while brand clicks hold; revise if Google ignores the new titles
+or sitelink CTR stays at zero after recrawl; revert if brand clicks or
+Google sessions drop without a matching crawl or SERP confounder
+**Confidence and evidence:** medium for clearer brand recognition, low for
+near-term ranking movement. Evidence is the 2026-09-08 page×query pull and
+timestamped directory SERP leftovers.
+
+### 2026-09-08 observation
+
+- Applied/deployed: implemented locally in copy, llms notes, roast metadata,
+  and page×query export; not deployed
+- Crawled/reprocessed: no
+- Comparable result: n/a
+- Confounders: production homepage and pricing HTML are behind the
+  repository; SEO-CRAWL-001 is in the same unpublished cut; Google snippets
+  for `/pricing` still showed stale $69/$199 copy in a 2026-09-08 search
+- Next action: deploy with crawl repairs, then compare page×query CTR on
+  2026-09-15
+
+---
+
+## SEO-CRAWL-001 - Keep page-scoped Flag variants out of public discovery
+
+**Registered:** 2026-09-08
+**Status:** implemented, awaiting deployment and recrawl
+**Target:** `/sitemap.xml`, `/issues`, and issue-page related links for people
+and crawlers navigating the public Flag Library
+**Evidence window:** GSC web data pulled 2026-09-08 for rolling 7-day and
+28-day windows; live production inspection at 2026-09-08T17:21Z
+**Baseline:** GSC's 28-day query export has 7 clicks, 53 impressions, 13.21%
+CTR, and 1.83 impression-weighted average position, all from branded or
+brand-adjacent queries. The live sitemap exposes 19 `::page:N` URLs that
+return Not Found, and one sampled issue page renders the same related URL
+three times.
+**Data caveats:** GSC query and page dimensions aggregate independently and
+the API may omit low-volume rows. The current GA4 export has 10 Google
+sessions in 28 days, but it cannot attribute Site starts to those sessions.
+This intervention has crawl-quality evidence, not ranking causality.
+
+**Hypothesis:** If public discovery surfaces expose only canonical base check
+IDs and deduplicate related links, then crawlers and visitors will stop
+receiving known Not Found Flag URLs, without reducing access to valid
+sample-gated issue pages.
+
+**Exact implementation:** Filter page-scoped `::page:N` check variants from
+the indexable issue query, deduplicate related issues by canonical check ID,
+and add regression tests for both public projections.
+**Primary metric:** zero `::page:N` URLs in the generated sitemap after
+deployment
+**Guardrail:** canonical sample-gated issue URLs and up to three distinct
+related issue links continue to render
+**Observation window:** verify immediately after deployment, then inspect GSC
+page/indexing data after Google recrawls the sitemap; first review 2026-09-15
+**Decision rule:** keep if invalid sitemap entries are zero and valid issue
+coverage remains; revise if variants still leak through another public query;
+revert if canonical eligible issues disappear.
+**Confidence and evidence:** high for removing invalid discovery URLs, low for
+near-term ranking impact. Evidence is the live sitemap and sampled 404 pages.
+
+### 2026-09-08 observation
+
+- Applied/deployed: implemented and regression-tested locally; not deployed
+- Crawled/reprocessed: no
+- Comparable result: the local database projection generated 73 distinct
+  sitemap URLs with zero page variants or duplicates; the sampled issue
+  returned three distinct related links
+- Confounders: current production still uses legacy homepage/product wording;
+  GSC volume is small and branded
+- Next action: deploy through the release owner, verify zero `::page:N` URLs
+  in production, then review GSC after recrawl
+
+---
+
+The entries below predate the first executed SEO loop and remain historical
+planned experiments until separately re-baselined.
 
 ---
 

@@ -186,17 +186,113 @@ export async function loadSiteRecord(siteId: string): Promise<SiteRecord | null>
   }
 }
 
-/** After claim, point provisional Sites at the owned Project. */
+/** After claim, point provisional Sites for these audits at the owned Project. */
 export async function claimProvisionalSitesForProject(input: {
   userId: string
   projectId: string
   canonicalHost: string
+  /** Only claim provisionals tied to these audits (or matching session keys). */
+  primaryAuditIds: string[]
+  sessionKeys?: string[]
 }): Promise<void> {
+  const auditIds = input.primaryAuditIds.filter(Boolean)
+  const sessionKeys = (input.sessionKeys ?? []).map((k) => k.trim()).filter(Boolean)
+  if (auditIds.length === 0 && sessionKeys.length === 0) return
+
   await prisma.provisionalSite.updateMany({
     where: {
       canonicalHost: input.canonicalHost,
       claimedProjectId: null,
+      OR: [
+        ...(auditIds.length > 0 ? [{ primaryAuditId: { in: auditIds } }] : []),
+        ...(sessionKeys.length > 0 ? [{ sessionKey: { in: sessionKeys } }] : []),
+      ],
     },
     data: { claimedProjectId: input.projectId },
   })
+}
+
+/**
+ * Move provisional SitePage / SiteOutcome rows onto the owned Project so claim
+ * keeps the same Outcomes and pages (including user confirmations).
+ */
+export async function migrateProvisionalSiteDataToProject(input: {
+  projectId: string
+  canonicalHost: string
+  primaryAuditIds: string[]
+}): Promise<void> {
+  const auditIds = input.primaryAuditIds.filter(Boolean)
+  if (auditIds.length === 0) return
+
+  const provisionals = await prisma.provisionalSite.findMany({
+    where: {
+      canonicalHost: input.canonicalHost,
+      OR: [
+        { claimedProjectId: input.projectId },
+        { primaryAuditId: { in: auditIds } },
+      ],
+    },
+    select: { id: true },
+  })
+  if (provisionals.length === 0) return
+  const provisionalIds = provisionals.map((p) => p.id)
+
+  const pages = await prisma.sitePage.findMany({
+    where: { provisionalSiteId: { in: provisionalIds } },
+  })
+  for (const page of pages) {
+    const existing = await prisma.sitePage.findUnique({
+      where: {
+        projectId_url: { projectId: input.projectId, url: page.url },
+      },
+    })
+    if (existing) {
+      await prisma.siteOutcomePage.updateMany({
+        where: { pageId: page.id },
+        data: { pageId: existing.id },
+      })
+      await prisma.sitePage.delete({ where: { id: page.id } })
+    } else {
+      await prisma.sitePage.update({
+        where: { id: page.id },
+        data: { projectId: input.projectId, provisionalSiteId: null },
+      })
+    }
+  }
+
+  const outcomes = await prisma.siteOutcome.findMany({
+    where: { provisionalSiteId: { in: provisionalIds } },
+  })
+  for (const outcome of outcomes) {
+    const existing = await prisma.siteOutcome.findFirst({
+      where: {
+        projectId: input.projectId,
+        slug: outcome.slug,
+      },
+    })
+    if (existing) {
+      await prisma.siteOutcomePage.updateMany({
+        where: { outcomeId: outcome.id },
+        data: { outcomeId: existing.id },
+      })
+      // Prefer user confirmation from provisional when owned row is still heuristic.
+      if (outcome.confirmedAt && !existing.confirmedAt) {
+        await prisma.siteOutcome.update({
+          where: { id: existing.id },
+          data: {
+            name: outcome.name,
+            description: outcome.description,
+            inferenceSource: outcome.inferenceSource,
+            confirmedAt: outcome.confirmedAt,
+          },
+        })
+      }
+      await prisma.siteOutcome.delete({ where: { id: outcome.id } })
+    } else {
+      await prisma.siteOutcome.update({
+        where: { id: outcome.id },
+        data: { projectId: input.projectId, provisionalSiteId: null },
+      })
+    }
+  }
 }

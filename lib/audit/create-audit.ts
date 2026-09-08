@@ -429,14 +429,50 @@ export async function createAndEnqueueAudit(
     })
   }
 
-  if (audit.reused) {
-    const site = await ensureSiteForAudit({
+  // Site packaging is part of the success contract for every check.
+  // Ensure before enqueue so a missing Site never leaves the client on report chrome.
+  let site
+  try {
+    site = await ensureSiteForAudit({
       url,
       auditId: audit.id,
       userId,
       projectId,
       sessionKey: options.clientId ?? null,
     })
+  } catch (error) {
+    if (!audit.reused) {
+      await prisma.audit.update({
+        where: { id: audit.id },
+        data: {
+          status: 'FAILED',
+          errorMsg: 'Failed to open Site board for this check',
+          failureCode: 'SITE_ENSURE_FAILED',
+          failureStage: 'create',
+        },
+      })
+    }
+    throw error instanceof Error
+      ? error
+      : new Error('Failed to open Site board for this check')
+  }
+
+  if (!site.siteId?.trim()) {
+    if (!audit.reused) {
+      await prisma.audit.update({
+        where: { id: audit.id },
+        data: {
+          status: 'FAILED',
+          errorMsg: 'Site board identity was empty after ensure',
+          failureCode: 'SITE_ENSURE_FAILED',
+          failureStage: 'create',
+        },
+      })
+    }
+    throw new Error('Site board identity was empty after ensure')
+  }
+
+  if (audit.reused) {
     return {
       auditId: audit.id,
       status: audit.status,
@@ -474,14 +510,6 @@ export async function createAndEnqueueAudit(
     })
     throw error
   }
-
-  const site = await ensureSiteForAudit({
-    url,
-    auditId: audit.id,
-    userId,
-    projectId,
-    sessionKey: options.clientId ?? null,
-  })
 
   return {
     auditId: audit.id,

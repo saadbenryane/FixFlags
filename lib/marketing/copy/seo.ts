@@ -2,7 +2,7 @@ export const SEO = {
   home: {
     title: 'FixFlags - Your website, looked after.',
     description:
-      'FixFlags looks after what your website depends on, and tells you when something needs attention. Start with a free URL analysis.',
+      'FixFlags checks your live website, shows evidence when something breaks, and gives you a clear way to fix it in the tools you already use.',
   },
   protect: {
     title: "Protect the path that makes money",
@@ -15,9 +15,9 @@ export const SEO = {
       'Install FixFlags on your Shopify store. We walk the path to checkout and alert you if customers cannot buy.',
   },
   pricing: {
-    title: 'Pricing',
+    title: 'FixFlags Pricing',
     description:
-      'Start with a free website analysis. Choose more Sites, deeper monitoring, and richer context when FixFlags becomes part of your operating loop.',
+      'Start with a free website analysis. See what a Site check includes, then add more Sites and ongoing checking when you need them.',
   },
   waitlist: {
     title: 'Join the waitlist',
@@ -88,13 +88,13 @@ export const SEO = {
       'Real Flags from reviewed sites, with frequency, affected frameworks, examples, and fixes.',
   },
   partners: {
-    title: 'Expert program',
+    title: 'FixFlags Expert Program',
     description:
-      'FixFlags delivery reviews for Lovable, Bolt, and MVP studios. Catch Flags before client handoff.',
+      'Studios handing off a live Lovable, Bolt, or MVP site can use FixFlags as the delivery review before the client sees it.',
   },
   roast: {
-    title: 'Website Roast – FixFlags',
+    title: 'Website Roast - FixFlags',
     description:
-      'Get a blunt quality check across Message, Experience, and Reach. Paste a URL, get a grade, then fix what matters.',
+      'Check a live page with FixFlags and see what needs attention. Then fix it.',
   },
 } as const

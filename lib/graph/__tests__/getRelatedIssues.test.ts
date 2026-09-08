@@ -56,9 +56,13 @@ describe('getRelatedIssues', () => {
     expect(prismaMock.issue.findMany).toHaveBeenCalledWith({
       where: {
         rubric: 'MESSAGE',
-        checkId: { not: 'hero-value-unclear' },
+        AND: [
+          { checkId: { not: 'hero-value-unclear' } },
+          { checkId: { not: { contains: '::page:' } } },
+        ],
         siteCount: { gte: 3 },
       },
+      distinct: ['checkId'],
       orderBy: { siteCount: 'desc' },
       take: 3,
       select: { checkId: true, problemTemplate: true, siteCount: true },
@@ -114,6 +118,29 @@ describe('getRelatedIssues', () => {
     expect(result[0].href).toBe('/issues/slow-3g-blank-screen')
     expect(result[1].href).toBe('/issues/mobile-lcp-critical')
     expect(result[2].href).toBe('/issues/skip-link-missing')
+  })
+
+  it('excludes page variants and duplicate check IDs from public links', async () => {
+    prismaMock.issue.findFirst.mockResolvedValue({
+      rubric: 'MESSAGE',
+      id: 'issue_5',
+    })
+    prismaMock.issue.findMany.mockResolvedValue([
+      { checkId: 'cta-dead-link', problemTemplate: 'CTA is broken', siteCount: 8 },
+      { checkId: 'cta-dead-link', problemTemplate: 'CTA is broken elsewhere', siteCount: 7 },
+      { checkId: 'cta-dead-link::page:1', problemTemplate: 'CTA page variant', siteCount: 6 },
+    ])
+    prismaMock.$queryRaw.mockResolvedValue([
+      { checkId: 'cta-dead-link::page:2', problemTemplate: 'Another page variant', siteCount: 6 },
+      { checkId: 'skip-link-missing', problemTemplate: 'No skip link', siteCount: 5 },
+    ])
+
+    const result = await getRelatedIssues('messaging-no-audience')
+
+    expect(result.map((link) => link.href)).toEqual([
+      '/issues/cta-dead-link',
+      '/issues/skip-link-missing',
+    ])
   })
 
   it('returns empty array when no issues exist at all (same rubric returns nothing, no shared tech)', async () => {

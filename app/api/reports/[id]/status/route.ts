@@ -167,6 +167,8 @@ export async function GET(
           ? rest.journeyReviewAt
           : undefined,
         status: effectiveStatus,
+        siteId: audit.projectId ?? undefined,
+        projectId: canUsePrivateReportData ? audit.projectId : undefined,
         errorMsg: canUsePrivateReportData
           ? (refreshed?.errorMsg ?? audit.errorMsg)
           : undefined,

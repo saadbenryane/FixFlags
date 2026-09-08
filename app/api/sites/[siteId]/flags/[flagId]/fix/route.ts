@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
+import { requireSiteAccess } from '@/lib/sites/request-access'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 
 const schema = z.object({
@@ -14,6 +15,9 @@ export async function POST(
   context: { params: Promise<{ siteId: string; flagId: string }> }
 ) {
   try {
+    const access = await requireSiteAccess((await context.params).siteId)
+    if (!access.ok) return apiError(access.message, access.status)
+
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
     const { flagId } = await context.params
     const body = schema.safeParse(await req.json().catch(() => ({})))

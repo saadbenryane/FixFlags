@@ -22,6 +22,7 @@ async function main(): Promise<void> {
   await Promise.all([
     save('gsc-queries.json', result.queries),
     save('gsc-pages.json', result.pages),
+    save('gsc-page-queries.json', result.pageQueries),
     save('gsc-summary.json', result.summary),
   ])
   console.log(`[pull-gsc] exported metrics to ${metricsDirectory}`)

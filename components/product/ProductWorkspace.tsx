@@ -176,6 +176,7 @@ export function ProductWorkspace({
             </div>
             <div className="col-span-2 sm:col-span-1">
               <ProductReviewAction
+                productId={product.id}
                 productUrl={product.url}
                 activeManualReview={activeManualReview}
                 latestManualReview={latestManualReview}

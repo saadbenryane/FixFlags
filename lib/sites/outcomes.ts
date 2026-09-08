@@ -10,6 +10,38 @@ function slugify(name: string): string {
     .slice(0, 64) || 'outcome'
 }
 
+async function pageUrlsForIds(pageIds: string[]): Promise<string[]> {
+  if (pageIds.length === 0) return []
+  const pages = await prisma.sitePage.findMany({
+    where: { id: { in: pageIds } },
+    select: { id: true, url: true },
+  })
+  const byId = new Map(pages.map((p) => [p.id, p.url]))
+  return pageIds.map((id) => byId.get(id)).filter((url): url is string => Boolean(url))
+}
+
+async function toOutcomeView(row: {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  inferenceSource: string
+  confirmedAt: Date | null
+  pages: Array<{ pageId: string }>
+}): Promise<SiteOutcomeView> {
+  const pageIds = row.pages.map((p) => p.pageId)
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    inferenceSource: row.inferenceSource === 'user' ? 'user' : 'heuristic',
+    confirmedAt: row.confirmedAt?.toISOString() ?? null,
+    pageIds,
+    pageUrls: await pageUrlsForIds(pageIds),
+  }
+}
+
 function outcomeNamesFromContract(contract: ProductContract | null): string[] {
   if (!contract) return ['Primary path']
   const names: string[] = []
@@ -35,6 +67,7 @@ export type SiteOutcomeView = {
   inferenceSource: 'heuristic' | 'user'
   confirmedAt: string | null
   pageIds: string[]
+  pageUrls: string[]
 }
 
 export async function syncOutcomesFromAudit(input: {
@@ -92,15 +125,7 @@ export async function syncOutcomesFromAudit(input: {
     })
 
     if (existing?.inferenceSource === 'user') {
-      views.push({
-        id: existing.id,
-        name: existing.name,
-        slug: existing.slug,
-        description: existing.description,
-        inferenceSource: 'user',
-        confirmedAt: existing.confirmedAt?.toISOString() ?? null,
-        pageIds: existing.pages.map((p) => p.pageId),
-      })
+      views.push(await toOutcomeView(existing))
       continue
     }
 
@@ -132,14 +157,9 @@ export async function syncOutcomesFromAudit(input: {
       update: {},
     })
 
+    const pageIds = [...new Set([...outcome.pages.map((p) => p.pageId), page.id])]
     views.push({
-      id: outcome.id,
-      name: outcome.name,
-      slug: outcome.slug,
-      description: outcome.description,
-      inferenceSource: outcome.inferenceSource === 'user' ? 'user' : 'heuristic',
-      confirmedAt: outcome.confirmedAt?.toISOString() ?? null,
-      pageIds: [...new Set([...outcome.pages.map((p) => p.pageId), page.id])],
+      ...(await toOutcomeView({ ...outcome, pages: pageIds.map((pageId) => ({ pageId })) })),
     })
   }
 
@@ -173,15 +193,7 @@ export async function confirmSiteOutcome(input: {
     include: { pages: true },
   })
 
-  return {
-    id: updated.id,
-    name: updated.name,
-    slug: updated.slug,
-    description: updated.description,
-    inferenceSource: 'user',
-    confirmedAt: updated.confirmedAt?.toISOString() ?? null,
-    pageIds: updated.pages.map((p) => p.pageId),
-  }
+  return toOutcomeView(updated)
 }
 
 export async function listSiteOutcomes(site: SiteRecord): Promise<SiteOutcomeView[]> {
@@ -196,13 +208,5 @@ export async function listSiteOutcomes(site: SiteRecord): Promise<SiteOutcomeVie
     orderBy: { createdAt: 'asc' },
   })
 
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    slug: row.slug,
-    description: row.description,
-    inferenceSource: row.inferenceSource === 'user' ? 'user' : 'heuristic',
-    confirmedAt: row.confirmedAt?.toISOString() ?? null,
-    pageIds: row.pages.map((p) => p.pageId),
-  }))
+  return Promise.all(rows.map((row) => toOutcomeView(row)))
 }

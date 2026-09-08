@@ -16,7 +16,8 @@ import {
   productNameFromUrl,
 } from '@/lib/audit/product-intelligence'
 import { parseProductContract } from '@/lib/audit/product-contract'
-import { claimProvisionalSitesForProject } from '@/lib/sites/ensure-site'
+import { assertCanCreateProduct } from '@/lib/billing/product-capacity'
+import { claimProvisionalSitesForProject, migrateProvisionalSiteDataToProject } from '@/lib/sites/ensure-site'
 
 async function unlockClaimedAudit(audit: {
   id: string
@@ -138,6 +139,16 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
         userId,
         projectId: project.id,
         canonicalHost: host,
+        primaryAuditIds: audits
+          .filter((a) => canonicalProductHost(a.url) === host)
+          .map((a) => a.id),
+      })
+      await migrateProvisionalSiteDataToProject({
+        projectId: project.id,
+        canonicalHost: host,
+        primaryAuditIds: audits
+          .filter((a) => canonicalProductHost(a.url) === host)
+          .map((a) => a.id),
       })
     }
   }

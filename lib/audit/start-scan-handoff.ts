@@ -14,14 +14,14 @@ export type StartScanOptions = {
   onStarted?: (data: Record<string, unknown>) => void
   errorFallback?: string
   /**
-   * Navigate to the work report URL. Required so Update review and first scan
-   * open the same in-flight audit identity that status polling uses.
+   * Navigate to the Site board. Required so first analysis opens the same
+   * Site identity the board polls.
    */
   navigate: (href: string) => void
 }
 
 export type CreateCheckResult =
-  | { ok: true; reportId?: string }
+  | { ok: true; reportId?: string; siteId: string }
   | {
       ok: false
       message: string
@@ -33,7 +33,7 @@ export type CreateCheckResult =
 /**
  * Shared check creation used by URL review, Update review, and scan-deeper actions.
  * Visual pending and error states belong to the control that initiated the request.
- * Opens the Site board when siteId is present; falls back to legacy report URL.
+ * Always opens `/sites/{siteId}`. Missing siteId is a hard failure (no /report fallback).
  */
 export async function startScanWithHandoff(
   options: StartScanOptions
@@ -61,26 +61,30 @@ export async function startScanWithHandoff(
 
     const data = (await res.json()) as Record<string, unknown>
     const reportId = typeof data.reportId === 'string' ? data.reportId : ''
-    const siteId = typeof data.siteId === 'string' ? data.siteId : ''
+    const siteId = typeof data.siteId === 'string' ? data.siteId.trim() : ''
     options.onStarted?.(data)
 
-    if (siteId) {
-      options.navigate(`/sites/${siteId}`)
-      return { ok: true, reportId: reportId || undefined }
+    if (!siteId) {
+      return {
+        ok: false,
+        message:
+          options.errorFallback ||
+          'Your check started, but FixFlags could not open the Site board. Try again.',
+        code: 'SITE_HANDOFF_MISSING',
+      }
     }
 
-    if (reportId) {
-      options.navigate(`/report/${reportId}`)
-      return { ok: true, reportId }
+    options.navigate(`/sites/${siteId}`)
+    try {
+      const { setActiveAudit } = await import('@/lib/audit/active-audit')
+      setActiveAudit({
+        auditId: reportId || siteId,
+        siteId,
+      })
+    } catch {
+      // Storage may be unavailable; navigation still opens the board.
     }
-
-    return {
-      ok: false,
-      message:
-        options.errorFallback ||
-        'Your review started, but FixFlags could not open the Site. Try again.',
-      code: 'REPORT_HANDOFF_MISSING',
-    }
+    return { ok: true, siteId, reportId: reportId || undefined }
   } catch {
     return {
       ok: false,

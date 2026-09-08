@@ -5,8 +5,9 @@ estimated ROI rationale. Reordered whenever new data arrives (GSC pull,
 graph stats, competitor research). This is **not** a sprint board — it's a
 living priority list that the weekly review consults.
 
-Until analytics access exists (see `decision-log.md`), ranking is based on
-structural reasoning, not measured demand. Re-rank once real signal exists.
+GSC and GA4 export paths now exist, but the latest committed search snapshot
+is low-volume and mostly branded. Ranking therefore remains provisional.
+Re-rank after each comparable SEO growth-loop measurement.
 
 ## Ranked
 
@@ -37,20 +38,23 @@ structural reasoning, not measured demand. Re-rank once real signal exists.
 
 ### P0 — Current priorities
 
-5. ~~**Decide analytics access**~~ — Still pending at decision level.
+5. ~~**Complete the first SEO growth-loop baseline.**~~ Done 2026-09-08
+   (`SEO-CRAWL-001` plus page×query measurement).
 
-6. **Ship the first `/issues/[checkId]` page** for whichever check crosses
-   `MIN_SAMPLE_SIZE` first after the self-seed batch. Validates the entire
-   graph -> public-page pipeline end to end before building five more.
-   *(Phase 2 — blocked on sample size)*
+6. **Ship the unpublished SEO cut and observe it.** Deploy
+   `SEO-CRAWL-001` and `SEO-SNIPPET-001` with current product HTML. Verify
+   production titles, `www` → apex, and a clean sitemap, then compare
+   page×query CTR on 2026-09-15. Do not start Flag or tool title work
+   before that recrawl.
 
-5. **Decide analytics access** (GSC at minimum). Every ranking below this
-   line is a guess until this exists. *(Phase 1 -> gates Phase 2 prioritization)*
+7. **Verify the existing sample-gated issue-page path in production.**
+   Confirm at least one eligible `/issues/[checkId]` URL is crawlable,
+   canonical, included in the sitemap, and indexed. Title copy for Flag
+   pages waits until this production evidence exists.
 
-6. **Ship the first `/issues/[checkId]` page** for whichever check crosses
-   `MIN_SAMPLE_SIZE` first after the self-seed batch. Validates the entire
-   graph -> public-page pipeline end to end before building five more.
-   *(Phase 2 — blocked on sample size)*
+Deferred from earlier P0/P2 advice: do **not** build category pages for
+`website audit`, `SEO audit`, or `AI website audit` while GSC remains
+branded-only.
 
 ### P2 — Ship after Phase 2 first artifacts are live
 
@@ -81,10 +85,12 @@ structural reasoning, not measured demand. Re-rank once real signal exists.
     *(Phase 3)*
 
 14. **`scripts/growth/opportunity-scoring.ts`** — rank pages by
-    impressions x CTR gap x conversion potential. *(Phase 3 — needs GSC access)*
+    impressions x CTR gap x conversion potential. *(Phase 3 — needs enough
+    non-brand GSC signal to validate the scoring model)*
 
 15. **`scripts/growth/weekly-review.ts`** — automated weekly review
-    composition from live data. *(Phase 3 — needs GSC access)*
+    composition from live data. *(Phase 3 — automate only after the manual
+    artifact and decision contract proves stable)*
 
 16. **`/reports` public index** — opt-in reports only. Needs a PII-redaction
     audit before the toggle is meaningfully safe to expose broadly.

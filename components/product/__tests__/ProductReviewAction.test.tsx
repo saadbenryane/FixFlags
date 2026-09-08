@@ -44,7 +44,7 @@ afterEach(() => {
 })
 
 describe('ProductReviewAction', () => {
-  it('opens an active manual Product Review in Report', () => {
+  it('opens an active check on the Site board', () => {
     const activeManualReview: ProductReviewSummaryDTO = {
       ...completedReview,
       id: 'review-active',
@@ -57,6 +57,7 @@ describe('ProductReviewAction', () => {
 
     render(
       <ProductReviewAction
+        productId="project-1"
         productUrl="https://example.com"
         activeManualReview={activeManualReview}
         latestManualReview={activeManualReview}
@@ -65,8 +66,8 @@ describe('ProductReviewAction', () => {
     )
 
     expect(
-      screen.getByRole('link', { name: /open review/i }),
-    ).toHaveAttribute('href', '/report/review-active?view=report')
+      screen.getByRole('link', { name: /open site/i }),
+    ).toHaveAttribute('href', '/sites/project-1')
     expect(
       screen.queryByRole('button', { name: /update review/i }),
     ).not.toBeInTheDocument()
@@ -75,6 +76,7 @@ describe('ProductReviewAction', () => {
   it('uses the first-Review input when the Product has no completed baseline', () => {
     render(
       <ProductReviewAction
+        productId="project-1"
         productUrl="https://example.com"
         activeManualReview={null}
         latestManualReview={null}
@@ -102,6 +104,7 @@ describe('ProductReviewAction', () => {
 
     render(
       <ProductReviewAction
+        productId="project-1"
         productUrl="https://example.com"
         activeManualReview={null}
         latestManualReview={failedReview}
@@ -113,16 +116,17 @@ describe('ProductReviewAction', () => {
     expect(screen.getByLabelText('Product Review input')).toBeInTheDocument()
   })
 
-  it('starts an update review and opens the in-flight work report', async () => {
+  it('starts an update review and opens the Site board', async () => {
     startScanWithHandoff.mockImplementation(async (options: {
       navigate: (href: string) => void
     }) => {
-      options.navigate('/report/review-child')
-      return { ok: true, reportId: 'review-child' }
+      options.navigate('/sites/project-1')
+      return { ok: true, reportId: 'review-child', siteId: 'project-1' }
     })
 
     render(
       <ProductReviewAction
+        productId="project-1"
         productUrl="https://example.com"
         activeManualReview={null}
         latestManualReview={completedReview}
@@ -140,7 +144,7 @@ describe('ProductReviewAction', () => {
           navigate: expect.any(Function),
         }),
       )
-      expect(routerPush).toHaveBeenCalledWith('/report/review-child')
+      expect(routerPush).toHaveBeenCalledWith('/sites/project-1')
     })
   })
 
@@ -153,6 +157,7 @@ describe('ProductReviewAction', () => {
 
     render(
       <ProductReviewAction
+        productId="project-1"
         productUrl="https://example.com"
         activeManualReview={null}
         latestManualReview={completedReview}

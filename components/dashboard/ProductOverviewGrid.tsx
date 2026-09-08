@@ -9,10 +9,7 @@ import { ProductScoreSparkline } from '@/components/dashboard/ProductScoreSparkl
 import type { ProductOverviewDTO } from '@/lib/products/workspace'
 import { presentProductReview } from '@/lib/products/review-state'
 import { REPORT_COPY } from '@/lib/marketing/copy'
-import { DEMO_BRAND } from '@/lib/demo/brand'
 import { displayHostname } from '@/lib/utils/url-helpers'
-
-const SAMPLE_THUMB = '/samples/observations/curated-sample-v1/desktop.webp'
 
 function reviewDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', {
@@ -37,37 +34,25 @@ function productLinkLabel(product: ProductOverviewDTO): string {
   return `${copy.openProductAria(product.name)}${trend}${attention}`
 }
 
-function DemoSampleRow() {
+function EmptySitesRow() {
   const copy = REPORT_COPY.workspace.dashboard
   return (
     <Surface variant="elevated" className="overflow-hidden p-0">
       <Link
-        href={'/samples' as Route}
-        aria-label={copy.sampleOpenAria}
-        className="group grid min-h-28 grid-cols-[7.5rem_minmax(0,1fr)] gap-4 px-4 py-4 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:grid-cols-[7.5rem_minmax(0,1.1fr)_minmax(0,1fr)_auto] sm:items-center sm:px-5"
+        href={'/new' as Route}
+        aria-label="Check a website URL"
+        className="group grid min-h-28 grid-cols-[minmax(0,1fr)_auto] gap-4 px-4 py-4 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:items-center sm:px-5"
       >
-        <ProductCaptureThumb src={SAMPLE_THUMB} />
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-base font-semibold tracking-heading">
-              {DEMO_BRAND.name}
-            </h3>
-            <Badge variant="outline" className="shrink-0">
-              {copy.sampleBadge}
-            </Badge>
-          </div>
-          <p className="mt-1 truncate text-xs text-muted-foreground">
-            {DEMO_BRAND.domainLabel}
+          <h3 className="text-base font-semibold tracking-heading">
+            Check your first website
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Paste a URL to open your Site board. {copy.sampleAttention}.
           </p>
-        </div>
-        <div className="col-span-2 min-w-0 sm:col-span-1 sm:border-l sm:border-border/50 sm:pl-4">
-          <p className="text-xs font-medium text-muted-foreground">
-            {copy.attentionLabel}
-          </p>
-          <p className="mt-0.5 text-sm font-medium">{copy.sampleAttention}</p>
         </div>
         <ArrowRight
-          className="hidden h-5 w-5 text-brand transition-transform group-hover:translate-x-0.5 sm:block"
+          className="h-5 w-5 text-brand transition-transform group-hover:translate-x-0.5"
           aria-hidden
         />
       </Link>
@@ -91,7 +76,7 @@ export function ProductOverviewGrid({
       </div>
 
       {products.length === 0 ? (
-        <DemoSampleRow />
+        <EmptySitesRow />
       ) : (
         <Surface variant="elevated" className="overflow-hidden p-0">
           <div className="divide-y divide-border/60">
@@ -104,7 +89,7 @@ export function ProductOverviewGrid({
               return (
                 <Link
                   key={product.id}
-                  href={`/products/${product.id}` as Route}
+                  href={`/sites/${product.id}` as Route}
                   aria-label={productLinkLabel(product)}
                   className="group grid min-h-28 grid-cols-[7.5rem_minmax(0,1fr)] gap-4 px-4 py-4 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:grid-cols-[7.5rem_minmax(0,1.1fr)_11rem_minmax(0,1fr)_auto] sm:items-center sm:px-5"
                 >

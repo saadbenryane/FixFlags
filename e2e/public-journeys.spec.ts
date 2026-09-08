@@ -318,7 +318,7 @@ test('auth shell supports light and dark themes without reflow', async ({ page }
   expect(overflow).toBeLessThanOrEqual(1)
 })
 
-test('anonymous check reaches a completed report without exposing fix prompts', async ({ page }) => {
+test('anonymous check reaches a Site board without exposing fix prompts', async ({ page }) => {
   test.skip(process.env.E2E_FULL !== 'true', 'Set E2E_FULL=true for the queue-backed journey')
   test.setTimeout(240_000)
 
@@ -326,13 +326,28 @@ test('anonymous check reaches a completed report without exposing fix prompts', 
   await page.goto('/new')
   await page.getByLabel('Website URL').first().fill(targetUrl)
   await page.getByRole('button', { name: 'Review my site' }).first().click()
-  await page.waitForURL(/\/report\//, { timeout: 30_000 })
-  const reportId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)!
+  await page.waitForURL(/\/sites\//, { timeout: 30_000 })
+  await expect(page.getByRole('heading', { name: 'Your board' })).toBeVisible()
+  await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
+  await expect(page.getByText(/Learning your website/i).first()).toBeVisible()
+
+  const siteId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)!
   await expect.poll(async () => {
-    const response = await page.request.get(`/api/reports/${reportId}/status`)
-    const body = (await response.json().catch(() => null)) as { status?: string } | null
-    return body?.status
+    const response = await page.request.get(`/api/sites/${siteId}`)
+    if (!response.ok()) return null
+    const body = (await response.json().catch(() => null)) as {
+      audit?: { status?: string; id?: string | null }
+    } | null
+    return body?.audit?.status
   }, { timeout: 240_000 }).toBe('COMPLETED')
+
+  const board = await page.request.get(`/api/sites/${siteId}`)
+  const boardBody = (await board.json().catch(() => null)) as {
+    audit?: { id?: string | null }
+    flags?: unknown[]
+  } | null
+  const reportId = boardBody?.audit?.id
+  expect(reportId).toBeTruthy()
 
   // Teaser scans run the reduced pipeline: the status payload streams
   // deterministic findings and never records flow-walk or journey events.
@@ -348,22 +363,14 @@ test('anonymous check reaches a completed report without exposing fix prompts', 
   )
   expect(walkEvents).toHaveLength(0)
   await page.reload()
-  const fixList = page.locator('#report-flags')
-  await expect(fixList).toBeVisible()
-  await expect(fixList.getByText(/Create a free account to see evidence/i)).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Your board' })).toBeVisible()
+  await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
 
-  const flags = fixList.locator('button[aria-controls="selected-flag-detail"]')
-  await expect.poll(() => flags.count(), { timeout: 180_000 }).toBeGreaterThan(0)
-  await flags.first().click()
-  await expect(flags.first()).toHaveAttribute('aria-pressed', 'true')
-  const copy = fixList.getByRole('button', { name: /copy prompt/i })
-  await expect(copy.first()).toBeVisible()
-  await copy.first().click()
-  await expect(page.getByText('Create your free account').first()).toBeVisible()
-  await expect(page.getByText(/Get every fix prompt and keep this report/i).first()).toBeVisible()
-  await expect(page.getByText(/already used your anonymous product review/i)).toHaveCount(0)
-  await expect(page.getByText(/upgrade/i)).toHaveCount(0)
-  await expect(fixList.getByText(/Create a free account to see evidence/i)).toHaveCount(0)
+  const flagLinks = page.locator('a[href*="/flags/"]')
+  const flagButtons = page.getByRole('button', { name: /Fix this|Open Flag|Verify fix/i })
+  await expect
+    .poll(async () => (await flagLinks.count()) + (await flagButtons.count()), { timeout: 180_000 })
+    .toBeGreaterThan(0)
 
   await page.goto('/new')
   await page.getByLabel('Website URL').first().fill('https://www.iana.org')

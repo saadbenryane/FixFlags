@@ -1,0 +1,124 @@
+{
+  "fetchedAt": "2026-09-08T18:50:20.747Z",
+  "focusPaths": [
+    "/",
+    "/pricing",
+    "/partners"
+  ],
+  "rows": [
+    {
+      "page": "https://fixflags.com/",
+      "query": "fixflags",
+      "clicks": 4,
+      "impressions": 38,
+      "ctr": 0.10526315789473684,
+      "position": 1.8157894736842106
+    },
+    {
+      "page": "https://www.fixflags.com/",
+      "query": "fixflags",
+      "clicks": 3,
+      "impressions": 11,
+      "ctr": 0.2727272727272727,
+      "position": 1.0909090909090908
+    },
+    {
+      "page": "https://fixflags.com/",
+      "query": "fix flag",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 9
+    },
+    {
+      "page": "https://fixflags.com/",
+      "query": "fix flags",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 1
+    },
+    {
+      "page": "https://fixflags.com/",
+      "query": "fixflag",
+      "clicks": 0,
+      "impressions": 2,
+      "ctr": 0,
+      "position": 3
+    },
+    {
+      "page": "https://fixflags.com/partners",
+      "query": "fixflags",
+      "clicks": 0,
+      "impressions": 21,
+      "ctr": 0,
+      "position": 7.428571428571429
+    },
+    {
+      "page": "https://fixflags.com/pricing",
+      "query": "fixflags",
+      "clicks": 0,
+      "impressions": 19,
+      "ctr": 0,
+      "position": 9.368421052631579
+    }
+  ],
+  "focusRows": [
+    {
+      "page": "https://fixflags.com/",
+      "query": "fixflags",
+      "clicks": 4,
+      "impressions": 38,
+      "ctr": 0.10526315789473684,
+      "position": 1.8157894736842106
+    },
+    {
+      "page": "https://www.fixflags.com/",
+      "query": "fixflags",
+      "clicks": 3,
+      "impressions": 11,
+      "ctr": 0.2727272727272727,
+      "position": 1.0909090909090908
+    },
+    {
+      "page": "https://fixflags.com/",
+      "query": "fix flag",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 9
+    },
+    {
+      "page": "https://fixflags.com/",
+      "query": "fix flags",
+      "clicks": 0,
+      "impressions": 1,
+      "ctr": 0,
+      "position": 1
+    },
+    {
+      "page": "https://fixflags.com/",
+      "query": "fixflag",
+      "clicks": 0,
+      "impressions": 2,
+      "ctr": 0,
+      "position": 3
+    },
+    {
+      "page": "https://fixflags.com/partners",
+      "query": "fixflags",
+      "clicks": 0,
+      "impressions": 21,
+      "ctr": 0,
+      "position": 7.428571428571429
+    },
+    {
+      "page": "https://fixflags.com/pricing",
+      "query": "fixflags",
+      "clicks": 0,
+      "impressions": 19,
+      "ctr": 0,
+      "position": 9.368421052631579
+    }
+  ]
+}

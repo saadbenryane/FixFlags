@@ -127,9 +127,10 @@ export async function getIndexableIssueCheckIds(): Promise<
            i."lastSeenAt" AS "lastSeenAt"
     FROM "graph_issue" i
     WHERE i."siteCount" >= ${MIN_SAMPLE_SIZE}
+      AND i."checkId" NOT LIKE '%::page:%'
     ORDER BY i."checkId", i."siteCount" DESC, i."lastSeenAt" DESC
   `
-  return rows
+  return rows.filter((row) => !row.checkId.includes('::page:'))
 }
 
 /**

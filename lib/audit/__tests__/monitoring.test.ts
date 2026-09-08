@@ -106,6 +106,7 @@ describe('startMonitoringAudit', () => {
         status: 'QUEUED',
         reused: false,
         parentAuditId: 'parent-1',
+        siteId: 'project-1',
       })
     }
     expect(createAndEnqueueAudit).toHaveBeenCalledWith(

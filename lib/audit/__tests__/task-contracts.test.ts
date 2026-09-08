@@ -15,6 +15,7 @@ vi.mock('@/lib/db', () => ({
     audit: { findUnique: mocks.auditFindUnique },
     improvementOccurrence: { findMany: mocks.occurrenceFindMany },
     improvementAttempt: { findMany: mocks.attemptFindMany },
+    provisionalSite: { findFirst: vi.fn().mockResolvedValue(null) },
   },
 }))
 vi.mock('@/lib/audit/create-audit', () => ({
@@ -57,6 +58,7 @@ function completedAudit() {
   return {
     id: 'report-1',
     parentId: 'parent-1',
+    projectId: 'project-1',
     url: 'https://example.com/',
     status: 'COMPLETED',
     score: 82,
@@ -104,6 +106,7 @@ describe('task contracts', () => {
       status: 'QUEUED',
       reused: false,
       parentId: null,
+      siteId: 'project-1',
     })
     mocks.pollAuditUntilDone.mockResolvedValue({ status: 'COMPLETED', timedOut: false })
     mocks.auditFindUnique.mockResolvedValue(completedAudit())
@@ -114,6 +117,7 @@ describe('task contracts', () => {
         status: 'QUEUED',
         reused: false,
         parentAuditId: 'parent-1',
+        siteId: 'project-1',
       },
     })
     mocks.occurrenceFindMany.mockResolvedValue([])
@@ -205,6 +209,7 @@ describe('task contracts', () => {
       status: 'COMPLETED',
       reused: true,
       parentId: null,
+      siteId: 'p_recent',
     })
 
     const outcome = await checkAndPlan({
@@ -347,6 +352,7 @@ describe('task contracts', () => {
         status: 'QUEUED',
         reused: true,
         parentAuditId: 'actual-parent',
+        siteId: 'project-1',
       },
     })
     mocks.auditFindUnique.mockResolvedValue({
@@ -374,6 +380,7 @@ describe('task contracts', () => {
         status: 'QUEUED',
         reused: true,
         parentAuditId: null,
+        siteId: 'project-1',
       },
     })
     mocks.auditFindUnique.mockResolvedValue({

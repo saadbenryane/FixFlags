@@ -22,6 +22,7 @@ import {
   resolveToolPrompt,
   type PromptToolKey,
 } from '@/lib/mcp/builders'
+import { encodeSiteId } from '@/lib/sites/types'
 import type { FlagDiffSummaryItem } from '@/lib/audit/diff-flags'
 
 export interface TaskRubricSummary {
@@ -102,6 +103,8 @@ export interface RecheckAndCompareOutcome {
   parentReportId: string | null
   reportId: string
   reportUrl: string
+  siteId: string
+  siteUrl: string
   status: string
   reused: boolean
   diff: {
@@ -158,6 +161,24 @@ function reportUrl(reportId: string): string {
 function siteBoardUrl(siteId: string): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fixflags.com'
   return `${appUrl.replace(/\/$/, '')}/sites/${siteId}`
+}
+
+async function siteFieldsForAudit(audit: {
+  id: string
+  projectId: string | null
+}): Promise<{ siteId: string; siteUrl: string }> {
+  if (audit.projectId) {
+    const siteId = encodeSiteId({ kind: 'project', projectId: audit.projectId })
+    return { siteId, siteUrl: siteBoardUrl(siteId) }
+  }
+  const provisional = await prisma.provisionalSite.findFirst({
+    where: { primaryAuditId: audit.id },
+    select: { id: true },
+  })
+  const siteId = provisional
+    ? encodeSiteId({ kind: 'provisional', provisionalSiteId: provisional.id })
+    : audit.id
+  return { siteId, siteUrl: siteBoardUrl(siteId) }
 }
 
 function parseFailedModules(value: unknown): string[] {
@@ -351,14 +372,16 @@ export async function loadCompletedTaskOutcome(
 }> {
   const audit = await prisma.audit.findUnique({
     where: { id: reportId },
-    select: { id: true, status: true, parentId: true },
+    select: { id: true, status: true, parentId: true, projectId: true },
   })
   if (!audit) throw new Error('Report not found')
+  const site = await siteFieldsForAudit(audit)
   if (audit.status !== 'COMPLETED') {
     if (audit.status === 'FAILED') {
       return {
         reportId,
         reportUrl: reportUrl(reportId),
+        ...site,
         status: audit.status,
         error: {
           code: 'AUDIT_FAILED',
@@ -371,6 +394,7 @@ export async function loadCompletedTaskOutcome(
     return {
       reportId,
       reportUrl: reportUrl(reportId),
+      ...site,
       status: audit.status,
       nextAction: {
         type: 'poll',
@@ -388,7 +412,7 @@ export async function loadCompletedTaskOutcome(
     access?.finishPlanLimit
   )
   if (!audit.parentId) {
-    return { reportId, reportUrl: reportUrl(reportId), status: 'COMPLETED', ...completed }
+    return { reportId, reportUrl: reportUrl(reportId), ...site, status: 'COMPLETED', ...completed }
   }
   const [diff, attempts] = await Promise.all([
     getFlagDiffSummary(audit.parentId, reportId),
@@ -428,6 +452,7 @@ export async function loadCompletedTaskOutcome(
   return {
     reportId,
     reportUrl: reportUrl(reportId),
+    ...site,
     status: 'COMPLETED',
     ...completed,
     parentReportId: audit.parentId,
@@ -580,6 +605,7 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
 
   const reportId = started.result.auditId
   const comparisonParentId = started.result.parentAuditId
+  const siteId = started.result.siteId
   let status: string = started.result.status
   let timedOut = false
   if (options.waitForCompletion) {
@@ -596,6 +622,8 @@ export async function recheckAndCompare(options: TaskQueueOptions & {
     parentReportId: comparisonParentId,
     reportId,
     reportUrl: reportUrl(reportId),
+    siteId,
+    siteUrl: siteBoardUrl(siteId),
     status,
     reused: started.result.reused,
     diff: null,

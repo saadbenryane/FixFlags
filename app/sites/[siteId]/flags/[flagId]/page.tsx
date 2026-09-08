@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { loadSiteBoardFlag } from '@/lib/sites/application/queries'
+import { requireSiteAccess } from '@/lib/sites/request-access'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/brand/Logo'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
@@ -11,7 +12,11 @@ export default async function SiteFlagPage({
   params: Promise<{ siteId: string; flagId: string }>
 }) {
   const { siteId, flagId } = await params
-  const detail = await loadSiteBoardFlag(siteId, flagId)
+  const access = await requireSiteAccess(siteId)
+  if (!access.ok) notFound()
+
+  const resolvedId = access.decision.site.siteId
+  const detail = await loadSiteBoardFlag(resolvedId, flagId)
   if (!detail) notFound()
 
   const { site, flag } = detail
@@ -21,7 +26,7 @@ export default async function SiteFlagPage({
       <div className="mb-6 flex items-center justify-between gap-3">
         <Logo variant="lockup" size="sm" />
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/sites/${siteId}`}>Back to board</Link>
+          <Link href={`/sites/${resolvedId}`}>Back to board</Link>
         </Button>
       </div>
       <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -42,10 +47,13 @@ export default async function SiteFlagPage({
 
       <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5">
         <h2 className="font-medium">Fix this</h2>
+        <p className="mt-2 text-xs text-muted-foreground">
+          We’ll re-check this Site and update related cards after you verify.
+        </p>
         <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
           {flag.fix}
         </p>
-        <SiteFlagActions siteId={siteId} flagId={flag.id} fixText={flag.fix} />
+        <SiteFlagActions siteId={resolvedId} flagId={flag.id} fixText={flag.fix} />
       </section>
     </div>
   )
