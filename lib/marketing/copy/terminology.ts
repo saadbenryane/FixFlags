@@ -13,7 +13,7 @@ export const REVIEW_ENTRY = {
 
 export const CUSTOMER_TERMS = {
   category: 'Website intelligence',
-  categoryLine: 'Find what matters. Keep watching.',
+  categoryLine: 'Your website, looked after.',
   tagline: 'Find what is getting in the way of your next customer.',
   primaryCta: 'Review my site',
   compactPrimaryCta: 'Review',

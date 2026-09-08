@@ -16,7 +16,7 @@ import {
   productNameFromUrl,
 } from '@/lib/audit/product-intelligence'
 import { parseProductContract } from '@/lib/audit/product-contract'
-import { assertCanCreateProduct } from '@/lib/billing/product-capacity'
+import { claimProvisionalSitesForProject } from '@/lib/sites/ensure-site'
 
 async function unlockClaimedAudit(audit: {
   id: string
@@ -125,6 +125,22 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
   )
+
+  for (const audit of audits) {
+    const host = canonicalProductHost(audit.url)
+    if (!host) continue
+    const project = await prisma.project.findUnique({
+      where: { userId_canonicalHost: { userId, canonicalHost: host } },
+      select: { id: true },
+    })
+    if (project) {
+      await claimProvisionalSitesForProject({
+        userId,
+        projectId: project.id,
+        canonicalHost: host,
+      })
+    }
+  }
 
   if (audits.length === 0) {
     await clearAnonymousAuditCookie()

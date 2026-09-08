@@ -85,6 +85,9 @@ export default async function SamplesPage({ searchParams }: SamplesPageProps) {
       <Container variant="report" className="space-y-8">
         <header className="mx-auto max-w-3xl text-center">
           <p className="section-label">{REPORT_COPY.sampleFocused.eyebrow}</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Legacy report sample. New checks open on the Site board.
+          </p>
           <h1 className="mt-3 text-balance font-display text-3xl font-semibold tracking-display sm:text-5xl">
             {REPORT_COPY.sampleFocused.title}
           </h1>

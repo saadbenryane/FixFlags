@@ -75,6 +75,8 @@ describe('POST /api/checks - billing gating enforcement', () => {
     checkAndPlan.mockResolvedValue({
       reportId: 'audit-1',
       reportUrl: 'https://fixflags.com/report/audit-1',
+      siteId: 'project-1',
+      siteUrl: 'https://fixflags.com/sites/project-1',
       status: 'QUEUED',
       reused: false,
     })
@@ -110,6 +112,8 @@ describe('POST /api/checks - billing gating enforcement', () => {
     checkAndPlan.mockResolvedValue({
       reportId: 'recent-public',
       reportUrl: 'https://fixflags.com/report/recent-public',
+      siteId: 'project-1',
+      siteUrl: 'https://fixflags.com/sites/project-1',
       status: 'COMPLETED',
       reused: true,
     })

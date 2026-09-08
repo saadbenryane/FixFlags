@@ -57,7 +57,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     if (!result.ok) {
       const status = result.code === 'WATCH_UNAVAILABLE'
         ? 503
-        : result.code === 'STUDIO_REQUIRED'
+        : result.code === 'STUDIO_REQUIRED' || result.code === 'INTERVAL_NOT_ALLOWED'
           ? 403
           : 400
       return apiError(result.error, status, {

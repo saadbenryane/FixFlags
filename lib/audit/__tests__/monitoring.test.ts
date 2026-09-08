@@ -92,6 +92,7 @@ describe('startMonitoringAudit', () => {
       status: 'QUEUED',
       reused: false,
       parentId: 'parent-1',
+      siteId: 'project-1',
     })
   })
 

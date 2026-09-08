@@ -37,6 +37,7 @@ const resolveIncludeAiForNewAudit = vi.hoisted(() => vi.fn())
 const wouldBlockNewCheckWithCredits = vi.hoisted(() => vi.fn())
 const assertPublicAuditUrl = vi.hoisted(() => vi.fn())
 const ensureProductProject = vi.hoisted(() => vi.fn())
+const ensureSiteForAudit = vi.hoisted(() => vi.fn())
 const refreshUserUsagePeriod = vi.hoisted(() => vi.fn())
 const rollUserUsagePeriod = vi.hoisted(() => vi.fn())
 
@@ -53,6 +54,7 @@ vi.mock('@/lib/audit/ai-report-entitlement', () => ({
 vi.mock('@/lib/billing/credits', () => ({ wouldBlockNewCheckWithCredits }))
 vi.mock('@/lib/audit/url', () => ({ assertPublicAuditUrl }))
 vi.mock('@/lib/audit/ensure-product-project', () => ({ ensureProductProject }))
+vi.mock('@/lib/sites/ensure-site', () => ({ ensureSiteForAudit }))
 vi.mock('@/lib/billing/usage-period', () => ({
   refreshUserUsagePeriod,
   rollUserUsagePeriod,
@@ -111,6 +113,20 @@ describe('createAndEnqueueAudit', () => {
     resolveIncludeAiForNewAudit.mockResolvedValue(false)
     wouldBlockNewCheckWithCredits.mockResolvedValue({ allowed: true })
     ensureProductProject.mockResolvedValue({ id: 'project-1', productIntelligence: null })
+    ensureSiteForAudit.mockResolvedValue({
+      siteId: 'project-1',
+      kind: 'project',
+      url: AUDIT_URL,
+      canonicalHost: 'example.com',
+      name: 'example.com',
+      projectId: 'project-1',
+      provisionalSiteId: null,
+      primaryAuditId: 'audit-1',
+      watchInterval: null,
+      watchNextRunAt: null,
+      watchLastRunAt: null,
+      userId: 'user-1',
+    })
     assertPublicAuditUrl.mockResolvedValue(new URL(AUDIT_URL))
     refreshUserUsagePeriod.mockResolvedValue(signedInUser())
     rollUserUsagePeriod.mockResolvedValue(signedInUser())
@@ -124,6 +140,7 @@ describe('createAndEnqueueAudit', () => {
       status: 'QUEUED',
       reused: false,
       parentId: null,
+      siteId: 'project-1',
     })
     expect(prismaMock.$transaction).toHaveBeenCalled()
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
@@ -193,6 +210,7 @@ describe('createAndEnqueueAudit', () => {
       status: 'COMPLETED',
       reused: true,
       parentId: null,
+      siteId: 'project-1',
     })
     expect(prismaMock.audit.create).not.toHaveBeenCalled()
     expect(trackAnonymousAuditId).not.toHaveBeenCalled()
@@ -215,6 +233,7 @@ describe('createAndEnqueueAudit', () => {
       status: 'CHECKING',
       reused: true,
       parentId: null,
+      siteId: 'project-1',
     })
     expect(trackAnonymousAuditId).not.toHaveBeenCalled()
     expect(queueAdd).not.toHaveBeenCalled()
@@ -239,6 +258,7 @@ describe('createAndEnqueueAudit', () => {
       status: 'QUEUED',
       reused: false,
       parentId: null,
+      siteId: 'project-1',
     })
     expect(ensureProductProject).toHaveBeenCalledWith('user-1', AUDIT_URL)
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
@@ -277,6 +297,7 @@ describe('createAndEnqueueAudit', () => {
       status: 'CHECKING',
       reused: true,
       parentId: 'actual-parent',
+      siteId: 'project-1',
     })
     expect(prismaMock.audit.findFirst).toHaveBeenCalledWith({
       where: {
@@ -574,6 +595,7 @@ describe('createAndEnqueueAudit', () => {
       status: 'QUEUED',
       reused: false,
       parentId: null,
+      siteId: 'project-1',
     })
     expect(calls).toBe(3)
   })

@@ -448,6 +448,8 @@ model Project {
   signalKeys                  ProductSignalKey[]
   signals                     ProductSignal[]
   improvementCycles           ImprovementCycle[]
+  sitePages                   SitePage[]
+  siteOutcomes                SiteOutcome[]
   user                        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, canonicalHost])
@@ -1688,6 +1690,80 @@ model IntegrityWaitlist {
 
   @@unique([shopId, featureKey])
   @@map("integrity_waitlist")
+}
+
+/// Provisional anonymous Site before account claim. Never the global graph Site table.
+model ProvisionalSite {
+  id               String        @id @default(cuid())
+  sessionKey       String
+  canonicalHost    String
+  url              String
+  primaryAuditId   String?
+  claimedProjectId String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  pages            SitePage[]
+  outcomes         SiteOutcome[]
+
+  @@unique([sessionKey, canonicalHost])
+  @@index([primaryAuditId])
+  @@index([claimedProjectId])
+  @@map("provisional_sites")
+}
+
+/// Private Site page (customer tenancy). Not graph_page.
+model SitePage {
+  id                String           @id @default(cuid())
+  projectId         String?
+  provisionalSiteId String?
+  url               String
+  path              String
+  title             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  project           Project?         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  provisionalSite   ProvisionalSite? @relation(fields: [provisionalSiteId], references: [id], onDelete: Cascade)
+  outcomePages      SiteOutcomePage[]
+
+  @@unique([projectId, url])
+  @@unique([provisionalSiteId, url])
+  @@index([projectId])
+  @@index([provisionalSiteId])
+  @@map("site_pages")
+}
+
+/// Inferred or user-confirmed business Outcome for a Site.
+model SiteOutcome {
+  id                String           @id @default(cuid())
+  projectId         String?
+  provisionalSiteId String?
+  name              String
+  slug              String
+  description       String?
+  /// heuristic | user
+  inferenceSource   String           @default("heuristic")
+  confirmedAt       DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  project           Project?         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  provisionalSite   ProvisionalSite? @relation(fields: [provisionalSiteId], references: [id], onDelete: Cascade)
+  pages             SiteOutcomePage[]
+
+  @@unique([projectId, slug])
+  @@unique([provisionalSiteId, slug])
+  @@index([projectId])
+  @@index([provisionalSiteId])
+  @@map("site_outcomes")
+}
+
+model SiteOutcomePage {
+  outcomeId String
+  pageId    String
+  outcome   SiteOutcome @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  page      SitePage    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@id([outcomeId, pageId])
+  @@map("site_outcome_pages")
 }
 
 enum IntegrityHealth {

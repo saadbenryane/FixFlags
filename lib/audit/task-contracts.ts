@@ -67,6 +67,8 @@ export interface TaskFixList extends TaskFinishPlan {
 export interface CheckAndPlanOutcome {
   reportId: string
   reportUrl: string
+  siteId: string
+  siteUrl: string
   status: string
   reused?: boolean
   score?: number | null
@@ -151,6 +153,11 @@ interface TaskQueueOptions {
 function reportUrl(reportId: string): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fixflags.com'
   return `${appUrl.replace(/\/$/, '')}/report/${reportId}`
+}
+
+function siteBoardUrl(siteId: string): string {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://fixflags.com'
+  return `${appUrl.replace(/\/$/, '')}/sites/${siteId}`
 }
 
 function parseFailedModules(value: unknown): string[] {
@@ -473,7 +480,7 @@ export async function checkAndPlan(options: TaskQueueOptions & {
   attribution?: AuditAttribution
   scanAccess?: import('@/lib/audit/scan-access').ScanAccessConfig | null
 }): Promise<CheckAndPlanOutcome> {
-  const { auditId, status: initialStatus, reused } = await createAndEnqueueAudit({
+  const { auditId, status: initialStatus, reused, siteId } = await createAndEnqueueAudit({
     url: options.url,
     userId: options.userId,
     parentId: options.parentId,
@@ -503,7 +510,14 @@ export async function checkAndPlan(options: TaskQueueOptions & {
     timedOut = poll.timedOut
   }
 
-  const base = { reportId: auditId, reportUrl: reportUrl(auditId), status, reused }
+  const base = {
+    reportId: auditId,
+    reportUrl: reportUrl(auditId),
+    siteId,
+    siteUrl: siteBoardUrl(siteId),
+    status,
+    reused,
+  }
   if (status === 'FAILED') {
     return {
       ...base,

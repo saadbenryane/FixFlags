@@ -26,6 +26,7 @@ import {
   trackAnonymousAuditId,
 } from '@/lib/audit/usage'
 import { ensureProductProject } from '@/lib/audit/ensure-product-project'
+import { ensureSiteForAudit } from '@/lib/sites/ensure-site'
 import {
   refreshUserUsagePeriod,
   rollUserUsagePeriod,
@@ -61,6 +62,8 @@ export interface CreateAuditResult {
   reused: boolean
   /** The parent persisted on the returned Review. Comparison code must use this value. */
   parentId: string | null
+  /** Customer Site id (Project id or provisional p_…). */
+  siteId: string
 }
 
 /** Unsigned visitors reuse a public scan of the same URL instead of starting a duplicate job. */
@@ -427,11 +430,19 @@ export async function createAndEnqueueAudit(
   }
 
   if (audit.reused) {
+    const site = await ensureSiteForAudit({
+      url,
+      auditId: audit.id,
+      userId,
+      projectId,
+      sessionKey: options.clientId ?? null,
+    })
     return {
       auditId: audit.id,
       status: audit.status,
       reused: true,
       parentId: audit.parentId,
+      siteId: site.siteId,
     }
   }
 
@@ -464,10 +475,19 @@ export async function createAndEnqueueAudit(
     throw error
   }
 
+  const site = await ensureSiteForAudit({
+    url,
+    auditId: audit.id,
+    userId,
+    projectId,
+    sessionKey: options.clientId ?? null,
+  })
+
   return {
     auditId: audit.id,
     status: audit.status,
     reused: false,
     parentId: audit.parentId,
+    siteId: site.siteId,
   }
 }

@@ -139,6 +139,15 @@ export function ShopifyWorkspace({
         </p>
       </header>
 
+      <Card className="border-border/80 bg-muted/30 p-4">
+        <p className="text-sm font-medium text-foreground">Shopify is a connection</p>
+        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+          Purchase-path walks stay available here while FixFlags unifies them into your Site. Store
+          health below is connection evidence, not a separate FixFlags product. Hostname alone never
+          claims a Site.
+        </p>
+      </Card>
+
       <nav aria-label="App sections" className="flex flex-wrap gap-2">
         {nav.map((item) => (
           <Button
@@ -161,7 +170,8 @@ export function ShopifyWorkspace({
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
             FixFlags walks the purchase path on a phone-sized browser and stops before payment. RED is
-            confirmed twice. Unclear stays in the app, not in email.
+            confirmed twice. Unclear stays in the app, not in email. This remains install plumbing until
+            the walk feeds the same Site Flags.
           </p>
           {workspace.emptyCatalog ? (
             <Card className="p-5">

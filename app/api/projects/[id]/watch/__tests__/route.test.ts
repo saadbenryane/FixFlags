@@ -109,22 +109,22 @@ describe('/api/projects/[id]/watch', () => {
     expect(invalid.status).toBe(400)
   })
 
-  it('returns a Studio upgrade response when scheduling is not entitled', async () => {
+  it('returns a plan limit response when the interval is not entitled', async () => {
     setProjectWatch.mockResolvedValueOnce({
       ok: false,
-      error: 'Scheduled reviews are available on Studio.',
-      code: 'STUDIO_REQUIRED',
+      error: 'Daily watching is available on Pro and Studio. Free Sites watch weekly.',
+      code: 'INTERVAL_NOT_ALLOWED',
     })
 
     const response = await PUT(
       new NextRequest('http://localhost/api/projects/project-1/watch', {
         method: 'PUT',
-        body: JSON.stringify({ interval: 'weekly' }),
+        body: JSON.stringify({ interval: 'daily' }),
       }),
       { params: Promise.resolve({ id: 'project-1' }) }
     )
 
     expect(response.status).toBe(403)
-    expect(await response.json()).toMatchObject({ code: 'STUDIO_REQUIRED' })
+    expect(await response.json()).toMatchObject({ code: 'INTERVAL_NOT_ALLOWED' })
   })
 })

@@ -62,14 +62,25 @@ export function canScanRepositories(
   return user.plan === 'TEAM'
 }
 
-/** Scheduled Product Reviews are a Studio capability. */
+/** Scheduled Site watching. Free gets sparse weekly care; Pro daily; Studio daily denser ops. */
 export function canAccessProductWatch(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
   if (!shouldEnforcePlanGates()) return true
   if (user.role === 'admin' || isAdminUser(user)) return true
   if (hasRevokedSubscriptionStatus(user.subscriptionStatus)) return false
-  return user.plan === 'TEAM'
+  return user.plan === 'FREE' || user.plan === 'BUILDER' || user.plan === 'TEAM'
+}
+
+/** Allowed watch intervals by plan. Free is weekly only. */
+export function allowedWatchIntervals(
+  user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
+): Array<'weekly' | 'daily'> {
+  if (!canAccessProductWatch(user)) return []
+  if (!shouldEnforcePlanGates()) return ['weekly', 'daily']
+  if (user.role === 'admin' || isAdminUser(user)) return ['weekly', 'daily']
+  if (user.plan === 'FREE') return ['weekly']
+  return ['weekly', 'daily']
 }
 
 /** Manual re-check is always available to the report owner; not a plan gate. */

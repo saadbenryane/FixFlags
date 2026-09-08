@@ -153,6 +153,8 @@ export async function POST(req: NextRequest) {
       {
         reportId: outcome.reportId,
         reportUrl: outcome.reportUrl,
+        siteId: outcome.siteId,
+        siteUrl: outcome.siteUrl,
         status: outcome.status,
         reused: Boolean(outcome.reused),
         isLoggedIn: Boolean(session?.user),

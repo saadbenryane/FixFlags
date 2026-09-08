@@ -6,11 +6,11 @@ export const BRAND = {
   tagline: 'Find what is getting in the way of your next customer.',
   category: 'Website intelligence for conversion, reliability, and growth.',
   oneLiner:
-    'FixFlags finds the website problems that matter, shows why they matter, and keeps watching.',
+    'FixFlags looks after what your website depends on, and tells you when something needs attention.',
   supportEmail: 'hello@fixflags.com',
   mcpServerKey: 'fixflags',
   exportPrefix: 'FixFlags Report',
-  tribeBadge: 'Website intelligence that keeps watching',
+  tribeBadge: 'Your website, looked after',
 } as const
 
 export const SITE_URL =

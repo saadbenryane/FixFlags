@@ -33,7 +33,7 @@ export type CreateCheckResult =
 /**
  * Shared check creation used by URL review, Update review, and scan-deeper actions.
  * Visual pending and error states belong to the control that initiated the request.
- * Always opens `/report/{reportId}` where `reportId` is the work audit.
+ * Opens the Site board when siteId is present; falls back to legacy report URL.
  */
 export async function startScanWithHandoff(
   options: StartScanOptions
@@ -61,7 +61,13 @@ export async function startScanWithHandoff(
 
     const data = (await res.json()) as Record<string, unknown>
     const reportId = typeof data.reportId === 'string' ? data.reportId : ''
+    const siteId = typeof data.siteId === 'string' ? data.siteId : ''
     options.onStarted?.(data)
+
+    if (siteId) {
+      options.navigate(`/sites/${siteId}`)
+      return { ok: true, reportId: reportId || undefined }
+    }
 
     if (reportId) {
       options.navigate(`/report/${reportId}`)
@@ -72,7 +78,7 @@ export async function startScanWithHandoff(
       ok: false,
       message:
         options.errorFallback ||
-        'Your review started, but FixFlags could not open the report. Try again.',
+        'Your review started, but FixFlags could not open the Site. Try again.',
       code: 'REPORT_HANDOFF_MISSING',
     }
   } catch {

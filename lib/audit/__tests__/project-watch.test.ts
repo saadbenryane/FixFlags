@@ -78,10 +78,30 @@ describe('Product Watch', () => {
     }))
   })
 
-  it('does not enable a schedule outside Studio', async () => {
+  it('limits Free Sites to weekly watching', async () => {
     mocks.projectFindFirst.mockResolvedValue({
       id: 'project-1',
-      user: { ...project.user, plan: 'BUILDER' },
+      user: { ...project.user, plan: 'FREE' },
+    })
+
+    const result = await setProjectWatch({
+      projectId: 'project-1',
+      userId: 'user-1',
+      interval: 'daily',
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'Daily watching is available on Pro and Studio. Free Sites watch weekly.',
+      code: 'INTERVAL_NOT_ALLOWED',
+    })
+    expect(mocks.projectUpdate).not.toHaveBeenCalled()
+  })
+
+  it('enables weekly watching on Free', async () => {
+    mocks.projectFindFirst.mockResolvedValue({
+      id: 'project-1',
+      user: { ...project.user, plan: 'FREE' },
     })
 
     const result = await setProjectWatch({
@@ -90,12 +110,8 @@ describe('Product Watch', () => {
       interval: 'weekly',
     })
 
-    expect(result).toEqual({
-      ok: false,
-      error: 'Scheduled reviews are available on Studio.',
-      code: 'STUDIO_REQUIRED',
-    })
-    expect(mocks.projectUpdate).not.toHaveBeenCalled()
+    expect(result).toEqual({ ok: true })
+    expect(mocks.projectUpdate).toHaveBeenCalled()
   })
 
   it('enables daily Watch on the same terms as weekly Watch', async () => {

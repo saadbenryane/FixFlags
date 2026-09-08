@@ -5,7 +5,7 @@ import { startMonitoringAudit } from '@/lib/audit/monitoring'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { resend } from '@/lib/email/client'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
-import { canAccessProductWatch } from '@/lib/auth/entitlements'
+import { canAccessProductWatch, allowedWatchIntervals } from '@/lib/auth/entitlements'
 import { systemClock, type Clock } from '@/lib/time/clock'
 
 export type WatchInterval = 'weekly' | 'daily'
@@ -60,8 +60,19 @@ export async function setProjectWatch(input: {
     if (!canAccessProductWatch(project.user)) {
       return {
         ok: false,
-        error: 'Scheduled reviews are available on Studio.',
-        code: 'STUDIO_REQUIRED',
+        error: 'Watching is not available on this account.',
+        code: 'WATCH_UNAVAILABLE',
+      }
+    }
+    const allowed = allowedWatchIntervals(project.user)
+    if (!allowed.includes(input.interval)) {
+      return {
+        ok: false,
+        error:
+          input.interval === 'daily'
+            ? 'Daily watching is available on Pro and Studio. Free Sites watch weekly.'
+            : 'That watch interval is not available on your plan.',
+        code: 'INTERVAL_NOT_ALLOWED',
       }
     }
     const readiness = productWatchReadiness()

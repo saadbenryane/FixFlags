@@ -183,16 +183,16 @@ describe('canScanRepositories', () => {
 })
 
 describe('canAccessProductWatch', () => {
-  it('returns false for BUILDER plan', () => {
-    expect(canAccessProductWatch(makeUser({ plan: 'BUILDER' }))).toBe(false)
+  it('returns true for BUILDER plan', () => {
+    expect(canAccessProductWatch(makeUser({ plan: 'BUILDER' }))).toBe(true)
   })
 
   it('returns true for TEAM plan', () => {
     expect(canAccessProductWatch(makeUser({ plan: 'TEAM' }))).toBe(true)
   })
 
-  it('returns false for FREE plan', () => {
-    expect(canAccessProductWatch(makeUser({ plan: 'FREE' }))).toBe(false)
+  it('returns true for FREE plan weekly care', () => {
+    expect(canAccessProductWatch(makeUser({ plan: 'FREE' }))).toBe(true)
   })
 
   it('returns true for admin', () => {
@@ -233,7 +233,7 @@ describe('getEntitlements', () => {
       canExportSummary: true,
       canAccessPaidFeatures: false,
       canMonitor: true,
-      canWatchProduct: false,
+      canWatchProduct: true,
       canUseMcp: false,
       canAccessBasicMcp: true,
       canScanRepositories: false,
@@ -246,7 +246,7 @@ describe('getEntitlements', () => {
       canExportSummary: true,
       canAccessPaidFeatures: true,
       canMonitor: true,
-      canWatchProduct: false,
+      canWatchProduct: true,
       canUseMcp: true,
       canAccessBasicMcp: true,
       canScanRepositories: false,

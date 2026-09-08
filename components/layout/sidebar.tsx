@@ -37,7 +37,7 @@ interface SidebarItem {
 }
 
 const PRIMARY_ITEMS: SidebarItem[] = [
-  { href: '/dashboard', label: 'Products', icon: Boxes },
+  { href: '/dashboard', label: 'Sites', icon: Boxes },
 ]
 
 const SECONDARY_ITEMS: SidebarItem[] = [

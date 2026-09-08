@@ -1,61 +1,16 @@
 import { notFound, redirect } from 'next/navigation'
-import { ProductWorkspace } from '@/components/product/ProductWorkspace'
-import { Container } from '@/components/ui/container'
 import { getAppViewer } from '@/lib/auth/app-viewer'
-import {
-  canAccessProductWatch,
-} from '@/lib/auth/entitlements'
-import {
-  loadProductWorkspace,
-  parseProductHistoryCursor,
-} from '@/lib/products/workspace'
-import { executeProductCommand } from '@/lib/products/application/commands'
 
 type ProductPageProps = {
   params: Promise<{ id: string }>
   searchParams?: Promise<{ historyCursor?: string }>
 }
 
-export default async function ProductPage({
-  params,
-  searchParams,
-}: ProductPageProps) {
+/** Legacy Product workspace redirects into the Site board. */
+export default async function ProductPage({ params }: ProductPageProps) {
   const viewer = await getAppViewer()
   if (!viewer) redirect('/sign-in')
   const { id } = await params
-  const query = searchParams ? await searchParams : undefined
-  const canScheduleReviews = canAccessProductWatch(viewer.user)
-  const workspace = await loadProductWorkspace(id, viewer.user.id, {
-    signalsEligible: canScheduleReviews,
-    canDailyWatch: canScheduleReviews,
-    historyCursor: parseProductHistoryCursor(query?.historyCursor),
-  })
-  if (!workspace) notFound()
-
-  const attentionIds = workspace.attention.map((item) => item.id)
-  async function recordVisibleAttention() {
-    'use server'
-    const currentViewer = await getAppViewer()
-    if (!currentViewer) return
-    await executeProductCommand({
-      type: 'RECORD_RECOMMENDATIONS',
-      projectId: id,
-      userId: currentViewer.user.id,
-      improvementIds: attentionIds,
-    })
-  }
-
-  return (
-    <Container
-      variant="report"
-      className="py-5 pb-24 sm:py-7"
-    >
-      <ProductWorkspace
-        workspace={workspace}
-        onAttentionVisible={
-          attentionIds.length > 0 ? recordVisibleAttention : undefined
-        }
-      />
-    </Container>
-  )
+  if (!id) notFound()
+  redirect(`/sites/${id}`)
 }
