@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 export function SiteFlagActions({
   siteId,
@@ -55,10 +56,10 @@ export function SiteFlagActions({
     <div className="mt-4 space-y-2">
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={() => void copyFix()}>
-          Copy fix instructions
+          {SITE_BOARD_COPY.fixThis}
         </Button>
         <Button variant="brand" disabled={busy} onClick={() => void verify()}>
-          Verify fix
+          {SITE_BOARD_COPY.verifyFix}
         </Button>
       </div>
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}

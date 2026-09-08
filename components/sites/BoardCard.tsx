@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import type { Route } from 'next'
 import {
   Activity,
   Gauge,
@@ -185,7 +186,7 @@ export function BoardCard({
       )
     }
     return (
-      <Link className={className} href={href}>
+      <Link className={className} href={href as Route}>
         {body}
       </Link>
     )

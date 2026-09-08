@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CareHomepage } from '../CareHomepage'
 import { CARE_HOME as C } from '@/lib/marketing/copy'
+import { starterBoardNames } from '@/lib/sites/board-card'
 
 vi.mock('@/components/audit/AuditInput', () => ({ AuditInput: () => <div data-testid="url-entry" /> }))
 vi.mock('next/image', () => ({ default: ({ alt, src }: { alt: string; src: string }) => <span role="img" aria-label={alt} data-src={src} /> }))
@@ -26,20 +27,25 @@ describe('homepage example', () => {
     expect(within(board).queryAllByText(/just now/i)).toHaveLength(1)
     expect(within(board).queryByText('How this website is doing')).not.toBeInTheDocument()
     expect(within(board).queryByText('Example Site')).not.toBeInTheDocument()
+    expect(within(board).queryByText('Experience')).not.toBeInTheDocument()
     expect(within(board).queryByText('Contact needs you')).not.toBeInTheDocument()
     expect(within(board).queryByText('1 Flag needs attention')).not.toBeInTheDocument()
     expect(within(board).queryByText('Buy')).not.toBeInTheDocument()
     expect(board.parentElement?.querySelector('[class*="attentionPulse"]')).toBeNull()
   })
 
-  it('anchors the board with Experience and Conversion, then four cards and Add card last', () => {
+  it('uses CARD_CATALOG starter names and Conversion as the Flag card', () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
-    const experience = within(board).getByRole('article', { name: C.experience.label })
-    expect(within(experience).getByRole('img', { name: C.experience.imageAlt })).toBeInTheDocument()
-    expect(within(experience).getByText(C.experience.status)).toBeInTheDocument()
-    expect(within(experience).getByText(C.experience.pages)).toBeInTheDocument()
-    expect(within(experience).getByText(C.experience.flags)).toBeInTheDocument()
+    expect([
+      C.site.label,
+      C.flag.name,
+      ...C.cards.map(card => card.name),
+    ]).toEqual(starterBoardNames())
+    const site = within(board).getByRole('button', { name: new RegExp(`^${C.site.label}`) })
+    expect(within(site).getByRole('img', { name: C.site.imageAlt })).toBeInTheDocument()
+    expect(within(site).getByText(C.site.status)).toBeInTheDocument()
+    expect(within(site).getByText(`${C.site.pages} · ${C.site.flags}`)).toBeInTheDocument()
     const conversion = within(board).getByRole('link', { name: new RegExp(C.flag.title) })
     expect(conversion).toHaveAttribute('href', '#flag-example')
     expect(within(conversion).getByText(C.flag.name)).toBeInTheDocument()
@@ -47,26 +53,18 @@ describe('homepage example', () => {
     expect(within(conversion).getByText(C.flag.body)).toBeInTheDocument()
     expect(within(conversion).getByText(C.flag.status)).toBeInTheDocument()
     expect(within(board).getByRole('img', { name: C.flag.cropAlt })).toBeInTheDocument()
-    const metricButtons = within(board).getAllByRole('button').filter(button => button.getAttribute('aria-label') !== C.boardAdd.title)
-    expect(metricButtons).toHaveLength(4)
-    expect(metricButtons.map(button => button.textContent)).toEqual(
-      C.cards.map(card => expect.stringContaining(card.name)),
-    )
+    expect(within(board).getAllByRole('button')).toHaveLength(5)
     for (const card of C.cards) {
       expect(within(board).getByRole('button', { name: new RegExp(`^${card.name}`) }).textContent).toContain(card.status)
     }
-    expect(within(board).getByRole('button', { name: C.boardAdd.title })).toBeInTheDocument()
+    expect(within(board).queryByRole('button', { name: /Add card/i })).not.toBeInTheDocument()
     expect(within(board).queryByRole('button', { name: /^Conversion/ })).not.toBeInTheDocument()
   })
 
-  it('adds another card to the hero board and prevents duplicate additions', async () => {
+  it('does not sell a fake Add-card library', () => {
     render(<CareHomepage />)
-    const board = screen.getByRole('region', { name: C.boardAria })
-    fireEvent.click(within(board).getByRole('button', { name: C.boardAdd.title }))
-    fireEvent.click(await screen.findByRole('button', { name: new RegExp(C.addCards.options[0].name) }))
-    expect(within(board).getByText(C.addCards.options[0].detail)).toBeInTheDocument()
-    fireEvent.click(within(board).getByRole('button', { name: C.boardAdd.title }))
-    expect(await screen.findByRole('button', { name: new RegExp(C.addCards.options[0].name) })).toBeDisabled()
+    expect(screen.queryByText('Choose another area to watch.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Add card/i })).not.toBeInTheDocument()
   })
 
   it('opens card depth as a question, answer, facts, and coverage', () => {
@@ -141,20 +139,21 @@ describe('homepage example', () => {
     expect(writeText).toHaveBeenCalledWith(C.workflow.instructions)
   })
 
-  it('presents MCP as context transfer between FixFlags, AI, and verification', async () => {
+  it('keeps Copy prompt and does not sell parked MCP', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     const { container } = render(<CareHomepage />)
     expect(screen.getByRole('heading', { name: C.mcp.title })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: C.mcp.connect }))
-    expect(await screen.findByText(C.mcp.copiedConnect)).toBeInTheDocument()
-    expect(screen.getByText(C.mcp.connectBody)).toBeVisible()
-    expect(writeText).toHaveBeenCalledWith(C.mcp.connectBody)
+    expect(screen.queryByRole('button', { name: /Connect MCP/i })).not.toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: C.mcp.copy })[0]!)
+    expect(await screen.findByText(C.actions.copied)).toBeInTheDocument()
+    expect(writeText).toHaveBeenCalledWith(C.workflow.instructions)
     for (const step of C.mcp.flow) {
       expect(screen.getByRole('heading', { name: step.title })).toBeInTheDocument()
     }
     expect(container.textContent).not.toMatch(/ff_[a-z_]+/)
     expect(container.textContent).not.toMatch(/MCP (watches|monitors)/i)
+    expect(container.textContent).not.toMatch(/Connect MCP/)
     expect(container.innerHTML).not.toMatch(/\/docs\/cli|\/docs\/mcp|\/help\/mcp-and-editors/)
   })
 
@@ -164,5 +163,6 @@ describe('homepage example', () => {
     expect(screen.getByRole('heading', { name: C.checks.title })).toBeInTheDocument()
     expect(container.textContent).not.toMatch(/More than uptime|One clear path from problem to proof|Keep what matters in view|over 200/i)
     expect(screen.getAllByText(C.quiet.notifications[2].title).length).toBeGreaterThan(0)
+    expect(screen.getByText(C.quiet.exampleNote)).toBeInTheDocument()
   })
 })

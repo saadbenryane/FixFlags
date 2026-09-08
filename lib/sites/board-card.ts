@@ -87,7 +87,9 @@ export function outcomeNameForFlag(
   if (flag.pageUrl) {
     const match = outcomes.find((outcome) =>
       outcome.pageUrls.some(
-        (url) => url === flag.pageUrl || Boolean(flag.pageUrl && url.startsWith(flag.pageUrl))
+        (url) =>
+          url === flag.pageUrl ||
+          Boolean(flag.pageUrl && (flag.pageUrl.startsWith(url) || url.startsWith(flag.pageUrl)))
       )
     )
     if (match) return match.name

@@ -8,6 +8,8 @@ import { Surface } from '@/components/ui/surface'
 import { Logo } from '@/components/brand/Logo'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
 import { SiteOutcomeEdit } from '@/components/sites/SiteOutcomeEdit'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { CARD_CATALOG } from '@/lib/sites/card-areas'
 
 function certaintyLabel(value: string | null, confidence: number | null): string {
   if (value) return value.replaceAll('_', ' ').toLowerCase()
@@ -39,6 +41,13 @@ export default async function SiteFlagPage({
 
   const { site, flag } = detail
   const outcomes = await listSiteOutcomes(site)
+  const areaName = CARD_CATALOG[flag.area]?.name ?? flag.area
+  const relatedOutcome =
+    outcomes.find((outcome) =>
+      flag.pageUrl
+        ? outcome.pageUrls.some((url) => url === flag.pageUrl || url.startsWith(flag.pageUrl ?? ''))
+        : false
+    ) ?? outcomes[0] ?? null
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -49,13 +58,17 @@ export default async function SiteFlagPage({
         </Button>
       </div>
       <p className="text-xs uppercase tracking-wide text-muted-foreground">
-        {site.canonicalHost} · {flag.area} · {flag.severity.toLowerCase()}
+        {site.canonicalHost} · {areaName} · {flag.severity.toLowerCase()}
       </p>
+      <p className="mt-3 text-sm font-medium text-brand">{SITE_BOARD_COPY.flagStatus}</p>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">{flag.problem}</h1>
       <p className="mt-3 text-muted-foreground">{flag.whyItMatters}</p>
+      {relatedOutcome ? (
+        <p className="mt-3 text-sm text-muted-foreground">Outcome · {relatedOutcome.name}</p>
+      ) : null}
 
       <section className="mt-8 rounded-2xl border border-border/80 bg-background p-5">
-        <h2 className="font-medium">What happened</h2>
+        <h2 className="font-medium">Evidence</h2>
         {flag.evidenceMissing ? (
           <p className="mt-2 text-sm text-muted-foreground">
             Evidence for this Flag was not stored. Verify will capture a fresh look at the same page.
@@ -94,11 +107,10 @@ export default async function SiteFlagPage({
       </section>
 
       <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5">
-        <h2 className="font-medium">Fix this</h2>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Copying instructions does not close the Flag. Verify checks the same page and action again.
         </p>
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
           {flag.fix}
         </p>
         <SiteFlagActions siteId={resolvedId} flagId={flag.id} fixText={flag.fix} />

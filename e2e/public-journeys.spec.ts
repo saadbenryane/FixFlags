@@ -323,13 +323,17 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   test.setTimeout(240_000)
 
   const targetUrl = process.env.E2E_AUDIT_URL ?? 'https://example.com'
-  await page.goto('/new')
-  await page.getByLabel('Website URL').first().fill(targetUrl)
-  await page.getByRole('button', { name: 'Review my site' }).first().click()
+  await page.goto('/')
+  await page.getByRole('textbox', { name: 'Website URL' }).first().fill(targetUrl)
+  await page.getByRole('button', { name: 'Check my website' }).first().click()
   await page.waitForURL(/\/sites\//, { timeout: 30_000 })
   await expect(page.getByRole('heading', { name: 'Your board' })).toBeVisible()
   await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
-  await expect(page.getByText(/Learning your website/i).first()).toBeVisible()
+  await expect(page.getByText(/Learning your website|Pages are loading/i).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Site/ })).toBeVisible()
+  for (const name of ['Conversion', 'Security', 'Search', 'Performance', 'Tracking']) {
+    await expect(page.getByRole('button', { name: new RegExp(`^${name}`) }).or(page.getByRole('link', { name: new RegExp(name) }))).toBeVisible()
+  }
 
   const siteId = new URL(page.url()).pathname.split('/').filter(Boolean).at(-1)!
   await expect.poll(async () => {
