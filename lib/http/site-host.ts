@@ -50,3 +50,26 @@ export function wwwApexPair(host: string): string | null {
 export function isWwwApexPair(left: string, right: string): boolean {
   return wwwApexPair(left) === right || wwwApexPair(right) === left
 }
+
+export const PRODUCTION_APEX_HOST = 'fixflags.com'
+
+/** Incoming Host without port. Prefer the request Host over nextUrl.hostname. */
+export function requestHostname(hostHeader: string | null | undefined, fallbackHost: string): string {
+  const header = (hostHeader ?? '').split(':')[0].toLowerCase().trim()
+  return header || fallbackHost.split(':')[0].toLowerCase()
+}
+
+/**
+ * Production crawl host is the apex. www must 308 even when NEXT_PUBLIC_APP_URL
+ * is mis-set to www.
+ */
+export function productionApexRedirect(
+  hostname: string,
+  pathname: string,
+  search: string
+): string | null {
+  if (hostname === `www.${PRODUCTION_APEX_HOST}`) {
+    return `https://${PRODUCTION_APEX_HOST}${pathname}${search}`
+  }
+  return null
+}

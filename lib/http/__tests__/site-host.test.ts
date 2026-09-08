@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { cookieDomainForHostname, isWwwApexPair, sharedCookieDomain, wwwApexPair } from '@/lib/http/site-host'
+import {
+  cookieDomainForHostname,
+  isWwwApexPair,
+  productionApexRedirect,
+  requestHostname,
+  sharedCookieDomain,
+  wwwApexPair,
+} from '@/lib/http/site-host'
 
 describe('sharedCookieDomain', () => {
   it('shares www and apex for the product host', () => {
@@ -28,6 +35,14 @@ describe('www/apex pair', () => {
     expect(wwwApexPair('fixflags.com')).toBe('www.fixflags.com')
     expect(isWwwApexPair('www.fixflags.com', 'fixflags.com')).toBe(true)
     expect(isWwwApexPair('fixflags.com', 'other.com')).toBe(false)
+  })
+
+  it('always sends production www to the apex', () => {
+    expect(requestHostname('www.fixflags.com:443', 'fixflags.com')).toBe('www.fixflags.com')
+    expect(productionApexRedirect('www.fixflags.com', '/pricing', '')).toBe(
+      'https://fixflags.com/pricing'
+    )
+    expect(productionApexRedirect('fixflags.com', '/', '')).toBeNull()
   })
 })
 

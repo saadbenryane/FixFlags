@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { isWwwApexPair, siteHostname } from '@/lib/http/site-host'
+import {
+  isWwwApexPair,
+  productionApexRedirect,
+  requestHostname,
+  siteHostname,
+} from '@/lib/http/site-host'
 
 function isProtectedPath(pathname: string): boolean {
   return pathname.startsWith('/admin/') || pathname.startsWith('/settings/')
@@ -84,8 +89,17 @@ export async function middleware(request: NextRequest) {
     return new NextResponse(null, { status: 404 })
   }
 
+  const requestHost = requestHostname(request.headers.get('host'), request.nextUrl.hostname)
+  const apexRedirect = productionApexRedirect(
+    requestHost,
+    request.nextUrl.pathname,
+    request.nextUrl.search
+  )
+  if (apexRedirect) {
+    return NextResponse.redirect(apexRedirect, 308)
+  }
+
   const canonicalHost = siteHostname()
-  const requestHost = request.nextUrl.hostname
   if (
     canonicalHost &&
     requestHost !== canonicalHost &&
