@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import type { Route } from 'next'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
@@ -103,7 +104,7 @@ export function ActiveAuditBanner() {
           </span>
           {boardHref ? (
             <Link
-              href={boardHref}
+              href={boardHref as Route}
               className="font-medium text-brand transition-colors duration-200 hover:text-brand/80"
             >
               Return to Site

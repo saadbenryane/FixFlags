@@ -15,7 +15,18 @@ export const SITE_BOARD_COPY = {
   openFlag: 'See what happened',
   fixThis: 'Fix this',
   verifyFix: 'Verify fix',
+  copyPrompt: 'Copy prompt',
+  share: 'Share',
   flagStatus: 'Needs a fix',
+  needsAttention: 'Needs attention',
+  lastChecked: 'Last checked',
+  notCheckedYet: 'Not checked yet',
+  checking: 'Checking',
+  browserSource: 'FixFlags browser',
+  addCard: 'Add card',
+  addTitle: 'Add to your board',
+  addBody: 'Watch another public area of this website.',
+  addEmpty: 'Those cards are already on your board.',
   pagesLoading: 'Pages are loading',
   learning: 'Learning your website',
   lookingGood: 'Looking good',
@@ -40,15 +51,21 @@ export const CUSTOMER_TERMS = {
   flags: 'Flags',
 } as const
 
-/** Shared pricing numbers for marketing, help, and FAQ. Must match `lib/billing/plans.ts` enforcement. */
+/**
+ * Public packaging numbers. Check-pool counts still match `lib/billing/plans.ts`
+ * enforcement (hidden from /pricing). Display prices are the public list, not
+ * the live Stripe SKU.
+ */
 export const PRICING_COPY = {
   freeProductReviewsPerMonth: 3,
-  proPrice: '$29',
-  proPeriod: '/mo',
+  proPrice: '$49',
+  proPeriod: '/website/mo',
   proProductReviewsPerMonth: 30,
-  studioPrice: '$79',
-  studioPeriod: '/mo',
+  studioPrice: 'Volume',
+  studioPeriod: '',
   studioProductReviewsPerMonth: 90,
+  freeFrequency: 'every 24 hours',
+  paidFrequency: 'up to every hour',
 } as const
 
 export const CORE_LOOP_LABEL = 'Find → Understand → Fix → Verify'

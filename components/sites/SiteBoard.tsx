@@ -11,15 +11,19 @@ import {
   Check,
   CircleAlert,
   ChevronRight,
-  Copy,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/brand/Logo'
 import { cn } from '@/lib/utils'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
-import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
-import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
-import { BoardGrid, ProductBoardCard } from '@/components/sites/BoardCard'
+import {
+  STARTER_BOARD_CARDS,
+  type CardHealthState,
+  type SiteCardArea,
+} from '@/lib/sites/card-areas'
+import { AddBoardCard, AddCardLibrary, BoardGrid, ProductBoardCard } from '@/components/sites/BoardCard'
+import { boardFlagPrompt } from '@/lib/sites/board-card'
+import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
 
 function StatusDot({ state }: { state: CardHealthState }) {
   return (
@@ -27,7 +31,7 @@ function StatusDot({ state }: { state: CardHealthState }) {
       className={cn(
         'inline-block h-2 w-2 rounded-full',
         state === 'healthy' && 'bg-success',
-        state === 'attention' && 'bg-warning',
+        state === 'attention' && 'bg-brand',
         state === 'problem' && 'bg-brand',
         state === 'checking' && 'bg-brand animate-pulse',
         state === 'unknown' && 'bg-muted-foreground/40'
@@ -57,6 +61,8 @@ export function SiteBoard({
   const [view, setView] = useState(initial)
   const [nav, setNav] = useState<'Dashboard' | 'Flags' | 'Site'>('Dashboard')
   const [selectedCard, setSelectedCard] = useState<SiteCardArea | null>(null)
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [addedCards, setAddedCards] = useState<SiteCardArea[]>([])
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const checking =
@@ -169,52 +175,17 @@ export function SiteBoard({
     }
   }
 
-  async function copyFix(text: string, flagId: string) {
-    try {
-      await navigator.clipboard.writeText(text)
-      setToast('Fix instructions copied')
-      await fetch(`/api/sites/${siteId}/flags/${flagId}/fix`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'copy' }),
-      }).catch(() => {})
-    } catch {
-      setToast('Select and copy the instructions below')
-    }
-  }
-
-  async function verifyFlag(flagId: string) {
-    setBusy(true)
-    try {
-      const res = await fetch(`/api/sites/${siteId}/flags/${flagId}/verify`, {
-        method: 'POST',
-      })
-      const body = (await res.json().catch(() => ({}))) as {
-        error?: string
-        signup?: boolean
-        siteId?: string
-      }
-      if (res.status === 401 || body.signup) {
-        router.push(`/sign-up?next=${encodeURIComponent(`/sites/${siteId}`)}`)
-        return
-      }
-      if (!res.ok) {
-        setToast(body.error || 'Could not start verification')
-        return
-      }
-      setToast('Verification started. Related cards will update when it finishes.')
-      await refresh()
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const selected = selectedCard
     ? view.cards.find((c) => c.id === selectedCard) ?? null
     : null
   const selectedFlags = selected
     ? view.flags.filter((f) => selected.flagIds.includes(f.id) || f.area === selected.id)
     : []
+  const visibleCards = view.cards.filter(
+    (card) =>
+      STARTER_BOARD_CARDS.includes(card.id) || addedCards.includes(card.id)
+  )
+  const presentAreas = visibleCards.map((card) => card.id)
 
   return (
     <div className="min-h-screen bg-[var(--canvas)] text-foreground">
@@ -290,7 +261,7 @@ export function SiteBoard({
             <div>
               <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
                 <Logo variant="lockup" size="sm" />
-                <StatusLabel state={view.statusState}>{view.statusLabel}</StatusLabel>
+                <span className="truncate text-xs text-muted-foreground">{view.host}</span>
               </div>
               <h1 className="font-display text-3xl font-semibold tracking-tight">
                 {nav === 'Dashboard' ? 'Your board' : nav === 'Flags' ? 'Flags' : 'Your Site'}
@@ -340,13 +311,14 @@ export function SiteBoard({
 
           {nav === 'Dashboard' ? (
             <BoardGrid>
-              {view.cards.map((card) => (
+              {visibleCards.map((card) => (
                 <ProductBoardCard
                   key={card.id}
                   card={card}
                   onOpen={() => setSelectedCard(card.id)}
                 />
               ))}
+              <AddBoardCard onOpen={() => setLibraryOpen(true)} />
             </BoardGrid>
           ) : null}
 
@@ -491,26 +463,25 @@ export function SiteBoard({
                   {selectedFlags.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No open Flags in this area.</p>
                   ) : (
-                    selectedFlags.map((flag) => (
+                    selectedFlags.slice(0, 3).map((flag) => (
                       <div key={flag.id} className="rounded-xl border border-border/70 p-4">
-                        <p className="font-medium">{flag.problem}</p>
-                        <p className="mt-1 text-sm text-muted-foreground">{flag.whyItMatters}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => void copyFix(flag.fix, flag.id)}
-                          >
-                            <Copy className="mr-1 h-3.5 w-3.5" />
-                            {SITE_BOARD_COPY.fixThis}
-                          </Button>
-                          <Button size="sm" variant="brand" disabled={busy} onClick={() => void verifyFlag(flag.id)}>
-                            {SITE_BOARD_COPY.verifyFix}
-                          </Button>
-                          <Button size="sm" variant="ghost" asChild>
-                            <Link href={`/sites/${siteId}/flags/${flag.id}`}>Open Flag</Link>
-                          </Button>
-                        </div>
+                        <Link
+                          href={`/sites/${siteId}/flags/${flag.id}`}
+                          className="flex items-start justify-between gap-3"
+                        >
+                          <div>
+                            <p className="font-medium">{flag.problem}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">{flag.whyItMatters}</p>
+                          </div>
+                          <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                        </Link>
+                        <SiteFlagActions
+                          siteId={siteId}
+                          flagId={flag.id}
+                          fixText={flag.fix}
+                          promptText={boardFlagPrompt(flag)}
+                          shareUrl={`/sites/${siteId}/flags/${flag.id}`}
+                        />
                       </div>
                     ))
                   )}
@@ -563,6 +534,16 @@ export function SiteBoard({
           {toast}
         </div>
       ) : null}
+
+      <AddCardLibrary
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+        present={presentAreas}
+        onAdd={(id) => {
+          setAddedCards((current) => (current.includes(id) ? current : [...current, id]))
+          setLibraryOpen(false)
+        }}
+      />
     </div>
   )
 }

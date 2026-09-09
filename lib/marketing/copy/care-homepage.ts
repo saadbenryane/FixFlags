@@ -8,7 +8,7 @@ export const CARE_HOME = {
   headlineLines: ['Your website,', 'looked after.'],
   hero: {
     body: 'Keep building. FixFlags checks your live website across 100+ checks and real browser journeys. When something breaks, you know what happened and how to fix it.',
-    trust: 'No account required · Start with a public website',
+    trust: 'No credit card required',
     cta: 'Check my website', placeholder: 'yourwebsite.com',
   },
   boardHost: EXAMPLE_HOST,
@@ -21,10 +21,10 @@ export const CARE_HOME = {
     status: 'Pages are loading',
     answer: 'Pages are loading',
     pages: '12 pages',
-    flags: '1 Flag',
+    flags: '4 Flags',
     imageAlt: 'Controlled Everyday goods homepage with shopping and support actions',
     question: CARD_CATALOG.site.question,
-    facts: ['12 pages in this example', '1 open Conversion Flag', 'Checked just now'],
+    facts: ['12 pages in this example', '1 Conversion Flag and 3 Performance Flags', 'Checked just now'],
     coverage: 'Controlled example. A live Site uses the latest real capture, never a stock image.',
   },
   flag: {
@@ -45,12 +45,36 @@ export const CARE_HOME = {
       coverage: 'Controlled crawlability example, not a ranking claim.' },
     { id: 'performance', name: CARD_CATALOG.performance.name, value: '3.1s', detail: 'Main content takes time to appear', status: 'Needs attention', tone: 'attention', chart: 'none',
       question: CARD_CATALOG.performance.question, answer: '3.1s for main content',
-      facts: ['Largest Contentful Paint in this example', 'People may wait before they can use the page', 'Needs attention'],
+      facts: ['Largest Contentful Paint in this example', 'People may wait before they can use the page'],
       coverage: 'Illustrative page-load measurement. Real results identify the page, device and capture conditions.' },
     { id: 'tracking', name: CARD_CATALOG.tracking.name, value: 'Connected', detail: 'Key website events are arriving', status: 'Latest check passed', tone: 'good', chart: 'bars',
       question: CARD_CATALOG.tracking.question, answer: 'Key events are arriving',
       facts: ['Expected public events were observed', 'Investigate if an expected event disappears after a change'],
       coverage: 'Controlled tracking example. A real card names the events and observation window.' },
+  ],
+  add: {
+    note: 'Controlled example. These cards use public checks, not connected accounts.',
+  },
+  library: {
+    uptime: {
+      id: 'uptime', name: CARD_CATALOG.uptime.name, value: 'Reachable',
+      detail: 'The website responded each time we checked', status: 'Last checked',
+      question: CARD_CATALOG.uptime.question, answer: 'Reachable',
+      facts: ['Checked from the public internet', 'No downtime in this example'],
+      coverage: 'Illustrative availability. A live card names the window and last success.'
+    },
+    accessibility: {
+      id: 'accessibility', name: CARD_CATALOG.accessibility.name, value: 'Essentials checked',
+      detail: 'Labels, keyboard access, and contrast on the pages we opened', status: 'Last checked',
+      question: CARD_CATALOG.accessibility.question, answer: 'Essentials checked',
+      facts: ['Automated checks on public pages', 'Does not replace a human review'],
+      coverage: 'Illustrative accessibility coverage, limited to what the browser can observe.'
+    },
+  },
+  performanceFlags: [
+    { id: 'perf-1', title: 'Main content is slow', href: '#product' },
+    { id: 'perf-2', title: 'Mobile waits to paint', href: '#product' },
+    { id: 'perf-3', title: 'Layout shift on products', href: '#product' },
   ],
   workflow: {
     label: 'How FixFlags works', title: 'See the problem. Fix it. Know it works.',
@@ -69,7 +93,8 @@ export const CARE_HOME = {
     failedTitle: 'No confirmation appeared',
     passedLabel: 'Fresh check passed',
     passedTitle: 'Message received',
-    source: 'Captured from a controlled contact-form fixture.',
+    page: '/contact',
+    source: 'Controlled contact-form example.',
     instructions: 'On the Contact page, submit the form and observe that no success message appears. Add a clear confirmation after the request succeeds. Publish the change, then run a fresh browser check and confirm that “Message received” is visible after submission.',
   },
   checks: {
@@ -84,8 +109,8 @@ export const CARE_HOME = {
     note: 'What runs depends on what FixFlags learns your website needs to do.',
   },
   outcomes: {
-    label: 'Built around your business', title: 'Tell FixFlags what your website needs to do.',
-    body: 'Sell a product. Book a call. Collect a lead. Accept a donation. Run a tool. FixFlags follows the pages and actions behind the result.',
+    label: 'Built around your business', title: 'FixFlags learns what your website is for.',
+    body: 'Start with a URL. FixFlags identifies the important pages and visitor actions, then checks the paths that matter to your business.',
     options: [
       { id: 'sell', label: 'Sell', path: ['Product', 'Add to cart', 'Checkout'], result: 'Customers can buy' },
       { id: 'book', label: 'Book', path: ['Service', 'Choose a time', 'Confirmation'], result: 'Visitors can book' },

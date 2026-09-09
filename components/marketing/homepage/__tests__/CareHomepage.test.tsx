@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { CareHomepage } from '../CareHomepage'
-import { CARE_HOME as C } from '@/lib/marketing/copy'
+import { CARE_HOME as C, SITE_BOARD_COPY } from '@/lib/marketing/copy'
 import { starterBoardNames } from '@/lib/sites/board-card'
 
 vi.mock('@/components/audit/AuditInput', () => ({ AuditInput: () => <div data-testid="url-entry" /> }))
@@ -11,12 +11,21 @@ afterEach(() => { cleanup(); vi.restoreAllMocks() })
 describe('homepage example', () => {
   it('shows the complete Check, Flag, Fix, Verify story without hidden tabs', () => {
     render(<CareHomepage />)
+    const workflow = screen.getByRole('region', { name: C.boardAria }).ownerDocument.getElementById('flag-example')
+    expect(workflow).not.toBeNull()
     for (const step of C.workflow.steps) {
       expect(screen.getByRole('heading', { name: step.title })).toBeInTheDocument()
     }
     expect(screen.getByRole('img', { name: C.workflow.failedAlt })).toBeInTheDocument()
     expect(screen.getByRole('img', { name: C.workflow.passedAlt })).toBeInTheDocument()
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+    expect(within(workflow!).queryByRole('link', { name: C.hero.cta })).not.toBeInTheDocument()
+    expect(within(workflow!).queryByText(C.flag.outcome)).not.toBeInTheDocument()
+    expect(within(workflow!).getAllByText(C.workflow.page)).toHaveLength(2)
+    expect(within(workflow!).getAllByText(C.workflow.source)).toHaveLength(1)
+    expect(within(workflow!).getByText(C.workflow.failedTitle)).toBeInTheDocument()
+    expect(within(workflow!).getByText(C.workflow.passedTitle)).toBeInTheDocument()
+    expect(workflow!.querySelectorAll('[data-step]')).toHaveLength(C.workflow.steps.length)
   })
 
   it('identifies the example Site once in the board chrome', () => {
@@ -44,34 +53,41 @@ describe('homepage example', () => {
       C.flag.name,
       ...C.cards.map(card => card.name),
     ]).toEqual(starterBoardNames())
-    const site = within(board).getByRole('button', { name: new RegExp(`^${C.site.label}`) })
+    const site = within(board).getByRole('button', { name: C.site.label })
     expect(within(site).getByRole('img', { name: C.site.imageAlt })).toBeInTheDocument()
-    expect(within(site).getByText(C.site.status)).toBeInTheDocument()
-    expect(within(site).getByText(`${C.site.pages} · ${C.site.flags}`)).toBeInTheDocument()
-    const conversion = within(board).getByRole('link', { name: new RegExp(C.flag.title) })
-    expect(conversion).toHaveAttribute('href', '#flag-example')
-    expect(within(conversion).getByText(C.flag.name)).toBeInTheDocument()
+    expect(within(board).getAllByText(SITE_BOARD_COPY.lastChecked).length).toBeGreaterThan(0)
+    expect(within(site).getByText(new RegExp(`${C.site.pages} · ${C.site.flags}`))).toBeInTheDocument()
+    const conversion = within(board).getByRole('button', { name: C.flag.name })
     expect(within(conversion).getByText(C.flag.outcome)).toBeInTheDocument()
     expect(within(conversion).getByText(C.flag.body)).toBeInTheDocument()
-    expect(within(conversion).getByText(C.flag.status)).toBeInTheDocument()
+    const flagChip = within(board).getByRole('link', { name: new RegExp(C.flag.title) })
+    expect(flagChip).toHaveAttribute('href', '#flag-example')
     expect(within(board).getByRole('img', { name: C.flag.cropAlt })).toBeInTheDocument()
-    expect(within(board).getAllByRole('button')).toHaveLength(5)
+    expect(within(board).queryByText('Needs attention')).not.toBeInTheDocument()
+    expect(within(board).getByText(C.performanceFlags[0].title)).toBeInTheDocument()
+    expect(within(board).getByText('Google Analytics')).toBeInTheDocument()
+    expect(within(board).getByRole('button', { name: /Add card/i })).toBeInTheDocument()
     for (const card of C.cards) {
-      expect(within(board).getByRole('button', { name: new RegExp(`^${card.name}`) }).textContent).toContain(card.status)
+      expect(within(board).getByRole('button', { name: card.name })).toBeInTheDocument()
     }
-    expect(within(board).queryByRole('button', { name: /Add card/i })).not.toBeInTheDocument()
-    expect(within(board).queryByRole('button', { name: /^Conversion/ })).not.toBeInTheDocument()
   })
 
-  it('does not sell a fake Add-card library', () => {
+  it('offers Uptime and Accessibility from Add without selling connections', () => {
     render(<CareHomepage />)
-    expect(screen.queryByText('Choose another area to watch.')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Add card/i })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Add card/i }))
+    const library = screen.getByRole('dialog')
+    expect(within(library).getByRole('heading', { name: SITE_BOARD_COPY.addTitle })).toBeInTheDocument()
+    expect(within(library).getByText(C.add.note)).toBeInTheDocument()
+    expect(within(library).queryByText(/Connect MCP/i)).not.toBeInTheDocument()
+    expect(within(library).queryByText(/Connect Analytics/i)).not.toBeInTheDocument()
+    fireEvent.click(within(library).getByRole('button', { name: /Uptime/i }))
+    const board = screen.getByRole('region', { name: C.boardAria })
+    expect(within(board).getByRole('button', { name: C.library.uptime.name })).toBeInTheDocument()
   })
 
   it('opens card depth as a question, answer, facts, and coverage', () => {
     render(<CareHomepage />)
-    fireEvent.click(screen.getByRole('button', { name: new RegExp(`^${C.cards[0].name}`) }))
+    fireEvent.click(screen.getByRole('button', { name: C.cards[0].name }))
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).getByRole('heading', { name: C.cards[0].name })).toBeInTheDocument()
     expect(within(dialog).getByText(C.cards[0].question)).toBeInTheDocument()
@@ -85,18 +101,21 @@ describe('homepage example', () => {
     expect(within(dialog).queryByText('What next')).not.toBeInTheDocument()
   })
 
-  it('opens Conversion as the Flag story instead of a second metric essay', () => {
+  it('opens Conversion depth with proof and copy actions, and the Flag chip links to the story', () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
-    const conversion = within(board).getByRole('link', { name: new RegExp(C.flag.title) })
-    expect(conversion).toHaveAttribute('href', '#flag-example')
-    expect(within(conversion).getByText(C.flag.outcome)).toBeInTheDocument()
-    expect(within(board).queryByRole('button', { name: /^Conversion/ })).not.toBeInTheDocument()
+    expect(within(board).getByRole('link', { name: new RegExp(C.flag.title) })).toHaveAttribute('href', '#flag-example')
+    fireEvent.click(within(board).getByRole('button', { name: C.flag.name }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: C.flag.name })).toBeInTheDocument()
+    expect(within(dialog).getByRole('img', { name: C.flag.cropAlt })).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.share })).toBeInTheDocument()
   })
 
   it('restores focus to the card that opened the dialog', async () => {
     render(<CareHomepage />)
-    const card = screen.getByRole('button', { name: new RegExp(`^${C.cards[0].name}`) })
+    const card = screen.getByRole('button', { name: C.cards[0].name })
     card.focus()
     fireEvent.click(card)
     expect(screen.getByRole('dialog')).toBeInTheDocument()

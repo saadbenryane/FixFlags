@@ -16,7 +16,7 @@ const ALL_HELP_CATEGORIES: readonly HelpCategory[] = [
   {
     id: 'billing-and-plans',
     title: 'Billing and plans',
-    description: 'Free weekly watch, paid daily watch, and account limits.',
+    description: 'Free monitors one website every 24 hours. Paid is hourly, billed per website.',
     icon: 'creditCard',
   },
   {
@@ -414,21 +414,21 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'free-vs-pro',
     categoryId: 'billing-and-plans',
     title: 'Free vs Pro',
-    excerpt: 'Free on Shopify. Pro extras are waitlisted. We are not charging yet.',
+    excerpt: 'One website free, every 24 hours. Paid is $49 per website, up to every hour. We are not charging yet.',
     popular: true,
-    searchTokens: ['pricing', 'upgrade', 'studio', 'plan'],
+    searchTokens: ['pricing', 'upgrade', 'studio', 'plan', 'monitoring'],
     body: [
       {
         type: 'p',
-        text: 'Free: one Shopify store, one or two auto purchase paths, mobile walk with video, email on confirmed Can\'t buy and recovery, optional Slack, five rechecks per day.',
+        text: 'Free: one website, 24/7 monitoring checked every 24 hours, Flags with evidence, a next step to fix, verify after you publish, and connections included.',
       },
       {
         type: 'p',
-        text: 'Pro waitlist: extra paths, faster cadence, funnel numbers when reports access is approved, longer video history, and the full Improve list.',
+        text: 'Pro: $49 per website per month, checked up to every hour. Same Flags, evidence, verify, and connections.',
       },
       {
         type: 'p',
-        text: 'Studio waitlist is for agencies that need more than one store later. There is no price on the Shopify app today.',
+        text: 'Studio is hourly monitoring for several websites, billed per website, quoted on a demo. We are not charging yet.',
       },
     ],
     related: ['what-counts-as-a-check', 'cancel-or-manage'],
@@ -439,17 +439,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'upgrade-or-downgrade',
     categoryId: 'billing-and-plans',
-    title: 'Join the Pro waitlist',
-    excerpt: 'Pro extras are waitlisted. We are not charging yet.',
-    searchTokens: ['upgrade', 'downgrade', 'change plan', 'switch', 'waitlist'],
+    title: 'Request a demo',
+    excerpt: 'Paid monitoring is billed per website. Request a demo. We are not charging yet.',
+    searchTokens: ['upgrade', 'downgrade', 'change plan', 'switch', 'waitlist', 'demo'],
     body: [
       {
         type: 'p',
-        text: 'Open Pricing or Settings in the Shopify app and join the Pro waitlist. We email you when paid extras open.',
+        text: 'Open Pricing and request a demo for Pro or Studio. We email you to set a time. We are not charging yet.',
       },
       {
         type: 'p',
-        text: 'Joining the waitlist does not charge a card. The free install keeps walking the purchase path.',
+        text: 'Free keeps monitoring one website every 24 hours while you wait.',
       },
     ],
     related: ['free-vs-pro', 'cancel-or-manage'],
@@ -503,16 +503,16 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'what-counts-as-a-check',
     categoryId: 'billing-and-plans',
     title: 'What the free plan includes',
-    excerpt: 'Walks, video, alerts, and a daily recheck cap. Install is the start.',
-    searchTokens: ['quota', 'limit', 'credit', 'usage', 'scan'],
+    excerpt: 'One website, 24/7 monitoring every 24 hours, Flags, evidence, and verify.',
+    searchTokens: ['quota', 'limit', 'credit', 'usage', 'scan', 'monitoring'],
     body: [
       {
         type: 'p',
-        text: 'The free Shopify install includes one or two auto purchase paths, a mobile walk with video, email on confirmed Can\'t buy and recovery, optional Slack, and five rechecks per day.',
+        text: 'Free includes one website with 24/7 monitoring checked every 24 hours, Flags with evidence, a next step to fix, verify after you publish, and connections.',
       },
       {
         type: 'p',
-        text: 'Scheduled walks run about every six hours. A walk that cannot start does not spend a recheck.',
+        text: 'A check that cannot start does not change that cadence. Request a demo for hourly monitoring on more websites.',
       },
     ],
     related: ['update-review-credits', 'free-vs-pro'],

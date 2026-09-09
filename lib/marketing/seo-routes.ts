@@ -16,7 +16,7 @@ export const INDEXABLE_ROUTES: readonly IndexableRoute[] = [
   { path: '/install', seoKey: 'install', priority: 0.9, changeFrequency: 'weekly' },
   { path: '/waitlist', seoKey: 'waitlist', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/how-it-works', seoKey: 'howItWorks', priority: 0.9, changeFrequency: 'monthly' },
-  { path: '/pricing', seoKey: 'pricing', priority: 0.9, changeFrequency: 'monthly' },
+  { path: '/request-demo', seoKey: 'requestDemo', priority: 0.5, changeFrequency: 'monthly' },
   { path: '/faq', seoKey: 'faq', priority: 0.7, changeFrequency: 'monthly' },
   { path: '/help', seoKey: 'help', priority: 0.8, changeFrequency: 'weekly' },
   { path: '/docs', seoKey: 'docs', priority: 0.9, changeFrequency: 'weekly' },
@@ -51,7 +51,7 @@ export const LLMS_SECTIONS: readonly LlmsSection[] = [
       { path: '/protect', label: 'Protect', note: 'Shopify connection: purchase path health' },
       { path: '/install', label: 'Install', note: 'Shopify connection, not the company product' },
       { path: '/how-it-works', label: 'How it works', note: 'URL in, Site board, Flags, Verify, Watch' },
-      { path: '/pricing', label: 'Pricing', note: 'Free website analysis. Paid plans when you need more' },
+      { path: '/pricing', label: 'Pricing', note: '24/7 monitoring. One website free, then $49 per website' },
       { path: '/docs', label: 'Documentation', note: 'Site checks, Flags, Verify, and Watch' },
       {
         path: '/docs/getting-started',

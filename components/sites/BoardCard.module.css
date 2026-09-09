@@ -19,7 +19,8 @@
 }
 
 button.card:hover,
-a.card:hover {
+a.card:hover,
+.card:has(.body:hover) {
   border-color: hsl(var(--foreground) / .3);
   box-shadow: 0 4px 16px hsl(var(--foreground) / .04);
 }
@@ -39,18 +40,77 @@ a.card:hover {
 .header {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   width: 100%;
   margin-bottom: 16px;
   font-size: 13px;
   font-weight: 550;
 }
 
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.headerEnd {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.flags {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+}
+
+.flagChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 9.5rem;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid hsl(var(--brand) / .35);
+  border-radius: 999px;
+  background: hsl(var(--brand) / .08);
+  color: hsl(var(--foreground));
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.flagChip svg {
+  flex-shrink: 0;
+  color: hsl(var(--brand));
+}
+
+.flagChip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flagMore {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+
 .signal {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  margin-left: auto;
+  flex-shrink: 0;
   font-size: 12px;
   font-weight: 400;
   color: hsl(var(--muted-foreground));
@@ -66,7 +126,7 @@ a.card:hover {
 }
 
 .healthy { --signal-color: hsl(var(--success)); }
-.attention { --signal-color: hsl(var(--warning)); }
+.attention { --signal-color: hsl(var(--brand)); }
 .problemSignal { --signal-color: hsl(var(--brand)); }
 .checkingSignal { --signal-color: hsl(var(--brand)); }
 .unknown { --signal-color: hsl(var(--muted-foreground) / .4); }
@@ -103,7 +163,7 @@ a.card:hover {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  max-height: 210px;
+
   margin-bottom: 12px;
   overflow: hidden;
   border: 1px solid hsl(var(--border) / .8);
@@ -112,7 +172,7 @@ a.card:hover {
 }
 
 .visual img {
-  object-fit: cover;
+  object-fit: contain;
   object-position: center top;
 }
 
@@ -120,7 +180,7 @@ a.card:hover {
   position: relative;
   display: block;
   width: 100%;
-  height: 88px;
+  aspect-ratio: 720 / 440;
   margin-top: 16px;
   overflow: hidden;
   border: 1px solid hsl(var(--border) / .8);
@@ -129,7 +189,7 @@ a.card:hover {
 }
 
 .crop img {
-  object-fit: cover;
+  object-fit: contain;
   object-position: center 70%;
 }
 
@@ -160,6 +220,121 @@ a.card:hover {
   margin-top: 4px;
   font-size: 14px;
   font-weight: 600;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+a.body {
+  text-decoration: none;
+}
+
+.addCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+  min-height: 180px;
+  padding: 19px;
+  border: 1px dashed hsl(var(--border));
+  border-radius: 13px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.addCard:hover {
+  border-color: hsl(var(--foreground) / .35);
+}
+
+.addSymbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.addCard strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.libraryList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.libraryItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid hsl(var(--border) / .8);
+  border-radius: 10px;
+  background: hsl(var(--background));
+  text-align: left;
+  color: inherit;
+}
+
+.libraryItem:hover {
+  border-color: hsl(var(--foreground) / .3);
+}
+
+.libraryIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: hsl(var(--muted));
+}
+
+.libraryItem span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.libraryItem strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.libraryItem small {
+  font-size: 12px;
+  color: hsl(var(--muted-foreground));
+}
+
+.libraryItem svg:last-child {
+  flex-shrink: 0;
+  color: hsl(var(--muted-foreground));
 }
 
 .bars {
@@ -199,8 +374,17 @@ a.card:hover {
     padding: 16px;
   }
 
+  .addCard {
+    min-height: 0;
+    padding: 16px;
+  }
+
+  .flagChip {
+    max-width: 6.5rem;
+  }
+
   .crop {
-    height: 76px;
+    aspect-ratio: 720 / 440;
   }
 
   .metric {
@@ -217,3 +401,12 @@ a.card:hover {
 @keyframes board-card-pulse {
   50% { opacity: .45; }
 }
+
+/* Headers reflow within narrow cards, independently of the page breakpoint. */
+.header { flex-wrap: wrap; align-items: flex-start; }
+.headerEnd { flex-wrap: wrap; flex-basis: 140px; }
+.flags { flex-wrap: wrap; }
+.flagChip { min-height: 44px; max-width: 100%; }
+.flagChip span { white-space: normal; overflow-wrap: anywhere; }
+.visual img, .crop img { width: 100%; height: 100%; }
+.body:focus-visible, .flagChip:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 4px; }

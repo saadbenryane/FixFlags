@@ -1,5 +1,3 @@
-import { PRICING_COPY } from './terminology'
-
 export const AUTH = {
   reportGate: {
     title: 'Your site check is underway',
@@ -112,8 +110,8 @@ export const AUTH = {
   },
   signUp: {
     title: 'Create your free account',
-    subtitle: `${PRICING_COPY.freeProductReviewsPerMonth} Site checks per month. Keep this Site and unlock every fix prompt.`,
-    fromPricing: `Create your free account: ${PRICING_COPY.freeProductReviewsPerMonth} Site checks per month included.`,
+    subtitle: 'Free monitors one website every 24 hours. Keep this Site and unlock every fix prompt.',
+    fromPricing: 'Create your free account. Free monitors one website every 24 hours.',
     oauthNote: 'Social sign-in is used only to identify your account.',
     cta: 'Create account',
     footer: 'Already have an account?',
@@ -126,8 +124,8 @@ export const AUTH = {
     passwordLabel: 'Password',
     planStepsTitle: 'What happens next',
     planTitles: {
-      BUILDER: `You\u2019re signing up for Pro, with ${PRICING_COPY.proProductReviewsPerMonth} Site checks per month`,
-      TEAM: `You\u2019re signing up for Studio, with ${PRICING_COPY.studioProductReviewsPerMonth} Site checks per month`,
+      BUILDER: 'You\u2019re signing up for Pro: hourly monitoring, billed per website',
+      TEAM: 'You\u2019re signing up for Studio: hourly monitoring for several websites, billed per website',
     },
     planSteps: [
       'Create your account',
@@ -336,31 +334,31 @@ export const SAMPLE_FIX = {
   label: 'Example fix',
   fixTitle: 'Fix',
   signInCta: 'Sign in',
-  subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save this Site, run update reviews, and get more Site checks each month.`,
+  subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save this Site, and keep 24/7 monitoring on one website.`,
   primaryCta: 'Create free account',
 } as const
 
 export const SCAN_LIMIT_GATE = {
   signup: {
     title: 'Create a free account to continue',
-    body: `You have already used your anonymous Site check. Create a free account for fix prompts, saved Sites, and ${PRICING_COPY.freeProductReviewsPerMonth} Site checks per month.`,
+    body: 'You have already used your anonymous Site check. Create a free account for fix prompts, saved Sites, and 24/7 monitoring on one website every 24 hours.',
     primaryCta: 'Create free account',
     secondaryCta: 'Sign in',
     exit: 'Leave this page',
   },
   upgrade: {
-    title: 'Site check limit reached',
-    body: `You have used all the Site checks in your current monthly allowance. Upgrade to Pro for ${PRICING_COPY.proProductReviewsPerMonth} Site checks per month, or wait for renewal.`,
-    primaryCta: 'Upgrade to Pro',
+    title: 'Plan limit reached',
+    body: 'You have reached this period\u2019s limit. Request a demo for hourly monitoring on more websites, or wait for renewal.',
+    primaryCta: 'Request a demo',
     secondaryCta: 'See plans',
     exit: 'Leave this page',
   },
 } as const
 
 export const REPORT_UPGRADE_GATE = {
-  title: 'Upgrade to keep checking this Site',
-  body: 'You have used all the Site checks in your current plan. Upgrade for more Site checks each month.',
-  primaryCta: 'Upgrade to Pro',
-  saving: 'Preparing your upgrade',
-  savingBody: 'Taking you to checkout.',
+  title: 'Upgrade to keep this website monitored',
+  body: 'You have reached this period\u2019s limit. Request a demo for hourly monitoring on more websites.',
+  primaryCta: 'Request a demo',
+  saving: 'Opening demo request',
+  savingBody: 'Taking you to the demo form.',
 } as const

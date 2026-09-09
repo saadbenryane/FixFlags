@@ -35,7 +35,7 @@
   animation: hero-rise .7s var(--hero-ease) .1s both;
 }
 .entry { max-width: 550px; margin: 26px auto 0; scroll-margin-top: 105px; animation: hero-rise .7s var(--hero-ease) .16s both; }
-.entry button[type="submit"] { font-size: 17px; font-weight: 700; }
+.entry button[type="submit"] { font-size: 14px; font-weight: 600; }
 .trust { font-size: 12px; color: hsl(var(--muted-foreground)); margin-top: 14px; line-height: 1.6; }
 
 .heroBoard {
@@ -155,29 +155,59 @@
 .textLink:hover { text-decoration: underline; text-underline-offset: 4px; }
 .scope { font-size: 12px; line-height: 1.65; color: hsl(var(--muted-foreground)); }
 
-.workflow { scroll-margin-top: 80px; }
-.workflowIntro { display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; }
+.workflow {
+  --loop: 9.6s;
+  --loop-ease: cubic-bezier(.22, 1, .36, 1);
+  scroll-margin-top: 80px;
+}
 .workflowGrid { display: grid; grid-template-columns: minmax(280px, .72fr) minmax(0, 1.28fr); gap: 64px; margin-top: 54px; align-items: start; }
 .workflowSteps { display: flex; flex-direction: column; }
 .workflowSteps li { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 16px; padding: 0 0 30px; position: relative; }
-.workflowSteps li:not(:last-child)::before { content: ''; position: absolute; left: 18px; top: 32px; bottom: 3px; width: 1px; background: hsl(var(--border)); }
+.workflowSteps li:not(:last-child)::before,
+.workflowSteps li:not(:last-child)::after { content: ''; position: absolute; left: 18px; top: 32px; bottom: 3px; width: 1px; }
+.workflowSteps li:not(:last-child)::before { background: hsl(var(--border)); }
+.workflowSteps li:not(:last-child)::after { background: hsl(var(--foreground)); transform: scaleY(0); transform-origin: top; }
 .stepNumber { position: relative; z-index: 1; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: hsl(var(--muted)); font-family: var(--font-mono); font-size: 11px; color: hsl(var(--muted-foreground)); }
-.workflowSteps li:nth-child(2) .stepNumber { color: hsl(var(--brand-foreground)); background: hsl(var(--brand)); }
-.workflowSteps li:last-child .stepNumber { color: hsl(var(--success)); box-shadow: inset 0 0 0 1px hsl(var(--success) / .35); }
+.workflowSteps li[data-step='flag'] .stepNumber { color: hsl(var(--brand-foreground)); background: hsl(var(--brand)); }
+.workflowSteps li[data-step='verify'] .stepNumber { color: hsl(var(--success)); background: hsl(var(--success) / .12); box-shadow: inset 0 0 0 1px hsl(var(--success) / .4); }
 .workflowSteps li p { font-size: 12px; font-weight: 600; color: hsl(var(--muted-foreground)); }
 .workflowSteps h3 { margin-top: 6px; font-size: 20px; font-weight: 600; letter-spacing: -.025em; }
 .workflowSteps li div > span { display: block; margin-top: 7px; font-size: 14px; line-height: 1.65; color: hsl(var(--muted-foreground)); }
-.evidenceStory { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 14px; align-items: center; }
-.evidenceCard { overflow: hidden; border: 1px solid hsl(var(--border)); border-radius: 14px; background: hsl(var(--background)); box-shadow: 0 18px 45px -30px hsl(var(--foreground) / .35); }
-.evidenceHeader { display: flex; justify-content: space-between; gap: 12px; padding: 16px 18px; font-size: 11px; color: hsl(var(--muted-foreground)); }
-.evidenceCard a { display: block; overflow: hidden; border-block: 1px solid hsl(var(--border) / .7); }
-.evidenceCard img { display: block; width: 100%; height: auto; }
-.evidenceCard figcaption { display: flex; justify-content: space-between; gap: 16px; padding: 16px 18px; }
-.evidenceCard figcaption b { font-size: 14px; }
-.evidenceCard figcaption span { font-size: 11px; color: hsl(var(--muted-foreground)); }
+.evidenceStage { min-width: 0; }
+.evidenceStory { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.evidenceCard { display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid hsl(var(--border)); border-radius: 14px; background: hsl(var(--background)); box-shadow: 0 18px 45px -30px hsl(var(--foreground) / .35); }
+.evidenceHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; }
+.evidencePage { overflow: hidden; font-family: var(--font-mono); font-size: 11px; line-height: 1.3; color: hsl(var(--muted-foreground)); text-overflow: ellipsis; white-space: nowrap; }
+.evidenceCard a { position: relative; display: block; overflow: hidden; flex: 1; border-block: 1px solid hsl(var(--border) / .7); }
+.evidenceCard img { display: block; width: 100%; height: auto; aspect-ratio: 720 / 440; object-fit: cover; object-position: top center; }
+.evidenceCard figcaption { padding: 14px 16px; font-size: 13px; font-weight: 550; line-height: 1.4; letter-spacing: -.01em; }
 .failedEvidence { border-color: hsl(var(--brand)); }
-.passedEvidence { border-color: hsl(var(--success) / .45); }
-.evidenceConnector { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 999px; background: hsl(var(--foreground)); color: hsl(var(--background)); font-size: 11px; font-weight: 600; }
+.passedEvidence { border-color: hsl(var(--success)); }
+.evidenceConnector { align-self: center; display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: hsl(var(--foreground)); color: hsl(var(--background)); font-size: 11px; font-weight: 600; }
+.evidenceNote { margin-top: 12px; font-size: 12px; line-height: 1.6; color: hsl(var(--muted-foreground)); text-align: center; }
+.loopScan { position: absolute; inset: 0; z-index: 2; overflow: hidden; pointer-events: none; opacity: 0; }
+.loopScanVeil {
+  position: absolute;
+  inset-block: 0;
+  width: 42%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    hsl(var(--foreground) / .04) 36%,
+    hsl(var(--brand) / .2) 52%,
+    hsl(var(--foreground) / .04) 68%,
+    transparent 100%
+  );
+}
+.loopScanEdge {
+  position: absolute;
+  top: 8%;
+  bottom: 8%;
+  right: 22%;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent 0%, hsl(var(--foreground) / .7) 18%, hsl(var(--brand)) 50%, hsl(var(--foreground) / .7) 82%, transparent 100%);
+}
 
 .coverage { background: hsl(var(--muted) / .55); }
 .sectionHeading { display: flex; align-items: flex-end; justify-content: space-between; gap: 60px; }
@@ -260,6 +290,7 @@
 .dialog { max-width: 560px; max-height: 85dvh; overflow-y: auto; padding: 32px; background: hsl(var(--background)); }
 .dialog > button { min-width: 44px; min-height: 44px; top: 8px; right: 8px; }
 .dialog > h2 { padding-right: 28px; font-size: 26px; }
+.dialog img { width: 100%; height: auto; border-radius: 10px; }
 .detailAnswer { margin-top: 6px; font-family: var(--font-display), sans-serif; font-size: 22px; font-weight: 600; letter-spacing: -.03em; line-height: 1.25; }
 .detailFacts { display: flex; flex-direction: column; gap: 10px; margin: 18px 0 16px; padding-left: 18px; }
 .detailFacts li { font-size: 15px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
@@ -309,7 +340,6 @@
   80% { background: hsl(var(--brand)); opacity: .35; transform: translateY(-50%) scale(.7); }
   100% { background: hsl(var(--muted-foreground) / .7); opacity: 1; transform: translateY(-50%) scale(1); }
 }
-
 @media (max-width: 1023px) {
   .workflowGrid { gap: 34px; grid-template-columns: minmax(250px, .75fr) minmax(0, 1.25fr); }
   .evidenceStory { grid-template-columns: minmax(0, 1fr); }
@@ -366,12 +396,10 @@
   .section { padding: 68px 24px; }
   .intro h2, .final h2 { font-size: clamp(34px, 8vw, 44px); }
   .intro > p:last-child:not(.eyebrow) { margin-top: 20px; font-size: 16px; }
-  .workflowIntro { align-items: flex-start; flex-direction: column; gap: 18px; }
   .workflowGrid, .outcomeSection, .mcp, .quiet { grid-template-columns: minmax(0, 1fr); gap: 36px; }
   .workflowGrid { margin-top: 38px; }
   .evidenceStory { grid-template-columns: minmax(0, 1fr); }
   .evidenceConnector { justify-self: center; transform: rotate(90deg); }
-  .evidenceCard figcaption { flex-direction: column; gap: 4px; }
   .sectionHeading { display: block; }
   .sectionHeading > .scope { max-width: none; margin-top: 22px; }
   .checkGroups { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 34px 24px; margin-top: 38px; }
@@ -397,6 +425,7 @@
 @media (prefers-reduced-motion: reduce) {
   .home *, .home *::before, .home *::after, .dialog, .dialog * { animation: none !important; transition: none !important; scroll-behavior: auto !important; filter: none !important; }
   .boardScan,
+  .loopScan,
   .metaChecking,
   .boardMeta::before { display: none; }
   .metaChecked { opacity: 1; }
@@ -428,4 +457,31 @@
       transparent 100%
     );
   }
+}
+
+/* The reader controls the story; evidence stays readable alongside it. */
+.workflowSteps li { min-height: 30vh; scroll-margin-top: 120px; }
+.workflowSteps li .stepNumber { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); box-shadow: none; }
+.workflowSteps li[aria-current='step'] .stepNumber { background: hsl(var(--foreground)); color: hsl(var(--background)); }
+.workflowSteps li[data-step='flag'][aria-current='step'] .stepNumber { background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); }
+.workflowSteps li[data-step='verify'][aria-current='step'] .stepNumber { background: hsl(var(--success)); color: hsl(var(--success-foreground)); }
+.workflowSteps li[aria-current='step'] h3 { text-decoration: underline; text-decoration-color: hsl(var(--border)); text-underline-offset: 6px; }
+.evidenceStage { position: sticky; top: 100px; }
+.evidenceStory { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.evidenceCard img { max-height: 240px; object-fit: contain; background: #fff; }
+.evidenceConnector { display: none; }
+.evidenceHeader { flex-wrap: wrap; }
+.boardHeader { flex-wrap: wrap; }
+.boardMeta { min-width: 0; }
+.boardMeta::before { display: none; }
+.outcomeChoices button { min-height: 44px; }
+.notificationStack { display: grid; gap: 12px; min-height: 0; perspective: none; }
+.notification { position: relative; inset: auto; width: 100%; transform: none; opacity: 1; background: hsl(var(--background)); color: hsl(var(--foreground)); border-color: hsl(var(--border)); box-shadow: none; }
+.notificationTop > span:last-child, .notification > .signal, .notification p { color: hsl(var(--muted-foreground)); }
+.notification h3 { font-size: 19px; }
+.notification > .signal { margin-top: 14px; }
+@media (max-width: 767px) {
+  .evidenceStage { position: static; }
+  .workflowSteps li { min-height: 26vh; }
+  .boardHeader > span:first-child { font-size: 12px; overflow-wrap: anywhere; }
 }

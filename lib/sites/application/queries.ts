@@ -21,6 +21,7 @@ import {
 } from '@/lib/sites/watch-state'
 import { buildBoardCards, type BoardCardView } from '@/lib/sites/board-card'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
+import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
 
 export type { BoardCardView }
 
@@ -194,6 +195,13 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     (await latestDesktopCapture(audit?.id ?? null)) ??
     (await latestDesktopCapture(prior?.id ?? null))
 
+  const analytics =
+    audit?.id
+      ? (await loadTechnologyProfile(audit.id)).technologies
+          .filter((tech) => tech.category === 'analytics')
+          .map((tech) => tech.name)
+      : []
+
   const cards: BoardCardView[] = buildBoardCards({
     siteId,
     inFlight,
@@ -205,6 +213,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     pageCount,
     captureUrl,
     checkedAt: (prior ?? audit)?.completedAt?.toISOString() ?? null,
+    detected: { analytics },
   })
 
   const watchState = watchBoardState({

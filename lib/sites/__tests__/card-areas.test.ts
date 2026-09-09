@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cardAreaForCheck, STARTER_BOARD_CARDS } from '@/lib/sites/card-areas'
+import { cardAreaForCheck, ADDABLE_BOARD_CARDS, STARTER_BOARD_CARDS } from '@/lib/sites/card-areas'
 import { buildCoverageFacts } from '@/lib/sites/coverage'
 import { encodeSiteId, parseSiteId } from '@/lib/sites/types'
 import { siteCardHealth } from '@/lib/sites/site-health'
@@ -24,6 +24,7 @@ describe('site card packaging', () => {
       'performance',
       'tracking',
     ])
+    expect(ADDABLE_BOARD_CARDS).toEqual(['uptime', 'accessibility'])
   })
 
   it('encodes provisional site ids without touching graph Site', () => {

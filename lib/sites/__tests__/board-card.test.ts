@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { CARD_CATALOG, STARTER_BOARD_CARDS } from '@/lib/sites/card-areas'
 import {
   boardCardFooter,
+  boardCardHeaderText,
   boardCardStatusText,
+  boardFlagPrompt,
   buildBoardCards,
   starterBoardNames,
 } from '@/lib/sites/board-card'
@@ -115,7 +117,28 @@ describe('board card contract', () => {
     expect(conversion?.answer).toBe(conversionFlag.problem)
     expect(conversion?.problem?.outcomeName).toBe('Get in touch')
     expect(conversion?.problem?.href).toBe('/sites/p_example/flags/flag-1')
-    expect(conversion?.problem?.actionLabel).toBe(SITE_BOARD_COPY.openFlag)
+    expect(conversion?.flagChips).toEqual([
+      { id: 'flag-1', title: conversionFlag.problem, href: '/sites/p_example/flags/flag-1' },
+    ])
+    expect(conversion?.sources).toEqual([SITE_BOARD_COPY.browserSource])
+    const tracking = cards.find((card) => card.id === 'tracking')
+    expect(tracking?.sources).toEqual([SITE_BOARD_COPY.browserSource])
+    const withAnalytics = buildBoardCards({
+      siteId: 'p_example',
+      inFlight: false,
+      hasLastKnown: false,
+      health: { state: 'healthy', answer: SITE_BOARD_COPY.lookingGood, statusLabel: SITE_BOARD_COPY.lookingGood },
+      coverageByArea: new Map([['tracking', fact('tracking', 'healthy', 'Key events are arriving')]]),
+      flags: [],
+      outcomes: [],
+      pageCount: 12,
+      captureUrl: null,
+      checkedAt: '2026-09-08T12:00:00.000Z',
+      detected: { analytics: ['Google Analytics'] },
+    }).find((card) => card.id === 'tracking')
+    expect(withAnalytics?.sources).toEqual(['Google Analytics'])
+    expect(cards.some((card) => card.id === 'uptime')).toBe(true)
+    expect(cards.some((card) => card.id === 'accessibility')).toBe(true)
   })
 
   it('keeps unknown areas unknown when there are no Flags', () => {
@@ -140,5 +163,17 @@ describe('board card contract', () => {
     expect(boardCardFooter({ openFlagCount: 0, checkedAt: null })).toBe('Not checked yet')
     expect(boardCardStatusText('attention')).toBe('Needs attention')
     expect(boardCardStatusText('problem')).toBe(SITE_BOARD_COPY.flagStatus)
+    expect(boardCardHeaderText('healthy', null, '2026-09-08T12:00:00.000Z', Date.parse('2026-09-08T12:00:20.000Z'))).toBe(
+      SITE_BOARD_COPY.lastChecked
+    )
+    expect(boardCardHeaderText('attention', null, '2026-09-08T12:00:00.000Z')).toBeNull()
+    expect(boardFlagPrompt({
+      problem: conversionFlag.problem,
+      whyItMatters: conversionFlag.whyItMatters,
+      evidence: conversionFlag.evidence,
+      fix: conversionFlag.fix,
+      pageUrl: conversionFlag.pageUrl,
+      expectedBehavior: 'A confirmation appears after submit.',
+    })).toMatch(/Copying this does not resolve/)
   })
 })

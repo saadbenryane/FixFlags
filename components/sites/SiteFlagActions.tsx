@@ -9,27 +9,54 @@ export function SiteFlagActions({
   siteId,
   flagId,
   fixText,
+  promptText,
+  shareUrl,
 }: {
   siteId: string
   flagId: string
   fixText: string
+  promptText?: string | null
+  shareUrl?: string | null
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
-  async function copyFix() {
+  async function recordCopy() {
+    await fetch(`/api/sites/${siteId}/flags/${flagId}/fix`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'copy' }),
+    }).catch(() => {})
+  }
+
+  async function copyText(text: string, success: string) {
     try {
-      await navigator.clipboard.writeText(fixText)
-      setMessage('Fix instructions copied')
-      await fetch(`/api/sites/${siteId}/flags/${flagId}/fix`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'copy' }),
-      }).catch(() => {})
+      await navigator.clipboard.writeText(text)
+      setMessage(success)
+      await recordCopy()
     } catch {
       setMessage('Select and copy the instructions above')
     }
+  }
+
+  async function copyFix() {
+    await copyText(fixText, 'Fix instructions copied')
+  }
+
+  async function copyPrompt() {
+    await copyText(promptText?.trim() || fixText, 'Prompt copied')
+  }
+
+  async function share() {
+    const url =
+      shareUrl ??
+      (typeof window !== 'undefined' ? window.location.href : `/sites/${siteId}/flags/${flagId}`)
+    const absolute =
+      url.startsWith('http') || typeof window === 'undefined'
+        ? url
+        : new URL(url, window.location.origin).toString()
+    await copyText(absolute, 'Flag link copied')
   }
 
   async function verify() {
@@ -57,6 +84,12 @@ export function SiteFlagActions({
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={() => void copyFix()}>
           {SITE_BOARD_COPY.fixThis}
+        </Button>
+        <Button variant="outline" onClick={() => void copyPrompt()}>
+          {SITE_BOARD_COPY.copyPrompt}
+        </Button>
+        <Button variant="outline" onClick={() => void share()}>
+          {SITE_BOARD_COPY.share}
         </Button>
         <Button variant="brand" disabled={busy} onClick={() => void verify()}>
           {SITE_BOARD_COPY.verifyFix}

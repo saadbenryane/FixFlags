@@ -10,6 +10,7 @@ import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
 import { SiteOutcomeEdit } from '@/components/sites/SiteOutcomeEdit'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { CARD_CATALOG } from '@/lib/sites/card-areas'
+import { boardFlagPrompt } from '@/lib/sites/board-card'
 
 function certaintyLabel(value: string | null, confidence: number | null): string {
   if (value) return value.replaceAll('_', ' ').toLowerCase()
@@ -113,7 +114,19 @@ export default async function SiteFlagPage({
         <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
           {flag.fix}
         </p>
-        <SiteFlagActions siteId={resolvedId} flagId={flag.id} fixText={flag.fix} />
+        <SiteFlagActions
+          siteId={resolvedId}
+          flagId={flag.id}
+          fixText={flag.fix}
+          promptText={boardFlagPrompt({
+            problem: flag.problem,
+            whyItMatters: flag.whyItMatters,
+            evidence: flag.evidenceMissing ? null : flag.evidence,
+            fix: flag.fix,
+            pageUrl: flag.pageUrl,
+            expectedBehavior: flag.expectedBehavior,
+          })}
+        />
       </section>
 
       <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5">

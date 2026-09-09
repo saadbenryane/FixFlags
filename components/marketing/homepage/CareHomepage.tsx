@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowRight, Check, ChevronRight, CircleCheck, Copy, Eye,
@@ -9,13 +9,15 @@ import {
 import { AuditInput } from '@/components/audit/AuditInput'
 import { Logo } from '@/components/brand/Logo'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { BoardCard, BoardGrid, BOARD_CARD_ICONS } from '@/components/sites/BoardCard'
-import { CARE_HOME as C } from '@/lib/marketing/copy'
+import { AddBoardCard, AddCardLibrary, BoardCard, BoardGrid, BOARD_CARD_ICONS } from '@/components/sites/BoardCard'
+import { CARE_HOME as C, SITE_BOARD_COPY } from '@/lib/marketing/copy'
+import type { SiteCardArea } from '@/lib/sites/card-areas'
 import s from './CareHomepage.module.css'
 import Image from 'next/image'
 
-type PreviewCard = (typeof C.cards)[number]
-type DetailCard = PreviewCard | 'site'
+type PreviewCard = (typeof C.cards)[number] | (typeof C.library)[keyof typeof C.library]
+type DetailCard = PreviewCard | 'site' | 'conversion'
+type ExtraCardId = 'uptime' | 'accessibility'
 type CopySource = 'read' | 'share' | 'ai' | 'mcp'
 const actionIcons = { read: Eye, share: Share2, ai: Sparkles }
 const failedEvidencePath = '/marketing/evidence/contact-no-confirmation.png'
@@ -37,14 +39,50 @@ function UrlEntry({ final = false }: { final?: boolean }) {
   </div>
 }
 
+function useScrollStep<T extends HTMLElement>() {
+  const ref = useRef<T>(null)
+  const [activeStep, setActiveStep] = useState('check')
+
+  useEffect(() => {
+    const node = ref.current
+    if (!node) return
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const steps = Array.from(node.querySelectorAll<HTMLElement>('[data-step]'))
+      const readingLine = window.innerHeight * .45
+      let current = steps[0]
+      for (const step of steps) {
+        if (step.getBoundingClientRect().top <= readingLine) current = step
+      }
+      if (current?.dataset.step) setActiveStep(current.dataset.step)
+    }
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(update) }
+    update()
+    window.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
+    }
+  }, [])
+
+  return { ref, activeStep }
+}
+
 export function CareHomepage() {
   const [selected, setSelected] = useState<DetailCard | null>(null)
   const [outcome, setOutcome] = useState<(typeof C.outcomes.options)[number]['id']>('lead')
   const [showInstructions, setShowInstructions] = useState(false)
   const [copyResult, setCopyResult] = useState<{ source: CopySource; message: string } | null>(null)
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [extraCards, setExtraCards] = useState<ExtraCardId[]>([])
   const dialogOpener = useRef<HTMLElement | null>(null)
+  const workflow = useScrollStep<HTMLElement>()
   const activeOutcome = C.outcomes.options.find(item => item.id === outcome)!
-  const selectedPreview = selected && selected !== 'site' ? selected : null
+  const selectedPreview = selected && selected !== 'site' && selected !== 'conversion' ? selected : null
+  const extraCardViews = extraCards.map(id => C.library[id])
 
   const openCard = (card: DetailCard) => {
     dialogOpener.current = document.activeElement as HTMLElement
@@ -99,6 +137,7 @@ export function CareHomepage() {
               visual={{ src: siteImagePath, alt: C.site.imageAlt }}
               wide
               icon={BOARD_CARD_ICONS.site}
+              sources={[SITE_BOARD_COPY.browserSource]}
               onOpen={() => openCard('site')}
             />
             <BoardCard
@@ -109,9 +148,11 @@ export function CareHomepage() {
               detail={C.flag.body}
               outcome={C.flag.outcome}
               action={C.flag.action}
-              href="#flag-example"
               crop={{ src: failedEvidencePath, alt: C.flag.cropAlt }}
               icon={BOARD_CARD_ICONS.conversion}
+              flags={[{ id: 'conversion-flag', title: C.flag.title, href: '#flag-example' }]}
+              sources={[SITE_BOARD_COPY.browserSource]}
+              onOpen={() => openCard('conversion')}
             />
             {C.cards.map(card => (
               <BoardCard
@@ -124,9 +165,26 @@ export function CareHomepage() {
                 chart={card.chart}
                 metric
                 icon={BOARD_CARD_ICONS[card.id]}
+                flags={card.id === 'performance' ? [...C.performanceFlags] : undefined}
+                sources={card.id === 'tracking' ? ['Google Analytics'] : [SITE_BOARD_COPY.browserSource]}
                 onOpen={() => openCard(card)}
               />
             ))}
+            {extraCardViews.map(card => (
+              <BoardCard
+                key={card.id}
+                name={card.name}
+                status={card.status}
+                state="healthy"
+                answer={card.value}
+                detail={card.detail}
+                metric
+                icon={BOARD_CARD_ICONS[card.id as SiteCardArea]}
+                sources={[SITE_BOARD_COPY.browserSource]}
+                onOpen={() => openCard(card)}
+              />
+            ))}
+            <AddBoardCard onOpen={() => setLibraryOpen(true)} />
           </BoardGrid>
           </div>
           <p className={s.boardFooter}>{C.previewNote}</p>
@@ -134,31 +192,35 @@ export function CareHomepage() {
       </div>
     </section>
 
-    <section className={`${s.section} ${s.workflow}`} id="flag-example">
-      <div className={s.workflowIntro}><Intro {...C.workflow} /><a href="#audit" className={s.textLink}>{C.hero.cta}<ArrowRight size={17} aria-hidden="true" /></a></div>
+    <section ref={workflow.ref} className={`${s.section} ${s.workflow}`} id="flag-example" data-active-step={workflow.activeStep}>
+      <Intro {...C.workflow} />
       <div className={s.workflowGrid}>
         <ol className={s.workflowSteps}>
-          {C.workflow.steps.map((item, index) => <li key={item.id}>
+          {C.workflow.steps.map((item, index) => <li key={item.id} data-step={item.id} aria-current={workflow.activeStep === item.id ? 'step' : undefined}>
             <span className={s.stepNumber}>0{index + 1}</span>
             <div><p>{item.label}</p><h3>{item.title}</h3><span>{item.body}</span></div>
           </li>)}
         </ol>
-        <div className={s.evidenceStory}>
-          <figure className={`${s.evidenceCard} ${s.failedEvidence}`}>
-            <div className={s.evidenceHeader}><Signal tone="bad">{C.workflow.failedLabel}</Signal><span>{C.flag.outcome}</span></div>
-            <a href={failedEvidencePath} target="_blank" rel="noopener noreferrer" aria-label={C.workflow.failedLink}>
-              <Image src={failedEvidencePath} alt={C.workflow.failedAlt} width={720} height={440} sizes="(max-width: 767px) calc(100vw - 72px), 560px" />
-            </a>
-            <figcaption><b>{C.workflow.failedTitle}</b><span>{C.workflow.source}</span></figcaption>
-          </figure>
-          <div className={s.evidenceConnector}><ArrowRight size={18} aria-hidden="true" /><span>{C.workflow.steps[3].label}</span></div>
-          <figure className={`${s.evidenceCard} ${s.passedEvidence}`}>
-            <div className={s.evidenceHeader}><Signal tone="good">{C.workflow.passedLabel}</Signal><span>{C.flag.outcome}</span></div>
-            <a href={passedEvidencePath} target="_blank" rel="noopener noreferrer" aria-label={C.workflow.passedLink}>
-              <Image src={passedEvidencePath} alt={C.workflow.passedAlt} width={720} height={440} sizes="(max-width: 767px) calc(100vw - 72px), 560px" />
-            </a>
-            <figcaption><b>{C.workflow.passedTitle}</b><span>{C.workflow.source}</span></figcaption>
-          </figure>
+        <div className={s.evidenceStage}>
+          <div className={s.evidenceStory}>
+            <figure className={`${s.evidenceCard} ${s.failedEvidence}`}>
+              <div className={s.evidenceHeader}><Signal tone="bad">{C.workflow.failedLabel}</Signal><span className={s.evidencePage}>{C.workflow.page}</span></div>
+              <a href={failedEvidencePath} target="_blank" rel="noopener noreferrer" aria-label={C.workflow.failedLink}>
+                <span className={s.loopScan} aria-hidden="true"><span className={s.loopScanVeil}><span className={s.loopScanEdge} /></span></span>
+                <Image src={failedEvidencePath} alt={C.workflow.failedAlt} width={720} height={440} sizes="(max-width: 767px) calc(100vw - 72px), 560px" />
+              </a>
+              <figcaption>{C.workflow.failedTitle}</figcaption>
+            </figure>
+            <div className={s.evidenceConnector}><ArrowRight size={18} aria-hidden="true" /><span>{C.workflow.steps[3].label}</span></div>
+            <figure className={`${s.evidenceCard} ${s.passedEvidence}`}>
+              <div className={s.evidenceHeader}><Signal tone="good">{C.workflow.passedLabel}</Signal><span className={s.evidencePage}>{C.workflow.page}</span></div>
+              <a href={passedEvidencePath} target="_blank" rel="noopener noreferrer" aria-label={C.workflow.passedLink}>
+                <Image src={passedEvidencePath} alt={C.workflow.passedAlt} width={720} height={440} sizes="(max-width: 767px) calc(100vw - 72px), 560px" />
+              </a>
+              <figcaption>{C.workflow.passedTitle}</figcaption>
+            </figure>
+          </div>
+          <p className={s.evidenceNote}>{C.workflow.source}</p>
         </div>
       </div>
     </section>
@@ -239,17 +301,41 @@ export function CareHomepage() {
     <section className={`${s.section} ${s.final}`} id="plans"><h2>{C.close.title}</h2><p>{C.close.body}</p><UrlEntry final /><Link href="/pricing" className={s.textLink}>{C.close.pricing}<ArrowRight size={16} aria-hidden="true" /></Link></section>
 
     <Dialog open={selected !== null} onOpenChange={open => { if (!open) setSelected(null) }}><DialogContent className={s.dialog} onCloseAutoFocus={restoreFocus}>
-      <DialogTitle>{selected === 'site' ? C.site.label : selectedPreview?.name}</DialogTitle>
-      <DialogDescription>{selected === 'site' ? C.site.question : selectedPreview?.question}</DialogDescription>
+      <DialogTitle>{selected === 'site' ? C.site.label : selected === 'conversion' ? C.flag.name : selectedPreview?.name}</DialogTitle>
+      <DialogDescription>{selected === 'site' ? C.site.question : selected === 'conversion' ? C.flag.question : selectedPreview?.question}</DialogDescription>
       {selected === 'site' ? <>
         <p className={s.detailAnswer}>{C.site.answer}</p>
         <ul className={s.detailFacts}>{C.site.facts.map(fact => <li key={fact}>{fact}</li>)}</ul>
         <p className={s.scope}>{C.site.coverage}</p>
+      </> : selected === 'conversion' ? <>
+        <p className={s.detailAnswer}>{C.flag.title}</p>
+        <p className={s.scope}>{C.flag.body}</p>
+        <a href={failedEvidencePath} target="_blank" rel="noopener noreferrer">
+          <Image src={failedEvidencePath} alt={C.flag.cropAlt} width={720} height={440} sizes="(max-width: 767px) calc(100vw - 72px), 560px" />
+        </a>
+        <div className={s.mcpActions}>
+          <button type="button" onClick={() => void copyFix('ai')}><Copy size={15} aria-hidden="true" />{SITE_BOARD_COPY.copyPrompt}</button>
+          <button type="button" onClick={() => void copyFix('share')}><Copy size={15} aria-hidden="true" />{SITE_BOARD_COPY.share}</button>
+        </div>
+        <p className={s.copyStatus} role="status">{copyResult?.source === 'ai' || copyResult?.source === 'share' ? copyResult.message : ''}</p>
+        <a href="#flag-example" className={s.textLink}>{C.flag.action}<ArrowRight size={17} aria-hidden="true" /></a>
       </> : selectedPreview ? <>
         <p className={s.detailAnswer}>{selectedPreview.answer}</p>
         <ul className={s.detailFacts}>{selectedPreview.facts.map(fact => <li key={fact}>{fact}</li>)}</ul>
         <p className={s.scope}>{selectedPreview.coverage}</p>
       </> : null}
     </DialogContent></Dialog>
+    <AddCardLibrary
+      open={libraryOpen}
+      onOpenChange={setLibraryOpen}
+      present={['site', 'conversion', 'security', 'search', 'performance', 'tracking', ...extraCards]}
+      exampleNote={C.add.note}
+      onAdd={id => {
+        if (id === 'uptime' || id === 'accessibility') {
+          setExtraCards(current => current.includes(id) ? current : [...current, id])
+        }
+        setLibraryOpen(false)
+      }}
+    />
   </div>
 }

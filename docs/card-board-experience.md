@@ -31,11 +31,15 @@ Health cards answer whether something works. Context cards explain what is happe
 
 | Dimension | Meaning | Presentation |
 | --- | --- | --- |
-| Healthy | Sufficient current evidence for the stated scope | Small green signal and explicit answer |
-| Needs attention | Meaningful review without confirmed severe failure | Amber signal and reason |
-| Problem | Confirmed important failure | Red signal, restrained edge and clear Flag action |
+| Healthy | Sufficient current evidence for the stated scope | Small green signal and `Last checked` (or relative freshness). No health slogan in the header. |
+| Needs attention | Meaningful review without confirmed severe failure | Brand-orange signal. Up to three Flag chips to the left of the dot. No “Needs attention” label. |
+| Problem | Confirmed important failure | Brand-orange signal, restrained orange edge, Flag chips, and a clear card-depth action |
 | Unknown | Missing, unavailable, insufficient or expired evidence | Gray signal and explanation/recovery |
 | Checking | Activity independent of health | Brand orange ring and actual work description |
+
+Card header anatomy: name on the left; Flag chips (max three, then `+N`) then the status dot on the right. Clicking a chip opens that Flag. Clicking the card or chevron opens card depth. Footer is `source · freshness` as product names and Lucide marks, never third-party logos. Amber `--warning` stays for billing and quota caution, not board health.
+
+The Add card is last on the grid. Its library currently offers public-check cards (Uptime, Accessibility). Connections do not appear as a logo marketplace.
 
 In production, checking retains the last known health result and its time. Stale evidence cannot imply current health. No giant score, fake progress percentage, blue status palette or green card backgrounds.
 

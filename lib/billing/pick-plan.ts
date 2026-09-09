@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime'
 import { BILLING_ACTION_COPY, SYSTEM_COPY } from '@/lib/marketing/copy'
 import { getActiveAudit } from '@/lib/audit/active-audit'
+import { demoPathForPlan } from '@/lib/billing/demo-path'
 import {
   requestPlanCheckout,
   type CheckoutOutcome,
@@ -35,7 +36,7 @@ export interface PickPlanInput {
 }
 
 export interface PickPlanResult {
-  kind: 'free_dashboard' | 'free_report' | 'checkout_redirect' | 'waitlist' | 'unavailable' | 'error'
+  kind: 'free_dashboard' | 'free_report' | 'checkout_redirect' | 'waitlist' | 'demo' | 'unavailable' | 'error'
   url?: string
   message?: string
 }
@@ -99,7 +100,7 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
 
   if (waitlistGated) {
     onPrivateBeta?.()
-    return { kind: 'waitlist' }
+    return { kind: 'demo', url: demoPathForPlan(checkoutPlan) }
   }
 
   const outcome: CheckoutOutcome = await requestPlanCheckout(checkoutPlan)
@@ -116,7 +117,7 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
 
   if (outcome.kind === 'paid-checkout-closed') {
     onPrivateBeta?.()
-    return { kind: 'waitlist' }
+    return { kind: 'demo', url: demoPathForPlan(checkoutPlan) }
   }
 
   // Batch gate (server 403 BATCH_ACCESS_REQUIRED): paid is open, but this
@@ -126,7 +127,7 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
   // bundle never ships the open-batch value.
   if (outcome.kind === 'error' && outcome.message.includes('opens in batches')) {
     onPrivateBeta?.()
-    return { kind: 'waitlist', message: outcome.message }
+    return { kind: 'demo', url: demoPathForPlan(checkoutPlan), message: outcome.message }
   }
 
   if (outcome.kind === 'unavailable') {

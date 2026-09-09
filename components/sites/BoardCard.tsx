@@ -5,8 +5,11 @@ import Link from 'next/link'
 import type { Route } from 'next'
 import {
   Activity,
+  Accessibility,
+  Flag,
   Gauge,
   Globe2,
+  Plus,
   Radio,
   Search,
   ShieldCheck,
@@ -14,8 +17,17 @@ import {
   ArrowRight,
   type LucideIcon,
 } from 'lucide-react'
-import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
-import type { BoardCardView } from '@/lib/sites/board-card'
+import { ADDABLE_BOARD_CARDS, CARD_CATALOG, type CardHealthState, type SiteCardArea } from '@/lib/sites/card-areas'
+import {
+  boardCardHeaderText,
+  boardCardSignalLabel,
+  formatBoardSources,
+  visibleFlagChips,
+  type BoardCardFlagChip,
+  type BoardCardView,
+} from '@/lib/sites/board-card'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import styles from './BoardCard.module.css'
 
 export const BOARD_CARD_ICONS: Record<SiteCardArea, LucideIcon> = {
@@ -26,7 +38,7 @@ export const BOARD_CARD_ICONS: Record<SiteCardArea, LucideIcon> = {
   conversion: Target,
   tracking: Radio,
   uptime: Activity,
-  accessibility: Globe2,
+  accessibility: Accessibility,
 }
 
 const SIGNAL_CLASS: Record<CardHealthState, string> = {
@@ -36,6 +48,8 @@ const SIGNAL_CLASS: Record<CardHealthState, string> = {
   checking: styles.checkingSignal,
   unknown: styles.unknown,
 }
+
+export type BoardCardFlag = BoardCardFlagChip
 
 function CardMedia({
   src,
@@ -54,7 +68,7 @@ function CardMedia({
   if (marketing) {
     return (
       <span className={className}>
-        <Image src={src} alt={alt} fill sizes={sizes} style={{ objectFit: 'cover', objectPosition }} />
+        <Image src={src} alt={alt} fill sizes={sizes} style={{ objectPosition }} />
       </span>
     )
   }
@@ -69,6 +83,48 @@ function CardMedia({
 
 export function BoardGrid({ children }: { children: React.ReactNode }) {
   return <div className={styles.grid}>{children}</div>
+}
+
+function FlagChips({ flags }: { flags: BoardCardFlag[] }) {
+  const { shown, overflow } = visibleFlagChips(flags)
+  if (shown.length === 0) return null
+  return (
+    <span className={styles.flags}>
+      {shown.map((flag) => {
+        const className = styles.flagChip
+        const inner = (
+          <>
+            <Flag size={11} aria-hidden="true" />
+            <span>{flag.title}</span>
+          </>
+        )
+        const external = flag.href.startsWith('#') || flag.href.startsWith('http')
+        if (external) {
+          return (
+            <a
+              key={flag.id}
+              className={className}
+              href={flag.href}
+              onClick={(event) => event.stopPropagation()}
+            >
+              {inner}
+            </a>
+          )
+        }
+        return (
+          <Link
+            key={flag.id}
+            className={className}
+            href={flag.href as Route}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {inner}
+          </Link>
+        )
+      })}
+      {overflow > 0 ? <span className={styles.flagMore}>+{overflow}</span> : null}
+    </span>
+  )
 }
 
 export function BoardCard({
@@ -89,6 +145,9 @@ export function BoardCard({
   chart,
   onOpen,
   metric,
+  flags,
+  sources,
+  checkedAt,
 }: {
   name: string
   status: string
@@ -107,6 +166,9 @@ export function BoardCard({
   chart?: 'bars' | 'none'
   onOpen?: () => void
   metric?: boolean
+  flags?: BoardCardFlag[] | null
+  sources?: string[] | null
+  checkedAt?: string | null
 }) {
   const checking = activity === 'checking' || state === 'checking'
   const className = [
@@ -118,26 +180,15 @@ export function BoardCard({
     .filter(Boolean)
     .join(' ')
 
-  const hideAnswer = Boolean(visual) && answer === status
+  const hideAnswer = Boolean(visual)
+  const headerText = boardCardHeaderText(state, activity, checkedAt ?? null)
+  const signalLabel = boardCardSignalLabel(state, activity, checkedAt ?? null)
+  const sourceLine = sources && sources.length > 0 ? formatBoardSources(sources) : null
+  const footerText = sourceLine && footer ? `${sourceLine} · ${footer}` : sourceLine ?? footer ?? null
+  const openLabel = action ?? `Open ${name}`
 
   const body = (
     <>
-      <span className={styles.header}>
-        <Icon size={17} aria-hidden="true" />
-        {name}
-        <span
-          className={[
-            styles.signal,
-            SIGNAL_CLASS[state],
-            checking ? styles.checkingDot : '',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-        >
-          <i aria-hidden="true" />
-          {status}
-        </span>
-      </span>
       {visual ? (
         <CardMedia
           src={visual.src}
@@ -166,43 +217,78 @@ export function BoardCard({
           ))}
         </span>
       ) : null}
-      {footer ? <span className={styles.footer}>{footer}</span> : null}
-      {action ? (
+      {footerText ? <span className={styles.footer}>{footerText}</span> : null}
+      {onOpen || href ? (
         <span className={styles.action}>
-          {action}
+          {openLabel}
           <ArrowRight size={18} aria-hidden="true" />
         </span>
       ) : null}
     </>
   )
 
-  if (href) {
+  const header = (
+    <span className={styles.header}>
+      <span className={styles.title}>
+        <Icon size={17} aria-hidden="true" />
+        {name}
+      </span>
+      <span className={styles.headerEnd}>
+        <FlagChips flags={flags ?? []} />
+        <span
+          className={[
+            styles.signal,
+            SIGNAL_CLASS[state],
+            checking ? styles.checkingDot : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          aria-label={signalLabel}
+        >
+          <i aria-hidden="true" />
+          {headerText ? <span>{headerText}</span> : null}
+        </span>
+      </span>
+    </span>
+  )
+
+  if (href && !onOpen) {
     const external = href.startsWith('#') || href.startsWith('http')
     if (external) {
       return (
-        <a className={className} href={href}>
-          {body}
-        </a>
+        <article className={className} aria-label={name}>
+          {header}
+          <a className={styles.body} href={href} aria-label={name}>
+            {body}
+          </a>
+        </article>
       )
     }
     return (
-      <Link className={className} href={href as Route}>
-        {body}
-      </Link>
+      <article className={className} aria-label={name}>
+        {header}
+        <Link className={styles.body} href={href as Route} aria-label={name}>
+          {body}
+        </Link>
+      </article>
     )
   }
 
   if (onOpen) {
     return (
-      <button type="button" className={className} onClick={onOpen}>
-        {body}
-      </button>
+      <article className={className} aria-label={name}>
+        {header}
+        <button type="button" className={styles.body} onClick={onOpen} aria-label={name}>
+          {body}
+        </button>
+      </article>
     )
   }
 
   return (
     <article className={className} aria-label={name}>
-      {body}
+      {header}
+      <div className={styles.body}>{body}</div>
     </article>
   )
 }
@@ -215,13 +301,13 @@ export function ProductBoardCard({
   onOpen?: () => void
 }) {
   const Icon = BOARD_CARD_ICONS[card.id] ?? Globe2
-  const footer =
-    card.openFlagCount > 0
-      ? `${card.openFlagCount} Flag${card.openFlagCount === 1 ? '' : 's'}`
-      : card.checkedAt
-        ? 'Checked'
-        : 'Not checked yet'
   const problem = card.problem
+  const siteFooter =
+    card.id === 'site'
+      ? [card.detail, card.openFlagCount > 0 ? `${card.openFlagCount} Flag${card.openFlagCount === 1 ? '' : 's'}` : null]
+          .filter(Boolean)
+          .join(' · ') || null
+      : null
 
   return (
     <BoardCard
@@ -230,16 +316,78 @@ export function ProductBoardCard({
       state={card.state}
       answer={card.answer}
       detail={problem ? problem.body : card.detail}
-      footer={problem ? undefined : footer}
+      footer={siteFooter}
       visual={card.captureUrl && card.captureAlt ? { src: card.captureUrl, alt: card.captureAlt } : null}
       crop={card.cropUrl && card.cropAlt ? { src: card.cropUrl, alt: card.cropAlt } : null}
       outcome={problem?.outcomeName}
-      action={problem?.actionLabel}
-      href={problem?.href}
+      action={problem ? SITE_BOARD_COPY.openFlag : undefined}
       wide={card.wide}
       activity={card.activity}
       icon={Icon}
-      onOpen={problem ? undefined : onOpen}
+      onOpen={onOpen}
+      flags={card.flagChips}
+      sources={card.sources}
+      checkedAt={card.checkedAt}
     />
+  )
+}
+
+export function AddBoardCard({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button type="button" className={styles.addCard} onClick={onOpen}>
+      <span className={styles.addSymbol} aria-hidden="true">
+        <Plus size={22} />
+      </span>
+      <strong>{SITE_BOARD_COPY.addCard}</strong>
+    </button>
+  )
+}
+
+export function AddCardLibrary({
+  open,
+  onOpenChange,
+  present,
+  onAdd,
+  exampleNote,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  present: SiteCardArea[]
+  onAdd: (id: SiteCardArea) => void
+  exampleNote?: string | null
+}) {
+  const available = ADDABLE_BOARD_CARDS.filter((id) => !present.includes(id))
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogTitle>{SITE_BOARD_COPY.addTitle}</DialogTitle>
+        <DialogDescription>{SITE_BOARD_COPY.addBody}</DialogDescription>
+        {available.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{SITE_BOARD_COPY.addEmpty}</p>
+        ) : (
+          <ul className={styles.libraryList}>
+            {available.map((id) => {
+              const Icon = BOARD_CARD_ICONS[id]
+              const card = CARD_CATALOG[id]
+              return (
+                <li key={id}>
+                  <button type="button" className={styles.libraryItem} onClick={() => onAdd(id)}>
+                    <span className={styles.libraryIcon} aria-hidden="true">
+                      <Icon size={18} />
+                    </span>
+                    <span>
+                      <strong>{card.name}</strong>
+                      <small>{card.question}</small>
+                    </span>
+                    <Plus size={16} aria-hidden="true" />
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        {exampleNote ? <p className="text-xs text-muted-foreground">{exampleNote}</p> : null}
+      </DialogContent>
+    </Dialog>
   )
 }

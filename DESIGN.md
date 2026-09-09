@@ -53,7 +53,7 @@ _Validated visual and interaction standards. Code-enforced where possible, docum
 
 ### Status and evidence
 
-Site status, Outcome state and Flag certainty follow [knowledge/evidence-rules.md](knowledge/evidence-rules.md). Brand and severity are different roles; include text with status color. Keep evidence matched to source, viewport and time. Never invent a healthy twin capture or guess an overlay rectangle.
+Site status, Outcome state and Flag certainty follow [knowledge/evidence-rules.md](knowledge/evidence-rules.md). Brand and severity are different roles; include text with status color. Board attention and problem dots use `--brand`. Keep `--warning` amber for billing and quota caution. Keep evidence matched to source, viewport and time. Never invent a healthy twin capture or guess an overlay rectangle.
 
 See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/brand-spec.ts` for non-CSS consumers.
 

@@ -1,4 +1,3 @@
-import { OFFER } from './brand'
 import { PRICING_COPY } from './terminology'
 import type { FaqEntry } from './faq'
 
@@ -6,14 +5,12 @@ import type { FaqEntry } from './faq'
  * Marketing plan display data. Defined here (not in lib/billing/plans) so the
  * copy barrel does not pull @prisma/client into 150+ client component bundles.
  * The billing module remains the source of truth for limits, pricing logic,
- * and Stripe price IDs. Prices and review counts derive from PRICING_COPY, and
- * a parity test locks those numbers to lib/billing/plans.ts enforcement.
+ * and Stripe price IDs. Display prices and frequencies derive from PRICING_COPY,
+ * and a parity test locks those numbers to lib/billing/plans.ts display fields.
  */
-const PRO_PRICE = PRICING_COPY.proPrice
-const PRO_PERIOD = PRICING_COPY.proPeriod
 
-function proUpgradeCta(prefix = 'Upgrade to Pro'): string {
-  return `${prefix} - ${PRO_PRICE}${PRO_PERIOD}`
+function proUpgradeCta(prefix = 'Request a demo'): string {
+  return prefix
 }
 
 export const PLANS = [
@@ -23,107 +20,109 @@ export const PLANS = [
     price: '$0',
     period: '',
     persona: 'One website',
-    outcome: 'Know what needs attention',
-    audits: 'Start with a public URL',
-    products: '1 Site',
+    outcome: '24/7 monitoring, checked every 24 hours',
+    audits: 'Every 24 hours',
+    products: '1 website',
     features: [
-      'Checks on your live website',
-      'Flags with evidence',
-      'A clear next step to fix',
-      'Independent verify after you publish',
-      'Optional Shopify connection',
+      '1 website',
+      '24/7 monitoring',
+      'Checked every 24 hours',
+      'Flags with evidence and a next step',
+      'Verify after you publish',
+      'Connections included',
     ],
     cta: 'Check my website',
     href: '/new',
     highlight: false,
     badge: '',
-    accountModel: 'One account for one Site.',
+    accountModel: 'One account for one website.',
   },
   {
     name: 'Pro',
     plan: 'BUILDER' as const,
-    price: 'Waitlist',
-    period: '',
-    persona: 'Teams that need more coverage',
-    outcome: 'More Sites and faster checking when approved',
-    audits: 'Waitlist',
-    products: 'More Sites',
+    price: PRICING_COPY.proPrice,
+    period: PRICING_COPY.proPeriod,
+    persona: 'Hourly monitoring per website',
+    outcome: '24/7 monitoring, up to every hour',
+    audits: 'Up to every hour',
+    products: 'Pay per website',
     features: [
-      'More Sites',
-      'Faster checking',
-      'Longer evidence history',
-      'Priority when paid extras open',
+      '24/7 monitoring',
+      'Checked up to every hour',
+      'Billed per website',
+      'Flags, evidence, and verify',
+      'Connections included',
     ],
-    cta: 'Join Pro waitlist',
-    href: '/waitlist',
+    cta: 'Request a demo',
+    href: '/request-demo?plan=pro',
     highlight: true,
-    badge: 'Best for more coverage',
-    accountModel: 'One account across more than one Site.',
+    badge: 'Per website',
+    accountModel: 'One account. Pay per website.',
   },
   {
     name: 'Studio',
     plan: 'TEAM' as const,
-    price: 'Waitlist',
-    period: '',
-    persona: 'Agencies watching more than one website',
-    outcome: 'Multiple Sites on one login, later',
-    audits: 'Waitlist',
-    products: 'Multiple Sites',
+    price: PRICING_COPY.studioPrice,
+    period: PRICING_COPY.studioPeriod,
+    persona: 'Several websites, billed per website',
+    outcome: 'Hourly monitoring on a volume quote',
+    audits: 'Up to every hour',
+    products: 'Many websites, quoted',
     features: [
-      'Multiple Sites',
-      'Shared workspace later',
-      'Same Flags, evidence, and verify as Free',
+      'Hourly monitoring, billed per website',
+      'Client websites on one login',
+      'Flags, evidence, and verify',
+      'Connections included',
+      'Volume quoted on a demo',
     ],
-    cta: 'Join Studio waitlist',
-    href: '/waitlist',
+    cta: 'Request a demo',
+    href: '/request-demo?plan=studio',
     highlight: false,
     badge: '',
-    accountModel: 'Waitlist for agencies with more than one Site.',
+    accountModel: 'Client websites on one login, billed per website.',
   },
 ] as const
 
-const FREE = PLANS[0]
 const PRO = PLANS[1]
-const STUDIO = PLANS[2]
 
 export const PRICING_COMPARISON = {
   includedLabel: 'What is included',
   rows: [
     {
-      feature: 'Who it is for',
-      free: FREE.persona,
-      pro: PRO.persona,
-      studio: STUDIO.persona,
+      feature: 'Price',
+      free: '$0',
+      pro: `${PRO.price} per website`,
+      studio: 'Volume, per website',
     },
     {
-      feature: 'Coverage',
-      free: 'One public website',
-      pro: 'More Sites on the waitlist',
-      studio: 'Multiple Sites on the waitlist',
+      feature: 'Websites',
+      free: '1',
+      pro: 'Each website you add',
+      studio: 'Many, quoted',
     },
     {
-      feature: 'Checking',
-      free: 'Live website checks',
-      pro: 'Faster checking on the waitlist',
-      studio: 'Same checking as Free until extras open',
+      feature: 'Frequency',
+      free: 'Every 24 hours',
+      pro: 'Up to every hour',
+      studio: 'Up to every hour',
     },
     {
-      feature: 'Evidence',
-      free: 'Flags with captures and a next step',
-      pro: 'Longer evidence history on the waitlist',
-      studio: 'Same evidence as Free',
+      feature: '24/7 monitoring',
+      free: 'Yes',
+      pro: 'Yes',
+      studio: 'Yes',
     },
     {
-      feature: 'Verify',
-      free: 'Fresh check after you publish',
-      pro: 'Higher verify capacity on the waitlist',
-      studio: 'Same verify as Free until extras open',
+      feature: 'Connections',
+      free: 'Included',
+      pro: 'Included',
+      studio: 'Included',
     },
     {
-      feature: 'Shopify',
-      free: 'Optional connection',
-      pro: 'Richer store context when approved',
-      studio: 'Multiple stores later',
+      feature: 'Verify after you publish',
+      free: 'Included',
+      pro: 'Included',
+      studio: 'Included',
     },
   ],
 } as const
@@ -131,7 +130,8 @@ export const PRICING_COMPARISON = {
 export const PRICING_FAQ: readonly FaqEntry[] = [
   {
     question: 'Is FixFlags free?',
-    answer: `Yes. ${OFFER.line} Pro extras are waitlisted. We are not charging yet.`,
+    answer:
+      'Yes. One website is free, with 24/7 monitoring checked every 24 hours. Paid monitoring is $49 per website per month, up to every hour. We are not charging yet.',
     learnMore: {
       href: '/help/billing-and-plans/free-vs-pro',
       label: 'Free vs Pro',
@@ -140,19 +140,19 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
   {
     question: 'What does free include?',
     answer:
-      'A Site check on a public URL, Flags with evidence, a clear next step to fix, and an independent verify after you publish. Shopify is an optional connection, not the only way to start.',
+      'One website, 24/7 monitoring checked every 24 hours, Flags with evidence, a next step to fix, and verify after you publish. Connections are included, including Shopify.',
     learnMore: {
       href: '/help/billing-and-plans/what-counts-as-a-check',
       label: 'What the free plan includes',
     },
   },
   {
-    question: 'What is on the Pro waitlist?',
+    question: 'How does paid monitoring work?',
     answer:
-      'More Sites, faster checking, and longer evidence history. We will email you when those extras open. We are not charging yet.',
+      'Pro is $49 per website per month, checked up to every hour. Studio is the same hourly monitoring for several websites, billed per website, quoted on a demo. We are not charging yet. Request a demo to add websites.',
     learnMore: {
       href: '/help/billing-and-plans/upgrade-or-downgrade',
-      label: 'Join the Pro waitlist',
+      label: 'Request a demo',
     },
   },
   {
@@ -191,56 +191,83 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
 ] as const
 
 export const PRICING = {
-  label: 'Simple pricing',
-  headline: 'Start free with your website. Pro is waitlisted.',
+  label: 'Pricing',
+  headline: '24/7 website monitoring.',
   subhead:
-    'Enter a URL. See what needs attention. Paid extras are waitlisted. We are not charging yet.',
+    'One website free, checked every 24 hours. Paid monitoring is $49 per website per month, up to every hour. We are not charging yet. Request a demo to add sites.',
   trustBadge: 'Flags, evidence, and a clear next step',
   assurances: [
-    'Live website checks',
+    '24/7 monitoring',
     'Evidence with every Flag',
     'Not charging yet',
   ] as const,
-  shopifyNote: 'Running Shopify?',
+  shopifyNote: 'Shopify is a connection. It is included.',
   shopifyCta: 'Connect Shopify',
   shopifyHref: '/install',
   compareTitle: 'Compare plans',
   faqTitle: 'Pricing questions',
-  upgradeSteps: 'Create account → Stripe checkout → Dashboard',
-  upgradeStepsLoggedIn: 'Stripe checkout → Dashboard',
-  checkoutRedirecting: 'Redirecting to checkout…',
+  upgradeSteps: 'Request a demo. We are not charging yet.',
+  upgradeStepsLoggedIn: 'Request a demo. We are not charging yet.',
+  checkoutRedirecting: 'Opening demo request…',
   allPlansInclude:
-    'Every start includes a Site check, Flags, and evidence. Pro extras are waitlisted.',
+    'Every plan includes 24/7 monitoring, Flags, evidence, verify, and connections.',
   pickerEyebrow: 'Pick a plan',
   pickerTitle: 'Choose how you want to start',
   pickerSubtitle:
-    'Start free with a website URL. Join the Pro waitlist if you need more Sites or faster checking.',
-  pickerBody: 'Start free. Join the waitlist if you need more coverage.',
+    'Start free with one website, checked every 24 hours. Request a demo for hourly monitoring on more websites.',
+  pickerBody: 'Start free. Request a demo to add websites.',
   pickerBodyWithReport:
     'The first check can start as soon as you enter a URL.',
   pickerCreditNote:
-    'Free starts with one public website. Pro extras are waitlisted.',
+    'Free is one website, every 24 hours. Paid is $49 per website, up to every hour.',
   pickerReportNote: 'Choosing Free returns you to your Site.',
   pickerFootnote: 'Need more detail?',
   pickerCompareLink: 'Open the full comparison.',
   pickerCurrentPlan: 'Current plan',
   pickerFreeCta: 'Start free',
-  pickerProCta: 'Join Pro waitlist',
-  pickerStudioCta: 'Join Studio waitlist',
+  pickerProCta: 'Request a demo',
+  pickerStudioCta: 'Request a demo',
   pickerRecommended: 'Recommended',
   pickerBusy: 'Working…',
 } as const
 
+export const DEMO_PAGE = {
+  eyebrow: 'Request a demo',
+  headline: 'Hourly monitoring, billed per website.',
+  subhead:
+    'Tell us the website and the plan. We will email you to set a time. We are not charging yet.',
+  nameLabel: 'Name',
+  namePlaceholder: 'Your name',
+  emailLabel: 'Work email',
+  emailPlaceholder: 'you@company.com',
+  websiteLabel: 'Website',
+  websitePlaceholder: 'https://yoursite.com',
+  planLabel: 'Plan',
+  planPro: 'Pro',
+  planStudio: 'Studio',
+  siteCountLabel: 'How many websites?',
+  siteCountPlaceholder: '5',
+  noteLabel: 'Anything we should know',
+  notePlaceholder: 'Optional',
+  submitCta: 'Request a demo',
+  submitting: 'Sending…',
+  successTitle: 'Request sent',
+  successBody: 'We will email you to set a time.',
+  failed: 'Could not send the request. Try again.',
+  anotherCta: 'Send another request',
+  pricingLink: 'Back to pricing',
+} as const
+
 export const WAITLIST_PAGE = {
   eyebrow: 'Paid plan waitlist',
-  headline: 'First 500 get 25% off for 12 months',
+  headline: 'We will email you when checkout opens',
   subhead:
-    'Pro and Studio open in order. The first 500 waitlisters per plan get 25% off for 12 months from launch. The next 500 get 15% off.',
+    'This list is for people who already joined. New paid intent goes through a demo. We are not charging yet.',
   planProLabel: 'Pro',
   planStudioLabel: 'Studio',
-  planProDetail: 'More Sites and faster checking when Pro opens',
+  planProDetail: 'Hourly monitoring, $49 per website, when checkout opens',
   planStudioDetail:
-    'Multiple Sites on one login when Studio opens',
+    'Hourly monitoring for several websites, billed per website, when checkout opens',
   emailPlaceholder: 'you@example.com',
   joinCta: 'Join the waitlist',
   signUpRequired: 'Sign up required',
@@ -260,17 +287,16 @@ export const BILLING_ACTION_COPY = {
     existingBody: 'Opening the billing portal to change plans.',
   },
   beta: {
-    submitPro: 'Join Pro waitlist',
-    submitStudio: 'Join Studio waitlist',
-    submitting: 'Joining waitlist…',
-    failed: 'Could not join the waitlist. Try again.',
-    success: "You're on the list. We'll email you when checkout opens.",
+    submitPro: 'Request a demo',
+    submitStudio: 'Request a demo',
+    submitting: 'Opening demo request…',
+    failed: 'Could not open the demo request. Try again.',
+    success: 'Request sent. We will email you to set a time.',
     description:
-      'Sign up required. The first 500 waitlisters per plan get 25% off for 12 months from launch. The next 500 get 15% off.',
-    gatedProCta: 'Join Pro waitlist',
-    gatedStudioCta: 'Join Studio waitlist',
-    gatedHint:
-      'First 500 get 25% off for 12 months from launch. Next 500 get 15% off.',
+      'Paid monitoring is $49 per website per month, up to every hour. We are not charging yet.',
+    gatedProCta: 'Request a demo',
+    gatedStudioCta: 'Request a demo',
+    gatedHint: 'We are not charging yet. Request a demo to add websites.',
   },
   waitlist: {
     submitPro: 'Join Pro waitlist',
@@ -279,7 +305,7 @@ export const BILLING_ACTION_COPY = {
     failed: 'Could not join the waitlist. Try again.',
     success: "You're on the list. We'll email you when checkout opens.",
     description:
-      'Sign up required. The first 500 waitlisters per plan get 25% off for 12 months from launch. The next 500 get 15% off.',
+      'This list is for people who already joined. New paid intent goes through a demo.',
   },
   tierOffers: {
     name: 'Launch discount tiers',
@@ -287,14 +313,14 @@ export const BILLING_ACTION_COPY = {
     tier2Label: 'Next 500: 15% off',
     duration: '12 months from launch',
     pricingCallout:
-      'Pro extras are waitlisted. We are not charging yet.',
+      'Paid monitoring is billed per website. We are not charging yet.',
   },
 } as const
 
 export const UPSELLS = {
   anon: {
-    headline: 'Save this Site and keep checking',
-    body: 'Create a free account to save this Site and unlock its fix prompts. Free includes three Site checks every month for one website.',
+    headline: 'Save this Site',
+    body: 'Create a free account to save this Site and unlock its fix prompts. Free monitors one website every 24 hours.',
     primaryCta: 'Create free account',
     secondaryCta: 'See paid plans',
   },
@@ -306,13 +332,13 @@ export const UPSELLS = {
     headline: 'Fix steps are below',
     body: 'AI summary did not finish for this run. You still have evidence and fix steps for every Flag below. Run an update review to retry the AI pass.',
   },
-  atLimit: 'Site check limit reached. Upgrade to continue',
+  atLimit: 'Plan limit reached. Request a demo to continue',
 } as const
 
 export const UPGRADE_MOMENTS = {
   audit_limit_reached: {
-    headline: 'You\u2019ve used your free Site checks',
-    body: 'Join the Pro waitlist for 30 monthly Site checks across up to five websites.',
+    headline: 'You have reached this period\u2019s limit',
+    body: 'Free monitors one website every 24 hours. Request a demo for hourly monitoring on more websites.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
@@ -321,58 +347,58 @@ export const UPGRADE_MOMENTS = {
       void scoreDelta
       return 'Update review complete'
     },
-    body: 'Keep checking each release with more Site checks each month.',
-    cta: proUpgradeCta('Join Pro waitlist'),
+    body: 'Request a demo for hourly monitoring on more websites.',
+    cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
   compare_flat: {
     headline: 'Still Flags after your update review',
-    body: 'Use the full report to close what remains, then run an update review on the live URL.',
+    body: 'Use the full report to close what remains, then verify on the live URL.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
   export_locked: {
-    headline: 'Need more review capacity?',
-    body: 'Proof exports are included on every plan. Upgrade only when you need more reviews each month.',
-    cta: 'See usage plans',
+    headline: 'Need more websites monitored?',
+    body: 'Proof exports are included on every plan. Request a demo when you need hourly monitoring on more websites.',
+    cta: 'See plans',
     plan: 'BUILDER' as const,
   },
   free_default: {
-    headline: 'Shipping more websites?',
-    body: 'Pro gives you 30 Site checks per month across up to five Sites, with history across releases.',
+    headline: 'Monitoring more than one website?',
+    body: 'Paid monitoring is $49 per website per month, up to every hour.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
   report_completed: {
-    headline: 'Keep reviewing every release',
-    body: 'Pro gives you more monthly reviews, more products, and release history.',
+    headline: 'Keep this website monitored',
+    body: 'Free checks every 24 hours. Request a demo for hourly monitoring.',
     cta: proUpgradeCta(),
     plan: 'BUILDER' as const,
   },
 } as const
 
 export const USAGE_METER_COPY = {
-  regionLabel: 'Site check usage',
-  compactLabel: 'Site checks',
-  panelLabel: 'Site checks',
+  regionLabel: 'Websites monitored',
+  compactLabel: 'Usage',
+  panelLabel: 'This period',
   usedOfLimit: (used: number, limit: number) => `${used} of ${limit}`,
-  usedCaption: 'used this month',
+  usedCaption: 'used this period',
   remainingCaption: (n: number) =>
-    n === 1 ? '1 remaining this month' : `${n} remaining this month`,
+    n === 1 ? '1 remaining this period' : `${n} remaining this period`,
   remainingShort: (n: number) => `${n} remaining`,
   usedThisMonthCaption: (n: number) =>
-    `Site check${n === 1 ? '' : 's'} used this month`,
+    `${n} used this period`,
   panelNote:
-    'Each update review uses 1 Site check from your monthly allowance.',
+    'Free monitors 1 website every 24 hours. Request a demo for hourly monitoring on more websites.',
   progressLabel: (used: number, limit: number) =>
-    `${used} of ${limit} Site checks used`,
+    `${used} of ${limit} used this period`,
   pending: (n: number) => `${n} in progress`,
   purchasedCredits: (n: number) =>
     `${n} purchased credit${n === 1 ? '' : 's'} available`,
-  upgradeToPro: 'Upgrade to Pro',
-  upgradeForMore: 'upgrade for more',
-  paidLimitReached: 'Plan limit reached. Upgrade for more Site checks.',
-  limitReached: 'Site check limit reached.',
+  upgradeToPro: 'Request a demo',
+  upgradeForMore: 'request a demo',
+  paidLimitReached: 'Plan limit reached. Request a demo for more websites.',
+  limitReached: 'Plan limit reached.',
 } as const
 
 export const BILLING_PAGE_COPY = {
@@ -380,11 +406,11 @@ export const BILLING_PAGE_COPY = {
   description: 'Manage your plan and subscription',
   pastDueTitle: 'Payment past due: features paused',
   pastDueBody:
-    "Update your card to restore your paid monthly usage allowance. We'll retry automatically. Site checks resume when payment succeeds.",
+    "Update your card to restore paid monitoring. We'll retry automatically. Monitoring resumes when payment succeeds.",
   planName: (name: string) => `${name} plan`,
   pastDuePlanName: (name: string) => `${name} (payment past due: features paused)`,
   paidFeaturesPaused: ' (paid features paused)',
-  upgradeCta: 'Upgrade plan',
+  upgradeCta: 'Request a demo',
   changePlanCta: 'Change plan',
   compareStudio: 'Compare Studio',
   activating: 'Activating subscription…',
@@ -394,7 +420,7 @@ export const BILLING_PAGE_COPY = {
   canceledBody: 'Your subscription has been canceled. Features may be downgraded.',
   unpaidBody: 'Your subscription is unpaid. Check your payment method.',
   plansTitle: 'Plans',
-  plansDescription: 'Compare Free, Pro, and Studio. Pick a plan when you are ready.',
+  plansDescription: 'Compare Free, Pro, and Studio. Request a demo when you want hourly monitoring.',
   currentPlanBadge: 'Current',
   historyTitle: 'Billing history',
   historyDescription: 'Purchases and receipts for this account.',

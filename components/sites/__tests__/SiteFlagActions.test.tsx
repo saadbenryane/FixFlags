@@ -38,4 +38,29 @@ describe('SiteFlagActions', () => {
     )
     expect(refresh).not.toHaveBeenCalled()
   })
+
+  it('copies a prompt and a share URL without starting verify', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) })
+    vi.stubGlobal('fetch', fetchMock)
+    const writeText = vi.mocked(navigator.clipboard.writeText)
+    render(
+      <SiteFlagActions
+        siteId="p_site"
+        flagId="flag-1"
+        fixText="Show a confirmation."
+        promptText="FixFlags Flag: No confirmation after contact"
+        shareUrl="/sites/p_site/flags/flag-1"
+      />
+    )
+    await screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }).click()
+    expect(await screen.findByText('Prompt copied')).toBeInTheDocument()
+    expect(writeText).toHaveBeenCalledWith('FixFlags Flag: No confirmation after contact')
+    await screen.getByRole('button', { name: SITE_BOARD_COPY.share }).click()
+    expect(await screen.findByText('Flag link copied')).toBeInTheDocument()
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('/sites/p_site/flags/flag-1'))
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/sites/p_site/flags/flag-1/verify',
+      expect.anything()
+    )
+  })
 })

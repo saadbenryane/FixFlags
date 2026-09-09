@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { PRICING, BILLING_ACTION_COPY } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
 import { pickPlan, routerForPlanResult } from '@/lib/billing/pick-plan'
-import { waitlistPathForPlan } from '@/components/billing/WaitlistAuthDialog'
+import { demoPathForPlan } from '@/lib/billing/demo-path'
 import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
 import type { CheckoutPlan } from '@/lib/billing/client-checkout'
 
@@ -39,10 +39,8 @@ export function PricingCTAButton({
   const isPaidPlan = plan !== 'FREE'
 
   async function handleClick() {
-    // Waitlist mode: paid CTAs always lead to the waitlist page, signed in or
-    // not. The waitlist page handles account creation and the join.
     if (waitlistGated && isPaidPlan) {
-      router.push(waitlistPathForPlan(plan as CheckoutPlan) as Route)
+      router.push(demoPathForPlan(plan as CheckoutPlan) as Route)
       return
     }
 
@@ -70,8 +68,12 @@ export function PricingCTAButton({
     })
     setLoading(false)
 
+    if (result.kind === 'demo' && result.url) {
+      router.push(result.url as Route)
+      return
+    }
     if (result.kind === 'waitlist') {
-      router.push(waitlistPathForPlan(plan as CheckoutPlan) as Route)
+      router.push(demoPathForPlan(plan as CheckoutPlan) as Route)
       return
     }
     if (result.kind === 'checkout_redirect') return
