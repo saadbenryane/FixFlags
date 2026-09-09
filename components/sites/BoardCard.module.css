@@ -45,8 +45,14 @@
 .libraryItem strong { font-size: 14px; font-weight: 600; }
 .libraryItem small { font-size: 12px; color: hsl(var(--muted-foreground)); }
 .libraryItem svg:last-child { flex-shrink: 0; color: hsl(var(--muted-foreground)); }
-@media (min-width: 768px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1280px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .wide { grid-column: span 2; } }
+@media (min-width: 768px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .wide { grid-column: span 2; }
+}
+@media (min-width: 1024px) {
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .wide { grid-column: auto; }
+}
 @media (max-width: 767px) {
   .card { min-height: 160px; padding: 16px; }
   .withVisual .body { grid-template-columns: 104px minmax(0, 1fr); gap: 6px 14px; }

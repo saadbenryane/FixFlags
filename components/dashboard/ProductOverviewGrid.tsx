@@ -15,7 +15,7 @@ export function ProductOverviewGrid({ products }: { products: ProductOverviewDTO
       <h2 id="products-heading" className="sr-only">{copy.productsHeading}</h2>
       <span className="text-xs text-muted-foreground">{copy.productCount(products.length)}</span>
     </div>
-    <div className="grid gap-3 md:grid-cols-2">
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {products.map(product => {
         const review = product.latestManualReview
         const completed = review?.status === 'COMPLETED'
