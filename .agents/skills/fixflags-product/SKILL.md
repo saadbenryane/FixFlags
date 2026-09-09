@@ -22,7 +22,7 @@ Read AGENTS.md and claim non-overlapping scope. Keep current implementation dist
 | Attempts and verification foundations | lib/improvements/, lib/audit/task-contracts.ts |
 | Signals and Shopify foundations | lib/signals/, lib/shopify/, lib/integrity/ |
 | Runtime and release | QUALITY.md, fixflags-runtime-release skill |
-| Copy | lib/marketing/copy.ts, docs/voice-and-copy.md |
+| Copy | lib/marketing/copy.ts, docs/voice-and-copy.md, docs/messaging-migration.md |
 
 ## Implementation discipline
 

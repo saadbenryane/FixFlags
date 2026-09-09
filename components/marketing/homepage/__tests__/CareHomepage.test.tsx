@@ -45,6 +45,14 @@ describe('homepage example', () => {
     }
   })
 
+  it('does not repeat the brand mark in the hero', () => {
+    const { container } = render(<CareHomepage />)
+    const hero = container.querySelector('section')
+    expect(hero).not.toBeNull()
+    expect(within(hero!).getByRole('heading', { level: 1 })).toBeInTheDocument()
+    expect(hero!.querySelector('[data-src*="logo-mark"]')).toBeNull()
+  })
+
   it('identifies the example Site once in the board chrome', () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
@@ -192,7 +200,13 @@ describe('homepage example', () => {
 
   it('uses the awareness promise and rejects the discarded broad copy', () => {
     const { container } = render(<CareHomepage />)
-    expect(screen.getByText(/100\+ checks and real browser journeys/i)).toBeInTheDocument()
+    const hero = container.querySelector('section')
+    expect(hero).not.toBeNull()
+    expect(within(hero!).getByRole('heading', { name: /Your website,\s*looked after\./i })).toBeInTheDocument()
+    expect(within(hero!).getByText(C.hero.body)).toBeInTheDocument()
+    expect(within(hero!).getByText(C.hero.proof)).toBeInTheDocument()
+    expect(C.hero.cta).toBe('Analyze')
+    expect(within(hero!).queryByText(/Check my website/i)).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: C.checks.title })).toBeInTheDocument()
     expect(container.textContent).not.toMatch(/More than uptime|One clear path from problem to proof|Keep what matters in view|over 200/i)
     expect(screen.getAllByText(C.quiet.notifications[2].title).length).toBeGreaterThan(0)

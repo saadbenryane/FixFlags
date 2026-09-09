@@ -49,7 +49,7 @@ New customer certainty and coverage semantics are in [evidence rules](knowledge/
 
 The first analysis is not yet the permanent Home · Flags · Site dashboard. Inferred editable Outcomes, tenant-scoped page/action relationships, explicit coverage freshness, durable universal Flag projection, targeted behavior verification, same-Site Keep watching, useful free ongoing care, rare contextual alerts and unified Shopify context need implementation and acceptance evidence.
 
-Public marketing, pricing, samples, how-it-works, metadata, support/help copy and Shopify materials contain mixed prior directions. They are tracked for capability-matched rollout, not declared reconciled by this documentation pass. Do not advertise future connections or monitoring as shipped.
+Public marketing, pricing, samples, how-it-works, metadata, support/help copy and Shopify materials contain mixed prior directions. The accepted customer-facing language is [docs/voice-and-copy.md](docs/voice-and-copy.md). The remaining surface-by-surface work is [docs/messaging-migration.md](docs/messaging-migration.md). They are tracked for capability-matched rollout, not declared reconciled by documentation. Do not advertise future connections or monitoring as shipped.
 
 ## Proof and operating status
 

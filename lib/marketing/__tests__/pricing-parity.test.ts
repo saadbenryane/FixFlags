@@ -134,9 +134,12 @@ describe('pricing parity', () => {
     expect(surfaces).not.toMatch(/deep review/i)
   })
 
-  it('links pricing FAQ entries to help articles without charging copy', () => {
+  it('links pricing FAQ entries to live routes without charging copy', () => {
     expect(PRICING_FAQ.length).toBeGreaterThan(0)
     expect(PRICING_FAQ.every((entry) => entry.learnMore?.href && entry.learnMore.label)).toBe(true)
+    expect(PRICING_FAQ.find((entry) => entry.question === 'How does paid monitoring work?')?.learnMore?.href).toBe(
+      '/request-demo',
+    )
 
     const includedPlanAnswer = PRICING_FAQ.find(
       (entry) => entry.question === 'What does free include?',

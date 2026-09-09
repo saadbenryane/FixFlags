@@ -14,25 +14,30 @@
   isolation: isolate;
 }
 .heroContent { position: relative; z-index: 1; }
-.heroMark {
-  display: inline-flex;
-  animation: hero-rise .7s var(--hero-ease) both;
-}
-.hero h1 { font-size: clamp(48px, 6.5vw, 88px); line-height: 1.01; letter-spacing: -.06em; font-weight: 650; margin: 18px auto 24px; }
+.hero h1 { font-size: clamp(48px, 6.5vw, 88px); line-height: 1.01; letter-spacing: -.06em; font-weight: 650; margin: 0 auto 24px; }
 .headlineLead,
 .headlineAccent { display: inline-block; }
 .headlineLead { animation: hero-settle .75s var(--hero-ease) both; }
 .headlineAccent {
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--foreground));
   animation: hero-rise .85s var(--hero-ease) .12s both;
 }
 .heroBody {
   max-width: 760px;
   margin: 0 auto;
-  font-size: 17px;
-  line-height: 1.65;
-  color: hsl(var(--muted-foreground));
+  font-size: 22px;
+  line-height: 1.35;
+  letter-spacing: -.02em;
+  color: hsl(var(--foreground));
   animation: hero-rise .7s var(--hero-ease) .1s both;
+}
+.heroProof {
+  max-width: 760px;
+  margin: 10px auto 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+  animation: hero-rise .7s var(--hero-ease) .14s both;
 }
 .entry { max-width: 550px; margin: 26px auto 0; scroll-margin-top: 105px; animation: hero-rise .7s var(--hero-ease) .16s both; }
 .entry button[type="submit"] { font-size: 14px; font-weight: 600; }
@@ -354,8 +359,9 @@
 
 @media (max-width: 767px) {
   .hero { padding: 24px 20px; }
-  .hero h1 { margin-top: 16px; font-size: clamp(44px, 11vw, 66px); }
-  .heroBody { max-width: 500px; font-size: 16px; }
+  .hero h1 { font-size: clamp(44px, 11vw, 66px); }
+  .heroBody { max-width: 500px; font-size: 18px; }
+  .heroProof { font-size: 15px; }
   .heroBoard { margin-top: 36px; }
   .board { padding: 14px; border-radius: 16px; }
   .boardHeader { margin-bottom: 16px; }

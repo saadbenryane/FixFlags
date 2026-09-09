@@ -325,7 +325,7 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   const targetUrl = process.env.E2E_AUDIT_URL ?? 'https://example.com'
   await page.goto('/')
   await page.getByRole('textbox', { name: 'Website URL' }).first().fill(targetUrl)
-  await page.getByRole('button', { name: 'Check my website' }).first().click()
+  await page.getByRole('button', { name: 'Analyze' }).first().click()
   await page.waitForURL(/\/sites\//, { timeout: 30_000 })
   await expect(page.getByRole('heading', { name: 'Your board' })).toBeVisible()
   await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)

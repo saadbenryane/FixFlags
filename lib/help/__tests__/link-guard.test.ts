@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { isParkedPowerToolPath } from '@/proxy'
-import { FAQ } from '@/lib/marketing/copy/faq'
+import { FAQ, faqEntryAnchor } from '@/lib/marketing/copy/faq'
+import { PRICING_FAQ } from '@/lib/marketing/copy/plans'
 import { HELP_ARTICLES } from '@/lib/help/catalog'
 import { DOCS_PAGES } from '@/lib/docs/catalog'
+import { INDEXABLE_ROUTES } from '@/lib/marketing/seo-routes'
 
 const PARKED_PREFIXES = [
   '/docs/integrations',
@@ -11,11 +13,15 @@ const PARKED_PREFIXES = [
   '/help/mcp-and-editors',
 ]
 
+const FAQ_SETS = [FAQ, PRICING_FAQ] as const
+
 function collectHrefs(): string[] {
   const hrefs: string[] = []
 
-  for (const item of FAQ) {
-    if (item.learnMore?.href) hrefs.push(item.learnMore.href.split('#')[0]!)
+  for (const items of FAQ_SETS) {
+    for (const item of items) {
+      if (item.learnMore?.href) hrefs.push(item.learnMore.href.split('#')[0]!)
+    }
   }
 
   for (const article of HELP_ARTICLES) {
@@ -37,19 +43,26 @@ describe('help and docs link guard', () => {
     }
   })
 
-  it('resolves FAQ learnMore targets to live docs or help routes', () => {
+  it('resolves FAQ learnMore targets to live routes', () => {
     const livePaths = new Set([
+      ...INDEXABLE_ROUTES.map((route) => route.path),
       ...DOCS_PAGES.map((page) => page.path),
       ...HELP_ARTICLES.map((article) => `/help/${article.categoryId}/${article.slug}`),
-      '/how-it-works',
     ])
 
-    for (const item of FAQ) {
-      const href = item.learnMore?.href.split('#')[0]
-      if (!href) continue
-      if (href.startsWith('/help/') || href.startsWith('/docs')) {
-        expect(livePaths.has(href), href).toBe(true)
+    for (const items of FAQ_SETS) {
+      for (const item of items) {
+        const href = item.learnMore?.href.split('#')[0]
+        expect(href, item.question).toBeTruthy()
+        expect(livePaths.has(href!), href).toBe(true)
       }
+    }
+  })
+
+  it('keeps FAQ anchors unique within each FAQ set', () => {
+    for (const items of FAQ_SETS) {
+      const anchors = items.map((item) => faqEntryAnchor(item.question))
+      expect(new Set(anchors).size).toBe(anchors.length)
     }
   })
 })

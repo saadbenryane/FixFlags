@@ -11,7 +11,7 @@ import { faqPageSchema } from '@/lib/marketing/structured-data'
 
 export const metadata = buildPageMetadata('faq', '/faq')
 
-const faqJsonLd = faqPageSchema(FAQ)
+const faqJsonLd = faqPageSchema(FAQ, { path: '/faq', name: FAQ_PAGE.title })
 
 export default function FaqPage() {
   return (
@@ -29,7 +29,7 @@ export default function FaqPage() {
               <Body className="mt-4 text-muted-foreground text-pretty">{FAQ_PAGE.subhead}</Body>
               <Body className="mt-2 text-sm text-muted-foreground">
                 Prefer step-by-step guides?{' '}
-                <TextLink href="/help">{HELP_CENTER.label}</TextLink>
+                <TextLink variant="brand" href="/help">{HELP_CENTER.label}</TextLink>
               </Body>
             </div>
 

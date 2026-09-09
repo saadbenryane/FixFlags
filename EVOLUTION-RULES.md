@@ -2,7 +2,7 @@
 
 ## Authority and versioning
 
-The owner's latest explicit direction wins. The accepted source is [knowledge/vision.md](knowledge/vision.md), revised 2026-09-08. The report, three-rubric presentation, Finish Plan, AI-builder-only positioning and Shopify-only company bet are not permanent product invariants.
+The owner's latest explicit direction wins. The accepted product vision is [knowledge/vision.md](knowledge/vision.md), revised 2026-09-08. Customer-facing vocabulary and voice are [docs/voice-and-copy.md](docs/voice-and-copy.md). The report, three-rubric presentation, Finish Plan, AI-builder-only positioning and Shopify-only company bet are not permanent product invariants.
 
 Git history preserves earlier documents. Do not append an override above pages of contradictory active guidance. Replace the superseded guidance, update indexes/skills/roadmap, and retain only clearly scoped historical or compatibility facts.
 

@@ -1,4 +1,4 @@
-import { BRAND, SITE_URL } from './copy'
+import { BRAND, SITE_URL, faqEntryAnchor, type FaqEntry } from './copy'
 import type { DocsPageDefinition } from '@/lib/docs/catalog'
 import type { HelpArticle, HelpCategory } from '@/lib/help/types'
 import { helpArticlePath } from '@/lib/help/types'
@@ -53,22 +53,41 @@ export function marketingGraphSchema() {
   }
 }
 
+function absoluteMarketingUrl(href: string) {
+  if (/^https?:\/\//i.test(href)) return href
+  return `${SITE_URL}${href}`
+}
+
 export function faqPageSchema(
-  items: ReadonlyArray<{ question: string; answer: string; learnMore?: { href: string; label: string } }>
+  items: ReadonlyArray<FaqEntry>,
+  options: { path: string; name?: string }
 ) {
+  const pageUrl = `${SITE_URL}${options.path}`
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: items.map((item) => ({
-      '@type': 'Question',
-      name: item.question,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: item.learnMore
-          ? `${item.answer} Read more: ${SITE_URL}${item.learnMore.href}`
-          : item.answer,
-      },
-    })),
+    '@id': `${pageUrl}#faq`,
+    url: pageUrl,
+    name: options.name ?? 'Frequently asked questions',
+    inLanguage: 'en',
+    isPartOf: { '@id': WEBSITE_ID },
+    publisher: { '@id': ORG_ID },
+    mainEntity: items.map((item) => {
+      const anchor = faqEntryAnchor(item.question)
+      const answerText = item.learnMore
+        ? `${item.answer} ${item.learnMore.label}: ${absoluteMarketingUrl(item.learnMore.href)}`
+        : item.answer
+      return {
+        '@type': 'Question',
+        '@id': `${pageUrl}#${anchor}`,
+        name: item.question,
+        url: `${pageUrl}#${anchor}`,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: answerText,
+        },
+      }
+    }),
   }
 }
 

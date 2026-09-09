@@ -4,13 +4,13 @@ FixFlags is the calm, capable teammate who looks after the website and speaks up
 
 **Your website, looked after.**
 
-The [vision](knowledge/vision.md) owns the full promise and product direction. This file owns personality. The brand name, original approved identity and reusable visual foundation stay; this is a new experience, not a rebrand.
+The [vision](knowledge/vision.md) owns the full promise and product direction. [Messaging](docs/voice-and-copy.md) owns customer-facing vocabulary and voice. This file owns personality. The brand name, original approved identity and reusable visual foundation stay; this is a new experience, not a rebrand.
 
 ## What the customer should feel
 
-Someone is paying attention. I can understand the problem. I can see the evidence. I know what to do. When FixFlags says recovery is verified, it has actually checked. When it stays quiet, I can see what it is watching and when it last verified it.
+Someone is paying attention. I can understand the problem. I can see the evidence. I know what to do. When FixFlags says recovery is verified, it has actually checked. When it stays quiet, I can see what it is watching and when it last verified it. 0 Flags means nothing important enough to act on, not that every optimization is done.
 
-Care continues beyond a launch or an AI-generated first draft. Speak to the business owner as well as the developer. Lead with what visitors cannot do and why that matters; technical depth remains available.
+The customer keeps building. FixFlags keeps watch. Speak to technically literate operators without dumbing the product down. Lead with what visitors cannot do and why that matters; technical depth remains available.
 
 ## Character
 
@@ -26,4 +26,4 @@ Brand orange identifies FixFlags and useful actions. Status colors communicate e
 
 ## Writing and design
 
-Follow [docs/voice-and-copy.md](docs/voice-and-copy.md) for language and [DESIGN.md](DESIGN.md) for visual tokens. Marketing copy comes from lib/marketing/copy.ts. Do not invent a new orange, logo or separate Shopify identity while building the new experience.
+Follow [docs/voice-and-copy.md](docs/voice-and-copy.md) for language and [DESIGN.md](DESIGN.md) for visual tokens. Marketing copy comes from lib/marketing/copy.ts. Public copy still being migrated is listed in [docs/messaging-migration.md](docs/messaging-migration.md). Do not invent a new orange, logo or separate Shopify identity while building the new experience.

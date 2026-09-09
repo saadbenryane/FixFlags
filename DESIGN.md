@@ -2,11 +2,11 @@
 
 _Validated visual and interaction standards. Code-enforced where possible, documented where not._
 
-**Target experience:** [docs/workspace-interface.md](docs/workspace-interface.md) defines Home · Flags · Site. [docs/product-prd.md](docs/product-prd.md) owns behavior. [knowledge/vision.md](knowledge/vision.md) owns direction. Current report layout rules are compatibility-only in [knowledge/report-contract.md](knowledge/report-contract.md).
+**Target experience:** [docs/workspace-interface.md](docs/workspace-interface.md) defines Home · Flags · Site. [docs/product-prd.md](docs/product-prd.md) owns behavior. [knowledge/vision.md](knowledge/vision.md) owns direction. [docs/voice-and-copy.md](docs/voice-and-copy.md) owns customer-facing language. Current report layout rules are compatibility-only in [knowledge/report-contract.md](knowledge/report-contract.md).
 
 ## Design principles
 
-1. Calm, clear care for the website. Human status and evidence lead.
+1. Calm, clear care for the website. Human status and evidence lead. Public language follows Flag. Fix. Verify. and 0 Flags, not dashboard-operation copy.
 2. Preserve FixFlags' brand identity and approved orange through canonical tokens.
 3. Mobile-first simplicity. Desktop shares the same mental model.
 4. Progressive depth: understandable Flag first, technical detail when needed.

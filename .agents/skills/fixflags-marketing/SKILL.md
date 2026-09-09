@@ -9,7 +9,7 @@ Read AGENTS.md, knowledge/vision.md, SOUL.md and docs/voice-and-copy.md. PRODUCT
 
 ## Direction
 
-The target headline is “Your website, looked after.” The promise, actions and customer vocabulary live in docs/voice-and-copy.md. Use one product: persistent Site, important Outcomes, Flags, coverage and ongoing care. Shopify has a tailored connection/native distribution path, not a separate company-wide product.
+The target headline is “Your website, looked after.” Positioning, vocabulary, Flag. Fix. Verify., Analyze, notifications, AI/MCP and privacy live in docs/voice-and-copy.md. The live homepage hero already uses Analyze and the canon supporting lines; remaining public copy still on the old lexicon is listed in docs/messaging-migration.md. Use one product: persistent Site, Journeys, Flags, coverage and ongoing monitoring. Shopify has a tailored connection/native distribution path, not a separate company-wide product. Do not implement the rest of that plan unless the task owns it.
 
 The former “Finish what your AI started” positioning, report-first story and two-product menu are retired for the new version. Verify / Observe / Connect describe internal sources; they are not the default customer navigation.
 

@@ -47,7 +47,7 @@ Central module: [`lib/marketing/structured-data.ts`](../lib/marketing/structured
 | Export | Schema types | Surfaces |
 |--------|-------------|----------|
 | `marketingGraphSchema()` | Organization, WebSite, SoftwareApplication | Marketing + docs layouts |
-| `faqPageSchema()` | FAQPage | `/faq` |
+| `faqPageSchema()` | FAQPage | `/faq`, pricing FAQ on `/pricing` |
 | `docsStructuredData()` | BreadcrumbList, TechArticle | Docs pages |
 | `helpHubStructuredData()` | CollectionPage, ItemList | `/help` |
 | `helpArticleStructuredData()` | BreadcrumbList, TechArticle, optional HowTo | Help articles |

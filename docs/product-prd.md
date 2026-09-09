@@ -1,6 +1,6 @@
 # FixFlags next version: product requirements
 
-**TARGET, accepted direction 2026-09-08.** Implements the [full vision](../knowledge/vision.md); delivery order lives in [ROADMAP.md](../ROADMAP.md). This replaces the old report/chat PRD. Current compatibility behavior remains in [PRODUCT.md](../PRODUCT.md).
+**TARGET, accepted direction 2026-09-08.** Implements the [full vision](../knowledge/vision.md); delivery order lives in [ROADMAP.md](../ROADMAP.md). Customer-facing words (Analyze, Flag, Recommendation, Flag. Fix. Verify., 0 Flags) live in [voice-and-copy.md](voice-and-copy.md). This replaces the old report/chat PRD. Current compatibility behavior remains in [PRODUCT.md](../PRODUCT.md).
 
 ## Product outcome
 
@@ -23,7 +23,7 @@ Physical schema choices and reusable models are in [site-v2-migration.md](site-v
 
 ## Primary journey requirements
 
-1. **Enter a URL.** “Your website, looked after.” with URL field and “Check my website.” Validate unsafe/private network targets using the existing security boundary. No installation prerequisite. Useful anonymous results remain the target; resource limits are explicit.
+1. **Enter a URL.** “Your website, looked after.” with URL field and “Analyze.” Validate unsafe/private network targets using the existing security boundary. No installation prerequisite. Useful anonymous results remain the target; resource limits are explicit.
 2. **Learn visibly.** Create or resume a provisional Site before analysis. Persist discovered facts and render them as progress. Show failures and partial results in the same shell. No invented page counts, outcomes, pixels or completed checks.
 3. **Confirm understanding.** Infer important Outcomes. Offer Looks right / Edit with minimal interruption; an uncertain inference is clearly editable. Users can correct intent without configuring a funnel builder.
 4. **Become the dashboard.** Keep the same Site identity and navigation. Home answers whether anything needs attention. Show Outcome state, prioritized Flags, coverage, latest checks and meaningful changes. No redirect into a separate report application.

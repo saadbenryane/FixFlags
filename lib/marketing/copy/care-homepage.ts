@@ -7,9 +7,11 @@ export const CARE_HOME = {
   brand: 'FixFlags', signIn: 'Sign in',
   headlineLines: ['Your website,', 'looked after.'],
   hero: {
-    body: 'Keep building. FixFlags checks your live website across 100+ checks and real browser journeys. When something breaks, you know what happened and how to fix it.',
+    body: 'Keep building. FixFlags keeps watch.',
+    proof: '100+ automated tests. Real browser journeys.',
     trust: 'No credit card required',
-    cta: 'Check my website', placeholder: 'yourwebsite.com',
+    cta: 'Analyze',
+    placeholder: 'yourwebsite.com',
   },
   boardHost: EXAMPLE_HOST,
   boardSummary: '4 Flags in this example. View checked scope.',

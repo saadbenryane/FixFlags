@@ -151,7 +151,7 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
     answer:
       'Pro is $49 per website per month, checked up to every hour. Studio is the same hourly monitoring for several websites, billed per website, quoted on a demo. We are not charging yet. Request a demo to add websites.',
     learnMore: {
-      href: '/help/billing-and-plans/upgrade-or-downgrade',
+      href: '/request-demo',
       label: 'Request a demo',
     },
   },
@@ -164,7 +164,7 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
   {
     question: 'Do you store screenshots?',
     answer:
-      'Yes. Evidence stays attached to the check that captured it. See the Privacy Policy for how long we keep it.',
+      'Yes. Evidence stays attached to the check that captured it. Retention is covered in the Privacy Policy.',
     learnMore: {
       href: '/help/checks-and-reports/evidence-and-screenshots',
       label: 'Evidence and screenshots',

@@ -18,7 +18,8 @@ One authoritative home per concept. The September 8 [vision](knowledge/vision.md
 | Privacy and security | [knowledge/privacy.md](knowledge/privacy.md), [SECURITY.md](SECURITY.md) | Collection minimization and enforced security boundaries |
 | Brand identity | [SOUL.md](SOUL.md) | Personality and enduring promise |
 | Visual system | [DESIGN.md](DESIGN.md) | Existing tokens and visual rules; code tokens are authoritative values |
-| Voice and copy | [docs/voice-and-copy.md](docs/voice-and-copy.md) | Writing rules; rendered copy comes from lib/marketing/copy.ts |
+| Messaging, voice, and customer vocabulary | [docs/voice-and-copy.md](docs/voice-and-copy.md) | Positioning, vocabulary, Flag/Recommendation, Analyze, Flag. Fix. Verify., notifications, AI/MCP, privacy; rendered copy comes from lib/marketing/copy.ts |
+| Messaging migration | [docs/messaging-migration.md](docs/messaging-migration.md) | Audit of conflicting surfaces and phased implementation plan; not a claim that public copy has already changed |
 | Current architecture | [ARCHITECTURE.md](ARCHITECTURE.md), [CODEMAP.md](CODEMAP.md) | Existing code structure, not a new UI mandate |
 | Quality and release proof | [QUALITY.md](QUALITY.md) | Relevant checks, real-path proof and release receipts |
 | Legacy report compatibility | [knowledge/report-contract.md](knowledge/report-contract.md) | Existing report routes only; retired as target experience |

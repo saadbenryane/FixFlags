@@ -2,7 +2,7 @@
 
 **Direction accepted 2026-09-08.** Phase 0 documentation is complete. **Board-first cutover (URL → `/sites` checking board) shipped** — receipt: [`.agents/sessions/board-first-site-2026-09-08.md`](.agents/sessions/board-first-site-2026-09-08.md). Integrity work (tenancy, honest coverage, claim migration, Sites IA) continues under `site-game-on-integrity`.
 
-The [owner's complete vision](knowledge/vision.md) is authoritative. This roadmap replaces earlier Shopify-only launch, Product Review completion, and two-product roadmaps. Existing tasks may supply reusable work; their earlier interface and commercial decisions do not govern this version.
+The [owner's complete vision](knowledge/vision.md) is authoritative. Customer-facing language follows [docs/voice-and-copy.md](docs/voice-and-copy.md). Public copy and taxonomy conflicts are sequenced in [docs/messaging-migration.md](docs/messaging-migration.md); that work does not replace Phase 1–4 product integrity. This roadmap replaces earlier Shopify-only launch, Product Review completion, and two-product roadmaps. Existing tasks may supply reusable work; their earlier interface and commercial decisions do not govern this version.
 
 Phase 0 evidence: [readiness receipt](.agents/sessions/site-v2-readiness-2026-09-08.md). Full-source coverage: [vision-to-phase map](docs/site-v2-vision-coverage.md).
 

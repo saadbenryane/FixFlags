@@ -1,9 +1,8 @@
 /**
- * FixFlags marketing copy. Single source of truth.
+ * FixFlags marketing copy. Runtime strings.
  *
- * Voice: sharp senior reviewer. Clear, calm, direct. No hype.
- * Do: short sentences, verb-first CTAs, name tools, lead with what to fix.
- * Don't: comprehensive, robust, leverage, unlock, seamless, 10x; over-promise free tier.
+ * Language: docs/voice-and-copy.md. Migration of remaining surfaces:
+ * docs/messaging-migration.md. Do not add a parallel vocabulary here.
  */
 
 export * from './copy/brand'

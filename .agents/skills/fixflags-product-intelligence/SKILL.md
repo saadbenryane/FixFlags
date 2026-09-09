@@ -20,9 +20,9 @@ Read AGENTS.md first. The complete owner vision is knowledge/vision.md. ROADMAP.
 ## Working rules
 
 1. Use the September 8 revision as the sole active direction. Do not revive report-first, AI-builder-only, two-product or Shopify-only strategy.
-2. Customer Site is permanent. Pages/actions relate to inferred, editable Outcomes. Customer Flags are durable attention with evidence history.
-3. Verify / Observe / Connect are internal evidence sources. Keep the small Home · Flags · Site interface.
-4. Coverage and freshness qualify every healthy claim. Zero Flags is not proof of untested behavior.
+2. Customer Site is permanent. Pages belong to the Site. Inferred Journeys (Outcomes in the model) give them meaning. Customer Flags are durable attention with evidence history. Recommendations are improvements that are not Flags.
+3. Verify / Observe / Connect are internal evidence sources. Keep the small Home · Flags · Site interface. The first board card is Pages.
+4. Coverage and freshness qualify every healthy claim. 0 Flags means nothing important enough to act on; it is not proof of untested behavior.
 5. Separate certainty, severity, priority and lifecycle. A failed check or external warning is not automatically a Flag.
 6. Fresh independent verification of relevant behavior establishes recovery. Copy, Done, deployment and absence do not.
 7. Reuse existing Project, analysis, Improvement, billing, auth and browser foundations deliberately. Prisma Site/Page are global graph models, not private customer tenancy.

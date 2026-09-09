@@ -18,7 +18,21 @@ export type FaqEntry = {
   learnMore?: { href: string; label: string }
 }
 
+export function faqEntryAnchor(question: string): string {
+  const slug = question
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return slug || 'question'
+}
+
 export const FAQ: readonly FaqEntry[] = [
+  {
+    question: 'Is FixFlags free?',
+    answer:
+      'Yes. One website is free, with 24/7 monitoring checked every 24 hours. Paid monitoring is $49 per website per month, up to every hour. We are not charging yet. Shopify is an optional connection, not the only way to start.',
+    learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
+  },
   {
     question: 'What does FixFlags actually check?',
     answer:
@@ -30,12 +44,6 @@ export const FAQ: readonly FaqEntry[] = [
     answer:
       'A Flag is something important that needs attention, with evidence. It says what happened, where it happened, and what should happen next. Healthy pages stay quiet.',
     learnMore: { href: '/help/checks-and-reports/scores-and-severity', label: 'Reading Flags' },
-  },
-  {
-    question: 'Is it free?',
-    answer:
-      'Yes. One website is free, with 24/7 monitoring checked every 24 hours. Paid monitoring is $49 per website per month, up to every hour. We are not charging yet. Shopify is an optional connection, not the only way to start.',
-    learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
   },
   {
     question: 'How do I start?',
@@ -53,7 +61,7 @@ export const FAQ: readonly FaqEntry[] = [
     question: 'Do you charge or complete checkout on a store?',
     answer:
       'No. When FixFlags checks a purchase path, it stops before payment. It never enters card details or places an order.',
-    learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
+    learnMore: { href: '/help/checks-and-reports/evidence-and-screenshots', label: 'How a check works' },
   },
   {
     question: 'What about Shopify?',

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { BLOG_POSTS, SEO } from '@/lib/marketing/copy'
+import { BLOG_POSTS, FAQ, FAQ_PAGE, PRICING, PRICING_FAQ, SEO } from '@/lib/marketing/copy'
 import { HELP_CATEGORIES } from '@/lib/help/catalog'
 import { getHelpArticle } from '@/lib/help/search'
 import {
   blogPostingSchema,
   docsStructuredData,
+  faqPageSchema,
   helpArticleStructuredData,
   helpHubStructuredData,
   issueIndexStructuredData,
@@ -15,6 +16,36 @@ import {
 import { getDocsPage } from '@/lib/docs/catalog'
 
 describe('structured data', () => {
+  it('emits FAQPage schema that matches visible FAQ copy and anchors', () => {
+    const schema = faqPageSchema(FAQ, { path: '/faq', name: FAQ_PAGE.title })
+    expect(schema).toMatchObject({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      url: 'https://fixflags.com/faq',
+      name: FAQ_PAGE.title,
+    })
+    expect(schema.mainEntity).toHaveLength(FAQ.length)
+    const freeQuestion = schema.mainEntity.find((entity) => entity.name === 'Is FixFlags free?')
+    expect(freeQuestion).toMatchObject({
+      '@type': 'Question',
+      '@id': 'https://fixflags.com/faq#is-fixflags-free',
+      url: 'https://fixflags.com/faq#is-fixflags-free',
+    })
+    expect(freeQuestion?.acceptedAnswer.text).toContain('One website is free')
+    expect(freeQuestion?.acceptedAnswer.text).toContain('/help/billing-and-plans/free-vs-pro')
+  })
+
+  it('emits FAQPage schema for pricing questions', () => {
+    const schema = faqPageSchema(PRICING_FAQ, { path: '/pricing', name: PRICING.faqTitle })
+    expect(schema).toMatchObject({
+      '@type': 'FAQPage',
+      url: 'https://fixflags.com/pricing',
+      name: PRICING.faqTitle,
+    })
+    const demoQuestion = schema.mainEntity.find((entity) => entity.name === 'How does paid monitoring work?')
+    expect(demoQuestion?.acceptedAnswer.text).toContain('/request-demo')
+  })
+
   it('emits TechArticle and BreadcrumbList for help articles', () => {
     const article = getHelpArticle('first-check')
     const category = HELP_CATEGORIES.find((item) => item.id === 'getting-started')

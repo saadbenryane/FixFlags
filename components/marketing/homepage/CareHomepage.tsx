@@ -106,13 +106,13 @@ export function CareHomepage() {
   return <div className={s.home}>
     <section className={s.hero}>
       <div className={s.heroContent}>
-        <span className={s.heroMark}><Logo variant="mark" size="md" /></span>
         <h1>
           <span className={s.headlineLead}>{C.headlineLines[0]}</span>
           <br />
           <span className={s.headlineAccent}>{C.headlineLines[1]}</span>
         </h1>
         <p className={s.heroBody}>{C.hero.body}</p>
+        <p className={s.heroProof}>{C.hero.proof}</p>
         <UrlEntry />
       </div>
       <div className={s.heroBoard} id="product">

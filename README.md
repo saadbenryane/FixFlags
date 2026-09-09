@@ -1,6 +1,6 @@
 # FixFlags
 
-**Your website, looked after.** FixFlags is moving to a persistent Site experience that understands important Outcomes, raises meaningful Flags and keeps watching.
+**Your website, looked after.** FixFlags is continuous monitoring for businesses that depend on their website. Customer-facing language: [docs/voice-and-copy.md](docs/voice-and-copy.md). Implementation of remaining public copy: [docs/messaging-migration.md](docs/messaging-migration.md).
 
 The [complete owner vision](knowledge/vision.md) is the accepted destination, not a claim that the next version already ships. Start implementation with [ROADMAP.md](ROADMAP.md), [the PRD](docs/product-prd.md) and [migration/reuse](docs/site-v2-migration.md). [PRODUCT.md](PRODUCT.md) inventories the current code. Brand, accounts, billing, plans and useful checking foundations remain.
 

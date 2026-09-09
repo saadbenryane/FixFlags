@@ -2,7 +2,7 @@ export const SEO = {
   home: {
     title: 'FixFlags - Your website, looked after.',
     description:
-      'FixFlags checks your live website, shows evidence when something breaks, and gives you a clear way to fix it in the tools you already use.',
+      'FixFlags monitors your live website with 100+ automated tests and real browser journeys. When something matters, you get a Flag.',
   },
   protect: {
     title: "Protect the path that makes money",

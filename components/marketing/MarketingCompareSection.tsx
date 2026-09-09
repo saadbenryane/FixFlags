@@ -1,5 +1,3 @@
-"use client";
-
 import { LandingSectionHeader } from "@/components/marketing/landing/LandingSectionHeader";
 import { RevealOnView } from "@/components/marketing/landing/RevealOnView";
 import { Container } from "@/components/ui/container";

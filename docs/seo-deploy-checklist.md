@@ -10,6 +10,7 @@ After deploying to production (`https://fixflags.com`):
 4. **Rich Results Test** — Run [Google Rich Results Test](https://search.google.com/test/rich-results) on:
    - `/` — Organization + WebSite + SoftwareApplication
    - `/faq` — FAQPage
+   - `/pricing` — FAQPage (pricing questions)
    - `/help/billing-and-plans/payment-past-due` — TechArticle + BreadcrumbList (+ HowTo if steps)
    - `/docs/troubleshooting` — TechArticle + BreadcrumbList
    - `/blog/why-ai-built-sites-need-a-launch-check` — BlogPosting

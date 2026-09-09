@@ -1,23 +1,24 @@
 'use client'
+
 import type { Route } from 'next'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { PRICING, BILLING_ACTION_COPY } from '@/lib/marketing/copy'
+import { BILLING_ACTION_COPY, PRICING } from '@/lib/marketing/copy/plans'
 import { trackEvent } from '@/lib/analytics/events'
-import { pickPlan, routerForPlanResult } from '@/lib/billing/pick-plan'
 import { demoPathForPlan } from '@/lib/billing/demo-path'
 import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
 import type { CheckoutPlan } from '@/lib/billing/client-checkout'
+import { useMe } from '@/hooks/useMe'
 
 interface Props {
   plan: 'FREE' | 'BUILDER' | 'TEAM'
   cta: string
   signUpHref: Route
   highlight?: boolean
-  isLoggedIn: boolean
-  currentPlan: string
+  isLoggedIn?: boolean
+  currentPlan?: string
   waitlistGated?: boolean
   userEmail?: string
 }
@@ -33,9 +34,13 @@ export function PricingCTAButton({
   userEmail,
 }: Props) {
   const router = useRouter()
+  const { user } = useMe()
   const [loading, setLoading] = useState(false)
 
-  const isCurrent = isLoggedIn && currentPlan === plan
+  const resolvedLoggedIn = isLoggedIn ?? !!user
+  const resolvedPlan = currentPlan ?? user?.plan ?? 'FREE'
+  const resolvedEmail = userEmail ?? user?.email ?? undefined
+  const isCurrent = resolvedLoggedIn && resolvedPlan === plan
   const isPaidPlan = plan !== 'FREE'
 
   async function handleClick() {
@@ -44,42 +49,46 @@ export function PricingCTAButton({
       return
     }
 
-    if (!isLoggedIn) {
-      if (plan !== 'FREE') trackEvent('started_checkout', { plan, is_logged_in: isLoggedIn })
+    if (!resolvedLoggedIn) {
+      if (plan !== 'FREE') trackEvent('started_checkout', { plan, is_logged_in: resolvedLoggedIn })
       router.push(signUpHref)
       return
     }
 
     if (plan !== 'FREE') {
-      trackEvent('started_checkout', { plan, is_logged_in: isLoggedIn })
+      trackEvent('started_checkout', { plan, is_logged_in: resolvedLoggedIn })
     }
 
     setLoading(true)
-    const result = await pickPlan({
-      plan,
-      source: 'pricing',
-      isLoggedIn,
-      currentPlan,
-      waitlistGated,
-      userEmail,
-      onCheckoutRedirect: (url) => {
-        window.location.href = url
-      },
-    })
-    setLoading(false)
+    try {
+      const { pickPlan, routerForPlanResult } = await import('@/lib/billing/pick-plan')
+      const result = await pickPlan({
+        plan,
+        source: 'pricing',
+        isLoggedIn: resolvedLoggedIn,
+        currentPlan: resolvedPlan,
+        waitlistGated,
+        userEmail: resolvedEmail,
+        onCheckoutRedirect: (url) => {
+          window.location.href = url
+        },
+      })
 
-    if (result.kind === 'demo' && result.url) {
-      router.push(result.url as Route)
-      return
-    }
-    if (result.kind === 'waitlist') {
-      router.push(demoPathForPlan(plan as CheckoutPlan) as Route)
-      return
-    }
-    if (result.kind === 'checkout_redirect') return
-    if (result.kind === 'unavailable' || result.kind === 'error') return
+      if (result.kind === 'demo' && result.url) {
+        router.push(result.url as Route)
+        return
+      }
+      if (result.kind === 'waitlist') {
+        router.push(demoPathForPlan(plan as CheckoutPlan) as Route)
+        return
+      }
+      if (result.kind === 'checkout_redirect') return
+      if (result.kind === 'unavailable' || result.kind === 'error') return
 
-    routerForPlanResult(router, result)
+      routerForPlanResult(router, result)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -104,12 +113,12 @@ export function PricingCTAButton({
         <p className="text-3xs text-center text-muted-foreground leading-snug">
           {waitlistGated
             ? BILLING_ACTION_COPY.beta.gatedHint
-            : isLoggedIn
+            : resolvedLoggedIn
               ? PRICING.upgradeStepsLoggedIn
               : PRICING.upgradeSteps}
         </p>
       )}
-      {isPaidPlan && !isLoggedIn && !waitlistGated && (
+      {isPaidPlan && !resolvedLoggedIn && !waitlistGated && (
         <p className="text-3xs text-center text-muted-foreground">
           <Link href={signUpHref} className="underline hover:text-foreground">
             Sign up first

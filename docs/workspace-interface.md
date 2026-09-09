@@ -1,6 +1,6 @@
 # Site interface contract
 
-**TARGET, 2026-09-08.** Replaces the report/chat interface specification. Behavior: [PRD](product-prd.md). Intent: [vision](../knowledge/vision.md). Tokens: [DESIGN.md](../DESIGN.md). Current report routes retain their [legacy contract](../knowledge/report-contract.md) during migration.
+**TARGET, 2026-09-08.** Replaces the report/chat interface specification. Behavior: [PRD](product-prd.md). Intent: [vision](../knowledge/vision.md). Language: [voice-and-copy.md](voice-and-copy.md). Tokens: [DESIGN.md](../DESIGN.md). Current report routes retain their [legacy contract](../knowledge/report-contract.md) during migration.
 
 ## One persistent place
 
@@ -20,9 +20,9 @@ Account, billing and Site switching are supporting controls, not competing produ
 
 ## Home hierarchy
 
-The [card-board experience](card-board-experience.md) is the detailed design source. Home/Dashboard is one flat customizable grid with a permanent compact Site card. Security, Search, Performance, Conversion and Tracking form the initial board. A quiet Add card opens the personalized library; categories belong only there. Desktop uses Dashboard · Flags · Site; mobile uses Home · Flags · Site. Public evidence works before connections, which enrich these same cards.
+The [card-board experience](card-board-experience.md) is the detailed design source. Home/Dashboard is one flat customizable grid. The first card is Pages (explored pages of the Site). Security, Search, Performance, Conversion and Tracking form the rest of the initial board. A quiet Add card opens the personalized library; categories belong only there. Desktop uses Dashboard · Flags · Site; mobile uses Home · Flags · Site. Public evidence works before connections, which enrich these same cards.
 
-Site identity and a human status lead. Important Outcomes provide meaning. Attention appears prominently when needed; a healthy Site can remain short and quiet. Always make coverage and freshness discoverable near health language.
+Site identity and a human status lead. Journeys provide meaning. Attention appears as Flags when needed; a healthy Site can remain short and quiet (0 Flags, with coverage still discoverable). Always make coverage and freshness discoverable near health language.
 
 Do not force a green overall label when an important Outcome is unverified or stale. A site can be reachable while a purchase behavior is failing. Distinguish those facts. Numeric scores may explain a specific measurement in detail; they do not define Site health.
 
@@ -36,9 +36,9 @@ Show relevant pages/actions and verification limits on expansion. A page may bel
 
 Start with what happened and where. Show certainty, impact explanation, evidence and Fix this. Add context and technical detail progressively. Evidence matches the claimed page, viewport and time; missing evidence has an honest state.
 
-Fix this may expose Send to my AI, Share and View technical details. Keep fix instructions and safe export structured around reproduction, expected result and verification criteria. Never automatically message another person or tool.
+Fix this may expose Send a Flag to your AI, Share and View technical details. Keep fix instructions and safe export structured around reproduction, expected result and verification criteria. Never automatically message another person or tool.
 
-Verify fix shows real progress and retains prior attempts. Resolved shows fresh independent proof and time. Neither copying nor “Done” resolves the issue.
+Verify fix shows real progress and retains prior attempts. Resolved shows fresh independent proof and time. Neither copying nor “Done” resolves the Flag.
 
 ## State requirements
 
@@ -46,12 +46,12 @@ Verify fix shows real progress and retains prior attempts. Resolved shows fresh 
 | --- | --- |
 | Learning | Persisted discoveries and genuine running work; no generic fake progress or invented results |
 | Partial | Useful confirmed facts plus explicit missing scope; retry where possible |
-| Healthy | Scope, latest relevant verification, cadence and gaps; quiet successful state |
-| Needs attention | Ranked meaningful Flags, understandable next action |
+| Healthy | 0 Flags for that scope, plus a useful metric; coverage and latest verification remain available |
+| Needs attention | Ranked meaningful Flags (counts, not “Needs attention” prose); Recommendations stay in the card, not in notifications |
 | Couldn't verify | What prevented a reliable answer and useful recovery/context action |
 | Stale or delayed | Last known evidence distinguished from current coverage; never quietly green |
 | No Outcome inferred | Useful page checks plus lightweight intent correction; no fabricated journey |
-| No Flags | Successful when coverage supports it; separate from “nothing checked” |
+| 0 Flags | Successful attention state when coverage supports it; not omniscience; Recommendations may still exist |
 | Fix verification | Running, persistent failure, inconclusive, verified recovery and recurrence |
 | Watch activation | Account/claim progress and actual scheduling result; retry activation independently of login |
 | Connection absent/revoked | Existing answer remains usable; missing context explicit |

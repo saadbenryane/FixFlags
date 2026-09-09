@@ -10,7 +10,7 @@ PiWeb is the session interface for this repository. Product work happens here. S
 
 **Your website, looked after.** The accepted [September 8 vision](knowledge/vision.md) replaces the report experience with a persistent Site, inferred Outcomes, meaningful Flags and ongoing care.
 
-- Target loop: **Find → Understand → Fix → Verify**, continued by monitoring.
+- Target loop: **Flag. Fix. Verify.**, continued by monitoring. Customer-facing language: [docs/voice-and-copy.md](docs/voice-and-copy.md).
 - New interface and acceptance: [docs/workspace-interface.md](docs/workspace-interface.md), [docs/product-prd.md](docs/product-prd.md).
 - Next work: [ROADMAP.md](ROADMAP.md); reuse and ownership: [docs/site-v2-migration.md](docs/site-v2-migration.md).
 - Preserve the brand, accounts, billing, plans and useful evidence infrastructure. Shopify is a connection and distribution wedge in one product.
@@ -22,7 +22,7 @@ PiWeb is the session interface for this repository. Product work happens here. S
 | Area | Start here | Agent command |
 |------|------------|---------------|
 | Repository orientation | [CODEMAP.md](CODEMAP.md), [ROADMAP.md](ROADMAP.md) | `npm run agent -- context orientation` |
-| New Site or application UI | [DESIGN.md](DESIGN.md), [docs/workspace-interface.md](docs/workspace-interface.md), [docs/product-prd.md](docs/product-prd.md) | `npm run agent -- context ui` |
+| New Site or application UI | [DESIGN.md](DESIGN.md), [docs/workspace-interface.md](docs/workspace-interface.md), [docs/product-prd.md](docs/product-prd.md), [docs/voice-and-copy.md](docs/voice-and-copy.md) | `npm run agent -- context ui` |
 | Legacy report or sharing | [knowledge/report-contract.md](knowledge/report-contract.md), [SECURITY.md](SECURITY.md) | `npm run agent -- context ui` |
 | First-value / anon dogfood | [docs/product-prd.md](docs/product-prd.md), [SECURITY.md](SECURITY.md); legacy routes also use the report contract | `npm run agent -- context ui` |
 | Audit pipeline and checks | [docs/audit-pipeline.md](docs/audit-pipeline.md), `lib/audit/` | `npm run agent -- context audit` |
@@ -33,6 +33,7 @@ PiWeb is the session interface for this repository. Product work happens here. S
 | SEO growth loop and organic measurement | `docs/growth/`, `lib/growth/`, [`.agents/skills/fixflags-seo-growth-loop/SKILL.md`](.agents/skills/fixflags-seo-growth-loop/SKILL.md) | `npm run agent -- context growth` |
 | Parked CLI / MCP / repo-scan | `fixflags-cli/`, [`.agents/skills/fixflags-npm-operations/SKILL.md`](.agents/skills/fixflags-npm-operations/SKILL.md) | `npm run agent -- context cli` |
 | Canonical knowledge | [CANONICAL-SOURCES.md](CANONICAL-SOURCES.md), [EVOLUTION-RULES.md](EVOLUTION-RULES.md) | `npm run agent -- context docs` |
+| Messaging and public language | [docs/voice-and-copy.md](docs/voice-and-copy.md), [docs/messaging-migration.md](docs/messaging-migration.md) | `npm run agent -- context docs` |
 | Failures and recovery | [QUALITY.md](QUALITY.md), `lib/queue/`, `.agents/learnings/` | `npm run agent -- context recovery` |
 
 Do not read every linked document by default. Open deeper references only when the task requires them.

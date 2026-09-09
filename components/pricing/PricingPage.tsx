@@ -1,41 +1,30 @@
-"use client";
-import type { Route } from "next";
-import Image from "next/image";
-import Link from "next/link";
-import { Check, Flag, ShieldCheck, Users } from "lucide-react";
-import { PricingCTAButton } from "@/components/pricing/PricingCTAButton";
-import { PricingComparisonTable } from "@/components/pricing/PricingComparisonTable";
-import { PlanPrice } from "@/components/pricing/PlanPrice";
-import { MarketingCompareSection } from "@/components/marketing/MarketingCompareSection";
-import { FaqSection } from "@/components/marketing/FaqSection";
-import { MarketingPageViewTracker } from "@/components/marketing/MarketingPageViewTracker";
-import { MarketingEyebrow } from "@/components/marketing/MarketingEyebrow";
-import { Container } from "@/components/ui/container";
-import { Section } from "@/components/ui/section";
-import { Body, Heading, Muted } from "@/components/ui/typography";
-import { PLANS, PRICING, PRICING_FAQ } from "@/lib/marketing/copy";
-import { cn } from "@/lib/utils";
-import { useMe } from "@/hooks/useMe";
-import { useEffect } from "react";
-import { trackEvent } from "@/lib/analytics/events";
+import type { Route } from 'next'
+import Image from 'next/image'
+import Link from 'next/link'
+import { Check, Flag, ShieldCheck, Users } from 'lucide-react'
+import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
+import { PricingComparisonTable } from '@/components/pricing/PricingComparisonTable'
+import { PlanPrice } from '@/components/pricing/PlanPrice'
+import { PricingViewTracker } from '@/components/pricing/PricingViewTracker'
+import { MarketingCompareSection } from '@/components/marketing/MarketingCompareSection'
+import { FaqSection } from '@/components/marketing/FaqSection'
+import { MarketingEyebrow } from '@/components/marketing/MarketingEyebrow'
+import { Container } from '@/components/ui/container'
+import { Section } from '@/components/ui/section'
+import { Body, Heading, Muted } from '@/components/ui/typography'
+import { PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy/plans'
+import { cn } from '@/lib/utils'
 
 const PLAN_ICONS = {
   FREE: ShieldCheck,
   BUILDER: Flag,
   TEAM: Users,
-} as const;
+} as const
 
-export function PricingPageClient() {
-  useEffect(() => {
-    trackEvent("viewed_pricing");
-  }, []);
-  const { user } = useMe();
-  const currentPlan = user?.plan ?? "FREE";
-  const isLoggedIn = !!user;
-
+export function PricingPage() {
   return (
     <Section spacing="tight" className="relative overflow-hidden">
-      <MarketingPageViewTracker page="/pricing" />
+      <PricingViewTracker />
       <Container
         variant="marketing"
         className="space-y-12 px-4 sm:space-y-14 sm:px-6 lg:space-y-16 lg:px-12"
@@ -77,21 +66,21 @@ export function PricingPageClient() {
         <h2 className="sr-only">Plans</h2>
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
           {PLANS.map((plan) => {
-            const PlanIcon = PLAN_ICONS[plan.plan];
+            const PlanIcon = PLAN_ICONS[plan.plan]
             return (
               <article
                 key={plan.name}
                 className={cn(
-                  "relative flex h-full min-h-[31rem] flex-col overflow-hidden rounded-[13px] border border-border/65 bg-background",
-                  plan.highlight && "border-brand",
+                  'relative flex h-full min-h-[31rem] flex-col overflow-hidden rounded-[13px] border border-border/65 bg-background',
+                  plan.highlight && 'border-brand',
                 )}
               >
                 <div className="space-y-4 p-5 pb-4 sm:p-6 sm:pb-4">
                   <div className="flex items-start justify-between gap-4">
                     <span
                       className={cn(
-                        "inline-flex h-11 w-11 items-center justify-center rounded-[10px] bg-muted/70 text-foreground",
-                        plan.highlight && "bg-brand/10 text-brand",
+                        'inline-flex h-11 w-11 items-center justify-center rounded-[10px] bg-muted/70 text-foreground',
+                        plan.highlight && 'bg-brand/10 text-brand',
                       )}
                     >
                       <PlanIcon
@@ -155,18 +144,15 @@ export function PricingPageClient() {
                     cta={plan.cta}
                     signUpHref={plan.href as Route}
                     highlight={plan.highlight}
-                    isLoggedIn={isLoggedIn}
-                    currentPlan={currentPlan}
-                    userEmail={user?.email ?? undefined}
                   />
                 </div>
               </article>
-            );
+            )
           })}
         </div>
 
         <p className="text-sm text-muted-foreground">
-          {PRICING.shopifyNote}{" "}
+          {PRICING.shopifyNote}{' '}
           <Link href={PRICING.shopifyHref} className="font-medium text-foreground underline-offset-4 hover:underline">
             {PRICING.shopifyCta}
           </Link>
@@ -189,9 +175,10 @@ export function PricingPageClient() {
             items={PRICING_FAQ}
             title={PRICING.faqTitle}
             sectionLabel={null}
+            defaultOpenFirst
           />
         </div>
       </Container>
     </Section>
-  );
+  )
 }
