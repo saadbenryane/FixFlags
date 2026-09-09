@@ -1,5 +1,7 @@
 'use client'
 
+import type { Route } from 'next'
+
 import { useEffect, useState } from 'react'
 import { CheckCircle2, Flag, Loader2, ShieldCheck, Sparkles, Users, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -91,7 +93,7 @@ export function PlanPickerDialog({
     if (!user) {
       if (plan !== 'FREE') {
         onOpenChange(false)
-        router.push(demoPathForPlan(plan as CheckoutPlan))
+        router.push(demoPathForPlan(plan as CheckoutPlan) as Route)
         return
       }
       router.push(signUpHref())
@@ -115,12 +117,12 @@ export function PlanPickerDialog({
 
     if (result.kind === 'demo' && result.url) {
       onOpenChange(false)
-      router.push(result.url)
+      router.push(result.url as Route)
       return
     }
     if (result.kind === 'waitlist') {
       onOpenChange(false)
-      router.push(result.url ?? demoPathForPlan(plan as CheckoutPlan))
+      router.push((result.url ?? demoPathForPlan(plan as CheckoutPlan)) as Route)
       return
     }
     if (result.kind === 'checkout_redirect') {

@@ -84,7 +84,7 @@ export const CARD_CATALOG: Record<
  */
 const CHECK_ID_TO_AREA: Array<{ match: RegExp; area: SiteCardArea }> = [
   { match: /^(no-https|security-|cookie-consent|mixed-content)/, area: 'security' },
-  { match: /^(perf-|lcp-|cls-|inp-|render-blocking|unused-|unoptimized|mobile-perf|mobile-lcp)/, area: 'performance' },
+  { match: /^(slow-3g-|flow-destination-slow-load|perf-|lcp-|cls-|inp-|render-blocking|unused-|unoptimized|mobile-perf|mobile-lcp)/, area: 'performance' },
   {
     match:
       /^(title-|description-|og-|canonical-|robots-|h1-|sitemap-|structured|broken-internal|broken-page|favicon|lang-|viewport-missing|no-structured)/,
@@ -92,7 +92,7 @@ const CHECK_ID_TO_AREA: Array<{ match: RegExp; area: SiteCardArea }> = [
   },
   {
     match:
-      /^(no-cta|cta-|conversion-|auth-checkout|interaction-|form-|tap-targets|heading-|h1-generic|messaging-|slop-|visual-)/,
+      /^(journey-|funnel-|no-cta|cta-|conversion-|auth-checkout|interaction-|form-|tap-targets|heading-|h1-generic|messaging-|slop-|visual-)/,
     area: 'conversion',
   },
   { match: /^(measurement-|analytics-|pixel-|meta-|gtm-|tag-)/, area: 'tracking' },

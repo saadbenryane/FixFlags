@@ -66,28 +66,12 @@ describe('ProductOverviewGrid', () => {
   it('presents each Site as a board link', () => {
     const { container } = render(<ProductOverviewGrid products={products} />)
 
-    expect(screen.getByRole('link', { name: /open site alpha/i })).toHaveAttribute(
-      'href',
-      '/sites/product-alpha'
-    )
-    expect(screen.getByRole('link', { name: /open site beta/i })).toHaveAttribute(
-      'href',
-      '/sites/product-beta'
-    )
+    expect(screen.getByRole('link', { name: 'Alpha' })).toHaveAttribute('href', '/sites/product-alpha')
+    expect(screen.getByRole('link', { name: 'Beta' })).toHaveAttribute('href', '/sites/product-beta')
     expect(screen.getByText('Clarify the signup action')).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { level: 3, name: 'Alpha' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { level: 3, name: 'Beta' }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('alpha.example')).toBeInTheDocument()
-    expect(
-      container.querySelector('img[src="/api/screenshots/review-alpha/desktop"]'),
-    ).toBeTruthy()
-    expect(
-      screen.getByRole('link', { name: /score trend 70 to 82/i }),
-    ).toBeInTheDocument()
+    expect(container.querySelector('svg[role="img"]')).toBeNull()
+    expect(screen.queryByText('Completed')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Check a website URL' })).toBeInTheDocument()
   })
 
   it('does not show success or a fake score while a check is pending', () => {
@@ -107,9 +91,9 @@ describe('ProductOverviewGrid', () => {
       />,
     )
 
-    expect(screen.getByText('Checking evidence')).toBeInTheDocument()
-    expect(screen.getByText('Pending')).toBeInTheDocument()
-    expect(screen.getByText(/Check in progress/)).toBeInTheDocument()
+    expect(screen.getByText('Checking your website')).toBeInTheDocument()
+    expect(screen.queryByText('44')).not.toBeInTheDocument()
+    expect(screen.queryByText('No open Flags')).not.toBeInTheDocument()
   })
 
   it('offers a first website check when the account has no Sites', () => {

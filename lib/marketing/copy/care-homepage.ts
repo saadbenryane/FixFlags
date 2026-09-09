@@ -12,6 +12,8 @@ export const CARE_HOME = {
     cta: 'Check my website', placeholder: 'yourwebsite.com',
   },
   boardHost: EXAMPLE_HOST,
+  boardSummary: '4 Flags in this example. View checked scope.',
+  exampleCheckedAt: '2026-09-09T09:00:00.000Z',
   boardAria: `${EXAMPLE_HOST} board`,
   previewNote: 'Controlled example, not a live assessment.',
   boardChecking: 'Checking',
@@ -19,7 +21,7 @@ export const CARE_HOME = {
   site: {
     label: CARD_CATALOG.site.name,
     status: 'Pages are loading',
-    answer: 'Pages are loading',
+    answer: '12 pages explored',
     pages: '12 pages',
     flags: '4 Flags',
     imageAlt: 'Controlled Everyday goods homepage with shopping and support actions',
@@ -32,6 +34,7 @@ export const CARE_HOME = {
     body: 'The form sends. Visitors never see that it worked.',
     outcome: 'Get in touch', action: 'See what happened',
     cropAlt: 'Controlled contact form after submit with no confirmation',
+    facts: ['Page: /contact', 'Action: submit the contact form', 'Observed: the request succeeds without a visible confirmation'],
     question: CARD_CATALOG.conversion.question,
   },
   cards: [

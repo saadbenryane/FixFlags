@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Flag,
@@ -21,9 +21,9 @@ import {
   type CardHealthState,
   type SiteCardArea,
 } from '@/lib/sites/card-areas'
-import { AddBoardCard, AddCardLibrary, BoardGrid, ProductBoardCard } from '@/components/sites/BoardCard'
-import { boardFlagPrompt } from '@/lib/sites/board-card'
-import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
+import { AddBoardCard, AddCardLibrary, BoardGrid, BoardSurface, ProductBoardCard } from '@/components/sites/BoardCard'
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { BoardDetails } from '@/components/sites/BoardDetails'
 
 function StatusDot({ state }: { state: CardHealthState }) {
   return (
@@ -60,6 +60,8 @@ export function SiteBoard({
   const router = useRouter()
   const [view, setView] = useState(initial)
   const [nav, setNav] = useState<'Dashboard' | 'Flags' | 'Site'>('Dashboard')
+  const opener = useRef<HTMLElement | null>(null)
+  const openCard = (id: SiteCardArea) => { opener.current = document.activeElement as HTMLElement; setSelectedCard(id) }
   const [selectedCard, setSelectedCard] = useState<SiteCardArea | null>(null)
   const [libraryOpen, setLibraryOpen] = useState(false)
   const [addedCards, setAddedCards] = useState<SiteCardArea[]>([])
@@ -188,14 +190,10 @@ export function SiteBoard({
   const presentAreas = visibleCards.map((card) => card.id)
 
   return (
-    <div className="min-h-screen bg-[var(--canvas)] text-foreground">
-      <div className="mx-auto flex max-w-6xl gap-6 px-4 py-6 lg:px-6">
-        <aside className="hidden w-56 shrink-0 flex-col gap-6 lg:flex">
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto flex max-w-[1360px] gap-8 px-4 py-6 pb-24 lg:px-8 lg:pb-8">
+        <aside className="hidden w-44 shrink-0 flex-col gap-6 lg:flex">
           <Logo variant="lockup" size="sm" />
-          <div>
-            <p className="font-medium">{view.host}</p>
-            <StatusLabel state={view.statusState}>{view.statusLabel}</StatusLabel>
-          </div>
           <nav className="flex flex-col gap-1" aria-label="Site">
             {(
               [
@@ -213,7 +211,7 @@ export function SiteBoard({
                 }}
                 className={cn(
                   'flex min-h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 text-sm font-medium',
-                  nav === label ? 'bg-brand-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60'
+                  nav === label ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60'
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -261,9 +259,9 @@ export function SiteBoard({
             <div>
               <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
                 <Logo variant="lockup" size="sm" />
-                <span className="truncate text-xs text-muted-foreground">{view.host}</span>
+                <Link href="/dashboard" className="text-xs text-muted-foreground">All Sites</Link>
               </div>
-              <h1 className="font-display text-3xl font-semibold tracking-tight">
+              <h1 className="text-2xl font-semibold tracking-tight">
                 {nav === 'Dashboard' ? 'Your board' : nav === 'Flags' ? 'Flags' : 'Your Site'}
               </h1>
               <p className="mt-1 max-w-xl text-sm text-muted-foreground">
@@ -310,16 +308,18 @@ export function SiteBoard({
           </header>
 
           {nav === 'Dashboard' ? (
+            <BoardSurface host={view.host} state={view.statusState} label={view.statusLabel} count={view.flags.length} onOpen={() => openCard('site')}>
             <BoardGrid>
               {visibleCards.map((card) => (
                 <ProductBoardCard
                   key={card.id}
                   card={card}
-                  onOpen={() => setSelectedCard(card.id)}
+                  onOpen={() => openCard(card.id)}
                 />
               ))}
               <AddBoardCard onOpen={() => setLibraryOpen(true)} />
             </BoardGrid>
+            </BoardSurface>
           ) : null}
 
           {nav === 'Flags' ? (
@@ -428,67 +428,44 @@ export function SiteBoard({
             </div>
           ) : null}
 
-          {selected && nav === 'Dashboard' ? (
-            <div className="fixed inset-0 z-40 flex items-end justify-center bg-foreground/20 p-4 sm:items-center">
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-label={selected.name}
-                className="max-h-[85vh] w-full max-w-lg overflow-auto rounded-2xl border border-border bg-background p-5 shadow-xl"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="font-display text-xl font-semibold">{selected.name}</h2>
-                    <p className="text-sm text-muted-foreground">{selected.question}</p>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedCard(null)}>
-                    Close
-                  </Button>
-                </div>
-                <p className="mt-4 text-lg font-medium">{selected.answer}</p>
-                {selected.detail ? (
-                  <p className="mt-1 text-sm text-muted-foreground">{selected.detail}</p>
-                ) : null}
-                {selected.facts.length > 0 ? (
-                  <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                    {selected.facts.map((fact) => (
-                      <li key={fact}>{fact}</li>
-                    ))}
-                  </ul>
-                ) : null}
-                {selected.coverage ? (
-                  <p className="mt-3 text-xs text-muted-foreground">{selected.coverage}</p>
-                ) : null}
+          <Dialog open={Boolean(selected && nav === 'Dashboard')} onOpenChange={open => { if (!open) setSelectedCard(null) }}>
+            <DialogContent className="max-h-[85dvh] w-[calc(100%-32px)] max-w-xl overflow-y-auto rounded-2xl bg-background p-6 sm:p-8" onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus() }}>
+              <DialogTitle className="pr-8 text-2xl">{selected?.name}</DialogTitle>
+              <DialogDescription>{selected?.question}</DialogDescription>
+              {selected ? <>
+                <p className="text-xl font-semibold tracking-tight">{selectedFlags.length ? `${selectedFlags.length} ${selectedFlags.length === 1 ? 'Flag' : 'Flags'}` : selected.answer}</p>
+                <BoardDetails
+                  image={selected.captureUrl ? { src: selected.captureUrl, alt: selected.captureAlt ?? selected.name } : null}
+                  checkedAt={selected.checkedAt}
+                  sources={selected.sources}
+                  coverage={selected.id === 'site' ? 'Page results from the latest check. Areas without sufficient evidence remain unverified.' : selected.coverage}
+                  facts={selected.id === 'site' ? [] : selected.facts.filter(fact => fact !== selected.answer)}
+                  pages={selected.id === 'site' ? view.checkedPages ?? [] : undefined}
+                />
                 <div className="mt-5 space-y-3">
                   {selectedFlags.length === 0 ? (
                     <p className="text-sm text-muted-foreground">No open Flags in this area.</p>
                   ) : (
-                    selectedFlags.slice(0, 3).map((flag) => (
+                    selectedFlags.map((flag) => (
                       <div key={flag.id} className="rounded-xl border border-border/70 p-4">
                         <Link
                           href={`/sites/${siteId}/flags/${flag.id}`}
                           className="flex items-start justify-between gap-3"
                         >
                           <div>
-                            <p className="font-medium">{flag.problem}</p>
-                            <p className="mt-1 text-sm text-muted-foreground">{flag.whyItMatters}</p>
+                            <p className="line-clamp-2 font-medium">{flag.problem}</p>
+
                           </div>
                           <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
                         </Link>
-                        <SiteFlagActions
-                          siteId={siteId}
-                          flagId={flag.id}
-                          fixText={flag.fix}
-                          promptText={boardFlagPrompt(flag)}
-                          shareUrl={`/sites/${siteId}/flags/${flag.id}`}
-                        />
+
                       </div>
                     ))
                   )}
                 </div>
-              </div>
-            </div>
-          ) : null}
+              </> : null}
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
 

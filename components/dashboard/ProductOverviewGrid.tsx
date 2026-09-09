@@ -1,199 +1,43 @@
+'use client'
+
 import Link from 'next/link'
 import type { Route } from 'next'
-import { ArrowRight, CircleAlert, Eye, Flag } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Surface } from '@/components/ui/surface'
-import { SectionTitle } from '@/components/ui/typography'
-import { ProductCaptureThumb } from '@/components/dashboard/ProductCaptureThumb'
-import { ProductScoreSparkline } from '@/components/dashboard/ProductScoreSparkline'
+import { ArrowRight, Globe2 } from 'lucide-react'
+import { BoardCard } from '@/components/sites/BoardCard'
 import type { ProductOverviewDTO } from '@/lib/products/workspace'
-import { presentProductReview } from '@/lib/products/review-state'
 import { REPORT_COPY } from '@/lib/marketing/copy'
-import { displayHostname } from '@/lib/utils/url-helpers'
+import styles from '@/components/sites/BoardCard.module.css'
 
-function reviewDate(value: string): string {
-  return new Date(value).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
-
-function productLinkLabel(product: ProductOverviewDTO): string {
+export function ProductOverviewGrid({ products }: { products: ProductOverviewDTO[] }) {
   const copy = REPORT_COPY.workspace.dashboard
-  const state = presentProductReview(product.latestManualReview)
-  const first = product.scoreHistory[0]?.score
-  const last = product.scoreHistory.at(-1)?.score
-  const trend =
-    product.scoreHistory.length > 1 && first != null && last != null
-      ? copy.scoreTrend(Math.round(first), Math.round(last))
-      : copy.latestScore(state.score)
-  const attention = product.topAttention
-    ? copy.attentionAria(product.attentionCount, product.topAttention.title)
-    : ''
-  return `${copy.openProductAria(product.name)}${trend}${attention}`
-}
-
-function EmptySitesRow() {
-  const copy = REPORT_COPY.workspace.dashboard
-  return (
-    <Surface variant="elevated" className="overflow-hidden p-0">
-      <Link
-        href={'/new' as Route}
-        aria-label="Check a website URL"
-        className="group grid min-h-28 grid-cols-[minmax(0,1fr)_auto] gap-4 px-4 py-4 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:items-center sm:px-5"
-      >
-        <div className="min-w-0">
-          <h3 className="text-base font-semibold tracking-heading">
-            Check your first website
-          </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Paste a URL to open your Site board. {copy.sampleAttention}.
-          </p>
-        </div>
-        <ArrowRight
-          className="h-5 w-5 text-brand transition-transform group-hover:translate-x-0.5"
-          aria-hidden
+  return <section aria-labelledby="products-heading" className={styles.surface}>
+    <div className={styles.surfaceHeader}>
+      <h2 id="products-heading" className="sr-only">{copy.productsHeading}</h2>
+      <span className="text-xs text-muted-foreground">{copy.productCount(products.length)}</span>
+    </div>
+    <div className="grid gap-3 md:grid-cols-2">
+      {products.map(product => {
+        const review = product.latestManualReview
+        const completed = review?.status === 'COMPLETED'
+        const checking = Boolean(review && !completed && review.status !== 'FAILED')
+        const answer = checking ? 'Checking your website' : review?.status === 'FAILED' ? 'Could not complete the check' : product.topAttention?.title ?? (completed ? review?.reportCompleteness === 'FULL' ? 'No open Flags' : 'Coverage is incomplete' : 'Ready for a first check')
+        return <BoardCard key={product.id}
+          name={product.name}
+          state={checking ? 'checking' : product.attentionCount ? 'attention' : 'unknown'}
+          status={checking ? 'Checking' : completed ? review?.reportCompleteness === 'FULL' ? 'Checked' : 'Partial check' : 'Not checked yet'}
+          answer={answer}
+          detail={product.purpose}
+          flagCount={product.attentionCount}
+          footer={product.watching ? copy.watching : null}
+          href={`/sites/${product.id}` as Route}
+          icon={Globe2}
         />
+      })}
+      <Link href={'/new' as Route} aria-label="Check a website URL" className={styles.addCard}>
+        <Globe2 size={22} aria-hidden="true" />
+        <strong>{products.length ? 'Add a website' : 'Check your first website'}</strong>
+        <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">Start with a URL <ArrowRight size={16} aria-hidden="true" /></span>
       </Link>
-    </Surface>
-  )
-}
-
-export function ProductOverviewGrid({
-  products,
-}: {
-  products: ProductOverviewDTO[]
-}) {
-  const copy = REPORT_COPY.workspace.dashboard
-  return (
-    <section aria-labelledby="products-heading" className="space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <SectionTitle id="products-heading">{copy.productsHeading}</SectionTitle>
-        <Badge variant="outline" className="font-mono tabular-nums">
-          {copy.productCount(products.length)}
-        </Badge>
-      </div>
-
-      {products.length === 0 ? (
-        <EmptySitesRow />
-      ) : (
-        <Surface variant="elevated" className="overflow-hidden p-0">
-          <div className="divide-y divide-border/60">
-            {products.map((product) => {
-              const state = presentProductReview(product.latestManualReview)
-              const reviewAt = product.latestManualReview
-                ? product.latestManualReview.completedAt ||
-                  product.latestManualReview.createdAt
-                : null
-              return (
-                <Link
-                  key={product.id}
-                  href={`/sites/${product.id}` as Route}
-                  aria-label={productLinkLabel(product)}
-                  className="group grid min-h-28 grid-cols-[7.5rem_minmax(0,1fr)] gap-4 px-4 py-4 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus-ring sm:grid-cols-[7.5rem_minmax(0,1.1fr)_11rem_minmax(0,1fr)_auto] sm:items-center sm:px-5"
-                >
-                  <ProductCaptureThumb src={product.desktopScreenshotUrl} />
-
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="truncate text-base font-semibold tracking-heading">
-                        {product.name}
-                      </h3>
-                      {product.watching ? (
-                        <Badge variant="outline" className="shrink-0 gap-1.5">
-                          <Eye className="h-3.5 w-3.5" aria-hidden />
-                          {copy.watching}
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 truncate text-xs text-muted-foreground">
-                      {displayHostname(product.url) || product.url}
-                    </p>
-                    {product.purpose ? (
-                      <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
-                        {product.purpose}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="col-span-2 min-w-0 sm:col-span-1 sm:border-l sm:border-border/50 sm:pl-4">
-                    <p className="text-xs text-muted-foreground">
-                      {copy.latestReview}
-                    </p>
-                    <ProductScoreSparkline
-                      productId={product.id}
-                      points={product.scoreHistory}
-                      decorative
-                      className="mt-1.5"
-                    />
-                    <div className="mt-1 flex items-baseline justify-between gap-2">
-                      <span className="font-mono text-lg font-semibold tabular-nums">
-                        {state.score}
-                      </span>
-                      {reviewAt ? (
-                        <span className="text-xs text-muted-foreground">
-                          {reviewDate(reviewAt)}
-                        </span>
-                      ) : null}
-                    </div>
-                    <Badge variant={state.tone} className="mt-1.5">
-                      {state.label}
-                    </Badge>
-                  </div>
-
-                  <div className="col-span-2 flex min-w-0 items-start gap-2 sm:col-span-1 sm:border-l sm:border-border/50 sm:pl-4">
-                    {product.topAttention ? (
-                      <>
-                        {product.topAttention.severity === 'CRITICAL' ? (
-                          <CircleAlert
-                            className="mt-0.5 h-4 w-4 shrink-0 text-destructive"
-                            aria-hidden
-                          />
-                        ) : (
-                          <Flag
-                            className="mt-0.5 h-4 w-4 shrink-0 text-brand"
-                            aria-hidden
-                          />
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium text-muted-foreground">
-                            {copy.attentionOpen(product.attentionCount)}
-                          </p>
-                          <p className="mt-0.5 line-clamp-2 text-sm font-medium">
-                            {product.topAttention.title}
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          {copy.attentionLabel}
-                        </p>
-                        <p className="mt-0.5 text-sm">
-                          {!product.latestManualReview
-                            ? copy.noReviewYet
-                            : product.latestManualReview.status === 'FAILED'
-                              ? copy.reviewFailed
-                              : product.latestManualReview.status !==
-                                  'COMPLETED'
-                                ? copy.reviewInProgress
-                                : copy.zeroOpen}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <ArrowRight
-                    className="hidden h-5 w-5 text-brand transition-transform group-hover:translate-x-0.5 sm:block"
-                    aria-hidden
-                  />
-                </Link>
-              )
-            })}
-          </div>
-        </Surface>
-      )}
-    </section>
-  )
+    </div>
+  </section>
 }

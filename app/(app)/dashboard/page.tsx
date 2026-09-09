@@ -70,18 +70,23 @@ export default async function DashboardPage() {
         ) : null}
       </PageHeader>
 
-      <UsageMeter
+      <details className="text-sm text-muted-foreground">
+        <summary className="min-h-11 cursor-pointer py-3">Account usage</summary>
+        <UsageMeter
         variant="compact"
         used={used}
         limit={displayLimit}
         pending={pending}
         plan={user.plan}
       />
+      </details>
 
       <ProductOverviewGrid products={products} />
 
+      <details className="rounded-2xl border border-border/60 p-5">
+      <summary className="min-h-11 cursor-pointer text-sm font-medium">Connect a Shopify store</summary>
       <Surface
-        variant="elevated"
+        variant="flat"
         className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-center"
       >
         <div className="flex items-center gap-3">
@@ -97,6 +102,7 @@ export default async function DashboardPage() {
           <ShopifyInstallCta idSuffix="-dashboard" />
         </div>
       </Surface>
+      </details>
 
       {atAuditLimit ? (
         <ContextualUpgradeCard

@@ -12,6 +12,13 @@ export const REVIEW_ENTRY = {
 } as const
 
 export const SITE_BOARD_COPY = {
+  viewDetails: 'View details',
+  checkedScope: 'What was checked',
+  capture: 'Captured page',
+  sources: 'Source',
+  noCapture: 'No page capture is available for this check.',
+  noFreshness: 'No completed check recorded yet.',
+  noPages: 'No page-level results were recorded for this check.',
   openFlag: 'See what happened',
   fixThis: 'Fix this',
   verifyFix: 'Verify fix',

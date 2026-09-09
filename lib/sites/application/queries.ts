@@ -49,6 +49,7 @@ export type SiteHomeView = {
     label: string
   }
   coverageSummary: string
+  checkedPages?: Array<{ url: string; title: string | null; status: string }>
 }
 
 const auditSelect = {
@@ -154,10 +155,11 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     }).catch(() => [])
   }
 
-  const [flags, outcomes, pageCount] = await Promise.all([
+  const [flags, outcomes, pageCount, checkedPages] = await Promise.all([
     loadSiteFlags(site),
     listSiteOutcomes(site),
     countSitePages(site),
+    audit ? prisma.auditPage.findMany({ where: { auditId: audit.id }, orderBy: { position: 'asc' }, select: { url: true, title: true, status: true } }) : [],
   ])
 
   const inFlight = isAuditInFlight(audit?.status)
@@ -226,6 +228,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
 
   return {
     site,
+    checkedPages,
     host: site.canonicalHost,
     statusLabel: inFlight
       ? lastKnownFacts

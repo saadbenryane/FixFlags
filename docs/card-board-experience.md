@@ -31,13 +31,15 @@ Health cards answer whether something works. Context cards explain what is happe
 
 | Dimension | Meaning | Presentation |
 | --- | --- | --- |
-| Healthy | Sufficient current evidence for the stated scope | Small green signal and `Last checked` (or relative freshness). No health slogan in the header. |
-| Needs attention | Meaningful review without confirmed severe failure | Brand-orange signal. Up to three Flag chips to the left of the dot. No “Needs attention” label. |
+| Healthy | Sufficient current evidence for the stated scope | Small green signal with an accessible status label. Freshness appears in card depth, not repeated across the board. |
+| Needs attention | Meaningful review without confirmed severe failure | Brand-orange signal with the area’s Flag count. Open the card to read the relevant Flags. |
 | Problem | Confirmed important failure | Brand-orange signal, restrained orange edge, Flag chips, and a clear card-depth action |
 | Unknown | Missing, unavailable, insufficient or expired evidence | Gray signal and explanation/recovery |
 | Checking | Activity independent of health | Brand orange ring and actual work description |
 
-Card header anatomy: name on the left; Flag chips (max three, then `+N`) then the status dot on the right. Clicking a chip opens that Flag. Clicking the card or chevron opens card depth. Footer is `source · freshness` as product names and Lucide marks, never third-party logos. Amber `--warning` stays for billing and quota caution, not board health.
+Card header anatomy: name on the left; status signal and compact Flag count on the right. The signal and card open the same detail. One overall count lives in the board header; the Site thumbnail does not repeat it. Cards keep one short answer, at most two lines of context, and a compact thumbnail. Full screenshots, timestamps, sources, checked pages and Flag links live in the detail panel. The homepage and signed-in overview share the same card primitive; the live Site uses the same board surface. Dialogs trap focus, support Escape, and restore focus to the opener.
+
+The Site detail reads actual AuditPage results for the resolved latest audit, behind the existing Site access check. Queued, partial and failed pages stay distinct from completed pages. Older unresolved Improvements retain their originating Flag evidence and check identity, so counts, category cards and detail links agree. Never replace missing evidence with a healthy claim.
 
 The Add card is last on the grid. Its library currently offers public-check cards (Uptime, Accessibility). Connections do not appear as a logo marketplace.
 

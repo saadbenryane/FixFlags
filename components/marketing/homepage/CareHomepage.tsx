@@ -9,8 +9,9 @@ import {
 import { AuditInput } from '@/components/audit/AuditInput'
 import { Logo } from '@/components/brand/Logo'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { AddBoardCard, AddCardLibrary, BoardCard, BoardGrid, BOARD_CARD_ICONS } from '@/components/sites/BoardCard'
+import { AddBoardCard, AddCardLibrary, BoardCard, BoardGrid, BoardStatus, BOARD_CARD_ICONS } from '@/components/sites/BoardCard'
 import { CARE_HOME as C, SITE_BOARD_COPY } from '@/lib/marketing/copy'
+import { BoardDetails } from '@/components/sites/BoardDetails'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
 import s from './CareHomepage.module.css'
 import Image from 'next/image'
@@ -121,10 +122,7 @@ export function CareHomepage() {
           </span>
           <div className={s.boardHeader}>
             <span><Globe2 size={16} aria-hidden="true" />{C.boardHost}</span>
-            <span className={s.boardMeta}>
-              <span className={s.metaChecking} aria-hidden="true">{C.boardChecking}</span>
-              <span className={s.metaChecked}>{C.boardMeta}</span>
-            </span>
+            <BoardStatus state="attention" label={C.boardSummary} count={4} onOpen={() => openCard('site')} />
           </div>
           <div className={s.boardStage}>
             <BoardGrid>
@@ -133,7 +131,6 @@ export function CareHomepage() {
               status={C.site.status}
               state="healthy"
               answer={C.site.answer}
-              footer={`${C.site.pages} · ${C.site.flags}`}
               visual={{ src: siteImagePath, alt: C.site.imageAlt }}
               wide
               icon={BOARD_CARD_ICONS.site}
@@ -305,14 +302,11 @@ export function CareHomepage() {
       <DialogDescription>{selected === 'site' ? C.site.question : selected === 'conversion' ? C.flag.question : selectedPreview?.question}</DialogDescription>
       {selected === 'site' ? <>
         <p className={s.detailAnswer}>{C.site.answer}</p>
-        <ul className={s.detailFacts}>{C.site.facts.map(fact => <li key={fact}>{fact}</li>)}</ul>
-        <p className={s.scope}>{C.site.coverage}</p>
+        <BoardDetails image={{ src: siteImagePath, alt: C.site.imageAlt }} checkedAt={C.exampleCheckedAt} sources={[SITE_BOARD_COPY.browserSource]} facts={C.site.facts} coverage={C.site.coverage} />
       </> : selected === 'conversion' ? <>
         <p className={s.detailAnswer}>{C.flag.title}</p>
         <p className={s.scope}>{C.flag.body}</p>
-        <a href={failedEvidencePath} target="_blank" rel="noopener noreferrer">
-          <Image src={failedEvidencePath} alt={C.flag.cropAlt} width={720} height={440} sizes="(max-width: 767px) calc(100vw - 72px), 560px" />
-        </a>
+        <BoardDetails image={{ src: failedEvidencePath, alt: C.flag.cropAlt }} checkedAt={C.exampleCheckedAt} sources={[SITE_BOARD_COPY.browserSource]} facts={C.flag.facts} coverage={C.workflow.source} />
         <div className={s.mcpActions}>
           <button type="button" onClick={() => void copyFix('ai')}><Copy size={15} aria-hidden="true" />{SITE_BOARD_COPY.copyPrompt}</button>
           <button type="button" onClick={() => void copyFix('share')}><Copy size={15} aria-hidden="true" />{SITE_BOARD_COPY.share}</button>
@@ -321,8 +315,7 @@ export function CareHomepage() {
         <a href="#flag-example" className={s.textLink} onClick={() => { dialogOpener.current = null; setSelected(null) }}>{C.flag.action}<ArrowRight size={17} aria-hidden="true" /></a>
       </> : selectedPreview ? <>
         <p className={s.detailAnswer}>{selectedPreview.answer}</p>
-        <ul className={s.detailFacts}>{selectedPreview.facts.map(fact => <li key={fact}>{fact}</li>)}</ul>
-        <p className={s.scope}>{selectedPreview.coverage}</p>
+        <BoardDetails checkedAt={C.exampleCheckedAt} sources={[selectedPreview.id === 'tracking' ? 'Google Analytics' : SITE_BOARD_COPY.browserSource]} facts={selectedPreview.facts} coverage={selectedPreview.coverage} />
       </> : null}
     </DialogContent></Dialog>
     <AddCardLibrary

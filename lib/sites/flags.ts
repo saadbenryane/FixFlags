@@ -11,6 +11,7 @@ export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
         status: { in: ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS', 'READY_TO_VERIFY', 'UNVERIFIED'] },
       },
       orderBy: [{ priority: 'asc' }, { updatedAt: 'desc' }],
+      include: { occurrences: { orderBy: { createdAt: 'desc' }, take: 1, include: { flag: true } } },
       take: 50,
     })
 
@@ -30,7 +31,7 @@ export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
 
     if (improvements.length > 0) {
       return improvements.map((imp) => {
-        const flag = auditFlags.find((f) => f.fingerprint === imp.fingerprint)
+        const flag = auditFlags.find((f) => f.fingerprint === imp.fingerprint) ?? imp.occurrences?.[0]?.flag
         return {
           id: flag?.id ?? imp.id,
           improvementId: imp.id,
@@ -46,7 +47,7 @@ export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
           status: imp.status,
           area: cardAreaForCheck({
             checkId: flag?.checkId,
-            rubric: flag?.rubric,
+            rubric: flag?.rubric ?? 'EXPERIENCE',
             impactTag: flag?.impactTag,
           }),
         }

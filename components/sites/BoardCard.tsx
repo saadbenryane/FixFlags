@@ -6,7 +6,6 @@ import type { Route } from 'next'
 import {
   Activity,
   Accessibility,
-  Flag,
   Gauge,
   Globe2,
   Plus,
@@ -19,10 +18,6 @@ import {
 } from 'lucide-react'
 import { ADDABLE_BOARD_CARDS, CARD_CATALOG, type CardHealthState, type SiteCardArea } from '@/lib/sites/card-areas'
 import {
-  boardCardHeaderText,
-  boardCardSignalLabel,
-  formatBoardSources,
-  visibleFlagChips,
   type BoardCardFlagChip,
   type BoardCardView,
 } from '@/lib/sites/board-card'
@@ -85,68 +80,42 @@ export function BoardGrid({ children }: { children: React.ReactNode }) {
   return <div className={styles.grid}>{children}</div>
 }
 
-function FlagChips({ flags }: { flags: BoardCardFlag[] }) {
-  const { shown, overflow } = visibleFlagChips(flags)
-  if (shown.length === 0) return null
-  return (
-    <span className={styles.flags}>
-      {shown.map((flag) => {
-        const className = styles.flagChip
-        const inner = (
-          <>
-            <Flag size={11} aria-hidden="true" />
-            <span>{flag.title}</span>
-          </>
-        )
-        const external = flag.href.startsWith('#') || flag.href.startsWith('http')
-        if (external) {
-          return (
-            <a
-              key={flag.id}
-              className={className}
-              href={flag.href}
-              onClick={(event) => event.stopPropagation()}
-            >
-              {inner}
-            </a>
-          )
-        }
-        return (
-          <Link
-            key={flag.id}
-            className={className}
-            href={flag.href as Route}
-            onClick={(event) => event.stopPropagation()}
-          >
-            {inner}
-          </Link>
-        )
-      })}
-      {overflow > 0 ? <span className={styles.flagMore}>+{overflow}</span> : null}
-    </span>
-  )
+export function BoardStatus({ state, label, text = label, count = 0, onOpen }: {
+  state: CardHealthState; label: string; text?: string; count?: number; onOpen?: () => void
+}) {
+  const content = <><i aria-hidden="true" />{count > 0 ? <span>{count} {count === 1 ? 'Flag' : 'Flags'}</span> : state === 'unknown' || state === 'checking' ? <span>{text}</span> : <span className="sr-only">{label}</span>}</>
+  const className = `${styles.signal} ${SIGNAL_CLASS[state]} ${state === 'checking' ? styles.checkingDot : ''}`
+  return onOpen
+    ? <button type="button" className={`${className} ${styles.statusButton}`} onClick={onOpen} aria-label={label} title={label}>{content}</button>
+    : <span className={className} title={label}>{content}</span>
+}
+
+export function BoardSurface({ host, state, label, count, onOpen, children }: {
+  host: string; state: CardHealthState; label: string; text?: string; count?: number; onOpen: () => void; children: React.ReactNode
+}) {
+  return <div className={styles.surface}>
+    <div className={styles.surfaceHeader}><span><Globe2 size={16} aria-hidden="true" />{host}</span><BoardStatus state={state} label={label} count={count} onOpen={onOpen} /></div>
+    {children}
+  </div>
 }
 
 export function BoardCard({
   name,
+  status,
   state,
   answer,
   detail,
   footer,
   visual,
-  crop,
-  outcome,
   action,
   href,
   wide,
   activity,
   icon: Icon,
-  chart,
   onOpen,
   metric,
   flags,
-  sources,
-  checkedAt,
+  flagCount,
 }: {
   name: string
   status: string
@@ -165,6 +134,7 @@ export function BoardCard({
   chart?: 'bars' | 'none'
   onOpen?: () => void
   metric?: boolean
+  flagCount?: number
   flags?: BoardCardFlag[] | null
   sources?: string[] | null
   checkedAt?: string | null
@@ -173,18 +143,15 @@ export function BoardCard({
   const className = [
     styles.card,
     wide ? styles.wide : '',
-    state === 'problem' ? styles.problem : '',
+    visual ? styles.withVisual : '',
+    state === 'problem' && !visual ? styles.problem : '',
     checking ? styles.checking : '',
   ]
     .filter(Boolean)
     .join(' ')
 
-  const hideAnswer = Boolean(visual)
-  const headerText = boardCardHeaderText(state, activity, checkedAt ?? null)
-  const signalLabel = boardCardSignalLabel(state, activity, checkedAt ?? null)
-  const sourceLine = sources && sources.length > 0 ? formatBoardSources(sources) : null
-  const footerText = sourceLine && footer ? `${sourceLine} · ${footer}` : sourceLine ?? footer ?? null
-  const openLabel = action ?? `Open ${name}`
+  const signalLabel = checking ? SITE_BOARD_COPY.checking : state === 'healthy' ? 'Checks passed' : status
+  const openLabel = action ?? SITE_BOARD_COPY.viewDetails
 
   const body = (
     <>
@@ -197,29 +164,12 @@ export function BoardCard({
           objectPosition="center top"
         />
       ) : null}
-      {hideAnswer ? null : <strong className={metric ? styles.metric : styles.answer}>{answer}</strong>}
+      <strong className={metric ? styles.metric : styles.answer}>{answer}</strong>
       {detail ? <span className={styles.detail}>{detail}</span> : null}
-      {outcome ? <span className={styles.outcome}>{outcome}</span> : null}
-      {crop ? (
-        <CardMedia
-          src={crop.src}
-          alt={crop.alt}
-          className={styles.crop}
-          sizes="(max-width: 767px) calc(100vw - 88px), 280px"
-          objectPosition="center 70%"
-        />
-      ) : null}
-      {chart === 'bars' ? (
-        <span className={styles.bars} aria-hidden="true">
-          {Array.from({ length: 7 }, (_, i) => (
-            <i key={i} />
-          ))}
-        </span>
-      ) : null}
-      {footerText ? <span className={styles.footer}>{footerText}</span> : null}
+      {footer ? <span className={styles.footer}>{footer}</span> : null}
       {onOpen || href ? (
         <span className={styles.action}>
-          {openLabel}
+          <span>{openLabel}</span>
           <ArrowRight size={18} aria-hidden="true" />
         </span>
       ) : null}
@@ -232,22 +182,7 @@ export function BoardCard({
         <Icon size={17} aria-hidden="true" />
         {name}
       </span>
-      <span className={styles.headerEnd}>
-        <FlagChips flags={flags ?? []} />
-        <span
-          className={[
-            styles.signal,
-            SIGNAL_CLASS[state],
-            checking ? styles.checkingDot : '',
-          ]
-            .filter(Boolean)
-            .join(' ')}
-          aria-label={signalLabel}
-        >
-          <i aria-hidden="true" />
-          {headerText ? <span>{headerText}</span> : null}
-        </span>
-      </span>
+      <BoardStatus state={checking ? 'checking' : state} label={`${name}: ${signalLabel}`} text={checking ? signalLabel : ''} count={flagCount ?? flags?.length} onOpen={onOpen} />
     </span>
   )
 
@@ -301,21 +236,15 @@ export function ProductBoardCard({
 }) {
   const Icon = BOARD_CARD_ICONS[card.id] ?? Globe2
   const problem = card.problem
-  const siteFooter =
-    card.id === 'site'
-      ? [card.detail, card.openFlagCount > 0 ? `${card.openFlagCount} Flag${card.openFlagCount === 1 ? '' : 's'}` : null]
-          .filter(Boolean)
-          .join(' · ') || null
-      : null
 
   return (
     <BoardCard
       name={card.name}
       status={card.status}
       state={card.state}
-      answer={card.answer}
-      detail={problem ? problem.body : card.detail}
-      footer={siteFooter}
+      answer={card.id === 'site' ? card.detail ?? 'Website overview' : card.answer}
+      detail={card.id === 'site' ? null : problem ? problem.body : card.detail}
+
       visual={card.captureUrl && card.captureAlt ? { src: card.captureUrl, alt: card.captureAlt } : null}
       crop={card.cropUrl && card.cropAlt ? { src: card.cropUrl, alt: card.cropAlt } : null}
       outcome={problem?.outcomeName}
@@ -324,7 +253,7 @@ export function ProductBoardCard({
       activity={card.activity}
       icon={Icon}
       onOpen={onOpen}
-      flags={card.flagChips}
+      flags={card.id === 'site' ? [] : card.flagChips}
       sources={card.sources}
       checkedAt={card.checkedAt}
     />
