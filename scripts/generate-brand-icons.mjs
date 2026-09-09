@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 /**
- * Generates brand-aligned static icons in public/ from the geometric F mark.
+ * Derives runtime brand assets from owner-supplied originals.
+ * Originals stay in docs/brand/reference/. This script only resizes
+ * (contain, same proportions). It does not crop, recolor, or key out
+ * backgrounds.
+ *
  * Run: node scripts/generate-brand-icons.mjs
  */
 import { writeFileSync } from 'node:fs'
@@ -9,67 +13,73 @@ import sharp from 'sharp'
 
 const ROOT = process.cwd()
 const PUBLIC = join(ROOT, 'public')
-const MARK = join(PUBLIC, 'brand/logo-mark.png')
+const BRAND = join(PUBLIC, 'brand')
+const SOURCE_MARK = join(ROOT, 'docs/brand/reference/logo-mark-source.jpg')
+const SOURCE_LOCKUP = join(ROOT, 'docs/brand/reference/logo-lockup-source.jpg')
 
-async function markPng(size, scale = 0.9) {
-  const maxMarkSize = Math.round(size * scale)
-  const mark = await sharp(MARK)
-    .trim()
-    .resize({
-      width: maxMarkSize,
-      height: maxMarkSize,
-      fit: 'inside',
+const MARK_CSS = { sm: 24, md: 28, lg: 32 }
+const LOCKUP_CSS = { sm: 24, md: 28, lg: 32 }
+const RETINA = 3
+
+async function writeContain(src, width, height, out) {
+  await sharp(src)
+    .resize(width, height, {
+      fit: 'contain',
       withoutEnlargement: false,
     })
     .png()
-    .toBuffer()
-
-  const metadata = await sharp(mark).metadata()
-  const width = metadata.width ?? maxMarkSize
-  const height = metadata.height ?? maxMarkSize
-
-  return sharp({
-    create: {
-      width: size,
-      height: size,
-      channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-    },
-  })
-    .composite([
-      {
-        input: mark,
-        left: Math.round((size - width) / 2),
-        top: Math.round((size - height) / 2),
-      },
-    ])
-    .png()
-    .toBuffer()
-}
-
-async function writePng(size, filename, scale = 0.9) {
-  const out = join(PUBLIC, filename)
-  await sharp(await markPng(size, scale)).toFile(out)
-  console.log(`  wrote ${filename}`)
-}
-
-async function writeFaviconIco() {
-  const png16 = await markPng(16, 0.92)
-  const png32 = await markPng(32, 0.92)
-
-  const { default: pngToIco } = await import('png-to-ico')
-  const ico = await pngToIco([png16, png32])
-  writeFileSync(join(PUBLIC, 'favicon.ico'), ico)
-  console.log('  wrote favicon.ico')
+    .toFile(out)
+  console.log(`  wrote ${out.slice(ROOT.length + 1)} (${width}×${height})`)
 }
 
 async function main() {
-  console.log('Generating brand icons...')
-  await writePng(180, 'apple-icon.png', 0.86)
-  await writePng(192, 'icon-192.png')
-  await writePng(512, 'icon-512.png')
-  await writePng(512, 'icon-512-maskable.png', 0.74)
-  await writeFaviconIco()
+  console.log('Generating brand assets from originals...')
+
+  const markMeta = await sharp(SOURCE_MARK).metadata()
+  const lockupMeta = await sharp(SOURCE_LOCKUP).metadata()
+  const markW = markMeta.width ?? 1024
+  const markH = markMeta.height ?? 1024
+  const lockupW = lockupMeta.width ?? 1024
+  const lockupH = lockupMeta.height ?? 384
+  const lockupRatio = lockupW / lockupH
+
+  await writeContain(SOURCE_MARK, markW, markH, join(BRAND, 'logo-mark.png'))
+  await writeContain(SOURCE_LOCKUP, lockupW, lockupH, join(BRAND, 'logo-lockup.png'))
+  await writeContain(SOURCE_LOCKUP, lockupW, lockupH, join(BRAND, 'logo-lockup-dark.png'))
+  await writeContain(SOURCE_LOCKUP, lockupW, lockupH, join(BRAND, 'logo-lockup-light.png'))
+
+  for (const [size, cssPx] of Object.entries(MARK_CSS)) {
+    const px = cssPx * RETINA
+    await writeContain(SOURCE_MARK, px, px, join(BRAND, `logo-mark-${size}.png`))
+  }
+
+  for (const [size, cssH] of Object.entries(LOCKUP_CSS)) {
+    const height = cssH * RETINA
+    const width = Math.round(height * lockupRatio)
+    await writeContain(SOURCE_LOCKUP, width, height, join(BRAND, `logo-lockup-${size}.png`))
+  }
+
+  await writeContain(SOURCE_MARK, 32, 32, join(PUBLIC, 'icon-32.png'))
+  await writeContain(SOURCE_MARK, 180, 180, join(PUBLIC, 'apple-icon.png'))
+  await writeContain(SOURCE_MARK, 192, 192, join(PUBLIC, 'icon-192.png'))
+  await writeContain(SOURCE_MARK, 512, 512, join(PUBLIC, 'icon-512.png'))
+  await writeContain(SOURCE_MARK, 512, 512, join(PUBLIC, 'icon-512-maskable.png'))
+
+  const png16 = await sharp(SOURCE_MARK)
+    .resize(16, 16, { fit: 'contain' })
+    .png()
+    .toBuffer()
+  const png32 = await sharp(SOURCE_MARK)
+    .resize(32, 32, { fit: 'contain' })
+    .png()
+    .toBuffer()
+  const { default: pngToIco } = await import('png-to-ico')
+  writeFileSync(join(PUBLIC, 'favicon.ico'), await pngToIco([png16, png32]))
+  console.log('  wrote public/favicon.ico')
+
+  const prototypeMark = join(ROOT, 'prototypes/fixflags-board/public/assets/logo-mark.png')
+  await writeContain(SOURCE_MARK, markW, markH, prototypeMark)
+
   console.log('Done.')
 }
 
