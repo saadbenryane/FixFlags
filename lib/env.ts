@@ -43,6 +43,7 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().optional(),
   ADMIN_NOTIFICATION_EMAIL: z.string().email().optional(),
+  DEMO_NOTIFY_EMAIL: z.string().email().optional(),
   ADMIN_USER_IDS: z.string().optional().transform(s => s ? s.split(',').map(x => x.trim()).filter(Boolean) : []),
   REQUIRE_EMAIL_VERIFICATION: z.enum(['true', 'false']).default('false').transform(s => s === 'true'),
   SUPPORT_TENANT_SLUG: z.string().optional(),

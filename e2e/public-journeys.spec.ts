@@ -270,8 +270,8 @@ test('auth and pricing entry points render without client errors', async ({ page
   const pricingPage = await page.context().newPage()
   pricingPage.on('pageerror', recordError)
   await pricingPage.goto('/pricing')
-  await expect(pricingPage.getByText('$29', { exact: true })).toBeVisible()
-  await expect(pricingPage.getByText('$79', { exact: true })).toBeVisible()
+  await expect(pricingPage.getByText('$49', { exact: true })).toBeVisible()
+  await expect(pricingPage.getByText('Volume', { exact: true })).toBeVisible()
   expect(errors).toEqual([])
 })
 
@@ -401,6 +401,7 @@ const AXE_ROUTES: Array<{ name: string; path: string; expectHeading?: RegExp }> 
     expectHeading: /Sign in to your account/,
   },
   { name: 'pricing', path: '/pricing' },
+  { name: 'request demo', path: '/request-demo' },
   { name: 'sign-in', path: '/sign-in' },
 ]
 

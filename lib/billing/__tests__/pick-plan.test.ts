@@ -85,7 +85,7 @@ describe('pickPlan', () => {
     expect(requestPlanCheckout).not.toHaveBeenCalled()
   })
 
-  it('routes paid plan to waitlist when gated', async () => {
+  it('routes paid plan to demo when gated', async () => {
     const onPrivateBeta = vi.fn()
 
     const result = await pickPlan({
@@ -96,7 +96,7 @@ describe('pickPlan', () => {
     } as PickPlanInput)
 
     expect(onPrivateBeta).toHaveBeenCalled()
-    expect(result).toEqual({ kind: 'waitlist' })
+    expect(result).toEqual({ kind: 'demo', url: '/request-demo?plan=studio' })
   })
 
   it('builds checkout redirect branch and returns URL', async () => {
@@ -190,7 +190,7 @@ describe('pickPlan', () => {
     ).resolves.toMatchObject({ kind: 'error' })
   })
 
-  it('routes to waitlist when checkout returns paid-checkout-closed', async () => {
+  it('routes to demo when checkout returns paid-checkout-closed', async () => {
     const { requestPlanCheckout } = await import('@/lib/billing/client-checkout')
     ;(requestPlanCheckout as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
       kind: 'paid-checkout-closed',
@@ -203,11 +203,11 @@ describe('pickPlan', () => {
         isLoggedIn: false,
         onPrivateBeta,
       } as PickPlanInput)
-    ).resolves.toEqual({ kind: 'waitlist' })
+    ).resolves.toEqual({ kind: 'demo', url: '/request-demo?plan=pro' })
     expect(onPrivateBeta).toHaveBeenCalled()
   })
 
-  it('routes to waitlist with message when checkout returns batch gate error', async () => {
+  it('routes to demo with message when checkout returns batch gate error', async () => {
     const { requestPlanCheckout } = await import('@/lib/billing/client-checkout')
     ;(requestPlanCheckout as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
       kind: 'error',
@@ -221,7 +221,11 @@ describe('pickPlan', () => {
         isLoggedIn: false,
         onPrivateBeta,
       } as PickPlanInput)
-    ).resolves.toEqual({ kind: 'waitlist', message: 'paid checkout opens in batches' })
+    ).resolves.toEqual({
+      kind: 'demo',
+      url: '/request-demo?plan=studio',
+      message: 'paid checkout opens in batches',
+    })
     expect(onPrivateBeta).toHaveBeenCalled()
   })
 })

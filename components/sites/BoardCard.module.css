@@ -404,8 +404,10 @@ a.body {
 
 /* Headers reflow within narrow cards, independently of the page breakpoint. */
 .header { flex-wrap: wrap; align-items: flex-start; }
-.headerEnd { flex-wrap: wrap; flex-basis: 140px; }
-.flags { flex-wrap: wrap; }
+.headerEnd { display: contents; }
+.header > .title { flex: 1; }
+.headerEnd > .signal { margin-left: auto; }
+.flags { order: 3; flex-basis: 100%; flex-wrap: wrap; justify-content: flex-start; }
 .flagChip { min-height: 44px; max-width: 100%; }
 .flagChip span { white-space: normal; overflow-wrap: anywhere; }
 .visual img, .crop img { width: 100%; height: 100%; }

@@ -13,7 +13,7 @@ The accepted destination is [the full vision](knowledge/vision.md). [ROADMAP.md]
 | Current report | /report/[id], report projections, ranked Flags, evidence and gated prompts | Legacy experience being replaced; details in [report contract](knowledge/report-contract.md) |
 | Product workspace | /products/[id], history, attention, context and Watch controls | Existing interface, not Home · Flags · Site |
 | Fix and comparison | Prompt handoff, attempt tracking, full update-review diff and independent verification receipts | “Not observed” differences are not verified repair; targeted Outcome verification needs new work |
-| Monitoring | Project watch fields, scheduler/recovery, plan-gated scheduled reviews | Existing cadence/entitlement behavior does not fulfill the new Free Site promise |
+| Monitoring | Project watch fields, scheduler/recovery, plan-gated scheduled reviews | Code still allows Free weekly Watch and meters `auditLimit` 3/30/90. Public packaging sells 24h vs hourly and does not advertise that pool. |
 | Signals | Narrow ProductSignal path and observer foundation | Not a claim of full real-user health/Outcome monitoring |
 | Shopify | Separate ShopifyShop / RevenuePath models, install/auth and integrity probes in ongoing workspace work | Not yet a unified customer Site connection; presence in the tree is not launch proof |
 | Commercial foundation | Accounts, authentication, Stripe integration, plans, usage, checkout/waitlist and billing UI | Preserve records and access while deliberately migrating plan responsibility |
@@ -35,7 +35,7 @@ The following apply to old routes until deliberately migrated. They are not futu
 
 ## Existing plans
 
-Plan definitions in lib/billing/plans.ts and access checks in lib/auth/entitlements.ts are authoritative for current numbers and capabilities. They use FREE / BUILDER / TEAM internally and Free / Pro / Studio publicly. The current model meters completed reviews against a monthly pool; scheduled Product Watch is currently Studio-gated.
+Plan definitions in lib/billing/plans.ts and access checks in lib/auth/entitlements.ts are authoritative for current numbers and capabilities. They use FREE / BUILDER / TEAM internally and Free / Pro / Studio publicly. Enforcement still meters completed reviews against a monthly pool (3/30/90) and Product Watch remains schedule-gated in code. Public packaging on `/pricing` sells 24/7 monitoring: one free website every 24 hours, then `$49` per website per month up to every hour. Studio is volume, billed per website, never unlimited Sites. Paid CTAs request a demo. Stripe stays closed.
 
 The new [strategy](knowledge/strategy.md) requires meaningful ongoing free care and paid responsibility. That is a planned entitlement and scheduling change, not something a new tagline or saved vision makes true. Preserve subscription IDs, historical usage and existing access until migration is explicit.
 

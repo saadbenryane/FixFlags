@@ -41,6 +41,7 @@ export type FunnelEvent =
   | 'managed_subscription'
   | 'marketing_page_view'
   | 'waitlist_joined'
+  | 'requested_demo'
   | 'shopify_install_started'
   | 'shopify_install_completed'
   | 'shopify_first_verification'
@@ -151,6 +152,7 @@ type EventParams = {
     device?: string
   }
   waitlist_joined: { plan: string; source?: string }
+  requested_demo: { plan: string; source?: string }
   shopify_install_started: { shop?: string }
   shopify_install_completed: { shop?: string }
   shopify_first_verification: { shop?: string; health?: string; has_evidence?: boolean }

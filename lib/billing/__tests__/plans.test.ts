@@ -39,14 +39,15 @@ describe('usage plan ladder', () => {
       deepReviewLimit: -1,
     })
     expect(PLAN_DEFINITIONS.BUILDER).toMatchObject({
-      price: '$29',
+      price: '$49',
+      period: '/website/mo',
       auditLimit: 30,
       projectLimit: 5,
       deepReviewLimit: -1,
       deepReviewLimitLabel: 'Path depth included',
     })
     expect(PLAN_DEFINITIONS.TEAM).toMatchObject({
-      price: '$79',
+      price: 'Volume',
       auditLimit: 90,
       projectLimit: null,
       deepReviewLimit: -1,

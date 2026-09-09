@@ -12,6 +12,12 @@ Observation should increase usefulness at sustainable cost. Avoid treating insta
 
 Paid plans deepen how much responsibility FixFlags takes: checking frequency, page and Outcome coverage, verification depth, history, observation scale, useful premium context, alert speed, Sites, collaboration and agent workflows. The same underlying evidence standards apply at every tier.
 
+The public list (2026-09-09) is **per website**, not unlimited Sites and not a checks-per-month bundle. Free is one website, 24/7 monitoring checked every 24 hours. Paid is `$49` per website per month, up to every hour. Studio is the same hourly monitoring, billed per website, quoted on a demo. Stripe IDs and live subscriber allowances do not change until an explicit checkout pass. `STRIPE_PAID_OPEN` stays false while paid intent goes through a demo request.
+
+True full Playwright + judge every hour will not profit at `$49`/site. Sell one sentence, run two jobs: a cheap **pulse** (up, important URL still loads) at the public frequency, and a bounded **full check** (browser journeys, Flags, evidence) about daily or on change, scoped to inferred Outcomes. Public copy “up to every hour” is the pulse. Do not claim a full Flag audit every hour.
+
+Before opening per-site Stripe checkout (quantity = site count), measure pulse vs full-walk dollars per site, then lock Free daily pulse+full bound and paid hourly pulse + bounded full. No silent downgrade of anyone already billed. Unlimited Sites is rejected.
+
 Do not invent new prices, quotas or SLAs from vision examples. Keep existing billing infrastructure and accounts. Before Phase 4 release, measure per-Site execution/collection cost, define the minimum useful free responsibility and paid limits, and reconcile recurring scheduling with budget enforcement. Before migration, map legacy subscribers and usage explicitly without silent downgrade or double billing.
 
 ## Distribution and positioning

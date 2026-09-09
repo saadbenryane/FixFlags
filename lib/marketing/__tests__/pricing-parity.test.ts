@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { PRICING_COPY } from '@/lib/marketing/copy/terminology'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
-import { PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy/plans'
+import { PLANS, PRICING, PRICING_COMPARISON, PRICING_FAQ } from '@/lib/marketing/copy/plans'
 import { AUTH, SCAN_LIMIT_GATE } from '@/lib/marketing/copy/auth'
 import { SEO } from '@/lib/marketing/copy/seo'
 
@@ -26,6 +26,9 @@ const OBSOLETE_PLAN_COPY = [
 const FREE = PLAN_DEFINITIONS.FREE
 const BUILDER = PLAN_DEFINITIONS.BUILDER
 const TEAM = PLAN_DEFINITIONS.TEAM
+const MARKETING_FREE = PLANS.find((plan) => plan.plan === 'FREE')!
+const MARKETING_PRO = PLANS.find((plan) => plan.plan === 'BUILDER')!
+const MARKETING_STUDIO = PLANS.find((plan) => plan.plan === 'TEAM')!
 
 describe('pricing parity', () => {
   it('keeps Free marketing numbers aligned with billing enforcement', () => {
@@ -44,29 +47,40 @@ describe('pricing parity', () => {
     expect(PRICING_COPY.studioProductReviewsPerMonth).toBe(TEAM.auditLimit)
   })
 
-  it('drives the marketing plan cards from the URL-first free offer', () => {
-    expect(PLANS.find((plan) => plan.plan === 'FREE')).toMatchObject({
+  it('drives the marketing plan cards from per-site monitoring', () => {
+    expect(MARKETING_FREE).toMatchObject({
       price: '$0',
-      products: '1 Site',
+      products: '1 website',
       cta: 'Check my website',
+      href: '/new',
     })
-    expect(PLANS.find((plan) => plan.plan === 'BUILDER')).toMatchObject({
-      price: 'Waitlist',
-      cta: 'Join Pro waitlist',
+    expect(MARKETING_PRO).toMatchObject({
+      price: '$49',
+      period: '/website/mo',
+      cta: 'Request a demo',
+      href: '/request-demo?plan=pro',
     })
-    expect(PLANS.find((plan) => plan.plan === 'TEAM')).toMatchObject({
-      cta: 'Join Studio waitlist',
+    expect(MARKETING_STUDIO).toMatchObject({
+      price: 'Volume',
+      cta: 'Request a demo',
+      href: '/request-demo?plan=studio',
     })
   })
 
-  it('gives each paid plan a concrete reason to join the waitlist', () => {
-    const pro = PLANS.find((plan) => plan.plan === 'BUILDER')!
-    const studio = PLANS.find((plan) => plan.plan === 'TEAM')!
-
-    expect(pro.features.join('\n')).toMatch(/more Sites/i)
-    expect(pro.features.join('\n')).toMatch(/faster checking/i)
-    expect(studio.features.join('\n')).toMatch(/multiple Sites/i)
-    expect(studio.price).toBe('Waitlist')
+  it('sells two frequencies and never unlimited Sites', () => {
+    const blob = JSON.stringify({ PLANS, PRICING, PRICING_COMPARISON, PRICING_FAQ })
+    expect(blob).toMatch(/every 24 hours/i)
+    expect(blob).toMatch(/up to every hour/i)
+    expect(blob).toMatch(/\$49/)
+    expect(blob).toMatch(/24\/7/)
+    expect(blob).not.toMatch(/unlimited Sites/i)
+    expect(blob).not.toMatch(/\b3\/30\/90\b/)
+    expect(blob).not.toMatch(/720 checks/i)
+    expect(blob).not.toMatch(/looked after/i)
+    expect(blob).not.toMatch(/Keep watching/i)
+    expect(blob).not.toMatch(/Join Pro waitlist/)
+    expect(blob).not.toMatch(/Waitlist/)
+    expect(PRICING.headline).toBe('24/7 website monitoring.')
   })
 
   it('avoids inheritance shorthand and internal metering language', () => {
@@ -108,13 +122,12 @@ describe('pricing parity', () => {
     expect(customerSurfaces).not.toMatch(/\$99/)
   })
 
-  it('describes the free website check without crawler jargon', () => {
-    const free = PLANS.find((plan) => plan.plan === 'FREE')!
-    const pro = PLANS.find((plan) => plan.plan === 'BUILDER')!
-
-    expect(free.features.join('\n')).toMatch(/live website/i)
-    expect(free.features.join('\n')).toMatch(/Flags/i)
-    expect(pro.features.join('\n')).toMatch(/more Sites/i)
+  it('describes monitoring without crawler jargon or a public check pool', () => {
+    expect(MARKETING_FREE.features.join('\n')).toMatch(/24\/7 monitoring/i)
+    expect(MARKETING_FREE.features.join('\n')).toMatch(/Flags/i)
+    expect(MARKETING_PRO.features.join('\n')).toMatch(/every hour/i)
+    expect(MARKETING_PRO.features.join('\n')).not.toMatch(/\b30\b/)
+    expect(JSON.stringify(PLANS)).not.toMatch(/product reviews/i)
 
     const surfaces = JSON.stringify({ PLANS, PRICING })
     expect(surfaces).not.toMatch(/\b(hops?|crawler)\b/i)

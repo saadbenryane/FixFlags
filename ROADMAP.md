@@ -46,7 +46,7 @@ The complete vision is accepted; no second approval of its direction is needed. 
 | Tenant identity and URL ownership | Private customer Site; no ownership inferred from hostname alone; preserve public evidence separately | Phase 1 persistence |
 | Outcome discovery safety | Public non-destructive interactions; confirmation before meaningful side effects; can't verify is valid | First browser walkthrough |
 | Anonymous resource limits and retention | Useful result before account, bounded abuse/cost; Keep watching claims the same Site; no silent private-data sharing | Phase 2 public rollout |
-| Monitoring frequency, scope, retention and quotas | Free must actually watch; paid buys greater responsibility; measure cost before selecting numbers | Phase 4 release |
+| Monitoring frequency, scope, retention and quotas | Public list is per-site: Free every 24 hours, paid up to every hour. Unlimited Sites is rejected. Measure pulse vs full-walk cost per site before locking hourly internals and opening per-site Stripe quantity checkout. No silent downgrade. `STRIPE_PAID_OPEN` stays false until that pass. | Phase 4 release |
 | Alert channel and interruption thresholds | Start with existing email infrastructure if suitable; notification settings and durable deduplication | Phase 4 release |
 | Existing subscriber transition | Preserve paid access and billing records; explicitly map old entitlements before any change | Phase 6 migration |
 | Additional adapters and protective actions | Build only if a specific existing answer becomes better; no automatic ad pauses, deploys, or purchases | Respective increment |

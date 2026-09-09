@@ -20,4 +20,13 @@ describe('PlanPrice', () => {
     expect(el?.className).not.toMatch(/tabular-nums/)
     expect(el?.className).not.toMatch(/font-mono/)
   })
+
+  it('renders Volume in the display face without treating it as a number', () => {
+    const { container } = render(<PlanPrice price="Volume" />)
+    const el = container.querySelector('span')
+    expect(el).toHaveTextContent('Volume')
+    expect(el?.className).toMatch(/font-display/)
+    expect(el?.className).not.toMatch(/tabular-nums/)
+    expect(el?.className).not.toMatch(/font-mono/)
+  })
 })

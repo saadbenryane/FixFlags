@@ -169,6 +169,23 @@ model WaitlistLead {
   @@map("waitlist_leads")
 }
 
+/// Paid-plan demo request captured while Stripe checkout is closed.
+model DemoRequest {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  website   String
+  plan      Plan
+  siteCount Int?
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([createdAt])
+  @@map("demo_requests")
+}
+
 /// *
 ///  * App-level GitHub repo access for codebase scanning, separate from GitHub login (Account).
 model GithubConnection {

@@ -121,6 +121,37 @@ export const NEWSLETTER_EMAIL = {
 `),
 } as const
 
+export const DEMO_EMAILS = {
+  confirm: {
+    subject: 'We received your FixFlags demo request',
+    html: (name: string, planLabel: string) =>
+      layout(`
+  <p>Hi${name ? ` ${name}` : ''},</p>
+  <p>Thanks for requesting a ${planLabel} demo. We will email you to set a time. We are not charging yet.</p>
+  <p>Paid monitoring is billed per website, up to every hour.</p>
+  <p><a href="${SITE_URL}/pricing" style="${ctaStyle}">Back to pricing</a></p>
+`),
+  },
+  notify: {
+    subject: (planLabel: string) => `[${BRAND.name}] Demo request: ${planLabel}`,
+    html: (input: {
+      name: string
+      email: string
+      website: string
+      planLabel: string
+      siteCount?: number | null
+      note?: string | null
+    }) =>
+      layout(`
+  <p>New demo request for <strong>${input.planLabel}</strong>.</p>
+  <p>Name: ${input.name}<br />Email: ${input.email}<br />Website: ${input.website}${
+        input.siteCount != null ? `<br />Websites: ${input.siteCount}` : ''
+      }</p>
+  ${input.note ? `<p>Note: ${input.note}</p>` : ''}
+`),
+  },
+} as const
+
 export const KEEP_REPORT_EMAIL = {
   subject: 'Your FixFlags Site',
   html: (reportUrl: string) =>

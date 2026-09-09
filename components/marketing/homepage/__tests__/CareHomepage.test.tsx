@@ -28,6 +28,23 @@ describe('homepage example', () => {
     expect(workflow!.querySelectorAll('[data-step]')).toHaveLength(C.workflow.steps.length)
   })
 
+  it('follows the reading position forward and backward through all four steps', async () => {
+    let offset = 0
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const index = C.workflow.steps.findIndex(step => step.id === this.dataset.step)
+      return { top: index * 500 + 300 - offset } as DOMRect
+    })
+    render(<CareHomepage />)
+    const workflow = document.getElementById('flag-example')!
+    expect(workflow).toHaveAttribute('data-active-step', 'check')
+    for (const index of [1, 2, 3, 2, 1, 0]) {
+      offset = index * 500
+      fireEvent.scroll(window)
+      await waitFor(() => expect(workflow).toHaveAttribute('data-active-step', C.workflow.steps[index].id))
+      expect(workflow.querySelectorAll('[aria-current="step"]')).toHaveLength(1)
+    }
+  })
+
   it('identifies the example Site once in the board chrome', () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })

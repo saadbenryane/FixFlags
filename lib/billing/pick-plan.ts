@@ -58,7 +58,7 @@ function isSitePath(value: string | null | undefined): value is string {
  * Pricing page CTAs, the post-auth plan picker, and the post-signup plan picker
  * all funnel through this function so the routing and checkout branches stay in
  * lockstep. The caller is responsible for navigation when
- * `kind` is `free_dashboard` or `free_report`; for `checkout_redirect` the
+ * `kind` is `free_dashboard`, `free_report`, or `demo`; for `checkout_redirect` the
  * caller must hand `url` to `window.location` (or `onCheckoutRedirect`).
  */
 export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
@@ -156,7 +156,7 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
 
 /** Convenience wrapper for components that own a `router` instance. */
 export function routerForPlanResult(router: AppRouterInstance, result: PickPlanResult): void {
-  if (result.kind === 'free_dashboard' || result.kind === 'free_report') {
+  if (result.kind === 'free_dashboard' || result.kind === 'free_report' || result.kind === 'demo') {
     if (result.url) router.push(result.url)
   }
 }

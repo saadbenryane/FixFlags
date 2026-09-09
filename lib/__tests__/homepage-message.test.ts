@@ -113,7 +113,7 @@ describe('homepage message guardrails', () => {
 
   it('canonical terminology anchors stay aligned', () => {
     assert.equal(HERO.primaryCta, 'Review my site')
-    assert.equal(PLAN_DEFINITIONS.BUILDER.price, '$29')
+    assert.equal(PLAN_DEFINITIONS.BUILDER.price, '$49')
     assert.equal(REPORT_COPY.sectionTitles.journey, 'Funnel')
     assert.equal(REPORT_COPY.recheck.label, 'Update review')
   })
@@ -221,10 +221,10 @@ describe('homepage message guardrails', () => {
     )
   })
 
-  it('pricing sells a free website check with a Pro waitlist', () => {
+  it('pricing sells 24/7 monitoring with a per-site paid price', () => {
     assert.match(PRICING.trustBadge, /Flags, evidence/i)
     assert.doesNotMatch(PRICING.trustBadge, /unlimited re-checks/i)
-    assert.match(PLAN_DEFINITIONS.FREE.auditLimitLabel, /3 product reviews \/ month/i)
+    assert.match(PLAN_DEFINITIONS.FREE.auditLimitLabel, /every 24 hours/i)
     assert.doesNotMatch(
       PLAN_DEFINITIONS.BUILDER.features.join(' '),
       /deep reviews/i,

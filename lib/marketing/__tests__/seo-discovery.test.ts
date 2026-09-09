@@ -22,7 +22,8 @@ describe('pre-publish brand discovery copy', () => {
 
   it('names FixFlags on pricing and partners sitelinks', () => {
     assert.match(SEO.pricing.title, /FixFlags/)
-    assert.match(SEO.pricing.description, /free website analysis/i)
+    assert.match(SEO.pricing.description, /24\/7 website monitoring/i)
+    assert.match(SEO.pricing.description, /\$49/)
     assert.doesNotMatch(SEO.pricing.title, /^Pricing$/)
     assert.doesNotMatch(SEO.pricing.description, /free on shopify/i)
     assert.doesNotMatch(SEO.pricing.description, /\$69|\$199/)
@@ -37,7 +38,7 @@ describe('pre-publish brand discovery copy', () => {
     const productNotes = LLMS_SECTIONS.flatMap((section) => section.links)
       .map((link) => `${link.path} ${link.note ?? ''}`)
       .join('\n')
-    assert.match(productNotes, /\/pricing[^\n]*free website analysis/i)
+    assert.match(productNotes, /\/pricing[^\n]*24\/7 monitoring/i)
     assert.doesNotMatch(productNotes, /free on shopify/i)
   })
 })

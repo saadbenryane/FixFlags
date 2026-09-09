@@ -22,15 +22,10 @@ import { PlanPrice } from '@/components/pricing/PlanPrice'
 import { SYSTEM_COPY } from '@/lib/marketing/copy/errors'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 import { trackEvent } from '@/lib/analytics/events'
-import {
-  pickPlan,
-  routerForPlanResult,
-  type PickerPlan,
-  type PickerSource,
-} from '@/lib/billing/pick-plan'
+import { pickPlan, routerForPlanResult, type PickerPlan, type PickerSource } from '@/lib/billing/pick-plan'
 import { getActiveAudit } from '@/lib/audit/active-audit'
 import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
-import { waitlistPathForPlan } from '@/components/billing/WaitlistAuthDialog'
+import { demoPathForPlan } from '@/lib/billing/demo-path'
 import type { CheckoutPlan } from '@/lib/billing/client-checkout'
 import { cn } from '@/lib/utils'
 
@@ -94,6 +89,11 @@ export function PlanPickerDialog({
   async function handlePick(plan: PickerPlan) {
     trackPicked(plan)
     if (!user) {
+      if (plan !== 'FREE') {
+        onOpenChange(false)
+        router.push(demoPathForPlan(plan as CheckoutPlan))
+        return
+      }
       router.push(signUpHref())
       return
     }
@@ -113,9 +113,14 @@ export function PlanPickerDialog({
     })
     setBusyPlan(null)
 
+    if (result.kind === 'demo' && result.url) {
+      onOpenChange(false)
+      router.push(result.url)
+      return
+    }
     if (result.kind === 'waitlist') {
       onOpenChange(false)
-      window.location.href = waitlistPathForPlan(plan as CheckoutPlan)
+      router.push(result.url ?? demoPathForPlan(plan as CheckoutPlan))
       return
     }
     if (result.kind === 'checkout_redirect') {

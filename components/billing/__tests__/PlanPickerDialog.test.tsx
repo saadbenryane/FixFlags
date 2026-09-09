@@ -71,11 +71,10 @@ describe('PlanPickerDialog', () => {
     expect(screen.getByText('Pro')).toBeInTheDocument()
     expect(screen.getByText('Studio')).toBeInTheDocument()
     expect(
-      screen.getByText('Free starts with one public website. Pro extras are waitlisted.'),
+      screen.getByText('Free is one website, every 24 hours. Paid is $49 per website, up to every hour.'),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Current plan' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Join Pro waitlist' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Join Studio waitlist' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Request a demo' })).toHaveLength(2)
     await waitFor(() =>
       expect(trackEvent).toHaveBeenCalledWith(
         'plan_picker_viewed',
@@ -142,6 +141,25 @@ describe('PlanPickerDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start free' }))
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/dashboard'))
+  })
+
+  it('routes Pro to the demo request', async () => {
+    useMe.mockReturnValue({
+      user: { id: 'u1', email: 'a@b.com', plan: 'FREE' },
+      isLoading: false,
+    })
+    const push = vi.fn()
+    useRouter.mockReturnValue({ push, replace: vi.fn() })
+    const onOpenChange = vi.fn()
+
+    render(
+      <PlanPickerDialog open onOpenChange={onOpenChange} source="billing" />
+    )
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Request a demo' })[0])
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/request-demo?plan=pro'))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
   it('tracks dismissal when the dialog closes', () => {

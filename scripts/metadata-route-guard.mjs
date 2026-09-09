@@ -12,6 +12,7 @@ const ROUTE_TO_PAGE = {
   '/protect': 'app/(marketing)/protect/page.tsx',
   '/install': 'app/(marketing)/install/page.tsx',
   '/waitlist': 'app/(marketing)/waitlist/page.tsx',
+  '/request-demo': 'app/(marketing)/request-demo/page.tsx',
   '/how-it-works': 'app/(marketing)/how-it-works/page.tsx',
   '/pricing': 'app/(marketing)/pricing/page.tsx',
   '/faq': 'app/(marketing)/faq/page.tsx',

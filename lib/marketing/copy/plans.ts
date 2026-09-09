@@ -380,14 +380,13 @@ export const UPGRADE_MOMENTS = {
 export const USAGE_METER_COPY = {
   regionLabel: 'Websites monitored',
   compactLabel: 'Usage',
-  panelLabel: 'This period',
+  panelLabel: 'Websites monitored',
   usedOfLimit: (used: number, limit: number) => `${used} of ${limit}`,
   usedCaption: 'used this period',
   remainingCaption: (n: number) =>
     n === 1 ? '1 remaining this period' : `${n} remaining this period`,
   remainingShort: (n: number) => `${n} remaining`,
-  usedThisMonthCaption: (n: number) =>
-    `${n} used this period`,
+  usedThisMonthCaption: (n: number) => `${n} used`,
   panelNote:
     'Free monitors 1 website every 24 hours. Request a demo for hourly monitoring on more websites.',
   progressLabel: (used: number, limit: number) =>

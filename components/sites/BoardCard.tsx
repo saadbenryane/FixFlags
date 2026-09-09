@@ -129,7 +129,6 @@ function FlagChips({ flags }: { flags: BoardCardFlag[] }) {
 
 export function BoardCard({
   name,
-  status,
   state,
   answer,
   detail,
@@ -194,7 +193,7 @@ export function BoardCard({
           src={visual.src}
           alt={visual.alt}
           className={styles.visual}
-          sizes="(max-width: 767px) calc(100vw - 88px), (max-width: 1279px) calc(50vw - 64px), 360px"
+          sizes="(max-width: 767px) calc(100vw - 88px), (max-width: 1279px) calc(50vw - 64px), 720px"
           objectPosition="center top"
         />
       ) : null}

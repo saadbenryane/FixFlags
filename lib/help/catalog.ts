@@ -445,7 +445,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'Open Pricing and request a demo for Pro or Studio. We email you to set a time. We are not charging yet.',
+        text: 'Open Pricing and request a demo for Pro or Studio. We email you to set a time. Paid monitoring is $49 per website per month. We are not charging yet.',
       },
       {
         type: 'p',
@@ -491,7 +491,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Join the Pro waitlist if you need a faster cadence or extra paths.',
+        text: 'Request a demo if you need hourly monitoring or extra websites.',
       },
     ],
     related: ['what-counts-as-a-check', 'free-vs-pro', 'upgrade-or-downgrade'],
@@ -554,7 +554,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'The Shopify app is free to install. Pro extras are waitlisted.',
+        text: 'The Shopify app is free to install. Request a demo for paid website monitoring.',
       },
     ],
     related: ['what-counts-as-a-check', 'free-vs-pro', 'payment-past-due'],

@@ -318,7 +318,7 @@ export function CareHomepage() {
           <button type="button" onClick={() => void copyFix('share')}><Copy size={15} aria-hidden="true" />{SITE_BOARD_COPY.share}</button>
         </div>
         <p className={s.copyStatus} role="status">{copyResult?.source === 'ai' || copyResult?.source === 'share' ? copyResult.message : ''}</p>
-        <a href="#flag-example" className={s.textLink}>{C.flag.action}<ArrowRight size={17} aria-hidden="true" /></a>
+        <a href="#flag-example" className={s.textLink} onClick={() => { dialogOpener.current = null; setSelected(null) }}>{C.flag.action}<ArrowRight size={17} aria-hidden="true" /></a>
       </> : selectedPreview ? <>
         <p className={s.detailAnswer}>{selectedPreview.answer}</p>
         <ul className={s.detailFacts}>{selectedPreview.facts.map(fact => <li key={fact}>{fact}</li>)}</ul>

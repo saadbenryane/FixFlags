@@ -65,10 +65,10 @@ describe('plan definitions', () => {
     assert.ok(PLAN_DEFINITIONS.BUILDER.auditLimit < PLAN_DEFINITIONS.TEAM.auditLimit)
   })
 
-  it('prices increase with plan tier', () => {
+  it('public list prices Free then Pro; Studio is volume', () => {
     const price = (s: string) => Number(s.replace(/[^0-9]/g, ''))
     assert.ok(price(PLAN_DEFINITIONS.FREE.price) < price(PLAN_DEFINITIONS.BUILDER.price))
-    assert.ok(price(PLAN_DEFINITIONS.BUILDER.price) < price(PLAN_DEFINITIONS.TEAM.price))
+    assert.equal(PLAN_DEFINITIONS.TEAM.price, 'Volume')
   })
 
   it('PLAN_LIMITS has matching entries for every plan', () => {
@@ -119,10 +119,9 @@ describe('projectLimitForPlan', () => {
 // ── proUpgradeCta ────────────────────────────────────────────────
 
 describe('proUpgradeCta', () => {
-  it('includes the Pro price in the default CTA', () => {
+  it('defaults to Request a demo', () => {
     const cta = proUpgradeCta()
-    assert.ok(cta.includes('$29'))
-    assert.ok(cta.includes('/mo'))
+    assert.equal(cta, 'Request a demo')
   })
 
   it('uses custom prefix when provided', () => {

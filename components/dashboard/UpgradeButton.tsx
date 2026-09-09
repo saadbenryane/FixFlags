@@ -8,7 +8,7 @@ import { getUpgradeMomentContent, type UpgradeMoment } from '@/lib/billing/upgra
 import { pickPlan } from '@/lib/billing/pick-plan'
 import { BILLING_ACTION_COPY, PRICING } from '@/lib/marketing/copy'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
-import { waitlistPathForPlan } from '@/components/billing/WaitlistAuthDialog'
+import { demoPathForPlan } from '@/lib/billing/demo-path'
 import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
 
 interface Props {
@@ -32,9 +32,7 @@ export function UpgradeButton({
 
   async function handleUpgrade() {
     if (waitlistGated) {
-      // Waitlist mode: route to the waitlist page (the join surface for
-      // everyone). userEmail is ignored: the waitlist page re-captures it.
-      window.location.href = waitlistPathForPlan(plan)
+      window.location.href = demoPathForPlan(plan)
       return
     }
 
@@ -50,8 +48,11 @@ export function UpgradeButton({
     })
     setLoading(false)
 
+    if (result.kind === 'demo' && result.url) {
+      window.location.href = result.url
+    }
     if (result.kind === 'waitlist') {
-      window.location.href = waitlistPathForPlan(plan)
+      window.location.href = result.url ?? demoPathForPlan(plan)
     }
   }
 

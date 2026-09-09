@@ -1,5 +1,5 @@
 /**
- * Paid checkout gate. When false, Pro/Studio CTAs route to waitlist instead of Stripe.
+ * Paid checkout gate. When false, Pro/Studio CTAs route to a demo request instead of Stripe.
  *
  * Batch awareness: STRIPE_PAID_OPEN is the MASTER switch (a kill switch for all
  * paid checkout). WAITLIST_OPEN_BATCH then controls cohort release on top of it:

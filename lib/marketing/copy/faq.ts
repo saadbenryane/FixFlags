@@ -34,7 +34,7 @@ export const FAQ: readonly FaqEntry[] = [
   {
     question: 'Is it free?',
     answer:
-      'Yes. Start with a free website analysis. Pro extras are on a waitlist. We are not charging yet. Shopify is an optional connection, not the only way to start.',
+      'Yes. One website is free, with 24/7 monitoring checked every 24 hours. Paid monitoring is $49 per website per month, up to every hour. We are not charging yet. Shopify is an optional connection, not the only way to start.',
     learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
   },
   {
