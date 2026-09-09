@@ -6,9 +6,9 @@ alwaysApply: false
 
 # FixFlags UI
 
-Read AGENTS.md, DESIGN.md, docs/workspace-interface.md and docs/product-prd.md. The canonical workflow is .agents/skills/fixflags-design-system/SKILL.md.
+Read AGENTS.md, DESIGN.md, docs/product-architecture.md, docs/workspace-interface.md and docs/product-prd.md. The canonical workflow is .agents/skills/fixflags-design-system/SKILL.md.
 
-Keep approved brand tokens from lib/design/tokens.css and lib/design/brand-spec.ts. Use existing accessible primitives. Home · Flags · Site defines the new experience; coverage and evidence constrain status. First analysis becomes the same Site dashboard.
+Keep approved brand tokens from lib/design/tokens.css and lib/design/brand-spec.ts. Use existing accessible primitives. Home · Flags defines the new experience; Site settings are configuration, not a third product. Coverage and evidence constrain status. First analysis becomes the same Site dashboard.
 
 The old Agent | Report split, scores and rubric presentation are legacy compatibility only on existing report routes. See knowledge/report-contract.md when maintaining those routes. Do not carry their layout into new Site work.
 

@@ -1,6 +1,6 @@
 # Fix List and Finish Plan
 
-**LEGACY COMPATIBILITY, 2026-09-08.** Existing Finish Plan exports and ranking only. This is not the new primary customer artifact or a target interface requirement. [The new PRD](../docs/product-prd.md) makes the durable Flag the unit of attention; [evidence rules](evidence-rules.md) govern recovery. Historical illustrative header copy below must not be reused as current marketing.
+**LEGACY COMPATIBILITY.** Existing Finish Plan exports and ranking only. This is not the new primary customer artifact or a target interface requirement. The durable customer attention unit is the Flag ([product-architecture.md](../docs/product-architecture.md)); [evidence rules](evidence-rules.md) govern recovery. The Flag projector in [product-masterplan.md](../docs/product-masterplan.md) FF-B1 supersedes Finish Plan as the customer inbox. Historical illustrative header copy below must not be reused as current marketing.
 
 
 **Canonical home for the complete Fix List and bounded Finish Plan.** Vision: [vision.md](./vision.md). Ranking implementation: `lib/audit/finish-plan.ts`. Evidence rules: [evidence-rules.md](./evidence-rules.md).

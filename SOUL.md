@@ -20,10 +20,10 @@ A serious failure can be described plainly. Do not manufacture urgency, shame th
 
 ## Product behavior expresses the brand
 
-The Site persists. Outcomes make it understandable. Flags earn attention. Coverage gives health statements meaning. Fixing includes independent verification. Connections make the same answer better. A quiet healthy day is valuable.
+The Site persists. Journeys make it understandable. Flags earn attention. Coverage gives health statements meaning. Fixing includes independent verification. Connections make the same answer better. A quiet healthy day is valuable.
 
 Brand orange identifies FixFlags and useful actions. Status colors communicate evidence state separately and always with text. Real product evidence is the strongest proof; arbitrary decorative illustrations and fake customer results do not establish trust.
 
 ## Writing and design
 
-Follow [docs/voice-and-copy.md](docs/voice-and-copy.md) for language and [DESIGN.md](DESIGN.md) for visual tokens. Marketing copy comes from lib/marketing/copy.ts. Public copy still being migrated is listed in [docs/messaging-migration.md](docs/messaging-migration.md). Do not invent a new orange, logo or separate Shopify identity while building the new experience.
+Follow [docs/voice-and-copy.md](docs/voice-and-copy.md) for language and [DESIGN.md](DESIGN.md) for visual tokens. Marketing copy comes from lib/marketing/copy.ts. Remaining public copy is sequenced in [docs/product-masterplan.md](docs/product-masterplan.md). Do not invent a new orange, logo or separate Shopify identity while building the new experience.

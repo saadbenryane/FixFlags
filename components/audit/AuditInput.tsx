@@ -228,18 +228,23 @@ export function AuditInput({
               size="lg"
               disabled={!hydrated || busy}
               className={cn(
-                'h-12 min-h-12 w-full shrink-0 gap-1.5 rounded-[var(--radius-control)] px-5 text-sm font-semibold sm:h-[3.25rem] sm:min-h-[3.25rem] sm:w-auto sm:min-w-[11.5rem] sm:gap-2 sm:px-6 sm:text-base'
+                'grid h-12 min-h-12 w-full shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-0 rounded-[var(--radius-control)] px-3.5 text-sm font-semibold sm:h-[3.25rem] sm:min-h-[3.25rem] sm:w-auto sm:min-w-[10.5rem] sm:px-4 sm:text-base'
               )}
             >
               {busy ? (
                 <>
-                  <Loader2 className="animate-spin" />
-                  {AUDIT_PROGRESS.submitLoading}
+                  <span aria-hidden="true" />
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="animate-spin" />
+                    {AUDIT_PROGRESS.submitLoading}
+                  </span>
+                  <span aria-hidden="true" />
                 </>
               ) : (
                 <>
-                  {submitLabel}
-                  <ArrowRight />
+                  <span aria-hidden="true" />
+                  <span>{submitLabel}</span>
+                  <ArrowRight className="justify-self-end" aria-hidden="true" />
                 </>
               )}
             </Button>

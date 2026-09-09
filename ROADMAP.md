@@ -2,7 +2,7 @@
 
 **Direction accepted 2026-09-08.** Phase 0 documentation is complete. **Board-first cutover (URL → `/sites` checking board) shipped** — receipt: [`.agents/sessions/board-first-site-2026-09-08.md`](.agents/sessions/board-first-site-2026-09-08.md). Integrity work (tenancy, honest coverage, claim migration, Sites IA) continues under `site-game-on-integrity`.
 
-The [owner's complete vision](knowledge/vision.md) is authoritative. Customer-facing language follows [docs/voice-and-copy.md](docs/voice-and-copy.md). Public copy and taxonomy conflicts are sequenced in [docs/messaging-migration.md](docs/messaging-migration.md); that work does not replace Phase 1–4 product integrity. This roadmap replaces earlier Shopify-only launch, Product Review completion, and two-product roadmaps. Existing tasks may supply reusable work; their earlier interface and commercial decisions do not govern this version.
+The [owner's complete vision](knowledge/vision.md) is authoritative. Customer objects and navigation: [docs/product-architecture.md](docs/product-architecture.md). Customer-facing language follows [docs/voice-and-copy.md](docs/voice-and-copy.md). The complete implementation sequence is [docs/product-masterplan.md](docs/product-masterplan.md). This roadmap remains the Site engineering cutover (tenancy, coverage, Fix/Verify/Watch); it does not replace the masterplan. This roadmap replaces earlier Shopify-only launch, Product Review completion, and two-product roadmaps. Existing tasks may supply reusable work; their earlier interface and commercial decisions do not govern this version.
 
 Phase 0 evidence: [readiness receipt](.agents/sessions/site-v2-readiness-2026-09-08.md). Full-source coverage: [vision-to-phase map](docs/site-v2-vision-coverage.md).
 
@@ -10,7 +10,7 @@ Experience design is concrete in the [card-board contract](docs/card-board-exper
 
 ## Destination and boundaries
 
-One persistent customer Site, a first analysis that becomes its dashboard, inferred Outcomes, evidence-backed Flags, and ongoing care. The brand stays FixFlags. Reuse billing, accounts, plans, safe browser checks, evidence, queues, history, and working infrastructure. Replace the report experience rather than reskinning it.
+One persistent customer Site, a first analysis that becomes its dashboard, inferred Journeys (internal Outcomes), evidence-backed Flags, and ongoing care. The brand stays FixFlags. Reuse billing, accounts, plans, safe browser checks, evidence, queues, history, and working infrastructure. Replace the report experience rather than reskinning it. The FixFlags Agent is a persistent assistant, not a third product beside Site and Report.
 
 Scope is sequenced by observable customer value, not by integration count. No deadline or new pricing promise is implied. Git preserves earlier versions; a new docs entry does not establish a release checkpoint or commit existing uncommitted work.
 
@@ -20,7 +20,7 @@ Scope is sequenced by observable customer value, not by integration count. No de
 | --- | --- | --- | --- |
 | 0. Record and reconcile | Complete vision; sole canonical routing; new PRD and UI contract; legacy/target boundary; migration inventory; executable first slice | Source fidelity, local links, relevant skills, documentation drift checks; session receipt | Owner's September 8 revision |
 | 1. Site foundation | Tenant-scoped Site projection over reusable persistence; pages/actions; inferred and editable Outcomes; explicit coverage and evidence contracts; stable Flag identity; fixtures and safe adapter from current checks | Isolation, idempotency, many-to-many page/Outcome tests; partial/unverifiable cases cannot become healthy; migration dry run on disposable data | Phase 0 |
-| 2. URL to useful Site | URL entry, genuine discovery progress, same Site dashboard on completion; Home · Flags · Site; clear Flag detail; useful anonymous result | Real browser path at mobile and desktop widths: first URL through first Flag or honest healthy/partial state; refresh and failure recovery retain Site identity | Phase 1 |
+| 2. URL to useful Site | URL entry, genuine discovery progress, same Site dashboard on completion; Home · Flags; clear Flag detail; useful anonymous result | Real browser path at mobile and desktop widths: first URL through first Flag or honest healthy/partial state; refresh and failure recovery retain Site identity | Phase 1 |
 | 3. Fix and verify | Fix this, copy/share evidence safely, technical depth; Verify fix reruns relevant behavior; durable verified recovery and history | Controlled broken → attempted → fresh relevant pass → resolved fixture; persistent failure, incomparable capture, blocked check, and recurrence cases; no self-certified recovery | Phase 2 |
 | 4. Keep watching | Account/claim of the same Site; free ongoing monitoring; scheduling, coverage freshness, retries, alert deduplication, pause/delete; costed plan responsibilities | Durable claim + scheduler receipt; induced regression produces appropriate Flag/alert, healthy runs stay quiet, restart/lease/limit failures remain honest; free and paid responsibilities explicitly decided and tested | Phase 3 |
 | 5. Add useful context | Shopify first as a connection/native install route into the same Site; purpose-specific observer next; Analytics, Search Console, Meta, deployment context as separately earned increments | Each connection improves a named existing Flag/Outcome answer with source/time attribution; revoke/delete works; lost connection becomes a coverage gap; privacy review and measured collection cost | Working core through Phase 4; each adapter independently gated |
@@ -37,7 +37,7 @@ The exact work order and acceptance scenarios are in the [PRD](docs/product-prd.
 
 ## Decisions settled by the owner
 
-The complete vision is accepted; no second approval of its direction is needed. Site replaces report as the experience. Outcomes supply meaning. Flags supply attention. Health is scoped by coverage. Monitoring continues the find/fix/verify loop. Shopify is a wedge and connection. The brand and useful commercial foundations survive.
+The complete vision is accepted; no second approval of its direction is needed. Site replaces report as the experience. Journeys supply meaning. Flags supply attention. Health is scoped by coverage. Monitoring continues Flag. Fix. Verify. Shopify is a wedge and connection. The brand and useful commercial foundations survive. Navigation, Agent, and report retirement follow [product-architecture.md](docs/product-architecture.md) and [product-masterplan.md](docs/product-masterplan.md).
 
 ## Decisions due at their phase
 

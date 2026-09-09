@@ -9,7 +9,7 @@ Read AGENTS.md, knowledge/vision.md, SOUL.md and docs/voice-and-copy.md. PRODUCT
 
 ## Direction
 
-The target headline is “Your website, looked after.” Positioning, vocabulary, Flag. Fix. Verify., Analyze, notifications, AI/MCP and privacy live in docs/voice-and-copy.md. The live homepage hero already uses Analyze and the canon supporting lines; remaining public copy still on the old lexicon is listed in docs/messaging-migration.md. Use one product: persistent Site, Journeys, Flags, coverage and ongoing monitoring. Shopify has a tailored connection/native distribution path, not a separate company-wide product. Do not implement the rest of that plan unless the task owns it.
+The target headline is “Your website, looked after.” Positioning, vocabulary, Flag. Fix. Verify., Analyze, notifications, two AIs (FixFlags Agent vs Send a Flag to your AI), MCP and privacy live in docs/voice-and-copy.md. Architecture: docs/product-architecture.md. Remaining public copy is sequenced in docs/product-masterplan.md. The live homepage hero uses Analyze, the building promise (Keep building. FixFlags monitors your live website and lets you know when a Flag matters), and 100+ automated tests / real browser journeys. Use one product: persistent Site, Journeys, Flags, coverage and ongoing monitoring. Shopify has a tailored connection/native distribution path, not a separate company-wide product. Do not implement the rest of that plan unless the task owns it.
 
 The former “Finish what your AI started” positioning, report-first story and two-product menu are retired for the new version. Verify / Observe / Connect describe internal sources; they are not the default customer navigation.
 

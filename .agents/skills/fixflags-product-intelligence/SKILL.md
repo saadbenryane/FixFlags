@@ -5,12 +5,12 @@ description: Align FixFlags features and persistence with the accepted Site, Out
 
 # FixFlags Product Intelligence
 
-Read AGENTS.md first. The complete owner vision is knowledge/vision.md. ROADMAP.md orders implementation. PRODUCT.md describes current code, not the completed target.
+Read AGENTS.md first. The complete owner vision is knowledge/vision.md. Customer IA: docs/product-architecture.md. Sequence: docs/product-masterplan.md. ROADMAP.md orders the Site engineering cutover. PRODUCT.md describes current code, not the completed target.
 
 ## Route the task
 
 - Target requirements and acceptance: docs/product-prd.md.
-- Target interface: docs/workspace-interface.md.
+- Target interface: docs/product-architecture.md, docs/workspace-interface.md.
 - Persistence, existing model collision and reuse: docs/site-v2-migration.md.
 - Evidence, health, certainty and verification: knowledge/evidence-rules.md.
 - Private understanding: knowledge/product-intelligence.md and knowledge/privacy.md.
@@ -21,7 +21,7 @@ Read AGENTS.md first. The complete owner vision is knowledge/vision.md. ROADMAP.
 
 1. Use the September 8 revision as the sole active direction. Do not revive report-first, AI-builder-only, two-product or Shopify-only strategy.
 2. Customer Site is permanent. Pages belong to the Site. Inferred Journeys (Outcomes in the model) give them meaning. Customer Flags are durable attention with evidence history. Recommendations are improvements that are not Flags.
-3. Verify / Observe / Connect are internal evidence sources. Keep the small Home · Flags · Site interface. The first board card is Pages.
+3. Verify / Observe / Connect are internal evidence sources. Keep the small Home · Flags interface. The first board card is Pages. The FixFlags Agent is a later FAB, not a destination.
 4. Coverage and freshness qualify every healthy claim. 0 Flags means nothing important enough to act on; it is not proof of untested behavior.
 5. Separate certainty, severity, priority and lifecycle. A failed check or external warning is not automatically a Flag.
 6. Fresh independent verification of relevant behavior establishes recovery. Copy, Done, deployment and absence do not.

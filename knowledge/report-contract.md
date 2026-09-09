@@ -1,6 +1,6 @@
 # Report Contract
 
-**LEGACY COMPATIBILITY, 2026-09-08.** This contract applies to existing report routes while they remain. The owner has retired the report as the next-version experience. [The complete vision](vision.md), [Site PRD](../docs/product-prd.md) and [Site interface](../docs/workspace-interface.md) govern all new product work. Rubric, score, Agent/Report, prompt and diff rules below preserve old behavior only; they cannot constrain the new Site surface.
+**LEGACY COMPATIBILITY.** This contract applies to existing report routes while they remain. The report is not the product. [Vision](vision.md), [product architecture](../docs/product-architecture.md), [Site PRD](../docs/product-prd.md) and [Site interface](../docs/workspace-interface.md) govern all new product work. Retirement sequence: [product-masterplan.md](../docs/product-masterplan.md) Wave K. Rubric, score, Agent/Report, prompt and diff rules below preserve old behavior only; they cannot constrain the new Site surface.
 
 
 This is the canonical compatibility hierarchy for existing report code, copy and tests. It is not the new Site interface contract.

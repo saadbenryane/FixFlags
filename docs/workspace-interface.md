@@ -1,6 +1,8 @@
 # Site interface contract
 
-**TARGET, 2026-09-08.** Replaces the report/chat interface specification. Behavior: [PRD](product-prd.md). Intent: [vision](../knowledge/vision.md). Language: [voice-and-copy.md](voice-and-copy.md). Tokens: [DESIGN.md](../DESIGN.md). Current report routes retain their [legacy contract](../knowledge/report-contract.md) during migration.
+**TARGET.** Behavior: [PRD](product-prd.md). IA: [product-architecture.md](product-architecture.md). Intent: [vision](../knowledge/vision.md). Language: [voice-and-copy.md](voice-and-copy.md). Plan: [product-masterplan.md](product-masterplan.md). Tokens: [DESIGN.md](../DESIGN.md). Current report routes retain their [legacy contract](../knowledge/report-contract.md) during migration.
+
+This file owns progressive states, Flag detail, and interaction quality. If navigation or object names disagree with [product-architecture.md](product-architecture.md), the architecture wins.
 
 ## One persistent place
 
@@ -10,27 +12,32 @@ Design mobile-first. Desktop reveals more information using the same mental mode
 
 ## Primary navigation
 
+Customer chrome follows [product-architecture.md](product-architecture.md). Do not organize around scans, reports, audits, or an Agent tab.
+
 | Destination | Customer question | Contents |
 | --- | --- | --- |
-| Home | Does anything need me? | Bounded current status, important Outcomes, worthwhile open Flags, recent meaningful changes and last verification |
-| Flags | What needs fixing? | Prioritized attention, clear scope/certainty and progressive detail; resolved history remains accessible without polluting current attention |
-| Site | What is FixFlags responsible for? | Outcomes, pages/actions, coverage, connections, history and configuration |
+| Home | How is the Site doing? | Card board: Pages, Journeys/Conversion, other categories, Flag counts and useful metrics |
+| Flags | What needs me? | Prioritized attention; resolved history without polluting current attention |
+| Site settings | How is this Site configured? | Watch, notifications, connections, danger zone. Not a third product mode |
+| FixFlags Agent | Ask FixFlags | Persistent FAB (later). Not a nav item. Can escalate to support |
 
-Account, billing and Site switching are supporting controls, not competing product modes. No Agent | Report split, scores-first hero, raw-check grid, arbitrary dashboard builder or integration marketplace. Capability cards summarize meaning; underlying checks stay in progressive detail.
+Account, billing and Site switching are supporting controls. Pages and Journeys are reached through cards unless they later earn a destination. No Agent | Report split, scores-first hero, raw-check grid, arbitrary dashboard builder or integration marketplace.
+
+**Today's local tabs** Dashboard · Flags · Site are a stepping stone. Retire the third primary tab once settings exist. Mobile: Home · Flags · More.
 
 ## Home hierarchy
 
-The [card-board experience](card-board-experience.md) is the detailed design source. Home/Dashboard is one flat customizable grid. The first card is Pages (explored pages of the Site). Security, Search, Performance, Conversion and Tracking form the rest of the initial board. A quiet Add card opens the personalized library; categories belong only there. Desktop uses Dashboard · Flags · Site; mobile uses Home · Flags · Site. Public evidence works before connections, which enrich these same cards.
+The [card-board experience](card-board-experience.md) is the detailed design source. Home/Dashboard is one flat customizable grid. The first card is Pages (explored pages of the Site). Security, Search, Performance, Conversion and Tracking form the rest of the initial board. A quiet Add card opens the personalized library; categories belong only there. Public evidence works before connections, which enrich these same cards.
 
 Site identity and a human status lead. Journeys provide meaning. Attention appears as Flags when needed; a healthy Site can remain short and quiet (0 Flags, with coverage still discoverable). Always make coverage and freshness discoverable near health language.
 
-Do not force a green overall label when an important Outcome is unverified or stale. A site can be reachable while a purchase behavior is failing. Distinguish those facts. Numeric scores may explain a specific measurement in detail; they do not define Site health.
+Do not force a green overall label when an important Journey is unverified or stale. A site can be reachable while a purchase behavior is failing. Distinguish those facts. Numeric scores may explain a specific measurement in detail; they do not define Site health.
 
-## Outcome and Page
+## Journey and Page
 
-Use understandable Outcome names and the smallest useful confirmation. Looks right / Edit corrects inferred intent; it is not a funnel-design task. Preserve edited understanding across future analysis.
+Use understandable Journey names (internal model may remain Outcome) and the smallest useful confirmation. Looks right / Edit corrects inferred intent; it is not a funnel-design task. Preserve edited understanding across future analysis.
 
-Show relevant pages/actions and verification limits on expansion. A page may belong to multiple Outcomes or none. Pages outside Outcomes remain checkable. Coverage lists actual responsibility and gaps without hundreds of toggles.
+Show relevant pages/actions and verification limits on expansion. A page may belong to multiple Journeys or none. Pages outside Journeys remain checkable. Coverage lists actual responsibility and gaps without hundreds of toggles.
 
 ## Flag detail
 
@@ -47,10 +54,10 @@ Verify fix shows real progress and retains prior attempts. Resolved shows fresh 
 | Learning | Persisted discoveries and genuine running work; no generic fake progress or invented results |
 | Partial | Useful confirmed facts plus explicit missing scope; retry where possible |
 | Healthy | 0 Flags for that scope, plus a useful metric; coverage and latest verification remain available |
-| Needs attention | Ranked meaningful Flags (counts, not “Needs attention” prose); Recommendations stay in the card, not in notifications |
+| Flags present | Ranked meaningful Flags (counts, not “Needs attention” prose); Recommendations stay in the card, not in notifications |
 | Couldn't verify | What prevented a reliable answer and useful recovery/context action |
 | Stale or delayed | Last known evidence distinguished from current coverage; never quietly green |
-| No Outcome inferred | Useful page checks plus lightweight intent correction; no fabricated journey |
+| No Journey inferred | Useful page checks plus lightweight intent correction; no fabricated journey |
 | 0 Flags | Successful attention state when coverage supports it; not omniscience; Recommendations may still exist |
 | Fix verification | Running, persistent failure, inconclusive, verified recovery and recurrence |
 | Watch activation | Account/claim progress and actual scheduling result; retry activation independently of login |

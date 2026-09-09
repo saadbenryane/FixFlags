@@ -1,6 +1,6 @@
 # FixFlags messaging
 
-**Canonical customer-facing language. Status: NEXT for public surfaces; this document is the source of truth for new copy. Runtime strings still live in `lib/marketing/copy.ts` until the [messaging migration](messaging-migration.md) lands.**
+**Canonical customer-facing language. Status: NEXT for public surfaces; this document is the source of truth for new copy. Runtime strings still live in `lib/marketing/copy.ts` until the relevant waves in [product-masterplan.md](product-masterplan.md) land.**
 
 The [vision](../knowledge/vision.md) owns product direction. [SOUL.md](../SOUL.md) owns personality. [Evidence rules](../knowledge/evidence-rules.md) own certainty, coverage, and recovery. This file owns how FixFlags speaks: positioning, vocabulary, voice, and rules for future copy.
 
@@ -216,7 +216,7 @@ Severity, category, confidence, Journey importance, traffic context, commerce co
 
 A Flag should answer what happened, where, why it matters, what proves it, and what to do next. Every Flag should feel ready to fix rather than like a vague diagnostic.
 
-Today every stored finding is a Flag row, including POLISH. Attention/Finish Plan already excludes POLISH and low-confidence items, but the Site board still counts every open Flag. Until a business-importance projector exists, do not claim that Flags are only what matters. See the [migration plan](messaging-migration.md).
+Today every stored finding is a Flag row, including POLISH. Attention/Finish Plan already excludes POLISH and low-confidence items, but the Site board still counts every open Flag. Until a business-importance projector exists, do not claim that Flags are only what matters. See [product-masterplan.md](product-masterplan.md) FF-B1.
 
 ## Recommendation
 
@@ -397,6 +397,24 @@ Surface MCP when it is real:
 
 The monitoring product stays primary. Richer MCP workflows are a secondary path, not a repositioning.
 
+## Two AIs
+
+Do not collapse these into one “AI” feature.
+
+### FixFlags Agent
+
+The intended in-product assistant is a persistent control, typically bottom-right, available throughout the Site. Its job is to help the customer understand and operate FixFlags. It is grounded in Site, Pages, Journeys, Flags, Recommendations, monitoring, and connections. It can explain, navigate, gather context, help the customer fix, send a Flag to their coding AI, and escalate to human support with that context preserved.
+
+This is **not** the current legacy report Agent pane. Do not market the FAB until it exists. Do not build a competing Agent destination beside Home and Flags. Until it ships, Help and live support remain the human path.
+
+Allowed later: explain, navigate, gather context, confirmed Verify or Watch changes, support escalation. Not by default: silent repo writes, pausing ads, deploying, placing orders, or fabricating evidence.
+
+### Customer's coding AI
+
+External tools that implement a Fix. Customer concept: **Send a Flag to your AI.** Mechanism today: copy a prompt. Later: richer payload and optional MCP. FixFlags does not edit the customer's repository.
+
+If a sentence could mean either assistant, rewrite it until the job is obvious.
+
 ## Privacy
 
 FixFlags does not sell customer data. Customer data is not the business model. Minimize collection of unnecessary data where practical.
@@ -502,4 +520,4 @@ Shopify can have a tailored native entry and page as “FixFlags for Shopify,”
 
 The homepage, how-it-works, pricing, navigation, metadata, social previews, samples, public docs/help, emails, notifications, and Shopify listing must be reconciled as their corresponding behavior ships. The brand line cannot imply monitoring is active before it exists. Use real Site and Flag evidence for proof.
 
-Implementation order: [messaging-migration.md](messaging-migration.md).
+Implementation order: [product-masterplan.md](product-masterplan.md). Information architecture: [product-architecture.md](product-architecture.md).

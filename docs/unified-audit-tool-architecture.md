@@ -1,5 +1,7 @@
 # The Unified Web Audit Tool: First-Principles Architecture
 
+**HISTORICAL RESEARCH, not product direction.** Customer IA: [product-architecture.md](product-architecture.md). Vision: [knowledge/vision.md](../knowledge/vision.md). Do not treat this audit-tool survey as FixFlags navigation or object model.
+
 **Research Date:** July 27, 2026
 **Goal:** Design the ultimate web audit tool that combines every data source into one product.
 

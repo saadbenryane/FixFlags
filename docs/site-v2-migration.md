@@ -1,6 +1,6 @@
 # Site version migration and reuse
 
-**Implementation design, 2026-09-08. Not a completed migration.** The [vision](../knowledge/vision.md) determines the experience; this file owns the transition from current code. [ROADMAP.md](../ROADMAP.md) orders the work.
+**Implementation design.** The [vision](../knowledge/vision.md) determines the experience; [product-architecture.md](product-architecture.md) owns customer IA; [product-masterplan.md](product-masterplan.md) owns sequence. This file owns the transition from current code. [ROADMAP.md](../ROADMAP.md) orders the Site engineering cutover.
 
 ## Baseline and history
 

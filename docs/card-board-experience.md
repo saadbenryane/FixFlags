@@ -1,6 +1,6 @@
 # FixFlags card-board experience
 
-**TARGET design, owner brief of 2026-09-08.** This refines the [vision](../knowledge/vision.md), [interface contract](workspace-interface.md) and [PRD](product-prd.md). It supersedes conflicting dashboard hierarchy and shadow-first card guidance. It is design evidence, not a production release.
+**TARGET design, owner brief of 2026-09-08.** This refines the [vision](../knowledge/vision.md), [architecture](product-architecture.md), [interface contract](workspace-interface.md) and [PRD](product-prd.md). If navigation disagrees with product-architecture, architecture wins. It supersedes conflicting dashboard hierarchy and shadow-first card guidance. It is design evidence, not a production release.
 
 **Your website, looked after.** One website. One board. Everything that matters.
 
@@ -8,7 +8,7 @@
 
 The primary product is one flat card grid. Every card answers an understandable question about the same Site. Automated tests create evidence; cards create understanding; Flags create attention. Shopify, Analytics, Meta and Search Console enrich this Site rather than create separate products. Pages are nodes in journeys toward Purchase, Signup, Contact, Book or Donate. Customer-facing language: [voice-and-copy.md](voice-and-copy.md). The first board card is Pages, not a second product named Site.
 
-Desktop navigation: Dashboard, Flags, Site. Mobile: Home, Flags, Site. Account, settings, Site switching and retained billing are supporting controls. Capabilities do not become permanent navigation destinations.
+Desktop navigation: Home, Flags, Site settings. Mobile: Home, Flags, More. Pages and Journeys are reached through cards. The FixFlags Agent is a later FAB, not a nav item. Account, settings, Site switching and retained billing are supporting controls. Capabilities do not become permanent navigation destinations.
 
 ## Connected screens
 

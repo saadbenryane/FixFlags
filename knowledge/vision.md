@@ -2,11 +2,11 @@
 
 **Accepted direction: 2026-09-08. Status: VISION, not a shipped-capability claim.**
 
-Customer-facing vocabulary, voice, and brand expression are governed by [docs/voice-and-copy.md](../docs/voice-and-copy.md). This file remains the product vision. Where the narrative below uses older public phrases such as “Check my website” or “Find → Understand → Fix → Verify,” the messaging canon is authoritative for new copy. The owner text is otherwise preserved.
+Customer-facing vocabulary, voice, and brand expression are governed by [docs/voice-and-copy.md](../docs/voice-and-copy.md). Customer objects and navigation are [docs/product-architecture.md](../docs/product-architecture.md). Sequence is [docs/product-masterplan.md](../docs/product-masterplan.md). This file remains the product vision. Where the narrative below uses older public phrases such as “Check my website” or “Find → Understand → Fix → Verify,” the messaging canon is authoritative for new copy. The owner text is otherwise preserved.
 
 This is the complete owner-supplied revision, recorded from the September 8 attachment titled “FixFlags Product Vision Your website, looked after.” It supersedes the September 7 Site Intelligence draft and earlier Product Review, Finish Plan, AI-built-software, two-product, and Shopify-only positioning. The brand remains FixFlags. The report experience is being replaced; useful foundations, accounts, billing, and plans remain available for reuse.
 
-The owner's text below is preserved in full; headings are formatted for navigation. Example numbers, cadences, connections, and scenarios illustrate the target experience. They do not define current entitlements or claim that capabilities ship today. [Implementation phases](../ROADMAP.md), [build requirements](../docs/product-prd.md), and [current implementation](../PRODUCT.md) have separate roles.
+The owner's text below is preserved in full; headings are formatted for navigation. Example numbers, cadences, connections, and scenarios illustrate the target experience. They do not define current entitlements or claim that capabilities ship today. [Product architecture](../docs/product-architecture.md), [implementation masterplan](../docs/product-masterplan.md), [implementation phases](../ROADMAP.md), [build requirements](../docs/product-prd.md), and [current implementation](../PRODUCT.md) have separate roles.
 
 ---
 

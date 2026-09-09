@@ -2,7 +2,7 @@
 
 _Validated visual and interaction standards. Code-enforced where possible, documented where not._
 
-**Target experience:** [docs/workspace-interface.md](docs/workspace-interface.md) defines Home · Flags · Site. [docs/product-prd.md](docs/product-prd.md) owns behavior. [knowledge/vision.md](knowledge/vision.md) owns direction. [docs/voice-and-copy.md](docs/voice-and-copy.md) owns customer-facing language. Current report layout rules are compatibility-only in [knowledge/report-contract.md](knowledge/report-contract.md).
+**Target experience:** [docs/product-architecture.md](docs/product-architecture.md) owns objects and navigation. [docs/workspace-interface.md](docs/workspace-interface.md) owns states. [docs/product-prd.md](docs/product-prd.md) owns behavior. [knowledge/vision.md](knowledge/vision.md) owns direction. [docs/voice-and-copy.md](docs/voice-and-copy.md) owns customer-facing language. Current report layout rules are compatibility-only in [knowledge/report-contract.md](knowledge/report-contract.md).
 
 ## Design principles
 

@@ -1,6 +1,6 @@
 # Execution
 
-Start new product work with [ROADMAP.md](../ROADMAP.md), [the PRD](../docs/product-prd.md), and [the migration design](../docs/site-v2-migration.md). The complete [vision](vision.md) is accepted. Customer-facing language follows [messaging](../docs/voice-and-copy.md). This file routes execution rather than maintaining a second backlog.
+Start new product work with [the masterplan](../docs/product-masterplan.md), [product architecture](../docs/product-architecture.md), [ROADMAP.md](../ROADMAP.md), [the PRD](../docs/product-prd.md), and [the migration design](../docs/site-v2-migration.md). The complete [vision](vision.md) is accepted. Customer-facing language follows [messaging](../docs/voice-and-copy.md). This file routes execution rather than maintaining a second backlog.
 
 ## Next task
 

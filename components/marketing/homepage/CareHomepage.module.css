@@ -23,18 +23,18 @@
   animation: hero-rise .85s var(--hero-ease) .12s both;
 }
 .heroBody {
-  max-width: 760px;
+  max-width: 38rem;
   margin: 0 auto;
-  font-size: 22px;
-  line-height: 1.35;
-  letter-spacing: -.02em;
-  color: hsl(var(--foreground));
+  font-size: 18px;
+  line-height: 1.45;
+  letter-spacing: -.01em;
+  color: hsl(var(--muted-foreground));
   animation: hero-rise .7s var(--hero-ease) .1s both;
 }
 .heroProof {
-  max-width: 760px;
-  margin: 10px auto 0;
-  font-size: 16px;
+  max-width: 38rem;
+  margin: 8px auto 0;
+  font-size: 15px;
   line-height: 1.5;
   color: hsl(var(--muted-foreground));
   animation: hero-rise .7s var(--hero-ease) .14s both;
@@ -360,8 +360,8 @@
 @media (max-width: 767px) {
   .hero { padding: 24px 20px; }
   .hero h1 { font-size: clamp(44px, 11vw, 66px); }
-  .heroBody { max-width: 500px; font-size: 18px; }
-  .heroProof { font-size: 15px; }
+  .heroBody { max-width: 20.5rem; font-size: 16px; }
+  .heroProof { font-size: 14px; }
   .heroBoard { margin-top: 36px; }
   .board { padding: 14px; border-radius: 16px; }
   .boardHeader { margin-bottom: 16px; }

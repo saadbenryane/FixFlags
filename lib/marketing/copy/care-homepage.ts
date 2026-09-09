@@ -7,7 +7,7 @@ export const CARE_HOME = {
   brand: 'FixFlags', signIn: 'Sign in',
   headlineLines: ['Your website,', 'looked after.'],
   hero: {
-    body: 'Keep building. FixFlags keeps watch.',
+    body: 'Keep building. FixFlags monitors your live website and lets you know when a Flag matters.',
     proof: '100+ automated tests. Real browser journeys.',
     trust: 'No credit card required',
     cta: 'Analyze',

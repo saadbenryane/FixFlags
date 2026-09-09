@@ -11,7 +11,7 @@ Read AGENTS.md and claim non-overlapping scope. Keep current implementation dist
 
 | Concern | Source |
 | --- | --- |
-| Accepted direction and phase | knowledge/vision.md, ROADMAP.md |
+| Accepted direction and phase | knowledge/vision.md, docs/product-architecture.md, docs/product-masterplan.md, ROADMAP.md |
 | New behavior and interface | docs/product-prd.md, docs/workspace-interface.md |
 | Existing code and reuse | PRODUCT.md, docs/site-v2-migration.md |
 | Evidence and resolution | knowledge/evidence-rules.md |
@@ -22,7 +22,7 @@ Read AGENTS.md and claim non-overlapping scope. Keep current implementation dist
 | Attempts and verification foundations | lib/improvements/, lib/audit/task-contracts.ts |
 | Signals and Shopify foundations | lib/signals/, lib/shopify/, lib/integrity/ |
 | Runtime and release | QUALITY.md, fixflags-runtime-release skill |
-| Copy | lib/marketing/copy.ts, docs/voice-and-copy.md, docs/messaging-migration.md |
+| Copy | lib/marketing/copy.ts, docs/voice-and-copy.md, docs/product-masterplan.md |
 
 ## Implementation discipline
 

@@ -1,13 +1,16 @@
 # FixFlags Live Review and Product Intelligence
 
-**Status:** Merged (August 2026).
+**Status:** Retired stub (August 2026). Not a product vision.
 
-This document is retired. Use the canonical sources below instead of maintaining a second PRD.
+Use the canonical sources below instead of maintaining a second PRD.
 
 | Topic | Canonical source |
 |-------|------------------|
-| Product requirements (vision, loops, metering story, intelligence, acceptance criteria) | [product-prd.md](./product-prd.md) |
-| Workspace interface (layout, modes, playback, mobile) | [workspace-interface.md](./workspace-interface.md) |
+| Product vision | [knowledge/vision.md](../knowledge/vision.md) |
+| Customer IA | [product-architecture.md](./product-architecture.md) |
+| Implementation plan | [product-masterplan.md](./product-masterplan.md) |
+| Product requirements | [product-prd.md](./product-prd.md) |
+| Workspace interface | [workspace-interface.md](./workspace-interface.md) |
 | Shipped facts only | [PRODUCT.md](../PRODUCT.md) |
 
 ## Changelog

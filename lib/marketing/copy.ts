@@ -1,8 +1,8 @@
 /**
  * FixFlags marketing copy. Runtime strings.
  *
- * Language: docs/voice-and-copy.md. Migration of remaining surfaces:
- * docs/messaging-migration.md. Do not add a parallel vocabulary here.
+ * Language: docs/voice-and-copy.md. Remaining surface work:
+ * docs/product-masterplan.md. Do not add a parallel vocabulary here.
  */
 
 export * from './copy/brand'
