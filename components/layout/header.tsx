@@ -190,7 +190,7 @@ export function Header({
                   <SheetContent side="right" className="w-[280px]">
                     <SheetHeader>
                       <SheetTitle>
-                        <Logo variant="wordmark" size="sm" />
+                        <Logo variant="lockup" size="sm" />
                       </SheetTitle>
                     </SheetHeader>
                     <nav className="mt-6 flex flex-col gap-1">

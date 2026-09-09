@@ -78,7 +78,7 @@ export function SiteShell({
             <div className="flex min-w-0 flex-1 flex-col md:pl-16">
               <div className="sticky top-0 z-navbar flex h-14 items-center gap-3 border-b border-border/40 px-4 glass-nav md:hidden">
                 <MobileSidebar showAdmin={showAdmin} />
-                <Logo variant="wordmark" size="sm" href="/dashboard" />
+                <Logo variant="lockup" size="sm" href="/dashboard" />
               </div>
               <ActiveAuditBanner />
               <main id="main-content" className="flex-1" tabIndex={-1}>

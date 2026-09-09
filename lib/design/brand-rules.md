@@ -8,7 +8,8 @@ Source: FixFlags brand guidelines. Reference assets in `public/brand/`. Identity
 - **One-liner:** Your website, looked after.
 - **Campaign line:** Your website, looked after.
 - **Product loop:** Find → Understand → Fix → Verify, continued by monitoring.
-- **Mark:** Official geometric folded-F from brand sheet raster (`public/brand/logo-mark.png`). Do not regenerate or invent SVG geometry. Icon-left, Inter Tight wordmark-right lockup via `components/brand/Logo.tsx`.
+- **Mark:** Official geometric folded-F from owner raster (`docs/brand/reference/logo-mark-source.jpg`). Runtime PNGs are color-to-alpha then contain-resized (`public/brand/logo-mark*.png`). Do not invent SVG geometry.
+- **Lockup:** Transparent mark plus Inter Tight `FixFlags` wordmark via `components/brand/Logo.tsx`. The lockup JPEG is stored as source only; it is flattened on black and is not used on light surfaces.
 - **Wordmark:** Inter Tight, title case `FixFlags`, Fix heavier than Flags, tracking ~-0.02em.
 
 ## Color palette

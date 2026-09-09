@@ -17,7 +17,7 @@ export function MinimalFooter() {
     <footer>
       <Container className="flex flex-col gap-3 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <Logo variant="mark" size="sm" href="/" />
+          <Logo variant="lockup" size="sm" href="/" />
           <span>© {new Date().getFullYear()} {BRAND.name}</span>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2">

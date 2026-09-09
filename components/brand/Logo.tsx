@@ -4,21 +4,20 @@ import { cn } from '@/lib/utils'
 
 export type LogoVariant = 'wordmark' | 'mark' | 'lockup'
 
-/** Official mark from brand sheet (clipped raster). Do not regenerate. */
+/** 3× retina rasters. Transparent PNG derived from the owner mark JPEG. */
 const MARK = {
-  src: '/brand/logo-mark.png',
-  width: 512,
-  height: 512,
+  sm: { src: '/brand/logo-mark-sm.png', pixel: 72, display: 24 },
+  md: { src: '/brand/logo-mark-md.png', pixel: 84, display: 28 },
+  lg: { src: '/brand/logo-mark-lg.png', pixel: 96, display: 32 },
 } as const
 
-const MARK_PX = { sm: 24, md: 28, lg: 32 } as const
 const WORD_CLASS = {
   sm: 'text-base',
   md: 'text-lg',
   lg: 'text-xl',
 } as const
 
-type LogoSize = keyof typeof MARK_PX
+type LogoSize = keyof typeof MARK
 
 interface LogoProps {
   variant?: LogoVariant
@@ -27,20 +26,18 @@ interface LogoProps {
   href?: string
 }
 
-function Mark({ px }: { px: number }) {
+function Mark({ size }: { size: LogoSize }) {
+  const asset = MARK[size]
   return (
-    <span className="relative block shrink-0" style={{ width: px, height: px }}>
-      <Image
-        src={MARK.src}
-        alt=""
-        fill
-        sizes={`${px}px`}
-        // Already-compressed brand PNG; skip /_next/image so a localPatterns
-        // allowlist regression cannot blank the live logo.
-        unoptimized
-        className="object-contain"
-      />
-    </span>
+    <Image
+      src={asset.src}
+      alt=""
+      width={asset.pixel}
+      height={asset.pixel}
+      unoptimized
+      className="shrink-0 object-contain"
+      style={{ width: asset.display, height: asset.display }}
+    />
   )
 }
 
@@ -70,10 +67,10 @@ export function Logo({ variant = 'lockup', size = 'md', className, href }: LogoP
       {variant === 'wordmark' ? (
         <Wordmark size={size} />
       ) : variant === 'mark' ? (
-        <Mark px={MARK_PX[size]} />
+        <Mark size={size} />
       ) : (
         <>
-          <Mark px={MARK_PX[size]} />
+          <Mark size={size} />
           <Wordmark size={size} />
         </>
       )}

@@ -5,7 +5,9 @@ These are **design references only** — not served at runtime. Production asset
 ## Current sheet (2026-07)
 
 - `brand-sheet-2026-07.png` — full brand guidelines (logo, palette, type, UI, dark mode)
-- `logo-lockup-on-ink.png` — mark + wordmark on ink (source lockup)
+- `logo-mark-source.jpg` — owner hi-res mark (square). Do not edit; derive runtime sizes with `npm run brand:icons`.
+- `logo-lockup-source.jpg` — owner hi-res mark + wordmark lockup. Same rule.
+- `logo-lockup-on-ink.png` — earlier mark + wordmark on ink (historical)
 
 ## Homepage mockups (2026-07)
 
@@ -20,8 +22,8 @@ Runtime hero glass: `public/marketing/visuals/home-hero-glass.webp` (RGBA).
 
 | Reference | Production |
 |-----------|------------|
-| Logo mark/wordmark | `public/brand/logo-mark.png` (official sheet mark), `components/brand/Logo.tsx` (mark + Inter Tight wordmark), lockups in `public/brand/logo-lockup-*.png` |
-| Mark source files | `docs/brand/reference/logo-mark-source.png`, `logo-lockup-on-ink.png` |
+| Logo mark/wordmark | `public/brand/logo-mark.png` plus sm/md/lg retina PNGs with alpha, `components/brand/Logo.tsx` (transparent mark + Inter Tight wordmark) |
+| Mark source files | `docs/brand/reference/logo-mark-source.jpg` (JPEG on black), `logo-lockup-source.jpg` (source only; not served on light UI) |
 | Palette | `lib/design/tokens.css` + `lib/design/brand-spec.ts` |
 | Typography | Inter Tight display + Inter + JetBrains Mono (`lib/design/fonts.ts`) |
 
