@@ -9,10 +9,16 @@ import { canAccessProductWatch, allowedWatchIntervals } from '@/lib/auth/entitle
 import { systemClock, type Clock } from '@/lib/time/clock'
 
 export type WatchInterval = 'weekly' | 'daily'
+export type SiteWatchJobKind = 'pulse' | 'full'
 
 const INTERVAL_MS: Record<WatchInterval, number> = {
   weekly: 7 * 24 * 60 * 60 * 1000,
   daily: 24 * 60 * 60 * 1000,
+}
+
+/** Pulse is cheap reachability. Full is Playwright + Flags. Hourly pulse is not scheduled until costed. */
+export function plannedWatchJobs(interval: WatchInterval): { pulse: 'daily' | 'hourly' | null; full: WatchInterval } {
+  return { pulse: null, full: interval }
 }
 const RETRY_MS = [15 * 60 * 1000, 60 * 60 * 1000, 6 * 60 * 60 * 1000] as const
 const LEASE_MS = 10 * 60 * 1000
@@ -343,8 +349,8 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
     await resend.emails.send({
       from: FROM_EMAIL,
       to: child.user.email,
-      subject: `Regression on ${host}: ${regressCount} issue${regressCount === 1 ? '' : 's'}`,
-      html: `<p>Hi${child.user.name ? ` ${child.user.name}` : ''},</p><p>Your FixFlags watch found <strong>${regressCount}</strong> new or regressed issue${regressCount === 1 ? '' : 's'} on <strong>${host}</strong>.</p><p><a href="${SITE_URL}/sites/${child.projectId}">Open your Site board</a></p><p>Cleared: ${summary.fixed.length} · Inconclusive: ${summary.inconclusive.length} · Remaining: ${summary.unchanged.length} · New: ${summary.newIssues.length} · Regressed: ${summary.regressed.length}</p>`,
+      subject: `Regression on ${host}: ${regressCount} Flag${regressCount === 1 ? '' : 's'}`,
+      html: `<p>Hi${child.user.name ? ` ${child.user.name}` : ''},</p><p>FixFlags found <strong>${regressCount}</strong> new or regressed Flag${regressCount === 1 ? '' : 's'} on <strong>${host}</strong>.</p><p><a href="${SITE_URL}/sites/${child.projectId}">Open your Site board</a></p><p>Verified: ${summary.fixed.length} · Inconclusive: ${summary.inconclusive.length} · Still open: ${summary.unchanged.length} · New: ${summary.newIssues.length} · Regressed: ${summary.regressed.length}</p>`,
     }, { idempotencyKey: `fixflags-watch-${child.id}-v1` })
     await prisma.audit.update({
       where: { id: childAuditId },

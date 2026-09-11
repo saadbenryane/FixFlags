@@ -159,7 +159,7 @@ describe('site card packaging', () => {
       coverage,
     })
     expect(health.state).toBe('healthy')
-    expect(health.answer).toMatch(/looking good/i)
+    expect(health.answer).toBe('0 Flags')
   })
 
   it('does not treat PARTIAL as a finished AuditStatus', () => {

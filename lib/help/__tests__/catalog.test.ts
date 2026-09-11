@@ -17,7 +17,7 @@ describe('help catalog', () => {
     expect(HELP_CATEGORIES.some((category) => category.id === 'mcp-and-editors')).toBe(false)
     expect(HELP_ARTICLES.every((article) => article.categoryId !== 'mcp-and-editors')).toBe(true)
     expect(HELP_ARTICLES.length).toBeGreaterThanOrEqual(25)
-    expect(getHelpArticle('first-check')?.title).toMatch(/Check a website URL/)
+    expect(getHelpArticle('first-check')?.title).toMatch(/Analyze a website URL/)
   })
 
   it('resolves every article slug', () => {

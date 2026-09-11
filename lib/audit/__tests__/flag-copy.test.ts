@@ -79,10 +79,18 @@ describe('flag-copy', () => {
       fix: 'Remove noindex from robots meta for production pages.',
       verificationRule: 'View page source; robots meta should not include noindex.',
     }
-    const prompt = buildExpertFixPrompt(flag)
+    const prompt = buildExpertFixPrompt(
+      {
+        ...flag,
+        pageUrl: 'https://example.com/robots',
+      },
+      { journeyName: 'Get found' }
+    )
     assert.match(prompt, /^## Goal$/m)
     assert.match(prompt, /## Constraint/)
     assert.match(prompt, /## Context/)
+    assert.match(prompt, /- URL: https:\/\/example.com\/robots/)
+    assert.match(prompt, /- Journey: Get found/)
     assert.match(prompt, /## Plan\nRemove noindex/)
     assert.match(prompt, /## Verify/)
     assert.doesNotMatch(prompt, /look at|screenshot|whole page/i)

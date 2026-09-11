@@ -86,7 +86,7 @@ export function AvatarMenu({
         <DropdownMenuItem asChild>
           <Link href="/dashboard" className="gap-2">
             <Boxes className="h-4 w-4" />
-            Products
+            Sites
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

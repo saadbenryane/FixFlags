@@ -16,7 +16,7 @@ const ALL_HELP_CATEGORIES: readonly HelpCategory[] = [
   {
     id: 'billing-and-plans',
     title: 'Billing and plans',
-    description: 'Free monitors one website every 24 hours. Paid is hourly, billed per website.',
+    description: 'Free verifies one website weekly. Paid is daily, billed per website.',
     icon: 'creditCard',
   },
   {
@@ -37,14 +37,14 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'first-check',
     categoryId: 'getting-started',
-    title: 'Check a website URL',
+    title: 'Analyze a website URL',
     excerpt: 'Enter a public URL. FixFlags opens a Site board with Flags, coverage, and the next fix.',
     popular: true,
     searchTokens: ['scan', 'audit', 'start', 'url', 'anonymous', 'install', 'shopify', 'site'],
     body: [
       {
         type: 'p',
-        text: 'Enter a public website URL on the homepage or /new. FixFlags opens a Site board for that website. You do not install an app to start. Shopify is a later connection if you sell on Shopify.',
+        text: 'Enter a public website URL on the homepage or /new and Analyze. FixFlags opens a Site board for that website. You do not install an app to start. Shopify is a later connection if you sell on Shopify.',
       },
       {
         type: 'p',
@@ -53,7 +53,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       {
         type: 'ol',
         items: [
-          'Enter your website URL and start the check.',
+          'Enter your website URL and Analyze.',
           'Stay on the Site board while cards fill in.',
           'Open a Flag, copy the fix, then Verify the same page and action.',
         ],
@@ -83,8 +83,8 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       {
         type: 'ul',
         items: [
-          'Looking good: required areas were checked and no Flags need attention.',
-          'Needs attention: a Flag has evidence and a next step.',
+          '0 Flags: required areas were checked and nothing important enough to Flag remains.',
+          'Flags: something has evidence and a next step. Open the Flag.',
           'Coverage incomplete: the scan finished, but some starter areas were never evidenced.',
         ],
       },
@@ -104,7 +104,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     body: [
       {
         type: 'p',
-        text: 'The loop is Find, Understand, Fix, Verify. Copy the fix into your editor, publish, then Verify. Verify is a fresh look at the same page and action, not a disappearing Flag.',
+        text: 'The loop is Flag. Fix. Verify. Copy the fix into your editor, publish, then Verify. Verify is a fresh look at the same page and action, not a disappearing Flag.',
       },
       {
         type: 'p',
@@ -112,7 +112,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'callout',
-        text: 'Keep watching is weekly on Free. Pause takes the Site off the schedule. You are covered only after a schedule is written.',
+        text: 'Keep watching is weekly on Free. Pause takes the Site off the schedule. Monitoring is active only after a schedule is written.',
       },
     ],
     related: ['update-review-credits', 'reading-your-report', 'what-counts-as-a-check'],
@@ -124,16 +124,16 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'anonymous-report-access',
     categoryId: 'getting-started',
     title: 'What you see after install',
-    excerpt: 'The embedded app is the product. No extra FixFlags account is required to watch the first walk.',
+    excerpt: 'Shopify is a connection. After install you still get a Site with Home and Flags.',
     searchTokens: ['anonymous', 'signed out', 'teaser', 'claim', 'gate', 'install'],
     body: [
       {
         type: 'p',
-        text: 'After a successful Shopify install you land in the embedded app. The first walk starts on its own. You can watch health, video, and the named step there.',
+        text: 'After a successful Shopify install, purchase-path walks run in the embedded app. Can\'t buy becomes a Flag on the matching Site. Home · Flags is the same product as a URL you Analyze.',
       },
       {
         type: 'p',
-        text: 'There is no website form to claim. Pro extras use the waitlist inside the app.',
+        text: 'Create a FixFlags account if you want Verify and Watch on that Site. Pro extras use the waitlist.',
       },
       {
         type: 'link',
@@ -414,21 +414,21 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'free-vs-pro',
     categoryId: 'billing-and-plans',
     title: 'Free vs Pro',
-    excerpt: 'One website free, every 24 hours. Paid is $49 per website, up to every hour. We are not charging yet.',
+    excerpt: 'One website free, verified weekly. Paid is $49 per website, verified every day. We are not charging yet.',
     popular: true,
     searchTokens: ['pricing', 'upgrade', 'studio', 'plan', 'monitoring'],
     body: [
       {
         type: 'p',
-        text: 'Free: one website, 24/7 monitoring checked every 24 hours, Flags with evidence, a next step to fix, verify after you publish, and connections included.',
+        text: 'Free: one website, verified weekly, Flags with evidence, a next step to fix, verify after you publish, and connections included.',
       },
       {
         type: 'p',
-        text: 'Pro: $49 per website per month, checked up to every hour. Same Flags, evidence, verify, and connections.',
+        text: 'Pro: $49 per website per month, verified every day. Same Flags, evidence, verify, and connections.',
       },
       {
         type: 'p',
-        text: 'Studio is hourly monitoring for several websites, billed per website, quoted on a demo. We are not charging yet.',
+        text: 'Studio is several websites, billed per website, quoted on the waitlist. We are not charging yet.',
       },
     ],
     related: ['what-counts-as-a-check', 'cancel-or-manage'],
@@ -439,17 +439,17 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
   {
     slug: 'upgrade-or-downgrade',
     categoryId: 'billing-and-plans',
-    title: 'Request a demo',
-    excerpt: 'Paid monitoring is billed per website. Request a demo. We are not charging yet.',
+    title: 'Join the waitlist',
+    excerpt: 'Paid monitoring is billed per website. Join the waitlist. We are not charging yet.',
     searchTokens: ['upgrade', 'downgrade', 'change plan', 'switch', 'waitlist', 'demo'],
     body: [
       {
         type: 'p',
-        text: 'Open Pricing and request a demo for Pro or Studio. We email you to set a time. Paid monitoring is $49 per website per month. We are not charging yet.',
+        text: 'Open Pricing and join the waitlist for Pro or Studio. We email you when checkout opens. Paid monitoring is $49 per website per month. We are not charging yet.',
       },
       {
         type: 'p',
-        text: 'Free keeps monitoring one website every 24 hours while you wait.',
+        text: 'Free keeps verifying one website weekly while you wait.',
       },
     ],
     related: ['free-vs-pro', 'cancel-or-manage'],
@@ -491,7 +491,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'Request a demo if you need hourly monitoring or extra websites.',
+        text: 'Join the waitlist if you need daily verification or extra websites.',
       },
     ],
     related: ['what-counts-as-a-check', 'free-vs-pro', 'upgrade-or-downgrade'],
@@ -503,16 +503,16 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
     slug: 'what-counts-as-a-check',
     categoryId: 'billing-and-plans',
     title: 'What the free plan includes',
-    excerpt: 'One website, 24/7 monitoring every 24 hours, Flags, evidence, and verify.',
+    excerpt: 'One website, verified weekly, Flags, evidence, and verify.',
     searchTokens: ['quota', 'limit', 'credit', 'usage', 'scan', 'monitoring'],
     body: [
       {
         type: 'p',
-        text: 'Free includes one website with 24/7 monitoring checked every 24 hours, Flags with evidence, a next step to fix, verify after you publish, and connections.',
+        text: 'Free includes one website verified weekly, Flags with evidence, a next step to fix, verify after you publish, and connections.',
       },
       {
         type: 'p',
-        text: 'A check that cannot start does not change that cadence. Request a demo for hourly monitoring on more websites.',
+        text: 'A check that cannot start does not change that cadence. Join the waitlist for daily verification on more websites.',
       },
     ],
     related: ['update-review-credits', 'free-vs-pro'],
@@ -554,7 +554,7 @@ const ALL_HELP_ARTICLES: readonly HelpArticle[] = [
       },
       {
         type: 'p',
-        text: 'The Shopify app is free to install. Request a demo for paid website monitoring.',
+        text: 'The Shopify app is free to install. Join the waitlist for paid website monitoring.',
       },
     ],
     related: ['what-counts-as-a-check', 'free-vs-pro', 'payment-past-due'],

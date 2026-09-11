@@ -22,7 +22,7 @@ function proMoment(
 ): UpgradeMomentContent {
   return {
     ...base,
-    cta: proUpgradeCta(base.ctaPrefix ?? 'Request a demo'),
+    cta: proUpgradeCta(base.ctaPrefix ?? 'Join waitlist'),
   }
 }
 
@@ -42,7 +42,7 @@ export function getUpgradeMomentContent(
         headline: UPGRADE_MOMENTS.compare_improved.headline(scoreDelta),
         body: UPGRADE_MOMENTS.compare_improved.body,
         plan: UPGRADE_MOMENTS.compare_improved.plan,
-        ctaPrefix: 'Request a demo',
+        ctaPrefix: 'Join waitlist',
       })
     case 'compare_flat':
       return proMoment(UPGRADE_MOMENTS.compare_flat)

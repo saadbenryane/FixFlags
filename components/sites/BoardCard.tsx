@@ -150,7 +150,7 @@ export function BoardCard({
     .filter(Boolean)
     .join(' ')
 
-  const signalLabel = checking ? SITE_BOARD_COPY.checking : state === 'healthy' ? 'Checks passed' : status
+  const signalLabel = checking ? SITE_BOARD_COPY.checking : state === 'healthy' ? '0 Flags' : status
   const openLabel = action ?? SITE_BOARD_COPY.viewDetails
 
   const body = (

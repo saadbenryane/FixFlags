@@ -47,9 +47,9 @@ describe('customer copy contract', () => {
     expect(visibleCopy.join('\n')).not.toMatch(/\bre-?checks?\b/i)
   })
 
-  it('keeps Fixed as the customer absence bucket, separate from verification receipts', () => {
-    expect(FLAG_STATUS_LABELS.FIXED.label).toBe('Fixed')
-    expect(FLAG_STATUS_LABELS.FIXED.description).toBe('Not observed in this update review')
+  it('keeps Verified as independent proof, separate from report absence buckets', () => {
+    expect(FLAG_STATUS_LABELS.FIXED.label).toBe('Verified')
+    expect(FLAG_STATUS_LABELS.FIXED.description).toBe('Independent check of the same behavior passed')
     expect(RECHECK_DIFF_COPY.cleared).toBe('Fixed')
     expect(RECHECK_DIFF_COPY.inconclusive).toBe('Inconclusive')
     expect(REPORT_COPY.verificationReceipts.outcomes).toEqual({

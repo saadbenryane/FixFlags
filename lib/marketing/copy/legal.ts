@@ -11,12 +11,12 @@ export const TERMS_SECTIONS = {
   service: {
     title: 'Service',
     body:
-      'FixFlags provides purchase-path monitoring for Shopify stores, including automated storefront walks, verification video of our own session, and alerts. The service is provided as-is. Results are guidance for your own operations, not a guarantee that every customer can complete checkout.',
+      'FixFlags analyzes a public website URL you submit. Our browser opens the live pages, records what it sees, and raises Flags when something important enough to act on is wrong. Optional connections such as Shopify add store context to the same Site. Results are guidance for your own operations, not a guarantee that every visitor can complete every action.',
   },
   accountsAndBilling: {
     title: 'Accounts and billing',
     body:
-      'The Shopify purchase-path app is free to install. Pro extras are waitlisted and are not charged today. If paid billing opens later, those terms will be shown before you subscribe. Uninstalling the Shopify app stops walks.',
+      'You can Analyze a public URL without an account. Signing in lets you save the Site, Verify fixes, and keep watching. The Shopify app is optional. Pro extras are waitlisted and are not charged today. If paid billing opens later, those terms will be shown before you subscribe.',
   },
   discountTiers: {
     title: 'Launch discount tiers',
@@ -49,17 +49,17 @@ export const PRIVACY_SECTIONS = {
   collect: {
     title: 'What we collect',
     body:
-      'When you install the Shopify app, we store the shop domain, store name, store owner email, product titles and storefront URLs we monitor, and verification artifacts (screenshots, GIFs, and video of the FixFlags walk). We do not store customer personal data at launch. If you join a waitlist, we store the feature you asked for and the email we should notify.',
+      'When you Analyze a URL, we store that URL, the pages our browser opened, screenshots and network evidence from that session, and the Flags we raise. If you create an account, we store your email and the Sites you claim. Shopify is optional: if you install the app, we also store the shop domain, store name, store owner email, and purchase-path verification artifacts. We do not sell your data. If you join a waitlist, we store the feature you asked for and the email we should notify.',
   },
   use: {
     title: 'How we use it',
     body:
-      'We use this data to walk purchase paths, send alerts, operate waitlists, and improve the product. We do not sell your personal data. Uninstalling stops walks. A shop redact request deletes the store record.',
+      'We use this data to analyze the live website, raise Flags, Verify fixes, watch scheduled Sites, operate waitlists, and improve the product. We do not sell your personal data. Uninstalling the Shopify app stops purchase-path walks. Deleting a Site removes that website from your account.',
   },
   reportAccess: {
     title: 'Report access',
     body:
-      'Verification video and screenshots belong to the installed store. They are shown in the Shopify app. We do not publish them as public report links.',
+      'Public report URLs show evidence from an analysis. Signed-in owners are taken to their Site. Shopify verification video belongs to the installed store and is shown in the Shopify app. We do not sell report or walk data.',
   },
   thirdParties: {
     title: 'Third parties',

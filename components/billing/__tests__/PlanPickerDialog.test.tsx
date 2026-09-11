@@ -15,6 +15,9 @@ vi.mock('@/lib/billing/client-checkout', () => ({
   requestPlanCheckout: (...args: unknown[]) => requestPlanCheckout(...args),
 }))
 vi.mock('next/navigation', () => ({ useRouter: () => useRouter(), useSearchParams: () => useSearchParams() }))
+vi.mock('@/lib/billing/paid-open', () => ({
+  isPaidCheckoutGatedClient: () => true,
+}))
 
 beforeAll(() => {
   if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
@@ -71,10 +74,10 @@ describe('PlanPickerDialog', () => {
     expect(screen.getByText('Pro')).toBeInTheDocument()
     expect(screen.getByText('Studio')).toBeInTheDocument()
     expect(
-      screen.getByText('Free is one website, every 24 hours. Paid is $49 per website, up to every hour.'),
+      screen.getByText('Free is one website, verified weekly. Paid is $49 per website, verified every day.'),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Current plan' })).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Request a demo' })).toHaveLength(2)
+    expect(screen.getAllByRole('button', { name: 'Join waitlist' })).toHaveLength(2)
     await waitFor(() =>
       expect(trackEvent).toHaveBeenCalledWith(
         'plan_picker_viewed',
@@ -143,7 +146,7 @@ describe('PlanPickerDialog', () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith('/dashboard'))
   })
 
-  it('routes Pro to the demo request', async () => {
+  it('routes Pro to the waitlist', async () => {
     useMe.mockReturnValue({
       user: { id: 'u1', email: 'a@b.com', plan: 'FREE' },
       isLoading: false,
@@ -156,9 +159,9 @@ describe('PlanPickerDialog', () => {
       <PlanPickerDialog open onOpenChange={onOpenChange} source="billing" />
     )
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Request a demo' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Join waitlist' })[0])
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/request-demo?plan=pro'))
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/waitlist/pro'))
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 

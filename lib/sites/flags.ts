@@ -1,9 +1,57 @@
 import { prisma } from '@/lib/db'
+import { isCustomerFlag } from '@/lib/audit/attention'
 import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import type { SiteRecord } from '@/lib/sites/types'
 
-export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
+function toSiteFlagSeed(flag: {
+  id: string
+  checkId: string | null
+  rubric: string
+  severity: string
+  impactTag: string | null
+  problem: string
+  evidence: string
+  whyItMatters: string
+  fix: string
+  pageUrl: string | null
+  status: string
+  improvementId?: string | null
+  confidence?: number | null
+}): SiteFlagSeed {
+  return {
+    id: flag.improvementId ?? flag.id,
+    sourceFlagId: flag.id,
+    confidence: flag.confidence ?? null,
+    improvementId: flag.improvementId ?? null,
+    checkId: flag.checkId,
+    rubric: flag.rubric,
+    severity: flag.severity,
+    impactTag: flag.impactTag,
+    problem: flag.problem,
+    evidence: flag.evidence,
+    whyItMatters: flag.whyItMatters,
+    fix: flag.fix,
+    pageUrl: flag.pageUrl,
+    status: flag.status,
+    area: cardAreaForCheck(flag),
+  }
+}
+
+function partitionCustomerFlags(seeds: SiteFlagSeed[]): {
+  flags: SiteFlagSeed[]
+  recommendations: SiteFlagSeed[]
+} {
+  const flags: SiteFlagSeed[] = []
+  const recommendations: SiteFlagSeed[] = []
+  for (const seed of seeds) {
+    if (isCustomerFlag(seed)) flags.push(seed)
+    else recommendations.push(seed)
+  }
+  return { flags, recommendations }
+}
+
+async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
   if (site.kind === 'project' && site.projectId) {
     const improvements = await prisma.improvement.findMany({
       where: {
@@ -12,7 +60,6 @@ export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
       },
       orderBy: [{ priority: 'asc' }, { updatedAt: 'desc' }],
       include: { occurrences: { orderBy: { createdAt: 'desc' }, take: 1, include: { flag: true } } },
-      take: 50,
     })
 
     const latestAudit = await prisma.audit.findFirst({
@@ -23,23 +70,24 @@ export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
 
     const auditFlags = latestAudit
       ? await prisma.flag.findMany({
-          where: { auditId: latestAudit.id, status: 'OPEN' },
+          where: { auditId: latestAudit.id, status: { in: ['OPEN', 'REGRESSED'] } },
           orderBy: [{ severity: 'asc' }, { createdAt: 'desc' }],
-          take: 50,
-        })
+            })
       : []
 
     if (improvements.length > 0) {
-      return improvements.map((imp) => {
+      const projected = improvements.map((imp) => {
         const flag = auditFlags.find((f) => f.fingerprint === imp.fingerprint) ?? imp.occurrences?.[0]?.flag
         return {
-          id: flag?.id ?? imp.id,
+          id: imp.id,
+          sourceFlagId: flag?.id ?? null,
+          confidence: flag?.confidence ?? null,
           improvementId: imp.id,
           checkId: flag?.checkId ?? null,
           rubric: flag?.rubric ?? 'EXPERIENCE',
           severity: flag?.severity ?? 'IMPORTANT',
           impactTag: flag?.impactTag ?? null,
-          problem: imp.title || flag?.problem || 'Needs attention',
+          problem: imp.title || flag?.problem || 'Open Flag',
           evidence: flag?.evidence ?? imp.expectedBenefit,
           whyItMatters: flag?.whyItMatters ?? imp.expectedBenefit,
           fix: flag?.fix ?? imp.recommendedChange,
@@ -52,10 +100,14 @@ export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
           }),
         }
       })
+      const represented = new Set(projected.map((flag) => flag.sourceFlagId))
+      return [...projected, ...auditFlags.filter((flag) => !represented.has(flag.id)).map(toSiteFlagSeed)]
     }
 
     return auditFlags.map((flag) => ({
       id: flag.id,
+      sourceFlagId: flag.id,
+      confidence: flag.confidence,
       improvementId: null,
       checkId: flag.checkId,
       rubric: flag.rubric,
@@ -75,26 +127,26 @@ export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
   if (!auditId) return []
 
   const flags = await prisma.flag.findMany({
-    where: { auditId, status: 'OPEN' },
+    where: { auditId, status: { in: ['OPEN', 'REGRESSED'] } },
     orderBy: [{ severity: 'asc' }, { createdAt: 'desc' }],
-    take: 50,
   })
 
-  return flags.map((flag) => ({
-    id: flag.id,
-    improvementId: null,
-    checkId: flag.checkId,
-    rubric: flag.rubric,
-    severity: flag.severity,
-    impactTag: flag.impactTag,
-    problem: flag.problem,
-    evidence: flag.evidence,
-    whyItMatters: flag.whyItMatters,
-    fix: flag.fix,
-    pageUrl: flag.pageUrl,
-    status: flag.status,
-    area: cardAreaForCheck(flag),
-  }))
+  return flags.map((flag) => toSiteFlagSeed(flag))
+}
+
+export async function loadSiteFindings(site: SiteRecord): Promise<{
+  flags: SiteFlagSeed[]
+  recommendations: SiteFlagSeed[]
+}> {
+  return partitionCustomerFlags(await loadAllOpenSiteFlags(site))
+}
+
+export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
+  return (await loadSiteFindings(site)).flags
+}
+
+export async function loadSiteRecommendations(site: SiteRecord): Promise<SiteFlagSeed[]> {
+  return (await loadSiteFindings(site)).recommendations
 }
 
 export type SiteFlagAttemptView = {
@@ -108,6 +160,8 @@ export type SiteFlagAttemptView = {
 }
 
 export type SiteFlagDetail = SiteFlagSeed & {
+  sourceAuditId: string
+  verificationRule: string | null
   confidence: number | null
   causeCertainty: string | null
   expectedBehavior: string
@@ -127,20 +181,21 @@ export async function loadSiteFlagDetail(
   site: SiteRecord,
   flagId: string
 ): Promise<SiteFlagDetail | null> {
-  const flags = await loadSiteFlags(site)
-  const seed = flags.find((f) => f.id === flagId || f.improvementId === flagId)
-  if (!seed) return null
-
-  const flagRow = await prisma.flag.findUnique({
-    where: { id: seed.id },
-    select: {
-      confidence: true,
-      causeCertainty: true,
-      verificationRule: true,
-      evidence: true,
-      evidenceTargets: true,
-      problem: true,
+  // Detail is a historical resource, independent of the open inbox and its pagination.
+  const flagRow = await prisma.flag.findFirst({
+    where: {
+      audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' },
+      OR: [{ id: flagId }, { improvementOccurrence: { improvementId: flagId } }],
     },
+    orderBy: { createdAt: 'desc' },
+    include: { improvementOccurrence: { include: { improvement: true } } },
+  })
+  if (!flagRow) return null
+  const improvement = flagRow.improvementOccurrence?.improvement
+  const seed = toSiteFlagSeed({
+    ...flagRow,
+    improvementId: improvement?.id,
+    status: improvement?.status ?? flagRow.status,
   })
 
   const improvementId = seed.improvementId
@@ -163,10 +218,12 @@ export async function loadSiteFlagDetail(
 
   const expectedBehavior =
     flagRow?.verificationRule?.trim() ||
-    `A fresh check of the same page and action no longer observes: ${seed.problem}`
+    'Recovery criteria have not been established.'
 
   return {
     ...seed,
+    sourceAuditId: flagRow.auditId,
+    verificationRule: flagRow.verificationRule,
     confidence: flagRow?.confidence ?? null,
     causeCertainty: flagRow?.causeCertainty ?? null,
     expectedBehavior,

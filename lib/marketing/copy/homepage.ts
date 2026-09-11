@@ -6,8 +6,8 @@ export const HERO = {
   headlineAccentPeriod: true,
   subhead:
     'Enter your website. FixFlags finds problems in the pages and paths that drive leads, signups, and sales, then shows you what to fix first.',
-  primaryCta: 'Review my site',
-  compactPrimaryCta: 'Review',
+  primaryCta: 'Analyze',
+  compactPrimaryCta: 'Analyze',
   primaryHref: '/#audit',
   trySampleCta: 'See how it works',
   secondaryHref: '/how-it-works',
@@ -156,7 +156,7 @@ export const HOW_IT_WORKS_PAGE = {
     headlineAccentPeriod: false,
     subhead:
       'FixFlags does the checking, keeps the evidence together, and returns to the live website after the change.',
-    primaryCta: 'Check my website',
+    primaryCta: 'Analyze',
     primaryHref: '/#audit',
     secondaryCta: 'See a sample review',
     secondaryHref: '/samples',
@@ -261,19 +261,15 @@ export const HOW_IT_WORKS_PAGE = {
   },
   loop: {
     label: 'How FixFlags works',
-    title: 'See the problem. Fix it. Know it works.',
+    title: 'Flag. Fix. Verify.',
     steps: [
-      {
-        title: 'Check',
-        body: 'FixFlags opens pages, follows important actions, and records what actually happens.',
-      },
       {
         title: 'Flag',
         body: 'One important action fails. You see what happened, where, and why it matters.',
       },
       {
         title: 'Fix',
-        body: 'The next step comes with context. Read it, share it, or give the evidence to the AI tool you already use.',
+        body: 'The next step comes with context. Read it, share it, or send the Flag to your AI.',
       },
       {
         title: 'Verify',
@@ -304,7 +300,7 @@ FixFlags: "The original problem is no longer observed in this update review."`,
   finalCta: {
     headline: 'Enter your site. See what matters first.',
     body: 'Start with a free website analysis. Save the Site when you want FixFlags to keep watching.',
-    primaryCta: 'Review my site',
+    primaryCta: 'Analyze',
     primaryHref: '/#audit',
     secondaryCta: "See how it works",
     secondaryHref: '/how-it-works',
@@ -558,21 +554,16 @@ export const LANDING_PAGE = {
     steps: [
       {
         step: 1,
-        title: 'Check',
-        body: 'FixFlags opens pages, follows important actions, and records what actually happens.',
-      },
-      {
-        step: 2,
         title: 'Flag',
         body: 'One important action fails. You see what happened, where, and why it matters.',
       },
       {
-        step: 3,
+        step: 2,
         title: 'Fix',
-        body: 'The next step comes with context. Read it, share it, or give the evidence to the AI tool you already use.',
+        body: 'The next step comes with context. Read it, share it, or send the Flag to your AI.',
       },
       {
-        step: 4,
+        step: 3,
         title: 'Verify',
         body: 'FixFlags repeats the same action on the live website and confirms the success state appears.',
       },
@@ -599,35 +590,29 @@ export const LANDING_PAGE = {
       {
         id: 'UNKNOWN' as const,
         title: 'Connect',
-        body: 'Add Shopify, Analytics, Search Console, Meta, or deployment context only when it improves an existing answer.',
+        body: 'Add a Shopify connection when it improves an existing answer. Other sources come later.',
       },
     ] as const,
   },
   layers: {
     label: 'One system, not a toolbox',
-    headlineDisplay: 'Find. Understand. Fix. Verify',
+    headlineDisplay: 'Flag. Fix. Verify',
     headlineAccentPeriod: true,
-    headline: 'Find. Understand. Fix. Verify.',
+    headline: 'Flag. Fix. Verify.',
     subhead:
       'Monitoring keeps the loop running. Connections enrich the same Site. AI helps operate it.',
     cards: [
       {
-        id: 'find',
-        title: 'Find',
+        id: 'flag',
+        title: 'Flag',
         question: 'What deserves attention?',
         body: 'Surface the website problems that matter, with evidence rather than a score dump.',
-      },
-      {
-        id: 'understand',
-        title: 'Understand',
-        question: 'What happened, where, and why?',
-        body: 'See the page, path, source, and independent evidence behind each Flag.',
       },
       {
         id: 'fix',
         title: 'Fix',
         question: 'What should change next?',
-        body: 'Prioritize the action that removes the most important customer friction first.',
+        body: 'Send a Flag to your AI, or fix it yourself. The next step comes with evidence.',
       },
       {
         id: 'verify',

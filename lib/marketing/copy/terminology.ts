@@ -1,13 +1,16 @@
 /**
  * Canonical customer-facing terminology. Wire marketing, product UI, and help from here.
  * Internal code may still use re-check, scan, audit, journey enums.
+ * Needs attention is wrong as customer face copy. Flag. Fix. Verify. is the loop.
  */
 
+export const ANALYZE_CTA = 'Analyze'
+
 export const REVIEW_ENTRY = {
-  cta: 'Check my website',
-  compactCta: 'Check site',
+  cta: ANALYZE_CTA,
+  compactCta: ANALYZE_CTA,
   href: '/new',
-  urlPlaceholder: 'yoursite.com',
+  urlPlaceholder: 'yourwebsite.com',
   trySampleCta: 'See how it works',
 } as const
 
@@ -23,7 +26,10 @@ export const SITE_BOARD_COPY = {
   fixThis: 'Fix this',
   verifyFix: 'Verify fix',
   copyPrompt: 'Copy prompt',
+  sendFlagToAi: 'Send a Flag to your AI',
   share: 'Share',
+  pagesCardName: 'Pages',
+  sampleLabel: 'Sample',
   flagStatus: 'Needs a fix',
   needsAttention: 'Needs attention',
   lastChecked: 'Last checked',
@@ -43,8 +49,8 @@ export const CUSTOMER_TERMS = {
   category: 'Website care',
   categoryLine: 'Your website, looked after.',
   tagline: 'Know how your website is doing, what needs attention, and what to do next.',
-  primaryCta: 'Check my website',
-  compactPrimaryCta: 'Check',
+  primaryCta: ANALYZE_CTA,
+  compactPrimaryCta: ANALYZE_CTA,
   productReview: 'Site check',
   productReviews: 'Site checks',
   productReviewTitle: 'Site',
@@ -71,11 +77,11 @@ export const PRICING_COPY = {
   studioPrice: 'Volume',
   studioPeriod: '',
   studioProductReviewsPerMonth: 90,
-  freeFrequency: 'every 24 hours',
-  paidFrequency: 'up to every hour',
+  freeFrequency: 'weekly',
+  paidFrequency: 'every day',
 } as const
 
-export const CORE_LOOP_LABEL = 'Find → Understand → Fix → Verify'
+export const CORE_LOOP_LABEL = 'Flag. Fix. Verify.'
 
 /** Regex patterns that must not appear in customer-facing copy surfaces. */
 export const BANNED_CUSTOMER_PHRASES = [

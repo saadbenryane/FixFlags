@@ -13,11 +13,11 @@ Shopify is a [connection](/install), not the product. Use it when you sell on Sh
 
 ## The product loop
 
-FixFlags follows one loop: **Find → Understand → Fix → Verify**, then Watch.
+FixFlags follows one loop: **Flag. Fix. Verify.**, then Watch.
 
-- **Find** problems on the live website.
-- **Understand** with evidence, certainty, and coverage.
-- **Fix** in the tools you already use.
+- **Analyze** the live website broadly.
+- **Flag** what is important enough to act on.
+- **Fix** in the tools you already use, or send the Flag to your AI.
 - **Verify** with a fresh independent check of the same behavior.
 - **Watch** only after a schedule exists.
 

@@ -42,8 +42,8 @@ describe('structured data', () => {
       url: 'https://fixflags.com/pricing',
       name: PRICING.faqTitle,
     })
-    const demoQuestion = schema.mainEntity.find((entity) => entity.name === 'How does paid monitoring work?')
-    expect(demoQuestion?.acceptedAnswer.text).toContain('/request-demo')
+    const paidQuestion = schema.mainEntity.find((entity) => entity.name === 'How does paid monitoring work?')
+    expect(paidQuestion?.acceptedAnswer.text).toContain('/waitlist/pro')
   })
 
   it('emits TechArticle and BreadcrumbList for help articles', () => {

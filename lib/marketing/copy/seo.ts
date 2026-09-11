@@ -17,17 +17,17 @@ export const SEO = {
   pricing: {
     title: 'FixFlags Pricing',
     description:
-      '24/7 website monitoring. One website free, checked every 24 hours. Paid monitoring is $49 per website per month, up to every hour.',
+      'Website monitoring priced per site. One website free, verified weekly. Pro is $49 per website per month, verified every day.',
   },
   requestDemo: {
     title: 'Request a FixFlags demo',
     description:
-      'Request a demo for hourly website monitoring, billed per website. We are not charging yet.',
+      'Request a demo for daily website verification, billed per website. We are not charging yet.',
   },
   waitlist: {
     title: 'Join the waitlist',
     description:
-      'Pro and Studio open in order. The first 500 waitlisters per plan get 25% off for 12 months from launch. The next 500 get 15% off. Sign up required.',
+      'Pro is $49 per website per month, verified every day. Join the list. We email you when checkout opens. Sign up required.',
   },
   howItWorks: {
     title: 'How FixFlags Works',

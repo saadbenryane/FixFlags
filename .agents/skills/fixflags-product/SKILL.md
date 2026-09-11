@@ -17,7 +17,7 @@ Read AGENTS.md and claim non-overlapping scope. Keep current implementation dist
 | Evidence and resolution | knowledge/evidence-rules.md |
 | Current report compatibility | knowledge/report-contract.md |
 | Capture and recovery | docs/audit-pipeline.md, lib/audit/ |
-| Existing plans/access | lib/billing/plans.ts, lib/auth/entitlements.ts, SECURITY.md |
+| Existing plans/access | lib/billing/plans.ts, lib/auth/entitlements.ts, SECURITY.md. Public list is `$49`/website/mo (Free weekly, Pro daily, Studio waitlist). Live Stripe IDs stay `$39`/`$129` until an explicit checkout pass. `STRIPE_PAID_OPEN` stays false. |
 | Application commands/queries | lib/products/application/, lib/audit/application/ |
 | Attempts and verification foundations | lib/improvements/, lib/audit/task-contracts.ts |
 | Signals and Shopify foundations | lib/signals/, lib/shopify/, lib/integrity/ |
@@ -28,7 +28,7 @@ Read AGENTS.md and claim non-overlapping scope. Keep current implementation dist
 
 Trace route, application service, persistence, tenancy, entitlements and UI together. Business facts and access are deterministic. Reuse shared services rather than creating separate report/Shopify/Site truths.
 
-The new Site replaces the report experience. Existing rubrics, full update-review diff, anonymous gating and Studio Watch are scoped compatibility contracts, not permanent v2 requirements. Maintain current behavior until explicit migration and regression evidence. Useful free ongoing care needs real implementation.
+The new Site replaces the report experience. Customer Flags use `isCustomerFlag` in `lib/audit/attention.ts`; Site lists come from `loadSiteFlags`. Home · Flags · Site settings is the nav. Signed-in owners with a Site redirect from `/report/[id]` to `/sites/{id}`. Shopify Can't buy upserts a Flag on a matching Site. Watch is weekly (Free) / daily (paid); pulse vs full is typed, hourly pulse is not scheduled. Existing rubrics, full update-review diff, anonymous gating and report URLs are scoped compatibility contracts, not permanent v2 requirements. Maintain current behavior until explicit migration and regression evidence.
 
 Never reuse graph Site/Page as private customer objects or infer ownership from hostname alone. Preserve credentials, subscriptions, customer corrections and historical evidence.
 

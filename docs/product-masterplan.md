@@ -53,7 +53,7 @@ Phases 1–4 in [ROADMAP.md](../ROADMAP.md) remain the engineering cutover for t
 | Decision | Risk if wrong | Constraint |
 | --- | --- | --- |
 | `isCustomerFlag` projector (not POLISH=Recommendation, not a new table) | 0 Flags lies; noisy product | Combine existing ranking signals; fixtures before marketing |
-| Monitoring entitlements vs public 24h/hourly | Trust and billing | Business choice A/B/C in FF-B3; no silent quota change |
+| Monitoring entitlements vs public cadence | Trust and billing | Pulse vs verification (FF-B3 locked). Public copy is weekly/daily until pulse exists. No silent quota change. |
 | Home · Flags vs Home · Flags · Site | Third tab becomes a junk drawer | Site settings, not a third product mode |
 | Agent FAB vs report Agent pane | Two AI products | Design FAB now; do not invest in the pane as destination |
 | Report URL compatibility vs Site-first | Broken shares vs split mental model | Keep `/report/[id]` working; stop sending owners there |
@@ -163,7 +163,7 @@ Do not parallelize two owners on `lib/sites/*`, `CareHomepage` / `care-homepage.
 | Recommendations | No entity; Improvements = Finish Plan | Do not market | After projector, in card depth |
 | 0 Flags | Help honest; board Looking good | Do not use as all-clear | Coverage states |
 | Continuous monitoring | Watch exists | Monitoring / keeps watch, no fake cadence | After FF-B3 |
-| Cadence | Pricing 24h/hourly; Watch weekly/daily; pool 3/30/90 | Soft or name code | One truth |
+| Cadence | Pricing weekly/daily at `$49`; Watch weekly/daily; pool 3/30/90 hidden | Soft or name code | One truth |
 | Verify | Scoped child audit; copy “not observed” | Verify fix | Independent states |
 | Notifications | Watch email; Shopify email+Slack; no prefs | Do not describe modes | After prefs |
 | Shopify | OAuth, walks, alerts | FixFlags for Shopify, same product | Unified connection |
@@ -285,16 +285,15 @@ Each item is an implementation unit for another agent. Claim BOARD. Do not imple
 - **Acceptance:** Same. **Parallel:** With B1 if same owner.
 - **Legacy:** Looking good as health prose.
 
-### FF-B3 Monitoring entitlement decision — PP / Next — **business**
+### FF-B3 Monitoring entitlement decision — PP / Next — **locked 2026-09-09**
 
-- **Current:** Pricing hourly/24h; Watch Free weekly, paid daily, hourly rejected; pool 3/30/90; access-policy Studio-only vs entitlements Free Watch.
-- **Intended:** One truth. (A) Watch matches packaging, (B) packaging matches Watch, or (C) interim “monitors on a plan-specific schedule” without hourly.
-- **Files:** `lib/billing/plans.ts`, `entitlements.ts`, `access-policy.ts`, `copy/plans.ts`, help billing, PRODUCT.md after code.
-- **Deps:** Operator decision. Stripe still closed (`STRIPE_PAID_OPEN`).
-- **Risk:** High. No silent quota change. Preserve paid records.
-- **Acceptance:** Pricing, Help, entitlements, Watch API, PRODUCT.md agree.
-- **Blocks:** Hourly/24h sentences. **Parallel:** Decision beside B1; copy waits.
-- **Later:** Hourly internals only after costed pass (roadmap Phase 4).
+- **Decision:** Public packaging matches Watch. Free: weekly verification, one site. Pro: `$49`/website/mo, daily verification. Studio: volume waitlist. Pulse (cheap reachability of inferred journeys) is the later closer-than-daily job; do not print continuous or hourly until it exists. Hidden `auditLimit` 3/30/90 stays off `/pricing`. Paid COGS envelope ~`$12`/site/mo; measure `auditRunCost` p50 before `STRIPE_PAID_OPEN`.
+- **Until pulse exists:** do not print 24/7 or hourly. Paid CTA is the waitlist. Do not silently enable hourly full walks.
+- **Files:** `lib/billing/plans.ts`, `entitlements.ts`, `access-policy.ts`, `copy/plans.ts`, help billing, PRODUCT.md, `knowledge/strategy.md`.
+- **Risk:** High. No silent quota change. Preserve paid records. `STRIPE_PAID_OPEN` stays false.
+- **Acceptance:** Pricing, Help, entitlements, Watch API, and PRODUCT.md agree. No hourly full Playwright at $49.
+- **Blocks:** Hourly/24h sentences until pulse ships.
+- **Parallel:** Packaging copy in this lock. Pulse runtime is Phase 4.
 
 ### FF-B4 Verify semantics — PP / Next
 
@@ -586,7 +585,7 @@ Nurture: Analyze, monitoring, Flag. Fix. Verify. Drop AI-builder checklist as th
 
 ### FF-J4 Pricing / packaging copy — after B3
 
-Do not change prices in a copy task. Flag 3/30/90 vs 24h/hourly, Connections included, projectLimitLabel “1 product”, credits/reviews/scans in old help. Plans buy responsibility (cadence, Sites, coverage), not a different product.
+Do not change live Stripe IDs in a copy task. Public list is `$49`/website/mo (Free weekly, Pro daily). Flag leftover 3/30/90, Connections included, projectLimitLabel “1 product”, credits/reviews/scans in old help. Plans buy responsibility (cadence, Sites, coverage), not a different product.
 
 ### FF-J5 Account vs Site settings — Next
 

@@ -66,7 +66,7 @@ describe('AvatarMenu', () => {
       ctrlKey: false,
     })
 
-    expect(await screen.findByRole('menuitem', { name: 'Products' })).toHaveAttribute(
+    expect(await screen.findByRole('menuitem', { name: 'Sites' })).toHaveAttribute(
       'href',
       '/dashboard'
     )

@@ -42,7 +42,6 @@ const BANNED_LANDING_PHRASES = [
   /\bleverage\b/i,
   /holistic/i,
   /seamless/i,
-  /\bjourneys?\b/i,
 ] as const
 
 function collectStrings(value: unknown, out: string[] = []): string[] {
@@ -112,7 +111,7 @@ describe('homepage message guardrails', () => {
   })
 
   it('canonical terminology anchors stay aligned', () => {
-    assert.equal(HERO.primaryCta, 'Review my site')
+    assert.equal(HERO.primaryCta, 'Analyze')
     assert.equal(PLAN_DEFINITIONS.BUILDER.price, '$49')
     assert.equal(REPORT_COPY.sectionTitles.journey, 'Funnel')
     assert.equal(REPORT_COPY.recheck.label, 'Update review')
@@ -213,7 +212,6 @@ describe('homepage message guardrails', () => {
     assert.ok(CORE_LOOP_STRINGS.some((line) => /site/i.test(line)))
     for (const line of CORE_LOOP_STRINGS) {
       assert.doesNotMatch(line, /\bre-?scan\b/i)
-      assert.doesNotMatch(line, /\bjourneys?\b/i)
     }
     assert.match(
       LANDING_PAGE.howItWorks.steps.at(-1)?.body ?? '',
@@ -221,10 +219,10 @@ describe('homepage message guardrails', () => {
     )
   })
 
-  it('pricing sells 24/7 monitoring with a per-site paid price', () => {
+  it('pricing sells weekly Free and daily Pro at $49 per site', () => {
     assert.match(PRICING.trustBadge, /Flags, evidence/i)
     assert.doesNotMatch(PRICING.trustBadge, /unlimited re-checks/i)
-    assert.match(PLAN_DEFINITIONS.FREE.auditLimitLabel, /every 24 hours/i)
+    assert.match(PLAN_DEFINITIONS.FREE.auditLimitLabel, /weekly/i)
     assert.doesNotMatch(
       PLAN_DEFINITIONS.BUILDER.features.join(' '),
       /deep reviews/i,
@@ -243,8 +241,8 @@ describe('homepage message guardrails', () => {
     assert.ok(MCP_SECTION.closing.length > 0)
   })
 
-  it('primary CTA starts with a website review', () => {
-    assert.equal(HERO.primaryCta, 'Review my site')
+  it('primary CTA starts with Analyze', () => {
+    assert.equal(HERO.primaryCta, 'Analyze')
     assert.ok(!/audit/i.test(HERO.primaryCta))
     assert.equal(FINAL_CTA.headlineDisplay, 'Enter your site. See what matters first')
     assert.ok(!/[.?]$/.test(FINAL_CTA.headlineDisplay))
@@ -272,22 +270,22 @@ describe('homepage message guardrails', () => {
     }
   })
 
-  it('how it works section has the Check, Flag, Fix, Verify loop', () => {
+  it('how it works section has the Flag, Fix, Verify loop', () => {
     assert.ok(!('problemBar' in LANDING_PAGE.howItWorks))
     assert.equal(
       LANDING_PAGE.howItWorks.headline,
       'See the problem. Fix it. Know it works.',
     )
     assert.ok(LANDING_PAGE.howItWorks.subhead.length > 0)
-    assert.equal(LANDING_PAGE.howItWorks.steps.length, 4)
+    assert.equal(LANDING_PAGE.howItWorks.steps.length, 3)
   })
 
-  it('how it works steps keep the Check, Flag, Fix, Verify loop', () => {
+  it('how it works steps keep the Flag, Fix, Verify loop', () => {
     assert.deepEqual(
       LANDING_PAGE.howItWorks.steps.map((s) => s.title),
-      ['Check', 'Flag', 'Fix', 'Verify'],
+      ['Flag', 'Fix', 'Verify'],
     )
-    const flag = LANDING_PAGE.howItWorks.steps[1]!
+    const flag = LANDING_PAGE.howItWorks.steps[0]!
     assert.match(flag.body, /happened/i)
     assert.doesNotMatch(flag.body, /performance, accessibility, SEO/i)
     assert.ok(
@@ -401,14 +399,14 @@ describe('homepage message guardrails', () => {
     assert.equal(REPORT_COPY.workspace.summaryLabel, 'Review score and history')
   })
 
-  it('landing page exposes Find, Understand, Fix, Verify', () => {
+  it('landing page exposes Flag, Fix, Verify', () => {
     assert.equal(
       LANDING_PAGE.layers.headlineDisplay,
-      'Find. Understand. Fix. Verify',
+      'Flag. Fix. Verify',
     )
     assert.deepEqual(
       LANDING_PAGE.layers.cards.map((c) => c.title),
-      ['Find', 'Understand', 'Fix', 'Verify'],
+      ['Flag', 'Fix', 'Verify'],
     )
     assert.equal(
       LANDING_PAGE.howItWorks.headline,

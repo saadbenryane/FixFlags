@@ -408,7 +408,10 @@ export function formatDisplayEvidence(
   return formatVisualEvidence(checkId, raw)
 }
 
-export function buildExpertFixPrompt(flag: RankableFlag): string {
+export function buildExpertFixPrompt(
+  flag: RankableFlag,
+  extras?: { journeyName?: string | null }
+): string {
   const evidence = (flag.evidence ?? flag.problem).trim()
   const fix = normalizeFixBody(resolveFixPrompt(flag) ?? flag.problem)
   const verify = resolveVerificationRule(flag)
@@ -438,7 +441,9 @@ export function buildExpertFixPrompt(flag: RankableFlag): string {
     `- ${severity}`,
     '',
     '## Context',
-    `- Issue: ${flag.rubric} / ${flag.severity}`,
+    `- Flag: ${flag.rubric} / ${flag.severity}`,
+    `- URL: ${flag.pageUrl?.trim() || 'not recorded'}`,
+    `- Journey: ${extras?.journeyName?.trim() || 'not inferred'}`,
     `- Evidence: ${evidence}`,
     '',
     '## Why it matters',

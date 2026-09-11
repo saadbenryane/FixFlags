@@ -34,6 +34,7 @@ export type { AxeViolation } from './accessibility'
 export interface RunAllChecksResult {
   flags: DeterministicFlag[]
   failedModules: string[]
+  executions: Array<{ module: string; passed: boolean; applicable: boolean }>
 }
 
 export async function runAllChecks(
@@ -48,6 +49,7 @@ export async function runAllChecks(
   axeViolations?: AxeViolation[],
 ): Promise<RunAllChecksResult> {
   const failedModules: string[] = []
+  const executions: RunAllChecksResult['executions'] = []
 
   // Detect the page's high-level purpose once. Conversion-friction, content,
   // and trust-psychology checks gate on this so they do not fire on docs,
@@ -95,10 +97,18 @@ export async function runAllChecks(
       const { name, run } = checkers[i]
       try {
         const results = await run()
+        const applicable = name === 'performance' ? Boolean(desktop && mobile)
+          : name === 'mobile' ? Boolean(mobile)
+          : name === 'security-headers' ? Boolean(responseHeaders)
+          : name === 'accessibility' ? axeViolations !== undefined
+          : ['layout', 'interaction', 'cta-focus', 'visual-polish', 'visual-hierarchy', 'mobile-ux-quality'].includes(name)
+            ? Boolean(captureMetrics) : true
+        executions.push({ module: name, passed: results.length === 0, applicable })
         findings.push(...results)
       } catch (err) {
         logger.error(`Check module "${name}" failed`, err)
         failedModules.push(name)
+        executions.push({ module: name, passed: false, applicable: false })
       }
     }
     return findings
@@ -138,6 +148,7 @@ export async function runAllChecks(
   return {
     flags: filterToolingPathFlags(suppressOverlappingFlags(flags)),
     failedModules,
+    executions,
   }
 }
 

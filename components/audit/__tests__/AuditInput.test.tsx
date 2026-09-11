@@ -39,7 +39,7 @@ describe('AuditInput scan handoff', () => {
     fireEvent.change(input, { target: { value: 'example.com' } })
     fireEvent.submit(input.closest('form')!)
 
-    expect(await screen.findByRole('button', { name: /Reviewing/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Analyzing/ })).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: /Fix list with/i })).not.toBeInTheDocument()
     expect(screen.queryByText(/Preparing your review/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/Opening your report/i)).not.toBeInTheDocument()
@@ -63,7 +63,7 @@ describe('AuditInput scan handoff', () => {
     fireEvent.submit(input.closest('form')!)
 
     expect(await screen.findByText('Could not start this check.')).toBeInTheDocument()
-    const retryButton = screen.getByRole('button', { name: /Check my website/i })
+    const retryButton = screen.getByRole('button', { name: /Analyze/i })
     expect(retryButton).toBeEnabled()
     expect(startScanWithHandoff).toHaveBeenCalledOnce()
 
@@ -186,9 +186,9 @@ describe('AuditInput scan handoff', () => {
       </MeProvider>,
     )
 
-    const submit = await screen.findByRole('button', { name: /Check my website/i })
+    const submit = await screen.findByRole('button', { name: /Analyze/i })
     expect(submit.className).toMatch(/grid-cols-\[1fr_auto_1fr\]/)
     expect(submit.querySelector('svg')).not.toBeNull()
-    expect(submit.textContent).toMatch(/Check my website/)
+    expect(submit.textContent).toMatch(/Analyze/)
   })
 })

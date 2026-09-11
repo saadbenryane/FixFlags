@@ -110,7 +110,7 @@ export function SiteBoard({
         body: JSON.stringify({ outcomeId, confirmed: true }),
       })
       if (res.ok) {
-        setToast('Outcome saved')
+        setToast('Journey saved')
         await refresh()
       }
     } finally {
@@ -183,6 +183,9 @@ export function SiteBoard({
   const selectedFlags = selected
     ? view.flags.filter((f) => selected.flagIds.includes(f.id) || f.area === selected.id)
     : []
+  const selectedRecommendations = selected
+    ? (view.recommendations ?? []).filter((f) => f.area === selected.id)
+    : []
   const visibleCards = view.cards.filter(
     (card) =>
       STARTER_BOARD_CARDS.includes(card.id) || addedCards.includes(card.id)
@@ -215,7 +218,7 @@ export function SiteBoard({
                 )}
               >
                 <Icon className="h-4 w-4" />
-                {label}
+                {label === 'Dashboard' ? 'Home' : label === 'Site' ? 'Settings' : label}
                 {label === 'Flags' && view.flags.length > 0 ? (
                   <span className="ml-auto rounded-full bg-foreground/10 px-2 py-0.5 text-xs">
                     {view.flags.length}
@@ -262,20 +265,20 @@ export function SiteBoard({
                 <Link href="/dashboard" className="text-xs text-muted-foreground">All Sites</Link>
               </div>
               <h1 className="text-2xl font-semibold tracking-tight">
-                {nav === 'Dashboard' ? 'Your board' : nav === 'Flags' ? 'Flags' : 'Your Site'}
+                {nav === 'Dashboard' ? 'Your board' : nav === 'Flags' ? 'Flags' : 'Site settings'}
               </h1>
               <p className="mt-1 max-w-xl text-sm text-muted-foreground">
                 {nav === 'Dashboard'
                   ? checking
                     ? `${learningCopy}. Cards update as each area finishes.`
                     : view.flags.length
-                      ? 'Issues show up by area. Open a card to dig in.'
+                      ? 'Flags show up by area. Open a card to dig in.'
                       : view.statusState === 'healthy'
                         ? 'Checked areas look good. Unchecked areas stay unknown.'
                         : view.coverageSummary
                   : nav === 'Flags'
                     ? 'The things worth your attention.'
-                    : 'What FixFlags knows, and what it’s watching.'}
+                    : 'Watch, connections, and how FixFlags notifies you.'}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -384,7 +387,7 @@ export function SiteBoard({
                       <div>
                         <p className="font-medium">{outcome.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {outcome.confirmedAt ? 'Confirmed' : 'Inferred'} · {outcome.inferenceSource}
+                          {outcome.confirmedAt ? 'Confirmed' : 'Inferred'} · Journey
                         </p>
                         {outcome.pageUrls?.[0] ? (
                           <p className="mt-1 truncate text-xs text-muted-foreground">
@@ -407,7 +410,7 @@ export function SiteBoard({
                     </li>
                   ))}
                   {view.outcomes.length === 0 ? (
-                    <li className="text-sm text-muted-foreground">Still learning your Outcomes.</li>
+                    <li className="text-sm text-muted-foreground">Still learning your Journeys.</li>
                   ) : null}
                 </ul>
               </section>
@@ -462,6 +465,18 @@ export function SiteBoard({
                       </div>
                     ))
                   )}
+                  {selectedRecommendations.length > 0 ? (
+                    <div className="pt-2">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Recommendations</p>
+                      <ul className="mt-2 space-y-2">
+                        {selectedRecommendations.map((item) => (
+                          <li key={item.id} className="rounded-xl border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
+                            {item.problem}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </div>
               </> : null}
             </DialogContent>
@@ -477,7 +492,7 @@ export function SiteBoard({
           [
             ['Dashboard', 'Home', LayoutGrid],
             ['Flags', 'Flags', Flag],
-            ['Site', 'Site', Globe2],
+            ['Site', 'More', Globe2],
           ] as const
         ).map(([id, label, Icon]) => (
           <button

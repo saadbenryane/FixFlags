@@ -59,7 +59,7 @@ describe('BillingPlanActions', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: BILLING_PAGE_COPY.upgradeCta }))
+    fireEvent.click(screen.getAllByRole('button', { name: BILLING_PAGE_COPY.upgradeCta })[0])
 
     expect(await screen.findByText(PRICING.pickerTitle)).toBeInTheDocument()
     await waitFor(() =>
@@ -92,7 +92,7 @@ describe('BillingPlansSection', () => {
     expect(screen.getByText('Studio')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: PRICING.pickerCurrentPlan })).toBeDisabled()
 
-    fireEvent.click(screen.getByRole('button', { name: BILLING_PAGE_COPY.upgradeCta }))
+    fireEvent.click(screen.getAllByRole('button', { name: BILLING_PAGE_COPY.upgradeCta })[0])
     expect(await screen.findByText(PRICING.pickerTitle)).toBeInTheDocument()
   })
 })

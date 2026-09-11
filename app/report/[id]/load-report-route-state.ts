@@ -130,6 +130,13 @@ export async function loadReportRouteState(
   }
 
   if (progressive.kind === 'progressive') {
+    if (
+      !shareToken &&
+      progressive.accessContext === 'owner' &&
+      progressive.audit.projectId
+    ) {
+      redirect(`/sites/${encodeURIComponent(progressive.audit.projectId)}`)
+    }
     const progressiveUser = progressive.session?.user
       ? await prisma.user.findUnique({
           where: { id: progressive.session.user.id },
@@ -230,6 +237,10 @@ export async function loadReportRouteState(
   } = result
   const isOwner = accessContext === 'owner'
   const isMarketingSample = false
+
+  if (!shareToken && isOwner && audit.projectId) {
+    redirect(`/sites/${encodeURIComponent(audit.projectId)}`)
+  }
 
   const [
     user,

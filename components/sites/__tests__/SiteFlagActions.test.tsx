@@ -52,7 +52,7 @@ describe('SiteFlagActions', () => {
         shareUrl="/sites/p_site/flags/flag-1"
       />
     )
-    await screen.getByRole('button', { name: SITE_BOARD_COPY.copyPrompt }).click()
+    await screen.getByRole('button', { name: SITE_BOARD_COPY.sendFlagToAi }).click()
     expect(await screen.findByText('Prompt copied')).toBeInTheDocument()
     expect(writeText).toHaveBeenCalledWith('FixFlags Flag: No confirmation after contact')
     await screen.getByRole('button', { name: SITE_BOARD_COPY.share }).click()

@@ -17,6 +17,8 @@ export interface SupportSessionDto {
   visitorName?: string | null
   visitorEmail?: string | null
   pageUrl?: string | null
+  siteId?: string | null
+  flagId?: string | null
   lastMessageAt?: string | null
   unreadByVisitor: number
   unreadByAgent: number

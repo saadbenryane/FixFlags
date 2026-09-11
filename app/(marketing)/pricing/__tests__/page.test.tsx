@@ -35,6 +35,8 @@ describe('/pricing', () => {
     const route = readFileSync(join(process.cwd(), 'app/(marketing)/pricing/page.tsx'), 'utf8')
     expect(page).not.toMatch(/['"]use client['"]/)
     expect(page).not.toMatch(/useMe/)
+    expect(page).not.toMatch(/PricingComparisonTable/)
+    expect(page).not.toMatch(/shopifyNote/)
     expect(route).not.toMatch(/['"]use client['"]/)
     expect(route).toMatch(/faqPageSchema/)
     expect(route).toMatch(/PricingPage/)
@@ -45,9 +47,12 @@ describe('/pricing', () => {
     expect(screen.getByRole('heading', { level: 1, name: PRICING.headline })).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { name: 'Free' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('heading', { name: 'Pro' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('heading', { name: 'Studio' }).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('heading', { name: 'Studio' })).not.toBeInTheDocument()
     expect(screen.getAllByText('$49').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Volume').length).toBeGreaterThan(0)
+    expect(screen.getByText(PRICING.studioCta)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Analyze' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /waitlist/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Compare plans' })).not.toBeInTheDocument()
   })
 
   it('embeds FAQPage structured data on the route', () => {

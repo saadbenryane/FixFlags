@@ -1,4 +1,5 @@
-import type { Plan, User } from '@prisma/client'
+import type { User } from '@prisma/client'
+import { canAccessProductWatch } from '@/lib/auth/entitlements'
 
 export type ReviewVisibility =
   | 'owner'
@@ -53,20 +54,6 @@ export function resolveReviewCapabilities(input: {
   }
 }
 
-function hasActivePlan(input: {
-  role: string
-  plan: Plan
-  subscriptionStatus: string
-}): boolean {
-  if (input.role === 'admin') return true
-  if (
-    input.subscriptionStatus === 'PAST_DUE' ||
-    input.subscriptionStatus === 'CANCELED' ||
-    input.subscriptionStatus === 'UNPAID'
-  ) return false
-  return input.plan !== 'FREE'
-}
-
 export function resolveProductCapabilities(
   user: Pick<User, 'role' | 'plan' | 'subscriptionStatus'> | null | undefined
 ): ProductCapabilities {
@@ -80,13 +67,17 @@ export function resolveProductCapabilities(
       canViewMemory: false,
     }
   }
-  const paid = hasActivePlan(user)
   return {
     canView: true,
     canEditContract: true,
     canRecordImprovement: true,
     canRunUpdateReview: true,
-    canUseWatch: user.role === 'admin' || (paid && user.plan === 'TEAM'),
+    canUseWatch: canAccessProductWatch({
+      id: 'access-policy',
+      role: user.role,
+      plan: user.plan,
+      subscriptionStatus: user.subscriptionStatus,
+    }),
     canViewMemory: true,
   }
 }

@@ -6,7 +6,7 @@ import type { FaqEntry } from '@/lib/marketing/copy/faq'
 const ITEMS: readonly FaqEntry[] = [
   {
     question: 'Is FixFlags free?',
-    answer: 'Yes. One website is free, with 24/7 monitoring checked every 24 hours.',
+    answer: 'Yes. One website is free, verified weekly. Pro is $49 per website per month, verified every day.',
     learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
   },
   {

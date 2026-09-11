@@ -25,21 +25,21 @@ describe('PricingCTAButton', () => {
     expect(source).toMatch(/import\(['"]@\/lib\/billing\/pick-plan['"]\)/)
   })
 
-  it('sends gated Pro clicks to the demo request without loading checkout', () => {
+  it('sends gated Pro clicks to the waitlist without loading checkout', () => {
     push.mockReset()
     render(
       <MeProvider initialUser={null}>
         <PricingCTAButton
           plan="BUILDER"
-          cta="Request a demo"
-          signUpHref="/request-demo?plan=pro"
+          cta="Join waitlist"
+          signUpHref="/waitlist/pro"
           highlight
           waitlistGated
         />
       </MeProvider>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: BILLING_ACTION_COPY.beta.gatedProCta }))
-    expect(push).toHaveBeenCalledWith('/request-demo?plan=pro')
+    fireEvent.click(screen.getByRole('button', { name: BILLING_ACTION_COPY.waitlist.submitPro }))
+    expect(push).toHaveBeenCalledWith('/waitlist/pro')
   })
 })

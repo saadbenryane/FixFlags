@@ -2,6 +2,8 @@ import { describe, it, vi, beforeEach, afterEach } from 'vitest'
 import assert from 'node:assert/strict'
 import { Prisma } from '@prisma/client'
 
+vi.mock('@/lib/sites/application/project-analysis', () => ({ projectSiteAnalysis: vi.fn() }))
+
 const mocks = vi.hoisted(() => ({
   auditFindUnique: vi.fn(),
   auditUpdate: vi.fn(),

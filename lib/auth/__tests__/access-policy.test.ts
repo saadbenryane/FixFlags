@@ -56,7 +56,7 @@ describe('access policy', () => {
       plan: 'TEAM',
       subscriptionStatus: 'ACTIVE',
     } as never)
-    expect(free).toMatchObject({ canView: true, canUseWatch: false })
+    expect(free).toMatchObject({ canView: true, canUseWatch: true })
     expect(team).toMatchObject({ canView: true, canUseWatch: true })
   })
 })

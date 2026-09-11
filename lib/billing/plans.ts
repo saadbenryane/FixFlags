@@ -65,10 +65,10 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     price: '$0',
     period: '',
     persona: 'One website',
-    outcome: '24/7 monitoring, checked every 24 hours',
+    outcome: 'Verified weekly',
     auditLimit: 3,
     auditLimitKind: 'monthly',
-    auditLimitLabel: 'Every 24 hours',
+    auditLimitLabel: 'Verified weekly',
     deepReviewLimit: UNMETERED_LEGACY_DEPTH,
     deepReviewLimitKind: 'monthly',
     deepReviewLimitLabel: 'Path depth included',
@@ -81,15 +81,14 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     accountModel: 'One account for one website.',
     features: [
       '1 website',
-      '24/7 monitoring',
-      'Checked every 24 hours',
+      'Verified weekly',
       'Flags with evidence and a next step',
       'Verify after you publish',
       'Connections included',
     ],
     reviewDepth: 1,
     highlight: false,
-    cta: 'Check my website',
+    cta: 'Analyze',
     href: '/new',
   },
   BUILDER: {
@@ -98,11 +97,11 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     label: 'Pro',
     price: '$49',
     period: '/website/mo',
-    persona: 'Hourly monitoring per website',
-    outcome: '24/7 monitoring, up to every hour',
+    persona: 'Daily verification per website',
+    outcome: 'Verified every day, billed per website',
     auditLimit: 30,
     auditLimitKind: 'monthly',
-    auditLimitLabel: 'Up to every hour',
+    auditLimitLabel: 'Verified every day',
     deepReviewLimit: UNMETERED_LEGACY_DEPTH,
     deepReviewLimitKind: 'monthly',
     deepReviewLimitLabel: 'Path depth included',
@@ -115,16 +114,16 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     accountModel: 'One account. Pay per website.',
     stripePriceId: envPriceId('STRIPE_BUILDER_PRICE_ID'),
     features: [
-      '24/7 monitoring',
-      'Checked up to every hour',
       'Billed per website',
+      'Verified every day',
       'Flags, evidence, and verify',
       'Connections included',
+      'We are not charging yet',
     ],
     reviewDepth: 2,
     highlight: true,
-    cta: 'Request a demo',
-    href: '/request-demo?plan=pro',
+    cta: 'Join waitlist',
+    href: '/waitlist/pro',
   },
   TEAM: {
     plan: 'TEAM',
@@ -133,10 +132,10 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     price: 'Volume',
     period: '',
     persona: 'Several websites, billed per website',
-    outcome: 'Hourly monitoring on a volume quote',
+    outcome: 'Same product, volume quoted',
     auditLimit: 90,
     auditLimitKind: 'monthly',
-    auditLimitLabel: 'Up to every hour',
+    auditLimitLabel: 'Quoted',
     deepReviewLimit: UNMETERED_LEGACY_DEPTH,
     deepReviewLimitKind: 'monthly',
     deepReviewLimitLabel: 'Path depth included',
@@ -149,16 +148,16 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     workspaceSeatsLabel: 'Quoted with the volume',
     accountModel: 'Client websites on one login, billed per website.',
     features: [
-      'Hourly monitoring, billed per website',
+      'Several websites, billed per website',
       'Client websites on one login',
       'Flags, evidence, and verify',
       'Connections included',
-      'Volume quoted on a demo',
+      'Volume quoted on the waitlist',
     ],
     reviewDepth: 3,
     highlight: false,
-    cta: 'Request a demo',
-    href: '/request-demo?plan=studio',
+    cta: 'Join waitlist',
+    href: '/waitlist/studio',
   },
 }
 
@@ -176,7 +175,7 @@ export const STRIPE_PRICE_IDS: Partial<Record<Plan, string>> = Object.fromEntrie
     .map((def) => [def.plan, def.stripePriceId])
 ) as Partial<Record<Plan, string>>
 
-export function proUpgradeCta(prefix = 'Request a demo'): string {
+export function proUpgradeCta(prefix = 'Join waitlist'): string {
   return prefix
 }
 

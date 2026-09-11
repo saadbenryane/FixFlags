@@ -19,5 +19,5 @@ export {
   serializeSession,
 } from '@/lib/live-support/messages'
 export { resolveLeadIdForSession } from '@/lib/live-support/resolve-lead-context'
-export { extractAuditIdFromPath, extractAuditIdFromPageUrl } from '@/lib/live-support/extract-audit-id'
+export { extractAuditIdFromPath, extractAuditIdFromPageUrl, extractSiteIdFromPath, extractSiteIdFromPageUrl, extractFlagIdFromPath, extractFlagIdFromPageUrl } from '@/lib/live-support/extract-audit-id'
 export { SupportError, isSupportError } from '@/lib/live-support/errors'

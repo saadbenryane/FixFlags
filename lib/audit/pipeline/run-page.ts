@@ -461,7 +461,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   }
   const checksStart = ctx.clock.now().getTime()
 
-  const { flags: detFlags, failedModules } = await runAllChecks(
+  const { flags: detFlags, failedModules, executions } = await runAllChecks(
     normalizedUrl,
     metadata,
     pagespeed?.desktop ?? null,
@@ -477,8 +477,24 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       : undefined,
     screenshots?.captureMetrics ?? null,
     screenshots?.responseHeaders ?? null,
-    screenshots?.axeViolations ?? [],
+    screenshots?.axeViolations,
   )
+
+  for (const execution of executions) {
+    const targetKey = `module:${execution.module}`
+    const scopeKey = `page:${normalizedUrl}`
+    const receipt = {
+      source: 'DETERMINISTIC', pageUrl: normalizedUrl,
+      status: execution.applicable ? 'COMPLETED' as const : 'NOT_APPLICABLE' as const,
+      detail: { kind: 'site-module-check', ...execution, pageUrl: normalizedUrl },
+      evidenceReference: { auditId: ctx.auditId, pageUrl: normalizedUrl, module: execution.module },
+    }
+    await prisma.auditVerifierExecution.upsert({
+      where: { auditId_targetKey_scopeKey: { auditId: ctx.auditId, targetKey, scopeKey } },
+      create: { auditId: ctx.auditId, targetKey, scopeKey, ...receipt },
+      update: receipt,
+    })
+  }
 
   for (const mod of failedModules) {
     await ctx.events.log({

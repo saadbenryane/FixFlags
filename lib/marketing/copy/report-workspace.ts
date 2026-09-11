@@ -74,7 +74,7 @@ export const REPORT_COPY = {
         ` ${count} open. ${title}.`,
     },
     product: {
-      allProducts: "All Products",
+      allProducts: "All Sites",
       currentReview: "Current review",
       ready: "Ready",
       unresolvedLine: (count: number, date: string, coverage?: string | null) =>

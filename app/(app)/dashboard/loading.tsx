@@ -7,7 +7,7 @@ export default function DashboardLoading() {
       variant="report"
       className="space-y-6 py-5 pb-24 sm:py-7"
       aria-busy="true"
-      aria-label="Loading Products"
+      aria-label="Loading Sites"
     >
       <div className="space-y-2">
         <Skeleton shimmer className="h-8 w-36 rounded-md" />

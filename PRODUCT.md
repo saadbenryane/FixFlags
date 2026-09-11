@@ -8,14 +8,14 @@ The accepted destination is [the full vision](knowledge/vision.md). [ROADMAP.md]
 
 | Area | Existing implementation | Boundary |
 | --- | --- | --- |
-| URL analysis | Audit worker, Playwright capture, deterministic checks, AI judgment, source evidence and persisted execution progress | Produces the existing analysis/report model; not yet the new Site dashboard |
-| Customer persistence | Owned Project, productIntelligence, audit history, Improvement attempts and verification | Useful private foundations; not a complete inferred Outcome and Coverage system |
-| Current report | /report/[id], report projections, ranked Flags, evidence and gated prompts | Legacy experience being replaced; details in [report contract](knowledge/report-contract.md) |
-| Product workspace | /products/[id], history, attention, context and Watch controls | Existing interface, not Home · Flags · Site |
-| Fix and comparison | Prompt handoff, attempt tracking, full update-review diff and independent verification receipts | “Not observed” differences are not verified repair; targeted Outcome verification needs new work |
-| Monitoring | Project watch fields, scheduler/recovery, plan-gated scheduled reviews | Code still allows Free weekly Watch and meters `auditLimit` 3/30/90. Public packaging sells 24h vs hourly and does not advertise that pool. |
-| Signals | Narrow ProductSignal path and observer foundation | Not a claim of full real-user health/Outcome monitoring |
-| Shopify | Separate ShopifyShop / RevenuePath models, install/auth and integrity probes in ongoing workspace work | Not yet a unified customer Site connection; presence in the tree is not launch proof |
+| URL analysis | Audit worker, Playwright capture, deterministic checks, AI judgment, source evidence and persisted execution progress | Lands on a Site board. Legacy `/report/[id]` remains for public evidence; signed-in owners with a Site redirect there. |
+| Customer persistence | Owned Project (customer Site), inferred Journeys (Outcome model), Flags via `isCustomerFlag`, Watch | Recommendations stay in card depth. 0 Flags is not healthy without coverage. |
+| Current report | /report/[id], report projections, ranked Flags, evidence and gated prompts | Compatibility for public evidence and anonymous teasers |
+| Product workspace | /sites/[id] Home · Flags · Site settings | Parked `/products/[id]` remains undiscoverable |
+| Fix and comparison | Send a Flag to your AI, clipboard handoff, independent Verify | Absence is not Verified |
+| Monitoring | Project watch: Free weekly full, paid daily full. Pulse vs full types exist; hourly pulse is not scheduled until costed. | Do not print 24h or hourly until pulse ships. 3/30/90 pool stays hidden. |
+| Shopify | Native install, purchase-path walks, Can buy / Can't buy. RED paths upsert a Flag on a matching Site | Connection, not a second product |
+| Signals | Narrow ProductSignal path and observer foundation | Not a claim of full real-user Journey monitoring |
 | Commercial foundation | Accounts, authentication, Stripe integration, plans, usage, checkout/waitlist and billing UI | Preserve records and access while deliberately migrating plan responsibility |
 | Design | Shared brand tokens, UI primitives and evidence media | Preserve identity; replace old layout and product hierarchy |
 
@@ -35,7 +35,7 @@ The following apply to old routes until deliberately migrated. They are not futu
 
 ## Existing plans
 
-Plan definitions in lib/billing/plans.ts and access checks in lib/auth/entitlements.ts are authoritative for current numbers and capabilities. They use FREE / BUILDER / TEAM internally and Free / Pro / Studio publicly. Enforcement still meters completed reviews against a monthly pool (3/30/90) and Product Watch remains schedule-gated in code. Public packaging on `/pricing` sells 24/7 monitoring: one free website every 24 hours, then `$49` per website per month up to every hour. Studio is volume, billed per website, never unlimited Sites. Paid CTAs request a demo. Stripe stays closed.
+Plan definitions in lib/billing/plans.ts and access checks in lib/auth/entitlements.ts are authoritative for current numbers and capabilities. They use FREE / BUILDER / TEAM internally and Free / Pro / Studio publicly. Enforcement still meters completed reviews against a monthly pool (3/30/90) and Product Watch remains schedule-gated in code (Free weekly, Pro/Studio daily). Public packaging on `/pricing` sells per-site monitoring: one free website verified weekly, then `$49` per website per month verified every day. Studio is volume, billed per website, never unlimited Sites. Paid CTAs join the waitlist. Stripe stays closed.
 
 The new [strategy](knowledge/strategy.md) requires meaningful ongoing free care and paid responsibility. That is a planned entitlement and scheduling change, not something a new tagline or saved vision makes true. Preserve subscription IDs, historical usage and existing access until migration is explicit.
 
@@ -47,9 +47,11 @@ New customer certainty and coverage semantics are in [evidence rules](knowledge/
 
 ## Known gaps to the next version
 
-The first analysis is not yet the permanent Home · Flags dashboard. Inferred editable Journeys, tenant-scoped page/action relationships, explicit coverage freshness, durable Flag projection, targeted behavior verification, same-Site Keep watching, useful free ongoing care, rare contextual alerts and unified Shopify context need implementation and acceptance evidence.
+Shipped in this cut: Analyze → Site board, customer Flag projector, Home · Flags · Site settings, Send a Flag to your AI, independent Verify, weekly/daily Watch honesty, URL-first legal, Shopify Can't buy as a Site Flag when a matching Site exists, signed-in owner report redirect.
 
-Public marketing, pricing, samples, how-it-works, metadata, support/help copy and Shopify materials contain mixed prior directions. The accepted customer-facing language is [docs/voice-and-copy.md](docs/voice-and-copy.md). Architecture: [docs/product-architecture.md](docs/product-architecture.md). Remaining surface-by-surface work is [docs/product-masterplan.md](docs/product-masterplan.md). They are tracked for capability-matched rollout, not declared reconciled by documentation. Do not advertise future connections or monitoring as shipped.
+Later: hourly pulse, FixFlags Agent FAB, MCP as a customer surface, extra connections (Meta, Analytics, Search Console, deploys), and deleting the report runtime. Public copy must not claim those.
+
+Do not advertise future connections or hourly Watch as shipped.
 
 ## Proof and operating status
 

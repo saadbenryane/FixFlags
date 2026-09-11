@@ -16,11 +16,11 @@ export const AUTH = {
     loadingTitle: 'Save this Site',
     body: 'Get every fix prompt and keep this Site for Verify and Watch on the same URL.',
     backCta: 'Back to Site',
-    saving: (hostname?: string | null) => hostname ? `Saving ${hostname}` : 'Saving your report',
-    unlocking: 'Preparing your fix list',
-    redirecting: 'Your report is saved. Taking you back to the fixes.',
+    saving: (hostname?: string | null) => hostname ? `Saving ${hostname}` : 'Saving your Site',
+    unlocking: 'Preparing your Flags',
+    redirecting: 'Analyze was the first look. Taking you to your Site so you can monitor it.',
     waiting: 'This will only take a moment.',
-    saveError: 'Your account is ready, but we could not save your report yet.',
+    saveError: 'Your account is ready, but we could not save your Site yet.',
     retryCta: 'Try saving again',
   },
   reportHeader: {
@@ -110,8 +110,8 @@ export const AUTH = {
   },
   signUp: {
     title: 'Create your free account',
-    subtitle: 'Free monitors one website every 24 hours. Keep this Site and unlock every fix prompt.',
-    fromPricing: 'Create your free account. Free monitors one website every 24 hours.',
+    subtitle: 'Free verifies one website weekly. Keep this Site and unlock every fix prompt.',
+    fromPricing: 'Create your free account. Free verifies one website weekly.',
     oauthNote: 'Social sign-in is used only to identify your account.',
     cta: 'Create account',
     footer: 'Already have an account?',
@@ -124,8 +124,8 @@ export const AUTH = {
     passwordLabel: 'Password',
     planStepsTitle: 'What happens next',
     planTitles: {
-      BUILDER: 'You\u2019re signing up for Pro: hourly monitoring, billed per website',
-      TEAM: 'You\u2019re signing up for Studio: hourly monitoring for several websites, billed per website',
+      BUILDER: 'You\u2019re signing up for Pro: daily verification, billed per website',
+      TEAM: 'You\u2019re signing up for Studio: several websites, billed per website',
     },
     planSteps: [
       'Create your account',
@@ -240,9 +240,9 @@ export const AUTH = {
   },
   me: {
     loadError: 'Could not load your account.',
-    claimError: 'Could not save your report to this account.',
-    claimSuccess: (n: number) => `Saved ${n} report${n !== 1 ? 's' : ''} to your account`,
-    claimFailure: 'Could not save your review to this account. Refresh and try again.',
+    claimError: 'Could not save your Site to this account.',
+    claimSuccess: (n: number) => `Saved ${n} Site${n !== 1 ? 's' : ''} to monitor`,
+    claimFailure: 'Could not save this Site to your account. Refresh and try again.',
   },
   passkeyEnroll: {
     title: 'Sign in faster next time',
@@ -334,22 +334,22 @@ export const SAMPLE_FIX = {
   label: 'Example fix',
   fixTitle: 'Fix',
   signInCta: 'Sign in',
-  subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save this Site, and keep 24/7 monitoring on one website.`,
+  subtext: (n: number) => `One sample fix below. Create a free account to see all ${n} fix prompts, save this Site, and keep weekly verification on one website.`,
   primaryCta: 'Create free account',
 } as const
 
 export const SCAN_LIMIT_GATE = {
   signup: {
     title: 'Create a free account to continue',
-    body: 'You have already used your anonymous Site check. Create a free account for fix prompts, saved Sites, and 24/7 monitoring on one website every 24 hours.',
+    body: 'You have already used your anonymous Site check. Create a free account for fix prompts, saved Sites, and weekly verification on one website.',
     primaryCta: 'Create free account',
     secondaryCta: 'Sign in',
     exit: 'Leave this page',
   },
   upgrade: {
     title: 'Plan limit reached',
-    body: 'You have reached this period\u2019s limit. Request a demo for hourly monitoring on more websites, or wait for renewal.',
-    primaryCta: 'Request a demo',
+    body: 'You have reached this period\u2019s limit. Join the waitlist for daily verification on more websites, or wait for renewal.',
+    primaryCta: 'Join waitlist',
     secondaryCta: 'See plans',
     exit: 'Leave this page',
   },
@@ -357,8 +357,8 @@ export const SCAN_LIMIT_GATE = {
 
 export const REPORT_UPGRADE_GATE = {
   title: 'Upgrade to keep this website monitored',
-  body: 'You have reached this period\u2019s limit. Request a demo for hourly monitoring on more websites.',
-  primaryCta: 'Request a demo',
-  saving: 'Opening demo request',
-  savingBody: 'Taking you to the demo form.',
+  body: 'You have reached this period\u2019s limit. Join the waitlist for daily verification on more websites.',
+  primaryCta: 'Join waitlist',
+  saving: 'Opening waitlist',
+  savingBody: 'Taking you to the waitlist.',
 } as const

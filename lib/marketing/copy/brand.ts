@@ -3,7 +3,7 @@ import { helpHrefForSurface } from '@/lib/help/contextual'
 export const BRAND = {
   name: 'FixFlags',
   domain: 'fixflags.com',
-  tagline: 'Find what is getting in the way of your next customer.',
+  tagline: 'Your website, looked after.',
   category: 'Website intelligence for conversion, reliability, and growth.',
   oneLiner:
     'FixFlags looks after what your website depends on, and tells you when something needs attention.',

@@ -60,20 +60,18 @@ describe('homepage lean sections', () => {
         name: /See the problem\. Fix it\. Know it works/,
       }),
     ).toBeInTheDocument()
-    expect(screen.getAllByRole('listitem')).toHaveLength(4)
-    expect(screen.getByRole('heading', { name: 'Check' })).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(3)
     expect(screen.getByRole('heading', { name: 'Flag' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Fix' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Verify' })).toBeInTheDocument()
   })
 
-  it('explains Find, Understand, Fix, and Verify', () => {
+  it('explains Flag, Fix, and Verify', () => {
     render(<LandingLayersSection />)
     expect(
-      screen.getByRole('heading', { name: /Find\. Understand\. Fix\. Verify/ }),
+      screen.getByRole('heading', { name: /Flag\. Fix\. Verify/ }),
     ).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'What deserves attention?' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'What happened, where, and why?' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'What should change next?' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Did the change solve it?' })).toBeInTheDocument()
   })

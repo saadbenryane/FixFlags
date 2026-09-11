@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { BILLING_ACTION_COPY, PRICING } from '@/lib/marketing/copy/plans'
 import { trackEvent } from '@/lib/analytics/events'
-import { demoPathForPlan } from '@/lib/billing/demo-path'
+import { waitlistPathForPlan } from '@/lib/billing/waitlist-path'
 import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
 import type { CheckoutPlan } from '@/lib/billing/client-checkout'
 import { useMe } from '@/hooks/useMe'
@@ -45,7 +45,7 @@ export function PricingCTAButton({
 
   async function handleClick() {
     if (waitlistGated && isPaidPlan) {
-      router.push(demoPathForPlan(plan as CheckoutPlan) as Route)
+      router.push(waitlistPathForPlan(plan as CheckoutPlan) as Route)
       return
     }
 
@@ -79,7 +79,7 @@ export function PricingCTAButton({
         return
       }
       if (result.kind === 'waitlist') {
-        router.push(demoPathForPlan(plan as CheckoutPlan) as Route)
+        router.push((result.url ?? waitlistPathForPlan(plan as CheckoutPlan)) as Route)
         return
       }
       if (result.kind === 'checkout_redirect') return
@@ -105,14 +105,14 @@ export function PricingCTAButton({
           ? 'Current plan'
           : waitlistGated && isPaidPlan
             ? plan === 'TEAM'
-              ? BILLING_ACTION_COPY.beta.gatedStudioCta
-              : BILLING_ACTION_COPY.beta.gatedProCta
+              ? BILLING_ACTION_COPY.waitlist.submitStudio
+              : BILLING_ACTION_COPY.waitlist.submitPro
             : cta}
       </Button>
       {isPaidPlan && !isCurrent && (
         <p className="text-3xs text-center text-muted-foreground leading-snug">
           {waitlistGated
-            ? BILLING_ACTION_COPY.beta.gatedHint
+            ? BILLING_ACTION_COPY.waitlist.description
             : resolvedLoggedIn
               ? PRICING.upgradeStepsLoggedIn
               : PRICING.upgradeSteps}

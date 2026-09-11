@@ -45,7 +45,7 @@ const conversionFlag: SiteFlagSeed = {
 describe('board card contract', () => {
   it('names starter cards from CARD_CATALOG in board order', () => {
     expect(starterBoardNames()).toEqual([
-      'Site',
+      'Pages',
       'Conversion',
       'Security',
       'Search',
@@ -77,7 +77,7 @@ describe('board card contract', () => {
       checkedAt: null,
     })
     const site = cards[0]
-    expect(site?.name).toBe('Site')
+    expect(site?.name).toBe('Pages')
     expect(site?.answer).toBe(SITE_BOARD_COPY.pagesLoading)
     expect(site?.status).toBe(SITE_BOARD_COPY.pagesLoading)
     expect(site?.captureUrl).toBe('/api/screenshots/audit-1/desktop')
@@ -89,7 +89,7 @@ describe('board card contract', () => {
       siteId: 'p_example',
       inFlight: false,
       hasLastKnown: false,
-      health: { state: 'problem', answer: '1 thing needs attention', statusLabel: 'Needs attention' },
+      health: { state: 'problem', answer: '1 Flag', statusLabel: 'Needs a fix' },
       coverageByArea: new Map([
         ['conversion', fact('conversion', 'problem', 'Needs a fix')],
         ['security', fact('security', 'healthy', 'Protected')],
@@ -159,9 +159,9 @@ describe('board card contract', () => {
       checkedAt: '2026-09-08T12:00:00.000Z',
     })
     expect(cards.find((card) => card.id === 'security')?.state).toBe('unknown')
-    expect(cards.find((card) => card.id === 'site')?.name).toBe('Site')
+    expect(cards.find((card) => card.id === 'site')?.name).toBe('Pages')
     expect(boardCardFooter({ openFlagCount: 0, checkedAt: null })).toBe('Not checked yet')
-    expect(boardCardStatusText('attention')).toBe('Needs attention')
+    expect(boardCardStatusText('attention')).toBe(SITE_BOARD_COPY.flagStatus)
     expect(boardCardStatusText('problem')).toBe(SITE_BOARD_COPY.flagStatus)
     expect(boardCardHeaderText('healthy', null, '2026-09-08T12:00:00.000Z', Date.parse('2026-09-08T12:00:20.000Z'))).toBe(
       SITE_BOARD_COPY.lastChecked

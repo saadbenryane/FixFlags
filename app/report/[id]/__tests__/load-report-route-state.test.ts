@@ -90,6 +90,29 @@ describe('loadReportRouteState progressive handoff', () => {
     expect(getGatedAuditForRequest).not.toHaveBeenCalled()
   })
 
+  it('redirects a signed-in owner with a Site to /sites/{id}', async () => {
+    getProgressiveAuditForRequest.mockResolvedValue({
+      kind: 'progressive',
+      audit: {
+        id: 'audit-owned',
+        url: 'https://example.com/',
+        status: 'CAPTURING',
+        progress: 20,
+        projectId: 'site_owned',
+        screenshots: [],
+        rubrics: [],
+        flags: [],
+      },
+      session: { user: { id: 'user-1' } },
+      accessContext: 'owner',
+      capabilities: { canViewPromptBodies: true },
+    })
+
+    await expect(
+      loadReportRouteState(Promise.resolve({ id: 'audit-owned' })),
+    ).rejects.toThrow('NEXT_REDIRECT:/sites/site_owned')
+  })
+
   it('polls the work audit id when progressive data is for attached work', async () => {
     const audit = {
       id: 'child-work',

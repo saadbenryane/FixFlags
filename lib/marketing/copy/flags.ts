@@ -1,6 +1,6 @@
 export const FLAG_STATUS_LABELS = {
   OPEN: { label: 'Open', description: 'Not fixed yet' },
-  FIXED: { label: 'Fixed', description: 'Not observed in this update review' },
+  FIXED: { label: 'Verified', description: 'Independent check of the same behavior passed' },
   IGNORED: { label: 'Ignored', description: 'Acknowledged and skipped' },
   REGRESSED: { label: 'Regressed', description: 'Same Flag, worse than before' },
 } as const

@@ -48,6 +48,9 @@ describe('help and docs link guard', () => {
       ...INDEXABLE_ROUTES.map((route) => route.path),
       ...DOCS_PAGES.map((page) => page.path),
       ...HELP_ARTICLES.map((article) => `/help/${article.categoryId}/${article.slug}`),
+      '/waitlist',
+      '/waitlist/pro',
+      '/waitlist/studio',
     ])
 
     for (const items of FAQ_SETS) {

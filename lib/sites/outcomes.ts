@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { parseProductContract, type ProductContract } from '@/lib/audit/product-contract'
+import type { Prisma } from '@prisma/client'
 import type { SiteRecord } from '@/lib/sites/types'
 
 function slugify(name: string): string {
@@ -35,28 +35,11 @@ async function toOutcomeView(row: {
     name: row.name,
     slug: row.slug,
     description: row.description,
-    inferenceSource: row.inferenceSource === 'user' ? 'user' : 'heuristic',
+    inferenceSource: row.inferenceSource === 'user' ? 'user' : row.inferenceSource === 'browser' ? 'browser' : 'heuristic',
     confirmedAt: row.confirmedAt?.toISOString() ?? null,
     pageIds,
     pageUrls: await pageUrlsForIds(pageIds),
   }
-}
-
-function outcomeNamesFromContract(contract: ProductContract | null): string[] {
-  if (!contract) return ['Primary path']
-  const names: string[] = []
-  for (const outcome of contract.criticalOutcomes) {
-    const short = outcome.split(/[.!,]/)[0]?.trim()
-    if (short && short.length < 80) names.push(short)
-  }
-  if (contract.firstValueJourney) {
-    const journey = contract.firstValueJourney.split(',')[0]?.trim()
-    if (journey && !names.some((n) => n.toLowerCase() === journey.toLowerCase())) {
-      names.unshift(journey.length > 48 ? 'Main journey' : journey)
-    }
-  }
-  if (names.length === 0) names.push('Primary path')
-  return names.slice(0, 5)
 }
 
 export type SiteOutcomeView = {
@@ -64,106 +47,81 @@ export type SiteOutcomeView = {
   name: string
   slug: string
   description: string | null
-  inferenceSource: 'heuristic' | 'user'
+  inferenceSource: 'heuristic' | 'browser' | 'user'
   confirmedAt: string | null
   pageIds: string[]
   pageUrls: string[]
 }
 
+/** Worker projection: only observed pages and browser-planned journeys become Site facts. */
 export async function syncOutcomesFromAudit(input: {
   site: SiteRecord
   auditId: string
   url: string
-}): Promise<SiteOutcomeView[]> {
-  const audit = await prisma.audit.findUnique({
+}): Promise<void> {
+  const audit = await prisma.audit.findUniqueOrThrow({
     where: { id: input.auditId },
-    select: { productContract: true },
+    select: {
+      projectId: true,
+      pages: { select: { url: true, title: true } },
+      journeyReviews: {
+        select: { journeyType: true, startUrl: true, steps: { select: { url: true } } },
+      },
+    },
   })
-  const contract = parseProductContract(audit?.productContract)
-  const names = outcomeNamesFromContract(contract)
-
-  const owner =
-    input.site.kind === 'project'
-      ? { projectId: input.site.projectId! }
+  if (audit.projectId !== input.site.projectId) throw new Error('Analysis does not belong to this Site')
+  await prisma.$transaction(async (tx) => {
+    const owner = input.site.projectId
+      ? { projectId: input.site.projectId }
       : { provisionalSiteId: input.site.provisionalSiteId! }
-
-  const pageUrl = input.url
-  let path = '/'
-  try {
-    path = new URL(pageUrl).pathname || '/'
-  } catch {
-    path = '/'
-  }
-
-  const page =
-    input.site.kind === 'project'
-      ? await prisma.sitePage.upsert({
-          where: { projectId_url: { projectId: input.site.projectId!, url: pageUrl } },
-          create: { ...owner, url: pageUrl, path },
-          update: { path },
-        })
-      : await prisma.sitePage.upsert({
-          where: {
-            provisionalSiteId_url: {
-              provisionalSiteId: input.site.provisionalSiteId!,
-              url: pageUrl,
-            },
-          },
-          create: { ...owner, url: pageUrl, path },
-          update: { path },
-        })
-
-  const views: SiteOutcomeView[] = []
-  for (const name of names) {
-    const slug = slugify(name)
-    const existing = await prisma.siteOutcome.findFirst({
-      where: {
-        ...owner,
-        OR: [{ slug }, { inferenceSource: 'user', name }],
-      },
-      include: { pages: true },
-    })
-
-    if (existing?.inferenceSource === 'user') {
-      views.push(await toOutcomeView(existing))
-      continue
+    const observed = new Map(audit.pages.map((page) => [page.url, page.title]))
+    for (const journey of audit.journeyReviews) {
+      observed.set(journey.startUrl, observed.get(journey.startUrl) ?? null)
+      for (const step of journey.steps) observed.set(step.url, observed.get(step.url) ?? null)
     }
-
-    const outcome = existing
-      ? await prisma.siteOutcome.update({
-          where: { id: existing.id },
-          data: {
-            name,
-            description: contract?.firstValueJourney ?? existing.description,
-          },
-          include: { pages: true },
+    const pages = new Map<string, string>()
+    for (const [rawUrl, title] of observed) {
+      const url = new URL(rawUrl)
+      if (!['http:', 'https:'].includes(url.protocol)) continue
+      // External steps remain in their original execution; they are not owned Site pages.
+      if (url.hostname !== new URL(input.site.url).hostname) continue
+      url.hash = ''
+      const pageUrl = url.toString()
+      const where: Prisma.SitePageWhereUniqueInput = input.site.projectId
+        ? { projectId_url: { projectId: input.site.projectId, url: pageUrl } }
+        : { provisionalSiteId_url: { provisionalSiteId: input.site.provisionalSiteId!, url: pageUrl } }
+      const page = await tx.sitePage.upsert({
+        where,
+        create: { ...owner, url: pageUrl, path: url.pathname, title },
+        update: { title },
+      })
+      pages.set(rawUrl, page.id)
+    }
+    for (const journey of audit.journeyReviews) {
+      const name = journey.journeyType.trim().replaceAll('_', ' ')
+      if (!name) continue
+      const slug = slugify(journey.journeyType)
+      const where: Prisma.SiteOutcomeWhereUniqueInput = input.site.projectId
+        ? { projectId_slug: { projectId: input.site.projectId, slug } }
+        : { provisionalSiteId_slug: { provisionalSiteId: input.site.provisionalSiteId!, slug } }
+      // Never overwrite a user's label, confirmation, or deliberately edited intent.
+      const outcome = await tx.siteOutcome.upsert({
+        where,
+        create: { ...owner, name, slug, inferenceSource: 'browser' },
+        update: {},
+      })
+      if (outcome.inferenceSource === 'user') continue
+      const pageIds = new Set([journey.startUrl, ...journey.steps.map((step) => step.url)]
+        .map((url) => pages.get(url)).filter((id): id is string => Boolean(id)))
+      for (const pageId of pageIds) {
+        await tx.siteOutcomePage.upsert({
+          where: { outcomeId_pageId: { outcomeId: outcome.id, pageId } },
+          create: { outcomeId: outcome.id, pageId },
+          update: {},
         })
-      : await prisma.siteOutcome.create({
-          data: {
-            ...owner,
-            name,
-            slug,
-            description: contract?.firstValueJourney ?? null,
-            inferenceSource: 'heuristic',
-          },
-          include: { pages: true },
-        })
-
-    await prisma.siteOutcomePage.upsert({
-      where: {
-        outcomeId_pageId: { outcomeId: outcome.id, pageId: page.id },
-      },
-      create: { outcomeId: outcome.id, pageId: page.id },
-      update: {},
-    })
-
-    const pageIds = [...new Set([...outcome.pages.map((p) => p.pageId), page.id])]
-    views.push({
-      ...(await toOutcomeView({ ...outcome, pages: pageIds.map((pageId) => ({ pageId })) })),
-    })
-  }
-
-  return views
+      }
+    }
+  })
 }
 
 export async function confirmSiteOutcome(input: {

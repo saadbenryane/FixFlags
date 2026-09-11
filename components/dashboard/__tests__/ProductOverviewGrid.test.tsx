@@ -71,7 +71,7 @@ describe('ProductOverviewGrid', () => {
     expect(screen.getByText('Clarify the signup action')).toBeInTheDocument()
     expect(container.querySelector('svg[role="img"]')).toBeNull()
     expect(screen.queryByText('Completed')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Check a website URL' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Analyze a website URL' })).toBeInTheDocument()
   })
 
   it('does not show success or a fake score while a check is pending', () => {
@@ -93,7 +93,7 @@ describe('ProductOverviewGrid', () => {
 
     expect(screen.getByText('Checking your website')).toBeInTheDocument()
     expect(screen.queryByText('44')).not.toBeInTheDocument()
-    expect(screen.queryByText('No open Flags')).not.toBeInTheDocument()
+    expect(screen.queryByText('0 Flags')).not.toBeInTheDocument()
   })
 
   it('offers a first website check when the account has no Sites', () => {
@@ -101,9 +101,9 @@ describe('ProductOverviewGrid', () => {
 
     const section = screen.getByRole('region', { name: 'Your Sites' })
     expect(within(section).getByText('0 Sites')).toBeInTheDocument()
-    expect(within(section).getByText('Check your first website')).toBeInTheDocument()
+    expect(within(section).getByText('Analyze your first website')).toBeInTheDocument()
     expect(
-      within(section).getByRole('link', { name: 'Check a website URL' }),
+      within(section).getByRole('link', { name: 'Analyze a website URL' }),
     ).toHaveAttribute('href', '/new')
   })
 })

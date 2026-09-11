@@ -82,11 +82,11 @@ export function SiteFlagActions({
   return (
     <div className="mt-4 space-y-2">
       <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={() => void copyPrompt()}>
+          {SITE_BOARD_COPY.sendFlagToAi}
+        </Button>
         <Button variant="outline" onClick={() => void copyFix()}>
           {SITE_BOARD_COPY.fixThis}
-        </Button>
-        <Button variant="outline" onClick={() => void copyPrompt()}>
-          {SITE_BOARD_COPY.copyPrompt}
         </Button>
         <Button variant="outline" onClick={() => void share()}>
           {SITE_BOARD_COPY.share}

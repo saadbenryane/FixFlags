@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { PRICING_COPY } from '@/lib/marketing/copy/terminology'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
-import { PLANS, PRICING, PRICING_COMPARISON, PRICING_FAQ } from '@/lib/marketing/copy/plans'
+import { PLANS, PRICING, PRICING_CARDS, PRICING_COMPARISON, PRICING_FAQ } from '@/lib/marketing/copy/plans'
 import { AUTH, SCAN_LIMIT_GATE } from '@/lib/marketing/copy/auth'
 import { SEO } from '@/lib/marketing/copy/seo'
 
@@ -51,36 +51,36 @@ describe('pricing parity', () => {
     expect(MARKETING_FREE).toMatchObject({
       price: '$0',
       products: '1 website',
-      cta: 'Check my website',
+      cta: 'Analyze',
       href: '/new',
     })
     expect(MARKETING_PRO).toMatchObject({
       price: '$49',
       period: '/website/mo',
-      cta: 'Request a demo',
-      href: '/request-demo?plan=pro',
+      cta: 'Join waitlist',
+      href: '/waitlist/pro',
     })
     expect(MARKETING_STUDIO).toMatchObject({
       price: 'Volume',
-      cta: 'Request a demo',
-      href: '/request-demo?plan=studio',
+      cta: 'Join waitlist',
+      href: '/waitlist/studio',
     })
+    expect(PRICING_CARDS.map((plan) => plan.plan)).toEqual(['FREE', 'BUILDER'])
   })
 
-  it('sells two frequencies and never unlimited Sites', () => {
+  it('sells weekly Free and daily Pro at $49, never unlimited Sites', () => {
     const blob = JSON.stringify({ PLANS, PRICING, PRICING_COMPARISON, PRICING_FAQ })
-    expect(blob).toMatch(/every 24 hours/i)
-    expect(blob).toMatch(/up to every hour/i)
+    expect(blob).toMatch(/verified weekly/i)
+    expect(blob).toMatch(/every day/i)
     expect(blob).toMatch(/\$49/)
-    expect(blob).toMatch(/24\/7/)
+    expect(blob).not.toMatch(/24\/7/)
+    expect(blob).not.toMatch(/every 24 hours/i)
+    expect(blob).not.toMatch(/up to every hour/i)
     expect(blob).not.toMatch(/unlimited Sites/i)
     expect(blob).not.toMatch(/\b3\/30\/90\b/)
     expect(blob).not.toMatch(/720 checks/i)
-    expect(blob).not.toMatch(/looked after/i)
-    expect(blob).not.toMatch(/Keep watching/i)
-    expect(blob).not.toMatch(/Join Pro waitlist/)
-    expect(blob).not.toMatch(/Waitlist/)
-    expect(PRICING.headline).toBe('24/7 website monitoring.')
+    expect(blob).not.toMatch(/full look/i)
+    expect(PRICING.headline).toBe('Website monitoring, $49 per site.')
   })
 
   it('avoids inheritance shorthand and internal metering language', () => {
@@ -122,23 +122,24 @@ describe('pricing parity', () => {
     expect(customerSurfaces).not.toMatch(/\$99/)
   })
 
-  it('describes monitoring without crawler jargon or a public check pool', () => {
-    expect(MARKETING_FREE.features.join('\n')).toMatch(/24\/7 monitoring/i)
+  it('describes verification without crawler jargon or a public check pool', () => {
+    expect(MARKETING_FREE.features.join('\n')).toMatch(/Verified weekly/i)
     expect(MARKETING_FREE.features.join('\n')).toMatch(/Flags/i)
-    expect(MARKETING_PRO.features.join('\n')).toMatch(/every hour/i)
+    expect(MARKETING_PRO.features.join('\n')).toMatch(/every day/i)
     expect(MARKETING_PRO.features.join('\n')).not.toMatch(/\b30\b/)
     expect(JSON.stringify(PLANS)).not.toMatch(/product reviews/i)
 
     const surfaces = JSON.stringify({ PLANS, PRICING })
     expect(surfaces).not.toMatch(/\b(hops?|crawler)\b/i)
     expect(surfaces).not.toMatch(/deep review/i)
+    expect(surfaces).not.toMatch(/shopifyNote/)
   })
 
   it('links pricing FAQ entries to live routes without charging copy', () => {
     expect(PRICING_FAQ.length).toBeGreaterThan(0)
     expect(PRICING_FAQ.every((entry) => entry.learnMore?.href && entry.learnMore.label)).toBe(true)
     expect(PRICING_FAQ.find((entry) => entry.question === 'How does paid monitoring work?')?.learnMore?.href).toBe(
-      '/request-demo',
+      '/waitlist/pro',
     )
 
     const includedPlanAnswer = PRICING_FAQ.find(

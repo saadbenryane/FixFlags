@@ -5,7 +5,8 @@ import type {
   VerificationOutcome,
 } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { buildUnifiedPlanBundle } from '@/lib/audit/load-finish-plan-flags'
+import { isCustomerFlag } from '@/lib/audit/attention'
+import { rankFlagsByPriority } from '@/lib/audit/priority-flags'
 import { flagFingerprint } from '@/lib/audit/flag-identity'
 import { parseProductContract } from '@/lib/audit/product-contract'
 import {
@@ -69,8 +70,7 @@ function occurrenceKind(status: string): ImprovementOccurrenceKind {
 }
 
 /**
- * Lazily creates durable Improvements only for claimed Products and only from
- * the bounded, worthwhile portion of the canonical Finish Plan.
+ * Persist every actionable Site Flag. The bounded handoff plan does not limit Site memory.
  */
 export async function materializeAttentionForAudit(auditId: string): Promise<void> {
   const audit = await prisma.audit.findUnique({
@@ -88,52 +88,37 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
   if (!audit?.userId || !audit.projectId) return
 
   const flags = audit.flags as ImprovementFlag[]
-  const byId = new Map(flags.map((flag) => [flag.id, flag]))
-  const contract = parseProductContract(audit.productContract)
-  const { finishPlan } = await buildUnifiedPlanBundle({
-    userId: audit.userId,
-    auditUrl: audit.url,
-    flags,
-    rubricRows: audit.rubrics.map((rubric) => ({
-      name: rubric.name,
-      grade: rubric.grade,
-    })),
-    contract,
-    promptAccess: 'all',
-  })
+  const candidates = rankFlagsByPriority(flags.filter(isCustomerFlag))
 
   const improvementsByFingerprint = new Map<string, { id: string; status: ImprovementStatus }>()
   let uniquePriority = 0
-  for (const item of finishPlan.items) {
-    const flag = byId.get(item.id)
-    if (!flag) continue
+  for (const flag of candidates) {
     const fingerprint = improvementFingerprint(flag)
     let improvement = improvementsByFingerprint.get(fingerprint)
     if (!improvement) {
-      if (uniquePriority >= 3) continue
       improvement = await prisma.improvement.upsert({
         where: { projectId_fingerprint: { projectId: audit.projectId, fingerprint } },
         create: {
           projectId: audit.projectId,
           fingerprint,
-          title: item.problem,
-          judgment: item.whyItMatters || item.problem,
-          expectedBenefit: item.whyItMatters || 'Remove the observed product friction.',
-          recommendedChange: item.recommendedChange,
-          protectedScope: item.protectedScope,
+          title: flag.problem,
+          judgment: flag.whyItMatters || flag.problem,
+          expectedBenefit: flag.whyItMatters || 'Remove the observed product friction.',
+          recommendedChange: flag.fix,
+          protectedScope: flag.pageUrl,
           successCondition:
-            item.verificationRule || `A fresh Product Review no longer observes: ${item.problem}`,
-          priority: 100 - uniquePriority,
+            flag.verificationRule || 'Recovery criteria have not been established.',
+          priority: uniquePriority,
         },
         update: {
-          title: item.problem,
-          judgment: item.whyItMatters || item.problem,
-          expectedBenefit: item.whyItMatters || 'Remove the observed product friction.',
-          recommendedChange: item.recommendedChange,
-          protectedScope: item.protectedScope,
+          title: flag.problem,
+          judgment: flag.whyItMatters || flag.problem,
+          expectedBenefit: flag.whyItMatters || 'Remove the observed product friction.',
+          recommendedChange: flag.fix,
+          protectedScope: flag.pageUrl,
           successCondition:
-            item.verificationRule || `A fresh Product Review no longer observes: ${item.problem}`,
-          priority: 100 - uniquePriority,
+            flag.verificationRule || 'Recovery criteria have not been established.',
+          priority: uniquePriority,
         },
       })
       improvementsByFingerprint.set(fingerprint, improvement)

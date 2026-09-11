@@ -20,6 +20,6 @@ Purchase-path walks remain available after you install on Shopify. They are proo
 
 ## Get help
 
-- [Check a website URL](/help/getting-started/first-check)
+- [Analyze a website URL](/help/getting-started/first-check)
 - [Save this Site to your account](/help/getting-started/claiming-a-report)
 - [Watch verification](/help/checks-and-reports/evidence-and-screenshots)

@@ -49,7 +49,7 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
     path: '/docs/getting-started',
     group: 'Start',
     title: 'Getting started',
-    description: 'Check a website URL, verify a Flag, and keep watching.',
+    description: 'Analyze a website URL, verify a Flag, and keep watching.',
     source: 'getting-started.md',
     order: 1,
     headings: [

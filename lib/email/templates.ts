@@ -128,7 +128,7 @@ export const DEMO_EMAILS = {
       layout(`
   <p>Hi${name ? ` ${name}` : ''},</p>
   <p>Thanks for requesting a ${planLabel} demo. We will email you to set a time. We are not charging yet.</p>
-  <p>Paid monitoring is billed per website, up to every hour.</p>
+  <p>Paid monitoring is billed per website, verified every day.</p>
   <p><a href="${SITE_URL}/pricing" style="${ctaStyle}">Back to pricing</a></p>
 `),
   },

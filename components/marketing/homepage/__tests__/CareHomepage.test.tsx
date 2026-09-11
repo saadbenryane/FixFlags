@@ -85,7 +85,7 @@ describe('homepage example', () => {
     expect(within(conversion).getByText(C.flag.body)).toBeInTheDocument()
     expect(within(board).getByRole('button', { name: 'Conversion: Needs a fix' })).toHaveTextContent('1 Flag')
     expect(within(board).queryByRole('img', { name: C.flag.cropAlt })).not.toBeInTheDocument()
-    expect(within(board).getByRole('button', { name: 'Performance: Needs attention' })).toHaveTextContent('3 Flags')
+    expect(within(board).getByRole('button', { name: 'Performance: 3 Flags' })).toHaveTextContent('3 Flags')
     expect(within(board).getByRole('button', { name: /Add card/i })).toBeInTheDocument()
     for (const card of C.cards) {
       expect(within(board).getByRole('button', { name: card.name })).toBeInTheDocument()

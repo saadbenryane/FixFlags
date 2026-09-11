@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { BRAND } from '@/lib/marketing/copy'
 import { logger } from '@/lib/logger'
 import { getAppUrl } from '@/lib/get-app-url'
+import { extractFlagIdFromPageUrl, extractSiteIdFromPageUrl } from '@/lib/live-support/extract-audit-id'
 
 const FROM_EMAIL =
   process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
@@ -53,6 +54,8 @@ export async function notifyAdminOfVisitorMessage(
   const domainNote = session.lead?.normalizedDomain
     ? `<p>Linked lead: <strong>${session.lead.normalizedDomain}</strong></p>`
     : ''
+  const siteId = extractSiteIdFromPageUrl(session.pageUrl)
+  const flagId = extractFlagIdFromPageUrl(session.pageUrl)
   const preview = truncatePreview(messagePreview)
 
   const result = await resend.emails.send({
@@ -64,6 +67,8 @@ export async function notifyAdminOfVisitorMessage(
       <p><strong>Visitor:</strong> ${visitorLabel}</p>
       <p><strong>Message:</strong> ${preview}</p>
       ${session.pageUrl ? `<p><strong>Page:</strong> ${session.pageUrl}</p>` : ''}
+      ${siteId ? `<p><strong>Site:</strong> ${siteId}</p>` : ''}
+      ${flagId ? `<p><strong>Flag:</strong> ${flagId}</p>` : ''}
       ${domainNote}
       <p><a href="${inboxLink}">Open in admin inbox</a></p>
     `,

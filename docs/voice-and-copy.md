@@ -165,7 +165,7 @@ The feeling:
 4. FixFlags lets you know when something important happens.
 5. Open the Flag when you need the details.
 
-Public cadence claims must match released entitlements. “24/7 monitoring” is allowed only with an honest frequency. Do not imply omniscience or an SLA.
+Public cadence claims must match released entitlements. Current packaging is weekly on Free and every day on Pro. Do not print “24/7 monitoring” or hourly Flag audits until a cheap pulse exists. Do not imply omniscience or an SLA.
 
 ## Automated tests and journeys
 

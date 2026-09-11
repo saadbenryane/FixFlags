@@ -4,6 +4,7 @@ import { onBeforeAgentReply } from '@/lib/live-support/types'
 import { notifyAdminOfVisitorMessage } from '@/lib/live-support/notify'
 import { SupportError } from '@/lib/live-support/errors'
 import { logger } from '@/lib/logger'
+import { extractFlagIdFromPageUrl, extractSiteIdFromPageUrl } from '@/lib/live-support/extract-audit-id'
 
 export async function listMessages(sessionId: string) {
   return prisma.supportMessage.findMany({
@@ -149,6 +150,8 @@ export function serializeSession(session: {
     visitorName: session.visitorName,
     visitorEmail: session.visitorEmail,
     pageUrl: session.pageUrl,
+    siteId: extractSiteIdFromPageUrl(session.pageUrl),
+    flagId: extractFlagIdFromPageUrl(session.pageUrl),
     lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
     unreadByVisitor: session.unreadByVisitor,
     unreadByAgent: session.unreadByAgent,

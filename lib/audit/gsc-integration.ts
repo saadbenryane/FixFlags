@@ -15,11 +15,14 @@ function dateRange(): { startDate: string; endDate: string } {
   }
 }
 
-function hostnameFromUrl(raw: string): string {
+export function searchPageIdentity(raw: string): string | null {
   try {
-    return new URL(raw).hostname
+    const url = new URL(raw)
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+    url.hash = ''
+    return url.toString()
   } catch {
-    return raw
+    return null
   }
 }
 
@@ -52,7 +55,8 @@ export async function pullSearchPerformanceForAudit(
       const pageRows = rows.filter((r) => {
         const pageKey = r.keys[1]
         if (!pageKey) return false
-        return pageKey.includes(hostnameFromUrl(url))
+        const identity = searchPageIdentity(url)
+        return identity !== null && searchPageIdentity(pageKey) === identity
       })
 
       if (pageRows.length > 0) {

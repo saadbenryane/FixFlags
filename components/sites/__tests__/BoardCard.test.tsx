@@ -17,7 +17,7 @@ describe('BoardCard chrome', () => {
       />
     )
     expect(screen.queryByText(SITE_BOARD_COPY.lastChecked)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Security: Checks passed' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Security: 0 Flags' })).toBeInTheDocument()
     expect(screen.queryByText('Checks passed')).not.toBeInTheDocument()
     expect(screen.queryByText('Needs attention')).not.toBeInTheDocument()
   })

@@ -7,8 +7,8 @@ import {
   type CoverageFact,
 } from '@/lib/sites/coverage'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
-import { loadSiteFlagDetail, loadSiteFlags } from '@/lib/sites/flags'
-import { listSiteOutcomes, syncOutcomesFromAudit } from '@/lib/sites/outcomes'
+import { loadSiteFlagDetail, loadSiteFindings } from '@/lib/sites/flags'
+import { listSiteOutcomes } from '@/lib/sites/outcomes'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import type { SiteRecord } from '@/lib/sites/types'
@@ -38,6 +38,7 @@ export type SiteHomeView = {
   }
   cards: BoardCardView[]
   flags: SiteFlagSeed[]
+  recommendations: SiteFlagSeed[]
   outcomes: SiteOutcomeView[]
   watching: boolean
   watch: {
@@ -147,16 +148,9 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
   if (!site) return null
 
   const audit = await resolveLatestAudit(site)
-  if (audit) {
-    await syncOutcomesFromAudit({
-      site,
-      auditId: audit.id,
-      url: audit.url,
-    }).catch(() => [])
-  }
 
-  const [flags, outcomes, pageCount, checkedPages] = await Promise.all([
-    loadSiteFlags(site),
+  const [{ flags, recommendations }, outcomes, pageCount, checkedPages] = await Promise.all([
+    loadSiteFindings(site),
     listSiteOutcomes(site),
     countSitePages(site),
     audit ? prisma.auditPage.findMany({ where: { auditId: audit.id }, orderBy: { position: 'asc' }, select: { url: true, title: true, status: true } }) : [],
@@ -235,10 +229,8 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
         ? 'Checking again'
         : 'Learning your website'
       : flags.length > 0
-        ? 'Needs attention'
-        : watching
-          ? 'Looking after this Site'
-          : health.statusLabel,
+        ? flags.length === 1 ? '1 Flag' : `${flags.length} Flags`
+        : health.statusLabel,
     statusState: siteCardState,
     audit: {
       id: audit?.id ?? null,
@@ -248,6 +240,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     },
     cards,
     flags,
+    recommendations,
     outcomes,
     watching,
     watch: {

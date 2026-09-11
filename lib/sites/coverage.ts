@@ -15,6 +15,8 @@ export type CoverageFact = {
 
 export type SiteFlagSeed = {
   id: string
+  sourceFlagId?: string | null
+  confidence?: number | null
   improvementId: string | null
   checkId: string | null
   rubric: string

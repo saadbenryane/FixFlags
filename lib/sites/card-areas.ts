@@ -37,8 +37,8 @@ export const CARD_CATALOG: Record<
   { name: string; question: string; category: string }
 > = {
   site: {
-    name: 'Site',
-    question: 'The website we’re looking after',
+    name: 'Pages',
+    question: 'Which pages has FixFlags discovered?',
     category: 'Website',
   },
   security: {

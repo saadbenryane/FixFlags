@@ -2,9 +2,9 @@
 
 You need a public website URL. Password gates, bot walls, and localhost are out of scope for the first check.
 
-## Check a website
+## Analyze a website
 
-Open the homepage or [/new](/new), enter the URL, and wait on the Site board. Cards stay unknown until that area has evidence. Zero Flags is not healthy if required areas were not checked.
+Open the homepage or [/new](/new), enter the URL, Analyze, and wait on the Site board. Cards stay unknown until that area has evidence. Zero Flags is not healthy if required areas were not checked.
 
 ## Shopify connection
 
@@ -22,6 +22,6 @@ Claim the Site, then Keep watching. Free Sites watch weekly. Pro and Studio can 
 
 For step-by-step guides, visit the [Help Center](/help).
 
-- [Check a website URL](/help/getting-started/first-check)
+- [Analyze a website URL](/help/getting-started/first-check)
 - [Save this Site to your account](/help/getting-started/claiming-a-report)
 - [Storefront access](/help/checks-and-reports/public-urls-only)

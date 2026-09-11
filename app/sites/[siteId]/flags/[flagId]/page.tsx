@@ -21,9 +21,9 @@ function certaintyLabel(value: string | null, confidence: number | null): string
 }
 
 function attemptLabel(outcome: string | null): string {
-  if (!outcome) return 'In progress'
-  if (outcome === 'IMPROVED') return 'Passed'
-  if (outcome === 'UNCHANGED' || outcome === 'REGRESSED') return 'Failed'
+  if (!outcome) return "Couldn't verify"
+  if (outcome === 'IMPROVED') return 'Verified'
+  if (outcome === 'UNCHANGED' || outcome === 'REGRESSED') return 'Still open'
   return 'Inconclusive'
 }
 
@@ -65,7 +65,7 @@ export default async function SiteFlagPage({
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">{flag.problem}</h1>
       <p className="mt-3 text-muted-foreground">{flag.whyItMatters}</p>
       {relatedOutcome ? (
-        <p className="mt-3 text-sm text-muted-foreground">Outcome · {relatedOutcome.name}</p>
+        <p className="mt-3 text-sm text-muted-foreground">Journey · {relatedOutcome.name}</p>
       ) : null}
 
       <section className="mt-8 rounded-2xl border border-border/80 bg-background p-5">
@@ -81,7 +81,7 @@ export default async function SiteFlagPage({
         )}
         <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Where</dt>
+            <dt className="text-xs uppercase tracking-wide text-muted-foreground">URL</dt>
             <dd className="mt-1">{flag.pageUrl ?? 'This Site, page not recorded'}</dd>
           </div>
           <div>
@@ -100,7 +100,7 @@ export default async function SiteFlagPage({
       </section>
 
       <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5">
-        <h2 className="font-medium">Outcome</h2>
+        <h2 className="font-medium">Journey</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Confirm or name what this Flag is getting in the way of.
         </p>
@@ -124,6 +124,7 @@ export default async function SiteFlagPage({
             evidence: flag.evidenceMissing ? null : flag.evidence,
             fix: flag.fix,
             pageUrl: flag.pageUrl,
+            journeyName: relatedOutcome?.name,
             expectedBehavior: flag.expectedBehavior,
           })}
         />

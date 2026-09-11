@@ -27,7 +27,7 @@ import { trackEvent } from '@/lib/analytics/events'
 import { pickPlan, routerForPlanResult, type PickerPlan, type PickerSource } from '@/lib/billing/pick-plan'
 import { getActiveAudit } from '@/lib/audit/active-audit'
 import { isPaidCheckoutGatedClient } from '@/lib/billing/paid-open'
-import { demoPathForPlan } from '@/lib/billing/demo-path'
+import { waitlistPathForPlan } from '@/lib/billing/waitlist-path'
 import type { CheckoutPlan } from '@/lib/billing/client-checkout'
 import { cn } from '@/lib/utils'
 
@@ -93,7 +93,7 @@ export function PlanPickerDialog({
     if (!user) {
       if (plan !== 'FREE') {
         onOpenChange(false)
-        router.push(demoPathForPlan(plan as CheckoutPlan) as Route)
+        router.push(waitlistPathForPlan(plan as CheckoutPlan) as Route)
         return
       }
       router.push(signUpHref())
@@ -122,7 +122,7 @@ export function PlanPickerDialog({
     }
     if (result.kind === 'waitlist') {
       onOpenChange(false)
-      router.push((result.url ?? demoPathForPlan(plan as CheckoutPlan)) as Route)
+      router.push((result.url ?? waitlistPathForPlan(plan as CheckoutPlan)) as Route)
       return
     }
     if (result.kind === 'checkout_redirect') {

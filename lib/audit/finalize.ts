@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { projectSiteAnalysis } from '@/lib/sites/application/project-analysis'
 import { persistAuditRunCost } from '@/lib/billing/costs'
 import { diffFlagsAgainstParent } from '@/lib/audit/diff-flags'
 import { executeProductCommand } from '@/lib/products/application/commands'
@@ -62,6 +63,7 @@ export async function persistImprovementCycle(
   if (!audit || audit.improvementProjectedAt) return
 
   try {
+    await projectSiteAnalysis(auditId)
     if (parentId) await diffFlagsAgainstParent(auditId, parentId)
     await executeProductCommand({ type: 'MATERIALIZE_ATTENTION', auditId })
     if (parentId) {

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { SUPPORT_WELCOME_MESSAGE } from '@/lib/help/sla'
 import { SUPPORT_VISITOR_COOKIE } from '@/lib/live-support/types'
 import { serializeSession, serializeMessage } from '@/lib/live-support/messages'
-import { extractAuditIdFromPath, extractAuditIdFromPageUrl } from '@/lib/live-support/extract-audit-id'
+import { extractAuditIdFromPath, extractAuditIdFromPageUrl, extractSiteIdFromPath, extractFlagIdFromPath } from '@/lib/live-support/extract-audit-id'
 
 const mockTenant = { id: 'tenant_1', slug: 'fixflags' }
 const mockSession = {
@@ -115,6 +115,12 @@ describe('live-support audit extraction', () => {
     expect(extractAuditIdFromPath('/report/cmabc123')).toBe('cmabc123')
     expect(extractAuditIdFromPageUrl('https://fixflags.com/report/cmabc123')).toBe('cmabc123')
     expect(extractAuditIdFromPageUrl(null)).toBeNull()
+  })
+
+  it('extracts Site and Flag ids from /sites/ paths', () => {
+    expect(extractSiteIdFromPath('/sites/proj_abc')).toBe('proj_abc')
+    expect(extractFlagIdFromPath('/sites/proj_abc/flags/flag-1')).toBe('flag-1')
+    expect(extractSiteIdFromPath('/help')).toBeNull()
   })
 })
 

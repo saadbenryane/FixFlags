@@ -9,11 +9,11 @@ export default function ProductNotFound() {
     <Container variant="narrow" className="px-4 py-16 sm:px-6">
       <EmptyState
         icon={<PackageX className="h-7 w-7" aria-hidden />}
-        title="Product unavailable"
-        description="This Product was deleted, or it belongs to another account."
+        title="Site unavailable"
+        description="This Site was deleted, or it belongs to another account."
         action={
           <Button asChild>
-            <Link href="/dashboard">Return to Products</Link>
+            <Link href="/dashboard">Return to Sites</Link>
           </Button>
         }
       />

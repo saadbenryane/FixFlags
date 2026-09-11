@@ -186,13 +186,13 @@ Internal-only system for organic growth. Never queried directly by public pages.
 
 Target marketing prices (Stripe price IDs may lag until a revenue ops change):
 
-| Plan | Env price ID | Marketing price | Product reviews/mo |
-|------|--------------|-----------------|-------------------|
-| Free | — | $0 | 3 |
-| Pro (`BUILDER`) | `STRIPE_BUILDER_PRICE_ID` | $29/mo | 30 product reviews |
-| Studio (`TEAM`) | `STRIPE_TEAM_PRICE_ID` | $79/mo | 90 product reviews |
+| Plan | Env price ID | Public list | Sold as |
+|------|--------------|-------------|---------|
+| Free | — | $0 | 1 website, verified weekly |
+| Pro (`BUILDER`) | `STRIPE_BUILDER_PRICE_ID` | $49/website/mo | Verified every day. Live Stripe ID may still be $39 until a checkout pass. |
+| Studio (`TEAM`) | `STRIPE_TEAM_PRICE_ID` | Volume | Quoted waitlist. Live Stripe ID may still be $129. |
 
-Existing review metering and plan access are compatibility behavior. Actual current limits and capabilities come from lib/billing/plans.ts and lib/auth/entitlements.ts. Target responsibility-based plans and meaningful free monitoring are defined in knowledge/strategy.md and require explicit implementation.
+Existing review metering (`auditLimit` 3/30/90) and plan access are compatibility behavior, not the public SKU. Actual current limits and capabilities come from lib/billing/plans.ts and lib/auth/entitlements.ts. Paid checkout stays closed (`STRIPE_PAID_OPEN`). Target responsibility-based plans and the `$12`/site COGS envelope are defined in knowledge/strategy.md and require explicit implementation before charging.
 
 - Stripe: hosted Checkout + Customer Portal + webhooks (`docs/stripe-setup.md`)
 - Cost tracking: `AuditRunCost` per audit phase (LLM tokens + estimated USD)

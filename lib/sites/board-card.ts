@@ -59,9 +59,9 @@ export function boardCardStatusText(
   if (activity === 'checking' && state !== 'checking') return SITE_BOARD_COPY.checking
   switch (state) {
     case 'healthy':
-      return SITE_BOARD_COPY.lookingGood
+      return '0 Flags'
     case 'attention':
-      return SITE_BOARD_COPY.needsAttention
+      return SITE_BOARD_COPY.flagStatus
     case 'problem':
       return SITE_BOARD_COPY.flagStatus
     case 'checking':
@@ -180,11 +180,13 @@ export function boardFlagPrompt(input: {
   evidence?: string | null
   fix: string
   pageUrl?: string | null
+  journeyName?: string | null
   expectedBehavior?: string | null
 }): string {
   return [
     `FixFlags Flag: ${input.problem}`,
-    input.pageUrl ? `Where: ${input.pageUrl}` : null,
+    input.pageUrl ? `URL: ${input.pageUrl}` : null,
+    input.journeyName ? `Journey: ${input.journeyName}` : null,
     `Why it matters: ${input.whyItMatters}`,
     input.evidence?.trim() ? `Evidence: ${input.evidence.trim()}` : null,
     input.expectedBehavior?.trim() ? `Expected after a fix: ${input.expectedBehavior.trim()}` : null,

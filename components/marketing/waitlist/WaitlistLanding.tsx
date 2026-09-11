@@ -16,10 +16,8 @@ import { WAITLIST_PAGE, BILLING_ACTION_COPY } from '@/lib/marketing/copy'
 import { trackEvent } from '@/lib/analytics/events'
 import { submitWaitlistJoin, type CheckoutPlan } from '@/lib/billing/client-checkout'
 import { toast } from 'sonner'
-import {
-  WaitlistAuthDialog,
-  waitlistPathForPlan,
-} from '@/components/billing/WaitlistAuthDialog'
+import { WaitlistAuthDialog } from '@/components/billing/WaitlistAuthDialog'
+import { waitlistPathForPlan } from '@/lib/billing/waitlist-path'
 
 const PENDING_KEY = 'ff_waitlist_pending'
 

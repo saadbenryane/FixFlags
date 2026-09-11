@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger'
 import { runPathProbe } from './run-path-probe'
 import { sendIntegrityAlert } from './alerts'
 import { enqueueIntegrityImprove } from './enqueue'
+import { upsertIntegritySiteFlag } from './site-flag'
 
 const WATCH_MS = 6 * 60 * 60 * 1000
 const PULSE_MS = 15 * 60 * 1000
@@ -92,6 +93,19 @@ export async function runIntegrityPathJob(pathId: string, trigger: string): Prom
   }
 
   if (transitioned && (next === 'RED' || (previous === 'RED' && next === 'GREEN'))) {
+    await upsertIntegritySiteFlag({
+      shop: path.shop,
+      pathId,
+      pathLabel: path.label,
+      storefrontUrl: path.storefrontUrl,
+      health: next,
+      reason: result.reason,
+    }).catch((error) => {
+      logger.warn('Integrity Site Flag failed', {
+        pathId,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    })
     await sendIntegrityAlert({
       shop: path.shop,
       pathLabel: path.label,

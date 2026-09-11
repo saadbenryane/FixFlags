@@ -119,9 +119,9 @@ describe('projectLimitForPlan', () => {
 // ── proUpgradeCta ────────────────────────────────────────────────
 
 describe('proUpgradeCta', () => {
-  it('defaults to Request a demo', () => {
+  it('defaults to Join waitlist', () => {
     const cta = proUpgradeCta()
-    assert.equal(cta, 'Request a demo')
+    assert.equal(cta, 'Join waitlist')
   })
 
   it('uses custom prefix when provided', () => {

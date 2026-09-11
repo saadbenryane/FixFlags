@@ -104,9 +104,9 @@ export const SYSTEM_COPY = {
 } as const
 
 export const AUDIT_PROGRESS = {
-  inProgress: 'Reviewing your site...',
-  submitLoading: 'Reviewing…',
-  bannerScanning: 'Reviewing',
+  inProgress: 'Analyzing your website...',
+  submitLoading: 'Analyzing…',
+  bannerScanning: 'Analyzing',
   workerQueuedWarningDev:
     'Report is still preparing. In local dev, run npm run dev:all so the worker processes jobs.',
   workerQueuedWarningProd:
@@ -130,9 +130,9 @@ export const AUDIT_PROGRESS = {
   },
   formatStageStep: (current: number, total: number, label: string) =>
     `Step ${current} of ${total} · ${label}`,
-  scanningBadge: (label: string) => `Reviewing · ${label}`,
-  ariaScanning: 'Reviewing',
-  ariaScanningPercent: (percent: number) => `Reviewing, ${percent} percent`,
+  scanningBadge: (label: string) => `Analyzing · ${label}`,
+  ariaScanning: 'Analyzing',
+  ariaScanningPercent: (percent: number) => `Analyzing, ${percent} percent`,
   ariaScore: (score: number) => `Score ${score} percent`,
   ariaScoreUnavailable: 'Score unavailable',
   scoreNa: 'N/A',

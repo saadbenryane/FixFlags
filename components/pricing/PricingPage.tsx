@@ -1,9 +1,8 @@
 import type { Route } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Check, Flag, ShieldCheck, Users } from 'lucide-react'
+import { Check, Flag, ShieldCheck } from 'lucide-react'
 import { PricingCTAButton } from '@/components/pricing/PricingCTAButton'
-import { PricingComparisonTable } from '@/components/pricing/PricingComparisonTable'
 import { PlanPrice } from '@/components/pricing/PlanPrice'
 import { PricingViewTracker } from '@/components/pricing/PricingViewTracker'
 import { MarketingCompareSection } from '@/components/marketing/MarketingCompareSection'
@@ -11,14 +10,13 @@ import { FaqSection } from '@/components/marketing/FaqSection'
 import { MarketingEyebrow } from '@/components/marketing/MarketingEyebrow'
 import { Container } from '@/components/ui/container'
 import { Section } from '@/components/ui/section'
-import { Body, Heading, Muted } from '@/components/ui/typography'
-import { PLANS, PRICING, PRICING_FAQ } from '@/lib/marketing/copy/plans'
+import { Body, Heading } from '@/components/ui/typography'
+import { PRICING, PRICING_CARDS, PRICING_FAQ } from '@/lib/marketing/copy/plans'
 import { cn } from '@/lib/utils'
 
 const PLAN_ICONS = {
   FREE: ShieldCheck,
   BUILDER: Flag,
-  TEAM: Users,
 } as const
 
 export function PricingPage() {
@@ -64,8 +62,8 @@ export function PricingPage() {
         </div>
 
         <h2 className="sr-only">Plans</h2>
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-6">
-          {PLANS.map((plan) => {
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
+          {PRICING_CARDS.map((plan) => {
             const PlanIcon = PLAN_ICONS[plan.plan]
             return (
               <article
@@ -152,21 +150,11 @@ export function PricingPage() {
         </div>
 
         <p className="text-sm text-muted-foreground">
-          {PRICING.shopifyNote}{' '}
-          <Link href={PRICING.shopifyHref} className="font-medium text-foreground underline-offset-4 hover:underline">
-            {PRICING.shopifyCta}
+          {PRICING.studioLine}{' '}
+          <Link href={PRICING.studioHref} className="font-medium text-foreground underline-offset-4 hover:underline">
+            {PRICING.studioCta}
           </Link>
         </p>
-
-        <div className="space-y-6">
-          <div className="max-w-2xl">
-            <Heading as="h2" className="font-display">
-              {PRICING.compareTitle}
-            </Heading>
-            <Muted className="mt-2 text-sm">{PRICING.allPlansInclude}</Muted>
-          </div>
-          <PricingComparisonTable />
-        </div>
 
         <MarketingCompareSection embedded />
 

@@ -23,6 +23,8 @@ The former “Finish what your AI started” positioning, report-first story and
 6. Put rendered marketing copy in lib/marketing/copy.ts and its modules. Reconcile page titles, metadata, social previews, pricing, help/docs, emails and native Shopify materials when behavior rolls out.
 7. Verify content, links, claim parity and rendered mobile/desktop behavior for changed public surfaces.
 
+Public pricing: `$49` per website per month, one free website verified weekly, Pro verified every day. Paid CTA is the waitlist, not a nameless Beta and not `/request-demo` as the Pro card. Do not print 24/7, hourly Flag audits, 3/30/90, or page counts. `/request-demo` may remain as a URL. Legal/privacy is URL-first. The Pages card is the first Site card. Recommendations stay in card depth and are not marketed as a product.
+
 The supplied vision's examples are not prices, SLAs, usage numbers or shipped connection claims. Never state “You're covered” without actual ongoing checking. Never claim “Resolved” without independent verification. Source current external facts before publishing research or comparisons.
 
 Older marketing references are historical aids only where they agree with the current voice/vision. They cannot override the accepted direction.

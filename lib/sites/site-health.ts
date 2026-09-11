@@ -1,6 +1,7 @@
 import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
 import { STARTER_BOARD_CARDS } from '@/lib/sites/card-areas'
 import type { CoverageFact } from '@/lib/sites/coverage'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 /** Starter areas that must be evidenced before the Site card can say healthy. */
 export const REQUIRED_STARTER_AREAS: SiteCardArea[] = STARTER_BOARD_CARDS.filter(
@@ -42,8 +43,8 @@ export function siteCardHealth(input: {
     return {
       state: 'problem',
       answer:
-        open === 1 ? '1 thing needs attention' : `${open} things need attention`,
-      statusLabel: input.inFlight ? 'Checking again' : 'Needs attention',
+        open === 1 ? '1 Flag' : `${open} Flags`,
+      statusLabel: input.inFlight ? 'Checking again' : SITE_BOARD_COPY.flagStatus,
     }
   }
 
@@ -51,8 +52,8 @@ export function siteCardHealth(input: {
     return {
       state: 'attention',
       answer:
-        open === 1 ? '1 thing needs attention' : `${open} things need attention`,
-      statusLabel: input.inFlight ? 'Checking again' : 'Needs attention',
+        open === 1 ? '1 Flag' : `${open} Flags`,
+      statusLabel: input.inFlight ? 'Checking again' : SITE_BOARD_COPY.flagStatus,
     }
   }
 
@@ -82,7 +83,7 @@ export function siteCardHealth(input: {
 
   return {
     state: 'healthy',
-    answer: 'Looking good',
-    statusLabel: 'Looking good',
+    answer: '0 Flags',
+    statusLabel: '0 Flags',
   }
 }

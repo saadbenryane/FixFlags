@@ -8,12 +8,9 @@ import {
 } from '@/components/ui/dialog'
 import { AuthFlow } from '@/components/auth/AuthFlow'
 import { WAITLIST_PAGE } from '@/lib/marketing/copy'
+import { waitlistPathForPlan } from '@/lib/billing/waitlist-path'
 
 export type WaitlistDialogPlan = 'BUILDER' | 'TEAM'
-
-export function waitlistPathForPlan(plan: WaitlistDialogPlan): string {
-  return plan === 'TEAM' ? '/waitlist/studio' : '/waitlist/pro'
-}
 
 interface WaitlistAuthDialogProps {
   open: boolean

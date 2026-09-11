@@ -4,7 +4,7 @@ import { toast } from 'sonner'
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime'
 import { BILLING_ACTION_COPY, SYSTEM_COPY } from '@/lib/marketing/copy'
 import { getActiveAudit } from '@/lib/audit/active-audit'
-import { demoPathForPlan } from '@/lib/billing/demo-path'
+import { waitlistPathForPlan } from '@/lib/billing/waitlist-path'
 import {
   requestPlanCheckout,
   type CheckoutOutcome,
@@ -58,7 +58,7 @@ function isSitePath(value: string | null | undefined): value is string {
  * Pricing page CTAs, the post-auth plan picker, and the post-signup plan picker
  * all funnel through this function so the routing and checkout branches stay in
  * lockstep. The caller is responsible for navigation when
- * `kind` is `free_dashboard`, `free_report`, or `demo`; for `checkout_redirect` the
+ * `kind` is `free_dashboard`, `free_report`, `waitlist`, or `demo`; for `checkout_redirect` the
  * caller must hand `url` to `window.location` (or `onCheckoutRedirect`).
  */
 export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
@@ -100,7 +100,7 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
 
   if (waitlistGated) {
     onPrivateBeta?.()
-    return { kind: 'demo', url: demoPathForPlan(checkoutPlan) }
+    return { kind: 'waitlist', url: waitlistPathForPlan(checkoutPlan) }
   }
 
   const outcome: CheckoutOutcome = await requestPlanCheckout(checkoutPlan)
@@ -117,7 +117,7 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
 
   if (outcome.kind === 'paid-checkout-closed') {
     onPrivateBeta?.()
-    return { kind: 'demo', url: demoPathForPlan(checkoutPlan) }
+    return { kind: 'waitlist', url: waitlistPathForPlan(checkoutPlan) }
   }
 
   // Batch gate (server 403 BATCH_ACCESS_REQUIRED): paid is open, but this
@@ -127,7 +127,7 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
   // bundle never ships the open-batch value.
   if (outcome.kind === 'error' && outcome.message.includes('opens in batches')) {
     onPrivateBeta?.()
-    return { kind: 'demo', url: demoPathForPlan(checkoutPlan), message: outcome.message }
+    return { kind: 'waitlist', url: waitlistPathForPlan(checkoutPlan), message: outcome.message }
   }
 
   if (outcome.kind === 'unavailable') {
@@ -156,7 +156,12 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
 
 /** Convenience wrapper for components that own a `router` instance. */
 export function routerForPlanResult(router: AppRouterInstance, result: PickPlanResult): void {
-  if (result.kind === 'free_dashboard' || result.kind === 'free_report' || result.kind === 'demo') {
+  if (
+    result.kind === 'free_dashboard' ||
+    result.kind === 'free_report' ||
+    result.kind === 'demo' ||
+    result.kind === 'waitlist'
+  ) {
     if (result.url) router.push(result.url)
   }
 }

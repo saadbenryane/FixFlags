@@ -73,8 +73,8 @@ const STRANGER_SURFACES = collectStrings({
 describe('stranger-facing website care', () => {
   it('starts with a website URL, not Shopify-only', () => {
     expect(HERO.primaryHref).toBe('/#audit')
-    expect(PRICING.headline).toMatch(/24\/7 website monitoring/i)
-    expect(PLANS.find((plan) => plan.plan === 'FREE')?.cta).toBe('Check my website')
+    expect(PRICING.headline).toMatch(/\$49 per site/i)
+    expect(PLANS.find((plan) => plan.plan === 'FREE')?.cta).toBe('Analyze')
     expect(MARKETING_LINKS.some((link) => link.href === '/pricing')).toBe(true)
   })
 
@@ -99,12 +99,12 @@ describe('stranger-facing website care', () => {
     expect(faq).not.toMatch(/\$29|\$99/)
     expect(HELP_ARTICLES.some((article) => /install/i.test(article.title))).toBe(true)
     expect(docsMarkdown()).toMatch(/Shopify is a \[connection\]/i)
-    expect(docsMarkdown()).toMatch(/Find → Understand → Fix → Verify/)
+    expect(docsMarkdown()).toMatch(/Flag\. Fix\. Verify\./)
   })
 
   it('pricing is free plus per-site paid monitoring, with no billed SKU prices', () => {
-    expect(PRICING.headline).toMatch(/24\/7 website monitoring/i)
-    expect(PLANS.find((plan) => plan.plan === 'FREE')?.cta).toBe('Check my website')
+    expect(PRICING.headline).toMatch(/\$49 per site/i)
+    expect(PLANS.find((plan) => plan.plan === 'FREE')?.cta).toBe('Analyze')
     expect(PLANS.find((plan) => plan.plan === 'BUILDER')?.price).toBe('$49')
     expect(PLANS.find((plan) => plan.plan === 'TEAM')?.price).toBe('Volume')
     expect(JSON.stringify({ PLANS, PRICING, PRICING_FAQ })).not.toMatch(/\$29|\$99/)

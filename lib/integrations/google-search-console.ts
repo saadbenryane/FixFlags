@@ -113,12 +113,17 @@ export async function listGscSites(accessToken: string): Promise<GscSiteEntry[]>
   return data.siteEntry ?? []
 }
 
-async function refreshAccessTokenIfNeeded(refreshToken: string, expiry: Date): Promise<string> {
-  if (Date.now() + TOKEN_REFRESH_BUFFER_MS < expiry.getTime()) {
-    return decryptSecret(refreshToken)
+async function refreshAccessTokenIfNeeded(connection: {
+  id: string
+  accessToken: string
+  refreshToken: string
+  tokenExpiry: Date
+}): Promise<string> {
+  if (Date.now() + TOKEN_REFRESH_BUFFER_MS < connection.tokenExpiry.getTime()) {
+    return decryptSecret(connection.accessToken)
   }
 
-  const decryptedRefresh = decryptSecret(refreshToken)
+  const decryptedRefresh = decryptSecret(connection.refreshToken)
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -133,9 +138,18 @@ async function refreshAccessTokenIfNeeded(refreshToken: string, expiry: Date): P
     throw new Error(`Google token refresh failed (${res.status})`)
   }
   const data = (await res.json()) as GoogleTokenResponse
-  if (!data.access_token) {
-    throw new Error(data.error_description || data.error || 'Google returned no access token on refresh')
+  if (!data.access_token || !data.expires_in || data.expires_in <= 0) {
+    throw new Error(data.error_description || data.error || 'Google returned incomplete refreshed credentials')
   }
+  const { encryptSecret } = await import('@/lib/security/crypto')
+  await prisma.gscConnection.update({
+    where: { id: connection.id },
+    data: {
+      accessToken: encryptSecret(data.access_token),
+      tokenExpiry: new Date(Date.now() + data.expires_in * 1000),
+      ...(data.refresh_token ? { refreshToken: encryptSecret(data.refresh_token) } : {}),
+    },
+  })
   return data.access_token
 }
 
@@ -143,7 +157,7 @@ export async function getGscAccessToken(userId: string): Promise<string | null> 
   const connection = await prisma.gscConnection.findUnique({ where: { userId } })
   if (!connection) return null
   try {
-    return await refreshAccessTokenIfNeeded(connection.refreshToken, connection.tokenExpiry)
+    return await refreshAccessTokenIfNeeded(connection)
   } catch (err) {
     logger.error('GSC token refresh failed', err instanceof Error ? err : new Error(String(err)))
     return null
