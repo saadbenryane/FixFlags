@@ -1,3 +1,2 @@
--- No-op: scan_access_encrypted was already renamed to scanAccessEncrypted
--- by migration 20260723081407_scan_access. This migration is a no-op to
--- avoid conflicts with the earlier rename.
+-- No-op: scan access columns are created in 20260723130000_scan_access_rename.
+-- Retained so migration ordering stays stable after parallel branch merges.
