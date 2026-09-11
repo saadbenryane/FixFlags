@@ -39,3 +39,12 @@ Updated as each verified change lands.
 - `npm run lint`: fail on one source issue plus ignored prototype build output being scanned.
 - `npm run test:unit`: 14 failures across Improvement projection, coverage receipts, pricing-era analytics expectations, accessibility contrast, source-language guard and AuditInput static analysis.
 - First customer journey and release evidence remain unproven; no launch claim.
+
+### Green-baseline slice
+
+- Fixed complete durable Flag materialization: ranking no longer passes wrapper objects to identity and no longer truncates Site memory to three Flags. Regression proof materializes four distinct customer Flags and occurrences.
+- Split pure review access projection from server-only entitlement policy, removing `node:async_hooks` from the client report bundle.
+- Reconciled current $49/website analytics expectations, coverage receipts, dynamic AuditInput ID validation and ignored prototype build output.
+- Changed Flag Orange foreground from white (3.13:1) to ink (6.29:1) and aligned the design canon.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `npm run test:unit` (5,223 passed, 10 skipped) and `npm run ui:drift-guard`: pass.
+- Full `npm run verify` advanced through database, type, lint and brand gates, then found application typography/radius/token drift. The focused fixes and affected tests pass; full gate must be rerun from a stable clean revision.
