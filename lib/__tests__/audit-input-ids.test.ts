@@ -14,6 +14,7 @@ interface AuditInputUsage {
 
 const AUDIT_INPUT_RE = /<AuditInput\s[^>]*\/?>/g
 const ID_SUFFIX_RE = /idSuffix\s*=\s*["']([^"']+)["']/
+const HAS_ID_SUFFIX_RE = /\bidSuffix\s*=/
 
 describe('AuditInput IDs', () => {
   const usages: AuditInputUsage[] = []
@@ -85,13 +86,14 @@ function collectFiles(
       if (!match) continue
       const suffixMatch = line.match(ID_SUFFIX_RE)
       const suffix = suffixMatch?.[1] ?? ''
+      const hasIdSuffix = HAS_ID_SUFFIX_RE.test(line)
       const usage = {
         file: relative(process.cwd(), full),
         line: i + 1,
         suffix,
       }
       usages.push(usage)
-      if (!suffix) bareUsages.push(usage)
+      if (!hasIdSuffix) bareUsages.push(usage)
     }
   }
 }

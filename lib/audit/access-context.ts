@@ -1,7 +1,7 @@
 import {
   resolveReviewCapabilities,
   type ReviewVisibility,
-} from '@/lib/auth/access-policy'
+} from '@/lib/auth/review-access-policy'
 
 export type AuditAccessContext = Exclude<ReviewVisibility, 'curated_sample'>
 

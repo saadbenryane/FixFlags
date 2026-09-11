@@ -1,5 +1,5 @@
 /**
- * Locked 2026-09-06 — Saad.
+ * Locked 2026-09-06 by Saad.
  * Webmaster checklist vs PageSpeed Insights vs an agent/skill.
  * 2026-09-06 evening: agent column made truthful; mobile = sticky compare, not cards.
  */

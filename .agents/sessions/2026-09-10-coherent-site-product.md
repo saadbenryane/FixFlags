@@ -29,3 +29,13 @@ The owner approved the complete plan in this task. This record tracks implementa
 ## Implementation evidence
 
 Updated as each verified change lands.
+
+### 2026-09-11 baseline
+
+- `npm run doctor`: pass after starting the repository PostgreSQL and Redis services; schema current and Chromium available.
+- `npm run completeness:audit`: pass (79 models, two legacy report sections).
+- `npm run accuracy:eval`: pass (16 HTML fixtures, three gold fixtures, zero failures).
+- `npm run typecheck`: fail in durable Improvement projection.
+- `npm run lint`: fail on one source issue plus ignored prototype build output being scanned.
+- `npm run test:unit`: 14 failures across Improvement projection, coverage receipts, pricing-era analytics expectations, accessibility contrast, source-language guard and AuditInput static analysis.
+- First customer journey and release evidence remain unproven; no launch claim.

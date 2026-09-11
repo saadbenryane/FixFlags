@@ -142,7 +142,7 @@ export function ShopifyWorkspace({
       <Card className="border-border/80 bg-muted/30 p-4">
         <p className="text-sm font-medium text-foreground">Shopify is a connection</p>
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-          Purchase-path walks stay available here. Can't buy becomes a Flag on the matching Site,
+          Purchase-path walks stay available here. Can&apos;t buy becomes a Flag on the matching Site,
           same Home · Flags as a URL you Analyze. Hostname alone never claims a Site.
         </p>
       </Card>

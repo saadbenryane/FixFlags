@@ -88,7 +88,9 @@ export async function materializeAttentionForAudit(auditId: string): Promise<voi
   if (!audit?.userId || !audit.projectId) return
 
   const flags = audit.flags as ImprovementFlag[]
-  const candidates = rankFlagsByPriority(flags.filter(isCustomerFlag))
+  const customerFlags = flags.filter(isCustomerFlag)
+  const candidates = rankFlagsByPriority(customerFlags, [], customerFlags.length)
+    .map(({ flag }) => flag)
 
   const improvementsByFingerprint = new Map<string, { id: string; status: ImprovementStatus }>()
   let uniquePriority = 0

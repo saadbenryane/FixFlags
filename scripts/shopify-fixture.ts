@@ -49,7 +49,7 @@ async function main() {
   if (!process.env.TOKEN_ENCRYPTION_KEY) {
     process.env.TOKEN_ENCRYPTION_KEY = '57e4ab27b1e9eedc60457e7360f58bdbf458f8748e1d74f4c799f8f362770dba'
   }
-  const server = await startServer()
+  await startServer()
   const origin = `http://127.0.0.1:${PORT}`
 
   await persistTokenSet(

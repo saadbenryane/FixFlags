@@ -45,7 +45,7 @@ _Validated visual and interaction standards. Code-enforced where possible, docum
 | ---------- | --------------------- | ----------------------------------------------------- |
 | 60%        | Background / canvas   | `--background` (white `#FFFFFF` / dark ink `#0B0B0D`) |
 | 30%        | Foreground / ink      | `--foreground`, `--card`, `--muted` (stone `#F5F6F7`) |
-| 10%        | Brand orange (signal) | `--brand` Flag Orange `#FF5A00` in both themes, with white CTA text |
+| 10%        | Brand orange (signal) | `--brand` Flag Orange `#FF5A00` in both themes, with accessible ink CTA text |
 
 - Dark mode: fully re-authored, not inverted. Graphite canvas, charcoal glass, warm orbs.
 - One accent per surface. Do not layer multiple accent colors.
@@ -110,7 +110,7 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 - Layered shadow on hover
 - Min 44×44px hit target (`min-h-11 min-w-11`); carousel prev/next controls follow same rule
 - Focus ring on `--ring`
-- Light mode product primary: ink. Marketing accent CTAs: bright brand orange with white labels (`variant="brand"`). The owner’s September 8 palette replaces the former dark orange button fill.
+- Light mode product primary: ink. Marketing accent CTAs: bright brand orange with ink labels (`variant="brand"`) so normal-size text meets WCAG AA. The owner’s September 8 palette replaces the former dark orange button fill.
 
 ### Card (`glass-surface`)
 

@@ -10,7 +10,7 @@ import {
 import {
   resolveReviewCapabilities,
   type ReviewCapabilities,
-} from '@/lib/auth/access-policy'
+} from '@/lib/auth/review-access-policy'
 
 export type { AuditAccessContext } from '@/lib/audit/access-context'
 export type { ReportPromptAudience, ReportPromptProjection } from '@/lib/report/prompt-access'

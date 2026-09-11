@@ -69,7 +69,7 @@ export function evidencedAreasFromCoverage(
     if (rubric.score == null) continue
     if (rubric.name === 'MESSAGE') evidenced.add('conversion')
     if (rubric.name === 'EXPERIENCE') evidenced.add('performance')
-    // REACH is a mixed reachability rubric — do not paint Security/Search/Tracking healthy from it alone.
+  // REACH is a mixed reachability rubric. Do not paint Security/Search/Tracking healthy from it alone.
   }
 
   return evidenced
@@ -141,7 +141,7 @@ export function buildCoverageFacts(input: {
     let score: number | null = null
     if (area === 'conversion') score = rubricScore('MESSAGE')
     if (area === 'performance') score = rubricScore('EXPERIENCE')
-    // Per-area scores only — never share one REACH score across three cards.
+  // Per-area scores only. Never share one REACH score across three cards.
     if (area === 'search' && evidenced.has('search')) score = null
 
     if (inFlight && input.retainLastKnownWhileChecking && prior) {
@@ -151,7 +151,7 @@ export function buildCoverageFacts(input: {
         label: prior.label,
         detail: prior.detail
           ? `${prior.detail} · Checking now`
-          : 'Checking now — last known kept',
+      : 'Checking now. Last known kept',
         score: null,
         evidenced: prior.evidenced,
       }

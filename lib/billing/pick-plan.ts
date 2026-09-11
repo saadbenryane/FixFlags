@@ -79,13 +79,13 @@ export async function pickPlan(input: PickPlanInput): Promise<PickPlanResult> {
       if (active?.siteId) {
         return { kind: 'free_report', url: `/sites/${active.siteId}` }
       }
-      // No silent /report bounce — Site board is the product.
+      // No silent /report bounce. Site board is the product.
     }
     if (isSitePath(fallbackPath)) {
       return { kind: 'free_report', url: fallbackPath }
     }
     if (isReportPath(fallbackPath)) {
-      // Legacy share/compat next paths only — do not invent report from audit id.
+      // Legacy share/compat next paths only. Do not invent report from audit id.
       return { kind: 'free_report', url: fallbackPath }
     }
     return { kind: 'free_dashboard', url: fallbackPath ?? '/dashboard' }

@@ -1,6 +1,6 @@
 # FixFlags implementation masterplan
 
-**Definitive complete-product plan. Status: NEXT. Documentation only until a later task claims implementation.**
+**Definitive complete-product and launch-readiness plan. Status: ACTIVE.**
 
 This file owns **what to build, in what order, and what may be claimed publicly**. It absorbs the former messaging-migration plan.
 
@@ -18,7 +18,7 @@ This file owns **what to build, in what order, and what may be claimed publicly*
 | Interface states | [workspace-interface.md](workspace-interface.md) |
 | Card design | [card-board-experience.md](card-board-experience.md) |
 
-Do not execute production UI, monitoring, Agent, pricing, or report deletion from this file until BOARD claims that scope. Preserve in-progress owners (`homepage-hero-voice`, `homepage-end-user-polish`, `board-card-chrome`).
+Implementation is claimed by `coherent-site-product` on [the task board](../.agents/BOARD.md). Preserve narrower in-progress owners and record verified implementation evidence in [the active session record](../.agents/sessions/2026-09-10-coherent-site-product.md). This file remains the only launch plan; session records are evidence, not competing plans.
 
 **Truth vs vision:** Architecture describes the intended product. Public copy claims only shipped behavior. A later capability that affects IA (FixFlags Agent FAB, Flag vs Recommendation, report retirement) is designed now even if it ships later.
 
@@ -45,6 +45,37 @@ Full object, nav, card, Agent, and integration models: [product-architecture.md]
 5. **First complete loop on the Site:** Analyze → board → Flag → Fix / Send to AI → Verify → Watch, with honest coverage and Verify states.
 6. **Acquisition copy** only after (2), (3) honesty, and unshipped-integration cleanup.
 7. **Unify Shopify into the same Site**; Flag-shaped notifications; then Agent + support context; then report/Agent-pane retirement.
+
+## Launch-readiness ledger
+
+This ledger is dependency ordered and is the operational view of the waves below. A checked item needs code plus the named evidence. Static copy or a passing legacy-report test is not completion.
+
+### Blockers
+
+- [ ] **B0 Restore a green release baseline.** Typecheck, lint, unit tests, build, completeness, accuracy, security audit and route/knowledge guards pass from a clean `main`. Evidence: dated commands in the active session record.
+- [ ] **B1 Prove the first-value Site journey.** A new visitor can Analyze a real URL, see persisted truthful progress, receive useful evidence, create or sign in to an account, claim exactly one Site and return to the same Site. Evidence: desktop/mobile browser trace, database identity assertions and worker timestamps.
+- [ ] **B2 Prove the Flag loop.** A real broken behavior creates one durable customer Flag with correctly scoped evidence; Fix handoff does not imply completion; fresh relevant Verify fails, passes and reopens correctly. Evidence: worker/browser fixture plus persisted occurrence and verification history.
+- [ ] **B3 Prove Watch and return.** Free weekly scheduling is durable, recoverable and honestly delayed when capacity or configuration is unavailable. One meaningful regression sends one deduplicated notification whose link returns to the same Site. Evidence: scheduler restart, notification sink and return-path trace.
+- [ ] **B4 Close access and production trust boundaries.** Cross-tenant and anonymous claim tests pass; private Site/connection/history data never leaks through public report compatibility; readiness checks prove database, Redis, worker, storage, AI and required migrations on the exact deployed revision. Evidence: security suite, credentialed journey matrix, release receipts and rollback rehearsal.
+- [ ] **B5 Make paid launch truthful before charging.** Public list price, quantity, entitlements, Stripe prices, checkout, webhook transitions, failed-payment recovery and billing UI agree. `STRIPE_PAID_OPEN` stays false until a measured per-Site cost baseline and a complete test-mode checkout pass exist. Evidence: pricing parity, Stripe fixture journey and explicit launch decision.
+
+### Launch-critical
+
+- [ ] **L1 Finish the Site information architecture.** Home · Flags with Site settings, Pages and Journeys through cards, honest coverage/freshness, and intentional learning/partial/healthy/Flag/stale/failed/empty/loading/unsupported states at 375, 768 and 1280 px.
+- [ ] **L2 Retire customer-visible old generations.** Owners no longer land in Products, audits, reports, scores, Finish Plans or the report Agent workspace. Compatibility URLs remain only where required and never become a second product.
+- [ ] **L3 Reconcile every public and lifecycle surface.** Homepage, pricing, auth, onboarding, Shopify install, Help, Docs, FAQ, changelog, legal, metadata, examples, emails, notifications, errors and support use the same capability and pricing truth.
+- [ ] **L4 Make connections degrade safely.** Shopify and any exposed connection remain attached to the same Site, explain their value in context, preserve core browser analysis when absent or revoked, and never expose provider/configuration internals.
+- [ ] **L5 Instrument the critical funnel.** Versioned events cover discovery → Analyze → useful result → auth/claim → Flag opened → Fix handoff → Verify → Watch → notification return → support, with privacy-safe properties, deduplication and an operator readout.
+- [ ] **L6 Complete operational readiness.** Recovery paths, alerting, support ownership, privacy/retention, dependency advisories, mobile/accessibility/performance budgets and rollback instructions are exercised rather than merely documented.
+
+### Post-launch
+
+- [ ] Persistent Site-scoped FixFlags Agent with grounded support escalation.
+- [ ] Additional context connections such as GA4, Meta and deployments after provider proof.
+- [ ] Richer Recommendations, observer signals, collaboration/agency roles and advanced Send-to-AI transports.
+- [ ] Dedicated History or additional cards only when customer evidence shows the existing object-level history is insufficient.
+
+Launch is blocked while any Blocker remains unresolved. Launch-critical items may move post-launch only when removing or hiding the affected capability leaves the first customer journey complete and truthful.
 
 Phases 1–4 in [ROADMAP.md](../ROADMAP.md) remain the engineering cutover for tenancy, coverage, Fix/Verify/Watch. This masterplan sequences the **complete intended product** around that core, including marketing, Agent, support, and retirement.
 

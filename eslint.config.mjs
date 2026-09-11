@@ -13,6 +13,7 @@ const config = [
       '.cache/**',
       'coverage/**',
       'dist/**',
+      '**/dist/**',
       'fixflags-cli/dist/**',
       'node_modules/**',
       'output/**',

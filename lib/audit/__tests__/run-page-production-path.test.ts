@@ -34,7 +34,7 @@ vi.mock('@/lib/audit/pagespeed', () => ({
   toStoredPageSpeedResult: vi.fn((value: unknown) => value),
 }))
 vi.mock('@/lib/audit/checks', () => ({
-  runAllChecks: vi.fn(async () => ({ flags: [], failedModules: [] })),
+  runAllChecks: vi.fn(async () => ({ flags: [], failedModules: [], executions: [] })),
   computeRubricScores: vi.fn(() => ({})),
   suppressOverlappingFlags: vi.fn((flags: unknown[]) => flags),
 }))

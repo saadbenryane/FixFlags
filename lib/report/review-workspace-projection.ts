@@ -4,7 +4,7 @@ import {
   resolveReportSurfaceCapabilities,
   type ReportPromptProjection,
 } from '@/lib/audit/access-capabilities'
-import type { ReviewCapabilities } from '@/lib/auth/access-policy'
+import type { ReviewCapabilities } from '@/lib/auth/review-access-policy'
 import type { ReportExplorerModel } from '@/lib/report/explorer-model'
 import {
   buildReportWorkspaceModel,

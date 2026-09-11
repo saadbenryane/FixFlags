@@ -243,6 +243,33 @@ describe('materializeAttentionForAudit', () => {
       })
     )
   })
+
+  it('materializes every customer Flag instead of truncating Site memory to the top three', async () => {
+    const flags = Array.from({ length: 4 }, (_, index) => ({
+      ...flag,
+      id: `flag-${index + 1}`,
+      checkId: `customer-check-${index + 1}`,
+      problem: `Customer problem ${index + 1}`,
+    }))
+    mocks.auditFindUnique.mockResolvedValue({
+      id: 'review-1',
+      userId: 'user-1',
+      projectId: 'product-1',
+      url: 'https://example.com',
+      productContract: null,
+      flags,
+      rubrics: [],
+    })
+    mocks.improvementUpsert.mockImplementation(async ({ create }) => ({
+      id: `improvement-${create.fingerprint}`,
+      status: 'PROPOSED',
+    }))
+
+    await materializeAttentionForAudit('review-1')
+
+    expect(mocks.improvementUpsert).toHaveBeenCalledTimes(4)
+    expect(mocks.occurrenceUpsert).toHaveBeenCalledTimes(4)
+  })
 })
 
 describe('createImprovementAttempt', () => {
