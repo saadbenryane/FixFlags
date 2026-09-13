@@ -1,7 +1,7 @@
 /**
  * GIF compositor. Composes frame sequences into animated GIFs using omggif.
  */
-import sharp from 'sharp'
+import sharp, { type OverlayOptions } from 'sharp'
 import { logger } from '@/lib/logger'
 
 // omggif ships CJS; types export GifWriter but ESM interop is inconsistent under tsc.
@@ -122,7 +122,7 @@ export async function composeSideBySide(
   const canvasW = leftImg.info.width + rightImg.info.width + gap
   const canvasH = Math.max(leftImg.info.height, rightImg.info.height) + labelH
 
-  const composites: sharp.OverlayOptions[] = [
+  const composites: OverlayOptions[] = [
     { input: leftImg.data, top: labelH, left: 0 },
     { input: rightImg.data, top: labelH, left: leftImg.info.width + gap },
   ]

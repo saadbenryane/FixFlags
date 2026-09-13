@@ -14,3 +14,5 @@ The next guard after UI drift is `image:artwork-guard`. `LandingHowItWorksSectio
 `SEO.roast` cannot live on the indexable `SEO` object: `/roast` is noindex and kept off nav/footer. Export `ROAST_SEO` instead. Legacy `/protect` still belongs in `INDEXABLE_ROUTES` and must call `buildPageMetadata` even though it redirects to `/install`.
 
 `security:audit` (`npm audit --audit-level=moderate`) now requires the smallest patched ranges: Next 15.5.24, sharp 0.35.4, vitest 4.1.11, hono 4.13.5, js-yaml 4.3.2. Pin `sharp` the same way in `dependencies` and `overrides` or `npm audit` fails with EOVERRIDE.
+
+Sharp 0.35 ships ESM types as the package `types` field. `import sharp from 'sharp'` no longer exposes `sharp.OverlayOptions` under `tsconfig.worker.json` (`moduleResolution: node`). Import `OverlayOptions` as a named type and re-export it from `types/sharp.d.ts`. CI installs Playwright Chromium after `validate:full`, so unit tests must not launch Chromium in `beforeAll`. Metadata tests must assert `SITE_URL`, not a hardcoded `https://fixflags.com`, because CI sets `NEXT_PUBLIC_APP_URL=http://127.0.0.1:3000`.
