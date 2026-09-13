@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { LandingSectionHeader } from "@/components/marketing/landing/LandingSectionHeader";
 import { RevealOnView } from "@/components/marketing/landing/RevealOnView";
 import { Container } from "@/components/ui/container";
@@ -44,16 +45,15 @@ export function LandingHowItWorksSection() {
             ))}
           </ol>
 
-          <RevealOnView className="relative min-h-[15rem] rounded-[13px] border border-border/65 bg-background p-6 sm:min-h-[21rem] lg:min-h-[25rem]">
-            <p className="section-label">
-              {copy.previewLabel}
-            </p>
-            <p className="mt-4 font-display text-2xl font-semibold">
-              {copy.previewTitle}
-            </p>
-            <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-              {copy.previewBody}
-            </p>
+          <RevealOnView className="relative min-h-[15rem] sm:min-h-[21rem] lg:min-h-[25rem]">
+            <Image
+              src="/marketing/visuals/how-it-works-workflow-v4.webp"
+              alt="A website check becomes a Flag and is verified after the fix"
+              fill
+              sizes="(min-width: 1280px) 720px, (min-width: 1024px) 58vw, 100vw"
+              className="object-contain object-center drop-shadow-[0_24px_40px_hsl(var(--foreground)/0.08)]"
+              unoptimized
+            />
           </RevealOnView>
         </div>
       </Container>
