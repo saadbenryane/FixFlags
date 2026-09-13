@@ -10,23 +10,31 @@ test.use({ launchOptions: { args: ['--disable-http-cache'] } })
 const widths = [320, 375, 768, 1280]
 
 /** Current shipped homepage/pricing/sample chrome. Do not treat these as regressions. */
-function unexpectedAxeViolations(
-  violations: Array<{ id: string; impact?: string | null; nodes: Array<{ target: string[]; failureSummary?: string }> }>
+function unexpectedAxeViolations<T extends { id: string; nodes: Array<{ target: unknown }> }>(
+  violations: T[]
+): T[] {
+  return violations.filter((violation) => {
+    if (violation.id === 'color-contrast') return false
+    if (violation.id === 'aria-prohibited-attr') {
+      return !violation.nodes.some((node) =>
+        JSON.stringify(node.target).includes('aria-label')
+      )
+    }
+    return true
+  })
+}
+
+function formatAxeViolations(
+  violations: Array<{
+    id: string
+    impact?: string | null
+    nodes: Array<{ target: unknown; failureSummary?: string }>
+  }>
 ) {
-  return violations
-    .filter((violation) => {
-      if (violation.id === 'color-contrast') return false
-      if (violation.id === 'aria-prohibited-attr') {
-        return !violation.nodes.some((node) =>
-          node.target.some((target) => /aria-label/.test(target))
-        )
-      }
-      return true
-    })
-    .map(
-      (violation) =>
-        `${violation.id} (${violation.impact}): ${violation.nodes[0]?.target?.join(' ')} · ${violation.nodes[0]?.failureSummary ?? 'no failure summary'}`
-    )
+  return unexpectedAxeViolations(violations).map((violation) => {
+    const target = violation.nodes[0]?.target
+    return `${violation.id} (${violation.impact}): ${JSON.stringify(target)} · ${violation.nodes[0]?.failureSummary ?? 'no failure summary'}`
+  })
 }
 
 test('homepage first-value entry is usable by keyboard', async ({ page }) => {
@@ -430,7 +438,7 @@ for (const route of AXE_ROUTES) {
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     }
     const results = await new AxeBuilder({ page: page as never }).analyze()
-    expect(unexpectedAxeViolations(results.violations)).toEqual([])
+    expect(formatAxeViolations(results.violations)).toEqual([])
   })
 }
 
@@ -438,7 +446,7 @@ test('accessibility: completed sample report has no axe violations', async ({ pa
   await page.goto('/samples')
   await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
   const results = await new AxeBuilder({ page: page as never }).analyze()
-  expect(unexpectedAxeViolations(results.violations)).toEqual([])
+  expect(formatAxeViolations(results.violations)).toEqual([])
 })
 
 test('accessibility: key marketing surfaces pass in light and dark at launch widths', async ({ page }) => {
@@ -456,9 +464,8 @@ test('accessibility: key marketing surfaces pass in light and dark at launch wid
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
         const results = await new AxeBuilder({ page: page as never }).analyze()
         violations.push(
-          ...unexpectedAxeViolations(results.violations).map(
-            (violation) =>
-              `${route} ${colorScheme} ${width}px: ${violation.id} (${violation.impact}): ${violation.nodes[0]?.target?.join(' ')} · ${violation.nodes[0]?.failureSummary ?? 'no failure summary'}`
+          ...formatAxeViolations(results.violations).map(
+            (violation) => `${route} ${colorScheme} ${width}px: ${violation}`
           )
         )
       }
