@@ -332,7 +332,7 @@ export function SiteBoard({
                   {view.statusState === 'healthy' ? (
                     <Check className="mx-auto h-8 w-8 text-success" />
                   ) : null}
-                  <h2 className="mt-3 font-display text-xl font-semibold">
+                  <h2 className="mt-3 text-xl font-semibold">
                     {view.statusState === 'healthy'
                       ? 'Nothing needs you right now.'
                       : 'No Flags yet. Coverage is still incomplete.'}
@@ -374,7 +374,7 @@ export function SiteBoard({
           {nav === 'Site' ? (
             <div className="grid gap-4 lg:grid-cols-2">
               <section className="rounded-2xl border border-border/80 bg-background p-5">
-                <h2 className="font-display text-lg font-semibold">What people come here to do</h2>
+                <h2 className="text-lg font-semibold">What people come here to do</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   We inferred these. Confirm what looks right.
                 </p>
@@ -382,7 +382,7 @@ export function SiteBoard({
                   {view.outcomes.map((outcome) => (
                     <li
                       key={outcome.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-border/60 px-3 py-3"
+                      className="flex items-center justify-between gap-3 rounded-card border border-border/60 px-3 py-3"
                     >
                       <div>
                         <p className="font-medium">{outcome.name}</p>
@@ -415,7 +415,7 @@ export function SiteBoard({
                 </ul>
               </section>
               <section className="rounded-2xl border border-border/80 bg-background p-5">
-                <h2 className="font-display text-lg font-semibold">Coverage</h2>
+                <h2 className="text-lg font-semibold">Coverage</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{view.coverageSummary}</p>
                 <ul className="mt-4 space-y-2 text-sm">
                   {view.cards
@@ -450,7 +450,7 @@ export function SiteBoard({
                     <p className="text-sm text-muted-foreground">No open Flags in this area.</p>
                   ) : (
                     selectedFlags.map((flag) => (
-                      <div key={flag.id} className="rounded-xl border border-border/70 p-4">
+                      <div key={flag.id} className="rounded-card border border-border/70 p-4">
                         <Link
                           href={`/sites/${siteId}/flags/${flag.id}`}
                           className="flex items-start justify-between gap-3"
@@ -470,7 +470,7 @@ export function SiteBoard({
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">Recommendations</p>
                       <ul className="mt-2 space-y-2">
                         {selectedRecommendations.map((item) => (
-                          <li key={item.id} className="rounded-xl border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
+                          <li key={item.id} className="rounded-card border border-dashed border-border/70 p-3 text-sm text-muted-foreground">
                             {item.problem}
                           </li>
                         ))}
@@ -510,7 +510,7 @@ export function SiteBoard({
             <Icon className="h-5 w-5" />
             {label}
             {id === 'Flags' && view.flags.length > 0 ? (
-              <span className="absolute right-1/4 top-1 rounded-full bg-brand px-1.5 text-[10px] text-brand-foreground">
+              <span className="absolute right-1/4 top-1 rounded-full bg-brand px-1.5 text-3xs text-brand-foreground">
                 {view.flags.length}
               </span>
             ) : null}
