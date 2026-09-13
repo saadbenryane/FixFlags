@@ -11,6 +11,6 @@ The next guard after UI drift is `image:artwork-guard`. `LandingHowItWorksSectio
 
 `ensure-site` imported `fromStoredWatchInterval` from `project-watch`, which imported `monitoring`, which imported `create-audit`, which imported `ensure-site`. Move interval helpers to `lib/audit/watch-interval.ts` so Site bootstrap does not load watch scheduling.
 
-Remaining verify failures after those shape fixes:
-- `seo:guard`: SEO key `roast` exists in `copy/seo.ts` (`/roast` is noindex and kept out of nav) but is missing from `INDEXABLE_ROUTES`. Do not add it to the sitemap just to silence the guard.
-- `security:audit`: `npm audit --audit-level=moderate` fails (Next critical, sharp/js-yaml high, vitest/hono moderate). Dependency upgrades are not a type/shape fix.
+`SEO.roast` cannot live on the indexable `SEO` object: `/roast` is noindex and kept off nav/footer. Export `ROAST_SEO` instead. Legacy `/protect` still belongs in `INDEXABLE_ROUTES` and must call `buildPageMetadata` even though it redirects to `/install`.
+
+`security:audit` (`npm audit --audit-level=moderate`) now requires the smallest patched ranges: Next 15.5.24, sharp 0.35.4, vitest 4.1.11, hono 4.13.5, js-yaml 4.3.2. Pin `sharp` the same way in `dependencies` and `overrides` or `npm audit` fails with EOVERRIDE.
