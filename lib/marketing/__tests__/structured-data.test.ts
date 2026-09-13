@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BLOG_POSTS, FAQ, FAQ_PAGE, PRICING, PRICING_FAQ, SEO } from '@/lib/marketing/copy'
+import { BLOG_POSTS, FAQ, FAQ_PAGE, PRICING, PRICING_FAQ, SEO, SITE_URL } from '@/lib/marketing/copy'
 import { HELP_CATEGORIES } from '@/lib/help/catalog'
 import { getHelpArticle } from '@/lib/help/search'
 import {
@@ -21,15 +21,15 @@ describe('structured data', () => {
     expect(schema).toMatchObject({
       '@context': 'https://schema.org',
       '@type': 'FAQPage',
-      url: 'https://fixflags.com/faq',
+      url: `${SITE_URL}/faq`,
       name: FAQ_PAGE.title,
     })
     expect(schema.mainEntity).toHaveLength(FAQ.length)
     const freeQuestion = schema.mainEntity.find((entity) => entity.name === 'Is FixFlags free?')
     expect(freeQuestion).toMatchObject({
       '@type': 'Question',
-      '@id': 'https://fixflags.com/faq#is-fixflags-free',
-      url: 'https://fixflags.com/faq#is-fixflags-free',
+      '@id': `${SITE_URL}/faq#is-fixflags-free`,
+      url: `${SITE_URL}/faq#is-fixflags-free`,
     })
     expect(freeQuestion?.acceptedAnswer.text).toContain('One website is free')
     expect(freeQuestion?.acceptedAnswer.text).toContain('/help/billing-and-plans/free-vs-pro')
@@ -39,7 +39,7 @@ describe('structured data', () => {
     const schema = faqPageSchema(PRICING_FAQ, { path: '/pricing', name: PRICING.faqTitle })
     expect(schema).toMatchObject({
       '@type': 'FAQPage',
-      url: 'https://fixflags.com/pricing',
+      url: `${SITE_URL}/pricing`,
       name: PRICING.faqTitle,
     })
     const paidQuestion = schema.mainEntity.find((entity) => entity.name === 'How does paid monitoring work?')
