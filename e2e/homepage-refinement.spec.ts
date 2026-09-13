@@ -8,10 +8,10 @@ for (const width of [375, 390, 1086, 1144]) {
     await page.goto('/')
 
     await expect(
-      page.getByRole('heading', { level: 1, name: /Know when customers can't buy/i })
+      page.getByRole('heading', { level: 1, name: /Your website,\s*looked after\./i })
     ).toBeVisible()
     await expect(
-      page.getByText(/FixFlags walks your product page to checkout/i).first()
+      page.getByText(/Keep building\. FixFlags monitors your live website/i).first()
     ).toBeVisible()
 
     const geometry = await page.evaluate(() => ({
@@ -28,16 +28,16 @@ test('homepage navigation and mobile menu use their real destinations', async ({
   await page.goto('/')
   await page.waitForTimeout(500)
 
-  const protect = page.getByRole('link', { name: 'Protect', exact: true }).first()
-  await expect(protect).toHaveAttribute('href', '/protect')
+  const product = page.getByRole('navigation').getByRole('link', { name: 'Product', exact: true }).first()
+  await expect(product).toHaveAttribute('href', '/#product')
 
-  const howItWorks = page.getByRole('link', { name: 'How it works', exact: true }).first()
-  await expect(howItWorks).toHaveAttribute('href', '/how-it-works')
+  const shopify = page.getByRole('navigation').getByRole('link', { name: 'For Shopify', exact: true }).first()
+  await expect(shopify).toHaveAttribute('href', '/install')
 
   await page.setViewportSize({ width: 375, height: 812 })
   await page.getByRole('button', { name: 'Open menu' }).click()
   await expect(
-    page.getByRole('dialog').getByRole('link', { name: 'How it works' })
+    page.getByRole('dialog').getByRole('link', { name: 'Product' })
   ).toBeVisible()
 })
 
@@ -48,8 +48,8 @@ test('homepage controls keep practical hit targets and reduced motion', async ({
 
   const primaryControls = [
     page.getByRole('button', { name: 'Open menu' }),
-    page.getByRole('button', { name: /Install|Continue to Shopify/i }).first(),
-    page.getByLabel('Shopify store domain').first(),
+    page.getByRole('button', { name: 'Analyze' }).first(),
+    page.getByRole('textbox', { name: 'Website URL' }).first(),
   ]
 
   for (const control of primaryControls) {
