@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowRight, Check, ChevronRight, CircleCheck, Copy, Eye,
-  Globe2, Share2, ShoppingBag, Sparkles,
+  Globe2, Share2, Sparkles,
 } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { Logo } from '@/components/brand/Logo'
@@ -19,7 +19,7 @@ import Image from 'next/image'
 type PreviewCard = (typeof C.cards)[number] | (typeof C.library)[keyof typeof C.library]
 type DetailCard = PreviewCard | 'site' | 'conversion'
 type ExtraCardId = 'uptime' | 'accessibility'
-type CopySource = 'read' | 'share' | 'ai' | 'mcp'
+type CopySource = 'read' | 'share' | 'ai'
 const actionIcons = { read: Eye, share: Share2, ai: Sparkles }
 const failedEvidencePath = '/marketing/evidence/contact-no-confirmation.png'
 const passedEvidencePath = '/marketing/evidence/contact-confirmed.png'
@@ -42,7 +42,7 @@ function UrlEntry({ final = false }: { final?: boolean }) {
 
 function useScrollStep<T extends HTMLElement>() {
   const ref = useRef<T>(null)
-  const [activeStep, setActiveStep] = useState('check')
+  const [activeStep, setActiveStep] = useState('flag')
 
   useEffect(() => {
     const node = ref.current
@@ -56,7 +56,16 @@ function useScrollStep<T extends HTMLElement>() {
       for (const step of steps) {
         if (step.getBoundingClientRect().top <= readingLine) current = step
       }
-      if (current?.dataset.step) setActiveStep(current.dataset.step)
+      if (current?.dataset.step) {
+        setActiveStep(previous => previous === current?.dataset.step ? previous : current!.dataset.step!)
+      }
+
+      const first = steps[0]?.getBoundingClientRect()
+      const last = steps.at(-1)?.getBoundingClientRect()
+      if (first && last) {
+        const progress = Math.min(1, Math.max(0, (readingLine - first.top) / Math.max(last.bottom - first.top, 1)))
+        node.style.setProperty('--workflow-reveal', `${Math.round(progress * 1000) / 10}%`)
+      }
     }
     const schedule = () => { if (!frame) frame = requestAnimationFrame(update) }
     update()
@@ -184,7 +193,6 @@ export function CareHomepage() {
             <AddBoardCard onOpen={() => setLibraryOpen(true)} />
           </BoardGrid>
           </div>
-          <p className={s.boardFooter}>{C.previewNote}</p>
         </div>
       </div>
     </section>
@@ -199,92 +207,74 @@ export function CareHomepage() {
           </li>)}
         </ol>
         <div className={s.evidenceStage}>
-          <div className={s.evidenceStory}>
-            <figure className={`${s.evidenceCard} ${s.failedEvidence}`}>
-              <div className={s.evidenceHeader}><Signal tone="bad">{C.workflow.failedLabel}</Signal><span className={s.evidencePage}>{C.workflow.page}</span></div>
-              <a href={failedEvidencePath} target="_blank" rel="noopener noreferrer" aria-label={C.workflow.failedLink}>
-                <span className={s.loopScan} aria-hidden="true"><span className={s.loopScanVeil}><span className={s.loopScanEdge} /></span></span>
-                <Image src={failedEvidencePath} alt={C.workflow.failedAlt} width={720} height={440} sizes="(max-width: 767px) calc(100vw - 72px), 560px" />
-              </a>
-              <figcaption>{C.workflow.failedTitle}</figcaption>
-            </figure>
-            <div className={s.evidenceConnector}><ArrowRight size={18} aria-hidden="true" /><span>{C.workflow.steps[3].label}</span></div>
-            <figure className={`${s.evidenceCard} ${s.passedEvidence}`}>
-              <div className={s.evidenceHeader}><Signal tone="good">{C.workflow.passedLabel}</Signal><span className={s.evidencePage}>{C.workflow.page}</span></div>
-              <a href={passedEvidencePath} target="_blank" rel="noopener noreferrer" aria-label={C.workflow.passedLink}>
-                <Image src={passedEvidencePath} alt={C.workflow.passedAlt} width={720} height={440} sizes="(max-width: 767px) calc(100vw - 72px), 560px" />
-              </a>
-              <figcaption>{C.workflow.passedTitle}</figcaption>
-            </figure>
-          </div>
+          <figure className={s.evidenceCompare}>
+            <div className={s.evidenceHeader}>
+              <Signal tone="bad">{C.workflow.failedLabel}</Signal>
+              <span className={s.evidencePage}>{C.workflow.page}</span>
+              <Signal tone="good">{C.workflow.passedLabel}</Signal>
+            </div>
+            <a href={passedEvidencePath} target="_blank" rel="noopener noreferrer" aria-label={C.workflow.passedLink}>
+              <span className={s.compareFrame}>
+                <Image className={s.compareBefore} src={failedEvidencePath} alt={C.workflow.failedAlt} fill sizes="(max-width: 767px) calc(100vw - 48px), 650px" />
+                <span className={s.compareAfter}>
+                  <Image src={passedEvidencePath} alt={C.workflow.passedAlt} fill sizes="(max-width: 767px) calc(100vw - 48px), 650px" />
+                </span>
+                <span className={s.compareLine} aria-hidden="true"><i /></span>
+              </span>
+            </a>
+            <figcaption><span>{C.workflow.failedTitle}</span><span>{C.workflow.passedTitle}</span></figcaption>
+          </figure>
           <p className={s.evidenceNote}>{C.workflow.source}</p>
         </div>
       </div>
     </section>
 
-    <section className={`${s.section} ${s.coverage}`}>
-      <div className={s.sectionHeading}><Intro {...C.checks} /><p className={s.scope}>{C.checks.note}</p></div>
-      <div className={s.checkGroups}>{C.checks.groups.map(group => <article key={group.id}><h3>{group.title}</h3><ul>{group.items.map(item => <li key={item}><Check size={15} aria-hidden="true" />{item}</li>)}</ul></article>)}</div>
-    </section>
-
-    <section className={`${s.section} ${s.outcomeSection}`}>
-      <Intro {...C.outcomes} />
-      <div className={s.outcomeDemo}>
-        <div className={s.outcomeChoices}>{C.outcomes.options.map(item => <button key={item.id} aria-pressed={outcome === item.id} onClick={() => setOutcome(item.id)}>{item.label}</button>)}</div>
-        <div className={s.outcomePath} aria-live="polite">
-          <p>{activeOutcome.result}</p>
-          <ol>{activeOutcome.path.map((item, index) => <li key={item}><span>{index + 1}</span>{item}{index < activeOutcome.path.length - 1 && <ArrowRight size={16} aria-hidden="true" />}</li>)}</ol>
+    <section className={`${s.section} ${s.intelligence}`}>
+      <Intro {...C.checks} />
+      <div className={s.intelligenceGrid}>
+        <div className={s.outcomeDemo}>
+          <div className={s.panelHeading}><span>{C.outcomes.label}</span><strong>{activeOutcome.result}</strong></div>
+          <div className={s.outcomeChoices}>{C.outcomes.options.map(item => <button key={item.id} aria-pressed={outcome === item.id} onClick={() => setOutcome(item.id)}>{item.label}</button>)}</div>
+          <div className={s.outcomePath} aria-live="polite">
+            <ol>{activeOutcome.path.map((item, index) => <li key={item}><span>{index + 1}</span>{item}{index < activeOutcome.path.length - 1 && <ArrowRight size={16} aria-hidden="true" />}</li>)}</ol>
+          </div>
+        </div>
+        <div className={s.checkPanel}>
+          <div className={s.panelHeading}><span>{C.checks.panelLabel}</span><strong>{C.checks.panelTitle}</strong></div>
+          <div className={s.checkGroups}>{C.checks.groups.map(group => <article key={group.id}><h3>{group.title}</h3><ul>{group.items.map(item => <li key={item}><Check size={14} aria-hidden="true" />{item}</li>)}</ul></article>)}</div>
         </div>
       </div>
     </section>
 
     <section className={`${s.section} ${s.actions}`}>
       <Intro label={C.actions.label} title={C.actions.title} body={C.actions.body} />
-      <div className={s.actionGrid}>{C.actions.choices.map(choice => {
-        const Icon = actionIcons[choice.id]
-        const source = choice.id as CopySource
-        return <article key={choice.id}>
-          <Icon size={23} strokeWidth={1.6} aria-hidden="true" />
-          <h3>{choice.title}</h3><p>{choice.body}</p>
-          {choice.id === 'read'
-            ? <button aria-expanded={showInstructions} aria-controls="fix-instructions" onClick={() => setShowInstructions(value => !value)}>{showInstructions ? C.actions.hide : choice.action}<ChevronRight size={16} aria-hidden="true" /></button>
-            : <button onClick={() => void copyFix(source)}><Copy size={15} aria-hidden="true" />{choice.action}</button>}
-          <p className={s.copyStatus} role="status">{copyResult?.source === source ? copyResult.message : ''}</p>
+      <div className={s.actionWorkbench}>
+        <article className={s.fixPacket}>
+          <div className={s.fixPacketTop}><Signal tone="bad">{C.workflow.failedLabel}</Signal><span>{C.workflow.page}</span></div>
+          <h3>{C.flag.title}</h3>
+          <p>{C.flag.body}</p>
+          <dl>{C.actions.packet.map(item => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
         </article>
-      })}</div>
+        <div className={s.actionRoutes}>{C.actions.choices.map(choice => {
+          const Icon = actionIcons[choice.id]
+          const source = choice.id as CopySource
+          return <article key={choice.id}>
+            <span className={s.actionIcon}><Icon size={20} strokeWidth={1.7} aria-hidden="true" /></span>
+            <div><h3>{choice.title}</h3><p>{choice.body}</p></div>
+            {choice.id === 'read'
+              ? <button aria-expanded={showInstructions} aria-controls="fix-instructions" onClick={() => setShowInstructions(value => !value)}>{showInstructions ? C.actions.hide : choice.action}<ChevronRight size={16} aria-hidden="true" /></button>
+              : <button onClick={() => void copyFix(source)}><Copy size={15} aria-hidden="true" />{choice.action}</button>}
+            <p className={s.copyStatus} role="status">{copyResult?.source === source ? copyResult.message : ''}</p>
+          </article>
+        })}</div>
+      </div>
       <div id="fix-instructions" hidden={!showInstructions} className={s.expandedInstructions}><p>{C.workflow.instructions}</p></div>
       <p className={s.verifyLine}><CircleCheck size={18} aria-hidden="true" />{C.actions.verify}</p>
-    </section>
-
-    <section className={`${s.section} ${s.mcp}`}>
-      <div className={s.mcpCopy}>
-        <Intro label={C.mcp.label} title={C.mcp.title} body={C.mcp.body} />
-        <div className={s.mcpActions}>
-          <button className={s.darkButton} onClick={() => void copyFix('mcp')}><Copy size={16} aria-hidden="true" />{C.mcp.copy}</button>
-        </div>
-        <p className={s.copyStatus} role="status">{copyResult?.source === 'mcp' ? copyResult.message : ''}</p>
-        <p className={s.scope}>{C.mcp.note}</p>
-      </div>
-      <ol className={s.mcpFlow}>
-        {C.mcp.flow.map((item, index) => {
-          const tone = index === 0 ? 'bad' : index === 2 ? 'good' : undefined
-          return <li key={item.title} className={`${s.mcpStep} ${index === 0 ? s.mcpFlag : index === 1 ? s.mcpAi : s.mcpVerify}`}>
-            <span>{index === 1 ? <Sparkles size={20} aria-hidden="true" /> : <Logo variant="mark" size="sm" />}</span>
-            <div>
-              {tone ? <Signal tone={tone}>{index === 0 ? C.workflow.failedLabel : C.workflow.passedLabel}</Signal> : <p className={s.mcpMeta}>{C.mcp.aiLabel}</p>}
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
-            </div>
-            {index < C.mcp.flow.length - 1 && <ArrowRight className={s.mcpArrow} size={18} aria-hidden="true" />}
-          </li>
-        })}
-      </ol>
     </section>
 
     <section className={`${s.section} ${s.quiet}`}>
       <Intro title={C.quiet.title} body={C.quiet.body} />
       <div>
-        <p className={s.exampleNote}>{C.quiet.exampleNote}</p>
         <div className={s.notificationStack}>
           {C.quiet.notifications.map((item, index) => <article key={item.title} className={`${s.notification} ${s[`notification${index}`]}`}>
             <div className={s.notificationTop}><Logo variant="mark" size="sm" /><b>{C.brand}</b><span>{item.time}</span></div>
@@ -294,7 +284,6 @@ export function CareHomepage() {
       </div>
     </section>
 
-    <section className={`${s.section} ${s.shopify}`}><ShoppingBag size={30} strokeWidth={1.5} aria-hidden="true" /><div><h2>{C.shopify.title}</h2><p>{C.shopify.body}</p></div><Link href="/install" className={s.textLink}>{C.shopify.cta}<ArrowRight size={17} aria-hidden="true" /></Link></section>
     <section className={`${s.section} ${s.final}`} id="plans"><h2>{C.close.title}</h2><p>{C.close.body}</p><UrlEntry final /><Link href="/pricing" className={s.textLink}>{C.close.pricing}<ArrowRight size={16} aria-hidden="true" /></Link></section>
 
     <Dialog open={selected !== null} onOpenChange={open => { if (!open) setSelected(null) }}><DialogContent className={s.dialog} onCloseAutoFocus={restoreFocus}>
@@ -322,7 +311,6 @@ export function CareHomepage() {
       open={libraryOpen}
       onOpenChange={setLibraryOpen}
       present={['site', 'conversion', 'security', 'search', 'performance', 'tracking', ...extraCards]}
-      exampleNote={C.add.note}
       onAdd={id => {
         if (id === 'uptime' || id === 'accessibility') {
           setExtraCards(current => current.includes(id) ? current : [...current, id])

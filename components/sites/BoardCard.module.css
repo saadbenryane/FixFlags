@@ -24,10 +24,12 @@
 .action { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; margin-top: auto; padding-top: 12px; min-height: 32px; font-size: 12px; font-weight: 500; color: hsl(var(--muted-foreground)); }
 .action svg { width: 16px; height: 16px; }
 .visual { position: relative; width: 100%; height: 126px; overflow: hidden; border: 1px solid hsl(var(--border) / .8); border-radius: 10px; background: hsl(var(--muted)); }
-.visual img { width: 100%; height: 100%; object-fit: contain; object-position: center top; }
-.withVisual .body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 8px 20px; align-content: center; }
+.visual img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+.withVisual .body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px 20px; align-content: stretch; }
 .withVisual .visual { grid-column: 1; grid-row: 1 / span 3; }
-.withVisual .answer, .withVisual .footer, .withVisual .action { grid-column: 2; }
+.withVisual .answer { grid-column: 2; grid-row: 1; }
+.withVisual .detail, .withVisual .footer { grid-column: 2; grid-row: 2; }
+.withVisual .action { grid-column: 2; grid-row: 3; align-self: end; }
 .withVisual .footer { margin: 0; padding-top: 0; }
 .withVisual .answer { font-size: 20px; }
 .surface { padding: 20px; border-radius: 20px; background: hsl(var(--muted) / .65); }
