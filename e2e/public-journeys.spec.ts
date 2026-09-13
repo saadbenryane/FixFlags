@@ -380,7 +380,7 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
 
   const flagLinks = page.locator('a[href*="/flags/"]')
-  const flagButtons = page.getByRole('button', { name: /Fix this|Open Flag|Verify fix/i })
+  const flagButtons = page.getByRole('button', { name: /See what happened|Fix this|Verify fix/i })
   await expect
     .poll(async () => (await flagLinks.count()) + (await flagButtons.count()), { timeout: 180_000 })
     .toBeGreaterThan(0)
