@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'vitest'
-import { SEO } from '@/lib/marketing/copy/seo'
+import { ROAST_SEO, SEO } from '@/lib/marketing/copy/seo'
 import { LLMS_SECTIONS } from '@/lib/marketing/seo-routes'
 
 const RETIRED_TAGLINE = /finish what your ai started/i
@@ -37,7 +37,7 @@ describe('pre-publish brand discovery copy', () => {
   })
 
   it('does not advertise a roast grade or Shopify-only pricing in llms notes', () => {
-    assert.doesNotMatch(SEO.roast.description, /\bgrade\b/i)
+    assert.doesNotMatch(ROAST_SEO.description, /\bgrade\b/i)
     const productNotes = LLMS_SECTIONS.flatMap((section) => section.links)
       .map((link) => `${link.path} ${link.note ?? ''}`)
       .join('\n')

@@ -1,7 +1,7 @@
 /**
  * Static overlay compositor. Renders semantic annotations on screenshots using sharp.
  */
-import sharp from 'sharp'
+import sharp, { type OverlayOptions } from 'sharp'
 import type { OverlayTemplate } from './visual-types'
 export type { OverlayTemplate } from './visual-types'
 
@@ -44,7 +44,7 @@ export async function renderOverlay(
 
   if (svgOverlays.length === 0) return { buffer: ctx.screenshotBuffer, format: 'png' }
 
-  const compositeInputs: sharp.OverlayOptions[] = svgOverlays.map((svg) => ({
+  const compositeInputs: OverlayOptions[] = svgOverlays.map((svg) => ({
     input: Buffer.from(svg),
     top: 0,
     left: 0,

@@ -164,7 +164,7 @@ export function ShopifyWorkspace({
 
       {surface === 'overview' ? (
         <section className="space-y-4">
-          <h1 className={`font-display text-3xl font-bold tracking-display ${healthClass(workspace.storeHealth)}`}>
+          <h1 className={`font-sans text-3xl font-bold tracking-display ${healthClass(workspace.storeHealth)}`}>
             {workspace.storeHeadline}
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
@@ -191,7 +191,7 @@ export function ShopifyWorkspace({
                   <p className={`font-mono text-xs font-semibold ${healthClass(entry.health)}`}>
                     {entry.walking ? 'Walking' : entry.healthLabel}
                   </p>
-                  <p className="mt-3 font-display text-lg font-semibold">{entry.label}</p>
+                  <p className="mt-3 font-sans text-lg font-semibold">{entry.label}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{entry.reasonLabel}</p>
                 </button>
               ))}
@@ -202,7 +202,7 @@ export function ShopifyWorkspace({
 
       {surface === 'path' && !path ? (
         <section className="space-y-4">
-          <h2 className="font-display text-xl font-semibold">Watch verification</h2>
+          <h2 className="font-sans text-xl font-semibold">Watch verification</h2>
           <p className="text-sm text-muted-foreground">
             No buyable product was found yet. Publish an active product with a storefront URL and we
             will walk it.
@@ -214,7 +214,7 @@ export function ShopifyWorkspace({
         <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <Card className="space-y-4 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-display text-xl font-semibold">Watch verification</h2>
+              <h2 className="font-sans text-xl font-semibold">Watch verification</h2>
               <Button variant="outline" size="sm" disabled={busy || workspace.rechecksRemaining <= 0} onClick={() => void recheck()}>
                 {busy ? 'Walking…' : 'Recheck'}
               </Button>
@@ -250,7 +250,7 @@ export function ShopifyWorkspace({
             )}
           </Card>
           <Card className="space-y-4 p-5">
-            <h2 className="font-display text-xl font-semibold">{path.label}</h2>
+            <h2 className="font-sans text-xl font-semibold">{path.label}</h2>
             <ol className="space-y-3">
               {(path.runs[0]?.steps ?? []).map((step) => (
                 <li key={step.label} className="flex items-center justify-between gap-3 text-sm">
@@ -267,7 +267,7 @@ export function ShopifyWorkspace({
 
       {surface === 'understand' && !path ? (
         <section className="space-y-4">
-          <h2 className="font-display text-xl font-semibold">Where the walk went</h2>
+          <h2 className="font-sans text-xl font-semibold">Where the walk went</h2>
           <p className="text-sm text-muted-foreground">
             Steps appear after the first walk. Store-wide conversion numbers wait for approved
             reports access. We never invent percentages.
@@ -277,7 +277,7 @@ export function ShopifyWorkspace({
 
       {surface === 'understand' && path ? (
         <section className="space-y-4">
-          <h2 className="font-display text-xl font-semibold">Where the walk went</h2>
+          <h2 className="font-sans text-xl font-semibold">Where the walk went</h2>
           <p className="max-w-2xl text-sm text-muted-foreground">
             These are steps FixFlags verified. Store-wide conversion numbers appear when reports access
             is approved.
@@ -304,7 +304,7 @@ export function ShopifyWorkspace({
 
       {surface === 'improve' ? (
         <section className="space-y-4">
-          <h2 className="font-display text-xl font-semibold">Improve</h2>
+          <h2 className="font-sans text-xl font-semibold">Improve</h2>
           <p className="max-w-2xl text-sm text-muted-foreground">
             A short secondary list. It never goes in email or Slack.
           </p>
@@ -327,7 +327,7 @@ export function ShopifyWorkspace({
       {surface === 'settings' ? (
         <section className="grid gap-6 lg:grid-cols-2">
           <Card className="space-y-4 p-5">
-            <h2 className="font-display text-xl font-semibold">Alerts</h2>
+            <h2 className="font-sans text-xl font-semibold">Alerts</h2>
             <p className="text-sm text-muted-foreground">
               Email goes to {workspace.shop.email ?? 'the store owner'} when a path turns RED, and again
               when it recovers. Optional Slack uses an incoming webhook.
@@ -347,7 +347,7 @@ export function ShopifyWorkspace({
             <p className="text-sm text-muted-foreground">Support: {BRAND.supportEmail}</p>
           </Card>
           <Card className="space-y-4 p-5">
-            <h2 className="font-display text-xl font-semibold">Pro waitlist</h2>
+            <h2 className="font-sans text-xl font-semibold">Pro waitlist</h2>
             <div className="grid gap-3">
               {INTEGRITY_WAITLIST_FEATURES.map((feature) => {
                 const onList = joined.includes(feature.key)

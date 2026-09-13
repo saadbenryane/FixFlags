@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -7,7 +8,16 @@ import { runPathProbe } from '@/lib/integrity/run-path-probe'
 
 const FIXTURES = path.join(process.cwd(), 'lib/integrity/__tests__/fixtures')
 
-describe('runPathProbe', () => {
+function playwrightChromiumAvailable() {
+  try {
+    const executablePath = chromium.executablePath()
+    return Boolean(executablePath && existsSync(executablePath))
+  } catch {
+    return false
+  }
+}
+
+describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
   let browser: Browser
   let origin: string
   let closeServer: () => Promise<void>

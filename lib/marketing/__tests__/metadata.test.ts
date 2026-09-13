@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BRAND, SEO } from '../copy'
+import { BRAND, SEO, SITE_URL } from '../copy'
 import { DEFAULT_OG_IMAGE, buildIndexableMetadata, buildPageMetadata } from '../metadata'
 
 describe('site share metadata', () => {
@@ -16,7 +16,7 @@ describe('site share metadata', () => {
     expect(home.openGraph?.images).toEqual([DEFAULT_OG_IMAGE])
     expect(home.twitter).toMatchObject({
       card: 'summary_large_image',
-      images: ['https://fixflags.com/og.jpg'],
+      images: [`${SITE_URL}/og.jpg`],
     })
   })
 

@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { encodeSiteId, siteUrlParts, type SiteRecord } from '@/lib/sites/types'
-import { fromStoredWatchInterval } from '@/lib/audit/project-watch'
+import { fromStoredWatchInterval } from '@/lib/audit/watch-interval'
 import { productNameFromUrl } from '@/lib/audit/product-intelligence'
 
 /**

@@ -1,4 +1,4 @@
-import { ProjectWatchInterval, type User } from '@prisma/client'
+import { type User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { startMonitoringAudit } from '@/lib/audit/monitoring'
@@ -7,38 +7,26 @@ import { resend } from '@/lib/email/client'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { canAccessProductWatch, allowedWatchIntervals } from '@/lib/auth/entitlements'
 import { systemClock, type Clock } from '@/lib/time/clock'
+import {
+  calcWatchNextRun,
+  fromStoredWatchInterval,
+  toStoredWatchInterval,
+  type WatchInterval,
+} from '@/lib/audit/watch-interval'
 
-export type WatchInterval = 'weekly' | 'daily'
+export type { WatchInterval } from '@/lib/audit/watch-interval'
+export {
+  calcWatchNextRun,
+  fromStoredWatchInterval,
+  isWatchInterval,
+  plannedWatchJobs,
+  toStoredWatchInterval,
+} from '@/lib/audit/watch-interval'
 export type SiteWatchJobKind = 'pulse' | 'full'
 
-const INTERVAL_MS: Record<WatchInterval, number> = {
-  weekly: 7 * 24 * 60 * 60 * 1000,
-  daily: 24 * 60 * 60 * 1000,
-}
-
-/** Pulse is cheap reachability. Full is Playwright + Flags. Hourly pulse is not scheduled until costed. */
-export function plannedWatchJobs(interval: WatchInterval): { pulse: 'daily' | 'hourly' | null; full: WatchInterval } {
-  return { pulse: null, full: interval }
-}
 const RETRY_MS = [15 * 60 * 1000, 60 * 60 * 1000, 6 * 60 * 60 * 1000] as const
 const LEASE_MS = 10 * 60 * 1000
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
-
-export function toStoredWatchInterval(interval: WatchInterval): ProjectWatchInterval {
-  return interval === 'daily' ? 'DAILY' : 'WEEKLY'
-}
-
-export function fromStoredWatchInterval(interval: ProjectWatchInterval | null): WatchInterval | null {
-  return interval === 'DAILY' ? 'daily' : interval === 'WEEKLY' ? 'weekly' : null
-}
-
-export function calcWatchNextRun(interval: WatchInterval, from = new Date()): Date {
-  return new Date(from.getTime() + INTERVAL_MS[interval])
-}
-
-export function isWatchInterval(value: unknown): value is WatchInterval {
-  return value === 'weekly' || value === 'daily'
-}
 
 export function productWatchReadiness(): { available: boolean; error: string | null } {
   if (!process.env.REDIS_URL) {

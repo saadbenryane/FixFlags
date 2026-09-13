@@ -5,4 +5,5 @@ declare module 'sharp' {
     type OverlayOptions = import('../node_modules/sharp/lib/index').OverlayOptions
   }
   export default sharp
+  export type OverlayOptions = sharp.OverlayOptions
 }
