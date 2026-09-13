@@ -97,9 +97,11 @@ export const SEO = {
     description:
       'Studios handing off a live Lovable, Bolt, or MVP site can use FixFlags as the delivery review before the client sees it.',
   },
-  roast: {
-    title: 'Website Roast - FixFlags',
-    description:
-      'Check a live page with FixFlags and see what needs attention. Then fix it.',
-  },
+} as const
+
+/** `/roast` is live but noindex and kept off nav, footer, and INDEXABLE_ROUTES. */
+export const ROAST_SEO = {
+  title: 'Website Roast - FixFlags',
+  description:
+    'Check a live page with FixFlags and see what needs attention. Then fix it.',
 } as const
