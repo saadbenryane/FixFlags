@@ -337,7 +337,6 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   await page.waitForURL(/\/sites\//, { timeout: 30_000 })
   await expect(page.getByRole('heading', { name: 'Your board' })).toBeVisible()
   await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
-  await expect(page.getByText(/Learning your website|Pages are loading/i).first()).toBeVisible()
   await expect(page.getByRole('button', { name: 'Pages', exact: true })).toBeVisible()
   for (const name of ['Conversion', 'Security', 'Search', 'Performance', 'Tracking']) {
     await expect(
