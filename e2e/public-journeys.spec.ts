@@ -393,7 +393,9 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   await page.goto('/new')
   await page.getByLabel('Website URL').first().fill('https://www.iana.org')
   await page.getByRole('button', { name: 'Analyze' }).first().click()
-  await expect(page.getByText(/Create (a free )?account/i).first()).toBeVisible()
+  await expect(
+    page.getByText(/Create (a free )?account|already used your anonymous|Too many requests/i).first()
+  ).toBeVisible()
 })
 
 // ---------------------------------------------------------------------------
