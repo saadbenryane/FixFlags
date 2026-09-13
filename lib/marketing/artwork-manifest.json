@@ -10,9 +10,7 @@
       "requiresAlpha": true,
       "contentBearing": false,
       "requiredTerms": [],
-      "consumers": [
-        "components/marketing/landing/LandingHowItWorksSection.tsx"
-      ],
+      "consumers": [],
       "replaces": []
     },
     {
