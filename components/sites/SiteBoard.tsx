@@ -14,8 +14,11 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/brand/Logo'
+import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
+import { useMe } from '@/hooks/useMe'
 import { cn } from '@/lib/utils'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
+import type { BoardCardView } from '@/lib/sites/board-card'
 import {
   STARTER_BOARD_CARDS,
   type CardHealthState,
@@ -41,6 +44,15 @@ function StatusDot({ state }: { state: CardHealthState }) {
   )
 }
 
+function isEmptyUncheckedCard(card: BoardCardView) {
+  return (
+    card.id !== 'site' &&
+    card.state === 'unknown' &&
+    card.openFlagCount === 0 &&
+    card.activity !== 'checking'
+  )
+}
+
 function StatusLabel({ state, children }: { state: CardHealthState; children: React.ReactNode }) {
   return (
     <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
@@ -58,6 +70,8 @@ export function SiteBoard({
   initial: SiteHomeView
 }) {
   const router = useRouter()
+  const { user } = useMe()
+  const signedIn = Boolean(user)
   const [view, setView] = useState(initial)
   const [nav, setNav] = useState<'Dashboard' | 'Flags' | 'Site'>('Dashboard')
   const opener = useRef<HTMLElement | null>(null)
@@ -186,10 +200,17 @@ export function SiteBoard({
   const selectedRecommendations = selected
     ? (view.recommendations ?? []).filter((f) => f.area === selected.id)
     : []
-  const visibleCards = view.cards.filter(
-    (card) =>
-      STARTER_BOARD_CARDS.includes(card.id) || addedCards.includes(card.id)
-  )
+  const visibleCards = view.cards.filter((card) => {
+    const onBoard = STARTER_BOARD_CARDS.includes(card.id) || addedCards.includes(card.id)
+    if (!onBoard) return false
+    if (signedIn || checking) return true
+    return !isEmptyUncheckedCard(card)
+  })
+  const coverageCards = view.cards.filter((card) => {
+    if (card.id === 'site') return false
+    if (!signedIn && isEmptyUncheckedCard(card)) return false
+    return true
+  })
   const presentAreas = visibleCards.map((card) => card.id)
 
   return (
@@ -227,34 +248,36 @@ export function SiteBoard({
               </button>
             ))}
           </nav>
-          <div className="mt-auto space-y-3 border-t border-border/70 pt-4">
-            <StatusLabel
-              state={
-                watch.covered
-                  ? 'healthy'
-                  : watch.state === 'off'
-                    ? 'unknown'
-                    : 'attention'
-              }
-            >
-              {watch.label}
-            </StatusLabel>
-            {watch.lastError ? (
-              <p className="text-xs text-muted-foreground">{watch.lastError}</p>
-            ) : null}
-            {watch.state === 'watching' || watch.state === 'delayed' || watch.state === 'quota' ? (
-              <Button variant="outline" size="sm" disabled={busy} onClick={() => void pauseWatching()}>
-                Pause watching
-              </Button>
-            ) : (
-              <Button variant="brand" size="sm" disabled={busy} onClick={() => void keepWatching()}>
-                Keep watching
-              </Button>
-            )}
-            <Link href="/dashboard" className="block text-sm text-muted-foreground hover:text-foreground">
-              All Sites
-            </Link>
-          </div>
+          {signedIn ? (
+            <div className="mt-auto space-y-3 border-t border-border/70 pt-4">
+              <StatusLabel
+                state={
+                  watch.covered
+                    ? 'healthy'
+                    : watch.state === 'off'
+                      ? 'unknown'
+                      : 'attention'
+                }
+              >
+                {watch.label}
+              </StatusLabel>
+              {watch.lastError ? (
+                <p className="text-xs text-muted-foreground">{watch.lastError}</p>
+              ) : null}
+              {watch.state === 'watching' || watch.state === 'delayed' || watch.state === 'quota' ? (
+                <Button variant="outline" size="sm" disabled={busy} onClick={() => void pauseWatching()}>
+                  Pause watching
+                </Button>
+              ) : (
+                <Button variant="brand" size="sm" disabled={busy} onClick={() => void keepWatching()}>
+                  Keep watching
+                </Button>
+              )}
+              <Link href="/dashboard" className="block text-sm text-muted-foreground hover:text-foreground">
+                All Sites
+              </Link>
+            </div>
+          ) : null}
         </aside>
 
         <main className="min-w-0 flex-1 space-y-6">
@@ -262,7 +285,11 @@ export function SiteBoard({
             <div>
               <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
                 <Logo variant="lockup" size="sm" />
-                <Link href="/dashboard" className="text-xs text-muted-foreground">All Sites</Link>
+                {signedIn ? (
+                  <Link href="/dashboard" className="text-xs text-muted-foreground">All Sites</Link>
+                ) : (
+                  <SiteChromeAuth />
+                )}
               </div>
               <h1 className="text-2xl font-semibold tracking-tight">
                 {nav === 'Dashboard' ? 'Your board' : nav === 'Flags' ? 'Flags' : 'Site settings'}
@@ -288,24 +315,28 @@ export function SiteBoard({
                   {learningCopy}
                 </span>
               ) : null}
-              {!watch.covered ? (
-                <Button
-                  variant="brand"
-                  className="lg:hidden"
-                  disabled={busy}
-                  onClick={() => void keepWatching()}
-                >
-                  Keep watching
-                </Button>
+              {signedIn ? (
+                !watch.covered ? (
+                  <Button
+                    variant="brand"
+                    className="lg:hidden"
+                    disabled={busy}
+                    onClick={() => void keepWatching()}
+                  >
+                    Keep watching
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="lg:hidden"
+                    disabled={busy}
+                    onClick={() => void pauseWatching()}
+                  >
+                    Pause
+                  </Button>
+                )
               ) : (
-                <Button
-                  variant="outline"
-                  className="lg:hidden"
-                  disabled={busy}
-                  onClick={() => void pauseWatching()}
-                >
-                  Pause
-                </Button>
+                <SiteChromeAuth className="hidden lg:inline-flex" />
               )}
             </div>
           </header>
@@ -320,7 +351,7 @@ export function SiteBoard({
                   onOpen={() => openCard(card.id)}
                 />
               ))}
-              <AddBoardCard onOpen={() => setLibraryOpen(true)} />
+              {signedIn ? <AddBoardCard onOpen={() => setLibraryOpen(true)} /> : null}
             </BoardGrid>
             </BoardSurface>
           ) : null}
@@ -418,14 +449,15 @@ export function SiteBoard({
                 <h2 className="text-lg font-semibold">Coverage</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{view.coverageSummary}</p>
                 <ul className="mt-4 space-y-2 text-sm">
-                  {view.cards
-                    .filter((c) => c.id !== 'site')
-                    .map((card) => (
+                  {coverageCards.map((card) => (
                       <li key={card.id} className="flex items-center justify-between gap-3">
                         <span>{card.name}</span>
                         <StatusLabel state={card.state}>{card.answer}</StatusLabel>
                       </li>
                     ))}
+                  {coverageCards.length === 0 ? (
+                    <li className="text-sm text-muted-foreground">{view.coverageSummary}</li>
+                  ) : null}
                 </ul>
               </section>
             </div>
