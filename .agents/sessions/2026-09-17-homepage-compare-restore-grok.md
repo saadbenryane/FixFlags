@@ -12,6 +12,8 @@ Care sections are a 1120px column. The default compare wrapper uses the wider ma
 
 ## Verification
 
-Focused homepage and pricing tests cover source inclusion, heading order, and locked columns. Browser review follows on the PR.
+- `npx vitest run` homepage + pricing tests: 19 passed.
+- ESLint on touched files: clean.
+- Browser: localhost:3000 desktop and 375px. Compare sits after Flag / Fix / Verify evidence, not above the hero URL. Final CTA remains below. `/pricing` still shows the same table.
 
 No deployment. No merge unless asked.
