@@ -46,10 +46,10 @@ describe('homepage example', () => {
     expect(within(hero!).queryByRole('heading', { name: /What your site should answer/ })).not.toBeInTheDocument()
     expect(workflow!.compareDocumentPosition(compareSection!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(compareSection!.compareDocumentPosition(plans!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(screen.getByText(SITE_COMPARE.columns[0].label)).toBeInTheDocument()
-    expect(screen.getByText(SITE_COMPARE.columns[1].label)).toBeInTheDocument()
-    expect(screen.getByText(SITE_COMPARE.columns[2].label)).toBeInTheDocument()
-    expect(screen.getByText(SITE_COMPARE.subline)).toBeInTheDocument()
+    expect(within(compareSection!).getByText(SITE_COMPARE.columns[0].label)).toBeInTheDocument()
+    expect(within(compareSection!).getByText(SITE_COMPARE.columns[1].label)).toBeInTheDocument()
+    expect(within(compareSection!).getByRole('columnheader', { name: SITE_COMPARE.columns[2].label })).toBeInTheDocument()
+    expect(within(compareSection!).getByText(SITE_COMPARE.subline)).toBeInTheDocument()
   })
 
   it('follows the reading position forward and backward through all three steps', async () => {
