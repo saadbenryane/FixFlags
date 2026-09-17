@@ -37,3 +37,5 @@ The September 8 homepage is implemented by `components/marketing/homepage/CareHo
 FAQ accordions use `rounded-card`, not `rounded-full`. An open answer must stay inside the item. Learn-more links use `TextLink variant="brand"` (Flag Orange) and a live help, docs, or marketing href. `/faq` and `/pricing` emit `faqPageSchema()` JSON-LD that matches the visible questions.
 
 Owner palette correction (September 8): use bright Flag Orange from the canonical brand token for brand buttons in both themes. Pair it with white labels as explicitly requested by the owner, and use the lighter orange hover token. Preserve the bright fill and separate status colors.
+
+Anonymous Site board: logged-out visitors must see Sign in (existing `/sign-in?next=` flow back to the current Site or Flag URL). Keep the left rail to Home · Flags · Settings. Do not show All Sites, Keep watching, or empty watch status on the left until the visitor is signed in.

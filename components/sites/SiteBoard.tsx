@@ -14,6 +14,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/brand/Logo'
+import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
+import { useMe } from '@/hooks/useMe'
 import { cn } from '@/lib/utils'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import {
@@ -58,6 +60,8 @@ export function SiteBoard({
   initial: SiteHomeView
 }) {
   const router = useRouter()
+  const { user } = useMe()
+  const signedIn = Boolean(user)
   const [view, setView] = useState(initial)
   const [nav, setNav] = useState<'Dashboard' | 'Flags' | 'Site'>('Dashboard')
   const opener = useRef<HTMLElement | null>(null)
@@ -227,34 +231,36 @@ export function SiteBoard({
               </button>
             ))}
           </nav>
-          <div className="mt-auto space-y-3 border-t border-border/70 pt-4">
-            <StatusLabel
-              state={
-                watch.covered
-                  ? 'healthy'
-                  : watch.state === 'off'
-                    ? 'unknown'
-                    : 'attention'
-              }
-            >
-              {watch.label}
-            </StatusLabel>
-            {watch.lastError ? (
-              <p className="text-xs text-muted-foreground">{watch.lastError}</p>
-            ) : null}
-            {watch.state === 'watching' || watch.state === 'delayed' || watch.state === 'quota' ? (
-              <Button variant="outline" size="sm" disabled={busy} onClick={() => void pauseWatching()}>
-                Pause watching
-              </Button>
-            ) : (
-              <Button variant="brand" size="sm" disabled={busy} onClick={() => void keepWatching()}>
-                Keep watching
-              </Button>
-            )}
-            <Link href="/dashboard" className="block text-sm text-muted-foreground hover:text-foreground">
-              All Sites
-            </Link>
-          </div>
+          {signedIn ? (
+            <div className="mt-auto space-y-3 border-t border-border/70 pt-4">
+              <StatusLabel
+                state={
+                  watch.covered
+                    ? 'healthy'
+                    : watch.state === 'off'
+                      ? 'unknown'
+                      : 'attention'
+                }
+              >
+                {watch.label}
+              </StatusLabel>
+              {watch.lastError ? (
+                <p className="text-xs text-muted-foreground">{watch.lastError}</p>
+              ) : null}
+              {watch.state === 'watching' || watch.state === 'delayed' || watch.state === 'quota' ? (
+                <Button variant="outline" size="sm" disabled={busy} onClick={() => void pauseWatching()}>
+                  Pause watching
+                </Button>
+              ) : (
+                <Button variant="brand" size="sm" disabled={busy} onClick={() => void keepWatching()}>
+                  Keep watching
+                </Button>
+              )}
+              <Link href="/dashboard" className="block text-sm text-muted-foreground hover:text-foreground">
+                All Sites
+              </Link>
+            </div>
+          ) : null}
         </aside>
 
         <main className="min-w-0 flex-1 space-y-6">
@@ -262,7 +268,11 @@ export function SiteBoard({
             <div>
               <div className="mb-3 flex items-center justify-between gap-3 lg:hidden">
                 <Logo variant="lockup" size="sm" />
-                <Link href="/dashboard" className="text-xs text-muted-foreground">All Sites</Link>
+                {signedIn ? (
+                  <Link href="/dashboard" className="text-xs text-muted-foreground">All Sites</Link>
+                ) : (
+                  <SiteChromeAuth />
+                )}
               </div>
               <h1 className="text-2xl font-semibold tracking-tight">
                 {nav === 'Dashboard' ? 'Your board' : nav === 'Flags' ? 'Flags' : 'Site settings'}
@@ -288,24 +298,28 @@ export function SiteBoard({
                   {learningCopy}
                 </span>
               ) : null}
-              {!watch.covered ? (
-                <Button
-                  variant="brand"
-                  className="lg:hidden"
-                  disabled={busy}
-                  onClick={() => void keepWatching()}
-                >
-                  Keep watching
-                </Button>
+              {signedIn ? (
+                !watch.covered ? (
+                  <Button
+                    variant="brand"
+                    className="lg:hidden"
+                    disabled={busy}
+                    onClick={() => void keepWatching()}
+                  >
+                    Keep watching
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="lg:hidden"
+                    disabled={busy}
+                    onClick={() => void pauseWatching()}
+                  >
+                    Pause
+                  </Button>
+                )
               ) : (
-                <Button
-                  variant="outline"
-                  className="lg:hidden"
-                  disabled={busy}
-                  onClick={() => void pauseWatching()}
-                >
-                  Pause
-                </Button>
+                <SiteChromeAuth className="hidden lg:inline-flex" />
               )}
             </div>
           </header>

@@ -6,6 +6,7 @@ import { requireSiteAccess } from '@/lib/sites/request-access'
 import { Button } from '@/components/ui/button'
 import { Surface } from '@/components/ui/surface'
 import { Logo } from '@/components/brand/Logo'
+import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
 import { SiteOutcomeEdit } from '@/components/sites/SiteOutcomeEdit'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
@@ -54,9 +55,12 @@ export default async function SiteFlagPage({
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between gap-3">
         <Logo variant="lockup" size="sm" />
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/sites/${resolvedId}`}>Back to board</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <SiteChromeAuth />
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/sites/${resolvedId}`}>Back to board</Link>
+          </Button>
+        </div>
       </div>
       <p className="text-xs uppercase tracking-wide text-muted-foreground">
         {site.canonicalHost} · {areaName} · {flag.severity.toLowerCase()}
