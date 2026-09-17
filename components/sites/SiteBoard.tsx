@@ -18,6 +18,7 @@ import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
 import { useMe } from '@/hooks/useMe'
 import { cn } from '@/lib/utils'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
+import type { BoardCardView } from '@/lib/sites/board-card'
 import {
   STARTER_BOARD_CARDS,
   type CardHealthState,
@@ -40,6 +41,15 @@ function StatusDot({ state }: { state: CardHealthState }) {
       )}
       aria-hidden
     />
+  )
+}
+
+function isEmptyUncheckedCard(card: BoardCardView) {
+  return (
+    card.id !== 'site' &&
+    card.state === 'unknown' &&
+    card.openFlagCount === 0 &&
+    card.activity !== 'checking'
   )
 }
 
@@ -194,12 +204,12 @@ export function SiteBoard({
     const onBoard = STARTER_BOARD_CARDS.includes(card.id) || addedCards.includes(card.id)
     if (!onBoard) return false
     if (signedIn || checking) return true
-    if (card.id === 'site') return true
-    const emptyUnknown =
-      card.state === 'unknown' &&
-      card.openFlagCount === 0 &&
-      card.activity !== 'checking'
-    return !emptyUnknown
+    return !isEmptyUncheckedCard(card)
+  })
+  const coverageCards = view.cards.filter((card) => {
+    if (card.id === 'site') return false
+    if (!signedIn && isEmptyUncheckedCard(card)) return false
+    return true
   })
   const presentAreas = visibleCards.map((card) => card.id)
 
@@ -439,14 +449,15 @@ export function SiteBoard({
                 <h2 className="text-lg font-semibold">Coverage</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{view.coverageSummary}</p>
                 <ul className="mt-4 space-y-2 text-sm">
-                  {view.cards
-                    .filter((c) => c.id !== 'site')
-                    .map((card) => (
+                  {coverageCards.map((card) => (
                       <li key={card.id} className="flex items-center justify-between gap-3">
                         <span>{card.name}</span>
                         <StatusLabel state={card.state}>{card.answer}</StatusLabel>
                       </li>
                     ))}
+                  {coverageCards.length === 0 ? (
+                    <li className="text-sm text-muted-foreground">{view.coverageSummary}</li>
+                  ) : null}
                 </ul>
               </section>
             </div>
