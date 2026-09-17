@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { Logo } from '@/components/brand/Logo'
+import { MarketingCompareSection } from '@/components/marketing/MarketingCompareSection'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { AddBoardCard, AddCardLibrary, BoardCard, BoardGrid, BoardStatus, BOARD_CARD_ICONS } from '@/components/sites/BoardCard'
 import { CARE_HOME as C, SITE_BOARD_COPY } from '@/lib/marketing/copy'
@@ -227,6 +228,10 @@ export function CareHomepage() {
           <p className={s.evidenceNote}>{C.workflow.source}</p>
         </div>
       </div>
+    </section>
+
+    <section className={s.section}>
+      <MarketingCompareSection embedded />
     </section>
 
     <section className={`${s.section} ${s.intelligence}`}>

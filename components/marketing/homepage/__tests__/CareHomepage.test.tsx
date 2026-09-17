@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { CareHomepage } from '../CareHomepage'
-import { CARE_HOME as C, SITE_BOARD_COPY } from '@/lib/marketing/copy'
+import { CARE_HOME as C, SITE_BOARD_COPY, SITE_COMPARE } from '@/lib/marketing/copy'
 import { starterBoardNames } from '@/lib/sites/board-card'
 
 vi.mock('@/components/audit/AuditInput', () => ({ AuditInput: () => <div data-testid="url-entry" /> }))
@@ -26,6 +28,28 @@ describe('homepage example', () => {
     expect(within(workflow!).getByText(C.workflow.failedTitle)).toBeInTheDocument()
     expect(within(workflow!).getByText(C.workflow.passedTitle)).toBeInTheDocument()
     expect(workflow!.querySelectorAll('[data-step]')).toHaveLength(C.workflow.steps.length)
+  })
+
+  it('shows the locked compare table after workflow evidence and before plans', () => {
+    const source = readFileSync(join(process.cwd(), 'components/marketing/homepage/CareHomepage.tsx'), 'utf8')
+    expect(source).toMatch(/MarketingCompareSection/)
+    render(<CareHomepage />)
+    const hero = document.querySelector('section')
+    const workflow = document.getElementById('flag-example')
+    const plans = document.getElementById('plans')
+    const compare = screen.getByRole('heading', { name: /What your site should answer/ })
+    const compareSection = compare.closest('section')
+    expect(hero).not.toBeNull()
+    expect(workflow).not.toBeNull()
+    expect(plans).not.toBeNull()
+    expect(compareSection).not.toBeNull()
+    expect(within(hero!).queryByRole('heading', { name: /What your site should answer/ })).not.toBeInTheDocument()
+    expect(workflow!.compareDocumentPosition(compareSection!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(compareSection!.compareDocumentPosition(plans!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByText(SITE_COMPARE.columns[0].label)).toBeInTheDocument()
+    expect(screen.getByText(SITE_COMPARE.columns[1].label)).toBeInTheDocument()
+    expect(screen.getByText(SITE_COMPARE.columns[2].label)).toBeInTheDocument()
+    expect(screen.getByText(SITE_COMPARE.subline)).toBeInTheDocument()
   })
 
   it('follows the reading position forward and backward through all three steps', async () => {
