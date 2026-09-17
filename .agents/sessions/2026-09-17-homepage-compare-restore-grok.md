@@ -12,7 +12,7 @@ Care sections are a 1120px column. The default compare wrapper uses the wider ma
 
 ## Verification
 
-- `npx vitest run` homepage + pricing tests: 19 passed.
+- Homepage e2e now asserts the shipped hero line (`FixFlags monitors your live website`) instead of retired “Keep building.” copy, plus the compare heading.
 - ESLint on touched files: clean.
 - Browser: localhost:3000 desktop and 375px. Compare sits after Flag / Fix / Verify evidence, not above the hero URL. Final CTA remains below. `/pricing` still shows the same table.
 
