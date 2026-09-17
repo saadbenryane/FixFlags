@@ -190,10 +190,17 @@ export function SiteBoard({
   const selectedRecommendations = selected
     ? (view.recommendations ?? []).filter((f) => f.area === selected.id)
     : []
-  const visibleCards = view.cards.filter(
-    (card) =>
-      STARTER_BOARD_CARDS.includes(card.id) || addedCards.includes(card.id)
-  )
+  const visibleCards = view.cards.filter((card) => {
+    const onBoard = STARTER_BOARD_CARDS.includes(card.id) || addedCards.includes(card.id)
+    if (!onBoard) return false
+    if (signedIn || checking) return true
+    if (card.id === 'site') return true
+    const emptyUnknown =
+      card.state === 'unknown' &&
+      card.openFlagCount === 0 &&
+      card.activity !== 'checking'
+    return !emptyUnknown
+  })
   const presentAreas = visibleCards.map((card) => card.id)
 
   return (
@@ -334,7 +341,7 @@ export function SiteBoard({
                   onOpen={() => openCard(card.id)}
                 />
               ))}
-              <AddBoardCard onOpen={() => setLibraryOpen(true)} />
+              {signedIn ? <AddBoardCard onOpen={() => setLibraryOpen(true)} /> : null}
             </BoardGrid>
             </BoardSurface>
           ) : null}

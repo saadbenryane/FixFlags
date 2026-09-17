@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { SiteBoard } from '../SiteBoard'
 import { MeProvider, type MeUser } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
+import type { BoardCardView } from '@/lib/sites/board-card'
 import { CARE_HOME } from '@/lib/marketing/copy'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 const SITE_PATH = '/sites/p_example'
 
@@ -17,6 +19,31 @@ const signedInUser = {
   email: 'owner@example.com',
   plan: 'FREE',
 } as MeUser
+
+function card(partial: Partial<BoardCardView> & Pick<BoardCardView, 'id' | 'name' | 'state'>): BoardCardView {
+  return {
+    question: partial.question ?? 'Checked area',
+    status: partial.status ?? 'Not checked yet',
+    answer: partial.answer ?? 'Not checked yet',
+    detail: null,
+    facts: [],
+    coverage: null,
+    score: null,
+    openFlagCount: 0,
+    checkedAt: null,
+    flagIds: [],
+    flagChips: [],
+    sources: ['FixFlags browser'],
+    activity: null,
+    wide: partial.id === 'site',
+    captureUrl: null,
+    captureAlt: null,
+    cropUrl: null,
+    cropAlt: null,
+    problem: null,
+    ...partial,
+  }
+}
 
 function boardView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
   return {
@@ -40,7 +67,12 @@ function boardView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
     statusLabel: '1 Flag',
     statusState: 'attention',
     audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, score: 80 },
-    cards: [],
+    cards: [
+      card({ id: 'site', name: 'Pages', state: 'attention', answer: '2 Flags', status: 'Needs a fix' }),
+      card({ id: 'conversion', name: 'Conversion', state: 'problem', answer: 'Checkout failed', status: 'Needs a fix', openFlagCount: 1 }),
+      card({ id: 'security', name: 'Security', state: 'unknown', answer: SITE_BOARD_COPY.notCheckedYet }),
+      card({ id: 'tracking', name: 'Tracking', state: 'unknown', answer: SITE_BOARD_COPY.notCheckedYet }),
+    ],
     flags: [],
     recommendations: [],
     outcomes: [],
@@ -89,6 +121,11 @@ describe('SiteBoard chrome', () => {
     expect(rail).not.toHaveTextContent('Not watching')
     expect(rail).not.toHaveTextContent('Keep watching')
     expect(rail).not.toHaveTextContent('All Sites')
+    expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.addCard })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Security' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Tracking' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pages' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Conversion' })).toBeInTheDocument()
   })
 
   it('keeps watch and All Sites for signed-in owners', () => {
@@ -97,5 +134,8 @@ describe('SiteBoard chrome', () => {
     expect(screen.getAllByRole('link', { name: 'All Sites' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('button', { name: 'Keep watching' }).length).toBeGreaterThan(0)
     expect(screen.getByText('Not watching')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.addCard })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Security' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Tracking' })).toBeInTheDocument()
   })
 })
