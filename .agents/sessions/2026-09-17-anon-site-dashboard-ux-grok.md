@@ -6,6 +6,7 @@ Owner (Saad) tested a logged-out Site board: no Sign in, leftover left-rail watc
 
 - `SiteChromeAuth` on the Site board and Flag page: Sign in → `/sign-in?next=` current path.
 - Left rail for logged-out visitors: Home · Flags · Settings only. Watch status, Keep watching, and All Sites stay signed-in.
+- Anonymous post-audit board also hides Add card and empty “Not checked yet” area cards (Security/Tracking placeholders from the teaser check).
 - Restored `--brand-foreground` / `brandForeground` to white on bright Flag Orange.
 
 ## Checks
