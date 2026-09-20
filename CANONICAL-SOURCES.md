@@ -45,7 +45,7 @@ These must not be treated as the live product definition.
 | [docs/unified-audit-tool-architecture.md](docs/unified-audit-tool-architecture.md) | Historical research |
 | [docs/scan-roadmap.md](docs/scan-roadmap.md) | Historical scan expansion |
 | [docs/journey-review-architecture.md](docs/journey-review-architecture.md) | Historical journey MVP notes |
-| [docs/business-model.md](docs/business-model.md) | Compatibility commercial notes |
+| [docs/business-model.md](docs/business-model.md) | Current packaging summary; strategy and launch gates remain canonical elsewhere |
 | [docs/year-1-operating-plan.md](docs/year-1-operating-plan.md) | Retired operating numbers |
 | [docs/gtm-launch-strategy.md](docs/gtm-launch-strategy.md) | Pointer |
 | [docs/launch-kit.md](docs/launch-kit.md) | Pointer; do not publish old kit |

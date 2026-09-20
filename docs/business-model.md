@@ -1,58 +1,35 @@
-# Business Model
+# FixFlags business model
 
-**Existing commercial implementation reference, 2026-09-08.** This document's prior plan/review mechanics are compatibility context only. [knowledge/strategy.md](../knowledge/strategy.md) owns new responsibility-based direction, and code owns current prices/entitlements. Preserve accounts, billing and paid rights; do not carry old teaser-only/free-watch restrictions into the target or silently change existing subscriptions.
+The accepted commercial direction is one Site product, sold per website. [Business and plan strategy](../knowledge/strategy.md) owns the rationale, [the product masterplan](product-masterplan.md) owns the launch gate, and `lib/billing/plans.ts` owns implemented plan behavior.
 
+## Public packaging
 
-*Last updated: 2026-08-25*
+| Plan | Price | Website relationship |
+| --- | --- | --- |
+| Free | $0 | One website, verified weekly |
+| Pro | $49 per website per month | Each website verified every day |
+| Studio | Quoted per website | Several client websites on one login |
 
-FixFlags sells Product Reviews with a clear capacity and workflow ladder.
-The customer loop is Product Review → Fix → Verify → Watch.
-Canonical pricing strategy lives in [`knowledge/strategy.md`](../knowledge/strategy.md).
+Paid checkout is closed. Pro and Studio calls to action join the waitlist. Stripe must remain closed until the per-Site cost baseline and complete test-mode checkout evidence close blocker B5 in the product masterplan.
 
-## What every Product Review includes
+Internal plan identifiers remain `FREE`, `BUILDER`, and `TEAM`. Internal 3/30/90 review pools and legacy deep-review fields are compatibility and enforcement details, not customer packaging. Existing subscribers and price-bound allowances must be migrated explicitly, never silently repriced or downgraded.
 
-- Product reviews across Message, Experience, and Reach.
-- Evidence-backed Flags and copyable fix prompts.
-- A fresh review after changes that shows what changed.
-- A public report link.
+## What the customer buys
 
-## Usage plans
+FixFlags looks after a website and the journeys the business depends on:
 
-| Plan | Price | Product reviews/month | Products | Plan value |
-|------|-------|-----------------------|----------|------------|
-| Free | $0 | 3 | 1 | Review, fix, and review changes |
-| Pro | $29 | 30 | Up to 5 | Product history across releases and release comparison |
-| Studio | $79 | 90 | Unlimited | Scheduled reviews and a shared workspace |
+- broad live analysis that produces evidence-backed Flags;
+- a clear Fix handoff without pretending work is complete;
+- fresh, relevant verification after a change is published;
+- ongoing Watch at the plan's honest cadence;
+- connections that enrich the same Site instead of creating another product.
 
-The existing internal enums remain `FREE`, `BUILDER`, and `TEAM`.
-Studio maps to `TEAM`.
+Plans change responsibility and frequency, not evidence standards. Do not sell checks per month, page counts, unlimited Sites, hourly full browser audits, an SLA, or unshipped integrations.
 
-New URL reviews, update reviews, and completed scheduled Watch reviews share the product review allowance.
-Usage renews monthly and does not roll over.
-At the limit, reviews pause until renewal or upgrade.
-Existing purchased overflow credits remain compatible but are not promoted.
+## Economics gate
 
-Studio includes workspace invitations and unlimited workspace seats for a limited time.
-Pro and Studio remain on the waitlist while Stripe stays in test mode.
-Workspace invitations must be complete before Studio checkout opens.
+The target paid cost envelope is approximately $12 per Site per month at the $49 list price. Measure real `auditRunCost` for Watch and Analyze before paid launch. If bounded daily verification cannot stay inside that envelope, reduce the verification scope or keep checkout closed. Do not weaken evidence or overstate monitoring to preserve a price.
 
-## What is parked
+## Parked products
 
-Repository scanning, editor protocols, command-line workflows, API-key setup, and deployment-triggered hooks remain implemented internally but are not part of the current customer product, marketing, documentation navigation, or pricing promise.
-Deep Review is the future repository-connected analysis offer and returns only after the URL-to-report wedge converts consistently.
-
-## Revenue model
-
-- Monthly Pro and Studio subscriptions.
-- High-volume pricing by direct conversation.
-- No annual commitment at launch.
-- The report itself stays equally trustworthy on every page FixFlags claims to have reviewed.
-Plans add how far a public review goes: Free reviews this page and checks every public link, Pro also reviews the pages that page links to, and Studio reviews one level beyond.
-
-## Target customer
-
-- AI-first founders and small teams preparing to launch or ship an update.
-- Freelancers, agencies, and studios repeating that workflow across products.
-- Small product teams that want scheduled regression evidence.
-
-FixFlags is not positioned as an enterprise QA suite, compliance service, or replacement for a complete test program.
+Repository scanning, CLI, MCP, API keys, deployment hooks, and the old Product Review / Finish Plan product model are not customer offers. Their retained implementations must remain inaccessible and undiscoverable until they are deliberately reintroduced inside the Site model with release proof.

@@ -246,25 +246,13 @@ test('parked power-tool docs and setup surfaces return not found', async ({ requ
     '/docs/integrations',
     '/.well-known/mcp.json',
     '/.well-known/mcp-server.json',
+    '/.well-known/skills',
+    '/.well-known/skills/index.json',
+    '/.well-known/skills/fixflags/SKILL.md',
   ]) {
     const response = await request.get(path, { maxRedirects: 0 })
     expect(response.status(), path).toBe(404)
   }
-})
-
-test('public agent skill distribution surfaces remain fetchable', async ({ request }) => {
-  const skill = await request.get('/.well-known/skills/fixflags/SKILL.md', { maxRedirects: 0 })
-  expect(skill.status()).toBe(200)
-  const skillBody = await skill.text()
-  expect(skillBody).toContain('name: fixflags')
-  expect(skillBody).toContain('skill-first')
-  expect(skillBody).toContain('https://fixflags.com/.well-known/skills/fixflags/SKILL.md')
-
-  const index = await request.get('/.well-known/skills/index.json', { maxRedirects: 0 })
-  expect(index.status()).toBe(200)
-  const payload = await index.json()
-  expect(payload.stance).toBe('skill-first-distribution')
-  expect(payload.skills?.[0]?.path).toBe('/.well-known/skills/fixflags/SKILL.md')
 })
 
 test('/help/mcp redirects to the help hub', async ({ request }) => {

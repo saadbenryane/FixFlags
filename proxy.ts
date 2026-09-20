@@ -40,6 +40,7 @@ const PARKED_POWER_TOOL_PREFIXES = [
   '/api/well-known/mcp-json',
   '/.well-known/mcp.json',
   '/.well-known/mcp-server.json',
+  '/.well-known/skills',
 ] as const
 
 export function isParkedPowerToolPath(pathname: string): boolean {

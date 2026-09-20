@@ -1,78 +1,31 @@
-# Legal launch checklist
+# Legal and trust launch checklist
 
-**Status:** Working checklist for GTM + founder offer launch (August 2026).
+This checklist covers the current Site product. Retired founder discounts, Product Review quotas, Shopify-only terms, and old plan prices are not launch requirements.
 
-**Offer terms:** [founder-offer.md](./founder-offer.md)
+## Public surfaces
 
----
+- [ ] Terms describe one URL-first Site product, Free and paid relationships, renewal/cancellation, acceptable use, verification limits, and third-party connections without promising an SLA.
+- [ ] Privacy describes submitted URLs, browser captures, screenshots, account and billing data, connection tokens, analytics, support messages, subprocessors, retention, deletion, and customer rights.
+- [ ] Pricing, FAQ, Help, auth, waitlist, billing, and lifecycle email copy agree on Free weekly, Pro $49 per website monthly with daily verification, Studio quoted per website, and paid checkout closed.
+- [ ] Public report compatibility is described accurately: evidence links may be public, while private Site, connection, history, and support data remain tenant-scoped.
+- [ ] Cookie and analytics disclosure matches the trackers actually loaded in production and the consent behavior in each applicable region.
+- [ ] Support and privacy contact addresses are valid, monitored, and identical across legal and Help surfaces.
 
-## Public legal surfaces
+## Provider and billing trust
 
-| Surface | Path | Status | Required updates |
-|---------|------|--------|------------------|
-| Terms of Service | `/terms` | **Shipped Aug 2026** | Founder Discount, waitlist, metering |
-| Privacy Policy | `/privacy` | **Shipped Aug 2026** | Waitlist email, Stripe billing/tax |
-| Pricing copy | `lib/marketing/copy/plans.ts` | **Shipped** | Waitlist + founder wording |
-| FAQ | `lib/marketing/copy/plans.ts` | Review | Founder offer pointer |
-| Footer links | site footer | Verify | Terms + Privacy linked |
-| Cookie policy | — | **Missing** | Optional future page; note analytics cookies in privacy if needed |
-| Sign-up terms acceptance | auth flows | Review | Link to terms if not present |
+- [ ] Shopify permissions, data use, uninstall cleanup, and support paths match the installed app behavior.
+- [ ] Optional connections explain authorization, revocation, stored data, failure behavior, and deletion without making the base Site depend on the provider.
+- [ ] Stripe test-mode checkout, webhook, invoice, failed-payment, cancellation, and portal evidence passes before any live key or paid switch is enabled.
+- [ ] Studio has an explicit per-website quote and contract before a customer can be charged.
 
----
+## Security and operations
 
-## Founder offer (terms must cover)
+- [ ] Tenant isolation, anonymous claim, public evidence, share, auth recovery, and administrative access tests pass.
+- [ ] Production readiness reports database, Redis, migrations, worker, storage, browser, AI, and email truthfully on the exact deployed revision.
+- [ ] Data retention and deletion operations are executable, with an owner and response procedure.
+- [ ] Incident response, rollback, and customer notification ownership are recorded and exercised.
+- [ ] No secret, environment-specific error, internal route, parked power tool, or provider configuration detail is exposed publicly.
 
-- [x] Name: 40% Founder Discount
-- [x] 40% off for 12 months on Pro or Studio
-- [x] One redemption per customer/account (not both plans)
-- [x] Non-transferable
-- [x] Subject to availability / campaign cap
-- [x] Standard price after promotional period
-- [x] No stacking with other offers
+## Sign-off evidence
 
----
-
-## Waitlist
-
-- [x] Email used to notify when paid plans open
-- [x] No guarantee of timing or admission
-- [x] Free account remains available while on waitlist
-
----
-
-## Billing (existing + launch)
-
-- [x] Monthly subscription renewal
-- [x] Cancel via Stripe portal
-- [x] Product review limits per plan (enforced in `lib/billing/plans.ts`)
-- [x] Update reviews use product review credits (enforced in `lib/audit/monitoring.ts`)
-
----
-
-## Internal canon alignment
-
-| Doc | Action |
-|-----|--------|
-| [knowledge/privacy.md](../knowledge/privacy.md) | Align if public privacy changes materially |
-| [DECISIONS.md](../DECISIONS.md) | Row for hybrid launch + founder offer |
-| [docs/business-model.md](./business-model.md) | Founder cohort vs “no founding offers” |
-
----
-
-## Sign-off
-
-| Item | Owner | Date |
-|------|-------|------|
-| Terms updated | | |
-| Privacy updated | | |
-| Copy drift check pass | | |
-| Founder offer live in Stripe test | | |
-| Live flip after business registration | | |
-
----
-
-## Changelog
-
-| Date | Change |
-|------|--------|
-| 2026-08-01 | Initial checklist for GTM launch. |
+Legal and trust sign-off is recorded against L3, L4, and L6 in [the product masterplan](product-masterplan.md), with test and release evidence in the active session record. A checked box requires observed behavior or reviewed text, not an assumption based on old documentation.

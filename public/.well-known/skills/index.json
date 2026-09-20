@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
   "product": "FixFlags",
-  "stance": "skill-first-distribution",
+  "stance": "site-care",
   "engine": "https://fixflags.com",
-  "note": "The FixFlags web app and audit worker remain the Product Intelligence engine. Skills, CLI, and MCP are distribution surfaces over that engine.",
+  "note": "The FixFlags web product looks after one persistent Site. Agent distribution is parked until it supports the same Site and Flag model.",
   "skills": [
     {
       "id": "fixflags",
       "name": "fixflags",
-      "description": "Check a deployed product with FixFlags, validate its highest-ranked Flag, fix the product, deploy the change, and Re-check the original report.",
+      "description": "Analyze a deployed website, validate an evidence-backed Flag, fix it, verify the live behavior, and leave the Site watched.",
       "url": "https://fixflags.com/.well-known/skills/fixflags/SKILL.md",
       "path": "/.well-known/skills/fixflags/SKILL.md",
-      "loop": ["Product Review", "Fix", "Verify", "Watch"]
+      "loop": ["Site", "Flag", "Fix", "Verify", "Watch"]
     }
   ]
 }

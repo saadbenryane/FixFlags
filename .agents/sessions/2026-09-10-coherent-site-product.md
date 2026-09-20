@@ -48,3 +48,14 @@ Updated as each verified change lands.
 - Changed Flag Orange foreground from white (3.13:1) to ink (6.29:1) and aligned the design canon.
 - `npm run typecheck`, `npm run lint`, `npm run build`, `npm run test:unit` (5,223 passed, 10 skipped) and `npm run ui:drift-guard`: pass.
 - Full `npm run verify` advanced through database, type, lint and brand gates, then found application typography/radius/token drift. The focused fixes and affected tests pass; full gate must be rerun from a stable clean revision.
+
+### 2026-09-20 launch baseline and release foundation
+
+- Committed the coherent homepage and integrations slice as `0c7a129f`; Shopify is the available connection and future providers are explicitly unavailable.
+- A clean `npm run verify` on `d96af590` passed all gates: schema and drift, typecheck, lint, product/copy/route/knowledge guards, zero moderate-or-higher dependency vulnerabilities, 5,237 unit tests with 10 declared skips, coverage, 16 accuracy fixtures with zero failures, the production Next build, and worker build.
+- Fixed the only regression found by the first clean run: the navigation unit assertion and browser journey still expected the retired `For Shopify` link instead of the canonical `Integrations` destination. Commit: `d96af590`.
+- Provisioned only the dedicated local `fixflags_release` database. Release foundation `release-20260920-d96af590` passed clean install, 82 fresh migrations, full verification, immutable container build, and a real Postgres + Redis + web + dedicated-worker scan. The report completed successfully (`cmu9ip6ux0001pc2ta10lqc0x`). Generated receipt: `test-results/release/release-20260920-d96af590/foundation.json`.
+- Release fixture binding remains correctly blocked before mutation: `RELEASE_E2E_TARGET`, exact-revision `RELEASE_ENV_URL`, and private `RELEASE_FIXTURE_MANIFEST` are absent. Production and credentialed journey claims remain open.
+- Public agent distribution under `/.well-known/skills/*` was found exposing the retired Product Review / Product Intelligence model while CLI and MCP are parked. The route is now covered by the same fail-closed 404 boundary as the other parked power tools, with unit and browser contract coverage.
+- Playwright CLI exercised the real local public routes at desktop and 375 px. Homepage, pricing, integrations, and signup rendered the Site/Flag model without client errors; pricing showed Free weekly and Pro `$49 /website/mo` daily with charging closed; homepage width equaled scroll width at 375 px; and `/.well-known/skills/fixflags/SKILL.md` returned HTTP 404.
+- The deterministic heartbeat now recognizes `parked` and `superseded` as inactive board states. Its JSON packet reports no parse warnings, so release blockers are no longer hidden behind invalid-status noise.

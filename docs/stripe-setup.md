@@ -2,7 +2,13 @@
 
 Test vs live is determined only by key prefix (`sk_test_` / `sk_live_`) and matching price IDs. Never mix test prices with live keys.
 
-## Launch discount tiers (replaces the retired founder offer)
+## Paid-launch posture
+
+Paid checkout is closed. The public offer is one free website verified weekly, then Pro at **$49 per website per month** verified every day. Studio is the same product for several websites, quoted and billed per website. Do not open checkout until blocker B5 in [the product masterplan](product-masterplan.md) is complete and the test-mode release stages pass.
+
+The discount-tier implementation below is retained compatibility for waitlist records. It is not current public packaging and must not be activated without a new explicit commercial decision.
+
+## Retained waitlist discount tiers
 
 Discounts are assigned by waitlist join order at join time (see `lib/billing/discount-tiers.ts` and `lib/billing/waitlist.ts`):
 
@@ -35,14 +41,14 @@ STRIPE_TIER2_STUDIO_PROMOTION_ID=promo_...
 
 When `STRIPE_PAID_OPEN=true`, checkout is public; the tier promotion auto-applies for waitlist members with a tier. Promotion codes are **not customer-enterable**: the checkout route only passes `discounts` for tier holders and never enables `allow_promotion_codes`, so the 500/500 caps cannot be burned by manual code entry.
 
-## Target list prices (marketing)
+## Canonical prices
 
 | Product | Target | Env var | Notes |
 |---------|--------|---------|--------|
-| Pro | $29/mo | `STRIPE_BUILDER_PRICE_ID` | Create a new test/live recurring price |
-| Studio | $79/mo | `STRIPE_TEAM_PRICE_ID` | Create a new test/live recurring price |
+| Pro | $49/website/mo | `STRIPE_BUILDER_PRICE_ID` | Create matching test/live recurring per-website prices before B5 can close |
+| Studio | Quoted per website | `STRIPE_TEAM_PRICE_ID` | Do not expose a generic checkout until the quoted per-website contract is explicit |
 
-Legacy test IDs (2026-07-19, **$39 / $129**): preserve them for active legacy subscriptions, but do not use them for new checkout sessions. Map them through `STRIPE_LEGACY_BUILDER_PRICE_IDS` and `STRIPE_LEGACY_TEAM_PRICE_IDS` until those subscriptions end or change.
+Legacy test IDs (2026-07-19, **$39 / $129**) are retained only to recognize active legacy subscriptions. Do not use them for new checkout sessions. Map them through `STRIPE_LEGACY_BUILDER_PRICE_IDS` and `STRIPE_LEGACY_TEAM_PRICE_IDS` until those subscriptions end or change.
 
 | Product | Price ID | Amount |
 |---------|----------|--------|

@@ -24,6 +24,8 @@ const statusOrder = [
   "blocked",
   "queued",
   "done",
+  "superseded",
+  "parked",
   "abandoned",
 ];
 const statusEmojis = {
@@ -34,6 +36,8 @@ const statusEmojis = {
   blocked: "🚫",
   queued: "⏳",
   done: "✅",
+  superseded: "🔁",
+  parked: "🅿️",
   abandoned: "🗑️",
 };
 

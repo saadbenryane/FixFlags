@@ -16,7 +16,7 @@ Subscription management, credit tracking, audit limits, Stripe integration, cost
 | `upgrade-moments.ts` | Upgrade prompt triggers |
 
 ## Architecture
-- **Plans:** Free (3 Product Reviews/month), Pro $29/month (30), Studio $79/month (90). Browser-path depth is included inside Product Reviews; legacy deep-review counters remain persistence-only.
+- **Public packaging:** Free is one website verified weekly. Pro is $49 per website per month with daily verification. Studio is quoted per website. Internal 3/30/90 review pools remain enforcement details and are not customer packaging; legacy deep-review counters remain persistence-only.
 - **Capabilities:** Every plan has the same web product. Plans differ by monthly usage only.
 - **Credits:** AI prescription gated by `includeAi` + available credits
 - **Stripe:** Hosted Checkout + Customer Portal + webhooks (`app/api/stripe/webhook/route.ts`)

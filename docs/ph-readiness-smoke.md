@@ -1,40 +1,7 @@
-# Product Hunt readiness smoke checklist
+# Distribution readiness
 
-Run after deploying metering + GTM changes. Operator credentials required for paid-open flip tests.
+The former Product Hunt smoke checklist described retired $69/$199 packaging, Product Review quotas, and a founder-promotion launch. It is superseded.
 
-## Automated (CI)
+Distribution may scale only after every Blocker in [the product masterplan](product-masterplan.md) is checked and [the operational launch checklist](launch-checklist.md) has passed on the exact deployed revision. The current offer is one free website verified weekly, Pro at $49 per website per month verified every day, and Studio quoted per website. Paid checkout remains closed.
 
-- `npm run billing:plans-guard`
-- `npm run validate:quick`
-- `npm run validate:affected` (billing + report tests)
-- `e2e/public-journeys.spec.ts` pricing shows $69 / $199
-
-## `PAID_OPEN=false` (default)
-
-1. Pro/Studio CTAs open waitlist form (signed-in).
-2. Waitlist join sends confirmation email (Resend configured).
-3. Admin `/admin/waitlist` export and mark-invited sends invite email.
-
-## `PAID_OPEN=true` (staging)
-
-1. Waitlist member gets founder promotion at checkout.
-2. Non-waitlist user does not get founder promotion.
-3. Webhook sets `founderOfferRedeemedAt` and waitlist `convertedAt`.
-
-## Metering
-
-1. Free user blocked on 4th product review (new URL).
-2. Free user blocked on update review when at product review cap.
-3. Free user gets three complete Product Reviews per month.
-4. Pro user gets 30 complete Product Reviews per month, including path evidence where available.
-
-## Anonymous wedge
-
-1. One teaser scan without account.
-2. Claim unlocks prompts; APIs never leak gated prompts.
-
-## Operator-blocked
-
-- `npm run verify:release` with RELEASE_* credentials
-- Live Stripe $69/$199 price IDs on Railway
-- Business entity + live webhook
+No channel launch, paid campaign, or marketplace submission substitutes for credentialed Site, Flag, Verify, Watch, billing, support, security, and rollback proof.

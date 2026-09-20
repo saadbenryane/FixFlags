@@ -150,6 +150,8 @@ _Recent terminal work (from 2026-08-12). Older history: `.agents/BOARD-archive.m
 - **blocked** — waiting on dependency
 - **review** — ready for review
 - **done** — completed and verified
+- **superseded** — replaced by a newer canonical task; retained for provenance
+- **parked** — intentionally out of current product scope; do not schedule without a new decision
 - **abandoned** — no longer relevant
 
 ## Rules

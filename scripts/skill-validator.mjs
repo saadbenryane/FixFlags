@@ -30,9 +30,9 @@ function collectMcpTools(root) {
   return [...source.matchAll(/name:\s*['"]([a-z0-9_-]+)['"]/g)].map((match) => match[1])
 }
 
-// Skill files that must mention ff_mark_fix_attempted
+// Retained IDE integrations describe the parked MCP contract and must stay
+// internally consistent until they are removed or deliberately relaunched.
 const SKILL_FILES_REQUIRING_MARK = [
-  'public/.well-known/skills/fixflags/SKILL.md',
   'ide-integrations/cursor/fixflags.mdc',
   'ide-integrations/claude-code/fixflags-skill.md',
   'ide-integrations/kiro/fixflags-power.md',
@@ -114,32 +114,16 @@ export function validateSkills(root = process.cwd()) {
   if (existsSync(canonicalPath)) {
     const customerSkill = readFileSync(canonicalPath, 'utf8')
     for (const required of [
-      /fixflags check/,
-      /ff_check_and_plan/,
-      /fixflags recheck/,
-      /ff_recheck_and_compare/,
-      /Fixed, Remaining, New, and Regressed/,
+      /Site → Cards → Checks \/ Journeys → Flags → Fix → Verify → Watch/,
+      /Analyze the deployed URL/,
+      /Choose a Flag/,
+      /Verify the affected behavior/,
+      /No Flags does not mean untested behavior is healthy/,
+      /CLI, MCP, API keys, repository scanning, Product Review, Finish Plan, and the report Agent are not current customer entry points/,
     ]) {
       if (!required.test(customerSkill)) {
         errors.push(`${path.relative(root, canonicalPath)}: missing customer workflow contract ${required}`)
       }
-    }
-
-    // Check MCP tool coverage: every canonical tool must appear in the canonical skill
-    for (const tool of MCP_TOOLS) {
-      if (!customerSkill.includes(tool)) {
-        errors.push(`${path.relative(root, canonicalPath)}: missing MCP tool "${tool}"`)
-      }
-    }
-
-    // Check "before deploy" section exists (before you ship / before shipping)
-    if (!/before you ship/i.test(customerSkill) && !/before shipping/i.test(customerSkill)) {
-      errors.push(`${path.relative(root, canonicalPath)}: missing "before you ship" or "before shipping" guidance`)
-    }
-
-    // Check "suggest Watch" section exists
-    if (!/suggest.*[Ww]atch/i.test(customerSkill) && !/enable Watch/i.test(customerSkill)) {
-      errors.push(`${path.relative(root, canonicalPath)}: missing "suggest Watch" or "enable Watch" guidance`)
     }
   }
 

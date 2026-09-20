@@ -150,6 +150,8 @@ withFixture((dir) => {
 | task-proposed | proposed | agent-d | main | Scope D | files-d | none | 2026-08-31 |
 | task-claimed | claimed | agent-e | main | Scope E | files-e | none | 2026-08-31 |
 | task-underscore | in_progress | agent-f | main | Scope F | files-f | none | 2026-08-31 |
+| task-superseded | superseded | agent-g | main | Scope G | files-g | none | 2026-08-31 |
+| task-parked | parked | agent-h | main | Scope H | files-h | none | 2026-08-31 |
 
 ## Completed
 
@@ -163,6 +165,8 @@ withFixture((dir) => {
   assert(out.board.counts.proposed === 1, `json: proposed is a valid board status (got ${JSON.stringify(out.board.counts)})`);
   assert(out.board.counts.claimed === 1, "json: claimed is a valid board status");
   assert(out.board.counts["in-progress"] === 1, "json: in_progress normalizes to in-progress");
+  assert(out.board.counts.superseded === 1, "json: superseded is a valid inactive board status");
+  assert(out.board.counts.parked === 1, "json: parked is a valid inactive board status");
   assert(!Object.keys(out.board.counts).includes("---"), "json: separator cells are not treated as task ids");
 });
 
