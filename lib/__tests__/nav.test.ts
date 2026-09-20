@@ -9,7 +9,7 @@ describe('marketing nav labels', () => {
       [
         ['Product', '/#product'],
         ['Pricing', '/pricing'],
-        ['For Shopify', '/install'],
+        ['Integrations', '/integrations'],
         ['Docs', '/docs'],
       ]
     )
@@ -21,14 +21,13 @@ describe('marketing nav labels', () => {
     assert.equal(changelog.href, '/changelog')
   })
 
-  it('keeps the Site and Shopify product paths discoverable in the footer', () => {
+  it('keeps integrations and Shopify discoverable in the footer', () => {
     const hrefs = [
       ...FOOTER_COLUMNS.product,
       ...FOOTER_COLUMNS.resources,
       ...FOOTER_COLUMNS.company,
     ].map((link) => link.href)
-    assert.ok(hrefs.includes('/how-it-works'))
-    assert.ok(hrefs.includes('/install'))
+    assert.ok(hrefs.includes('/integrations'))
     assert.ok(hrefs.includes('/install'))
   })
 

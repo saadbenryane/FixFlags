@@ -31,8 +31,8 @@ test('homepage navigation and mobile menu use their real destinations', async ({
   const product = page.getByRole('navigation').getByRole('link', { name: 'Product', exact: true }).first()
   await expect(product).toHaveAttribute('href', '/#product')
 
-  const shopify = page.getByRole('navigation').getByRole('link', { name: 'For Shopify', exact: true }).first()
-  await expect(shopify).toHaveAttribute('href', '/install')
+  const integrations = page.getByRole('navigation').getByRole('link', { name: 'Integrations', exact: true }).first()
+  await expect(integrations).toHaveAttribute('href', '/integrations')
 
   await page.setViewportSize({ width: 375, height: 812 })
   await page.getByRole('button', { name: 'Open menu' }).click()
