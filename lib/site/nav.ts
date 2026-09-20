@@ -3,7 +3,7 @@ import { BRAND } from '@/lib/marketing/copy'
 export const MARKETING_LINKS = [
   { href: '/#product', label: 'Product' },
   { href: '/pricing', label: 'Pricing' },
-  { href: '/install', label: 'For Shopify' },
+  { href: '/integrations', label: 'Integrations' },
   { href: '/docs', label: 'Docs' },
 ] as const
 
@@ -12,6 +12,7 @@ export const MARKETING_NAV = [...MARKETING_LINKS] as const
 export const FOOTER_COLUMNS = {
   product: [
     { href: '/how-it-works', label: 'Product' },
+    { href: '/integrations', label: 'Integrations' },
     { href: '/install', label: 'Shopify' },
     { href: '/how-it-works', label: 'How it works' },
     { href: '/pricing', label: 'Pricing' },

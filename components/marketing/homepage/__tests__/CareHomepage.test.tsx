@@ -8,24 +8,17 @@ vi.mock('@/components/audit/AuditInput', () => ({ AuditInput: () => <div data-te
 vi.mock('next/image', () => ({ default: ({ alt, src }: { alt: string; src: string }) => <span role="img" aria-label={alt} data-src={src} /> }))
 afterEach(() => { cleanup(); vi.restoreAllMocks() })
 
-describe('homepage example', () => {
-  it('shows the complete Flag, Fix, Verify story as one before-and-after comparison', () => {
+describe('homepage conversion story', () => {
+  it('shows one purchase-path Flag, Fix, Verify story with distinct evidence', () => {
     render(<CareHomepage />)
-    const workflow = screen.getByRole('region', { name: C.boardAria }).ownerDocument.getElementById('flag-example')
-    expect(workflow).not.toBeNull()
-    for (const step of C.workflow.steps) {
-      expect(screen.getByRole('heading', { name: step.title })).toBeInTheDocument()
-    }
-    expect(screen.getByRole('img', { name: C.workflow.failedAlt })).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: C.workflow.passedAlt })).toBeInTheDocument()
-    expect(screen.queryByRole('tab')).not.toBeInTheDocument()
-    expect(within(workflow!).queryByRole('link', { name: C.hero.cta })).not.toBeInTheDocument()
-    expect(within(workflow!).queryByText(C.flag.outcome)).not.toBeInTheDocument()
-    expect(within(workflow!).getAllByText(C.workflow.page)).toHaveLength(1)
-    expect(within(workflow!).getAllByText(C.workflow.source)).toHaveLength(1)
-    expect(within(workflow!).getByText(C.workflow.failedTitle)).toBeInTheDocument()
-    expect(within(workflow!).getByText(C.workflow.passedTitle)).toBeInTheDocument()
-    expect(workflow!.querySelectorAll('[data-step]')).toHaveLength(C.workflow.steps.length)
+    const workflow = document.getElementById('flag-example')!
+    for (const step of C.workflow.steps) expect(screen.getByRole('heading', { name: step.title })).toBeInTheDocument()
+    expect(within(workflow).getByRole('img', { name: C.workflow.failedAlt })).toHaveAttribute('data-src', '/marketing/evidence/purchase-broken.png')
+    expect(within(workflow).getByRole('img', { name: C.workflow.passedAlt })).toHaveAttribute('data-src', '/marketing/evidence/purchase-verified.png')
+    expect(within(workflow).getByText(C.workflow.failedTitle)).toBeInTheDocument()
+    expect(within(workflow).getByText(C.workflow.passedTitle)).toBeInTheDocument()
+    expect(within(workflow).getAllByText(C.workflow.page)).toHaveLength(1)
+    expect(within(workflow).getAllByText(C.workflow.source)).toHaveLength(1)
   })
 
   it('follows the reading position forward and backward through all three steps', async () => {
@@ -45,123 +38,83 @@ describe('homepage example', () => {
     }
   })
 
-  it('does not repeat the brand mark in the hero', () => {
+  it('keeps the established hero and real Analyze entry points', () => {
     const { container } = render(<CareHomepage />)
-    const hero = container.querySelector('section')
-    expect(hero).not.toBeNull()
-    expect(within(hero!).getByRole('heading', { level: 1 })).toBeInTheDocument()
-    expect(hero!.querySelector('[data-src*="logo-mark"]')).toBeNull()
+    const hero = container.querySelector('section')!
+    expect(within(hero).getByRole('heading', { level: 1, name: /Your website,\s*looked after\./i })).toBeInTheDocument()
+    expect(within(hero).getByText(C.hero.body)).toBeInTheDocument()
+    expect(within(hero).getByText(C.hero.proof)).toBeInTheDocument()
+    expect(screen.getAllByTestId('url-entry')).toHaveLength(2)
+    expect(hero.querySelector('[data-hero-scan]')).toBeNull()
   })
 
-  it('identifies the example Site once in the board chrome', () => {
+  it('uses the shared board taxonomy and plural Flag reality', () => {
     render(<CareHomepage />)
     const board = screen.getByRole('region', { name: C.boardAria })
-    expect(within(board).getAllByText(C.boardHost)).toHaveLength(1)
-    expect(within(board).getByRole('button', { name: C.boardSummary })).toBeInTheDocument()
-    expect(within(board).queryAllByText(/just now|last checked/i)).toHaveLength(0)
-    expect(board.querySelector('[data-hero-scan]')).not.toBeNull()
-    expect(within(board).queryByText('How this website is doing')).not.toBeInTheDocument()
-    expect(within(board).queryByText('Example Site')).not.toBeInTheDocument()
-    expect(within(board).queryByText('Experience')).not.toBeInTheDocument()
-    expect(within(board).queryByText('Contact needs you')).not.toBeInTheDocument()
-    expect(within(board).queryByText('1 Flag needs attention')).not.toBeInTheDocument()
-    expect(within(board).queryByText('Buy')).not.toBeInTheDocument()
-    expect(board.parentElement?.querySelector('[class*="attentionPulse"]')).toBeNull()
-  })
-
-  it('uses CARD_CATALOG starter names and Conversion as the Flag card', () => {
-    render(<CareHomepage />)
-    const board = screen.getByRole('region', { name: C.boardAria })
-    expect([
-      C.site.label,
-      C.flag.name,
-      ...C.cards.map(card => card.name),
-    ]).toEqual(starterBoardNames())
-    const site = within(board).getByRole('button', { name: C.site.label })
-    expect(within(site).getByRole('img', { name: C.site.imageAlt })).toBeInTheDocument()
-    expect(within(board).queryByText(SITE_BOARD_COPY.lastChecked)).not.toBeInTheDocument()
-    expect(within(site).getByText(C.site.answer)).toBeInTheDocument()
-    const conversion = within(board).getByRole('button', { name: C.flag.name })
-    expect(within(conversion).getByText(C.flag.body)).toBeInTheDocument()
-    expect(within(board).getByRole('button', { name: 'Conversion: Needs a fix' })).toHaveTextContent('1 Flag')
-    expect(within(board).queryByRole('img', { name: C.flag.cropAlt })).not.toBeInTheDocument()
+    expect([C.site.label, C.flag.name, ...C.cards.map(card => card.name)]).toEqual(starterBoardNames())
+    expect(within(board).getByRole('button', { name: C.boardSummary })).toHaveTextContent('4')
+    expect(within(board).getByRole('button', { name: `${C.flag.name}: ${C.flag.status}` })).toHaveTextContent('1 Flag')
     expect(within(board).getByRole('button', { name: 'Performance: 3 Flags' })).toHaveTextContent('3 Flags')
-    expect(within(board).getByRole('button', { name: /Add card/i })).toBeInTheDocument()
-    for (const card of C.cards) {
-      expect(within(board).getByRole('button', { name: card.name })).toBeInTheDocument()
-    }
+    expect(within(board).getByText(C.flag.title)).toBeInTheDocument()
+    expect(within(board).queryByText(/contact/i)).not.toBeInTheDocument()
   })
 
-  it('offers Uptime and Accessibility from Add without disclaimer copy or selling connections', () => {
+  it('keeps optional public-check cards in the board library', () => {
     render(<CareHomepage />)
     fireEvent.click(screen.getByRole('button', { name: /Add card/i }))
     const library = screen.getByRole('dialog')
     expect(within(library).getByRole('heading', { name: SITE_BOARD_COPY.addTitle })).toBeInTheDocument()
-    expect(within(library).queryByText(/controlled example|not a live/i)).not.toBeInTheDocument()
-    expect(within(library).queryByText(/Connect MCP/i)).not.toBeInTheDocument()
-    expect(within(library).queryByText(/Connect Analytics/i)).not.toBeInTheDocument()
+    expect(within(library).queryByText(/Connect MCP|Connect Analytics/i)).not.toBeInTheDocument()
     fireEvent.click(within(library).getByRole('button', { name: /Uptime/i }))
-    const board = screen.getByRole('region', { name: C.boardAria })
-    expect(within(board).getByRole('button', { name: C.library.uptime.name })).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: C.boardAria })).getByRole('button', { name: C.library.uptime.name })).toBeInTheDocument()
   })
 
-  it('opens card depth as a question, answer, facts, and coverage', () => {
+  it('opens the purchase Flag with evidence and restores focus', async () => {
     render(<CareHomepage />)
-    fireEvent.click(screen.getByRole('button', { name: C.cards[0].name }))
-    const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByRole('heading', { name: C.cards[0].name })).toBeInTheDocument()
-    expect(within(dialog).getByText(C.cards[0].question)).toBeInTheDocument()
-    expect(within(dialog).getByText(C.cards[0].answer)).toBeInTheDocument()
-    for (const fact of C.cards[0].facts) {
-      expect(within(dialog).getByText(fact)).toBeInTheDocument()
-    }
-    expect(within(dialog).getByText(C.cards[0].coverage)).toBeInTheDocument()
-    expect(within(dialog).queryByText('What happened')).not.toBeInTheDocument()
-    expect(within(dialog).queryByText('Why it matters')).not.toBeInTheDocument()
-    expect(within(dialog).queryByText('What next')).not.toBeInTheDocument()
-  })
-
-  it('opens Conversion depth with proof and copy actions, and keeps full proof behind the card', () => {
-    render(<CareHomepage />)
-    const board = screen.getByRole('region', { name: C.boardAria })
-    expect(within(board).getByRole('button', { name: 'Conversion: Needs a fix' })).toBeInTheDocument()
-    fireEvent.click(within(board).getByRole('button', { name: C.flag.name }))
-    const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByRole('heading', { name: C.flag.name })).toBeInTheDocument()
-    expect(within(dialog).getByRole('img', { name: C.flag.cropAlt })).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toBeInTheDocument()
-    expect(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.share })).toBeInTheDocument()
-  })
-
-  it('restores focus to the card that opened the dialog', async () => {
-    render(<CareHomepage />)
-    const card = screen.getByRole('button', { name: C.cards[0].name })
+    const card = screen.getByRole('button', { name: C.flag.name })
     card.focus()
     fireEvent.click(card)
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText(C.flag.title)).toBeInTheDocument()
+    expect(within(dialog).getByRole('img', { name: C.flag.cropAlt })).toHaveAttribute('src', '/marketing/evidence/purchase-broken.png')
+    expect(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toBeInTheDocument()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
     await waitFor(() => expect(card).toHaveFocus())
   })
 
-  it('lets the visitor compare concrete website outcomes', () => {
+  it('defaults coverage to Website and switches examples without changing modes', () => {
     render(<CareHomepage />)
-    expect(screen.getByText(C.outcomes.options[2].result)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: C.outcomes.options[0].label }))
-    expect(screen.getByText(C.outcomes.options[0].result)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: C.outcomes.options[0].label })).toHaveAttribute('aria-pressed', 'true')
+    const website = screen.getByRole('tab', { name: 'Website' })
+    const store = screen.getByRole('tab', { name: 'Store' })
+    expect(website).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText(C.coverage.audiences[0].items[0])).toBeInTheDocument()
+    fireEvent.click(store)
+    expect(store).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByText(C.coverage.audiences[1].items[1])).toBeInTheDocument()
+    expect(screen.queryByText(C.coverage.audiences[0].items[0])).not.toBeInTheDocument()
   })
 
-  it('offers read, share, and AI routes while keeping one verification contract', () => {
+  it('supports arrow, Home, and End keys across audience tabs', () => {
     render(<CareHomepage />)
-    for (const choice of C.actions.choices) {
-      expect(screen.getByRole('heading', { name: choice.title })).toBeInTheDocument()
-    }
-    expect(screen.getByText(C.actions.verify)).toBeInTheDocument()
+    const website = screen.getByRole('tab', { name: 'Website' })
+    website.focus()
+    fireEvent.keyDown(website, { key: 'ArrowRight' })
+    expect(screen.getByRole('tab', { name: 'Store' })).toHaveFocus()
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Store' }), { key: 'End' })
+    expect(screen.getByRole('tab', { name: 'Web app' })).toHaveFocus()
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Web app' }), { key: 'Home' })
+    expect(website).toHaveFocus()
+  })
+
+  it('presents optional detail, teammate, and AI handoff routes', () => {
+    render(<CareHomepage />)
+    for (const choice of C.actions.choices) expect(screen.getByRole('heading', { name: choice.title })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: C.actions.choices[0].action }))
     expect(screen.getByText(C.workflow.instructions)).toBeVisible()
+    expect(screen.getByText(C.actions.verify)).toBeInTheDocument()
   })
 
-  it('copies the same evidence-backed instructions for a teammate or AI', async () => {
+  it('copies the same evidence-backed Flag for a teammate or coding AI', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     render(<CareHomepage />)
@@ -170,46 +123,32 @@ describe('homepage example', () => {
     expect(writeText).toHaveBeenCalledWith(C.workflow.instructions)
   })
 
-  it('exposes the fix when clipboard access fails', async () => {
+  it('opens the details when clipboard access fails', async () => {
     const writeText = vi.fn().mockRejectedValue(new Error('Clipboard unavailable'))
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     render(<CareHomepage />)
     fireEvent.click(screen.getByRole('button', { name: C.actions.choices[2].action }))
     expect(await screen.findByText(C.actions.copyFailed)).toBeInTheDocument()
     expect(screen.getByText(C.workflow.instructions)).toBeVisible()
-    expect(writeText).toHaveBeenCalledWith(C.workflow.instructions)
   })
 
-  it('keeps one AI handoff story and does not sell parked MCP', async () => {
-    const writeText = vi.fn().mockResolvedValue(undefined)
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
-    const { container } = render(<CareHomepage />)
-    expect(screen.getAllByRole('heading', { name: C.actions.choices[2].title })).toHaveLength(1)
-    expect(screen.queryByRole('button', { name: /Connect MCP/i })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: C.actions.choices[2].action }))
-    expect(await screen.findByText(C.actions.copied)).toBeInTheDocument()
-    expect(writeText).toHaveBeenCalledWith(C.workflow.instructions)
-    expect(container.textContent).not.toMatch(/ff_[a-z_]+/)
-    expect(container.textContent).not.toMatch(/MCP (watches|monitors)/i)
-    expect(container.textContent).not.toMatch(/Connect MCP/)
-    expect(container.innerHTML).not.toMatch(/\/docs\/cli|\/docs\/mcp|\/help\/mcp-and-editors/)
+  it('shows two meaningful monitoring notifications', () => {
+    render(<CareHomepage />)
+    for (const item of C.quiet.notifications) expect(screen.getAllByText(item.title).length).toBeGreaterThan(0)
+    expect(C.quiet.notifications).toHaveLength(2)
   })
 
-  it('uses the awareness promise and rejects the discarded broad copy', () => {
+  it('links the integration story to a real destination and Shopify action', () => {
+    render(<CareHomepage />)
+    expect(screen.getByRole('link', { name: /Explore integrations/i })).toHaveAttribute('href', '/integrations')
+    expect(screen.getByRole('link', { name: /Connect Shopify/i })).toHaveAttribute('href', '/install')
+    expect(screen.getByText(C.integrations.futureLabel)).toBeInTheDocument()
+  })
+
+  it('rejects weak, chore-heavy, or unsupported homepage claims', () => {
     const { container } = render(<CareHomepage />)
-    const hero = container.querySelector('section')
-    expect(hero).not.toBeNull()
-    expect(within(hero!).getByRole('heading', { name: /Your website,\s*looked after\./i })).toBeInTheDocument()
-    expect(within(hero!).getByText(C.hero.body)).toBeInTheDocument()
-    expect(C.hero.body).toMatch(/monitors your live website/i)
-    expect(C.hero.body).toMatch(/lets you know when a Flag matters/i)
-    expect(within(hero!).getByText(C.hero.proof)).toBeInTheDocument()
-    expect(C.hero.cta).toBe('Analyze')
-    expect(within(hero!).queryByText(/Check my website/i)).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: C.checks.title })).toBeInTheDocument()
-    expect(container.textContent).not.toMatch(/More than uptime|One clear path from problem to proof|Keep what matters in view|over 200/i)
-    expect(screen.getAllByText(C.quiet.notifications[0].title).length).toBeGreaterThan(0)
-    expect(container.textContent).not.toMatch(/controlled example|not a live assessment|example of watch|fresh check passed/i)
-    expect(container.textContent).not.toMatch(/FixFlags learns what your website is for|Every route ends/i)
+    expect(container.textContent).not.toMatch(/One Flag\. Ready|Fix it yourself|Needs attention|Fresh check passed/i)
+    expect(container.textContent).not.toMatch(/Connect MCP|MCP (watches|monitors)|real visitor failures|paid traffic/i)
+    expect(container.textContent).not.toMatch(/controlled example|not a live assessment|testimonial|customers saved/i)
   })
 })

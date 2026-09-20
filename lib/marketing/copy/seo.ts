@@ -14,6 +14,11 @@ export const SEO = {
     description:
       'Install FixFlags on your Shopify store. We walk the path to checkout and alert you if customers cannot buy.',
   },
+  integrations: {
+    title: 'FixFlags Integrations',
+    description:
+      'Add useful context to your FixFlags Site. Shopify purchase-path verification is available now, with more connections planned.',
+  },
   pricing: {
     title: 'FixFlags Pricing',
     description:
