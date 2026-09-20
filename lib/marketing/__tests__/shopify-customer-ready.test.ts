@@ -97,7 +97,7 @@ describe('stranger-facing website care', () => {
     expect(faq).toMatch(/before payment/i)
     expect(faq).toMatch(/shopify is a connection/i)
     expect(faq).not.toMatch(/\$29|\$99/)
-    expect(HELP_ARTICLES.some((article) => /install/i.test(article.title))).toBe(true)
+    expect(HELP_ARTICLES.some((article) => /connect shopify/i.test(article.title))).toBe(true)
     expect(docsMarkdown()).toMatch(/Shopify is a \[connection\]/i)
     expect(docsMarkdown()).toMatch(/Flag\. Fix\. Verify\./)
   })

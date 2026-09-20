@@ -3,50 +3,38 @@ import type { DocsPageKey } from '@/lib/docs/catalog'
 
 export type HelpCategoryId =
   | 'getting-started'
-  | 'checks-and-reports'
-  | 'billing-and-plans'
-  | 'mcp-and-editors'
-  | 'account'
+  | 'sites-and-coverage'
+  | 'flags-fix-verify'
+  | 'watch-and-notifications'
+  | 'shopify'
+  | 'account-and-billing'
+  | 'privacy-and-security'
+  | 'troubleshooting'
 
 export type HelpArticleSlug =
-  | 'first-check'
-  | 'reading-your-report'
-  | 'flag-fix-recheck'
-  | 'anonymous-report-access'
-  | 'claiming-a-report'
-  | 'sharing-a-report'
-  | 'scores-and-severity'
-  | 'why-check-failed'
-  | 'public-urls-only'
-  | 'vs-lighthouse'
-  | 'finish-plan-vs-fix-list'
-  | 'evidence-and-screenshots'
-  | 'stuck-running-review'
-  | 'free-vs-pro'
-  | 'what-counts-as-a-check'
-  | 'update-review-credits'
-  | 'credits'
-  | 'cancel-or-manage'
-  | 'payment-past-due'
-  | 'upgrade-or-downgrade'
-  | 'invoices-and-receipts'
-  | 'when-credits-run-out'
-  | 'mcp-setup'
-  | 'railway-deploy-check'
-  | 'lovable-bolt-paste'
-  | 'api-keys'
-  | 'sign-in-and-security'
-  | 'report-privacy'
-  | 'contact-us'
-  | 'delete-account'
-  | 'change-email'
-  | 'oauth-sign-in-issues'
+  | 'analyze-a-website'
+  | 'save-your-site'
+  | 'read-site-coverage'
+  | 'coverage-limitations'
+  | 'read-a-flag'
+  | 'send-a-fix-to-your-ai'
+  | 'verify-a-flag'
+  | 'weekly-watch'
+  | 'notification-preferences'
+  | 'connect-shopify'
+  | 'shopify-access-and-removal'
+  | 'free-and-pro'
+  | 'manage-an-existing-subscription'
+  | 'sign-in-and-account-security'
+  | 'privacy-and-evidence'
+  | 'delete-your-account'
+  | 'check-failed-or-stuck'
+  | 'contact-support'
 
 export interface HelpCategory {
   id: HelpCategoryId
   title: string
   description: string
-  /** Lucide icon name key for UI mapping */
   icon: 'rocket' | 'flag' | 'creditCard' | 'terminal' | 'user'
 }
 
@@ -55,18 +43,12 @@ export interface HelpArticle {
   categoryId: HelpCategoryId
   title: string
   excerpt: string
-  /** Paragraphs and optional headings. Rendered as prose. */
   body: readonly HelpBlock[]
   related?: readonly HelpArticleSlug[]
-  /** Deeper product guides in /docs */
   relatedDocs?: readonly DocsPageKey[]
-  /** Extra search tokens beyond title/excerpt/body */
   searchTokens?: readonly string[]
-  /** Show on hub popular list */
   popular?: boolean
-  /** ISO date for display and sitemap lastModified */
   updatedAt?: string
-  /** Estimated read time in minutes */
   estimatedReadMinutes?: number
 }
 
@@ -84,10 +66,7 @@ export type HelpBlock =
 export type HelpArticlePath = Route
 export type HelpCategoryPath = Route
 
-export function helpArticlePath(
-  categoryId: HelpCategoryId,
-  slug: HelpArticleSlug
-): HelpArticlePath {
+export function helpArticlePath(categoryId: HelpCategoryId, slug: HelpArticleSlug): HelpArticlePath {
   return `/help/${categoryId}/${slug}` as Route
 }
 
@@ -97,15 +76,10 @@ export function helpCategoryPath(categoryId: HelpCategoryId): HelpCategoryPath {
 
 export function docsPathForPageKey(key: DocsPageKey): string {
   switch (key) {
-    case 'home':
-      return '/docs'
-    case 'getting-started':
-      return '/docs/getting-started'
-    case 'reports':
-      return '/docs/reports'
-    case 'troubleshooting':
-      return '/docs/troubleshooting'
-    default:
-      return '/docs'
+    case 'home': return '/docs'
+    case 'getting-started': return '/docs/getting-started'
+    case 'site-care': return '/docs/site-care'
+    case 'troubleshooting': return '/docs/troubleshooting'
+    default: return '/docs'
   }
 }

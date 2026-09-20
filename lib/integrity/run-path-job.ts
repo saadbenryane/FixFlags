@@ -93,19 +93,21 @@ export async function runIntegrityPathJob(pathId: string, trigger: string): Prom
   }
 
   if (transitioned && (next === 'RED' || (previous === 'RED' && next === 'GREEN'))) {
-    await upsertIntegritySiteFlag({
-      shop: path.shop,
-      pathId,
-      pathLabel: path.label,
-      storefrontUrl: path.storefrontUrl,
-      health: next,
-      reason: result.reason,
-    }).catch((error) => {
-      logger.warn('Integrity Site Flag failed', {
+    if (path.shop.projectId) {
+      await upsertIntegritySiteFlag({
+        projectId: path.shop.projectId,
         pathId,
-        error: error instanceof Error ? error.message : String(error),
+        pathLabel: path.label,
+        storefrontUrl: path.storefrontUrl,
+        health: next,
+        reason: result.reason,
+      }).catch((error) => {
+        logger.warn('Integrity Site Flag failed', {
+          pathId,
+          error: error instanceof Error ? error.message : String(error),
+        })
       })
-    })
+    }
     await sendIntegrityAlert({
       shop: path.shop,
       pathLabel: path.label,

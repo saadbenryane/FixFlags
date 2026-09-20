@@ -26,7 +26,10 @@ function boundaryFor(file) {
     file.startsWith('app/api/api-keys/') ||
     file.startsWith('app/api/cli/') ||
     file.startsWith('app/api/integrations/github/') ||
+    file.startsWith('app/api/integrations/gsc/') ||
     file.startsWith('app/api/repo-scans/') ||
+    file === 'app/api/stripe/credit-pack/route.ts' ||
+    file === 'app/api/reports/[id]/chat/route.ts' ||
     file.startsWith('app/api/webhooks/railway/') ||
     file.startsWith('app/api/well-known/mcp-json/')
   ) return 'parked'

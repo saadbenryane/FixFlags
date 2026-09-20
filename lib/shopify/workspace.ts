@@ -49,6 +49,7 @@ export interface WorkspacePath {
 }
 
 export interface ShopifyWorkspace {
+  siteId: string | null
   shop: {
     shopDomain: string
     name: string | null
@@ -103,6 +104,7 @@ function stepsFromEvidence(evidence: unknown, failedStep: string | null): Worksp
 
 export function buildShopifyWorkspace(input: {
   shop: {
+    projectId?: string | null
     shopDomain: string
     name: string | null
     email: string | null
@@ -188,6 +190,7 @@ export function buildShopifyWorkspace(input: {
   )
 
   return {
+    siteId: input.shop.projectId ?? null,
     shop: {
       shopDomain: input.shop.shopDomain,
       name: input.shop.name,

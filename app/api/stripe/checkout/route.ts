@@ -109,12 +109,16 @@ export async function POST(req: NextRequest) {
       userId: session.user.id,
       plan,
     }
+    const siteQuantity = Math.max(1, await prisma.project.count({
+      where: { userId: session.user.id, deletedAt: null },
+    }))
+    metadata.licensed_site_quantity = String(siteQuantity)
     if (tierDiscount) metadata.discount_tier = String(tierDiscount.tier)
 
     const checkoutSession = await getStripe().checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
-      line_items: [{ price: priceId, quantity: 1 }],
+      line_items: [{ price: priceId, quantity: siteQuantity }],
       customer: user?.stripeCustomerId ?? undefined,
       customer_email: user?.stripeCustomerId ? undefined : session.user.email,
       billing_address_collection: 'required',

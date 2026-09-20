@@ -3,7 +3,7 @@
  */
 
 export const LEGAL_PAGE_META = {
-  termsUpdated: 'August 2026',
+  termsUpdated: 'September 2026',
   privacyUpdated: 'September 2026',
 } as const
 
@@ -16,7 +16,7 @@ export const TERMS_SECTIONS = {
   accountsAndBilling: {
     title: 'Accounts and billing',
     body:
-      'You can Analyze a public URL without an account. Signing in lets you save the Site, Verify fixes, and keep watching. The Shopify app is optional. Pro extras are waitlisted and are not charged today. If paid billing opens later, those terms will be shown before you subscribe.',
+      'You can Analyze a public URL without an account. Signing in lets you save the Site, Verify fixes, and keep watching. Free includes one website with weekly Watch. Pro is listed at $49 per website per month with daily Watch, but new paid checkout is closed and joins a waitlist. Existing subscribers can manage their subscription in the Stripe portal.',
   },
   discountTiers: {
     title: 'Launch discount tiers',
@@ -28,11 +28,6 @@ export const TERMS_SECTIONS = {
     body:
       'If paid checkout is not yet open, you may join a Pro or Studio waitlist with a signed-in account. We record the email you enter at join time and use it to notify you when checkout opens. Joining the waitlist does not guarantee a specific opening date or discount eligibility beyond the published terms. Discount tiers are assigned by join order: the first 500 waitlisters per plan receive 25% off and the next 500 receive 15% off, each for twelve months from plan release.',
   },
-  creditPacks: {
-    title: 'Credit packs',
-    body:
-      'Legacy credit packs, when purchased, added additional product review credits. Credits do not expire and do not change your subscription tier.',
-  },
   refunds: {
     title: 'Refunds and cancellation',
     body:
@@ -43,27 +38,42 @@ export const TERMS_SECTIONS = {
     body:
       'Do not use FixFlags to check sites you do not have permission to test, to abuse rate limits, or to reverse-engineer the service.',
   },
+  automatedActions: {
+    title: 'Automated checks and your responsibility',
+    body:
+      'FixFlags uses automated browsers and AI-assisted analysis. It may be incomplete or wrong, so review a Flag before acting. FixFlags does not routinely submit purchases, payments, lead forms, or account registrations. Verify is a fresh independent check, not a warranty or certification.',
+  },
 } as const
 
 export const PRIVACY_SECTIONS = {
   collect: {
     title: 'What we collect',
     body:
-      'When you Analyze a URL, we store that URL, the pages our browser opened, screenshots and network evidence from that session, and the Flags we raise. If you create an account, we store your email and the Sites you claim. Shopify is optional: if you install the app, we also store the shop domain, store name, store owner email, and purchase-path verification artifacts. We do not sell your data. If you join a waitlist, we store the feature you asked for and the email we should notify.',
+      'When you Analyze a URL, we store that URL, the public pages our browser opened, screenshots and browser evidence from that session, and the Flags we raise. If you create an account, we store your email and the Sites you claim. Shopify is optional: if you connect it, we store the shop identity, authorization needed for background work, and purchase-path evidence. Privacy webhook receipts keep the request identity and processing result, not customer payloads we do not need. If you join a waitlist, we store the plan and email to notify.',
   },
   use: {
     title: 'How we use it',
     body:
-      'We use this data to analyze the live website, raise Flags, Verify fixes, watch scheduled Sites, operate waitlists, and improve the product. We do not sell your personal data. Uninstalling the Shopify app stops purchase-path walks. Deleting a Site removes that website from your account.',
+      'We use this data to analyze the live website, raise Flags, Verify fixes, watch scheduled Sites, answer Site-scoped Agent questions, provide support, operate waitlists, measure reliability and cost, and improve the product. AI providers receive bounded context needed for the requested analysis or answer, not an unrestricted copy of your account. We do not sell your personal data.',
   },
   reportAccess: {
-    title: 'Report access',
+    title: 'Access and sharing',
     body:
-      'Public report URLs show evidence from an analysis. Signed-in owners are taken to their Site. Shopify verification video belongs to the installed store and is shown in the Shopify app. We do not sell report or walk data.',
+      'Owned Sites, Flags, verification attempts, Agent threads, support context, and connections are private to the authenticated owner. Old public report URLs show a small sanitized evidence-compatibility page and never the private Site workspace. FixFlags does not currently offer public Flag sharing.',
   },
   thirdParties: {
     title: 'Third parties',
     body:
-      'We use service providers for hosting, email (Resend), and verification storage (Cloudflare R2). Shopify provides shop identity and product catalog access under your install. These providers process data on our behalf under their own terms.',
+      'We use service providers for hosting, queues, email, evidence storage, payments, and bounded AI processing. Shopify provides shop identity and store access under your authorization. These providers process data on our behalf under their own terms.',
+  },
+  retentionAndDeletion: {
+    title: 'Retention and deletion',
+    body:
+      'We retain Site history and evidence while it provides the service, subject to operational, security, billing, and legal retention needs. Deleting a Site stops its schedule and removes it from your account. Account deletion removes or schedules deletion of owned product data. Uninstalling Shopify revokes that connection; Shopify privacy requests are verified and processed separately.',
+  },
+  safeBrowsing: {
+    title: 'What the browser does not do',
+    body:
+      'FixFlags normally observes public pages and safe customer journeys. It does not routinely complete payments, submit lead forms, create customer accounts, or send messages through the website being checked.',
   },
 } as const

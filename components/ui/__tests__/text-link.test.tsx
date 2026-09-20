@@ -12,12 +12,12 @@ describe('TextLink', () => {
 
   it('uses brand color for marketing learn-more links', () => {
     render(
-      <TextLink variant="brand" href="/help/billing-and-plans/free-vs-pro">
+      <TextLink variant="brand" href="/help/account-and-billing/free-and-pro">
         Free vs Pro
       </TextLink>
     )
     const link = screen.getByRole('link', { name: 'Free vs Pro' })
-    expect(link).toHaveAttribute('href', '/help/billing-and-plans/free-vs-pro')
+    expect(link).toHaveAttribute('href', '/help/account-and-billing/free-and-pro')
     expect(link).toHaveClass('text-brand')
     expect(link).not.toHaveClass('text-link')
   })

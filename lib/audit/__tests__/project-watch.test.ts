@@ -33,6 +33,7 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/audit/monitoring', () => ({ startMonitoringAudit: mocks.startMonitoringAudit }))
 vi.mock('@/lib/audit/diff-flags', () => ({ getFlagDiffSummary: mocks.getFlagDiffSummary }))
 vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: mocks.sendEmail } } }))
+vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn() }))
 
 import {
   notifyWatchRegression,

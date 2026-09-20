@@ -7,12 +7,12 @@ const ITEMS: readonly FaqEntry[] = [
   {
     question: 'Is FixFlags free?',
     answer: 'Yes. One website is free, verified weekly. Pro is $49 per website per month, verified every day.',
-    learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
+    learnMore: { href: '/help/account-and-billing/free-and-pro', label: 'Free vs Pro' },
   },
   {
     question: 'What is a Flag?',
     answer: 'A Flag is something important that needs attention, with evidence.',
-    learnMore: { href: '/help/checks-and-reports/scores-and-severity', label: 'Reading Flags' },
+    learnMore: { href: '/help/flags-fix-verify/read-a-flag', label: 'Reading Flags' },
   },
 ]
 
@@ -26,7 +26,7 @@ describe('FaqSection', () => {
     expect(item).not.toHaveClass('overflow-hidden')
 
     const link = screen.getByRole('link', { name: 'Free vs Pro' })
-    expect(link).toHaveAttribute('href', '/help/billing-and-plans/free-vs-pro')
+    expect(link).toHaveAttribute('href', '/help/account-and-billing/free-and-pro')
     expect(link).toHaveClass('text-brand')
     expect(link).not.toHaveClass('text-link')
   })
@@ -36,7 +36,7 @@ describe('FaqSection', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'What is a Flag?' }))
     const link = screen.getByRole('link', { name: 'Reading Flags' })
-    expect(link).toHaveAttribute('href', '/help/checks-and-reports/scores-and-severity')
+    expect(link).toHaveAttribute('href', '/help/flags-fix-verify/read-a-flag')
     expect(link).toHaveClass('text-brand')
   })
 })

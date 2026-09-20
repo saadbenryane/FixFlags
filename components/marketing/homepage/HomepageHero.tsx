@@ -1,7 +1,6 @@
 import { Globe2 } from 'lucide-react'
-import { AddBoardCard, BoardCard, BoardGrid, BoardStatus, BOARD_CARD_ICONS } from '@/components/sites/BoardCard'
+import { BoardCard, BoardGrid, BoardStatus, BOARD_CARD_ICONS } from '@/components/sites/BoardCard'
 import { CARE_HOME as C, SITE_BOARD_COPY } from '@/lib/marketing/copy'
-import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { HOMEPAGE_EVIDENCE, HomepageUrlEntry } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
 
@@ -10,16 +9,10 @@ export type HomepageDetailCard = PreviewCard | 'site' | 'conversion'
 export type HomepageExtraCardId = 'uptime' | 'accessibility'
 
 export function HomepageHero({
-  extraCards,
   onOpen,
-  onOpenLibrary,
 }: {
-  extraCards: HomepageExtraCardId[]
   onOpen: (card: HomepageDetailCard) => void
-  onOpenLibrary: () => void
 }) {
-  const extraCardViews = extraCards.map(id => C.library[id])
-
   return <section className={s.hero}>
     <div className={s.heroContent}>
       <h1>
@@ -77,19 +70,6 @@ export function HomepageHero({
               sources={[SITE_BOARD_COPY.browserSource]}
               onOpen={() => onOpen(card)}
             />)}
-            {extraCardViews.map(card => <BoardCard
-              key={card.id}
-              name={card.name}
-              status={card.status}
-              state="healthy"
-              answer={card.value}
-              detail={card.detail}
-              metric
-              icon={BOARD_CARD_ICONS[card.id as SiteCardArea]}
-              sources={[SITE_BOARD_COPY.browserSource]}
-              onOpen={() => onOpen(card)}
-            />)}
-            <AddBoardCard onOpen={onOpenLibrary} />
           </BoardGrid>
         </div>
       </div>

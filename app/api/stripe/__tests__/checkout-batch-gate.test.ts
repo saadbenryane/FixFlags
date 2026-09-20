@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 
 const prismaMock = vi.hoisted(() => ({
   user: { findUnique: vi.fn() },
+  project: { count: vi.fn() },
   paidPlanWaitlistEntry: { findUnique: vi.fn() },
 }))
 const getSession = vi.hoisted(() => vi.fn())
@@ -59,6 +60,7 @@ describe('checkout batch gate (403 BATCH_ACCESS_REQUIRED)', () => {
     })
     prismaMock.paidPlanWaitlistEntry.findUnique.mockResolvedValue(null)
     tierCheckoutDiscounts.mockResolvedValue(null)
+    prismaMock.project.count.mockResolvedValue(1)
     stripe.checkout.sessions.create.mockResolvedValue({ url: 'https://stripe.test/checkout' })
   })
 

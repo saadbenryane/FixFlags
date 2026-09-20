@@ -16,6 +16,7 @@ vi.mock('@/lib/audit/create-audit', () => ({
   createAndEnqueueAudit: mocks.createAndEnqueueAudit,
 }))
 vi.mock('@/lib/sites/outcomes', () => ({ confirmSiteOutcome: vi.fn() }))
+vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn() }))
 
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 
@@ -31,6 +32,8 @@ describe('VERIFY_FLAG', () => {
     })
     mocks.loadSiteFlagDetail.mockResolvedValue({
       id: 'flag_1',
+      sourceAuditId: 'parent_1',
+      checkId: 'form-feedback',
       pageUrl: 'https://example.com/contact',
       expectedBehavior: 'Contact form shows a confirmation after submit',
     })
@@ -47,7 +50,6 @@ describe('VERIFY_FLAG', () => {
       siteId: 'proj_1',
       userId: 'user_1',
       flagId: 'flag_1',
-      sourceAuditId: 'parent_1',
     })
 
     expect(result).toMatchObject({
@@ -68,6 +70,8 @@ describe('VERIFY_FLAG', () => {
         url: 'https://example.com/contact',
         parentId: 'parent_1',
         auditMode: 'SINGLE',
+        skipUsageCount: true,
+        verificationAttemptId: 'att_1',
       })
     )
   })

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SiteBoard } from '../SiteBoard'
 import { MeProvider, type MeUser } from '@/hooks/useMe'
@@ -114,10 +114,10 @@ function boardView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
   }
 }
 
-function renderBoard(user: MeUser | null) {
+function renderBoard(user: MeUser | null, activeView: 'home' | 'settings' = 'home') {
   return render(
     <MeProvider initialUser={user}>
-      <SiteBoard siteId="p_example" initial={boardView()} />
+      <SiteBoard siteId="p_example" initial={boardView()} activeView={activeView} />
     </MeProvider>
   )
 }
@@ -155,8 +155,7 @@ describe('SiteBoard chrome', () => {
   })
 
   it('clears empty coverage rows on Settings for logged-out visitors', () => {
-    renderBoard(null)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Settings' })[0])
+    renderBoard(null, 'settings')
     expect(screen.getByRole('heading', { name: 'Site settings' })).toBeInTheDocument()
     expect(screen.getByText('Conversion')).toBeInTheDocument()
     expect(screen.getByText('Search')).toBeInTheDocument()
@@ -175,12 +174,11 @@ describe('SiteBoard chrome', () => {
     expect(screen.getAllByRole('link', { name: 'All Sites' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('button', { name: 'Keep watching' }).length).toBeGreaterThan(0)
     expect(screen.getByText('Not watching')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.addCard })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.addCard })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Security' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Tracking' })).toBeInTheDocument()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Settings' })[0])
-    expect(screen.getByText('Security')).toBeInTheDocument()
-    expect(screen.getByText('Uptime')).toBeInTheDocument()
-    expect(screen.getAllByText(SITE_BOARD_COPY.notCheckedYet).length).toBeGreaterThan(0)
+    for (const link of screen.getAllByRole('link', { name: 'Settings' })) {
+      expect(link).toHaveAttribute('href', `${SITE_PATH}/settings`)
+    }
   })
 })

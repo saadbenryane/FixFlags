@@ -11,80 +11,25 @@ export type HelpSurface =
   | 'score_help'
   | 'lighthouse'
 
-/** Map audit failure codes to the most relevant help article. */
-const FAILURE_CODE_ARTICLES: Record<string, HelpArticleSlug> = {
-  AUDIT_TIMEOUT: 'why-check-failed',
-  DESKTOP_CAPTURE_FAILED: 'why-check-failed',
-  AI_CONTRACT_INVALID: 'why-check-failed',
-  AI_REVIEW_FAILED: 'why-check-failed',
-  AI_PROVIDER_NOT_CONFIGURED: 'why-check-failed',
-  AUDIT_PIPELINE_FAILED: 'why-check-failed',
-  AUDIT_JOB_FAILED: 'why-check-failed',
-  QUEUE_ENQUEUE_FAILED: 'why-check-failed',
-  BROWSER_LAUNCH_FAILED: 'why-check-failed',
-  STORAGE_NOT_CONFIGURED: 'why-check-failed',
-  STORAGE_UPLOAD_FAILED: 'why-check-failed',
-  HTTP_FORBIDDEN: 'public-urls-only',
-  SITE_FORBIDDEN: 'public-urls-only',
-  HTTP_RATE_LIMIT: 'why-check-failed',
-  SITE_RATE_LIMITED: 'why-check-failed',
-  HTTP_ERROR: 'why-check-failed',
-  SITE_UNREACHABLE: 'why-check-failed',
-  NON_HTML_RESPONSE: 'why-check-failed',
-  SITE_NOT_HTML: 'why-check-failed',
-  CAPTURE_FAILED: 'why-check-failed',
-}
-
-const LIMIT_ACTION_ARTICLES: Record<string, HelpArticleSlug> = {
-  signup: 'first-check',
-  upgrade: 'free-vs-pro',
-  buy_credits: 'credits',
-}
-
-const SURFACE_ARTICLES: Record<HelpSurface, HelpArticleSlug> = {
-  audit_failure: 'why-check-failed',
-  audit_limit: 'what-counts-as-a-check',
-  billing_past_due: 'payment-past-due',
-  billing_error: 'cancel-or-manage',
-  mcp_setup: 'contact-us',
-  api_keys: 'contact-us',
-  score_help: 'scores-and-severity',
-  lighthouse: 'vs-lighthouse',
-}
-
 const ARTICLE_CATEGORY: Record<HelpArticleSlug, HelpCategoryId> = {
-  'first-check': 'getting-started',
-  'reading-your-report': 'getting-started',
-  'flag-fix-recheck': 'getting-started',
-  'anonymous-report-access': 'getting-started',
-  'claiming-a-report': 'getting-started',
-  'sharing-a-report': 'getting-started',
-  'scores-and-severity': 'checks-and-reports',
-  'why-check-failed': 'checks-and-reports',
-  'public-urls-only': 'checks-and-reports',
-  'vs-lighthouse': 'checks-and-reports',
-  'finish-plan-vs-fix-list': 'checks-and-reports',
-  'evidence-and-screenshots': 'checks-and-reports',
-  'stuck-running-review': 'checks-and-reports',
-  'free-vs-pro': 'billing-and-plans',
-  'what-counts-as-a-check': 'billing-and-plans',
-  'update-review-credits': 'billing-and-plans',
-  credits: 'billing-and-plans',
-  'cancel-or-manage': 'billing-and-plans',
-  'payment-past-due': 'billing-and-plans',
-  'upgrade-or-downgrade': 'billing-and-plans',
-  'invoices-and-receipts': 'billing-and-plans',
-  'when-credits-run-out': 'billing-and-plans',
-  'mcp-setup': 'mcp-and-editors',
-  'railway-deploy-check': 'mcp-and-editors',
-  'lovable-bolt-paste': 'mcp-and-editors',
-  'api-keys': 'mcp-and-editors',
-  'sign-in-and-security': 'account',
-  'report-privacy': 'account',
-  'contact-us': 'account',
-  'delete-account': 'account',
-  'change-email': 'account',
-  'oauth-sign-in-issues': 'account',
+  'analyze-a-website': 'getting-started',
+  'save-your-site': 'getting-started',
+  'read-site-coverage': 'sites-and-coverage',
+  'coverage-limitations': 'sites-and-coverage',
+  'read-a-flag': 'flags-fix-verify',
+  'send-a-fix-to-your-ai': 'flags-fix-verify',
+  'verify-a-flag': 'flags-fix-verify',
+  'weekly-watch': 'watch-and-notifications',
+  'notification-preferences': 'watch-and-notifications',
+  'connect-shopify': 'shopify',
+  'shopify-access-and-removal': 'shopify',
+  'free-and-pro': 'account-and-billing',
+  'manage-an-existing-subscription': 'account-and-billing',
+  'sign-in-and-account-security': 'account-and-billing',
+  'privacy-and-evidence': 'privacy-and-security',
+  'delete-your-account': 'privacy-and-security',
+  'check-failed-or-stuck': 'troubleshooting',
+  'contact-support': 'troubleshooting',
 }
 
 export function helpHrefForSlug(slug: HelpArticleSlug): HelpArticlePath {
@@ -92,16 +37,22 @@ export function helpHrefForSlug(slug: HelpArticleSlug): HelpArticlePath {
 }
 
 export function helpHrefForFailureCode(failureCode?: string | null): HelpArticlePath {
-  const slug =
-    (failureCode && FAILURE_CODE_ARTICLES[failureCode]) || SURFACE_ARTICLES.audit_failure
-  return helpHrefForSlug(slug)
+  return helpHrefForSlug(
+    failureCode === 'HTTP_FORBIDDEN' || failureCode === 'SITE_FORBIDDEN'
+      ? 'coverage-limitations'
+      : 'check-failed-or-stuck'
+  )
 }
 
 export function helpHrefForLimitAction(action?: string | null): HelpArticlePath {
-  const slug = (action && LIMIT_ACTION_ARTICLES[action]) || SURFACE_ARTICLES.audit_limit
-  return helpHrefForSlug(slug)
+  void action
+  return helpHrefForSlug('free-and-pro')
 }
 
 export function helpHrefForSurface(surface: HelpSurface): HelpArticlePath {
-  return helpHrefForSlug(SURFACE_ARTICLES[surface])
+  if (surface === 'billing_past_due' || surface === 'billing_error') return helpHrefForSlug('manage-an-existing-subscription')
+  if (surface === 'audit_limit') return helpHrefForSlug('free-and-pro')
+  if (surface === 'audit_failure') return helpHrefForSlug('check-failed-or-stuck')
+  if (surface === 'score_help' || surface === 'lighthouse') return helpHrefForSlug('read-site-coverage')
+  return helpHrefForSlug('contact-support')
 }

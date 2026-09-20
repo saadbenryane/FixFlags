@@ -13,13 +13,13 @@ The owner approved the complete plan in this task. This record tracks implementa
 
 ## Required work
 
-- [ ] A: development migrations; Site application boundaries; query purity; explicit failures.
-- [ ] B: observed Pages/Journeys; correction and claim integrity; execution-based coverage and freshness.
-- [ ] C: durable complete Flag projection, lifecycle, verification specifications and artifacts.
-- [ ] D: protected handoffs; real revocable sharing; independent scheduled capacity; recoverable notifications/preferences.
-- [ ] E: Site-bound Shopify/GSC/GA4/Meta/deployments; minimal observer with retention and real provider proof.
-- [ ] F: grounded Site Agent/support; Site MCP/CLI; member roles/invitations/assignment.
-- [ ] G: retire redundant experiences; align customer language and canonical documentation.
+- [x] A: additive migrations; Site application boundary; owner-scoped queries; explicit failures.
+- [x] B: observed Pages/Journeys; correction and claim integrity; execution-based coverage and freshness.
+- [x] C: durable customer-Flag projection, occurrence lifecycle, targeted verification attempts and artifacts.
+- [x] D: protected Fix handoffs; independent scheduled capacity; recoverable email notifications/preferences. Public Flag sharing remains intentionally absent.
+- [x] E: explicitly tenant-linked Shopify connection with embedded authorization and minimized compliance storage. GSC, GA4, Meta and deployments remain intentionally absent from launch.
+- [x] F: grounded Site Agent/support with typed citations and minimized escalation. MCP/CLI and team roles remain intentionally absent from launch.
+- [x] G: retire reachable redundant experiences; align customer language, Help, Docs, samples, legal, billing and canonical documentation.
 - [ ] Acceptance: full checks, browser states, credentialed loop, provider verification, production attestation and rollback.
 
 ## Baseline
@@ -59,3 +59,17 @@ Updated as each verified change lands.
 - Public agent distribution under `/.well-known/skills/*` was found exposing the retired Product Review / Product Intelligence model while CLI and MCP are parked. The route is now covered by the same fail-closed 404 boundary as the other parked power tools, with unit and browser contract coverage.
 - Playwright CLI exercised the real local public routes at desktop and 375 px. Homepage, pricing, integrations, and signup rendered the Site/Flag model without client errors; pricing showed Free weekly and Pro `$49 /website/mo` daily with charging closed; homepage width equaled scroll width at 375 px; and `/.well-known/skills/fixflags/SKILL.md` returned HTTP 404.
 - The deterministic heartbeat now recognizes `parked` and `superseded` as inactive board states. Its JSON packet reports no parse warnings, so release blockers are no longer hidden behind invalid-status noise.
+
+### Complete-product implementation slice
+
+- Replaced the signed-in Products/review-meter dashboard with an owner-scoped Sites list and durable Site Home, Flags, Flag detail and Settings routes. A recoverable Site delete stops Watch and disconnects Shopify; a later Analyze revives the owned hostname.
+- Made targeted Verify atomic and idempotent: one pending attempt binds its source occurrence, exact scope, verification audit and final outcome. Missing or incomparable evidence cannot resolve a Flag.
+- Separated customer Flags from Recommendations everywhere that creates attention, badges or notification noise.
+- Unified Free weekly and paid daily care under one Site policy; targeted Verify skips the retired review pool. Watch activation requires durable Redis and email readiness and reports a retryable state when unavailable.
+- Added per-Site notification preferences, recovery control, deduplicated mail, exact-Flag links and return telemetry.
+- Replaced Shopify hostname authorization with an explicit `ShopifyShop → Project` connection, single-use signed account links and ID-token-protected embedded loading. Compliance webhooks retain processing identity/result rather than unnecessary customer payloads.
+- Added authenticated, Site-scoped Agent threads and messages, bounded evidence context, typed citations and support escalation carrying minimized Site/Flag context.
+- Rebuilt Help, Docs, samples, legal, billing and public compatibility around the Site model. Public Project/Product APIs and parked power tools now fail closed; old public report links render sanitized evidence rather than a second workspace.
+- Added versioned, idempotent Site lifecycle telemetry and an operator funnel for Analyze through support resolution without raw URL, email, prompt, transcript or evidence properties.
+- Made Stripe sandbox subscriptions licensed per Site quantity and webhook reconciliation order-independent. New paid checkout remains closed.
+- Local focused validation passed during implementation; exact-revision full verification and browser/release evidence are still required before launch.

@@ -18,8 +18,13 @@ describe('URL-first public product scope', () => {
     '/api/api-keys',
     '/api/cli/auth/device',
     '/api/integrations/github/connect',
+    '/api/integrations/gsc/connect',
     '/api/mcp',
+    '/api/products/product-1/signals',
+    '/api/projects/project-1/watch',
     '/api/repo-scans/scan-1',
+    '/api/reports/review-1/chat',
+    '/api/stripe/credit-pack',
     '/api/webhooks/railway',
     '/api/well-known/mcp-json',
     '/.well-known/mcp.json',
@@ -46,7 +51,7 @@ describe('URL-first public product scope', () => {
     expect(DOCS_PAGES.map((page) => page.path)).toEqual([
       '/docs',
       '/docs/getting-started',
-      '/docs/reports',
+      '/docs/site-care',
       '/docs/troubleshooting',
     ])
     expect(FOOTER_COLUMNS.resources.map((link) => String(link.href))).not.toContain('/docs/integrations')

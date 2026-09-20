@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import { AuditPageClient } from '@/components/audit/AuditPageClient'
 import { AuditShell } from '@/components/layout/audit-shell'
 import { ReportWorkspaceState } from '@/components/report/ReportWorkspaceState'
 import { BRAND, REPORT_COPY, SITE_URL } from '@/lib/marketing/copy'
@@ -43,11 +42,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const hostname = displayHostname(audit.url)
 
   const topIssue = topIssueFromFlags(audit.flags)
-  const title = `${hostname} report · ${BRAND.name}`
+  const title = `${hostname} saved evidence · ${BRAND.name}`
   const description = topIssue
     ? `${topIssue}. Run your own check at ${BRAND.name}.`
-    : audit.verdict?.slice(0, 140) ??
-      `Automated FixFlags report with fix prompts. Run your own check at ${BRAND.name}.`
+    : `Saved observations from an earlier FixFlags check. Analyze the website again for current evidence.`
 
   return {
     title,
@@ -87,15 +85,21 @@ export async function ReportRoute({ params, shareToken }: Props & { shareToken?:
     )
   }
   if (state.kind === 'running' || state.kind === 'failed') {
+    const failed = state.kind === 'failed'
     return (
-      <AuditPageClient
-        id={state.id}
-        initialProjection={state.projection}
-        initialAudit={state.audit}
-        pollStatus
-        session={state.session}
-        atAuditLimit={state.atAuditLimit}
-      />
+      <AuditShell session={state.session}>
+        <ReportWorkspaceState
+          kind={failed ? 'failed' : 'unavailable'}
+          title={failed ? 'This earlier check could not finish' : 'This earlier check is still running'}
+          description={
+            failed
+              ? 'Analyze the website again to create a current Site with fresh evidence and a clear recovery path.'
+              : 'This link points to an earlier check. Analyze the website again to continue in the current FixFlags Site experience.'
+          }
+          actionLabel="Analyze this website"
+          actionHref={`/?url=${encodeURIComponent(state.audit.url)}`}
+        />
+      </AuditShell>
     )
   }
 

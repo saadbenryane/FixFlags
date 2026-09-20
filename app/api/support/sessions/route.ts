@@ -8,6 +8,7 @@ import { getOrCreateVisitorToken } from '@/lib/live-support/visitor-token'
 import { resumeOrCreateSession, serializeSession } from '@/lib/live-support'
 import { getDefaultSupportTenant } from '@/lib/live-support/tenant'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 
 const postSchema = z.object({
   pageUrl: z.string().url().optional(),
@@ -16,6 +17,9 @@ const postSchema = z.object({
   visitorEmail: z.string().email().optional(),
   /** Required to create a new conversation; resume-only when omitted. */
   firstMessage: z.string().min(1).max(8000).optional(),
+  projectId: z.string().min(1).max(128).optional(),
+  flagId: z.string().min(1).max(128).optional(),
+  transcriptSummary: z.string().max(4000).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -30,6 +34,14 @@ export async function POST(req: NextRequest) {
     }
 
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+    if (parsed.data.projectId) {
+      if (!session?.user?.id) return apiError('Sign in to contact support about a Site.', 401)
+      const owned = await prisma.project.findFirst({
+        where: { id: parsed.data.projectId, userId: session.user.id },
+        select: { id: true },
+      })
+      if (!owned) return apiError('Site not found.', 404)
+    }
     const visitorToken = await getOrCreateVisitorToken()
 
     const supportSession = await resumeOrCreateSession({
@@ -40,10 +52,23 @@ export async function POST(req: NextRequest) {
       visitorName: parsed.data.visitorName ?? session?.user?.name ?? null,
       visitorEmail: parsed.data.visitorEmail ?? session?.user?.email ?? null,
       firstMessage: parsed.data.firstMessage ?? null,
+      projectId: parsed.data.projectId ?? null,
+      flagId: parsed.data.flagId ?? null,
+      transcriptSummary: parsed.data.transcriptSummary ?? null,
     })
 
     if (!supportSession) {
       return NextResponse.json({ session: null })
+    }
+
+    if (parsed.data.projectId && session?.user?.id) {
+      await recordSiteLifecycleEvent({
+        name: 'agent_escalated',
+        idempotencyKey: `agent-escalated:${supportSession.id}`,
+        userId: session.user.id,
+        projectId: parsed.data.projectId,
+        properties: { hasFlag: Boolean(parsed.data.flagId) },
+      })
     }
 
     return NextResponse.json({ session: serializeSession(supportSession) })

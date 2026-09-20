@@ -9,7 +9,7 @@ Enter a public website URL. FixFlags opens a Site board for that website: what i
 
 Shopify is a [connection](/install), not the product. Use it when you sell on Shopify and want purchase-path walks.
 
-[Getting started](/docs/getting-started) or [how a Site check is judged](/docs/reports).
+[Getting started](/docs/getting-started) or [how Site care works](/docs/site-care).
 
 ## The product loop
 
@@ -24,7 +24,7 @@ FixFlags follows one loop: **Flag. Fix. Verify.**, then Watch.
 ## Choose your path
 
 - [Getting started](/docs/getting-started) for a URL check and the first Site board.
-- [Paths and proof](/docs/reports) for Flags, evidence, Verify, and Watch.
+- [Site care](/docs/site-care) for Cards, Flags, evidence, Verify, and Watch.
 - [Troubleshooting](/docs/troubleshooting) for blocked pages and incomplete coverage.
 
 For billing, privacy, or human support, use the [Help Center](/help).

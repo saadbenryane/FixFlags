@@ -64,6 +64,8 @@ vi.mock('@/lib/audit/load-finish-plan-flags', () => ({
   buildUnifiedPlanBundle: mocks.buildUnifiedPlanBundle,
 }))
 
+vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn() }))
+
 vi.mock('@/lib/audit/ensure-product-project', () => ({
   ensureProductProject: mocks.ensureProductProject,
   mutateProjectIntelligence: mocks.mutateProjectIntelligence,

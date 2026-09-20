@@ -20,7 +20,7 @@ This file owns **what to build, in what order, and what may be claimed publicly*
 
 Implementation is claimed by `coherent-site-product` on [the task board](../.agents/BOARD.md). Preserve narrower in-progress owners and record verified implementation evidence in [the active session record](../.agents/sessions/2026-09-10-coherent-site-product.md). This file remains the only launch plan; session records are evidence, not competing plans.
 
-**Truth vs vision:** Architecture describes the intended product. Public copy claims only shipped behavior. A later capability that affects IA (FixFlags Agent FAB, Flag vs Recommendation, report retirement) is designed now even if it ships later.
+**Truth vs vision:** Architecture describes the intended product. Public copy claims only shipped behavior. The Site-scoped FixFlags Agent, Flag vs Recommendation split, and report retirement are launch scope; additional connections and public sharing remain post-launch.
 
 ---
 
@@ -70,12 +70,27 @@ This ledger is dependency ordered and is the operational view of the waves below
 
 ### Post-launch
 
-- [ ] Persistent Site-scoped FixFlags Agent with grounded support escalation.
+- [ ] Open paid checkout only after measured per-Site cost proof and a successful production-like Stripe lifecycle.
 - [ ] Additional context connections such as GA4, Meta and deployments after provider proof.
-- [ ] Richer Recommendations, observer signals, collaboration/agency roles and advanced Send-to-AI transports.
+- [ ] Richer Recommendations, observer signals, collaboration/agency roles, public Flag grants and advanced Send-to-AI transports.
 - [ ] Dedicated History or additional cards only when customer evidence shows the existing object-level history is insufficient.
 
 Launch is blocked while any Blocker remains unresolved. Launch-critical items may move post-launch only when removing or hiding the affected capability leaves the first customer journey complete and truthful.
+
+### 2026-09-20 implementation reconciliation
+
+The working implementation now follows one customer boundary: `lib/sites/application`. The old Prisma `Project` name remains only as the physical owned-Site backing. The following slices are code-complete and awaiting the exact-revision release evidence required by the ledger:
+
+- Dashboard Sites list and durable Home, Flags, Flag detail and Settings routes; fixed evidence-derived launch cards; recoverable Site removal.
+- Stable customer-Flag projection and occurrence history; atomic targeted Verify attempts with pending deduplication and only four customer outcomes: Verified, Still open, Regressed and Couldn’t verify.
+- One `SiteCarePolicy`: Free owns one Site and receives weekly Watch; paid plans are daily; targeted Verify does not consume the retired review pool. Watch activation fails visibly until Redis and email delivery are ready.
+- Site notification preferences, deduplicated Flag/recovery mail, exact-Flag return links, and durable privacy-safe lifecycle events.
+- Explicit `ShopifyShop → Project` tenancy, signed single-use account linking, embedded ID-token loading, minimized compliance-webhook storage, and Shopify findings projected into the same Site.
+- Authenticated Site Agent threads with typed citations, bounded context and explicit-command confirmation; support escalation carries minimized Site/Flag context.
+- Public Help, Docs, samples, legal, pricing and lifecycle copy use Site → Cards → Checks/Journeys → Flags → Fix → Verify → Watch. New Pro checkout remains closed while Stripe test mode uses licensed per-Site quantity and order-independent webhook reconciliation.
+- `/api/projects`, `/api/products`, parked CLI/MCP/repository surfaces, and old documentation are unavailable publicly. Signed-in report owners return to Site; public report compatibility is sanitized evidence only.
+
+Remaining release work is evidence, not product-model invention: run the clean full verification/build, browser matrix and fresh migrations on the committed revision; then execute credentialed production canary journeys and deployment attestation. The repository may not claim launch while B1–B5 or L6 lack those receipts.
 
 Phases 1–4 in [ROADMAP.md](../ROADMAP.md) remain the engineering cutover for tenancy, coverage, Fix/Verify/Watch. This masterplan sequences the **complete intended product** around that core, including marketing, Agent, support, and retirement.
 
@@ -133,11 +148,11 @@ After terminology + test locks (FF-A): Analyze CTA (partially shipping under `ho
 
 ## Now / Next / Later summary
 
-**Now (exists; align or refine):** URL Analyze → `/sites/{id}` board; cards; Flag page with Fix this / Copy prompt / Verify; Watch scheduler; Shopify integrity + email/Slack; live support FAB; accounts, billing, Help/Docs; 100+ checks; Playwright journeys; anonymous teaser → claim; Care homepage hero Analyze.
+**Now (implemented; release proof pending):** URL Analyze → persistent Site; Home · Flags with Site settings; business-importance Flags and Recommendations; Flag detail, Fix handoff and targeted Verify; weekly/daily Watch policy and notification preferences; Shopify as an explicitly linked Site connection; grounded Site Agent and support escalation; accounts, Help/Docs, billing truth and sanitized report compatibility.
 
-**Next (required for the first complete FixFlags experience):** Flag projector + Recommendations in card depth; honest 0 Flags + coverage; monitoring entitlement alignment; Verify customer states; Pages card and card-face language; Home · Flags + Site settings; Analyze/first-run/auth copy; Flag. Fix. Verify. on acquisition; Flag-shaped Watch/Shopify mail; URL-first legal; Help/docs/email lexicon; Sites not Products; unshipped-integration honesty; report no longer the signed-in home (already mostly true) and chrome leaks fixed.
+**Next (release gate):** clean exact-revision verification; fresh migrations; desktop/mobile and accessibility matrix; real first-value, failure/recovery, Watch return, Shopify development-store and Stripe sandbox journeys; production canary and rollback evidence.
 
-**Later (intended; architect now):** FixFlags Agent FAB + support escalation with Site/Flag context; notification prefs (Flags / Critical only / Custom); Slack as Site channel; Meta, Analytics, Search Console, deployments as connections; Commerce/Paid traffic/Changes cards; MCP unpark; dedicated History only if needed; teams/agencies; protective actions; richer Send-to-AI; report route deletion after compatibility proof.
+**Later (does not delay free launch):** opening paid checkout after cost proof; Meta, Analytics, Search Console and deployment connections; richer collaboration/agency roles; public Flag grants; additional notification channels; optional card customization; MCP only after a customer-proven need.
 
 Later does not mean undesigned. Agent FAB, Flag projector, and report retirement shape navigation and data now.
 
@@ -189,20 +204,20 @@ Do not parallelize two owners on `lib/sites/*`, `CareHomepage` / `care-homepage.
 | Analyze | `AuditInput` → `/sites/{id}` | Analyze (hero shipping); other CTAs mixed | All acquisition CTAs |
 | 100+ automated tests | `ALL_CHECK_IDS` ≈ 201 | Yes | Recheck before raising |
 | Real browser journeys | Playwright + journey checks | Yes | Same |
-| Analyze broadly. Flag what matters. | Checks run widely; board Flags all OPEN rows | Soft: broad analysis | After projector |
-| Flag = act on this | All OPEN rows counted | Do not claim importance-only | After projector |
-| Recommendations | No entity; Improvements = Finish Plan | Do not market | After projector, in card depth |
-| 0 Flags | Help honest; board Looking good | Do not use as all-clear | Coverage states |
-| Continuous monitoring | Watch exists | Monitoring / keeps watch, no fake cadence | After FF-B3 |
-| Cadence | Pricing weekly/daily at `$49`; Watch weekly/daily; pool 3/30/90 hidden | Soft or name code | One truth |
-| Verify | Scoped child audit; copy “not observed” | Verify fix | Independent states |
-| Notifications | Watch email; Shopify email+Slack; no prefs | Do not describe modes | After prefs |
-| Shopify | OAuth, walks, alerts | FixFlags for Shopify, same product | Unified connection |
+| Analyze broadly. Flag what matters. | Shared business-importance projector drives board, inbox and notifications | Yes | Maintain fixture proof |
+| Flag = act on this | Customer Flags are distinct from card-depth Recommendations | Yes | Maintain fixture proof |
+| Recommendations | Derived from useful non-Flag findings | In card depth | Richer prioritization later |
+| 0 Flags | Coverage projection names scope, exclusions, freshness and latest successful evidence | Scoped only | Never claim untested health |
+| Continuous monitoring | Durable Watch scheduling with visible unavailable/delayed states | Yes | Canary proof required |
+| Cadence | Free weekly; paid daily; legacy review pool does not govern promised care | Yes | Paid checkout remains closed |
+| Verify | Atomic targeted attempt binds source evidence, fresh comparable evidence and outcome | Yes | Browser/worker proof required |
+| Notifications | Flags, Critical only or Off; independent recovery toggle; email launch channel | Yes | Additional channels later |
+| Shopify | Explicit tenant-owned Site connection; embedded ID-token authorization | Yes | Development-store proof required |
 | Meta / Analytics / GSC / deploys | Internal or unshipped | Do not claim | After adapters |
 | Send a Flag to your AI | Copy prompt | Yes (copy mechanism) | Richer payload; MCP later |
 | MCP | Parked in `proxy.ts` | Developer docs only if unparked | Homepage when real |
-| FixFlags Agent | Report pane only | Do not market FAB | After FF-H |
-| Privacy | Page Shopify-shaped | Quiet: we do not sell data | URL-first legal |
+| FixFlags Agent | Authenticated Site-scoped threads, typed citations and support escalation | Yes, on owned Sites | Mutations require confirmation |
+| Privacy | URL-first browser evidence, AI, retention, Shopify, support and deletion are covered | Yes | Review on provider changes |
 
 ---
 
@@ -222,7 +237,7 @@ Internally distinct: first Analyze, Watch, Verify, Shopify pulse (15m) / walk (6
 
 ### History
 
-Now: Flag verify attempts; report score history. No Site activity feed. Intended: Flag timeline; card last-evidenced; Agent “what changed?”. No History nav until a job cards/Flags/Agent cannot answer.
+Now: Flag verification attempts, card freshness and the Site Agent answer “what changed?” from persisted evidence. No raw-run History nav; object-level history remains the product.
 
 ### Two AIs
 
@@ -230,11 +245,11 @@ FixFlags Agent = in-product assistant (FAB). Coding AI = Send a Flag to your AI 
 
 ### Support
 
-`SupportSession`: visitorToken, optional userId, pageUrl; auditId only from `/report|audit/` paths. No siteId/flagId. Report immersive hides support FAB. Intended: Agent escalates with Site/Flag/route/transcript; reuse live-support store.
+`SupportSession` carries an authenticated optional Project/Flag reference and minimized transcript summary. The Site Agent escalates into the existing human-support store without copying page payloads or secrets.
 
 ### Reports
 
-Primary handoff is already `/sites/{id}`. `/report/[id]` remains public evidence, export, SEO, Agent history. Re-home value per [product-architecture.md](product-architecture.md); then retire.
+Primary handoff is `/sites/{id}`. Signed-in owners redirect there. `/report/[id]` is a sanitized public evidence compatibility page only; in-progress or failed legacy links offer a fresh Analyze path and never reopen the old Agent workspace.
 
 ---
 
@@ -536,11 +551,11 @@ Connect in context, not a logo wall. Revoke in Site settings. Lost connection = 
 
 ---
 
-## Wave H — FixFlags Agent and support
+## Wave H — FixFlags Agent and support (launch-critical implementation complete; release proof pending)
 
 **Capability:** Persistent assistant; graceful human support. **Later** to ship FAB; **Next** to stop investing in the report pane and to persist Site context on support. **Design now.**
 
-### FF-H1 Agent product model — Later (IA Now)
+### FF-H1 Agent product model — Launch-critical
 
 - **Intended:** Bottom-right FAB. Context: account, Site, route, card/Flag, recent monitoring, conversation. Can explain, navigate, gather context, help fix, send to coding AI (confirm), escalate to support. Cannot silently edit repos, pause ads, deploy, or place orders.
 - **Current:** `WorkspaceChatPanel` + `/api/reports/[id]/chat` on `/report/*`. Immersive report hides support FAB.
@@ -550,15 +565,15 @@ Connect in context, not a logo wall. Revoke in Site settings. Lost connection = 
 - **Acceptance:** Customer never needs “open the Agent tab.” FAB available on Site Home and Flag.
 - **Copy:** Ask FixFlags vs Send a Flag to your AI — two names, two jobs ([voice-and-copy.md](voice-and-copy.md)).
 
-### FF-H2 Support escalation — Next (context) / Later (via Agent)
+### FF-H2 Support escalation — Launch-critical
 
 - **Current:** SupportWidget; SupportSession without siteId/flagId; auditId from report URLs only.
 - **Intended Next:** Persist siteId, optional flagId, route; extract from `/sites/`. Do not hide support on Site.
-- **Intended Later:** Agent offers “talk to support”; packet includes conversation summary, customer, Site, Flag, recent monitoring. Minimize PII ([knowledge/privacy.md](../knowledge/privacy.md), SECURITY.md).
+- **Implemented:** Agent offers “Talk to support”; packet includes a minimized conversation summary plus customer, Site and optional Flag identity. Minimize PII ([knowledge/privacy.md](../knowledge/privacy.md), SECURITY.md).
 - **Files:** `lib/live-support/*`, SupportWidget, Prisma SupportSession, admin feedback.
 - **Acceptance:** Support can open the Site/Flag without the customer repeating the URL.
 
-### FF-H3 Retire report Agent pane — Later (after H1) / stop investing Now
+### FF-H3 Retire report Agent pane — Launch-critical
 
 - **Disposition:** Deprecate as customer model immediately in docs. Redirect signed-in report users to Site. Keep anonymous report evidence per report-contract until FF-K.
 - **Files:** `ReportWorkspaceSplitShell`, `WorkspaceChatPanel`.

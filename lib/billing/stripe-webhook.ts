@@ -67,7 +67,8 @@ function resolvePriceIds(subscription: Stripe.Subscription): string[] {
 
 async function processSubscription(
   tx: Prisma.TransactionClient,
-  subscription: Stripe.Subscription
+  subscription: Stripe.Subscription,
+  eventOccurredAt: Date
 ): Promise<{
   userId: string
   email: string | null
@@ -77,11 +78,30 @@ async function processSubscription(
   priceId: string | null
   unitAmount: number | null
   currency: string | null
+  siteQuantity: number
+  stale: boolean
 }> {
   const user = await resolveSubscriptionUser(tx, subscription)
   if (!user) throw new Error(`No user found for Stripe subscription ${subscription.id}`)
 
   const priceIds = resolvePriceIds(subscription)
+  const siteQuantity = subscription.items.data
+    .filter((item) => planFromPriceId(item.price.id))
+    .reduce((total, item) => total + Math.max(1, item.quantity ?? 1), 0)
+  if (user.stripeSubscriptionEventAt && user.stripeSubscriptionEventAt >= eventOccurredAt) {
+    return {
+      userId: user.id,
+      email: user.email,
+      previousPlan: user.plan,
+      plan: user.plan,
+      status: user.subscriptionStatus,
+      priceId: user.stripePriceId,
+      unitAmount: null,
+      currency: null,
+      siteQuantity: user.licensedSiteQuantity ?? 0,
+      stale: true,
+    }
+  }
   const mappedPlan = priceIds.reduce<Plan | null>((found, id) => found ?? planFromPriceId(id), null)
   const status = entitlementStatus(subscription.status)
   const periodStart = subscriptionPeriodStart(subscription)
@@ -120,6 +140,8 @@ async function processSubscription(
       stripeCurrentPeriodStart: periodStart,
       stripeCurrentPeriodEnd: periodEnd,
       subscriptionStatus: status,
+      licensedSiteQuantity: effectivePlan === 'FREE' ? 0 : siteQuantity,
+      stripeSubscriptionEventAt: eventOccurredAt,
     },
   })
 
@@ -133,6 +155,8 @@ async function processSubscription(
     priceId: price?.id ?? priceIds[0] ?? null,
     unitAmount: price?.unit_amount ?? null,
     currency: price?.currency ?? null,
+    siteQuantity: effectivePlan === 'FREE' ? 0 : siteQuantity,
+    stale: false,
   }
 }
 
@@ -140,7 +164,7 @@ async function applyWaitlistConversion(
   tx: Prisma.TransactionClient,
   result: Awaited<ReturnType<typeof processSubscription>>
 ): Promise<void> {
-  if (!hasPaidEntitlement(result.status)) return
+  if (result.stale || !hasPaidEntitlement(result.status)) return
   if (result.plan !== 'BUILDER' && result.plan !== 'TEAM') return
   await markWaitlistConverted(result.userId, result.plan, tx)
 }
@@ -166,6 +190,8 @@ async function recordSubscriptionLifecycle(
       priceId: result.priceId,
       unitAmount: result.unitAmount,
       currency: result.currency,
+      siteQuantity: result.siteQuantity,
+      stale: result.stale,
       occurredAt: new Date(event.created * 1000),
     },
   })
@@ -180,7 +206,8 @@ function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
 
 async function syncSubscriptionFromInvoice(
   tx: Prisma.TransactionClient,
-  invoice: Stripe.Invoice
+  invoice: Stripe.Invoice,
+  eventOccurredAt: Date
 ): Promise<{
   subscription: Stripe.Subscription
   result: Awaited<ReturnType<typeof processSubscription>>
@@ -188,7 +215,7 @@ async function syncSubscriptionFromInvoice(
   const subscriptionId = invoiceSubscriptionId(invoice)
   if (!subscriptionId) return null
   const subscription = await getStripe().subscriptions.retrieve(subscriptionId)
-  const result = await processSubscription(tx, subscription)
+  const result = await processSubscription(tx, subscription, eventOccurredAt)
   return { subscription, result }
 }
 
@@ -214,6 +241,7 @@ export async function processStripeWebhookEvent(event: Stripe.Event, rawBody: st
   const replayBox = { current: false }
 
   await prisma.$transaction(async (tx) => {
+    const eventOccurredAt = new Date(event.created * 1000)
     const alreadyProcessed = await tx.processedStripeEvent.findUnique({
       where: { id: event.id },
     })
@@ -228,26 +256,26 @@ export async function processStripeWebhookEvent(event: Stripe.Event, rawBody: st
     switch (event.type) {
       case 'customer.subscription.created': {
         const subscription = event.data.object
-        const result = await processSubscription(tx, subscription)
+        const result = await processSubscription(tx, subscription, eventOccurredAt)
         await applyWaitlistConversion(tx, result)
         await recordSubscriptionLifecycle(tx, event, 'SUBSCRIPTION_CREATED', subscription, result)
         break
       }
       case 'customer.subscription.updated': {
         const subscription = event.data.object
-        const result = await processSubscription(tx, subscription)
+        const result = await processSubscription(tx, subscription, eventOccurredAt)
         await applyWaitlistConversion(tx, result)
         await recordSubscriptionLifecycle(tx, event, 'SUBSCRIPTION_UPDATED', subscription, result)
         break
       }
       case 'customer.subscription.deleted': {
         const subscription = event.data.object
-        const result = await processSubscription(tx, subscription)
+        const result = await processSubscription(tx, subscription, eventOccurredAt)
         await recordSubscriptionLifecycle(tx, event, 'SUBSCRIPTION_DELETED', subscription, result)
         break
       }
       case 'invoice.payment_failed': {
-        const synced = await syncSubscriptionFromInvoice(tx, event.data.object)
+        const synced = await syncSubscriptionFromInvoice(tx, event.data.object, eventOccurredAt)
         if (synced) {
           await recordSubscriptionLifecycle(
             tx,
@@ -256,7 +284,7 @@ export async function processStripeWebhookEvent(event: Stripe.Event, rawBody: st
             synced.subscription,
             synced.result
           )
-          paymentFailedBox.current = {
+          if (!synced.result.stale) paymentFailedBox.current = {
             userId: synced.result.userId,
             email: synced.result.email,
             subscriptionId: synced.subscription.id,
@@ -265,7 +293,7 @@ export async function processStripeWebhookEvent(event: Stripe.Event, rawBody: st
         break
       }
       case 'invoice.payment_succeeded': {
-        const synced = await syncSubscriptionFromInvoice(tx, event.data.object)
+        const synced = await syncSubscriptionFromInvoice(tx, event.data.object, eventOccurredAt)
         if (synced) {
           await recordSubscriptionLifecycle(
             tx,

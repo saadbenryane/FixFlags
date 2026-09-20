@@ -6,6 +6,7 @@ import {
 import { verifyShopifyOAuthHmac } from '@/lib/shopify/hmac'
 import { buildShopifyAuthorizeUrl, signShopifyInstallState } from '@/lib/shopify/oauth'
 import { trackEvent } from '@/lib/analytics/events'
+import { accountLinkIsUsable } from '@/lib/shopify/account-link'
 
 export async function GET(request: NextRequest) {
   if (!isShopifyConfigured()) {
@@ -23,7 +24,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid Shopify HMAC' }, { status: 401 })
     }
   }
-  const state = signShopifyInstallState(shop)
+  const accountLinkToken = request.nextUrl.searchParams.get('link') ?? undefined
+  if (accountLinkToken && !(await accountLinkIsUsable(accountLinkToken))) {
+    return NextResponse.json({ error: 'This Shopify connection link is invalid or expired.' }, { status: 400 })
+  }
+  const state = signShopifyInstallState(shop, accountLinkToken)
   trackEvent('shopify_install_started', { shop })
   return NextResponse.redirect(buildShopifyAuthorizeUrl(shop, state))
 }

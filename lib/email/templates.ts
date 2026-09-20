@@ -82,7 +82,7 @@ export const BILLING_EMAILS = {
   <p>We could not process your latest subscription payment. Paid features are paused until the payment succeeds.</p>
   <p>Update your card in Billing. Site checks resume when payment succeeds.</p>
   <p><a href="${SITE_URL}/billing" style="${ctaStyle}">Update payment method</a></p>
-  <p style="font-size: 13px; color: hsl(212 10% 46%);">Need a walkthrough? <a href="${SITE_URL}/help/billing-and-plans/payment-past-due" style="color: ${p.link};">Payment past due help</a> or reply to this email.</p>
+  <p style="font-size: 13px; color: hsl(212 10% 46%);">Need a walkthrough? <a href="${SITE_URL}/help/account-and-billing/manage-an-existing-subscription" style="color: ${p.link};">Billing help</a> or reply to this email.</p>
 `),
   },
 } as const

@@ -74,7 +74,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     deepReviewLimitLabel: 'Path depth included',
     chatTokenLimit: 25_000,
     projectLimit: 1,
-    projectLimitLabel: '1 product',
+    projectLimitLabel: '1 website',
     scheduledReviews: true,
     workspaceSeatLimit: 1,
     workspaceSeatsLabel: '1 seat',

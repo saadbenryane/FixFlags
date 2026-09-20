@@ -4,7 +4,8 @@ import { logger } from '@/lib/logger'
 import { isShopifyConfigured, normalizeShopDomain, shopifyApiKey } from '@/lib/shopify/config'
 import { verifyShopifyOAuthHmac } from '@/lib/shopify/hmac'
 import { persistInstalledShop } from '@/lib/shopify/install-shop'
-import { exchangeShopifyCode, verifyShopifyInstallState } from '@/lib/shopify/oauth'
+import { exchangeShopifyCode, readShopifyInstallState } from '@/lib/shopify/oauth'
+import { consumeShopifyAccountLink } from '@/lib/shopify/account-link'
 
 export async function GET(request: NextRequest) {
   if (!isShopifyConfigured()) {
@@ -20,12 +21,16 @@ export async function GET(request: NextRequest) {
   if (query.hmac && !verifyShopifyOAuthHmac(query)) {
     return NextResponse.redirect(new URL('/install?error=hmac', getAppUrl()))
   }
-  if (!verifyShopifyInstallState(state, shop)) {
+  const installState = readShopifyInstallState(state, shop)
+  if (!installState) {
     return NextResponse.redirect(new URL('/install?error=state', getAppUrl()))
   }
   try {
     const tokens = await exchangeShopifyCode(shop, code)
     await persistInstalledShop({ shopDomain: shop, tokens })
+    if (installState.accountLinkToken) {
+      await consumeShopifyAccountLink({ token: installState.accountLinkToken, shopDomain: shop })
+    }
     const storeHandle = shop.replace(/\.myshopify\.com$/, '')
     const embeddedAdmin = shopifyApiKey()
       ? `https://admin.shopify.com/store/${storeHandle}/apps/${shopifyApiKey()}`

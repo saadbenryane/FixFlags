@@ -13,6 +13,7 @@ import {
   calculateImprovementValueMetrics,
   type DurationDistribution,
 } from '@/lib/analytics/improvement-value-metrics'
+import { SITE_LIFECYCLE_EVENTS } from '@/lib/analytics/site-events'
 
 function planPriceUsd(plan: keyof typeof PLAN_DEFINITIONS): number {
   return Number(PLAN_DEFINITIONS[plan].price.replace(/[^0-9.]/g, '')) || 0
@@ -137,6 +138,7 @@ export default async function AdminAnalyticsPage() {
     firstSubscriptionEvent,
     completedAuditsMonth,
     trafficSources,
+    siteLifecycleCounts,
   ] =
     await Promise.all([
       prisma.user.findMany({
@@ -167,6 +169,11 @@ export default async function AdminAnalyticsPage() {
         where: { createdAt: { gte: monthAgo } },
         orderBy: { _count: { utmSource: 'desc' } },
       }),
+      prisma.siteLifecycleEvent.groupBy({
+        by: ['name'],
+        _count: { _all: true },
+        where: { createdAt: { gte: monthAgo } },
+      }),
     ])
 
   const mrr = activePaidUsers.reduce(
@@ -190,6 +197,9 @@ export default async function AdminAnalyticsPage() {
   const trafficSourceRows = trafficSources
     .map((row) => ({ source: row.utmSource || 'Direct / unknown', count: row._count._all }))
     .slice(0, 8)
+  const lifecycleCount = new Map(
+    siteLifecycleCounts.map((row) => [row.name, row._count._all])
+  )
 
   const loggedInAuditsMonth = Math.max(0, auditsMonth - anonAuditsMonth)
   const anonCompleteRate = pct(anonCompletedMonth, anonAuditsMonth)
@@ -231,6 +241,23 @@ export default async function AdminAnalyticsPage() {
       </PageHeader>
 
       <section className="space-y-4">
+        <SectionTitle>Site lifecycle funnel (last 30 days)</SectionTitle>
+        <p className="max-w-4xl text-sm text-muted-foreground">
+          Durable, idempotent server events. Counts show stage volume and make drop-off visible without storing URLs, prompts, evidence, or email addresses.
+        </p>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          {SITE_LIFECYCLE_EVENTS.map((event) => (
+            <MetricCard
+              key={event}
+              label={event.replaceAll('_', ' ')}
+              value={(lifecycleCount.get(event) ?? 0).toLocaleString()}
+              variant="subtle"
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-4">
         <SectionTitle>Customer value cycle cohort (cycles created in the last 30 days)</SectionTitle>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
@@ -259,7 +286,7 @@ export default async function AdminAnalyticsPage() {
         </div>
         <p className="text-xs text-muted-foreground">
           Cohort n={improvementValue.cohortSize}; {improvementValue.matureCycleCount} cycles are at least seven days old.
-          Active Product means a Product with a completed Review in the last 30 days (n={improvementValue.activeProductCount}).
+          Active Site means a Site with a completed check in the last 30 days (n={improvementValue.activeProductCount}).
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
@@ -294,18 +321,18 @@ export default async function AdminAnalyticsPage() {
             variant="subtle"
           />
           <MetricCard
-            label="Product to improved"
+            label="Site to improved"
             value={formatDuration(improvementValue.productToImproved)}
             detail={durationDetail(improvementValue.productToImproved)}
             variant="subtle"
           />
           <MetricCard
-            label="Verified worthwhile improvements / active Product"
+            label="Verified worthwhile improvements / active Site"
             value={improvementValue.verifiedWorthwhileImprovementsPerActiveProduct.toFixed(2)}
             variant="subtle"
           />
           <MetricCard
-            label="Fully loaded Review cost / improved"
+            label="Fully loaded check cost / improved"
             value={improvementValue.fullyLoadedReviewCostPerImprovedUsd === null
               ? 'N/A'
               : `$${improvementValue.fullyLoadedReviewCostPerImprovedUsd.toFixed(2)}`}
@@ -314,13 +341,13 @@ export default async function AdminAnalyticsPage() {
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
-            label="Products with a second cycle"
+            label="Sites with a second cycle"
             value={improvementValue.productsWithSecondCycle.toLocaleString()}
             detail={<span className="text-xs text-muted-foreground">{watchedProducts} under Watch</span>}
             variant="subtle"
           />
           <MetricCard
-            label="Verification Review cost / outcome"
+            label="Verification cost / outcome"
             value={improvementValue.outcomeReviewCostPerOutcomeUsd === null
               ? 'N/A'
               : `$${improvementValue.outcomeReviewCostPerOutcomeUsd.toFixed(2)}`}
@@ -361,12 +388,12 @@ export default async function AdminAnalyticsPage() {
         </div>
         <p className="max-w-4xl text-xs text-muted-foreground">
           Generated, delivered, accepted, attempted, outcome-issued, and improved are separate append-only events.
-          Prompt copy and Product Signals do not count as acceptance or verification.
+          Copying instructions and Agent answers do not count as acceptance or verification.
         </p>
       </section>
 
       <section className="space-y-4">
-        <SectionTitle>Anonymous report conversion (last 30 days)</SectionTitle>
+        <SectionTitle>Anonymous first-value conversion (last 30 days)</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
             label="Anonymous checks started"
@@ -396,9 +423,7 @@ export default async function AdminAnalyticsPage() {
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          Anonymous checks have no account when created. Account conversion is tracked in GA4 through{' '}
-          <code className="font-mono text-foreground">report_signup_cta_clicked</code> and{' '}
-          <code className="font-mono text-foreground">audits_claimed</code>.
+          Anonymous checks have no account when created. The durable lifecycle above continues at first useful result and Site claim after signup.
         </p>
       </section>
 
@@ -484,7 +509,7 @@ export default async function AdminAnalyticsPage() {
       </section>
 
       <section className="space-y-4">
-        <SectionTitle>Product (last 30 days)</SectionTitle>
+        <SectionTitle>Check reliability (last 30 days)</SectionTitle>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <MetricCard
             label="Average check duration"
@@ -517,42 +542,11 @@ export default async function AdminAnalyticsPage() {
       </section>
 
       <section className="space-y-4">
-        <SectionTitle>GA4 events tracked</SectionTitle>
+        <SectionTitle>Measurement contract</SectionTitle>
         <div className="rounded-card bg-muted/30 p-4 text-sm text-muted-foreground space-y-1">
-          <p><code className="text-foreground font-mono text-xs">landing_view</code>: Homepage viewed</p>
-          <p><code className="text-foreground font-mono text-xs">started_audit</code>: User submitted a URL (scan_submitted)</p>
-          <p><code className="text-foreground font-mono text-xs">scan_validation_failed</code>: Client URL validation failed</p>
-          <p><code className="text-foreground font-mono text-xs">signup_started</code>: Email focus or OAuth click on sign-up</p>
-          <p><code className="text-foreground font-mono text-xs">signed_up</code>: Account created</p>
-          <p><code className="text-foreground font-mono text-xs">signed_in</code>: User signed in</p>
-          <p><code className="text-foreground font-mono text-xs">viewed_pricing</code>: Pricing page viewed</p>
-          <p><code className="text-foreground font-mono text-xs">started_checkout</code>: Upgrade button clicked</p>
-          <p><code className="text-foreground font-mono text-xs">completed_checkout</code>: Stripe checkout succeeded</p>
-          <p><code className="text-foreground font-mono text-xs">audit_completed</code>: Check finished processing</p>
-          <p><code className="text-foreground font-mono text-xs">first_finding_viewed</code>: Top Flag shown in explorer</p>
-          <p><code className="text-foreground font-mono text-xs">audit_limit_reached</code>: Free check limit reached</p>
-          <p><code className="text-foreground font-mono text-xs">fix_prompt_copied</code>: Fix prompt copied to clipboard</p>
-          <p><code className="text-foreground font-mono text-xs">recheck_started</code>: Owner started a re-check</p>
-          <p><code className="text-foreground font-mono text-xs">recheck_completed</code>: Update review result viewed on the Product or report outcome path</p>
-          <p><code className="text-foreground font-mono text-xs">audit_intent</code>: Landing URL field focused (hero/final CTA)</p>
-          <p><code className="text-foreground font-mono text-xs">viewed_report</code>: Completed report viewed</p>
-          <p><code className="text-foreground font-mono text-xs">viewed_sample</code>: Sample report section viewed</p>
-          <p><code className="text-foreground font-mono text-xs">clicked_sample_cta</code>: Sample CTA clicked</p>
-          <p><code className="text-foreground font-mono text-xs">report_signup_cta_clicked</code>: Report signup CTA (value strip, sample fix, claim guide, limit gate)</p>
-          <p><code className="text-foreground font-mono text-xs">audits_claimed</code>: Anonymous reports saved after signup</p>
-          <p className="pt-2 text-xs text-muted-foreground">
-            GA4 key events (conversions):{' '}
-            <code className="font-mono text-foreground">started_audit</code>,{' '}
-            <code className="font-mono text-foreground">viewed_report</code>,{' '}
-            <code className="font-mono text-foreground">report_signup_cta_clicked</code>,{' '}
-            <code className="font-mono text-foreground">signed_up</code>,{' '}
-            <code className="font-mono text-foreground">audits_claimed</code>,{' '}
-            <code className="font-mono text-foreground">fix_prompt_copied</code>,{' '}
-            <code className="font-mono text-foreground">recheck_completed</code>,{' '}
-            <code className="font-mono text-foreground">completed_checkout</code>.
-            Run <code className="font-mono text-foreground">npm run growth:configure-ga4-key-events</code> after deploying tracking changes.
-            Canonical list lives in <code className="font-mono text-foreground">lib/growth/ga-key-events.ts</code>.
-          </p>
+          <p>Server lifecycle events are the source of truth for product conversion, verification, Watch delivery, Agent escalation, and support resolution.</p>
+          <p>Consent-aware browser events remain useful for landing, acquisition source, signup intent, and pricing interest. They are not used to infer that a Flag was fixed.</p>
+          <p className="pt-2 text-xs">Event version: 1. Private properties are rejected before persistence.</p>
         </div>
       </section>
     </Container>

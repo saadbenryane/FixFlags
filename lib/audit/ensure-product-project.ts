@@ -31,7 +31,7 @@ export async function ensureProductProject(
     if (existing) {
       return tx.project.update({
         where: { id: existing.id },
-        data: { url: canonicalUrl },
+        data: { url: canonicalUrl, deletedAt: null },
         select: { id: true, productIntelligence: true },
       })
     }
@@ -46,7 +46,7 @@ export async function ensureProductProject(
         canonicalHost,
         isManaged: false,
       },
-      update: { url: canonicalUrl },
+      update: { url: canonicalUrl, deletedAt: null },
       select: { id: true, productIntelligence: true },
     })
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable })

@@ -13,11 +13,9 @@ import { SUPPORT_CHAT } from '@/lib/marketing/copy'
 
 describe('help catalog', () => {
   it('keeps public help focused on URL-first Site care', () => {
-    expect(HELP_CATEGORIES).toHaveLength(4)
-    expect(HELP_CATEGORIES.some((category) => category.id === 'mcp-and-editors')).toBe(false)
-    expect(HELP_ARTICLES.every((article) => article.categoryId !== 'mcp-and-editors')).toBe(true)
-    expect(HELP_ARTICLES.length).toBeGreaterThanOrEqual(25)
-    expect(getHelpArticle('first-check')?.title).toMatch(/Analyze a website URL/)
+    expect(HELP_CATEGORIES).toHaveLength(8)
+    expect(HELP_ARTICLES).toHaveLength(18)
+    expect(getHelpArticle('analyze-a-website')?.title).toBe('Analyze a website')
   })
 
   it('resolves every article slug', () => {
@@ -26,20 +24,21 @@ describe('help catalog', () => {
     }
   })
 
-  it('searches billing without surfacing parked power tools', () => {
-    const billing = searchHelpArticles('credit pack')
-    expect(billing.some((h) => h.article.slug === 'credits')).toBe(true)
+  it('searches billing without surfacing parked power tools or credits', () => {
+    const billing = searchHelpArticles('$49 waitlist')
+    expect(billing.some((h) => h.article.slug === 'free-and-pro')).toBe(true)
 
     expect(searchHelpArticles('cursor mcp')).toEqual([])
+    expect(searchHelpArticles('credit pack')).toEqual([])
   })
 
   it('maps failure and limit surfaces to help hrefs', () => {
-    expect(helpHrefForFailureCode('HTTP_FORBIDDEN')).toContain('public-urls-only')
-    expect(helpHrefForFailureCode('SITE_FORBIDDEN')).toContain('public-urls-only')
-    expect(helpHrefForFailureCode('SITE_UNREACHABLE')).toContain('why-check-failed')
-    expect(helpHrefForFailureCode('AUDIT_TIMEOUT')).toContain('why-check-failed')
-    expect(helpHrefForLimitAction('buy_credits')).toContain('credits')
-    expect(helpHrefForSurface('billing_past_due')).toContain('payment-past-due')
+    expect(helpHrefForFailureCode('HTTP_FORBIDDEN')).toContain('coverage-limitations')
+    expect(helpHrefForFailureCode('SITE_FORBIDDEN')).toContain('coverage-limitations')
+    expect(helpHrefForFailureCode('SITE_UNREACHABLE')).toContain('check-failed-or-stuck')
+    expect(helpHrefForFailureCode('AUDIT_TIMEOUT')).toContain('check-failed-or-stuck')
+    expect(helpHrefForLimitAction('buy_credits')).toContain('free-and-pro')
+    expect(helpHrefForSurface('billing_past_due')).toContain('manage-an-existing-subscription')
   })
 
   it('keeps chat SLA strings aligned', () => {

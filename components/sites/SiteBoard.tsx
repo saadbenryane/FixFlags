@@ -24,9 +24,11 @@ import {
   type CardHealthState,
   type SiteCardArea,
 } from '@/lib/sites/card-areas'
-import { AddBoardCard, AddCardLibrary, BoardGrid, BoardSurface, ProductBoardCard } from '@/components/sites/BoardCard'
+import { BoardGrid, BoardSurface, ProductBoardCard } from '@/components/sites/BoardCard'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { BoardDetails } from '@/components/sites/BoardDetails'
+import { SiteSettingsControls } from '@/components/sites/SiteSettingsControls'
+import { SiteAgentPanel } from '@/components/sites/SiteAgentPanel'
 
 function StatusDot({ state }: { state: CardHealthState }) {
   return (
@@ -65,20 +67,19 @@ function StatusLabel({ state, children }: { state: CardHealthState; children: Re
 export function SiteBoard({
   siteId,
   initial,
+  activeView = 'home',
 }: {
   siteId: string
   initial: SiteHomeView
+  activeView?: 'home' | 'flags' | 'settings'
 }) {
   const router = useRouter()
   const { user } = useMe()
   const signedIn = Boolean(user)
   const [view, setView] = useState(initial)
-  const [nav, setNav] = useState<'Dashboard' | 'Flags' | 'Site'>('Dashboard')
   const opener = useRef<HTMLElement | null>(null)
   const openCard = (id: SiteCardArea) => { opener.current = document.activeElement as HTMLElement; setSelectedCard(id) }
   const [selectedCard, setSelectedCard] = useState<SiteCardArea | null>(null)
-  const [libraryOpen, setLibraryOpen] = useState(false)
-  const [addedCards, setAddedCards] = useState<SiteCardArea[]>([])
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const checking =
@@ -201,7 +202,7 @@ export function SiteBoard({
     ? (view.recommendations ?? []).filter((f) => f.area === selected.id)
     : []
   const visibleCards = view.cards.filter((card) => {
-    const onBoard = STARTER_BOARD_CARDS.includes(card.id) || addedCards.includes(card.id)
+    const onBoard = STARTER_BOARD_CARDS.includes(card.id)
     if (!onBoard) return false
     if (signedIn || checking) return true
     return !isEmptyUncheckedCard(card)
@@ -211,41 +212,33 @@ export function SiteBoard({
     if (!signedIn && isEmptyUncheckedCard(card)) return false
     return true
   })
-  const presentAreas = visibleCards.map((card) => card.id)
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto flex max-w-[1360px] gap-8 px-4 py-6 pb-24 lg:px-8 lg:pb-8">
         <aside className="hidden w-44 shrink-0 flex-col gap-6 lg:flex">
           <Logo variant="lockup" size="sm" />
           <nav className="flex flex-col gap-1" aria-label="Site">
-            {(
-              [
-                ['Dashboard', LayoutGrid],
-                ['Flags', Flag],
-                ['Site', Globe2],
-              ] as const
-            ).map(([label, Icon]) => (
-              <button
-                key={label}
-                type="button"
-                onClick={() => {
-                  setNav(label)
-                  setSelectedCard(null)
-                }}
+            {([
+              ['home', 'Home', LayoutGrid, `/sites/${siteId}`],
+              ['flags', 'Flags', Flag, `/sites/${siteId}/flags`],
+              ['settings', 'Settings', Globe2, `/sites/${siteId}/settings`],
+            ] as const).map(([id, label, Icon, href]) => (
+              <Link
+                key={id}
+                href={href}
                 className={cn(
                   'flex min-h-11 items-center gap-3 rounded-[var(--radius-control)] px-3 text-sm font-medium',
-                  nav === label ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60'
+                  activeView === id ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60'
                 )}
               >
                 <Icon className="h-4 w-4" />
-                {label === 'Dashboard' ? 'Home' : label === 'Site' ? 'Settings' : label}
-                {label === 'Flags' && view.flags.length > 0 ? (
+                {label}
+                {id === 'flags' && view.flags.length > 0 ? (
                   <span className="ml-auto rounded-full bg-foreground/10 px-2 py-0.5 text-xs">
                     {view.flags.length}
                   </span>
                 ) : null}
-              </button>
+              </Link>
             ))}
           </nav>
           {signedIn ? (
@@ -292,10 +285,10 @@ export function SiteBoard({
                 )}
               </div>
               <h1 className="text-2xl font-semibold tracking-tight">
-                {nav === 'Dashboard' ? 'Your board' : nav === 'Flags' ? 'Flags' : 'Site settings'}
+                {activeView === 'home' ? 'Your board' : activeView === 'flags' ? 'Flags' : 'Site settings'}
               </h1>
               <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-                {nav === 'Dashboard'
+                {activeView === 'home'
                   ? checking
                     ? `${learningCopy}. Cards update as each area finishes.`
                     : view.flags.length
@@ -303,7 +296,7 @@ export function SiteBoard({
                       : view.statusState === 'healthy'
                         ? 'Checked areas look good. Unchecked areas stay unknown.'
                         : view.coverageSummary
-                  : nav === 'Flags'
+                  : activeView === 'flags'
                     ? 'The things worth your attention.'
                     : 'Watch, connections, and how FixFlags notifies you.'}
               </p>
@@ -341,7 +334,7 @@ export function SiteBoard({
             </div>
           </header>
 
-          {nav === 'Dashboard' ? (
+          {activeView === 'home' ? (
             <BoardSurface host={view.host} state={view.statusState} label={view.statusLabel} count={view.flags.length} onOpen={() => openCard('site')}>
             <BoardGrid>
               {visibleCards.map((card) => (
@@ -351,12 +344,11 @@ export function SiteBoard({
                   onOpen={() => openCard(card.id)}
                 />
               ))}
-              {signedIn ? <AddBoardCard onOpen={() => setLibraryOpen(true)} /> : null}
             </BoardGrid>
             </BoardSurface>
           ) : null}
 
-          {nav === 'Flags' ? (
+          {activeView === 'flags' ? (
             <div className="space-y-3">
               {view.flags.length === 0 ? (
                 <div className="rounded-2xl border border-border/80 bg-background p-8 text-center">
@@ -371,8 +363,8 @@ export function SiteBoard({
                   <p className="mt-1 text-sm text-muted-foreground">
                     {view.coverageSummary}
                   </p>
-                  <Button className="mt-4" variant="outline" onClick={() => setNav('Dashboard')}>
-                    Back to your board
+                  <Button className="mt-4" variant="outline" asChild>
+                    <Link href={`/sites/${siteId}`}>Back to your board</Link>
                   </Button>
                 </div>
               ) : (
@@ -402,8 +394,17 @@ export function SiteBoard({
             </div>
           ) : null}
 
-          {nav === 'Site' ? (
-            <div className="grid gap-4 lg:grid-cols-2">
+          {activeView === 'settings' ? (
+            <div className="space-y-4">
+              <SiteSettingsControls
+                siteId={siteId}
+                initial={view.settings ?? {
+                  notificationLevel: 'FLAGS',
+                  notifyOnRecovery: true,
+                  shopify: { state: 'not_connected', domain: null },
+                }}
+              />
+              <div className="grid gap-4 lg:grid-cols-2">
               <section className="rounded-2xl border border-border/80 bg-background p-5">
                 <h2 className="text-lg font-semibold">What people come here to do</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -460,10 +461,11 @@ export function SiteBoard({
                   ) : null}
                 </ul>
               </section>
+              </div>
             </div>
           ) : null}
 
-          <Dialog open={Boolean(selected && nav === 'Dashboard')} onOpenChange={open => { if (!open) setSelectedCard(null) }}>
+          <Dialog open={Boolean(selected && activeView === 'home')} onOpenChange={open => { if (!open) setSelectedCard(null) }}>
             <DialogContent className="max-h-[85dvh] w-[calc(100%-32px)] max-w-xl overflow-y-auto rounded-2xl bg-background p-6 sm:p-8" onCloseAutoFocus={event => { event.preventDefault(); opener.current?.focus() }}>
               <DialogTitle className="pr-8 text-2xl">{selected?.name}</DialogTitle>
               <DialogDescription>{selected?.question}</DialogDescription>
@@ -520,33 +522,27 @@ export function SiteBoard({
         className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-background/95 px-2 py-2 backdrop-blur lg:hidden"
         aria-label="Mobile Site"
       >
-        {(
-          [
-            ['Dashboard', 'Home', LayoutGrid],
-            ['Flags', 'Flags', Flag],
-            ['Site', 'More', Globe2],
-          ] as const
-        ).map(([id, label, Icon]) => (
-          <button
+        {([
+          ['home', 'Home', LayoutGrid, `/sites/${siteId}`],
+          ['flags', 'Flags', Flag, `/sites/${siteId}/flags`],
+          ['settings', 'More', Globe2, `/sites/${siteId}/settings`],
+        ] as const).map(([id, label, Icon, href]) => (
+          <Link
             key={id}
-            type="button"
+            href={href}
             className={cn(
               'relative flex min-h-12 flex-1 flex-col items-center justify-center gap-1 text-xs',
-              nav === id ? 'text-foreground' : 'text-muted-foreground'
+              activeView === id ? 'text-foreground' : 'text-muted-foreground'
             )}
-            onClick={() => {
-              setNav(id)
-              setSelectedCard(null)
-            }}
           >
             <Icon className="h-5 w-5" />
             {label}
-            {id === 'Flags' && view.flags.length > 0 ? (
+            {id === 'flags' && view.flags.length > 0 ? (
               <span className="absolute right-1/4 top-1 rounded-full bg-brand px-1.5 text-3xs text-brand-foreground">
                 {view.flags.length}
               </span>
             ) : null}
-          </button>
+          </Link>
         ))}
       </nav>
 
@@ -559,15 +555,8 @@ export function SiteBoard({
         </div>
       ) : null}
 
-      <AddCardLibrary
-        open={libraryOpen}
-        onOpenChange={setLibraryOpen}
-        present={presentAreas}
-        onAdd={(id) => {
-          setAddedCards((current) => (current.includes(id) ? current : [...current, id]))
-          setLibraryOpen(false)
-        }}
-      />
+      {signedIn ? <SiteAgentPanel siteId={siteId} /> : null}
+
     </div>
   )
 }

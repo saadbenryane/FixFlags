@@ -66,7 +66,9 @@ export async function startMonitoringAudit(
     url: parent!.url,
     userId: user?.id ?? null,
     parentId,
-    skipUsageCount: false,
+    // Promised Watch care is governed by SiteCarePolicy, not the legacy
+    // monthly Review counter. Manual update checks retain their normal meter.
+    skipUsageCount: options.trigger === 'WATCH',
     monitoringMode: 'FULL',
     recheckTrigger: options.trigger ?? 'MANUAL',
     delayMs: options.delayMs,

@@ -35,6 +35,7 @@ import { ProductLimitReached } from '@/lib/billing/product-capacity'
 import { reviewDepthForPlan } from '@/lib/billing/plans'
 import { asReviewDepth, type ReviewDepth } from '@/lib/audit/review-depth'
 import type { Plan } from '@prisma/client'
+import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 
 export interface CreateAuditOptions {
   url: string
@@ -53,6 +54,12 @@ export interface CreateAuditOptions {
   scanAccess?: ScanAccessConfig | null
   /** When true, inherit Project.scanAccessEncrypted if scanAccess is omitted. */
   useProjectScanAccess?: boolean
+  /**
+   * Binds a targeted Flag verification to exactly one Review. The attempt must
+   * belong to the same owner, Project and parent Review. Duplicate requests
+   * resume that Review; an unrelated in-flight manual Review is never reused.
+   */
+  verificationAttemptId?: string
 }
 
 export interface CreateAuditResult {
@@ -278,6 +285,40 @@ export async function createAndEnqueueAudit(
             const user = await rollUserUsagePeriod(tx, userId)
             if (!user) throw new Error('User not found')
 
+            if (options.verificationAttemptId) {
+              await tx.$executeRaw`
+                SELECT pg_advisory_xact_lock(
+                  hashtextextended(${`fixflags:verification-audit:${options.verificationAttemptId}`}, 0)
+                )
+              `
+              const attempt = await tx.improvementAttempt.findFirst({
+                where: {
+                  id: options.verificationAttemptId,
+                  sourceAuditId: options.parentId,
+                  improvement: {
+                    projectId: projectId ?? undefined,
+                    project: { userId },
+                  },
+                },
+                select: {
+                  id: true,
+                  verificationAudit: {
+                    select: { id: true, status: true, parentId: true },
+                  },
+                },
+              })
+              if (!attempt) throw new ParentAuditError('Verification attempt not found', 404)
+              if (attempt.verificationAudit && attempt.verificationAudit.status !== 'FAILED') {
+                return { ...attempt.verificationAudit, reused: true }
+              }
+              if (attempt.verificationAudit?.status === 'FAILED') {
+                await tx.improvementAttempt.update({
+                  where: { id: attempt.id },
+                  data: { verificationAuditId: null },
+                })
+              }
+            }
+
             if (projectId && !isWatchReview) {
               await tx.$executeRaw`
                 SELECT pg_advisory_xact_lock(
@@ -303,6 +344,12 @@ export async function createAndEnqueueAudit(
                 })
               : null
             if (activeManualReview) {
+              if (options.verificationAttemptId) {
+                throw new ParentAuditError(
+                  'Another Site check is still running. Try Verify again when it finishes.',
+                  409,
+                )
+              }
               return { ...activeManualReview, reused: true }
             }
 
@@ -348,6 +395,12 @@ export async function createAndEnqueueAudit(
               data: { ...data, journeyReviewIncluded: true },
               select: { id: true, parentId: true },
             })
+            if (options.verificationAttemptId) {
+              await tx.improvementAttempt.update({
+                where: { id: options.verificationAttemptId },
+                data: { verificationAuditId: created.id },
+              })
+            }
             return {
               id: created.id,
               status: 'QUEUED' as const,
@@ -508,8 +561,26 @@ export async function createAndEnqueueAudit(
         failureStage: 'queue',
       },
     })
+    if (options.verificationAttemptId) {
+      await prisma.improvementAttempt.updateMany({
+        where: {
+          id: options.verificationAttemptId,
+          verificationAuditId: audit.id,
+          outcome: null,
+        },
+        data: { verificationAuditId: null },
+      })
+    }
     throw error
   }
+
+  await recordSiteLifecycleEvent({
+    name: 'analyze_started',
+    idempotencyKey: `analyze_started:${audit.id}`,
+    userId: userId ?? null,
+    projectId: projectId ?? null,
+    properties: { anonymous: !userId, trigger: options.recheckTrigger ?? 'manual' },
+  }).catch(() => undefined)
 
   return {
     auditId: audit.id,

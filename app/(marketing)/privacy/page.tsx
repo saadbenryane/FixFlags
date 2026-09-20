@@ -14,6 +14,8 @@ export default function PrivacyPage() {
     PRIVACY_SECTIONS.use,
     PRIVACY_SECTIONS.reportAccess,
     PRIVACY_SECTIONS.thirdParties,
+    PRIVACY_SECTIONS.retentionAndDeletion,
+    PRIVACY_SECTIONS.safeBrowsing,
   ]
 
   return (
@@ -29,9 +31,7 @@ export default function PrivacyPage() {
               <p>
                 {section.title === 'How we use it'
                   ? `${section.body} ${OFFER.privacy}`
-                  : section.title === 'Report access'
-                    ? `${section.body} ${OFFER.reportAccess}`
-                    : section.body}
+                  : section.body}
               </p>
             </div>
           ))}

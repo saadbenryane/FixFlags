@@ -28,6 +28,6 @@ export async function assertCanCreateProduct(
   const limit = projectLimitForPlan(user.plan)
   if (limit === null) return
 
-  const count = await tx.project.count({ where: { userId } })
+  const count = await tx.project.count({ where: { userId, deletedAt: null } })
   if (count >= limit) throw new ProductLimitReached(limit)
 }

@@ -12,6 +12,7 @@ import { SiteOutcomeEdit } from '@/components/sites/SiteOutcomeEdit'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { CARD_CATALOG } from '@/lib/sites/card-areas'
 import { boardFlagPrompt } from '@/lib/sites/board-card'
+import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 
 function certaintyLabel(value: string | null, confidence: number | null): string {
   if (value) return value.replaceAll('_', ' ').toLowerCase()
@@ -22,18 +23,22 @@ function certaintyLabel(value: string | null, confidence: number | null): string
 }
 
 function attemptLabel(outcome: string | null): string {
-  if (!outcome) return "Couldn't verify"
+  if (!outcome) return 'Verifying…'
   if (outcome === 'IMPROVED') return 'Verified'
-  if (outcome === 'UNCHANGED' || outcome === 'REGRESSED') return 'Still open'
-  return 'Inconclusive'
+  if (outcome === 'UNCHANGED') return 'Still open'
+  if (outcome === 'REGRESSED') return 'Regressed'
+  return "Couldn't verify"
 }
 
 export default async function SiteFlagPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ siteId: string; flagId: string }>
+  searchParams: Promise<{ source?: string }>
 }) {
   const { siteId, flagId } = await params
+  const { source } = await searchParams
   const access = await requireSiteAccess(siteId)
   if (!access.ok) notFound()
 
@@ -42,6 +47,24 @@ export default async function SiteFlagPage({
   if (!detail) notFound()
 
   const { site, flag } = detail
+  if (access.decision.role === 'owner') {
+    await recordSiteLifecycleEvent({
+      name: 'flag_opened',
+      idempotencyKey: `flag_opened:${site.projectId}:${flag.id}`,
+      userId: site.userId,
+      projectId: site.projectId,
+      properties: { area: flag.area, severity: flag.severity },
+    }).catch(() => undefined)
+    if (source === 'watch-email') {
+      await recordSiteLifecycleEvent({
+        name: 'notification_returned',
+        idempotencyKey: `notification_returned:${site.projectId}:${flag.id}`,
+        userId: site.userId,
+        projectId: site.projectId,
+        properties: { destination: 'flag' },
+      }).catch(() => undefined)
+    }
+  }
   const outcomes = await listSiteOutcomes(site)
   const areaName = CARD_CATALOG[flag.area]?.name ?? flag.area
   const relatedOutcome =
@@ -131,6 +154,7 @@ export default async function SiteFlagPage({
             journeyName: relatedOutcome?.name,
             expectedBehavior: flag.expectedBehavior,
           })}
+          verifying={flag.verifying}
         />
       </section>
 

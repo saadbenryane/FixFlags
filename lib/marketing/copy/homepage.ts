@@ -255,7 +255,7 @@ export const HOW_IT_WORKS_PAGE = {
       body: 'Publish the change, then let FixFlags independently revisit the live Site.',
     },
     docsCta: 'Read the website review guide',
-    docsHref: "/docs/reports",
+    docsHref: "/docs/site-care",
     analogyLine:
       'A Site keeps its Flags, verification, context, and history together over time.',
   },
@@ -289,7 +289,7 @@ export const HOW_IT_WORKS_PAGE = {
     title: 'Give your AI the evidence. FixFlags verifies the result.',
     body: 'Use a focused Flag in the coding agent you already use, then let FixFlags independently revisit the live Site.',
     setupCta: 'Read the website review guide',
-    setupHref: "/docs/reports",
+    setupHref: "/docs/site-care",
     plansCta: "See plans",
     plansHref: "/pricing",
     transcript: `FixFlags: "The primary action is hidden below the first mobile viewport."
@@ -801,7 +801,7 @@ export const LANDING_PAGE = {
     headlineAccentPeriod: true,
     body: "Copy a fix into the AI builder you already use. Publish the change, then run an update review on the live URL.",
     mcpCta: "Read the report guide",
-    mcpHref: "/docs/reports",
+    mcpHref: "/docs/site-care",
     cliCta: "See a sample report",
     cliHref: "/samples",
     npxCheckCommand: "https://your-product.com",

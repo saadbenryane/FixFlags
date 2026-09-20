@@ -21,6 +21,7 @@ import {
   mutateProjectIntelligence,
 } from '@/lib/audit/ensure-product-project'
 import { assessVerificationCoverage } from '@/lib/improvements/verification-coverage'
+import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import {
   normalizeImprovementRejectionReason,
   type ImprovementRejectionReason,
@@ -769,6 +770,12 @@ export async function reconcileImprovementVerification(input: {
       checkId: occurrence.flag.checkId,
       comparable,
       reason,
+    })
+    await recordSiteLifecycleEvent({
+      name: 'verify_result',
+      idempotencyKey: `verify-result:${attempt.id}:${input.verificationAuditId}`,
+      projectId: verificationAudit.projectId,
+      properties: { outcome, comparable },
     })
   }
 

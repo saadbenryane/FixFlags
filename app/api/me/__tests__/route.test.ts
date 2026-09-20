@@ -37,12 +37,24 @@ describe('/api/me', () => {
   })
 
   it('keeps GET read-only even when a legacy claim query is present', async () => {
-    const response = await GET(new Request('http://localhost/api/me?claim=1'))
+    const response = await GET(new Request('http://localhost/api/me?claim=1', {
+      headers: { cookie: 'better-auth.session_token=verified-by-auth' },
+    }))
     expect(response.status).toBe(200)
     expect(claimAnonymousAudits).not.toHaveBeenCalled()
     expect(await response.json()).toEqual({
       user: { id: 'user-1', email: 'person@example.com' },
     })
+  })
+
+  it('returns an anonymous state without touching session dependencies when no cookie exists', async () => {
+    const response = await GET(new Request('http://localhost/api/me'))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ user: null })
+    expect(recordRateLimit).not.toHaveBeenCalled()
+    expect(getSession).not.toHaveBeenCalled()
+    expect(findUnique).not.toHaveBeenCalled()
   })
 
   it('claims only through authenticated POST and returns refreshed user state', async () => {

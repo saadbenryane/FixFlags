@@ -129,7 +129,7 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
     answer:
       'Yes. One website is free, verified weekly. Pro is $49 per website per month, verified every day. We are not charging yet.',
     learnMore: {
-      href: '/help/billing-and-plans/free-vs-pro',
+      href: '/help/account-and-billing/free-and-pro',
       label: 'Free vs Pro',
     },
   },
@@ -138,7 +138,7 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
     answer:
       'One website, verified weekly, Flags with evidence, a next step to fix, and verify after you publish. Connections are included.',
     learnMore: {
-      href: '/help/billing-and-plans/what-counts-as-a-check',
+      href: '/help/watch-and-notifications/weekly-watch',
       label: 'What the free plan includes',
     },
   },
@@ -155,14 +155,14 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
     question: 'Is evidence public?',
     answer:
       'A completed check has a canonical link. Screenshots and captures belong to that Site. We do not invent proof or show other people\'s websites as if they were yours.',
-    learnMore: { href: '/help/account/report-privacy', label: 'Evidence and privacy' },
+    learnMore: { href: '/help/privacy-and-security/privacy-and-evidence', label: 'Evidence and privacy' },
   },
   {
     question: 'Do you store screenshots?',
     answer:
       'Yes. Evidence stays attached to the check that captured it. Retention is covered in the Privacy Policy.',
     learnMore: {
-      href: '/help/checks-and-reports/evidence-and-screenshots',
+      href: '/help/sites-and-coverage/read-site-coverage',
       label: 'Evidence and screenshots',
     },
   },
@@ -171,7 +171,7 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
     answer:
       'Publish the change, then run a fresh check on the same behavior. Absence of the old Flag is not enough. FixFlags has to see the success state.',
     learnMore: {
-      href: '/help/getting-started/flag-fix-recheck',
+      href: '/help/flags-fix-verify/verify-a-flag',
       label: 'Verify a fix',
     },
   },
@@ -180,7 +180,7 @@ export const PRICING_FAQ: readonly FaqEntry[] = [
     answer:
       'No. Connected store numbers appear only with real data after access is approved. Until then, FixFlags shows what the live website actually did.',
     learnMore: {
-      href: '/help/getting-started/reading-your-report',
+      href: '/help/sites-and-coverage/read-site-coverage',
       label: 'Reading your Site',
     },
   },
@@ -418,21 +418,10 @@ export const BILLING_PAGE_COPY = {
   plansDescription: 'Compare Free, Pro, and Studio. Join the waitlist when you want daily verification.',
   currentPlanBadge: 'Current',
   historyTitle: 'Billing history',
-  historyDescription: 'Purchases and receipts for this account.',
-  historyEmpty: 'No purchases yet.',
+  historyDescription: 'Subscription invoices and receipts for this account.',
+  historyEmpty: 'No subscription invoices yet.',
   historyInvoicesHint:
     'Subscription invoices and PDF receipts live in the Stripe customer portal.',
   historyViewInvoices: 'Open invoices',
   historyHelpCta: 'How invoices work',
-  creditsTitle: 'Credits',
-  purchasedAvailable: (n: number) =>
-    `${n} purchased check${n !== 1 ? 's' : ''} available`,
-  creditsUnavailable:
-    'Credit packs are no longer available for purchase. Existing credits remain active and never expire.',
-  purchaseHistory: 'Purchase history',
-  creditsLine: (credits: number, packId: string) =>
-    `${credits} credits - ${packId.replace('_', ' ')}`,
-  paid: 'Paid',
-  pending: 'Pending',
-  checkingCredits: 'Checking credit purchase status',
 } as const

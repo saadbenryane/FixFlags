@@ -34,15 +34,11 @@ export async function POST(
     const detail = await loadSiteBoardFlag(resolvedId, flagId)
     if (!detail) return apiError('Flag not found', 404)
 
-    const sourceAuditId = detail.site.primaryAuditId
-    if (!sourceAuditId) return apiError('No analysis to verify against yet', 400)
-
     const result = await executeSiteCommand({
       type: 'VERIFY_FLAG',
       siteId: resolvedId,
       userId: session.user.id,
       flagId,
-      sourceAuditId,
     })
 
     if (!result.ok) return apiError(result.error, 400)

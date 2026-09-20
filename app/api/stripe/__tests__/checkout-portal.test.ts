@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server'
 
 const prismaMock = vi.hoisted(() => ({
   user: { findUnique: vi.fn() },
+  project: { count: vi.fn() },
   paidPlanWaitlistEntry: { findUnique: vi.fn() },
 }))
 const getSession = vi.hoisted(() => vi.fn())
@@ -54,6 +55,7 @@ describe('stripe checkout and portal routes', () => {
     stripe.billingPortal.sessions.create.mockResolvedValue({ url: 'https://stripe.test/portal' })
     prismaMock.paidPlanWaitlistEntry.findUnique.mockResolvedValue(null)
     tierCheckoutDiscounts.mockResolvedValue(null)
+    prismaMock.project.count.mockResolvedValue(1)
   })
 
   it('requires sign-in for checkout', async () => {
@@ -138,5 +140,18 @@ describe('stripe checkout and portal routes', () => {
     expect(createArgs.discounts).toBeUndefined()
     expect(createArgs.allow_promotion_codes).toBeUndefined()
     expect(createArgs.metadata.discount_tier).toBeUndefined()
+  })
+
+  it('licenses the subscription quantity to the current billable Site count', async () => {
+    prismaMock.project.count.mockResolvedValue(3)
+    const response = await checkout(new NextRequest('http://localhost/api/stripe/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ plan: 'BUILDER' }),
+    }))
+    expect(response.status).toBe(200)
+    const createArgs = stripe.checkout.sessions.create.mock.calls[0][0]
+    expect(createArgs.line_items).toEqual([{ price: 'price_builder', quantity: 3 }])
+    expect(createArgs.metadata.licensed_site_quantity).toBe('3')
+    expect(prismaMock.project.count).toHaveBeenCalledWith({ where: { userId: 'user-1', deletedAt: null } })
   })
 })

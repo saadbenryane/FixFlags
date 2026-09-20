@@ -3,6 +3,7 @@ import {
   isAdminUser,
   isDevUnlimitedScans,
 } from '@/lib/auth/permissions'
+import { siteCarePolicy } from '@/lib/sites/application/care-policy'
 
 /** When true, plan gates (share, compare) behave like production. */
 export function shouldEnforcePlanGates(): boolean {
@@ -67,20 +68,15 @@ export function canAccessProductWatch(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
   if (!shouldEnforcePlanGates()) return true
-  if (user.role === 'admin' || isAdminUser(user)) return true
-  if (hasRevokedSubscriptionStatus(user.subscriptionStatus)) return false
-  return user.plan === 'FREE' || user.plan === 'BUILDER' || user.plan === 'TEAM'
+  return siteCarePolicy(user as Pick<User, 'role' | 'plan' | 'subscriptionStatus'>).watchIntervals.length > 0
 }
 
 /** Allowed watch intervals by plan. Free is weekly only. */
 export function allowedWatchIntervals(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): Array<'weekly' | 'daily'> {
-  if (!canAccessProductWatch(user)) return []
   if (!shouldEnforcePlanGates()) return ['weekly', 'daily']
-  if (user.role === 'admin' || isAdminUser(user)) return ['weekly', 'daily']
-  if (user.plan === 'FREE') return ['weekly']
-  return ['weekly', 'daily']
+  return siteCarePolicy(user as Pick<User, 'role' | 'plan' | 'subscriptionStatus'>).watchIntervals
 }
 
 /** Manual re-check is always available to the report owner; not a plan gate. */

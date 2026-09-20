@@ -32,9 +32,10 @@ export async function ensureSiteForAudit(input: {
         watchLastRunAt: true,
         watchLastError: true,
         watchConsecutiveFailures: true,
+        deletedAt: true,
       },
     })
-    if (!project) throw new Error('Project not found for Site')
+    if (!project || project.deletedAt) throw new Error('Project not found for Site')
     return {
       siteId: encodeSiteId({ kind: 'project', projectId: project.id }),
       kind: 'project',
@@ -72,9 +73,10 @@ export async function ensureSiteForAudit(input: {
         watchLastRunAt: true,
         watchLastError: true,
         watchConsecutiveFailures: true,
+        deletedAt: true,
       },
     })
-    if (project) {
+    if (project && !project.deletedAt) {
       return {
         siteId: encodeSiteId({ kind: 'project', projectId: project.id }),
         kind: 'project',
@@ -151,6 +153,7 @@ export async function loadSiteRecord(siteId: string): Promise<SiteRecord | null>
         watchLastRunAt: true,
         watchLastError: true,
         watchConsecutiveFailures: true,
+        deletedAt: true,
         audits: {
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -158,7 +161,7 @@ export async function loadSiteRecord(siteId: string): Promise<SiteRecord | null>
         },
       },
     })
-    if (!project) return null
+    if (!project || project.deletedAt) return null
     return {
       siteId: ref.siteId,
       kind: 'project',

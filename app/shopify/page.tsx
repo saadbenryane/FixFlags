@@ -2,9 +2,7 @@ import { redirect } from 'next/navigation'
 import { normalizeShopDomain } from '@/lib/shopify/config'
 import { verifyShopifyOAuthHmac } from '@/lib/shopify/hmac'
 import { isShopifyFixtureMode, signFixtureSession } from '@/lib/shopify/fixture-session'
-import { countManualRechecksToday, loadInstalledShop } from '@/lib/shopify/load-shop'
-import { buildShopifyWorkspace } from '@/lib/shopify/workspace'
-import { ShopifyWorkspace } from './ShopifyWorkspace'
+import { ShopifyAppLoader } from './ShopifyAppLoader'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,21 +30,7 @@ export default async function ShopifyAppPage({
     redirect('/install')
   }
 
-  const shop = await loadInstalledShop(shopDomain)
-  if (!shop) redirect('/install?error=not_installed')
-
-  const rechecksUsed = await countManualRechecksToday(shop.paths.map((path) => path.id))
-  const workspace = buildShopifyWorkspace({
-    shop,
-    paths: shop.paths,
-    waitlist: shop.waitlist.map((entry) => entry.featureKey),
-    rechecksRemaining: Math.max(0, 5 - rechecksUsed),
-  })
-
-  return (
-    <ShopifyWorkspace
-      workspace={workspace}
-      fixtureToken={isShopifyFixtureMode() ? signFixtureSession(shopDomain) : null}
-    />
-  )
+  // The query string identifies the embedded frame only. Private shop data is
+  // loaded client-side after Shopify ID-token verification.
+  return <ShopifyAppLoader fixtureToken={isShopifyFixtureMode() ? signFixtureSession(shopDomain) : null} />
 }

@@ -5,10 +5,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { Button } from '@/components/ui/button'
-import { UsageMeter } from '@/components/dashboard/UsageMeter'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
-import { getPurchasedCreditsRemaining } from '@/lib/billing/credits'
-import { getPendingCheckCount, getPlanDisplayLimit } from '@/lib/auth/permissions'
 import { ManageSubscriptionButton } from '@/components/billing/ManageSubscriptionButton'
 import { BillingPlanActions } from '@/components/billing/BillingPlanActions'
 import { BillingPlansSection } from '@/components/billing/BillingPlansSection'
@@ -17,11 +14,8 @@ import { Callout } from '@/components/ui/callout'
 import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { formatUsd } from '@/lib/billing/costs'
 import { BILLING_PAGE_COPY, HELP_CENTER } from '@/lib/marketing/copy'
 import { helpHrefForSlug, helpHrefForSurface } from '@/lib/help/contextual'
-import { Suspense } from 'react'
-import { BillingCreditsToast } from '@/components/billing/BillingCreditsToast'
 import { TextLink } from '@/components/ui/text-link'
 
 export default async function BillingPage() {
@@ -45,17 +39,8 @@ export default async function BillingPage() {
 
   if (!user) notFound()
 
-  const creditPurchases = await prisma.creditPurchase.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: 'desc' },
-    take: 20,
-  })
-
-  const purchasedCreditsRemaining = await getPurchasedCreditsRemaining(user.id)
-
   const planDef = PLAN_DEFINITIONS[user.plan]
-  const displayLimit = getPlanDisplayLimit(user)
-  const pending = await getPendingCheckCount(session.user.id)
+  const siteCount = await prisma.project.count({ where: { userId: user.id, deletedAt: null } })
   // A lapsed subscription (payment failure, cancellation) only updates subscriptionStatus via
   // the Stripe webhook - plan can lag behind until a separate subscription.updated event
   // resyncs it. Billing must show the true current state, not the stale plan field.
@@ -71,15 +56,6 @@ export default async function BillingPage() {
 
   return (
     <Container variant="narrow" className="space-y-8 py-8">
-      <Suspense
-        fallback={
-          <span className="sr-only" role="status">
-            {copy.checkingCredits}
-          </span>
-        }
-      >
-        <BillingCreditsToast />
-      </Suspense>
       <PageHeader title={copy.title} description={copy.description} />
 
       {user.subscriptionStatus === 'PAST_DUE' && (
@@ -119,15 +95,9 @@ export default async function BillingPage() {
             {user.subscriptionStatus === 'CANCELED' ? copy.canceledBody : copy.unpaidBody}
           </Callout>
         )}
-        <div className="border-t border-border/60 pt-5">
-          <UsageMeter
-            used={user.auditsUsed}
-            limit={displayLimit}
-            pending={pending}
-            plan={user.plan}
-            purchasedCredits={purchasedCreditsRemaining}
-            showUpgradeCta={false}
-          />
+        <div className="border-t border-border/60 pt-5 text-sm text-muted-foreground">
+          {siteCount === 1 ? '1 website connected' : `${siteCount} websites connected`} ·{' '}
+          {isPaid ? 'Daily Watch' : 'Weekly Watch'}
         </div>
         {isActivating && (
           <p className="text-xs text-muted-foreground">{copy.activatingHint}</p>
@@ -153,51 +123,19 @@ export default async function BillingPage() {
           <Muted className="text-sm">{copy.historyDescription}</Muted>
         </div>
 
-        {purchasedCreditsRemaining > 0 && (
-          <p className="text-sm text-muted-foreground">
-            {copy.purchasedAvailable(purchasedCreditsRemaining)}
-          </p>
-        )}
-
-        {creditPurchases.length > 0 ? (
-          <div className="space-y-1">
-            {creditPurchases.map((p) => (
-              <div
-                key={p.id}
-                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-border/20 py-2 text-xs text-muted-foreground last:border-0"
-              >
-                <span>{copy.creditsLine(p.creditsPurchased, p.packId)}</span>
-                <span className="tabular-nums">{formatUsd(p.priceUsdCents / 100)}</span>
-                <span className={p.status === 'PAID' ? 'text-success' : ''}>
-                  {p.status === 'PAID'
-                    ? copy.paid
-                    : p.status === 'PENDING'
-                      ? copy.pending
-                      : p.status.toLowerCase()}
-                </span>
-                {p.paidAt && (
-                  <span className="tabular-nums">{new Date(p.paidAt).toLocaleDateString()}</span>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">{copy.historyEmpty}</p>
-        )}
-
         {hasStripeCustomer ? (
           <div className="space-y-2 border-t border-border/60 pt-4">
             <p className="text-xs text-muted-foreground">{copy.historyInvoicesHint}</p>
             <div className="flex flex-wrap items-center gap-3">
               <ManageSubscriptionButton label={copy.historyViewInvoices} />
-              <TextLink href={helpHrefForSlug('invoices-and-receipts')}>
+              <TextLink href={helpHrefForSlug('manage-an-existing-subscription')}>
                 {copy.historyHelpCta}
               </TextLink>
             </div>
           </div>
         ) : (
           <p className="text-xs text-muted-foreground">
-            <TextLink href={helpHrefForSlug('invoices-and-receipts')}>
+            <TextLink href={helpHrefForSlug('manage-an-existing-subscription')}>
               {copy.historyHelpCta}
             </TextLink>
           </p>

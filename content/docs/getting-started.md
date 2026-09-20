@@ -8,7 +8,7 @@ Open the homepage or [/new](/new), enter the URL, Analyze, and wait on the Site 
 
 ## Shopify connection
 
-If you sell on Shopify, you can also [install the app](/install). That walk is a connection: purchase-path proof, not a second product.
+If you sell on Shopify, connect the store from Site settings. The signed account-link flow binds that shop to the Site you own. Shopify adds Commerce and purchase-path evidence to the same Site; it is not a second product.
 
 ## Verify a Flag
 
@@ -22,6 +22,6 @@ Claim the Site, then Keep watching. Free Sites watch weekly. Pro and Studio can 
 
 For step-by-step guides, visit the [Help Center](/help).
 
-- [Analyze a website URL](/help/getting-started/first-check)
-- [Save this Site to your account](/help/getting-started/claiming-a-report)
-- [Storefront access](/help/checks-and-reports/public-urls-only)
+- [Analyze a website](/help/getting-started/analyze-a-website)
+- [Save this Site to your account](/help/getting-started/save-your-site)
+- [Coverage limitations](/help/sites-and-coverage/coverage-limitations)

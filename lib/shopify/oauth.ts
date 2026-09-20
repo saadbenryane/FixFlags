@@ -9,24 +9,37 @@ function stateSecret(): string {
   return secret
 }
 
-export function signShopifyInstallState(shop: string): string {
-  const payload = `${shop}|${Date.now()}`
+export function signShopifyInstallState(shop: string, accountLinkToken?: string): string {
+  const payload = `${shop}|${Date.now()}|${accountLinkToken ?? ''}`
   const sig = createHmac('sha256', stateSecret()).update(payload).digest('hex')
   return Buffer.from(`${payload}|${sig}`).toString('base64url')
 }
 
 export function verifyShopifyInstallState(state: string, shop: string): boolean {
+  return readShopifyInstallState(state, shop) !== null
+}
+
+export function readShopifyInstallState(
+  state: string,
+  shop: string,
+): { accountLinkToken: string | null } | null {
   try {
     const decoded = Buffer.from(state, 'base64url').toString('utf8')
-    const [storedShop, ts, sig] = decoded.split('|')
-    if (!storedShop || !ts || !sig) return false
-    if (storedShop !== shop) return false
+    const parts = decoded.split('|')
+    const [storedShop, ts] = parts
+    const accountLinkToken = parts.length === 4 ? parts[2] : ''
+    const sig = parts.length === 4 ? parts[3] : parts[2]
+    if (!storedShop || !ts || !sig) return null
+    if (storedShop !== shop) return null
     const age = Date.now() - Number(ts)
-    if (!Number.isFinite(age) || age < 0 || age > STATE_TTL_MS) return false
-    const expected = createHmac('sha256', stateSecret()).update(`${storedShop}|${ts}`).digest('hex')
-    return expected === sig
+    if (!Number.isFinite(age) || age < 0 || age > STATE_TTL_MS) return null
+    const payload = parts.length === 4
+      ? `${storedShop}|${ts}|${accountLinkToken}`
+      : `${storedShop}|${ts}`
+    const expected = createHmac('sha256', stateSecret()).update(payload).digest('hex')
+    return expected === sig ? { accountLinkToken: accountLinkToken || null } : null
   } catch {
-    return false
+    return null
   }
 }
 

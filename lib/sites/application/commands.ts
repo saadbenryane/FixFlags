@@ -3,6 +3,7 @@ import { confirmSiteOutcome } from '@/lib/sites/outcomes'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
+import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 
 export type SiteCommand =
   | {
@@ -23,7 +24,6 @@ export type SiteCommand =
       siteId: string
       userId: string
       flagId: string
-      sourceAuditId: string
     }
   | {
       type: 'SET_WATCH'
@@ -54,6 +54,12 @@ export async function executeSiteCommand(command: SiteCommand) {
         builder: command.builder,
         action: 'HANDOFF_COPIED',
       })
+      await recordSiteLifecycleEvent({
+        name: 'fix_handoff',
+        idempotencyKey: `fix-handoff:${command.userId}:${command.flagId}:${command.builder}`,
+        userId: command.userId,
+        properties: { channel: command.builder },
+      })
       return { ok: true as const }
     }
     case 'VERIFY_FLAG': {
@@ -72,22 +78,34 @@ export async function executeSiteCommand(command: SiteCommand) {
         action: 'READY_TO_VERIFY',
         changeSummary: flag.expectedBehavior,
       })
+      if (!attempt.attemptId) {
+        return { ok: false as const, error: 'Could not prepare this verification attempt.' }
+      }
 
       const verifyUrl = flag.pageUrl || site.url
       const started = await createAndEnqueueAudit({
         url: verifyUrl,
         userId: command.userId,
-        parentId: command.sourceAuditId,
+        parentId: flag.sourceAuditId,
         recheckTrigger: 'MANUAL',
-        auditMode: 'SINGLE',
+        auditMode: flag.checkId?.startsWith('journey-') ? 'CRITICAL_PATH' : 'SINGLE',
+        skipUsageCount: true,
         useProjectScanAccess: true,
+        verificationAttemptId: attempt.attemptId,
+      })
+      await recordSiteLifecycleEvent({
+        name: 'verify_started',
+        idempotencyKey: `verify-started:${attempt.attemptId}`,
+        userId: command.userId,
+        projectId: site.projectId,
+        properties: { reused: started.reused, scope: flag.checkId?.startsWith('journey-') ? 'journey' : 'page' },
       })
 
       return {
         ok: true as const,
         verificationAuditId: started.auditId,
         siteId: site.siteId,
-        parentAuditId: command.sourceAuditId,
+        parentAuditId: flag.sourceAuditId,
         flagId: flag.id,
         attemptId: attempt.attemptId,
         expectedBehavior: flag.expectedBehavior,
@@ -98,12 +116,22 @@ export async function executeSiteCommand(command: SiteCommand) {
       if (!site?.projectId) {
         return { ok: false as const, error: 'Claim this Site before Keep watching.' }
       }
-      return executeProductCommand({
+      const result = await executeProductCommand({
         type: 'SET_WATCH',
         projectId: site.projectId,
         userId: command.userId,
         interval: command.interval,
       })
+      if (result.ok && command.interval) {
+        await recordSiteLifecycleEvent({
+          name: 'watch_enabled',
+          idempotencyKey: `watch-enabled:${site.projectId}:${command.interval}`,
+          userId: command.userId,
+          projectId: site.projectId,
+          properties: { interval: command.interval },
+        })
+      }
+      return result
     }
   }
 }

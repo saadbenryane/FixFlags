@@ -139,6 +139,8 @@ export function serializeSession(session: {
   visitorName: string | null
   visitorEmail: string | null
   pageUrl: string | null
+  projectId?: string | null
+  flagId?: string | null
   lastMessageAt: Date | null
   unreadByVisitor: number
   unreadByAgent: number
@@ -150,8 +152,8 @@ export function serializeSession(session: {
     visitorName: session.visitorName,
     visitorEmail: session.visitorEmail,
     pageUrl: session.pageUrl,
-    siteId: extractSiteIdFromPageUrl(session.pageUrl),
-    flagId: extractFlagIdFromPageUrl(session.pageUrl),
+    siteId: session.projectId ?? extractSiteIdFromPageUrl(session.pageUrl),
+    flagId: session.flagId ?? extractFlagIdFromPageUrl(session.pageUrl),
     lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
     unreadByVisitor: session.unreadByVisitor,
     unreadByAgent: session.unreadByAgent,

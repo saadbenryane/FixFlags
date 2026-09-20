@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
@@ -10,17 +10,28 @@ export function SiteFlagActions({
   flagId,
   fixText,
   promptText,
-  shareUrl,
+  verifying = false,
 }: {
   siteId: string
   flagId: string
   fixText: string
   promptText?: string | null
-  shareUrl?: string | null
+  verifying?: boolean
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
+  const [verificationRunning, setVerificationRunning] = useState(verifying)
   const [message, setMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    setVerificationRunning(verifying)
+  }, [verifying])
+
+  useEffect(() => {
+    if (!verificationRunning) return
+    const timer = window.setInterval(() => router.refresh(), 4000)
+    return () => window.clearInterval(timer)
+  }, [router, verificationRunning])
 
   async function recordCopy() {
     await fetch(`/api/sites/${siteId}/flags/${flagId}/fix`, {
@@ -48,17 +59,6 @@ export function SiteFlagActions({
     await copyText(promptText?.trim() || fixText, 'Prompt copied')
   }
 
-  async function share() {
-    const url =
-      shareUrl ??
-      (typeof window !== 'undefined' ? window.location.href : `/sites/${siteId}/flags/${flagId}`)
-    const absolute =
-      url.startsWith('http') || typeof window === 'undefined'
-        ? url
-        : new URL(url, window.location.origin).toString()
-    await copyText(absolute, 'Flag link copied')
-  }
-
   async function verify() {
     setBusy(true)
     try {
@@ -72,6 +72,7 @@ export function SiteFlagActions({
         setMessage(body.error || 'Could not start verification')
         return
       }
+      setVerificationRunning(true)
       setMessage('Verification started. This Flag stays open until the same page and action pass.')
       router.refresh()
     } finally {
@@ -88,14 +89,11 @@ export function SiteFlagActions({
         <Button variant="outline" onClick={() => void copyFix()}>
           {SITE_BOARD_COPY.fixThis}
         </Button>
-        <Button variant="outline" onClick={() => void share()}>
-          {SITE_BOARD_COPY.share}
-        </Button>
-        <Button variant="brand" disabled={busy} onClick={() => void verify()}>
-          {SITE_BOARD_COPY.verifyFix}
+        <Button variant="brand" disabled={busy || verificationRunning} onClick={() => void verify()}>
+          {verificationRunning ? 'Verifying…' : SITE_BOARD_COPY.verifyFix}
         </Button>
       </div>
-      {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
+      {message ? <p className="text-sm text-muted-foreground" role="status" aria-live="polite">{message}</p> : null}
     </div>
   )
 }

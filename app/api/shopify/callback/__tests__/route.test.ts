@@ -3,10 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const isShopifyConfigured = vi.hoisted(() => vi.fn())
 const normalizeShopDomain = vi.hoisted(() => vi.fn())
 const verifyShopifyOAuthHmac = vi.hoisted(() => vi.fn())
-const verifyShopifyInstallState = vi.hoisted(() => vi.fn())
+const readShopifyInstallState = vi.hoisted(() => vi.fn())
 const exchangeShopifyCode = vi.hoisted(() => vi.fn())
 const persistInstalledShop = vi.hoisted(() => vi.fn())
 const shopifyApiKey = vi.hoisted(() => vi.fn())
+const consumeShopifyAccountLink = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/shopify/config', () => ({
   isShopifyConfigured,
@@ -14,7 +15,8 @@ vi.mock('@/lib/shopify/config', () => ({
   shopifyApiKey,
 }))
 vi.mock('@/lib/shopify/hmac', () => ({ verifyShopifyOAuthHmac }))
-vi.mock('@/lib/shopify/oauth', () => ({ verifyShopifyInstallState, exchangeShopifyCode }))
+vi.mock('@/lib/shopify/oauth', () => ({ readShopifyInstallState, exchangeShopifyCode }))
+vi.mock('@/lib/shopify/account-link', () => ({ consumeShopifyAccountLink }))
 vi.mock('@/lib/shopify/install-shop', () => ({ persistInstalledShop }))
 vi.mock('@/lib/get-app-url', () => ({ getAppUrl: () => 'http://localhost:3000' }))
 vi.mock('@/lib/logger', () => ({ logger: { error: vi.fn() } }))
@@ -28,7 +30,7 @@ describe('GET /api/shopify/callback', () => {
     isShopifyConfigured.mockReturnValue(true)
     normalizeShopDomain.mockReturnValue('demo.myshopify.com')
     verifyShopifyOAuthHmac.mockReturnValue(true)
-    verifyShopifyInstallState.mockReturnValue(true)
+    readShopifyInstallState.mockReturnValue({ accountLinkToken: null })
     shopifyApiKey.mockReturnValue('api-key')
     exchangeShopifyCode.mockResolvedValue({
       accessToken: 'token',

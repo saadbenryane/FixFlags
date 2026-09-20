@@ -7,6 +7,8 @@ import { resend } from '@/lib/email/client'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
 import { canAccessProductWatch, allowedWatchIntervals } from '@/lib/auth/entitlements'
 import { systemClock, type Clock } from '@/lib/time/clock'
+import { isCustomerFlag } from '@/lib/audit/attention'
+import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import {
   calcWatchNextRun,
   fromStoredWatchInterval,
@@ -282,26 +284,55 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
       watchNotificationStatus: true,
       watchNotificationAttempts: true,
       user: { select: { email: true, name: true } },
-      project: { select: { watchInterval: true } },
+      project: { select: { watchInterval: true, notificationLevel: true, notifyOnRecovery: true } },
+      flags: {
+        select: {
+          id: true,
+          checkId: true,
+          problem: true,
+          severity: true,
+          status: true,
+          confidence: true,
+          impactTag: true,
+        },
+      },
     },
   })
   if (!child || child.recheckTrigger !== 'WATCH' || !child.projectId) return
   await markWatchCompleted(child.projectId, child.completedAt ?? new Date())
 
   let regressCount = child.watchRegressionCount
+  let recoveryCount = 0
   let summary: Awaited<ReturnType<typeof getFlagDiffSummary>> | null = null
   if (regressCount === null) {
     summary = await getFlagDiffSummary(parentAuditId, childAuditId)
-    regressCount = summary.regressed.length + summary.newIssues.length
+    const customerRegressions = [...summary.regressed, ...summary.newIssues].filter((flag) =>
+      isCustomerFlag(flag)
+    )
+    const alertRegressions = child.project?.notificationLevel === 'CRITICAL_ONLY'
+      ? customerRegressions.filter((flag) => flag.severity === 'CRITICAL')
+      : child.project?.notificationLevel === 'OFF'
+        ? []
+        : customerRegressions
+    regressCount = alertRegressions.length
+    recoveryCount = child.project?.notifyOnRecovery
+      ? summary.fixed.filter((flag) => isCustomerFlag({ ...flag, status: 'OPEN' })).length
+      : 0
     await prisma.audit.update({
       where: { id: childAuditId },
       data: {
         watchRegressionCount: regressCount,
-        watchNotificationStatus: regressCount > 0 ? 'PENDING' : 'NOT_APPLICABLE',
+        watchNotificationStatus: regressCount > 0 || recoveryCount > 0 ? 'PENDING' : 'NOT_APPLICABLE',
       },
     })
   }
-  if (regressCount === 0 || child.watchNotificationStatus === 'SENT') return
+  if (child.watchNotificationStatus === 'SENT') return
+
+  summary ??= await getFlagDiffSummary(parentAuditId, childAuditId)
+  if (recoveryCount === 0 && child.project?.notifyOnRecovery) {
+    recoveryCount = summary.fixed.filter((flag) => isCustomerFlag({ ...flag, status: 'OPEN' })).length
+  }
+  if (regressCount === 0 && recoveryCount === 0) return
 
   if (!child.user?.email || !resend) {
     await prisma.audit.update({
@@ -328,17 +359,31 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
   })
   if (claimed.count !== 1) return
 
-  summary ??= await getFlagDiffSummary(parentAuditId, childAuditId)
   const host = (() => {
     try { return new URL(child.url).hostname } catch { return child.url }
   })()
+
+  const subject = regressCount > 0
+    ? `Regression on ${host}: ${regressCount} Flag${regressCount === 1 ? '' : 's'}`
+    : `Verified recovery on ${host}`
+  const lead = regressCount > 0
+    ? `FixFlags found <strong>${regressCount}</strong> new or regressed Flag${regressCount === 1 ? '' : 's'} on <strong>${host}</strong>.`
+    : `FixFlags verified ${recoveryCount === 1 ? 'a recovery' : `<strong>${recoveryCount}</strong> recoveries`} on <strong>${host}</strong>.`
+  const leadFlag = (child.flags ?? []).find((flag) =>
+    isCustomerFlag(flag) && [...summary.regressed, ...summary.newIssues].some(
+      (item) => item.problem === flag.problem && item.checkId === flag.checkId
+    )
+  )
+  const destination = leadFlag
+    ? `${SITE_URL}/sites/${child.projectId}/flags/${leadFlag.id}?source=watch-email`
+    : `${SITE_URL}/sites/${child.projectId}/flags?source=watch-email`
 
   try {
     await resend.emails.send({
       from: FROM_EMAIL,
       to: child.user.email,
-      subject: `Regression on ${host}: ${regressCount} Flag${regressCount === 1 ? '' : 's'}`,
-      html: `<p>Hi${child.user.name ? ` ${child.user.name}` : ''},</p><p>FixFlags found <strong>${regressCount}</strong> new or regressed Flag${regressCount === 1 ? '' : 's'} on <strong>${host}</strong>.</p><p><a href="${SITE_URL}/sites/${child.projectId}">Open your Site board</a></p><p>Verified: ${summary.fixed.length} · Inconclusive: ${summary.inconclusive.length} · Still open: ${summary.unchanged.length} · New: ${summary.newIssues.length} · Regressed: ${summary.regressed.length}</p>`,
+      subject,
+      html: `<p>Hi${child.user.name ? ` ${child.user.name}` : ''},</p><p>${lead}</p><p><a href="${destination}">${leadFlag ? 'Open this Flag' : 'Open this Site’s Flags'}</a></p><p>Verified: ${summary.fixed.length} · Couldn’t verify: ${summary.inconclusive.length} · Still open: ${summary.unchanged.length} · New: ${summary.newIssues.length} · Regressed: ${summary.regressed.length}</p>`,
     }, { idempotencyKey: `fixflags-watch-${child.id}-v1` })
     await prisma.audit.update({
       where: { id: childAuditId },
@@ -347,6 +392,12 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
         watchNotifiedAt: new Date(),
         watchNotificationLastError: null,
       },
+    })
+    await recordSiteLifecycleEvent({
+      name: 'notification_sent',
+      idempotencyKey: `watch-notification:${child.id}`,
+      projectId: child.projectId,
+      properties: { regressionCount: regressCount, recoveryCount },
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

@@ -199,10 +199,10 @@ describe('canAccessProductWatch', () => {
     expect(canAccessProductWatch(makeUser({ role: 'admin', plan: 'FREE' }))).toBe(true)
   })
 
-  it('revokes Watch for Studio with revoked status', () => {
+  it('falls back to Free weekly Watch after a paid plan is revoked', () => {
     expect(
       canAccessProductWatch(makeUser({ plan: 'TEAM', subscriptionStatus: 'UNPAID' }))
-    ).toBe(false)
+    ).toBe(true)
   })
 })
 
@@ -287,7 +287,7 @@ describe('getEntitlements', () => {
       canExportSummary: true,
       canAccessPaidFeatures: false,
       canMonitor: true,
-      canWatchProduct: false,
+      canWatchProduct: true,
       canUseMcp: false,
       canAccessBasicMcp: false,
       canScanRepositories: false,

@@ -26,11 +26,27 @@ export async function POST(request: NextRequest) {
       shop
     ) {
       const record = await prisma.shopifyShop.findFirst({ where: { shopDomain: shop } })
+      const requestPayload = JSON.parse(rawBody) as {
+        shop_id?: number | string
+        shop_domain?: string
+        customer?: { id?: number | string }
+        orders_requested?: Array<number | string>
+      }
       await prisma.shopifyGdprRequest.create({
         data: {
           shopId: record?.id,
           topic,
-          payload: JSON.parse(rawBody) as object,
+          // Compliance receipts deliberately exclude customer names, emails,
+          // addresses, and other payload fields FixFlags does not need.
+          payload: {
+            shopId: requestPayload.shop_id ? String(requestPayload.shop_id) : null,
+            shopDomain: requestPayload.shop_domain ?? shop,
+            customerId: requestPayload.customer?.id
+              ? String(requestPayload.customer.id)
+              : null,
+            requestedOrderCount: requestPayload.orders_requested?.length ?? 0,
+            processed: true,
+          },
         },
       })
     } else if (topic === 'products/update' && shop) {

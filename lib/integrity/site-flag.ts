@@ -1,10 +1,9 @@
 import { prisma } from '@/lib/db'
-import { canonicalProductHost } from '@/lib/audit/product-intelligence'
 import { logger } from '@/lib/logger'
 
 /** Can't buy / recovered purchase paths become the same Flag object on a matching Site. */
 export async function upsertIntegritySiteFlag(input: {
-  shop: { primaryUrl?: string | null; shopDomain?: string | null }
+  projectId: string
   pathId: string
   pathLabel: string
   storefrontUrl: string
@@ -12,12 +11,8 @@ export async function upsertIntegritySiteFlag(input: {
   reason: string
 }): Promise<{ projectId: string } | null> {
   if (input.health === 'UNKNOWN') return null
-  const url = input.shop.primaryUrl || input.storefrontUrl
-  const host = canonicalProductHost(url)
-  if (!host) return null
-
-  const project = await prisma.project.findFirst({
-    where: { canonicalHost: host },
+  const project = await prisma.project.findUnique({
+    where: { id: input.projectId },
     select: { id: true },
   })
   if (!project) return null

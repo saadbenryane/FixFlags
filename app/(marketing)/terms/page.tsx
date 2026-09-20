@@ -14,8 +14,8 @@ export default function TermsPage() {
     TERMS_SECTIONS.accountsAndBilling,
     TERMS_SECTIONS.discountTiers,
     TERMS_SECTIONS.waitlist,
-    TERMS_SECTIONS.creditPacks,
     TERMS_SECTIONS.refunds,
+    TERMS_SECTIONS.automatedActions,
     TERMS_SECTIONS.acceptableUse,
   ]
 

@@ -21,6 +21,9 @@ export async function resumeOrCreateSession(input: {
   visitorEmail?: string | null
   /** Required to create a new session - never persist empty OPEN rows. */
   firstMessage?: string | null
+  projectId?: string | null
+  flagId?: string | null
+  transcriptSummary?: string | null
 }) {
   const tenant = await getDefaultSupportTenant()
   const leadId = await resolveLeadIdForSession({
@@ -47,6 +50,9 @@ export async function resumeOrCreateSession(input: {
         pageUrl: input.pageUrl ?? existing.pageUrl,
         leadId: leadId ?? existing.leadId,
         userId: input.userId ?? existing.userId,
+        projectId: input.projectId ?? existing.projectId,
+        flagId: input.flagId ?? existing.flagId,
+        transcriptSummary: input.transcriptSummary ?? existing.transcriptSummary,
         ...(input.visitorName ? { visitorName: input.visitorName } : {}),
         ...(input.visitorEmail ? { visitorEmail: input.visitorEmail } : {}),
       },
@@ -82,6 +88,9 @@ export async function resumeOrCreateSession(input: {
           pageUrl: input.pageUrl ?? raced.pageUrl,
           leadId: leadId ?? raced.leadId,
           userId: input.userId ?? raced.userId,
+          projectId: input.projectId ?? raced.projectId,
+          flagId: input.flagId ?? raced.flagId,
+          transcriptSummary: input.transcriptSummary ?? raced.transcriptSummary,
           ...(input.visitorName ? { visitorName: input.visitorName } : {}),
           ...(input.visitorEmail ? { visitorEmail: input.visitorEmail } : {}),
         },
@@ -112,6 +121,9 @@ export async function resumeOrCreateSession(input: {
         leadId,
         visitorName: input.visitorName ?? null,
         visitorEmail: input.visitorEmail ?? null,
+        projectId: input.projectId ?? null,
+        flagId: input.flagId ?? null,
+        transcriptSummary: input.transcriptSummary ?? null,
         status: 'WAITING',
         unreadByAgent: 1,
       },

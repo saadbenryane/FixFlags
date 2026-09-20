@@ -75,21 +75,21 @@ for (const width of widths) {
     expect(errors).toEqual([])
   })
 
-  test(`canonical sample exposes its complete fix list at ${width}px`, async ({ page }) => {
+  test(`canonical sample exposes one evidence-backed Site Flag at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
     await page.goto('/samples')
 
-    await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
-    // Identity lives once in Agent; the Report header owns only Score/history.
-    await expect(page.getByText(/DemoSite/i).first()).toBeVisible()
-    await expect(page.getByRole('region', { name: 'Review score and history' })).toBeVisible()
-    if (width < 1024) await expect(page.getByRole('tab', { name: 'Report' })).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByRole('tab', { name: 'Timeline' })).toHaveCount(0)
-    await expect(page.getByRole('tab', { name: 'Canvas' })).toHaveCount(0)
-    await expect(page.getByRole('tab', { name: 'Preview' })).toHaveCount(0)
-    await expect(page.getByLabel('Product fixflags.com/demo')).toHaveCount(0)
+    await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'One Site, one evidence-backed Flag' })).toBeVisible()
+    await expect(page.getByText('1 Flag', { exact: true }).first()).toBeVisible()
+    for (const heading of ['Pages', 'Conversion', 'Security', 'Search', 'Performance', 'Tracking']) {
+      await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
+    }
+    await expect(page.getByText('Evidence', { exact: true })).toBeVisible()
+    await expect(page.getByText('Proposed change', { exact: true })).toBeVisible()
+    await expect(page.getByText('Verify succeeds when', { exact: true })).toBeVisible()
 
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
@@ -118,11 +118,10 @@ for (const width of widths) {
 }
 
 for (const width of [320, 375]) {
-  test(`mobile header and Flag selection remain responsive at ${width}px`, async ({ page }) => {
-    test.setTimeout(60_000)
+  test(`mobile sample and primary action remain responsive at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/samples')
-    await expect(page.locator('[data-workspace-ready="true"]')).toBeVisible({ timeout: 60_000 })
+    await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
 
     const header = page.getByRole('banner')
     const logo = header.getByRole('link', { name: 'FixFlags' })
@@ -137,48 +136,24 @@ for (const width of [320, 375]) {
     expect(signInBox).not.toBeNull()
     expect(logoBox!.x + logoBox!.width).toBeLessThanOrEqual(signInBox!.x)
 
-    const nextFlag = page.getByRole('button', { name: 'Next flag' })
-    await expect(nextFlag).toBeVisible()
-    await nextFlag.click()
-    await expect(page.getByText('2 of 7')).toBeVisible()
+    await expect(page.getByRole('link', { name: /Analyze your website/ })).toBeVisible()
   })
 }
 
-test('legacy sample details redirects to the canonical report surface', async ({ page }) => {
+test('legacy sample details redirects to the canonical Site sample', async ({ page }) => {
   await page.goto('/samples/details')
   await expect(page).toHaveURL(/\/samples(?:\?flag=[^#]+)?$/)
-  await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
+  await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
 })
 
-test('curated sample demonstrates exactly one fix prompt', async ({ page }) => {
+test('curated sample demonstrates evidence, a proposed change, and a success condition', async ({ page }) => {
   await page.goto('/samples')
-  await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
-  await expect(page.getByRole('button', { name: /copy prompt/i })).toHaveCount(1)
-  await expect(page.getByRole('button', { name: 'Ready to verify' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: /update review|recheck/i })).toHaveCount(0)
-  await expect(page.getByText(/Plan all of these changes before implementing any of them/)).toHaveCount(0)
+  await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
+  await expect(page.getByText('Evidence', { exact: true })).toBeVisible()
+  await expect(page.getByText('Proposed change', { exact: true })).toBeVisible()
+  await expect(page.getByText('Verify succeeds when', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: /copy prompt/i })).toHaveCount(0)
 })
-
-for (const { width, tablistName } of [
-  { width: 375, tablistName: 'Review panels' },
-]) {
-  test(`canonical sample tabs support keyboard navigation at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 900 })
-    await page.goto('/samples')
-    const tabs = page.getByRole('tablist', { name: tablistName })
-    const report = tabs.getByRole('tab', { name: 'Report' })
-    const agent = tabs.getByRole('tab', { name: 'Agent' })
-    await expect(report).toHaveAttribute('aria-selected', 'true')
-    await report.focus()
-    await page.keyboard.press('ArrowLeft')
-    await expect(agent).toBeFocused()
-    await expect(agent).toHaveAttribute('aria-selected', 'true')
-
-    await page.keyboard.press('ArrowRight')
-    await expect(report).toBeFocused()
-    await expect(report).toHaveAttribute('aria-selected', 'true')
-  })
-}
 
 test('canonical sample reflows at 200% text size and respects reduced motion', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 })
@@ -213,14 +188,14 @@ test('deleted or unknown reports render an explicit not-found state', async ({ p
 
 test('deleted or unknown reports render a helpful empty state with forward actions', async ({ page }) => {
   await page.goto('/report/report-that-does-not-exist')
-  await expect(page.getByRole('heading', { name: 'Report not found' })).toBeVisible({
+  await expect(page.getByRole('heading', { name: 'Saved evidence not found' })).toBeVisible({
     timeout: 20_000,
   })
   await expect(
-    page.getByText(/does not exist or has been removed/i).first()
+    page.getByText(/saved evidence does not exist or has been removed/i).first()
   ).toBeVisible()
   // Forward actions instead of a dead end.
-  await expect(page.getByRole('link', { name: 'Review my product' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Analyze a website' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible()
   // No raw error page.
   await expect(page.getByText(/could not be loaded/i)).toHaveCount(0)
@@ -416,7 +391,7 @@ const AXE_ROUTES: Array<{ name: string; path: string; expectHeading?: RegExp }> 
   {
     name: 'report (deleted/unknown state)',
     path: '/report/report-that-does-not-exist',
-    expectHeading: /Report not found/,
+    expectHeading: /Saved evidence not found/,
   },
   {
     name: 'dashboard (anonymous redirects to sign-in)',
@@ -441,9 +416,9 @@ for (const route of AXE_ROUTES) {
   })
 }
 
-test('accessibility: completed sample report has no axe violations', async ({ page }) => {
+test('accessibility: completed Site sample has no axe violations', async ({ page }) => {
   await page.goto('/samples')
-  await expect(page.getByRole('region', { name: 'Fix list with 7 flags' })).toBeVisible()
+  await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
   const results = await new AxeBuilder({ page: page as never }).analyze()
   expect(formatAxeViolations(results.violations)).toEqual([])
 })
@@ -482,7 +457,7 @@ test('accessibility: key marketing surfaces pass in light and dark at launch wid
 const DENSITY_WIDTHS = [375, 768, 1280]
 
 for (const width of DENSITY_WIDTHS) {
-  test(`report surface reflows at ${width}px with 200% text and reduced motion`, async ({
+  test(`Site sample reflows at ${width}px with 200% text and reduced motion`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height: 900 })
@@ -501,13 +476,11 @@ for (const width of DENSITY_WIDTHS) {
     expect(dimensions.reducedMotion).toBe(true)
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1)
 
-    // Flag selection stays reachable by keyboard under zoom (detail-only prev/next).
-    const nextFlag = page.getByRole('button', { name: 'Next flag' })
-    await nextFlag.scrollIntoViewIfNeeded()
-    await expect(nextFlag).toBeVisible()
-    await nextFlag.focus()
-    await page.keyboard.press('Enter')
-    await expect(page.getByText('2 of 7')).toBeVisible()
+    const analyze = page.getByRole('link', { name: /Analyze your website/ })
+    await analyze.scrollIntoViewIfNeeded()
+    await expect(analyze).toBeVisible()
+    await analyze.focus()
+    await expect(analyze).toBeFocused()
   })
 
   test(`dashboard entry reflows at ${width}px with 200% text and reduced motion`, async ({
@@ -550,38 +523,3 @@ for (const width of DENSITY_WIDTHS) {
     ).toBeLessThanOrEqual(dimensions.clientWidth + 1)
   })
 }
-
-// ---------------------------------------------------------------------------
-// Touch tier: screenshot fallback chain with a stubbed (failing) endpoint.
-// ---------------------------------------------------------------------------
-
-test('screenshot failure shows a placeholder with a working retry', async ({ page }) => {
-  test.setTimeout(60_000)
-  // Register before navigation so the stub covers every fetch of the asset.
-  // The spec disables the browser HTTP cache, so every request reaches this
-  // route and aborts as a network failure (guaranteed img error event).
-  await page.route('**/samples/observations/**', (route) => route.abort())
-  await page.goto('/samples')
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  await expect(page.locator('#selected-flag-detail')).toBeVisible()
-
-  // The initially-rendered flag's capture fetches during page load, so the
-  // aborted stub surfaces the fallback without needing a click or a scroll.
-  await expect(page.getByText('Screenshot unavailable').first()).toBeVisible({
-    timeout: 15_000,
-  })
-  await expect(page.getByRole('button', { name: 'Retry' }).first()).toBeVisible()
-
-  // Un-stub the endpoint and retry every failed panel: each recovery removes
-  // its Retry button, so re-query inside the loop.
-  await page.unroute('**/samples/observations/**')
-  for (;;) {
-    const retryButton = page.getByRole('button', { name: 'Retry' }).first()
-    if ((await retryButton.count()) === 0) break
-    await retryButton.click({ timeout: 10_000, force: true })
-  }
-  await expect(page.getByText('Screenshot unavailable')).toHaveCount(0, {
-    timeout: 15_000,
-  })
-  await expect(page.locator('img[src*="/samples/observations/"]').first()).toBeVisible()
-})

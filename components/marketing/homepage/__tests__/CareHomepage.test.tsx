@@ -83,14 +83,10 @@ describe('homepage conversion story', () => {
     expect(within(board).queryByText(/contact/i)).not.toBeInTheDocument()
   })
 
-  it('keeps optional public-check cards in the board library', () => {
+  it('shows the fixed launch board without a non-persistent card library', () => {
     render(<CareHomepage />)
-    fireEvent.click(screen.getByRole('button', { name: /Add card/i }))
-    const library = screen.getByRole('dialog')
-    expect(within(library).getByRole('heading', { name: SITE_BOARD_COPY.addTitle })).toBeInTheDocument()
-    expect(within(library).queryByText(/Connect MCP|Connect Analytics/i)).not.toBeInTheDocument()
-    fireEvent.click(within(library).getByRole('button', { name: /Uptime/i }))
-    expect(within(screen.getByRole('region', { name: C.boardAria })).getByRole('button', { name: C.library.uptime.name })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Add card/i })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: C.boardAria })).queryByRole('button', { name: C.library.uptime.name })).not.toBeInTheDocument()
   })
 
   it('opens the purchase Flag with evidence and restores focus', async () => {

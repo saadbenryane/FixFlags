@@ -138,6 +138,10 @@ const baseUser = {
   email: 'a@example.com',
   plan: 'FREE',
   stripeCurrentPeriodEnd: null,
+  stripeSubscriptionEventAt: null,
+  licensedSiteQuantity: 0,
+  subscriptionStatus: 'NONE',
+  stripePriceId: null,
 }
 
 function subscriptionObject(status: string = 'active') {
@@ -146,7 +150,7 @@ function subscriptionObject(status: string = 'active') {
     customer: 'cus_1',
     status,
     metadata: { userId: 'user_1' },
-    items: { data: [{ price: { id: 'price_builder' } }] },
+    items: { data: [{ quantity: 2, price: { id: 'price_builder' } }] },
     current_period_end: Math.floor(Date.now() / 1000) + 30 * 86400,
   }
 }
@@ -261,6 +265,9 @@ describe('POST /api/webhooks/stripe', () => {
       expect.objectContaining({ userId: 'user_1', plan: 'BUILDER', status: 'ACTIVE' })
     )
     expect(mockUserUpdate).toHaveBeenCalled()
+    expect(mockUserUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ licensedSiteQuantity: 2 }),
+    }))
     expect(mockCreateProcessed).toHaveBeenCalled()
     expect(mockCreateLifecycle).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -269,6 +276,7 @@ describe('POST /api/webhooks/stripe', () => {
         previousPlan: 'FREE',
         plan: 'BUILDER',
         status: 'ACTIVE',
+        siteQuantity: 2,
       }),
     })
   })
@@ -302,6 +310,35 @@ describe('POST /api/webhooks/stripe', () => {
         priceId: 'price_legacy_studio',
       })
     )
+  })
+
+  it('records but does not apply an out-of-order subscription event', async () => {
+    const now = Math.floor(Date.now() / 1000)
+    mockUserFindUnique.mockResolvedValue({
+      ...baseUser,
+      plan: 'BUILDER',
+      subscriptionStatus: 'ACTIVE',
+      stripePriceId: 'price_builder',
+      licensedSiteQuantity: 3,
+      stripeSubscriptionEventAt: new Date((now + 60) * 1000),
+    })
+    const event = {
+      id: 'evt_stale',
+      created: now,
+      type: 'customer.subscription.updated',
+      data: { object: subscriptionObject('canceled') },
+    }
+    const body = JSON.stringify(event)
+    mockConstructEvent.mockReturnValue(event)
+
+    const res = await POST(makeRequest(body, signBody(body)))
+
+    expect(res.status).toBe(200)
+    expect(mockSetStripeUsagePeriod).not.toHaveBeenCalled()
+    expect(mockUserUpdate).not.toHaveBeenCalled()
+    expect(mockCreateLifecycle).toHaveBeenCalledWith({
+      data: expect.objectContaining({ stale: true, plan: 'BUILDER', siteQuantity: 3 }),
+    })
   })
 
   it('payment_failed syncs subscription and notifies admin', async () => {

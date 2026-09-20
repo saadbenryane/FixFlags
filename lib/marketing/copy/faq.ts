@@ -31,37 +31,37 @@ export const FAQ: readonly FaqEntry[] = [
     question: 'Is FixFlags free?',
     answer:
       'Yes. One website is free, verified weekly. Pro is $49 per website per month, verified every day. We are not charging yet. Shopify is an optional connection, not the only way to start.',
-    learnMore: { href: '/help/billing-and-plans/free-vs-pro', label: 'Free vs Pro' },
+    learnMore: { href: '/help/account-and-billing/free-and-pro', label: 'Free vs Pro' },
   },
   {
     question: 'What does FixFlags actually check?',
     answer:
       'FixFlags opens your live website, follows important pages and actions, and records what actually happens. It is not an uptime ping, a Lighthouse score, or a recording of your visitors.',
-    learnMore: { href: '/help/checks-and-reports/vs-lighthouse', label: 'What FixFlags checks' },
+    learnMore: { href: '/help/sites-and-coverage/read-site-coverage', label: 'What FixFlags checks' },
   },
   {
     question: 'What is a Flag?',
     answer:
       'A Flag is something important that needs attention, with evidence. It says what happened, where it happened, and what should happen next. Healthy pages stay quiet.',
-    learnMore: { href: '/help/checks-and-reports/scores-and-severity', label: 'Reading Flags' },
+    learnMore: { href: '/help/flags-fix-verify/read-a-flag', label: 'Reading Flags' },
   },
   {
     question: 'How do I start?',
     answer:
       'Enter a public website URL. FixFlags checks the live site and shows Flags with evidence. You can add Shopify later if you need store context.',
-    learnMore: { href: '/help/getting-started/first-check', label: 'Start a check' },
+    learnMore: { href: '/help/getting-started/analyze-a-website', label: 'Start an analysis' },
   },
   {
     question: 'How do I verify a fix?',
     answer:
       'Publish the change, then run a fresh check on the same behavior. The old Flag is not resolved just because it disappeared from a list. FixFlags has to see the success state.',
-    learnMore: { href: '/help/getting-started/flag-fix-recheck', label: 'Verify a fix' },
+    learnMore: { href: '/help/flags-fix-verify/verify-a-flag', label: 'Verify a fix' },
   },
   {
     question: 'Do you charge or complete checkout on a store?',
     answer:
       'No. When FixFlags checks a purchase path, it stops before payment. It never enters card details or places an order.',
-    learnMore: { href: '/help/checks-and-reports/evidence-and-screenshots', label: 'How a check works' },
+    learnMore: { href: '/help/sites-and-coverage/read-site-coverage', label: 'How a check works' },
   },
   {
     question: 'What about Shopify?',
@@ -73,7 +73,7 @@ export const FAQ: readonly FaqEntry[] = [
     question: 'Can I see what FixFlags saw?',
     answer:
       'Yes. Each Flag keeps the capture, reproduction, and expected result. This is FixFlags\' own check, not session replay of your visitors.',
-    learnMore: { href: '/help/checks-and-reports/evidence-and-screenshots', label: 'Evidence' },
+    learnMore: { href: '/help/privacy-and-security/privacy-and-evidence', label: 'Evidence' },
   },
   {
     question: 'Who is FixFlags for?',
@@ -85,49 +85,32 @@ export const FAQ: readonly FaqEntry[] = [
 
 export const CHANGELOG_ENTRIES = [
   {
-    date: '2026-08-27',
-    title: 'A clearer path from URL to Fix',
+    date: '2026-09-20',
+    title: 'One Site, looked after',
     items: [
-      'Paste a public URL and watch Agent chat fill in beside your Report as the evidence lands',
-      'Each Product keeps score history, Your priorities, and Watch together, with Message, Experience, and Reach at a glance',
-      'Fix prompts name the live page and section so you can paste straight into Cursor, Claude Code, Lovable, or Bolt',
-      'Copy all gathers your ranked Fix list in one go; Export holds Copy link and Email me this report',
-      'Flags put Message and Experience ahead of Reach when the stakes are equal',
-      'Try a review without an account: you see the Flags and evidence, then save to unlock the fix prompts',
-      'Billing shows how many Site checks you have used this month, including update reviews and Watch',
+      'Your dashboard now shows Sites, meaningful Flags, coverage freshness, and Watch state',
+      'Every Site has durable Home, Flags, Flag detail, and Settings routes',
+      'Flag verification records fresh comparable evidence as Verified, Still open, Regressed, or Couldn’t verify',
+      'The Site Agent answers from persisted evidence and can escalate to human support with Site context',
     ],
   },
   {
-    date: '2026-07-22',
-    title: 'A complete Fix list and public report links',
+    date: '2026-09-19',
+    title: 'Watch and Shopify join the same product',
     items: [
-      'Every report now opens with every unresolved Flag ranked by launch impact',
-      'Screenshots, evidence, and fixes now share one report workspace',
-      'The sample shows the same complete Fix list without a loading gap',
-      'Every report has one canonical link for sharing its evidence',
-      'Sign-in waits until your anonymous report is safely attached to your account',
+      'Free Sites receive weekly Watch and paid plans are prepared for daily Watch',
+      'Choose Flags, Critical only, or Off, with recovery notices controlled separately',
+      'Shopify links to an owned Site and adds purchase-path context to its existing cards and Flags',
+      'Watch notifications return to the exact owned Flag when one needs attention',
     ],
   },
   {
-    date: '2026-07-20',
-    title: 'Report depth and Help Center',
+    date: '2026-09-18',
+    title: 'A clearer first run',
     items: [
-      'Product Contract and Action Timeline show what we inferred and how we checked',
-      'Funnel and CTA flow evidence in reports',
-      'Help Center with guides for reviews, billing, and account',
-      'One free teaser review without an account; sign up to claim fix prompts',
-      'Update reviews use product review credits on every plan',
-    ],
-  },
-  {
-    date: '2026-07-02',
-    title: 'FixFlags launches in open beta',
-    items: [
-      'Sign up and create your account to start testing your sites',
-      'Run free Site checks on any live or preview URL',
-      'See Critical Flag counts across Message, Experience, and Reach',
-      'Fix prompts for Cursor, Claude Code, Lovable, Bolt, Windsurf, and Devin',
-      'View your report history and AI tool usage from your dashboard',
+      'Analyze a public URL before signup and claim the same Site after authentication',
+      'Coverage now distinguishes fresh evidence, partial checks, exclusions, and unavailable protected pages',
+      'Help, Docs, pricing, samples, legal, email, and errors now use the same Site and Flag vocabulary',
     ],
   },
 ] as const

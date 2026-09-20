@@ -32,7 +32,7 @@ describe('structured data', () => {
       url: `${SITE_URL}/faq#is-fixflags-free`,
     })
     expect(freeQuestion?.acceptedAnswer.text).toContain('One website is free')
-    expect(freeQuestion?.acceptedAnswer.text).toContain('/help/billing-and-plans/free-vs-pro')
+    expect(freeQuestion?.acceptedAnswer.text).toContain('/help/account-and-billing/free-and-pro')
   })
 
   it('emits FAQPage schema for pricing questions', () => {
@@ -47,7 +47,7 @@ describe('structured data', () => {
   })
 
   it('emits TechArticle and BreadcrumbList for help articles', () => {
-    const article = getHelpArticle('first-check')
+    const article = getHelpArticle('analyze-a-website')
     const category = HELP_CATEGORIES.find((item) => item.id === 'getting-started')
     expect(article).toBeDefined()
     expect(category).toBeDefined()
@@ -63,7 +63,7 @@ describe('structured data', () => {
   })
 
   it('adds HowTo schema for step-based help articles', () => {
-    const article = getHelpArticle('claiming-a-report')
+    const article = getHelpArticle('analyze-a-website')
     const category = HELP_CATEGORIES.find((item) => item.id === 'getting-started')
     const schema = helpArticleStructuredData(article!, category!)
     expect(schema['@graph']).toEqual(

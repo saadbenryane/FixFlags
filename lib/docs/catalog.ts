@@ -5,7 +5,7 @@ import { buildIndexableMetadata } from '@/lib/marketing/metadata'
 export type DocsPageKey =
   | 'home'
   | 'getting-started'
-  | 'reports'
+  | 'site-care'
   | 'troubleshooting'
 
 export type DocsNavigationGroup = 'Start' | 'Use FixFlags' | 'Reference'
@@ -42,7 +42,7 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
       { id: 'product-loop', title: 'The product loop' },
       { id: 'choose-your-path', title: 'Choose your path' },
     ],
-    relatedHelpSlugs: ['first-check', 'reading-your-report', 'flag-fix-recheck', 'free-vs-pro'],
+    relatedHelpSlugs: ['analyze-a-website', 'read-site-coverage', 'verify-a-flag', 'free-and-pro'],
   },
   {
     key: 'getting-started',
@@ -60,19 +60,19 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
       { id: 'keep-watching', title: 'Keep watching' },
     ],
     relatedHelpSlugs: [
-      'first-check',
-      'claiming-a-report',
-      'anonymous-report-access',
-      'flag-fix-recheck',
+      'analyze-a-website',
+      'save-your-site',
+      'connect-shopify',
+      'verify-a-flag',
     ],
   },
   {
-    key: 'reports',
-    path: '/docs/reports',
+    key: 'site-care',
+    path: '/docs/site-care',
     group: 'Use FixFlags',
     title: 'Flags and proof',
     description: 'Coverage, Flags, Verify, Watch, and the Shopify connection.',
-    source: 'reports.md',
+    source: 'site-care.md',
     order: 2,
     headings: [
       { id: 'site-board', title: 'Site board' },
@@ -82,10 +82,10 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
       { id: 'shopify-connection', title: 'Shopify connection' },
     ],
     relatedHelpSlugs: [
-      'reading-your-report',
-      'scores-and-severity',
-      'finish-plan-vs-fix-list',
-      'evidence-and-screenshots',
+      'read-site-coverage',
+      'read-a-flag',
+      'verify-a-flag',
+      'weekly-watch',
     ],
   },
   {
@@ -93,24 +93,23 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
     path: '/docs/troubleshooting',
     group: 'Reference',
     title: 'Troubleshooting',
-    description: 'Install errors, password gates, missing video, recheck caps, and uninstall.',
+    description: 'Recover from blocked, delayed, or failed checks and connections.',
     source: 'troubleshooting.md',
     order: 7,
     headings: [
-      { id: 'install-did-not-finish', title: 'Install did not finish' },
-      { id: 'no-buyable-product', title: 'No buyable product' },
+      { id: 'analysis-did-not-finish', title: 'Analysis did not finish' },
+      { id: 'site-could-not-be-reached', title: 'Site could not be reached' },
       { id: 'password-or-bot-wall', title: 'Password or bot wall' },
-      { id: 'walk-still-in-progress', title: 'Walk still in progress' },
-      { id: 'recheck-cap', title: 'Recheck cap' },
-      { id: 'uninstall', title: 'Uninstall' },
+      { id: 'verify-is-still-in-progress', title: 'Verify is still in progress' },
+      { id: 'shopify-connection', title: 'Shopify connection' },
+      { id: 'contact-support', title: 'Contact support' },
     ],
     relatedHelpSlugs: [
-      'why-check-failed',
-      'public-urls-only',
-      'stuck-running-review',
-      'oauth-sign-in-issues',
-      'payment-past-due',
-      'contact-us',
+      'check-failed-or-stuck',
+      'coverage-limitations',
+      'connect-shopify',
+      'manage-an-existing-subscription',
+      'contact-support',
     ],
   },
 ] as const

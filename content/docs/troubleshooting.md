@@ -1,34 +1,30 @@
-## Install did not finish
+## Analysis did not finish
 
-Open [/install](/install) and try again. If Shopify returns you without opening the app, email hello@fixflags.com with the shop domain.
+Open the Site and use its retry action. FixFlags keeps the Site and shows whether URL validation, capture, queueing, or analysis failed without exposing provider or configuration details.
 
-## No buyable product
+## Site could not be reached
 
-Overview says when the catalog has no active product with a storefront URL. Publish one and we will walk it.
+Open the URL in a signed-out browser. The first check requires a public HTML page. Private networks, localhost, password gates, and bot challenges remain unsupported or limited.
 
 ## Password or bot wall
 
-Those results are Unclear. They stay in the app. We do not email Unclear. Remove the password from the storefront you want watched, or wait out a bot check, then Recheck.
+Those results remain an explicit limitation. They do not become healthy and they do not resolve an existing Flag. Remove the temporary restriction when appropriate, then retry.
 
-## Walk still in progress
+## Verify is still in progress
 
-Leave the app open. It refreshes while a walk is running. If video is missing when the walk finishes, step screenshots still appear when we captured them.
+The Flag page refreshes while a verification attempt is running. Refreshing the browser or pressing Verify again does not create a second pending attempt.
 
-## Recheck cap
+## Shopify connection
 
-Free stores get five manual rechecks per day. If the button is disabled, scheduled walks still run.
+Start the connection from the owned Site settings page. If authorization expires, retry there. If the shop is already linked to another account, the connection is refused rather than reassigned by hostname.
 
-## Slack URL rejected
+## Contact support
 
-Paste a Slack incoming webhook URL that starts with `https://hooks.slack.com/`. Other URLs are rejected.
-
-## Uninstall
-
-Uninstall from Shopify admin. Walks stop. A shop redact request deletes stored shop artifacts.
+Open the FixFlags Agent on an owned Site and choose Talk to support, or email hello@fixflags.com. Include the Site and Flag, but never send passwords, private keys, payment details, or customer data.
 
 ## Get help
 
-- [Why a walk is Unclear or failed](/help/checks-and-reports/why-check-failed)
-- [Storefront access](/help/checks-and-reports/public-urls-only)
-- [Walk still in progress](/help/checks-and-reports/stuck-running-review)
-- [Contact us](/help/account/contact-us)
+- [A check failed or is stuck](/help/troubleshooting/check-failed-or-stuck)
+- [Coverage limitations](/help/sites-and-coverage/coverage-limitations)
+- [Connect Shopify](/help/shopify/connect-shopify)
+- [Contact support](/help/troubleshooting/contact-support)

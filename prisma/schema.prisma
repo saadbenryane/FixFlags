@@ -26,6 +26,8 @@ model User {
   createdAt                DateTime                     @default(now())
   updatedAt                DateTime                     @updatedAt
   subscriptionStatus       SubscriptionStatus           @default(NONE)
+  licensedSiteQuantity     Int                          @default(0)
+  stripeSubscriptionEventAt DateTime?
   preferredTools           String[]
   vibecodingLevel          String?
   image                    String?
@@ -62,6 +64,10 @@ model User {
   waitlistInvitesSent      WaitlistInvite[]             @relation("WaitlistInviter")
   waitlistInvitesRedeemed  WaitlistInvite[]             @relation("WaitlistInvitee")
   waitlistLeads            WaitlistLead[]               @relation("WaitlistLeadClaimedUser")
+  shopifyAccountLinks      ShopifyAccountLink[]
+  siteAgentThreads         SiteAgentThread[]
+  siteAgentMessages        SiteAgentMessage[]
+  siteLifecycleEvents      SiteLifecycleEvent[]
 
   @@map("users")
 }
@@ -436,6 +442,7 @@ model Project {
   url                         String
   createdAt                   DateTime              @default(now())
   updatedAt                   DateTime              @updatedAt
+  deletedAt                   DateTime?
   /// *
   ///    * Persistent Product Intelligence JSON — see knowledge/product-intelligence.md
   productIntelligence         Json?
@@ -455,6 +462,8 @@ model Project {
   watchConsecutiveFailures    Int                   @default(0)
   watchLastError              String?
   watchInterval               ProjectWatchInterval?
+  notificationLevel           SiteNotificationLevel      @default(FLAGS)
+  notifyOnRecovery            Boolean                    @default(true)
   /// *
   ///    * Encrypted scan access (HTTP basic, cookies, headers) for preview/staging URLs.
   scanAccessEncrypted         String?
@@ -467,6 +476,11 @@ model Project {
   improvementCycles           ImprovementCycle[]
   sitePages                   SitePage[]
   siteOutcomes                SiteOutcome[]
+  shopifyShops                ShopifyShop[]
+  shopifyAccountLinks         ShopifyAccountLink[]
+  agentThreads                SiteAgentThread[]
+  supportSessions             SupportSession[]
+  lifecycleEvents             SiteLifecycleEvent[]
   user                        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, canonicalHost])
@@ -861,6 +875,9 @@ model SupportSession {
   pageUrl         String?
   leadId          String?
   assignedAgentId String?
+  projectId       String?
+  flagId          String?
+  transcriptSummary String?
   lastMessageAt   DateTime?
   lastNotifiedAt  DateTime?
   unreadByAgent   Int                  @default(0)
@@ -872,11 +889,62 @@ model SupportSession {
   lead            Lead?                @relation(fields: [leadId], references: [id])
   tenant          SupportTenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user            User?                @relation("SupportSessionUser", fields: [userId], references: [id])
+  project         Project?             @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, visitorToken])
   @@index([tenantId, status, lastMessageAt(sort: Desc)])
   @@index([leadId])
+  @@index([projectId, updatedAt(sort: Desc)])
   @@map("support_sessions")
+}
+
+model SiteAgentThread {
+  id        String             @id @default(cuid())
+  projectId String
+  userId    String
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  project   Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  SiteAgentMessage[]
+
+  @@index([projectId, updatedAt(sort: Desc)])
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("site_agent_threads")
+}
+
+model SiteAgentMessage {
+  id        String               @id @default(cuid())
+  threadId  String
+  userId    String
+  role      SiteAgentMessageRole
+  content   String
+  citations Json?
+  createdAt DateTime             @default(now())
+  thread    SiteAgentThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("site_agent_messages")
+}
+
+model SiteLifecycleEvent {
+  id             String   @id @default(cuid())
+  name           String
+  version        Int      @default(1)
+  idempotencyKey String   @unique
+  userId         String?
+  projectId      String?
+  properties     Json?
+  createdAt      DateTime @default(now())
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  project        Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([name, createdAt(sort: Desc)])
+  @@index([projectId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("site_lifecycle_events")
 }
 
 model SupportMessage {
@@ -1299,6 +1367,8 @@ model SubscriptionLifecycleEvent {
   priceId         String?
   unitAmount      Int?
   currency        String?
+  siteQuantity    Int?
+  stale           Boolean                   @default(false)
   occurredAt      DateTime
   createdAt       DateTime                  @default(now())
   user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1613,12 +1683,34 @@ model ShopifyShop {
   uninstalledAt           DateTime?
   lastProbeAt             DateTime?
   activationTrackedAt     DateTime?
+  projectId               String?         @unique
+  linkedAt                DateTime?
   paths                   RevenuePath[]
   waitlist                IntegrityWaitlist[]
   gdprRequests            ShopifyGdprRequest[]
+  project                 Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  accountLinks            ShopifyAccountLink[]
 
   @@index([uninstalledAt])
   @@map("shopify_shops")
+}
+
+model ShopifyAccountLink {
+  id         String       @id @default(cuid())
+  tokenHash  String       @unique
+  projectId  String
+  userId     String
+  shopId     String?
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime     @default(now())
+  project    Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shop       ShopifyShop? @relation(fields: [shopId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, expiresAt])
+  @@index([shopId])
+  @@map("shopify_account_links")
 }
 
 model RevenuePath {
@@ -2109,6 +2201,18 @@ enum RepoFixPrStatus {
 enum ProjectWatchInterval {
   WEEKLY
   DAILY
+}
+
+enum SiteNotificationLevel {
+  FLAGS
+  CRITICAL_ONLY
+  OFF
+}
+
+enum SiteAgentMessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
 }
 
 enum RecheckTrigger {

@@ -51,6 +51,11 @@ export type SiteHomeView = {
   }
   coverageSummary: string
   checkedPages?: Array<{ url: string; title: string | null; status: string }>
+  settings?: {
+    notificationLevel: 'FLAGS' | 'CRITICAL_ONLY' | 'OFF'
+    notifyOnRecovery: boolean
+    shopify: { state: 'connected' | 'unavailable' | 'not_connected'; domain: string | null }
+  }
 }
 
 const auditSelect = {
@@ -149,11 +154,19 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
 
   const audit = await resolveLatestAudit(site)
 
-  const [{ flags, recommendations }, outcomes, pageCount, checkedPages] = await Promise.all([
+  const [{ flags, recommendations }, outcomes, pageCount, checkedPages, projectSettings] = await Promise.all([
     loadSiteFindings(site),
     listSiteOutcomes(site),
     countSitePages(site),
     audit ? prisma.auditPage.findMany({ where: { auditId: audit.id }, orderBy: { position: 'asc' }, select: { url: true, title: true, status: true } }) : [],
+    site.projectId ? prisma.project.findUnique({
+      where: { id: site.projectId },
+      select: {
+        notificationLevel: true,
+        notifyOnRecovery: true,
+        shopifyShops: { take: 1, select: { shopDomain: true, uninstalledAt: true } },
+      },
+    }) : null,
   ])
 
   const inFlight = isAuditInFlight(audit?.status)
@@ -258,6 +271,16 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
       : health.state === 'unknown'
         ? health.answer
         : `Checked ${audit?.completedAt ? 'recently' : 'once'} · ${flags.length} open Flag${flags.length === 1 ? '' : 's'}`,
+    settings: {
+      notificationLevel: projectSettings?.notificationLevel ?? 'FLAGS',
+      notifyOnRecovery: projectSettings?.notifyOnRecovery ?? true,
+      shopify: projectSettings?.shopifyShops[0]
+        ? {
+            state: projectSettings.shopifyShops[0].uninstalledAt ? 'unavailable' : 'connected',
+            domain: projectSettings.shopifyShops[0].shopDomain,
+          }
+        : { state: 'not_connected', domain: null },
+    },
   }
 }
 

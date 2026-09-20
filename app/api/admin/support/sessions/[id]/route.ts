@@ -4,6 +4,7 @@ import { handleRouteError, apiError } from '@/lib/api/errors'
 import { requireAdmin, isAdminResponse } from '@/lib/auth/require-admin'
 import { updateSessionStatus, serializeSession } from '@/lib/live-support'
 import { prisma } from '@/lib/db'
+import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 
 const patchSchema = z.object({
   status: z.enum(['OPEN', 'WAITING', 'ACTIVE', 'CLOSED']),
@@ -28,6 +29,15 @@ export async function PATCH(
     if (!existing) return apiError('Not found', 404)
 
     const session = await updateSessionStatus(id, parsed.data.status, admin.id)
+    if (parsed.data.status === 'CLOSED' && existing.status !== 'CLOSED' && existing.projectId) {
+      await recordSiteLifecycleEvent({
+        name: 'support_resolved',
+        idempotencyKey: `support-resolved:${existing.id}`,
+        userId: existing.userId,
+        projectId: existing.projectId,
+        properties: { hadFlag: Boolean(existing.flagId) },
+      })
+    }
     return NextResponse.json({ session: serializeSession(session) })
   } catch (err) {
     return handleRouteError(err)

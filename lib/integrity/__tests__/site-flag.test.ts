@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { upsertIntegritySiteFlag } from '../site-flag'
 
 const prisma = vi.hoisted(() => ({
-  project: { findFirst: vi.fn() },
+  project: { findUnique: vi.fn() },
   improvement: { upsert: vi.fn(), updateMany: vi.fn() },
 }))
 
@@ -11,10 +11,10 @@ vi.mock('@/lib/logger', () => ({ logger: { warn: vi.fn() } }))
 
 describe('integrity Site Flag', () => {
   it('upserts a conversion Flag on a matching Site when customers cannot buy', async () => {
-    prisma.project.findFirst.mockResolvedValue({ id: 'proj_1' })
+    prisma.project.findUnique.mockResolvedValue({ id: 'proj_1' })
     prisma.improvement.upsert.mockResolvedValue({})
     const result = await upsertIntegritySiteFlag({
-      shop: { primaryUrl: 'https://everydaygoods.example' },
+      projectId: 'proj_1',
       pathId: 'path_1',
       pathLabel: 'Blue mug',
       storefrontUrl: 'https://everydaygoods.example/products/mug',
@@ -34,10 +34,10 @@ describe('integrity Site Flag', () => {
   })
 
   it('marks the Flag verified when the path recovers', async () => {
-    prisma.project.findFirst.mockResolvedValue({ id: 'proj_1' })
+    prisma.project.findUnique.mockResolvedValue({ id: 'proj_1' })
     prisma.improvement.updateMany.mockResolvedValue({ count: 1 })
     await upsertIntegritySiteFlag({
-      shop: { primaryUrl: 'https://everydaygoods.example' },
+      projectId: 'proj_1',
       pathId: 'path_1',
       pathLabel: 'Blue mug',
       storefrontUrl: 'https://everydaygoods.example/products/mug',

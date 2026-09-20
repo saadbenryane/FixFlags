@@ -18,6 +18,7 @@ import {
 import { parseProductContract } from '@/lib/audit/product-contract'
 import { assertCanCreateProduct } from '@/lib/billing/product-capacity'
 import { claimProvisionalSitesForProject, migrateProvisionalSiteDataToProject } from '@/lib/sites/ensure-site'
+import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 
 async function unlockClaimedAudit(audit: {
   id: string
@@ -96,7 +97,7 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
                 canonicalHost,
                 isManaged: false,
               },
-              update: { url: canonicalProductUrl(audit.url) },
+              update: { url: canonicalProductUrl(audit.url), deletedAt: null },
               select: { id: true, productIntelligence: true },
             })
         }
@@ -150,6 +151,13 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
           .filter((a) => canonicalProductHost(a.url) === host)
           .map((a) => a.id),
       })
+      await recordSiteLifecycleEvent({
+        name: 'site_claimed',
+        idempotencyKey: `site_claimed:${userId}:${project.id}`,
+        userId,
+        projectId: project.id,
+        properties: { auditCount: audits.filter((a) => canonicalProductHost(a.url) === host).length },
+      }).catch(() => undefined)
     }
   }
 

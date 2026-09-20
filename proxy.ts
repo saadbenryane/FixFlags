@@ -34,8 +34,12 @@ const PARKED_POWER_TOOL_PREFIXES = [
   '/api/api-keys',
   '/api/cli',
   '/api/integrations/github',
+  '/api/integrations/gsc',
   '/api/mcp',
+  '/api/products',
+  '/api/projects',
   '/api/repo-scans',
+  '/api/stripe/credit-pack',
   '/api/webhooks/railway',
   '/api/well-known/mcp-json',
   '/.well-known/mcp.json',
@@ -44,7 +48,7 @@ const PARKED_POWER_TOOL_PREFIXES = [
 ] as const
 
 export function isParkedPowerToolPath(pathname: string): boolean {
-  return PARKED_POWER_TOOL_PREFIXES.some(
+  return /^\/api\/reports\/[^/]+\/chat$/.test(pathname) || PARKED_POWER_TOOL_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   )
 }
@@ -152,8 +156,13 @@ export const config = {
     '/api/api-keys/:path*',
     '/api/cli/:path*',
     '/api/integrations/github/:path*',
+    '/api/integrations/gsc/:path*',
     '/api/mcp/:path*',
+    '/api/products/:path*',
+    '/api/projects/:path*',
     '/api/repo-scans/:path*',
+    '/api/reports/:id/chat',
+    '/api/stripe/credit-pack',
     '/api/webhooks/railway/:path*',
     '/api/well-known/mcp-json/:path*',
     // Skip API routes, static assets, and images

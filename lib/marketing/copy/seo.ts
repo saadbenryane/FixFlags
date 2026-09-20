@@ -40,14 +40,14 @@ export const SEO = {
       'Enter a website URL, inspect evidence-backed Flags, verify improvements, and add context only when it makes the next decision clearer.',
   },
   samples: {
-    title: 'Sample Report',
+    title: 'Sample Site and Flag',
     description:
-      'See a real FixFlags report of DemoSite: evidence-backed Flags with fix prompts.',
+      'See an evidence-backed FixFlags Site, its coverage, and one actionable Flag from a retained test fixture.',
   },
   examples: {
-    title: 'Example Reports',
+    title: 'FixFlags Samples',
     description:
-      'FixFlags Site checks of recognizable sites like web.dev, Vercel, and Wikipedia.',
+      'See how FixFlags presents Site coverage, evidence-backed Flags, and verification criteria.',
   },
   faq: {
     title: 'FAQ',

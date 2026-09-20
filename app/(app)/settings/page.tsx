@@ -7,22 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { AccountSettingsForms } from '@/components/settings/AccountSettingsForms'
 import { ConnectedAccounts } from '@/components/settings/ConnectedAccounts'
-import { GscConnectionCard } from '@/components/settings/GscConnectionCard'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { AUTH } from '@/lib/marketing/copy'
-import { isGoogleSearchConsoleConfigured } from '@/lib/integrations/google-search-console'
-import { Callout } from '@/components/ui/callout'
 
-type SettingsSearchParams = {
-  gsc_connected?: string | string[]
-  error?: string | string[]
-}
-
-export default async function SettingsPage({
-  searchParams,
-}: {
-  searchParams?: Promise<SettingsSearchParams>
-}) {
+export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) redirect(signInUrl('/settings'))
 
@@ -38,15 +26,11 @@ export default async function SettingsPage({
         select: { providerId: true, password: true },
       },
       passkeys: { select: { id: true } },
-      gscConnection: { select: { siteUrl: true } },
     },
   })
 
   if (!user) notFound()
 
-  const query = searchParams ? await searchParams : {}
-  const errorCode = typeof query.error === 'string' ? query.error : null
-  const gscConnected = query.gsc_connected === '1'
   const settingsCopy = AUTH.settings
 
   const planDef = PLAN_DEFINITIONS[user.plan]
@@ -59,14 +43,6 @@ export default async function SettingsPage({
     <div className="space-y-8">
       <PageHeader title={settingsCopy.pageTitle} description={settingsCopy.pageDescription} />
 
-      {gscConnected ? (
-        <Callout variant="success" title={settingsCopy.gscConnectedTitle} />
-      ) : errorCode ? (
-        <Callout variant="warning" title={settingsCopy.gscNotConnectedTitle}>
-          {settingsCopy.gscErrors[errorCode] ?? settingsCopy.gscRetry}
-        </Callout>
-      ) : null}
-
       <ConnectedAccounts
         email={user.email}
         emailVerified={user.emailVerified}
@@ -75,13 +51,6 @@ export default async function SettingsPage({
         linkedProviders={linkedProviders}
         twoFactorEnabled={user.twoFactorEnabled}
       />
-
-      {isGoogleSearchConsoleConfigured() && (
-        <GscConnectionCard
-          connected={Boolean(user.gscConnection)}
-          siteUrl={user.gscConnection?.siteUrl ?? null}
-        />
-      )}
 
       <Card variant="subtle">
         <CardHeader>
