@@ -332,6 +332,13 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   await page.getByRole('button', { name: 'Analyze' }).first().click()
   await page.waitForURL(/\/sites\//, { timeout: 30_000 })
   await expect(page.getByRole('heading', { name: 'Your board' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Sign in' }).first()).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Sign in' }).first()).toHaveAttribute(
+    'href',
+    /\/sign-in\?next=%2Fsites%2F/
+  )
+  await expect(page.getByRole('button', { name: 'Keep watching' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'All Sites' })).toHaveCount(0)
   await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Pages', exact: true })).toBeVisible()
   for (const name of ['Conversion', 'Security', 'Search', 'Performance', 'Tracking']) {
@@ -373,6 +380,10 @@ test('anonymous check reaches a Site board without exposing fix prompts', async 
   expect(walkEvents).toHaveLength(0)
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Your board' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Sign in' }).first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Keep watching' })).toHaveCount(0)
+  await expect(page.getByText('Not watching')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Add card' })).toHaveCount(0)
   await expect(page.getByText(/Preparing your review/i)).toHaveCount(0)
 
   const flagLinks = page.locator('a[href*="/flags/"]')

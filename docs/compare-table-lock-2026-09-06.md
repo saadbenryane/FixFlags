@@ -1,6 +1,6 @@
 # Compare table lock — 2026-09-06 (Saad)
 
-Status: COPY LOCKED and shipped on pricing. Shared `MarketingCompareSection`. Care homepage replaced the older landing stack; homepage placement is optional under the new Care layout.
+Status: COPY LOCKED and shipped on pricing and the Care homepage. Shared `MarketingCompareSection`. Do not rewrite `SITE_COMPARE`.
 
 Headline: What your site should answer.
 
@@ -38,4 +38,4 @@ Mobile: single sticky-question table with horizontal scroll (no stacked cards).
 
 ## Placement
 - Pricing page (shipped; reuse one component)
-- Homepage after How it works only if Care layout gains an equivalent quiet slot
+- Care homepage after the workflow/evidence section and before the final CTA / plans section (embedded in Care section spacing)

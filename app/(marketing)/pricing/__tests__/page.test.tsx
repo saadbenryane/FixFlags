@@ -37,6 +37,7 @@ describe('/pricing', () => {
     expect(page).not.toMatch(/useMe/)
     expect(page).not.toMatch(/PricingComparisonTable/)
     expect(page).not.toMatch(/shopifyNote/)
+    expect(page).toMatch(/MarketingCompareSection embedded/)
     expect(route).not.toMatch(/['"]use client['"]/)
     expect(route).toMatch(/faqPageSchema/)
     expect(route).toMatch(/PricingPage/)
@@ -53,6 +54,7 @@ describe('/pricing', () => {
     expect(screen.getByRole('button', { name: 'Analyze' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /waitlist/i })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Compare plans' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /What your site should answer/ })).toBeInTheDocument()
   })
 
   it('embeds FAQPage structured data on the route', () => {

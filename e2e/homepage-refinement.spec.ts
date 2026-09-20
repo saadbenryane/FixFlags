@@ -11,8 +11,11 @@ for (const width of [375, 390, 1086, 1144]) {
       page.getByRole('heading', { level: 1, name: /Your website,\s*looked after\./i })
     ).toBeVisible()
     await expect(
-      page.getByText(/Keep building\. FixFlags monitors your live website/i).first()
+      page.getByText(/FixFlags monitors your live website/i).first()
     ).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: /What your site should answer/ })
+    ).toBeAttached()
 
     const geometry = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
