@@ -13,6 +13,7 @@ import { triageDegradedVerdict } from '@/lib/audit/triage-verdict'
 import { triageFailureCode } from '@/lib/audit/pipeline/triage-failure'
 import { DETERMINISTIC_SCAN_VERDICT } from '@/lib/audit/verdict'
 import type { TriageFailureReason } from '@/lib/audit/pipeline/triage-failure'
+import { reconcileOutcomeRunsForAudit } from '@/lib/sites/application/run-requests'
 
 type FinalizeBaseInput = {
   auditId: string
@@ -73,6 +74,7 @@ export async function persistImprovementCycle(
         verificationAuditId: auditId,
       })
     }
+    await reconcileOutcomeRunsForAudit(auditId)
     // improvementProjectedAt is a completion receipt, not a lease. Write it
     // only after every idempotent projection step succeeds so a process crash
     // leaves the Review recoverable by the scheduler.

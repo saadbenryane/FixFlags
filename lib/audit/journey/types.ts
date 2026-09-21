@@ -1,6 +1,7 @@
 export type JourneyType =
   | 'first-visit'
   | 'pricing-evaluation'
+  | 'checkout'
   | 'signup'
   | 'contact-support'
   | 'multi-step-funnel'

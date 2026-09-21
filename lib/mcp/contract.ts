@@ -8,11 +8,11 @@ import {
 } from '@/lib/mcp/tool-manifest'
 
 export const MCP_WORKFLOW = [
-  'Run ff_check_and_plan for a deployed Product URL.',
-  'Inspect the selected Flag with ff_get_flag and validate its evidence.',
-  'Implement and deploy the change outside FixFlags.',
-  'Record the builder declaration with ff_mark_fix_attempted. This does not verify the change.',
-  'Run ff_recheck_and_compare. Only the fresh child Product Review can verify the outcome.',
+  'Use ff_list_sites and ff_list_outcomes to select an owned Outcome.',
+  'Call ff_verify_outcome and poll ff_get_run until independent verification finishes.',
+  'If FixFlags returns Flag, inspect it with ff_get_flag and change the software outside FixFlags.',
+  'Call ff_verify_flag after deployment and poll the returned run.',
+  'Only fresh FixFlags evidence can return the Outcome to Clear.',
 ] as const
 
 export type McpErrorEnvelope = {

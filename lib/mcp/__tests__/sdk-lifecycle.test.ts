@@ -25,7 +25,7 @@ describe('MCP SDK lifecycle', () => {
       MCP_TOOL_DEFINITIONS.map((tool) => tool.name).sort()
     )
     const attemptTool = result.tools.find(
-      (tool) => tool.name === MCP_TOOLS.markFixAttempted.name
+      (tool) => tool.name === MCP_TOOLS.verifyOutcome.name
     )
     expect(attemptTool).toMatchObject({
       annotations: {
@@ -36,13 +36,13 @@ describe('MCP SDK lifecycle', () => {
     })
     expect(attemptTool?.inputSchema).toMatchObject({
       properties: {
-        action: { enum: ['ACCEPT', 'READY_TO_VERIFY', 'REJECT'] },
-        changeSummary: { type: 'string' },
-        deploymentReference: { type: 'string' },
+        siteId: { type: 'string' },
+        outcomeId: { type: 'string' },
+        idempotencyKey: { type: 'string' },
       },
     })
     expect((attemptTool?.inputSchema as { properties?: object })?.properties).not.toHaveProperty(
-      'status'
+      'reportId'
     )
 
     const connection = await client.callTool({
@@ -51,7 +51,7 @@ describe('MCP SDK lifecycle', () => {
     })
     expect(connection.isError).not.toBe(true)
     expect(connection.structuredContent).toMatchObject({
-      contractVersion: '1.0',
+      contractVersion: '2.0',
       ready: true,
       authentication: { type: 'bearer', authenticated: true },
       clientInfo: { name: 'fixflags-test-client', version: '1.0.0' },

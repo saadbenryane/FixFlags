@@ -36,7 +36,7 @@ describe('MCP public tool manifest', () => {
   it('treats optional additions as additive while requiring the versioned core', () => {
     const coreNames = MCP_CORE_TOOL_DEFINITIONS.map((tool) => tool.name)
     expect(inspectMcpToolReadiness([...coreNames, 'vendor_future_tool'])).toMatchObject({
-      contractVersion: '1.0',
+      contractVersion: '2.0',
       ready: true,
       missingCore: [],
     })

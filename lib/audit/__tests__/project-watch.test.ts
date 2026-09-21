@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   auditUpdateMany: vi.fn(),
   auditUpdate: vi.fn(),
   startMonitoringAudit: vi.fn(),
+  requestOutcomeRun: vi.fn(),
+  siteOutcomeFindFirst: vi.fn(),
   getFlagDiffSummary: vi.fn(),
   sendEmail: vi.fn(),
 }))
@@ -28,9 +30,11 @@ vi.mock('@/lib/db', () => ({
       updateMany: mocks.auditUpdateMany,
       update: mocks.auditUpdate,
     },
+    siteOutcome: { findFirst: mocks.siteOutcomeFindFirst },
   },
 }))
 vi.mock('@/lib/audit/monitoring', () => ({ startMonitoringAudit: mocks.startMonitoringAudit }))
+vi.mock('@/lib/sites/application/run-requests', () => ({ requestOutcomeRun: mocks.requestOutcomeRun }))
 vi.mock('@/lib/audit/diff-flags', () => ({ getFlagDiffSummary: mocks.getFlagDiffSummary }))
 vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: mocks.sendEmail } } }))
 vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn() }))
@@ -63,6 +67,7 @@ describe('Product Watch', () => {
     mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
     mocks.sendEmail.mockResolvedValue({ id: 'email-1' })
     mocks.projectFindFirst.mockResolvedValue({ id: 'project-1', user: project.user })
+    mocks.siteOutcomeFindFirst.mockResolvedValue(null)
   })
 
   it('enables weekly scheduled reviews for a Studio Product', async () => {
@@ -180,6 +185,27 @@ describe('Product Watch', () => {
       where: { id: 'project-1' },
       data: expect.objectContaining({ watchNextRunAt: expect.any(Date) }),
     }))
+  })
+
+  it('routes a watched Checkout Outcome through the shared RunRequest path', async () => {
+    mocks.auditFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'parent-1' })
+    mocks.siteOutcomeFindFirst.mockResolvedValue({ id: 'checkout-1' })
+    mocks.requestOutcomeRun.mockResolvedValue({ runId: 'run-1', auditId: 'child-1', reused: false })
+
+    const result = await processDueProjectWatches(20, {
+      clock: fixedClock(new Date('2026-08-25T00:00:00.000Z')),
+    })
+
+    expect(result).toEqual({ processed: 1, enqueued: 1, errors: 0 })
+    expect(mocks.requestOutcomeRun).toHaveBeenCalledWith(expect.objectContaining({
+      projectId: 'project-1',
+      outcomeId: 'checkout-1',
+      userId: 'user-1',
+      source: 'WATCH',
+    }))
+    expect(mocks.startMonitoringAudit).not.toHaveBeenCalled()
   })
 
   it('pauses at the renewal boundary when monthly Review capacity is exhausted', async () => {

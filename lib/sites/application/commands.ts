@@ -4,6 +4,7 @@ import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
+import { requestOutcomeRun } from '@/lib/sites/application/run-requests'
 
 export type SiteCommand =
   | {
@@ -80,6 +81,36 @@ export async function executeSiteCommand(command: SiteCommand) {
       })
       if (!attempt.attemptId) {
         return { ok: false as const, error: 'Could not prepare this verification attempt.' }
+      }
+
+      if (flag.outcomeId) {
+        const started = await requestOutcomeRun({
+          projectId: site.projectId,
+          outcomeId: flag.outcomeId,
+          userId: command.userId,
+          source: 'WEB',
+          idempotencyKey: `flag-verify:${attempt.attemptId}`,
+          verificationAttemptId: attempt.attemptId,
+          parentAuditId: flag.sourceAuditId,
+          context: { action: 'verify_flag' },
+        })
+        await recordSiteLifecycleEvent({
+          name: 'verify_started',
+          idempotencyKey: `verify-started:${attempt.attemptId}`,
+          userId: command.userId,
+          projectId: site.projectId,
+          properties: { reused: started.reused, scope: 'outcome' },
+        })
+        return {
+          ok: true as const,
+          runId: started.runId,
+          verificationAuditId: started.auditId,
+          siteId: site.siteId,
+          parentAuditId: flag.sourceAuditId,
+          flagId: flag.id,
+          attemptId: attempt.attemptId,
+          expectedBehavior: flag.expectedBehavior,
+        }
       }
 
       const verifyUrl = flag.pageUrl || site.url

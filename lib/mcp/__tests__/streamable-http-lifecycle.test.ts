@@ -69,7 +69,7 @@ describe('MCP Streamable HTTP lifecycle', () => {
       params: { name: MCP_TOOLS.getConnectionInfo.name, arguments: {} },
     }) as { result?: { structuredContent?: Record<string, unknown> } }
     expect(called.result?.structuredContent).toMatchObject({
-      contractVersion: '1.0',
+      contractVersion: '2.0',
       ready: true,
       clientInfo: { name: 'generic-http-client', version: '2.1.0' },
     })

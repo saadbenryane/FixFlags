@@ -17,6 +17,10 @@ export const SITE_LIFECYCLE_EVENTS = [
   'agent_answered',
   'agent_escalated',
   'support_resolved',
+  'outcome_created',
+  'outcome_run_requested',
+  'outcome_run_result',
+  'outcome_recovered',
 ] as const
 
 export type SiteLifecycleEventName = (typeof SITE_LIFECYCLE_EVENTS)[number]

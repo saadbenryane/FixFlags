@@ -60,6 +60,10 @@ export interface CreateAuditOptions {
    * resume that Review; an unrelated in-flight manual Review is never reused.
    */
   verificationAttemptId?: string
+  /** Targeted Outcome runs must own their Audit so their binding runs before finalization. */
+  reuseActiveManual?: boolean
+  /** Existing tenant-owned request attached atomically before the Audit job is enqueued. */
+  runRequestId?: string
 }
 
 export interface CreateAuditResult {
@@ -344,7 +348,7 @@ export async function createAndEnqueueAudit(
                 })
               : null
             if (activeManualReview) {
-              if (options.verificationAttemptId) {
+              if (options.verificationAttemptId || options.reuseActiveManual === false) {
                 throw new ParentAuditError(
                   'Another Site check is still running. Try Verify again when it finishes.',
                   409,
@@ -395,6 +399,20 @@ export async function createAndEnqueueAudit(
               data: { ...data, journeyReviewIncluded: true },
               select: { id: true, parentId: true },
             })
+            if (options.runRequestId) {
+              const attached = await tx.runRequest.updateMany({
+                where: {
+                  id: options.runRequestId,
+                  projectId: projectId ?? undefined,
+                  requestedByUserId: userId,
+                  auditId: null,
+                },
+                data: { auditId: created.id },
+              })
+              if (attached.count !== 1) {
+                throw new ParentAuditError('Outcome run request not found', 404)
+              }
+            }
             if (options.verificationAttemptId) {
               await tx.improvementAttempt.update({
                 where: { id: options.verificationAttemptId },

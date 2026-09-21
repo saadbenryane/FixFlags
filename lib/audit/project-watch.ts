@@ -9,6 +9,7 @@ import { canAccessProductWatch, allowedWatchIntervals } from '@/lib/auth/entitle
 import { systemClock, type Clock } from '@/lib/time/clock'
 import { isCustomerFlag } from '@/lib/audit/attention'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
+import { requestOutcomeRun } from '@/lib/sites/application/run-requests'
 import {
   calcWatchNextRun,
   fromStoredWatchInterval,
@@ -209,8 +210,23 @@ export async function processDueProjectWatches(
         continue
       }
 
-      const outcome = await startMonitoringAudit(parent.id, project.user as User, { trigger: 'WATCH' })
-      if (!outcome.ok) throw new Error(outcome.error)
+      const checkout = await prisma.siteOutcome.findFirst({
+        where: { projectId: project.id, kind: 'CHECKOUT', enabled: true },
+        select: { id: true },
+      })
+      if (checkout) {
+        await requestOutcomeRun({
+          projectId: project.id,
+          outcomeId: checkout.id,
+          userId: project.userId,
+          source: 'WATCH',
+          idempotencyKey: `watch:${project.id}:${checkout.id}:${project.watchNextRunAt?.toISOString() ?? now.toISOString()}`,
+          context: { cadence: interval },
+        })
+      } else {
+        const outcome = await startMonitoringAudit(parent.id, project.user as User, { trigger: 'WATCH' })
+        if (!outcome.ok) throw new Error(outcome.error)
+      }
       enqueued += 1
       await prisma.project.update({
         where: { id: project.id },

@@ -1,14 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { User } from '@prisma/client'
-import { registerAnonTaskTools as registerAnonymousTaskTools } from '@/lib/mcp/anon-task-tools'
-import { registerAnonCheckStatusTools as registerAnonymousCheckStatusTools } from '@/lib/mcp/anon-check-status'
-import { registerTaskTools } from '@/lib/mcp/task-tools'
-import { registerCheckStatusTools } from './check-status'
-import { registerFlagTools } from './flags'
-import { registerCompareTools } from './compare'
-import { registerRepoScanTools } from './repo-scan'
-import { registerPromptGeneratorTools } from './prompt-generator'
 import { registerConnectionInfoTool } from '@/lib/mcp/contract'
+import { registerSiteOutcomeTools } from '@/lib/mcp/tools/sites'
 
 export { assertAuditAccess } from '@/lib/mcp/access'
 
@@ -18,17 +11,9 @@ export function registerAllTools(
   options?: { signal?: AbortSignal }
 ) {
   registerConnectionInfoTool(server, Boolean(user))
-  if (!user) {
-    registerAnonymousTaskTools(server, options)
-    registerAnonymousCheckStatusTools(server)
-    return
-  }
-  registerTaskTools(server, user, options)
-  registerCheckStatusTools(server, user)
-  registerFlagTools(server, user)
-  registerCompareTools(server, user)
-  registerRepoScanTools(server, user)
-  registerPromptGeneratorTools(server, user)
+  if (!user) return
+  void options
+  registerSiteOutcomeTools(server, user)
 }
 
 export async function validateApiKey(key: string | null) {

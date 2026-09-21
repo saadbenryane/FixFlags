@@ -11,6 +11,8 @@ import {
   Check,
   CircleAlert,
   ChevronRight,
+  Clock3,
+  CircleHelp,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/brand/Logo'
@@ -162,6 +164,25 @@ export function SiteBoard({
             : 'You’re covered. We’ll check this Site weekly.'
         )
       }
+      await refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function verifyOutcome(outcomeId: string) {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/sites/${siteId}/outcomes/${outcomeId}/verify`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': `web:${outcomeId}:${Date.now()}` },
+      })
+      const body = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        setToast(body.error || 'Could not start this verification')
+        return
+      }
+      setToast('Checkout verification started')
       await refresh()
     } finally {
       setBusy(false)
@@ -335,17 +356,75 @@ export function SiteBoard({
           </header>
 
           {activeView === 'home' ? (
-            <BoardSurface host={view.host} state={view.statusState} label={view.statusLabel} count={view.flags.length} onOpen={() => openCard('site')}>
-            <BoardGrid>
-              {visibleCards.map((card) => (
-                <ProductBoardCard
-                  key={card.id}
-                  card={card}
-                  onOpen={() => openCard(card.id)}
-                />
-              ))}
-            </BoardGrid>
-            </BoardSurface>
+            <>
+              {view.outcomes.filter((outcome) => outcome.kind === 'CHECKOUT').map((outcome) => {
+                const stateLabel = outcome.running
+                  ? 'Verifying'
+                  : outcome.state === 'COULD_NOT_VERIFY'
+                    ? 'Couldn’t verify'
+                    : outcome.state.charAt(0) + outcome.state.slice(1).toLowerCase()
+                const StateIcon = outcome.state === 'CLEAR'
+                  ? Check
+                  : outcome.state === 'FLAG'
+                    ? CircleAlert
+                    : outcome.state === 'STALE'
+                      ? Clock3
+                      : CircleHelp
+                return (
+                  <section key={outcome.id} className="rounded-2xl border border-border/80 bg-background p-5 sm:p-6">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Outcome</p>
+                        <h2 className="mt-1 text-xl font-semibold">{outcome.name}</h2>
+                        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{outcome.summary}</p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {outcome.lastVerifiedAt
+                            ? `Last verified ${new Date(outcome.lastVerifiedAt).toLocaleString()}`
+                            : 'No completed verification yet'}
+                        </p>
+                      </div>
+                      <div className="flex min-w-[9rem] flex-col items-end gap-3">
+                        <span className={cn(
+                          'inline-flex min-h-8 items-center gap-2 rounded-full border px-3 text-sm font-medium',
+                          outcome.state === 'CLEAR' && 'border-success/30 text-success',
+                          outcome.state === 'FLAG' && 'border-brand text-brand',
+                          (outcome.state === 'STALE' || outcome.state === 'COULD_NOT_VERIFY') && 'border-border text-muted-foreground'
+                        )} role="status">
+                          <StateIcon className={cn('h-4 w-4', outcome.running && 'animate-pulse')} aria-hidden />
+                          {stateLabel}
+                        </span>
+                        <div className="flex gap-2">
+                          {outcome.state === 'FLAG' && outcome.flagId ? (
+                            <Button size="sm" variant="outline" asChild>
+                              <Link href={`/sites/${siteId}/flags/${outcome.flagId}`}>Open Flag</Link>
+                            </Button>
+                          ) : null}
+                          <Button
+                            size="sm"
+                            variant={outcome.state === 'FLAG' ? 'brand' : 'outline'}
+                            disabled={busy || outcome.running}
+                            onClick={() => void verifyOutcome(outcome.id)}
+                          >
+                            {outcome.running ? 'Verifying…' : 'Verify'}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                )
+              })}
+              <BoardSurface host={view.host} state={view.statusState} label={view.statusLabel} count={view.flags.length} onOpen={() => openCard('site')}>
+              <BoardGrid>
+                {visibleCards.map((card) => (
+                  <ProductBoardCard
+                    key={card.id}
+                    card={card}
+                    onOpen={() => openCard(card.id)}
+                  />
+                ))}
+              </BoardGrid>
+              </BoardSurface>
+            </>
           ) : null}
 
           {activeView === 'flags' ? (
@@ -419,7 +498,7 @@ export function SiteBoard({
                       <div>
                         <p className="font-medium">{outcome.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {outcome.confirmedAt ? 'Confirmed' : 'Inferred'} · Journey
+                          {outcome.confirmedAt ? 'Confirmed' : 'Inferred'} · {outcome.kind === 'CHECKOUT' ? 'Outcome' : 'Journey'}
                         </p>
                         {outcome.pageUrls?.[0] ? (
                           <p className="mt-1 truncate text-xs text-muted-foreground">

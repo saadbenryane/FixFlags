@@ -4,7 +4,7 @@
  * Registration modules, documentation, and quality gates all consume these
  * entries so a module split cannot silently hide or rename a public tool.
  */
-export const MCP_CONTRACT_VERSION = '1.0' as const
+export const MCP_CONTRACT_VERSION = '2.0' as const
 
 type McpToolTier = 'core' | 'optional' | 'protocol'
 
@@ -15,6 +15,12 @@ type McpToolDefinition = {
 }
 
 export const MCP_TOOLS = {
+  listSites: { name: 'ff_list_sites', desc: 'List the Sites owned by this FixFlags account.', tier: 'core' },
+  listOutcomes: { name: 'ff_list_outcomes', desc: 'List important Outcomes and their current Clear, Flag, Couldn’t verify, or Stale state.', tier: 'core' },
+  verifyOutcome: { name: 'ff_verify_outcome', desc: 'Request fresh independent verification of an owned Outcome and return a run identifier.', tier: 'core' },
+  getRun: { name: 'ff_get_run', desc: 'Poll an Outcome verification run and retrieve its independent result.', tier: 'core' },
+  listFlags: { name: 'ff_list_flags', desc: 'List active customer Flags for an owned Site.', tier: 'core' },
+  verifyFlag: { name: 'ff_verify_flag', desc: 'Request fresh independent verification of a Flag after a fix.', tier: 'core' },
   checkAndPlan: {
     name: 'ff_check_and_plan',
     desc: 'Check a deployed URL and return its complete ranked Fix List plus a bounded Finish Plan. Validate each selected Flag against its evidence before changing product code.',
@@ -37,7 +43,7 @@ export const MCP_TOOLS = {
   },
   getFlag: {
     name: 'ff_get_flag',
-    desc: 'Get the fix prompt for a specific Flag.',
+    desc: 'Get evidence, expected behavior, fix context, and verification history for a Site Flag.',
     tier: 'core',
   },
   planModePrompt: {
@@ -112,12 +118,21 @@ export const MCP_TOOLS = {
   },
 } as const satisfies Record<string, McpToolDefinition>
 
-export const MCP_TOOL_DEFINITIONS = Object.values(MCP_TOOLS)
-export const MCP_CORE_TOOL_DEFINITIONS = MCP_TOOL_DEFINITIONS.filter(
-  (tool) => tool.tier === 'core'
+export const MCP_TOOL_DEFINITIONS = [
+  MCP_TOOLS.listSites, MCP_TOOLS.listOutcomes, MCP_TOOLS.verifyOutcome,
+  MCP_TOOLS.getRun, MCP_TOOLS.listFlags, MCP_TOOLS.getFlag,
+  MCP_TOOLS.verifyFlag, MCP_TOOLS.getConnectionInfo,
+] as const
+const LAUNCH_CORE_NAMES = new Set<string>([
+  MCP_TOOLS.listSites.name, MCP_TOOLS.listOutcomes.name, MCP_TOOLS.verifyOutcome.name,
+  MCP_TOOLS.getRun.name, MCP_TOOLS.listFlags.name, MCP_TOOLS.getFlag.name,
+  MCP_TOOLS.verifyFlag.name,
+])
+export const MCP_CORE_TOOL_DEFINITIONS = MCP_TOOL_DEFINITIONS.filter((tool) =>
+  LAUNCH_CORE_NAMES.has(tool.name)
 )
 export const MCP_OPTIONAL_TOOL_DEFINITIONS = MCP_TOOL_DEFINITIONS.filter(
-  (tool) => tool.tier === 'optional'
+  (tool) => tool.tier !== 'protocol' && !LAUNCH_CORE_NAMES.has(tool.name)
 )
 
 export function inspectMcpToolReadiness(toolNames: Iterable<string>) {

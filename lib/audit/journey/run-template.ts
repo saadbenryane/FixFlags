@@ -55,6 +55,12 @@ function finding(
 
 function deadEndFix(journeyType: JourneyType): string {
   switch (journeyType) {
+    case 'checkout':
+      return [
+        '1. Restore the product-to-cart path',
+        '2. Confirm the selected item appears in the cart',
+        '3. Confirm checkout opens without submitting a purchase',
+      ].join('\n')
     case 'pricing-evaluation':
       return [
         '1. Add clear same-origin nav to pricing or plans',

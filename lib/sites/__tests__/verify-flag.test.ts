@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   loadSiteFlagDetail: vi.fn(),
   executeProductCommand: vi.fn(),
   createAndEnqueueAudit: vi.fn(),
+  requestOutcomeRun: vi.fn(),
 }))
 
 vi.mock('@/lib/sites/ensure-site', () => ({ loadSiteRecord: mocks.loadSiteRecord }))
@@ -15,6 +16,7 @@ vi.mock('@/lib/products/application/commands', () => ({
 vi.mock('@/lib/audit/create-audit', () => ({
   createAndEnqueueAudit: mocks.createAndEnqueueAudit,
 }))
+vi.mock('@/lib/sites/application/run-requests', () => ({ requestOutcomeRun: mocks.requestOutcomeRun }))
 vi.mock('@/lib/sites/outcomes', () => ({ confirmSiteOutcome: vi.fn() }))
 vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn() }))
 
@@ -42,6 +44,7 @@ describe('VERIFY_FLAG', () => {
       auditId: 'child_1',
       siteId: 'proj_1',
     })
+    mocks.requestOutcomeRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', reused: false })
   })
 
   it('records READY_TO_VERIFY and scopes capture to the Flag page', async () => {
@@ -86,6 +89,26 @@ describe('VERIFY_FLAG', () => {
     expect(mocks.executeProductCommand).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'HANDOFF_COPIED' })
     )
+    expect(mocks.createAndEnqueueAudit).not.toHaveBeenCalled()
+  })
+
+  it('re-verifies an Outcome Flag through the shared RunRequest path', async () => {
+    mocks.loadSiteFlagDetail.mockResolvedValue({
+      id: 'flag_1', sourceAuditId: 'parent_1', outcomeId: 'checkout_1',
+      checkId: 'journey-checkout-failed-add_to_cart_noop',
+      pageUrl: 'https://example.com/products/widget',
+      expectedBehavior: 'The selected product appears in the cart and checkout opens.',
+    })
+
+    const result = await executeSiteCommand({
+      type: 'VERIFY_FLAG', siteId: 'proj_1', userId: 'user_1', flagId: 'flag_1',
+    })
+
+    expect(result).toMatchObject({ ok: true, runId: 'run_1', verificationAuditId: 'child_1' })
+    expect(mocks.requestOutcomeRun).toHaveBeenCalledWith(expect.objectContaining({
+      projectId: 'proj_1', outcomeId: 'checkout_1', source: 'WEB',
+      verificationAttemptId: 'att_1', parentAuditId: 'parent_1',
+    }))
     expect(mocks.createAndEnqueueAudit).not.toHaveBeenCalled()
   })
 })

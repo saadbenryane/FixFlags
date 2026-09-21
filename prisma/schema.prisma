@@ -68,6 +68,7 @@ model User {
   siteAgentThreads         SiteAgentThread[]
   siteAgentMessages        SiteAgentMessage[]
   siteLifecycleEvents      SiteLifecycleEvent[]
+  requestedRuns            RunRequest[]                 @relation("RunRequester")
 
   @@map("users")
 }
@@ -481,6 +482,7 @@ model Project {
   agentThreads                SiteAgentThread[]
   supportSessions             SupportSession[]
   lifecycleEvents             SiteLifecycleEvent[]
+  runRequests                 RunRequest[]
   user                        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, canonicalHost])
@@ -593,6 +595,8 @@ model Audit {
   verifierExecutions         AuditVerifierExecution[]
   sourceImprovementCycles    ImprovementCycle[]           @relation("ImprovementCycleSourceReview")
   pipelineEvents             AuditPipelineEvent[]
+  runRequests               RunRequest[]
+  outcomeAssessments        OutcomeAssessment[]
 
   @@index([userId])
   @@index([status])
@@ -1106,6 +1110,7 @@ model Flag {
 model Improvement {
   id                String                      @id @default(cuid())
   projectId         String
+  outcomeId         String?
   fingerprint       String
   title             String
   judgment          String
@@ -1123,13 +1128,16 @@ model Improvement {
   createdAt         DateTime                    @default(now())
   updatedAt         DateTime                    @updatedAt
   project           Project                     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  outcome           SiteOutcome?                 @relation(fields: [outcomeId], references: [id], onDelete: SetNull)
   occurrences       ImprovementOccurrence[]
   attempts          ImprovementAttempt[]
   cycles            ImprovementCycle[]
+  outcomeAssessments OutcomeAssessment[]
 
   @@unique([projectId, fingerprint])
   @@index([projectId, status, priority])
   @@index([projectId, updatedAt(sort: Desc)])
+  @@index([outcomeId, updatedAt(sort: Desc)])
   @@index([acceptedAt])
   @@index([rejectionReason])
   @@map("improvements")
@@ -1849,6 +1857,10 @@ model SiteOutcome {
   name              String
   slug              String
   description       String?
+  kind              SiteOutcomeKind  @default(GENERIC)
+  expectation       String?
+  enabled           Boolean          @default(true)
+  staleAfterMinutes Int              @default(11520)
   /// heuristic | user
   inferenceSource   String           @default("heuristic")
   confirmedAt       DateTime?
@@ -1857,12 +1869,88 @@ model SiteOutcome {
   project           Project?         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   provisionalSite   ProvisionalSite? @relation(fields: [provisionalSiteId], references: [id], onDelete: Cascade)
   pages             SiteOutcomePage[]
+  bindings          OutcomeExecutionBinding[]
+  assessments       OutcomeAssessment[]
+  runRequests       RunRequest[]
+  improvements      Improvement[]
 
   @@unique([projectId, slug])
   @@unique([provisionalSiteId, slug])
   @@index([projectId])
   @@index([provisionalSiteId])
   @@map("site_outcomes")
+}
+
+/// Versioned mechanism used to independently exercise an Outcome.
+model OutcomeExecutionBinding {
+  id        String                    @id @default(cuid())
+  outcomeId String
+  mechanism OutcomeExecutionMechanism
+  key       String
+  config    Json
+  version   Int                       @default(1)
+  enabled   Boolean                   @default(true)
+  createdAt DateTime                  @default(now())
+  updatedAt DateTime                  @updatedAt
+  outcome   SiteOutcome               @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+
+  @@unique([outcomeId, key])
+  @@index([outcomeId, enabled])
+  @@map("outcome_execution_bindings")
+}
+
+/// Tenant-scoped request to run the existing monitoring engine for one Outcome.
+model RunRequest {
+  id                String             @id @default(cuid())
+  projectId         String
+  outcomeId         String
+  requestedByUserId String?
+  source            RunRequestSource
+  idempotencyKey    String             @unique
+  environment       String             @default("production")
+  context           Json?
+  status            RunRequestStatus   @default(QUEUED)
+  auditId           String?
+  errorCode         String?
+  errorMessage      String?
+  requestedAt       DateTime           @default(now())
+  startedAt         DateTime?
+  completedAt       DateTime?
+  updatedAt         DateTime           @updatedAt
+  project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  outcome           SiteOutcome        @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  requestedBy       User?              @relation("RunRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  audit             Audit?             @relation(fields: [auditId], references: [id], onDelete: SetNull)
+  assessment        OutcomeAssessment?
+
+  @@index([projectId, requestedAt(sort: Desc)])
+  @@index([outcomeId, requestedAt(sort: Desc)])
+  @@index([auditId])
+  @@index([status, requestedAt])
+  @@map("run_requests")
+}
+
+/// Durable conclusion from comparable evidence. Stale is derived from validUntil.
+model OutcomeAssessment {
+  id            String                 @id @default(cuid())
+  outcomeId     String
+  runRequestId  String                 @unique
+  auditId       String
+  improvementId String?
+  state         OutcomeAssessmentState
+  summary       String
+  evidence      Json?
+  assessedAt    DateTime               @default(now())
+  validUntil    DateTime
+  outcome       SiteOutcome            @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  runRequest    RunRequest             @relation(fields: [runRequestId], references: [id], onDelete: Cascade)
+  audit         Audit                  @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  improvement   Improvement?           @relation(fields: [improvementId], references: [id], onDelete: SetNull)
+
+  @@index([outcomeId, assessedAt(sort: Desc)])
+  @@index([auditId])
+  @@index([improvementId])
+  @@map("outcome_assessments")
 }
 
 model SiteOutcomePage {
@@ -1879,6 +1967,36 @@ enum IntegrityHealth {
   GREEN
   RED
   UNKNOWN
+}
+
+enum SiteOutcomeKind {
+  GENERIC
+  CHECKOUT
+}
+
+enum OutcomeExecutionMechanism {
+  BROWSER_JOURNEY
+}
+
+enum RunRequestSource {
+  WEB
+  WATCH
+  MCP
+  API
+  INTERNAL
+}
+
+enum RunRequestStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum OutcomeAssessmentState {
+  CLEAR
+  FLAG
+  COULD_NOT_VERIFY
 }
 
 enum Plan {

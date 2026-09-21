@@ -160,6 +160,7 @@ export type SiteFlagAttemptView = {
 }
 
 export type SiteFlagDetail = SiteFlagSeed & {
+  outcomeId: string | null
   sourceAuditId: string
   verificationRule: string | null
   confidence: number | null
@@ -222,6 +223,7 @@ export async function loadSiteFlagDetail(
 
   return {
     ...seed,
+    outcomeId: improvement?.outcomeId ?? null,
     sourceAuditId: flagRow.auditId,
     verificationRule: flagRow.verificationRule,
     confidence: flagRow?.confidence ?? null,

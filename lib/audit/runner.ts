@@ -48,6 +48,8 @@ import {
 import { canonicalizeDestination } from './url-identity'
 import { AUDIT_PROGRESS } from '@/lib/marketing/copy'
 import { systemClock } from '@/lib/time/clock'
+import { runBoundCheckoutForAudit } from '@/lib/sites/application/checkout-execution'
+import { markOutcomeRunsCouldNotVerify } from '@/lib/sites/application/run-requests'
 
 async function persistReviewedFlagsSoFar(auditId: string, pageRuns: PageRun[]): Promise<void> {
   if (pageRuns.length === 0) return
@@ -131,6 +133,9 @@ export async function runAudit(auditId: string): Promise<void> {
       })
       pageRuns.push(primary)
       await persistReviewedFlagsSoFar(auditId, pageRuns)
+
+      // Targeted Outcomes use this same worker and durable evidence lifecycle.
+      await runBoundCheckoutForAudit(auditId)
 
       await prisma.audit.update({
         where: { id: auditId },
@@ -372,6 +377,7 @@ export async function runAudit(auditId: string): Promise<void> {
             failureMetadata: { jobId: auditId },
           },
         })
+        await markOutcomeRunsCouldNotVerify(auditId, failureCode, errorMsg)
       }
 
       if (!isNonRetryableAuditError(error) && !(error instanceof JudgeContractError)) {
