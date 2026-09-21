@@ -44,11 +44,6 @@ export const SEO = {
     description:
       'See an evidence-backed FixFlags Site, its coverage, and one actionable Flag from a retained test fixture.',
   },
-  examples: {
-    title: 'FixFlags Samples',
-    description:
-      'See how FixFlags presents Site coverage, evidence-backed Flags, and verification criteria.',
-  },
   faq: {
     title: 'FAQ',
     description:

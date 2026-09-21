@@ -51,7 +51,27 @@ for (const key of seoKeys) {
   }
 }
 
-const requiredLlmsPaths = ['/', '/protect', '/install', '/how-it-works', '/pricing', '/docs', '/docs/getting-started', '/docs/reports', '/docs/troubleshooting', '/faq', '/help', '/help/getting-started/first-check', '/help/billing-and-plans/free-vs-pro', '/help/checks-and-reports/why-check-failed', '/privacy', '/terms', '/tools/meta-preview', '/tools/placeholder-detector']
+const requiredLlmsPaths = [
+  '/',
+  '/protect',
+  '/install',
+  '/integrations',
+  '/how-it-works',
+  '/pricing',
+  '/docs',
+  '/docs/getting-started',
+  '/docs/site-care',
+  '/docs/troubleshooting',
+  '/faq',
+  '/help',
+  '/help/getting-started/analyze-a-website',
+  '/help/account-and-billing/free-and-pro',
+  '/help/troubleshooting/check-failed-or-stuck',
+  '/privacy',
+  '/terms',
+  '/tools/meta-preview',
+  '/tools/placeholder-detector',
+]
 for (const path of requiredLlmsPaths) {
   if (!llmsPaths.includes(path)) {
     errors.push(`LLMS_SECTIONS missing path "${path}"`)
