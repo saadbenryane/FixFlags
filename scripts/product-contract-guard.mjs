@@ -61,8 +61,17 @@ const detailsRoute = read('app/report/[id]/details/page.tsx')
 if (!reportRoute.includes('CompletedReportView')) {
   violations.push('app/report/[id]/page.tsx: canonical completed report view missing')
 }
-if (!completedReport.includes('AuditReport')) {
-  violations.push('app/report/[id]/CompletedReportView.tsx: canonical AuditReport missing')
+if (
+  completedReport.includes("from '@/components/audit/AuditReport'") ||
+  completedReport.includes('<AuditReport')
+) {
+  violations.push('app/report/[id]/CompletedReportView.tsx: legacy AuditReport workspace returned')
+}
+if (
+  !completedReport.includes('Saved evidence') ||
+  !completedReport.includes('Analyze a website')
+) {
+  violations.push('app/report/[id]/CompletedReportView.tsx: sanitized evidence adapter missing')
 }
 if (!auditReport.includes('LiveReportExplorer')) {
   violations.push('components/audit/AuditReport.tsx: complete Flag explorer missing')
