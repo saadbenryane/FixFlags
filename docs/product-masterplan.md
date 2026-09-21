@@ -77,7 +77,7 @@ This ledger is dependency ordered and is the operational view of the waves below
 
 Launch is blocked while any Blocker remains unresolved. Launch-critical items may move post-launch only when removing or hiding the affected capability leaves the first customer journey complete and truthful.
 
-### 2026-09-20 implementation reconciliation
+### 2026-09-21 implementation reconciliation
 
 The working implementation now follows one customer boundary: `lib/sites/application`. The old Prisma `Project` name remains only as the physical owned-Site backing. The following slices are code-complete and awaiting the exact-revision release evidence required by the ledger:
 
@@ -90,7 +90,14 @@ The working implementation now follows one customer boundary: `lib/sites/applica
 - Public Help, Docs, samples, legal, pricing and lifecycle copy use Site → Cards → Checks/Journeys → Flags → Fix → Verify → Watch. New Pro checkout remains closed while Stripe test mode uses licensed per-Site quantity and order-independent webhook reconciliation.
 - `/api/projects`, `/api/products`, parked CLI/MCP/repository surfaces, and old documentation are unavailable publicly. Signed-in report owners return to Site; public report compatibility is sanitized evidence only.
 
-Remaining release work is evidence, not product-model invention: run the clean full verification/build, browser matrix and fresh migrations on the committed revision; then execute credentialed production canary journeys and deployment attestation. The repository may not claim launch while B1–B5 or L6 lack those receipts.
+Local implementation proof is now complete on the committed Site product slice:
+
+- `npm run verify` passed on `ef26be30`: schema validation and zero drift across 83 migrations, typecheck, lint, all product/copy/route/knowledge/security guards, zero moderate-or-higher dependency vulnerabilities, 88 script tests, 5,294 unit tests with 10 declared skips, coverage above every configured threshold, 16 accuracy fixtures with zero failures, production web build and worker build.
+- The production-like Chromium public matrix passed with 52 journeys and 17 explicit credential/provider skips. It covers 320, 375, 768 and 1280 px, keyboard paths, 200% text, reduced motion, light/dark, axe checks, canonical sample evidence, auth/pricing/help compatibility, parked routes and public error states.
+- Optional analytics are now explicitly consent-gated. Third-party scripts and click-ID storage do not run before consent, the choice can be changed from either footer, and the consent surface reflows without creating the prior mobile hydration race.
+- The latest additive migration is applied to the local PostgreSQL service and Prisma reports no pending migration or schema drift.
+
+Remaining release work is external evidence, not product-model invention: execute the credentialed first-value, Verify, Watch/notification, Shopify and Stripe sandbox journeys against a dedicated canary environment, deploy web and worker from the same exact digest, attest readiness and revision, observe the canary window, and rehearse rollback. The repository may not claim launch while B1–B5 or L6 lack those receipts.
 
 Phases 1–4 in [ROADMAP.md](../ROADMAP.md) remain the engineering cutover for tenancy, coverage, Fix/Verify/Watch. This masterplan sequences the **complete intended product** around that core, including marketing, Agent, support, and retirement.
 

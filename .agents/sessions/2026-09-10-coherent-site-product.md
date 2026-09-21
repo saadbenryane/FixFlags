@@ -1,6 +1,6 @@
 # Coherent Site product implementation
 
-Status: in progress. Owner: codex-root. Branch: main.
+Status: local implementation verified; credentialed release proof remains. Owner: codex-root. Branch: main.
 
 The owner approved the complete plan in this task. This record tracks implementation, not release completion. Existing working-tree changes are preserved.
 
@@ -72,4 +72,13 @@ Updated as each verified change lands.
 - Rebuilt Help, Docs, samples, legal, billing and public compatibility around the Site model. Public Project/Product APIs and parked power tools now fail closed; old public report links render sanitized evidence rather than a second workspace.
 - Added versioned, idempotent Site lifecycle telemetry and an operator funnel for Analyze through support resolution without raw URL, email, prompt, transcript or evidence properties.
 - Made Stripe sandbox subscriptions licensed per Site quantity and webhook reconciliation order-independent. New paid checkout remains closed.
-- Local focused validation passed during implementation; exact-revision full verification and browser/release evidence are still required before launch.
+- Focused validation passed during implementation; the exact local gate and browser evidence are recorded below. Credentialed release evidence is still required before launch.
+
+### 2026-09-21 local completion receipt
+
+- `npm run verify` passed on `ef26be30`: 83 migrations current with zero drift; typecheck and lint; product, route, module, SEO, metadata, copy, Help, knowledge, security and completeness guards; 88 script tests; 5,294 unit tests with 10 declared skips; coverage; 16 accuracy fixtures with zero failures; production Next build; worker build; zero moderate-or-higher dependency vulnerabilities.
+- Production-like Chromium public matrix: 52 passed, 17 credential/provider journeys explicitly skipped, zero failures. Launch widths, keyboard, 200% text, reduced motion, light/dark, axe, public compatibility/error states and parked-route boundaries passed.
+- Focused homepage production matrix: 6 passed. The root hydration mismatch was removed by consent-gating analytics and click-ID capture instead of injecting third-party scripts before hydration.
+- Consent contract tests: 5 passed across analytics event gating and preference persistence/reopening. The public footer exposes Cookie settings and privacy copy matches behavior.
+- PostgreSQL and Redis local services were healthy; all 83 migrations applied. The new additive Site boundary migration is current.
+- Full credentialed Site claim, Verify recurrence, Watch email return, Shopify development-store lifecycle, Stripe Test Clock and exact-SHA production canary remain blocked by absent release environment URL, private fixture manifest and provider credentials. No launch or deployment claim is made.
