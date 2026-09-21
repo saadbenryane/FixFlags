@@ -1,811 +1,210 @@
-# FixFlags Product Vision
+# FixFlags product vision
 
-**Accepted direction: 2026-09-08. Status: VISION, not a shipped-capability claim.**
+**Accepted direction, 2026-09-21.** This replaces the narrower website-care framing while preserving its product and engineering foundation.
 
-Customer-facing vocabulary, voice, and brand expression are governed by [docs/voice-and-copy.md](../docs/voice-and-copy.md). Customer objects and navigation are [docs/product-architecture.md](../docs/product-architecture.md). Sequence is [docs/product-masterplan.md](../docs/product-masterplan.md). This file remains the product vision. Where the narrative below uses older public phrases such as “Check my website” or “Find → Understand → Fix → Verify,” the messaging canon is authoritative for new copy. The owner text is otherwise preserved.
+# FixFlags is the independent monitor for software that acts.
 
-This is the complete owner-supplied revision, recorded from the September 8 attachment titled “FixFlags Product Vision Your website, looked after.” It supersedes the September 7 Site Intelligence draft and earlier Product Review, Finish Plan, AI-built-software, two-product, and Shopify-only positioning. The brand remains FixFlags. The report experience is being replaced; useful foundations, accounts, billing, and plans remain available for reuse.
+# Your software runs. FixFlags watches.
 
-The owner's text below is preserved in full; headings are formatted for navigation. Example numbers, cadences, connections, and scenarios illustrate the target experience. They do not define current entitlements or claim that capabilities ship today. [Product architecture](../docs/product-architecture.md), [implementation masterplan](../docs/product-masterplan.md), [implementation phases](../ROADMAP.md), [build requirements](../docs/product-prd.md), and [current implementation](../PRODUCT.md) have separate roles.
+## The problem
 
----
+Software is changing faster and acting more autonomously. Tests, logs, telemetry, coding agents, and the application itself are valuable, but they are not independent proof that an important result still works in the live system.
 
-Your website, looked after.
-FixFlags is the system a business connects to its website once and trusts to notice when something needs attention.
-Give FixFlags a URL.
-It learns what the website is, what people need to be able to do on it, and what the business depends on. It checks the site from the outside, verifies important journeys in a real browser, learns from real usage when connected, adds context from systems such as Shopify, Analytics, Search Console, Meta, and deployments, and keeps watching over time.
-When something matters, FixFlags raises a Flag.
-A Flag explains what happened, why it matters, what evidence supports it, what should happen next, and whether the problem was actually fixed.
-When everything important is healthy, FixFlags stays quiet.
-The promise is simple:
-FixFlags tells you how your website is doing, what needs attention, and keeps watching.
+A deployment can succeed while Checkout breaks. An agent can finish a task while it changes the wrong object. A test can pass against a fixture while a real browser cannot complete Signup. The actor that made a change should not be the only actor that judges it.
 
-## 1. The problem
-Websites are now essential business infrastructure, but understanding whether a website is truly healthy is fragmented.
-One tool says the server is online.
-Another finds SEO problems.
-Another measures performance.
-Another checks accessibility.
-Another contains analytics.
-Another knows advertising traffic.
-Another knows orders.
-Another knows deployments.
-And none of them is simply responsible for answering:
-Is my website doing what it needs to do?
+Customers do not primarily need another testing dashboard. They need clear answers:
 
-A website can be online and still be broken.
-A store can load while Add to Cart does nothing.
-A signup page can look perfect while submissions fail.
-A buying journey can work while Meta stops receiving conversion events.
-A site can be fast while Google cannot properly index important pages.
-A technical issue can exist on an irrelevant page, while a seemingly small problem can affect the destination of the company's largest campaign.
-Website owners should not have to assemble these signals themselves.
-FixFlags does that work.
-## 2. The product
-FixFlags is not a collection of website tools.
-It is one system with many ways of understanding a website.
-It may check:
-- availability
-- broken links and pages
-- forms and interactions
-- important customer journeys
-- mobile behavior
-- performance
-- accessibility
-- search fundamentals
-- crawlability
-- structured data
-- tracking
-- analytics technology
-- commerce behavior
-- deployments and changes
-- real visitor failures
-- paid traffic exposure
-But these are capabilities inside FixFlags, not separate products.
-The customer should never need to think:
-“Should I run an SEO audit or a funnel test?”
+1. What matters?
+2. Is it working now?
+3. What went wrong?
+4. What evidence proves that?
+5. What needs to change?
+6. Did the fix restore the outcome?
 
-They should be able to ask:
-How is my website doing?
+## The product
 
-And FixFlags should know how to answer.
-## 3. The permanent object is the Site
-A customer does not create a scan.
-They add a Site.
-The Site persists.
-A first analysis is simply the beginning of its history.
-Over time FixFlags learns:
-- what exists
-- what matters
-- how the site is structured
-- what people are trying to accomplish
-- which pages belong together
-- what technologies the site depends on
-- what normal looks like
-- what has changed
-- what has failed before
-- what traffic depends on
-- what FixFlags can and cannot verify
-The product becomes more useful because the Site becomes better understood.
-A URL becomes a living model of the website.
-## 4. FixFlags learns what the website is for
-The most important thing FixFlags can understand is not the page count.
-It is:
-What must people be able to do here?
+FixFlags independently watches the important outcomes a live product must deliver.
 
-We call these Outcomes.
-For a store:
-Buy
-Product → Add to cart → Cart → Checkout → Purchase
+```text
+Signup          Clear
+Login           Clear
+Checkout        Flag
+Publish         Clear
+Password reset  Couldn’t verify
+```
 
-For a SaaS business:
-Sign up
-Pricing → Signup → Account created
+Under those answers, FixFlags may use deterministic checks, real browsers, HTTP/API verification, integration signals, device runs, or later agent/MCP evaluators. These are execution mechanisms and evidence sources. They are not competing top-level products.
 
-For a local business:
-Get in touch
-Service page → Contact → Submit → Confirmation
+The core loop is:
 
-For a nonprofit:
-Donate
-Campaign → Donation → Confirmation
+# Flag → Fix → Verify
 
-For a restaurant:
-Book
-Restaurant → Reservation → Confirmation
+FixFlags keeps watching after verification. It works when a human opens the app, when a coding agent asks through MCP, after a deployment, when an integration emits a relevant event, and on its own schedule.
 
-FixFlags should infer these automatically whenever possible.
-Then the product asks for the smallest useful confirmation:
-We think these are the important things people need to be able to do.
-Buy
-Contact
-Looks right · Edit
+## The independent boundary
 
-This is not a funnel builder.
-It is FixFlags confirming that it understands what success means.
-## 5. Pages belong to the Site. Outcomes give them meaning.
-Pages should not become a separate product from journeys or funnels.
-A page is simply a place on the Site.
-An Outcome describes how pages and actions work together toward something important.
-For example:
-/products/classic-chair
-Part of Buy
-Shopify product: Classic Chair
-Receives traffic from 3 active campaigns
-1 open Flag
-Last verified 14 minutes ago
-A page may belong to several Outcomes.
-Some pages may belong to none.
-FixFlags can still watch them for availability, search health, performance, accessibility, tracking, and other issues.
-The model remains simple:
-Site → Pages and actions → Outcomes
+The software acts. FixFlags watches.
 
-## 6. Flags are the universal unit of attention
-A check is not a Flag.
-An observation is not a Flag.
-A warning from another system is not automatically a Flag.
-A Flag is something FixFlags believes deserves attention.
-That distinction is fundamental.
-FixFlags may run hundreds of checks and produce no important Flags.
-That is a successful result.
-Every Flag should answer six questions.
-What happened?
-Customers cannot add one product variant to cart on mobile.
+A human or coding agent may tell FixFlags what changed, which deployment to inspect, or which Outcome matters. It cannot tell FixFlags that the change succeeded. FixFlags executes its own verification, captures its own evidence, and reaches its own bounded conclusion.
 
-Where?
-Classic Chair · Purchase outcome
+```text
+Agent changes software
+  → agent asks FixFlags to verify Checkout
+  → FixFlags independently executes the live Checkout binding
+  → Clear, or Flag with evidence
+  → agent fixes and deploys
+  → FixFlags independently verifies again
+```
 
-How sure are we?
-Confirmed twice.
+The same independence applies to scheduled monitoring. MCP is an interface to the monitor, not the monitor itself.
 
-Why does it matter?
-It prevents customers from reaching checkout.
+## The permanent relationship
 
-What proves it?
-Screenshot, replay, network evidence, telemetry, external data, or other relevant evidence.
-What happens next?
-Fix this
+The customer adds a live product. At launch this remains a **Site**, backed by the existing owned Project model and URL-first experience. The first analysis becomes the persistent home; signup claims that same identity; Watch continues the relationship.
 
-And after the change:
-Verify fix
+Do not create a new root domain object merely to sound broader. A Site can contain pages, APIs, commerce, browser journeys, connections, and machine-facing Outcomes. Introduce a broader root only when a real target cannot fit safely and cleanly.
 
-A problem should not become resolved because somebody clicked “Done.”
-It becomes resolved when FixFlags can establish that the behavior works again.
-## 7. FixFlags separates truth from inference
-Trust is more valuable than issue count.
-FixFlags should be precise about what it knows.
-A useful finding can be:
-Confirmed
-FixFlags has sufficient evidence that something is wrong.
-Likely
-The evidence strongly suggests a problem, but FixFlags cannot yet prove the entire failure.
-Couldn't verify
-FixFlags attempted the check but could not establish a reliable answer.
-Healthy
-A specific behavior passed the latest relevant check.
-The product should never turn uncertainty into certainty merely because certainty sounds better.
-AI may help FixFlags reason.
-It must not manufacture truth.
-## 8. Checks are infrastructure, not navigation
-FixFlags should eventually know how to perform a very large number of checks.
-That complexity belongs underneath the product.
-For search and discovery, for example, FixFlags might inspect:
-- sitemap health
-- robots.txt
-- indexability
-- canonicalization
-- metadata
-- structured data
-- internal links
-- redirect behavior
-- crawlability
-- Search Console signals
-- relevant machine-readable standards
-For experience:
-- responsiveness
-- Core Web Vitals
-- performance
-- accessibility
-- interaction failures
-- layout problems
-- mobile behavior
-For measurement:
-- analytics presence
-- expected tags
-- Meta events
-- Google events
-- TikTok events
-- tag disappearance
-- duplicate instrumentation
-- missing conversion events
-For reliability:
-- uptime
-- page failures
-- SSL
-- failed requests
-- runtime errors
-- forms
-- APIs used by important experiences
-The customer does not need a screen containing 400 checkboxes.
-FixFlags turns checks into understanding.
-Checks create evidence.
-Flags create attention.
+## Outcomes are the unit of responsibility
 
-## 9. Outcomes are more important than scores
-FixFlags should resist turning website health into one giant number.
-A 76/100 may look clean, but it hides the most important distinction:
-What actually needs me?
+An Outcome is an important result FixFlags is responsible for watching:
 
-A website with a hundred small technical imperfections may be healthier than a 95/100 website whose checkout stopped working.
-The primary state should therefore be human:
-🟢 Everything important we're watching is healthy
+- a customer can sign up;
+- a customer can log in;
+- a customer can purchase;
+- an editor can publish;
+- password reset works;
+- an API performs the expected operation;
+- an MCP tool or agent task reaches the allowed final state.
 
-or:
-🔴 2 things need attention
+The current `SiteOutcome` provides a useful identity and inference seed, but it is not yet a health model. It must gain a clear expectation, execution bindings, scope, assessment, freshness, evidence, and Flag/history relationships before it becomes the primary customer view. Adapt it in place. Do not create parallel Monitor, Objective, Task, or Test concepts without a concrete need.
 
-Scores can exist where they help explain a specific area.
-They should never become the product.
-## 10. Coverage makes “everything is healthy” trustworthy
-FixFlags must be explicit about the scope of its knowledge.
-A healthy state should never imply omniscience.
-The Site should quietly communicate Coverage:
-Watching
-Website availability · continuously
-Buy · mobile + desktop · every hour
-Contact · every hour
-42 public pages · daily
-Search fundamentals · daily
+A browser **Journey** is one way to execute a human-facing Outcome. It is not the universal abstraction. Checkout may use a Journey; an API Outcome may use an HTTP verifier; an agent Outcome may later use tool and final-state evaluators.
 
-And when there is useful context FixFlags does not yet have:
-Could know more
-Purchase outcomes · Connect Shopify
-Real visitor behavior · Add FixFlags
-Search performance · Connect Search Console
+## Clear and Flag stay understandable
 
-This gives “healthy” a concrete meaning.
-It also gives integrations a natural reason to exist.
-## 11. The product starts with a URL
-The first experience should be almost frictionless.
-The homepage asks:
-Your website, looked after.
-yourwebsite.com
-Check my website
-No installation.
-Ideally no account before the first useful result.
-FixFlags begins understanding the Site.
-Instead of a generic loading screen, the product can reveal what it learns:
-Website reachable ✓
-Shopify detected ✓
-42 pages discovered
-Purchase behavior detected
-Contact form found
-Meta Pixel detected
-Checking mobile experience…
-Testing Purchase…
+An Outcome can be:
 
-The user sees FixFlags building an understanding of their website, not running a generic audit.
-## 12. The first analysis becomes the dashboard
-There should be no disposable report followed by a different product.
-The first analysis simply becomes the Site.
-For example:
-acme.com
-🟢 Live
-42 pages · 2 important Outcomes
-Last checked 3 minutes ago
-Needs attention
-🔴 Customers can't add one product variant to cart
-Confirmed twice · Buy
-View Flag
-🟠 Meta AddToCart is not firing
-Buying still works · Measurement
-View Flag
-What we're watching
-🟢 Buy
+- **Clear:** required evidence recently showed the expected result in the stated scope.
+- **Flag:** something important did not behave as expected and warrants action.
+- **Couldn’t verify:** required evidence was blocked, unsupported, missing, or incomparable.
+- **Stale:** the last useful evidence is older than the monitoring policy.
+
+No Flags does not mean Clear. One healthy low-level signal does not prove an Outcome. Coverage, scope, environment, and freshness remain visible enough to make trust warranted.
+
+## Signals are not Outcomes
+
+FixFlags preserves its breadth:
+
+- page availability and uptime;
+- security configuration;
+- performance and mobile behavior;
+- search access and metadata;
+- accessibility essentials;
+- tracking and measurement;
+- commerce and integrations;
+- browser and network behavior;
+- page-level checks and Recommendations.
+
+These signals may diagnose an Outcome, influence whether a failure matters, create a broader Product-health Flag, or remain useful depth. A broken HTTP check and “customers cannot Checkout” are related facts, not automatically the same abstraction.
+
+Checks are infrastructure. Customers should not need to understand the test taxonomy before understanding their product.
+
+## Flags remain the unit of attention
+
+A Flag means something important that FixFlags watches is not behaving as expected. It connects the affected Outcome or Product responsibility, environment, execution, evidence, relevant checks, history, likely cause when known, fix context, and verification state.
+
+Not every failed assertion becomes a Flag. Recommendations preserve useful lower-priority work without turning the product into an endless inbox. Importance is a product judgment grounded in evidence and Outcome criticality, not a severity enum alone.
+
+One durable Flag accumulates occurrences. When the same failure returns, it reopens with new evidence instead of becoming an unrelated duplicate.
+
+## Verification is product intelligence
+
+Verification is not “the agent says done” and not merely “run any test again.” It preserves the lifecycle:
+
+```text
 Working
-🟢 Contact
-Working
-🟠 Get discovered
-3 things worth reviewing
-Add more context
-Shopify detected
-Connect Shopify so FixFlags can confirm products and real purchase outcomes.
-Connect
-That is already the product.
-## 13. Saving the Site is the conversion
-The primary call to action after the first useful analysis should not feel like SaaS registration.
-It should feel like the obvious continuation of something already useful:
-Keep watching
+  → Flag detected
+  → Fix attempted
+  → independently Verified working again
+  → later recurrence, if any
+```
 
-Saving the Site creates the account and preserves its history.
-Then:
-You're covered.
-FixFlags will keep checking this Site and let you know when something deserves attention.
+FixFlags should increasingly know what normal looked like, what failed, when it failed, what changed, which fix was attempted, what comparable execution ran, and how recovery was established. This knowledge emerges from real use; it is not a speculative graph project.
 
-The account exists because the customer has chosen ongoing responsibility.
-## 14. Connections make existing answers better
-FixFlags should never become an integrations marketplace.
-Connections only matter when they improve something FixFlags already understands.
-Shopify
-Without Shopify:
-Add to Cart is failing.
+## One monitoring system, many triggers
 
-With Shopify:
-The problem affects 17 active products, including your highest-selling product.
+Scheduled monitoring, UI actions, MCP calls, deployment events, API calls, integration events, and internal recovery all request work from the same tenant-scoped monitoring system.
 
-Analytics
-Without Analytics:
-Signup is failing.
+They may select different Outcomes or provide different context, but they do not own separate engines or truth semantics. The existing Audit/queue/worker/browser pipeline remains the physical execution ledger underneath this shared command.
 
-With Analytics:
-1,840 visitors reached this step yesterday.
+## MCP launches with the product
 
-Meta
-Without Meta:
-This landing page is broken.
+MCP is a launch channel for agentic development environments such as Codex, Claude Code, and Cursor. V1 is intentionally small but complete:
 
-With Meta:
-Four active campaigns are currently sending paid traffic here.
+- connect to an owned Site;
+- understand the Outcomes FixFlags watches;
+- request an independent run;
+- receive Clear or a Flag with evidence;
+- inspect the Flag and success condition;
+- record what was changed without self-certifying it;
+- request independent verification again;
+- retrieve the final result after disconnect or restart.
 
-Search Console
-Without Search Console:
-These pages have search problems.
+Existing MCP transport, authorization scaffolding, CLI bridge, device flow, editor configuration, and interaction telemetry are valuable. The report-era tool contract is not. Reuse the infrastructure and re-scope the surface around Sites, Outcomes, Runs, and Flags.
 
-With Search Console:
-These affected pages currently receive 38% of organic clicks.
+MCP must not turn FixFlags into a command-line testing product. Watch runs whether an agent is present or not.
 
-Deployment source
-Without deployment context:
-Checkout began failing this morning.
+## Human-facing and machine-facing software
 
-With deployment context:
-The failure first appeared 11 minutes after today's release.
+Launch proves human-facing web Outcomes through existing browsers and checks, plus the MCP interaction loop that requests those independent executions.
 
-Connections do not create new FixFlags products.
-They make the same Site, Outcome, Page, and Flag more intelligent.
-## 15. Ask for context only when its value is obvious
-There should be no onboarding checklist filled with logos.
-FixFlags should work first.
-Then ask.
-Inside a Purchase Outcome:
-Confirm real purchase outcomes
-Shopify detected. Connect it so FixFlags can compare our checks with what actually reaches purchase.
+The architecture also supports machine-facing Outcomes. The first practical extension is deterministic HTTP/API verification. Later, FixFlags may assess MCP servers and agents: tool discovery, callability, permission boundaries, intended action, affected object, and final real-world state.
 
-Inside a search problem:
-Add real search impact
-Connect Search Console to see how much Google traffic these pages receive.
+General autonomous-agent evaluation is not a prerequisite for launch. It must grow from the same Outcome, evidence, Flag, and Verify contracts.
 
-Inside a campaign landing page:
-Add paid traffic context
-Connect Meta to see whether active campaigns currently depend on this page.
+## The interface stays small
 
-The user should never have to wonder:
-“Why am I connecting this?”
+The application organizes around:
 
-## 16. FixFlags has three sources of truth
-Internally, the system remains conceptually simple.
-Verify
-What FixFlags can establish itself.
-FixFlags can crawl, inspect, open pages, use a real browser, click, select, submit safe forms, walk Outcomes, inspect requests, test expected tracking, capture evidence, retry failures, and rerun checks after fixes.
-This is our independent evidence layer.
-Observe
-What is actually happening for real visitors.
-A lightweight FixFlags observer can collect only the signals needed to understand website health:
-- important page usage
-- Outcome progression
-- runtime failures
-- failed requests
-- real-user performance
-- expected measurement signals
-FixFlags should not become another general-purpose analytics platform.
-Observation exists to improve website health decisions.
-Connect
-What other trusted systems know.
-Examples:
-Shopify → commerce context
-Analytics → behavioral context
-Search Console → search context
-Meta → paid-demand context
-GitHub/Vercel → change context
-Different evidence.
-One Site.
-## 17. Intelligence decides what matters
-The challenge is not finding more imperfections.
-The challenge is deciding which ones deserve attention.
-FixFlags should reason about:
-Certainty
-How strong is the evidence?
-Impact
-What has actually stopped working?
-Outcome
-Does the problem affect something the business depends on?
-Exposure
-How many pages, visitors, products, or sessions encounter it?
-Business context
-Is revenue, paid traffic, search traffic, or another important source attached to it?
-Change
-Did it begin after a deployment, theme update, integration change, or other event?
-Persistence
-Was this transient or does it keep happening?
-These signals determine priority.
-The goal is not:
-Find more Flags.
+1. **What FixFlags is watching**
+2. **What needs attention**
 
-It is:
-Make every Flag worth the customer's attention.
+Outcome detail reveals evidence, history, diagnostics, and execution mechanics progressively. Broad Product health remains available underneath. There is no required Tests tab, raw Runs dashboard, or MCP control center.
 
-## 18. AI is the intelligence layer, not the truth layer
-FixFlags should use deterministic systems wherever deterministic answers are available.
-HTTP behavior.
-Sitemaps.
-Browser errors.
-Network requests.
-Structured data.
-Accessibility rules.
-Performance measurements.
-Tracking events.
-Browser outcomes.
-Connected data.
-These provide evidence.
-AI is valuable for things computers traditionally struggle with:
-- understanding what the business is
-- inferring important Outcomes
-- understanding page relationships
-- recognizing unusual behavior
-- connecting several symptoms
-- judging likely importance
-- selecting useful follow-up checks
-- explaining problems clearly
-- producing implementation guidance
-The principle is:
-Use machines to prove what can be proved.
-Use intelligence to understand what the evidence means.
+Healthy FixFlags is intentionally quiet. A recent scoped Clear state and no interruption is success.
 
-## 19. One Flag serves every level of user
-FixFlags should not have a beginner product and a professional product.
-The same information should progressively reveal more depth.
-A founder sees:
-Customers cannot checkout on mobile.
+## Connections add context, not products
 
-A marketer can expand:
-4 active campaigns send traffic through this Outcome.
+Shopify remains a connection and distribution wedge. Deployment providers supply triggers and change context. Analytics, Search Console, Meta, and future integrations should improve an existing Outcome or Flag rather than create disconnected dashboards.
 
-A developer can expand:
-POST /cart/add.js returned 422 after variant selection.
+Lost context becomes an explicit coverage gap. It does not make the core browser monitor unusable.
 
-An agent can receive:
-- URL
-- viewport
-- reproduction sequence
-- screenshots
-- browser state
-- network evidence
-- relevant DOM context
-- expected result
-- verification criteria
-One Flag.
-Different depth.
-Complexity is available without being imposed.
-## 20. Fixing belongs inside FixFlags
-Finding the problem is only half the job.
-Every actionable Flag should lead naturally to:
-Fix this
-The available routes can depend on the user.
-Send to my AI
-Copy or send the complete problem context to a coding agent.
-Share
-Send a clean Flag to the person responsible for the Site.
-View technical details
-Expose the evidence required to investigate manually.
-Once a fix has been made:
-Verify fix
+## Privacy and safety improve the product
 
-FixFlags reruns the relevant behavior.
-If it passes:
-✓ Resolved
-Fix verified 3 minutes ago.
+FixFlags should collect the minimum needed to establish evidence. Public web execution stays behind SSRF-safe boundaries. Secrets remain encrypted and referenced, not copied into evidence. Inputs, cookies, private headers, and raw payloads do not become MCP context or analytics by default.
 
-This is the core operating loop:
-Find → Understand → Fix → Verify
+Protected, destructive, or irreversible Outcomes require explicit safe credentials, fixtures, permissions, and reset contracts. Until those exist, FixFlags says it could not verify rather than pretending.
 
-Monitoring simply keeps the loop running.
-## 21. History turns monitoring into understanding
-As FixFlags watches a Site, the question changes from:
-What is wrong?
+## Infrastructure philosophy
 
-to:
-What changed?
+Rent commodity models, browsers, devices, compute, networking, databases, and queues. Build proprietary infrastructure only when measured reliability, economics, intelligence, execution quality, security, or differentiation requires it.
 
-FixFlags should build a useful history of:
-- deployments
-- theme changes
-- content changes
-- newly discovered pages
-- removed pages
-- performance regressions
-- tracking changes
-- new Flags
-- recoveries
-- integration changes
-Eventually FixFlags can connect them:
-Checkout began failing 12 minutes after this deployment.
+The moat is not owning Chromium. It is knowing what matters, executing independently, preserving evidence and lifecycle, and learning what restores important Outcomes.
 
-Or:
-Structured data disappeared from 46 product pages after yesterday's theme update.
+## What FixFlags deliberately does not become
 
-Or:
-Performance recovered after this release.
+- a one-time report product;
+- a generic enterprise test-management dashboard;
+- an uptime-only or SEO-only monitor;
+- a browser Journey builder for every possible flow;
+- a coding agent that edits and certifies its own work;
+- an integration marketplace;
+- a speculative knowledge graph;
+- an autonomous-action platform before verification is trustworthy;
+- a collection of separate engines for UI, Watch, MCP, and deployments.
 
-History gives the Site memory.
-Memory improves diagnosis.
-## 22. The interface should remain tiny
-The underlying system can become extraordinarily sophisticated.
-The interface should not.
-FixFlags should be designed mobile-first.
-The primary navigation can remain as small as:
-Home · Flags · Site
-Home
-Does anything need me?
+## Product standard
 
-Important status, important Outcomes, open Flags, meaningful recent changes.
-Flags
-What needs fixing?
+A real customer can connect a live product, understand the important Outcomes, see Clear or a meaningful Flag, act with evidence, independently verify recovery, leave FixFlags watching, and use the same truth from the product UI or a coding agent.
 
-The prioritized list of things worth attention.
-Site
-What is FixFlags responsible for?
-
-Outcomes, pages, coverage, connections, history, and configuration.
-Desktop can display more information at once.
-It should not introduce a different mental model.
-## 23. Healthy FixFlags is intentionally boring
-A good monitoring product should not create work simply to justify its existence.
-A normal day might look like:
-🟢 Everything important we're watching is healthy
-Buy verified 16m ago
-Signup verified 28m ago
-Website live
-
-That's enough.
-The customer should not need to inspect FixFlags every morning.
-FixFlags watches the website so the customer doesn't have to.
-## 24. Alerts are rarer than Flags
-Finding something and interrupting somebody are different decisions.
-FixFlags should alert only when the situation deserves interruption.
-That decision can consider:
-- severity
-- certainty
-- affected Outcome
-- exposure
-- commercial importance
-- duration
-- recurrence
-- recent change
-A low-priority search recommendation can wait inside FixFlags.
-Checkout failing should not.
-Trustworthy alerts are part of the product.
-If FixFlags sends too many meaningless notifications, the entire promise collapses.
-## 25. Free creates the relationship. Paid deepens responsibility.
-The free product should not be a crippled demo.
-Free analysis
-URL → useful understanding of the website.
-This is acquisition.
-Free Site
-Save a Site and receive enough ongoing monitoring to experience FixFlags doing its job.
-Free observation
-If connecting FixFlags provides better evidence at sustainable cost, installation should increase usefulness rather than immediately create punishment.
-Paid plans should primarily purchase greater responsibility:
-- more frequent checks
-- greater page coverage
-- more Outcomes
-- deeper verification
-- longer history
-- real-user monitoring at scale
-- premium connections
-- faster alerts
-- more Sites
-- team and client workflows
-- agent automation
-- protective actions where appropriate
-The free product answers:
-How is my website?
-
-Paid answers:
-Keep taking care of it for me.
-
-## 26. Distribution is part of the product
-FixFlags should naturally spread through several loops.
-Check any URL
-The lowest possible adoption barrier.
-Share a Flag
-A developer, client, founder, or agency receives useful evidence without needing to understand FixFlags first.
-Share verification
-A team can prove that an important behavior was checked and is working.
-Platform distribution
-Shopify is an especially strong early channel because installation is easy and the business Outcome is obvious.
-Agents
-A coding agent can recommend FixFlags, install it, read Flags, work on fixes, and request verification.
-Search and content
-People continually ask versions of:
-Is my website working?
-
-Why did my checkout stop converting?
-
-Is my website healthy?
-
-Is Google able to understand my site?
-
-FixFlags has a natural answer.
-## 27. Shopify is a wedge, not the company
-Shopify is strategically attractive because:
-- Purchase is obvious
-- commerce data adds strong context
-- installation can be native
-- failures have direct economic value
-- merchants already understand apps
-- the App Store provides distribution
-So we can market:
-FixFlags for Shopify
-
-But once installed, the merchant enters the same FixFlags.
-The same Site.
-The same Flags.
-The same Outcomes.
-The same system.
-Shopify makes FixFlags smarter.
-It does not redefine FixFlags.
-## 28. Privacy makes the product better
-FixFlags should collect only what it needs to recognize website problems.
-Avoid building surveillance simply because the technology makes it possible.
-Do not default to:
-- session recording
-- keystroke capture
-- invasive identity tracking
-- unnecessary personal data
-- enormous raw event warehouses
-Prefer:
-- synthetic verification
-- aggregate real-user signals
-- purpose-specific telemetry
-- minimal retention
-- clear boundaries
-The observer exists to protect the Site, not to profile its visitors.
-This constraint keeps the product simpler as well as safer.
-## 29. What FixFlags deliberately does not become
-FixFlags can borrow capabilities from many categories without becoming those categories.
-Do not turn it into:
-- a generic analytics platform
-- a full SEO suite
-- an Ads Manager
-- a CDP
-- a generic observability product
-- a session replay business
-- an experimentation platform
-- a project-management system
-- an arbitrary dashboard builder
-- a giant integration marketplace
-- an event warehouse
-- an AI chatbot with a crawler attached
-Whenever a new feature appears, ask:
-Does this make FixFlags better at knowing when the Site needs attention, understanding why, helping resolve it, or verifying recovery?
-
-If not, it probably does not belong.
-## 30. The product standard
-Every product decision should survive these questions:
-Can FixFlags figure this out instead of asking the customer?
-
-What important thing does this help us watch?
-
-What better decision can FixFlags make because it knows this?
-
-Does this integration improve an answer we already give?
-
-Is this actually a Flag, or merely something we happened to detect?
-
-What evidence supports this conclusion?
-
-What should the customer do differently after seeing it?
-
-Can we verify that the problem is gone?
-
-Can the interface remain simple even if the intelligence underneath becomes ten times deeper?
-
-These are not design preferences.
-They are product constraints.
-## 31. The north-star experience
-A founder discovers FixFlags.
-They enter:
-acme.com
-FixFlags starts learning.
-Website live ✓
-Shopify detected ✓
-42 pages discovered
-Purchase detected
-Contact detected
-Checking mobile…
-Testing Purchase…
-
-Then:
-We think these are the important things people need to be able to do
-Buy
-Contact
-Looks right
-
-The dashboard appears.
-🔴 1 thing needs attention
-Customers cannot add one product variant to cart on mobile.
-Confirmed twice.
-
-They open the Flag.
-They understand the problem immediately.
-They watch the evidence.
-They tap:
-Fix this
-
-They send it to their coding agent.
-The agent fixes the problem and deploys.
-FixFlags reruns the exact behavior.
-✓ Resolved
-Fix verified.
-
-The founder taps:
-Keep watching
-
-Later:
-Shopify detected
-Connect Shopify so FixFlags can confirm real products and purchase outcomes.
-
-They connect it.
-Then Meta.
-Then deployment context.
-FixFlags becomes more informed without becoming more complicated.
-Weeks pass.
-The founder mostly forgets FixFlags exists.
-Then one afternoon:
-🔴 Purchase is failing on mobile
-FixFlags reproduced it twice.
-The problem began after today's release.
-Four active campaigns currently send traffic through this path.
-View Flag
-
-They know they need to act.
-That moment is why FixFlags exists.
-## 32. The company
-We are not trying to build the website product with the most features.
-We are trying to create the place a business connects its website once and trusts for years.
-At first, FixFlags knows a URL.
-Then it learns the Site.
-Then its important Outcomes.
-Then what normal looks like.
-Then its traffic.
-Its products.
-Its search presence.
-Its marketing dependencies.
-Its releases.
-Its history.
-Its recurring problems.
-Its fixes.
-And the evidence that proves those fixes worked.
-Over time, FixFlags should understand the operational health of that website better than almost anyone working on it.
-That accumulated understanding is the long-term asset.
-The interface should barely grow.
-The intelligence underneath it can become enormous.
-## The vision
-FixFlags exists so important website problems don't sit unnoticed.
-Connect a website once.
-FixFlags learns what it is, what people need to be able to do, and what the business depends on.
-It checks the website continuously, independently verifies important behavior, learns from real usage when available, and connects to the systems that provide additional context.
-It may understand availability, performance, accessibility, search, measurement, pages, customer journeys, commerce, traffic, marketing and changes. But it never asks the customer to assemble those worlds themselves.
-FixFlags turns all of that complexity into a simple answer:
-Does anything need my attention?
-When the answer is no, FixFlags stays quiet.
-When the answer is yes, it raises a Flag that explains what happened, why it matters, what proves it, and what should happen next.
-The same Flag can be understood by a business owner, investigated by a developer, or acted on by an agent.
-And a problem is not finished simply because somebody changed the code.
-FixFlags checks again.
-The product begins with a URL and becomes more valuable every day it remains connected.
-Simple on the surface.
-Deep underneath.
-Honest about what it knows.
-Quiet when things are healthy.
-Unmissable when something matters.
-Your website, looked after.
+The product is complete when that experience feels like one intentionally designed system and requires no explanatory workaround.

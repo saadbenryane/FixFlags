@@ -8,34 +8,35 @@ PiWeb is the session interface for this repository. Product work happens here. S
 
 ## Product
 
-**Your website, looked after.** The accepted [September 8 vision](knowledge/vision.md) replaces the report experience with a persistent Site, inferred Journeys, meaningful Flags and ongoing care.
+**FixFlags is the independent monitor for software that acts. Your software runs. FixFlags watches.** The accepted [September 21 vision](knowledge/vision.md) evolves the working Site product around important Outcomes, independent execution, meaningful Flags, first-class verification, always-on Watch, and launch-scope MCP.
 
-- Target loop: **Flag. Fix. Verify.**, continued by monitoring. Customer-facing language: [docs/voice-and-copy.md](docs/voice-and-copy.md).
+- Target hierarchy: **Site/Product → Outcomes → execution methods → Clear or Flag → evidence/history/diagnostics.** Loop: **Flag → Fix → Verify**, continued by monitoring. Customer-facing language: [docs/voice-and-copy.md](docs/voice-and-copy.md).
 - Information architecture: [docs/product-architecture.md](docs/product-architecture.md). Complete plan: [docs/product-masterplan.md](docs/product-masterplan.md).
 - Interface states and acceptance: [docs/workspace-interface.md](docs/workspace-interface.md), [docs/product-prd.md](docs/product-prd.md).
 - Site engineering phases: [ROADMAP.md](ROADMAP.md); reuse and ownership: [docs/site-v2-migration.md](docs/site-v2-migration.md).
-- Preserve the brand, accounts, billing, plans and useful evidence infrastructure. Shopify is a connection and distribution wedge in one product.
+- Preserve the Site shell, browser/check engine, Audit run ledger, Flags, Watch, Shopify, auth, billing, MCP infrastructure, and useful evidence. Adapt the existing `SiteOutcome`; do not invent a parallel Monitor/Task/Objective domain.
 - [PRODUCT.md](PRODUCT.md) is the existing implementation baseline, not the new target. [knowledge/report-contract.md](knowledge/report-contract.md) governs legacy report compatibility only.
 - Older task plans, rubric locks, report/chat layouts and Shopify-only commercial bets are superseded as new-product instructions.
 
 ## Task router
 
-| Area | Start here | Agent command |
-|------|------------|---------------|
-| Repository orientation | [CODEMAP.md](CODEMAP.md), [ROADMAP.md](ROADMAP.md) | `npm run agent -- context orientation` |
-| New Site or application UI | [DESIGN.md](DESIGN.md), [docs/product-architecture.md](docs/product-architecture.md), [docs/workspace-interface.md](docs/workspace-interface.md), [docs/product-prd.md](docs/product-prd.md), [docs/voice-and-copy.md](docs/voice-and-copy.md) | `npm run agent -- context ui` |
-| Legacy report or sharing | [knowledge/report-contract.md](knowledge/report-contract.md), [SECURITY.md](SECURITY.md) | `npm run agent -- context ui` |
-| First-value / anon dogfood | [docs/product-prd.md](docs/product-prd.md), [SECURITY.md](SECURITY.md); legacy routes also use the report contract | `npm run agent -- context ui` |
-| Audit pipeline and checks | [docs/audit-pipeline.md](docs/audit-pipeline.md), `lib/audit/` | `npm run agent -- context audit` |
-| Browser capture (Playwright) | [`.agents/skills/fixflags-browser-capture/SKILL.md`](.agents/skills/fixflags-browser-capture/SKILL.md), `lib/audit/screenshot.ts` | `npm run agent -- context audit` |
-| Scan accuracy and fixtures | `lib/audit/accuracy-corpus.ts`, [`.agents/skills/fixflags-scan-accuracy/SKILL.md`](.agents/skills/fixflags-scan-accuracy/SKILL.md) | `npm run agent -- context accuracy` |
-| AI prompts and models | `lib/prompts/system-prompt.ts`, `lib/audit/judge-config.ts` | `npm run agent -- context prompts` |
-| Billing and entitlements | `lib/billing/`, `lib/auth/entitlements.ts` | `npm run agent -- context billing` |
-| SEO growth loop and organic measurement | `docs/growth/`, `lib/growth/`, [`.agents/skills/fixflags-seo-growth-loop/SKILL.md`](.agents/skills/fixflags-seo-growth-loop/SKILL.md) | `npm run agent -- context growth` |
-| Parked CLI / MCP / repo-scan | `fixflags-cli/`, [`.agents/skills/fixflags-npm-operations/SKILL.md`](.agents/skills/fixflags-npm-operations/SKILL.md) | `npm run agent -- context cli` |
-| Canonical knowledge | [CANONICAL-SOURCES.md](CANONICAL-SOURCES.md), [EVOLUTION-RULES.md](EVOLUTION-RULES.md) | `npm run agent -- context docs` |
-| Messaging and public language | [docs/voice-and-copy.md](docs/voice-and-copy.md), [docs/product-masterplan.md](docs/product-masterplan.md) | `npm run agent -- context docs` |
-| Failures and recovery | [QUALITY.md](QUALITY.md), `lib/queue/`, `.agents/learnings/` | `npm run agent -- context recovery` |
+| Area                                    | Start here                                                                                                                                                                                                                                     | Agent command                          |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Repository orientation                  | [CODEMAP.md](CODEMAP.md), [ROADMAP.md](ROADMAP.md)                                                                                                                                                                                             | `npm run agent -- context orientation` |
+| New Site or application UI              | [DESIGN.md](DESIGN.md), [docs/product-architecture.md](docs/product-architecture.md), [docs/workspace-interface.md](docs/workspace-interface.md), [docs/product-prd.md](docs/product-prd.md), [docs/voice-and-copy.md](docs/voice-and-copy.md) | `npm run agent -- context ui`          |
+| Legacy report or sharing                | [knowledge/report-contract.md](knowledge/report-contract.md), [SECURITY.md](SECURITY.md)                                                                                                                                                       | `npm run agent -- context ui`          |
+| First-value / anon dogfood              | [docs/product-prd.md](docs/product-prd.md), [SECURITY.md](SECURITY.md); legacy routes also use the report contract                                                                                                                             | `npm run agent -- context ui`          |
+| Audit pipeline and checks               | [docs/audit-pipeline.md](docs/audit-pipeline.md), `lib/audit/`                                                                                                                                                                                 | `npm run agent -- context audit`       |
+| Browser capture (Playwright)            | [`.agents/skills/fixflags-browser-capture/SKILL.md`](.agents/skills/fixflags-browser-capture/SKILL.md), `lib/audit/screenshot.ts`                                                                                                              | `npm run agent -- context audit`       |
+| Scan accuracy and fixtures              | `lib/audit/accuracy-corpus.ts`, [`.agents/skills/fixflags-scan-accuracy/SKILL.md`](.agents/skills/fixflags-scan-accuracy/SKILL.md)                                                                                                             | `npm run agent -- context accuracy`    |
+| AI prompts and models                   | `lib/prompts/system-prompt.ts`, `lib/audit/judge-config.ts`                                                                                                                                                                                    | `npm run agent -- context prompts`     |
+| Billing and entitlements                | `lib/billing/`, `lib/auth/entitlements.ts`                                                                                                                                                                                                     | `npm run agent -- context billing`     |
+| SEO growth loop and organic measurement | `docs/growth/`, `lib/growth/`, [`.agents/skills/fixflags-seo-growth-loop/SKILL.md`](.agents/skills/fixflags-seo-growth-loop/SKILL.md)                                                                                                          | `npm run agent -- context growth`      |
+| Launch MCP / CLI                        | `lib/mcp/`, `fixflags-cli/`, `lib/integrations/`, [docs/product-masterplan.md](docs/product-masterplan.md)                                                                                                                                     | `npm run agent -- context cli`         |
+| Parked repo-scan                        | `lib/repo-scan/`, report compatibility                                                                                                                                                                                                         | `npm run agent -- context cli`         |
+| Canonical knowledge                     | [CANONICAL-SOURCES.md](CANONICAL-SOURCES.md), [EVOLUTION-RULES.md](EVOLUTION-RULES.md)                                                                                                                                                         | `npm run agent -- context docs`        |
+| Messaging and public language           | [docs/voice-and-copy.md](docs/voice-and-copy.md), [docs/product-masterplan.md](docs/product-masterplan.md)                                                                                                                                     | `npm run agent -- context docs`        |
+| Failures and recovery                   | [QUALITY.md](QUALITY.md), `lib/queue/`, `.agents/learnings/`                                                                                                                                                                                   | `npm run agent -- context recovery`    |
 
 Do not read every linked document by default. Open deeper references only when the task requires them.
 
@@ -73,10 +74,10 @@ Commands: `npm run agent`, `npm run agent -- context <area>`, `npm run agent -- 
 - Legacy manual re-check is a fresh full capture that diffs against its parent. Target Verify fix must freshly exercise the relevant behavior and prove recovery; absence alone cannot resolve a Flag.
 - Public graph reads go through `lib/graph/queries.ts`. Prisma Site/Page are global graph models, not the private customer Site; preserve tenant isolation.
 - Edge middleware must not import Prisma or Node-only modules.
-- Shared legacy report behavior belongs in existing audit/report utilities. New Site behavior belongs in a coherent domain/application boundary, not duplicate report and Shopify projections.
+- Shared legacy report behavior belongs in existing audit/report utilities. New Site/Outcome behavior belongs in `lib/sites/application`. UI, Watch, MCP, deployments, API, and Shopify must use one tenant-scoped run command rather than duplicate monitoring engines.
 - Check-to-plan and re-check-to-diff live in `lib/audit/task-contracts.ts`.
 - Public Review HTTP: `/api/checks` and `/api/reports/[id]/*`. Product Signals: `/api/products/[id]/signals`. No `/api/audits` compatibility routes.
-- Do not keep off-by-default feature flags for unused code. Parked power-tools stay undiscoverable, not env-gated.
+- MCP is launch scope, but remains undiscoverable until its Site/Outcome end-to-end loop and authorization are proven. Repo scan and unrelated power tools stay parked.
 
 ## AI, security, and git
 
@@ -95,15 +96,15 @@ Commands: `npm run agent`, `npm run agent -- context <area>`, `npm run agent -- 
 
 ## Canonical map
 
-| Question | Source |
-|----------|--------|
-| What is implemented today? | [PRODUCT.md](PRODUCT.md) |
-| Why and for whom? | [knowledge/vision.md](knowledge/vision.md), [SOUL.md](SOUL.md) |
-| Where is code? | [CODEMAP.md](CODEMAP.md) |
-| How does the system work? | [ARCHITECTURE.md](ARCHITECTURE.md), [docs/audit-pipeline.md](docs/audit-pipeline.md) |
-| How should it look and sound? | [DESIGN.md](DESIGN.md), [docs/voice-and-copy.md](docs/voice-and-copy.md) |
-| How is correctness verified? | [QUALITY.md](QUALITY.md) |
-| What is safe? | [SECURITY.md](SECURITY.md) |
-| What should happen next? | [ROADMAP.md](ROADMAP.md), [knowledge/execution.md](knowledge/execution.md) |
-| Where does a fact belong? | [CANONICAL-SOURCES.md](CANONICAL-SOURCES.md) |
-| How does knowledge evolve? | [EVOLUTION-RULES.md](EVOLUTION-RULES.md) |
+| Question                      | Source                                                                               |
+| ----------------------------- | ------------------------------------------------------------------------------------ |
+| What is implemented today?    | [PRODUCT.md](PRODUCT.md)                                                             |
+| Why and for whom?             | [knowledge/vision.md](knowledge/vision.md), [SOUL.md](SOUL.md)                       |
+| Where is code?                | [CODEMAP.md](CODEMAP.md)                                                             |
+| How does the system work?     | [ARCHITECTURE.md](ARCHITECTURE.md), [docs/audit-pipeline.md](docs/audit-pipeline.md) |
+| How should it look and sound? | [DESIGN.md](DESIGN.md), [docs/voice-and-copy.md](docs/voice-and-copy.md)             |
+| How is correctness verified?  | [QUALITY.md](QUALITY.md)                                                             |
+| What is safe?                 | [SECURITY.md](SECURITY.md)                                                           |
+| What should happen next?      | [ROADMAP.md](ROADMAP.md), [knowledge/execution.md](knowledge/execution.md)           |
+| Where does a fact belong?     | [CANONICAL-SOURCES.md](CANONICAL-SOURCES.md)                                         |
+| How does knowledge evolve?    | [EVOLUTION-RULES.md](EVOLUTION-RULES.md)                                             |

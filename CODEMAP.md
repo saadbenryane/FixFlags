@@ -6,59 +6,59 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 
 ## System Entry Points
 
-| Entry Point | File | Purpose |
-|-------------|------|---------|
-| Next.js bootstrap | `app/layout.tsx` | Root layout, providers, global styles |
-| Edge middleware | `middleware.ts` → `proxy.ts` | CSP, HSTS, auth gating, rate limiting |
-| Audit pipeline | `lib/audit/runner.ts` | Pipeline orchestration and completion behavior |
-| Task contracts | `lib/audit/task-contracts.ts` | Check-to-plan and re-check-to-diff application outcomes |
-| Queue processor | `lib/queue/worker.ts` | BullMQ audit job processor |
-| Worker runtime | `worker/index.ts` | Required dedicated Playwright and recovery process |
-| Marketing copy | `lib/marketing/copy.ts` | Single source of truth for all marketing text |
-| Design tokens | `lib/design/tokens.css` | Canonical design tokens (colors, shadows, radii) |
-| AI prompts | `lib/prompts/system-prompt.ts` | Triage + prescription prompt builders |
-| DB schema | `prisma/schema.prisma` | Prisma schema and migrations |
-| Validation planner | `scripts/validate.mjs` | Changed-file-aware validation (quick/affected/full) |
+| Entry Point        | File                           | Purpose                                                 |
+| ------------------ | ------------------------------ | ------------------------------------------------------- |
+| Next.js bootstrap  | `app/layout.tsx`               | Root layout, providers, global styles                   |
+| Edge middleware    | `middleware.ts` → `proxy.ts`   | CSP, HSTS, auth gating, rate limiting                   |
+| Audit pipeline     | `lib/audit/runner.ts`          | Pipeline orchestration and completion behavior          |
+| Task contracts     | `lib/audit/task-contracts.ts`  | Check-to-plan and re-check-to-diff application outcomes |
+| Queue processor    | `lib/queue/worker.ts`          | BullMQ audit job processor                              |
+| Worker runtime     | `worker/index.ts`              | Required dedicated Playwright and recovery process      |
+| Marketing copy     | `lib/marketing/copy.ts`        | Single source of truth for all marketing text           |
+| Design tokens      | `lib/design/tokens.css`        | Canonical design tokens (colors, shadows, radii)        |
+| AI prompts         | `lib/prompts/system-prompt.ts` | Triage + prescription prompt builders                   |
+| DB schema          | `prisma/schema.prisma`         | Prisma schema and migrations                            |
+| Validation planner | `scripts/validate.mjs`         | Changed-file-aware validation (quick/affected/full)     |
 
 ## Repository Directory Map
 
-| Directory | Responsibility | Detailed Map |
-|-----------|----------------|--------------|
-| `app/` | Next.js App Router routes (marketing, auth, dashboard, audit, admin, API) | [app/codemap.md](app/codemap.md) |
-| `app/(marketing)/` | Public pages: homepage, pricing, FAQ, Help, tools, changelog, roast | — |
-| `app/(docs)/` | Public product documentation shell and `/docs` routes | `lib/docs/catalog.ts` |
-| `app/(auth)/` | Sign-in, sign-up, forgot/reset password | — |
-| `app/(app)/` | Authenticated dashboard, billing, settings | — |
-| `app/report/[id]/` | Canonical complete report and ranked Fix list; `details/` redirects here | `knowledge/report-contract.md` |
-| `app/share/[token]/` | Scoped canonical share rendering; shared details links redirect after access checks | `lib/security/share-grant.ts` |
-| `app/admin/` | Admin dashboard | — |
-| `app/api/` | All API routes (audits, auth, MCP, Stripe, cron, health) | — |
-| `components/` | React components organized by feature area | [components/codemap.md](components/codemap.md) |
-| `components/ui/` | 33+ shadcn/ui primitives (shared) | — |
-| `components/audit/` | Report page layout (hero, toolbar, rubrics, actions) | — |
-| `components/report/` | Flag interaction (explorer, detail panel, fix loop, scoring) | — |
-| `lib/` | Core business logic | [lib/codemap.md](lib/codemap.md) |
-| `lib/audit/` | Audit engine (runner, checks, scoring, flow, judge, persist, capture) | [lib/audit/codemap.md](lib/audit/codemap.md) |
-| `lib/audit/checks/` | Check modules registered in `checks/index.ts` | — |
-| `lib/queue/` | BullMQ queue (client, worker, heartbeat, recovery) | [lib/queue/codemap.md](lib/queue/codemap.md) |
-| `lib/billing/` | Subscription limits, credits, Stripe integration | [lib/billing/codemap.md](lib/billing/codemap.md) |
-| `lib/graph/` | Knowledge graph (persist, queries, snapshot) — internal only | — |
-| `lib/prompts/` | AI system prompts (triage + prescription) | — |
-| `lib/marketing/` | Copy SSoT, metadata, SEO, structured data | — |
-| `lib/help/` | Help Center catalog, search, contextual hrefs, SLA | — |
-| `lib/docs/` | Typed docs catalog, Markdown loading, and search index | — |
-| `lib/integrations/` | Canonical editor catalog and MCP configuration generator | — |
-| `lib/mcp/` | Parked Model Context Protocol server. Load only with `npm run agent -- context cli`. | — |
-| `fixflags-cli/` | Parked standalone CLI package. Load only with `npm run agent -- context cli`. | — |
-| `lib/design/` | Design tokens, brand spec | — |
-| `prisma/` | Database schema, migrations, seed | — |
-| `scripts/` | CLI scripts (demo audits, backfills, guards, validation) | [scripts/codemap.md](scripts/codemap.md) |
-| `worker/` | Standalone audit worker (production) | — |
-| `knowledge/` | Company knowledge base (foundations, market, product, strategy, execution) | — |
-| `docs/` | Strategy, positioning, voice, growth docs | — |
-| `docs/growth/` | Organic growth workspace (architecture, roadmap, experiments) | — |
-| `.agents/` | Multi-agent coordination (board, learnings, evals, handoffs) | — |
-| `ide-integrations/` | Cursor, Claude Code, Kiro integrations | — |
+| Directory            | Responsibility                                                                                                                                           | Detailed Map                                     |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `app/`               | Next.js App Router routes (marketing, auth, dashboard, audit, admin, API)                                                                                | [app/codemap.md](app/codemap.md)                 |
+| `app/(marketing)/`   | Public pages: homepage, pricing, FAQ, Help, tools, changelog, roast                                                                                      | —                                                |
+| `app/(docs)/`        | Public product documentation shell and `/docs` routes                                                                                                    | `lib/docs/catalog.ts`                            |
+| `app/(auth)/`        | Sign-in, sign-up, forgot/reset password                                                                                                                  | —                                                |
+| `app/(app)/`         | Authenticated dashboard, billing, settings                                                                                                               | —                                                |
+| `app/report/[id]/`   | Canonical complete report and ranked Fix list; `details/` redirects here                                                                                 | `knowledge/report-contract.md`                   |
+| `app/share/[token]/` | Scoped canonical share rendering; shared details links redirect after access checks                                                                      | `lib/security/share-grant.ts`                    |
+| `app/admin/`         | Admin dashboard                                                                                                                                          | —                                                |
+| `app/api/`           | All API routes (audits, auth, MCP, Stripe, cron, health)                                                                                                 | —                                                |
+| `components/`        | React components organized by feature area                                                                                                               | [components/codemap.md](components/codemap.md)   |
+| `components/ui/`     | 33+ shadcn/ui primitives (shared)                                                                                                                        | —                                                |
+| `components/audit/`  | Report page layout (hero, toolbar, rubrics, actions)                                                                                                     | —                                                |
+| `components/report/` | Flag interaction (explorer, detail panel, fix loop, scoring)                                                                                             | —                                                |
+| `lib/`               | Core business logic                                                                                                                                      | [lib/codemap.md](lib/codemap.md)                 |
+| `lib/audit/`         | Audit engine (runner, checks, scoring, flow, judge, persist, capture)                                                                                    | [lib/audit/codemap.md](lib/audit/codemap.md)     |
+| `lib/audit/checks/`  | Check modules registered in `checks/index.ts`                                                                                                            | —                                                |
+| `lib/queue/`         | BullMQ queue (client, worker, heartbeat, recovery)                                                                                                       | [lib/queue/codemap.md](lib/queue/codemap.md)     |
+| `lib/billing/`       | Subscription limits, credits, Stripe integration                                                                                                         | [lib/billing/codemap.md](lib/billing/codemap.md) |
+| `lib/graph/`         | Knowledge graph (persist, queries, snapshot) — internal only                                                                                             | —                                                |
+| `lib/prompts/`       | AI system prompts (triage + prescription)                                                                                                                | —                                                |
+| `lib/marketing/`     | Copy SSoT, metadata, SEO, structured data                                                                                                                | —                                                |
+| `lib/help/`          | Help Center catalog, search, contextual hrefs, SLA                                                                                                       | —                                                |
+| `lib/docs/`          | Typed docs catalog, Markdown loading, and search index                                                                                                   | —                                                |
+| `lib/integrations/`  | Canonical editor catalog and MCP configuration generator                                                                                                 | —                                                |
+| `lib/mcp/`           | Parked Model Context Protocol server. Load only with `npm run agent -- context cli`.                                                                     | —                                                |
+| `fixflags-cli/`      | Existing CLI/device-auth/stdio bridge for launch-scope MCP; currently parked from public discovery until the Outcome contract is implemented and proven. | —                                                |
+| `lib/design/`        | Design tokens, brand spec                                                                                                                                | —                                                |
+| `prisma/`            | Database schema, migrations, seed                                                                                                                        | —                                                |
+| `scripts/`           | CLI scripts (demo audits, backfills, guards, validation)                                                                                                 | [scripts/codemap.md](scripts/codemap.md)         |
+| `worker/`            | Standalone audit worker (production)                                                                                                                     | —                                                |
+| `knowledge/`         | Company knowledge base (foundations, market, product, strategy, execution)                                                                               | —                                                |
+| `docs/`              | Strategy, positioning, voice, growth docs                                                                                                                | —                                                |
+| `docs/growth/`       | Organic growth workspace (architecture, roadmap, experiments)                                                                                            | —                                                |
+| `.agents/`           | Multi-agent coordination (board, learnings, evals, handoffs)                                                                                             | —                                                |
+| `ide-integrations/`  | Cursor, Claude Code, Kiro integrations                                                                                                                   | —                                                |
 
 ## Where To Change Things
 
@@ -71,8 +71,8 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 - **Canonical report UI** → `components/audit/AuditReport.tsx`, `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts`. Default route is Agent beside Report.
 - **Flag interaction UI** → `components/report/` (explorer, detail panel, fix loop)
 - **Shared UI primitives** → `components/ui/` (shadcn-based)
-- **API routes** → `app/api/` (checks, reports, auth, Stripe, cron, health). Parked MCP/CLI/repo-scan routes stay undiscoverable.
-- **Parked CLI / MCP / repo-scan** → `fixflags-cli/`, `lib/mcp/`, `lib/repo-scan/` (not default UI work; `npm run agent -- context cli`)
+- **API routes** → `app/api/` (Site, checks, reports, auth, MCP, Stripe, cron, health). New run behavior must enter through `lib/sites/application`, not a route-specific engine.
+- **Launch MCP / CLI** → `fixflags-cli/`, `lib/mcp/`, `lib/integrations/` (currently parked at the edge; re-scope from reports to Site/Outcome/Run/Flag before unpark). **Parked repo scan** remains `lib/repo-scan/`.
 - **Marketing pages** → `app/(marketing)/` (homepage, pricing, FAQ, etc.)
 - **Public product documentation** → `app/(docs)/`, `content/docs/`, and `lib/docs/catalog.ts`
 - **Editor integration behavior** → `lib/integrations/editor-catalog.ts` and `lib/integrations/editor-config.ts`
@@ -86,6 +86,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 ## Cross-System Flows
 
 ### Audit Pipeline Flow
+
 1. User submits URL → `app/api/checks/route.ts` calls the shared check-to-plan task contract
 2. Audit enqueued to BullMQ → `lib/queue/client.ts`
 3. Dedicated worker picks up job → `worker/index.ts` → `lib/queue/worker.ts`
@@ -97,12 +98,14 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 9. Report UI reads from DB → `app/report/[id]/page.tsx` → `components/audit/` + `components/report/`
 
 ### Billing Flow
+
 1. User subscribes → Stripe Checkout → webhook → `app/api/stripe/webhook/route.ts`
 2. Subscription state persisted → `lib/billing/`
 3. Audit creation checks limits → `lib/billing/limits.ts`
 4. AI prescription gated by `includeAi` + credits → `lib/billing/credits.ts`
 
 ### Anonymous Wedge Flow
+
 1. Unauthenticated user submits URL → `createAndEnqueueAudit` checks `checkAnonymousAuditAllowed`
 2. One teaser audit allowed (triage only, fix prompts stripped)
 3. Second URL → signup required

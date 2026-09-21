@@ -1,25 +1,25 @@
 # FixFlags card-board experience
 
-**TARGET design, owner brief of 2026-09-08.** This refines the [vision](../knowledge/vision.md), [architecture](product-architecture.md), [interface contract](workspace-interface.md) and [PRD](product-prd.md). If navigation disagrees with product-architecture, architecture wins. It supersedes conflicting dashboard hierarchy and shadow-first card guidance. It is design evidence, not a production release.
+**RETAINED SECONDARY DESIGN CONTRACT, reconciled 2026-09-21.** This governs the broader Product-health card area beneath the Outcome-first Home hierarchy in [product architecture](product-architecture.md) and [workspace interface](workspace-interface.md). Architecture wins on hierarchy and navigation. This is design evidence, not a release claim.
 
-**Your website, looked after.** One website. One board. Everything that matters.
+**Your software runs. FixFlags watches.** One Site, clear Outcomes, and broader Product health underneath.
 
 ## Information architecture
 
-The primary product is one flat card grid. Every card answers an understandable question about the same Site. Automated tests create evidence; cards create understanding; Flags create attention. Shopify, Analytics, Meta and Search Console enrich this Site rather than create separate products. Pages are nodes in journeys toward Purchase, Signup, Contact, Book or Donate. Customer-facing language: [voice-and-copy.md](voice-and-copy.md). The first board card is Pages, not a second product named Site.
+The card grid explains broader Product health after Home has shown watched Outcomes and attention. Every card answers an understandable category question about the same Site. Checks create evidence; Outcome assessments answer whether important results work; cards organize supporting health; Flags create attention. Shopify and future connections enrich this Site rather than create separate products. Pages may contribute to several Outcomes or none.
 
-Desktop navigation: Home, Flags, Site settings. Mobile: Home, Flags, More. Pages and Journeys are reached through cards. The FixFlags Agent is a later FAB, not a nav item. Account, settings, Site switching and retained billing are supporting controls. Capabilities do not become permanent navigation destinations.
+Desktop navigation remains Home, Flags, Site settings. Mobile remains Home, Flags, More. Outcomes are primary Home content; Pages, Journeys and category diagnostics are reached through Outcome/card depth. The FixFlags Agent is a FAB, not a nav item. Capabilities do not become permanent navigation destinations.
 
 ## Connected screens
 
-| Experience | Prototype entry | Responsibility |
-| --- | --- | --- |
-| First visit | Scenario 01 | Immediate starter board with resolved checks and independent checking activity; discoveries, running and queued checks inside Site activity |
-| Connected | Scenario 02 | Same cards enriched by source metrics and freshness, with one restrained Search concern |
-| Mobile | Phone control or narrow viewport | Same state and cards in a priority stream; 393 × 852 viewport, safe-area navigation, full-height detail sheets |
-| Add Card | Dashed card | Recommendations for this Site, search and library-only categories |
-| Card depth | Search or Performance | Overview, pages, underlying checks, history, source and coverage limits |
-| Important Flag | Scenario 03 → View Flag | One purchase failure with Conversion, Tracking, Paid traffic, Revenue and Changes context; evidence and verification |
+| Experience     | Prototype entry                  | Responsibility                                                                                                                              |
+| -------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| First visit    | Scenario 01                      | Immediate starter board with resolved checks and independent checking activity; discoveries, running and queued checks inside Site activity |
+| Connected      | Scenario 02                      | Same cards enriched by source metrics and freshness, with one restrained Search concern                                                     |
+| Mobile         | Phone control or narrow viewport | Same state and cards in a priority stream; 393 × 852 viewport, safe-area navigation, full-height detail sheets                              |
+| Add Card       | Dashed card                      | Recommendations for this Site, search and library-only categories                                                                           |
+| Card depth     | Search or Performance            | Overview, pages, underlying checks, history, source and coverage limits                                                                     |
+| Important Flag | Scenario 03 → View Flag          | One purchase failure with Conversion, Tracking, Paid traffic, Revenue and Changes context; evidence and verification                        |
 
 Scenario 04 demonstrates quiet health. The runnable prototype lives in `prototypes/fixflags-board`. Data, sources, account actions and verification are illustrative; no external monitoring, payment, notification or integration calls occur.
 
@@ -29,13 +29,13 @@ A card contains a name, current answer or metric, at most one useful visual, one
 
 Health cards answer whether something works. Context cards explain what is happening without fabricated health labels. Missing context becomes unavailable while supported public checks remain useful. Connecting a source transforms the recommendation into its useful card.
 
-| Dimension | Meaning | Presentation |
-| --- | --- | --- |
-| Healthy | Sufficient current evidence for the stated scope | Small green signal with 0 Flags and a useful metric. Freshness appears in card depth, not repeated across the board. |
-| Needs attention | Meaningful Flags without a confirmed severe failure | Brand-orange signal with the area’s Flag count. Open the card to read the relevant Flags. Do not render the words “Needs attention.” |
-| Problem | Confirmed important failure | Brand-orange signal, restrained orange edge, Flag chips, and a clear card-depth action |
-| Unknown | Missing, unavailable, insufficient or expired evidence | Gray signal and explanation/recovery |
-| Checking | Activity independent of health | Brand orange ring and actual work description |
+| Dimension       | Meaning                                                      | Presentation                                                                                                                         |
+| --------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Healthy         | Sufficient current evidence for this category’s stated scope | Small green signal and useful metric. This is category health and does not by itself make an Outcome Clear.                          |
+| Needs attention | Meaningful Flags without a confirmed severe failure          | Brand-orange signal with the area’s Flag count. Open the card to read the relevant Flags. Do not render the words “Needs attention.” |
+| Problem         | Confirmed important failure                                  | Brand-orange signal, restrained orange edge, Flag chips, and a clear card-depth action                                               |
+| Unknown         | Missing, unavailable, insufficient or expired evidence       | Gray signal and explanation/recovery                                                                                                 |
+| Checking        | Activity independent of health                               | Brand orange ring and actual work description                                                                                        |
 
 Card header anatomy: name on the left; status signal and compact Flag count on the right. The signal and card open the same detail. One overall count lives in the board header; the Site thumbnail does not repeat it. Cards keep one short answer, at most two lines of context, and a compact thumbnail. Full screenshots, timestamps, sources, checked pages and Flag links live in the detail panel. The homepage and signed-in overview share the same card primitive; the live Site uses the same board surface. Dialogs trap focus, support Escape, and restore focus to the opener.
 

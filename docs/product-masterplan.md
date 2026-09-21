@@ -1,788 +1,359 @@
-# FixFlags implementation masterplan
+# FixFlags independent-monitor masterplan
 
-**Definitive complete-product and launch-readiness plan. Status: ACTIVE.**
+**Status: ACTIVE TARGET AND SOLE IMPLEMENTATION PLAN. Reconciled 2026-09-21 against `e73552c8`.**
 
-This file owns **what to build, in what order, and what may be claimed publicly**. It absorbs the former messaging-migration plan.
+FixFlags is the independent monitor for software that acts.
 
-| Layer | Document |
-| --- | --- |
-| Why | [knowledge/vision.md](../knowledge/vision.md) |
-| Customer IA | [product-architecture.md](product-architecture.md) |
-| How we speak | [voice-and-copy.md](voice-and-copy.md) |
-| Evidence truth | [knowledge/evidence-rules.md](../knowledge/evidence-rules.md) |
-| **This plan** | Sequence, Now/Next/Later, acceptance |
-| Engineering phases | [ROADMAP.md](../ROADMAP.md) (Site cutover; does not replace this plan) |
-| Code today | [PRODUCT.md](../PRODUCT.md) |
-| Persistence reuse | [site-v2-migration.md](site-v2-migration.md) |
-| Behavior contracts | [product-prd.md](product-prd.md) |
-| Interface states | [workspace-interface.md](workspace-interface.md) |
-| Card design | [card-board-experience.md](card-board-experience.md) |
+**Your software runs. FixFlags watches.**
 
-Implementation is claimed by `coherent-site-product` on [the task board](../.agents/BOARD.md). Preserve narrower in-progress owners and record verified implementation evidence in [the active session record](../.agents/sessions/2026-09-10-coherent-site-product.md). This file remains the only launch plan; session records are evidence, not competing plans.
+This file owns what to build, in what order, and what may be called launch-ready. It replaces the former website-care wave plan. The working Site product is the migration base, not discarded work. Public claims remain limited to [PRODUCT.md](../PRODUCT.md) until a capability passes the acceptance evidence in this plan.
 
-**Truth vs vision:** Architecture describes the intended product. Public copy claims only shipped behavior. The Site-scoped FixFlags Agent, Flag vs Recommendation split, and report retirement are launch scope; additional connections and public sharing remain post-launch.
+| Authority                                  | Source                                                          |
+| ------------------------------------------ | --------------------------------------------------------------- |
+| Purpose and product principles             | [knowledge/vision.md](../knowledge/vision.md)                   |
+| Customer objects and technical shape       | [product-architecture.md](product-architecture.md)              |
+| Evidence, certainty, and recovery          | [knowledge/evidence-rules.md](../knowledge/evidence-rules.md)   |
+| **Sequence, launch scope, and acceptance** | **This file**                                                   |
+| Milestones and dependency order            | [ROADMAP.md](../ROADMAP.md)                                     |
+| Current workspace truth                    | [PRODUCT.md](../PRODUCT.md)                                     |
+| Existing persistence reuse                 | [site-v2-migration.md](site-v2-migration.md)                    |
+| Current execution mechanics                | [audit-pipeline.md](audit-pipeline.md)                          |
+| Legacy report compatibility                | [knowledge/report-contract.md](../knowledge/report-contract.md) |
 
----
+## Product decision
 
-## Product in one paragraph
+The launch product watches important outcomes in live software and expresses each as **Clear**, **Flag**, **Couldn’t verify**, or **Stale**, always with scope and freshness. Examples are Signup, Login, Checkout, Publish, and Password reset. A customer sees the outcome first; checks, browser steps, HTTP requests, integration observations, and AI-assisted execution stay underneath as evidence.
 
-FixFlags is continuous monitoring for businesses that depend on their online experience. The customer adds a website. FixFlags analyzes the live experience broadly, learns Pages and Journeys, and keeps watching. When something is important enough to act on, it raises a Flag. The customer, their team, agency, or coding AI Fixes it. FixFlags Verifies the live result. Monitoring continues. Complexity stays behind the product. Depth is available. Interruption is scarce.
+The core loop remains **Flag → Fix → Verify**. Scheduled monitoring and agent-requested verification are triggers into the same independent execution system. MCP ships at launch, but FixFlags remains useful and keeps watching when no coding agent is connected.
 
-Governing rule: **Analyze broadly. Flag what matters.** Customer loop: **Flag. Fix. Verify.** Analyze is the entry, not the product.
+The launch container remains the existing customer **Site** because the current product, tenancy, browser engine, Watch scheduler, pricing, and first-value flow are URL-first. “Software” broadens what a Site can watch; it does not justify a new root table before a non-web target requires one. The first-class health unit becomes the existing **Outcome**. A browser Journey is one way to exercise an Outcome, not the universal abstraction.
 
-## Final information architecture
+## 1. Current-state assessment
 
-Account owns Sites. A Site is the persistent home. Home is a calm card board (Pages, Conversion/Journeys, Security, Search, Performance, Tracking, then library and connection-enriched cards). Flags are the attention destination. Pages and Journeys are reached through cards, not extra primary nav. Connections enrich the Site. History lives on Flags, cards, and the Agent, not a raw run log. The FixFlags Agent is a bottom-right assistant over the same objects, with a path into human support. The customer's coding AI is a separate job: **Send a Flag to your AI.** Reports and the legacy report Agent pane are compatibility, then retired.
+### Directly reusable foundation
 
-Full object, nav, card, Agent, and integration models: [product-architecture.md](product-architecture.md).
+| Capability               | Repository reality                                                                                                                                   | Decision                                                     |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Owned monitor            | Prisma `Project`, customer Site projection, provisional Site and idempotent claim                                                                    | Keep as the launch tenant boundary.                          |
+| Important intent         | `SiteOutcome`, `SiteOutcomePage`, inferred/confirmable outcomes                                                                                      | Adapt with expectation, state, bindings, and history.        |
+| Browser execution        | Playwright capture, deterministic checks, safe Journey runner, screenshots, network and accessibility evidence                                       | Keep as the independent human-facing executor.               |
+| Run ledger               | `Audit`, pages, pipeline events, costs, stages, worker queue and recovery                                                                            | Keep; change customer projections, not storage names.        |
+| Checks                   | Registered checks with stable IDs and verifier provenance                                                                                            | Keep as evidence producers beneath Outcomes.                 |
+| Journeys                 | `JourneyReview`, steps, findings, templates, planner/evaluator and safety constraints                                                                | Adapt into one Outcome execution-binding type.               |
+| Flags                    | `Flag`, importance projector, stable `Improvement` fingerprint, occurrences and cycles                                                               | Keep; attach to an Outcome when evidence supports it.        |
+| Verification             | `ImprovementAttempt`, verifier executions, comparability and targeted Site Verify                                                                    | Keep and make Outcome-scoped.                                |
+| Always-on care           | weekly/daily Watch, leases, restart recovery, retries, notification preferences and email                                                            | Keep; use the common run-request boundary.                   |
+| Event triggers           | manual/API/MCP sources, Railway deployment webhook, ProductSignal and Shopify events                                                                 | Merge as triggers into one command.                          |
+| Shopify                  | embedded auth, explicit shop-to-Project link, purchase-path execution and Site Flag projection                                                       | Keep as a connection and specialized Outcome binding.        |
+| Human product            | Sites list, Home, Flags, Flag detail, Settings, Agent/support foundation                                                                             | Adapt hierarchy toward watched Outcomes and attention.       |
+| Auth/security            | better-auth, passkeys, API keys, owner-scoped routes, SSRF-safe fetch, encrypted scan access                                                         | Keep; add MCP scopes and target resolution.                  |
+| MCP delivery             | Streamable HTTP, structured results, tool registry, interaction ledger, API keys, device flow, stdio CLI bridge, `npx fixflags init`, editor catalog | Adapt, unpark, and replace the report-shaped contract.       |
+| Billing                  | Free/Pro/Studio, one free Site, Watch policy, Stripe quantity/lifecycle foundation                                                                   | Keep; MCP follows Site responsibility, not review credits.   |
+| Operations               | readiness, heartbeat, pipeline ledger, lifecycle analytics, admin/support views                                                                      | Keep; add Outcome/run/MCP reliability views.                 |
+| Report/Product workspace | sanitized evidence compatibility and old projections                                                                                                 | Deprecate as customer models; retain adapters temporarily.   |
+| Repo scan/fix PR         | separate GitHub code-scanning queue                                                                                                                  | Keep parked; not required for independent live verification. |
 
-## Critical path
+### What already expresses the vision well
 
-1. **Lock vocabulary and invert tests** so Analyze, Journey, and Flag. Fix. Verify. can land without the suite fighting them.
-2. **Business-importance Flag projector** so board counts, 0 Flags, and later notifications mean Flag, not every stored finding.
-3. **One monitoring truth** (packaging vs Watch weekly/daily vs 3/30/90 pools vs access-policy) before cadence copy.
-4. **Lean Site chrome:** Pages card, card face = category + Flag count + metric, Home · Flags, configuration in Site settings. Design for Agent FAB; do not add an Agent tab.
-5. **First complete loop on the Site:** Analyze → board → Flag → Fix / Send to AI → Verify → Watch, with honest coverage and Verify states.
-6. **Acquisition copy** only after (2), (3) honesty, and unshipped-integration cleanup.
-7. **Unify Shopify into the same Site**; Flag-shaped notifications; then Agent + support context; then report/Agent-pane retirement.
+- The live homepage explains Flag. Fix. Verify., browser journeys, live verification, evidence, Watch, and Shopify as context.
+- The Site board hides most check mechanics and separates meaningful Flags from Recommendations.
+- Verify records a fix attempt separately from the fresh FixFlags run. A builder declaration does not certify success.
+- Watch is durable and quiet on healthy runs, with explicit failure state and notification controls.
+- MCP already uses the official SDK, Streamable HTTP, structured outputs, annotations, API-key ownership, and an interaction ledger.
 
-## Launch-readiness ledger
+### Debt that blocks launch
 
-This ledger is dependency ordered and is the operational view of the waves below. A checked item needs code plus the named evidence. Static copy or a passing legacy-report test is not completion.
+1. `SiteOutcome` does not own expected behavior, executable bindings, state, freshness, or a direct Flag relationship.
+2. Triggers still enter through report-shaped services and a two-value `RecheckTrigger`; there is no durable tenant-scoped Run Request that states why and what to execute.
+3. MCP is report-first (`ff_check_and_plan`, report IDs, rubrics, Finish Plans), accepts arbitrary URLs, may wait 50 seconds, and is 404-parked.
+4. Remote MCP auth is long-lived API-key only. Interactive launch clients need OAuth discovery and scoped, audience-bound tokens; API keys remain appropriate for CI and the stdio bridge.
+5. Deployment verification is Railway-specific and generic rather than Site/Outcome-scoped.
+6. The public sample still exposes a legacy report, score, rubrics, and report Agent. Live MCP docs are unreachable because the surface is parked.
+7. Machine-facing Outcome execution has no launch adapter. The architecture can support it, but claiming it now would be false.
+8. Legacy Product/report/credit vocabulary still crosses application seams even where storage names may safely remain.
 
-### Blockers
+## 2. Existing-capability mapping
 
-- [x] **B0 Restore a green release baseline.** Typecheck, lint, 5,237 unit tests, coverage, production build, completeness, 16-fixture accuracy, zero-vulnerability audit and route/knowledge guards pass from clean `d96af590`. The release foundation also passed fresh disposable migrations, immutable image build, and a real Postgres + Redis + web + dedicated-worker scan. Evidence: [active session record](../.agents/sessions/2026-09-10-coherent-site-product.md) and local receipt `test-results/release/release-20260920-d96af590/foundation.json` (generated, gitignored).
-- [ ] **B1 Prove the first-value Site journey.** A new visitor can Analyze a real URL, see persisted truthful progress, receive useful evidence, create or sign in to an account, claim exactly one Site and return to the same Site. Evidence: desktop/mobile browser trace, database identity assertions and worker timestamps.
-- [ ] **B2 Prove the Flag loop.** A real broken behavior creates one durable customer Flag with correctly scoped evidence; Fix handoff does not imply completion; fresh relevant Verify fails, passes and reopens correctly. Evidence: worker/browser fixture plus persisted occurrence and verification history.
-- [ ] **B3 Prove Watch and return.** Free weekly scheduling is durable, recoverable and honestly delayed when capacity or configuration is unavailable. One meaningful regression sends one deduplicated notification whose link returns to the same Site. Evidence: scheduler restart, notification sink and return-path trace.
-- [ ] **B4 Close access and production trust boundaries.** Cross-tenant and anonymous claim tests pass; private Site/connection/history data never leaks through public report compatibility; readiness checks prove database, Redis, worker, storage, AI and required migrations on the exact deployed revision. Evidence: security suite, credentialed journey matrix, release receipts and rollback rehearsal.
-- [ ] **B5 Make paid launch truthful before charging.** Public list price, quantity, entitlements, Stripe prices, checkout, webhook transitions, failed-payment recovery and billing UI agree. `STRIPE_PAID_OPEN` stays false until a measured per-Site cost baseline and a complete test-mode checkout pass exist. Evidence: pricing parity, Stripe fixture journey and explicit launch decision.
+This inventory is the rewrite guardrail. “Adapt” means extend the current implementation; it does not authorize a parallel replacement.
+
+| Existing capability                 | Current implementation                                                                                                                                     | Future role                                                    | Decision                 | Required work                                                                                                                                                                                                 |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Owned product                       | Prisma `Project`, customer Site projection, owner ID and canonical host                                                                                    | Project/Product container that FixFlags watches                | Keep                     | Keep `Project` physical and Site customer-facing for the URL-first launch; add no second root model.                                                                                                          |
+| Anonymous first value               | `ProvisionalSite` plus post-login claim                                                                                                                    | Same Product identity before and after signup                  | Keep                     | Preserve idempotent claim when Outcome records/bindings are added.                                                                                                                                            |
+| Public graph                        | global graph `Site`/`Page`                                                                                                                                 | Public discovery/SEO knowledge only                            | Keep separate            | Add guards so no Outcome/MCP authorization uses it.                                                                                                                                                           |
+| Product surfaces                    | `SitePage` related to Project or provisional Site                                                                                                          | Known surfaces/dependencies for Outcomes                       | Keep                     | Retain many-to-many Outcome relationship and evidence provenance.                                                                                                                                             |
+| Outcome intent                      | `SiteOutcome`: name, slug, description, inference source, confirmation, related pages                                                                      | First-class important result such as Checkout or Signup        | Adapt                    | Current semantics are insufficient: add expectation, criticality, environment, enabled state, bindings, assessment/freshness, and Flag attribution; prove one vertical slice before switching the primary UI. |
+| Browser journeys                    | `JourneyReview`, steps/findings, safe templates, AI planner/evaluator                                                                                      | One human-facing execution method beneath an Outcome           | Adapt                    | Link versioned Journey binding to Outcome; preserve every historical review and safety rule.                                                                                                                  |
+| Deterministic checks                | 20+ check modules for availability-adjacent errors, security, search, performance, mobile, accessibility, interaction, forms, tracking, content and layout | Evidence producers for Outcome or broader Product health       | Keep                     | Register binding/diagnostic applicability; do not force every check into an Outcome or delete broad health signals.                                                                                           |
+| Page/category health                | coverage projector and cards for Pages, Security, Search, Performance, Conversion, Tracking, Uptime and Accessibility                                      | Broader Product health and diagnostics below Outcome/attention | Adapt                    | Separate raw signal health from Outcome health; retain category coverage and Recommendations as secondary depth.                                                                                              |
+| Flow scan/network evidence          | CTA flow, post-click, slow replay, network engagement, form probe                                                                                          | Low-cost behavioral evidence and selected Outcome bindings     | Merge                    | Attach exact source/scope to assessments; do not equate one broken signal with Outcome failure automatically.                                                                                                 |
+| Audit pipeline                      | `Audit`, `AuditPage`, six stages, pipeline events, storage, cost and recovery                                                                              | Physical execution/run ledger                                  | Keep internal            | Continue using it as the engine; project “FixFlags checked Checkout” to customers, never make Audit the product noun.                                                                                         |
+| Trigger metadata                    | `AuditSource`, `RecheckTrigger` (`MANUAL/WATCH`), attribution                                                                                              | Compatibility fields on a richer run request                   | Adapt                    | Add RunRequest and trigger vocabulary, then map/dual-write old fields.                                                                                                                                        |
+| Per-run finding                     | `Flag` tied to Audit/page/check with evidence and fingerprint                                                                                              | Observation feeding a durable Flag                             | Keep                     | Add Outcome attribution when justified; retain unattributed Site-wide findings.                                                                                                                               |
+| Durable Flag                        | `Improvement` keyed by Project/fingerprint                                                                                                                 | Customer Flag identity across runs                             | Adapt                    | Keep customer projection named Flag; add optional Outcome scope and no mass rename.                                                                                                                           |
+| Incident history                    | occurrences, cycles and cycle events                                                                                                                       | Detected, cleared, regressed, acted-on history                 | Keep                     | Use as the canonical Flag lifecycle underneath Outcome detail.                                                                                                                                                |
+| Fix/verify                          | `ImprovementAttempt`, targeted Site command, verification Audit and verifier executions                                                                    | First-class independent recovery proof                         | Keep/adapt               | Record source Outcome/binding/success condition; reconcile only comparable fresh evidence.                                                                                                                    |
+| Scheduled monitoring                | Project Watch policy, leases, worker scheduler, retries and email                                                                                          | Independent always-on trigger                                  | Keep                     | Submit the same tenant-scoped RunRequest used by UI/MCP; preserve cadence and quiet healthy behavior.                                                                                                         |
+| Manual/UI verification              | Site Verify command and generic monitoring services                                                                                                        | Human trigger into the same engine                             | Merge                    | Route through the common run command without changing the browser/queue engine.                                                                                                                               |
+| Deployment trigger                  | Railway signed webhook, release record and generic `checkAndPlan`                                                                                          | Deployment-context trigger                                     | Adapt                    | Resolve an owned Site, select Outcomes, enqueue RunRequest; keep commit/deployment context non-authoritative.                                                                                                 |
+| API trigger                         | `/api/checks`, Site routes and report APIs                                                                                                                 | Programmatic trigger/read model                                | Adapt                    | Add Site/Outcome run API; retain report endpoints only for compatibility.                                                                                                                                     |
+| Product signals                     | bounded ProductSignal events including deployment/outcome/error                                                                                            | Supporting context or trigger                                  | Merge                    | Treat as provenance/diagnostic input, never independent proof of Clear.                                                                                                                                       |
+| Shopify                             | shop-to-Project link, RevenuePath probes, VerificationRun, purchase Flags                                                                                  | Commerce Outcome binding and context connection                | Merge                    | Feed the common Run/Assessment/Flag lifecycle while specialized storage remains useful.                                                                                                                       |
+| Other integrations                  | GSC and GitHub OAuth/code, editor catalog; Meta/analytics concepts                                                                                         | Future context or execution adapters                           | Keep parked              | Expose only after tenant/privacy review and a named Outcome/health answer improves.                                                                                                                           |
+| Site UI                             | Sites list, Home cards, Flags, detail, Settings                                                                                                            | Human view of Outcomes, attention, diagnostics, Watch          | Adapt                    | Put Outcomes and Needs attention first; keep category breadth underneath.                                                                                                                                     |
+| Site Agent/support                  | persisted Site Agent threads/messages and support escalation                                                                                               | Explain/navigation/human help                                  | Keep                     | Ground on Outcome assessments and Flags; never act as verifier.                                                                                                                                               |
+| MCP transport                       | official SDK Streamable HTTP endpoint and stdio bridge                                                                                                     | Coding-agent interface to the same Product/Outcome engine      | Keep                     | Replace discovered report tools with Site/Outcome contract and unpark after end-to-end proof.                                                                                                                 |
+| MCP authentication                  | hashed API keys, device authorization and client identity                                                                                                  | Interactive OAuth plus CI/local credentials                    | Adapt                    | Add OAuth discovery/scopes/audience binding; retain scoped keys/device flow.                                                                                                                                  |
+| MCP interaction ledger              | `McpInteraction` with tool, client, latency, success and Audit ID                                                                                          | Protocol reliability/security telemetry                        | Adapt                    | Add Site/Outcome/Run/Flag identity and privacy-safe error taxonomy.                                                                                                                                           |
+| Editor installation                 | `fixflags-cli`, `npx fixflags init`, Codex/Claude/Cursor/Windsurf config and published skill                                                               | One-command launch connection                                  | Keep/adapt               | Bind to owned Site, update instructions/tools, verify real clients and avoid repo-stored secrets.                                                                                                             |
+| Report                              | public-safe `/report` compatibility and report projections                                                                                                 | Temporary sanitized evidence adapter                           | Deprecate                | Redirect owners; stop new dependencies; retire after telemetry/support proof.                                                                                                                                 |
+| Scores/rubrics/Fix List/Finish Plan | report and old MCP ranking contract                                                                                                                        | Internal evaluation/compatibility only                         | Deprecate in new product | Remove from new UI/tool discovery; retain stored history as needed.                                                                                                                                           |
+| Repo scan/fix PR                    | GitHub scan queue and MCP tools                                                                                                                            | Separate code-analysis capability                              | Keep parked              | Exclude from launch MCP because it blurs acting versus independently watching.                                                                                                                                |
+| Billing                             | Free/Pro/Studio, Site policy, Stripe quantity/lifecycle and legacy review limits                                                                           | Pays for monitored responsibility/cadence                      | Keep/adapt               | MCP uses Site policy and bounded manual runs, never resurrects review-credit packaging.                                                                                                                       |
+| Operations                          | readiness endpoints, heartbeat, admin audits/support/analytics and lifecycle events                                                                        | Run/Outcome/MCP reliability operations                         | Keep/adapt               | Add assessment, comparability, queue, client, notification and per-run cost views.                                                                                                                            |
+
+## 3. Target product model
+
+```text
+Account
+  └── Site (physical Project)
+        ├── Outcome: "Checkout"
+        │     ├── expectation + criticality + environment
+        │     ├── ExecutionBinding[]
+        │     │     ├── deterministic check
+        │     │     ├── browser Journey
+        │     │     ├── HTTP/API check
+        │     │     └── integration/MCP evaluator (later)
+        │     ├── latest OutcomeAssessment (Clear / Flag / Unknown / Stale)
+        │     └── Flags[] → occurrences → fix attempts → verification
+        ├── RunRequest[] (schedule, deploy, human, MCP, API, integration, internal)
+        │     └── Run (physical Audit) → executions → evidence → assessments
+        ├── Connections[]
+        └── WatchPolicy
+```
+
+### Rules
+
+- Extend `SiteOutcome`; do not add a competing Monitor, Test, or Goal root for launch.
+- Separate Outcome from ExecutionBinding so the same Outcome can evolve from browser to API evidence without splitting customer identity.
+- A run is selected by Site, Outcome set, trigger, environment, and optional requested revision.
+- Trigger context such as commit, deployment URL, or changed areas affects selection and history, never the verdict.
+- Only FixFlags-owned execution and comparable evidence can assess an Outcome or verify a Flag.
+- A failed assertion becomes a Flag only through the importance projector and Outcome criticality.
+- Outcome state is `CLEAR`, `FLAG`, `UNKNOWN` (including couldn’t verify), or `STALE`. Clear requires current required coverage.
+- `Audit` stages, queue, worker, browser, evidence, cost, and recovery remain the engine.
+- `lib/sites/application` is the application boundary for UI, MCP, Watch, Shopify, webhooks, and API. New code cannot import report projections.
+
+### Additive data changes
+
+1. Extend `SiteOutcome` with kind/category, expectation, criticality, environment, enabled state, source/confidence, and last assessment pointers.
+2. Add `OutcomeBinding` with type, versioned configuration, scope, enabled state, and provenance. Secrets reference encrypted connection storage.
+3. Add `RunRequest` with owner/Site, trigger, requested Outcomes, idempotency key, actor/client, bounded change context, status, resulting Audit, and timestamps.
+4. Add `OutcomeAssessment` linking Outcome, Audit, binding executions, state, reason, coverage, and evidence references.
+5. Add nullable Outcome attribution to stable Improvement/occurrence/attempt projections where known. Preserve unattributed history.
+6. Add trigger values `SCHEDULE`, `MANUAL`, `MCP`, `DEPLOYMENT`, `INTEGRATION`, `API`, and `INTERNAL`; map old `MANUAL/WATCH` fields during transition.
+
+Do not rename `Project`, `Audit`, or `Improvement` in the first migration. Do not create a generic knowledge graph.
+
+## 4. Launch product
 
 ### Launch-critical
 
-- [ ] **L1 Finish the Site information architecture.** Home · Flags with Site settings, Pages and Journeys through cards, honest coverage/freshness, and intentional learning/partial/healthy/Flag/stale/failed/empty/loading/unsupported states at 375, 768 and 1280 px.
-- [ ] **L2 Retire customer-visible old generations.** Owners no longer land in Products, audits, reports, scores, Finish Plans or the report Agent workspace. Compatibility URLs remain only where required and never become a second product.
-- [ ] **L3 Reconcile every public and lifecycle surface.** Homepage, pricing, auth, onboarding, Shopify install, Help, Docs, FAQ, changelog, legal, metadata, examples, emails, notifications, errors and support use the same capability and pricing truth.
-- [ ] **L4 Make connections degrade safely.** Shopify and any exposed connection remain attached to the same Site, explain their value in context, preserve core browser analysis when absent or revoked, and never expose provider/configuration internals.
-- [ ] **L5 Instrument the critical funnel.** Versioned events cover discovery → Analyze → useful result → auth/claim → Flag opened → Fix handoff → Verify → Watch → notification return → support, with privacy-safe properties, deduplication and an operator readout.
-- [ ] **L6 Complete operational readiness.** Recovery paths, alerting, support ownership, privacy/retention, dependency advisories, mobile/accessibility/performance budgets and rollback instructions are exercised rather than merely documented.
-
-### Post-launch
-
-- [ ] Open paid checkout only after measured per-Site cost proof and a successful production-like Stripe lifecycle.
-- [ ] Additional context connections such as GA4, Meta and deployments after provider proof.
-- [ ] Richer Recommendations, observer signals, collaboration/agency roles, public Flag grants and advanced Send-to-AI transports.
-- [ ] Dedicated History or additional cards only when customer evidence shows the existing object-level history is insufficient.
-
-Launch is blocked while any Blocker remains unresolved. Launch-critical items may move post-launch only when removing or hiding the affected capability leaves the first customer journey complete and truthful.
-
-### 2026-09-21 implementation reconciliation
-
-The working implementation now follows one customer boundary: `lib/sites/application`. The old Prisma `Project` name remains only as the physical owned-Site backing. The following slices are code-complete and awaiting the exact-revision release evidence required by the ledger:
-
-- Dashboard Sites list and durable Home, Flags, Flag detail and Settings routes; fixed evidence-derived launch cards; recoverable Site removal.
-- Stable customer-Flag projection and occurrence history; atomic targeted Verify attempts with pending deduplication and only four customer outcomes: Verified, Still open, Regressed and Couldn’t verify.
-- One `SiteCarePolicy`: Free owns one Site and receives weekly Watch; paid plans are daily; targeted Verify does not consume the retired review pool. Watch activation fails visibly until Redis and email delivery are ready.
-- Site notification preferences, deduplicated Flag/recovery mail, exact-Flag return links, and durable privacy-safe lifecycle events.
-- Explicit `ShopifyShop → Project` tenancy, signed single-use account linking, embedded ID-token loading, minimized compliance-webhook storage, and Shopify findings projected into the same Site.
-- Authenticated Site Agent threads with typed citations, bounded context and explicit-command confirmation; support escalation carries minimized Site/Flag context.
-- Public Help, Docs, samples, legal, pricing and lifecycle copy use Site → Cards → Checks/Journeys → Flags → Fix → Verify → Watch. New Pro checkout remains closed while Stripe test mode uses licensed per-Site quantity and order-independent webhook reconciliation.
-- `/api/projects`, `/api/products`, parked CLI/MCP/repository surfaces, and old documentation are unavailable publicly. Signed-in report owners return to Site; public report compatibility is sanitized evidence only.
-
-Local implementation proof is now complete on the committed Site product slice:
-
-- `npm run verify` passed on `ef26be30`: schema validation and zero drift across 83 migrations, typecheck, lint, all product/copy/route/knowledge/security guards, zero moderate-or-higher dependency vulnerabilities, 88 script tests, 5,294 unit tests with 10 declared skips, coverage above every configured threshold, 16 accuracy fixtures with zero failures, production web build and worker build.
-- The production-like Chromium public matrix passed with 52 journeys and 17 explicit credential/provider skips. It covers 320, 375, 768 and 1280 px, keyboard paths, 200% text, reduced motion, light/dark, axe checks, canonical sample evidence, auth/pricing/help compatibility, parked routes and public error states.
-- Optional analytics are now explicitly consent-gated. Third-party scripts and click-ID storage do not run before consent, the choice can be changed from either footer, and the consent surface reflows without creating the prior mobile hydration race.
-- The latest additive migration is applied to the local PostgreSQL service and Prisma reports no pending migration or schema drift.
-
-Remaining release work is external evidence, not product-model invention: execute the credentialed first-value, Verify, Watch/notification, Shopify and Stripe sandbox journeys against a dedicated canary environment, deploy web and worker from the same exact digest, attest readiness and revision, observe the canary window, and rehearse rollback. The repository may not claim launch while B1–B5 or L6 lack those receipts.
-
-Phases 1–4 in [ROADMAP.md](../ROADMAP.md) remain the engineering cutover for tenancy, coverage, Fix/Verify/Watch. This masterplan sequences the **complete intended product** around that core, including marketing, Agent, support, and retirement.
-
-## Highest-risk architectural decisions
-
-| Decision | Risk if wrong | Constraint |
-| --- | --- | --- |
-| `isCustomerFlag` projector (not POLISH=Recommendation, not a new table) | 0 Flags lies; noisy product | Combine existing ranking signals; fixtures before marketing |
-| Monitoring entitlements vs public cadence | Trust and billing | Pulse vs verification (FF-B3 locked). Public copy is weekly/daily until pulse exists. No silent quota change. |
-| Home · Flags vs Home · Flags · Site | Third tab becomes a junk drawer | Site settings, not a third product mode |
-| Agent FAB vs report Agent pane | Two AI products | Design FAB now; do not invest in the pane as destination |
-| Report URL compatibility vs Site-first | Broken shares vs split mental model | Keep `/report/[id]` working; stop sending owners there |
-| Shopify as connection vs company | Two products | Same Site after install |
-| Notification default | Noise or silence | Flags (or Critical only) — never “Everything” |
-| Graph Prisma Site vs customer Site | Tenant leak | Never reuse `graph_*` as private Site |
-
-## Product gaps blocking truthful messaging
-
-These must be true in product (or copy must stay soft) before the new language is used as if shipped:
-
-- Flags on the board are only what matters (projector).
-- 0 Flags is never printed as all-clear without coverage.
-- Monitoring cadence matches entitlements and Help.
-- Verify is independent evidence, not “Fresh check passed” / absence.
-- Homepage does not name Meta, GSC, deployments, MCP, or hourly Watch as present.
-- Legal/privacy is URL-first, not Shopify-app-only.
-- “Recommendations” are not marketed until the projector exists.
-- “You're covered.” is not used.
-
-## Legacy systems to retire
-
-| Surface | Disposition |
-| --- | --- |
-| Report-first experience | **Migrate** value to Site; **redirect** owners; **keep** public evidence URLs for a compatibility window |
-| `/report/[id]` routes | **Keep** until FF-K; then **redirect** signed-in owners to Site; public policy per SECURITY.md |
-| Report emails / keep-report | **Migrate** to Site |
-| Report fixtures, samples, SEO report pages | **Migrate** chrome; recapture if baked-in copy |
-| Report docs (`content/docs/reports.md`, Help scores) | **Migrate** to Site/Flag language |
-| Report contract | **Keep** as compatibility until cutover; then shrink |
-| Legacy Agent pane (`WorkspaceChatPanel`) | **Replace** with FixFlags Agent; **deprecate** as destination |
-| `/api/reports/[id]/chat` | **Reuse** grounding ideas; **merge or replace** under Site-scoped Agent |
-| AI-builder-era messaging | **Delete** from customer copy |
-| Check my website | **Replace** with Analyze |
-| Needs attention / Checks passed / Fresh check passed | **Delete** from customer UI |
-| Check → Flag → Fix → Verify; Find → Understand → Fix → Verify | **Replace** with Flag. Fix. Verify. (internal Analyze → … → Monitor stays off chrome) |
-| Shopify-only company framing | **Migrate** listing/legal; **keep** native install |
-| Products rail label | **Replace** with Sites |
-| Finish Plan as primary artifact | **Keep** internally for ranking/compat; **do not** restore as customer product |
-| Outcome as customer word | **Keep** in code; **Journey** in UI |
-| Dual homepage registries | **Merge** how-it-works onto Care copy |
-
-## Quick wins
-
-After terminology + test locks (FF-A): Analyze CTA (partially shipping under `homepage-hero-voice`), Pages card rename (coordinate `board-card-chrome`), drop unshipped coverage groups, Send a Flag to your AI label on Flag actions, Sample instead of Controlled example, SEO home description, Watch email “issue(s)” → Flag, Journey on Outcome chrome. Do not ship Flag-importance homepage claims before the projector.
-
-## Now / Next / Later summary
-
-**Now (implemented; release proof pending):** URL Analyze → persistent Site; Home · Flags with Site settings; business-importance Flags and Recommendations; Flag detail, Fix handoff and targeted Verify; weekly/daily Watch policy and notification preferences; Shopify as an explicitly linked Site connection; grounded Site Agent and support escalation; accounts, Help/Docs, billing truth and sanitized report compatibility.
+- Analyze a live URL, claim the same Site, confirm or edit an important Outcome, and enable weekly Watch.
+- Site Home leads with watched Outcomes and current attention: `Checkout — Flag`, `Signup — Clear`, `Password reset — Couldn’t verify`. Category cards remain grouped depth.
+- Three patterns work end to end: page availability, safe form/signup-like completion, and purchase/cart-to-checkout reachability. Protected or irreversible flows are honestly unsupported until safe credentials/fixtures exist.
+- Outcome detail shows expectation, assessment, freshness, evidence, history, related Flags, and coverage limitation.
+- A failure creates or updates one durable Flag. A coding agent can inspect it, record what changed, request verification, and retrieve the independent result.
+- Watch, manual UI, deployment webhook, API, and MCP use the same RunRequest and planner/executor/reconciler.
+- MCP works from Codex, Claude Code, and Cursor through remote HTTP or the local stdio bridge, with a small Outcome-shaped tool set and durable async results.
+- Watch continues without an agent. Healthy runs are quiet. Regression/recovery notifications link to the exact Outcome/Flag.
+- OAuth 2.1 discovery and scoped authorization protect remote MCP; API keys remain for CI/stdio and are scoped/revocable.
+- Public website, docs, sample, Help, pricing, onboarding, notifications, and metadata tell the same story without overstating machine-facing execution.
+- Existing Shopify monitoring, billing identity, Site history, and useful report links survive.
+
+### Post-launch enhancement
+
+- Additional deployment providers and repository-aware change selection.
+- Authenticated browser Outcomes with encrypted test credentials and safe reset contracts.
+- Deterministic HTTP/API contract Outcome, the smallest useful machine-facing expansion.
+- MCP Tasks extension/push after client support is proven. Launch uses durable FixFlags run IDs and polling.
+- MCP-server tool discovery, permission, side-effect, and final-state evaluators.
+- Analytics, Search Console, Meta, broader Slack, more commerce platforms, cross-environment comparison, collaboration, public grants, and custom Outcome builders.
+
+## 5. MCP v1 specification
+
+MCP is a remote interface to the Site application boundary, not a report API or second test runner.
+
+### Tools
+
+| Tool                     | Purpose                                               | Mutation           | Scope                    |
+| ------------------------ | ----------------------------------------------------- | ------------------ | ------------------------ |
+| `fixflags.list_sites`    | Accessible Sites and attention summary                | No                 | `sites:read`             |
+| `fixflags.list_outcomes` | Outcomes, state, freshness, aliases                   | No                 | `sites:read`             |
+| `fixflags.run`           | Independently run selected/all important Outcomes     | Creates RunRequest | `runs:write`             |
+| `fixflags.get_run`       | Poll progress and retrieve assessments                | No                 | `runs:read`              |
+| `fixflags.list_flags`    | Current Flags, optionally by Outcome                  | No                 | `flags:read`             |
+| `fixflags.get_flag`      | Evidence, expectation, limitation, fix/verify history | No                 | `flags:read`             |
+| `fixflags.record_fix`    | Record commit/deployment/change context; never verify | Yes                | `flags:write`            |
+| `fixflags.verify_flag`   | Create/reuse targeted independent verification        | Yes                | `runs:write flags:write` |
 
-**Next (release gate):** clean exact-revision verification; fresh migrations; desktop/mobile and accessibility matrix; real first-value, failure/recovery, Watch return, Shopify development-store and Stripe sandbox journeys; production canary and rollback evidence.
+Keep old `ff_*` tools for one compatibility window behind adapters, hidden from new docs, with deprecation metadata. Remove rubric, score, Finish Plan, repo-scan, and prompt-generation tools from the launch list.
 
-**Later (does not delay free launch):** opening paid checkout after cost proof; Meta, Analytics, Search Console and deployment connections; richer collaboration/agency roles; public Flag grants; additional notification channels; optional card customization; MCP only after a customer-proven need.
+### Resources
 
-Later does not mean undesigned. Agent FAB, Flag projector, and report retirement shape navigation and data now.
+- `fixflags://sites/{siteId}`: Site summary and coverage.
+- `fixflags://sites/{siteId}/outcomes/{outcomeId}`: expectation, state, bindings, freshness, history links.
+- `fixflags://sites/{siteId}/flags/{flagId}`: sanitized owned Flag evidence and attempts.
+- `fixflags://runs/{runId}`: progress and final assessments.
 
-## Parallel execution map
+Resources contain references and minimized summaries, never raw cookies, bodies, private headers, or unrestricted screenshots. Tools return strict structured content plus text for older clients.
 
-```text
-FF-A Foundation (lexicon, tests) ─────────────────────────────┐
-                                                               │
-FF-B Domain truth ──┬── B1 projector (single owner)            │
-                    ├── B3 entitlements (business + billing)   │
-                    └── B4 Verify semantics                    │
-                                                               │
-FF-C Site chrome ── Pages/cards/nav (after A; coord board-card)│
-FF-D Flag UX ────── after B1 for counts; copy can start earlier│
-FF-E First loop ─── after A; cadence claims wait on B3         │
-                                                               │
-FF-F Monitoring/history ── after B3                            │
-FF-G Shopify unify ────── can start after Site identity stable │
-FF-I Acquisition ──────── after B honesty + C Pages + E Analyze│
-FF-J Help/email/legal ─── after B3 for cadence; else lexicon   │
-                                                               │
-FF-H Agent/support ────── design with C; implement after Site  │
-FF-K Report retirement ── after Site is the signed-in product  │
-FF-L Validation ──────── after the claimed wave, not only at end
-```
+### Resolution, context, and async behavior
 
-Do not parallelize two owners on `lib/sites/*`, `CareHomepage` / `care-homepage.ts`, or `BoardCard` without a BOARD split.
+- Every mutating tool requires `siteId`; aliases resolve only when exactly one owned match exists. Hostnames and opaque IDs are never authorization.
+- Outcome names resolve through exact aliases; ambiguity returns candidates.
+- `fixflags.run` may accept deployment URL, commit, branch, changed areas, and a bounded change summary as provenance/selection hints only.
+- Requested URLs must belong to the Site or an authorized preview origin. SSRF and scan-access rules apply.
+- Idempotency keys return the existing RunRequest on retry.
+- Run/verify tools return in under five seconds with `runId`, selected Outcomes, queue estimate, and `pollAfterMs`. They do not hold a browser run open.
+- `get_run` survives disconnect/restart. Adopt MCP Tasks only additively for clients advertising support; client support still varies.
+- Results distinguish `CLEAR`, `FLAG`, `COULD_NOT_VERIFY`, `FAILED`, and `CANCELLED`.
 
----
+### Authentication and security
 
-## Classification
+- Remote HTTP implements OAuth 2.1 authorization code + PKCE, Protected Resource Metadata, authorization-server discovery, resource/audience binding, scopes, and correct 401/403 challenges per the current [MCP authorization specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization).
+- Keep hashed API keys for CI/stdio. Require client, scopes, expiry/revoke, and never accept keys in query strings.
+- `npx fixflags init <site-url>` uses device authorization and writes only managed config; no repo credential.
+- Authorize again in each tool. Rate-limit by account, Site, host, tool class, and pending run; cost-bearing calls fail closed if rate limiting is unavailable.
+- A coding agent cannot submit a verdict, resolve a Flag, bypass browser safety, select another tenant, or request irreversible transactions.
+- Log tool, client, Site/run/Flag IDs, latency, and outcome code, not prompts, page text, credentials, headers, or evidence bodies.
+- Use accurate read-only/idempotent/open-world annotations and human confirmation for mutations, following [MCP tool guidance](https://modelcontextprotocol.io/specification/2026-07-28/server/tools).
 
-| Tag | Meaning |
-| --- | --- |
-| **Now** | Shipped; align language or small behavior |
-| **Next** | Required for first complete experience |
-| **Later** | Intended product; design for it now if it affects IA |
-| **PP** | Product prerequisite (copy would lie without it) |
-| **MM** | Messaging/presentation; behavior exists |
-| **FO** | Future opportunity inside the intended architecture |
-| **IC** | Internal cleanup |
+### Developer experience and errors
 
----
+One command configures Codex, Claude Code, Cursor, or a generic client: `npx fixflags init https://app.example.com`. Browser approval binds it to an owned Site. Test actual clients, not just SDK units.
+
+Typed errors: `AUTH_REQUIRED`, `INSUFFICIENT_SCOPE`, `SITE_NOT_FOUND`, `AMBIGUOUS_SITE`, `OUTCOME_NOT_FOUND`, `UNSUPPORTED_OUTCOME`, `RUN_ALREADY_PENDING`, `RATE_LIMITED`, `TARGET_BLOCKED`, `COVERAGE_UNAVAILABLE`, `WORKER_UNAVAILABLE`.
 
-## Truth matrix (public claims)
+## 6. UX alignment
 
-| Claim | Evidence (2026-09-09) | Public today | After prerequisite |
-| --- | --- | --- | --- |
-| Analyze | `AuditInput` → `/sites/{id}` | Analyze (hero shipping); other CTAs mixed | All acquisition CTAs |
-| 100+ automated tests | `ALL_CHECK_IDS` ≈ 201 | Yes | Recheck before raising |
-| Real browser journeys | Playwright + journey checks | Yes | Same |
-| Analyze broadly. Flag what matters. | Shared business-importance projector drives board, inbox and notifications | Yes | Maintain fixture proof |
-| Flag = act on this | Customer Flags are distinct from card-depth Recommendations | Yes | Maintain fixture proof |
-| Recommendations | Derived from useful non-Flag findings | In card depth | Richer prioritization later |
-| 0 Flags | Coverage projection names scope, exclusions, freshness and latest successful evidence | Scoped only | Never claim untested health |
-| Continuous monitoring | Durable Watch scheduling with visible unavailable/delayed states | Yes | Canary proof required |
-| Cadence | Free weekly; paid daily; legacy review pool does not govern promised care | Yes | Paid checkout remains closed |
-| Verify | Atomic targeted attempt binds source evidence, fresh comparable evidence and outcome | Yes | Browser/worker proof required |
-| Notifications | Flags, Critical only or Off; independent recovery toggle; email launch channel | Yes | Additional channels later |
-| Shopify | Explicit tenant-owned Site connection; embedded ID-token authorization | Yes | Development-store proof required |
-| Meta / Analytics / GSC / deploys | Internal or unshipped | Do not claim | After adapters |
-| Send a Flag to your AI | Copy prompt | Yes (copy mechanism) | Richer payload; MCP later |
-| MCP | Parked in `proxy.ts` | Developer docs only if unparked | Homepage when real |
-| FixFlags Agent | Authenticated Site-scoped threads, typed citations and support escalation | Yes, on owned Sites | Mutations require confirmation |
-| Privacy | URL-first browser evidence, AI, retention, Shopify, support and deletion are covered | Yes | Review on provider changes |
+### Keep
 
----
+Brand, Site shell, Home/Flags/Settings routes, card system, evidence views, Flag detail, Fix handoff, Verify progress/history, support, auth, billing, responsive patterns, and URL-first Analyze.
 
-## Architecture findings (do not rediscover)
+### Change
 
-### Flag vs Recommendation
+- Home first shows **What FixFlags is watching**, then **Needs attention** when Flags exist; technical categories move below.
+- **Outcome** is the umbrella (“Checkout”); **Journey** is a human browser path (“Product to checkout”). API/MCP behavior is not called a Journey.
+- `Clear` is scoped/current; `Flag` is actionable; `Couldn’t verify` explains a gap; `Stale` asks for a run.
+- Outcome detail, not raw run detail, becomes the depth surface. Runs live in history.
+- “Send to your AI” gains “Connect through MCP” after setup, while copy remains available.
+- Site Settings gains Outcomes, Watch, notifications, connections, and developer access. API keys/MCP setup move from parked account routes.
+- Replace the public legacy report sample with one real Site, five Outcomes, and one Checkout Flag.
+- Public message evolves to “Your software runs. FixFlags watches.” while launch examples state the current web scope honestly.
 
-Prisma `Flag`: source DETERMINISTIC | AI | JOURNEY; severity CRITICAL | IMPORTANT | POLISH; status OPEN | FIXED | IGNORED | REGRESSED. Every OPEN row is a Flag today. `isAttentionCandidate` excludes POLISH from Finish Plan (max 3). Site board counts all OPEN Flags. Ranking exists in `priority-flags.ts` but the board orders by severity then createdAt.
+### Do not add
 
-**Lean architecture:** no Recommendation table. Evolve attention into `isCustomerFlag` using severity, impactTag, journey/page purpose, existing demotion signals. Remainder = Recommendations in card depth. POLISH checkout failure can still be a Flag. IMPORTANT metadata on an unimportant page can be a Recommendation.
+A Tests tab, Runs tab, MCP dashboard, integration marketplace, agent-monitoring mini-product, deployment-verification mini-product, generic Outcome builder, or green state based only on zero Flags.
 
-### Monitoring (one customer concept)
+## 7. Technical workstreams
 
-Internally distinct: first Analyze, Watch, Verify, Shopify pulse (15m) / walk (6h), later event triggers, retries. Externally: **FixFlags is watching.** Do not teach six run types. Watch/pause/cadence in Site settings.
+| Workstream             | Concrete work                                                             | Depends on       | Exit evidence                           |
+| ---------------------- | ------------------------------------------------------------------------- | ---------------- | --------------------------------------- |
+| A. Outcome projection  | schema, projector, IDs/aliases, Flag attribution, backfill                | Current tenancy  | projection tests + migration rehearsal  |
+| B. Unified run command | RunRequest, trigger adapters, idempotency, planner, enqueue/reconcile     | A                | equivalent owned runs from each trigger |
+| C. Execution bindings  | wrap checks/Journeys; Outcome selection; blocked truth                    | A, B             | three real worker/browser fixtures      |
+| D. Flag lifecycle      | Outcome occurrence, record-fix, Verify, recurrence, comparability         | A–C              | broken → open → verified → recurred     |
+| E. Watch/events        | scheduled selection, deploy/Shopify adapters, notification dedupe         | B–D              | restart/retry + quiet healthy proof     |
+| F. MCP launch          | tools/resources, OAuth/scopes, keys, polling, CLI/editor setup, telemetry | A–D              | Codex/Claude/Cursor matrix              |
+| G. Human UX            | Outcome-first Home/detail/settings and accessibility                      | A–F projections  | responsive/keyboard/zoom matrix         |
+| H. Public/docs         | positioning, sample, onboarding, reference, metadata, route contract      | E–G              | live public crawl                       |
+| I. Operations/security | OAuth threat model, tenancy, cost/readiness/admin metrics                 | B/F              | security/cost/canary evidence           |
+| J. Cleanup             | old MCP/report/Product consumers and routes                               | H + measured use | redirects/410s, no new consumers        |
 
-`access-policy.canUseWatch` Studio-only vs entitlements Free Watch is a contradiction to fix (FF-F5).
+Billing: Free stays one Site with weekly Watch and bounded manual/MCP verification. Pro stays `$49/site/month`, daily, and waitlisted until cost proof. MCP is an interface to Site responsibility, not unlimited reviews.
 
-### History
+## 8. Migration strategy
 
-Now: Flag verification attempts, card freshness and the Site Agent answer “what changed?” from persisted evidence. No raw-run History nav; object-level history remains the product.
+1. Add nullable tables/columns; preserve Sites, Audits, Flags, subscriptions, Shopify shops, and Watch schedules.
+2. Backfill Outcomes from existing `SiteOutcome`; derive bindings only from explicit Journey/check provenance. Never infer a pass from missing evidence.
+3. Dual-write RunRequest/OutcomeAssessment while Audit remains authoritative; shadow-compare projections before switching reads.
+4. Move Site UI and new MCP to Outcome projections. Old report APIs/MCP tools read through one-way adapters and cannot become new-domain dependencies.
+5. Convert Watch, Railway, and Shopify triggers one at a time with idempotency and adapter rollback.
+6. Preserve unattributed historical Flags/attempts as Site-wide rather than fabricating Outcome links.
+7. Existing API keys continue until expiry/revocation; offer scoped replacement without silently broadening access.
+8. Redirect signed-in report owners to Site/Outcome/Flag. Keep sanitized public evidence until telemetry and support prove retirement safe.
 
-### Two AIs
+Rollback is projection-level, not destructive schema reversal. Keep migrations additive until the launch has operated through a full weekly Watch cycle.
 
-FixFlags Agent = in-product assistant (FAB). Coding AI = Send a Flag to your AI (copy now, MCP later). Do not collapse.
+## 9. Documentation alignment
 
-### Support
+Canonical order: vision → architecture → evidence rules → this plan → roadmap/PRD → current implementation. During the first workstream reconcile `AGENTS.md`, `knowledge/README.md`, `CANONICAL-SOURCES.md`, `docs/voice-and-copy.md`, `docs/workspace-interface.md`, `docs/card-board-experience.md`, `docs/site-v2-migration.md`, `CODEMAP.md`, `ARCHITECTURE.md`, `docs/audit-pipeline.md`, and `SECURITY.md`. Update public Docs/Help only with working behavior.
 
-`SupportSession` carries an authenticated optional Project/Flag reference and minimized transcript summary. The Site Agent escalates into the existing human-support store without copying page payloads or secrets.
+Mark `docs/journey-review-architecture.md`, `docs/unified-audit-tool-architecture.md`, and old report/Fix List/MCP plans historical after their useful constraints are absorbed. Do not silently delete institutional knowledge.
 
-### Reports
+## 10. Prioritized implementation sequence
 
-Primary handoff is `/sites/{id}`. Signed-in owners redirect there. `/report/[id]` is a sanitized public evidence compatibility page only; in-progress or failed legacy links offer a fresh Analyze path and never reopen the old Agent workspace.
+### Immediate
 
----
+1. Lock additive Outcome/Binding/RunRequest/Assessment contracts and tenant tests.
+2. Prove one Checkout vertical slice: existing Journey → Outcome state → Flag → MCP read → record fix → independent Verify → history → Watch.
+3. Move manual Verify, Watch, Railway, Shopify, API, and MCP behind one Site command.
+4. Ship the small MCP contract, OAuth/scopes, durable polling, CLI/editor setup, and compatibility adapters.
+5. Reorganize Site UI around concrete Outcomes and attention without replacing the shell.
+6. Add safe Signup/form and availability patterns; prove Clear, Flag, Couldn’t verify, Stale, partial, and recurrence.
+7. Align public lifecycle surfaces and replace the sample after the real paths work.
+8. Run exact-SHA production canary plus MCP client and accelerated weekly-cycle matrices.
 
-# Waves
+Steps 2–6 depend on the shared contract in step 1. After it lands, MCP auth/protocol, UI, trigger adapters, and public documentation can proceed in parallel but converge on the same Checkout fixture.
 
-Each item is an implementation unit for another agent. Claim BOARD. Do not implement from this documentation-only run.
+### Next
 
----
+HTTP/API Outcome binding, more deployment adapters, authenticated safe browser Outcomes, optional MCP Tasks, environment comparison, dependency/context learning, and paid opening only after cost/reliability proof.
 
-## Wave A — Foundation
+### Later
 
-**Capability:** One lexicon and docs hierarchy so later waves do not fight tests or competing visions.  
-**Now/Next:** Next (docs in this run are Now).  
-**Exit:** Constants exist; Journey/Analyze tests inverted or scheduled with first consumer; indexes point here.
+MCP-server and agent-tool correctness, permission/side-effect evaluators, sandboxed irreversible-action testing, more connections, custom Outcomes, teams/public grants, and proprietary execution infrastructure only when measured need justifies it.
 
-### FF-A1 Terminology module — IC / Next
+## 11. Launch acceptance criteria
 
-- **Current:** Forked CTAs in REVIEW_ENTRY, CUSTOMER_TERMS, CARE_HOME, PLANS, billing.
-- **Intended:** `terminology.ts`: `analyzeCta`, `coreLoopLabel` (`Flag. Fix. Verify.`), `zeroFlags`, `sendFlagToAi`, Pages card name, Sample.
-- **Rationale / impact:** Stops copy drift; customers see one product.
-- **Files:** `lib/marketing/copy/terminology.ts` then consumers.
-- **Deps:** Canon. **Parallel:** No. **Tests:** pricing-parity, shopify-customer-ready.
-- **Acceptance:** Single Analyze string; CORE_LOOP_LABEL matches canon.
-- **Legacy retired:** Check my website as primary constant.
+- [ ] Analyze → signup → exact Site claim → return works without duplicate identity or lost evidence.
+- [ ] Important Outcomes are inferred/confirmed and shown in plain language.
+- [ ] Checkout, safe Signup/form, and availability patterns run through the existing worker/browser/check engine.
+- [ ] Outcome state is scoped/current; untested behavior never appears Clear.
+- [ ] Important failure creates/reopens one durable Outcome-linked Flag with evidence and limitation.
+- [ ] Fix handoff/`record_fix` stores change context but never changes the verdict.
+- [ ] Verify independently reruns matching scope; pass, open, regression, blocked, missing, and incomparable cases reconcile correctly.
+- [ ] Watch continues without an agent, recovers after restart, stays quiet when Clear, and deduplicates meaningful notifications.
+- [ ] UI, Watch, deployment, API, Shopify, and MCP all enter the same tenant-scoped RunRequest path.
+- [ ] Codex, Claude Code, and Cursor authenticate, resolve Site/Outcome, run, reconnect/poll, inspect a Flag, record a fix, and verify.
+- [ ] MCP cannot cross tenants/hosts, expose credentials/private evidence, or accept caller-certified success; OAuth and key revocation are proven.
+- [ ] Shopify, Site history, subscriptions, anonymous claim, and sanitized report compatibility still work.
+- [ ] Outcome-first UI passes 320/375/768/1280, keyboard/focus, 200/400% zoom, reduced-motion, and touch-target checks.
+- [ ] Website, pricing, sample, onboarding, Docs, Help, notifications, legal, metadata, and MCP setup match released behavior.
+- [ ] Outcome/run/Flag/Verify/Watch/MCP/queue/notification/cost telemetry is available.
+- [ ] Full verification, fresh migrations, security/dependency checks, production build, browser fixtures, immutable web/worker image, and exact-SHA canary pass.
 
-### FF-A2 Brand leftovers — MM / Next
+## Explicit disposition
 
-- **Current:** BRAND.tagline still Find what is getting in the way.
-- **Intended:** Monitoring + looked after.
-- **Files:** `lib/marketing/copy/brand.ts`. **Deps:** A1. **Tests:** homepage-message.
-- **Acceptance:** Tagline matches canon. **Parallel:** After A1.
+### What we are keeping
 
-### FF-A3 Test locks — MM / Next
+Site/Project tenancy, claim, Pages, `SiteOutcome`, Playwright, checks, Journeys, Audit/queue/evidence, Flags/Recommendations, Improvement history, Verify, Watch, notifications, Shopify, auth/passkeys, API keys/device flow, MCP HTTP/stdio foundations, billing, support/admin/telemetry, brand, and responsive Site shell.
 
-- **Current:** Bans `journeys?`; locks Check my website.
-- **Intended:** Analyze CTA; Journey allowed; coverage-incomplete ≠ 0 Flags; after projector, Recommendations do not increment Flag counts; homepage does not name unshipped integrations.
-- **Files:** `lib/__tests__/homepage-message.test.ts`, pricing-parity, shopify-customer-ready, AuditInput.test, e2e public-journeys.
-- **Deps:** A1. **Parallel:** Same PR as first CTA. **Legacy:** Check my website test lock.
+### What we are changing
 
-### FF-A4 Dual homepage registry — IC / Next
+Outcome becomes the health unit; Journey becomes one execution mechanism; all triggers create one RunRequest; Flags attach to Outcomes where known; Home leads with Outcomes/attention; MCP is launch-critical and Site-scoped; remote auth becomes OAuth/scoped; deployment/Shopify become adapters; public positioning broadens while launch claims stay web-execution honest.
 
-- **Current:** CareHomepage live; `/how-it-works` uses leftover `homepage.ts`.
-- **Intended:** One loop story. **Files:** route how-it-works to Care copy or mark leftover. **Deps:** A3. **Parallel:** After A3.
+### What we are deliberately not building yet
 
-### FF-A5 Documentation hierarchy — IC / Now (this run)
+A generic knowledge graph, new root System model, autonomous code changes, proprietary browser cloud, arbitrary test builder, enterprise test-management UI, raw run dashboard, integration marketplace, session replay, generalized agent-tool monitoring, irreversible commerce/refund execution, or every provider connection.
 
-- **Intended:** Vision → architecture → messaging → evidence → this plan → specialized docs. Obsolete files labeled. **Acceptance:** A new agent can reconstruct the product from docs without chat history.
+### What we are removing, and why
 
----
+- New-product dependence on scores, rubrics, Finish Plans, review credits, Product workspace, and report Agent because they organize a one-time review, not watched Outcomes.
+- Old MCP tools from discovery after a compatibility window because they expose reports and generic fix lists.
+- The legacy public sample because it contradicts the Site/Outcome hierarchy.
+- Repo-scan/fix-PR tools from launch MCP because they blur independent verifier versus acting agent.
+- Duplicate routes only after redirects, access telemetry, and support evidence make removal safe.
 
-## Wave B — Core domain truth
-
-**Capability:** Honest Flags, coverage, monitoring, Verify. **Blocks** Flag-importance and cadence marketing. **Next. PP.**
-
-### FF-B1 Customer Flag projector — PP / Next
-
-- **Product capability:** Board Flag counts and Flag list = important enough to act on.
-- **Current:** Every OPEN Flag counted; Finish Plan excludes POLISH.
-- **Intended:** `isCustomerFlag`; remainder as Recommendations in depth. No new Recommendation table. Not POLISH=Recommendation.
-- **Rationale:** Otherwise “Flag what matters” is false.
-- **Customer impact:** Fewer, better Flags; 0 Flags becomes meaningful with coverage.
-- **Architectural impact:** Notifications, cards, Agent, and health all consume the projector.
-- **Files:** `lib/audit/attention.ts`, `priority-flags.ts`, `lib/sites/flags.ts`, `coverage.ts`, `site-health.ts`, `board-card.ts`, `application/queries.ts`.
-- **Deps:** Fixtures: broken contact = Flag; optional meta = Recommendation; POLISH-on-checkout still Flag if Journey-critical.
-- **Migration:** Improvements still from Attention; do not change stored severity as the only gate.
-- **Tests:** board-card, coverage, attention, site-health, projector units, accuracy corpus.
-- **Acceptance:** Contact form Flag; optional title-too-long on non-Journey page can be Recommendation; projector Recommendations do not make Site unhealthy; coverage-incomplete still not healthy.
-- **Blocks:** Homepage Flag-importance; Recommendation marketing; Flag-only notifications.
-- **Parallel:** No. Coordinate `board-card-chrome` if touching `lib/sites`.
-- **Legacy:** Finish Plan remains internal ranking, not the inbox.
-
-### FF-B2 0 Flags rendering — PP / Next
-
-- **Current:** Looking good / Needs attention.
-- **Intended:** Canon state table in voice-and-copy. Never 0 Flags as all-clear when learning, unknown, failed, stale, unscheduled.
-- **Files:** `site-health.ts`, `board-card.ts`, help `reading-your-report`.
-- **Deps:** B1 for counts; coverage-incomplete copy can ship earlier as MM.
-- **Tests:** Fixture with unknown security card never all-clear.
-- **Acceptance:** Same. **Parallel:** With B1 if same owner.
-- **Legacy:** Looking good as health prose.
-
-### FF-B3 Monitoring entitlement decision — PP / Next — **locked 2026-09-09**
-
-- **Decision:** Public packaging matches Watch. Free: weekly verification, one site. Pro: `$49`/website/mo, daily verification. Studio: volume waitlist. Pulse (cheap reachability of inferred journeys) is the later closer-than-daily job; do not print continuous or hourly until it exists. Hidden `auditLimit` 3/30/90 stays off `/pricing`. Paid COGS envelope ~`$12`/site/mo; measure `auditRunCost` p50 before `STRIPE_PAID_OPEN`.
-- **Until pulse exists:** do not print 24/7 or hourly. Paid CTA is the waitlist. Do not silently enable hourly full walks.
-- **Files:** `lib/billing/plans.ts`, `entitlements.ts`, `access-policy.ts`, `copy/plans.ts`, help billing, PRODUCT.md, `knowledge/strategy.md`.
-- **Risk:** High. No silent quota change. Preserve paid records. `STRIPE_PAID_OPEN` stays false.
-- **Acceptance:** Pricing, Help, entitlements, Watch API, and PRODUCT.md agree. No hourly full Playwright at $49.
-- **Blocks:** Hourly/24h sentences until pulse ships.
-- **Parallel:** Packaging copy in this lock. Pulse runtime is Phase 4.
-
-### FF-B4 Verify semantics — PP / Next
-
-- **Current:** Flag FIXED = not observed; Improvement VERIFIED = independent; UI Fresh check passed.
-- **Intended:** Verified / Still open / Inconclusive / Couldn't verify. Never resolve from Done, deploy, or absence.
-- **Files:** `SiteFlagActions.tsx`, Flag page, `flag-status-resolution.ts`, help flag-fix-recheck, `copy/flags.ts`.
-- **Deps:** Evidence rules already require this.
-- **Acceptance:** Absence-only monitoring does not show Verified on Site Flag.
-- **Legacy:** Fresh check passed. **Parallel:** Copy MM after semantics confirmed.
-
-### FF-B5 Unshipped integration claims — MM / Next
-
-- **Current:** Coverage groups list deployments, paid traffic, real visitor failures.
-- **Intended:** Remove or mark coming; never as current coverage.
-- **Files:** `care-homepage.ts` checks.groups; leftover `homepage.ts`.
-- **Acceptance:** Grep: no Meta/GSC/deploy as shipped. **Blocks:** Acquisition rewrite. **Parallel:** Yes.
-
----
-
-## Wave C — Site architecture
-
-**Capability:** Customer objects visible; lean nav; cards glanceable. **Next.** Design Later Agent so chrome does not conflict.
-
-### FF-C1 Pages card — MM / Next
-
-- **Current:** Area id `site`, name Site.
-- **Intended:** Customer name Pages; metric page count; area id may stay `site`. Aggregate health in header / Flags badge.
-- **Files:** `card-areas.ts`, `board-card.ts`, BoardCard, BoardDetails, CARE_HOME.site, prototype.
-- **Deps:** Coordinate `board-card-chrome` / `homepage-end-user-polish`.
-- **Tests:** board-card.test expects Pages. **Acceptance:** First card says Pages on sample and live board.
-- **Legacy:** Site as first card name.
-
-### FF-C2 Card face — MM / Next
-
-- **Intended:** Category, Flag count, one useful metric. Stop Needs attention, Needs a fix, Checks passed, Latest check passed, Looking good as face copy.
-- **Metrics:** Pages = page count; Security = Protected or failing control; Search = crawlable pages; Performance = LCP; Conversion = Journey name or the Flag; Tracking = named public events (not Connected if overclaim); Uptime/Accessibility when added.
-- **Files:** SITE_BOARD_COPY, site-health, coverage, queries, care-homepage cards.
-- **Deps:** B1 for Flag counts. **Tests:** BoardCard, CareHomepage.
-- **Unknown/loading:** Learning, Checking, Not verified yet, Couldn't verify. No 0 Flags.
-
-### FF-C3 Navigation — Next (behavior + copy)
-
-- **Current:** Account rail Sites/Billing/Docs/Help/Settings; Site local tabs Dashboard · Flags · Site; no site switcher; Products leftover.
-- **Intended:** Inside Site: Home, Flags (badge), Site settings, All Sites / switcher, Agent FAB (placeholder until H). Mobile: Home · Flags · More. No Pages/Journeys/History/Reports/Agent nav items.
-- **Files:** `components/sites/SiteBoard.tsx`, `components/layout/sidebar.tsx`, ProductOverviewGrid.
-- **Architectural impact:** Do not add Agent tab. Third tab named Site only until settings exist, then retire as primary.
-- **Acceptance:** Customer can answer “how is the Site / what needs me / settings” without a report.
-- **Parallel:** After C1/C2 preferred. **Legacy:** Products, Agent | Report.
-
-### FF-C4 Site settings split — Next
-
-- **Current:** Site tab mixes coverage, outcomes, configuration.
-- **Intended:** Watch, notifications, connections, danger zone in settings. Journeys on Conversion card + confirm UI. Coverage visible on Pages/cards.
-- **Files:** SiteBoard Site tab, future settings route.
-- **Later:** Compact multi-Site switcher.
-
-### FF-C5 Card taxonomy vs library — Now/Next/Later
-
-- **Now:** Starter cards as shipped. **Next:** Align names/metrics. **Later:** Commerce, Paid traffic, Changes when connections exist. Add card opens library. Categories are not nav.
-
----
-
-## Wave D — Flag lifecycle
-
-**Capability:** Attention, optional depth, Fix, coding-AI handoff, Verify UI. **Next.**
-
-### FF-D1 Flag list and detail — Now refine / Next
-
-- **Intended:** What, where, why, evidence, what to do, how Verify will run. Actions: Fix this, Send a Flag to your AI, Share, Verify.
-- **Files:** Flag page, `SiteFlagActions.tsx`, `copy/flags.ts`.
-- **Deps:** B1 for list membership; B4 for Verify labels.
-- **Acceptance:** A Flag is ready to act without a glossary.
-- **Legacy:** Copy prompt as lead label; Needs a fix.
-
-### FF-D2 Recommendations in depth — Next (after B1)
-
-- **Intended:** Card detail lists Recommendations. They do not badge Home, do not notify.
-- **Files:** board details, queries. **Do not market until B1.** **Later:** Agent can explain Recommendations.
-
-### FF-D3 AI payload — MM / Next
-
-- **Current:** `buildExpertFixPrompt` (Goal, Constraint, Context, Why, Plan, Verify).
-- **Intended:** Dedicated URL/session and Journey fields when present.
-- **Files:** `lib/audit/flag-copy.ts`. **Parallel:** Yes. **Anonymous:** evidence visible; prompt gated until claim (keep).
-
-### FF-D4 MCP handoff — Later / FO
-
-- **Current:** Parked `/api/mcp`, API keys, docs.
-- **Intended:** Progressive option beside copy when customer-ready. Homepage only then.
-- **Files:** `lib/mcp/`, `proxy.ts`, docs. **Do not** Connect MCP on marketing now.
-- **Architectural impact:** Same Flag object; different transport.
-
-### FF-D5 Journey chrome — MM / Next
-
-- **Current:** Outcome / Inferred.
-- **Intended:** Journey in customer chrome; Looks right · Edit stays. Model name Outcome OK internally.
-- **Files:** SiteOutcomeEdit, conversion card. **Parallel:** Yes.
-- **Legacy:** Outcome as customer word; Funnel.
-
----
-
-## Wave E — First complete customer experience
-
-**Capability:** Analyze → learning → board → Flag → Fix → Verify → claim Watch. **Next.**
-
-User journey must be felt, not explained: first board is the Site; claim starts Watch; never a second product.
-
-### FF-E1 Analyze CTA — MM / Next (hero partially Now)
-
-- **Current:** Hero Analyze under homepage-hero-voice; other CTAs mixed.
-- **Intended:** Analyze everywhere a URL is submitted; placeholder yourwebsite.com.
-- **Files:** terminology, care-homepage, AuditInput, plans CTA, billing. **Deps:** A. **Collision:** homepage-hero-voice.
-- **Legacy:** Check my website.
-
-### FF-E2 First-run loading — MM / Next
-
-- **Current:** Reviewing your site, Running checks, Funnel review.
-- **Intended:** Learning your website / discovering pages / testing Journeys.
-- **Files:** `errors.ts` AUDIT_PROGRESS, SiteBoard. **Acceptance:** No Funnel. Failure is not 0 Flags.
-
-### FF-E3 Auth / claim — MM / Next
-
-- **Current:** Site check underway; Keep watching; /post-login.
-- **Intended:** Analyze was first look; save to monitor. Keep /post-login and one teaser.
-- **Files:** `auth.ts`, claim dialog. **Deps:** B3 for “covered” claims — never You're covered.
-- **SECURITY:** claim same Site; no duplicate usage.
-
-### FF-E4 Account Sites list — MM / Next
-
-- **Current:** Check a website URL; Products; No open Flags.
-- **Intended:** Analyze; Sites; 0 Flags only if projector+coverage allow.
-- **Files:** ProductOverviewGrid, REPORT_COPY.dashboard, sidebar.
-
-### FF-E5 Accessibility and mobile of the loop — Next
-
-- **Intended:** 375 and 1280; 44px targets; status + color; essential actions on mobile. **Verify in browser** per QUALITY.md.
-- **Later:** Further a11y depth (Accessibility card).
-
----
-
-## Wave F — Monitoring, history, notifications
-
-**Capability:** One watch; quiet interruption; understandable time. **Next** for honesty; **Later** for prefs and extra channels.
-
-### FF-F1 One monitoring concept — Next
-
-- **Intended:** Customer: FixFlags is watching. Internals remain Analyze/Watch/Verify/Shopify/events.
-- **Files:** Site settings, Help, PRODUCT.md after B3.
-- **Acceptance:** Help does not teach six run types or contradict B3.
-
-### FF-F2 Watch regression email — MM / Next
-
-- **Current:** N issue(s).
-- **Intended:** Flag voice; count from projector after B1.
-- **Files:** `lib/audit/project-watch.ts`.
-
-### FF-F3 Shopify integrity alerts — MM / Next
-
-- **Keep** urgency. Direction: 1 Flag. Customers can't complete checkout. Recovery: Verified.
-- **Files:** `lib/integrity/alerts.ts`. Same Flag object eventually (FF-G1).
-
-### FF-F4 Notification prefs — Later (design Now)
-
-- **Mental model:** Flags (default) · Critical only · Custom. Not Everything / Flags only / Custom.
-- **Channels:** Email first (Resend). Slack where already Shopify; then Site-level Slack. No SMS/push in first complete version. No daily digest invention. Recovery/Verified may notify if the customer asked.
-- **Dedup, quiet hours, per-Site, Journey, category:** Custom. Architect keys now (Site, Flag fingerprint, severity/importance).
-- **Files (later):** Site settings, `lib/integrity/alerts.ts` generalization, Watch mailer.
-
-### FF-F5 access-policy vs entitlements Watch — IC / Next
-
-- **Intended:** Studio-only policy cannot silently deny Free Watch if entitlements allow it (or vice versa after B3).
-- **Files:** `access-policy.ts`, `entitlements.ts`.
-
-### FF-F6 History — Next (Flag/card) / Later (dedicated)
-
-- **Next:** Flag opened / attempts / verified / regressed on Flag page. Card last evidenced.
-- **Later:** Agent answers what changed. Dedicated History only if needed.
-- **Do not** ship an activity feed of every check.
-
-### FF-F7 Event-triggered monitoring — Later
-
-- **Intended:** Deployments, Shopify events, analytics anomalies can trigger a closer look. Same Watch concept. **Architect** as another trigger, not a product mode.
-
----
-
-## Wave G — Connections as context
-
-**Capability:** Integrations make FixFlags smarter. **Now** Shopify wedge; **Next** unify; **Later** adapters.
-
-For each: value, context, monitoring, Flag importance, Verify, Agent, state, prerequisite, UI home.
-
-| ID | Connection | Value | Context | Monitoring | Flags | Verify | Agent | State | Home | When |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| FF-G1 | Shopify | Purchase path, catalog | Orders, shop | Pulse/walk | Commerce Flags | Re-walk checkout | Explain checkout | Now path; Next unify into Site Flag | Commerce card + native install | Next unify |
-| FF-G2 | Email | Interruption | Account email | n/a | Notify Flags | Recovery mail | n/a | Now | Site notification settings | Next Flag-shaped |
-| FF-G3 | Slack | Team channel | Webhook | n/a | Same Flags | Same | n/a | Shopify now | Site settings | Later Site-wide |
-| FF-G4 | Tracking pixels | Measurement health | Public events | Checks | Tracking Flags | Recheck events | Explain pixel | Now checks | Tracking card | Now |
-| FF-G5 | Analytics | Volume / Journey | Visitor stats | Enrich cadence later | Importance | n/a | What changed | Internal GA for FixFlags SEO; not customer connect | Conversion/Flags | Later |
-| FF-G6 | Search Console | Search impact | Coverage/queries | Enrich Search | Search Flags | n/a | Indexing | OAuth code exists, not sold | Search card | Later |
-| FF-G7 | Meta | Paid landing | Ads, pixels | Enrich | Paid Flags | n/a | Why this page | Internal CAPI only | Paid traffic card | Later |
-| FF-G8 | Deployments | When it started | Release time | Trigger look | Timing on Flag | Compare before/after | What changed | Railway webhook parked | Changes card | Later |
-| FF-G9 | MCP | Coding AI access | Flags/evidence | n/a | Handoff | n/a | Send to AI | Parked | Send to AI + settings | Later |
-
-Connect in context, not a logo wall. Revoke in Site settings. Lost connection = coverage gap, not a dead dashboard.
-
-**Shopify positioning:** Keep install, purchase-path walks, confirmed-twice alerts, Can buy / Can't buy on that path. Change listing/legal that say FixFlags **is** a Shopify-only monitor. After install: same Site.
-
-**Do not** automatic ad pauses, deploys, or purchases.
-
----
-
-## Wave H — FixFlags Agent and support (launch-critical implementation complete; release proof pending)
-
-**Capability:** Persistent assistant; graceful human support. **Later** to ship FAB; **Next** to stop investing in the report pane and to persist Site context on support. **Design now.**
-
-### FF-H1 Agent product model — Launch-critical
-
-- **Intended:** Bottom-right FAB. Context: account, Site, route, card/Flag, recent monitoring, conversation. Can explain, navigate, gather context, help fix, send to coding AI (confirm), escalate to support. Cannot silently edit repos, pause ads, deploy, or place orders.
-- **Current:** `WorkspaceChatPanel` + `/api/reports/[id]/chat` on `/report/*`. Immersive report hides support FAB.
-- **Reuse:** Chat message store, grounding on flags/evidence, live-support sessions, admin `/admin/feedback`.
-- **Replace:** Agent as a destination competing with Home.
-- **Files (later):** new Site-scoped assistant module; do not extend report pane as the product.
-- **Acceptance:** Customer never needs “open the Agent tab.” FAB available on Site Home and Flag.
-- **Copy:** Ask FixFlags vs Send a Flag to your AI — two names, two jobs ([voice-and-copy.md](voice-and-copy.md)).
-
-### FF-H2 Support escalation — Launch-critical
-
-- **Current:** SupportWidget; SupportSession without siteId/flagId; auditId from report URLs only.
-- **Intended Next:** Persist siteId, optional flagId, route; extract from `/sites/`. Do not hide support on Site.
-- **Implemented:** Agent offers “Talk to support”; packet includes a minimized conversation summary plus customer, Site and optional Flag identity. Minimize PII ([knowledge/privacy.md](../knowledge/privacy.md), SECURITY.md).
-- **Files:** `lib/live-support/*`, SupportWidget, Prisma SupportSession, admin feedback.
-- **Acceptance:** Support can open the Site/Flag without the customer repeating the URL.
-
-### FF-H3 Retire report Agent pane — Launch-critical
-
-- **Disposition:** Deprecate as customer model immediately in docs. Redirect signed-in report users to Site. Keep anonymous report evidence per report-contract until FF-K.
-- **Files:** `ReportWorkspaceSplitShell`, `WorkspaceChatPanel`.
-- **Legacy retired:** AI Agent product.
-
----
-
-## Wave I — Acquisition (marketing is the product)
-
-**After B honesty, C Pages, E Analyze.** **Next.** Do not fight `homepage-hero-voice` files without a split.
-
-### FF-I1 Homepage — MM / Next
-
-Hero: keep looked after; tighter body; Analyze (may already ship); board sample Pages + Flag counts + Sample; workflow Flag. Fix. Verify. (drop Check); 100+ with Analyze broadly, remove unshipped groups; Journeys shortened; one AI story (Send a Flag to your AI); Flag-shaped notification sample; Shopify as connection; one or two concrete risks then calm; close Analyze + monitoring; footer/OG from seo.home.
-
-**Files:** `care-homepage.ts`, `CareHomepage.tsx`, tests, `seo.ts`. **Do not** implement against leftover `homepage.ts`. **Do not** repeat Flag. Fix. Verify. on every card.
-
-### FF-I2 How-it-works, pricing, Shopify pages — MM / Next
-
-Same loop. Pricing CTA Analyze; cadence after B3; connections honest (Shopify available). `/install` `/protect` listing: purchase-path value, same product.
-
-### FF-I3 SEO / OG / JSON-LD / manifests — MM / Next
-
-`seo.ts`, `structured-data.ts`, brand. Stop website-checker leftovers.
-
-### FF-I4 Partners, roast, tools — Later / low
-
-Deprioritize AI-builder leftovers. Not critical path.
-
-### FF-I5 Growth / analytics / telemetry — Now (internal) / Next (events)
-
-Keep honest launch funnel ([fixflags-analytics](.agents/skills/fixflags-analytics/SKILL.md)). Do not invent daily reports for engagement. Instrument Analyze, claim, Flag open, Verify, Watch — not vanity.
-
----
-
-## Wave J — Help, docs, email, legal, billing copy, settings
-
-**Next** for lexicon; cadence after B3.
-
-### FF-J1 Help / Docs / FAQ — MM / Next
-
-- **Inventory:** `lib/help/catalog.ts`; `content/docs/{index,getting-started,reports,troubleshooting}.md`; `copy/faq.ts`; MCP/CLI parked.
-- **Intended:** Site, Pages, Journeys, Flags, Recommendations (after B1), Flag. Fix. Verify., monitoring honesty. Reports docs become compatibility then Site guides.
-- **Preserve** changelog history wording. New entry when the cut ships.
-- **Must not lie on cadence:** what-counts-as-a-check, flag-fix-recheck, when-credits-run-out, update-review-credits, free-vs-pro.
-- **Knowledge IA:** [docs/knowledge-base-ia.md](knowledge-base-ia.md) must retarget reports → Site (item below).
-
-### FF-J2 Emails — MM / Next
-
-Nurture: Analyze, monitoring, Flag. Fix. Verify. Drop AI-builder checklist as the product. Watch/Shopify: Flag voice. Billing: monitoring resumes after B3 nouns. KEEP_REPORT → Site. Inbox must match dashboard.
-
-### FF-J3 Legal / privacy — MM + counsel / Next
-
-`legal.ts` is Shopify-app-only. URL-first: Analyze collects URL, our browser walk, screenshots/video of our session; account email; optional Shopify; we do not sell data; we do not routinely place orders. Homepage quiet. FAQ one sentence. **Do not invent legal terms.**
-
-### FF-J4 Pricing / packaging copy — after B3
-
-Do not change live Stripe IDs in a copy task. Public list is `$49`/website/mo (Free weekly, Pro daily). Flag leftover 3/30/90, Connections included, projectLimitLabel “1 product”, credits/reviews/scans in old help. Plans buy responsibility (cadence, Sites, coverage), not a different product.
-
-### FF-J5 Account vs Site settings — Next
-
-Identity/security/billing at account. Watch/notifications/connections at Site. **Later:** default notification prefs at account.
-
-### FF-J6 Samples / fixtures — MM / Next
-
-Recapture homepage evidence if chrome is baked in. Sample designation. Tests using fixture titles.
-
----
-
-## Wave K — Report and legacy retirement
-
-**Later** for hard delete; **Next** to stop treating report as the product.
-
-| Artifact | Keep | Migrate | Redirect | Deprecate | Delete |
-| --- | --- | --- | --- | --- | --- |
-| `/report/[id]` public evidence | Compatibility window | Evidence → Flag | Signed-in owners → `/sites/{id}` | As primary IA | After window + SECURITY review |
-| Share links | Policy | Sanitized Flag URL later | — | Report as product | — |
-| Export | — | Flag/Site export | — | Report PDF as product | — |
-| SEO report pages | Until recrawled | Metadata | 301 when ready | — | Old checker copy |
-| Report fixtures/tests | Compat tests | Site fixtures | — | Layout tests as target | When Site tests cover |
-| `knowledge/report-contract.md` | Compat | Shrink | — | As vision | When routes gone |
-| Finish Plan / Fix List | Internal | Ranking → projector | — | Customer artifact | UI remnants |
-| Rubric scores as health | Internal | — | — | Site health | Customer chrome |
-| Legacy Agent pane | Until H1 | Grounding → Agent | Site | Destination | Pane |
-| Check my website / Needs attention / Find→Understand | — | — | — | — | Customer copy |
-| Shopify-only company | Native path | Listing/legal | — | Company frame | Copy |
-
-**Data:** Do not destroy Audit/Flag history. Project remains physical Site backing until a deliberate rename ([site-v2-migration.md](site-v2-migration.md)). Customer Site ≠ graph Site.
-
-**Compatibility:** One anonymous teaser; evidence visible; prompts gated. Auth `/post-login`. Public graph isolation. These survive retirement.
-
----
-
-## Wave L — Polish and validation
-
-### FF-L1 Grep sweep — MM
-
-Needs attention, checks passed, fresh check, Check my website, Work with your AI, Controlled example, Find → Understand, Site check. Optional grep gate over copy, help, docs, emails.
-
-### FF-L2 Prototype
-
-`prototypes/fixflags-board` when board chrome migrates.
-
-### FF-L3 Do not mass-rename
-
-check, audit, Outcome, Flag.severity stay internal.
-
-### FF-L4 Human journey
-
-375 and 1280: homepage → Analyze → board → Flag → Fix/Send to AI → Verify → claim. Pricing, help, one email preview, privacy. Feeling test and simplicity test below.
-
-### FF-L5 Performance / a11y / ops
-
-Keep current QUALITY gates. Pricing page already optimized. Worker/Playwright/recovery stay. No new operational product; monitoring honesty is the ops-facing customer need.
-
-### FF-L6 Analytics
-
-See FF-I5. Admin funnel remains internal.
-
----
-
-## Terminology lint (implementers)
-
-1. Canonical labels in `terminology.ts`.
-2. Banned customer phrases: Needs attention; Checks passed; Fresh check passed; Check my website as primary CTA; Controlled example, not a live assessment; Work with your AI as lead; Connect MCP on marketing heroes; You're covered; Analyze everything; 0 Flags as omniscience.
-3. Targeted tests (lint strategy). Internal nouns stay.
-
----
-
-## Journey coverage (product, not copy-only)
-
-| Stage | Change | Stay |
-| --- | --- | --- |
-| Discovery / SEO | Metadata, tagline | Brand, looked after |
-| Homepage | Copy, 3-step, sample, two AIs | URL-first, AuditInput, board primitive |
-| Analyze | CTA | Handoff to `/sites` |
-| First result | Loading nouns, Flag counts | Same Site identity |
-| Auth | Claim as continue monitoring | /post-login, one teaser |
-| Dashboard | Pages, metrics, 0 Flags rules, lean nav | Card grid, Add library |
-| Pages / Journeys | Card access | Infer + confirm |
-| Flag | Importance, AI labels | Evidence, Fix this, Verify |
-| Recommendations | After projector | Not an inbox |
-| Fix | Who does it, already true | No repo edits by FixFlags |
-| Verify | State names | Independent child audit |
-| Monitoring | Honest cadence, one concept | Scheduler existence |
-| History | Flag/card/Agent | No raw logs as product |
-| Notification | Voice; prefs later | Shopify/Watch exist |
-| Integrations | Honesty; homes designed | Shopify wedge |
-| Agent | FAB later | Do not grow report pane |
-| Support | Site context | Live-support store |
-| Settings / billing | Nouns; cadence after B3 | Free/Pro/Studio, Stripe closed |
-| Help/docs | Inventory | Historical changelog |
-| Report | Compatibility then retire | Public evidence policy |
-
----
-
-## Pricing / packaging (decisions, not silent copy)
-
-- 3/30/90 pool vs 24h/hourly
-- Connections included
-- Help Shopify recheck caps vs Site Watch
-- `projectLimitLabel` still “1 product”
-- Credits/reviews/scans in older help
-
-Do not change prices from this plan. B3 is the blocker.
-
----
-
-## Implementation acceptance
-
-A new capable agent with no chat history, after reading vision, architecture, messaging, evidence rules, and this plan, must understand every item in the user acceptance list (what FixFlags is, who it is for, Analyze vs monitoring, Pages, Journeys, Flags, Recommendations, business importance, 0 Flags, Fix, Verify, monitoring, history, notifications, integrations, Shopify, FixFlags Agent, coding AI, MCP, support, report and old Agent fate, nav, Now/Next/Later, safe public copy, critical path, parallelism).
-
-**Feeling test:** I connected my website. FixFlags understands what matters, keeps monitoring it, and tells me when I should care.
-
-**Simplicity test:** Fail a wave if it adds more status words, dashboards, chores, or taxonomy than it removes.
-
-**Truth test:** Public copy never claims Later as Now.
-
----
-
-## What not to do
-
-- POLISH = Recommendation; new Recommendation table because taxonomy
-- Market Recommendations, MCP, hourly Watch, Meta, or the Agent FAB before prerequisites
-- Repeat Flag. Fix. Verify. in hero, board, Flag page, and footer
-- Implement homepage against `homepage.ts` leftovers
-- Rename Pages on the sample only
-- Invent daily reports or an activity feed
-- Mass-rename internal check/audit/Outcome
-- Build a competing Agent tab
-- Organize nav around scans/reports/audits
-- Execute overlapping files with in-progress BOARD owners
-- Change production UI in a documentation task
-- Claim vision as shipped
-
----
-
-## Verification for implementers
-
-1. Read [product-architecture.md](product-architecture.md), [voice-and-copy.md](voice-and-copy.md), and this file. PRODUCT.md for what code does.
-2. Claim BOARD on `main` with non-overlapping files.
-3. Start at Wave A unless the item is pure docs already done.
-4. If copy and runtime disagree, change runtime first (PP) or soften copy.
-5. Prove with the fixture and surface named in acceptance, not grep alone. Browser-verify UI.
-6. Record a session receipt. Do not claim the complete product done until the first complete experience (Next items) plus honesty gates pass. Later items remain Later.
+No execution, evidence, history, connection, billing, or monitoring infrastructure is removed merely because its internal name is old.

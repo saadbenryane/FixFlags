@@ -14,30 +14,30 @@ Design mobile-first. Desktop reveals more information using the same mental mode
 
 Customer chrome follows [product-architecture.md](product-architecture.md). Do not organize around scans, reports, audits, or an Agent tab.
 
-| Destination | Customer question | Contents |
-| --- | --- | --- |
-| Home | How is the Site doing? | Card board: Pages, Journeys/Conversion, other categories, Flag counts and useful metrics |
-| Flags | What needs me? | Prioritized attention; resolved history without polluting current attention |
-| Site settings | How is this Site configured? | Watch, notifications, connections, danger zone. Not a third product mode |
-| FixFlags Agent | Ask FixFlags | Persistent FAB (later). Not a nav item. Can escalate to support |
+| Destination    | Customer question                                   | Contents                                                                                         |
+| -------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Home           | What is FixFlags watching and what needs attention? | Outcome state first, meaningful Flags second, broader Product-health cards and diagnostics below |
+| Flags          | What needs me?                                      | Prioritized attention; resolved history without polluting current attention                      |
+| Site settings  | How is this Site configured?                        | Watch, notifications, connections, danger zone. Not a third product mode                         |
+| FixFlags Agent | Ask FixFlags                                        | Persistent FAB (later). Not a nav item. Can escalate to support                                  |
 
-Account, billing and Site switching are supporting controls. Pages and Journeys are reached through cards unless they later earn a destination. No Agent | Report split, scores-first hero, raw-check grid, arbitrary dashboard builder or integration marketplace.
+Account, billing and Site switching are supporting controls. Outcomes and Flags are primary content; Pages, Journeys, category health and execution diagnostics are depth. No Agent | Report split, scores-first hero, raw-check grid, arbitrary dashboard builder or integration marketplace.
 
 **Today's local tabs** Dashboard · Flags · Site are a stepping stone. Retire the third primary tab once settings exist. Mobile: Home · Flags · More.
 
 ## Home hierarchy
 
-The [card-board experience](card-board-experience.md) is the detailed design source. Home/Dashboard is one flat customizable grid. The first card is Pages (explored pages of the Site). Security, Search, Performance, Conversion and Tracking form the rest of the initial board. A quiet Add card opens the personalized library; categories belong only there. Public evidence works before connections, which enrich these same cards.
+The [card-board experience](card-board-experience.md) remains the design source for the broader Product-health area, not the entire Home hierarchy. Home first shows concrete Outcomes and their Clear/Flag/Couldn’t verify/Stale state, then attention, then Pages, Security, Search, Performance, Conversion, Tracking and other category depth. Public evidence works before connections, which enrich the same product.
 
-Site identity and a human status lead. Journeys provide meaning. Attention appears as Flags when needed; a healthy Site can remain short and quiet (0 Flags, with coverage still discoverable). Always make coverage and freshness discoverable near health language.
+Site identity and watched Outcomes lead. Journeys provide human-browser execution for some Outcomes. Attention appears as Flags when needed; a quiet Site still shows the scope and freshness required for each Clear answer.
 
-Do not force a green overall label when an important Journey is unverified or stale. A site can be reachable while a purchase behavior is failing. Distinguish those facts. Numeric scores may explain a specific measurement in detail; they do not define Site health.
+Do not force a green overall label when an important Outcome is unverified or stale. A Site can be reachable while Checkout fails. A security or HTTP signal can fail without proving Checkout failed. Distinguish Outcome health from raw signal/category health.
 
-## Journey and Page
+## Outcome, Journey and Page
 
-Use understandable Journey names (internal model may remain Outcome) and the smallest useful confirmation. Looks right / Edit corrects inferred intent; it is not a funnel-design task. Preserve edited understanding across future analysis.
+Use concrete Outcome names such as Checkout and Signup and the smallest useful confirmation. A Journey is one browser path underneath a human-facing Outcome. Looks right / Edit corrects inferred intent; it is not a funnel-design task. Preserve edited understanding across future analysis.
 
-Show relevant pages/actions and verification limits on expansion. A page may belong to multiple Journeys or none. Pages outside Journeys remain checkable. Coverage lists actual responsibility and gaps without hundreds of toggles.
+Show expectation, state, freshness, related pages/actions, execution methods and verification limits on expansion. A page may contribute to multiple Outcomes or none. Pages outside Journeys remain checkable. Coverage lists actual responsibility and gaps without hundreds of toggles.
 
 ## Flag detail
 
@@ -49,20 +49,20 @@ Verify fix shows real progress and retains prior attempts. Resolved shows fresh 
 
 ## State requirements
 
-| State | Required presentation |
-| --- | --- |
-| Learning | Persisted discoveries and genuine running work; no generic fake progress or invented results |
-| Partial | Useful confirmed facts plus explicit missing scope; retry where possible |
-| Healthy | 0 Flags for that scope, plus a useful metric; coverage and latest verification remain available |
-| Flags present | Ranked meaningful Flags (counts, not “Needs attention” prose); Recommendations stay in the card, not in notifications |
-| Couldn't verify | What prevented a reliable answer and useful recovery/context action |
-| Stale or delayed | Last known evidence distinguished from current coverage; never quietly green |
-| No Journey inferred | Useful page checks plus lightweight intent correction; no fabricated journey |
-| 0 Flags | Successful attention state when coverage supports it; not omniscience; Recommendations may still exist |
-| Fix verification | Running, persistent failure, inconclusive, verified recovery and recurrence |
-| Watch activation | Account/claim progress and actual scheduling result; retry activation independently of login |
-| Connection absent/revoked | Existing answer remains usable; missing context explicit |
-| Error | Preserve Site/history and offer recovery; no dead-end alternate report page |
+| State                     | Required presentation                                                                                                 |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Learning                  | Persisted discoveries and genuine running work; no generic fake progress or invented results                          |
+| Partial                   | Useful confirmed facts plus explicit missing scope; retry where possible                                              |
+| Healthy                   | 0 Flags for that scope, plus a useful metric; coverage and latest verification remain available                       |
+| Flags present             | Ranked meaningful Flags (counts, not “Needs attention” prose); Recommendations stay in the card, not in notifications |
+| Couldn't verify           | What prevented a reliable answer and useful recovery/context action                                                   |
+| Stale or delayed          | Last known evidence distinguished from current coverage; never quietly green                                          |
+| No Journey inferred       | Useful page checks plus lightweight intent correction; no fabricated journey                                          |
+| 0 Flags                   | Successful attention state when coverage supports it; not omniscience; Recommendations may still exist                |
+| Fix verification          | Running, persistent failure, inconclusive, verified recovery and recurrence                                           |
+| Watch activation          | Account/claim progress and actual scheduling result; retry activation independently of login                          |
+| Connection absent/revoked | Existing answer remains usable; missing context explicit                                                              |
+| Error                     | Preserve Site/history and offer recovery; no dead-end alternate report page                                           |
 
 ## Connections and history
 

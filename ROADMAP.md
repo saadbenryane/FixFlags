@@ -1,58 +1,174 @@
-# Roadmap
+# FixFlags roadmap
 
-**Direction accepted 2026-09-08.** Phase 0 documentation is complete. **Board-first cutover (URL → `/sites` checking board) shipped** — receipt: [`.agents/sessions/board-first-site-2026-09-08.md`](.agents/sessions/board-first-site-2026-09-08.md). Integrity work (tenancy, honest coverage, claim migration, Sites IA) continues under `site-game-on-integrity`.
+**Direction accepted 2026-09-21. Planning only; not a shipped-capability claim.**
 
-The [owner's complete vision](knowledge/vision.md) is authoritative. Customer objects and navigation: [docs/product-architecture.md](docs/product-architecture.md). Customer-facing language follows [docs/voice-and-copy.md](docs/voice-and-copy.md). The complete implementation sequence is [docs/product-masterplan.md](docs/product-masterplan.md). This roadmap remains the Site engineering cutover (tenancy, coverage, Fix/Verify/Watch); it does not replace the masterplan. This roadmap replaces earlier Shopify-only launch, Product Review completion, and two-product roadmaps. Existing tasks may supply reusable work; their earlier interface and commercial decisions do not govern this version.
+FixFlags is the independent monitor for software that acts. **Your software runs. FixFlags watches.**
 
-Phase 0 evidence: [readiness receipt](.agents/sessions/site-v2-readiness-2026-09-08.md). Full-source coverage: [vision-to-phase map](docs/site-v2-vision-coverage.md).
+The authoritative implementation detail, capability mapping, MCP contract, migration, and launch checklist live in [docs/product-masterplan.md](docs/product-masterplan.md). This file is the dependency-ordered delivery view. Current code truth remains [PRODUCT.md](PRODUCT.md).
 
-Experience design is concrete in the [card-board contract](docs/card-board-experience.md) and interactive prototype at `prototypes/fixflags-board`. Prototype parity for Add-card library, connections, and layout customization remains later phases. Production Phases 1–4 integrity (private Site, honest coverage, Fix/Verify/Watch on the board) is the active Game On bar.
+## Architectural spine
 
-## Destination and boundaries
+```text
+Owned Product / Site (physical Project)
+  → Outcomes that matter (adapt current SiteOutcome)
+    → execution methods (checks, browser Journeys, HTTP/API, integrations)
+      → independent Outcome assessment (Clear / Flag / Couldn’t verify / Stale)
+        → evidence, Flag lifecycle, fixes, verification, history and diagnostics
+```
 
-One persistent customer Site, a first analysis that becomes its dashboard, inferred Journeys (internal Outcomes), evidence-backed Flags, and ongoing care. The brand stays FixFlags. Reuse billing, accounts, plans, safe browser checks, evidence, queues, history, and working infrastructure. Replace the report experience rather than reskinning it. The FixFlags Agent is a persistent assistant, not a third product beside Site and Report.
+All initiators use one tenant-scoped run command:
 
-Scope is sequenced by observable customer value, not by integration count. No deadline or new pricing promise is implied. Git preserves earlier versions; a new docs entry does not establish a release checkpoint or commit existing uncommitted work.
+```text
+schedule | human UI | MCP | deployment | API | integration | FixFlags logic
+                                  ↓
+                    idempotent RunRequest + planner
+                                  ↓
+            existing Audit / queue / worker / browser engine
+                                  ↓
+              Outcome assessments + Flags + notifications
+```
 
-## Phases
+This is evolution, not replacement. `Project`, `Audit`, Playwright, checks, JourneyReview, Flags, Improvement history, Watch, Shopify, auth, billing, and MCP transport are reused. `SiteOutcome` is not promoted unchanged: its current descriptive semantics must be strengthened and proven before it becomes the primary health projection. No parallel Monitor, Task, Objective, or new System root is planned.
 
-| Phase | Deliverable and scope | Exit evidence | Depends on |
-| --- | --- | --- | --- |
-| 0. Record and reconcile | Complete vision; sole canonical routing; new PRD and UI contract; legacy/target boundary; migration inventory; executable first slice | Source fidelity, local links, relevant skills, documentation drift checks; session receipt | Owner's September 8 revision |
-| 1. Site foundation | Tenant-scoped Site projection over reusable persistence; pages/actions; inferred and editable Outcomes; explicit coverage and evidence contracts; stable Flag identity; fixtures and safe adapter from current checks | Isolation, idempotency, many-to-many page/Outcome tests; partial/unverifiable cases cannot become healthy; migration dry run on disposable data | Phase 0 |
-| 2. URL to useful Site | URL entry, genuine discovery progress, same Site dashboard on completion; Home · Flags; clear Flag detail; useful anonymous result | Real browser path at mobile and desktop widths: first URL through first Flag or honest healthy/partial state; refresh and failure recovery retain Site identity | Phase 1 |
-| 3. Fix and verify | Fix this, copy/share evidence safely, technical depth; Verify fix reruns relevant behavior; durable verified recovery and history | Controlled broken → attempted → fresh relevant pass → resolved fixture; persistent failure, incomparable capture, blocked check, and recurrence cases; no self-certified recovery | Phase 2 |
-| 4. Keep watching | Account/claim of the same Site; free ongoing monitoring; scheduling, coverage freshness, retries, alert deduplication, pause/delete; costed plan responsibilities | Durable claim + scheduler receipt; induced regression produces appropriate Flag/alert, healthy runs stay quiet, restart/lease/limit failures remain honest; free and paid responsibilities explicitly decided and tested | Phase 3 |
-| 5. Add useful context | Shopify first as a connection/native install route into the same Site; purpose-specific observer next; Analytics, Search Console, Meta, deployment context as separately earned increments | Each connection improves a named existing Flag/Outcome answer with source/time attribution; revoke/delete works; lost connection becomes a coverage gap; privacy review and measured collection cost | Working core through Phase 4; each adapter independently gated |
-| 6. Migrate and launch | Existing users/history; replace report navigation; current pricing/help/docs/metadata/sample/proof all match released capabilities; native Shopify path and shared Flag acquisition; retire obsolete shell after compatibility proof | End-to-end upgrade/claim/billing regression proof, authenticated and shared access, old URL policy, operator-approved plan terms, production release receipts and rollback rehearsal | Core through Phase 4; only proven Phase 5 adapters included |
-| 7. Deepen responsibility | More coverage/depth/history, teams/agencies, agent automation, additional connections, safe protective actions where justified | Measured usefulness, sustainable cost, explicit authorization, trust and quietness retained | Launched core and actual usage evidence |
+## Launch milestone: independent monitoring with MCP
 
-Phase 5 is incremental. An unavailable external connection must not block the URL-based core or force marketing to claim a speculative integration. Phase 6 can ship with only the connections actually verified.
+The first public milestone is one complete loop, not a collection of foundations:
 
-## First implementation slice
+**change → verify → Flag → fix → verify → Clear**
 
-Start with Phase 1, then carry it directly into Phase 2. Build one owned or anonymous Site with one inferred Outcome and one independently reproducible Flag. Use an owned fixture with a broken contact flow and a healthy sibling flow. The same URL and Site identity must survive loading, result, refresh, and account claim.
+It includes scheduled monitoring that runs with no agent present and a coding-agent path that uses the same engine.
 
-The exact work order and acceptance scenarios are in the [PRD](docs/product-prd.md). The [migration design](docs/site-v2-migration.md) names the existing modules to reuse and the database naming collision to avoid. Do not start by rewriting every check or building all integrations.
+### Gate 0: contract and migration safety
 
-## Decisions settled by the owner
+**Deliver**
 
-The complete vision is accepted; no second approval of its direction is needed. Site replaces report as the experience. Journeys supply meaning. Flags supply attention. Health is scoped by coverage. Monitoring continues Flag. Fix. Verify. Shopify is a wedge and connection. The brand and useful commercial foundations survive. Navigation, Agent, and report retirement follow [product-architecture.md](docs/product-architecture.md) and [product-masterplan.md](docs/product-masterplan.md).
+- Additive Outcome expectation/binding/assessment and RunRequest contracts.
+- Explicit distinction between Outcome health and raw signal/category health.
+- Tenant, idempotency, target-origin, evidence, and compatibility rules.
+- Backfill/shadow-read plan for existing Sites, Outcomes, Audits, Flags, Watch, and Shopify.
 
-## Decisions due at their phase
+**Exit evidence**
 
-| Decision | Default or constraint | Required before |
-| --- | --- | --- |
-| Tenant identity and URL ownership | Private customer Site; no ownership inferred from hostname alone; preserve public evidence separately | Phase 1 persistence |
-| Outcome discovery safety | Public non-destructive interactions; confirmation before meaningful side effects; can't verify is valid | First browser walkthrough |
-| Anonymous resource limits and retention | Useful result before account, bounded abuse/cost; Keep watching claims the same Site; no silent private-data sharing | Phase 2 public rollout |
-| Monitoring frequency, scope, retention and quotas | Public list is per-site: Free weekly verification, Pro `$49`/website/mo verified every day. Unlimited Sites is rejected. Pulse stays cheap; daily verification stays bounded. Measure `auditRunCost` p50 before opening per-site Stripe quantity checkout at `$49`. No silent downgrade. `STRIPE_PAID_OPEN` stays false until that pass. | Phase 4 release |
-| Alert channel and interruption thresholds | Start with existing email infrastructure if suitable; notification settings and durable deduplication | Phase 4 release |
-| Existing subscriber transition | Preserve paid access and billing records; explicitly map old entitlements before any change | Phase 6 migration |
-| Additional adapters and protective actions | Build only if a specific existing answer becomes better; no automatic ad pauses, deploys, or purchases | Respective increment |
+- Fresh and upgraded migration rehearsals.
+- Two accounts may monitor the same hostname without data crossover.
+- Existing Site/Watch/Flag paths stay green.
+- One existing Outcome is projected without inventing an expectation or pass.
 
-These decisions do not block starting Phase 1. Numeric examples in the vision are not default SLA or plan commitments.
+### Gate 1: Checkout vertical slice
+
+**Deliver**
+
+- Adapt an existing Checkout/purchase `SiteOutcome` with a browser Journey binding.
+- Common RunRequest from Site UI, targeted Verify, and schedule.
+- Clear/Flag/Couldn’t verify/Stale projection with freshness and limitations.
+- Stable Flag occurrence, record-fix, independent Verify, recovery, and recurrence history.
+- Existing Shopify purchase path can contribute to the same Outcome/Flag when connected.
+
+**Exit evidence**
+
+- Controlled fixture: Clear → induced failure → one Flag → failed Verify → fix → comparable Clear → recurrence.
+- Same result survives worker restart, duplicate submission, refresh, and delayed queue.
+- Technical check failure remains diagnostic unless the Outcome success condition actually fails.
+
+### Gate 2: one execution path for every launch trigger
+
+**Deliver**
+
+- Migrate Watch, manual UI, MCP, Railway deployment, public API, Shopify, and internal retry to the common Site application command.
+- Trigger context records actor, reason, requested Outcomes, deployment/commit, environment, and idempotency key without influencing verdict.
+- Existing Audit stays the internal physical run ledger.
+
+**Exit evidence**
+
+- Contract tests prove equivalent selection/ownership/reconciliation across triggers.
+- Schedule continues when MCP is disconnected.
+- Retry/duplicate events produce one active RunRequest and one final assessment set.
+
+### Gate 3: MCP end-to-end launch
+
+**Deliver**
+
+- Outcome-shaped v1 tools/resources from the masterplan, backed only by the Site application boundary.
+- OAuth 2.1 protected-resource discovery, scopes and audience binding for remote clients.
+- Scoped/revocable API keys and device authorization for CI and local stdio bridge.
+- Fast run creation plus durable polling; optional MCP Tasks only when negotiated.
+- One-command setup for Codex, Claude Code, Cursor, and generic MCP clients.
+- Report-era tools remain temporary adapters but disappear from new discovery/docs.
+
+**Exit evidence**
+
+- On an owned Site, each tested coding agent can list watched Outcomes, request Checkout verification, receive a Flag with evidence, record the deployed fix, verify again, and receive Clear.
+- Disconnect/restart during execution resumes from the same run ID.
+- Cross-tenant, arbitrary-host, insufficient-scope, revoked-key, rate-limit, worker-down, blocked-target, and incomparable-evidence cases fail safely.
+- The agent’s “fixed” claim never changes Outcome or Flag state.
+
+### Gate 4: human product hierarchy and breadth
+
+**Deliver**
+
+- Home leads with watched Outcomes and Needs attention; category health remains beneath it.
+- Outcome detail owns expectation, current assessment, freshness, evidence, Flags, executions, and history.
+- Pages, Security, Search, Performance, Tracking, Uptime, Accessibility, commerce and Recommendations remain useful broader health/diagnostic signals.
+- Site Settings owns Outcomes, Watch, notifications, connections, and developer/MCP access.
+- Safe Signup/form and availability Outcome patterns join Checkout.
+
+**Exit evidence**
+
+- A non-technical user can answer what matters, whether it works, what failed, what proves it, what to change, and whether recovery was verified.
+- 320/375/768/1280 px, keyboard/focus, 200/400% zoom, reduced-motion, and practical touch-target checks pass.
+- No Clear state derives merely from zero Flags or a passing low-level signal.
+
+### Gate 5: public coherence and operations
+
+**Deliver**
+
+- Homepage, onboarding, pricing, sample, Docs, Help, MCP reference, emails, notifications, legal, metadata, changelog, errors, and support align to the released model.
+- Replace the legacy public report sample with an Outcome-first Site proof.
+- Outcome/run/MCP/Watch/notification/cost observability and admin views.
+- Exact-SHA production canary with web and worker from the same image/digest.
+
+**Exit evidence**
+
+- Public route/copy contract has no report-era product promises or parked MCP dead ends.
+- Full verification, migration, build, security/dependency, browser fixture, client matrix, scheduler restart, email sink, and rollback rehearsal pass.
+- Production completes the new-user human path and the coding-agent loop on dedicated canary accounts.
+
+## Parallel work after Gate 0
+
+| Track            | May proceed in parallel                                     | Must converge on                           |
+| ---------------- | ----------------------------------------------------------- | ------------------------------------------ |
+| Outcome/runtime  | Checkout binding, RunRequest planner, assessment projection | Checkout fixture and Site command contract |
+| MCP              | OAuth/scopes, tool schemas, resources, CLI/client adapters  | Same Site command and Outcome projections  |
+| Human UI         | Outcome-first Home/detail/settings states                   | Same projections; no mock health logic     |
+| Trigger adapters | Watch, Railway, Shopify and API adapters                    | Same RunRequest/idempotency contract       |
+| Public/docs      | Draft copy, IA, examples and reference                      | Only behavior proven by Gates 1–4          |
+| Operations       | telemetry, cost, security and canary tooling                | Same run/assessment identifiers            |
+
+## Immediately after launch
+
+- Add deterministic HTTP/API Outcome bindings for machine-facing software.
+- Add deployment providers and changed-area selection.
+- Add safe authenticated browser Outcomes with explicit fixture/reset contracts.
+- Adopt MCP Tasks/subscriptions where actual clients support them.
+- Improve environment comparison, dependency context, and cost-based paid readiness.
+
+## Later, without delaying launch
+
+- Monitor MCP servers, agent tools, and autonomous workflows for discovery, permission, intended side effect, and final real-world state.
+- Sandboxed evaluation for irreversible actions such as refunds.
+- Additional context integrations, custom Outcome builders, team collaboration, public Flag grants, and richer cross-system knowledge.
+- Build proprietary browser/runtime infrastructure only when measured economics, reliability, security, or execution quality requires it.
+
+## Explicit non-goals for the launch milestone
+
+- No replacement of the working Audit/worker/browser engine.
+- No new root System/Monitor/Test/Task domain hierarchy.
+- No generic enterprise test-management UI or raw run dashboard.
+- No autonomous repository edits or agent-certified success.
+- No requirement to solve generalized autonomous-agent evaluation before shipping MCP.
+- No deletion of broad page/security/search/performance/tracking/accessibility evidence because it is not a Journey.
+- No public claim for machine-facing Outcomes until a real adapter passes the same evidence rules.
 
 ## Release honesty
 
-Current code is not the completed target. [PRODUCT.md](PRODUCT.md) inventories the baseline. Passing old report tests proves compatibility, not the new experience. Each phase needs behavior evidence and an updated session record. Follow [QUALITY.md](QUALITY.md) and existing exact-revision release tooling for deployment claims.
+Documentation may describe TARGET architecture. Marketing may describe only SHIPPED behavior. A schema migration, exposed MCP endpoint, or passing unit test does not complete this roadmap. Launch requires the end-to-end evidence in Gates 0–5 on one exact production revision.

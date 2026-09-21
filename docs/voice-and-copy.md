@@ -4,11 +4,11 @@
 
 The [vision](../knowledge/vision.md) owns product direction. [SOUL.md](../SOUL.md) owns personality. [Evidence rules](../knowledge/evidence-rules.md) own certainty, coverage, and recovery. This file owns how FixFlags speaks: positioning, vocabulary, voice, and rules for future copy.
 
-Where the vision narrative uses older phrases such as “Check my website” or “Find → Understand → Fix → Verify,” this canon is authoritative for public language. Do not invent a second messaging system in marketing modules, help articles, or skills.
+This target language is ahead of the live marketing cut. Do not invent a second messaging system in marketing modules, help articles, or skills, and do not publish target claims before the matching behavior ships.
 
 ## Customer
 
-FixFlags is for people whose website, shop, app, landing pages, funnels, ads, forms, tracking, or other online experiences contribute to making money.
+FixFlags is for people responsible for live software: websites, shops, apps, APIs, publishing systems, forms, commerce, and increasingly agentic tools and workflows.
 
 Typical readers are technically literate: developers, technical founders, ecommerce operators, growth teams, agencies, and operators of businesses that depend on an online product. Do not dumb the product down. Technical words are useful when they carry meaning.
 
@@ -22,7 +22,9 @@ The customer should not have to continuously check all of this themselves.
 
 ## Positioning
 
-FixFlags is continuous monitoring for businesses that depend on their website.
+FixFlags is the independent monitor for software that acts.
+
+**Your software runs. FixFlags watches.**
 
 The first analysis is the acquisition experience. Continuous monitoring is the product.
 
@@ -32,9 +34,11 @@ We sell risk reduction and awareness. We do not make legal or absolute guarantee
 
 ## Emotional promise
 
-The brand line remains:
+The new product line is:
 
-**Your website, looked after.**
+**Your software runs. FixFlags watches.**
+
+**Your website, looked after.** remains valid historical/live website-care copy until the public launch cut, not the governing future position.
 
 The emotional positioning lives between:
 
@@ -48,7 +52,7 @@ Calm assurance, not dashboard guilt. The primary value is not “come check your
 
 ## Product truth
 
-FixFlags does more than apply a generic checklist to URLs. It learns what the website appears to be trying to do. It uses the live website like a visitor and can reason about the key flows the business depends on. That understanding gives weight to its Flags.
+FixFlags does more than apply a generic checklist to URLs. It learns which Outcomes the live product must deliver and independently exercises them. It can use a browser like a visitor, run deterministic checks, and later use API or agent-oriented evaluators. That understanding gives weight to its Flags.
 
 A useful underlying idea is “monitoring that understands your website.” Do not automatically use that exact sentence. Express the idea succinctly. Do not explain the implementation in long paragraphs.
 
@@ -56,11 +60,11 @@ The customer still has a dashboard and can inspect everything. That is available
 
 ## Governing principle
 
-**Analyze broadly. Flag what matters.**
+**Watch what matters. Flag what breaks. Verify what changed.**
 
 This is a durable rule for language and product behavior.
 
-**Analyze broadly** means FixFlags may inspect many technical, experiential, search, performance, security, tracking, accessibility, commerce, and Journey signals. Breadth is how FixFlags understands the website. It is not a promise that every signal becomes customer work.
+FixFlags still analyzes broadly. Technical, experiential, search, performance, security, tracking, accessibility, commerce, and Journey signals remain useful. Breadth is how FixFlags understands the product. It is not a promise that every signal becomes an Outcome failure or customer work.
 
 **Flag what matters** means only findings important enough to warrant customer attention become Flags.
 
@@ -95,41 +99,42 @@ Do not:
 
 ## Tone by moment
 
-| Moment | Tone |
-| --- | --- |
-| Acquisition | Calm confidence. URL in. Analyze. |
-| Risk | Concrete consequence, then reassurance that FixFlags is watching |
-| Healthy | Quiet. 0 Flags. Coverage remains visible. |
-| Flag | Direct, specific, ready to act. No drama. |
-| Fix | Useful. The customer, a teammate, an agency, or an AI coding tool does the work. |
-| Verify | Matter-of-fact. FixFlags returns to the live experience. |
-| Notification | Sparse. Only when a Flag warrants interruption. |
-| Privacy | Present and true. Never a homepage manifesto. |
+| Moment       | Tone                                                                             |
+| ------------ | -------------------------------------------------------------------------------- |
+| Acquisition  | Calm confidence. URL in. Analyze.                                                |
+| Risk         | Concrete consequence, then reassurance that FixFlags is watching                 |
+| Healthy      | Quiet. Outcomes are Clear where coverage is current.                             |
+| Flag         | Direct, specific, ready to act. No drama.                                        |
+| Fix          | Useful. The customer, a teammate, an agency, or an AI coding tool does the work. |
+| Verify       | Matter-of-fact. FixFlags returns to the live experience.                         |
+| Notification | Sparse. Only when a Flag warrants interruption.                                  |
+| Privacy      | Present and true. Never a homepage manifesto.                                    |
 
 ## Canonical vocabulary
 
-Use this vocabulary consistently unless a genuine product reason requires revision. Internal code may keep scan, audit, check, re-check, Outcome, and rubric identifiers.
+Use this vocabulary consistently unless a genuine product reason requires revision. Internal code may keep Project, Audit, Improvement, scan, check, re-check, and rubric identifiers.
 
-| Term | Meaning | Customer-facing? |
-| --- | --- | --- |
-| Analyze | The initial website analysis. Primary acquisition CTA. | Yes |
-| Monitor / monitoring | What FixFlags does continuously. Canonical product category. | Yes |
-| Watch | Emotional brand verb. Prefer in lines such as “FixFlags keeps watch.” Not the product category. | Brand copy |
-| Automated tests | The 100+ tests FixFlags runs. Prefer over “checks” in customer copy. | Yes |
-| Journey | An important sequence a real visitor or customer attempts to complete. Purchase, Signup, Contact, Book, Donate. | Yes |
-| Flag | A problem FixFlags believes is important enough to act on. Not every imperfection. | Yes |
-| Recommendation | Something that could improve the site but does not currently warrant a Flag. | Yes, when the object exists |
-| Fix | The action taken after a Flag. Not normally performed by FixFlags in the customer's repository. | Yes |
-| Verify | FixFlags returns to the live experience and proves the result. | Yes |
-| 0 Flags | Currently nothing important enough to act on. | Yes |
-| Site | The persistent customer object being looked after. Not the first dashboard card. | Yes, as the product object |
-| Pages | The explored pages of the Site. Preferred name for the first dashboard card. | Yes, as the card |
-| Outcome | Internal/product-model name for an inferred business result. Customer copy should usually say Journey. | Internal unless confirmation UI needs it |
-| Check | Internal execution of an automated test. Not a customer attention object. | Internal |
-| Coverage | What was actually evidenced, when, and with what limits. Required near health claims. | Quiet, when health is claimed |
-| Connection / integration | Authorized context that makes monitoring smarter. | Yes, as Integrations |
+| Term                     | Meaning                                                                                                                                           | Customer-facing?                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Analyze                  | The initial website analysis. Primary acquisition CTA.                                                                                            | Yes                                     |
+| Monitor / monitoring     | What FixFlags does continuously. Canonical product category.                                                                                      | Yes                                     |
+| Watch                    | Emotional brand verb. Prefer in lines such as “FixFlags keeps watch.” Not the product category.                                                   | Brand copy                              |
+| Automated tests          | The 100+ tests FixFlags runs. Prefer over “checks” in customer copy.                                                                              | Yes                                     |
+| Outcome                  | An important result FixFlags watches: Checkout, Signup, Login, Publish, Password reset, or an API operation.                                      | Yes                                     |
+| Journey                  | A browser path a person takes to complete a human-facing Outcome. Product to checkout, Signup, Contact.                                           | Yes, when it is truly a browser journey |
+| Flag                     | A problem FixFlags believes is important enough to act on. Not every imperfection.                                                                | Yes                                     |
+| Recommendation           | Something that could improve the site but does not currently warrant a Flag.                                                                      | Yes, when the object exists             |
+| Fix                      | The action taken after a Flag. Not normally performed by FixFlags in the customer's repository.                                                   | Yes                                     |
+| Verify                   | FixFlags returns to the live experience and proves the result.                                                                                    | Yes                                     |
+| 0 Flags                  | Currently nothing important enough to act on.                                                                                                     | Yes                                     |
+| Site                     | The persistent launch Product FixFlags watches. Backed internally by Project.                                                                     | Yes, as the current product object      |
+| Pages                    | The explored pages of the Site. Preferred name for the first dashboard card.                                                                      | Yes, as the card                        |
+| Run                      | One independent execution requested by Watch, a human, MCP, deployment, API, integration, or FixFlags. Usually describe the result, not the noun. | Secondary/developer copy                |
+| Check                    | A technical evidence producer. Not an Outcome or customer attention object.                                                                       | Usually internal                        |
+| Coverage                 | What was actually evidenced, when, and with what limits. Required near health claims.                                                             | Quiet, when health is claimed           |
+| Connection / integration | Authorized context that makes monitoring smarter.                                                                                                 | Yes, as Integrations                    |
 
-Do not accumulate parallel taxonomies such as checks, findings, issues, warnings, problems, alerts, and recommendations when fewer concepts communicate the same thing. The customer-facing set is Flag, Recommendation, and the states around them.
+Do not accumulate parallel taxonomies such as monitors, objectives, tasks, tests, checks, findings, issues, warnings, and alerts when fewer concepts communicate the same thing. The customer-facing hierarchy is Site → Outcome → Clear or Flag, with evidence, Recommendation, history, and diagnostics underneath.
 
 Retired as primary customer language: Check my website, Check, Site check, Needs attention, Checks passed, Fresh check passed, assessment, controlled example, Work with your AI, Copy prompt as the lead AI story.
 
@@ -179,13 +184,13 @@ The number is credibility, not the product. Do not reduce FixFlags to a generic 
 
 As of the 2026-09-09 audit, `lib/audit/check-ids.ts` registers 201 deterministic check IDs. “100+” is substantiated. Recheck the count before raising the advertised number.
 
-## Journey
+## Outcome and Journey
 
-A Journey is an important sequence a real visitor or customer attempts to complete.
+An Outcome is an important result FixFlags watches: Checkout works, a customer can Sign up, Publish completes, or an API performs the expected operation.
 
-Examples: Purchase, Signup, Contact, Book, Donate.
+A Journey is one browser path a person takes to reach a human-facing Outcome. “Product to checkout” is a Journey underneath Checkout. Do not call deterministic checks, HTTP verification, MCP tools, or agent tasks Journeys.
 
-The product model may still infer Outcomes. Customer-facing copy should usually name the Journey, not the implementation. Confirmation UI such as “Looks right · Edit” can remain when the product asks the customer to confirm understanding.
+Use the concrete Outcome name whenever possible. “Checkout is Clear” is better than “the Outcome passed.” Confirmation UI such as “Looks right · Edit” remains useful when FixFlags inferred what matters.
 
 ## Flag
 
@@ -262,16 +267,16 @@ It does not mean untested behavior is healthy. Coverage, scope, and freshness st
 
 Required customer states, without extra taxonomy:
 
-| Situation | Customer presentation |
-| --- | --- |
-| Required areas evidenced, nothing important enough to act on | 0 Flags, plus useful metrics |
-| Analysis still running | Learning / Checking. Not 0 Flags. |
-| Required area never evidenced | Coverage incomplete / not verified yet. Not 0 Flags. |
-| Browser run failed or blocked | Couldn't verify that area. Not 0 Flags. |
-| Results are stale | Last known, distinguished from current. Not a fresh all-clear. |
-| Monitoring not scheduled | First analysis only. Do not say you're covered. |
-| Integration disconnected | Existing answer remains; missing context explicit |
-| Recommendations exist with 0 Flags | 0 Flags on the face. Recommendations in card depth. |
+| Situation                                                    | Customer presentation                                          |
+| ------------------------------------------------------------ | -------------------------------------------------------------- |
+| Required areas evidenced, nothing important enough to act on | 0 Flags, plus useful metrics                                   |
+| Analysis still running                                       | Learning / Checking. Not 0 Flags.                              |
+| Required area never evidenced                                | Coverage incomplete / not verified yet. Not 0 Flags.           |
+| Browser run failed or blocked                                | Couldn't verify that area. Not 0 Flags.                        |
+| Results are stale                                            | Last known, distinguished from current. Not a fresh all-clear. |
+| Monitoring not scheduled                                     | First analysis only. Do not say you're covered.                |
+| Integration disconnected                                     | Existing answer remains; missing context explicit              |
+| Recommendations exist with 0 Flags                           | 0 Flags on the face. Recommendations in card depth.            |
 
 ## Flag. Fix. Verify.
 
@@ -287,11 +292,11 @@ The customer-facing expression should usually remain **Flag. Fix. Verify.**
 
 Responsibility:
 
-| Step | Who |
-| --- | --- |
-| Flag | FixFlags finds what matters and raises a Flag |
-| Fix | The customer, team, agency, or AI coding tool |
-| Verify | FixFlags returns to the live experience |
+| Step   | Who                                           |
+| ------ | --------------------------------------------- |
+| Flag   | FixFlags finds what matters and raises a Flag |
+| Fix    | The customer, team, agency, or AI coding tool |
+| Verify | FixFlags returns to the live experience       |
 
 Do not mechanically repeat the loop on every surface. Use it where it teaches the product: homepage, onboarding, Flag detail, notifications, documentation, and AI workflows.
 
@@ -308,11 +313,11 @@ Avoid redundant prose.
 
 Direction:
 
-| Category | Flags | Metric |
-| --- | --- | --- |
-| Performance | 3 Flags | 3.1s |
-| Search | 0 Flags | 12 pages |
-| Security | 0 Flags | Protected |
+| Category    | Flags   | Metric    |
+| ----------- | ------- | --------- |
+| Performance | 3 Flags | 3.1s      |
+| Search      | 0 Flags | 12 pages  |
+| Security    | 0 Flags | Protected |
 
 The useful metric makes a healthy card informative. Clicking a card reveals the detailed analysis.
 
@@ -369,13 +374,13 @@ Integrations make FixFlags smarter. They are not a marketplace and not a second 
 
 ## AI and MCP
 
-AI is an important secondary capability, not the primary positioning of FixFlags. The core product must remain valuable if the customer never uses an AI coding tool. Do not erase MCP from the strategy because it is not homepage-ready.
+MCP is launch-critical, but it is an interaction channel rather than the primary hierarchy. FixFlags remains valuable and keeps watching if the customer never connects a coding tool.
 
 ### Customer concept
 
 **Send a Flag to your AI.**
 
-FixFlags can provide the context required to work on the Flag: the Flag itself, evidence, URL or session reference, reproduction, expected result, recommended fix, and verification criteria. Journey and Site context belong in that handoff when they exist.
+FixFlags provides the Outcome, Flag, evidence, reproduction, expected result, fix context, and success condition. Through MCP, the coding agent can also request a fresh independent run and retrieve its result.
 
 Do not lead a general customer with “Connect FixFlags through MCP.” Lead with the outcome.
 
@@ -383,19 +388,19 @@ Do not lead a general customer with “Connect FixFlags through MCP.” Lead wit
 
 The shipped customer path is copying a ready-to-fix prompt that contains Flag context. Flag actions expose Fix this, Copy prompt, Share, and Verify fix. Anonymous visitors see evidence; fix prompt bodies stay gated until claim. FixFlags does not edit the customer's repository.
 
-### Deeper / future integration
+### Launch integration
 
-MCP is strategically important as a standard way for AI tools to access product context. The HTTP MCP surface, CLI, and API keys exist in the repository and are **parked** from production discovery (`proxy.ts`). Do not present MCP as generally available until the experience is customer-ready.
+The HTTP MCP surface, CLI, device authorization, API keys, editor setup, and interaction ledger already exist but are currently parked from production discovery. Launch requires re-scoping them from report/Fix-List tools to owned Site, Outcome, Run, and Flag tools, then proving the full loop before discovery is opened.
 
-Surface MCP when it is real:
+Surface MCP when that loop is real:
 
 - developer documentation
 - integrations or settings, for people who ask how
 - Flag handoff, as a progressive option beside copy
-- future AI connection setup
-- homepage only once the experience is useful without a paragraph of instructions
+- Site developer-access setup
+- homepage only once change → verify → Flag → fix → verify → Clear works in real clients
 
-The monitoring product stays primary. Richer MCP workflows are a secondary path, not a repositioning.
+The monitoring product stays primary. Scheduled Watch and UI use the same engine and never depend on MCP.
 
 ## Two AIs
 
@@ -403,7 +408,7 @@ Do not collapse these into one “AI” feature.
 
 ### FixFlags Agent
 
-The intended in-product assistant is a persistent control, typically bottom-right, available throughout the Site. Its job is to help the customer understand and operate FixFlags. It is grounded in Site, Pages, Journeys, Flags, Recommendations, monitoring, and connections. It can explain, navigate, gather context, help the customer fix, send a Flag to their coding AI, and escalate to human support with that context preserved.
+The intended in-product assistant is a persistent control, typically bottom-right, available throughout the Site. Its job is to help the customer understand and operate FixFlags. It is grounded in Site, Outcomes, Pages, Journeys, Flags, Recommendations, monitoring, and connections. It can explain, navigate, gather context, help the customer fix, send a Flag to their coding AI, and escalate to human support with that context preserved.
 
 This is **not** the current legacy report Agent pane. Do not market the FAB until it exists. Do not build a competing Agent destination beside Home and Flags. Until it ships, Help and live support remain the human path.
 
@@ -411,7 +416,7 @@ Allowed later: explain, navigate, gather context, confirmed Verify or Watch chan
 
 ### Customer's coding AI
 
-External tools that implement a Fix. Customer concept: **Send a Flag to your AI.** Mechanism today: copy a prompt. Later: richer payload and optional MCP. FixFlags does not edit the customer's repository.
+External tools that implement a Fix. Customer concept: **Send a Flag to your AI.** Copy remains useful; MCP is the launch-grade connected path. The coding agent may request verification but cannot certify the result. FixFlags does not edit the customer's repository.
 
 If a sentence could mean either assistant, rewrite it until the job is obvious.
 
@@ -425,12 +430,12 @@ Preferred homes: Privacy page, a short FAQ answer, and a quiet line in account o
 
 ## Homepage direction
 
-Retain:
+Target launch line:
 
-**Your website,**
-**looked after.**
+**Your software runs.**
+**FixFlags watches.**
 
-Supporting message should combine monitoring, 100+ automated tests, real browser journeys, and flagging what matters. Do not force every capability into one sentence. Distribute across headline, one short supporting sentence, CTA, and small proof points.
+Supporting message should make independent live Outcome monitoring concrete, starting with websites and browser journeys. Do not imply generalized agent evaluation before it exists. Distribute checks, journeys, Watch, and MCP proof across the page instead of forcing every capability into one sentence.
 
 Primary CTA: Analyze. The interaction begins with a URL.
 
@@ -440,18 +445,19 @@ Dashboard preview: Flag counts, useful metrics, no “Controlled example, not a 
 
 How FixFlags works: Flag. Fix. Verify. Responsibility must be obvious almost instantly.
 
-Coverage section: Analyze broadly. Flag what matters. 100+ automated tests, real browser journeys, and understanding of what the business depends on. Do not present FixFlags as a generic checklist.
+Coverage section: concrete Outcomes first, then the breadth of 100+ automated tests, real browser journeys, and broader Product health. Do not present FixFlags as a generic checklist or journeys-only tool.
 
 Integrations: make FixFlags smarter. Do not promise unsupported integrations.
 
-AI: one strong secondary story around Send a Flag to your AI. Do not explain copying prompts several times.
+AI: one complete story around connect → request independent verification → inspect Flag → fix → verify again. Keep Send a Flag to your AI as the human handoff language.
 
 ## Examples
 
 Good:
 
-- Keep building. FixFlags keeps watch.
-- Analyze broadly. Flag what matters.
+- Your software runs. FixFlags watches.
+- Checkout · Flag
+- Signup · Clear
 - yourwebsite.com / Analyze
 - 100+ automated tests. Real browser journeys.
 - 1 Flag. Contact form stopped confirming messages.
@@ -477,8 +483,7 @@ Acceptable brand color, not product category:
 - Controlled example, not a live assessment
 - Work with your AI as the lead AI story
 - Copy prompt as the homepage AI headline
-- Connect FixFlags through MCP as a general-customer lead
-- MCP presented as generally available while it is parked
+- MCP described as launched before the end-to-end Site/Outcome loop is unparked and client-proven
 - POLISH treated as a synonym for Recommendation
 - Every stored finding counted as a Flag on the board
 - Analyze everything, as an absolute claim
