@@ -34,7 +34,7 @@ export function CompletedReportView({ state }: { state: CompletedState }) {
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Saved evidence · {hostname}
           </p>
-          <h1 className="text-balance font-display text-3xl font-semibold tracking-display sm:text-4xl">
+          <h1 className="text-balance font-sans text-3xl font-semibold tracking-heading sm:text-4xl">
             Evidence from an earlier FixFlags check
           </h1>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
