@@ -1,8 +1,8 @@
 export const SEO = {
   home: {
-    title: 'FixFlags - Your website, looked after.',
+    title: 'FixFlags - Your software runs. FixFlags watches.',
     description:
-      'FixFlags monitors your live website with 100+ automated tests and real browser journeys. When something matters, you get a Flag.',
+      'FixFlags independently checks the important outcomes on your live website. See Clear or a Flag with evidence, verify a fix, and keep watching.',
   },
   protect: {
     title: "Protect the path that makes money",

@@ -215,8 +215,8 @@ describe('canUseApiKeys', () => {
     expect(canUseApiKeys(makeUser({ plan: 'TEAM' }))).toBe(true)
   })
 
-  it('returns false for FREE plan', () => {
-    expect(canUseApiKeys(makeUser({ plan: 'FREE' }))).toBe(false)
+  it('returns true for FREE plan', () => {
+    expect(canUseApiKeys(makeUser({ plan: 'FREE' }))).toBe(true)
   })
 })
 
@@ -234,7 +234,7 @@ describe('getEntitlements', () => {
       canAccessPaidFeatures: false,
       canMonitor: true,
       canWatchProduct: true,
-      canUseMcp: false,
+      canUseMcp: true,
       canAccessBasicMcp: true,
       canScanRepositories: false,
     })
@@ -279,7 +279,7 @@ describe('getEntitlements', () => {
     })
   })
 
-  it('revokes power tools but preserves web capabilities after cancellation', () => {
+  it('revokes paid power tools but preserves free MCP and web capabilities after cancellation', () => {
     const entitlements = getEntitlements(
       makeUser({ plan: 'TEAM', subscriptionStatus: 'CANCELED' })
     )
@@ -288,8 +288,8 @@ describe('getEntitlements', () => {
       canAccessPaidFeatures: false,
       canMonitor: true,
       canWatchProduct: true,
-      canUseMcp: false,
-      canAccessBasicMcp: false,
+      canUseMcp: true,
+      canAccessBasicMcp: true,
       canScanRepositories: false,
     })
   })

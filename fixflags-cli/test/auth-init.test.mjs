@@ -47,7 +47,7 @@ description: Check and verify a deployed product with FixFlags.
 
 # FixFlags
 
-Check, fix, deploy, and Re-check the original report.
+Ask FixFlags to independently verify the important Outcome after a change.
 `
   const server = createServer((request, response) => {
     if (request.url === '/.well-known/skills/fixflags/SKILL.md') {
@@ -185,7 +185,7 @@ test('init merges MCP configuration, installs the canonical rule, and is idempot
   assert.match(firstConfig, /"command": "fixflags"/)
   assert.match(firstConfig, /"mcp"/)
   assert.doesNotMatch(firstConfig, /ff_live_/)
-  assert.match(readFileSync(join(root, '.cursor', 'rules', 'fixflags.mdc'), 'utf8'), /Re-check the original report/)
+  assert.match(readFileSync(join(root, '.cursor', 'rules', 'fixflags.mdc'), 'utf8'), /independently verify the important Outcome/)
 
   const second = await runCli(['init', 'https://product.example', '--editor', 'cursor', '--yes'], options)
   assert.equal(second.code, 0, second.stderr)

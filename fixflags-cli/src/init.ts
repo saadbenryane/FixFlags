@@ -83,7 +83,7 @@ function detectedEditors(cwd: string): Editor[] {
 function cursorRule(skill: string): string {
   const body = skill.replace(/^---[\s\S]*?---\s*/m, '')
   return `---
-description: Check, fix, deploy, and update review with FixFlags
+description: Ask FixFlags to independently verify important outcomes after a change
 alwaysApply: false
 ---
 

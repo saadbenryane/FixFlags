@@ -135,14 +135,16 @@ function printServiceState(jsonMode: boolean): void {
     api: API_BASE,
     authenticated,
     workflows: [
-      'check <url>',
-      'attempt <flagId> --summary <change>',
-      'recheck <reportId>',
-      'status <reportId>',
+      'sites',
+      'outcomes <siteId>',
+      'verify-outcome <siteId> <outcomeId>',
+      'run <runId>',
+      'flags <siteId>',
+      'verify-flag <siteId> <flagId>',
     ],
     next: authenticated
-      ? ['fixflags check <url>', 'fixflags --help']
-      : ['npx fixflags check <url>', 'fixflags login', 'fixflags init'],
+      ? ['fixflags sites', 'fixflags init', 'fixflags --help']
+      : ['fixflags login', 'fixflags init', 'fixflags --help'],
   }
   if (jsonMode) console.log(JSON.stringify(payload, null, 2))
   else {
@@ -160,7 +162,7 @@ const program = new Command()
 
 program
   .name('fixflags')
-  .description('Finish and verify AI-built products')
+  .description('Connect coding agents to independent FixFlags verification')
   .version(CLI_VERSION)
   .option('--json', 'Print structured JSON')
   .action((options: { json?: boolean }) => {
@@ -292,6 +294,113 @@ program
     }
   })
 
+async function authenticatedCall(tool: string, args: Record<string, unknown>) {
+  const apiKey = await getCredential()
+  if (!apiKey) throw new Error('Not authenticated. Run fixflags login, or set FIXFLAGS_API_KEY for CI.')
+  return createMcpCaller(apiKey)(tool, args)
+}
+
+function printResult(result: unknown, jsonMode: boolean) {
+  if (jsonMode) console.log(JSON.stringify(result, null, 2))
+  else console.log(JSON.stringify(result, null, 2))
+}
+
+program
+  .command('sites')
+  .description('List Sites owned by the connected account')
+  .action(async (options: { json?: boolean }, command: Command) => {
+    const jsonMode = isJsonMode(options.json, command)
+    try {
+      printResult(await authenticatedCall('ff_list_sites', {}), jsonMode)
+    } catch (error) {
+      fail(error, jsonMode)
+    }
+  })
+
+program
+  .command('outcomes <siteId>')
+  .description('List important Outcomes and their current state')
+  .action(async (siteId: string, options: { json?: boolean }, command: Command) => {
+    const jsonMode = isJsonMode(options.json, command)
+    try {
+      printResult(await authenticatedCall('ff_list_outcomes', { siteId }), jsonMode)
+    } catch (error) {
+      fail(error, jsonMode)
+    }
+  })
+
+program
+  .command('verify-outcome <siteId> <outcomeId>')
+  .description('Start independent verification of an Outcome')
+  .option('--commit <sha>', 'Commit associated with the request')
+  .option('--deployment <reference>', 'Deployment reference associated with the request')
+  .action(async (
+    siteId: string,
+    outcomeId: string,
+    options: { commit?: string; deployment?: string; json?: boolean },
+    command: Command,
+  ) => {
+    const jsonMode = isJsonMode(options.json, command)
+    try {
+      printResult(await authenticatedCall('ff_verify_outcome', {
+        siteId,
+        outcomeId,
+        commit: options.commit,
+        deployment: options.deployment,
+      }), jsonMode)
+    } catch (error) {
+      fail(error, jsonMode)
+    }
+  })
+
+program
+  .command('run <runId>')
+  .description('Get progress or the final result for an Outcome run')
+  .action(async (runId: string, options: { json?: boolean }, command: Command) => {
+    const jsonMode = isJsonMode(options.json, command)
+    try {
+      printResult(await authenticatedCall('ff_get_run', { runId }), jsonMode)
+    } catch (error) {
+      fail(error, jsonMode)
+    }
+  })
+
+program
+  .command('flags <siteId>')
+  .description('List active Flags for an owned Site')
+  .action(async (siteId: string, options: { json?: boolean }, command: Command) => {
+    const jsonMode = isJsonMode(options.json, command)
+    try {
+      printResult(await authenticatedCall('ff_list_flags', { siteId }), jsonMode)
+    } catch (error) {
+      fail(error, jsonMode)
+    }
+  })
+
+program
+  .command('flag <siteId> <flagId>')
+  .description('Get one Flag with evidence and verification history')
+  .action(async (siteId: string, flagId: string, options: { json?: boolean }, command: Command) => {
+    const jsonMode = isJsonMode(options.json, command)
+    try {
+      printResult(await authenticatedCall('ff_get_flag', { siteId, flagId }), jsonMode)
+    } catch (error) {
+      fail(error, jsonMode)
+    }
+  })
+
+program
+  .command('verify-flag <siteId> <flagId>')
+  .description('Re-verify a Flag after a fix')
+  .action(async (siteId: string, flagId: string, options: { json?: boolean }, command: Command) => {
+    const jsonMode = isJsonMode(options.json, command)
+    try {
+      printResult(await authenticatedCall('ff_verify_flag', { siteId, flagId }), jsonMode)
+    } catch (error) {
+      fail(error, jsonMode)
+    }
+  })
+
 function parseScanAccessFromCli(options: {
   scanAccessFile?: string
   basicAuth?: string
@@ -320,7 +429,7 @@ function parseScanAccessFromCli(options: {
 }
 
 program
-  .command('check <url>')
+  .command('check <url>', { noHelp: true })
   .description('Check a URL and return the highest-leverage Finish Plan')
   .option('--wait', 'Wait for the completed check', true)
   .option('--no-wait', 'Return as soon as the check is queued')
@@ -427,7 +536,7 @@ program
   )
 
 program
-  .command('attempt <flagId>')
+  .command('attempt <flagId>', { noHelp: true })
   .description('Record an implemented change as ready for independent verification')
   .requiredOption('--summary <change>', 'Describe the change that was implemented')
   .option('--deployment <reference>', 'Deployment URL, version, commit, or other reference')
@@ -481,7 +590,7 @@ program
   )
 
 program
-  .command('recheck <reportId>')
+  .command('recheck <reportId>', { noHelp: true })
   .description('Run a fresh update review and show what improved or regressed')
   .option('--wait', 'Wait for the completed update review', true)
   .option('--no-wait', 'Return as soon as the update review is queued')
@@ -575,7 +684,7 @@ program
   )
 
 program
-  .command('status <reportId>')
+  .command('status <reportId>', { noHelp: true })
   .description('Get the current status of a check')
     .action(async (reportId: string, options: { json?: boolean }, command: Command) => {
     const jsonMode = isJsonMode(options.json, command)

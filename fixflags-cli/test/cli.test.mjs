@@ -211,8 +211,8 @@ test('built CLI no-argument view is live, compact, and successful', async () => 
   assert.equal(result.code, 0, result.stderr)
   assert.match(result.stdout, /service: FixFlags/)
   assert.match(result.stdout, /authenticated: yes/)
-  assert.match(result.stdout, /check <url>/)
-  assert.match(result.stdout, /attempt <flagId>/)
+  assert.match(result.stdout, /outcomes <siteId>/)
+  assert.match(result.stdout, /verify-outcome <siteId> <outcomeId>/)
   assert.doesNotMatch(result.stdout, /Usage:/)
 })
 

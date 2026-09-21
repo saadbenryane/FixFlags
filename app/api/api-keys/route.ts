@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
-import { canUseApiKeys } from '@/lib/auth/entitlements'
 import {
   generateApiKey,
   MAX_ACTIVE_API_KEYS,
@@ -43,14 +42,6 @@ export async function POST(req: NextRequest) {
 
     const clientId = requestClientId(await headers())
     await enforceRateLimit({ scope: 'api-keys', identifier: `${session.user.id}:${clientId}`, limit: 10, windowSeconds: 60 })
-
-    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-    if (!user || !canUseApiKeys(user)) {
-      return apiError('API keys require the Pro plan or higher', 402, {
-        code: 'UPGRADE_REQUIRED',
-        action: 'upgrade',
-      })
-    }
 
     const body = await req.json().catch(() => ({}))
     const name = typeof body.name === 'string' ? body.name.trim().slice(0, 80) : 'Default'

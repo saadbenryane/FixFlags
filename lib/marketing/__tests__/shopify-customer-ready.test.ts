@@ -30,8 +30,6 @@ function docsMarkdown(): string {
 
 const PARKED_PRODUCT = [
   /website roast/i,
-  /\bcli\b/i,
-  /\bmcp\b/i,
   /paste a (live )?url/i,
   /paste-url/i,
   /fix prompt/i,
@@ -78,7 +76,7 @@ describe('stranger-facing website care', () => {
     expect(MARKETING_LINKS.some((link) => link.href === '/pricing')).toBe(true)
   })
 
-  it('does not advertise parked Product Review, Roast, CLI, or MCP', () => {
+  it('does not advertise parked Product Review or Roast concepts', () => {
     const blob = `${STRANGER_SURFACES.join('\n')}\n${docsMarkdown()}`
     for (const pattern of PARKED_PRODUCT) {
       expect(blob, String(pattern)).not.toMatch(pattern)

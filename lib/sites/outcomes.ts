@@ -188,9 +188,10 @@ export async function syncOutcomesFromAudit(input: {
       JSON.stringify(audit.productContract ?? {}),
       ...audit.flags.flatMap((flag) => [flag.checkId ?? '', flag.problem, flag.pageUrl ?? '']),
       ...audit.pages.map((page) => page.url),
+      ...audit.journeyReviews.map((journey) => journey.journeyType),
     ].join(' ')
     if (
-      /\b(checkout|add.to.cart|purchase|buy.now|payment|\/products?\/|\/cart(?:\/|\b))/i.test(
+      /\b(checkout|add(?:\s+|-)to(?:\s+|-)cart|purchase|buy(?:\s+|-)now|payment|\/products?\/|\/cart(?:\/|\b))/i.test(
         checkoutSignal,
       )
     ) {
@@ -207,7 +208,9 @@ export async function syncOutcomesFromAudit(input: {
         /checkout|cart|purchase|buy/i.test(`${flag.checkId ?? ''} ${flag.problem}`),
       )?.pageUrl
       const productPage = audit.pages.find((page) => /\/products?\//i.test(page.url))?.url
-      const startUrl = linkedPath?.storefrontUrl ?? flaggedPage ?? productPage ?? input.site.url
+      const checkoutJourney = audit.journeyReviews.find((journey) => journey.journeyType === 'checkout')
+      const observedStartUrl = linkedPath?.storefrontUrl ?? flaggedPage ?? productPage ?? checkoutJourney?.startUrl
+      const startUrl = observedStartUrl ?? input.site.url
       const where: Prisma.SiteOutcomeWhereUniqueInput = input.site.projectId
         ? {
             projectId_slug: {
@@ -248,10 +251,9 @@ export async function syncOutcomesFromAudit(input: {
           key: 'checkout-browser-v1',
           config: { startUrl, safety: 'stop-at-checkout' },
         },
-        update: {
-          config: { startUrl, safety: 'stop-at-checkout' },
-          enabled: true,
-        },
+        update: observedStartUrl
+          ? { config: { startUrl, safety: 'stop-at-checkout' }, enabled: true }
+          : { enabled: true },
       })
     }
   })

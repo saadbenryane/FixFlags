@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { RateLimitError } from '@/lib/security/rate-limit'
 import {
   MCP_CONTRACT_VERSION,
   MCP_CORE_TOOL_DEFINITIONS,
@@ -43,26 +44,40 @@ export function mcpStructuredResult<T extends object>(payload: T) {
 }
 
 export function mcpCoreError(error: unknown, defaults?: { code?: string; action?: string }) {
-  const typed = error as Error & { code?: string; action?: string; status?: number }
-  let code = typed.code ?? defaults?.code ?? 'MCP_TOOL_FAILED'
-  let action = typed.action ?? defaults?.action ?? 'retry'
+  const typed = error instanceof Error
+    ? error
+    : new Error('MCP tool failed')
+  let code = defaults?.code ?? 'MCP_TOOL_FAILED'
+  let action = defaults?.action ?? 'retry'
+  let message = 'FixFlags could not complete this request. Please retry.'
 
-  if (/not found/i.test(typed.message ?? '')) {
+  if (error instanceof RateLimitError) {
+    code = 'RATE_LIMITED'
+    action = 'wait_and_retry'
+    message = error.message
+  } else if (/not found/i.test(typed.message ?? '')) {
     code = 'NOT_FOUND'
     action = 'check_identifier'
+    message = 'The requested Site, Outcome, run, or Flag was not found.'
   } else if (/unauthorized|access/i.test(typed.message ?? '')) {
     code = 'UNAUTHORIZED'
     action = 'check_access'
+    message = 'This account cannot access the requested Site.'
   } else if (/upgrade|plan/i.test(typed.message ?? '')) {
     code = 'PLAN_GATED'
     action = 'upgrade'
+    message = 'This action is not available on the current plan.'
+  } else if (/no active execution binding/i.test(typed.message ?? '')) {
+    code = 'OUTCOME_NOT_READY'
+    action = 'check_configuration'
+    message = 'This Outcome does not have an active execution method yet.'
   }
 
   const payload: McpErrorEnvelope = {
     status: 'ERROR',
     error: {
       code,
-      message: typed.message || 'FixFlags could not complete this tool call.',
+      message,
       recoverable: !['UNAUTHORIZED', 'PLAN_GATED'].includes(code),
       action,
     },

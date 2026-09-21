@@ -7,10 +7,10 @@ export type HomepageAudienceKey = 'website' | 'store' | 'webapp'
 
 export const CARE_HOME = {
   brand: 'FixFlags', signIn: 'Sign in',
-  headlineLines: ['Your website,', 'looked after.'],
+  headlineLines: ['Your software runs.', 'FixFlags watches.'],
   hero: {
-    body: 'FixFlags monitors your live website and lets you know when a Flag matters.',
-    proof: '100+ automated tests. Real browser journeys.',
+    body: 'Independently know whether the important outcomes on your live website still work.',
+    proof: 'Real browser journeys. Evidence you can act on.',
     trust: 'No credit card required',
     cta: 'Analyze',
     placeholder: 'yourwebsite.com',
@@ -19,6 +19,12 @@ export const CARE_HOME = {
   boardSummary: '4 Flags. View checked scope.',
   exampleCheckedAt: '2026-09-14T09:00:00.000Z',
   boardAria: `${EXAMPLE_HOST} board`,
+  checkoutOutcome: {
+    name: 'Checkout',
+    status: 'Flag',
+    detail: 'Cart did not update after Add to cart.',
+    evidence: 'Independent browser walk · Product to checkout',
+  },
   site: {
     label: CARD_CATALOG.site.name,
     status: 'Pages explored',
@@ -158,5 +164,5 @@ export const CARE_HOME = {
     future: ['Analytics', 'Search Console', 'Deployments'],
     action: 'Explore integrations',
   },
-  close: { title: 'Know how your website is doing.', body: 'Start with your URL. FixFlags will show you the Flags that matter and what to do next.', pricing: 'View pricing' },
+  close: { title: 'Know what still works.', body: 'Start with your URL. FixFlags watches the outcomes that matter and shows you the evidence when something breaks.', pricing: 'View pricing' },
 } as const

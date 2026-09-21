@@ -5,25 +5,13 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 export const PARKED_PUBLIC_PREFIXES = [
-  '/.well-known/mcp.json',
-  '/.well-known/mcp-server.json',
-  '/.well-known/skills',
-  '/api/api-keys',
-  '/api/cli',
   '/api/integrations/github',
-  '/api/mcp',
   '/api/repo-scans',
   '/api/webhooks/railway',
-  '/api/well-known/mcp-json',
-  '/cli/authorize',
   '/dashboard/mcp-analytics',
-  '/dashboard/mcp-setup',
-  '/docs/cli',
   '/docs/integrations',
-  '/docs/mcp',
   '/help/mcp-and-editors',
   '/report/repo',
-  '/settings/api-keys',
   '/settings/integrations',
 ]
 
@@ -83,7 +71,7 @@ export function powerToolVisibilityFailures({ proxySource, discoverySources }) {
     if (DISCOVERY_PATH_PATTERN.test(source)) {
       failures.push(`${file} links to a parked power-tool surface`)
     }
-    if (/(?:Set up MCP|Copy MCP|Connect [^\n]{0,50} to FixFlags|CLI docs|API keys? (?:are|require)|Repository scan|Deployment webhook)/i.test(source)) {
+    if (/(?:Repository scan|Deployment webhook)/i.test(source)) {
       failures.push(`${file} advertises parked power-tool terminology`)
     }
   }
@@ -108,6 +96,6 @@ if (isDirect) {
     for (const failure of failures) console.error(`  - ${failure}`)
     process.exitCode = 1
   } else {
-    console.log('Power-tools visibility guard passed: parked code is retained but undiscoverable.')
+    console.log('Power-tools visibility guard passed: unreleased tools remain undiscoverable.')
   }
 }

@@ -3,14 +3,14 @@ import { helpHrefForSurface } from '@/lib/help/contextual'
 export const BRAND = {
   name: 'FixFlags',
   domain: 'fixflags.com',
-  tagline: 'Your website, looked after.',
-  category: 'Website intelligence for conversion, reliability, and growth.',
+  tagline: 'Your software runs. FixFlags watches.',
+  category: 'Independent monitoring for the outcomes that matter.',
   oneLiner:
-    'FixFlags looks after what your website depends on, and tells you when something needs attention.',
+    'FixFlags independently checks important outcomes on your live website and shows evidence when something breaks.',
   supportEmail: 'hello@fixflags.com',
   mcpServerKey: 'fixflags',
   exportPrefix: 'FixFlags Report',
-  tribeBadge: 'Your website, looked after',
+  tribeBadge: 'Your software runs. FixFlags watches.',
 } as const
 
 export const SITE_URL =

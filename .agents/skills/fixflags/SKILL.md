@@ -1,29 +1,30 @@
 ---
 name: fixflags
-description: Use FixFlags to analyze a deployed website, validate an evidence-backed Flag, fix it, verify the live behavior, and leave the Site watched. Use when finishing, auditing, or verifying a website or web application.
+description: Use FixFlags to discover watched Outcomes, request independent verification, inspect evidence-backed Flags, fix live software, and verify recovery. Use when finishing or verifying a deployed website or web application.
 ---
 <!-- Auto-generated from public/.well-known/skills/fixflags/SKILL.md. Do not edit directly. Run `npm run skills:sync` to update. -->
 
 # FixFlags
 
-FixFlags looks after a website and the customer journeys the business depends on. The customer model is **Site → Cards → Checks / Journeys → Flags → Fix → Verify → Watch**. Shopify and future connections enrich the same Site.
+FixFlags is the independent monitor for software that acts. The customer model is **Site → Outcomes that matter → Clear or Flag → evidence and history**. Checks and browser journeys are execution methods under an Outcome. Broad Site Cards and scheduled Watch remain part of the same product.
 
-Use the web product at `https://fixflags.com`. CLI, MCP, API keys, repository scanning, Product Review, Finish Plan, and the report Agent are not current customer entry points.
+Use FixFlags through the web product or the connected MCP server. Do not call legacy report, Finish Plan, repository scan, or report Agent tools.
 
 ## Workflow
 
-1. **Analyze the deployed URL.** Submit the real public website. Do not substitute localhost, source inspection, or a static screenshot for live browser evidence.
-2. **Open the Site.** Confirm coverage and freshness before interpreting health. No Flags does not mean untested behavior is healthy.
-3. **Choose a Flag.** Prefer the highest-ranked customer-relevant Flag. Validate its page, journey, viewport, screenshot, and textual evidence against the live site before changing code.
-4. **Fix.** Apply the smallest coherent product change. Copying or sending a Flag to a coding AI records a handoff, not completion.
-5. **Deploy to the same URL.** Run the product's own checks before deployment.
-6. **Verify the affected behavior.** Start Verify from the original Flag. Verification must freshly exercise the relevant success state. The old symptom merely disappearing is not proof.
-7. **Report the result.** Distinguish Verified, Still flagged, Regressed, and Inconclusive. Include the Site and Flag links when available.
-8. **Keep Watch honest.** Confirm the displayed cadence and readiness. Do not claim continuous, hourly, or all-clear coverage unless the Site shows it.
+1. **Discover the owned Site.** Call `ff_list_sites`, select the exact owned Site, then call `ff_list_outcomes`.
+2. **Confirm the Outcome.** Check its scope, current state, freshness, and existing Flag before changing software. No Flag does not mean stale or untested behavior is Clear.
+3. **Request independent verification.** Call `ff_verify_outcome` with the Site and Outcome IDs. A commit, deployment, or affected area may be supplied as context, never as proof.
+4. **Poll the run.** Call `ff_get_run` with the returned run ID until FixFlags returns Clear, Flag, or Couldn't verify. Do not infer success from a queued run.
+5. **Inspect the Flag.** If the Outcome is Flag, use `ff_list_flags` and `ff_get_flag` for the exact evidence, expected behavior, history, and proposed change.
+6. **Fix and deploy.** Apply the smallest coherent product change and deploy it to the same live system FixFlags watches.
+7. **Verify recovery.** Call `ff_verify_flag`, then poll its run with `ff_get_run`. Only a fresh comparable FixFlags execution can return the Outcome to Clear.
+8. **Keep Watch honest.** Scheduled Watch runs independently of this MCP session. Do not claim continuous or all-clear coverage beyond the displayed cadence and freshness.
 
 ## Evidence and safety
 
-- Treat every Flag as a grounded lead, not permission for an unsupported change.
+- Treat every Flag as grounded evidence, not permission for an unsupported change.
+- Never tell FixFlags that a change succeeded. Request a run and use its result.
 - Preserve tenant boundaries. A public evidence link never authorizes access to private Site, connection, history, or support data.
 - Do not expose credentials in code, files, logs, URLs, or chat.
 - Do not weaken a detector or special-case a site merely to remove a Flag.
@@ -33,9 +34,9 @@ Use the web product at `https://fixflags.com`. CLI, MCP, API keys, repository sc
 
 Summarize:
 
-- the Site and journey checked;
+- the Site and Outcome checked;
 - the Flag and evidence validated;
 - the fix deployed;
-- the fresh verification result;
+- the run ID and fresh verification result;
 - remaining Flags, regressions, or incomplete coverage;
 - Watch status and any action the customer still needs to take.

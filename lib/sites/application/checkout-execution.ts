@@ -44,6 +44,7 @@ export async function runBoundCheckoutForAudit(auditId: string): Promise<boolean
   })
 
   const config = bindingConfig(request.outcome.bindings[0]!.config)
+  const startedAt = Date.now()
   const result = await runPathProbe({
     runId: `outcome-${request.id}`,
     url: config.startUrl ?? request.audit.url,
@@ -61,7 +62,7 @@ export async function runBoundCheckoutForAudit(auditId: string): Promise<boolean
     goalAchieved: isClear,
     blockedReason: isClear || isFlag ? null : result.reason,
     abandonedReason: isClear || isFlag ? null : copy.summary,
-    durationMs: 0,
+    durationMs: Date.now() - startedAt,
     steps: result.steps.map((step, index) => ({
       stepNumber: index + 1,
       actionType: step.label,

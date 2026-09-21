@@ -30,7 +30,7 @@ describe('/api/cli/auth/authorize', () => {
     getSession.mockResolvedValue({ user: { id: 'user-1' } })
     findUser.mockResolvedValue({
       id: 'user-1',
-      plan: 'BUILDER',
+      plan: 'FREE',
       subscriptionStatus: 'ACTIVE',
       role: 'user',
     })
@@ -46,7 +46,7 @@ describe('/api/cli/auth/authorize', () => {
     expect(response.status).toBe(401)
   })
 
-  it('approves a pending code for a paid user', async () => {
+  it('approves a pending code for a signed-in Free user', async () => {
     decideCliDeviceAuthorization.mockResolvedValue({
       ok: true,
       status: 'APPROVED',

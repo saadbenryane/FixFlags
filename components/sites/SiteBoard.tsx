@@ -379,7 +379,7 @@ export function SiteBoard({
                         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{outcome.summary}</p>
                         <p className="mt-2 text-xs text-muted-foreground">
                           {outcome.lastVerifiedAt
-                            ? `Last verified ${new Date(outcome.lastVerifiedAt).toLocaleString()}`
+                            ? `${outcome.state === 'COULD_NOT_VERIFY' ? 'Last attempted' : 'Last verified'} ${new Date(outcome.lastVerifiedAt).toLocaleString()}`
                             : 'No completed verification yet'}
                         </p>
                       </div>

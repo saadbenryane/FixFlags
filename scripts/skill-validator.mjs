@@ -30,13 +30,14 @@ function collectMcpTools(root) {
   return [...source.matchAll(/name:\s*['"]([a-z0-9_-]+)['"]/g)].map((match) => match[1])
 }
 
-// Retained IDE integrations describe the parked MCP contract and must stay
-// internally consistent until they are removed or deliberately relaunched.
-const SKILL_FILES_REQUIRING_MARK = [
-  'ide-integrations/cursor/fixflags.mdc',
-  'ide-integrations/claude-code/fixflags-skill.md',
-  'ide-integrations/kiro/fixflags-power.md',
-  'ide-integrations/opencode/opencode-skill.md',
+const LAUNCH_MCP_TOOLS = [
+  'ff_list_sites',
+  'ff_list_outcomes',
+  'ff_verify_outcome',
+  'ff_get_run',
+  'ff_list_flags',
+  'ff_get_flag',
+  'ff_verify_flag',
 ]
 
 function markdownFiles(directory, files = []) {
@@ -114,12 +115,14 @@ export function validateSkills(root = process.cwd()) {
   if (existsSync(canonicalPath)) {
     const customerSkill = readFileSync(canonicalPath, 'utf8')
     for (const required of [
-      /Site → Cards → Checks \/ Journeys → Flags → Fix → Verify → Watch/,
-      /Analyze the deployed URL/,
-      /Choose a Flag/,
-      /Verify the affected behavior/,
-      /No Flags does not mean untested behavior is healthy/,
-      /CLI, MCP, API keys, repository scanning, Product Review, Finish Plan, and the report Agent are not current customer entry points/,
+      /Site → Outcomes that matter → Clear or Flag/,
+      /Request independent verification/,
+      /Poll the run/,
+      /Inspect the Flag/,
+      /Verify recovery/,
+      /No Flag does not mean stale or untested behavior is Clear/,
+      /Do not call legacy report, Finish Plan, repository scan, or report Agent tools/,
+      ...LAUNCH_MCP_TOOLS.map((tool) => new RegExp(tool)),
     ]) {
       if (!required.test(customerSkill)) {
         errors.push(`${path.relative(root, canonicalPath)}: missing customer workflow contract ${required}`)
@@ -200,13 +203,23 @@ export function validateSkills(root = process.cwd()) {
 
     }
 
-    // Check ff_mark_fix_attempted appears in required skill files
-    for (const relPath of SKILL_FILES_REQUIRING_MARK) {
+    // Installed editor instructions must only advertise the launch tool set.
+    for (const relPath of [
+      'ide-integrations/cursor/fixflags.mdc',
+      'ide-integrations/claude-code/fixflags-skill.md',
+      'ide-integrations/kiro/fixflags-power.md',
+      'ide-integrations/opencode/opencode-skill.md',
+    ]) {
       const fullPath = path.join(root, relPath)
       if (existsSync(fullPath)) {
         const source = readFileSync(fullPath, 'utf8')
-        if (!source.includes('ff_mark_fix_attempted')) {
-          errors.push(`${relPath}: missing ff_mark_fix_attempted tool`)
+        if (!source.includes('ff_verify_outcome') || !source.includes('ff_verify_flag')) {
+          errors.push(`${relPath}: missing Outcome verification workflow`)
+        }
+        for (const tool of source.matchAll(/`(ff_[a-z_]+)`/g)) {
+          if (!LAUNCH_MCP_TOOLS.includes(tool[1])) {
+            errors.push(`${relPath}: advertises retired tool ${tool[1]}`)
+          }
         }
       }
     }

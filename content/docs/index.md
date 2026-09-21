@@ -25,6 +25,7 @@ FixFlags follows one loop: **Flag. Fix. Verify.**, then Watch.
 
 - [Getting started](/docs/getting-started) for a URL check and the first Site board.
 - [Site care](/docs/site-care) for Cards, Flags, evidence, Verify, and Watch.
+- [MCP for coding agents](/docs/mcp) for independent verification after a change.
 - [Troubleshooting](/docs/troubleshooting) for blocked pages and incomplete coverage.
 
 For billing, privacy, or human support, use the [Help Center](/help).

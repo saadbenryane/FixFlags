@@ -30,6 +30,12 @@ export function HomepageHero({
           <span><Globe2 size={16} aria-hidden="true" />{C.boardHost}</span>
           <BoardStatus state="attention" label={C.boardSummary} count={4} onOpen={() => onOpen('site')} />
         </div>
+        <button type="button" className={s.outcomePreview} aria-label={`${C.checkoutOutcome.name}: ${C.checkoutOutcome.status}. ${C.checkoutOutcome.detail}`} onClick={() => onOpen('conversion')}>
+          <span className={s.outcomePreviewName}>{C.checkoutOutcome.name}</span>
+          <strong>{C.checkoutOutcome.status}</strong>
+          <span>{C.checkoutOutcome.detail}</span>
+          <small>{C.checkoutOutcome.evidence}</small>
+        </button>
         <div className={s.boardStage}>
           <BoardGrid>
             <BoardCard

@@ -39,7 +39,8 @@ export function canExportSummary(
 export function canUseApiKeys(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
-  return canAccessPaidFeatures(user)
+  void user
+  return true
 }
 
 /** Basic MCP access is available to all authenticated users. Plan gates for
@@ -47,9 +48,7 @@ export function canUseApiKeys(
 export function canAccessBasicMcp(
   user: Pick<User, 'id' | 'role' | 'plan' | 'subscriptionStatus'>
 ): boolean {
-  if (!shouldEnforcePlanGates()) return true
-  if (user.role === 'admin' || isAdminUser(user)) return true
-  if (hasRevokedSubscriptionStatus(user.subscriptionStatus)) return false
+  void user
   return true
 }
 

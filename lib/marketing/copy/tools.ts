@@ -1,5 +1,5 @@
 export const MCP_DOCS = {
-  builderRequired: 'Requires Pro plan',
+  builderRequired: 'Included with your FixFlags account',
 } as const
 
 export const PRODUCT_WATCH_COPY = {

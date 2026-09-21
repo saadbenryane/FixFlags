@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   runFindFirst: vi.fn(),
   runCreate: vi.fn(),
   runUpdate: vi.fn(),
+  runCount: vi.fn(),
   auditFindFirst: vi.fn(),
   createAudit: vi.fn(),
 }))
@@ -18,6 +19,7 @@ vi.mock('@/lib/db', () => ({
       findFirst: mocks.runFindFirst,
       create: mocks.runCreate,
       update: mocks.runUpdate,
+      count: mocks.runCount,
     },
     audit: { findFirst: mocks.auditFindFirst },
   },
@@ -35,7 +37,7 @@ const ownedOutcome = {
   id: 'outcome-1',
   kind: 'CHECKOUT',
   projectId: 'project-1',
-  project: { url: 'https://shop.example/products/widget' },
+  project: { url: 'https://shop.example/' },
   bindings: [{ config: { startUrl: 'https://shop.example/products/widget' } }],
 }
 
@@ -49,6 +51,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
     mocks.auditFindFirst.mockResolvedValue({ id: 'audit-parent' })
     mocks.createAudit.mockResolvedValue({ auditId: 'audit-1', reused: false })
     mocks.runUpdate.mockResolvedValue({})
+    mocks.runCount.mockResolvedValue(0)
   })
 
   it('checks the Outcome, Project, and authenticated owner in one query', async () => {
@@ -92,6 +95,21 @@ describe('RunRequest tenant boundary and idempotency', () => {
     expect(mocks.createAudit).not.toHaveBeenCalled()
   })
 
+  it('keeps broad Site care when Watch also verifies Checkout', async () => {
+    await requestOutcomeRun({
+      projectId: 'project-1',
+      outcomeId: 'outcome-1',
+      userId: 'user-1',
+      source: 'WATCH',
+    })
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
+      url: 'https://shop.example/',
+      monitoringMode: 'FULL',
+      auditMode: 'CRITICAL_PATH',
+      recheckTrigger: 'WATCH',
+    }))
+  })
+
   it('reuses the same tenant-scoped idempotency key without enqueueing twice', async () => {
     mocks.runFindUnique.mockResolvedValue({
       id: 'run-existing',
@@ -113,5 +131,19 @@ describe('RunRequest tenant boundary and idempotency', () => {
       reused: true,
     })
     expect(mocks.runCreate).not.toHaveBeenCalled()
+    expect(mocks.runCount).not.toHaveBeenCalled()
+  })
+
+  it('bounds interactive verification without limiting scheduled Watch', async () => {
+    mocks.runCount.mockResolvedValue(24)
+    await expect(requestOutcomeRun({
+      projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1', source: 'MCP',
+    })).rejects.toThrow('Too many requests')
+    expect(mocks.runCreate).not.toHaveBeenCalled()
+
+    await requestOutcomeRun({
+      projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1', source: 'WATCH',
+    })
+    expect(mocks.runCreate).toHaveBeenCalledTimes(1)
   })
 })

@@ -53,7 +53,7 @@ At launch, **Site** is the customer name and existing `Project` is its physical 
 
 ## Outcome semantics
 
-The current `SiteOutcome` is a useful seed, not a complete health model. Today it provides a stable Site-scoped ID, name, slug, description, inference/confirmation provenance, and related pages. It does **not** yet provide an expectation, execution binding, environment, criticality, state, freshness, history, or Flag link. It must be adapted before Outcome becomes the primary UI unit.
+`SiteOutcome` remains the one Outcome model. The first Checkout slice now adds expectation, enabled state, browser execution binding, persisted assessments, freshness, RunRequests, and optional durable Flag attribution. Generic inferred Outcomes remain descriptive until they have a trustworthy binding. Environment is recorded on RunRequest; criticality and multi-binding evidence policy remain future work, not implicit launch truth.
 
 An Outcome contains:
 

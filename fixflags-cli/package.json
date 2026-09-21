@@ -1,7 +1,7 @@
 {
   "name": "fixflags",
   "version": "1.0.5",
-  "description": "Agent-native FixFlags CLI. Check, finish, and verify AI-built products.",
+  "description": "Connect coding agents to independent FixFlags Outcome verification.",
   "type": "module",
   "bin": {
     "fixflags": "./bin/fixflags.js"

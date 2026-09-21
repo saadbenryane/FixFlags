@@ -16,6 +16,10 @@ describe('Outcome state', () => {
   })
 
   it('does not turn blocked or unsupported execution into a Flag', () => {
+    expect(currentOutcomeState({
+      state: 'COULD_NOT_VERIFY',
+      validUntil: new Date('2026-09-20T00:00:00.000Z'),
+    }, new Date('2026-09-21T00:00:00.000Z'))).toBe('COULD_NOT_VERIFY')
     expect(checkoutResultCopy('bot_wall').problem).toBe('')
     expect(checkoutResultCopy('no_buy_control').summary).toMatch(/could not find/i)
     expect(checkoutResultCopy('add_to_cart_noop').problem).toMatch(/Cart did not contain/i)

@@ -7,6 +7,7 @@ export function currentOutcomeState(
   now = new Date(),
 ): CustomerOutcomeState {
   if (!assessment) return 'COULD_NOT_VERIFY'
+  if (assessment.state === 'COULD_NOT_VERIFY') return 'COULD_NOT_VERIFY'
   if (assessment.validUntil.getTime() <= now.getTime()) return 'STALE'
   return assessment.state
 }

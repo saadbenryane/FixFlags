@@ -390,7 +390,7 @@ The shipped customer path is copying a ready-to-fix prompt that contains Flag co
 
 ### Launch integration
 
-The HTTP MCP surface, CLI, device authorization, API keys, editor setup, and interaction ledger already exist but are currently parked from production discovery. Launch requires re-scoping them from report/Fix-List tools to owned Site, Outcome, Run, and Flag tools, then proving the full loop before discovery is opened.
+The HTTP MCP surface, CLI bridge, device authorization, API keys, editor setup, and interaction ledger now expose an owned Site → Outcome → Run → Flag loop in the local product. The report/Fix-List tools are not discovered. Until exact-client and production canary proof exists, describe this as implemented capability, not a verified public launch. Remote OAuth/scopes are still a launch gate; account keys and local device authorization work now.
 
 Surface MCP when that loop is real:
 

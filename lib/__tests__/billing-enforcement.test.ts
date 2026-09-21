@@ -350,9 +350,9 @@ describe('canUseApiKeys', () => {
     assert.equal(canUseApiKeys(gateUser('TEAM')), true)
   })
 
-  it('blocks MCP API keys for free users when gates enforce', () => {
+  it('allows bounded MCP API keys for free users when gates enforce', () => {
     _env.NODE_ENV = 'production'
-    assert.equal(canUseApiKeys(gateUser('FREE')), false)
+    assert.equal(canUseApiKeys(gateUser('FREE')), true)
   })
 
   it('allows MCP API keys for admins', () => {
@@ -370,10 +370,10 @@ describe('getEntitlements MCP (canUseMcp)', () => {
     assert.equal(e.canUseMcp, true)
   })
 
-  it('maps canUseMcp to false for free users in production', () => {
+  it('maps canUseMcp to true for free users in production', () => {
     _env.NODE_ENV = 'production'
     const e = getEntitlements({ id: 'u2', role: 'user', plan: 'FREE', subscriptionStatus: 'NONE' })
-    assert.equal(e.canUseMcp, false)
+    assert.equal(e.canUseMcp, true)
   })
 })
 

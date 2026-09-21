@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto'
-import type { Prisma, RunRequestSource } from '@prisma/client'
+import { Prisma, type RunRequestSource } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 import { buildAttribution } from '@/lib/leads/attribution'
 import { checkoutResultCopy, currentOutcomeState } from '@/lib/sites/outcome-state'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
+import { RateLimitError } from '@/lib/security/rate-limit'
 
 const ACTIVE_RUN_STATUSES = ['QUEUED', 'RUNNING'] as const
+const INTERACTIVE_RUN_LIMIT_PER_DAY = 24
 
 function auditSource(source: RunRequestSource) {
   if (source === 'MCP') return 'MCP' as const
@@ -19,11 +21,18 @@ function safeContext(
 ): Prisma.InputJsonObject | undefined {
   if (!value) return undefined
   return Object.fromEntries(
-    Object.entries(value).filter(
-      ([key, item]) =>
-        !/(url|email|prompt|evidence|html|content|message|secret|token)/i.test(key) &&
-        item !== undefined,
-    ),
+    Object.entries(value)
+      .filter(
+        ([key, item]) =>
+          !/(url|email|prompt|evidence|html|content|message|secret|token)/i.test(key) &&
+          item !== undefined,
+      )
+      .map(([key, item]) => {
+        if (typeof item !== 'string') return [key, item]
+        const trimmed = item.trim().slice(0, 160)
+        const sensitive = /(?:https?:\/\/|bearer\s+|api[_-]?key|password|secret|token)/i.test(trimmed)
+        return [key, sensitive ? '[redacted]' : trimmed]
+      }),
   ) as Prisma.InputJsonObject
 }
 
@@ -74,18 +83,51 @@ export async function requestOutcomeRun(input: {
   })
   if (active) return { runId: active.id, auditId: active.auditId, reused: true }
 
-  const run = await prisma.runRequest.create({
-    data: {
-      projectId: input.projectId,
-      outcomeId: outcome.id,
-      requestedByUserId: input.userId,
-      source: input.source,
-      idempotencyKey: requestedKey,
-      context: safeContext(input.context),
-    },
-  })
+  if (input.source === 'WEB' || input.source === 'MCP' || input.source === 'API') {
+    const recentRuns = await prisma.runRequest.count({
+      where: {
+        projectId: input.projectId,
+        source: { in: ['WEB', 'MCP', 'API'] },
+        requestedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    })
+    if (recentRuns >= INTERACTIVE_RUN_LIMIT_PER_DAY) throw new RateLimitError(60 * 60)
+  }
+
+  let run: { id: string }
+  try {
+    run = await prisma.runRequest.create({
+      data: {
+        projectId: input.projectId,
+        outcomeId: outcome.id,
+        requestedByUserId: input.userId,
+        source: input.source,
+        idempotencyKey: requestedKey,
+        context: safeContext(input.context),
+      },
+    })
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      const concurrent = await prisma.runRequest.findFirst({
+        where: { outcomeId: outcome.id, status: { in: [...ACTIVE_RUN_STATUSES] } },
+        orderBy: { requestedAt: 'desc' },
+      })
+      if (concurrent) return { runId: concurrent.id, auditId: concurrent.auditId, reused: true }
+      const sameKey = await prisma.runRequest.findUnique({ where: { idempotencyKey: requestedKey } })
+      if (sameKey?.outcomeId === outcome.id && sameKey.projectId === input.projectId) {
+        return { runId: sameKey.id, auditId: sameKey.auditId, reused: true }
+      }
+    }
+    throw error
+  }
 
   try {
+    const binding = outcome.bindings[0]!
+    const config = binding.config as Record<string, unknown>
+    const startUrl = typeof config.startUrl === 'string' ? config.startUrl : outcome.project!.url
+    // A scheduled Site check still covers the broad Site. The bound Checkout
+    // browser walk runs inside that same Audit, from its own product-page URL.
+    const auditUrl = input.source === 'WATCH' ? outcome.project!.url : startUrl
     const parent = input.parentAuditId
       ? await prisma.audit.findFirst({
           where: {
@@ -96,28 +138,26 @@ export async function requestOutcomeRun(input: {
           select: { id: true },
         })
       : await prisma.audit.findFirst({
-          where: { projectId: input.projectId, status: 'COMPLETED' },
+          where: { projectId: input.projectId, status: 'COMPLETED', url: auditUrl },
           orderBy: { completedAt: 'desc' },
           select: { id: true },
         })
     if (input.parentAuditId && !parent)
       throw new Error('Verification source is no longer available')
-    const binding = outcome.bindings[0]!
-    const config = binding.config as Record<string, unknown>
-    const startUrl = typeof config.startUrl === 'string' ? config.startUrl : outcome.project!.url
     const started = await createAndEnqueueAudit({
-      url: startUrl,
+      url: auditUrl,
       userId: input.userId,
       parentId: parent?.id,
       recheckTrigger: input.source === 'WATCH' ? 'WATCH' : 'MANUAL',
-      auditMode: 'SINGLE',
+      auditMode: input.source === 'WATCH' ? 'CRITICAL_PATH' : 'SINGLE',
+      monitoringMode: input.source === 'WATCH' ? 'FULL' : undefined,
       skipUsageCount: true,
       useProjectScanAccess: true,
       verificationAttemptId: input.verificationAttemptId,
       reuseActiveManual: false,
       runRequestId: run.id,
       attribution: buildAttribution({
-        url: startUrl,
+        url: auditUrl,
         source: auditSource(input.source),
       }),
     })
@@ -198,8 +238,9 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
       }))
 
     const state = review?.goalAchieved ? 'CLEAR' : flag ? 'FLAG' : 'COULD_NOT_VERIFY'
+    const resultReason = flag?.checkId?.replace('journey-checkout-failed-', '') ?? reason
     const copy = checkoutResultCopy(
-      flag?.id ? (flag.checkId?.replace('journey-checkout-failed-', '') ?? reason) : reason,
+      resultReason,
     )
     const assessedAt = new Date()
     const validUntil = new Date(assessedAt.getTime() + request.outcome.staleAfterMinutes * 60_000)
@@ -216,7 +257,7 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
           journeyReviewId: review?.id ?? null,
           stepCount: review?.steps.length ?? 0,
           screenshots: review?.steps.map((step) => step.screenshotAfterUrl).filter(Boolean) ?? [],
-          reason,
+          reason: resultReason,
         },
         assessedAt,
         validUntil,
@@ -240,6 +281,7 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
       properties: {
         state: state.toLowerCase(),
         source: request.source.toLowerCase(),
+        latencyMs: assessedAt.getTime() - request.requestedAt.getTime(),
       },
     }).catch(() => undefined)
     if (state === 'CLEAR' && linkedImprovement?.status === 'VERIFIED') {
@@ -288,19 +330,50 @@ export async function markOutcomeRunsCouldNotVerify(
         completedAt: assessedAt,
       },
     })
+    await recordSiteLifecycleEvent({
+      name: 'outcome_run_result',
+      idempotencyKey: `outcome-run-result:${request.id}`,
+      userId: request.requestedByUserId,
+      projectId: request.projectId,
+      properties: {
+        state: 'could_not_verify',
+        source: request.source.toLowerCase(),
+        latencyMs: assessedAt.getTime() - request.requestedAt.getTime(),
+      },
+    }).catch(() => undefined)
   }
 }
 
 export async function getOwnedRun(userId: string, runId: string) {
-  const run = await prisma.runRequest.findFirst({
+  let run = await prisma.runRequest.findFirst({
     where: { id: runId, project: { userId, deletedAt: null } },
     include: {
       outcome: true,
       assessment: true,
-      audit: { select: { status: true, progress: true } },
+      audit: { select: { status: true, progress: true, improvementProjectedAt: true } },
     },
   })
   if (!run) return null
+  if (ACTIVE_RUN_STATUSES.includes(run.status as (typeof ACTIVE_RUN_STATUSES)[number])) {
+    if (run.audit?.status === 'FAILED') {
+      await markOutcomeRunsCouldNotVerify(
+        run.auditId!,
+        'AUDIT_FAILED',
+        'FixFlags could not complete this verification.',
+      )
+    } else if (run.audit?.status === 'COMPLETED' && run.audit.improvementProjectedAt) {
+      await reconcileOutcomeRunsForAudit(run.auditId!)
+    }
+    run = await prisma.runRequest.findFirst({
+      where: { id: runId, project: { userId, deletedAt: null } },
+      include: {
+        outcome: true,
+        assessment: true,
+        audit: { select: { status: true, progress: true, improvementProjectedAt: true } },
+      },
+    })
+    if (!run) return null
+  }
   return {
     id: run.id,
     source: run.source,
@@ -308,7 +381,9 @@ export async function getOwnedRun(userId: string, runId: string) {
     progress: run.audit?.progress ?? (run.status === 'COMPLETED' ? 100 : 0),
     outcomeId: run.outcomeId,
     outcomeName: run.outcome.name,
-    result: run.assessment ? currentOutcomeState(run.assessment) : null,
+    result: run.assessment
+      ? currentOutcomeState(run.assessment)
+      : run.status === 'FAILED' ? 'COULD_NOT_VERIFY' : null,
     summary: run.assessment?.summary ?? null,
     auditId: run.auditId,
     requestedAt: run.requestedAt.toISOString(),

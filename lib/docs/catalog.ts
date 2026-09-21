@@ -6,6 +6,7 @@ export type DocsPageKey =
   | 'home'
   | 'getting-started'
   | 'site-care'
+  | 'mcp'
   | 'troubleshooting'
 
 export type DocsNavigationGroup = 'Start' | 'Use FixFlags' | 'Reference'
@@ -86,6 +87,22 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
       'read-a-flag',
       'verify-a-flag',
       'weekly-watch',
+    ],
+  },
+  {
+    key: 'mcp',
+    path: '/docs/mcp',
+    group: 'Use FixFlags',
+    title: 'MCP for coding agents',
+    description: 'Connect a coding agent and ask FixFlags to independently verify an owned Outcome.',
+    source: 'mcp.md',
+    order: 3,
+    headings: [
+      { id: 'what-mcp-does', title: 'What MCP does' },
+      { id: 'connect', title: 'Connect' },
+      { id: 'tools', title: 'Tools' },
+      { id: 'async-runs', title: 'Async runs' },
+      { id: 'security-and-independence', title: 'Security and independence' },
     ],
   },
   {

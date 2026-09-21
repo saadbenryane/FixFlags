@@ -9,11 +9,11 @@ const FEATURE_FLAG_INFRA = /feature[- ]flags? infra|openfeature/i
 describe('pre-publish brand discovery copy', () => {
   it('keeps FixFlags first on the official homepage snippet', () => {
     assert.match(SEO.home.title, /^FixFlags/)
-    assert.match(SEO.home.title, /looked after/i)
-    assert.match(SEO.home.description, /monitors your live website/i)
-    assert.match(SEO.home.description, /100\+ automated tests/i)
-    assert.match(SEO.home.description, /browser journeys/i)
+    assert.match(SEO.home.title, /FixFlags watches/i)
+    assert.match(SEO.home.description, /independently checks/i)
+    assert.match(SEO.home.description, /important outcomes on your live website/i)
     assert.match(SEO.home.description, /Flag/)
+    assert.match(SEO.home.description, /verify a fix/i)
     assert.doesNotMatch(SEO.home.title, RETIRED_TAGLINE)
     assert.doesNotMatch(SEO.home.description, RETIRED_TAGLINE)
     assert.doesNotMatch(SEO.home.description, FEATURE_FLAG_INFRA)

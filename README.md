@@ -1,6 +1,6 @@
 # FixFlags
 
-**Your website, looked after.** FixFlags is continuous monitoring for businesses that depend on their website. Customer-facing language: [docs/voice-and-copy.md](docs/voice-and-copy.md). Product architecture: [docs/product-architecture.md](docs/product-architecture.md). Implementation plan: [docs/product-masterplan.md](docs/product-masterplan.md).
+**Your software runs. FixFlags watches.** FixFlags independently monitors the important Outcomes a business depends on. Customer-facing language: [docs/voice-and-copy.md](docs/voice-and-copy.md). Product architecture: [docs/product-architecture.md](docs/product-architecture.md). Implementation plan: [docs/product-masterplan.md](docs/product-masterplan.md).
 
 The [complete owner vision](knowledge/vision.md) is the accepted destination, not a claim that the next version already ships. Start implementation with [ROADMAP.md](ROADMAP.md), [the PRD](docs/product-prd.md) and [migration/reuse](docs/site-v2-migration.md). [PRODUCT.md](PRODUCT.md) inventories the current code. Brand, accounts, billing, plans and useful checking foundations remain.
 
@@ -82,7 +82,7 @@ Expect `db: ok`, `redis: ok`, and queue stats when everything is running.
 
 ## MCP integration
 
-FixFlags exposes an HTTP MCP endpoint at `/api/mcp`. Create an API key at `/settings/api-keys` (Builder plan+), then configure your agent:
+FixFlags exposes an HTTP MCP endpoint at `/api/mcp`. Create an account key at `/settings/api-keys`, then configure your agent:
 
 ```json
 {
@@ -90,14 +90,14 @@ FixFlags exposes an HTTP MCP endpoint at `/api/mcp`. Create an API key at `/sett
     "fixflags": {
       "url": "http://localhost:3000/api/mcp",
       "headers": {
-        "x-api-key": "ff_live_..."
+        "Authorization": "Bearer ff_live_..."
       }
     }
   }
 }
 ```
 
-See the [current customer skill](public/.well-known/skills/fixflags/SKILL.md) for existing command contracts. These are compatibility transports, not the next version's primary acquisition flow.
+See the [MCP guide](content/docs/mcp.md) and [current customer skill](public/.well-known/skills/fixflags/SKILL.md). MCP, the web product, and scheduled Watch request execution through the same tenant-scoped Outcome run path.
 
 ### Agent CLI
 
@@ -107,15 +107,16 @@ commands over the same MCP endpoint:
 ```bash
 npm install --global fixflags@beta
 fixflags login
-fixflags init https://your-app.com
-fixflags check https://your-app.com --wait --plan
-fixflags recheck <reportId> --wait --diff
+fixflags init
+fixflags sites
+fixflags outcomes <siteId>
+fixflags verify-outcome <siteId> <outcomeId>
+fixflags run <runId>
 ```
 
 The install command is only shown in the product after the exact version is
-available from npm. `check` returns the canonical Fix List. `recheck` performs a
-fresh capture and returns Fixed, Remaining, New, and Regressed Flags. See
-[`fixflags-cli/README.md`](fixflags-cli/README.md) for authentication and JSON output.
+available from npm. See [`fixflags-cli/README.md`](fixflags-cli/README.md) for the
+Outcome and Flag commands, authentication, and JSON output.
 
 **OAuth sign-in:** Set the Google and GitHub client ID/secret pairs. Local development can run with either provider, but production readiness requires both so report signup always presents the complete SSO-first path.
 

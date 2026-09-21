@@ -37,7 +37,7 @@ export function CliAuthorizeCard({ userCode }: { userCode: string }) {
         if (!response.ok) throw new Error(body.message || 'Authorization request not found.')
         if (!body.canAuthorize) {
           setState('unavailable')
-          setError('CLI access requires a Pro or Studio plan.')
+          setError('This account cannot authorize the CLI right now.')
           return
         }
         if (body.status !== 'PENDING') {

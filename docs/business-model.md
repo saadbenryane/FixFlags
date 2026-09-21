@@ -32,4 +32,4 @@ The target paid cost envelope is approximately $12 per Site per month at the $49
 
 ## Parked products
 
-Repository scanning, CLI, MCP, API keys, deployment hooks, and the old Product Review / Finish Plan product model are not customer offers. Their retained implementations must remain inaccessible and undiscoverable until they are deliberately reintroduced inside the Site model with release proof.
+Repository scanning, deployment hooks, and the old Product Review / Finish Plan product model are not customer offers. MCP, API keys, and the CLI bridge are now Site/Outcome access paths included with the account, not paid review-credit products. They must not be marketed as production-proven until the exact-client canary gate passes. Paid checkout remains closed.

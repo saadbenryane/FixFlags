@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   auditFindUnique: vi.fn(),
   auditUpdate: vi.fn(),
   auditUpdateMany: vi.fn(),
+  runRequestFindMany: vi.fn(async () => []),
   persistAuditRunCost: vi.fn(),
   diffFlagsAgainstParent: vi.fn(),
   materializeAttentionForAudit: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock('@/lib/db', () => ({
       update: mocks.auditUpdate,
       updateMany: mocks.auditUpdateMany,
     },
+    runRequest: { findMany: mocks.runRequestFindMany },
   },
 }))
 

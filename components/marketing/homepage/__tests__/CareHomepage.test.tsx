@@ -65,7 +65,7 @@ describe('homepage conversion story', () => {
   it('keeps the established hero and real Analyze entry points', () => {
     const { container } = render(<CareHomepage />)
     const hero = container.querySelector('section')!
-    expect(within(hero).getByRole('heading', { level: 1, name: /Your website,\s*looked after\./i })).toBeInTheDocument()
+    expect(within(hero).getByRole('heading', { level: 1, name: /Your software runs\.\s*FixFlags watches\./i })).toBeInTheDocument()
     expect(within(hero).getByText(C.hero.body)).toBeInTheDocument()
     expect(within(hero).getByText(C.hero.proof)).toBeInTheDocument()
     expect(screen.getAllByTestId('url-entry')).toHaveLength(2)
@@ -80,6 +80,7 @@ describe('homepage conversion story', () => {
     expect(within(board).getByRole('button', { name: `${C.flag.name}: ${C.flag.status}` })).toHaveTextContent('1 Flag')
     expect(within(board).getByRole('button', { name: 'Performance: 3 Flags' })).toHaveTextContent('3 Flags')
     expect(within(board).getByText(C.flag.title)).toBeInTheDocument()
+    expect(within(board).getByRole('button', { name: /Checkout: Flag\. Cart did not update/ })).toBeInTheDocument()
     expect(within(board).queryByText(/contact/i)).not.toBeInTheDocument()
   })
 

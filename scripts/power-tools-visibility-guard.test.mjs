@@ -22,7 +22,7 @@ test('rejects missing route parking, inconsistent repository responses, and publ
   const failures = powerToolVisibilityFailures({
     proxySource: `${parkedProxy().replace('"/api/repo-scans"', '"/api/other"')}\nRepository scanning is not currently available`,
     discoverySources: {
-      'lib/docs/content.ts': "href: '/docs/cli'",
+      'lib/docs/content.ts': "href: '/docs/integrations'",
     },
   })
   assert.ok(failures.includes('Proxy does not park /api/repo-scans'))
@@ -45,7 +45,7 @@ test('still rejects parked setup routes next to the waitlist logged-in line', ()
     proxySource: parkedProxy(),
     discoverySources: {
       'lib/marketing/copy/plans.ts':
-        "features: ['Logged-in review on your computer']\nhref: '/docs/cli'",
+        "features: ['Logged-in review on your computer']\nhref: '/docs/integrations'",
     },
   })
   assert.ok(failures.some((failure) => failure.includes('links to a parked')))

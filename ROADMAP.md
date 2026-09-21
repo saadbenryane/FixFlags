@@ -1,6 +1,6 @@
 # FixFlags roadmap
 
-**Direction accepted 2026-09-21. Planning only; not a shipped-capability claim.**
+**Direction accepted 2026-09-21. Checkout vertical slice implemented locally; launch gates remain open.**
 
 FixFlags is the independent monitor for software that acts. **Your software runs. FixFlags watches.**
 
@@ -28,7 +28,11 @@ schedule | human UI | MCP | deployment | API | integration | FixFlags logic
               Outcome assessments + Flags + notifications
 ```
 
-This is evolution, not replacement. `Project`, `Audit`, Playwright, checks, JourneyReview, Flags, Improvement history, Watch, Shopify, auth, billing, and MCP transport are reused. `SiteOutcome` is not promoted unchanged: its current descriptive semantics must be strengthened and proven before it becomes the primary health projection. No parallel Monitor, Task, Objective, or new System root is planned.
+This is evolution, not replacement. `Project`, `Audit`, Playwright, checks, JourneyReview, Flags, Improvement history, Watch, Shopify, auth, billing, and MCP transport are reused. Checkout is the first adapted `SiteOutcome`; other Outcomes are not promoted to health without an execution binding. No parallel Monitor, Task, Objective, or new System root is planned.
+
+## Checkout slice status
+
+The local implementation now connects Checkout Outcome → browser binding → tenant-scoped RunRequest → existing Audit/worker → independent browser evidence → assessment and durable Flag → targeted re-verification. Web, Watch, and MCP call the same application command. The developer-key and CLI setup path is unparked. Additive migrations and local browser fixtures are passing. This is an implementation checkpoint, not a launch receipt: credentialed external-client proof, full web/Watch recovery exercise, remote OAuth, and an exact-SHA production canary remain open.
 
 ## Launch milestone: independent monitoring with MCP
 

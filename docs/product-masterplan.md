@@ -1,12 +1,25 @@
 # FixFlags independent-monitor masterplan
 
-**Status: ACTIVE TARGET AND SOLE IMPLEMENTATION PLAN. Reconciled 2026-09-21 against `e73552c8`.**
+**Status: ACTIVE TARGET AND SOLE IMPLEMENTATION PLAN. Reconciled 2026-09-21 against the Checkout implementation on `main`; exact-SHA production proof remains open.**
 
 FixFlags is the independent monitor for software that acts.
 
 **Your software runs. FixFlags watches.**
 
 This file owns what to build, in what order, and what may be called launch-ready. It replaces the former website-care wave plan. The working Site product is the migration base, not discarded work. Public claims remain limited to [PRODUCT.md](../PRODUCT.md) until a capability passes the acceptance evidence in this plan.
+
+### First vertical slice: Checkout
+
+| Slice element | Local implementation | Remaining proof |
+| --- | --- | --- |
+| Outcome/binding/assessment | Additive `SiteOutcome` semantics, `OutcomeExecutionBinding`, `OutcomeAssessment` and non-destructive migrations | Fresh production migration and exact-revision canary |
+| Shared execution | One tenant-scoped `RunRequest` from web, Watch and MCP into the existing Audit worker; database-enforced one active run | Credentialed schedule/restart and competing-trigger exercise |
+| Truth | Confirmed Checkout success is Clear; confirmed reproducible failure is Flag; blocked/unknown is Couldn't verify; expired evidence is Stale | Real owned-Site broken → fixed → recovery sequence |
+| Incident | Checkout occurrence reuses a stable Site Flag identity; targeted Verify keeps attempt history | Recurrence and notification return on a canary Site |
+| Developer access | Site/Outcome/Run/Flag MCP tools, hashed account keys, device flow, CLI bridge, setup and docs | Codex/Claude/Cursor client matrix and remote OAuth/scopes |
+| Public hierarchy | Checkout Outcome leads the Site board and homepage example; broad cards remain | Complete mobile/public route pass and exact deployed sample |
+
+This checkpoint is **not** the public launch. No acceptance checkbox below is closed merely by a migration or unit test. The next highest-leverage work is an end-to-end credentialed Checkout canary followed by remote MCP authorization and deployment/integration trigger alignment.
 
 | Authority                                  | Source                                                          |
 | ------------------------------------------ | --------------------------------------------------------------- |
@@ -63,12 +76,12 @@ The launch container remains the existing customer **Site** because the current 
 
 ### Debt that blocks launch
 
-1. `SiteOutcome` does not own expected behavior, executable bindings, state, freshness, or a direct Flag relationship.
-2. Triggers still enter through report-shaped services and a two-value `RecheckTrigger`; there is no durable tenant-scoped Run Request that states why and what to execute.
-3. MCP is report-first (`ff_check_and_plan`, report IDs, rubrics, Finish Plans), accepts arbitrary URLs, may wait 50 seconds, and is 404-parked.
+1. Only Checkout currently has complete Outcome semantics. Other inferred Outcomes remain descriptive; a second binding must prove the model beyond commerce.
+2. Web, Watch, and MCP now enter through one RunRequest, but deployment, integration, and legacy API triggers still enter report-shaped services.
+3. The registered MCP surface is Outcome-first; old report tools remain source compatibility and hidden CLI handlers. Exact-client/prod proof and remote OAuth are open.
 4. Remote MCP auth is long-lived API-key only. Interactive launch clients need OAuth discovery and scoped, audience-bound tokens; API keys remain appropriate for CI and the stdio bridge.
 5. Deployment verification is Railway-specific and generic rather than Site/Outcome-scoped.
-6. The public sample still exposes a legacy report, score, rubrics, and report Agent. Live MCP docs are unreachable because the surface is parked.
+6. `/samples` is a Site board with one retained evidence-backed non-Checkout Flag, while the homepage now illustrates Checkout. Neither should be mistaken for credentialed Checkout production proof. MCP docs and setup are reachable locally.
 7. Machine-facing Outcome execution has no launch adapter. The architecture can support it, but claiming it now would be false.
 8. Legacy Product/report/credit vocabulary still crosses application seams even where storage names may safely remain.
 

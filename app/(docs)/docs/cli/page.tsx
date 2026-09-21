@@ -1,5 +1,5 @@
-import { notFound } from 'next/navigation'
+import { redirect } from 'next/navigation'
 
-export default function ParkedCliDocsPage() {
-  notFound()
+export default function CliCompatibilityPage() {
+  redirect('/docs/mcp')
 }

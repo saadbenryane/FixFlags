@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { canUseApiKeys } from '@/lib/auth/entitlements'
 import {
   decideCliDeviceAuthorization,
   getCliAuthorizationForUserCode,
@@ -38,7 +37,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       status: authorization.status,
       expiresAt: authorization.expiresAt,
-      canAuthorize: canUseApiKeys(current.user),
+      canAuthorize: true,
     })
   } catch (error) {
     return handleRouteError(error, 'Could not read CLI authorization')
@@ -51,12 +50,6 @@ export async function POST(req: NextRequest) {
     if (!current) {
       return apiError('Sign in to authorize the CLI', 401, {
         code: 'UNAUTHORIZED',
-      })
-    }
-    if (!canUseApiKeys(current.user)) {
-      return apiError('CLI access requires the Pro plan or higher', 402, {
-        code: 'UPGRADE_REQUIRED',
-        action: 'upgrade',
       })
     }
     await enforceRateLimit({

@@ -25,6 +25,7 @@ const PARKED_POWER_TOOL_PREFIXES = [
   '/settings/integrations',
   '/onboarding/plans',
   '/docs/integrations',
+  '/help/mcp-and-editors',
   '/api/integrations/github',
   '/api/integrations/gsc',
   '/api/products',
@@ -32,7 +33,6 @@ const PARKED_POWER_TOOL_PREFIXES = [
   '/api/repo-scans',
   '/api/stripe/credit-pack',
   '/api/webhooks/railway',
-  '/.well-known/skills',
 ] as const
 
 export function isParkedPowerToolPath(pathname: string): boolean {

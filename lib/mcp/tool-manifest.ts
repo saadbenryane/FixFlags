@@ -113,7 +113,7 @@ export const MCP_TOOLS = {
   },
   getConnectionInfo: {
     name: 'ff_get_connection_info',
-    desc: 'Inspect the FixFlags MCP contract, authenticated capabilities, and canonical Product Review workflow.',
+    desc: 'Inspect the FixFlags MCP contract and the independent Site Outcome verification workflow.',
     tier: 'protocol',
   },
 } as const satisfies Record<string, McpToolDefinition>
