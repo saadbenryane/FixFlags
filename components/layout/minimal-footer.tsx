@@ -11,6 +11,7 @@ import {
 } from '@/lib/site/nav-styles'
 import { FooterThemeToggle } from '@/components/layout/FooterThemeToggle'
 import { Container } from '@/components/ui/container'
+import { CookiePreferencesButton } from '@/components/analytics/CookiePreferencesButton'
 
 export function MinimalFooter() {
   return (
@@ -22,6 +23,7 @@ export function MinimalFooter() {
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <FooterThemeToggle />
+          <CookiePreferencesButton className={NAV_LINK_FOOTER_BASE} />
           <span className="mx-1 select-none text-muted-foreground/50" aria-hidden>
             ·
           </span>

@@ -4,6 +4,7 @@ import {
   getGoogleAdsSignupLabel,
 } from '@/lib/analytics/ad-conversions'
 import { ensureGtagStub, isGaConfigured } from '@/lib/analytics/gtag'
+import { hasAnalyticsConsent } from '@/lib/analytics/consent'
 
 /**
  * Funnel events for launch instrumentation.
@@ -232,6 +233,7 @@ export function trackEvent<T extends FunnelEvent>(
     )
     return
   }
+  if (!hasAnalyticsConsent()) return
   if (!ensureGtagStub()) return
   if (!isGaConfigured() && process.env.NODE_ENV === 'production') return
 

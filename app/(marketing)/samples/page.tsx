@@ -65,14 +65,14 @@ export default async function SamplesPage({
             </span>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-5 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {cards.map(({ name, status, icon: Icon }) => (
-              <Card key={name} variant="subtle">
-                <CardHeader className="flex-row items-center gap-3 space-y-0 pb-2">
-                  <Icon className="h-5 w-5 text-muted-foreground" aria-hidden />
-                  <Heading as="h3" className="text-base">{name}</Heading>
+              <Card key={name} variant="subtle" className="min-w-0">
+                <CardHeader className="flex-row flex-wrap items-center gap-2 space-y-0 p-3 pb-2 sm:gap-3 sm:p-6 sm:pb-2">
+                  <Icon className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                  <Heading as="h3" className="min-w-0 text-base [overflow-wrap:anywhere]">{name}</Heading>
                 </CardHeader>
-                <CardContent><p className="text-sm text-muted-foreground">{status}</p></CardContent>
+                <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0"><p className="text-sm text-muted-foreground">{status}</p></CardContent>
               </Card>
             ))}
           </div>

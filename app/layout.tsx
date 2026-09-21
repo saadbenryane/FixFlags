@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next'
-import Script from 'next/script'
 import '@fontsource-variable/inter/wght.css'
 import '@fontsource-variable/inter-tight/wght.css'
 import '@fontsource-variable/jetbrains-mono/wght.css'
@@ -63,12 +62,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       {/* Fontsource assets are bundled into the build; no font network request is required. */}
-      <link rel="preconnect" href="https://www.googletagmanager.com" />
-      <link rel="preconnect" href="https://connect.facebook.net" />
       <body className={`${fontVariables} font-sans antialiased`}>
-        <Script id="gtag-stub" strategy="beforeInteractive">
-          {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}`}
-        </Script>
         <Providers>
           <a
             href="#main-content"

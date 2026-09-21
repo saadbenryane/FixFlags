@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { Logo } from '@/components/brand/Logo'
 import { FooterNewsletter } from '@/components/layout/FooterNewsletter'
 import { FooterThemeToggle } from '@/components/layout/FooterThemeToggle'
+import { CookiePreferencesButton } from '@/components/analytics/CookiePreferencesButton'
 import { Container } from '@/components/ui/container'
 import { BRAND, LANDING_PAGE } from '@/lib/marketing/copy'
 import { FOOTER_COLUMNS, LEGAL_LINKS } from '@/lib/site/nav'
@@ -43,6 +44,7 @@ export function Footer() {
               {madeWith}
             </p>
             <FooterThemeToggle />
+            <CookiePreferencesButton className="min-h-11 text-2xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring" />
           </div>
 
           <FooterNewsletter className="lg:justify-self-end" />

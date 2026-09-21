@@ -286,6 +286,7 @@ test('auth shell supports light and dark themes without reflow', async ({ page }
   await page.setViewportSize({ width: 375, height: 900 })
   await page.emulateMedia({ colorScheme: 'light' })
   await page.goto('/sign-in')
+  await page.getByRole('button', { name: 'Only necessary' }).click()
   const themeToggle = page.locator('footer').getByRole('button', { name: 'Toggle theme' })
   await expect(themeToggle).toBeVisible()
   await themeToggle.click()

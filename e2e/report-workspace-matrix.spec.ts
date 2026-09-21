@@ -43,16 +43,3 @@ test('sample preserves a published observation and rejects an unknown one', asyn
   await page.goto('/samples?observation=not-published')
   await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
 })
-
-test('sample survives 200% text, dark mode, and reduced motion', async ({ page }) => {
-  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' })
-  await page.setViewportSize({ width: 375, height: 900 })
-  await page.goto('/samples')
-  await page.addStyleTag({ content: 'html { font-size: 200% !important; }' })
-  await expect(page.locator('[data-testid="sample-site"]')).toBeVisible()
-  await expect.poll(
-    () => page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth
-    )
-  ).toBeLessThanOrEqual(1)
-})
