@@ -42,7 +42,7 @@ export const SEO = {
   samples: {
     title: 'Sample Site and Flag',
     description:
-      'See an evidence-backed FixFlags Site, its coverage, and one actionable Flag from a retained test fixture.',
+      'See DemoSite as an evidence-backed FixFlags Site, with honest coverage and one actionable Flag from a retained test fixture.',
   },
   faq: {
     title: 'FAQ',
