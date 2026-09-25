@@ -358,7 +358,7 @@ export function SiteBoard({
           {notice ? (
             <AuditFailurePanel
               failureCode={view.audit.failureCode}
-              onRetry={() => void retryCheck()}
+              onRetry={retryCheck}
               retryLoading={busy}
             />
           ) : summaryNote ? (

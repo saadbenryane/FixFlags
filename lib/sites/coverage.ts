@@ -50,8 +50,7 @@ function parseEvidence(value: unknown): EvidenceCoverageShape {
 /** Areas that received concrete public evidence for this analysis. */
 export function evidencedAreasFromCoverage(
   evidenceCoverage: unknown,
-  flags: Array<{ checkId: string | null; rubric: string; impactTag: string | null }>,
-  _rubrics: Array<{ name: string; score: number | null }>
+  flags: Array<{ checkId: string | null; rubric: string; impactTag: string | null }>
 ): Set<SiteCardArea> {
   const evidenced = new Set<SiteCardArea>()
   const evidence = parseEvidence(evidenceCoverage)
@@ -108,11 +107,7 @@ export function buildCoverageFacts(input: {
     openByArea.set(area, (openByArea.get(area) ?? 0) + 1)
   }
 
-  const evidenced = evidencedAreasFromCoverage(
-    input.evidenceCoverage,
-    input.flags,
-    input.rubrics
-  )
+  const evidenced = evidencedAreasFromCoverage(input.evidenceCoverage, input.flags)
   const evidence = parseEvidence(input.evidenceCoverage)
   const journeyRan = Boolean(evidence.flowScan || evidence.journeyWalk)
   const pageSpeedRan = Boolean(evidence.desktopPageSpeed || evidence.mobilePageSpeed)
