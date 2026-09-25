@@ -69,6 +69,8 @@ model User {
   siteAgentMessages        SiteAgentMessage[]
   siteLifecycleEvents      SiteLifecycleEvent[]
   requestedRuns            RunRequest[]                 @relation("RunRequester")
+  oauthAuthorizationCodes  OAuthAuthorizationCode[]
+  oauthRefreshTokens       OAuthRefreshToken[]
 
   @@map("users")
 }
@@ -405,6 +407,11 @@ model ApiKey {
   lastFour                String
   revokedAt               DateTime?
   client                  ApiKeyClient?
+  /// Empty scopes with no audience are a first-party CI or bridge key.
+  scopes                  String[]                 @default([])
+  /// Set only for OAuth access tokens. Must match the MCP resource.
+  audience                String?
+  expiresAt               DateTime?
   user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   cliDeviceAuthorizations CliDeviceAuthorization[]
   mcpInteractions         McpInteraction[]
@@ -434,6 +441,96 @@ model CliDeviceAuthorization {
   @@index([status, expiresAt])
   @@index([userId, createdAt])
   @@map("cli_device_authorizations")
+}
+
+/// Public OAuth client created by dynamic registration. Metadata-document clients are not stored.
+model OAuthClient {
+  id           String   @id
+  name         String?
+  redirectUris String[]
+  createdAt    DateTime @default(now())
+
+  @@map("oauth_clients")
+}
+
+/// Short-lived authorization code. Only the hash is stored.
+model OAuthAuthorizationCode {
+  id            String    @id @default(cuid())
+  codeHash      String    @unique
+  userId        String
+  clientId      String
+  redirectUri   String
+  codeChallenge String
+  resource      String
+  scopes        String[]
+  expiresAt     DateTime
+  consumedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("oauth_authorization_codes")
+}
+
+/// Rotating refresh token for an audience-bound MCP access token.
+model OAuthRefreshToken {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  userId     String
+  audience   String
+  scopes     String[]
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("oauth_refresh_tokens")
+}
+
+/// Site-scoped provider link. Credentials stay encrypted. Facts are aggregates only.
+model SiteConnection {
+  id                    String                 @id @default(cuid())
+  projectId             String
+  provider              SiteConnectionProvider
+  externalAccount       String?
+  propertyId            String?
+  propertyLabel         String?
+  encryptedAccessToken  String?
+  encryptedRefreshToken String?
+  tokenExpiresAt        DateTime?
+  scopes                String                 @default("")
+  status                SiteConnectionStatus   @default(NEEDS_REAUTH)
+  statusDetail          String?
+  lastSyncedAt          DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  project               Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  facts                 SiteConnectionFact[]
+
+  @@unique([projectId, provider])
+  @@index([projectId])
+  @@map("site_connections")
+}
+
+model SiteConnectionFact {
+  id           String         @id @default(cuid())
+  connectionId String
+  projectId    String
+  kind         String
+  pagePath     String?
+  subject      String
+  clicks       Int?
+  impressions  Int?
+  sessions     Int?
+  position     Float?
+  observedAt   DateTime       @default(now())
+  connection   SiteConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, kind])
+  @@index([projectId, pagePath])
+  @@map("site_connection_facts")
 }
 
 model Project {
@@ -483,6 +580,7 @@ model Project {
   supportSessions             SupportSession[]
   lifecycleEvents             SiteLifecycleEvent[]
   runRequests                 RunRequest[]
+  siteConnections             SiteConnection[]
   user                        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, canonicalHost])
@@ -597,6 +695,7 @@ model Audit {
   pipelineEvents             AuditPipelineEvent[]
   runRequests               RunRequest[]
   outcomeAssessments        OutcomeAssessment[]
+  bindingExecutions         OutcomeBindingExecution[]
 
   @@index([userId])
   @@index([status])
@@ -1859,6 +1958,10 @@ model SiteOutcome {
   description       String?
   kind              SiteOutcomeKind  @default(GENERIC)
   expectation       String?
+  criticality       OutcomeCriticality @default(INFORMATIONAL)
+  environment       String             @default("production")
+  /// Clear requires every required binding. There is no partial Clear.
+  bindingPolicy     OutcomeBindingPolicy @default(ALL_REQUIRED)
   enabled           Boolean          @default(true)
   staleAfterMinutes Int              @default(11520)
   /// heuristic | user
@@ -1871,7 +1974,9 @@ model SiteOutcome {
   pages             SiteOutcomePage[]
   bindings          OutcomeExecutionBinding[]
   assessments       OutcomeAssessment[]
+  bindingExecutions OutcomeBindingExecution[]
   runRequests       RunRequest[]
+  runSelections     RunRequestOutcome[]
   improvements      Improvement[]
 
   @@unique([projectId, slug])
@@ -1888,6 +1993,8 @@ model OutcomeExecutionBinding {
   mechanism OutcomeExecutionMechanism
   key       String
   config    Json
+  scope     Json?
+  required  Boolean                   @default(true)
   version   Int                       @default(1)
   enabled   Boolean                   @default(true)
   createdAt DateTime                  @default(now())
@@ -1906,7 +2013,7 @@ model RunRequest {
   outcomeId         String
   requestedByUserId String?
   source            RunRequestSource
-  idempotencyKey    String             @unique
+  idempotencyKey    String
   environment       String             @default("production")
   context           Json?
   status            RunRequestStatus   @default(QUEUED)
@@ -1919,27 +2026,42 @@ model RunRequest {
   updatedAt         DateTime           @updatedAt
   project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   outcome           SiteOutcome        @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  selections        RunRequestOutcome[]
   requestedBy       User?              @relation("RunRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
   audit             Audit?             @relation(fields: [auditId], references: [id], onDelete: SetNull)
-  assessment        OutcomeAssessment?
+  assessments       OutcomeAssessment[]
 
   @@index([projectId, requestedAt(sort: Desc)])
+  @@unique([projectId, source, idempotencyKey])
   @@index([outcomeId, requestedAt(sort: Desc)])
   @@index([auditId])
   @@index([status, requestedAt])
   @@map("run_requests")
 }
 
+/// The exact Outcome set requested for one physical Audit execution.
+model RunRequestOutcome {
+  runRequestId String
+  outcomeId    String
+  runRequest   RunRequest  @relation(fields: [runRequestId], references: [id], onDelete: Cascade)
+  outcome      SiteOutcome @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+
+  @@id([runRequestId, outcomeId])
+  @@index([outcomeId, runRequestId])
+  @@map("run_request_outcomes")
+}
+
 /// Durable conclusion from comparable evidence. Stale is derived from validUntil.
 model OutcomeAssessment {
   id            String                 @id @default(cuid())
   outcomeId     String
-  runRequestId  String                 @unique
+  runRequestId  String
   auditId       String
   improvementId String?
   state         OutcomeAssessmentState
   summary       String
   evidence      Json?
+  coverage      Json?
   assessedAt    DateTime               @default(now())
   validUntil    DateTime
   outcome       SiteOutcome            @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
@@ -1948,9 +2070,29 @@ model OutcomeAssessment {
   improvement   Improvement?           @relation(fields: [improvementId], references: [id], onDelete: SetNull)
 
   @@index([outcomeId, assessedAt(sort: Desc)])
+  @@unique([runRequestId, outcomeId])
   @@index([auditId])
   @@index([improvementId])
   @@map("outcome_assessments")
+}
+
+/// Evidence produced by one required binding during one Audit. Restart-safe.
+model OutcomeBindingExecution {
+  id          String                     @id @default(cuid())
+  auditId     String
+  outcomeId   String
+  bindingKey  String
+  mechanism   OutcomeExecutionMechanism
+  disposition BindingDisposition
+  reason      String
+  detail      Json?
+  createdAt   DateTime                   @default(now())
+  audit       Audit                      @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  outcome     SiteOutcome                @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+
+  @@unique([auditId, outcomeId, bindingKey])
+  @@index([outcomeId, createdAt(sort: Desc)])
+  @@map("outcome_binding_executions")
 }
 
 model SiteOutcomePage {
@@ -1972,10 +2114,42 @@ enum IntegrityHealth {
 enum SiteOutcomeKind {
   GENERIC
   CHECKOUT
+  SIGNUP
+  AVAILABILITY
+}
+
+enum OutcomeBindingPolicy {
+  ALL_REQUIRED
+}
+
+enum SiteConnectionProvider {
+  SEARCH_CONSOLE
+  ANALYTICS
+}
+
+enum SiteConnectionStatus {
+  CONNECTED
+  MISMATCH
+  NEEDS_REAUTH
+  REVOKED
+}
+
+enum BindingDisposition {
+  SUCCEEDED
+  FAILED
+  BLOCKED
+}
+
+enum OutcomeCriticality {
+  CRITICAL
+  IMPORTANT
+  INFORMATIONAL
 }
 
 enum OutcomeExecutionMechanism {
   BROWSER_JOURNEY
+  HTTP_AVAILABILITY
+  SAFE_FORM
 }
 
 enum RunRequestSource {
@@ -1983,6 +2157,8 @@ enum RunRequestSource {
   WATCH
   MCP
   API
+  DEPLOYMENT
+  INTEGRATION
   INTERNAL
 }
 

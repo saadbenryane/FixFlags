@@ -18,7 +18,8 @@ describe('homepage conversion story', () => {
     expect(within(workflow).getByRole('img', { name: C.workflow.failedAlt })).toHaveAttribute('data-src', '/marketing/evidence/purchase-broken.png')
     expect(within(workflow).getByRole('img', { name: C.workflow.passedAlt })).toHaveAttribute('data-src', '/marketing/evidence/purchase-verified.png')
     expect(within(workflow).getByText(C.workflow.failedTitle)).toBeInTheDocument()
-    expect(within(workflow).getByText(C.workflow.passedTitle)).toBeInTheDocument()
+    expect(within(workflow).getByRole('button', { name: C.workflow.viewFlag })).toBeInTheDocument()
+    expect(within(workflow).getByRole('slider', { name: C.workflow.compareLabel })).toHaveAttribute('aria-valuenow', '18')
     expect(within(workflow).getAllByText(C.workflow.page)).toHaveLength(1)
     expect(within(workflow).getAllByText(C.workflow.source)).toHaveLength(1)
   })
@@ -30,17 +31,17 @@ describe('homepage conversion story', () => {
     const hero = document.querySelector('section')
     const workflow = document.getElementById('flag-example')
     const plans = document.getElementById('plans')
-    const compare = screen.getByRole('heading', { name: /What your site should answer/ })
+    const compare = screen.getByRole('heading', { name: new RegExp(SITE_COMPARE.headlineDisplay) })
     const compareSection = compare.closest('section')
     expect(hero).not.toBeNull()
     expect(workflow).not.toBeNull()
     expect(plans).not.toBeNull()
     expect(compareSection).not.toBeNull()
-    expect(within(hero!).queryByRole('heading', { name: /What your site should answer/ })).not.toBeInTheDocument()
+    expect(within(hero!).queryByRole('heading', { name: new RegExp(SITE_COMPARE.headlineDisplay) })).not.toBeInTheDocument()
     expect(workflow!.compareDocumentPosition(compareSection!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(compareSection!.compareDocumentPosition(plans!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(within(compareSection!).getByText(SITE_COMPARE.columns[0].label)).toBeInTheDocument()
-    expect(within(compareSection!).getByText(SITE_COMPARE.columns[1].label)).toBeInTheDocument()
+    expect(within(compareSection!).getAllByText(SITE_COMPARE.columns[0].label).length).toBeGreaterThan(0)
+    expect(within(compareSection!).getAllByText(SITE_COMPARE.columns[1].label).length).toBeGreaterThan(0)
     expect(within(compareSection!).getByRole('columnheader', { name: SITE_COMPARE.columns[2].label })).toBeInTheDocument()
     expect(within(compareSection!).getByText(SITE_COMPARE.subline)).toBeInTheDocument()
   })
@@ -80,14 +81,19 @@ describe('homepage conversion story', () => {
     expect(within(board).getByRole('button', { name: `${C.flag.name}: ${C.flag.status}` })).toHaveTextContent('1 Flag')
     expect(within(board).getByRole('button', { name: 'Performance: 3 Flags' })).toHaveTextContent('3 Flags')
     expect(within(board).getByText(C.flag.title)).toBeInTheDocument()
-    expect(within(board).getByRole('button', { name: /Checkout: Flag\. Cart did not update/ })).toBeInTheDocument()
+    expect(within(board).queryByRole('button', { name: /Checkout: Flag/ })).not.toBeInTheDocument()
     expect(within(board).queryByText(/contact/i)).not.toBeInTheDocument()
   })
 
-  it('shows the fixed launch board without a non-persistent card library', () => {
+  it('adds a card and an integration on the sample board', () => {
     render(<CareHomepage />)
-    expect(screen.queryByRole('button', { name: /Add card/i })).not.toBeInTheDocument()
-    expect(within(screen.getByRole('region', { name: C.boardAria })).queryByRole('button', { name: C.library.uptime.name })).not.toBeInTheDocument()
+    const board = screen.getByRole('region', { name: C.boardAria })
+    fireEvent.click(within(board).getByRole('button', { name: SITE_BOARD_COPY.addCard }))
+    fireEvent.click(screen.getByRole('button', { name: /Is your website reachable/ }))
+    expect(within(board).getByRole('article', { name: C.library.uptime.name })).toBeInTheDocument()
+    fireEvent.click(within(board).getByRole('button', { name: C.integrations.add }))
+    fireEvent.click(screen.getByRole('button', { name: /Analytics/ }))
+    expect(within(board).getByText('Session counts do not decide Clear.')).toBeInTheDocument()
   })
 
   it('opens the purchase Flag with evidence and restores focus', async () => {
@@ -159,11 +165,32 @@ describe('homepage conversion story', () => {
     expect(C.quiet.notifications).toHaveLength(2)
   })
 
-  it('links the integration story to a real destination and Shopify action', () => {
+  it('links each integration to a real destination', () => {
     render(<CareHomepage />)
-    expect(screen.getByRole('link', { name: /Explore integrations/i })).toHaveAttribute('href', '/integrations')
+    expect(screen.getByRole('link', { name: /See how each one connects/i })).toHaveAttribute('href', '/integrations')
     expect(screen.getByRole('link', { name: /Connect Shopify/i })).toHaveAttribute('href', '/install')
-    expect(screen.getByText(C.integrations.futureLabel)).toBeInTheDocument()
+    const search = screen.getByRole('heading', { name: 'Search Console' }).closest('article')!
+    expect(within(search).getByRole('link')).toHaveAttribute('href', '/integrations#search-console')
+    expect(screen.getByRole('link', { name: /Sign in with GitHub/i })).toHaveAttribute('href', '/sign-in')
+    expect(screen.queryByText(/Coming later/i)).not.toBeInTheDocument()
+  })
+
+  it('drags the before and after handle and opens the flag', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.dataset.compareFrame === 'true') {
+        return { left: 0, width: 200, top: 0, right: 200, bottom: 120, height: 120, x: 0, y: 0, toJSON() { return {} } } as DOMRect
+      }
+      const index = C.workflow.steps.findIndex(step => step.id === this.dataset.step)
+      const top = index < 0 ? 900 : index * 500 + 400
+      return { left: 0, width: 10, top, right: 10, bottom: top + 10, height: 10, x: 0, y: top, toJSON() { return {} } } as DOMRect
+    })
+    render(<CareHomepage />)
+    const handle = screen.getByRole('slider', { name: C.workflow.compareLabel })
+    fireEvent.pointerDown(handle, { clientX: 150, pointerId: 1 })
+    expect(handle).toHaveAttribute('aria-valuenow', '75')
+    expect(screen.getByText(C.workflow.passedTitle)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: C.workflow.viewFlag }))
+    expect(within(screen.getByRole('dialog')).getByText(C.flag.title)).toBeInTheDocument()
   })
 
   it('rejects weak, chore-heavy, or unsupported homepage claims', () => {

@@ -1,7 +1,6 @@
 import { type User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
-import { startMonitoringAudit } from '@/lib/audit/monitoring'
 import { getFlagDiffSummary } from '@/lib/audit/diff-flags'
 import { resend } from '@/lib/email/client'
 import { BRAND, SITE_URL } from '@/lib/marketing/copy'
@@ -9,7 +8,7 @@ import { canAccessProductWatch, allowedWatchIntervals } from '@/lib/auth/entitle
 import { systemClock, type Clock } from '@/lib/time/clock'
 import { isCustomerFlag } from '@/lib/audit/attention'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
-import { requestOutcomeRun } from '@/lib/sites/application/run-requests'
+import { requestSiteRun } from '@/lib/sites/application/run-requests'
 import {
   calcWatchNextRun,
   fromStoredWatchInterval,
@@ -194,39 +193,31 @@ export async function processDueProjectWatches(
         continue
       }
 
-      const parent = await prisma.audit.findFirst({
-        where: { projectId: project.id, status: 'COMPLETED' },
-        orderBy: { completedAt: 'desc' },
+      const outcomes = await prisma.siteOutcome.findMany({
+        where: { projectId: project.id, enabled: true },
         select: { id: true },
+        orderBy: { id: 'asc' },
       })
-      if (!parent) {
+      if (outcomes.length === 0) {
         errors += 1
         await recordWatchFailure(
           project.id,
           project.watchConsecutiveFailures + 1,
-          'No completed Site check exists for this website',
-          now
+          'Confirm an Outcome before Watch can verify this Site.',
+          now,
         )
         continue
       }
-
-      const checkout = await prisma.siteOutcome.findFirst({
-        where: { projectId: project.id, kind: 'CHECKOUT', enabled: true },
-        select: { id: true },
+      const outcomeIds = outcomes.map((outcome) => outcome.id)
+      const tick = project.watchNextRunAt?.toISOString() ?? now.toISOString()
+      await requestSiteRun({
+        projectId: project.id,
+        outcomeIds,
+        userId: project.userId,
+        source: 'WATCH',
+        idempotencyKey: `watch:${project.id}:${tick}:${outcomeIds.join(',')}`,
+        context: { cadence: interval },
       })
-      if (checkout) {
-        await requestOutcomeRun({
-          projectId: project.id,
-          outcomeId: checkout.id,
-          userId: project.userId,
-          source: 'WATCH',
-          idempotencyKey: `watch:${project.id}:${checkout.id}:${project.watchNextRunAt?.toISOString() ?? now.toISOString()}`,
-          context: { cadence: interval },
-        })
-      } else {
-        const outcome = await startMonitoringAudit(parent.id, project.user as User, { trigger: 'WATCH' })
-        if (!outcome.ok) throw new Error(outcome.error)
-      }
       enqueued += 1
       await prisma.project.update({
         where: { id: project.id },

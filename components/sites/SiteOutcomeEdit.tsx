@@ -18,7 +18,7 @@ export function SiteOutcomeEdit({
   const [name, setName] = useState('')
 
   if (outcomes.length === 0) {
-    return <p className="text-sm text-muted-foreground">Still learning your Journeys.</p>
+    return <p className="text-sm text-muted-foreground">Still learning what matters on this Site.</p>
   }
 
   async function save(outcomeId: string, confirmed: boolean, nextName?: string) {
@@ -30,10 +30,10 @@ export function SiteOutcomeEdit({
         body: JSON.stringify({ outcomeId, confirmed, name: nextName }),
       })
       if (!res.ok) {
-        setMessage('Could not save this Journey')
+        setMessage('Could not save this Outcome')
         return
       }
-      setMessage('Journey saved')
+      setMessage('Outcome saved')
       setEditingId(null)
     } finally {
       setBusy(false)
@@ -54,7 +54,7 @@ export function SiteOutcomeEdit({
               }}
             >
               <label className="block text-xs text-muted-foreground" htmlFor={`outcome-${outcome.id}`}>
-                Journey name
+                Outcome name
               </label>
               <input
                 id={`outcome-${outcome.id}`}

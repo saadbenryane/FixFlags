@@ -175,11 +175,10 @@ export async function createAndEnqueueAudit(
   const attribution = options.attribution
   const userId = options.userId ?? null
 
-  // Anonymous teaser scans run the reduced pipeline (single page, no critical
-  // path discovery, no flow walk, no slow replay) so first value lands in
-  // ~60-90s. Parented re-checks and signed-in checks always keep the full
-  // pipeline and their requested auditMode. Mirrors the anon gate below: this
-  // choke point is shared by every create path (checks, roast, MCP, watch).
+  // Anonymous teaser scans stay on one page and skip slow replay. The primary
+  // page walk still runs. Parented re-checks and signed-in checks keep their
+  // requested auditMode and slow replay. This choke point is shared by every
+  // create path (checks, roast, MCP, watch).
   const isAnonTeaser = !userId && !options.parentId
 
   if (options.parentId) {

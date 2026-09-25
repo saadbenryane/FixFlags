@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkoutResultCopy, currentOutcomeState } from '@/lib/sites/outcome-state'
+import { checkoutResultCopy, currentOutcomeState, flagMatchesOutcome, outcomeCoverageLabel, outcomeStatusLabel } from '@/lib/sites/outcome-state'
 
 describe('Outcome state', () => {
   it('keeps a fresh completed conclusion and derives stale from its validity window', () => {
@@ -23,5 +23,30 @@ describe('Outcome state', () => {
     expect(checkoutResultCopy('bot_wall').problem).toBe('')
     expect(checkoutResultCopy('no_buy_control').summary).toMatch(/could not find/i)
     expect(checkoutResultCopy('add_to_cart_noop').problem).toMatch(/Cart did not contain/i)
+  })
+
+  it('names required coverage in customer language', () => {
+    expect(outcomeCoverageLabel('production', [
+      { key: 'checkout-browser-v1', required: true },
+      { key: 'signup-form-v1', required: true },
+      { key: 'notes', required: false },
+    ])).toBe('Production · purchase path, form')
+    expect(outcomeCoverageLabel('production', [])).toBe('Not configured for independent verification')
+    expect(outcomeStatusLabel('COULD_NOT_VERIFY')).toBe('Couldn’t verify')
+    expect(outcomeStatusLabel('CLEAR', true)).toBe('Verifying')
+  })
+
+  it('ties a checkout Flag to the Checkout Outcome without a page list', () => {
+    const outcome = { flagId: null, pageUrls: [], kind: 'CHECKOUT' }
+    expect(flagMatchesOutcome({
+      id: 'flag-1',
+      checkId: 'journey-checkout-failed-add_to_cart_noop',
+      pageUrl: 'https://walk.example/products/tote',
+    }, outcome)).toBe(true)
+    expect(flagMatchesOutcome({
+      id: 'flag-2',
+      checkId: 'security-header',
+      pageUrl: 'https://walk.example',
+    }, outcome)).toBe(false)
   })
 })

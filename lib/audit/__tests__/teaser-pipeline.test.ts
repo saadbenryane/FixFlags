@@ -7,7 +7,7 @@ import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 
 /**
  * Option A coverage: anonymous teaser scans select the reduced pipeline
- * (single page, no flow walk, no slow replay) while signed-in checks and
+ * (single page, page walk, no slow replay) while signed-in checks and
  * re-checks keep the full pipeline. Also proves the existing anonymous gates
  * (one teaser via cookie + IP soft ceiling, claim, includeAi) still run.
  */

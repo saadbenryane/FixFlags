@@ -17,7 +17,6 @@ describe('URL-first public product scope', () => {
     '/api/repo-scans/scan-1',
     '/api/reports/review-1/chat',
     '/api/stripe/credit-pack',
-    '/api/webhooks/railway',
   ])('parks the power-user entry point %s', (pathname) => {
     expect(isParkedPowerToolPath(pathname)).toBe(true)
   })
@@ -35,6 +34,8 @@ describe('URL-first public product scope', () => {
     '/api/api-keys',
     '/api/cli/auth/device',
     '/api/mcp',
+    '/api/webhooks/railway',
+    '/api/oauth/token',
     '/api/well-known/mcp-json',
     '/.well-known/mcp.json',
     '/.well-known/mcp-server.json',
@@ -56,7 +57,8 @@ describe('URL-first public product scope', () => {
       '/docs/mcp',
       '/docs/troubleshooting',
     ])
-    expect(FOOTER_COLUMNS.resources.map((link) => String(link.href))).toContain('/docs/mcp')
+    expect(FOOTER_COLUMNS.resources.map((link) => String(link.href))).not.toContain('/docs/mcp')
+    expect(FOOTER_COLUMNS.resources.map((link) => link.label)).not.toContain('MCP for agents')
     expect(FOOTER_COLUMNS.resources.map((link) => String(link.href))).not.toContain('/docs/integrations')
   })
 })

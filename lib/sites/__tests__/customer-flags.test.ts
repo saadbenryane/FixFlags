@@ -52,4 +52,59 @@ describe('customer Flag projector on Site load', () => {
     expect(flags.map((flag) => flag.id)).toEqual(['flag-contact'])
     expect(recommendations.map((flag) => flag.id)).toEqual(['flag-title'])
   })
+
+  it('drops a stored slow-action Flag when the same page has no primary action', async () => {
+    prisma.flag.findMany.mockResolvedValue([
+      {
+        id: 'flag-missing',
+        checkId: 'journey-first-visit-hidden-cta',
+        rubric: 'EXPERIENCE',
+        severity: 'CRITICAL',
+        impactTag: 'CONVERSION',
+        problem: 'No obvious primary CTA on first visit',
+        evidence: 'No primary action stands out.',
+        whyItMatters: 'People have nothing clear to do next.',
+        fix: 'Add one primary action.',
+        pageUrl: 'https://example.org/',
+        status: 'OPEN',
+      },
+      {
+        id: 'flag-slow',
+        checkId: 'slow-3g-cta-delayed',
+        rubric: 'EXPERIENCE',
+        severity: 'IMPORTANT',
+        impactTag: 'CONVERSION',
+        problem: 'Primary CTA is not visible within 8 seconds on slow 3G',
+        evidence: 'The primary CTA was not detected.',
+        whyItMatters: 'People leave before they can act.',
+        fix: 'Render the action in the first HTML.',
+        pageUrl: 'https://example.org/',
+        status: 'OPEN',
+      },
+    ])
+
+    const flags = await loadSiteFlags(site)
+    expect(flags.map((flag) => flag.checkId)).toEqual(['journey-first-visit-hidden-cta'])
+  })
+
+  it('keeps a slow-action Flag when a primary action was found', async () => {
+    prisma.flag.findMany.mockResolvedValue([
+      {
+        id: 'flag-slow',
+        checkId: 'slow-3g-cta-delayed',
+        rubric: 'EXPERIENCE',
+        severity: 'IMPORTANT',
+        impactTag: 'CONVERSION',
+        problem: 'Primary CTA is not visible within 8 seconds on slow 3G',
+        evidence: 'The primary CTA became visible after 9000ms.',
+        whyItMatters: 'People leave before they can act.',
+        fix: 'Render the action in the first HTML.',
+        pageUrl: 'https://example.org/',
+        status: 'OPEN',
+      },
+    ])
+
+    const flags = await loadSiteFlags(site)
+    expect(flags.map((flag) => flag.id)).toEqual(['flag-slow'])
+  })
 })

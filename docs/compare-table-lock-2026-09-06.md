@@ -1,8 +1,8 @@
 # Compare table lock — 2026-09-06 (Saad)
 
-Status: COPY LOCKED and shipped on pricing and the Care homepage. Shared `MarketingCompareSection`. Do not rewrite `SITE_COMPARE`.
+Status: Superseded 2026-09-24 by the owner. `SITE_COMPARE` now uses phrases, not complementary checkmarks. A speed score plus an agent is not FixFlags. Shared `MarketingCompareSection` still sits on the homepage and pricing.
 
-Headline: What your site should answer.
+Headline: A score and a prompt still leave it unwatched.
 
 Audience: any website / ecommerce store (not launch-only). Apple-quiet.
 

@@ -188,7 +188,7 @@ export function convertEvaluationToFindings(
       impactTag: 'ACCESSIBILITY',
       problem: ab.barrier,
       evidence: ab.evidence,
-      whyItMatters: 'Accessibility barriers prevent users with disabilities from completing the journey.',
+      whyItMatters: 'Accessibility barriers stop some people from using this page.',
       fix: accessibilityBarrierFix(ab),
       screenshotUrl: step?.screenshotAfterUrl,
       accessibilityEvidence: step?.accessibilityTree?.slice(0, 2000),
@@ -200,12 +200,32 @@ export function convertEvaluationToFindings(
   return findings
 }
 
+/** Same customer sentence on the same page is one Flag, even if two walks found it. */
+export function omitRepeatedCustomerFindings<T extends { problem: string; url: string }>(
+  existing: Array<{ problem: string; pageUrl: string | null }>,
+  incoming: T[],
+): T[] {
+  const seen = new Set(
+    existing.map((flag) => `${flag.problem.trim().toLowerCase()}|${flag.pageUrl ?? ''}`),
+  )
+  return incoming.filter((finding) => {
+    const key = `${finding.problem.trim().toLowerCase()}|${finding.url}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 export async function persistJourneyResult(
   auditId: string,
   result: Awaited<ReturnType<typeof runJourneyTemplate>>
 ): Promise<JourneyFindingDraft[]> {
   const filteredFindings = filterToolingPathFlags(result.findings.map(withStepEvidence))
-  const findingsToPersist = [...filteredFindings]
+  const alreadyRecorded = await prisma.flag.findMany({
+    where: { auditId },
+    select: { problem: true, pageUrl: true },
+  })
+  const findingsToPersist = omitRepeatedCustomerFindings(alreadyRecorded, [...filteredFindings])
 
   const networkFlags = runNetworkEngagementChecks([], result.formProbe)
   for (const nf of networkFlags) {

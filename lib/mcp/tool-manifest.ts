@@ -17,6 +17,7 @@ type McpToolDefinition = {
 export const MCP_TOOLS = {
   listSites: { name: 'ff_list_sites', desc: 'List the Sites owned by this FixFlags account.', tier: 'core' },
   listOutcomes: { name: 'ff_list_outcomes', desc: 'List important Outcomes and their current Clear, Flag, Couldn’t verify, or Stale state.', tier: 'core' },
+  run: { name: 'ff_run', desc: 'Request one independent run for selected important Outcomes on an owned Site.', tier: 'core' },
   verifyOutcome: { name: 'ff_verify_outcome', desc: 'Request fresh independent verification of an owned Outcome and return a run identifier.', tier: 'core' },
   getRun: { name: 'ff_get_run', desc: 'Poll an Outcome verification run and retrieve its independent result.', tier: 'core' },
   listFlags: { name: 'ff_list_flags', desc: 'List active customer Flags for an owned Site.', tier: 'core' },
@@ -119,12 +120,13 @@ export const MCP_TOOLS = {
 } as const satisfies Record<string, McpToolDefinition>
 
 export const MCP_TOOL_DEFINITIONS = [
-  MCP_TOOLS.listSites, MCP_TOOLS.listOutcomes, MCP_TOOLS.verifyOutcome,
+  MCP_TOOLS.listSites, MCP_TOOLS.listOutcomes, MCP_TOOLS.run, MCP_TOOLS.verifyOutcome,
   MCP_TOOLS.getRun, MCP_TOOLS.listFlags, MCP_TOOLS.getFlag,
   MCP_TOOLS.verifyFlag, MCP_TOOLS.getConnectionInfo,
 ] as const
 const LAUNCH_CORE_NAMES = new Set<string>([
   MCP_TOOLS.listSites.name, MCP_TOOLS.listOutcomes.name, MCP_TOOLS.verifyOutcome.name,
+  MCP_TOOLS.run.name,
   MCP_TOOLS.getRun.name, MCP_TOOLS.listFlags.name, MCP_TOOLS.getFlag.name,
   MCP_TOOLS.verifyFlag.name,
 ])

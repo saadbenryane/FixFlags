@@ -52,7 +52,7 @@ Implemented locally in the first Outcome slice: additive Checkout binding and as
 
 Launch gaps: prove the complete Checkout recovery loop with credentialed web, Watch, and external MCP clients on an exact production revision; add OAuth discovery/scopes for remote MCP; route deployment/integration triggers through RunRequest; add a second safe Outcome pattern; complete production observability and broad public coherence. Extra connections and generalized agent-task evaluation remain post-launch.
 
-Do not advertise future connections or hourly Watch as shipped.
+Do not advertise Meta, repository scanning, or hourly Watch as shipped. Analytics and Search Console connect in Site settings and add context only. Public GitHub copy is sign-in and Flag handoff, not a repository scan.
 
 ## Proof and operating status
 

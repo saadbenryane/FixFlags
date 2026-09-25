@@ -8,6 +8,7 @@ import {
 } from '@/lib/sites/coverage'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail, loadSiteFindings } from '@/lib/sites/flags'
+import { walkFinishedFromCoverage } from '@/lib/sites/first-outcome'
 import { listSiteOutcomes } from '@/lib/sites/outcomes'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
@@ -20,8 +21,11 @@ import {
   type WatchBoardState,
 } from '@/lib/sites/watch-state'
 import { buildBoardCards, type BoardCardView } from '@/lib/sites/board-card'
+import { connectionCardNotes, loadSiteConnectionViews } from '@/lib/sites/connections/read'
+import type { PublicConnection } from '@/lib/sites/connections/match'
 import { normalizeInternalScreenshotUrl } from '@/lib/audit/screenshot-types'
 import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
+import { recoverAuditJobOnPoll } from '@/lib/audit/recover-audit-job'
 
 export type { BoardCardView }
 
@@ -35,6 +39,8 @@ export type SiteHomeView = {
     status: string | null
     progress: number
     score: number | null
+    walkFinished: boolean
+    failureCode: string | null
   }
   cards: BoardCardView[]
   flags: SiteFlagSeed[]
@@ -55,6 +61,8 @@ export type SiteHomeView = {
     notificationLevel: 'FLAGS' | 'CRITICAL_ONLY' | 'OFF'
     notifyOnRecovery: boolean
     shopify: { state: 'connected' | 'unavailable' | 'not_connected'; domain: string | null }
+    searchConsole: PublicConnection
+    analytics: PublicConnection
   }
 }
 
@@ -64,6 +72,10 @@ const auditSelect = {
   progress: true,
   score: true,
   completedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  startedAt: true,
+  failureCode: true,
   evidenceCoverage: true,
   url: true,
   rubrics: { select: { name: true, score: true } },
@@ -152,7 +164,15 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
   const site = await loadSiteRecord(siteId)
   if (!site) return null
 
-  const audit = await resolveLatestAudit(site)
+  let audit = await resolveLatestAudit(site)
+  if (audit && isAuditInFlight(audit.status) && Date.now() - audit.updatedAt.getTime() > 15_000) {
+    try {
+      await recoverAuditJobOnPoll(audit.id, audit)
+      audit = await resolveLatestAudit(site)
+    } catch {
+      // The board still shows the current status if the queue cannot be reached.
+    }
+  }
 
   const [{ flags, recommendations }, outcomes, pageCount, checkedPages, projectSettings] = await Promise.all([
     loadSiteFindings(site),
@@ -211,6 +231,8 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
           .map((tech) => tech.name)
       : []
 
+  const connections = site.projectId ? await loadSiteConnectionViews(site.projectId) : null
+  const connectionNotes = connectionCardNotes(connections?.facts ?? [])
   const cards: BoardCardView[] = buildBoardCards({
     siteId,
     inFlight,
@@ -224,6 +246,12 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     checkedAt: (prior ?? audit)?.completedAt?.toISOString() ?? null,
     detected: { analytics },
   })
+  for (const card of cards) {
+    if (card.id === 'search' && connectionNotes.search) card.facts = [...card.facts, connectionNotes.search].slice(0, 4)
+    if (card.id === 'tracking' && connectionNotes.tracking) card.facts = [...card.facts, connectionNotes.tracking].slice(0, 4)
+    if (card.id === 'search' && connections?.searchConsole.status === 'connected') card.sources = [...card.sources, 'Search Console']
+    if (card.id === 'tracking' && connections?.analytics.status === 'connected') card.sources = [...card.sources, 'Google Analytics']
+  }
 
   const watchState = watchBoardState({
     interval: site.watchInterval,
@@ -250,6 +278,8 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
       status: audit?.status ?? null,
       progress: audit?.progress ?? 0,
       score: inFlight ? null : (audit?.score ?? null),
+      walkFinished: walkFinishedFromCoverage(audit?.status, audit?.evidenceCoverage),
+      failureCode: audit?.failureCode ?? null,
     },
     cards,
     flags,
@@ -280,7 +310,20 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
             domain: projectSettings.shopifyShops[0].shopDomain,
           }
         : { state: 'not_connected', domain: null },
+      searchConsole: connections?.searchConsole ?? { ...emptyConnection('SEARCH_CONSOLE'), detail: 'Claim this Site before connecting a provider.' },
+      analytics: connections?.analytics ?? { ...emptyConnection('ANALYTICS'), detail: 'Claim this Site before connecting a provider.' },
     },
+  }
+}
+
+function emptyConnection(provider: PublicConnection['provider']): PublicConnection {
+  return {
+    provider,
+    configured: false,
+    status: 'not_connected',
+    propertyLabel: null,
+    detail: null,
+    lastSyncedAt: null,
   }
 }
 

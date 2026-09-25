@@ -1,6 +1,11 @@
-import { Globe2 } from 'lucide-react'
-import { BoardCard, BoardGrid, BoardStatus, BOARD_CARD_ICONS } from '@/components/sites/BoardCard'
-import { CARE_HOME as C, SITE_BOARD_COPY } from '@/lib/marketing/copy'
+'use client'
+
+import { useState } from 'react'
+import { Globe2, Plus } from 'lucide-react'
+import { AddBoardCard, AddCardLibrary, BoardCard, BoardGrid, BoardStatus, BOARD_CARD_ICONS } from '@/components/sites/BoardCard'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { CARE_HOME as C, INTEGRATIONS_PAGE, SITE_BOARD_COPY } from '@/lib/marketing/copy'
+import type { SiteCardArea } from '@/lib/sites/card-areas'
 import { HOMEPAGE_EVIDENCE, HomepageUrlEntry } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
 
@@ -8,11 +13,19 @@ type PreviewCard = (typeof C.cards)[number] | (typeof C.library)[keyof typeof C.
 export type HomepageDetailCard = PreviewCard | 'site' | 'conversion'
 export type HomepageExtraCardId = 'uptime' | 'accessibility'
 
+const STARTER_AREAS: SiteCardArea[] = ['site', 'conversion', 'security', 'search', 'performance', 'tracking']
+
 export function HomepageHero({
   onOpen,
 }: {
   onOpen: (card: HomepageDetailCard) => void
 }) {
+  const [libraryOpen, setLibraryOpen] = useState(false)
+  const [integrationsOpen, setIntegrationsOpen] = useState(false)
+  const [extra, setExtra] = useState<HomepageExtraCardId[]>([])
+  const [connected, setConnected] = useState<Array<(typeof INTEGRATIONS_PAGE.items)[number]['id']>>([])
+  const present: SiteCardArea[] = [...STARTER_AREAS, ...extra]
+
   return <section className={s.hero}>
     <div className={s.heroContent}>
       <h1>
@@ -30,12 +43,11 @@ export function HomepageHero({
           <span><Globe2 size={16} aria-hidden="true" />{C.boardHost}</span>
           <BoardStatus state="attention" label={C.boardSummary} count={4} onOpen={() => onOpen('site')} />
         </div>
-        <button type="button" className={s.outcomePreview} aria-label={`${C.checkoutOutcome.name}: ${C.checkoutOutcome.status}. ${C.checkoutOutcome.detail}`} onClick={() => onOpen('conversion')}>
-          <span className={s.outcomePreviewName}>{C.checkoutOutcome.name}</span>
-          <strong>{C.checkoutOutcome.status}</strong>
-          <span>{C.checkoutOutcome.detail}</span>
-          <small>{C.checkoutOutcome.evidence}</small>
-        </button>
+        {connected.length > 0 ? <ul className={s.connectionRow} aria-label="Sample connections">
+          {INTEGRATIONS_PAGE.items.filter(item => connected.includes(item.id)).map(item => (
+            <li key={item.id}><strong>{item.title}</strong><span>{item.limit}</span></li>
+          ))}
+        </ul> : null}
         <div className={s.boardStage}>
           <BoardGrid>
             <BoardCard
@@ -76,9 +88,60 @@ export function HomepageHero({
               sources={[SITE_BOARD_COPY.browserSource]}
               onOpen={() => onOpen(card)}
             />)}
+            {extra.map(id => {
+              const card = C.library[id]
+              return <BoardCard
+                key={card.id}
+                name={card.name}
+                status={card.status}
+                state="healthy"
+                answer={card.value}
+                detail={card.detail}
+                icon={BOARD_CARD_ICONS[id]}
+                sources={[SITE_BOARD_COPY.browserSource]}
+                onOpen={() => onOpen(card)}
+              />
+            })}
+            <AddBoardCard onOpen={() => setLibraryOpen(true)} />
+            <button type="button" className={s.boardAdd} onClick={() => setIntegrationsOpen(true)}>
+              <span className={s.boardAddSymbol} aria-hidden="true"><Plus size={22} /></span>
+              <strong>{C.integrations.add}</strong>
+            </button>
           </BoardGrid>
         </div>
       </div>
     </div>
+    <AddCardLibrary
+      open={libraryOpen}
+      onOpenChange={setLibraryOpen}
+      present={present}
+      onAdd={id => {
+        if (id === 'uptime' || id === 'accessibility') setExtra(current => current.includes(id) ? current : [...current, id])
+        setLibraryOpen(false)
+      }}
+      exampleNote={C.integrations.sampleNote}
+    />
+    <Dialog open={integrationsOpen} onOpenChange={setIntegrationsOpen}>
+      <DialogContent className={s.dialog}>
+        <DialogTitle>{C.integrations.addTitle}</DialogTitle>
+        <DialogDescription>{C.integrations.addBody}</DialogDescription>
+        <ul className={s.integrationPicker}>
+          {INTEGRATIONS_PAGE.items.map(item => {
+            const added = connected.includes(item.id)
+            return <li key={item.id}>
+              <button
+                type="button"
+                disabled={added}
+                onClick={() => setConnected(current => current.includes(item.id) ? current : [...current, item.id])}
+              >
+                <span><strong>{item.title}</strong><small>{item.body}</small></span>
+                <em>{added ? C.integrations.added : C.integrations.addAction}</em>
+              </button>
+            </li>
+          })}
+        </ul>
+        <p className={s.sampleNote}>{C.integrations.sampleNote}</p>
+      </DialogContent>
+    </Dialog>
   </section>
 }

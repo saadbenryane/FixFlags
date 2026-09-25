@@ -54,7 +54,7 @@ describe('/pricing', () => {
     expect(screen.getByRole('button', { name: 'Analyze' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /waitlist/i })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Compare plans' })).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /What your site should answer/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /A score and a prompt still leave it unwatched/ })).toBeInTheDocument()
   })
 
   it('embeds FAQPage structured data on the route', () => {

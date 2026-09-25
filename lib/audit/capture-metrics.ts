@@ -184,7 +184,15 @@ export async function measureMobileLayout(page: Page): Promise<CaptureMetrics> {
     }
 
     function shouldSkipNavHeader(el: Element): boolean {
-      if (el.closest('nav, [role="navigation"]')) return true
+      // Some responsive mega-menus are rendered outside a semantic <nav> and
+      // laid out far down the document while closed. Their links are neither
+      // visible page CTAs nor meaningful scroll-depth evidence.
+      if (
+        el.closest(
+          'nav, [role="navigation"], footer, [role="contentinfo"], [class*="menu" i], [id*="menu" i]'
+        )
+      )
+        return true
       const header = el.closest('header')
       if (!header) return false
       const form = el.closest('form')

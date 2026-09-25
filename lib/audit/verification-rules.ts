@@ -9,7 +9,7 @@ export const CHECK_ID_TO_RULE: Record<string, string> = {
   'title-too-long':
     'Confirm the title is 60 characters or fewer in search preview.',
   'description-missing':
-    'View page source, confirm meta name="description" with content.',
+    'The page includes a meta description a search result can show.',
   'description-too-short':
     'Confirm the meta description is at least 50 characters.',
   'description-too-long':

@@ -9,15 +9,17 @@ vi.mock('@/components/audit/AuditInput', () => ({ AuditInput: () => <div data-te
 vi.mock('@/components/marketing/MarketingPageViewTracker', () => ({ MarketingPageViewTracker: () => null }))
 
 describe('integrations marketing page', () => {
-  it('presents Shopify as available and future connections as unavailable', () => {
+  it('presents Shopify, Analytics, Search Console, and GitHub as connections', () => {
     render(<IntegrationsPage />)
     expect(screen.getByRole('heading', { level: 1, name: C.hero.title })).toBeInTheDocument()
-    const available = screen.getByText(C.available.label).closest('article')!
-    expect(within(available).getByRole('heading', { name: C.available.title })).toBeInTheDocument()
-    expect(within(available).getByRole('link', { name: /Connect Shopify/i })).toHaveAttribute('href', '/install')
-    const future = screen.getByText(C.future.label).closest('article')!
-    for (const item of C.future.items) expect(within(future).getByRole('heading', { name: item.title })).toBeInTheDocument()
-    expect(within(future).queryByRole('link')).not.toBeInTheDocument()
+    for (const item of C.items) {
+      const card = document.getElementById(item.id)!
+      expect(within(card).getByRole('heading', { name: item.title })).toBeInTheDocument()
+      expect(within(card).getByRole('link', { name: new RegExp(item.action) })).toHaveAttribute('href', item.href)
+      expect(within(card).getByText(item.limit)).toBeInTheDocument()
+    }
+    expect(screen.queryByText(/Coming later/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/does not scan the repository/i)).toBeInTheDocument()
     expect(screen.getByTestId('url-entry')).toBeInTheDocument()
   })
 

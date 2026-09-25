@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/db'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { requireAdmin, isAdminResponse } from '@/lib/auth/require-admin'
-import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
+import { retryFailedExecution } from '@/lib/sites/application/run-requests'
 
 export async function POST(
   _req: NextRequest,
@@ -13,22 +12,9 @@ export async function POST(
     if (isAdminResponse(admin)) return admin
 
     const { id } = await params
-    const audit = await prisma.audit.findUnique({
-      where: { id },
-      select: { id: true, url: true, userId: true, status: true },
-    })
-    if (!audit) return apiError('Audit not found', 404)
-    if (audit.status !== 'FAILED') {
-      return apiError('Only failed audits can be retried', 409, { code: 'NOT_FAILED' })
-    }
-
-    const result = await createAndEnqueueAudit({
-      url: audit.url,
-      userId: audit.userId,
-      skipUsageCount: true,
-    })
-
-    return NextResponse.json({ auditId: result.auditId, status: result.status })
+    const result = await retryFailedExecution(id)
+    if (!result.ok) return apiError(result.error, result.status, { code: result.status === 409 ? 'NOT_FAILED' : undefined })
+    return NextResponse.json({ auditId: result.auditId, runId: result.runId, status: 'QUEUED' })
   } catch (error) {
     return handleRouteError(error, 'Failed to retry audit')
   }

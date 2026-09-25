@@ -3,12 +3,9 @@ import { prisma } from '@/lib/db'
 /**
  * Audit pipeline modes.
  *
- * Anonymous teaser scans (the first-value wedge) run the REDUCED pipeline so
- * first value lands in ~60-90s: capture + deterministic checks + PageSpeed on
- * the primary page only. Slow-3G replay and the browser flow walk are skipped
- * because together they add 30-60s of waiting that makes anonymous users
- * abandon. Signed-in users (new checks, re-checks, claimed audits) always get
- * the FULL pasted-page capture, including slow replay and the flow walk.
+ * Anonymous teaser scans stay on one page and skip slow-3G replay so the
+ * first check is shorter. They still walk that page. Signed-in users (new
+ * checks, re-checks, claimed audits) also get slow replay and the same walk.
  * How far full judgment goes is `reviewDepth`, not a 6-URL crawler.
  */
 export type AuditPipelineMode = 'FULL' | 'TEASER'

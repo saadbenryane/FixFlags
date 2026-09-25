@@ -711,6 +711,20 @@ describe('runLayoutChecks', () => {
       0
     )
   })
+
+  it('does not treat a contextual article action as a hidden primary CTA', () => {
+    assert.equal(
+      runLayoutChecks(
+        healthyCaptureMetrics({
+          mobilePrimaryCtaTopPx: 7450,
+          mobilePrimaryCtaText: 'Tell me about your project',
+          mobileDocumentHeight: 9440,
+        }),
+        'article'
+      ).length,
+      0
+    )
+  })
 })
 
 describe('page-role suppression', () => {

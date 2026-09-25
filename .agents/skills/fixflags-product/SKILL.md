@@ -28,6 +28,10 @@ Read AGENTS.md and claim non-overlapping scope. Keep current implementation dist
 
 Trace route, application service, persistence, tenancy, entitlements and UI together. Business facts and access are deterministic. Reuse shared services rather than creating separate report/Shopify/Site truths.
 
+Launch execution goes through `requestSiteRun` in `lib/sites/application/run-requests.ts`. Watch, deployment webhooks, MCP, and flag verification are adapters. A recorded fix does not change an assessment. Safe Signup stays Couldn’t verify until an authorized reversible fixture exists. MCP OAuth metadata, PKCE, audience, and scopes live in `lib/mcp/oauth.ts`. Do not describe that local engine as a deployed launch.
+
+Site connections are optional context. Search Console and Analytics attach to one Site, match the host, and store aggregates only. They never mark an Outcome Clear. Shopify remains the commerce connection. Do not claim a provider in public copy until its connect, mismatch, and disconnect path has been exercised.
+
 The new Site replaces the report experience. Customer Flags use `isCustomerFlag` in `lib/audit/attention.ts`; Site lists come from `loadSiteFlags`. Home · Flags · Site settings is the nav. Signed-in owners with a Site redirect from `/report/[id]` to `/sites/{id}`. Shopify Can't buy upserts a Flag on a matching Site. Watch is weekly (Free) / daily (paid); pulse vs full is typed, hourly pulse is not scheduled. Existing rubrics, full update-review diff, anonymous gating and report URLs are scoped compatibility contracts, not permanent v2 requirements. Maintain current behavior until explicit migration and regression evidence.
 
 Never reuse graph Site/Page as private customer objects or infer ownership from hostname alone. Preserve credentials, subscriptions, customer corrections and historical evidence.

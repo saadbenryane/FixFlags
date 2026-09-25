@@ -2,6 +2,40 @@ import type { OutcomeAssessmentState } from '@prisma/client'
 
 export type CustomerOutcomeState = 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY' | 'STALE'
 
+export function flagMatchesOutcome(
+  flag: { id: string; improvementId?: string | null; pageUrl?: string | null; checkId?: string | null },
+  outcome: { flagId: string | null; pageUrls: string[]; kind: string },
+): boolean {
+  if (outcome.flagId && (flag.id === outcome.flagId || flag.improvementId === outcome.flagId)) return true
+  if (flag.pageUrl && outcome.pageUrls.includes(flag.pageUrl)) return true
+  const kind = outcome.kind.toLowerCase()
+  return kind !== 'generic' && Boolean(flag.checkId?.toLowerCase().includes(kind))
+}
+
+export function outcomeStatusLabel(state: CustomerOutcomeState, running = false): string {
+  if (running) return 'Verifying'
+  if (state === 'CLEAR') return 'Clear'
+  if (state === 'FLAG') return 'Flag'
+  if (state === 'STALE') return 'Stale'
+  return 'Couldn’t verify'
+}
+
+export function outcomeCoverageLabel(
+  environment: string,
+  bindings: Array<{ key: string; required: boolean }>,
+): string {
+  const required = bindings.filter((binding) => binding.required)
+  if (required.length === 0) return 'Not configured for independent verification'
+  const place = environment === 'production' ? 'Production' : environment
+  const names = required.map((binding) => {
+    if (binding.key.includes('checkout')) return 'purchase path'
+    if (binding.key.includes('signup') || binding.key.includes('form')) return 'form'
+    if (binding.key.includes('availability')) return 'page availability'
+    return 'required check'
+  })
+  return `${place} · ${[...new Set(names)].join(', ')}`
+}
+
 export function currentOutcomeState(
   assessment: { state: OutcomeAssessmentState; validUntil: Date } | null,
   now = new Date(),

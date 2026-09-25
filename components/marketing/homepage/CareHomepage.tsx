@@ -49,7 +49,7 @@ export function CareHomepage() {
 
   return <div className={s.home}>
     <HomepageHero onOpen={openCard} />
-    <HomepageWorkflowSection />
+    <HomepageWorkflowSection onViewFlag={() => openCard('conversion')} />
     <HomepageCoverageSection />
     <HomepageHandoffSection
       showInstructions={showInstructions}

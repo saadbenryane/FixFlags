@@ -22,7 +22,6 @@ export const FOOTER_COLUMNS = {
     { href: '/install', label: 'Install' },
     { href: '/help', label: 'Help Center' },
     { href: '/docs', label: 'Docs' },
-    { href: '/docs/mcp', label: 'MCP for agents' },
     { href: '/faq', label: 'FAQ' },
   ],
   company: [

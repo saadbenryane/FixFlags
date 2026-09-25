@@ -194,3 +194,20 @@ describe('personal page purpose with contact CTAs', () => {
     expect(result.purpose).toBe('studio')
   })
 })
+
+describe('rendered component documentation purpose', () => {
+  it('uses repeated code-example controls as positive documentation evidence', () => {
+    const result = detectPagePurpose(
+      healthyMeta({
+        title: 'React Button component - Material UI',
+        h1s: ['Button'],
+        navLandmarkCount: 2,
+        pageText:
+          'Buttons communicate actions that users can take throughout an interface. View as Markdown. Basic button examples explain contained, outlined, text, icon, loading, size, and color variants. Expand code and Edit code controls accompany each runnable example. The API reference documents props, accessibility, composition, and customization for application developers.',
+      }),
+      'https://example.com/components/react-button/'
+    )
+
+    expect(result.purpose).toBe('docs')
+  })
+})

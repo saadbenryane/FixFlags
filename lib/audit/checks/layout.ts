@@ -1,8 +1,16 @@
 import type { CaptureMetrics } from '../capture-metrics'
 import type { DeterministicFlag } from '../flag-types'
+import { needsFirstStep, type PagePurpose } from '../page-purpose'
 
-export function runLayoutChecks(metrics: CaptureMetrics | null): DeterministicFlag[] {
-  if (metrics == null || metrics.mobilePrimaryCtaTopPx == null) {
+export function runLayoutChecks(
+  metrics: CaptureMetrics | null,
+  purpose: PagePurpose = 'marketing'
+): DeterministicFlag[] {
+  // This is a conversion-layout check. A contextual action at the end of an
+  // article, documentation page, OSS README, or placeholder is not evidence
+  // that the page's primary CTA was hidden. Page-purpose checks already use
+  // the same boundary for first-step expectations.
+  if (!needsFirstStep(purpose) || metrics == null || metrics.mobilePrimaryCtaTopPx == null) {
     return []
   }
 

@@ -186,7 +186,7 @@ export function boardFlagPrompt(input: {
   return [
     `FixFlags Flag: ${input.problem}`,
     input.pageUrl ? `URL: ${input.pageUrl}` : null,
-    input.journeyName ? `Journey: ${input.journeyName}` : null,
+    input.journeyName ? `Outcome: ${input.journeyName}` : null,
     `Why it matters: ${input.whyItMatters}`,
     input.evidence?.trim() ? `Evidence: ${input.evidence.trim()}` : null,
     input.expectedBehavior?.trim() ? `Expected after a fix: ${input.expectedBehavior.trim()}` : null,

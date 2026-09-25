@@ -191,6 +191,25 @@ describe('measureMobileLayout', () => {
     assert.equal(metrics.competingPrimaryCtaCount, 0)
     assert.equal(metrics.motionIgnoresReducedPreference, false)
   })
+
+  it('ignores CTA-like links in responsive menus and footers', async () => {
+    document.body.innerHTML =
+      '<main><p>Product content</p></main><div class="mobile-menu"><a id="menu-cta" href="/enterprise">Enterprise</a></div><footer><a id="footer-cta" href="/contact">Contact sales</a></footer>'
+    setRect(document.querySelector('#menu-cta') as Element, {
+      top: 5000,
+      width: 160,
+      height: 48,
+    })
+    setRect(document.querySelector('#footer-cta') as Element, {
+      top: 5400,
+      width: 160,
+      height: 48,
+    })
+
+    const metrics = await measureMobileLayout(fakePage())
+    assert.equal(metrics.mobilePrimaryCtaTopPx, null)
+    assert.equal(metrics.mobilePrimaryCtaText, null)
+  })
 })
 
 describe('measureMotionA11y', () => {

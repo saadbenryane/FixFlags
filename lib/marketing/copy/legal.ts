@@ -10,7 +10,7 @@ export const LEGAL_PAGE_META = {
 export const ANALYTICS_CONSENT_COPY = {
   title: 'Choose your analytics settings',
   body:
-    'FixFlags uses optional analytics to understand which product journeys work. We do not load advertising or analytics scripts until you allow them. Necessary cookies keep the product working.',
+    'FixFlags uses optional analytics to see how people use FixFlags. We do not load advertising or analytics scripts until you allow them. Necessary cookies keep the product working.',
   allow: 'Allow analytics',
   necessaryOnly: 'Only necessary',
 } as const

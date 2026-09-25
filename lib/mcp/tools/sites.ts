@@ -7,7 +7,7 @@ import { mcpCoreError, mcpStructuredResult } from '@/lib/mcp/contract'
 import { listSiteOutcomes } from '@/lib/sites/outcomes'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail, loadSiteFlags } from '@/lib/sites/flags'
-import { getOwnedRun, requestOutcomeRun } from '@/lib/sites/application/run-requests'
+import { getOwnedRun, requestOutcomeRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 
 async function ownedSite(userId: string, siteId: string) {
@@ -95,13 +95,55 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
   )
 
   server.registerTool(
+    MCP_TOOLS.run.name,
+    {
+      description: MCP_TOOLS.run.desc,
+      inputSchema: {
+        siteId: z.string().min(1),
+        outcomeIds: z.array(z.string().min(1)).max(20).optional(),
+        idempotencyKey: z.string().min(8).max(160),
+        commit: z.string().max(80).optional(),
+        deployment: z.string().max(160).optional(),
+        affectedArea: z.string().max(120).optional(),
+      },
+      annotations: toolAnnotations('Run important Outcomes', false),
+    },
+    async ({ siteId, outcomeIds, idempotencyKey, commit, deployment, affectedArea }) => {
+      try {
+        const site = await ownedSite(user.id, siteId)
+        const selected = outcomeIds?.length ? outcomeIds : (await listSiteOutcomes(site))
+          .filter((outcome) => outcome.criticality !== 'INFORMATIONAL' && outcome.bindings.some((binding) => binding.required))
+          .map((outcome) => outcome.id)
+        const run = await requestSiteRun({
+          projectId: site.projectId!,
+          outcomeIds: selected,
+          userId: user.id,
+          source: 'MCP',
+          idempotencyKey,
+          context: { commit, deployment, affectedArea },
+        })
+        return mcpStructuredResult({
+          status: 'ACCEPTED',
+          siteId: site.siteId,
+          outcomeIds: run.outcomeIds,
+          runId: run.runId,
+          reused: run.reused,
+          next: { tool: MCP_TOOLS.getRun.name, arguments: { runId: run.runId } },
+        })
+      } catch (error) {
+        return mcpCoreError(error, { action: 'retry' })
+      }
+    },
+  )
+
+  server.registerTool(
     MCP_TOOLS.verifyOutcome.name,
     {
       description: MCP_TOOLS.verifyOutcome.desc,
       inputSchema: {
         siteId: z.string().min(1),
         outcomeId: z.string().min(1),
-        idempotencyKey: z.string().min(8).max(160).optional(),
+        idempotencyKey: z.string().min(8).max(160),
         commit: z.string().max(80).optional(),
         deployment: z.string().max(160).optional(),
         affectedArea: z.string().max(120).optional(),
@@ -219,10 +261,14 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
     MCP_TOOLS.verifyFlag.name,
     {
       description: MCP_TOOLS.verifyFlag.desc,
-      inputSchema: { siteId: z.string().min(1), flagId: z.string().min(1) },
+      inputSchema: {
+        siteId: z.string().min(1),
+        flagId: z.string().min(1),
+        idempotencyKey: z.string().min(8).max(160),
+      },
       annotations: toolAnnotations('Verify a Flag', false),
     },
-    async ({ siteId, flagId }) => {
+    async ({ siteId, flagId, idempotencyKey }) => {
       try {
         const site = await ownedSite(user.id, siteId)
         const result = await executeSiteCommand({
@@ -230,6 +276,8 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
           siteId: site.siteId,
           userId: user.id,
           flagId,
+          idempotencyKey,
+          source: 'MCP',
         })
         if (!result.ok) throw new Error(result.error)
         return mcpStructuredResult({

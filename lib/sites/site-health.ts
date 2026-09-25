@@ -68,8 +68,8 @@ export function siteCardHealth(input: {
   if (!input.finished) {
     return {
       state: 'unknown',
-      answer: 'Learning your website',
-      statusLabel: 'First look',
+      answer: 'This check did not finish',
+      statusLabel: 'Couldn’t verify',
     }
   }
 

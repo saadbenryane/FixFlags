@@ -32,7 +32,6 @@ const PARKED_POWER_TOOL_PREFIXES = [
   '/api/projects',
   '/api/repo-scans',
   '/api/stripe/credit-pack',
-  '/api/webhooks/railway',
 ] as const
 
 export function isParkedPowerToolPath(pathname: string): boolean {

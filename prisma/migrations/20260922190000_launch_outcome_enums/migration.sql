@@ -1,0 +1,4 @@
+ALTER TYPE "SiteOutcomeKind" ADD VALUE 'SIGNUP';
+ALTER TYPE "SiteOutcomeKind" ADD VALUE 'AVAILABILITY';
+ALTER TYPE "OutcomeExecutionMechanism" ADD VALUE 'HTTP_AVAILABILITY';
+ALTER TYPE "OutcomeExecutionMechanism" ADD VALUE 'SAFE_FORM';

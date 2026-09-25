@@ -8,19 +8,12 @@ import { Surface } from '@/components/ui/surface'
 import { Logo } from '@/components/brand/Logo'
 import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
-import { SiteOutcomeEdit } from '@/components/sites/SiteOutcomeEdit'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
-import { CARD_CATALOG } from '@/lib/sites/card-areas'
+import { customerFlagContext } from '@/lib/sites/flag-label'
 import { boardFlagPrompt } from '@/lib/sites/board-card'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
-
-function certaintyLabel(value: string | null, confidence: number | null): string {
-  if (value) return value.replaceAll('_', ' ').toLowerCase()
-  if (confidence == null) return 'Not stated'
-  if (confidence >= 0.8) return 'High'
-  if (confidence >= 0.5) return 'Medium'
-  return 'Low'
-}
+import { connectionLines, loadSiteConnectionViews } from '@/lib/sites/connections/read'
+import { flagMatchesOutcome } from '@/lib/sites/outcome-state'
 
 function attemptLabel(outcome: string | null): string {
   if (!outcome) return 'Verifying…'
@@ -66,13 +59,10 @@ export default async function SiteFlagPage({
     }
   }
   const outcomes = await listSiteOutcomes(site)
-  const areaName = CARD_CATALOG[flag.area]?.name ?? flag.area
-  const relatedOutcome =
-    outcomes.find((outcome) =>
-      flag.pageUrl
-        ? outcome.pageUrls.some((url) => url === flag.pageUrl || url.startsWith(flag.pageUrl ?? ''))
-        : false
-    ) ?? outcomes[0] ?? null
+  const connectionContext = site.projectId
+    ? connectionLines((await loadSiteConnectionViews(site.projectId)).facts, flag.pageUrl)
+    : []
+  const relatedOutcome = outcomes.find((outcome) => flagMatchesOutcome(flag, outcome)) ?? null
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -85,14 +75,18 @@ export default async function SiteFlagPage({
           </Button>
         </div>
       </div>
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-        {site.canonicalHost} · {areaName} · {flag.severity.toLowerCase()}
+      <p className="text-xs text-muted-foreground">
+        {site.canonicalHost} · {customerFlagContext(flag.area, flag.severity)}
       </p>
       <p className="mt-3 text-sm font-medium text-brand">{SITE_BOARD_COPY.flagStatus}</p>
       <h1 className="mt-2 text-3xl font-semibold tracking-tight">{flag.problem}</h1>
       <p className="mt-3 text-muted-foreground">{flag.whyItMatters}</p>
       {relatedOutcome ? (
-        <p className="mt-3 text-sm text-muted-foreground">Journey · {relatedOutcome.name}</p>
+        <p className="mt-3 text-sm">
+          <Link href={`/sites/${resolvedId}/outcomes/${relatedOutcome.id}`} className="underline">
+            {relatedOutcome.name}
+          </Link>
+        </p>
       ) : null}
 
       <section className="mt-8 rounded-2xl border border-border/80 bg-background p-5">
@@ -111,14 +105,12 @@ export default async function SiteFlagPage({
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">URL</dt>
             <dd className="mt-1">{flag.pageUrl ?? 'This Site, page not recorded'}</dd>
           </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Viewport</dt>
-            <dd className="mt-1">{flag.viewport ?? 'Not recorded'}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Certainty</dt>
-            <dd className="mt-1">{certaintyLabel(flag.causeCertainty, flag.confidence)}</dd>
-          </div>
+          {flag.viewport ? (
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-muted-foreground">Viewport</dt>
+              <dd className="mt-1">{flag.viewport}</dd>
+            </div>
+          ) : null}
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-foreground">Expected after a fix</dt>
             <dd className="mt-1">{flag.expectedBehavior}</dd>
@@ -126,13 +118,19 @@ export default async function SiteFlagPage({
         </dl>
       </section>
 
-      <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5">
-        <h2 className="font-medium">Journey</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Confirm or name what this Flag is getting in the way of.
-        </p>
-        <SiteOutcomeEdit siteId={resolvedId} outcomes={outcomes} />
-      </section>
+      {connectionContext.length > 0 ? (
+        <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5">
+          <h2 className="font-medium">Connected context</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            These numbers come from an account connected to this Site. They sit beside the Flag.
+          </p>
+          <ul className="mt-3 space-y-2 text-sm">
+            {connectionContext.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5">
         <p className="text-xs text-muted-foreground">

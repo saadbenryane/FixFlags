@@ -65,6 +65,45 @@ describe('site card packaging', () => {
     expect(facts.every((f) => f.evidenced === false)).toBe(true)
   })
 
+  it('does not call Conversion or Performance healthy from a score alone', () => {
+    const facts = buildCoverageFacts({
+      auditStatus: 'COMPLETED',
+      completedAt: new Date('2026-09-23T12:00:00Z'),
+      evidenceCoverage: {
+        metadata: true,
+        flowScan: false,
+        journeyWalk: false,
+        desktopPageSpeed: false,
+        mobilePageSpeed: false,
+      },
+      flags: [],
+      rubrics: [
+        { name: 'MESSAGE', score: 92 },
+        { name: 'EXPERIENCE', score: 99 },
+      ],
+    })
+    const conversion = facts.find((fact) => fact.area === 'conversion')
+    const performance = facts.find((fact) => fact.area === 'performance')
+    expect(conversion?.state).toBe('unknown')
+    expect(conversion?.label).toBe('Not checked yet')
+    expect(conversion?.label).not.toBe('Looking good')
+    expect(performance?.state).toBe('unknown')
+    expect(performance?.label).not.toBe('Looking good')
+  })
+
+  it('calls Conversion healthy only after a journey ran', () => {
+    const facts = buildCoverageFacts({
+      auditStatus: 'COMPLETED',
+      completedAt: new Date('2026-09-23T12:00:00Z'),
+      evidenceCoverage: { flowScan: true },
+      flags: [],
+      rubrics: [{ name: 'MESSAGE', score: 92 }],
+    })
+    const conversion = facts.find((fact) => fact.area === 'conversion')
+    expect(conversion?.state).toBe('healthy')
+    expect(conversion?.label).toBe('Looking good')
+  })
+
   it('marks performance evidenced from page speed coverage', () => {
     const facts = buildCoverageFacts({
       auditStatus: 'COMPLETED',

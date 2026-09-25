@@ -18,7 +18,7 @@ export const ACCURACY_BROWSER_TARGETS: AccuracyBrowserTarget[] = [
   },
   {
     url: 'https://saadbenryane.com/',
-    expectedPrimaryCtaText: 'Book a call',
+    expectedPrimaryCtaText: 'Start a project',
     expectedAbsentCheckIds: ['cta-below-fold-mobile'],
     expectedInputsBelow16Count: 0,
   },
@@ -30,7 +30,7 @@ export const ACCURACY_BROWSER_TARGETS: AccuracyBrowserTarget[] = [
   },
   {
     url: 'https://saadbenryane.com/work/1health-platform',
-    expectedPrimaryCtaText: null,
+    expectedPrimaryCtaText: 'Tell me about your project',
     expectedAbsentCheckIds: ['cta-below-fold-mobile', 'visual-radius-inconsistent'],
     expectedInputsBelow16Count: 0,
   },
@@ -46,7 +46,7 @@ export const ACCURACY_BROWSER_TARGETS: AccuracyBrowserTarget[] = [
   },
   {
     url: 'https://www.mozilla.org/en-US/firefox/new/',
-    expectedAbsentCheckIds: [],
+    expectedAbsentCheckIds: ['cta-below-fold-mobile'],
   },
   {
     url: 'https://vercel.com/new',
@@ -58,7 +58,7 @@ export const ACCURACY_BROWSER_TARGETS: AccuracyBrowserTarget[] = [
   },
   {
     url: 'https://mui.com/material-ui/react-button/',
-    expectedAbsentCheckIds: [],
+    expectedAbsentCheckIds: ['cta-below-fold-mobile'],
   },
   {
     url: 'https://www.shopify.com/ca',

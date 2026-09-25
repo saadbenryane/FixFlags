@@ -4,6 +4,38 @@ import type { SiteRecord } from '@/lib/sites/types'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { currentOutcomeState, type CustomerOutcomeState } from '@/lib/sites/outcome-state'
 
+function expectationForKind(kind: 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY'): string {
+  if (kind === 'CHECKOUT') return 'The selected product appears in the cart and checkout opens.'
+  if (kind === 'SIGNUP') return 'A person can complete the form when FixFlags has a safe, authorized fixture.'
+  return 'The public page responds successfully.'
+}
+
+function bindingForConfirmedKind(kind: 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY', siteUrl: string) {
+  if (kind === 'CHECKOUT') {
+    return {
+      key: 'checkout-browser-v1',
+      mechanism: 'BROWSER_JOURNEY' as const,
+      config: { startUrl: siteUrl, safety: 'stop-at-checkout' },
+      scope: { device: 'mobile', expected: 'checkout_reached' },
+      required: true,
+    }
+  }
+  if (kind === 'SIGNUP') {
+    return {
+      key: 'signup-form-v1',
+      mechanism: 'SAFE_FORM' as const,
+      config: { startUrl: siteUrl, safety: 'protected' },
+      required: true,
+    }
+  }
+  return {
+    key: 'page-availability-v1',
+    mechanism: 'HTTP_AVAILABILITY' as const,
+    config: { startUrl: siteUrl },
+    required: true,
+  }
+}
+
 function slugify(name: string): string {
   return (
     name
@@ -32,8 +64,11 @@ async function toOutcomeView(row: {
   inferenceSource: string
   confirmedAt: Date | null
   pages: Array<{ pageId: string }>
-  kind: 'GENERIC' | 'CHECKOUT'
+  kind: 'GENERIC' | 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY'
+  criticality: 'CRITICAL' | 'IMPORTANT' | 'INFORMATIONAL'
+  environment: string
   expectation: string | null
+  bindings: Array<{ key: string; required: boolean; scope: Prisma.JsonValue | null }>
   assessments: Array<{
     state: 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY'
     summary: string
@@ -41,8 +76,9 @@ async function toOutcomeView(row: {
     validUntil: Date
     improvementId: string | null
     runRequestId: string
+    coverage: Prisma.JsonValue | null
   }>
-  runRequests: Array<{ id: string; status: string }>
+  runSelections: Array<{ runRequest: { id: string; status: string } }>
 }): Promise<SiteOutcomeView> {
   const pageIds = row.pages.map((p) => p.pageId)
   const latest = row.assessments[0] ?? null
@@ -61,15 +97,23 @@ async function toOutcomeView(row: {
     pageIds,
     pageUrls: await pageUrlsForIds(pageIds),
     kind: row.kind,
+    criticality: row.criticality,
+    environment: row.environment,
     expectation: row.expectation,
+    bindings: row.bindings.map((binding) => ({
+      key: binding.key,
+      required: binding.required,
+      scope: binding.scope,
+    })),
+    coverage: latest?.coverage ?? null,
     state: currentOutcomeState(latest),
     summary: latest?.summary ?? 'Not verified yet.',
     lastVerifiedAt: latest?.assessedAt.toISOString() ?? null,
     validUntil: latest?.validUntil.toISOString() ?? null,
     flagId: latest?.improvementId ?? null,
-    latestRunId: row.runRequests[0]?.id ?? latest?.runRequestId ?? null,
-    running: row.runRequests.some(
-      (request) => request.status === 'QUEUED' || request.status === 'RUNNING',
+    latestRunId: row.runSelections[0]?.runRequest.id ?? latest?.runRequestId ?? null,
+    running: row.runSelections.some(
+      ({ runRequest }) => runRequest.status === 'QUEUED' || runRequest.status === 'RUNNING',
     ),
   }
 }
@@ -83,8 +127,12 @@ export type SiteOutcomeView = {
   confirmedAt: string | null
   pageIds: string[]
   pageUrls: string[]
-  kind: 'GENERIC' | 'CHECKOUT'
+  kind: 'GENERIC' | 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY'
+  criticality: 'CRITICAL' | 'IMPORTANT' | 'INFORMATIONAL'
+  environment: string
   expectation: string | null
+  bindings: Array<{ key: string; required: boolean; scope: Prisma.JsonValue | null }>
+  coverage: Prisma.JsonValue | null
   state: CustomerOutcomeState
   summary: string
   lastVerifiedAt: string | null
@@ -232,11 +280,13 @@ export async function syncOutcomesFromAudit(input: {
           slug: 'checkout',
           description: 'A customer can add a product and reach checkout.',
           kind: 'CHECKOUT',
+          criticality: 'CRITICAL',
           expectation: 'The selected product appears in the cart and checkout opens.',
           inferenceSource: 'browser',
         },
         update: {
           kind: 'CHECKOUT',
+          criticality: 'CRITICAL',
           expectation: 'The selected product appears in the cart and checkout opens.',
         },
       })
@@ -250,6 +300,8 @@ export async function syncOutcomesFromAudit(input: {
           mechanism: 'BROWSER_JOURNEY',
           key: 'checkout-browser-v1',
           config: { startUrl, safety: 'stop-at-checkout' },
+          scope: { device: 'mobile', expected: 'checkout_reached' },
+          required: true,
         },
         update: observedStartUrl
           ? { config: { startUrl, safety: 'stop-at-checkout' }, enabled: true }
@@ -268,11 +320,45 @@ export async function syncOutcomesFromAudit(input: {
   }
 }
 
+/** Confirm that the walked page should stay available. Does not invent a purchase path. */
+export async function confirmPageAvailability(site: SiteRecord): Promise<SiteOutcomeView | null> {
+  if (!site.projectId && !site.provisionalSiteId) return null
+  const slug = 'page-loads'
+  const where: Prisma.SiteOutcomeWhereUniqueInput = site.projectId
+    ? { projectId_slug: { projectId: site.projectId, slug } }
+    : { provisionalSiteId_slug: { provisionalSiteId: site.provisionalSiteId!, slug } }
+  const owner = site.projectId
+    ? { projectId: site.projectId }
+    : { provisionalSiteId: site.provisionalSiteId! }
+  const row = await prisma.siteOutcome.upsert({
+    where,
+    create: {
+      ...owner,
+      name: 'This page loads',
+      slug,
+      description: 'The public page responds successfully.',
+      kind: 'AVAILABILITY',
+      criticality: 'IMPORTANT',
+      expectation: expectationForKind('AVAILABILITY'),
+      inferenceSource: 'browser',
+    },
+    update: {},
+  })
+  return confirmSiteOutcome({
+    site,
+    outcomeId: row.id,
+    confirmed: true,
+    kind: 'AVAILABILITY',
+    name: row.inferenceSource === 'user' ? row.name : 'This page loads',
+  })
+}
+
 export async function confirmSiteOutcome(input: {
   site: SiteRecord
   outcomeId: string
   name?: string
   confirmed: boolean
+  kind?: 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY'
 }): Promise<SiteOutcomeView | null> {
   const ownerFilter =
     input.site.kind === 'project'
@@ -283,11 +369,21 @@ export async function confirmSiteOutcome(input: {
     where: { id: input.outcomeId, ...ownerFilter },
     include: {
       pages: true,
+      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true } },
       assessments: { orderBy: { assessedAt: 'desc' }, take: 1 },
-      runRequests: { orderBy: { requestedAt: 'desc' }, take: 1 },
+      runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
     },
   })
   if (!outcome) return null
+
+  if (input.confirmed && input.kind) {
+    const binding = bindingForConfirmedKind(input.kind, input.site.url)
+    await prisma.outcomeExecutionBinding.upsert({
+      where: { outcomeId_key: { outcomeId: outcome.id, key: binding.key } },
+      create: { outcomeId: outcome.id, ...binding },
+      update: { enabled: true, required: true, mechanism: binding.mechanism, config: binding.config },
+    })
+  }
 
   const updated = await prisma.siteOutcome.update({
     where: { id: outcome.id },
@@ -295,11 +391,19 @@ export async function confirmSiteOutcome(input: {
       name: input.name?.trim() || outcome.name,
       inferenceSource: 'user',
       confirmedAt: input.confirmed ? new Date() : null,
+      ...(input.confirmed && input.kind
+        ? {
+            kind: input.kind,
+            criticality: input.kind === 'CHECKOUT' ? 'CRITICAL' as const : 'IMPORTANT' as const,
+            expectation: expectationForKind(input.kind),
+          }
+        : {}),
     },
     include: {
       pages: true,
+      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true } },
       assessments: { orderBy: { assessedAt: 'desc' }, take: 1 },
-      runRequests: { orderBy: { requestedAt: 'desc' }, take: 1 },
+      runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
     },
   })
 
@@ -316,8 +420,9 @@ export async function listSiteOutcomes(site: SiteRecord): Promise<SiteOutcomeVie
     where: ownerFilter,
     include: {
       pages: true,
+      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true } },
       assessments: { orderBy: { assessedAt: 'desc' }, take: 1 },
-      runRequests: { orderBy: { requestedAt: 'desc' }, take: 1 },
+      runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
     },
     orderBy: { createdAt: 'asc' },
   })

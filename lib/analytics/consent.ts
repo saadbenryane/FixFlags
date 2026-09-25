@@ -4,6 +4,14 @@ export const ANALYTICS_PREFERENCES_EVENT = 'fixflags:analytics-preferences'
 
 export type AnalyticsConsent = 'granted' | 'denied'
 
+/** Space reserved before the choice is measured, so the first paint is not covered. */
+export const CONSENT_CLEARANCE_PX = 192
+
+export function consentPagePadding(cookieValue: string | undefined | null): string | undefined {
+  if (cookieValue === 'granted' || cookieValue === 'denied') return undefined
+  return `${CONSENT_CLEARANCE_PX}px`
+}
+
 export function readAnalyticsConsent(): AnalyticsConsent | null {
   if (typeof document === 'undefined') return null
   const raw = document.cookie

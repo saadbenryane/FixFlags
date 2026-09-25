@@ -368,7 +368,7 @@ Examples of the idea:
 
 If an active ad is sending meaningful traffic to a landing page and performance deteriorates, FixFlags can give that area greater attention.
 
-Do not overpromise. Separate current product truth from future messaging. Shopify is a real connection and native install path. Meta, Analytics, Search Console, and deployment context are planned increments, not current homepage proof.
+Do not overpromise. Shopify, Analytics, and Search Console are Site connections. They add context beside a Flag and do not mark an Outcome Clear. GitHub on the public site is sign-in plus sending a Flag to the agent in the repository. FixFlags does not scan or edit that repository. Meta and deployment context stay planned.
 
 Integrations make FixFlags smarter. They are not a marketplace and not a second product.
 

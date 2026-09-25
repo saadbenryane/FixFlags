@@ -17,7 +17,7 @@ export const SEO = {
   integrations: {
     title: 'FixFlags Integrations',
     description:
-      'Add useful context to your FixFlags Site. Shopify purchase-path verification is available now, with more connections planned.',
+      'Add Shopify, Analytics, Search Console, or GitHub context beside a Flag. Connections do not mark an Outcome Clear.',
   },
   pricing: {
     title: 'FixFlags Pricing',

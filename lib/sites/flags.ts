@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { isCustomerFlag } from '@/lib/audit/attention'
 import { cardAreaForCheck } from '@/lib/sites/card-areas'
+import { customerExpectedBehavior } from '@/lib/sites/flag-label'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import type { SiteRecord } from '@/lib/sites/types'
 
@@ -36,6 +37,22 @@ function toSiteFlagSeed(flag: {
     status: flag.status,
     area: cardAreaForCheck(flag),
   }
+}
+
+/** A missing action already explains the page. Do not also say that action was slow. */
+export function withoutSlowCtaBesideMissingAction<T extends { checkId: string | null; pageUrl: string | null }>(
+  flags: T[],
+): T[] {
+  const pagesMissingAction = new Set(
+    flags
+      .filter((flag) => Boolean(flag.checkId?.endsWith('hidden-cta') || flag.checkId?.includes('no-cta-found')))
+      .map((flag) => flag.pageUrl ?? ''),
+  )
+  if (pagesMissingAction.size === 0) return flags
+  return flags.filter((flag) => {
+    if (flag.checkId !== 'slow-3g-cta-delayed') return true
+    return !pagesMissingAction.has(flag.pageUrl ?? '')
+  })
 }
 
 function partitionCustomerFlags(seeds: SiteFlagSeed[]): {
@@ -138,7 +155,7 @@ export async function loadSiteFindings(site: SiteRecord): Promise<{
   flags: SiteFlagSeed[]
   recommendations: SiteFlagSeed[]
 }> {
-  return partitionCustomerFlags(await loadAllOpenSiteFlags(site))
+  return partitionCustomerFlags(withoutSlowCtaBesideMissingAction(await loadAllOpenSiteFlags(site)))
 }
 
 export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
@@ -217,9 +234,7 @@ export async function loadSiteFlagDetail(
       })
     : []
 
-  const expectedBehavior =
-    flagRow?.verificationRule?.trim() ||
-    'Recovery criteria have not been established.'
+  const expectedBehavior = customerExpectedBehavior(seed.checkId, flagRow?.verificationRule)
 
   return {
     ...seed,

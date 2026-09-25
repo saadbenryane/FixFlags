@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Script from 'next/script'
 import { getGoogleAdsId, getMetaPixelId } from '@/lib/analytics/ad-conversions'
 import {
@@ -12,6 +12,7 @@ import {
 import {
   ANALYTICS_CONSENT_EVENT,
   ANALYTICS_PREFERENCES_EVENT,
+  CONSENT_CLEARANCE_PX,
   type AnalyticsConsent,
   readAnalyticsConsent,
   writeAnalyticsConsent,
@@ -66,7 +67,31 @@ export function ConversionScripts() {
   }, [])
 
   const enabled = consent === 'granted'
+  const asking = consent === null || showPreferences
+  const dialogRef = useRef<HTMLDivElement>(null)
   useCaptureClickIds(enabled)
+
+  useLayoutEffect(() => {
+    const root = document.documentElement
+    if (!asking) {
+      root.style.paddingTop = ''
+      return
+    }
+    const apply = () => {
+      const node = dialogRef.current
+      const bottom = node ? node.getBoundingClientRect().bottom : 0
+      root.style.paddingTop = `${Math.ceil(Math.max(bottom + 16, CONSENT_CLEARANCE_PX))}px`
+    }
+    apply()
+    window.addEventListener('resize', apply)
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(apply)
+    if (dialogRef.current && observer) observer.observe(dialogRef.current)
+    return () => {
+      window.removeEventListener('resize', apply)
+      observer?.disconnect()
+      root.style.paddingTop = ''
+    }
+  }, [asking])
 
   const gtagId = gaId || adsId
 
@@ -105,11 +130,12 @@ export function ConversionScripts() {
           `}
         </Script>
       ) : null}
-      {consent === null || showPreferences ? (
+      {asking ? (
         <div
+          ref={dialogRef}
           role="dialog"
           aria-label={ANALYTICS_CONSENT_COPY.title}
-          className="fixed inset-x-3 bottom-3 z-toast mx-auto max-h-[calc(100dvh-1.5rem)] w-[calc(100%-1.5rem)] max-w-xl overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-background/95 p-4 shadow-card backdrop-blur-md sm:bottom-5 sm:w-auto sm:p-5"
+          className="fixed inset-x-3 top-3 z-40 mx-auto max-h-[40dvh] w-[calc(100%-1.5rem)] max-w-xl overflow-y-auto overflow-x-hidden rounded-2xl border border-border bg-background/95 p-4 shadow-card backdrop-blur-md sm:p-5"
         >
           <p className="text-sm font-semibold text-foreground">{ANALYTICS_CONSENT_COPY.title}</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">

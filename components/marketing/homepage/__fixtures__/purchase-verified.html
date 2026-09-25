@@ -1,16 +1,175 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Canvas Tote in cart · Everyday Goods</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#fff;color:#171719;font:15px/1.5 system-ui,sans-serif}header{height:68px;padding:0 34px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #dedbd5}header strong{font-size:18px}nav{display:flex;gap:22px;font-size:12px;color:#62656b}main{display:grid;grid-template-columns:1.08fr .92fr;min-height:372px}.product{padding:45px 34px;background:#f2f1ec}.eyebrow{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#6d7069}h1{margin:12px 0 10px;font-size:40px;line-height:1.04;letter-spacing:-1.8px}.description{max-width:300px;margin:0;color:#60636a;font-size:13px}.price{margin:24px 0 8px;font-size:22px;font-weight:650}.button{display:inline-flex;align-items:center;min-height:42px;margin-top:10px;padding:0 18px;border-radius:7px;background:#171719;color:#fff;font-size:12px;font-weight:650}.cart-wrap{padding:34px;background:#fff}.cart{min-height:250px;padding:25px;border:1px solid #dedbd5;border-radius:12px}.cart-top{display:flex;justify-content:space-between;align-items:center;padding-bottom:22px;border-bottom:1px solid #e7e4df}.cart-top h2{margin:0;font-size:18px}.count{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#171719;color:#fff;font-size:11px}.line{display:grid;grid-template-columns:48px 1fr auto;gap:12px;align-items:center;padding:18px 0}.thumb{height:48px;border-radius:7px;background:#e5e8de}.line strong{display:block;font-size:13px}.line span{font-size:11px;color:#676a70}.line b{font-size:13px}.checkout{display:flex;align-items:center;justify-content:center;min-height:42px;border-radius:7px;background:#171719;color:#fff;font-size:12px;font-weight:650}
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: #f3efe7;
+    color: #1c1915;
+    font: 16px/1.4 "Avenir Next", "Segoe UI", sans-serif;
+  }
+  header {
+    height: 64px;
+    padding: 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fffdf8;
+    border-bottom: 1px solid #e4ddd2;
+  }
+  .mark { font-family: Georgia, "Iowan Old Style", serif; font-size: 18px; letter-spacing: -0.03em; }
+  .cart-link { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
+  .badge {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #1c1915;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 750;
+  }
+  .stage { padding: 16px 16px 0; }
+  .photo {
+    height: 132px;
+    border-radius: 16px;
+    background:
+      radial-gradient(circle at 50% 42%, #f7f1e4 0 46px, transparent 47px),
+      linear-gradient(#efe7d8, #e7dfd0);
+    display: grid;
+    place-items: center;
+  }
+  .bag { width: 92px; height: 108px; position: relative; }
+  .bag i {
+    position: absolute;
+    left: 22px;
+    top: 0;
+    width: 48px;
+    height: 28px;
+    border: 4px solid #2c2824;
+    border-bottom: 0;
+    border-radius: 24px 24px 0 0;
+  }
+  .bag b {
+    position: absolute;
+    left: 8px;
+    top: 22px;
+    width: 76px;
+    height: 82px;
+    border-radius: 8px 8px 14px 14px;
+    background: #d7c4a4;
+    box-shadow: inset 0 0 0 2px #2c2824;
+  }
+  .bag b::after {
+    content: "";
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    top: 28px;
+    height: 28px;
+    border-top: 2px solid #2c2824;
+    border-bottom: 2px solid #2c2824;
+  }
+  .buy { margin-top: 14px; }
+  .eyebrow { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #6f675c; }
+  h1 { margin: 4px 0 0; font-family: Georgia, serif; font-size: 32px; line-height: 1; letter-spacing: -0.04em; }
+  .price { margin: 8px 0 0; font-size: 20px; font-weight: 700; }
+  .button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    margin-top: 12px;
+    border-radius: 12px;
+    background: #1f6b3a;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .ok {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #e8f6ec;
+    color: #166534;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .sheet {
+    margin-top: 12px;
+    min-height: 0;
+    padding: 16px 16px 88px;
+    border-radius: 22px 22px 0 0;
+    background: #fff;
+    box-shadow: 0 -12px 40px rgba(28, 25, 21, 0.08);
+  }
+  .sheet-top { display: flex; align-items: baseline; justify-content: space-between; }
+  .sheet h2 { margin: 0; font-size: 18px; }
+  .line {
+    display: grid;
+    grid-template-columns: 64px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    margin-top: 18px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eee8df;
+  }
+  .thumb {
+    height: 64px;
+    border-radius: 10px;
+    background: #efe7d8;
+    display: grid;
+    place-items: center;
+  }
+  .thumb .bag { transform: scale(0.48); transform-origin: center; }
+  .line strong { display: block; font-size: 15px; }
+  .line span { color: #6f675c; font-size: 13px; }
+  .checkout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+    margin-top: 18px;
+    border-radius: 12px;
+    background: #1c1915;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 750;
+  }
+  .total { display: flex; justify-content: space-between; margin-top: 14px; font-size: 14px; }
 </style>
 </head>
 <body>
-<header><strong>Everyday goods</strong><nav><span>Shop</span><span>Journal</span><span>Help</span></nav></header>
+<header>
+  <strong class="mark">Everyday Goods</strong>
+  <span class="cart-link">Cart <span class="badge">1</span></span>
+</header>
 <main>
-  <section class="product"><span class="eyebrow">Everyday essentials</span><h1>Canvas Tote</h1><p class="description">One sturdy bag. Ready for the everyday.</p><p class="price">$48</p><span class="button">Added to cart</span></section>
-  <section class="cart-wrap"><div class="cart"><div class="cart-top"><h2>Your cart</h2><span class="count">1</span></div><div class="line"><span class="thumb"></span><div><strong>Canvas Tote</strong><span>Quantity 1</span></div><b>$48</b></div><span class="checkout">Checkout</span></div></section>
+  <section class="stage">
+    <div class="photo" aria-hidden="true"><span class="bag"><i></i><b></b></span></div>
+    <div class="buy">
+      <p class="eyebrow">Everyday essentials</p>
+      <h1>Canvas Tote</h1>
+      <p class="price">$48</p>
+      <div class="button">Added to cart</div>
+      <p class="ok">1 item is in the cart.</p>
+    </div>
+  </section>
+  <section class="sheet">
+    <div class="sheet-top"><h2>Your cart</h2><span>1 item</span></div>
+    <div class="line">
+      <span class="thumb" aria-hidden="true"><span class="bag"><i></i><b></b></span></span>
+      <div><strong>Canvas Tote</strong><span>Quantity 1</span></div>
+      <b>$48</b>
+    </div>
+    <div class="total"><span>Subtotal</span><b>$48</b></div>
+    <div class="checkout">Checkout</div>
+  </section>
 </main>
-</body></html>
+</body>
+</html>

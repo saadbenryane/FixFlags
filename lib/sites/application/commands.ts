@@ -1,18 +1,23 @@
+import { prisma } from '@/lib/db'
 import { executeProductCommand } from '@/lib/products/application/commands'
-import { confirmSiteOutcome } from '@/lib/sites/outcomes'
+import { confirmPageAvailability, confirmSiteOutcome } from '@/lib/sites/outcomes'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
-import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
-import { requestOutcomeRun } from '@/lib/sites/application/run-requests'
+import { findReusableRun, requestOutcomeRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 
 export type SiteCommand =
+  | {
+      type: 'CONFIRM_PAGE_AVAILABILITY'
+      siteId: string
+    }
   | {
       type: 'CONFIRM_OUTCOME'
       siteId: string
       outcomeId: string
       name?: string
       confirmed: boolean
+      kind?: 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY'
     }
   | {
       type: 'RECORD_FIX_HANDOFF'
@@ -25,6 +30,8 @@ export type SiteCommand =
       siteId: string
       userId: string
       flagId: string
+      idempotencyKey?: string
+      source?: 'WEB' | 'MCP'
     }
   | {
       type: 'SET_WATCH'
@@ -35,6 +42,13 @@ export type SiteCommand =
 
 export async function executeSiteCommand(command: SiteCommand) {
   switch (command.type) {
+    case 'CONFIRM_PAGE_AVAILABILITY': {
+      const site = await loadSiteRecord(command.siteId)
+      if (!site) return { ok: false as const, error: 'Site not found' }
+      const outcome = await confirmPageAvailability(site)
+      if (!outcome) return { ok: false as const, error: 'Outcome not found' }
+      return { ok: true as const, outcome }
+    }
     case 'CONFIRM_OUTCOME': {
       const site = await loadSiteRecord(command.siteId)
       if (!site) return { ok: false as const, error: 'Site not found' }
@@ -43,6 +57,7 @@ export async function executeSiteCommand(command: SiteCommand) {
         outcomeId: command.outcomeId,
         name: command.name,
         confirmed: command.confirmed,
+        kind: command.kind,
       })
       if (!outcome) return { ok: false as const, error: 'Outcome not found' }
       return { ok: true as const, outcome }
@@ -70,6 +85,27 @@ export async function executeSiteCommand(command: SiteCommand) {
       }
       const flag = await loadSiteFlagDetail(site, command.flagId)
       if (!flag) return { ok: false as const, error: 'Flag not found' }
+      const source = command.source ?? 'WEB'
+      if (command.idempotencyKey && flag.outcomeId) {
+        const reusable = await findReusableRun({
+          projectId: site.projectId,
+          source,
+          idempotencyKey: command.idempotencyKey,
+          outcomeIds: [flag.outcomeId],
+        })
+        if (reusable) {
+          return {
+            ok: true as const,
+            runId: reusable.runId,
+            verificationAuditId: reusable.auditId,
+            siteId: site.siteId,
+            parentAuditId: flag.sourceAuditId,
+            flagId: flag.id,
+            attemptId: null,
+            expectedBehavior: flag.expectedBehavior,
+          }
+        }
+      }
 
       const attempt = await executeProductCommand({
         type: 'RECORD_FLAG_ACTION',
@@ -82,14 +118,15 @@ export async function executeSiteCommand(command: SiteCommand) {
       if (!attempt.attemptId) {
         return { ok: false as const, error: 'Could not prepare this verification attempt.' }
       }
+      const idempotencyKey = command.idempotencyKey ?? `flag-verify:${attempt.attemptId}`
 
       if (flag.outcomeId) {
         const started = await requestOutcomeRun({
           projectId: site.projectId,
           outcomeId: flag.outcomeId,
           userId: command.userId,
-          source: 'WEB',
-          idempotencyKey: `flag-verify:${attempt.attemptId}`,
+          source,
+          idempotencyKey,
           verificationAttemptId: attempt.attemptId,
           parentAuditId: flag.sourceAuditId,
           context: { action: 'verify_flag' },
@@ -113,27 +150,36 @@ export async function executeSiteCommand(command: SiteCommand) {
         }
       }
 
-      const verifyUrl = flag.pageUrl || site.url
-      const started = await createAndEnqueueAudit({
-        url: verifyUrl,
+      const outcomes = await prisma.siteOutcome.findMany({
+        where: { projectId: site.projectId, enabled: true },
+        select: { id: true },
+        orderBy: { id: 'asc' },
+      })
+      if (outcomes.length === 0) {
+        return { ok: false as const, error: 'Confirm an Outcome before verifying this Flag.' }
+      }
+      const started = await requestSiteRun({
+        projectId: site.projectId,
+        outcomeIds: outcomes.map((outcome) => outcome.id),
         userId: command.userId,
-        parentId: flag.sourceAuditId,
-        recheckTrigger: 'MANUAL',
-        auditMode: flag.checkId?.startsWith('journey-') ? 'CRITICAL_PATH' : 'SINGLE',
-        skipUsageCount: true,
-        useProjectScanAccess: true,
+        source,
+        idempotencyKey,
         verificationAttemptId: attempt.attemptId,
+        parentAuditId: flag.sourceAuditId,
+        url: flag.pageUrl || site.url,
+        context: { action: 'verify_flag' },
       })
       await recordSiteLifecycleEvent({
         name: 'verify_started',
         idempotencyKey: `verify-started:${attempt.attemptId}`,
         userId: command.userId,
         projectId: site.projectId,
-        properties: { reused: started.reused, scope: flag.checkId?.startsWith('journey-') ? 'journey' : 'page' },
+        properties: { reused: started.reused, scope: 'site' },
       })
 
       return {
         ok: true as const,
+        runId: started.runId,
         verificationAuditId: started.auditId,
         siteId: site.siteId,
         parentAuditId: flag.sourceAuditId,

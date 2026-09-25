@@ -84,7 +84,7 @@ export async function runAllChecks(
   ]
 
   const bucketC: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [
-    { name: 'layout',          run: () => runLayoutChecks(captureMetrics ?? null) },
+    { name: 'layout',          run: () => runLayoutChecks(captureMetrics ?? null, purpose.purpose) },
     { name: 'interaction',     run: () => runInteractionChecks(captureMetrics ?? null) },
     { name: 'cta-focus',       run: () => runCtaFocusChecks(captureMetrics ?? null) },
     { name: 'visual-polish',   run: () => runVisualPolishChecks(captureMetrics ?? null) },

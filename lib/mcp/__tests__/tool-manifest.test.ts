@@ -31,6 +31,8 @@ describe('MCP public tool manifest', () => {
     expect(registered).toHaveLength(MCP_TOOL_DEFINITIONS.length)
     expect(new Set(registered).size).toBe(registered.length)
     expect([...registered].sort()).toEqual([...expected].sort())
+    expect(expected).not.toContain('ff_get_report')
+    expect(expected).not.toContain('ff_check_and_plan')
   })
 
   it('treats optional additions as additive while requiring the versioned core', () => {

@@ -6,6 +6,10 @@ const mocks = vi.hoisted(() => ({
   executeProductCommand: vi.fn(),
   createAndEnqueueAudit: vi.fn(),
   requestOutcomeRun: vi.fn(),
+  requestSiteRun: vi.fn(),
+  findReusableRun: vi.fn(),
+  outcomeFindMany: vi.fn(),
+  assessmentUpsert: vi.fn(),
 }))
 
 vi.mock('@/lib/sites/ensure-site', () => ({ loadSiteRecord: mocks.loadSiteRecord }))
@@ -16,7 +20,17 @@ vi.mock('@/lib/products/application/commands', () => ({
 vi.mock('@/lib/audit/create-audit', () => ({
   createAndEnqueueAudit: mocks.createAndEnqueueAudit,
 }))
-vi.mock('@/lib/sites/application/run-requests', () => ({ requestOutcomeRun: mocks.requestOutcomeRun }))
+vi.mock('@/lib/db', () => ({
+  prisma: {
+    siteOutcome: { findMany: mocks.outcomeFindMany },
+    outcomeAssessment: { upsert: mocks.assessmentUpsert },
+  },
+}))
+vi.mock('@/lib/sites/application/run-requests', () => ({
+  requestOutcomeRun: mocks.requestOutcomeRun,
+  requestSiteRun: mocks.requestSiteRun,
+  findReusableRun: mocks.findReusableRun,
+}))
 vi.mock('@/lib/sites/outcomes', () => ({ confirmSiteOutcome: vi.fn() }))
 vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn() }))
 
@@ -40,10 +54,9 @@ describe('VERIFY_FLAG', () => {
       expectedBehavior: 'Contact form shows a confirmation after submit',
     })
     mocks.executeProductCommand.mockResolvedValue({ attemptId: 'att_1' })
-    mocks.createAndEnqueueAudit.mockResolvedValue({
-      auditId: 'child_1',
-      siteId: 'proj_1',
-    })
+    mocks.outcomeFindMany.mockResolvedValue([{ id: 'outcome-1' }])
+    mocks.requestSiteRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: ['outcome-1'], reused: false })
+    mocks.findReusableRun.mockResolvedValue(null)
     mocks.requestOutcomeRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', reused: false })
   })
 
@@ -68,15 +81,17 @@ describe('VERIFY_FLAG', () => {
         changeSummary: 'Contact form shows a confirmation after submit',
       })
     )
-    expect(mocks.createAndEnqueueAudit).toHaveBeenCalledWith(
+    expect(mocks.requestSiteRun).toHaveBeenCalledWith(
       expect.objectContaining({
         url: 'https://example.com/contact',
-        parentId: 'parent_1',
-        auditMode: 'SINGLE',
-        skipUsageCount: true,
+        parentAuditId: 'parent_1',
+        outcomeIds: ['outcome-1'],
         verificationAttemptId: 'att_1',
+        source: 'WEB',
       })
     )
+    expect(result).toMatchObject({ runId: 'run_1' })
+    expect(mocks.createAndEnqueueAudit).not.toHaveBeenCalled()
   })
 
   it('does not treat copy handoff as verify', async () => {
@@ -90,6 +105,9 @@ describe('VERIFY_FLAG', () => {
       expect.objectContaining({ action: 'HANDOFF_COPIED' })
     )
     expect(mocks.createAndEnqueueAudit).not.toHaveBeenCalled()
+    expect(mocks.requestOutcomeRun).not.toHaveBeenCalled()
+    expect(mocks.requestSiteRun).not.toHaveBeenCalled()
+    expect(mocks.assessmentUpsert).not.toHaveBeenCalled()
   })
 
   it('re-verifies an Outcome Flag through the shared RunRequest path', async () => {

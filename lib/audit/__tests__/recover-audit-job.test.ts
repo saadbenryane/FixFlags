@@ -154,6 +154,7 @@ describe('recoverAuditJobOnPoll', () => {
     })
     assert.equal(result, 'force_failed')
     expect(mocks.jobMoveToFailed).toHaveBeenCalled()
+    expect(mocks.auditUpdate.mock.calls[0][0].data.failureCode).toBe('AUDIT_JOB_LOST')
   })
 
   it('keeps polling (noop) when the worker is down but not past give-up', async () => {

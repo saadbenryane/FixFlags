@@ -39,6 +39,22 @@ vi.mock('@/lib/audit/checks', () => ({
   suppressOverlappingFlags: vi.fn((flags: unknown[]) => flags),
 }))
 vi.mock('@/lib/audit/checks/flow', () => ({ runFlowChecks: vi.fn(() => []) }))
+vi.mock('@/lib/audit/browser/page-session', () => ({
+  createAuditPage: vi.fn(async () => ({
+    page: {
+      close: vi.fn(async () => undefined),
+      context: () => ({ close: vi.fn(async () => undefined) }),
+    },
+    disposeNetwork: vi.fn(),
+  })),
+}))
+vi.mock('@/lib/audit/flow/run-flow-scan', () => ({
+  runFlowScan: vi.fn(async () => ({
+    status: 'success',
+    steps: [],
+    finalUrl: 'https://example.com/',
+  })),
+}))
 vi.mock('@/lib/audit/checks/slow-replay', () => ({
   runSlowReplayChecks: vi.fn(() => [
     {
@@ -89,6 +105,7 @@ vi.mock('@/lib/audit/metadata', () => ({
 
 import { runPage } from '@/lib/audit/pipeline/run-page'
 import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
+import { runFlowScan } from '@/lib/audit/flow/run-flow-scan'
 import { captureScreenshots } from '@/lib/audit/screenshot'
 import type { PipelineContext } from '@/lib/audit/pipeline/types'
 import { systemClock } from '@/lib/time/clock'
@@ -169,7 +186,7 @@ describe('runPage production capture path', () => {
     expect(captureOptions.runFlow).toBe(false)
   })
 
-  it('skips the flow walk and slow replay for an anonymous teaser scan', async () => {
+  it('walks the primary page for an anonymous teaser scan and still skips slow replay', async () => {
     prismaMock.audit.findUnique.mockResolvedValue({
       projectId: null,
       userId: null,
@@ -177,7 +194,7 @@ describe('runPage production capture path', () => {
     })
     const ctx = pipelineContext()
 
-    await runPage(ctx, {
+    const result = await runPage(ctx, {
       url: 'https://example.com',
       position: 0,
       role: 'primary',
@@ -190,11 +207,16 @@ describe('runPage production capture path', () => {
     expect(captureOptions.runFlow).toBe(false)
     expect(slowReplayMock).not.toHaveBeenCalled()
     expect(runSlowReplayChecks).not.toHaveBeenCalled()
+    expect(runFlowScan).toHaveBeenCalled()
+    expect(result.flowScan).toBe(true)
     expect(
       (ctx.events.log as Mock).mock.calls.some((call) => call[0]?.event === 'slow_replay_skipped_teaser')
     ).toBe(true)
     expect(
       (ctx.events.log as Mock).mock.calls.some((call) => call[0]?.event === 'flow_skipped_teaser')
+    ).toBe(false)
+    expect(
+      (ctx.events.log as Mock).mock.calls.some((call) => call[0]?.event === 'flow_completed_deferred')
     ).toBe(true)
     // The reduced pipeline still streams: checks-start progress anchor is written.
     expect(

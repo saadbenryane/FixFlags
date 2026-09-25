@@ -175,5 +175,15 @@ describe('board card contract', () => {
       pageUrl: conversionFlag.pageUrl,
       expectedBehavior: 'A confirmation appears after submit.',
     })).toMatch(/Copying this does not resolve/)
+    const withOutcome = boardFlagPrompt({
+      problem: 'Add to cart did not update the cart.',
+      whyItMatters: 'People cannot buy.',
+      fix: 'Repair Add to cart.',
+      pageUrl: 'https://example.com/products/tote',
+      journeyName: 'Checkout',
+    })
+    expect(withOutcome).toContain('Outcome: Checkout')
+    expect(withOutcome).not.toMatch(/Journey:/)
+    expect(withOutcome).toContain('Copying this does not resolve the Flag.')
   })
 })

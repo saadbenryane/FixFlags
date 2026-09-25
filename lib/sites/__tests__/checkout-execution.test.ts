@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   runFindFirst: vi.fn(),
   runUpdateMany: vi.fn(),
   journeyFindFirst: vi.fn(),
+  executionFindUnique: vi.fn(),
+  executionUpsert: vi.fn(),
   runPathProbe: vi.fn(),
   persistJourneyResult: vi.fn(),
   flagUpdateMany: vi.fn(),
@@ -17,6 +19,10 @@ vi.mock('@/lib/db', () => ({
     },
     journeyReview: { findFirst: mocks.journeyFindFirst },
     flag: { updateMany: mocks.flagUpdateMany },
+    outcomeBindingExecution: {
+      findUnique: mocks.executionFindUnique,
+      upsert: mocks.executionUpsert,
+    },
   },
 }))
 vi.mock('@/lib/integrity/run-path-probe', () => ({
@@ -33,12 +39,21 @@ describe('bound Checkout execution', () => {
     vi.clearAllMocks()
     mocks.runFindFirst.mockResolvedValue({
       id: 'run-1',
-      outcome: {
-        bindings: [{ config: { startUrl: 'https://shop.example/products/widget' } }],
-      },
+      selections: [{ outcome: {
+        id: 'outcome-1',
+        kind: 'CHECKOUT',
+        bindings: [{
+          key: 'checkout-browser-v1',
+          mechanism: 'BROWSER_JOURNEY',
+          required: true,
+          config: { startUrl: 'https://shop.example/products/widget' },
+        }],
+      } }],
       audit: { url: 'https://shop.example' },
     })
     mocks.journeyFindFirst.mockResolvedValue(null)
+    mocks.executionFindUnique.mockResolvedValue(null)
+    mocks.executionUpsert.mockResolvedValue({})
     mocks.runUpdateMany.mockResolvedValue({ count: 1 })
     mocks.persistJourneyResult.mockResolvedValue([])
     mocks.flagUpdateMany.mockResolvedValue({ count: 1 })
@@ -81,6 +96,33 @@ describe('bound Checkout execution', () => {
         data: { fingerprint: 'outcome:checkout' },
       }),
     )
+  })
+
+  it('does not submit a protected Signup form', async () => {
+    mocks.runFindFirst.mockResolvedValue({
+      id: 'run-1',
+      selections: [{ outcome: {
+        id: 'signup-1',
+        kind: 'SIGNUP',
+        bindings: [{
+          key: 'signup-form-v1',
+          mechanism: 'SAFE_FORM',
+          required: true,
+          config: { startUrl: 'https://shop.example/account/register', safety: 'protected' },
+        }],
+      } }],
+      audit: { url: 'https://shop.example' },
+    })
+
+    await runBoundCheckoutForAudit('audit-1')
+
+    expect(mocks.runPathProbe).not.toHaveBeenCalled()
+    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({
+        disposition: 'BLOCKED',
+        reason: 'protected_or_irreversible',
+      }),
+    }))
   })
 
   it('persists blocked execution as inconclusive evidence without a Flag', async () => {

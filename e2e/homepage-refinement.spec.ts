@@ -14,7 +14,7 @@ for (const width of [375, 390, 1086, 1144]) {
       page.getByText(/FixFlags monitors your live website/i).first()
     ).toBeVisible()
     await expect(
-      page.getByRole('heading', { name: /What your site should answer/ })
+      page.getByRole('heading', { name: /A score and a prompt still leave it unwatched/ })
     ).toBeAttached()
 
     const geometry = await page.evaluate(() => ({

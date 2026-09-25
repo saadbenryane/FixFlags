@@ -53,7 +53,17 @@ function finding(
   return { confidence: 0.85, ...partial }
 }
 
-function deadEndFix(journeyType: JourneyType): string {
+/** Customer evidence when the page has no link to another page on the same site. */
+export function pageHasNoNextStepEvidence(): string {
+  return 'No link on this page continues to another page on the same site.'
+}
+
+/** Customer evidence when a walk keeps going without an ending. */
+export function pathTookTooManyStepsEvidence(steps: number): string {
+  return `This path took ${steps} steps without a clear ending.`
+}
+
+export function deadEndFix(journeyType: JourneyType): string {
   switch (journeyType) {
     case 'checkout':
       return [
@@ -63,27 +73,27 @@ function deadEndFix(journeyType: JourneyType): string {
       ].join('\n')
     case 'pricing-evaluation':
       return [
-        '1. Add clear same-origin nav to pricing or plans',
-        '2. Ensure pricing links are crawlable and visible in header or hero',
-        '3. Keep the path consistent from first visit through evaluation',
+        '1. Add a visible link to pricing or plans on this site',
+        '2. Put that link in the header or near the top of the page',
+        '3. Keep the path consistent from the first page through pricing',
       ].join('\n')
     case 'signup':
       return [
-        '1. Add clear same-origin nav to signup, trial, or account creation',
-        '2. Ensure signup links are crawlable and visible in header or hero',
-        '3. Keep the path consistent from first visit through registration',
+        '1. Add a visible link to signup, a trial, or account creation on this site',
+        '2. Put that link in the header or near the top of the page',
+        '3. Keep the path consistent from the first page through registration',
       ].join('\n')
     case 'contact-support':
       return [
-        '1. Add a clear same-origin path to contact, booking, or support',
-        '2. Ensure the link is crawlable and visible in header or hero',
-        '3. Land the visitor on a form or calendar with an obvious next action',
+        '1. Add a visible link to contact, booking, or support on this site',
+        '2. Put that link in the header or near the top of the page',
+        '3. Land on a form or calendar with an obvious next action',
       ].join('\n')
     default:
       return [
-        '1. Add a clear next-step path (contact, product page, or primary CTA)',
-        '2. Ensure links are same-origin and crawlable',
-        '3. Surface the path in both header and hero',
+        '1. Add a clear next step, such as contact, a product page, or a primary action',
+        '2. Keep that link on this site',
+        '3. Show the path in the header and near the top of the page',
       ].join('\n')
   }
 }
@@ -192,21 +202,24 @@ export async function runJourneyTemplate(
     const target = pickTargetForJourney(options.journeyType, links)
     if (!target) {
       abandonedReason = 'No suitable same-origin navigation target'
-      findings.push(
-        finding({
-          checkId: `journey-${options.journeyType}-dead-end`,
-          stepNumber: 1,
-          url: page.url(),
-          rubric: 'EXPERIENCE',
-          severity: 'IMPORTANT',
-          impactTag: 'FRICTION',
-          problem: 'Visitor cannot continue the intended journey from this page',
-          evidence: `Reproduced at step 1. ${abandonedReason}`,
-          whyItMatters: 'Funnel paths that dead-end lose conversions silently.',
-          fix: deadEndFix(options.journeyType),
-          screenshotUrl: before1,
-        })
-      )
+      // A missing action already says there is no next step. Do not add a second Flag.
+      if (cta.found) {
+        findings.push(
+          finding({
+            checkId: `journey-${options.journeyType}-dead-end`,
+            stepNumber: 1,
+            url: page.url(),
+            rubric: 'EXPERIENCE',
+            severity: 'IMPORTANT',
+            impactTag: 'FRICTION',
+            problem: 'This page has no way to continue',
+            evidence: pageHasNoNextStepEvidence(),
+            whyItMatters: 'People who want to continue have nowhere to go.',
+            fix: deadEndFix(options.journeyType),
+            screenshotUrl: before1,
+          })
+        )
+      }
       return await finalize('ABANDONED')
     }
 
@@ -286,7 +299,7 @@ export async function runJourneyTemplate(
             rubric: 'EXPERIENCE',
             severity: 'CRITICAL',
             impactTag: 'CONVERSION',
-            problem: `Journey navigation to "${target.text || target.href}" failed`,
+            problem: `The link "${target.text || target.href}" did not open`,
             evidence: `Reproduced at step 2. ${err instanceof Error ? err.message : String(err)}`,
             whyItMatters: 'Broken corridor links stop the conversion path.',
             fix: '1. Fix the broken link destination\n2. Re-check status codes for pricing/signup routes\n3. Add a fallback CTA to a working page',
@@ -467,7 +480,7 @@ export async function runJourneyTemplate(
             rubric: 'EXPERIENCE',
             severity: 'IMPORTANT',
             impactTag: 'TRUST',
-            problem: 'Contact/support journey did not reach a usable help surface',
+            problem: 'Contact or support did not reach a usable help page',
             evidence: 'Reproduced at step 2. No contact copy or form fields detected on destination.',
             whyItMatters: 'Buyers who cannot find help stall before purchasing.',
             fix: '1. Add a Contact or Support link in primary nav\n2. Include email or form on the destination\n3. State expected response time',
@@ -602,7 +615,7 @@ export async function runJourneyTemplate(
             severity: 'CRITICAL',
             impactTag: 'FRICTION',
             problem: 'Funnel reaches a dead end with no way forward',
-            evidence: `Reproduced at step ${currentStep}. No unvisited same-origin links found on ${page.url()}.`,
+            evidence: pageHasNoNextStepEvidence(),
             whyItMatters: 'Dead-end funnels lose visitors who intended to convert.',
             fix: '1. Add clear next-step CTAs on every funnel page\n2. Ensure navigation includes conversion paths\n3. Add contextual links within page content',
             screenshotUrl: steps[steps.length - 1]?.screenshotAfterUrl,
@@ -706,7 +719,7 @@ export async function runJourneyTemplate(
               impactTag: 'CONVERSION',
               problem: `Funnel navigation to "${target.text || target.href}" failed`,
               evidence: `Reproduced at step ${currentStep + 1}. ${err instanceof Error ? err.message : String(err)}`,
-              whyItMatters: 'Broken funnel links stop the conversion path mid-journey.',
+              whyItMatters: 'A broken link stops people before they can continue.',
               fix: '1. Fix the broken link destination\n2. Re-check status codes for all funnel routes\n3. Add a fallback CTA to a working page',
               screenshotUrl: beforeShot,
             })
@@ -854,7 +867,7 @@ export async function runJourneyTemplate(
             severity: 'IMPORTANT',
             impactTag: 'FRICTION',
             problem: 'Funnel requires too many steps to complete',
-            evidence: `Reproduced at step ${currentStep}. Journey reached ${maxSteps} steps without a clear resolution.`,
+            evidence: pathTookTooManyStepsEvidence(maxSteps),
             whyItMatters: 'Long funnels have compounding drop-off at each step.',
             fix: '1. Reduce the number of steps in the funnel\n2. Combine steps where possible\n3. Show a progress indicator to set expectations',
             screenshotUrl: afterShot,

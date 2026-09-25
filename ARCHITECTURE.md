@@ -230,7 +230,7 @@ Canonical hierarchy: [`knowledge/report-contract.md`](./knowledge/report-contrac
 | Detailed page shell | `components/audit/AuditReport.tsx`, toolbar, explorer, report actions |
 | Improvement artifacts | `buildUnifiedPlanBundle()` aggregates live and repository Flags once; `buildFixArtifacts()` returns the complete ranked Fix List plus its bounded one-to-three item Finish Plan for report, API, export, task outcomes, MCP, and CLI |
 | Preview scan access | `lib/audit/scan-access.ts`, encrypted on `Project`/`Audit`; Studio API + MCP `scanAccess` on check |
-| Deploy CI gate | `app/api/webhooks/railway/route.ts` (`?apiKey=` + `?url=`); see `docs/railway-deploy-check.md` |
+| Deploy CI gate | `app/api/webhooks/railway/route.ts` (Authorization header, owned Site, shared RunRequest); see `docs/railway-deploy-check.md` |
 | Token share boundary | `lib/security/share-grant.ts`, `/api/share/[token]`, `/share/[token]` direct rendering; independent of `Audit.isPublic` |
 | Live explorer | `LiveReportExplorer` → `ReportExplorer` |
 | Sample explorer | `/samples`: `HeroProductPreview` → `SampleReportExplorer` → `ReportExplorer`. Homepage sample section: `SampleReportDashboardMock` fed by `buildSampleDashboardPreview` (product-true stylized chrome, not the live explorer). |

@@ -51,7 +51,7 @@ function parseEvidence(value: unknown): EvidenceCoverageShape {
 export function evidencedAreasFromCoverage(
   evidenceCoverage: unknown,
   flags: Array<{ checkId: string | null; rubric: string; impactTag: string | null }>,
-  rubrics: Array<{ name: string; score: number | null }>
+  _rubrics: Array<{ name: string; score: number | null }>
 ): Set<SiteCardArea> {
   const evidenced = new Set<SiteCardArea>()
   const evidence = parseEvidence(evidenceCoverage)
@@ -62,14 +62,6 @@ export function evidencedAreasFromCoverage(
 
   for (const flag of flags) {
     evidenced.add(cardAreaForCheck(flag))
-  }
-
-  // Rubric scores only prove the areas they actually measure.
-  for (const rubric of rubrics) {
-    if (rubric.score == null) continue
-    if (rubric.name === 'MESSAGE') evidenced.add('conversion')
-    if (rubric.name === 'EXPERIENCE') evidenced.add('performance')
-  // REACH is a mixed reachability rubric. Do not paint Security/Search/Tracking healthy from it alone.
   }
 
   return evidenced
@@ -121,6 +113,9 @@ export function buildCoverageFacts(input: {
     input.flags,
     input.rubrics
   )
+  const evidence = parseEvidence(input.evidenceCoverage)
+  const journeyRan = Boolean(evidence.flowScan || evidence.journeyWalk)
+  const pageSpeedRan = Boolean(evidence.desktopPageSpeed || evidence.mobilePageSpeed)
 
   const rubricScore = (name: string) =>
     input.rubrics.find((r) => r.name === name)?.score ?? null
@@ -184,6 +179,8 @@ export function buildCoverageFacts(input: {
     }
 
     const areaEvidenced = evidenced.has(area) || openFlagCount > 0
+    const requiredCheckRan =
+      area === 'conversion' ? journeyRan : area === 'performance' ? pageSpeedRan : true
 
     if (openFlagCount > 0) {
       const criticalish = input.flags.some(
@@ -206,7 +203,7 @@ export function buildCoverageFacts(input: {
       }
     }
 
-    if (!areaEvidenced) {
+    if (!areaEvidenced || !requiredCheckRan) {
       return {
         area,
         state: 'unknown' as const,

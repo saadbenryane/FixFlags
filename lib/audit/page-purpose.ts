@@ -33,6 +33,12 @@ const DOCS_PATH_RE =
   /\/(?:docs|documentation|api(?:\/|$|[?_-])|reference|guides?|tutorial|developer)(?:\/|$|\?)/i
 const DOCS_TITLE_RE =
   /\b(?:docs|documentation|api\s+reference|reference|developer\s+guide|guides?)\b/i
+const DOCS_CONTENT_PATTERNS = [
+  /\bview as markdown\b/i,
+  /\bexpand code\b/i,
+  /\bedit code\b/i,
+  /\bapi reference\b/i,
+]
 const ARTICLE_PATH_RE =
   /\/(?:blog|posts?|articles?|news|changelog|changelogs|updates)(?:\/|$|\?)/i
 const ARTICLE_TYPES = new Set([
@@ -72,6 +78,10 @@ export function detectPagePurpose(
     // keep raw url
   }
   const title = meta.title ?? ''
+  const docsContent = pageText.slice(0, 4000)
+  const docsContentSignalCount = DOCS_CONTENT_PATTERNS.filter((pattern) =>
+    pattern.test(docsContent)
+  ).length
 
   // 1. Placeholder / minimal page: too little content to be a real marketing
   //    page. example.com lives here. Note: a lone generic link such as
@@ -90,14 +100,15 @@ export function detectPagePurpose(
   if (
     DOCS_PATH_RE.test(path) ||
     DOCS_TITLE_RE.test(title) ||
-    jsonTypes.has('TechArticle')
+    jsonTypes.has('TechArticle') ||
+    docsContentSignalCount >= 2
   ) {
     return {
       purpose: 'docs',
       reasons: [
         `docs signal (path=${DOCS_PATH_RE.test(path)}, title=${DOCS_TITLE_RE.test(
           title
-        )}, jsonld=${jsonTypes.has('TechArticle')})`,
+        )}, jsonld=${jsonTypes.has('TechArticle')}, contentSignals=${docsContentSignalCount})`,
       ],
     }
   }

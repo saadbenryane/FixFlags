@@ -86,7 +86,7 @@ export function SiteAgentPanel({ siteId }: { siteId: string }) {
       <Button
         type="button"
         variant="brand"
-        className="fixed bottom-20 right-4 z-40 min-h-11 rounded-full shadow-lg lg:bottom-6 lg:right-6"
+        className="min-h-11 rounded-full lg:fixed lg:bottom-6 lg:right-6 lg:z-40 lg:shadow-lg"
         onClick={() => setOpen(true)}
         aria-label="Open FixFlags Agent"
       >

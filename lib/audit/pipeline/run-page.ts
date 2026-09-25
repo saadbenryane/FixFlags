@@ -128,11 +128,11 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   const normalizedUrl = new URL(input.url).toString()
   assertDeadline(ctx, 'capturing')
 
-  // Anonymous teaser scans run the reduced pipeline: no flow walk and no
-  // slow-3G replay, so first value lands in ~60-90s. Re-checks (parentId),
-  // claimed audits, and signed-in checks keep the full pipeline. The mode is
-  // resolved once from the audit row at the primary page; secondary pages
-  // never run flow or slow replay regardless of mode.
+  // Anonymous teaser scans skip slow-3G replay so the first check stays
+  // shorter. They still walk the primary page, because Conversion coverage
+  // is only honest after that walk. Re-checks and signed-in checks also run
+  // slow replay. The mode is resolved once from the audit row at the primary
+  // page; secondary pages never run the walk or slow replay.
   const pipelineMode: AuditPipelineMode =
     input.primary && input.position === 0
       ? await resolveAuditPipelineMode(ctx.auditId)
@@ -159,15 +159,11 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
 
   await ctx.events.log({ stage: 'capturing', event: 'capture_started' })
   if (input.primary && input.position === 0) {
-    if (isTeaserScan) {
-      await ctx.events.log({ stage: 'capturing', event: 'flow_skipped_teaser' })
-    } else {
-      await ctx.events.log({ stage: 'capturing', event: 'flow_deferred' })
-    }
+    await ctx.events.log({ stage: 'capturing', event: 'flow_deferred' })
   }
   const captureStart = ctx.clock.now().getTime()
 
-  const shouldRunFlow = input.primary && input.position === 0 && !isTeaserScan
+  const shouldRunFlow = input.primary && input.position === 0
   const hasDeadlineBudgetForFlow =
     input.primary && input.position === 0 && ctx.deadline - ctx.clock.now().getTime() > 60_000
 

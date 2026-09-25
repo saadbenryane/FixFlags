@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import type { Route } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Check, ChevronRight, CircleCheck, Copy, Eye, Share2, Sparkles } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
-import { CARE_HOME as C, type HomepageAudienceKey } from '@/lib/marketing/copy'
+import { CARE_HOME as C, INTEGRATIONS_PAGE, type HomepageAudienceKey } from '@/lib/marketing/copy'
 import { HOMEPAGE_EVIDENCE, HomepageIntro, HomepageUrlEntry, Signal } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
 
@@ -15,28 +15,31 @@ export type HomepageCopyResult = { source: HomepageCopySource; message: string }
 
 const actionIcons = { read: Eye, share: Share2, ai: Sparkles }
 
-function useScrollStep<T extends HTMLElement>() {
+function useScrollStep<T extends HTMLElement>(dragging: RefObject<boolean>) {
   const ref = useRef<T>(null)
   const [activeStep, setActiveStep] = useState('flag')
+  const [reveal, setReveal] = useState(18)
 
   useEffect(() => {
     const node = ref.current
     if (!node) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let frame = 0
     const update = () => {
       frame = 0
       const steps = Array.from(node.querySelectorAll<HTMLElement>('[data-step]'))
-      const readingLine = window.innerHeight * .45
+      const readingLine = window.innerHeight * .42
       let current = steps[0]
       for (const step of steps) if (step.getBoundingClientRect().top <= readingLine) current = step
       if (current?.dataset.step) setActiveStep(previous => previous === current?.dataset.step ? previous : current!.dataset.step!)
-
+      if (reduced || dragging.current) return
       const first = steps[0]?.getBoundingClientRect()
       const last = steps.at(-1)?.getBoundingClientRect()
-      if (first && last) {
-        const progress = Math.min(1, Math.max(0, (readingLine - first.top) / Math.max(last.bottom - first.top, 1)))
-        node.style.setProperty('--workflow-reveal', `${Math.round(progress * 1000) / 10}%`)
-      }
+      if (!first || !last) return
+      const span = last.bottom - first.top
+      if (span < 24) return
+      const progress = Math.min(1, Math.max(0, (readingLine - first.top) / span))
+      setReveal(Math.round(progress * 100))
     }
     const schedule = () => { if (!frame) frame = requestAnimationFrame(update) }
     update()
@@ -47,14 +50,31 @@ function useScrollStep<T extends HTMLElement>() {
       window.removeEventListener('scroll', schedule)
       window.removeEventListener('resize', schedule)
     }
-  }, [])
+  }, [dragging])
 
-  return { ref, activeStep }
+  return { ref, activeStep, reveal, setReveal }
 }
 
-export function HomepageWorkflowSection() {
-  const workflow = useScrollStep<HTMLElement>()
-  return <section ref={workflow.ref} className={`${s.section} ${s.workflow}`} id="flag-example" data-active-step={workflow.activeStep}>
+export function HomepageWorkflowSection({ onViewFlag }: { onViewFlag: () => void }) {
+  const dragging = useRef(false)
+  const frameRef = useRef<HTMLDivElement>(null)
+  const workflow = useScrollStep<HTMLElement>(dragging)
+  const verified = workflow.reveal >= 55
+  const revealFromClientX = (clientX: number) => {
+    const frame = frameRef.current
+    if (!frame) return
+    const rect = frame.getBoundingClientRect()
+    const next = ((clientX - rect.left) / Math.max(rect.width, 1)) * 100
+    workflow.setReveal(Math.round(Math.min(100, Math.max(0, next))))
+  }
+
+  return <section
+    ref={workflow.ref}
+    className={`${s.section} ${s.workflow}`}
+    id="flag-example"
+    data-active-step={workflow.activeStep}
+    style={{ ['--workflow-reveal' as string]: `${workflow.reveal}%` }}
+  >
     <HomepageIntro {...C.workflow} />
     <div className={s.workflowGrid}>
       <ol className={s.workflowSteps}>
@@ -66,22 +86,46 @@ export function HomepageWorkflowSection() {
       <div className={s.evidenceStage}>
         <figure className={s.evidenceCompare}>
           <div className={s.evidenceHeader}>
-            <Signal tone="bad">{C.workflow.failedLabel}</Signal>
             <span className={s.evidencePage}>{C.workflow.page}</span>
-            <Signal tone="good">{C.workflow.passedLabel}</Signal>
           </div>
-          <a href={HOMEPAGE_EVIDENCE.passed} target="_blank" rel="noopener noreferrer" aria-label={C.workflow.passedLink}>
-            <span className={s.compareFrame}>
-              <Image className={s.compareBefore} src={HOMEPAGE_EVIDENCE.failed} alt={C.workflow.failedAlt} fill sizes="(max-width: 767px) calc(100vw - 48px), 650px" />
-              <span className={s.compareAfter}>
-                <Image src={HOMEPAGE_EVIDENCE.passed} alt={C.workflow.passedAlt} fill sizes="(max-width: 767px) calc(100vw - 48px), 650px" />
-              </span>
-              <span className={s.compareLine} aria-hidden="true"><i /></span>
+          <div className={s.compareFrame} ref={frameRef} data-compare-frame="true">
+            <Image className={s.compareBefore} src={HOMEPAGE_EVIDENCE.failed} alt={C.workflow.failedAlt} fill sizes="(max-width: 767px) 100vw, 380px" />
+            <span className={s.compareAfter}>
+              <Image src={HOMEPAGE_EVIDENCE.passed} alt={C.workflow.passedAlt} fill sizes="(max-width: 767px) 100vw, 380px" />
             </span>
-          </a>
-          <figcaption><span>{C.workflow.failedTitle}</span><span>{C.workflow.passedTitle}</span></figcaption>
+            <button
+              type="button"
+              className={s.compareLine}
+              role="slider"
+              aria-label={C.workflow.compareLabel}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={workflow.reveal}
+              aria-valuetext={verified ? C.workflow.passedTitle : C.workflow.failedTitle}
+              onPointerDown={event => {
+                dragging.current = true
+                event.currentTarget.setPointerCapture?.(event.pointerId)
+                revealFromClientX(event.clientX)
+              }}
+              onPointerMove={event => { if (dragging.current) revealFromClientX(event.clientX) }}
+              onPointerUp={() => { dragging.current = false }}
+              onPointerCancel={() => { dragging.current = false }}
+              onKeyDown={event => {
+                const next = event.key === 'ArrowRight' ? 5 : event.key === 'ArrowLeft' ? -5 : event.key === 'Home' ? -100 : event.key === 'End' ? 100 : 0
+                if (!next && event.key !== 'Home' && event.key !== 'End') return
+                event.preventDefault()
+                workflow.setReveal(value => Math.min(100, Math.max(0, event.key === 'Home' ? 0 : event.key === 'End' ? 100 : value + next)))
+              }}
+            ><i /></button>
+            <div className={s.flagDock}>
+              <Signal tone={verified ? 'good' : 'bad'}>{verified ? C.workflow.passedLabel : C.workflow.failedLabel}</Signal>
+              <strong>{verified ? C.workflow.passedTitle : C.workflow.failedTitle}</strong>
+              <button type="button" onClick={onViewFlag}>{C.workflow.viewFlag}</button>
+            </div>
+          </div>
         </figure>
         <p className={s.evidenceNote}>{C.workflow.source}</p>
+        <a className={s.textLink} href={HOMEPAGE_EVIDENCE.passed} target="_blank" rel="noopener noreferrer">{C.workflow.passedLink}</a>
       </div>
     </div>
   </section>
@@ -180,17 +224,13 @@ export function HomepageMonitoringSection() {
 export function HomepageIntegrationsSection() {
   return <section className={`${s.section} ${s.integrations}`}>
     <HomepageIntro label={C.integrations.label} title={C.integrations.title} body={C.integrations.body} />
-    <div className={s.integrationLayout}>
-      <article className={s.availableIntegration}>
-        <p>{C.integrations.availableLabel}</p>
-        <h3>{C.integrations.availableTitle}</h3>
-        <span>{C.integrations.availableBody}</span>
-        <Link href="/install">{C.integrations.availableAction}<ArrowRight size={16} aria-hidden="true" /></Link>
-      </article>
-      <div className={s.futureIntegrations}>
-        <p>{C.integrations.futureLabel}</p>
-        <ul>{C.integrations.future.map(item => <li key={item}>{item}</li>)}</ul>
-      </div>
+    <div className={s.integrationGrid}>
+      {INTEGRATIONS_PAGE.items.map(item => <article key={item.id}>
+        <h3>{item.title}</h3>
+        <p>{item.body}</p>
+        <span>{item.limit}</span>
+        <Link href={item.href as Route}>{item.action}<ArrowRight size={16} aria-hidden="true" /></Link>
+      </article>)}
     </div>
     <Link href={'/integrations' as Route} className={s.integrationLink}>{C.integrations.action}<ArrowRight size={16} aria-hidden="true" /></Link>
   </section>

@@ -15,6 +15,13 @@ import {
   resolveInteractionAuditId,
 } from '@/lib/mcp/log-interaction'
 import { extractMcpCredential } from '@/lib/mcp/auth'
+import {
+  audienceMatches,
+  credentialAllows,
+  mcpResource,
+  requiredToolScope,
+  wwwAuthenticate,
+} from '@/lib/mcp/oauth'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -24,6 +31,7 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
 
   let user: import('@prisma/client').User | null = null
   let apiKey: { id: string; client: ApiKeyClient | null } | null = null
+  let credentialScopes: { audience: string | null; scopes: string[] } | null = null
 
   if (credential.ok) {
     const authContext = await validateApiKey(credential.key)
@@ -38,11 +46,25 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
           },
           id: null,
         },
-        { status: 401, headers: { 'WWW-Authenticate': 'Bearer realm="FixFlags"' } }
+        {
+          status: 401,
+          headers: { 'WWW-Authenticate': wwwAuthenticate({ error: 'invalid_token', scope: 'sites:read sites:run' }) },
+        }
+      )
+    }
+    if (authContext.apiKey.audience && !audienceMatches(authContext.apiKey.audience, mcpResource())) {
+      return Response.json(
+        {
+          jsonrpc: '2.0',
+          error: { code: -32001, message: 'This token was not issued for FixFlags.', data: { code: 'INVALID_TOKEN' } },
+          id: null,
+        },
+        { status: 401, headers: { 'WWW-Authenticate': wwwAuthenticate({ error: 'invalid_token' }) } },
       )
     }
     user = authContext.user
     apiKey = authContext.apiKey
+    credentialScopes = { audience: authContext.apiKey.audience, scopes: authContext.apiKey.scopes }
   } else if (credential.code === 'MISSING_API_KEY') {
     return Response.json(
       {
@@ -56,7 +78,7 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
       },
       {
         status: 401,
-        headers: { 'WWW-Authenticate': 'Bearer realm="FixFlags"' },
+        headers: { 'WWW-Authenticate': wwwAuthenticate({ scope: 'sites:read sites:run' }) },
       }
     )
   } else if (credential.code === 'INVALID_AUTHORIZATION' || credential.code === 'CONFLICTING_API_KEYS') {
@@ -72,7 +94,7 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
       },
       {
         status: credential.code === 'CONFLICTING_API_KEYS' ? 400 : 401,
-        headers: { 'WWW-Authenticate': 'Bearer realm="FixFlags"' },
+        headers: { 'WWW-Authenticate': wwwAuthenticate({ error: 'invalid_token' }) },
       }
     )
   }
@@ -84,6 +106,33 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
     requestSummary = parseMcpRequestSummary(body)
   } catch {
     // body not parseable - proceed without method/tool context
+  }
+
+  if (credentialScopes && requestSummary.method === 'tools/call') {
+    const scope = requiredToolScope(requestSummary.tool)
+    if (scope && !credentialAllows(credentialScopes, scope)) {
+      return Response.json(
+        {
+          jsonrpc: '2.0',
+          error: {
+            code: -32001,
+            message: 'This credential cannot perform that action.',
+            data: { code: 'INSUFFICIENT_SCOPE', scope },
+          },
+          id: null,
+        },
+        {
+          status: 403,
+          headers: {
+            'WWW-Authenticate': wwwAuthenticate({
+              error: 'insufficient_scope',
+              scope,
+              description: 'Request the scope required for this action.',
+            }),
+          },
+        },
+      )
+    }
   }
 
   const server = new McpServer(

@@ -174,7 +174,7 @@ export async function recoverAuditJobOnPoll(
       if (job && jobState === 'active') {
         await job.moveToFailed(new Error('Worker unavailable during recovery'), '0', true)
       }
-      await forceFailAudit(auditId, audit, 'poll', WORKER_DOWN_MESSAGE)
+      await forceFailAudit(auditId, audit, 'poll', WORKER_DOWN_MESSAGE, 'AUDIT_JOB_LOST')
       return 'force_failed'
     }
   }
