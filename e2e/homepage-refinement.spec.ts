@@ -8,10 +8,10 @@ for (const width of [375, 390, 1086, 1144]) {
     await page.goto('/')
 
     await expect(
-      page.getByRole('heading', { level: 1, name: /Your website,\s*looked after\./i })
+      page.getByRole('heading', { level: 1, name: /Your software runs\.\s*FixFlags watches\./i })
     ).toBeVisible()
     await expect(
-      page.getByText(/FixFlags monitors your live website/i).first()
+      page.getByText('Independently know whether the important outcomes on your live website still work.', { exact: true }).first()
     ).toBeVisible()
     await expect(
       page.getByRole('heading', { name: /A score and a prompt still leave it unwatched/ })

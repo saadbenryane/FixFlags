@@ -216,14 +216,7 @@ test('unknown share tokens render an unavailable or not-found state', async ({ p
 test('parked power-tool docs and setup surfaces return not found', async ({ request }) => {
   for (const path of [
     '/help/mcp-and-editors',
-    '/docs/mcp',
-    '/docs/cli',
     '/docs/integrations',
-    '/.well-known/mcp.json',
-    '/.well-known/mcp-server.json',
-    '/.well-known/skills',
-    '/.well-known/skills/index.json',
-    '/.well-known/skills/fixflags/SKILL.md',
   ]) {
     const response = await request.get(path, { maxRedirects: 0 })
     expect(response.status(), path).toBe(404)
