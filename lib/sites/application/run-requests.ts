@@ -164,6 +164,9 @@ export async function requestSiteRun(input: RunInput): Promise<{
     run = await prisma.runRequest.create({
       data: {
         projectId: input.projectId,
+        // Compatibility-only dual-write. The complete selection relation below
+        // remains authoritative, including multi-Outcome and diagnostic runs.
+        legacyOutcomeId: selectedIds[0] ?? null,
         environment,
         selections: selectedIds.length
           ? { create: selectedIds.map((outcomeId) => ({ outcomeId })) }

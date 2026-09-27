@@ -105,6 +105,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
     expect(result.outcomeIds).toEqual([])
     expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
+        legacyOutcomeId: null,
         selections: undefined,
         verificationTarget: expect.objectContaining({ kind: 'DIAGNOSTIC', checkId: 'form-feedback' }),
       }),
@@ -188,6 +189,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
     expect(result.outcomeIds).toEqual(['outcome-1', 'outcome-2'])
     expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
+        legacyOutcomeId: 'outcome-1',
         selections: {
           create: [{ outcomeId: 'outcome-1' }, { outcomeId: 'outcome-2' }],
         },

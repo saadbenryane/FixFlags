@@ -1977,6 +1977,7 @@ model SiteOutcome {
   assessments       OutcomeAssessment[]
   bindingExecutions OutcomeBindingExecution[]
   runSelections     RunRequestOutcome[]
+  legacyRunRequests RunRequest[]       @relation("LegacyRunRequestOutcome")
   improvements      Improvement[]
 
   @@unique([projectId, slug])
@@ -2033,6 +2034,9 @@ model OutcomeFixture {
 model RunRequest {
   id                String             @id @default(cuid())
   projectId         String
+  /// Compatibility-only primary selection. RunRequestOutcome is authoritative.
+  /// Keep this nullable dual-write through a proven weekly Watch cycle.
+  legacyOutcomeId   String?            @map("outcomeId")
   requestedByUserId String?
   source            RunRequestSource
   idempotencyKey    String
@@ -2048,12 +2052,14 @@ model RunRequest {
   completedAt       DateTime?
   updatedAt         DateTime           @updatedAt
   project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  legacyOutcome     SiteOutcome?       @relation("LegacyRunRequestOutcome", fields: [legacyOutcomeId], references: [id], onDelete: SetNull)
   selections        RunRequestOutcome[]
   requestedBy       User?              @relation("RunRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
   audit             Audit?             @relation(fields: [auditId], references: [id], onDelete: SetNull)
   assessments       OutcomeAssessment[]
 
   @@index([projectId, requestedAt(sort: Desc)])
+  @@index([legacyOutcomeId, requestedAt(sort: Desc)])
   @@unique([projectId, source, idempotencyKey])
   @@index([auditId])
   @@index([status, requestedAt])
