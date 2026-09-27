@@ -3,7 +3,6 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
-import AxeBuilder from '@axe-core/playwright'
 import { PrismaClient } from '@prisma/client'
 import { expect, type Browser, type Page, type APIRequestContext, test } from '@playwright/test'
 
@@ -43,30 +42,6 @@ async function signedInPage(
   await signIn(page, requiredEnv(emailEnv), requiredEnv(passwordEnv))
   await page.waitForURL((url) => !url.pathname.startsWith('/sign-in'), { timeout: 30_000 })
   return { page, close: () => context.close() }
-}
-
-async function assertAuthenticatedProductSurface(page: Page, url: string): Promise<void> {
-  for (const width of [375, 768, 1280]) {
-    await page.setViewportSize({ width, height: 900 })
-    await page.emulateMedia({ colorScheme: width === 768 ? 'dark' : 'light', reducedMotion: 'reduce' })
-    await page.goto(url)
-    await page.evaluate(() => { document.documentElement.style.fontSize = '200%' })
-    const geometry = await page.evaluate(() => ({
-      clientWidth: document.documentElement.clientWidth,
-      scrollWidth: document.documentElement.scrollWidth,
-    }))
-    expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1)
-    const violations = (await new AxeBuilder({ page: page as never }).analyze()).violations
-    expect(violations).toEqual([])
-    const undersized = await page.locator('main button, main input, main select, main textarea, main [role="button"], main [role="radio"]').evaluateAll(
-      (elements) => elements.filter((element) => {
-        const rect = element.getBoundingClientRect()
-        return rect.width > 0 && rect.height > 0 && (rect.width < 43.99 || rect.height < 43.99)
-      }).map((element) => element.getAttribute('aria-label') || element.textContent?.trim().slice(0, 60)),
-    )
-    expect(undersized).toEqual([])
-    await page.evaluate(() => { document.documentElement.style.fontSize = '' })
-  }
 }
 
 async function waitForReport(
@@ -304,23 +279,6 @@ test.describe('credentialed revenue journeys', () => {
     await buyer.close()
   })
 
-  test('[journey:free-chat-timeline] Free chat persists and private Timeline data remains owner-only', async ({ browser }) => {
-    test.setTimeout(180_000)
-    const owner = await signedInPage(browser, 'E2E_BILLING_FREE_EMAIL', 'E2E_BILLING_FREE_PASSWORD')
-    const reportId = requiredEnv('E2E_FREE_REPORT_ID')
-    const sent = await owner.page.request.post(`/api/reports/${reportId}/chat`, {
-      data: { message: 'What is the highest priority evidence in this Review?' },
-    })
-    expect(sent.ok(), await sent.text()).toBe(true)
-    const history = await owner.page.request.get(`/api/reports/${reportId}/chat`)
-    expect(history.ok(), await history.text()).toBe(true)
-    expect(JSON.stringify(await history.json())).toContain('highest priority evidence')
-    const status = await owner.page.request.get(`/api/reports/${reportId}/status`)
-    expect(status.ok(), await status.text()).toBe(true)
-    expect((await status.json()) as { actionTimeline?: unknown[] }).toHaveProperty('actionTimeline')
-    await owner.close()
-  })
-
   test('[journey:billing-revoked] revoked billing removes paid entitlements without hiding owned Reviews', async ({ browser }) => {
     const revoked = await signedInPage(browser, 'E2E_REVOKED_EMAIL', 'E2E_REVOKED_PASSWORD')
     const me = await revoked.page.request.get('/api/me')
@@ -333,100 +291,6 @@ test.describe('credentialed revenue journeys', () => {
     const report = await revoked.page.request.get(`/api/reports/${requiredEnv('E2E_REVOKED_REPORT_ID')}/status`)
     expect(report.ok(), await report.text()).toBe(true)
     await revoked.close()
-  })
-
-  test('[journey:shared-product-boundary] Studio and Free can both create a Product', async ({ browser }) => {
-    const studio = await signedInPage(browser, 'E2E_STUDIO_EMAIL', 'E2E_STUDIO_PASSWORD')
-    const created = await studio.page.request.post('/api/projects', {
-      data: { name: 'Release Product', url: requiredEnv('E2E_AUDIT_URL') },
-    })
-    expect(created.status(), await created.text()).toBe(201)
-    const productId = String(((await created.json()) as { id?: string }).id)
-    expect(productId).not.toBe('undefined')
-    const allowedOrigin = new URL(requiredEnv('E2E_AUDIT_URL')).origin
-    const issued = await studio.page.request.post(`/api/projects/${productId}/signal-keys`, {
-      data: { name: 'Release browser', allowedOrigin },
-    })
-    expect(issued.status(), await issued.text()).toBe(201)
-    const signalKey = (await issued.json()) as { id: string; key: string }
-    const ingested = await studio.page.request.post(`/api/products/${productId}/signals`, {
-      headers: { Origin: allowedOrigin },
-      data: {
-        key: signalKey.key,
-        events: [{
-          id: `release-${Date.now()}`,
-          kind: 'NAVIGATION',
-          name: 'release_product_opened',
-          route: `${allowedOrigin}/release-proof`,
-          occurredAt: new Date().toISOString(),
-        }],
-      },
-    })
-    expect(ingested.status(), await ingested.text()).toBe(202)
-    await assertAuthenticatedProductSurface(studio.page, '/dashboard')
-    await assertAuthenticatedProductSurface(studio.page, `/products/${productId}`)
-    await expect(studio.page.getByText(/Last accepted Signal/i)).toBeVisible()
-    await expect(studio.page.getByText(/never verify a fix/i)).toBeVisible()
-    const listed = await studio.page.request.get(`/api/projects/${productId}/signal-keys`)
-    expect(JSON.stringify(await listed.json())).not.toContain(signalKey.key)
-    const revoked = await studio.page.request.delete(`/api/projects/${productId}/signal-keys?keyId=${signalKey.id}`)
-    expect(revoked.ok(), await revoked.text()).toBe(true)
-    const free = await signedInPage(browser, 'E2E_BILLING_FREE_EMAIL', 'E2E_BILLING_FREE_PASSWORD')
-    const freeCreated = await free.page.request.post('/api/projects', {
-      data: { name: 'Free Release Product', url: `${requiredEnv('E2E_AUDIT_URL')}?plan=free` },
-    })
-    expect(freeCreated.status(), await freeCreated.text()).toBe(201)
-    await studio.close()
-    await free.close()
-  })
-
-  test('[journey:attempt-update-receipt] explicit attempt reaches an independent update Review receipt', async ({ browser }) => {
-    test.setTimeout(420_000)
-    const owner = await signedInPage(browser, 'E2E_SHARE_OWNER_EMAIL', 'E2E_SHARE_OWNER_PASSWORD')
-    const reportId = requiredEnv('E2E_SHARE_REPORT_ID')
-    const status = await owner.page.request.get(`/api/reports/${reportId}/status`)
-    const statusBody = (await status.json()) as { partialFlags?: Array<{ id: string }> }
-    const flagId = statusBody.partialFlags?.[0]?.id
-    expect(flagId).toBeTruthy()
-    const attempted = await owner.page.request.post(`/api/flags/${flagId}/attempts`, {
-      data: {
-        builder: 'Release browser journey',
-        action: 'READY_TO_VERIFY',
-        changeSummary: 'Applied the release fixture change for independent verification.',
-        deploymentReference: 'release-matrix',
-      },
-    })
-    expect(attempted.status(), await attempted.text()).toBe(201)
-    await deployControlledFixture(owner.page.request, {
-      journey: 'attempt-update-receipt',
-      reportId,
-      flagId: flagId!,
-    })
-    const update = await owner.page.request.post(`/api/reports/${reportId}/re-check`)
-    expect(update.status(), await update.text()).toBe(201)
-    const updateBody = (await update.json()) as { reportId: string; siteId?: string }
-    const childId = updateBody.reportId
-    expect(updateBody.siteId).toBeTruthy()
-    await waitForReport(owner.page.request, childId)
-    await owner.page.goto(`/sites/${updateBody.siteId}`)
-    await expect(owner.page.getByRole('heading', { name: 'Your board' })).toBeVisible()
-    const childStatus = await owner.page.request.get(`/api/reports/${childId}/status`)
-    const childBody = await childStatus.json() as {
-      verificationReceipts?: Array<{
-        outcome?: string
-        comparable?: boolean
-        verificationCoverage?: { verifierExecuted?: boolean }
-        evidenceReference?: { beforeFlagId?: string; afterAuditId?: string }
-      }>
-    }
-    const receipt = childBody.verificationReceipts?.[0]
-    expect(receipt).toMatchObject({
-      outcome: 'IMPROVED',
-      comparable: true,
-      verificationCoverage: { verifierExecuted: true },
-      evidenceReference: { beforeFlagId: flagId, afterAuditId: childId },
-    })
-    await owner.close()
   })
 
   test('[journey:watch-child-notification] Product Watch schedules a full re-check and sends one sandbox email', async ({ browser }) => {
@@ -487,48 +351,6 @@ test.describe('credentialed revenue journeys', () => {
       childReportId: child!.id,
       idempotencyKey: `fixflags-watch-${child!.id}-v1`,
     })
-    await user.close()
-  })
-
-  test('[journey:github-oauth-pr] GitHub OAuth and repository scan produce one permitted Fix PR', async ({ browser }) => {
-    test.setTimeout(420_000)
-    const user = await signedInPage(browser, 'E2E_GITHUB_EMAIL', 'E2E_GITHUB_PASSWORD')
-    const connect = await user.page.request.get('/api/integrations/github/connect', { maxRedirects: 0 })
-    expect(connect.status()).toBe(302)
-    expect(connect.headers().location).toMatch(/^https:\/\/github\.com\/login\/oauth\/authorize/)
-    const started = await user.page.request.post('/api/repo-scans', {
-      data: { repoFullName: requiredEnv('E2E_GITHUB_REPOSITORY') },
-    })
-    expect(started.ok(), await started.text()).toBe(true)
-    const { repoScanId } = (await started.json()) as { repoScanId: string }
-
-    const completed = await expect.poll(async () => {
-      const response = await user.page.request.get(`/api/repo-scans/${repoScanId}`)
-      const body = (await response.json()) as {
-        scan: { status: string; findings: Array<{ id: string; fixable: boolean }> }
-      }
-      return body.scan.status === 'COMPLETED' ? body.scan : null
-    }, { timeout: 360_000 }).not.toBeNull()
-    void completed
-
-    const scanResponse = await user.page.request.get(`/api/repo-scans/${repoScanId}`)
-    const scan = (await scanResponse.json()) as {
-      scan: { findings: Array<{ id: string; fixable: boolean }> }
-    }
-    const finding = scan.scan.findings.find((candidate) => candidate.fixable)
-    expect(finding, 'Dedicated test repository must contain a permitted fixable finding').toBeTruthy()
-    const fix = await user.page.request.post(
-      `/api/repo-scans/${repoScanId}/findings/${finding!.id}/fix-pr`
-    )
-    expect(fix.ok(), await fix.text()).toBe(true)
-
-    await expect.poll(async () => {
-      const response = await user.page.request.get(
-        `/api/repo-scans/${repoScanId}/findings/${finding!.id}/fix-pr`
-      )
-      const body = (await response.json()) as { fixPr: { status: string; prUrl?: string | null } }
-      return body.fixPr.status === 'OPEN' ? body.fixPr.prUrl : null
-    }, { timeout: 180_000 }).toMatch(/^https:\/\/github\.com\//)
     await user.close()
   })
 

@@ -42,6 +42,16 @@ const RELEASE_FIXTURE_ENV_KEYS = new Set([
   'E2E_WATCH_PROJECT_ID',
   'E2E_GATE_MEMBER_RELEASED_ENTRY_ID',
   'E2E_GATE_MEMBER_BLOCKED_ENTRY_ID',
+  'E2E_GATE_NON_MEMBER_EMAIL',
+  'E2E_GATE_NON_MEMBER_PASSWORD',
+  // The claimed Site the canonical Outcome loop runs against, and the
+  // controlled fixture that induces and repairs the failure being verified.
+  'E2E_SITE_ID',
+  'E2E_SITE_OWNER_EMAIL',
+  'E2E_SITE_OWNER_PASSWORD',
+  'E2E_OUTCOME_ID',
+  'E2E_DEPLOYMENT_TRIGGER_URL',
+  'E2E_DEPLOYMENT_TRIGGER_TOKEN',
 ])
 
 function safeRunId(value) {
