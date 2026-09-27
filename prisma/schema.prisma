@@ -697,6 +697,7 @@ model Audit {
   runRequests               RunRequest[]
   outcomeAssessments        OutcomeAssessment[]
   bindingExecutions         OutcomeBindingExecution[]
+  bindingAttempts           OutcomeBindingAttempt[]
 
   @@index([userId])
   @@index([status])
@@ -1976,6 +1977,7 @@ model SiteOutcome {
   bindings          OutcomeExecutionBinding[]
   assessments       OutcomeAssessment[]
   bindingExecutions OutcomeBindingExecution[]
+  bindingAttempts   OutcomeBindingAttempt[]
   runSelections     RunRequestOutcome[]
   legacyRunRequests RunRequest[]       @relation("LegacyRunRequestOutcome")
   improvements      Improvement[]
@@ -2103,7 +2105,8 @@ model OutcomeAssessment {
   @@map("outcome_assessments")
 }
 
-/// Evidence produced by one required binding during one Audit. Restart-safe.
+/// Latest conclusive evidence produced by one required binding during one Audit.
+/// This projection is restart-safe and holds one row per binding per Audit.
 model OutcomeBindingExecution {
   id          String                     @id @default(cuid())
   auditId     String
@@ -2116,10 +2119,37 @@ model OutcomeBindingExecution {
   createdAt   DateTime                   @default(now())
   audit       Audit                      @relation(fields: [auditId], references: [id], onDelete: Cascade)
   outcome     SiteOutcome                @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  attempts    OutcomeBindingAttempt[]
 
   @@unique([auditId, outcomeId, bindingKey])
   @@index([outcomeId, createdAt(sort: Desc)])
   @@map("outcome_binding_executions")
+}
+
+/// Append-only record of one confirmation attempt. A binding that fails and then
+/// passes keeps both attempts so flakiness stays diagnosable instead of hidden.
+model OutcomeBindingAttempt {
+  id          String                     @id @default(cuid())
+  auditId     String
+  outcomeId   String
+  bindingKey  String
+  attempt     Int
+  mechanism   OutcomeExecutionMechanism
+  disposition BindingDisposition
+  reason      String
+  detail      Json?
+  /// Set when a later attempt succeeded, so this failure is retained but not customer facing.
+  transient   Boolean                    @default(false)
+  createdAt   DateTime                   @default(now())
+  audit       Audit                      @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  outcome     SiteOutcome                @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  execution   OutcomeBindingExecution?   @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  executionId String?
+
+  @@unique([auditId, outcomeId, bindingKey, attempt])
+  @@index([outcomeId, bindingKey, attempt(sort: Desc)])
+  @@index([executionId])
+  @@map("outcome_binding_attempts")
 }
 
 model SiteOutcomePage {

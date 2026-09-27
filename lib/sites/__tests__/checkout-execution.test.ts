@@ -6,6 +6,9 @@ const mocks = vi.hoisted(() => ({
   journeyFindFirst: vi.fn(),
   executionFindUnique: vi.fn(),
   executionUpsert: vi.fn(),
+  attemptFindFirst: vi.fn(),
+  attemptCreateMany: vi.fn(),
+  attemptUpdateMany: vi.fn(),
   runPathProbe: vi.fn(),
   persistJourneyResult: vi.fn(),
   flagUpdateMany: vi.fn(),
@@ -22,6 +25,11 @@ vi.mock('@/lib/db', () => ({
     outcomeBindingExecution: {
       findUnique: mocks.executionFindUnique,
       upsert: mocks.executionUpsert,
+    },
+    outcomeBindingAttempt: {
+      findFirst: mocks.attemptFindFirst,
+      createMany: mocks.attemptCreateMany,
+      updateMany: mocks.attemptUpdateMany,
     },
   },
 }))
@@ -53,7 +61,10 @@ describe('bound Checkout execution', () => {
     })
     mocks.journeyFindFirst.mockResolvedValue(null)
     mocks.executionFindUnique.mockResolvedValue(null)
-    mocks.executionUpsert.mockResolvedValue({})
+    mocks.executionUpsert.mockResolvedValue({ id: 'execution-1' })
+    mocks.attemptFindFirst.mockResolvedValue(null)
+    mocks.attemptCreateMany.mockResolvedValue({ count: 1 })
+    mocks.attemptUpdateMany.mockResolvedValue({ count: 0 })
     mocks.runUpdateMany.mockResolvedValue({ count: 1 })
     mocks.persistJourneyResult.mockResolvedValue([])
     mocks.flagUpdateMany.mockResolvedValue({ count: 1 })
@@ -70,6 +81,10 @@ describe('bound Checkout execution', () => {
           url: 'https://shop.example/products/widget',
           screenshotUrl: '/proof.png',
         },
+      ],
+      attempts: [
+        { outcome: { buyControlFound: true, buyControlClicked: true, cartUpdated: false }, steps: [], videoUrl: null },
+        { outcome: { buyControlFound: true, buyControlClicked: true, cartUpdated: false }, steps: [], videoUrl: null },
       ],
       finalUrl: 'https://shop.example/products/widget',
       failedStep: 'add_to_cart',
@@ -131,6 +146,7 @@ describe('bound Checkout execution', () => {
       reason: 'bot_wall',
       confirmed: false,
       steps: [],
+      attempts: [{ outcome: { botWall: true }, steps: [], videoUrl: null }],
       finalUrl: 'https://shop.example',
       failedStep: 'landing',
     })
@@ -143,5 +159,62 @@ describe('bound Checkout execution', () => {
         blockedReason: 'bot_wall',
       }),
     )
+  })
+
+  it('keeps both confirmation walks and records no transient failure when a Flag is confirmed', async () => {
+    mocks.runPathProbe.mockResolvedValue({
+      health: 'RED',
+      reason: 'add_to_cart_noop',
+      confirmed: true,
+      steps: [],
+      attempts: [
+        { outcome: { buyControlFound: true, buyControlClicked: true, cartUpdated: false }, steps: [], videoUrl: '/a.webm' },
+        { outcome: { buyControlFound: true, buyControlClicked: true, cartUpdated: false }, steps: [], videoUrl: '/b.webm' },
+      ],
+      finalUrl: 'https://shop.example/products/widget',
+      failedStep: 'add_to_cart',
+    })
+
+    await runBoundCheckoutForAudit('audit-1')
+
+    expect(mocks.attemptCreateMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({ attempt: 1, disposition: 'FAILED', reason: 'add_to_cart_noop', executionId: 'execution-1' }),
+        expect.objectContaining({ attempt: 2, disposition: 'FAILED', reason: 'add_to_cart_noop', executionId: 'execution-1' }),
+      ],
+    })
+    // No attempt succeeded, so the reproducible failure stays customer facing.
+    expect(mocks.attemptUpdateMany).not.toHaveBeenCalled()
+  })
+
+  it('retains a recovered first walk as transient flakiness instead of a Flag', async () => {
+    mocks.runPathProbe.mockResolvedValue({
+      health: 'UNKNOWN',
+      reason: 'flaky',
+      confirmed: false,
+      steps: [],
+      attempts: [
+        { outcome: { buyControlFound: true, buyControlClicked: true, cartUpdated: false }, steps: [], videoUrl: null },
+        { outcome: { reachedCheckout: true, cartUpdated: true }, steps: [], videoUrl: null },
+      ],
+      finalUrl: 'https://shop.example/checkout',
+      failedStep: null,
+    })
+
+    await runBoundCheckoutForAudit('audit-1')
+
+    expect(mocks.attemptCreateMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({ attempt: 1, disposition: 'FAILED' }),
+        expect.objectContaining({ attempt: 2, disposition: 'SUCCEEDED' }),
+      ],
+    })
+    expect(mocks.attemptUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ disposition: 'FAILED', transient: false }),
+      data: { transient: true },
+    }))
+    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ disposition: 'BLOCKED', reason: 'flaky' }),
+    }))
   })
 })

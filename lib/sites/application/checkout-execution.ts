@@ -7,6 +7,16 @@ import { availabilityFlagCopy, type BindingDispositionName } from '@/lib/sites/a
 import { checkoutResultCopy } from '@/lib/sites/outcome-state'
 import { validateBindingConfig, type AvailabilityBindingConfig, type SafeFormBindingConfig } from '@/lib/sites/application/binding-config'
 import { executeSafeFormFixture } from '@/lib/sites/application/safe-form-executor'
+import { classifyWalk } from '@/lib/integrity/classify'
+
+/** A bounded second attempt is required before a failure becomes a customer Flag. */
+const CONFIRMATION_ATTEMPTS = 2
+
+type BindingObservation = {
+  disposition: BindingDispositionName
+  reason: string
+  detail?: Prisma.InputJsonObject
+}
 
 type BoundSelection = {
   outcome: {
@@ -21,6 +31,68 @@ type BoundSelection = {
   }
 }
 
+/**
+ * Persist the conclusive verdict as the latest-attempt projection and append every
+ * confirmation attempt that produced it. A failure a later attempt recovered stays
+ * recorded and is marked transient, so flakiness remains diagnosable instead of
+ * being overwritten, and it never reaches the customer as a Flag.
+ */
+async function recordBindingEvidence(input: {
+  auditId: string
+  outcomeId: string
+  bindingKey: string
+  mechanism: OutcomeExecutionMechanism
+  attempts: BindingObservation[]
+  conclusive: BindingObservation
+}): Promise<void> {
+  const { auditId, outcomeId, bindingKey, mechanism, conclusive } = input
+  const execution = await prisma.outcomeBindingExecution.upsert({
+    where: { auditId_outcomeId_bindingKey: { auditId, outcomeId, bindingKey } },
+    create: {
+      auditId,
+      outcomeId,
+      bindingKey,
+      mechanism,
+      disposition: conclusive.disposition,
+      reason: conclusive.reason,
+      detail: conclusive.detail,
+    },
+    update: {
+      mechanism,
+      disposition: conclusive.disposition,
+      reason: conclusive.reason,
+      detail: conclusive.detail,
+    },
+  })
+  // Continue the existing sequence so a restarted worker never reuses an attempt number.
+  const last = await prisma.outcomeBindingAttempt.findFirst({
+    where: { auditId, outcomeId, bindingKey },
+    orderBy: { attempt: 'desc' },
+    select: { attempt: true },
+  })
+  const startAt = (last?.attempt ?? 0) + 1
+  await prisma.outcomeBindingAttempt.createMany({
+    data: input.attempts.map((observation, index) => ({
+      auditId,
+      outcomeId,
+      bindingKey,
+      attempt: startAt + index,
+      mechanism,
+      disposition: observation.disposition,
+      reason: observation.reason,
+      detail: observation.detail,
+      executionId: execution.id,
+    })),
+  })
+  if (input.attempts.some((observation) => observation.disposition === 'SUCCEEDED')) {
+    await prisma.outcomeBindingAttempt.updateMany({
+      where: { auditId, outcomeId, bindingKey, disposition: 'FAILED', transient: false },
+      data: { transient: true },
+    })
+  }
+}
+
+/** Record one conclusive observation that required no confirmation attempt. */
 async function recordExecution(input: {
   auditId: string
   outcomeId: string
@@ -30,16 +102,18 @@ async function recordExecution(input: {
   reason: string
   detail?: Prisma.InputJsonObject
 }): Promise<void> {
-  await prisma.outcomeBindingExecution.upsert({
-    where: {
-      auditId_outcomeId_bindingKey: {
-        auditId: input.auditId,
-        outcomeId: input.outcomeId,
-        bindingKey: input.bindingKey,
-      },
-    },
-    create: input,
-    update: {},
+  const observation: BindingObservation = {
+    disposition: input.disposition,
+    reason: input.reason,
+    detail: input.detail,
+  }
+  await recordBindingEvidence({
+    auditId: input.auditId,
+    outcomeId: input.outcomeId,
+    bindingKey: input.bindingKey,
+    mechanism: input.mechanism,
+    attempts: [observation],
+    conclusive: observation,
   })
 }
 
@@ -112,15 +186,71 @@ async function runCheckoutBinding(input: {
       data: { fingerprint: 'outcome:checkout' },
     })
   }
-  await recordExecution({
+  await recordBindingEvidence({
     auditId: input.auditId,
     outcomeId: input.outcomeId,
     bindingKey: input.bindingKey,
     mechanism: 'BROWSER_JOURNEY',
-    disposition: isFlag ? 'FAILED' : isClear ? 'SUCCEEDED' : 'BLOCKED',
-    reason: result.reason,
-    detail: { stepCount: result.steps.length },
+    // runPathProbe already confirmed a RED with a second walk. Persist both walks so a
+    // failure the confirmation attempt recovered stays visible as flakiness evidence.
+    attempts: result.attempts.map((attempt): BindingObservation => {
+      const classified = classifyWalk(attempt.outcome)
+      return {
+        disposition:
+          classified.health === 'GREEN' ? 'SUCCEEDED' : classified.health === 'RED' ? 'FAILED' : 'BLOCKED',
+        reason: classified.reason,
+        detail: { stepCount: attempt.steps.length, videoUrl: attempt.videoUrl },
+      }
+    }),
+    conclusive: {
+      disposition: isFlag ? 'FAILED' : isClear ? 'SUCCEEDED' : 'BLOCKED',
+      reason: result.reason,
+      detail: { stepCount: result.steps.length },
+    },
   })
+}
+
+/** One availability observation. A 200 alone is never enough: the rendered surface must match. */
+async function probeAvailabilityOnce(input: {
+  auditId: string
+  url: string
+  config: AvailabilityBindingConfig
+}): Promise<BindingObservation> {
+  const response = await fetch(input.url, {
+    method: 'GET',
+    redirect: 'manual',
+    signal: AbortSignal.timeout(8_000),
+    headers: { accept: 'text/html,application/xhtml+xml' },
+  }).catch(() => null)
+  if (!response) return { disposition: 'BLOCKED', reason: 'request_failed' }
+  if (response.status >= 300 && response.status < 400) {
+    return { disposition: 'BLOCKED', reason: 'redirect_unfollowed', detail: { status: response.status } }
+  }
+  const responseText = await response.text().catch(() => '')
+  const botWall = /(?:captcha|cloudflare|checking your browser|access denied|verify you are human)/i.test(responseText.slice(0, 20_000))
+  if (botWall) {
+    return { disposition: 'BLOCKED', reason: 'bot_wall', detail: { status: response.status } }
+  }
+  const audit = await prisma.audit.findUnique({
+    where: { id: input.auditId },
+    select: { htmlMetadata: true },
+  })
+  const metadata = audit?.htmlMetadata && typeof audit.htmlMetadata === 'object' && !Array.isArray(audit.htmlMetadata)
+    ? audit.htmlMetadata as Record<string, unknown>
+    : null
+  if (response.ok && !metadata) {
+    return { disposition: 'BLOCKED', reason: 'rendered_surface_unavailable', detail: { status: response.status } }
+  }
+  const pageText = typeof metadata?.pageText === 'string' ? metadata.pageText : ''
+  const rendered = input.config.expectedText
+    ? pageText.toLowerCase().includes(input.config.expectedText.toLowerCase())
+    : input.config.expectedSelector === 'body' && pageText.trim().length > 0
+  const available = response.status >= 200 && response.status < 300 && rendered
+  return {
+    disposition: available ? 'SUCCEEDED' : 'FAILED',
+    reason: available ? 'available' : response.ok ? 'expected_surface_missing' : 'http_unavailable',
+    detail: { status: response.status, rendered },
+  }
 }
 
 async function runAvailabilityBinding(input: {
@@ -142,76 +272,20 @@ async function runAvailabilityBinding(input: {
     })
     return
   }
-  const response = await fetch(safe.url, {
-    method: 'GET',
-    redirect: 'manual',
-    signal: AbortSignal.timeout(8_000),
-    headers: { accept: 'text/html,application/xhtml+xml' },
-  }).catch(() => null)
-  if (!response) {
-    await recordExecution({
-      auditId: input.auditId,
-      outcomeId: input.outcomeId,
-      bindingKey: input.bindingKey,
-      mechanism: 'HTTP_AVAILABILITY',
-      disposition: 'BLOCKED',
-      reason: 'request_failed',
-    })
-    return
+
+  // An unavailable response is confirmed with a second request before it becomes a Flag.
+  // A blocked observation is conclusive on its own, because a bot wall or an unrendered
+  // surface will not resolve by asking again.
+  const attempts: BindingObservation[] = []
+  let conclusive = await probeAvailabilityOnce({ auditId: input.auditId, url: safe.url, config: input.config })
+  attempts.push(conclusive)
+  while (conclusive.disposition === 'FAILED' && attempts.length < CONFIRMATION_ATTEMPTS) {
+    conclusive = await probeAvailabilityOnce({ auditId: input.auditId, url: safe.url, config: input.config })
+    attempts.push(conclusive)
   }
-  if (response.status >= 300 && response.status < 400) {
-    await recordExecution({
-      auditId: input.auditId,
-      outcomeId: input.outcomeId,
-      bindingKey: input.bindingKey,
-      mechanism: 'HTTP_AVAILABILITY',
-      disposition: 'BLOCKED',
-      reason: 'redirect_unfollowed',
-      detail: { status: response.status },
-    })
-    return
-  }
-  const responseText = await response.text().catch(() => '')
-  const botWall = /(?:captcha|cloudflare|checking your browser|access denied|verify you are human)/i.test(responseText.slice(0, 20_000))
-  if (botWall) {
-    await recordExecution({
-      auditId: input.auditId,
-      outcomeId: input.outcomeId,
-      bindingKey: input.bindingKey,
-      mechanism: 'HTTP_AVAILABILITY',
-      disposition: 'BLOCKED',
-      reason: 'bot_wall',
-      detail: { status: response.status },
-    })
-    return
-  }
-  const audit = await prisma.audit.findUnique({
-    where: { id: input.auditId },
-    select: { htmlMetadata: true },
-  })
-  const metadata = audit?.htmlMetadata && typeof audit.htmlMetadata === 'object' && !Array.isArray(audit.htmlMetadata)
-    ? audit.htmlMetadata as Record<string, unknown>
-    : null
-  const pageText = typeof metadata?.pageText === 'string' ? metadata.pageText : ''
-  const rendered = input.config.expectedText
-    ? pageText.toLowerCase().includes(input.config.expectedText.toLowerCase())
-    : input.config.expectedSelector === 'body' && pageText.trim().length > 0
-  if (response.ok && !metadata) {
-    await recordExecution({
-      auditId: input.auditId,
-      outcomeId: input.outcomeId,
-      bindingKey: input.bindingKey,
-      mechanism: 'HTTP_AVAILABILITY',
-      disposition: 'BLOCKED',
-      reason: 'rendered_surface_unavailable',
-      detail: { status: response.status },
-    })
-    return
-  }
-  const available = response.status >= 200 && response.status < 300 && rendered
-  const failureReason = response.ok ? 'expected_surface_missing' : 'http_unavailable'
-  if (!available) {
-    const copy = availabilityFlagCopy(failureReason)
+
+  if (conclusive.disposition === 'FAILED') {
+    const copy = availabilityFlagCopy(conclusive.reason)
     await prisma.flag.create({
       data: {
         auditId: input.auditId,
@@ -231,14 +305,13 @@ async function runAvailabilityBinding(input: {
       },
     })
   }
-  await recordExecution({
+  await recordBindingEvidence({
     auditId: input.auditId,
     outcomeId: input.outcomeId,
     bindingKey: input.bindingKey,
     mechanism: 'HTTP_AVAILABILITY',
-    disposition: available ? 'SUCCEEDED' : 'FAILED',
-    reason: available ? 'available' : failureReason,
-    detail: { status: response.status, rendered },
+    attempts,
+    conclusive,
   })
 }
 
@@ -256,6 +329,9 @@ async function runSignupBinding(input: {
     startUrl: input.config.startUrl,
     allowLocalhost: input.allowLocalhost,
   })
+  // A safe form is submitted exactly once. The fixture is already proven reversible,
+  // because a run that cannot prove its pre-run reset or its cleanup is BLOCKED rather
+  // than FAILED, so the single attempt is conclusive and never becomes a blind resubmit.
   await recordExecution({
     auditId: input.auditId,
     outcomeId: input.outcomeId,

@@ -77,4 +77,72 @@ describe('Safe Form executor', () => {
     expect(result).toMatchObject({ disposition: 'BLOCKED', reason: 'fixture_hook_origin_mismatch' })
     expect(mocks.createAuditPage).not.toHaveBeenCalled()
   })
+
+  it('will not submit a form the customer has not authorized', async () => {
+    mocks.fixtureFindFirst.mockResolvedValue({ ...fixture, authorizedAt: null })
+    const result = await executeSafeFormFixture({
+      projectId: 'site-1', fixtureId: 'fixture-1', startUrl: fixture.targetUrl, allowLocalhost: false,
+    })
+    expect(result).toMatchObject({ disposition: 'BLOCKED', reason: 'fixture_not_authorized' })
+    expect(mocks.createAuditPage).not.toHaveBeenCalled()
+  })
+
+  it('will not submit a form bound to a different target than the Site authorized', async () => {
+    const result = await executeSafeFormFixture({
+      projectId: 'site-1', fixtureId: 'fixture-1', startUrl: 'https://example.com/other-form', allowLocalhost: false,
+    })
+    expect(result).toMatchObject({ disposition: 'BLOCKED', reason: 'fixture_target_mismatch' })
+    expect(mocks.createAuditPage).not.toHaveBeenCalled()
+  })
+
+  it('blocks a form whose encrypted values cannot be read instead of guessing', async () => {
+    mocks.fixtureFindFirst.mockResolvedValue({ ...fixture, encryptedValues: '{not json' })
+    const result = await executeSafeFormFixture({
+      projectId: 'site-1', fixtureId: 'fixture-1', startUrl: fixture.targetUrl, allowLocalhost: false,
+    })
+    expect(result).toMatchObject({ disposition: 'BLOCKED', reason: 'fixture_secret_unavailable' })
+    expect(mocks.createAuditPage).not.toHaveBeenCalled()
+  })
+
+  it('Flags a submitted form that does not show its success criterion', async () => {
+    mocks.isVisible.mockResolvedValue(false)
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })))
+    const result = await executeSafeFormFixture({
+      projectId: 'site-1', fixtureId: 'fixture-1', startUrl: fixture.targetUrl, allowLocalhost: false,
+    })
+    expect(result).toMatchObject({
+      disposition: 'FAILED',
+      reason: 'success_text_missing',
+      detail: { cleanupStatus: 'succeeded' },
+    })
+    // A failed submission is still cleaned up, and is never blindly resubmitted.
+    expect(mocks.click).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not report a result when cleanup cannot be proven', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: false }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await executeSafeFormFixture({
+      projectId: 'site-1', fixtureId: 'fixture-1', startUrl: fixture.targetUrl, allowLocalhost: false,
+    })
+    expect(result).toMatchObject({ disposition: 'BLOCKED', reason: 'fixture_cleanup_unproven', detail: { cleanupStatus: 'failed' } })
+  })
+
+  it('refuses a form that submits away from the authorized origin', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })))
+    mocks.createAuditPage.mockResolvedValue({
+      page: {
+        locator: () => ({ first: () => ({ fill: mocks.fill, click: mocks.click, isVisible: mocks.isVisible }) }),
+        getByText: () => ({ first: () => ({ isVisible: mocks.isVisible }) }),
+        url: () => 'https://elsewhere.example/redirected',
+        context: () => ({ close: mocks.close }),
+      },
+    })
+    const result = await executeSafeFormFixture({
+      projectId: 'site-1', fixtureId: 'fixture-1', startUrl: fixture.targetUrl, allowLocalhost: false,
+    })
+    expect(result).toMatchObject({ reason: 'form_left_authorized_origin' })
+  })
 })
