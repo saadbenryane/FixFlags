@@ -100,6 +100,7 @@ export const CARE_HOME = {
     compareLabel: 'Drag to compare the empty cart with the verified cart',
     passedLabel: 'Verified',
     passedTitle: 'Cart updated. Checkout opened.',
+    proofLabel: 'FixFlags evidence',
     page: '/products/canvas-tote',
     source: 'Browser journey · Product to checkout',
     instructions: 'On the Canvas Tote page, select Add to cart and observe that the cart remains empty. Restore the add-to-cart action so the selected product appears in the cart and checkout remains reachable. Publish the change, then run a fresh browser journey and verify that the cart shows one item and checkout opens.',

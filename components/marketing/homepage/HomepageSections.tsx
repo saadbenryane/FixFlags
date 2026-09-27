@@ -86,6 +86,7 @@ export function HomepageWorkflowSection({ onViewFlag }: { onViewFlag: () => void
       <div className={s.evidenceStage}>
         <figure className={s.evidenceCompare}>
           <div className={s.evidenceHeader}>
+            <span className={s.evidenceBrand}><Logo variant="mark" size="sm" />{C.workflow.proofLabel}</span>
             <span className={s.evidencePage}>{C.workflow.page}</span>
           </div>
           <div className={s.compareFrame} ref={frameRef} data-compare-frame="true">
