@@ -46,6 +46,8 @@ Remote and credentialed stages additionally require:
 
 Release stages fail closed when evidence or credentials are missing. Never replace a required probe with a skip.
 
+`scripts/release-journeys.mjs` is the release contract for which journeys run in which stage, not documentation. A journey missing from that file is never run; a journey missing from the file but present in the specs fails the run as an unknown id. The [release evidence runbook](release-evidence-runbook.md) maps each launch acceptance criterion to its proof, names the fixtures the release run needs, and lists the gates that are still waiting on something outside this repository.
+
 ## Paid-launch gate
 
 Before accepting money:

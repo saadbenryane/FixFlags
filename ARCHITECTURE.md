@@ -269,6 +269,9 @@ The old Improvement-cycle-first architecture proposal is superseded. [docs/site-
 - Missing AI keys may be an explicit local degraded mode. Production startup and `/api/health/ready` reject the incomplete launch capability.
 - No `next build`-time OAuth gating (resolved at runtime via `/api/auth/providers`)
 - OAuth callback URL: `https://fixflags.com/api/auth/callback/google`
+- Every trigger (UI, Watch, MCP, deployment, API, integration, internal) enters one tenant-scoped run command, `requestSiteRun`. A second run path is a defect, not an adapter.
+- `OutcomeBindingExecution` is the latest *conclusive* binding result, not a history. Every walk that ran is an append-only `OutcomeBindingAttempt` row, so a retry that changes the verdict leaves the earlier RED walk visible instead of overwriting it.
+- An Outcome is Flagged only on a confirmed failure. Availability (an idempotent GET) retries once to confirm RED; a safe form does not blind-retry, because a submission whose reset is unproven is Couldn't verify, not confirmed.
 
 ## Database snapshot
 

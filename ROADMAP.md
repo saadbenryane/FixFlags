@@ -32,7 +32,7 @@ This is evolution, not replacement. `Project`, `Audit`, Playwright, checks, Jour
 
 ## Checkout slice status
 
-The local implementation now connects Checkout Outcome → browser binding → tenant-scoped RunRequest → existing Audit/worker → independent browser evidence → assessment and durable Flag → targeted re-verification. Web, Watch, and MCP call the same application command. The developer-key and CLI setup path is unparked. Additive migrations and local browser fixtures are passing. This is an implementation checkpoint, not a launch receipt: credentialed external-client proof, full web/Watch recovery exercise, remote OAuth, and an exact-SHA production canary remain open.
+The local implementation now connects Checkout, safe Signup/form, and page-availability Outcomes → browser binding → tenant-scoped RunRequest → existing Audit/worker → independent browser evidence → assessment and durable Flag → targeted re-verification. Every initiator named above enters the same application command, including Shopify install as an integration trigger; an equivalence test asserts that. A binding is Flagged only on a confirmed failure, and every walk that ran is retained as an append-only attempt so a retry cannot erase an earlier RED. The developer-key and CLI setup path is unparked. Additive migrations and local browser fixtures are passing. This is an implementation checkpoint, not a launch receipt: credentialed external-client proof, the production canary, and opening paid checkout remain open. The [release evidence runbook](docs/release-evidence-runbook.md) names each open gate.
 
 ## Launch milestone: independent monitoring with MCP
 

@@ -48,7 +48,7 @@ New customer certainty and coverage semantics are in [evidence rules](knowledge/
 
 ## Known gaps to the next version
 
-Implemented locally in the first Outcome slice: additive Checkout binding and assessment, one tenant-scoped RunRequest path used by UI/Watch/MCP, independent browser purchase probe, Clear/Flag/Couldn't verify/Stale projection, durable Flag linkage, developer keys/CLI/MCP setup and tools. The existing broad Site checks remain. This is not yet a deployed-customer claim.
+Implemented locally in the first Outcome slice: additive Checkout, safe-form, and availability binding and assessment; one tenant-scoped RunRequest path entered by every trigger (UI, Watch, MCP, deployment, API, Shopify, internal); independent browser purchase probe; Clear/Flag/Couldn't verify/Stale projection; durable Flag linkage; append-only binding attempts so a retry cannot erase a prior failure; developer keys/CLI/MCP setup and tools. The existing broad Site checks remain. This is not yet a deployed-customer claim. The proof for each claim, and the gates that remain open, are in the [release evidence runbook](docs/release-evidence-runbook.md).
 
 Launch gaps: prove the complete Checkout recovery loop with credentialed web, Watch, and external MCP clients on an exact production revision; complete live sandbox journeys for advertised connections; finish production observability and broad public coherence. Availability and opt-in Safe Form execution are implemented locally; unconfigured or irreversible forms remain honestly Couldn’t verify. Extra connections and generalized agent-task evaluation remain post-launch.
 

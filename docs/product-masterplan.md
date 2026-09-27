@@ -332,6 +332,8 @@ MCP-server and agent-tool correctness, permission/side-effect evaluators, sandbo
 
 Local engine status on 2026-09-22, not a production attestation: one RunRequest executes every required Checkout, safe Signup, and page-availability binding; Watch and Railway use that command; Signup without an authorized reversible fixture stays Couldn’t verify; MCP publishes protected-resource metadata, authorization-code PKCE, audience checks, and scope challenges. Credentialed Codex, Claude Code, and Cursor sessions, the production canary, and opening paid checkout remain outside this local proof. The checklist below stays open until those gates pass.
 
+The checklist is the contract; the [release evidence runbook](release-evidence-runbook.md) says how each item is actually proven, which fixtures the release run needs, and which items are still waiting on something outside this repository. A box moves only when a receipt exists for the exact candidate revision.
+
 - [ ] Analyze → signup → exact Site claim → return works without duplicate identity or lost evidence.
 - [ ] Important Outcomes are inferred/confirmed and shown in plain language.
 - [ ] Checkout, safe Signup/form, and availability patterns run through the existing worker/browser/check engine.
