@@ -152,7 +152,7 @@
 .compareFrame { position: relative; display: block; width: min(100%, 340px); aspect-ratio: 390 / 760; margin-inline: auto; overflow: hidden; background: hsl(var(--muted)); }
 .compareFrame img { object-fit: cover; object-position: center top; }
 .compareAfter { position: absolute; inset: 0; overflow: hidden; clip-path: inset(0 calc(100% - var(--workflow-reveal)) 0 0); }
-.compareLine { position: absolute; z-index: 2; inset-block: 0; left: var(--workflow-reveal); width: 44px; border: 0; background: transparent; transform: translateX(-50%); cursor: ew-resize; touch-action: none; }
+.compareLine { position: absolute; z-index: 2; inset-block: 0; left: clamp(22px, var(--workflow-reveal), calc(100% - 22px)); width: 44px; border: 0; background: transparent; transform: translateX(-50%); cursor: ew-resize; touch-action: none; }
 .compareLine::before { content: ''; position: absolute; inset-block: 0; left: 50%; width: 2px; background: hsl(var(--brand)); box-shadow: 0 0 0 1px hsl(var(--background) / .8); transform: translateX(-50%); }
 .compareLine i { position: absolute; left: 50%; top: 42%; width: 44px; height: 44px; border: 1px solid hsl(var(--brand)); border-radius: 50%; background: hsl(var(--background)); box-shadow: 0 8px 22px hsl(var(--foreground) / .16); transform: translate(-50%, -50%); }
 .compareLine i::before, .compareLine i::after { content: ''; position: absolute; top: 50%; width: 6px; height: 6px; border-top: 1.5px solid hsl(var(--brand)); border-left: 1.5px solid hsl(var(--brand)); }
@@ -290,12 +290,17 @@
   .workflowGrid, .quiet { grid-template-columns: minmax(0, 1fr); gap: 36px; }
   .workflowGrid { display: flex; flex-direction: column; margin-top: 38px; }
   .evidenceStage { position: relative; top: auto; z-index: 0; order: -1; padding-bottom: 8px; background: hsl(var(--background)); }
-  .compareFrame { width: min(88vw, 320px); }
-  .workflowSteps li { min-height: 70vh; }
+  .compareFrame { width: min(88vw, 320px); aspect-ratio: 390 / 650; }
+  .workflowSteps li { min-height: auto; padding-bottom: 30px; }
   .flagDock { left: 8px; right: 8px; bottom: 8px; }
   .flagDock strong { font-size: 12px; }
   .boardAdd { min-height: 72px; padding: 16px; flex-direction: row; align-items: center; }
-  .integrationGrid { grid-template-columns: minmax(0, 1fr); }
+  .integrationGrid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .integrationGrid article { min-height: 0; padding: 18px 20px; }
+  .integrationGrid h3 { font-size: 21px; }
+  .integrationGrid p { margin-top: 6px; }
+  .integrationGrid span { margin-top: 6px; }
+  .integrationGrid a { padding-top: 10px; }
   .coverageCard { margin-top: 38px; padding: 7px; }
   .coveragePanel { padding: 30px 19px 25px; }
   .coveragePanel > p { font-size: 21px; }

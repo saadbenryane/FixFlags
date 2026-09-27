@@ -7,29 +7,57 @@ import { cn } from "@/lib/utils";
 
 type ColumnId = (typeof SITE_COMPARE.columns)[number]["id"];
 
+/**
+ * Phones get a decision aid instead of the table. Each question leads with the
+ * FixFlags answer, because that is the decision the reader is making, and keeps
+ * the other two tools underneath as one honest comparison line. Nothing scrolls
+ * sideways and no column is dropped.
+ */
+function CompareDecisionAid() {
+  const copy = SITE_COMPARE;
+  const others = copy.columns.filter((col) => !("highlight" in col && col.highlight));
+  const primary = copy.columns.find((col) => "highlight" in col && col.highlight) ?? copy.columns[2];
+
+  return (
+    <ul
+      className="flex flex-col gap-3 md:hidden"
+      aria-label={copy.mobileLabel}
+    >
+      {copy.rows.map((row) => (
+        <li
+          key={row.id}
+          className="rounded-card border border-border/60 bg-background/80 p-4 shadow-card"
+        >
+          <p className="text-sm font-medium text-foreground text-pretty">
+            {row.question}
+          </p>
+          <p className="mt-2 text-sm font-semibold leading-snug text-brand text-pretty">
+            {row.values[primary.id as ColumnId]}
+          </p>
+          <dl className="mt-3 flex flex-col gap-1.5 border-t border-border/50 pt-3">
+            {others.map((col) => (
+              <div key={col.id} className="flex gap-2 text-xs leading-snug">
+                <dt className="shrink-0 font-medium text-muted-foreground">
+                  {col.label}
+                </dt>
+                <dd className="text-foreground text-pretty">
+                  {row.values[col.id as ColumnId]}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function CompareRows() {
   const copy = SITE_COMPARE;
 
   return (
     <>
-      <div className="grid gap-3 md:hidden">
-        {copy.rows.map((row) => (
-          <article key={row.id} className="rounded-card border border-border/60 bg-background p-4">
-            <h3 className="text-sm font-semibold text-foreground text-pretty">{row.question}</h3>
-            <dl className="mt-3 grid gap-3">
-              {copy.columns.map((col) => {
-                const highlight = "highlight" in col && col.highlight;
-                return (
-                  <div key={col.id} className={cn("rounded-control px-3 py-2", highlight && "bg-brand/[0.06]")}>
-                    <dt className={cn("text-xs font-semibold", highlight ? "text-brand" : "text-muted-foreground")}>{col.label}</dt>
-                    <dd className="mt-1 text-sm leading-snug text-foreground text-pretty">{row.values[col.id as ColumnId]}</dd>
-                  </div>
-                );
-              })}
-            </dl>
-          </article>
-        ))}
-      </div>
+      <CompareDecisionAid />
       <div className="hidden overflow-hidden rounded-card border border-border/60 bg-background/80 shadow-card md:block">
         <table className="w-full border-collapse text-left">
           <caption className="sr-only">{copy.headline}</caption>

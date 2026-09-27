@@ -228,7 +228,7 @@ export function HomepageIntegrationsSection() {
     <div className={s.integrationGrid}>
       {INTEGRATIONS_PAGE.items.map(item => <article key={item.id}>
         <h3>{item.title}</h3>
-        <p>{item.body}</p>
+        <p>{item.summary}</p>
         <span>{item.limit}</span>
         <Link href={item.href as Route}>{item.action}<ArrowRight size={16} aria-hidden="true" /></Link>
       </article>)}

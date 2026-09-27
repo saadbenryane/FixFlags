@@ -8,6 +8,7 @@ export const SITE_COMPARE = {
   headlineDisplay: "A score and a prompt still leave it unwatched",
   headlineAccentPeriod: true,
   headline: "A score and a prompt still leave it unwatched.",
+  mobileLabel: "What each tool can tell you, and what FixFlags adds.",
   subline:
     "PageSpeed times a page. An agent answers what you remember to ask. Use both, and the live site is still waiting for you to look. FixFlags keeps watch and proves a fix with a fresh check.",
   columns: [

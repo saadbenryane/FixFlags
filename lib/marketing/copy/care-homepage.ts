@@ -145,8 +145,8 @@ export const CARE_HOME = {
     title: 'Know when something important changes.',
     body: 'FixFlags keeps watch and speaks up with the evidence when a page or journey changes in a way that matters. When it verifies a recovery, you know that too.',
     notifications: [
-      { status: '1 Flag', title: 'Add to cart stopped working', detail: 'Purchase journey · Evidence and next step inside', time: 'Just now', tone: 'bad' },
-      { status: 'Verified', title: 'Customers can reach checkout again', detail: 'Purchase journey · Verified on the live website', time: '12 min ago', tone: 'good' },
+      { status: '1 Flag', title: 'An important outcome changed', detail: 'Evidence and the next step are ready', time: 'Just now', tone: 'bad' },
+      { status: 'Verified', title: 'The recovery works on the live site', detail: 'Fresh independent evidence is attached', time: '12 min ago', tone: 'good' },
     ],
   },
   integrations: {
