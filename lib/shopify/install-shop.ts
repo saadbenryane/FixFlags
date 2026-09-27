@@ -2,6 +2,7 @@ import { trackEvent } from '@/lib/analytics/events'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { enqueueIntegrityProbe } from '@/lib/integrity/enqueue'
+import { requestShopifyOutcomeRun } from '@/lib/sites/application/integration-runs'
 import { shopifyAdminGraphql, SHOP_AND_PRODUCTS_QUERY, type ShopifyShopQuery } from './admin'
 import { pickStorefrontPaths } from './discover'
 import { persistTokenSet, type ShopifyTokenSet } from './tokens'
@@ -64,6 +65,24 @@ export async function persistInstalledShop(input: {
         pathId: path.id,
         error: error instanceof Error ? error.message : String(error),
       })
+    })
+    // The revenue path stays Shopify's own product. When the shop is linked to a claimed
+    // Site, the install also enters the shared Outcome run command, so Shopify-triggered
+    // verification is the same tenant-scoped run as the interface, Watch, deploys, API and MCP.
+    const linked = await prisma.shopifyShop.findUnique({
+      where: { id: shop.id },
+      select: { projectId: true },
+    })
+    await requestShopifyOutcomeRun({
+      projectId: linked?.projectId ?? null,
+      storefrontUrl: item.storefrontUrl,
+      shopDomain: input.shopDomain,
+    }).catch((error) => {
+      logger.warn('Shopify install Outcome run could not start', {
+        shop: input.shopDomain,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      return null
     })
   }
 
