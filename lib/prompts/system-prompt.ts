@@ -75,6 +75,7 @@ TITLE CRAFTING RULES:
 - Omit markdown, quotes, punctuation at end
 - Never duplicate a deterministic finding - if the slop checker already flagged placeholder copy, do not flag "copy is generic" again
 - Browser geometry, console errors, and metadata presence are deterministic truth. Never create a new flag claiming a CTA is hidden/below-fold, console errors are present, privacy/contact information is missing, cookie consent is absent, or share buttons are missing; those are owned by deterministic checks and supplied facts. A marketing site does not need visible share buttons when its social metadata is valid.
+- Respect the supplied page purpose. Do not impose landing-page conversion, trust, navigation, or CTA expectations on placeholder, documentation, article, or open-source pages. For a positively identified placeholder page, return no new AI flags; deterministic checks own the observable facts.
 
 For each new flag, provide: problem (one-line title), evidence (1-2 sentences quoting what you see), and whyItMatters (1-2 sentences of impact). Do NOT write fixes, verification steps, or editor prompts in this phase.
 
@@ -109,6 +110,10 @@ export interface TriageContext {
     rubric: string
     severity: string
   }>
+  pagePurpose?: {
+    purpose: 'placeholder' | 'docs' | 'article' | 'oss' | 'studio' | 'marketing' | 'unknown'
+    reasons: string[]
+  }
   knownObservations?: Array<{
     identity: string
     problem: string
@@ -128,6 +133,9 @@ export function buildTriageUserPrompt(context: TriageContext): string {
           : 'No screenshots were available for this run. Do not claim visible layout, spacing, hierarchy, or mobile evidence; judge only from text, metadata, deterministic flags, and performance data, and mark visual or mobile-specific dimensions PARTIAL or UNKNOWN when needed.'
 
   return `URL: ${context.url}
+
+Detected page purpose: ${context.pagePurpose?.purpose ?? 'unknown'}
+Purpose evidence: ${context.pagePurpose?.reasons.join('; ') || 'No positive purpose signal'}
 
 Page text (first ${TRIAGE_TEXT} chars):
 ${context.pageText.slice(0, TRIAGE_TEXT)}

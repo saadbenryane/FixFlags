@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest'
 import assert from 'node:assert/strict'
-import { deduplicateFlags } from '@/lib/audit/deduplicate'
+import { deduplicateFlags, deduplicateTriageFlags } from '@/lib/audit/deduplicate'
 import type { DeterministicFlag } from '@/lib/audit/checks'
 
 function det(partial: Partial<DeterministicFlag> & Pick<DeterministicFlag, 'checkId' | 'problem'>): DeterministicFlag {
@@ -128,6 +128,56 @@ describe('deduplicateFlags', () => {
     ]
 
     assert.equal(deduplicateFlags([], aiFlags).length, 0)
+  })
+
+  it('drops the exact triage paraphrases reproduced by placeholder dogfood', () => {
+    const deterministic = [
+      det({ checkId: 'no-privacy-policy', problem: 'No privacy policy link found' }),
+      det({
+        checkId: 'mobile-cta-weak-label',
+        rubric: 'MESSAGE',
+        problem: 'Mobile CTA label "Learn more" is vague',
+      }),
+      det({
+        checkId: 'trust-no-internal-links',
+        rubric: 'EXPERIENCE',
+        problem: 'Page has very few internal navigation links',
+      }),
+    ]
+    const aiFlags = [
+      {
+        rubric: 'REACH' as const,
+        impactTag: 'TRUST' as const,
+        severity: 'CRITICAL' as const,
+        problem: 'Lack of privacy policy and contact information diminishes trust',
+        evidence: 'The page is missing both a privacy policy and contact information.',
+        whyItMatters: 'Visitors may not trust the site.',
+        confidence: 0.95,
+        pageUrl: null,
+      },
+      {
+        rubric: 'MESSAGE' as const,
+        impactTag: 'CONVERSION' as const,
+        severity: 'CRITICAL' as const,
+        problem: 'Vague CTA text undermines user engagement',
+        evidence: 'The mobile CTA label is simply Learn more, which is too ambiguous.',
+        whyItMatters: 'Visitors may not act.',
+        confidence: 0.95,
+        pageUrl: null,
+      },
+      {
+        rubric: 'EXPERIENCE' as const,
+        impactTag: 'FRICTION' as const,
+        severity: 'IMPORTANT' as const,
+        problem: 'Insufficient internal navigation creates usability issues',
+        evidence: 'The page has very few internal navigation links.',
+        whyItMatters: 'People cannot explore further.',
+        confidence: 0.9,
+        pageUrl: null,
+      },
+    ]
+
+    assert.equal(deduplicateTriageFlags(deterministic, aiFlags).length, 0)
   })
 
   it('rejects AI cookie-consent findings owned by deterministic metadata', () => {

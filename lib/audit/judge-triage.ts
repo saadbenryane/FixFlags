@@ -15,6 +15,7 @@ import { validateTriageOutput } from './validate-triage-output'
 import { JudgeContractError } from './validate-judge-output'
 import { isRetryableJudgeError } from './judge'
 import { RUBRIC_ORDER } from './constants'
+import { detectPagePurpose } from './page-purpose'
 import {
   anthropic,
   openai,
@@ -72,6 +73,7 @@ function buildTriageContext(
       rubric: f.rubric,
       severity: f.severity,
     })),
+    pagePurpose: detectPagePurpose(metadata, url),
     knownObservations,
   }
 }
@@ -122,12 +124,16 @@ export function normalizeTriageRawOutput(raw: unknown): unknown {
   return normalized
 }
 
-function parseTriageOutput(raw: unknown, flags: DeterministicFlag[]): TriageOutput {
+function parseTriageOutput(
+  raw: unknown,
+  flags: DeterministicFlag[],
+  pagePurpose: ReturnType<typeof detectPagePurpose>['purpose']
+): TriageOutput {
   const parsed = triageOutputSchema.safeParse(normalizeTriageRawOutput(raw))
   if (!parsed.success) {
     throw new Error(`Invalid triage output: ${parsed.error.message}`)
   }
-  return validateTriageOutput(parsed.data, flags)
+  return validateTriageOutput(parsed.data, flags, pagePurpose)
 }
 
 async function runAnthropicTriage(
@@ -196,7 +202,7 @@ async function runAnthropicTriage(
     }
 
     return {
-      output: parseTriageOutput(toolUse.input, flags),
+      output: parseTriageOutput(toolUse.input, flags, context.pagePurpose?.purpose ?? 'unknown'),
       usage: {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
@@ -278,7 +284,7 @@ async function runOpenAITriage(
 
     const raw = JSON.parse(rawContent)
     return {
-      output: parseTriageOutput(raw, flags),
+      output: parseTriageOutput(raw, flags, context.pagePurpose?.purpose ?? 'unknown'),
       usage: {
         inputTokens: response.usage?.prompt_tokens ?? 0,
         outputTokens: response.usage?.completion_tokens ?? 0,

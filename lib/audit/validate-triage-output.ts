@@ -7,6 +7,7 @@ import {
   assertValidLaunchChecklist,
 } from './judge-utils'
 import { groundedReportVerdict } from './verdict'
+import type { PagePurpose } from './page-purpose'
 
 /**
  * AI triage flags are a single LLM read over screenshots + page text, so a
@@ -62,15 +63,19 @@ function enforceAiConfidenceGates(
 
 export function validateTriageOutput(
   output: TriageOutput,
-  deterministicFlags: DeterministicFlag[]
+  deterministicFlags: DeterministicFlag[],
+  pagePurpose: PagePurpose = 'unknown'
 ): TriageOutput {
   assertValidRubrics(output.rubrics)
   assertRubricConsistency(output.rubrics)
   assertValidLaunchChecklist(output.launchChecklist)
 
-  const newFlags = enforceAiConfidenceGates(
-    deduplicateTriageFlags(deterministicFlags, output.newFlags)
-  )
+  const deduplicatedFlags = deduplicateTriageFlags(deterministicFlags, output.newFlags)
+  // A positively identified placeholder has no product funnel to critique.
+  // Keep captured deterministic facts, but reject model-invented conversion,
+  // navigation, or trust priorities for a page whose job is to be minimal.
+  const purposeGroundedFlags = pagePurpose === 'placeholder' ? [] : deduplicatedFlags
+  const newFlags = enforceAiConfidenceGates(purposeGroundedFlags)
   return {
     ...output,
     // The verdict is a public judgment surface. Anchor it to the same highest-

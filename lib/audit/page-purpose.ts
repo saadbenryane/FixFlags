@@ -34,10 +34,13 @@ const DOCS_PATH_RE =
 const DOCS_TITLE_RE =
   /\b(?:docs|documentation|api\s+reference|reference|developer\s+guide|guides?)\b/i
 const DOCS_CONTENT_PATTERNS = [
-  /\bview as markdown\b/i,
-  /\bexpand code\b/i,
-  /\bedit code\b/i,
-  /\bapi reference\b/i,
+  // Hydrated text extraction can concatenate adjacent control labels (for
+  // example `MarkdownView as Markdown` or `JSTSExpand code`). Match the exact
+  // phrases without requiring a word boundary at the start.
+  /view as markdown/i,
+  /expand code/i,
+  /edit code/i,
+  /api reference/i,
 ]
 const ARTICLE_PATH_RE =
   /\/(?:blog|posts?|articles?|news|changelog|changelogs|updates)(?:\/|$|\?)/i

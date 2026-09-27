@@ -62,7 +62,19 @@ const DETERMINISTIC_AI_THEMES: Array<{
   {
     checkIds: ['no-privacy-policy', 'no-contact-info', 'trust-no-direct-contact'],
     keywords:
-      /missing (?:a )?privacy policy|no (?:link to (?:a )?)?privacy policy|missing (?:easy )?(?:access to )?contact information|no (?:easy )?access to contact information|lacks contact (?:information|details)/i,
+      /(?:missing|lack(?:s|ing)?(?: of)?|no (?:link to (?:a )?)?)(?: both )?(?:a )?privacy policy|missing (?:easy )?(?:access to )?contact information|no (?:easy )?access to contact information|lacks? contact (?:information|details)/i,
+    exclusivelyDeterministic: true,
+  },
+  {
+    checkIds: ['mobile-cta-weak-label'],
+    keywords:
+      /vague (?:mobile )?cta|(?:mobile )?cta (?:text|label).*(?:vague|generic|ambiguous)|generic (?:mobile )?cta|ambiguous (?:mobile )?cta/i,
+    exclusivelyDeterministic: true,
+  },
+  {
+    checkIds: ['trust-no-internal-links'],
+    keywords:
+      /insufficient internal navigation|few internal (?:navigation )?links|lack(?:s|ing)? internal (?:navigation|links)|no internal (?:navigation|links)|hard to explore further/i,
     exclusivelyDeterministic: true,
   },
   {
@@ -178,7 +190,7 @@ export function deduplicateTriageFlags(
   const accepted: TriageOutput['newFlags'] = []
 
   for (const candidate of aiFlags) {
-    const asJudgeFlag = { ...candidate, evidence: candidate.problem, fix: '', whyItMatters: '' }
+    const asJudgeFlag = { ...candidate, fix: '' }
     const duplicatesDeterministic =
       matchesDeterministicTheme(deterministic, asJudgeFlag) ||
       deterministic.some((flag) => isNearDuplicateOfDeterministic(flag, asJudgeFlag))

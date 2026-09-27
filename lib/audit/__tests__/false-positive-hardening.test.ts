@@ -324,6 +324,12 @@ describe('AI triage confidence gate (CRITICAL needs corroboration-grade confiden
     expect(out.verdict).toBe('Highest priority: Mobile LCP is critically slow (5.5s).')
     expect(out.verdict).not.toContain('call-to-action')
   })
+
+  it('rejects model-invented priorities for a positively identified placeholder', () => {
+    const out = validateTriageOutput(triageWithFlag('CRITICAL', 0.99), deterministic, 'placeholder')
+    expect(out.newFlags).toEqual([])
+    expect(out.verdict).not.toContain('generic template phrase')
+  })
 })
 
 describe('per-page ::page:N dedup in re-check diffs', () => {
