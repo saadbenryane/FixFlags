@@ -17,9 +17,10 @@ describe('MCP OAuth contract', () => {
   })
 
   it('lets a first-party key through and enforces OAuth scopes', () => {
-    expect(credentialAllows({ audience: null, scopes: [] }, 'sites:run')).toBe(true)
-    expect(credentialAllows({ audience: 'https://fixflags.com/api/mcp', scopes: ['sites:read'] }, 'sites:run')).toBe(false)
-    expect(credentialAllows({ audience: 'https://fixflags.com/api/mcp', scopes: ['sites:run'] }, 'sites:read')).toBe(true)
+    expect(credentialAllows({ audience: null, scopes: [] }, 'runs:write')).toBe(true)
+    expect(credentialAllows({ audience: 'https://fixflags.com/api/mcp', scopes: ['sites:read'] }, 'runs:write')).toBe(false)
+    expect(credentialAllows({ audience: 'https://fixflags.com/api/mcp', scopes: ['runs:write'] }, 'runs:read')).toBe(true)
+    expect(credentialAllows({ audience: 'https://fixflags.com/api/mcp', scopes: ['flags:write'] }, 'flags:read')).toBe(true)
   })
 
   it('checks PKCE S256 and publishes the resource metadata challenge', () => {
@@ -28,6 +29,6 @@ describe('MCP OAuth contract', () => {
     expect(pkceMatches(verifier, challenge)).toBe(true)
     expect(pkceMatches(`${verifier}x`, challenge)).toBe(false)
     expect(wwwAuthenticate({ error: 'invalid_token' })).toContain('resource_metadata=')
-    expect(wwwAuthenticate({ error: 'insufficient_scope', scope: 'sites:run' })).toContain('error="insufficient_scope"')
+    expect(wwwAuthenticate({ error: 'insufficient_scope', scope: 'runs:write' })).toContain('error="insufficient_scope"')
   })
 })

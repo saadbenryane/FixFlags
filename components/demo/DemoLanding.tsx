@@ -71,6 +71,9 @@ export function DemoLanding({ fixture }: DemoLandingProps) {
         />
       ) : null}
       {fixture.showCookieConsent ? (
+        <script dangerouslySetInnerHTML={{ __html: '/* googletagmanager fixture marker */' }} />
+      ) : null}
+      {fixture.showCookieConsent ? (
         <div
           id="cookie-consent"
           className="demo-cookie-banner"

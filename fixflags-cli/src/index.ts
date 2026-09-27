@@ -4,6 +4,7 @@ import { Command } from 'commander'
 import chalk from 'chalk'
 import ora from 'ora'
 import { readFileSync } from 'node:fs'
+import { randomUUID } from 'node:crypto'
 import {
   checkAndPlan,
   markFixAttempted,
@@ -140,7 +141,8 @@ function printServiceState(jsonMode: boolean): void {
       'verify-outcome <siteId> <outcomeId>',
       'run <runId>',
       'flags <siteId>',
-      'verify-flag <siteId> <flagId>',
+      'record-fix <siteId> <flagId> <changeSummary>',
+      'verify-flag <siteId> <flagId> <attemptId>',
     ],
     next: authenticated
       ? ['fixflags sites', 'fixflags init', 'fixflags --help']
@@ -311,7 +313,7 @@ program
   .action(async (options: { json?: boolean }, command: Command) => {
     const jsonMode = isJsonMode(options.json, command)
     try {
-      printResult(await authenticatedCall('ff_list_sites', {}), jsonMode)
+      printResult(await authenticatedCall('fixflags.list_sites', {}), jsonMode)
     } catch (error) {
       fail(error, jsonMode)
     }
@@ -323,7 +325,7 @@ program
   .action(async (siteId: string, options: { json?: boolean }, command: Command) => {
     const jsonMode = isJsonMode(options.json, command)
     try {
-      printResult(await authenticatedCall('ff_list_outcomes', { siteId }), jsonMode)
+      printResult(await authenticatedCall('fixflags.list_outcomes', { siteId }), jsonMode)
     } catch (error) {
       fail(error, jsonMode)
     }
@@ -342,9 +344,10 @@ program
   ) => {
     const jsonMode = isJsonMode(options.json, command)
     try {
-      printResult(await authenticatedCall('ff_verify_outcome', {
+      printResult(await authenticatedCall('fixflags.run', {
         siteId,
-        outcomeId,
+        outcomeIds: [outcomeId],
+        idempotencyKey: `cli-run:${randomUUID()}`,
         commit: options.commit,
         deployment: options.deployment,
       }), jsonMode)
@@ -359,7 +362,7 @@ program
   .action(async (runId: string, options: { json?: boolean }, command: Command) => {
     const jsonMode = isJsonMode(options.json, command)
     try {
-      printResult(await authenticatedCall('ff_get_run', { runId }), jsonMode)
+      printResult(await authenticatedCall('fixflags.get_run', { runId }), jsonMode)
     } catch (error) {
       fail(error, jsonMode)
     }
@@ -371,7 +374,7 @@ program
   .action(async (siteId: string, options: { json?: boolean }, command: Command) => {
     const jsonMode = isJsonMode(options.json, command)
     try {
-      printResult(await authenticatedCall('ff_list_flags', { siteId }), jsonMode)
+      printResult(await authenticatedCall('fixflags.list_flags', { siteId }), jsonMode)
     } catch (error) {
       fail(error, jsonMode)
     }
@@ -383,19 +386,45 @@ program
   .action(async (siteId: string, flagId: string, options: { json?: boolean }, command: Command) => {
     const jsonMode = isJsonMode(options.json, command)
     try {
-      printResult(await authenticatedCall('ff_get_flag', { siteId, flagId }), jsonMode)
+      printResult(await authenticatedCall('fixflags.get_flag', { siteId, flagId }), jsonMode)
     } catch (error) {
       fail(error, jsonMode)
     }
   })
 
 program
-  .command('verify-flag <siteId> <flagId>')
-  .description('Re-verify a Flag after a fix')
-  .action(async (siteId: string, flagId: string, options: { json?: boolean }, command: Command) => {
+  .command('record-fix <siteId> <flagId> <changeSummary>')
+  .description('Record the change made for a Flag before independent verification')
+  .option('--commit <sha>', 'Commit associated with the fix')
+  .option('--deployment <reference>', 'Deployment associated with the fix')
+  .action(async (siteId: string, flagId: string, changeSummary: string, options: { commit?: string; deployment?: string; json?: boolean }, command: Command) => {
     const jsonMode = isJsonMode(options.json, command)
     try {
-      printResult(await authenticatedCall('ff_verify_flag', { siteId, flagId }), jsonMode)
+      printResult(await authenticatedCall('fixflags.record_fix', {
+        siteId,
+        flagId,
+        changeSummary,
+        commit: options.commit,
+        deployment: options.deployment,
+        idempotencyKey: `cli-fix:${randomUUID()}`,
+      }), jsonMode)
+    } catch (error) {
+      fail(error, jsonMode)
+    }
+  })
+
+program
+  .command('verify-flag <siteId> <flagId> <attemptId>')
+  .description('Independently verify a recorded Flag fix')
+  .action(async (siteId: string, flagId: string, attemptId: string, options: { json?: boolean }, command: Command) => {
+    const jsonMode = isJsonMode(options.json, command)
+    try {
+      printResult(await authenticatedCall('fixflags.verify_flag', {
+        siteId,
+        flagId,
+        attemptId,
+        idempotencyKey: `cli-verify:${attemptId}`,
+      }), jsonMode)
     } catch (error) {
       fail(error, jsonMode)
     }

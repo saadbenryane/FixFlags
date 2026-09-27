@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { User } from '@prisma/client'
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
+import { McpServer, WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/server'
 import { registerAllTools } from '@/lib/mcp/tools'
 import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 
@@ -69,7 +68,7 @@ describe('MCP Streamable HTTP lifecycle', () => {
       params: { name: MCP_TOOLS.getConnectionInfo.name, arguments: {} },
     }) as { result?: { structuredContent?: Record<string, unknown> } }
     expect(called.result?.structuredContent).toMatchObject({
-      contractVersion: '2.0',
+      contractVersion: '3.0',
       ready: true,
       clientInfo: { name: 'generic-http-client', version: '2.1.0' },
     })

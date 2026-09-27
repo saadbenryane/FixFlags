@@ -3,9 +3,11 @@ import { readLaunchReadiness } from '@/lib/health/readiness'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const readiness = await readLaunchReadiness()
+    const selected = new URL(request.url).searchParams.get('profile')
+    const profile = selected === 'commercial' ? 'commercial' : 'free-launch'
+    const readiness = await readLaunchReadiness(undefined, profile)
     return NextResponse.json(readiness, { status: readiness.ok ? 200 : 503 })
   } catch (error) {
     return NextResponse.json(

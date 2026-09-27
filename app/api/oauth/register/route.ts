@@ -2,8 +2,26 @@ import { randomBytes } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { isAllowedRedirect } from '@/lib/mcp/oauth'
+import { enforceRateLimit, RateLimitError, requestClientId } from '@/lib/security/rate-limit'
 
 export async function POST(req: NextRequest) {
+  try {
+    await enforceRateLimit({
+      scope: 'oauth-dynamic-client-registration',
+      identifier: requestClientId(req.headers),
+      limit: 10,
+      windowSeconds: 60,
+      onRedisDown: 'reject',
+    })
+  } catch (error) {
+    if (error instanceof RateLimitError) {
+      return NextResponse.json(
+        { error: 'temporarily_unavailable', error_description: error.message },
+        { status: 429, headers: { 'Retry-After': String(error.retryAfter) } },
+      )
+    }
+    throw error
+  }
   const body = await req.json().catch(() => null) as { redirect_uris?: unknown; client_name?: unknown } | null
   const redirectUris = Array.isArray(body?.redirect_uris) ? body.redirect_uris.filter((item): item is string => typeof item === 'string') : []
   if (redirectUris.length === 0 || redirectUris.some((uri) => !isAllowedRedirect(uri))) {

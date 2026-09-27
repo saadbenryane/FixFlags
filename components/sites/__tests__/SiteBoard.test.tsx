@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SiteBoard } from '../SiteBoard'
+import { SiteSettingsView } from '../SiteSettingsView'
 import { MeProvider, type MeUser } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { BoardCardView } from '@/lib/sites/board-card'
@@ -116,10 +117,10 @@ function boardView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
   }
 }
 
-function renderBoard(user: MeUser | null, activeView: 'home' | 'settings' = 'home') {
+function renderBoard(user: MeUser | null) {
   return render(
     <MeProvider initialUser={user}>
-      <SiteBoard siteId="p_example" initial={boardView()} activeView={activeView} />
+      <SiteBoard siteId="p_example" initial={boardView()} />
     </MeProvider>
   )
 }
@@ -133,7 +134,6 @@ describe('SiteBoard chrome', () => {
           initial={boardView({
             audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, score: 80, walkFinished: true, failureCode: null },
           })}
-          activeView="home"
         />
       </MeProvider>
     )
@@ -422,18 +422,18 @@ describe('SiteBoard chrome', () => {
     expect(screen.getByRole('button', { name: 'Performance' })).toBeInTheDocument()
   })
 
-  it('clears empty coverage rows on Settings for logged-out visitors', () => {
-    renderBoard(null, 'settings')
+  it('keeps Settings focused on Watch, Outcomes, connections, and developer access', () => {
+    render(
+      <MeProvider initialUser={null}>
+        <SiteSettingsView siteId="p_example" view={boardView()} />
+      </MeProvider>
+    )
     expect(screen.getByRole('heading', { name: 'Site settings' })).toBeInTheDocument()
-    expect(screen.getByText('Conversion')).toBeInTheDocument()
-    expect(screen.getByText('Search')).toBeInTheDocument()
-    expect(screen.getByText('Performance')).toBeInTheDocument()
-    expect(screen.queryByText('Security')).not.toBeInTheDocument()
-    expect(screen.queryByText('Tracking')).not.toBeInTheDocument()
-    expect(screen.queryByText('Uptime')).not.toBeInTheDocument()
-    expect(screen.queryByText('Accessibility')).not.toBeInTheDocument()
-    expect(screen.queryByText(SITE_BOARD_COPY.notCheckedYet)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Keep watching' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Watch' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Outcomes and fixtures' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Connections' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Developer access' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Remove Site' })).toBeInTheDocument()
   })
 
   it('keeps watch and All Sites for signed-in owners', () => {

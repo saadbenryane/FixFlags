@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { SiteBoard } from '@/components/sites/SiteBoard'
+import { SiteFlagsView } from '@/components/sites/SiteFlagsView'
 import { loadSiteHome } from '@/lib/sites/application/queries'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 
@@ -10,5 +10,5 @@ export default async function SiteFlagsPage({ params }: { params: Promise<{ site
   const resolvedId = access.decision.site.siteId
   const home = await loadSiteHome(resolvedId)
   if (!home) notFound()
-  return <SiteBoard siteId={resolvedId} initial={home} activeView="flags" />
+  return <SiteFlagsView siteId={resolvedId} view={home} />
 }

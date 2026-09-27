@@ -14,6 +14,7 @@ function source(path: string): string {
 describe('customer-visible truth', () => {
   const siteSurfaces = [
     'components/sites/SiteBoard.tsx',
+    'components/sites/OutcomeSummaryCard.tsx',
     'components/sites/SiteSettingsControls.tsx',
     'app/sites/[siteId]/outcomes/[outcomeId]/page.tsx',
     'app/sites/[siteId]/flags/[flagId]/page.tsx',
@@ -26,11 +27,11 @@ describe('customer-visible truth', () => {
     expect(outcomeStatusLabel('STALE')).toBe('Stale')
     expect(outcomeStatusLabel('FLAG', true)).toBe('Verifying')
     const board = siteSurfaces[0]
-    expect(board).toContain('outcomeStatusLabel')
+    expect(siteSurfaces[1]).toContain('outcomeStatusLabel')
     expect(board).not.toContain('1 required')
-    expect(siteSurfaces[1]).toContain('Watch')
-    expect(siteSurfaces[1]).toContain('Developer access')
-    expect(siteSurfaces[2]).toContain('outcomeStatusLabel')
+    expect(siteSurfaces[2]).toContain('Watch')
+    expect(siteSurfaces[2]).toContain('Developer access')
+    expect(siteSurfaces[3]).toContain('outcomeStatusLabel')
     expect(siteSurfaces.join('\n')).not.toMatch(/Analytics marked this Clear|paid checkout is open/i)
   })
 

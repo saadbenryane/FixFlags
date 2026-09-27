@@ -12,6 +12,7 @@ export interface WorkerRuntimeLogger {
 
 export interface WorkerRuntimeDependencies {
   validateEnvironment(): void
+  preflight(): Promise<void>
   warmBrowser(): Promise<void>
   readBrowserDiagnostics(): {
     connected: boolean
@@ -55,6 +56,7 @@ export function createWorkerRuntime(dependencies: WorkerRuntimeDependencies) {
     dependencies.validateEnvironment()
     dependencies.logger.info('Worker starting')
 
+    await dependencies.preflight()
     await dependencies.warmBrowser()
     const browser = dependencies.readBrowserDiagnostics()
     await dependencies.touchHeartbeat({

@@ -6,13 +6,38 @@ import { closeBrowser } from '../lib/audit/screenshot'
 import { getAuditBrowser, getBrowserDiagnostics } from '../lib/audit/screenshot'
 import {
   clearWorkerHeartbeat,
+  readWorkerHeartbeat,
   touchWorkerHeartbeat,
 } from '../lib/queue/worker-heartbeat'
+import { prisma } from '../lib/db'
+import { createQueueRedis } from '../lib/queue/redis'
+import { checkR2Connection } from '../lib/storage/r2'
+import { isProdStorageConfigured } from '../lib/env'
 import { logger } from '../lib/logger'
 import { createWorkerRuntime } from './runtime'
 
 const runtime = createWorkerRuntime({
   validateEnvironment: validateWorkerEnv,
+  preflight: async () => {
+    await prisma.$queryRaw`SELECT 1`
+    const redis = createQueueRedis()
+    try {
+      await redis.connect()
+      await redis.ping()
+    } finally {
+      redis.disconnect()
+    }
+    if (process.env.NODE_ENV === 'production') {
+      if (!isProdStorageConfigured()) throw new Error('Worker storage configuration is incomplete')
+      await checkR2Connection()
+    }
+    if (process.env.NODE_ENV !== 'production' && process.env.FIXFLAGS_ALLOW_DUPLICATE_WORKERS !== '1') {
+      const heartbeat = await readWorkerHeartbeat()
+      if (heartbeat.alive) {
+        throw new Error('Another local worker is already alive. Set FIXFLAGS_ALLOW_DUPLICATE_WORKERS=1 for intentional concurrency.')
+      }
+    }
+  },
   warmBrowser: async () => {
     await getAuditBrowser()
   },

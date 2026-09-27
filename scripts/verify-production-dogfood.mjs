@@ -46,34 +46,6 @@ async function callTool(endpoint, apiKey, id, name, args) {
   return JSON.parse(block.text)
 }
 
-function receiptFor(report, improvementId, expectedOutcome) {
-  const receipt = report.verificationReceipts?.find(
-    (candidate) => candidate.improvementId === improvementId,
-  )
-  if (!receipt) throw new Error(`${expectedOutcome} dogfood receipt is missing`)
-  if (receipt.outcome !== expectedOutcome) {
-    throw new Error(`Expected ${expectedOutcome}, received ${receipt.outcome ?? 'no outcome'}`)
-  }
-  const coverage = receipt.verificationCoverage
-  if (expectedOutcome === 'IMPROVED') {
-    if (receipt.comparable !== true || coverage?.verifierExecuted !== true) {
-      throw new Error('IMPROVED dogfood receipt lacks comparable positive verifier evidence')
-    }
-    if (!receipt.evidenceReference?.beforeFlagId || !receipt.evidenceReference?.afterAuditId) {
-      throw new Error('IMPROVED dogfood receipt lacks before/after evidence identifiers')
-    }
-  } else if (receipt.comparable !== false || !receipt.verificationReason) {
-    throw new Error('INCONCLUSIVE dogfood receipt does not explain unavailable evidence')
-  }
-  return {
-    improvementId,
-    attemptId: receipt.attemptId,
-    outcome: receipt.outcome,
-    comparable: receipt.comparable,
-    verificationReason: receipt.verificationReason,
-  }
-}
-
 async function main() {
   const origin = new URL(required('PRODUCTION_URL')).origin
   if (!['fixflags.com', 'www.fixflags.com'].includes(new URL(origin).hostname)) {
@@ -85,40 +57,37 @@ async function main() {
     jsonrpc: '2.0', id: 1, method: 'initialize',
     params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'fixflags-release-dogfood', version: '1' } },
   })
-  const improvedReportId = required('PRODUCTION_DOGFOOD_IMPROVED_REPORT_ID')
-  const inconclusiveReportId = required('PRODUCTION_DOGFOOD_INCONCLUSIVE_REPORT_ID')
-  const productReportId = required('PRODUCTION_DOGFOOD_PRODUCT_REPORT_ID')
-  const [improvedReport, inconclusiveReport, productContext] = await Promise.all([
-    callTool(endpoint, apiKey, 2, 'ff_get_report', { reportId: improvedReportId }),
-    callTool(endpoint, apiKey, 3, 'ff_get_report', { reportId: inconclusiveReportId }),
-    callTool(endpoint, apiKey, 4, 'ff_get_product_context', { reportId: productReportId }),
+  const siteId = required('PRODUCTION_DOGFOOD_SITE_ID')
+  const runId = required('PRODUCTION_DOGFOOD_CLEAR_RUN_ID')
+  const flagId = required('PRODUCTION_DOGFOOD_FLAG_ID')
+  const attemptId = required('PRODUCTION_DOGFOOD_ATTEMPT_ID')
+  const [connection, run, flagResult] = await Promise.all([
+    callTool(endpoint, apiKey, 2, 'fixflags.get_connection_info', {}),
+    callTool(endpoint, apiKey, 3, 'fixflags.get_run', { runId }),
+    callTool(endpoint, apiKey, 4, 'fixflags.get_flag', { siteId, flagId }),
   ])
-  const improvedId = required('PRODUCTION_DOGFOOD_IMPROVED_IMPROVEMENT_ID')
-  const inconclusiveId = required('PRODUCTION_DOGFOOD_INCONCLUSIVE_IMPROVEMENT_ID')
-  const improved = receiptFor(improvedReport, improvedId, 'IMPROVED')
-  const inconclusive = receiptFor(inconclusiveReport, inconclusiveId, 'INCONCLUSIVE')
-  const history = productContext.improvementHistory ?? []
-  const improvedHistory = history.find((item) => item.id === improvedId)
-  const inconclusiveHistory = history.find((item) => item.id === inconclusiveId)
-  const improvedAttempt = improvedHistory?.attempts?.find((item) => item.id === improved.attemptId)
-  if (!improvedAttempt?.changeSummary || !improvedAttempt?.deploymentReference) {
-    throw new Error('Production IMPROVED attempt lacks a real change summary or deployment reference')
+  if (connection.contractVersion !== '3.0' || connection.protocolVersion !== '2026-07-28') {
+    throw new Error('Production MCP is not serving the launch contract')
   }
-  const learnings = productContext.productIntelligence?.verifiedLearnings ?? []
-  if (!learnings.some((learning) => learning.improvementId === improvedId)) {
-    throw new Error('Verified IMPROVED learning is missing from Product Memory')
+  if (run.status !== 'COMPLETED' || run.result !== 'CLEAR') {
+    throw new Error(`Production run is not independently Clear (${run.status}/${run.result})`)
   }
-  if (learnings.some((learning) => learning.improvementId === inconclusiveId)) {
-    throw new Error('INCONCLUSIVE dogfood result incorrectly entered Product Memory')
+  const attempt = flagResult.flag?.attempts?.find((candidate) => candidate.id === attemptId)
+  if (!attempt || attempt.outcome !== 'IMPROVED' || attempt.comparable !== true) {
+    throw new Error('Production Flag lacks a comparable IMPROVED verification attempt')
   }
-  if (!inconclusiveHistory) throw new Error('INCONCLUSIVE Improvement is missing from Product history')
+  if (!attempt.changeSummary) throw new Error('Production fix attempt lacks change context')
 
   const evidence = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     targetOrigin: origin,
-    improved,
-    inconclusive,
-    memory: { improvedRecorded: true, inconclusiveExcluded: true },
+    contractVersion: connection.contractVersion,
+    siteId,
+    runId,
+    result: run.result,
+    flagId,
+    attemptId,
+    verification: { outcome: attempt.outcome, comparable: attempt.comparable },
   }
   const target = required('RELEASE_DOGFOOD_EVIDENCE_FILE')
   mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 })

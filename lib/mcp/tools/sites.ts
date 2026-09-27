@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 import type { User } from '@prisma/client'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
@@ -7,8 +7,9 @@ import { mcpCoreError, mcpStructuredResult } from '@/lib/mcp/contract'
 import { listSiteOutcomes } from '@/lib/sites/outcomes'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail, loadSiteFlags } from '@/lib/sites/flags'
-import { getOwnedRun, requestOutcomeRun, requestSiteRun } from '@/lib/sites/application/run-requests'
+import { getOwnedRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
+import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
 
 async function ownedSite(userId: string, siteId: string) {
   const site = await loadSiteRecord(siteId)
@@ -16,13 +17,13 @@ async function ownedSite(userId: string, siteId: string) {
   return site
 }
 
-function toolAnnotations(title: string, readOnly: boolean) {
+function toolAnnotations(tool: { title: string; readOnly: boolean }) {
   return {
-    title,
-    readOnlyHint: readOnly,
+    title: tool.title,
+    readOnlyHint: tool.readOnly,
     destructiveHint: false,
     idempotentHint: true,
-    openWorldHint: !readOnly,
+    openWorldHint: !tool.readOnly,
   }
 }
 
@@ -31,8 +32,8 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
     MCP_TOOLS.listSites.name,
     {
       description: MCP_TOOLS.listSites.desc,
-      inputSchema: {},
-      annotations: toolAnnotations('List FixFlags Sites', true),
+        inputSchema: z.object({}),
+        annotations: toolAnnotations(MCP_TOOLS.listSites),
     },
     async () => {
       try {
@@ -66,8 +67,8 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
     MCP_TOOLS.listOutcomes.name,
     {
       description: MCP_TOOLS.listOutcomes.desc,
-      inputSchema: { siteId: z.string().min(1) },
-      annotations: toolAnnotations('List watched Outcomes', true),
+      inputSchema: z.object({ siteId: z.string().min(1) }),
+      annotations: toolAnnotations(MCP_TOOLS.listOutcomes),
     },
     async ({ siteId }) => {
       try {
@@ -98,15 +99,15 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
     MCP_TOOLS.run.name,
     {
       description: MCP_TOOLS.run.desc,
-      inputSchema: {
+      inputSchema: z.object({
         siteId: z.string().min(1),
         outcomeIds: z.array(z.string().min(1)).max(20).optional(),
         idempotencyKey: z.string().min(8).max(160),
         commit: z.string().max(80).optional(),
         deployment: z.string().max(160).optional(),
         affectedArea: z.string().max(120).optional(),
-      },
-      annotations: toolAnnotations('Run important Outcomes', false),
+      }),
+      annotations: toolAnnotations(MCP_TOOLS.run),
     },
     async ({ siteId, outcomeIds, idempotencyKey, commit, deployment, affectedArea }) => {
       try {
@@ -137,53 +138,11 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
   )
 
   server.registerTool(
-    MCP_TOOLS.verifyOutcome.name,
-    {
-      description: MCP_TOOLS.verifyOutcome.desc,
-      inputSchema: {
-        siteId: z.string().min(1),
-        outcomeId: z.string().min(1),
-        idempotencyKey: z.string().min(8).max(160),
-        commit: z.string().max(80).optional(),
-        deployment: z.string().max(160).optional(),
-        affectedArea: z.string().max(120).optional(),
-      },
-      annotations: toolAnnotations('Verify an Outcome', false),
-    },
-    async ({ siteId, outcomeId, idempotencyKey, commit, deployment, affectedArea }) => {
-      try {
-        const site = await ownedSite(user.id, siteId)
-        const run = await requestOutcomeRun({
-          projectId: site.projectId!,
-          outcomeId,
-          userId: user.id,
-          source: 'MCP',
-          idempotencyKey,
-          context: { commit, deployment, affectedArea },
-        })
-        return mcpStructuredResult({
-          status: 'ACCEPTED',
-          siteId: site.siteId,
-          outcomeId,
-          runId: run.runId,
-          reused: run.reused,
-          next: {
-            tool: MCP_TOOLS.getRun.name,
-            arguments: { runId: run.runId },
-          },
-        })
-      } catch (error) {
-        return mcpCoreError(error, { action: 'retry' })
-      }
-    },
-  )
-
-  server.registerTool(
     MCP_TOOLS.getRun.name,
     {
       description: MCP_TOOLS.getRun.desc,
-      inputSchema: { runId: z.string().min(1) },
-      annotations: toolAnnotations('Get verification run', true),
+      inputSchema: z.object({ runId: z.string().min(1) }),
+      annotations: toolAnnotations(MCP_TOOLS.getRun),
     },
     async ({ runId }) => {
       try {
@@ -200,8 +159,8 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
     MCP_TOOLS.listFlags.name,
     {
       description: MCP_TOOLS.listFlags.desc,
-      inputSchema: { siteId: z.string().min(1) },
-      annotations: toolAnnotations('List active Flags', true),
+      inputSchema: z.object({ siteId: z.string().min(1) }),
+      annotations: toolAnnotations(MCP_TOOLS.listFlags),
     },
     async ({ siteId }) => {
       try {
@@ -227,8 +186,8 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
     MCP_TOOLS.getFlag.name,
     {
       description: MCP_TOOLS.getFlag.desc,
-      inputSchema: { siteId: z.string().min(1), flagId: z.string().min(1) },
-      annotations: toolAnnotations('Get Flag evidence', true),
+      inputSchema: z.object({ siteId: z.string().min(1), flagId: z.string().min(1) }),
+      annotations: toolAnnotations(MCP_TOOLS.getFlag),
     },
     async ({ siteId, flagId }) => {
       try {
@@ -258,17 +217,59 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
   )
 
   server.registerTool(
-    MCP_TOOLS.verifyFlag.name,
+    MCP_TOOLS.recordFix.name,
     {
-      description: MCP_TOOLS.verifyFlag.desc,
-      inputSchema: {
+      description: MCP_TOOLS.recordFix.desc,
+      inputSchema: z.object({
         siteId: z.string().min(1),
         flagId: z.string().min(1),
         idempotencyKey: z.string().min(8).max(160),
-      },
-      annotations: toolAnnotations('Verify a Flag', false),
+        changeSummary: z.string().min(3).max(2000),
+        commit: z.string().max(120).optional(),
+        deployment: z.string().max(300).optional(),
+      }),
+      annotations: toolAnnotations(MCP_TOOLS.recordFix),
     },
-    async ({ siteId, flagId, idempotencyKey }) => {
+    async ({ siteId, flagId, idempotencyKey, changeSummary, commit, deployment }) => {
+      try {
+        const site = await ownedSite(user.id, siteId)
+        const attempt = await recordSiteFlagFix({
+          siteId: site.siteId,
+          flagId,
+          userId: user.id,
+          idempotencyKey,
+          changeSummary,
+          commitReference: commit,
+          deploymentReference: deployment,
+          client: 'mcp',
+        })
+        return mcpStructuredResult({
+          status: 'RECORDED',
+          ...attempt,
+          next: {
+            tool: MCP_TOOLS.verifyFlag.name,
+            arguments: { siteId: site.siteId, flagId, attemptId: attempt.attemptId },
+          },
+        })
+      } catch (error) {
+        return mcpCoreError(error, { action: 'check_change_context' })
+      }
+    },
+  )
+
+  server.registerTool(
+    MCP_TOOLS.verifyFlag.name,
+    {
+      description: MCP_TOOLS.verifyFlag.desc,
+      inputSchema: z.object({
+        siteId: z.string().min(1),
+        flagId: z.string().min(1),
+        attemptId: z.string().min(1),
+        idempotencyKey: z.string().min(8).max(160),
+      }),
+      annotations: toolAnnotations(MCP_TOOLS.verifyFlag),
+    },
+    async ({ siteId, flagId, attemptId, idempotencyKey }) => {
       try {
         const site = await ownedSite(user.id, siteId)
         const result = await executeSiteCommand({
@@ -276,6 +277,7 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
           siteId: site.siteId,
           userId: user.id,
           flagId,
+          attemptId,
           idempotencyKey,
           source: 'MCP',
         })

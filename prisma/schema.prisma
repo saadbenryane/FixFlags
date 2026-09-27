@@ -580,6 +580,7 @@ model Project {
   supportSessions             SupportSession[]
   lifecycleEvents             SiteLifecycleEvent[]
   runRequests                 RunRequest[]
+  outcomeFixtures            OutcomeFixture[]
   siteConnections             SiteConnection[]
   user                        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1975,7 +1976,6 @@ model SiteOutcome {
   bindings          OutcomeExecutionBinding[]
   assessments       OutcomeAssessment[]
   bindingExecutions OutcomeBindingExecution[]
-  runRequests       RunRequest[]
   runSelections     RunRequestOutcome[]
   improvements      Improvement[]
 
@@ -2006,16 +2006,39 @@ model OutcomeExecutionBinding {
   @@map("outcome_execution_bindings")
 }
 
+/// Encrypted, Site-scoped synthetic data and reversible hooks for one bounded
+/// Safe Form execution. Binding JSON stores only this record's id.
+model OutcomeFixture {
+  id                  String   @id @default(cuid())
+  projectId           String
+  name                String
+  targetUrl           String
+  fieldMapping        Json
+  encryptedValues     String
+  successCriterion    Json
+  resetUrl            String
+  cleanupUrl          String
+  encryptedHookSecret String?
+  authorizedAt        DateTime
+  enabled             Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, enabled])
+  @@map("outcome_fixtures")
+}
+
 /// Tenant-scoped request to run the existing monitoring engine for one Outcome.
 model RunRequest {
   id                String             @id @default(cuid())
   projectId         String
-  outcomeId         String
   requestedByUserId String?
   source            RunRequestSource
   idempotencyKey    String
   environment       String             @default("production")
   context           Json?
+  verificationTarget Json?
   status            RunRequestStatus   @default(QUEUED)
   auditId           String?
   errorCode         String?
@@ -2025,7 +2048,6 @@ model RunRequest {
   completedAt       DateTime?
   updatedAt         DateTime           @updatedAt
   project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  outcome           SiteOutcome        @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
   selections        RunRequestOutcome[]
   requestedBy       User?              @relation("RunRequester", fields: [requestedByUserId], references: [id], onDelete: SetNull)
   audit             Audit?             @relation(fields: [auditId], references: [id], onDelete: SetNull)
@@ -2033,7 +2055,6 @@ model RunRequest {
 
   @@index([projectId, requestedAt(sort: Desc)])
   @@unique([projectId, source, idempotencyKey])
-  @@index([outcomeId, requestedAt(sort: Desc)])
   @@index([auditId])
   @@index([status, requestedAt])
   @@map("run_requests")

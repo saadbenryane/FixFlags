@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   executionFindUnique: vi.fn(),
   executionUpsert: vi.fn(),
   flagCreate: vi.fn(),
+  auditFindUnique: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -20,6 +21,7 @@ vi.mock('@/lib/db', () => ({
       upsert: mocks.executionUpsert,
     },
     flag: { create: mocks.flagCreate },
+    audit: { findUnique: mocks.auditFindUnique },
   },
 }))
 
@@ -56,6 +58,7 @@ describe('availability Outcome execution', () => {
     mocks.executionUpsert.mockResolvedValue({})
     mocks.runUpdateMany.mockResolvedValue({ count: 1 })
     mocks.flagCreate.mockResolvedValue({ id: 'flag-1' })
+    mocks.auditFindUnique.mockResolvedValue({ htmlMetadata: { pageText: 'Example page is ready.' } })
   })
 
   it('records a successful public response and that is the only Clear', async () => {

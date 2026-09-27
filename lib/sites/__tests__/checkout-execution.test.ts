@@ -46,7 +46,7 @@ describe('bound Checkout execution', () => {
           key: 'checkout-browser-v1',
           mechanism: 'BROWSER_JOURNEY',
           required: true,
-          config: { startUrl: 'https://shop.example/products/widget' },
+          config: { startUrl: 'https://shop.example/products/widget', safety: 'stop-at-checkout' },
         }],
       } }],
       audit: { url: 'https://shop.example' },
@@ -120,7 +120,7 @@ describe('bound Checkout execution', () => {
     expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
       create: expect.objectContaining({
         disposition: 'BLOCKED',
-        reason: 'protected_or_irreversible',
+        reason: 'binding_configuration_invalid',
       }),
     }))
   })

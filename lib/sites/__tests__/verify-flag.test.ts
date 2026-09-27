@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   requestOutcomeRun: vi.fn(),
   requestSiteRun: vi.fn(),
   findReusableRun: vi.fn(),
+  recordSiteFlagFix: vi.fn(),
+  requireSiteFlagAttempt: vi.fn(),
   outcomeFindMany: vi.fn(),
   assessmentUpsert: vi.fn(),
 }))
@@ -30,6 +32,10 @@ vi.mock('@/lib/sites/application/run-requests', () => ({
   requestOutcomeRun: mocks.requestOutcomeRun,
   requestSiteRun: mocks.requestSiteRun,
   findReusableRun: mocks.findReusableRun,
+}))
+vi.mock('@/lib/sites/application/flag-verification', () => ({
+  recordSiteFlagFix: mocks.recordSiteFlagFix,
+  requireSiteFlagAttempt: mocks.requireSiteFlagAttempt,
 }))
 vi.mock('@/lib/sites/outcomes', () => ({ confirmSiteOutcome: vi.fn() }))
 vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn() }))
@@ -54,6 +60,12 @@ describe('VERIFY_FLAG', () => {
       expectedBehavior: 'Contact form shows a confirmation after submit',
     })
     mocks.executeProductCommand.mockResolvedValue({ attemptId: 'att_1' })
+    mocks.recordSiteFlagFix.mockResolvedValue({ attemptId: 'att_1' })
+    mocks.requireSiteFlagAttempt.mockImplementation(async () => ({
+      site: await mocks.loadSiteRecord(),
+      flag: await mocks.loadSiteFlagDetail(),
+      attemptId: 'att_1',
+    }))
     mocks.outcomeFindMany.mockResolvedValue([{ id: 'outcome-1' }])
     mocks.requestSiteRun.mockResolvedValue({ runId: 'run_1', auditId: 'child_1', outcomeIds: ['outcome-1'], reused: false })
     mocks.findReusableRun.mockResolvedValue(null)
@@ -73,21 +85,23 @@ describe('VERIFY_FLAG', () => {
       attemptId: 'att_1',
       verificationAuditId: 'child_1',
     })
-    expect(mocks.executeProductCommand).toHaveBeenCalledWith(
+    expect(mocks.recordSiteFlagFix).toHaveBeenCalledWith(
       expect.objectContaining({
-        type: 'RECORD_FLAG_ACTION',
-        action: 'READY_TO_VERIFY',
         flagId: 'flag_1',
         changeSummary: 'Contact form shows a confirmation after submit',
       })
     )
     expect(mocks.requestSiteRun).toHaveBeenCalledWith(
       expect.objectContaining({
-        url: 'https://example.com/contact',
-        parentAuditId: 'parent_1',
-        outcomeIds: ['outcome-1'],
-        verificationAttemptId: 'att_1',
+        outcomeIds: [],
         source: 'WEB',
+        verificationTarget: {
+          kind: 'DIAGNOSTIC',
+          pageUrl: 'https://example.com/contact',
+          checkId: 'form-feedback',
+          attemptId: 'att_1',
+          parentAuditId: 'parent_1',
+        },
       })
     )
     expect(result).toMatchObject({ runId: 'run_1' })

@@ -1,0 +1,15 @@
+{
+  "contractVersion": "3.0",
+  "protocolVersion": "2026-07-28",
+  "tools": {
+    "listSites": { "name": "fixflags.list_sites", "desc": "List the Sites owned by this FixFlags account.", "scope": "sites:read", "title": "List FixFlags Sites", "readOnly": true },
+    "listOutcomes": { "name": "fixflags.list_outcomes", "desc": "List important Outcomes and their current Clear, Flag, Couldn’t verify, or Stale state.", "scope": "sites:read", "title": "List watched Outcomes", "readOnly": true },
+    "run": { "name": "fixflags.run", "desc": "Run selected important Outcomes on an owned Site and return a durable run identifier.", "scope": "runs:write", "title": "Run important Outcomes", "readOnly": false },
+    "getRun": { "name": "fixflags.get_run", "desc": "Poll a Site run and retrieve its per-Outcome independent results.", "scope": "runs:read", "title": "Get Site run", "readOnly": true },
+    "listFlags": { "name": "fixflags.list_flags", "desc": "List active customer Flags for an owned Site.", "scope": "flags:read", "title": "List active Flags", "readOnly": true },
+    "getFlag": { "name": "fixflags.get_flag", "desc": "Get evidence, expected behavior, fix context, and verification history for a Site Flag.", "scope": "flags:read", "title": "Get Flag evidence", "readOnly": true },
+    "recordFix": { "name": "fixflags.record_fix", "desc": "Record the change made for a Flag and create the attempt required for independent verification.", "scope": "flags:write", "title": "Record a Flag fix", "readOnly": false },
+    "verifyFlag": { "name": "fixflags.verify_flag", "desc": "Start fresh comparable execution for a recorded Flag fix attempt.", "scope": "flags:write", "title": "Verify a recorded fix", "readOnly": false },
+    "getConnectionInfo": { "name": "fixflags.get_connection_info", "desc": "Inspect the FixFlags MCP contract, scopes, protocol, and Outcome verification workflow.", "scope": "sites:read", "title": "FixFlags connection information", "readOnly": true }
+  }
+}

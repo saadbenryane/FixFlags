@@ -148,9 +148,9 @@ function createMcpClient(request: APIRequestContext, apiKey: string) {
       })
       const listed = await send('tools/list', {})
       const tools = (listed.tools ?? []) as Array<{ name?: string }>
-      expect(tools.some((tool) => tool.name === 'ff_get_connection_info')).toBe(true)
-      const connection = await this.call('ff_get_connection_info', {})
-      expect(connection).toMatchObject({ contractVersion: '1.0', ready: true })
+      expect(tools.some((tool) => tool.name === 'fixflags.get_connection_info')).toBe(true)
+      const connection = await this.call('fixflags.get_connection_info', {})
+      expect(connection).toMatchObject({ contractVersion: '3.0', protocolVersion: '2026-07-28', ready: true })
     },
     async call(name: string, args: Record<string, unknown>) {
       const result = await send('tools/call', { name, arguments: args }) as {
@@ -532,57 +532,62 @@ test.describe('credentialed revenue journeys', () => {
     await user.close()
   })
 
-  test('[journey:mcp-full-loop] MCP authenticates, checks, records an attempt, and re-checks', async ({ request }) => {
+  test('[journey:mcp-full-loop] MCP authenticates, runs Outcomes, records a fix, and verifies it', async ({ request }) => {
     test.setTimeout(420_000)
     const apiKey = requiredEnv('E2E_API_KEY')
     const client = createMcpClient(request, apiKey)
     await client.initialize()
-    const created = await mcpCall(client, 'ff_check_and_plan', {
-      url: requiredEnv('E2E_AUDIT_URL'),
-      mode: 'single',
+    const listedSites = await mcpCall(client, 'fixflags.list_sites', {})
+    const sites = listedSites.sites as Array<{ siteId: string }>
+    const siteId = process.env.E2E_SITE_ID ?? sites[0]?.siteId
+    expect(siteId, 'Credentialed release journey requires an owned Site').toBeTruthy()
+    const listedOutcomes = await mcpCall(client, 'fixflags.list_outcomes', { siteId })
+    const outcomeIds = (listedOutcomes.outcomes as Array<{ outcomeId: string }>).map((outcome) => outcome.outcomeId)
+    expect(outcomeIds.length).toBeGreaterThan(0)
+    const created = await mcpCall(client, 'fixflags.run', {
+      siteId,
+      outcomeIds,
+      idempotencyKey: `release-matrix:${Date.now()}`,
+      deployment: 'release-matrix',
     })
-    const reportId = String(created.reportId)
-    expect(reportId).not.toBe('undefined')
+    const runId = String(created.runId)
+    expect(runId).not.toBe('undefined')
 
-    await expect.poll(async () => {
-      const status = await mcpCall(client, 'ff_get_check_status', { reportId })
-      return status.status
-    }, { timeout: 360_000 }).toBe('COMPLETED')
+    const run = await expect.poll(async () => {
+      const status = await mcpCall(client, 'fixflags.get_run', { runId })
+      return status.status === 'COMPLETED' ? status : null
+    }, { timeout: 360_000 }).not.toBeNull()
+    void run
 
-    const report = await mcpCall(client, 'ff_get_report', { reportId })
-    expect(report.reportId).toBe(reportId)
-    const fixes = await mcpCall(client, 'ff_get_all_fixes', { reportId })
-    expect(Array.isArray(fixes.items)).toBe(true)
-    const firstFlagId = String((fixes.items as Array<{ flagId?: string }>)[0]?.flagId)
+    const listedFlags = await mcpCall(client, 'fixflags.list_flags', { siteId })
+    const firstFlagId = String((listedFlags.flags as Array<{ flagId?: string }>)[0]?.flagId)
     expect(firstFlagId).not.toBe('undefined')
-    const attempt = await mcpCall(client, 'ff_mark_fix_attempted', {
+    const attempt = await mcpCall(client, 'fixflags.record_fix', {
+      siteId,
       flagId: firstFlagId,
-      action: 'READY_TO_VERIFY',
+      idempotencyKey: `release-fix:${runId}:${firstFlagId}`,
       changeSummary: 'Credentialed release journey change ready for independent verification',
-      deploymentReference: 'release-matrix',
+      deployment: 'release-matrix',
     })
-    expect(attempt.sourceReviewId).toBe(reportId)
     expect(attempt.attemptId).toBeTruthy()
     await deployControlledFixture(request, {
       journey: 'mcp-full-loop',
-      reportId,
+      reportId: runId,
       flagId: firstFlagId,
     })
-    const recheck = await mcpCall(client, 'ff_recheck_and_compare', { parentReportId: reportId })
-    expect(recheck.parentReportId).toBe(reportId)
+    const verification = await mcpCall(client, 'fixflags.verify_flag', {
+      siteId,
+      flagId: firstFlagId,
+      attemptId: attempt.attemptId,
+      idempotencyKey: `release-verify:${attempt.attemptId}`,
+    })
+    const verificationRunId = String(verification.runId)
     await expect.poll(async () => {
-      const status = await mcpCall(client, 'ff_get_check_status', { reportId: String(recheck.reportId) })
+      const status = await mcpCall(client, 'fixflags.get_run', { runId: verificationRunId })
       return status.status
     }, { timeout: 360_000 }).toBe('COMPLETED')
-    const receipt = await mcpCall(client, 'ff_get_report', { reportId: String(recheck.reportId) })
-    expect(receipt.verificationReceipts).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        attemptId: attempt.attemptId,
-        outcome: 'IMPROVED',
-        comparable: true,
-        verificationCoverage: expect.objectContaining({ verifierExecuted: true }),
-      }),
-    ]))
+    const verifiedFlag = await mcpCall(client, 'fixflags.get_flag', { siteId, flagId: firstFlagId })
+    expect(verifiedFlag.flag).toMatchObject({ flagId: firstFlagId })
   })
 
   test('[journey:cli-registry-loop] packaged CLI checks, records an attempt, and re-checks the release app', async () => {

@@ -1,7 +1,11 @@
 import type { ApiKeyClient } from '@prisma/client'
 import { NextRequest } from 'next/server'
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
+import {
+  createMcpHandler,
+  hostHeaderValidationResponse,
+  McpServer,
+  originValidationResponse,
+} from '@modelcontextprotocol/server'
 import { registerAllTools, validateApiKey } from '@/lib/mcp/tools'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
@@ -18,6 +22,7 @@ import { extractMcpCredential } from '@/lib/mcp/auth'
 import {
   audienceMatches,
   credentialAllows,
+  MCP_SCOPES,
   mcpResource,
   requiredToolScope,
   wwwAuthenticate,
@@ -48,7 +53,7 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
         },
         {
           status: 401,
-          headers: { 'WWW-Authenticate': wwwAuthenticate({ error: 'invalid_token', scope: 'sites:read sites:run' }) },
+          headers: { 'WWW-Authenticate': wwwAuthenticate({ error: 'invalid_token', scope: MCP_SCOPES.join(' ') }) },
         }
       )
     }
@@ -78,7 +83,7 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
       },
       {
         status: 401,
-        headers: { 'WWW-Authenticate': wwwAuthenticate({ scope: 'sites:read sites:run' }) },
+        headers: { 'WWW-Authenticate': wwwAuthenticate({ scope: MCP_SCOPES.join(' ') }) },
       }
     )
   } else if (credential.code === 'INVALID_AUTHORIZATION' || credential.code === 'CONFLICTING_API_KEYS') {
@@ -135,24 +140,25 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
     }
   }
 
-  const server = new McpServer(
-    { name: 'fixflags', version: process.env.npm_package_version || '0.1.0' },
-    { capabilities: { tools: {} } }
-  )
-  registerAllTools(server, user, { signal: req.signal })
-
-  const host = req.headers.get('host') ?? new URL(req.url).host
-  const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
-    enableJsonResponse: true,
-    enableDnsRebindingProtection: true,
-    allowedHosts: [host],
+  const hostname = new URL(req.url).hostname
+  const rejected = hostHeaderValidationResponse(req, [hostname]) ?? originValidationResponse(req, [hostname])
+  if (rejected) return rejected
+  const handler = createMcpHandler(() => {
+    const server = new McpServer(
+      { name: 'fixflags', version: process.env.npm_package_version || '0.1.0' },
+      { capabilities: { tools: {} } },
+    )
+    registerAllTools(server, user, { signal: req.signal })
+    return server
+  }, {
+    legacy: 'stateless',
+    responseMode: 'json',
+    onerror: (error) => logger.error('MCP protocol handler failed', { error }),
   })
 
   const start = Date.now()
-  await server.connect(transport)
   try {
-    const response = await transport.handleRequest(req)
+    const response = await handler.fetch(req)
     const durationMs = Date.now() - start
     const responseBody = await readJsonResponseBody(response)
     const outcome = responseBody ? parseJsonRpcResponseOutcome(responseBody) : { success: true }
@@ -187,6 +193,7 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
         (data) => prisma.mcpInteraction.create({ data })
       )
     }
+    await handler.close()
     return response
   } catch (error) {
     const duration = Date.now() - start
@@ -216,6 +223,7 @@ async function handleMcpRequest(req: NextRequest): Promise<Response> {
         error,
       })
     }
+    await handler.close().catch(() => undefined)
     return Response.json(
       {
         jsonrpc: '2.0',

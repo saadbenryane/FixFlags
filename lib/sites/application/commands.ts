@@ -1,10 +1,10 @@
-import { prisma } from '@/lib/db'
 import { executeProductCommand } from '@/lib/products/application/commands'
 import { confirmPageAvailability, confirmSiteOutcome } from '@/lib/sites/outcomes'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { findReusableRun, requestOutcomeRun, requestSiteRun } from '@/lib/sites/application/run-requests'
+import { recordSiteFlagFix, requireSiteFlagAttempt } from '@/lib/sites/application/flag-verification'
 
 export type SiteCommand =
   | {
@@ -30,6 +30,8 @@ export type SiteCommand =
       siteId: string
       userId: string
       flagId: string
+      attemptId?: string
+      changeSummary?: string
       idempotencyKey?: string
       source?: 'WEB' | 'MCP'
     }
@@ -79,61 +81,70 @@ export async function executeSiteCommand(command: SiteCommand) {
       return { ok: true as const }
     }
     case 'VERIFY_FLAG': {
-      const site = await loadSiteRecord(command.siteId)
-      if (!site?.projectId) {
-        return { ok: false as const, error: 'Claim this Site before verifying a fix.' }
-      }
-      const flag = await loadSiteFlagDetail(site, command.flagId)
-      if (!flag) return { ok: false as const, error: 'Flag not found' }
+      const initialSite = await loadSiteRecord(command.siteId)
+      if (!initialSite?.projectId) return { ok: false as const, error: 'Claim this Site before verifying a fix.' }
+      const initialFlag = await loadSiteFlagDetail(initialSite, command.flagId)
+      if (!initialFlag) return { ok: false as const, error: 'Flag not found' }
       const source = command.source ?? 'WEB'
-      if (command.idempotencyKey && flag.outcomeId) {
+      if (command.idempotencyKey && initialFlag.outcomeId) {
         const reusable = await findReusableRun({
-          projectId: site.projectId,
+          projectId: initialSite.projectId,
           source,
           idempotencyKey: command.idempotencyKey,
-          outcomeIds: [flag.outcomeId],
+          outcomeIds: [initialFlag.outcomeId],
         })
         if (reusable) {
           return {
             ok: true as const,
             runId: reusable.runId,
             verificationAuditId: reusable.auditId,
-            siteId: site.siteId,
-            parentAuditId: flag.sourceAuditId,
-            flagId: flag.id,
+            siteId: initialSite.siteId,
+            parentAuditId: initialFlag.sourceAuditId,
+            flagId: initialFlag.id,
             attemptId: null,
-            expectedBehavior: flag.expectedBehavior,
+            expectedBehavior: initialFlag.expectedBehavior,
           }
         }
       }
 
-      const attempt = await executeProductCommand({
-        type: 'RECORD_FLAG_ACTION',
-        flagId: flag.id,
+      const recorded = command.attemptId
+        ? { attemptId: command.attemptId }
+        : await recordSiteFlagFix({
+            siteId: command.siteId,
+            flagId: command.flagId,
+            userId: command.userId,
+            idempotencyKey: command.idempotencyKey ?? `web-fix:${command.flagId}`,
+            changeSummary: command.changeSummary ?? initialFlag.expectedBehavior,
+            client: source.toLowerCase(),
+          })
+      const { site, flag, attemptId } = await requireSiteFlagAttempt({
+        siteId: command.siteId,
+        flagId: command.flagId,
+        attemptId: recorded.attemptId,
         userId: command.userId,
-        builder: 'site-board',
-        action: 'READY_TO_VERIFY',
-        changeSummary: flag.expectedBehavior,
       })
-      if (!attempt.attemptId) {
-        return { ok: false as const, error: 'Could not prepare this verification attempt.' }
-      }
-      const idempotencyKey = command.idempotencyKey ?? `flag-verify:${attempt.attemptId}`
+      const idempotencyKey = command.idempotencyKey ?? `flag-verify:${attemptId}`
 
       if (flag.outcomeId) {
         const started = await requestOutcomeRun({
-          projectId: site.projectId,
+          projectId: site.projectId!,
           outcomeId: flag.outcomeId,
           userId: command.userId,
           source,
           idempotencyKey,
-          verificationAttemptId: attempt.attemptId,
+          verificationAttemptId: attemptId,
           parentAuditId: flag.sourceAuditId,
+          verificationTarget: {
+            kind: 'OUTCOME',
+            outcomeId: flag.outcomeId,
+            attemptId,
+            parentAuditId: flag.sourceAuditId,
+          },
           context: { action: 'verify_flag' },
         })
         await recordSiteLifecycleEvent({
           name: 'verify_started',
-          idempotencyKey: `verify-started:${attempt.attemptId}`,
+          idempotencyKey: `verify-started:${attemptId}`,
           userId: command.userId,
           projectId: site.projectId,
           properties: { reused: started.reused, scope: 'outcome' },
@@ -145,36 +156,35 @@ export async function executeSiteCommand(command: SiteCommand) {
           siteId: site.siteId,
           parentAuditId: flag.sourceAuditId,
           flagId: flag.id,
-          attemptId: attempt.attemptId,
+          attemptId,
           expectedBehavior: flag.expectedBehavior,
         }
       }
 
-      const outcomes = await prisma.siteOutcome.findMany({
-        where: { projectId: site.projectId, enabled: true },
-        select: { id: true },
-        orderBy: { id: 'asc' },
-      })
-      if (outcomes.length === 0) {
-        return { ok: false as const, error: 'Confirm an Outcome before verifying this Flag.' }
+      if (!flag.pageUrl || !flag.checkId) {
+        return { ok: false as const, error: 'This Flag has no comparable source scope to verify.' }
       }
       const started = await requestSiteRun({
-        projectId: site.projectId,
-        outcomeIds: outcomes.map((outcome) => outcome.id),
+        projectId: site.projectId!,
+        outcomeIds: [],
         userId: command.userId,
         source,
         idempotencyKey,
-        verificationAttemptId: attempt.attemptId,
-        parentAuditId: flag.sourceAuditId,
-        url: flag.pageUrl || site.url,
+        verificationTarget: {
+          kind: 'DIAGNOSTIC',
+          pageUrl: flag.pageUrl,
+          checkId: flag.checkId,
+          attemptId,
+          parentAuditId: flag.sourceAuditId,
+        },
         context: { action: 'verify_flag' },
       })
       await recordSiteLifecycleEvent({
         name: 'verify_started',
-        idempotencyKey: `verify-started:${attempt.attemptId}`,
+        idempotencyKey: `verify-started:${attemptId}`,
         userId: command.userId,
         projectId: site.projectId,
-        properties: { reused: started.reused, scope: 'site' },
+        properties: { reused: started.reused, scope: 'diagnostic' },
       })
 
       return {
@@ -184,7 +194,7 @@ export async function executeSiteCommand(command: SiteCommand) {
         siteId: site.siteId,
         parentAuditId: flag.sourceAuditId,
         flagId: flag.id,
-        attemptId: attempt.attemptId,
+        attemptId,
         expectedBehavior: flag.expectedBehavior,
       }
     }

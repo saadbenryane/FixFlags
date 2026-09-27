@@ -38,7 +38,22 @@ function safeContext(
   ) as Prisma.InputJsonObject
 }
 
-type RunInput = {
+export type SiteRunVerificationTarget =
+  | {
+      kind: 'OUTCOME'
+      outcomeId: string
+      attemptId: string
+      parentAuditId: string
+    }
+  | {
+      kind: 'DIAGNOSTIC'
+      pageUrl: string
+      checkId: string
+      attemptId: string
+      parentAuditId: string
+    }
+
+export type RunInput = {
   projectId: string
   outcomeIds: string[]
   userId: string
@@ -50,15 +65,14 @@ type RunInput = {
   parentAuditId?: string
   /** Page a Flag verify must recheck. Bindings still start from their own configuration. */
   url?: string
+  verificationTarget?: SiteRunVerificationTarget
 }
 
 function sameSelection(
-  run: { outcomeId: string; selections?: Array<{ outcomeId: string }> },
+  run: { selections?: Array<{ outcomeId: string }> },
   selectedIds: string[],
 ): boolean {
-  const stored = run.selections?.length
-    ? run.selections.map((selection) => selection.outcomeId).sort()
-    : [run.outcomeId]
+  const stored = (run.selections ?? []).map((selection) => selection.outcomeId).sort()
   return stored.length === selectedIds.length && stored.every((id, index) => id === selectedIds[index])
 }
 
@@ -69,7 +83,15 @@ export async function requestSiteRun(input: RunInput): Promise<{
   reused: boolean
 }> {
   const selectedIds = [...new Set(input.outcomeIds)].sort()
-  if (selectedIds.length === 0) throw new Error('Select at least one Outcome')
+  if (selectedIds.length === 0 && input.verificationTarget?.kind !== 'DIAGNOSTIC') {
+    throw new Error('Select at least one Outcome')
+  }
+  if (
+    input.verificationTarget?.kind === 'OUTCOME' &&
+    !selectedIds.includes(input.verificationTarget.outcomeId)
+  ) {
+    throw new Error('Verification target must be included in the Outcome selection')
+  }
   const outcomes = await prisma.siteOutcome.findMany({
     where: {
       id: { in: selectedIds },
@@ -90,7 +112,12 @@ export async function requestSiteRun(input: RunInput): Promise<{
   if (outcomes.some((outcome) => outcome.environment !== environment)) {
     throw new Error('Outcome is not configured for this environment')
   }
-  const first = outcomes.find((outcome) => outcome.id === selectedIds[0])!
+  const first = outcomes.find((outcome) => outcome.id === selectedIds[0]) ?? null
+  const project = first?.project ?? await prisma.project.findFirst({
+    where: { id: input.projectId, userId: input.userId, deletedAt: null },
+    select: { url: true },
+  })
+  if (!project) throw new Error('Site not found')
 
   const requestedKey =
     input.idempotencyKey?.trim() || `${input.source.toLowerCase()}:${randomUUID()}`
@@ -137,13 +164,15 @@ export async function requestSiteRun(input: RunInput): Promise<{
     run = await prisma.runRequest.create({
       data: {
         projectId: input.projectId,
-        outcomeId: first.id,
         environment,
-        selections: { create: selectedIds.map((outcomeId) => ({ outcomeId })) },
+        selections: selectedIds.length
+          ? { create: selectedIds.map((outcomeId) => ({ outcomeId })) }
+          : undefined,
         requestedByUserId: input.userId,
         source: input.source,
         idempotencyKey: requestedKey,
         context: safeContext(input.context),
+        verificationTarget: input.verificationTarget as Prisma.InputJsonValue | undefined,
       },
     })
   } catch (error) {
@@ -181,11 +210,14 @@ export async function requestSiteRun(input: RunInput): Promise<{
     const singleStart = typeof singleConfig?.startUrl === 'string' ? singleConfig.startUrl : null
     // Watch and multi-Outcome runs enter at the Site. One bound Outcome can
     // start at its own page. Each binding still executes from its own config.
-    const auditUrl = input.url ?? (input.source === 'WATCH' || !singleStart ? first.project!.url : singleStart)
-    const parent = input.parentAuditId
+    const auditUrl = input.verificationTarget?.kind === 'DIAGNOSTIC'
+      ? input.verificationTarget.pageUrl
+      : input.url ?? (input.source === 'WATCH' || !singleStart ? project.url : singleStart)
+    const parentAuditId = input.verificationTarget?.parentAuditId ?? input.parentAuditId
+    const parent = parentAuditId
       ? await prisma.audit.findFirst({
           where: {
-            id: input.parentAuditId,
+            id: parentAuditId,
             projectId: input.projectId,
             status: 'COMPLETED',
           },
@@ -196,7 +228,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
           orderBy: { completedAt: 'desc' },
           select: { id: true },
         })
-    if (input.parentAuditId && !parent)
+    if (parentAuditId && !parent)
       throw new Error('Verification source is no longer available')
     const started = await createAndEnqueueAudit({
       url: auditUrl,
@@ -207,7 +239,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
       monitoringMode: input.source === 'WATCH' ? 'FULL' : undefined,
       skipUsageCount: true,
       useProjectScanAccess: true,
-      verificationAttemptId: input.verificationAttemptId,
+      verificationAttemptId: input.verificationTarget?.attemptId ?? input.verificationAttemptId,
       reuseActiveManual: false,
       runRequestId: run.id,
       attribution: buildAttribution({
@@ -226,7 +258,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
       projectId: input.projectId,
       properties: {
         source: input.source.toLowerCase(),
-        kind: first.kind,
+        kind: first?.kind ?? 'diagnostic',
         outcomeCount: selectedIds.length,
         reused: started.reused,
       },
@@ -523,14 +555,16 @@ export async function getOwnedRun(userId: string, runId: string) {
   const run = await prisma.runRequest.findFirst({
     where: { id: runId, project: { userId, deletedAt: null } },
     include: {
-      outcome: true,
       selections: { include: { outcome: true } },
       assessments: true,
       audit: { select: { progress: true } },
     },
   })
   if (!run) return null
-  const primaryAssessment = run.assessments.find((item) => item.outcomeId === run.outcomeId) ?? null
+  const primarySelection = run.selections[0] ?? null
+  const primaryAssessment = primarySelection
+    ? run.assessments.find((item) => item.outcomeId === primarySelection.outcomeId) ?? null
+    : null
   const outcomes = run.selections.map((selection) => {
     const assessment = run.assessments.find((item) => item.outcomeId === selection.outcomeId)
     return {
@@ -549,15 +583,16 @@ export async function getOwnedRun(userId: string, runId: string) {
     : states.includes('COULD_NOT_VERIFY') ? 'COULD_NOT_VERIFY'
       : states.includes('STALE') ? 'STALE'
         : states.length > 0 && states.every((state) => state === 'CLEAR') ? 'CLEAR'
-          : run.status === 'FAILED' ? 'COULD_NOT_VERIFY' : null
+          : run.status === 'FAILED' ? 'FAILED' : null
   return {
     id: run.id,
     source: run.source,
     status: run.status,
     progress: run.audit?.progress ?? (run.status === 'COMPLETED' ? 100 : 0),
-    outcomeId: run.outcomeId,
-    outcomeName: run.outcome.name,
+    outcomeId: primarySelection?.outcomeId ?? null,
+    outcomeName: primarySelection?.outcome.name ?? null,
     outcomes,
+    verificationTarget: run.verificationTarget,
     result,
     summary: outcomes.length === 1
       ? primaryAssessment?.summary ?? null

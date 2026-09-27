@@ -1,5 +1,5 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { User } from '@prisma/client'
+import { McpServer } from '@modelcontextprotocol/server'
+import type { User } from '@prisma/client'
 import { registerConnectionInfoTool } from '@/lib/mcp/contract'
 import { registerSiteOutcomeTools } from '@/lib/mcp/tools/sites'
 

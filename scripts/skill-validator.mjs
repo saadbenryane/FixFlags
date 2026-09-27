@@ -26,18 +26,20 @@ const VOLATILE_FACT = [
 ]
 
 function collectMcpTools(root) {
-  const source = readFileSync(path.join(root, 'lib/mcp/tool-manifest.ts'), 'utf8')
-  return [...source.matchAll(/name:\s*['"]([a-z0-9_-]+)['"]/g)].map((match) => match[1])
+  const registry = JSON.parse(readFileSync(path.join(root, 'lib/mcp/tool-registry.json'), 'utf8'))
+  return Object.values(registry.tools).map((tool) => tool.name)
 }
 
 const LAUNCH_MCP_TOOLS = [
-  'ff_list_sites',
-  'ff_list_outcomes',
-  'ff_verify_outcome',
-  'ff_get_run',
-  'ff_list_flags',
-  'ff_get_flag',
-  'ff_verify_flag',
+  'fixflags.list_sites',
+  'fixflags.list_outcomes',
+  'fixflags.run',
+  'fixflags.get_run',
+  'fixflags.list_flags',
+  'fixflags.get_flag',
+  'fixflags.record_fix',
+  'fixflags.verify_flag',
+  'fixflags.get_connection_info',
 ]
 
 function markdownFiles(directory, files = []) {
@@ -213,10 +215,10 @@ export function validateSkills(root = process.cwd()) {
       const fullPath = path.join(root, relPath)
       if (existsSync(fullPath)) {
         const source = readFileSync(fullPath, 'utf8')
-        if (!source.includes('ff_verify_outcome') || !source.includes('ff_verify_flag')) {
+        if (!source.includes('fixflags.run') || !source.includes('fixflags.verify_flag')) {
           errors.push(`${relPath}: missing Outcome verification workflow`)
         }
-        for (const tool of source.matchAll(/`(ff_[a-z_]+)`/g)) {
+        for (const tool of source.matchAll(/`(fixflags\.[a-z_]+)`/g)) {
           if (!LAUNCH_MCP_TOOLS.includes(tool[1])) {
             errors.push(`${relPath}: advertises retired tool ${tool[1]}`)
           }

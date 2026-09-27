@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   outcomeFindMany: vi.fn(),
+  projectFindFirst: vi.fn(),
   runFindUnique: vi.fn(),
   runFindFirst: vi.fn(),
   runFindMany: vi.fn(),
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/db', () => ({
   prisma: {
     siteOutcome: { findMany: mocks.outcomeFindMany },
+    project: { findFirst: mocks.projectFindFirst },
     runRequest: {
       findUnique: mocks.runFindUnique,
       findFirst: mocks.runFindFirst,
@@ -56,6 +58,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.outcomeFindMany.mockResolvedValue([ownedOutcome])
+    mocks.projectFindFirst.mockResolvedValue({ url: 'https://shop.example/' })
     mocks.runFindUnique.mockResolvedValue(null)
     mocks.runFindFirst.mockResolvedValue(null)
     mocks.runCreate.mockResolvedValue({ id: 'run-1' })
@@ -80,6 +83,37 @@ describe('RunRequest tenant boundary and idempotency', () => {
     ).rejects.toThrow('Select at least one Outcome')
     expect(mocks.runCreate).not.toHaveBeenCalled()
     expect(mocks.createAudit).not.toHaveBeenCalled()
+  })
+
+  it('runs a diagnostic verification only against its originating page and check scope', async () => {
+    mocks.outcomeFindMany.mockResolvedValue([])
+    const result = await requestSiteRun({
+      projectId: 'project-1',
+      outcomeIds: [],
+      userId: 'user-1',
+      source: 'MCP',
+      idempotencyKey: 'diagnostic:flag-1:attempt-1',
+      verificationTarget: {
+        kind: 'DIAGNOSTIC',
+        pageUrl: 'https://shop.example/contact',
+        checkId: 'form-feedback',
+        attemptId: 'attempt-1',
+        parentAuditId: 'audit-parent',
+      },
+    })
+
+    expect(result.outcomeIds).toEqual([])
+    expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        selections: undefined,
+        verificationTarget: expect.objectContaining({ kind: 'DIAGNOSTIC', checkId: 'form-feedback' }),
+      }),
+    }))
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
+      url: 'https://shop.example/contact',
+      parentId: 'audit-parent',
+      verificationAttemptId: 'attempt-1',
+    }))
   })
 
   it('checks the Outcome, Project, and authenticated owner in one query', async () => {
@@ -154,7 +188,6 @@ describe('RunRequest tenant boundary and idempotency', () => {
     expect(result.outcomeIds).toEqual(['outcome-1', 'outcome-2'])
     expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({
-        outcomeId: 'outcome-1',
         selections: {
           create: [{ outcomeId: 'outcome-1' }, { outcomeId: 'outcome-2' }],
         },

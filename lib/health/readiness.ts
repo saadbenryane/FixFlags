@@ -20,6 +20,8 @@ export type ReadinessSubsystemName =
   | 'email'
   | 'productWatch'
 
+export type ReadinessProfile = 'free-launch' | 'commercial'
+
 export type ReadinessSubsystem = {
   ok: boolean
   detail?: string
@@ -27,6 +29,7 @@ export type ReadinessSubsystem = {
 
 export type LaunchReadiness = {
   ok: boolean
+  profile: ReadinessProfile
   checkedAt: string
   missing: ReadinessSubsystemName[]
   subsystems: Record<ReadinessSubsystemName, ReadinessSubsystem>
@@ -107,17 +110,21 @@ let cached: { expiresAt: number; value: LaunchReadiness } | null = null
 const CACHE_MS = 15_000
 
 export async function readLaunchReadiness(
-  dependencies?: ReadinessDependencies
+  dependencies?: ReadinessDependencies,
+  profile: ReadinessProfile = 'free-launch',
 ): Promise<LaunchReadiness> {
-  const useCache = dependencies == null
+  const useCache = dependencies == null && profile === 'free-launch'
   if (useCache && cached && cached.expiresAt > Date.now()) return cached.value
 
   const activeDependencies = dependencies ?? productionDependencies()
   const names = Object.keys(activeDependencies) as ReadinessSubsystemName[]
   const values = await Promise.all(names.map((name) => safeCheck(activeDependencies[name])))
   const subsystems = Object.fromEntries(names.map((name, index) => [name, values[index]])) as LaunchReadiness['subsystems']
-  const missing = names.filter((name) => !subsystems[name].ok)
-  const value = { ok: missing.length === 0, checkedAt: new Date().toISOString(), missing, subsystems }
+  const required = profile === 'commercial'
+    ? names
+    : names.filter((name) => name !== 'billing')
+  const missing = required.filter((name) => !subsystems[name].ok)
+  const value = { ok: missing.length === 0, profile, checkedAt: new Date().toISOString(), missing, subsystems }
   if (useCache) cached = { expiresAt: Date.now() + CACHE_MS, value }
   return value
 }

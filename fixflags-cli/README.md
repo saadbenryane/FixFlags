@@ -31,7 +31,8 @@ fixflags verify-outcome <siteId> <outcomeId> --commit <sha>
 fixflags run <runId>
 fixflags flags <siteId>
 fixflags flag <siteId> <flagId>
-fixflags verify-flag <siteId> <flagId>
+fixflags record-fix <siteId> <flagId> "Describe the deployed change"
+fixflags verify-flag <siteId> <flagId> <attemptId>
 fixflags whoami
 fixflags logout
 ```
@@ -40,13 +41,15 @@ Add `--json` for structured output. Verification is asynchronous: `verify-outcom
 
 ## MCP tools
 
-- `ff_list_sites`
-- `ff_list_outcomes`
-- `ff_verify_outcome`
-- `ff_get_run`
-- `ff_list_flags`
-- `ff_get_flag`
-- `ff_verify_flag`
+- `fixflags.list_sites`
+- `fixflags.list_outcomes`
+- `fixflags.run`
+- `fixflags.get_run`
+- `fixflags.list_flags`
+- `fixflags.get_flag`
+- `fixflags.record_fix`
+- `fixflags.verify_flag`
+- `fixflags.get_connection_info`
 
 ## Development
 

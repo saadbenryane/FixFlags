@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { User } from '@prisma/client'
-import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { Client, InMemoryTransport } from '@modelcontextprotocol/client'
+import { McpServer } from '@modelcontextprotocol/server'
 import { MCP_TOOL_DEFINITIONS, MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 import { registerAllTools } from '@/lib/mcp/tools'
 
@@ -25,7 +24,7 @@ describe('MCP SDK lifecycle', () => {
       MCP_TOOL_DEFINITIONS.map((tool) => tool.name).sort()
     )
     const attemptTool = result.tools.find(
-      (tool) => tool.name === MCP_TOOLS.verifyOutcome.name
+      (tool) => tool.name === MCP_TOOLS.run.name
     )
     expect(attemptTool).toMatchObject({
       annotations: {
@@ -37,7 +36,7 @@ describe('MCP SDK lifecycle', () => {
     expect(attemptTool?.inputSchema).toMatchObject({
       properties: {
         siteId: { type: 'string' },
-        outcomeId: { type: 'string' },
+        outcomeIds: { type: 'array' },
         idempotencyKey: { type: 'string' },
       },
     })
@@ -51,7 +50,8 @@ describe('MCP SDK lifecycle', () => {
     })
     expect(connection.isError).not.toBe(true)
     expect(connection.structuredContent).toMatchObject({
-      contractVersion: '2.0',
+      contractVersion: '3.0',
+      protocolVersion: '2026-07-28',
       ready: true,
       authentication: { type: 'bearer', authenticated: true },
       clientInfo: { name: 'fixflags-test-client', version: '1.0.0' },

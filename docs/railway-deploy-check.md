@@ -35,4 +35,4 @@ Store `FIXFLAGS_API_KEY` in Railway service variables.
 
 ## Coding agent
 
-A connected coding agent requests the same run with `ff_run` and reads the result with `ff_get_run`. The agent supplies a Site id and an idempotency key. Polling can resume after a disconnect. A revoked or wrong-audience token is rejected.
+A connected coding agent requests the same run with `fixflags.run` and reads the result with `fixflags.get_run`. The agent supplies a Site id and an idempotency key. Polling can resume after a disconnect. A revoked or wrong-audience token is rejected.

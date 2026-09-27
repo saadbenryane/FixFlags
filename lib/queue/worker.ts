@@ -10,7 +10,7 @@ import { AUDIT_DEADLINE_MS } from '../audit/pipeline-config'
 import { isNonRetryableAuditError } from '../audit/pipeline-errors'
 import { logger } from '../logger'
 import { WORKER_CONCURRENCY } from './estimate'
-import { getBrowserDiagnostics } from '../audit/screenshot'
+import { getAuditBrowser, getBrowserDiagnostics } from '../audit/screenshot'
 import { runBestEffort } from '../observability/best-effort'
 import { runIntegrityPathJob } from '../integrity/run-path-job'
 import { runIntegrityImprove } from '../integrity/improve'
@@ -32,18 +32,11 @@ export function startWorker() {
     { operation: 'worker_heartbeat', logger, context: { phase: 'startup' } },
   )
 
-  const heartbeatTimer = setInterval(() => {
-    void runBestEffort(
-      () => touchWorkerHeartbeat(workerBrowserDiagnostics()),
-      { operation: 'worker_heartbeat', logger, context: { phase: 'idle' } },
-    )
-  }, HEARTBEAT_INTERVAL_MS)
-  heartbeatTimer.unref?.()
-
   const worker = new Worker(
     'audit',
     async (job) => {
-      await touchWorkerHeartbeat(workerBrowserDiagnostics())
+      if (!getBrowserDiagnostics().connected) await getAuditBrowser()
+      await touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), queueState: 'active' })
       if (job.name === 'repo-scan') {
         const { repoScanId } = job.data as { repoScanId: string }
         await runRepoScan(repoScanId)
@@ -116,9 +109,30 @@ export function startWorker() {
     }
   )
 
+  let browserRecoveryRunning = false
+  const heartbeatTimer = setInterval(() => {
+    const diagnostics = workerBrowserDiagnostics()
+    if (diagnostics.browserOk || browserRecoveryRunning) {
+      void runBestEffort(
+        () => touchWorkerHeartbeat({ ...diagnostics, queueState: 'idle' }),
+        { operation: 'worker_heartbeat', logger, context: { phase: 'idle' } },
+      )
+      return
+    }
+    browserRecoveryRunning = true
+    void worker.pause()
+      .then(() => touchWorkerHeartbeat({ ...diagnostics, queueState: 'paused' }))
+      .then(() => getAuditBrowser())
+      .then(() => worker.resume())
+      .then(() => touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), queueState: 'idle' }))
+      .catch((error) => logger.error('Worker browser recovery failed; queue consumption remains paused', error))
+      .finally(() => { browserRecoveryRunning = false })
+  }, HEARTBEAT_INTERVAL_MS)
+  heartbeatTimer.unref?.()
+
   worker.on('completed', (job) => {
     void runBestEffort(
-      () => touchWorkerHeartbeat(workerBrowserDiagnostics()),
+      () => touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), queueState: 'idle' }),
       { operation: 'worker_heartbeat', logger, context: { phase: 'completed', jobId: String(job.id) } },
     )
     logger.info(`Audit job ${job.id} completed`, {
@@ -129,6 +143,10 @@ export function startWorker() {
   })
 
   worker.on('failed', async (job, err) => {
+    void runBestEffort(
+      () => touchWorkerHeartbeat({ ...workerBrowserDiagnostics(), queueState: 'idle' }),
+      { operation: 'worker_heartbeat', logger, context: { phase: 'failed', jobId: String(job?.id ?? '') } },
+    )
     logger.error(`Audit job ${job?.id} failed`, err)
     if (!job) return
     if (job.name === 'repo-scan') {

@@ -56,10 +56,10 @@ FixFlags skills load automatically from `.agents/skills/`. See `opencode.json` f
 
 ## How it works
 
-All integrations use the FixFlags MCP server. The rules/skill/power use `ff_check_and_plan` and `ff_recheck_and_compare` for complete tasks, with granular tools for drill-down. After verification passes, suggest enabling Watch for continuous monitoring.
+All integrations use the FixFlags MCP server. They discover Sites and Outcomes with `fixflags.list_sites` and `fixflags.list_outcomes`, start durable runs with `fixflags.run`, and use `fixflags.record_fix` plus `fixflags.verify_flag` for independent recovery proof. After verification passes, suggest enabling Watch for continuous monitoring.
 
 ## Requirements
 
-- FixFlags account with API access (Pro or Studio plan)
+- FixFlags account with developer access
 - API key from https://fixflags.com/settings
-- MCP server configured in your editor (`https://fixflags.com/api/mcp` with `x-api-key`)
+- MCP server configured in your editor (`https://fixflags.com/api/mcp` with a bearer credential)

@@ -75,6 +75,7 @@ describe('worker heartbeat aggregation', () => {
       browserOk: false,
       activeBrowserContexts: 0,
       configuredConcurrency: 0,
+      workers: [],
     })
   })
 })

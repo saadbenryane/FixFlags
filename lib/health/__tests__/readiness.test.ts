@@ -36,6 +36,13 @@ describe('readLaunchReadiness', () => {
     expect(result.missing).toEqual([])
   })
 
+  it('keeps free launch healthy when paid billing is intentionally closed', async () => {
+    const free = await readLaunchReadiness(dependencies('billing'), 'free-launch')
+    const commercial = await readLaunchReadiness(dependencies('billing'), 'commercial')
+    expect(free).toMatchObject({ ok: true, profile: 'free-launch', missing: [] })
+    expect(commercial).toMatchObject({ ok: false, profile: 'commercial', missing: ['billing'] })
+  })
+
   it('names each unavailable launch subsystem', async () => {
     const result = await readLaunchReadiness(dependencies('worker'))
     expect(result.ok).toBe(false)

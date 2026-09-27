@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2, CircleDashed, Flag, ShieldCheck } from 'lucide-react'
 import { MarketingPageViewTracker } from '@/components/marketing/MarketingPageViewTracker'
+import { OutcomeSummaryCard } from '@/components/sites/OutcomeSummaryCard'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
@@ -57,12 +58,23 @@ export default async function SamplesPage({
         <div data-testid="sample-site" data-observation={audit.id} className="mx-auto max-w-5xl rounded-card border border-border/60 bg-background p-4 shadow-glass-deep sm:p-6">
           <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border/60 pb-5">
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Site</p>
+              <p className="text-sm font-medium text-muted-foreground">Site sample</p>
               <Heading as="h2" className="mt-1 text-2xl">{new URL(audit.url).hostname}</Heading>
             </div>
             <span className="rounded-full bg-warning/10 px-3 py-1 text-sm font-medium text-warning-foreground">
               1 Flag
             </span>
+          </div>
+
+          <div className="mt-5">
+            <OutcomeSummaryCard
+              name="Checkout"
+              expectation="A customer can complete the purchase path without an unexpected blocker."
+              coverage="No authorized Checkout binding is included in this retained fixture."
+              freshness="This is sample configuration, not a customer verification result."
+              state="COULD_NOT_VERIFY"
+              label="Launch Outcome"
+            />
           </div>
 
           <div className="mt-5 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -80,20 +92,20 @@ export default async function SamplesPage({
           {sampleFlag && (
             <Card className="mt-5 border-brand/25">
               <CardHeader>
-                <p className="text-xs font-medium uppercase tracking-wide text-brand">Conversion Flag</p>
+                <p className="text-sm font-medium text-brand">Retained fixture Flag</p>
                 <Heading as="h3" className="mt-2 text-xl">{sampleFlag.problem}</Heading>
               </CardHeader>
               <CardContent className="grid gap-5 md:grid-cols-2">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Evidence</p>
+                  <p className="text-sm font-medium text-muted-foreground">Fixture evidence</p>
                   <p className="mt-2 text-sm leading-6 text-foreground/85">{sampleFlag.evidence}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Proposed change</p>
+                  <p className="text-sm font-medium text-muted-foreground">Proposed change</p>
                   <p className="mt-2 text-sm leading-6 text-foreground/85">{sampleFlag.fix}</p>
                 </div>
                 <div className="md:col-span-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Verify succeeds when</p>
+                  <p className="text-sm font-medium text-muted-foreground">Verify succeeds when</p>
                   <p className="mt-2 text-sm leading-6 text-foreground/85">
                     {sampleFlag.verificationRule ?? 'Fresh comparable evidence proves the expected behavior.'}
                   </p>

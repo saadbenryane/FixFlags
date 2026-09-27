@@ -9,12 +9,17 @@ const WORKER_ID =
   process.env.RAILWAY_REPLICA_ID ??
   process.env.FIXFLAGS_WORKER_ID ??
   randomUUID()
+const WORKER_BOOTED_AT_MS = Date.now()
+const WORKER_VERSION = process.env.npm_package_version ?? '0.1.0'
+const WORKER_SHA = process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.GIT_SHA ?? 'unknown'
 
 let redis: Redis | null = null
 let stopping = false
 let diagnostics: WorkerDiagnostics = {
   browserOk: false,
   activeBrowserContexts: 0,
+  lastSuccessfulBrowserProbeAt: null,
+  queueState: 'starting',
 }
 
 function getRedis(): Redis {
@@ -27,12 +32,17 @@ function getRedis(): Redis {
 export interface WorkerDiagnostics {
   browserOk: boolean
   activeBrowserContexts: number
+  lastSuccessfulBrowserProbeAt: string | null
+  queueState: 'starting' | 'idle' | 'active' | 'paused' | 'stopping'
 }
 
 export interface WorkerHeartbeatRecord extends WorkerDiagnostics {
   workerId: string
   lastSeenMs: number
   configuredConcurrency: number
+  bootedAtMs?: number
+  version?: string
+  sha?: string
 }
 
 /** Called by the worker process on start, idle tick, and each job lifecycle event. */
@@ -41,10 +51,14 @@ export async function touchWorkerHeartbeat(
 ): Promise<void> {
   if (stopping) return
   diagnostics = { ...diagnostics, ...update }
+  if (update?.browserOk === true) diagnostics.lastSuccessfulBrowserProbeAt = new Date().toISOString()
   const record: WorkerHeartbeatRecord = {
     workerId: WORKER_ID,
     lastSeenMs: Date.now(),
     configuredConcurrency: configuredWorkerConcurrency(),
+    bootedAtMs: WORKER_BOOTED_AT_MS,
+    version: WORKER_VERSION,
+    sha: WORKER_SHA,
     ...diagnostics,
   }
   await getRedis().set(
@@ -63,6 +77,14 @@ export interface WorkerHeartbeatStatus {
   browserOk: boolean
   activeBrowserContexts: number
   configuredConcurrency: number
+  workers: Array<{
+    workerId: string
+    bootedAtMs: number | null
+    version: string
+    sha: string
+    lastSuccessfulBrowserProbeAt: string | null
+    queueState: WorkerDiagnostics['queueState']
+  }>
 }
 
 function configuredWorkerConcurrency(): number {
@@ -123,6 +145,7 @@ export async function readWorkerHeartbeat(): Promise<WorkerHeartbeatStatus> {
       browserOk: false,
       activeBrowserContexts: 0,
       configuredConcurrency: 0,
+      workers: [],
     }
   }
   const values = await getRedis().mget(...keys)
@@ -154,6 +177,7 @@ export function aggregateWorkerHeartbeats(
       browserOk: false,
       activeBrowserContexts: 0,
       configuredConcurrency: 0,
+      workers: [],
     }
   }
   const lastSeenMs = Math.max(...aliveRecords.map((record) => record.lastSeenMs))
@@ -175,5 +199,13 @@ export function aggregateWorkerHeartbeats(
           : 1),
       0
     ),
+    workers: aliveRecords.map((record) => ({
+      workerId: record.workerId,
+      bootedAtMs: record.bootedAtMs ?? null,
+      version: record.version ?? 'unknown',
+      sha: record.sha ?? 'unknown',
+      lastSuccessfulBrowserProbeAt: record.lastSuccessfulBrowserProbeAt ?? null,
+      queueState: record.queueState ?? 'idle',
+    })),
   }
 }

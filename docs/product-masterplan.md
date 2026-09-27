@@ -16,10 +16,10 @@ This file owns what to build, in what order, and what may be called launch-ready
 | Shared execution | One tenant-scoped `RunRequest` from web, Watch and MCP into the existing Audit worker; database-enforced one active run | Credentialed schedule/restart and competing-trigger exercise |
 | Truth | Confirmed Checkout success is Clear; confirmed reproducible failure is Flag; blocked/unknown is Couldn't verify; expired evidence is Stale | Real owned-Site broken → fixed → recovery sequence |
 | Incident | Checkout occurrence reuses a stable Site Flag identity; targeted Verify keeps attempt history | Recurrence and notification return on a canary Site |
-| Developer access | Site/Outcome/Run/Flag MCP tools, hashed account keys, device flow, CLI bridge, setup and docs | Codex/Claude/Cursor client matrix and remote OAuth/scopes |
+| Developer access | Site/Outcome/Run/Flag MCP tools, hashed account keys, device flow, CLI bridge, OAuth discovery/scopes, setup and docs | Credentialed Codex/Claude/Cursor client matrix and exact-SHA production proof |
 | Public hierarchy | Checkout Outcome leads the Site board and homepage example; broad cards remain | Complete mobile/public route pass and exact deployed sample |
 
-This checkpoint is **not** the public launch. No acceptance checkbox below is closed merely by a migration or unit test. The next highest-leverage work is an end-to-end credentialed Checkout canary followed by remote MCP authorization and deployment/integration trigger alignment.
+This checkpoint is **not** the public launch. No acceptance checkbox below is closed merely by a migration or unit test. The next highest-leverage work is an end-to-end credentialed Checkout canary followed by external-client and live connection proof on the exact deployed revision.
 
 | Authority                                  | Source                                                          |
 | ------------------------------------------ | --------------------------------------------------------------- |
@@ -78,10 +78,10 @@ The launch container remains the existing customer **Site** because the current 
 
 1. Only Checkout currently has complete Outcome semantics. Other inferred Outcomes remain descriptive; a second binding must prove the model beyond commerce.
 2. Web, Watch, and MCP now enter through one RunRequest, but deployment, integration, and legacy API triggers still enter report-shaped services.
-3. The registered MCP surface is Outcome-first; old report tools remain source compatibility and hidden CLI handlers. Exact-client/prod proof and remote OAuth are open.
-4. Remote MCP auth is long-lived API-key only. Interactive launch clients need OAuth discovery and scoped, audience-bound tokens; API keys remain appropriate for CI and the stdio bridge.
+3. The registered MCP surface is Outcome-first; old report tools are removed from server discovery while legacy CLI handlers remain an explicit compatibility boundary. Exact-client and production proof remain open.
+4. Remote MCP supports OAuth discovery with scoped, audience-bound tokens. API keys remain appropriate for CI and the stdio bridge; credentialed client-matrix proof remains open.
 5. Deployment verification is Railway-specific and generic rather than Site/Outcome-scoped.
-6. `/samples` is a Site board with one retained evidence-backed non-Checkout Flag, while the homepage now illustrates Checkout. Neither should be mistaken for credentialed Checkout production proof. MCP docs and setup are reachable locally.
+6. `/samples` leads with Checkout as honestly unconfigured, then shows one retained fixture Flag explicitly separated from customer verification truth. It is not credentialed Checkout production proof. MCP docs and setup are reachable locally.
 7. Machine-facing Outcome execution has no launch adapter. The architecture can support it, but claiming it now would be false.
 8. Legacy Product/report/credit vocabulary still crosses application seams even where storage names may safely remain.
 

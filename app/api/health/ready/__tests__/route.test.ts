@@ -10,7 +10,7 @@ describe('GET /api/health/ready', () => {
   it('returns 200 when every launch subsystem is ready', async () => {
     readLaunchReadiness.mockResolvedValue({ ok: true, checkedAt: 'now', missing: [], subsystems: {} })
     const { GET } = await import('../route')
-    const response = await GET()
+    const response = await GET(new Request('https://fixflags.test/api/health/ready'))
     expect(response.status).toBe(200)
   })
 
@@ -22,7 +22,7 @@ describe('GET /api/health/ready', () => {
       subsystems: { worker: { ok: false, detail: 'No current worker heartbeat' } },
     })
     const { GET } = await import('../route')
-    const response = await GET()
+    const response = await GET(new Request('https://fixflags.test/api/health/ready'))
     expect(response.status).toBe(503)
     await expect(response.json()).resolves.toMatchObject({ ok: false, missing: ['worker'] })
   })

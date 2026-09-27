@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 import type { User } from '@prisma/client'
 import { registerAllTools } from '@/lib/mcp/tools'
 import {
@@ -38,7 +38,7 @@ describe('MCP public tool manifest', () => {
   it('treats optional additions as additive while requiring the versioned core', () => {
     const coreNames = MCP_CORE_TOOL_DEFINITIONS.map((tool) => tool.name)
     expect(inspectMcpToolReadiness([...coreNames, 'vendor_future_tool'])).toMatchObject({
-      contractVersion: '2.0',
+      contractVersion: '3.0',
       ready: true,
       missingCore: [],
     })
@@ -52,6 +52,11 @@ describe('MCP public tool manifest', () => {
     const definitions = Object.values(MCP_TOOLS)
 
     expect(new Set(definitions.map((tool) => tool.name)).size).toBe(definitions.length)
+    expect(definitions.map((tool) => tool.name)).toEqual([
+      'fixflags.list_sites', 'fixflags.list_outcomes', 'fixflags.run',
+      'fixflags.get_run', 'fixflags.list_flags', 'fixflags.get_flag',
+      'fixflags.record_fix', 'fixflags.verify_flag', 'fixflags.get_connection_info',
+    ])
     expect(definitions.every((tool) => tool.name.length > 0 && tool.desc.length > 0)).toBe(true)
   })
 })

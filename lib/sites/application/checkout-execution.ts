@@ -5,13 +5,8 @@ import { normalizeAuditUrl } from '@/lib/audit/url'
 import { runPathProbe } from '@/lib/integrity/run-path-probe'
 import { availabilityFlagCopy, type BindingDispositionName } from '@/lib/sites/application/binding-assessment'
 import { checkoutResultCopy } from '@/lib/sites/outcome-state'
-
-type BindingConfig = {
-  startUrl?: string
-  safety?: string
-  authorized?: boolean
-  fixture?: boolean
-}
+import { validateBindingConfig, type AvailabilityBindingConfig, type SafeFormBindingConfig } from '@/lib/sites/application/binding-config'
+import { executeSafeFormFixture } from '@/lib/sites/application/safe-form-executor'
 
 type BoundSelection = {
   outcome: {
@@ -23,17 +18,6 @@ type BoundSelection = {
       required: boolean
       config: Prisma.JsonValue
     }>
-  }
-}
-
-function bindingConfig(value: Prisma.JsonValue): BindingConfig {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
-  const record = value as Record<string, unknown>
-  return {
-    startUrl: typeof record.startUrl === 'string' ? record.startUrl : undefined,
-    safety: typeof record.safety === 'string' ? record.safety : undefined,
-    authorized: record.authorized === true,
-    fixture: record.fixture === true,
   }
 }
 
@@ -144,6 +128,7 @@ async function runAvailabilityBinding(input: {
   outcomeId: string
   bindingKey: string
   startUrl: string
+  config: AvailabilityBindingConfig
 }): Promise<void> {
   const safe = normalizeAuditUrl(input.startUrl)
   if (!safe.ok) {
@@ -186,9 +171,47 @@ async function runAvailabilityBinding(input: {
     })
     return
   }
-  const available = response.status >= 200 && response.status < 300
+  const responseText = await response.text().catch(() => '')
+  const botWall = /(?:captcha|cloudflare|checking your browser|access denied|verify you are human)/i.test(responseText.slice(0, 20_000))
+  if (botWall) {
+    await recordExecution({
+      auditId: input.auditId,
+      outcomeId: input.outcomeId,
+      bindingKey: input.bindingKey,
+      mechanism: 'HTTP_AVAILABILITY',
+      disposition: 'BLOCKED',
+      reason: 'bot_wall',
+      detail: { status: response.status },
+    })
+    return
+  }
+  const audit = await prisma.audit.findUnique({
+    where: { id: input.auditId },
+    select: { htmlMetadata: true },
+  })
+  const metadata = audit?.htmlMetadata && typeof audit.htmlMetadata === 'object' && !Array.isArray(audit.htmlMetadata)
+    ? audit.htmlMetadata as Record<string, unknown>
+    : null
+  const pageText = typeof metadata?.pageText === 'string' ? metadata.pageText : ''
+  const rendered = input.config.expectedText
+    ? pageText.toLowerCase().includes(input.config.expectedText.toLowerCase())
+    : input.config.expectedSelector === 'body' && pageText.trim().length > 0
+  if (response.ok && !metadata) {
+    await recordExecution({
+      auditId: input.auditId,
+      outcomeId: input.outcomeId,
+      bindingKey: input.bindingKey,
+      mechanism: 'HTTP_AVAILABILITY',
+      disposition: 'BLOCKED',
+      reason: 'rendered_surface_unavailable',
+      detail: { status: response.status },
+    })
+    return
+  }
+  const available = response.status >= 200 && response.status < 300 && rendered
+  const failureReason = response.ok ? 'expected_surface_missing' : 'http_unavailable'
   if (!available) {
-    const copy = availabilityFlagCopy('http_unavailable')
+    const copy = availabilityFlagCopy(failureReason)
     await prisma.flag.create({
       data: {
         auditId: input.auditId,
@@ -214,8 +237,8 @@ async function runAvailabilityBinding(input: {
     bindingKey: input.bindingKey,
     mechanism: 'HTTP_AVAILABILITY',
     disposition: available ? 'SUCCEEDED' : 'FAILED',
-    reason: available ? 'available' : 'http_unavailable',
-    detail: { status: response.status },
+    reason: available ? 'available' : failureReason,
+    detail: { status: response.status, rendered },
   })
 }
 
@@ -223,16 +246,24 @@ async function runSignupBinding(input: {
   auditId: string
   outcomeId: string
   bindingKey: string
-  config: BindingConfig
+  projectId: string
+  config: SafeFormBindingConfig
+  allowLocalhost: boolean
 }): Promise<void> {
-  const authorizedFixture = input.config.safety === 'reversible' && input.config.authorized === true && input.config.fixture === true
+  const result = await executeSafeFormFixture({
+    projectId: input.projectId,
+    fixtureId: input.config.fixtureId,
+    startUrl: input.config.startUrl,
+    allowLocalhost: input.allowLocalhost,
+  })
   await recordExecution({
     auditId: input.auditId,
     outcomeId: input.outcomeId,
     bindingKey: input.bindingKey,
     mechanism: 'SAFE_FORM',
-    disposition: 'BLOCKED',
-    reason: authorizedFixture ? 'safe_fixture_required' : 'protected_or_irreversible',
+    disposition: result.disposition,
+    reason: result.reason,
+    detail: result.detail,
   })
 }
 
@@ -279,24 +310,51 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
         select: { id: true },
       })
       if (existing) continue
-      const config = bindingConfig(binding.config)
-      const startUrl = config.startUrl ?? request.audit.url
+      const validated = validateBindingConfig(binding.mechanism, binding.config)
+      if (!validated.success) {
+        await recordExecution({
+          auditId,
+          outcomeId: selection.outcome.id,
+          bindingKey: binding.key,
+          mechanism: binding.mechanism,
+          disposition: 'BLOCKED',
+          reason: validated.reason,
+        })
+        continue
+      }
+      const config = validated.data.config
+      const startUrl = config.startUrl
       if (binding.mechanism === 'HTTP_AVAILABILITY' || selection.outcome.kind === 'AVAILABILITY') {
+        if (validated.data.mechanism !== 'HTTP_AVAILABILITY') {
+          await recordExecution({ auditId, outcomeId: selection.outcome.id, bindingKey: binding.key, mechanism: binding.mechanism, disposition: 'BLOCKED', reason: 'binding_mechanism_mismatch' })
+          continue
+        }
         await runAvailabilityBinding({
           auditId,
           outcomeId: selection.outcome.id,
           bindingKey: binding.key,
           startUrl,
+          config: validated.data.config,
         })
         continue
       }
       if (binding.mechanism === 'SAFE_FORM' || selection.outcome.kind === 'SIGNUP') {
+        if (validated.data.mechanism !== 'SAFE_FORM') {
+          await recordExecution({ auditId, outcomeId: selection.outcome.id, bindingKey: binding.key, mechanism: binding.mechanism, disposition: 'BLOCKED', reason: 'binding_mechanism_mismatch' })
+          continue
+        }
         await runSignupBinding({
           auditId,
           outcomeId: selection.outcome.id,
           bindingKey: binding.key,
-          config,
+          projectId: request.projectId,
+          config: validated.data.config,
+          allowLocalhost,
         })
+        continue
+      }
+      if (validated.data.mechanism !== 'BROWSER_JOURNEY') {
+        await recordExecution({ auditId, outcomeId: selection.outcome.id, bindingKey: binding.key, mechanism: binding.mechanism, disposition: 'BLOCKED', reason: 'binding_mechanism_mismatch' })
         continue
       }
       const priorJourney = await prisma.journeyReview.findFirst({

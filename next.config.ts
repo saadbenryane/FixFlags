@@ -71,7 +71,6 @@ const nextConfig: NextConfig = {
     'bullmq',
     'ioredis',
     '@anthropic-ai/sdk',
-    '@modelcontextprotocol/sdk',
     '@aws-sdk/client-s3',
     'cheerio',
   ],

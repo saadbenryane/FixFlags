@@ -22,6 +22,7 @@ function dependencies(): WorkerRuntimeDependencies & {
     closeWorker,
     exit,
     validateEnvironment: () => calls.push('env'),
+    preflight: async () => { calls.push('preflight') },
     warmBrowser: async () => {
       calls.push('browser:warm')
     },
@@ -60,6 +61,7 @@ describe('standalone worker runtime', () => {
 
     expect(deps.calls).toEqual([
       'env',
+      'preflight',
       'browser:warm',
       'browser:diagnostics',
       'heartbeat:touch',

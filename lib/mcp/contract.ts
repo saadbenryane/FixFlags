@@ -1,18 +1,19 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import { RateLimitError } from '@/lib/security/rate-limit'
 import {
   MCP_CONTRACT_VERSION,
   MCP_CORE_TOOL_DEFINITIONS,
   MCP_OPTIONAL_TOOL_DEFINITIONS,
+  MCP_PROTOCOL_VERSION,
   MCP_TOOLS,
 } from '@/lib/mcp/tool-manifest'
 
 export const MCP_WORKFLOW = [
-  'Use ff_list_sites and ff_list_outcomes to select an owned Outcome.',
-  'Call ff_verify_outcome and poll ff_get_run until independent verification finishes.',
-  'If FixFlags returns Flag, inspect it with ff_get_flag and change the software outside FixFlags.',
-  'Call ff_verify_flag after deployment and poll the returned run.',
+  'Use fixflags.list_sites and fixflags.list_outcomes to select owned Outcomes.',
+  'Call fixflags.run and poll fixflags.get_run until independent execution finishes.',
+  'If FixFlags returns a Flag, inspect it with fixflags.get_flag and change the software outside FixFlags.',
+  'Call fixflags.record_fix with the change context, then fixflags.verify_flag with the returned attemptId.',
   'Only fresh FixFlags evidence can return the Outcome to Clear.',
 ] as const
 
@@ -100,11 +101,11 @@ export function registerConnectionInfoTool(server: McpServer, authenticated: boo
     MCP_TOOLS.getConnectionInfo.name,
     {
       description: MCP_TOOLS.getConnectionInfo.desc,
-      inputSchema: {},
+      inputSchema: z.object({}),
       outputSchema: z.object({ contractVersion: z.string(), ready: z.boolean() }).passthrough(),
       annotations: {
-        title: 'FixFlags connection information',
-        readOnlyHint: true,
+        title: MCP_TOOLS.getConnectionInfo.title,
+        readOnlyHint: MCP_TOOLS.getConnectionInfo.readOnly,
         destructiveHint: false,
         idempotentHint: true,
         openWorldHint: false,
@@ -113,6 +114,7 @@ export function registerConnectionInfoTool(server: McpServer, authenticated: boo
     async () => {
       const payload = {
         contractVersion: MCP_CONTRACT_VERSION,
+        protocolVersion: MCP_PROTOCOL_VERSION,
         serverVersion: process.env.npm_package_version ?? '0.1.0',
         authentication: { type: 'bearer', authenticated },
         ready: authenticated,

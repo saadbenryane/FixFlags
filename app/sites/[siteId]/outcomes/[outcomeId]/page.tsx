@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { Logo } from '@/components/brand/Logo'
-import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
+import { SiteShell } from '@/components/sites/SiteShell'
 import { VerifyOutcomeButton } from '@/components/sites/VerifyOutcomeButton'
 import { loadSiteHome } from '@/lib/sites/application/queries'
 import { flagMatchesOutcome, outcomeCoverageLabel, outcomeStatusLabel } from '@/lib/sites/outcome-state'
@@ -21,21 +20,26 @@ export default async function OutcomeDetailPage({
   const relatedFlags = home.flags.filter((flag) => flagMatchesOutcome(flag, outcome))
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <Logo variant="lockup" size="sm" />
-        <SiteChromeAuth />
-      </div>
+    <SiteShell
+      siteId={home.site.siteId}
+      activeRoute="home"
+      title={outcome.name}
+      description={outcome.expectation ?? outcome.summary}
+      flagCount={home.flags.length}
+      watch={home.watch}
+      checking={outcome.running}
+    >
+      <div className="mx-auto w-full max-w-3xl">
       <Link href={`/sites/${home.site.siteId}`} className="text-sm text-muted-foreground hover:text-foreground">
-        Back to {home.host}
+        Back to Site home
       </Link>
-      <p className="mt-6 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">Outcome</p>
-      <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
-        <h1 className="text-2xl font-semibold">{outcome.name}</h1>
+      <div className="mt-6 flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-border/80 bg-background p-5">
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">Current state</p>
+          <p className="mt-1 text-sm">{outcomeCoverageLabel(outcome.environment, outcome.bindings)}</p>
+        </div>
         <p className="text-sm font-medium" role="status">{outcomeStatusLabel(outcome.state, outcome.running)}</p>
       </div>
-      <p className="mt-3 text-sm text-muted-foreground">{outcome.expectation ?? outcome.summary}</p>
-      <p className="mt-2 text-sm text-muted-foreground">{outcomeCoverageLabel(outcome.environment, outcome.bindings)}</p>
       {outcome.summary ? <p className="mt-4 text-sm">{outcome.summary}</p> : null}
       {outcome.lastVerifiedAt ? (
         <p className="mt-2 text-xs text-muted-foreground">
@@ -69,6 +73,7 @@ export default async function OutcomeDetailPage({
           </ul>
         </section>
       ) : null}
-    </div>
+      </div>
+    </SiteShell>
   )
 }

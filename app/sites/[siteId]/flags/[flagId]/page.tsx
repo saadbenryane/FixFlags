@@ -1,12 +1,11 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { loadSiteBoardFlag } from '@/lib/sites/application/queries'
+import { loadSiteBoardFlag, loadSiteHome } from '@/lib/sites/application/queries'
 import { listSiteOutcomes } from '@/lib/sites/outcomes'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 import { Button } from '@/components/ui/button'
 import { Surface } from '@/components/ui/surface'
-import { Logo } from '@/components/brand/Logo'
-import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
+import { SiteShell } from '@/components/sites/SiteShell'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { customerFlagContext } from '@/lib/sites/flag-label'
@@ -63,24 +62,27 @@ export default async function SiteFlagPage({
     ? connectionLines((await loadSiteConnectionViews(site.projectId)).facts, flag.pageUrl)
     : []
   const relatedOutcome = outcomes.find((outcome) => flagMatchesOutcome(flag, outcome)) ?? null
+  const home = await loadSiteHome(resolvedId)
+  if (!home) notFound()
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <Logo variant="lockup" size="sm" />
-        <div className="flex items-center gap-2">
-          <SiteChromeAuth />
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/sites/${resolvedId}`}>Back to board</Link>
-          </Button>
-        </div>
-      </div>
+    <SiteShell
+      siteId={resolvedId}
+      activeRoute="flags"
+      title={flag.problem}
+      description={flag.whyItMatters}
+      flagCount={home.flags.length}
+      watch={home.watch}
+      checking={flag.verifying}
+    >
+      <div className="mx-auto w-full max-w-3xl">
+      <Button variant="outline" size="sm" asChild>
+        <Link href={`/sites/${resolvedId}/flags`}>Back to Flags</Link>
+      </Button>
       <p className="text-xs text-muted-foreground">
         {site.canonicalHost} · {customerFlagContext(flag.area, flag.severity)}
       </p>
       <p className="mt-3 text-sm font-medium text-brand">{SITE_BOARD_COPY.flagStatus}</p>
-      <h1 className="mt-2 text-3xl font-semibold tracking-tight">{flag.problem}</h1>
-      <p className="mt-3 text-muted-foreground">{flag.whyItMatters}</p>
       {relatedOutcome ? (
         <p className="mt-3 text-sm">
           <Link href={`/sites/${resolvedId}/outcomes/${relatedOutcome.id}`} className="underline">
@@ -102,17 +104,17 @@ export default async function SiteFlagPage({
         )}
         <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">URL</dt>
+            <dt className="text-xs font-medium text-muted-foreground">URL</dt>
             <dd className="mt-1">{flag.pageUrl ?? 'This Site, page not recorded'}</dd>
           </div>
           {flag.viewport ? (
             <div>
-              <dt className="text-xs uppercase tracking-wide text-muted-foreground">Viewport</dt>
+              <dt className="text-xs font-medium text-muted-foreground">Viewport</dt>
               <dd className="mt-1">{flag.viewport}</dd>
             </div>
           ) : null}
           <div>
-            <dt className="text-xs uppercase tracking-wide text-muted-foreground">Expected after a fix</dt>
+            <dt className="text-xs font-medium text-muted-foreground">Expected after a fix</dt>
             <dd className="mt-1">{flag.expectedBehavior}</dd>
           </div>
         </dl>
@@ -180,6 +182,7 @@ export default async function SiteFlagPage({
           </ul>
         )}
       </section>
-    </div>
+      </div>
+    </SiteShell>
   )
 }

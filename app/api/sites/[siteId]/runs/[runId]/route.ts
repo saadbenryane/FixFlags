@@ -17,7 +17,7 @@ export async function GET(
     if (!access.ok) return apiError(access.message, access.status)
     if (access.decision.role !== 'owner') return apiError('Run not found', 404)
     const run = await getOwnedRun(session.user.id, runId)
-    if (!run || run.outcomeId == null) return apiError('Run not found', 404)
+    if (!run) return apiError('Run not found', 404)
     return NextResponse.json(run)
   } catch (error) {
     return handleRouteError(error)

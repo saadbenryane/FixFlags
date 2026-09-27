@@ -3,8 +3,9 @@ import { SITE_URL } from '@/lib/marketing/copy/brand'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { prisma } from '@/lib/db'
 import { generateApiKey, hashApiKey } from '@/lib/security/api-keys'
+import { toolDefinition, type McpScope } from '@/lib/mcp/tool-manifest'
 
-export const MCP_SCOPES = ['sites:read', 'sites:run'] as const
+export const MCP_SCOPES = ['sites:read', 'runs:read', 'runs:write', 'flags:read', 'flags:write'] as const
 const CODE_TTL_MS = 5 * 60 * 1000
 const ACCESS_TTL_MS = 60 * 60 * 1000
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000
@@ -48,13 +49,13 @@ export function credentialAllows(
 ): boolean {
   if (!credential.audience) return true
   if (credential.scopes.includes(scope)) return true
-  return scope === 'sites:read' && credential.scopes.includes('sites:run')
+  if (scope === 'runs:read' && credential.scopes.includes('runs:write')) return true
+  if (scope === 'flags:read' && credential.scopes.includes('flags:write')) return true
+  return false
 }
 
-export function requiredToolScope(tool: string | null): 'sites:read' | 'sites:run' | null {
-  if (!tool) return null
-  if (tool === 'ff_run' || tool === 'ff_verify_outcome' || tool === 'ff_verify_flag') return 'sites:run'
-  return 'sites:read'
+export function requiredToolScope(tool: string | null): McpScope | null {
+  return toolDefinition(tool)?.scope ?? null
 }
 
 export function wwwAuthenticate(input: {

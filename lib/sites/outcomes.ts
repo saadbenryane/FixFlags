@@ -31,7 +31,7 @@ function bindingForConfirmedKind(kind: 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY', s
   return {
     key: 'page-availability-v1',
     mechanism: 'HTTP_AVAILABILITY' as const,
-    config: { startUrl: siteUrl },
+    config: { startUrl: siteUrl, expectedSelector: 'body' },
     required: true,
   }
 }

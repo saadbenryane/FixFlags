@@ -78,7 +78,6 @@ await browser.close()
 const runtimeChecks = {
   bodyFontInter: runtime.bodyFont.includes('Inter Variable'),
   headingFontInterTight: runtime.h1Font.includes('Inter Tight Variable'),
-  headingFontInterSans: runtime.h1Font.includes('Inter Variable'),
   rootFontVarExact: runtime.rootFont.includes('Inter Variable'),
 }
 

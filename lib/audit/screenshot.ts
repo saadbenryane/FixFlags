@@ -83,7 +83,7 @@ async function launchBrowser(): Promise<Browser> {
   }
 }
 
-async function getBrowser(): Promise<Browser> {
+export async function getBrowser(): Promise<Browser> {
   if (browser && browser.isConnected()) return browser
   // Drop any stale/crashed handle before relaunching.
   if (browser) {
