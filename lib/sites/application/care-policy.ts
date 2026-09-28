@@ -1,4 +1,5 @@
 import type { Plan, SubscriptionStatus } from '@prisma/client'
+import { PLAN_DEFINITIONS, projectLimitForPlan } from '@/lib/billing/plans'
 
 type CareUser = {
   role: string
@@ -12,15 +13,31 @@ export type SiteCarePolicy = {
   targetedVerify: boolean
 }
 
-/** Product-level care policy. Review-credit counters never govern Watch or Verify. */
+/**
+ * A Session identity can carry a null plan before the account row is read, so
+ * the derived cap has to survive a plan that is not in the plan definitions.
+ * An unknown plan is treated as Free, which fails closed: the customer keeps
+ * the Free cap instead of inheriting a paid one they never bought.
+ */
+function siteCapForPlan(plan: Plan): number | null {
+  return projectLimitForPlan(plan in PLAN_DEFINITIONS ? plan : 'FREE')
+}
+
+/**
+ * Product-level care policy. Review-credit counters never decide whether Watch or
+ * Verify are available: they only defer a scheduled run and surface as a quota
+ * state on the Site. The Site cap is read from the plan definition instead of
+ * restated here, so billing enforcement and this policy cannot drift apart.
+ */
 export function siteCarePolicy(user: CareUser): SiteCarePolicy {
   if (user.role === 'admin') {
     return { maxSites: null, watchIntervals: ['weekly', 'daily'], targetedVerify: true }
   }
   const revoked = ['PAST_DUE', 'CANCELED', 'UNPAID'].includes(user.subscriptionStatus)
-  const effectivePlan = revoked ? 'FREE' : user.plan
-  if (effectivePlan === 'FREE') {
-    return { maxSites: 1, watchIntervals: ['weekly'], targetedVerify: true }
+  const effectivePlan: Plan = revoked ? 'FREE' : user.plan
+  return {
+    maxSites: siteCapForPlan(effectivePlan),
+    watchIntervals: effectivePlan === 'FREE' ? ['weekly'] : ['weekly', 'daily'],
+    targetedVerify: true,
   }
-  return { maxSites: null, watchIntervals: ['weekly', 'daily'], targetedVerify: true }
 }

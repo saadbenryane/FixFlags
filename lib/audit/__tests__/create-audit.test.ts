@@ -24,6 +24,11 @@ const prismaMock = vi.hoisted(() => ({
     findUnique: vi.fn(),
     upsert: vi.fn(),
   },
+  // Anonymous scan reuse is scoped to the visitor's own board, so the create
+  // path resolves this model before deciding to reuse.
+  provisionalSite: {
+    findUnique: vi.fn(),
+  },
   user: {
     findUnique: vi.fn(),
   },
@@ -40,6 +45,7 @@ const ensureProductProject = vi.hoisted(() => vi.fn())
 const ensureSiteForAudit = vi.hoisted(() => vi.fn())
 const refreshUserUsagePeriod = vi.hoisted(() => vi.fn())
 const rollUserUsagePeriod = vi.hoisted(() => vi.fn())
+const resolveVisitorKey = vi.hoisted(() => vi.fn(async () => 'anon-v1:testvisitor0000000'))
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/queue/client', () => ({ getAuditQueue: () => ({ add: queueAdd }) }))
@@ -55,6 +61,7 @@ vi.mock('@/lib/billing/credits', () => ({ wouldBlockNewCheckWithCredits }))
 vi.mock('@/lib/audit/url', () => ({ assertPublicAuditUrl }))
 vi.mock('@/lib/audit/ensure-product-project', () => ({ ensureProductProject }))
 vi.mock('@/lib/sites/ensure-site', () => ({ ensureSiteForAudit }))
+vi.mock('@/lib/sites/visitor-identity', () => ({ resolveVisitorKey }))
 vi.mock('@/lib/billing/usage-period', () => ({
   refreshUserUsagePeriod,
   rollUserUsagePeriod,
@@ -107,6 +114,7 @@ describe('createAndEnqueueAudit', () => {
     prismaMock.audit.findFirst.mockResolvedValue(null)
     prismaMock.audit.count.mockResolvedValue(0)
     prismaMock.audit.update.mockResolvedValue({})
+    prismaMock.provisionalSite.findUnique.mockResolvedValue(null)
     prismaMock.user.findUnique.mockResolvedValue(signedInUser())
     queueAdd.mockResolvedValue({ id: 'job-1' })
     checkAnonymousAuditAllowed.mockResolvedValue({ allowed: true })
@@ -165,12 +173,16 @@ describe('createAndEnqueueAudit', () => {
       select: { id: true, parentId: true },
     })
     expect(trackAnonymousAuditId).toHaveBeenCalledWith('audit-1')
-    expect(prismaMock.audit.findFirst).toHaveBeenCalledWith(
+    // Reuse candidates are resolved from the visitor's own board first, so an
+    // unscoped "any recent public scan of this URL" lookup is never issued.
+    expect(prismaMock.provisionalSite.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          url: AUDIT_URL,
-          isPublic: true,
-        }),
+        where: {
+          sessionKey_canonicalHost: {
+            sessionKey: 'anon-v1:testvisitor0000000',
+            canonicalHost: 'example.com',
+          },
+        },
       })
     )
     expect(queueAdd).toHaveBeenCalledWith(
@@ -198,7 +210,11 @@ describe('createAndEnqueueAudit', () => {
     expect(queueAdd).not.toHaveBeenCalled()
   })
 
-  it('reuses a public scan of the same URL from the last hour without tracking or enqueueing', async () => {
+  it('reuses the visitor’s own completed scan of the same URL without enqueueing again', async () => {
+    // The visitor already owns a board for this host from a recent scan.
+    prismaMock.provisionalSite.findUnique.mockResolvedValueOnce({
+      primaryAuditId: 'recent-public',
+    })
     prismaMock.audit.findFirst.mockResolvedValueOnce({
       id: 'recent-public',
       status: 'COMPLETED',
@@ -215,13 +231,19 @@ describe('createAndEnqueueAudit', () => {
       siteId: 'project-1',
     })
     expect(prismaMock.audit.create).not.toHaveBeenCalled()
-    expect(trackAnonymousAuditId).not.toHaveBeenCalled()
     expect(queueAdd).not.toHaveBeenCalled()
     expect(checkAnonymousAuditAllowed).not.toHaveBeenCalled()
     expect(enforceAnonymousIpSoftCeiling).not.toHaveBeenCalled()
+    // The reused scan is still this visitor’s to claim. The old code skipped the
+    // claim cookie on reuse, so a returning visitor signed up to an account that
+    // did not contain their Site.
+    expect(trackAnonymousAuditId).toHaveBeenCalledWith('recent-public')
   })
 
-  it('reuses an in-progress public scan of the same URL from the last hour', async () => {
+  it('reuses the visitor’s own in-progress scan of the same URL', async () => {
+    prismaMock.provisionalSite.findUnique.mockResolvedValueOnce({
+      primaryAuditId: 'live-public',
+    })
     prismaMock.audit.findFirst.mockResolvedValueOnce({
       id: 'live-public',
       status: 'CHECKING',
@@ -237,8 +259,32 @@ describe('createAndEnqueueAudit', () => {
       parentId: null,
       siteId: 'project-1',
     })
-    expect(trackAnonymousAuditId).not.toHaveBeenCalled()
     expect(queueAdd).not.toHaveBeenCalled()
+    expect(trackAnonymousAuditId).toHaveBeenCalledWith('live-public')
+  })
+
+  it('does not reuse another visitor’s scan of the same URL', async () => {
+    // This visitor has no board for the host, so a recent public scan belonging
+    // to someone else must not be handed over. `provisionalSite.findUnique`
+    // resolving null is exactly that state.
+    prismaMock.provisionalSite.findUnique.mockResolvedValueOnce(null)
+
+    const result = await createAndEnqueueAudit({ url: AUDIT_URL, clientId: 'ip-2' })
+
+    expect(result.reused).toBe(false)
+    expect(result.auditId).toBe('audit-1')
+    expect(prismaMock.audit.create).toHaveBeenCalled()
+    // Reuse is resolved through the visitor’s own board, never a bare URL match.
+    expect(prismaMock.provisionalSite.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          sessionKey_canonicalHost: {
+            sessionKey: 'anon-v1:testvisitor0000000',
+            canonicalHost: 'example.com',
+          },
+        },
+      })
+    )
   })
 
   it('enforces the IP soft ceiling for anonymous creates with a client id', async () => {

@@ -355,6 +355,45 @@ export const SCAN_LIMIT_GATE = {
   },
 } as const
 
+/**
+ * The sign-up handoff resume. The signup gate claims the account on
+ * /post-login, so the URL the visitor typed returns on the dashboard and the
+ * scan they asked for continues without being asked for again.
+ */
+export const SCAN_HANDOFF = {
+  resuming: (url: string) => `Resuming the scan for ${url}`,
+} as const
+
+/**
+ * One shared, honest explanation for a plan limit, with one action.
+ *
+ * `site-limit` and `claim-limit` are the same capacity condition reached from
+ * two surfaces: starting a new analysis for an account that already watches as
+ * many websites as its plan includes, and saving a claimed Site that would need
+ * one more. `check-limit` is the period allowance running out, which renews on
+ * its own and is therefore not the same message.
+ */
+export const PLAN_LIMIT_NOTICE = {
+  copy: {
+    'site-limit': {
+      title: 'This plan is at its limit',
+      body: 'FixFlags cannot start another analysis on this plan right now. Plans that cover more websites verify every day.',
+    },
+    'check-limit': {
+      title: 'This period\u2019s analyses are used up',
+      body: 'The next analysis starts when the current period renews, or right away on a plan that includes more.',
+    },
+    'claim-limit': {
+      title: 'This Site could not be saved',
+      body: 'Your plan already covers as many websites as it includes, so this Site could not be added to your account. Plans that cover more websites verify every day.',
+    },
+  },
+  upgradeCta: 'See plans',
+  dismissCta: 'Dismiss',
+} as const
+
+export type PlanLimitKind = keyof typeof PLAN_LIMIT_NOTICE.copy
+
 export const REPORT_UPGRADE_GATE = {
   title: 'Upgrade to keep this website monitored',
   body: 'You have reached this period\u2019s limit. Join the waitlist for daily verification on more websites.',

@@ -13,6 +13,7 @@ import { scanAccessInputSchema, parseScanAccessInput } from '@/lib/audit/scan-ac
 import { canUseEphemeralScanAccess } from '@/lib/audit/scan-access-auth'
 import { prisma } from '@/lib/db'
 import { enforceRateLimit, recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
+import { resolveVisitorKey } from '@/lib/sites/visitor-identity'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { buildAttribution, parseClientAuditSource } from '@/lib/leads/attribution'
 
@@ -46,7 +47,11 @@ export async function POST(req: NextRequest) {
     const { url } = urlResult
 
     const session = await auth.api.getSession({ headers: await headers() }).catch(() => null)
+    // Abuse control (IP) and identity (private visitor token) are separate.
+    // The IP bounds flooding; the visitor key owns the Site board and scopes
+    // scan reuse so no visitor inherits another's scan.
     const clientId = requestClientId(req.headers)
+    const visitorKey = session?.user ? undefined : await resolveVisitorKey()
 
     const criticalPath = parsed.data.mode !== 'single'
 
@@ -143,6 +148,7 @@ export async function POST(req: NextRequest) {
       userId: session?.user?.id ?? null,
       parentId: parsed.data.parentId,
       clientId: session?.user ? undefined : clientId,
+      visitorKey,
       auditMode: criticalPath ? 'CRITICAL_PATH' : 'SINGLE',
       delayMs,
       attribution,

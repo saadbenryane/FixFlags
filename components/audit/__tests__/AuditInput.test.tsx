@@ -1,9 +1,11 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MeProvider } from '@/hooks/useMe'
+import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy'
 
 const startScanWithHandoff = vi.hoisted(() => vi.fn())
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }))
+const trackEvent = vi.hoisted(() => vi.fn())
 
 vi.mock('next/navigation', () => ({
   useRouter: () => router,
@@ -14,7 +16,7 @@ vi.mock('@/lib/audit/start-scan-handoff', () => ({
   startScanWithHandoff,
   trackStartedAudit: vi.fn(),
 }))
-vi.mock('@/lib/analytics/events', () => ({ trackEvent: vi.fn() }))
+vi.mock('@/lib/analytics/events', () => ({ trackEvent }))
 vi.mock('@/components/auth/AuthFlow', () => ({
   AuthFlow: ({ dialogTitle }: { dialogTitle?: string }) => <div>{dialogTitle}</div>,
 }))
@@ -190,5 +192,167 @@ describe('AuditInput scan handoff', () => {
     expect(submit.className).toMatch(/grid-cols-\[1fr_auto_1fr\]/)
     expect(submit.querySelector('svg')).not.toBeNull()
     expect(submit.textContent).toMatch(/Analyze/)
+  })
+})
+
+describe('AuditInput plan limits', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    sessionStorage.clear()
+  })
+
+  async function submitFromDashboard() {
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.change(input, { target: { value: 'example.com' } })
+    fireEvent.submit(input.closest('form')!)
+  }
+
+  it('offers the plan-limit notice with a real next step instead of a bare sentence', async () => {
+    startScanWithHandoff.mockResolvedValue({
+      ok: false,
+      status: 402,
+      code: 'UPGRADE_REQUIRED',
+      action: 'upgrade',
+      message: 'Your plan supports 1 Product.',
+    })
+    render(
+      <MeProvider initialUser={{ id: 'u1', email: 'a@b.com', plan: 'FREE' } as never}>
+        <AuditInput idSuffix="-plan-limit" />
+      </MeProvider>,
+    )
+
+    await submitFromDashboard()
+
+    expect(
+      await screen.findByText(PLAN_LIMIT_NOTICE.copy['site-limit'].title)
+    ).toBeInTheDocument()
+    // The API detail is kept, but the explanation and the action are ours.
+    expect(screen.getByText('Your plan supports 1 Product.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: PLAN_LIMIT_NOTICE.upgradeCta })).toHaveAttribute(
+      'href',
+      '/pricing'
+    )
+    // Not a dead end: the field stays usable so the customer is not stuck.
+    expect(screen.getByRole('textbox', { name: 'Website URL' })).toBeEnabled()
+  })
+
+  it('distinguishes a spent period allowance from a Site cap in the notice and analytics', async () => {
+    startScanWithHandoff.mockResolvedValue({
+      ok: false,
+      status: 402,
+      code: 'TOKEN_LIMIT',
+      action: 'buy_credits',
+      message: 'You are out of analyses this period.',
+    })
+    render(
+      <MeProvider initialUser={{ id: 'u1', email: 'a@b.com', plan: 'FREE' } as never}>
+        <AuditInput idSuffix="-check-limit" />
+      </MeProvider>,
+    )
+
+    await submitFromDashboard()
+
+    expect(
+      await screen.findByText(PLAN_LIMIT_NOTICE.copy['check-limit'].title)
+    ).toBeInTheDocument()
+    expect(trackEvent).toHaveBeenCalledWith('audit_limit_reached', {
+      reason: 'plan_analyses_used',
+    })
+  })
+
+  it('keeps the create-account dialog and does not show the plan notice for AUTH_REQUIRED', async () => {
+    startScanWithHandoff.mockResolvedValue({
+      ok: false,
+      status: 402,
+      code: 'AUTH_REQUIRED',
+      action: 'signin',
+      message: 'Create a free account to continue.',
+    })
+    render(
+      <MeProvider initialUser={null}>
+        <AuditInput idSuffix="-auth-required" />
+      </MeProvider>,
+    )
+
+    await submitFromDashboard()
+
+    expect(
+      (await screen.findAllByText('Create a free account to continue')).length
+    ).toBeGreaterThan(0)
+    expect(
+      screen.queryByText(PLAN_LIMIT_NOTICE.copy['site-limit'].title)
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: PLAN_LIMIT_NOTICE.upgradeCta })).not.toBeInTheDocument()
+    // The anonymous teaser reason is unchanged.
+    expect(trackEvent).toHaveBeenCalledWith('audit_limit_reached', {
+      reason: 'anon_teaser_used',
+    })
+  })
+
+  it('clears the notice when dismissed so a new attempt starts clean', async () => {
+    startScanWithHandoff.mockResolvedValue({
+      ok: false,
+      status: 402,
+      code: 'UPGRADE_REQUIRED',
+      action: 'upgrade',
+      message: 'Your plan supports 1 Product.',
+    })
+    render(
+      <MeProvider initialUser={{ id: 'u1', email: 'a@b.com', plan: 'FREE' } as never}>
+        <AuditInput idSuffix="-plan-dismiss" />
+      </MeProvider>,
+    )
+
+    await submitFromDashboard()
+    fireEvent.click(await screen.findByRole('button', { name: PLAN_LIMIT_NOTICE.dismissCta }))
+
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: PLAN_LIMIT_NOTICE.upgradeCta })).not.toBeInTheDocument()
+    )
+  })
+})
+
+describe('AuditInput post-signup handoff', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    sessionStorage.clear()
+    startScanWithHandoff.mockResolvedValue({ ok: true, siteId: 'site-1' })
+  })
+
+  it('resumes the handed-off URL exactly once across a remount', async () => {
+    const first = render(
+      <MeProvider initialUser={{ id: 'u1', email: 'a@b.com', plan: 'FREE' } as never}>
+        <AuditInput idSuffix="-handoff" initialUrl="https://example.com" autoStart />
+      </MeProvider>,
+    )
+
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledTimes(1))
+    expect(startScanWithHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://example.com' })
+    )
+
+    // The real round trip remounts the page (post-login -> dashboard), so the
+    // same URL must not start a second analysis.
+    first.unmount()
+    render(
+      <MeProvider initialUser={{ id: 'u1', email: 'a@b.com', plan: 'FREE' } as never}>
+        <AuditInput idSuffix="-handoff-remount" initialUrl="https://example.com" autoStart />
+      </MeProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Website URL' })).toBeEnabled())
+    expect(startScanWithHandoff).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not auto-submit when no handoff URL is present', async () => {
+    render(
+      <MeProvider initialUser={{ id: 'u1', email: 'a@b.com', plan: 'FREE' } as never}>
+        <AuditInput idSuffix="-no-handoff" autoStart />
+      </MeProvider>,
+    )
+
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Website URL' })).toBeEnabled())
+    expect(startScanWithHandoff).not.toHaveBeenCalled()
   })
 })

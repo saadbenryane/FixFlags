@@ -27,6 +27,7 @@ import {
 } from '@/lib/audit/usage'
 import { ensureProductProject } from '@/lib/audit/ensure-product-project'
 import { ensureSiteForAudit } from '@/lib/sites/ensure-site'
+import { resolveVisitorKey } from '@/lib/sites/visitor-identity'
 import {
   refreshUserUsagePeriod,
   rollUserUsagePeriod,
@@ -48,8 +49,18 @@ export interface CreateAuditOptions {
   monitoringMode?: 'FULL'
   delayMs?: number
   attribution?: AuditAttribution
-  /** Client IP / fingerprint for anon soft IP ceiling. Required for anonymous creates in prod. */
+  /**
+   * Client IP for the anonymous abuse ceiling and host rate limits. Abuse
+   * control only: this value is never persisted as a tenancy key and never
+   * identifies an anonymous Site board.
+   */
   clientId?: string
+  /**
+   * Private anonymous visitor identity. Owns the provisional Site board and
+   * scopes scan reuse, so one visitor can never be handed another's scan.
+   * Falls back to a per-request visitor key when a caller omits it.
+   */
+  visitorKey?: string
   /** Preview/staging credentials for authenticated targets (signed-in only). */
   scanAccess?: ScanAccessConfig | null
   /** When true, inherit Project.scanAccessEncrypted if scanAccess is omitted. */
@@ -180,6 +191,11 @@ export async function createAndEnqueueAudit(
   // requested auditMode and slow replay. This choke point is shared by every
   // create path (checks, roast, MCP, watch).
   const isAnonTeaser = !userId && !options.parentId
+
+  // Identity and abuse control are separate concerns. The visitor key owns the
+  // board; the client IP only bounds abuse. Resolved here so every create path
+  // (web, CLI, MCP) shares one definition of "who is this anonymous visitor".
+  const visitorKey = options.visitorKey ?? (isAnonTeaser ? await resolveVisitorKey() : '')
 
   if (options.parentId) {
     await assertParentAuditAllowed(options.parentId, userId)
@@ -444,35 +460,45 @@ export async function createAndEnqueueAudit(
     audit = await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`
         SELECT pg_advisory_xact_lock(
-          hashtextextended(${`fixflags:anon-url-reuse:${url}`}, 0)
+          hashtextextended(${`fixflags:anon-url-reuse:${visitorKey}:${url}`}, 0)
         )
       `
       const windowStart = new Date(Date.now() - ANON_URL_REUSE_WINDOW_MS)
-      const recent = await tx.audit.findFirst({
+      // Reuse must be scoped to what THIS visitor already owns. Matching on the
+      // URL alone handed a stranger's scan to a first-time visitor, who then had
+      // no claim cookie for it and so signed up to an empty account.
+      //
+      // The visitor's own board for this host is the only reuse candidate: it is
+      // keyed by (sessionKey, canonicalHost) and already records the audit that
+      // produced it, so "my last scan of this site" needs no new state.
+      const canonicalHost = new URL(url).hostname
+      const ownedSite = await tx.provisionalSite.findUnique({
         where: {
-          url,
-          isPublic: true,
-          AND: [
-            { status: { not: 'FAILED' } },
-            {
-              OR: [
-                {
-                  status: { notIn: ['COMPLETED', 'FAILED'] },
-                  createdAt: { gte: windowStart },
-                },
-                {
-                  status: 'COMPLETED',
-                  completedAt: { gte: windowStart },
-                },
-              ],
-            },
-          ],
+          sessionKey_canonicalHost: { sessionKey: visitorKey, canonicalHost },
         },
-        orderBy: { createdAt: 'desc' },
-        select: { id: true, status: true, parentId: true },
+        select: { primaryAuditId: true },
       })
-      if (recent) {
-        return { ...recent, reused: true }
+      const ownedAuditId = ownedSite?.primaryAuditId
+      if (ownedAuditId) {
+        const owned = await tx.audit.findFirst({
+          where: {
+            id: ownedAuditId,
+            isPublic: true,
+            AND: [
+              { status: { not: 'FAILED' } },
+              {
+                OR: [
+                  { status: { notIn: ['COMPLETED', 'FAILED'] }, createdAt: { gte: windowStart } },
+                  { status: 'COMPLETED', completedAt: { gte: windowStart } },
+                ],
+              },
+            ],
+          },
+          select: { id: true, status: true, parentId: true },
+        })
+        if (owned) {
+          return { ...owned, reused: true }
+        }
       }
 
       const anonCheck = await checkAnonymousAuditAllowed()
@@ -508,7 +534,7 @@ export async function createAndEnqueueAudit(
       auditId: audit.id,
       userId,
       projectId,
-      sessionKey: options.clientId ?? null,
+      sessionKey: visitorKey || null,
     })
   } catch (error) {
     if (!audit.reused) {
@@ -542,6 +568,13 @@ export async function createAndEnqueueAudit(
     throw new Error('Site board identity was empty after ensure')
   }
 
+  if (!userId && !options.parentId) {
+    // Claimed before the reuse return: reuse is now scoped to this visitor's
+    // own board, so the audit is always theirs to claim. Without this, a
+    // returning visitor signed up to an account that did not contain their Site.
+    await trackAnonymousAuditId(audit.id)
+  }
+
   if (audit.reused) {
     return {
       auditId: audit.id,
@@ -550,10 +583,6 @@ export async function createAndEnqueueAudit(
       parentId: audit.parentId,
       siteId: site.siteId,
     }
-  }
-
-  if (!userId && !options.parentId) {
-    await trackAnonymousAuditId(audit.id)
   }
 
   try {

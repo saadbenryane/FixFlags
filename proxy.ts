@@ -7,8 +7,13 @@ import {
   siteHostname,
 } from '@/lib/http/site-host'
 
-function isProtectedPath(pathname: string): boolean {
-  return pathname.startsWith('/admin/') || pathname.startsWith('/settings/')
+const PROTECTED_PREFIXES = ['/admin', '/settings'] as const
+
+/** Segment-aware match so a bare `/settings` or `/admin` is guarded like its children. */
+export function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  )
 }
 
 function isShopifyEmbeddedPath(pathname: string): boolean {

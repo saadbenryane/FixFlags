@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupInput } from '@/components/ui/input-group'
 import { ArrowRight, Link2, Loader2 } from 'lucide-react'
-import { REVIEW_ENTRY, AUDIT_PROGRESS, AUDIT_ERRORS } from '@/lib/marketing/copy'
+import { REVIEW_ENTRY, AUDIT_PROGRESS, AUDIT_ERRORS, type PlanLimitKind } from '@/lib/marketing/copy'
 import { URL_PLACEHOLDER } from '@/lib/marketing/copy/brand'
 import { cn } from '@/lib/utils'
 import { trackEvent } from '@/lib/analytics/events'
@@ -14,10 +14,28 @@ import { useMe } from '@/hooks/useMe'
 import {
   startScanWithHandoff,
   trackStartedAudit,
+  type CreateCheckResult,
 } from '@/lib/audit/start-scan-handoff'
 import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
+import { PlanLimitNotice } from '@/components/audit/PlanLimitNotice'
 
 const AUTOSTART_DONE_KEY = 'ff:autostart-url'
+
+/**
+ * A created check can be refused for two different reasons that need different
+ * words: the plan has no room for another Site, or the plan's analyses for the
+ * period are spent. The API answers both with HTTP 402; the action it returns
+ * is what separates them.
+ */
+function planLimitKind(result: Extract<CreateCheckResult, { ok: false }>): PlanLimitKind | null {
+  if (result.code === 'AUTH_REQUIRED') return null
+  if (result.status !== 402 && result.action !== 'buy_credits' && result.action !== 'upgrade') {
+    return null
+  }
+  return result.action === 'buy_credits' || result.code === 'TOKEN_LIMIT'
+    ? 'check-limit'
+    : 'site-limit'
+}
 
 export function AuditInput({
   variant = 'default',
@@ -47,11 +65,12 @@ export function AuditInput({
   const inputId = `audit-url${idSuffix}`
   const errorId = `audit-url-error${idSuffix}`
   const router = useRouter()
-  const { user } = useMe()
+  const { user, claimUpgrade, dismissClaimUpgrade } = useMe()
   const [url, setUrl] = useState(initialUrl)
   const [loading, setLoading] = useState(false)
   const [hydrated, setHydrated] = useState(false)
   const [urlError, setUrlError] = useState('')
+  const [planLimit, setPlanLimit] = useState<{ kind: PlanLimitKind; message: string } | null>(null)
   const [authDialogOpen, setAuthDialogOpen] = useState(false)
   const [pendingUrl, setPendingUrl] = useState('')
   const autoStartedRef = useRef(false)
@@ -65,6 +84,7 @@ export function AuditInput({
 
   async function submitUrl(inputUrl?: string) {
     setUrlError('')
+    setPlanLimit(null)
 
     const failValidation = (reason: string, message: string) => {
       setUrlError(message)
@@ -133,15 +153,24 @@ export function AuditInput({
       },
     })
     if (!result.ok) {
+      setLoading(false)
       if (result.code === 'AUTH_REQUIRED') {
         setPendingUrl(normalized)
         setAuthDialogOpen(true)
-        setLoading(false)
         trackEvent('audit_limit_reached', { reason: 'anon_teaser_used' })
-      } else {
-        setUrlError(result.message)
-        setLoading(false)
+        return
       }
+      // A plan limit is a state, not a failure of the URL. It gets the shared
+      // notice and a real next step; a bare sentence leaves the customer stuck.
+      const limitKind = planLimitKind(result)
+      if (limitKind) {
+        setPlanLimit({ kind: limitKind, message: result.message })
+        trackEvent('audit_limit_reached', {
+          reason: limitKind === 'check-limit' ? 'plan_analyses_used' : 'plan_site_limit',
+        })
+        return
+      }
+      setUrlError(result.message)
     }
     // On success, navigation replaces this page with the Site board.
   }
@@ -174,6 +203,17 @@ export function AuditInput({
     }
     router.push('/#sample-review')
   }
+
+  function handleDismissPlanLimit() {
+    setPlanLimit(null)
+    dismissClaimUpgrade()
+  }
+
+  // A refused claim is the more specific truth, so it outranks the limit the
+  // follow-up analysis then hit.
+  const activePlanLimit = claimUpgrade
+    ? { kind: claimUpgrade.kind, message: claimUpgrade.message }
+    : planLimit
 
   const describedBy = urlError ? errorId : undefined
   const busy = loading
@@ -301,6 +341,14 @@ export function AuditInput({
           </p>
         )}
       </form>
+
+      {activePlanLimit ? (
+        <PlanLimitNotice
+          kind={activePlanLimit.kind}
+          message={activePlanLimit.message}
+          onDismiss={handleDismissPlanLimit}
+        />
+      ) : null}
 
       {isLanding && showLandingExtras ? (
         <div className="flex flex-col items-center gap-1">

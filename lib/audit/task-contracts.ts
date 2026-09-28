@@ -485,6 +485,8 @@ export async function checkAndPlan(options: TaskQueueOptions & {
   userId: string | null
   parentId?: string
   clientId?: string
+  /** Private anonymous visitor identity. Owns the Site board and scan reuse. */
+  visitorKey?: string
   auditMode?: 'SINGLE' | 'CRITICAL_PATH'
   attribution?: AuditAttribution
   scanAccess?: import('@/lib/audit/scan-access').ScanAccessConfig | null
@@ -494,6 +496,7 @@ export async function checkAndPlan(options: TaskQueueOptions & {
     userId: options.userId,
     parentId: options.parentId,
     clientId: options.clientId,
+    visitorKey: options.visitorKey,
     // Anonymous first scans are teasers: single-page reduced pipeline. The
     // create path enforces the same subset; the contract layer makes the
     // CLI/transport scan-stage selection explicit for anonymous callers.

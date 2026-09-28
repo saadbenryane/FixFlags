@@ -1,14 +1,14 @@
 import { headers } from 'next/headers'
 import { auth } from '@/lib/auth'
 import { readClaimedAnonymousIds } from '@/lib/audit/usage'
-import { requestClientId } from '@/lib/security/rate-limit'
+import { peekVisitorKey } from '@/lib/sites/visitor-identity'
 import {
   resolveSiteAccess,
   siteAccessHttpStatus,
   type SiteAccessDecision,
 } from '@/lib/sites/access'
 
-/** Resolve the current Site viewer from session + anon client id + claim cookie. */
+/** Resolve the current Site viewer from session + anon visitor key + claim cookie. */
 export async function currentSiteViewer(): Promise<{
   userId: string | null
   sessionKey: string
@@ -19,7 +19,9 @@ export async function currentSiteViewer(): Promise<{
   const anonAuditIds = await readClaimedAnonymousIds()
   return {
     userId: session?.user?.id ?? null,
-    sessionKey: requestClientId(headerStore),
+    // Read-only: resolving a board must never mint an identity, and it must
+    // match the key that wrote the board, not the request IP.
+    sessionKey: await peekVisitorKey(),
     anonAuditIds,
   }
 }

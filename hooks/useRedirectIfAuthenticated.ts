@@ -1,12 +1,21 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { authClient } from '@/lib/auth-client'
 import { useAuthRedirect } from '@/hooks/useAuthRedirect'
 
-/** Redirect authenticated users away from sign-in / sign-up. */
+/**
+ * Redirect an already signed-in visitor away from sign-in / sign-up.
+ *
+ * The page presentation goes through `/post-login`, the single post-auth path, so
+ * an anonymous Review is still claimed and its claim cookie cleared. Jumping
+ * straight to `next` skips the claim and leaves the report locked. Pass
+ * `disabled` for an overlay presentation, which is not a navigation.
+ */
 export function useRedirectIfAuthenticated(options?: { disabled?: boolean }) {
-  const { navigateAfterAuth } = useAuthRedirect()
+  const router = useRouter()
+  const { postLoginHref } = useAuthRedirect()
 
   useEffect(() => {
     if (options?.disabled) return
@@ -14,7 +23,7 @@ export function useRedirectIfAuthenticated(options?: { disabled?: boolean }) {
       try {
         const { data } = await authClient.getSession()
         if (data?.user) {
-          await navigateAfterAuth()
+          router.push(postLoginHref)
         }
       } catch (error) {
         // This background check is routinely cancelled when the visitor leaves
@@ -25,5 +34,5 @@ export function useRedirectIfAuthenticated(options?: { disabled?: boolean }) {
         }
       }
     })()
-  }, [navigateAfterAuth, options?.disabled])
+  }, [router, postLoginHref, options?.disabled])
 }

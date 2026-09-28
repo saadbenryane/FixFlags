@@ -1,9 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Callout } from '@/components/ui/callout'
 import { Input } from '@/components/ui/input'
+import { SCAN_LIMIT_GATE } from '@/lib/marketing/copy'
 import type { PublicConnection } from '@/lib/sites/connections/match'
 
 type NotificationLevel = 'FLAGS' | 'CRITICAL_ONLY' | 'OFF'
@@ -41,6 +44,7 @@ export function SiteSettingsControls({
   const [analytics, setAnalytics] = useState(initial.analytics ?? emptyConnection('ANALYTICS'))
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [watchNotice, setWatchNotice] = useState<string | null>(null)
 
   async function saveNotifications() {
     setBusy(true)
@@ -185,11 +189,20 @@ export function SiteSettingsControls({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ interval }),
       })
-      const body = await response.json().catch(() => ({})) as { error?: string; interval?: string }
+      const body = await response.json().catch(() => ({})) as {
+        error?: string
+        message?: string
+        interval?: 'weekly' | 'daily' | null
+        code?: string
+      }
       if (!response.ok) {
-        setMessage(body.error ?? 'Could not update Watch.')
+        setMessage(body.message ?? body.error ?? 'Could not update Watch.')
         return
       }
+      // A cadence the plan does not include is never saved quietly. The route
+      // answers with the cadence it did apply plus the reason, and both are
+      // shown: the confirmation names what is live, the notice says why.
+      setWatchNotice(body.code === 'INTERVAL_NOT_ALLOWED' ? body.message ?? null : null)
       setMessage(interval ? `Watch is ${body.interval ?? interval}.` : 'Watch is paused.')
       router.refresh()
     } finally {
@@ -203,6 +216,16 @@ export function SiteSettingsControls({
         <h2 className="text-lg font-semibold">Watch</h2>
         <p className="mt-1 text-sm text-muted-foreground">{watch?.label ?? 'Not watching'}</p>
         {watch?.lastError ? <p className="mt-2 text-sm text-muted-foreground">{watch.lastError}</p> : null}
+        {watchNotice ? (
+          <div className="mt-3">
+            <Callout variant="info">
+              <p>{watchNotice}</p>
+              <Button asChild size="sm" variant="outline" className="mt-2">
+                <Link href="/pricing">{SCAN_LIMIT_GATE.upgrade.secondaryCta}</Link>
+              </Button>
+            </Callout>
+          </div>
+        ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
           <Button variant={watch?.covered ? 'outline' : 'brand'} disabled={busy} onClick={() => void setWatch('weekly')}>Weekly</Button>
           <Button variant="outline" disabled={busy} onClick={() => void setWatch('daily')}>Daily</Button>

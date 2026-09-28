@@ -66,8 +66,8 @@ Detailed Stripe environment setup is in [stripe-setup.md](stripe-setup.md). Hist
 
 1. Push the verified candidate to `origin/main` only when the release owner intends to deploy it.
 2. Wait for both Railway web and worker services to report success for the exact commit.
-3. Confirm `/api/health/ready` reports database, Redis, migrations, worker, storage, browser, AI, and email readiness without a required subsystem missing.
-4. Confirm `/api/health` reports the exact candidate commit.
+3. Confirm `/api/health/ready` reports database, Redis, migrations, worker, storage, browser, AI, and email readiness without a required subsystem missing. The `migrations` subsystem compares the migrations shipped in the running image against `_prisma_migrations` and reports one of: current, missing shipped migrations, a poisoned ledger (an unfinished migration, which blocks every later deploy until it is resolved), or undeterminable when the runtime ships no migration directory. It is served by the endpoint; do not substitute a manual `prisma migrate status` over an SSH tunnel.
+4. Confirm `/api/health` reports the exact candidate commit. It also lists `migrations` in `degraded` when the database is not current, which is informational and never fails that probe.
 5. Run the deployed stage and final receipt. Verify canonical image URLs, public route boundaries, and the critical customer journeys.
 6. Record the receipt and journey evidence in the active session record, then update the product masterplan.
 

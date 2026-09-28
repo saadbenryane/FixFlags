@@ -4,13 +4,39 @@ import { DashboardCheckoutToast } from '@/components/dashboard/DashboardCheckout
 import { SitesOverviewGrid } from '@/components/sites/SitesOverviewGrid'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Container } from '@/components/ui/container'
+import { AuditInput } from '@/components/audit/AuditInput'
 import { getAppViewer } from '@/lib/auth/app-viewer'
+import { normalizeAuditUrl } from '@/lib/audit/url'
 import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
+import { SCAN_HANDOFF } from '@/lib/marketing/copy'
 
-export default async function DashboardPage() {
+/**
+ * The sign-up handoff lands here as `?url=`. The signup gate sends the visitor
+ * to /post-login first, so the URL has to survive that redirect to keep the
+ * promise of the Scan button. Only the first value is read so a repeated query
+ * cannot start two scans.
+ */
+function handoffUrl(raw: string | string[] | undefined): string | null {
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const normalized = normalizeAuditUrl(trimmed)
+  return normalized.ok ? normalized.url : null
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ url?: string | string[] }>
+}) {
   const viewer = await getAppViewer()
   if (!viewer) redirect('/sign-in')
-  const sites = await loadSiteSummaries(viewer.user.id)
+  const [sites, params] = await Promise.all([
+    loadSiteSummaries(viewer.user.id),
+    searchParams,
+  ])
+  const resumedUrl = handoffUrl(params?.url)
 
   return (
     <Container
@@ -25,6 +51,19 @@ export default async function DashboardPage() {
       <p className="max-w-2xl text-sm text-muted-foreground">
         Each Site keeps its Cards, Journeys, Flags, fixes, verification history, and Watch state together.
       </p>
+      {resumedUrl ? (
+        <div className="rounded-[var(--radius-card)] border border-border/60 bg-card p-4 sm:p-5">
+          <p className="mb-3 text-sm font-medium text-foreground">
+            {SCAN_HANDOFF.resuming(resumedUrl)}
+          </p>
+          <AuditInput
+            idSuffix="-handoff"
+            source="dashboard"
+            initialUrl={resumedUrl}
+            autoStart
+          />
+        </div>
+      ) : null}
       <SitesOverviewGrid sites={sites} />
     </Container>
   )

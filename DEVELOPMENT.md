@@ -161,7 +161,7 @@ Set `SEED_ADMIN_EMAIL` and a unique 12+ character `SEED_ADMIN_PASSWORD` in `.env
 
 ## Production deployment (Railway)
 
-Railway builds via **Dockerfile** (`railway.toml` `builder = "DOCKERFILE"`), not Nixpacks. Inside the image, `CMD` runs `npm start` (with `prestart` → `db:deploy`).
+Railway builds via **Dockerfile** (`railway.toml` `builder = "DOCKERFILE"`), not Nixpacks. Inside the image, `CMD` runs `node scripts/runtime-start.mjs web`. There is no `prestart` script: `runtime-start.mjs` invokes the Prisma CLI directly (`node node_modules/prisma/build/index.js migrate deploy`) and exits non-zero if it fails, so a failed migration blocks the server from booting. `npm start` and `npm run worker:start` call that same script.
 
 ```bash
 # Local parity with Railway image (required when Dockerfile / package*.json change)
@@ -169,7 +169,7 @@ docker build -t fixflags:local .
 
 # Web service
 npm start
-# FIXFLAGS_PROCESS_ROLE=web; prestart applies Prisma migrations
+# FIXFLAGS_PROCESS_ROLE=web; scripts/runtime-start.mjs applies Prisma migrations first
 
 # Required worker service from railway.worker.toml
 FIXFLAGS_PROCESS_ROLE=worker AUDIT_WORKER_CONCURRENCY=2 npm run worker:start

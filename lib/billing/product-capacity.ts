@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client'
-import { projectLimitForPlan } from '@/lib/billing/plans'
+import { siteCarePolicy } from '@/lib/sites/application/care-policy'
 
 export class ProductLimitReached extends Error {
   constructor(readonly limit: number) {
@@ -21,11 +21,13 @@ export async function assertCanCreateProduct(
 
   const user = await tx.user.findUnique({
     where: { id: userId },
-    select: { plan: true },
+    select: { plan: true, subscriptionStatus: true, role: true },
   })
   if (!user) throw new Error('Account not found')
 
-  const limit = projectLimitForPlan(user.plan)
+  // The Site cap is one product decision, read from the care policy. Enforcing it
+  // here from a second re-derivation is how a plan and its limit drift apart.
+  const limit = siteCarePolicy(user).maxSites
   if (limit === null) return
 
   const count = await tx.project.count({ where: { userId, deletedAt: null } })

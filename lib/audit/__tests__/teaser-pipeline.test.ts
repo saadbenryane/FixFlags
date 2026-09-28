@@ -17,6 +17,9 @@ const { prismaMock, queueAddMock, gates } = vi.hoisted(() => ({
     audit: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), count: vi.fn() },
     user: { findUnique: vi.fn() },
     project: { findUnique: vi.fn() },
+    // Anonymous reuse is resolved from the visitor's own board before any scan
+    // is considered reusable.
+    provisionalSite: { findUnique: vi.fn(async () => null) },
     $executeRaw: vi.fn(),
     $transaction: vi.fn(async (arg: unknown) => {
       if (typeof arg === 'function') return (arg as (tx: unknown) => unknown)(prismaMock)
@@ -64,6 +67,9 @@ vi.mock('@/lib/audit/scan-access', () => ({
 vi.mock('@/lib/audit/usage', () => gates)
 vi.mock('@/lib/audit/ensure-product-project', () => ({
   ensureProductProject: vi.fn(async () => ({ id: 'project-1' })),
+}))
+vi.mock('@/lib/sites/visitor-identity', () => ({
+  resolveVisitorKey: vi.fn(async () => 'anon-v1:testvisitor0000000'),
 }))
 vi.mock('@/lib/sites/ensure-site', () => ({
   ensureSiteForAudit: vi.fn(async () => ({

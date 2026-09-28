@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const queryRaw = vi.hoisted(() => vi.fn())
+const readMigrationReadiness = vi.hoisted(() => vi.fn())
 const isProdStorageConfigured = vi.hoisted(() => vi.fn())
 const isAiProviderConfigured = vi.hoisted(() => vi.fn())
 const isBillingFullyConfigured = vi.hoisted(() => vi.fn())
@@ -20,6 +21,7 @@ vi.mock('@/lib/audit/judge-config', () => ({
   getJudgeProviderChain,
   getConfiguredJudgeProviderChain,
 }))
+vi.mock('@/lib/health/readiness', () => ({ readMigrationReadiness }))
 
 const { GET } = await import('../route')
 const { resolveCommitSha } = await import('@/lib/health/commit-sha')
@@ -33,6 +35,7 @@ function healthyConfig() {
   getOpenAIProviderKey.mockReturnValue('sk-test')
   getJudgeProviderChain.mockReturnValue(['openai'])
   getConfiguredJudgeProviderChain.mockReturnValue(['openai'])
+  readMigrationReadiness.mockResolvedValue({ ok: true })
 }
 
 afterEach(() => {
@@ -69,6 +72,33 @@ describe('GET /api/health', () => {
     expect(response.status).toBe(200)
     const body = await response.json()
     expect(body.degraded).toEqual(['ai', 'billing', 'product_watch', 'rate_limit_redis'])
+  })
+
+  it('reports migration drift without failing the healthcheck', async () => {
+    healthyConfig()
+    readMigrationReadiness.mockResolvedValue({
+      ok: false,
+      detail: 'Database is missing 1 shipped migration(s): 20260927050000_run_verification_targets',
+    })
+    queryRaw.mockResolvedValueOnce([{ '?column?': 1 }])
+
+    const response = await GET()
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.degraded).toContain('migrations')
+    expect(body.migrations.ok).toBe(false)
+  })
+
+  it('keeps the healthcheck alive when the migration ledger cannot be read', async () => {
+    healthyConfig()
+    readMigrationReadiness.mockRejectedValue(new Error('ledger read failed'))
+    queryRaw.mockResolvedValueOnce([{ '?column?': 1 }])
+
+    const response = await GET()
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.degraded).toContain('migrations')
+    expect(body.migrations.detail).toBe('ledger read failed')
   })
 
   it('reports storage degradation on production deploys', async () => {
