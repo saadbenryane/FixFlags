@@ -59,6 +59,20 @@ describe('release preflight contract', () => {
     assert.deepEqual(validateReleasePreflight(env, { checkFile: false, stage: 'foundation' }), [])
   })
 
+  it('requires the provisioned Site, Outcome, owner, and controlled failure fixture', () => {
+    const env = validEnv({
+      E2E_SITE_ID: '',
+      E2E_OUTCOME_ID: '',
+      E2E_SITE_OWNER_EMAIL: '',
+      E2E_DEPLOYMENT_TRIGGER_URL: '',
+    })
+    const issues = validateReleasePreflight(env, { checkFile: false, stage: 'credentialed-core' })
+    assert.ok(issues.includes('Missing E2E_SITE_ID'))
+    assert.ok(issues.includes('Missing E2E_OUTCOME_ID'))
+    assert.ok(issues.includes('Missing E2E_SITE_OWNER_EMAIL'))
+    assert.ok(issues.includes('Missing E2E_DEPLOYMENT_TRIGGER_URL'))
+  })
+
   it('rejects live Stripe keys in billing-open', () => {
     const issues = validateReleasePreflight(validEnv({ E2E_STRIPE_SECRET_KEY: 'sk_live_secret' }), { checkFile: false, stage: 'billing-open' })
     assert.ok(issues.some((issue) => issue.includes('test-mode')))

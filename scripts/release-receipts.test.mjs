@@ -99,11 +99,15 @@ describe('release evidence receipts', () => {
   it('hydrates browser inputs from a private fixture manifest without exposing its values', () => {
     const workingDirectory = temp()
     const manifestPath = path.join(workingDirectory, 'fixtures.json')
-    writeFileSync(manifestPath, JSON.stringify({ fixtures: { pro: { email: 'pro@example.test', password: 'hidden', reportId: 'report', apiKey: 'ff_secret' }, free: {}, studio: {}, share: {}, watch: {}, waitlistReleased: {}, waitlistBlocked: {} } }))
+    writeFileSync(manifestPath, JSON.stringify({ fixtures: { pro: { email: 'pro@example.test', password: 'hidden', reportId: 'report', apiKey: 'ff_secret', siteId: 'site-1', outcomeId: 'outcome-1' }, free: {}, studio: {}, share: {}, watch: {}, waitlistReleased: {}, waitlistBlocked: {} } }))
     chmodSync(manifestPath, 0o600)
     const hydrated = hydrateReleaseFixtureEnvironment({ RELEASE_FIXTURE_MANIFEST: manifestPath })
     assert.equal(hydrated.E2E_PRO_EMAIL, 'pro@example.test')
     assert.equal(hydrated.RELEASE_ENV_API_KEY, 'ff_secret')
+    assert.equal(hydrated.E2E_SITE_ID, 'site-1')
+    assert.equal(hydrated.E2E_SITE_OWNER_EMAIL, 'pro@example.test')
+    assert.equal(hydrated.E2E_SITE_OWNER_PASSWORD, 'hidden')
+    assert.equal(hydrated.E2E_OUTCOME_ID, 'outcome-1')
   })
 
   it('attests the exact release-environment revision before provisioning fixtures', () => {

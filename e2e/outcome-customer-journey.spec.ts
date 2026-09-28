@@ -209,10 +209,11 @@ test.describe('Outcome customer loop', () => {
   }) => {
     test.setTimeout(1_200_000)
     const owner = await signInOwner(browser)
+    const ownerRequest = owner.page.request
     const siteId = requiredEnv('E2E_SITE_ID')
 
     // The Site leads with its important Outcomes and states coverage honestly.
-    const start = await loadHome(request, siteId)
+    const start = await loadHome(ownerRequest, siteId)
     expect(start.outcomes.length, 'a claimed Site has Outcomes').toBeGreaterThan(0)
     expect(start.coverageSummary.length).toBeGreaterThan(0)
     const outcomeId = targetOutcomeId(start)
@@ -220,19 +221,19 @@ test.describe('Outcome customer loop', () => {
     expect(flagForOutcome(start, outcomeId).outcome).toBeTruthy()
 
     // 1. Clear. FixFlags exercised the Outcome itself and reached a trustworthy conclusion.
-    const clearRun = await startRun(request, siteId, outcomeId, 'clear')
-    const cleared = await waitForRunResult(request, siteId, clearRun.runId, 'CLEAR')
+    const clearRun = await startRun(ownerRequest, siteId, outcomeId, 'clear')
+    const cleared = await waitForRunResult(ownerRequest, siteId, clearRun.runId, 'CLEAR')
     expect(cleared.outcomes[0]?.summary, 'a Clear states its evidence').toBeTruthy()
 
-    const afterClear = await loadHome(request, siteId)
+    const afterClear = await loadHome(ownerRequest, siteId)
     expect(flagForOutcome(afterClear, outcomeId).matches, 'a Clear Outcome has no open Flag').toEqual([])
 
     // 2. An induced, independently caught failure produces a Flag for that Outcome.
     await setFixtureBroken(request, { journey: 'outcome-loop', siteId, flagId: outcomeId, broken: true })
-    const flagRun = await startRun(request, siteId, outcomeId, 'flag')
-    await waitForRunResult(request, siteId, flagRun.runId, 'FLAG')
+    const flagRun = await startRun(ownerRequest, siteId, outcomeId, 'flag')
+    await waitForRunResult(ownerRequest, siteId, flagRun.runId, 'FLAG')
 
-    const afterFlag = await loadHome(request, siteId)
+    const afterFlag = await loadHome(ownerRequest, siteId)
     const flagged = flagForOutcome(afterFlag, outcomeId)
     expect(flagged.outcome.state).toBe('FLAG')
     expect(flagged.matches.length, 'one Outcome failure is one Flag').toBe(1)
@@ -250,7 +251,7 @@ test.describe('Outcome customer loop', () => {
       data: { action: 'copy' },
     })
     expect(handoff.status(), await handoff.text()).toBe(200)
-    const afterHandoff = await loadHome(request, siteId)
+    const afterHandoff = await loadHome(ownerRequest, siteId)
     expect(flagForOutcome(afterHandoff, outcomeId).outcome.state, 'a handoff is not a verdict').toBe('FLAG')
     expect(flagForOutcome(afterHandoff, outcomeId).matches.length, 'the Flag stays open').toBe(1)
 
@@ -259,9 +260,9 @@ test.describe('Outcome customer loop', () => {
     expect(blocked.status(), await blocked.text()).toBe(200)
     const blockedRun = (await blocked.json()) as { runId: string; attemptId: string | null }
     expect(blockedRun.runId, 'verify starts a fresh independent run').toBeTruthy()
-    await waitForRunResult(request, siteId, blockedRun.runId, 'FLAG')
+    await waitForRunResult(ownerRequest, siteId, blockedRun.runId, 'FLAG')
 
-    const afterFailedVerify = await loadHome(request, siteId)
+    const afterFailedVerify = await loadHome(ownerRequest, siteId)
     expect(flagForOutcome(afterFailedVerify, outcomeId).outcome.state).toBe('FLAG')
     expect(flagForOutcome(afterFailedVerify, outcomeId).matches.length, 'a failed Verify leaves the Flag open')
       .toBe(1)
@@ -271,9 +272,9 @@ test.describe('Outcome customer loop', () => {
     const recovery = await owner.page.request.post(`/api/sites/${siteId}/flags/${flagId}/verify`, { data: {} })
     expect(recovery.status(), await recovery.text()).toBe(200)
     const recoveryRun = (await recovery.json()) as { runId: string }
-    await waitForRunResult(request, siteId, recoveryRun.runId, 'CLEAR')
+    await waitForRunResult(ownerRequest, siteId, recoveryRun.runId, 'CLEAR')
 
-    const afterRecovery = await loadHome(request, siteId)
+    const afterRecovery = await loadHome(ownerRequest, siteId)
     expect(flagForOutcome(afterRecovery, outcomeId).outcome.state, 'a proven recovery is Clear').toBe('CLEAR')
     expect(
       flagForOutcome(afterRecovery, outcomeId).matches,
@@ -282,10 +283,10 @@ test.describe('Outcome customer loop', () => {
 
     // 6. Recurrence reopens the same Flag identity rather than opening a second one.
     await setFixtureBroken(request, { journey: 'outcome-loop', siteId, flagId, broken: true })
-    const recurRun = await startRun(request, siteId, outcomeId, 'recur')
-    await waitForRunResult(request, siteId, recurRun.runId, 'FLAG')
+    const recurRun = await startRun(ownerRequest, siteId, outcomeId, 'recur')
+    await waitForRunResult(ownerRequest, siteId, recurRun.runId, 'FLAG')
 
-    const afterRecurrence = await loadHome(request, siteId)
+    const afterRecurrence = await loadHome(ownerRequest, siteId)
     const recurred = flagForOutcome(afterRecurrence, outcomeId)
     expect(recurred.outcome.state).toBe('FLAG')
     expect(recurred.matches.length, 'recurrence is one Flag, not a pile').toBe(1)
@@ -296,12 +297,11 @@ test.describe('Outcome customer loop', () => {
 
   test('[journey:site-surfaces] Home, Flags, Outcome, Flag, and Settings meet the launch bar', async ({
     browser,
-    request,
   }) => {
     test.setTimeout(900_000)
     const owner = await signInOwner(browser)
     const siteId = requiredEnv('E2E_SITE_ID')
-    const home = await loadHome(request, siteId)
+    const home = await loadHome(owner.page.request, siteId)
     const { outcome, matches } = flagForOutcome(home, targetOutcomeId(home))
 
     const paths = [
@@ -321,13 +321,13 @@ test.describe('Outcome customer loop', () => {
 
   test('[journey:watch-truth] Watch states its cadence and coverage, and a repeated trigger is one run', async ({
     browser,
-    request,
   }) => {
     test.setTimeout(600_000)
     const owner = await signInOwner(browser)
+    const ownerRequest = owner.page.request
     const siteId = requiredEnv('E2E_SITE_ID')
 
-    const before = await loadHome(request, siteId)
+    const before = await loadHome(ownerRequest, siteId)
     const outcomeId = targetOutcomeId(before)
     expect(before.watching, 'this Site is being watched').toBe(true)
     expect(before.watch.interval, 'Watch states its cadence').toBeTruthy()
@@ -335,12 +335,12 @@ test.describe('Outcome customer loop', () => {
 
     // A repeated trigger with the same key is the same run, not a second execution.
     const key = `watch-equivalence:${Date.now()}`
-    const first = await request.post(`/api/sites/${siteId}/runs`, {
+    const first = await ownerRequest.post(`/api/sites/${siteId}/runs`, {
       headers: { 'idempotency-key': key },
       data: { outcomeIds: [outcomeId] },
     })
     expect(first.status(), await first.text()).toBe(202)
-    const second = await request.post(`/api/sites/${siteId}/runs`, {
+    const second = await ownerRequest.post(`/api/sites/${siteId}/runs`, {
       headers: { 'idempotency-key': key },
       data: { outcomeIds: [outcomeId] },
     })
@@ -354,13 +354,14 @@ test.describe('Outcome customer loop', () => {
 
   test('[journey:tenant-isolation] another owner cannot read, run, or verify this Site', async ({
     browser,
-    request,
   }) => {
     test.setTimeout(300_000)
     const siteId = requiredEnv('E2E_SITE_ID')
-    const home = await loadHome(request, siteId)
+    const owner = await signInOwner(browser)
+    const home = await loadHome(owner.page.request, siteId)
     const outcomeId = targetOutcomeId(home)
     const foreignFlag = flagForOutcome(home, outcomeId).matches[0]
+    await owner.close()
 
     const stranger = await signInStranger(browser)
 

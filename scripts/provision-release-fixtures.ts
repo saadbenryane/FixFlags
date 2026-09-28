@@ -69,21 +69,28 @@ async function signIn(origin: string, email: string, password: string): Promise<
   return cookie
 }
 
-async function createRealReview(origin: string, cookie: string, url: string): Promise<string> {
+async function createRealReview(
+  origin: string,
+  cookie: string,
+  url: string,
+): Promise<{ reportId: string; siteId: string }> {
   const created = await fetch(`${origin}/api/checks`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', cookie },
     body: JSON.stringify({ url, mode: 'single', source: 'release_fixture' }),
   })
   if (!created.ok) throw new Error(`Fixture Review creation failed (${created.status}): ${await created.text()}`)
-  const reportId = String((await created.json() as { reportId?: string }).reportId ?? '')
+  const createdBody = await created.json() as { reportId?: string; siteId?: string }
+  const reportId = String(createdBody.reportId ?? '')
+  const siteId = String(createdBody.siteId ?? '')
   if (!reportId) throw new Error('Fixture Review creation returned no reportId')
+  if (!siteId) throw new Error('Fixture Review creation returned no siteId')
   const deadline = Date.now() + 360_000
   while (Date.now() < deadline) {
     const status = await fetch(`${origin}/api/reports/${reportId}/status`, { headers: { cookie } })
     if (!status.ok) throw new Error(`Fixture Review status failed (${status.status})`)
     const body = await status.json() as { status?: string; errorMsg?: string }
-    if (body.status === 'COMPLETED') return reportId
+    if (body.status === 'COMPLETED') return { reportId, siteId }
     if (body.status === 'FAILED') throw new Error(`Fixture Review failed: ${body.errorMsg ?? 'unknown error'}`)
     await new Promise((resolve) => setTimeout(resolve, 1_000))
   }
@@ -155,13 +162,30 @@ async function main() {
     for (const key of ['free', 'pro', 'studio', 'share', 'watch'] as const) {
       const fixture = fixtureEntries[key]!
       const cookie = await signIn(config.targetOrigin, String(fixture.email), String(fixture.password))
-      fixture.reportId = await createRealReview(config.targetOrigin, cookie, config.auditUrl)
+      const review = await createRealReview(config.targetOrigin, cookie, config.auditUrl)
+      fixture.reportId = review.reportId
+      fixture.siteId = review.siteId
       const audit = await prisma.audit.findUnique({
-        where: { id: String(fixture.reportId) },
+        where: { id: review.reportId },
         select: { projectId: true },
       })
       if (!audit?.projectId) throw new Error(`Fixture Review ${fixture.reportId} has no Product`)
       fixture.projectId = audit.projectId
+
+      const outcome = await prisma.siteOutcome.findFirst({
+        where: {
+          projectId: audit.projectId,
+          enabled: true,
+          kind: { not: 'GENERIC' },
+          bindings: { some: { enabled: true, required: true } },
+        },
+        orderBy: [{ criticality: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true },
+      })
+      if (!outcome) {
+        throw new Error(`Fixture Site ${review.siteId} has no independently executable Outcome`)
+      }
+      fixture.outcomeId = outcome.id
     }
 
     const manifest = {
