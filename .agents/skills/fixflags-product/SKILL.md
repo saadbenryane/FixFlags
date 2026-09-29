@@ -36,6 +36,8 @@ Broad Site category evidence expires after eight days, one weekly Watch cycle pl
 
 Site route errors should retain a path back to the same Site and a separate All Sites escape. Use the route segment's error boundary and existing error-page component; avoid redirecting a customer to the legacy report or silently dropping Site context.
 
+The public Analyze form checks the parsed URL hostname when rejecting a local destination. A word such as `localhost` in a public page path or query is not a local destination. The server's `normalizeAuditUrl` and resolved-address checks remain authoritative before any audit is queued.
+
 Launch execution goes through `requestSiteRun` in `lib/sites/application/run-requests.ts`. Watch, deployment webhooks, MCP, and flag verification are adapters. A recorded fix does not change an assessment. Safe Signup stays Couldn’t verify until an authorized reversible fixture exists. MCP OAuth metadata, PKCE, audience, and scopes live in `lib/mcp/oauth.ts`. Do not describe that local engine as a deployed launch.
 
 Site connections are optional context. Search Console and Analytics attach to one Site, match the host, and store aggregates only. They never mark an Outcome Clear. Shopify remains the commerce connection. Do not claim a provider in public copy until its connect, mismatch, and disconnect path has been exercised.

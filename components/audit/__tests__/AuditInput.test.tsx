@@ -100,6 +100,42 @@ describe('AuditInput scan handoff', () => {
     expect(startScanWithHandoff).not.toHaveBeenCalled()
   })
 
+  it('checks the destination host rather than refusing a public URL that mentions localhost in its path', async () => {
+    startScanWithHandoff.mockResolvedValue({ ok: true, reportId: 'report-url-validation' })
+    render(
+      <MeProvider initialUser={null}>
+        <AuditInput variant="landing" idSuffix="-host-validation" />
+      </MeProvider>
+    )
+
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.change(input, { target: { value: 'https://example.com/docs/localhost' } })
+    fireEvent.submit(input.closest('form')!)
+
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledOnce())
+    expect(startScanWithHandoff).toHaveBeenCalledWith(expect.objectContaining({
+      url: 'https://example.com/docs/localhost',
+    }))
+    expect(screen.queryByText('FixFlags can only check publicly accessible URLs')).not.toBeInTheDocument()
+  })
+
+  it('still refuses a local destination host before starting a scan', async () => {
+    render(
+      <MeProvider initialUser={null}>
+        <AuditInput variant="landing" idSuffix="-local-host" />
+      </MeProvider>
+    )
+
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.change(input, { target: { value: 'https://app.localhost/example.com' } })
+    fireEvent.submit(input.closest('form')!)
+
+    expect(await screen.findByText('FixFlags can only check publicly accessible URLs')).toBeInTheDocument()
+    expect(startScanWithHandoff).not.toHaveBeenCalled()
+  })
+
   it.each([
     ['hero', '-hero-success'],
     ['final', '-final-success'],

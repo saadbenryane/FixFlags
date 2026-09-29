@@ -120,7 +120,14 @@ export function AuditInput({
       return
     }
 
-    if (normalized.includes('localhost') || normalized.includes('127.0.0.1') || normalized.includes('0.0.0.0')) {
+    const hostname = parsedUrl.hostname.toLowerCase().replace(/\.$/, '')
+    if (
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname === '[::1]'
+    ) {
       failValidation('localhost', AUDIT_ERRORS.urlLocalhost)
       return
     }
