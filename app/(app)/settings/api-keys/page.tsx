@@ -9,11 +9,11 @@ export default function ApiKeysPage() {
   return (
     <div className="space-y-6">
       <Button asChild variant="ghost" className="min-h-11">
-        <Link href="/dashboard/mcp-setup"><ArrowLeft className="mr-2 h-4 w-4" /> MCP setup</Link>
+        <Link href="/settings"><ArrowLeft className="mr-2 h-4 w-4" /> Settings</Link>
       </Button>
       <PageHeader
         title="Developer keys"
-        description="Use a scoped key to connect an MCP-compatible coding agent to your FixFlags account."
+        description="A scoped key lets your own tooling act for your account. It can reach only Sites this account owns."
       />
       <Card>
         <CardHeader>

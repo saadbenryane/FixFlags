@@ -3,6 +3,7 @@ import 'server-only'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { DOCS_PAGES, type DocsPageDefinition } from '@/lib/docs/catalog'
+import { applyGeneratedBlocks } from '@/lib/docs/generated-blocks'
 
 export interface DocsSearchEntry {
   title: string
@@ -15,7 +16,8 @@ const CONTENT_ROOT = path.join(process.cwd(), 'content', 'docs')
 
 export async function readDocsMarkdown(page: DocsPageDefinition) {
   if (!page.source) return ''
-  return readFile(path.join(CONTENT_ROOT, page.source), 'utf8')
+  const file = path.join(CONTENT_ROOT, page.source)
+  return applyGeneratedBlocks(await readFile(file, 'utf8'), page.source)
 }
 
 function searchableText(markdown: string) {

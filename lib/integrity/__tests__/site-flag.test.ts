@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { upsertIntegritySiteFlag } from '../site-flag'
 
 const prisma = vi.hoisted(() => ({
@@ -10,6 +10,10 @@ vi.mock('@/lib/db', () => ({ prisma }))
 vi.mock('@/lib/logger', () => ({ logger: { warn: vi.fn() } }))
 
 describe('integrity Site Flag', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('upserts a conversion Flag on a matching Site when customers cannot buy', async () => {
     prisma.project.findUnique.mockResolvedValue({ id: 'proj_1' })
     prisma.improvement.upsert.mockResolvedValue({})
@@ -33,7 +37,17 @@ describe('integrity Site Flag', () => {
     )
   })
 
-  it('marks the Flag verified when the path recovers', async () => {
+  /**
+   * A single GREEN probe is an observation, not a recovery. `VERIFIED` on an
+   * Improvement means FixFlags proved the flagged behaviour was restored by a fresh
+   * comparable execution, and that proof is what the Site Agent and run reconciliation
+   * read when they tell a customer a Flag is fixed. A scheduled path probe walks one
+   * URL, so a flake, a redirect, or a consent interstitial could have resolved a Flag
+   * the customer was told stays open until the same page and action pass.
+   *
+   * So the probe leaves recovery state alone. Resolution is the Verify path's job.
+   */
+  it('does not claim a recovery from a single GREEN probe', async () => {
     prisma.project.findUnique.mockResolvedValue({ id: 'proj_1' })
     prisma.improvement.updateMany.mockResolvedValue({ count: 1 })
     await upsertIntegritySiteFlag({
@@ -44,10 +58,7 @@ describe('integrity Site Flag', () => {
       health: 'GREEN',
       reason: 'ok',
     })
-    expect(prisma.improvement.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: { status: 'VERIFIED' },
-      })
-    )
+    expect(prisma.improvement.updateMany).not.toHaveBeenCalled()
+    expect(prisma.improvement.upsert).not.toHaveBeenCalled()
   })
 })

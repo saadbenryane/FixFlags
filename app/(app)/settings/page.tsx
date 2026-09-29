@@ -74,11 +74,11 @@ export default async function SettingsPage() {
       <Card variant="subtle">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><KeyRound className="h-4 w-4" /> Developer access</CardTitle>
-          <CardDescription>Connect a coding agent to request independent Outcome verification through MCP.</CardDescription>
+          <CardDescription>Create a key to let your own tooling act for your account. A run always names one Site and carries an idempotency key.</CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild variant="outline" className="min-h-11">
-            <Link href="/dashboard/mcp-setup">Set up MCP <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <Link href="/settings/api-keys">Manage keys <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </Button>
         </CardContent>
       </Card>

@@ -201,6 +201,9 @@ export default async function SiteFlagPage({
                 <p className="mt-1 text-xs text-muted-foreground">
                   {new Date(attempt.createdAt).toLocaleString()} · {attempt.builder}
                 </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {attempt.changeSummary?.trim() || SITE_BOARD_COPY.changeUndescribed}
+                </p>
                 {attempt.reason ? (
                   <p className="mt-2 text-muted-foreground">{attempt.reason}</p>
                 ) : null}

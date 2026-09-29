@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
@@ -6,8 +7,12 @@ import { loadSiteBoardFlag } from '@/lib/sites/application/queries'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 
+const bodySchema = z.object({
+  changeSummary: z.string().trim().max(2000).optional(),
+})
+
 export async function POST(
-  _req: Request,
+  req: Request,
   context: { params: Promise<{ siteId: string; flagId: string }> }
 ) {
   try {
@@ -34,11 +39,19 @@ export async function POST(
     const detail = await loadSiteBoardFlag(resolvedId, flagId)
     if (!detail) return apiError('Flag not found', 404)
 
+    // The attempt records what the customer said they changed. It is optional on
+    // purpose: a customer who fixed the code and has nothing to add still deserves
+    // an independent check, and an empty description is honest where an invented one
+    // is not.
+    const parsed = bodySchema.safeParse(await req.json().catch(() => ({})))
+    if (!parsed.success) return apiError('Invalid change summary', 400)
+
     const result = await executeSiteCommand({
       type: 'VERIFY_FLAG',
       siteId: resolvedId,
       userId: session.user.id,
       flagId,
+      ...(parsed.data.changeSummary ? { changeSummary: parsed.data.changeSummary } : {}),
     })
 
     if (!result.ok) return apiError(result.error, 400)

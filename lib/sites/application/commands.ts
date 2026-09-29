@@ -139,7 +139,12 @@ export async function executeSiteCommand(command: SiteCommand) {
             flagId: command.flagId,
             userId: command.userId,
             idempotencyKey: command.idempotencyKey ?? `web-fix:${command.flagId}`,
-            changeSummary: command.changeSummary ?? initialFlag.expectedBehavior,
+            // No fallback to the Outcome's expected behaviour. That text is what
+            // should be true afterwards, not something anyone changed, and writing it
+            // here put a fabricated change into the one record whose whole value is
+            // that FixFlags did not author it. An undescribed change is recorded as
+            // undescribed.
+            changeSummary: command.changeSummary,
             client: source.toLowerCase(),
           })
       const { site, flag, attemptId } = await requireSiteFlagAttempt({

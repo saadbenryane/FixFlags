@@ -78,6 +78,7 @@ describe('VERIFY_FLAG', () => {
       siteId: 'proj_1',
       userId: 'user_1',
       flagId: 'flag_1',
+      changeSummary: 'Changed the contact form submit handler',
     })
 
     expect(result).toMatchObject({
@@ -88,7 +89,7 @@ describe('VERIFY_FLAG', () => {
     expect(mocks.recordSiteFlagFix).toHaveBeenCalledWith(
       expect.objectContaining({
         flagId: 'flag_1',
-        changeSummary: 'Contact form shows a confirmation after submit',
+        changeSummary: 'Changed the contact form submit handler',
       })
     )
     expect(mocks.requestSiteRun).toHaveBeenCalledWith(
@@ -106,6 +107,28 @@ describe('VERIFY_FLAG', () => {
     )
     expect(result).toMatchObject({ runId: 'run_1' })
     expect(mocks.createAndEnqueueAudit).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The attempt is the record FixFlags did not author the change, so it may only carry
+   * what someone actually said. Falling back to the Flag's expected behaviour wrote
+   * "Contact form shows a confirmation after submit" into the history as though that
+   * were the change, which is the one thing an independent verification record must
+   * never contain. Verifying must still work when nobody describes the change.
+   */
+  it('never records the expected behaviour as if it were the change', async () => {
+    await executeSiteCommand({
+      type: 'VERIFY_FLAG',
+      siteId: 'proj_1',
+      userId: 'user_1',
+      flagId: 'flag_1',
+    })
+
+    const recorded = mocks.recordSiteFlagFix.mock.calls[0]?.[0] as
+      | { changeSummary?: string }
+      | undefined
+    expect(recorded?.changeSummary).toBeUndefined()
+    expect(JSON.stringify(recorded)).not.toContain('Contact form shows a confirmation')
   })
 
   it('does not treat copy handoff as verify', async () => {

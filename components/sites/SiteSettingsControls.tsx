@@ -318,10 +318,9 @@ export function SiteSettingsControls({
       <section className="rounded-2xl border border-border/80 bg-background p-5 lg:col-span-2">
         <h2 className="text-lg font-semibold">Developer access</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          API keys and MCP act for your account. A run names this Site and includes an idempotency key.
+          API keys act for your account. A run names this Site and includes an idempotency key.
         </p>
         <p className="mt-3 text-sm">Site <strong className="font-mono text-xs">{siteId}</strong></p>
-        <p className="mt-1 text-sm">MCP <strong className="font-mono text-xs">/api/mcp</strong></p>
         <Button className="mt-4" variant="outline" asChild>
           <a href="/settings/api-keys">API keys</a>
         </Button>

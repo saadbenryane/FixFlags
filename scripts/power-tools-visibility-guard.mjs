@@ -14,9 +14,26 @@ export const PARKED_PUBLIC_PREFIXES = [
   '/settings/integrations',
 ]
 
+/**
+ * MCP discovery paths. These are withheld by a gate rather than by a literal entry in
+ * `proxy.ts`, so the two lists cannot be expected to look the same. The gate is checked
+ * as a whole instead: if `MCP_IS_DISCOVERABLE` ever flips to true, these paths are
+ * advertised again and this list is stale, which the guard reports as a failure so the
+ * decision is made deliberately instead of drifting.
+ */
+export const GATED_MCP_DISCOVERY_PREFIXES = [
+  '/dashboard/mcp-setup',
+  '/docs/cli',
+  '/docs/mcp',
+  '/.well-known',
+]
+
+const MCP_GATE_MODULE = 'lib/mcp/discoverability.ts'
+
+const ALL_PARKED_PREFIXES = [...PARKED_PUBLIC_PREFIXES, ...GATED_MCP_DISCOVERY_PREFIXES]
+
 const DISCOVERY_PATH_PATTERN = new RegExp(
-  PARKED_PUBLIC_PREFIXES
-    .filter((prefix) => !prefix.startsWith('/api/'))
+  ALL_PARKED_PREFIXES.filter((prefix) => !prefix.startsWith('/api/'))
     .map((prefix) => prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join('|'),
 )
@@ -50,18 +67,32 @@ function discoveryFiles(root) {
   ]
   return [...new Set(files)].filter((file) => {
     if (!existsSync(file) || file.includes(`${path.sep}__tests__${path.sep}`)) return false
-    if (/(?:dashboard[\\/]mcp-|settings[\\/](?:api-keys|integrations)|docs[\\/](?:cli|mcp|integrations)|help[\\/]mcp)/.test(file)) return false
+    // A parked page is not expected to avoid linking to itself. Everything else is.
+    if (/(?:dashboard[\\/]mcp-|settings[\\/]integrations|docs[\\/](?:cli|mcp|integrations)|help[\\/]mcp)/.test(file)) return false
     if (/(?:lib[\\/]help[\\/]catalog)\.tsx?$/.test(file)) return false
     return !/(?:copy[\\/]auth|copy[\\/]brand|copy[\\/]tools)\.ts$/.test(file)
   })
 }
 
-export function powerToolVisibilityFailures({ proxySource, discoverySources }) {
+export function powerToolVisibilityFailures({ proxySource, discoverySources, mcpGateSource }) {
   const failures = []
   for (const prefix of PARKED_PUBLIC_PREFIXES) {
     if (!proxySource.includes(`'${prefix}'`) && !proxySource.includes(`"${prefix}"`)) {
       failures.push(`Proxy does not park ${prefix}`)
     }
+  }
+  for (const prefix of GATED_MCP_DISCOVERY_PREFIXES) {
+    if (!mcpGateSource.includes(`'${prefix}'`) && !mcpGateSource.includes(`"${prefix}"`)) {
+      failures.push(`MCP gate does not withhold ${prefix}`)
+    }
+  }
+  if (!/export const MCP_IS_DISCOVERABLE = false\b/.test(mcpGateSource)) {
+    failures.push(
+      'MCP is discoverable again. Remove the gated prefixes from this guard and re-check every surface the gate used to withhold.',
+    )
+  }
+  if (!/isMcpDiscoveryPath/.test(proxySource)) {
+    failures.push('Proxy does not consult the MCP discovery gate, so withheld paths are served')
   }
   if (/Repository scanning is not currently available|code:\s*['"]PARKED['"]/.test(proxySource)) {
     failures.push('Parked repository APIs must return the same not-found boundary as other power tools')
@@ -84,6 +115,7 @@ export function runPowerToolsVisibilityGuard(root = process.cwd()) {
   return powerToolVisibilityFailures({
     proxySource: readFileSync(path.join(root, 'proxy.ts'), 'utf8'),
     discoverySources: sources,
+    mcpGateSource: readFileSync(path.join(root, MCP_GATE_MODULE), 'utf8'),
   })
 }
 

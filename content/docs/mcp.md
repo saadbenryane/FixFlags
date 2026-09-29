@@ -15,18 +15,17 @@ Keys inherit your account access. Free includes one Site and bounded verificatio
 
 ## Tools
 
-- `ff_list_sites` finds the Sites owned by the connected account.
-- `ff_list_outcomes` shows what FixFlags is responsible for watching on one Site.
-- `ff_verify_outcome` starts an independent verification and returns a run ID.
-- `ff_get_run` returns progress and the final Clear, Flag, or Couldn't verify result.
-- `ff_list_flags` and `ff_get_flag` return active incidents and their evidence.
-- `ff_verify_flag` starts a comparable re-verification after a fix.
+These are the tools FixFlags serves. The list is generated from the tool registry, so it always names tools that exist and never a tool that has been renamed.
+
+<!-- generated:mcp-tools -->
+
+Reading a Site, running its Outcomes, and reading the resulting Flags is the whole path. Recording a fix and verifying it are separate tools on purpose: FixFlags owns the verification, and a client cannot mark its own change Clear.
 
 Checkout is the first first-class Outcome. Broad Site checks still run in FixFlags and remain visible under the Site board.
 
 ## Async runs
 
-Verification is asynchronous. Start a run, keep the returned run ID, and poll `ff_get_run` until it completes or fails. A failed or blocked execution returns **Couldn't verify** rather than inventing a Flag. A completed result includes the Outcome state and a linkable Flag when one exists.
+Verification is asynchronous. Start a run, keep the returned run ID, and poll that run until it completes or fails. A failed or blocked execution returns **Couldn't verify** rather than inventing a Flag. A completed result includes the Outcome state and a linkable Flag when one exists.
 
 ## Security and independence
 

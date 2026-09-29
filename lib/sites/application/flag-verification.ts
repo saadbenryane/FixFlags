@@ -8,7 +8,7 @@ export async function recordSiteFlagFix(input: {
   flagId: string
   userId: string
   idempotencyKey: string
-  changeSummary: string
+  changeSummary?: string
   commitReference?: string
   deploymentReference?: string
   client?: string

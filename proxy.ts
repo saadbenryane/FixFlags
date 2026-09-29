@@ -6,6 +6,7 @@ import {
   requestHostname,
   siteHostname,
 } from '@/lib/http/site-host'
+import { isMcpDiscoveryPath } from '@/lib/mcp/discoverability'
 
 const PROTECTED_PREFIXES = ['/admin', '/settings'] as const
 
@@ -40,8 +41,12 @@ const PARKED_POWER_TOOL_PREFIXES = [
 ] as const
 
 export function isParkedPowerToolPath(pathname: string): boolean {
-  return /^\/api\/reports\/[^/]+\/chat$/.test(pathname) || PARKED_POWER_TOOL_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  return (
+    /^\/api\/reports\/[^/]+\/chat$/.test(pathname) ||
+    PARKED_POWER_TOOL_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    ) ||
+    isMcpDiscoveryPath(pathname)
   )
 }
 

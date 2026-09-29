@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import type { HelpArticleSlug } from '@/lib/help/types'
 import { buildIndexableMetadata } from '@/lib/marketing/metadata'
+import { MCP_IS_DISCOVERABLE } from '@/lib/mcp/discoverability'
 
 export type DocsPageKey =
   | 'home'
@@ -29,7 +30,7 @@ export interface DocsPageDefinition {
   relatedHelpSlugs?: readonly HelpArticleSlug[]
 }
 
-export const DOCS_PAGES: readonly DocsPageDefinition[] = [
+export const DOCS_PAGE_DEFINITIONS: readonly DocsPageDefinition[] = [
   {
     key: 'home',
     path: '/docs',
@@ -130,6 +131,18 @@ export const DOCS_PAGES: readonly DocsPageDefinition[] = [
     ],
   },
 ] as const
+
+/**
+ * The docs FixFlags publishes.
+ *
+ * A page exists in `DOCS_PAGE_DEFINITIONS` and is absent from here while it advertises
+ * a capability that is not proven. Navigation, search, the sitemap, and the route table
+ * all read this list, so a withheld page is genuinely unreachable rather than merely
+ * unlinked, and re-publishing it is a one-line change once the evidence exists.
+ */
+export const DOCS_PAGES: readonly DocsPageDefinition[] = DOCS_PAGE_DEFINITIONS.filter(
+  (page) => page.key !== 'mcp' || MCP_IS_DISCOVERABLE
+)
 
 export const DOCS_GROUPS: readonly DocsNavigationGroup[] = [
   'Start',

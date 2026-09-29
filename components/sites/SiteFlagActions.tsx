@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 export function SiteFlagActions({
@@ -22,6 +23,7 @@ export function SiteFlagActions({
   const [busy, setBusy] = useState(false)
   const [verificationRunning, setVerificationRunning] = useState(verifying)
   const [message, setMessage] = useState<string | null>(null)
+  const [changeSummary, setChangeSummary] = useState('')
 
   useEffect(() => {
     setVerificationRunning(verifying)
@@ -62,18 +64,22 @@ export function SiteFlagActions({
   async function verify() {
     setBusy(true)
     try {
-      const res = await fetch(`/api/sites/${siteId}/flags/${flagId}/verify`, { method: 'POST' })
+      const res = await fetch(`/api/sites/${siteId}/flags/${flagId}/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ changeSummary: changeSummary.trim() }),
+      })
       const body = (await res.json().catch(() => ({}))) as { error?: string; signup?: boolean }
       if (res.status === 401 || body.signup) {
         router.push(`/sign-up?next=${encodeURIComponent(`/sites/${siteId}/flags/${flagId}`)}`)
         return
       }
       if (!res.ok) {
-        setMessage(body.error || 'Could not start verification')
+        setMessage(body.error || SITE_BOARD_COPY.verificationFailed)
         return
       }
       setVerificationRunning(true)
-      setMessage('Verification started. This Flag stays open until the same page and action pass.')
+      setMessage(SITE_BOARD_COPY.verificationStarted)
       router.refresh()
     } finally {
       setBusy(false)
@@ -89,10 +95,31 @@ export function SiteFlagActions({
         <Button variant="outline" onClick={() => void copyFix()}>
           {SITE_BOARD_COPY.fixThis}
         </Button>
-        <Button variant="brand" disabled={busy || verificationRunning} onClick={() => void verify()}>
-          {verificationRunning ? 'Verifying…' : SITE_BOARD_COPY.verifyFix}
-        </Button>
       </div>
+      <div className="space-y-1 pt-2">
+        <label htmlFor="flag-change-summary" className="text-sm font-medium">
+          {SITE_BOARD_COPY.changeLabel}
+        </label>
+        <p id="flag-change-summary-hint" className="text-xs text-muted-foreground">
+          {SITE_BOARD_COPY.changeHint}
+        </p>
+        <Textarea
+          id="flag-change-summary"
+          aria-describedby="flag-change-summary-hint"
+          value={changeSummary}
+          onChange={(event) => setChangeSummary(event.target.value)}
+          rows={2}
+          placeholder={SITE_BOARD_COPY.changePlaceholder}
+          className="mt-1"
+        />
+      </div>
+      <Button
+        variant="brand"
+        disabled={busy || verificationRunning}
+        onClick={() => void verify()}
+      >
+        {verificationRunning ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}
+      </Button>
       {message ? <p className="text-sm text-muted-foreground" role="status" aria-live="polite">{message}</p> : null}
     </div>
   )
