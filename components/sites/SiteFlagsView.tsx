@@ -4,11 +4,21 @@ import { SiteFlagRow } from '@/components/sites/SiteFlagRow'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { Button } from '@/components/ui/button'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
-import { useSearchParams } from 'next/navigation'
 
-export function SiteFlagsView({ siteId, view }: { siteId: string; view: SiteHomeView }) {
-  const searchParams = useSearchParams()
-  const tab = searchParams.get('tab') ?? 'open'
+export const SITE_FLAG_TABS = ['open', 'resolved'] as const
+export type SiteFlagTab = (typeof SITE_FLAG_TABS)[number]
+
+/**
+ * The tab is read on the server, never from `useSearchParams`. This view is a
+ * Server Component like `SiteSettingsView`, and only a Client Component may
+ * call that hook. An unknown or missing value is the Open attention default,
+ * because a mangled URL must never render a blank Flags page.
+ */
+export function siteFlagTab(value: string | string[] | undefined): SiteFlagTab {
+  return SITE_FLAG_TABS.includes(value as SiteFlagTab) ? (value as SiteFlagTab) : 'open'
+}
+
+export function SiteFlagsView({ siteId, view, tab }: { siteId: string; view: SiteHomeView; tab: SiteFlagTab }) {
 
   return (
     <SiteShell
