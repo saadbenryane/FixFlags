@@ -25,3 +25,7 @@ Adopt the bounded repair; locally verified, independently reviewed, not deployed
 Remaining reliability work: crash-left SENDING has no recovery lease. Do not simply retry every old SENDING row: design an immutable payload/claim receipt and bounded provider idempotency window, including an interrupted fifth attempt and concurrent workers. This issue is not fixed by delivery-error handling.
 
 Hourly continuation is configured in this chat (`build-fixflags-continuously`), quiet on unchanged/non-actionable state. Next independent action: fix the audit-blocking dependency patch, validate, then resume the notification crash-recovery design with the above safety constraints.
+
+## Follow-up, 12:47 UTC
+
+The dependency patch passed all 30 verification commands including container build, and another agent incorporated it into `80888d14`. Production health now reports descendant `e72228e8`; the delivery-truth code and dependency patch are deployed. No production provider-rejection or inbox-delivery experiment was run. Notification leases were subsequently implemented by opencode; independent follow-up found an unresolved final-attempt edge case. Current evidence and owner handoffs are in `2026-09-29-watch-followup-review.md`. This paragraph supersedes earlier next-action and deployment status without rewriting the original observations.
