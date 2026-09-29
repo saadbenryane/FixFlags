@@ -28,6 +28,8 @@ The Site contract replaces the old report/chat experience. For maintenance on ex
 
 Inspect real rendering at mobile and desktop sizes, keyboard/focus order, 44px targets, reduced motion, reflow and contrast. Status never relies on color alone. Check loading, healthy, attention, partial, couldn't-verify, stale, failed and resolved states against actual evidence.
 
+The root layout's Skip to content link targets `#main-content`. Standalone entry routes, including `/new`, must provide one focusable main landmark with that ID; check the keyboard jump in a browser, not only the link href.
+
 Keep copy centralized in lib/marketing/copy.ts and aligned with docs/voice-and-copy.md. Use product evidence to replace weak marketing illustrations; never fake customer output. New interface acceptance is not established by passing legacy report screenshots.
 
 ## Homepage care narrative

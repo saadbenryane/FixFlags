@@ -10,6 +10,7 @@ export const REVIEW_ENTRY = {
   cta: ANALYZE_CTA,
   compactCta: ANALYZE_CTA,
   href: '/new',
+  description: 'Paste a website URL. FixFlags opens your Site board and starts looking after what matters.',
   urlPlaceholder: 'yourwebsite.com',
   trySampleCta: 'See how it works',
 } as const
