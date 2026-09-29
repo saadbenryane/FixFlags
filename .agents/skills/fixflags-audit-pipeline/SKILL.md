@@ -57,6 +57,8 @@ Audit COMPLETED, score/verdict OK, no fix prompts?
 
 ## Verification
 
+Watch notification delivery lives in `lib/audit/project-watch.ts`. The Resend SDK resolves failures as `{ data: null, error }`; only an accepted provider response with an ID may become `SENT`. Provider rejection stays `FAILED` for the bounded scheduler retry with the same idempotency key. Lifecycle analytics failure must never revert `SENT`, and one broken notification must not abort other Sites in the retry batch. Verify with `lib/audit/__tests__/project-watch.test.ts`, which exercises the installed SDK against a stubbed HTTP boundary without sending mail. `SENT` proves provider acceptance, not inbox delivery. Crash-left `SENDING` recovery remains a separate open reliability gap.
+
 ```bash
 npm run test:unit -- lib/audit/__tests__/run-audit.test.ts lib/audit/__tests__/outcome.test.ts
 npm run accuracy:eval          # offline corpus gate (gold 0 false blockers)

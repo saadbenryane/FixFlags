@@ -386,12 +386,15 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
     : `${SITE_URL}/sites/${child.projectId}/flags?source=watch-email`
 
   try {
-    await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: child.user.email,
       subject,
       html: `<p>Hi${child.user.name ? ` ${child.user.name}` : ''},</p><p>${lead}</p><p><a href="${destination}">${leadFlag ? 'Open this Flag' : 'Open this Site’s Flags'}</a></p><p>Verified: ${summary.fixed.length} · Couldn’t verify: ${summary.inconclusive.length} · Still open: ${summary.unchanged.length} · New: ${summary.newIssues.length} · Regressed: ${summary.regressed.length}</p>`,
     }, { idempotencyKey: `fixflags-watch-${child.id}-v1` })
+    // The provider SDK resolves rejected requests with an error, rather than throwing.
+    if (error) throw new Error(error.message)
+    if (!data?.id) throw new Error('Email provider did not confirm acceptance')
     await prisma.audit.update({
       where: { id: childAuditId },
       data: {
@@ -400,12 +403,6 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
         watchNotificationLastError: null,
       },
     })
-    await recordSiteLifecycleEvent({
-      name: 'notification_sent',
-      idempotencyKey: `watch-notification:${child.id}`,
-      projectId: child.projectId,
-      properties: { regressionCount: regressCount, recoveryCount },
-    })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     await prisma.audit.update({
@@ -413,6 +410,22 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
       data: { watchNotificationStatus: 'FAILED', watchNotificationLastError: message.slice(0, 1000) },
     })
     logger.warn('Watch regression email failed', { childAuditId, error: message })
+    return
+  }
+
+  // Analytics failure must not undo confirmed delivery or schedule another email.
+  try {
+    await recordSiteLifecycleEvent({
+      name: 'notification_sent',
+      idempotencyKey: `watch-notification:${child.id}`,
+      projectId: child.projectId,
+      properties: { regressionCount: regressCount, recoveryCount },
+    })
+  } catch (error) {
+    logger.warn('Watch notification telemetry failed', {
+      childAuditId,
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 }
 
@@ -430,7 +443,15 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
     orderBy: { updatedAt: 'asc' },
   })
   for (const audit of audits) {
-    await notifyWatchRegression(audit.parentId!, audit.id)
+    try {
+      await notifyWatchRegression(audit.parentId!, audit.id)
+    } catch (error) {
+      // A broken audit must not prevent alerts for the rest of the batch.
+      logger.warn('Watch notification retry failed', {
+        childAuditId: audit.id,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
   }
   return audits.length
 }

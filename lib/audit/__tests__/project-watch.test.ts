@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { Resend } from 'resend'
 
 const mocks = vi.hoisted(() => ({
   projectFindMany: vi.fn(),
@@ -7,12 +8,14 @@ const mocks = vi.hoisted(() => ({
   projectFindFirst: vi.fn(),
   auditFindFirst: vi.fn(),
   auditFindUnique: vi.fn(),
+  auditFindMany: vi.fn(),
   auditUpdateMany: vi.fn(),
   auditUpdate: vi.fn(),
   requestSiteRun: vi.fn(),
   siteOutcomeFindMany: vi.fn(),
   getFlagDiffSummary: vi.fn(),
   sendEmail: vi.fn(),
+  recordSiteLifecycleEvent: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -26,6 +29,7 @@ vi.mock('@/lib/db', () => ({
     audit: {
       findFirst: mocks.auditFindFirst,
       findUnique: mocks.auditFindUnique,
+      findMany: mocks.auditFindMany,
       updateMany: mocks.auditUpdateMany,
       update: mocks.auditUpdate,
     },
@@ -37,11 +41,12 @@ vi.mock('@/lib/sites/application/run-requests', () => ({
 }))
 vi.mock('@/lib/audit/diff-flags', () => ({ getFlagDiffSummary: mocks.getFlagDiffSummary }))
 vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: mocks.sendEmail } } }))
-vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn() }))
+vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: mocks.recordSiteLifecycleEvent }))
 
 import {
   notifyWatchRegression,
   processDueProjectWatches,
+  retryPendingWatchNotifications,
   setProjectWatch,
 } from '@/lib/audit/project-watch'
 import { fixedClock } from '@/lib/time/clock'
@@ -57,7 +62,7 @@ const project = {
 
 describe('Product Watch', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     vi.stubEnv('REDIS_URL', 'redis://watch.test')
     vi.stubEnv('RESEND_API_KEY', 're_watch_test')
     vi.stubEnv('RESEND_FROM_EMAIL', 'watch@example.test')
@@ -65,10 +70,15 @@ describe('Product Watch', () => {
     mocks.projectUpdate.mockResolvedValue(project)
     mocks.projectUpdateMany.mockResolvedValue({ count: 1 })
     mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
-    mocks.sendEmail.mockResolvedValue({ id: 'email-1' })
+    mocks.sendEmail.mockResolvedValue({ data: { id: 'email-1' }, error: null })
     mocks.projectFindFirst.mockResolvedValue({ id: 'project-1', user: project.user })
     mocks.siteOutcomeFindMany.mockResolvedValue([])
     mocks.requestSiteRun.mockResolvedValue({ runId: 'run-1', auditId: 'child-1', reused: false })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   it('enables weekly scheduled reviews for a Studio Product', async () => {
@@ -306,6 +316,109 @@ describe('Product Watch', () => {
     expect(mocks.auditUpdate).toHaveBeenCalledWith({
       where: { id: 'child-1' },
       data: { watchRegressionCount: 0, watchNotificationStatus: 'NOT_APPLICABLE' },
+    })
+  })
+
+  describe('notification delivery truth', () => {
+    beforeEach(() => {
+      mocks.auditFindUnique.mockResolvedValue({
+        id: 'child-1',
+        url: 'https://example.com/',
+        projectId: 'project-1',
+        recheckTrigger: 'WATCH',
+        completedAt: new Date('2026-07-22T12:00:00.000Z'),
+        watchRegressionCount: 1,
+        watchNotificationStatus: 'PENDING',
+        watchNotificationAttempts: 0,
+        user: { email: 'owner@example.test', name: 'Owner' },
+        project: { watchInterval: 'WEEKLY' },
+      })
+      mocks.getFlagDiffSummary.mockResolvedValue({
+        fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],
+      })
+    })
+
+    it('retries a provider rejection through the scheduler with the same delivery key', async () => {
+      // Exercise the installed SDK's HTTP error contract without sending mail.
+      const providerFetch = vi.fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify({
+          name: 'rate_limit_exceeded', message: 'Too many requests',
+        }), { status: 429, headers: { 'content-type': 'application/json' } }))
+        .mockResolvedValueOnce(new Response(JSON.stringify({ id: 'email-accepted' }), {
+          status: 200, headers: { 'content-type': 'application/json' },
+        }))
+      vi.stubGlobal('fetch', providerFetch)
+      const provider = new Resend('re_test_not_a_real_key')
+      mocks.sendEmail.mockImplementation((...args: Parameters<typeof provider.emails.send>) =>
+        provider.emails.send(...args))
+      mocks.auditFindMany.mockResolvedValue([{ id: 'child-1', parentId: 'parent-1' }])
+      const child = await mocks.auditFindUnique()
+      mocks.auditUpdate.mockImplementation(async ({ data }) => Object.assign(child, data))
+
+      await notifyWatchRegression('parent-1', 'child-1')
+
+      expect(child.watchNotificationStatus).toBe('FAILED')
+      expect(child.watchNotificationLastError).toBe('Too many requests')
+      expect(child.watchNotifiedAt).toBeUndefined()
+      expect(mocks.recordSiteLifecycleEvent).not.toHaveBeenCalled()
+
+      expect(await retryPendingWatchNotifications()).toBe(1)
+
+      expect(child.watchNotificationStatus).toBe('SENT')
+      expect(child.watchNotifiedAt).toBeInstanceOf(Date)
+      expect(child.watchNotificationLastError).toBeNull()
+      expect(mocks.recordSiteLifecycleEvent).toHaveBeenCalledTimes(1)
+      expect(providerFetch).toHaveBeenCalledTimes(2)
+      for (const [, request] of providerFetch.mock.calls) {
+        expect(new Headers(request.headers).get('Idempotency-Key')).toBe('fixflags-watch-child-1-v1')
+      }
+      expect(mocks.auditFindMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({
+          watchNotificationStatus: { in: ['PENDING', 'FAILED'] },
+          watchNotificationAttempts: { lt: 5 },
+        }),
+      }))
+    })
+
+    it('keeps an accepted notification sent when lifecycle telemetry fails', async () => {
+      mocks.recordSiteLifecycleEvent.mockRejectedValue(new Error('Analytics unavailable'))
+
+      await expect(notifyWatchRegression('parent-1', 'child-1')).resolves.toBeUndefined()
+
+      expect(mocks.auditUpdate).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ watchNotificationStatus: 'SENT' }),
+      }))
+      expect(mocks.auditUpdate).not.toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ watchNotificationStatus: 'FAILED' }),
+      }))
+      expect(mocks.sendEmail).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not record a malformed success response as sent', async () => {
+      mocks.sendEmail.mockResolvedValue({ data: null, error: null })
+
+      await notifyWatchRegression('parent-1', 'child-1')
+
+      expect(mocks.auditUpdate).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ watchNotificationStatus: 'FAILED' }),
+      }))
+      expect(mocks.recordSiteLifecycleEvent).not.toHaveBeenCalled()
+    })
+
+    it('continues retrying other Sites when one notification cannot be loaded', async () => {
+      mocks.auditFindMany.mockResolvedValue([
+        { id: 'broken-child', parentId: 'broken-parent' },
+        { id: 'child-1', parentId: 'parent-1' },
+      ])
+      mocks.auditFindUnique.mockRejectedValueOnce(new Error('Audit unavailable'))
+
+      await expect(retryPendingWatchNotifications()).resolves.toBe(2)
+
+      expect(mocks.auditFindUnique).toHaveBeenCalledWith({
+        where: { id: 'child-1' }, select: expect.any(Object),
+      })
+      expect(mocks.sendEmail).toHaveBeenCalledTimes(1)
+      expect(mocks.recordSiteLifecycleEvent).toHaveBeenCalledTimes(1)
     })
   })
 })
