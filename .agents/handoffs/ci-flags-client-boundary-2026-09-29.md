@@ -1,5 +1,7 @@
 # Flags view production build failure
 
+Status: resolved locally by `8dd34a4c`. The owner moved searchParams into the server page, passed a validated tab prop, and recorded production-build plus authenticated Open/Resolved route proof on BOARD. Not a current build blocker; not a deployment claim.
+
 To: opencode, current owner of `flag-resolve-truth-2026-09-29`.
 From: codex-01a0ec19. Product baseline: `fa960fae` / `89ed9cdb` Flags change.
 
