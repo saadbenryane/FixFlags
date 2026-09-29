@@ -4,6 +4,7 @@ import { persistJourneyResult } from '@/lib/audit/journey/run-journey-reviews'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { runPathProbe } from '@/lib/integrity/run-path-probe'
 import { availabilityFlagCopy, type BindingDispositionName } from '@/lib/sites/application/binding-assessment'
+import { OUTCOME_RUN_LEASE_MS } from '@/lib/sites/application/run-requests'
 import { checkoutResultCopy } from '@/lib/sites/outcome-state'
 import { validateBindingConfig, type AvailabilityBindingConfig, type SafeFormBindingConfig } from '@/lib/sites/application/binding-config'
 import { executeSafeFormFixture } from '@/lib/sites/application/safe-form-executor'
@@ -369,7 +370,14 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
 
   await prisma.runRequest.updateMany({
     where: { id: request.id, status: 'QUEUED' },
-    data: { status: 'RUNNING', startedAt: new Date() },
+    // Renew the lease on the way to RUNNING. A browser verification can outlast
+    // the lease taken at creation, and a run reclaimed mid-execution would be
+    // counted as in flight while the worker still owns it.
+    data: {
+      status: 'RUNNING',
+      startedAt: new Date(),
+      leaseUntil: new Date(Date.now() + OUTCOME_RUN_LEASE_MS),
+    },
   })
 
   const allowLocalhost = process.env.NODE_ENV !== 'production' && process.env.FIXFLAGS_CHECKOUT_FIXTURE === '1'

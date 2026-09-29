@@ -2054,6 +2054,11 @@ model RunRequest {
   context           Json?
   verificationTarget Json?
   status            RunRequestStatus   @default(QUEUED)
+  /// *
+  ///    * Lease on an unfinished run. QUEUED and RUNNING both count as active, so
+  ///    * without a lease a worker death strands the run and it blocks its Site
+  ///    permanently while later requests reuse the stale audit.
+  leaseUntil        DateTime?
   auditId           String?
   errorCode         String?
   errorMessage      String?

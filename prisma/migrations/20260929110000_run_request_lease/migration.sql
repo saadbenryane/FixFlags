@@ -1,0 +1,16 @@
+-- Reclaimable lease for an unfinished Site run.
+--
+-- QUEUED and RUNNING both count as active when deciding whether a Site already
+-- has a run in progress. A worker that dies mid-execution therefore leaves a row
+-- that blocks its Site permanently, and every later request is handed the stale
+-- auditId instead of a fresh verification. Scheduled Watch then silently stops
+-- verifying anything, which is the same silent-missed-alert failure the Watch
+-- notification lease already fixed one layer up.
+--
+-- A lease makes the row recoverable: a run whose lease has expired is no longer
+-- treated as in flight, so the next request starts a real verification. A run
+-- with a live lease is still reused, so overlapping requests cannot double-run.
+--
+-- Additive only: a nullable column, safe to apply online. Existing rows are NULL,
+-- which the query treats as expired so historical runs cannot block a Site.
+ALTER TABLE "run_requests" ADD COLUMN IF NOT EXISTS "leaseUntil" TIMESTAMP(3);

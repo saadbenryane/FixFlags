@@ -8,8 +8,10 @@ const mocks = vi.hoisted(() => ({
   runFindMany: vi.fn(),
   runCreate: vi.fn(),
   runUpdate: vi.fn(),
+  runUpdateMany: vi.fn(),
   runCount: vi.fn(),
   auditFindFirst: vi.fn(),
+  auditFindUnique: vi.fn(),
   flagFindFirst: vi.fn(),
   improvementFindFirst: vi.fn(),
   assessmentUpsert: vi.fn(),
@@ -27,9 +29,10 @@ vi.mock('@/lib/db', () => ({
       findMany: mocks.runFindMany,
       create: mocks.runCreate,
       update: mocks.runUpdate,
+      updateMany: mocks.runUpdateMany,
       count: mocks.runCount,
     },
-    audit: { findFirst: mocks.auditFindFirst },
+    audit: { findFirst: mocks.auditFindFirst, findUnique: mocks.auditFindUnique },
     flag: { findFirst: mocks.flagFindFirst },
     improvement: { findFirst: mocks.improvementFindFirst },
     outcomeAssessment: { upsert: mocks.assessmentUpsert },
@@ -66,6 +69,9 @@ describe('RunRequest tenant boundary and idempotency', () => {
     mocks.createAudit.mockResolvedValue({ auditId: 'audit-1', reused: false })
     mocks.runUpdate.mockResolvedValue({})
     mocks.runCount.mockResolvedValue(0)
+    mocks.runFindMany.mockResolvedValue([])
+    mocks.runUpdateMany.mockResolvedValue({ count: 1 })
+    mocks.auditFindUnique.mockResolvedValue(null)
     mocks.flagFindFirst.mockResolvedValue(null)
     mocks.improvementFindFirst.mockResolvedValue(null)
     mocks.assessmentUpsert.mockResolvedValue({})
@@ -395,5 +401,194 @@ describe('RunRequest tenant boundary and idempotency', () => {
         summary: 'This flow is protected, so FixFlags did not submit it.',
       }),
     }))
+  })
+  describe('stale run recovery', () => {
+    // A run stranded by a worker death stays QUEUED or RUNNING. Because both
+    // count as active, it blocks its Site forever and later requests are handed
+    // the stale auditId instead of a fresh verification, so Watch silently stops
+    // verifying anything.
+    const staleRun = {
+      id: 'run-stale',
+      projectId: 'project-1',
+      environment: 'production',
+      selections: [{ outcomeId: 'outcome-1' }],
+      auditId: 'audit-stale',
+      status: 'RUNNING',
+      leaseUntil: new Date(Date.now() - 60_000),
+    }
+
+    beforeEach(() => {
+      mocks.runFindUnique.mockResolvedValue(null)
+    })
+
+    /** Whether a real `runRequest.findFirst` would return this row. */
+    function matchesRunQuery(
+      row: { projectId: string; status: string; leaseUntil: Date | null },
+      where: {
+        projectId?: string
+        status?: { in?: string[] }
+        leaseUntil?: { gt?: Date }
+      },
+    ): boolean {
+      if (where.projectId !== undefined && where.projectId !== row.projectId) return false
+      const statuses = where.status?.in
+      if (statuses && !statuses.includes(row.status)) return false
+      const cutoff = where.leaseUntil?.gt
+      if (cutoff === undefined) return true
+      // Only a live lease is in flight; NULL and expired are not.
+      return row.leaseUntil !== null && row.leaseUntil > cutoff
+    }
+
+    it('does not treat a run with an expired lease as active', async () => {
+      // Answer as the database would: match the row only if the query's lease
+      // predicate accepts it. A mock that ignores the where clause returns a
+      // row the real query would exclude, which hides the defect.
+      mocks.runFindFirst.mockImplementation(async ({ where }) =>
+        matchesRunQuery(staleRun, where) ? staleRun : null)
+      mocks.createAudit.mockResolvedValue({ auditId: 'audit-new', reused: false })
+
+      const result = await requestOutcomeRun({
+        projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1',
+        source: 'WATCH', idempotencyKey: 'watch:project-1:tick',
+      })
+
+      // A fresh verification is started rather than the stale run being reused.
+      expect(result.reused).toBe(false)
+      expect(mocks.createAudit).toHaveBeenCalledTimes(1)
+    })
+
+    it('still reuses a run that is genuinely in flight', async () => {
+      const liveRun = { ...staleRun, leaseUntil: new Date(Date.now() + 600_000) }
+      mocks.runFindFirst.mockImplementation(async ({ where }) =>
+        matchesRunQuery(liveRun, where) ? liveRun : null)
+
+      const result = await requestOutcomeRun({
+        projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1',
+        source: 'WATCH', idempotencyKey: 'watch:project-1:tick',
+      })
+
+      // Reusing a live run is the whole point of the active check.
+      expect(result).toEqual({
+        runId: 'run-stale', auditId: 'audit-stale', outcomeIds: ['outcome-1'], reused: true,
+      })
+      expect(mocks.createAudit).not.toHaveBeenCalled()
+    })
+
+    it('excludes an expired lease in the query, not only in a read-time check', async () => {
+      mocks.runFindFirst.mockResolvedValue(null)
+      mocks.createAudit.mockResolvedValue({ auditId: 'audit-new', reused: false })
+
+      await requestOutcomeRun({
+        projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1',
+        source: 'WATCH', idempotencyKey: 'watch:project-1:tick',
+      })
+
+      const where = mocks.runFindFirst.mock.calls[0]?.[0]?.where
+      // The database is the authority, so the lease belongs in the query rather
+      // than only in a read-time check.
+      expect(where).toMatchObject({
+        status: { in: ['QUEUED', 'RUNNING'] },
+        leaseUntil: { gt: expect.any(Date) },
+      })
+    })
+
+    it('takes a lease when the run is created and releases it when the run ends', async () => {
+      mocks.runFindFirst.mockResolvedValue(null)
+      mocks.createAudit.mockResolvedValue({ auditId: 'audit-new', reused: false })
+
+      await requestOutcomeRun({
+        projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1',
+        source: 'WATCH', idempotencyKey: 'watch:project-1:lease',
+      })
+
+      // A run that never reaches a worker must still expire rather than block.
+      expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ leaseUntil: expect.any(Date) }),
+      }))
+    })
+  })
+
+  describe('reclaiming a run no worker still owns', () => {
+    // Excluding a stranded run from the active check is not sufficient on its
+    // own. The partial unique index is
+    //   run_requests(projectId) WHERE status IN ('QUEUED','RUNNING')
+    // and a partial index predicate cannot call now(), so the database keeps
+    // treating the abandoned run as active and rejects the replacement insert.
+    // The filter alone would trade a stale result for a raw write error.
+
+    it('fails an abandoned run so the partial unique index stops rejecting inserts', async () => {
+      mocks.runFindMany.mockResolvedValue([{ id: 'run-stale', auditId: null }])
+
+      await requestOutcomeRun({
+        projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1',
+        source: 'WATCH', idempotencyKey: 'watch:project-1:reclaim',
+      })
+
+      expect(mocks.runUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: { id: 'run-stale', status: { in: ['QUEUED', 'RUNNING'] } },
+        data: expect.objectContaining({
+          status: 'FAILED',
+          errorCode: 'RUN_ABANDONED',
+          leaseUntil: null,
+        }),
+      }))
+      // The customer sees an honest reason rather than a stale report.
+      expect(mocks.runUpdateMany.mock.calls[0]?.[0]?.data.errorMessage)
+        .toMatch(/could not finish/i)
+    })
+
+    it('reclaims before deciding whether the Site is busy, not after', async () => {
+      mocks.runFindMany.mockResolvedValue([{ id: 'run-stale', auditId: null }])
+
+      await requestOutcomeRun({
+        projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1',
+        source: 'WATCH', idempotencyKey: 'watch:project-1:order',
+      })
+
+      const reclaimedAt = mocks.runUpdateMany.mock.invocationCallOrder[0]
+      const checkedAt = mocks.runFindFirst.mock.invocationCallOrder[0]
+      expect(reclaimedAt).toBeLessThan(checkedAt)
+    })
+
+    it('keeps a run whose audit already finished, so a real result is not thrown away', async () => {
+      // The worker may have died after verifying but before recording it. The
+      // assessments exist, so the run is reconciled rather than failed.
+      mocks.auditFindUnique.mockResolvedValue({ status: 'COMPLETED' })
+      mocks.runFindMany.mockResolvedValueOnce([{ id: 'run-stale', auditId: 'audit-done' }])
+      mocks.runFindMany.mockResolvedValue([])
+
+      await requestOutcomeRun({
+        projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1',
+        source: 'WATCH', idempotencyKey: 'watch:project-1:completed',
+      })
+
+      // The completed audit is reconciled, which is what recovers the result.
+      expect(mocks.runFindMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: expect.objectContaining({ auditId: 'audit-done' }),
+      }))
+      // And the run is not mislabelled as abandoned.
+      expect(mocks.runUpdateMany).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ errorCode: 'RUN_ABANDONED' }),
+        })
+      )
+    })
+
+    it('never touches a run that still holds a live lease', async () => {
+      mocks.runFindMany.mockResolvedValue([])
+
+      await requestOutcomeRun({
+        projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1',
+        source: 'WATCH', idempotencyKey: 'watch:project-1:live',
+      })
+
+      const where = mocks.runFindMany.mock.calls[0]?.[0]?.where
+      // The reclaim query is the exact inverse of the active check: it looks for
+      // runs with no live lease, and nothing else.
+      expect(where).toMatchObject({
+        status: { in: ['QUEUED', 'RUNNING'] },
+        OR: [{ leaseUntil: null }, { leaseUntil: { lt: expect.any(Date) } }],
+      })
+    })
   })
 })

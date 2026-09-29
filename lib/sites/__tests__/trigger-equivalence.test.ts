@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   runFindFirst: vi.fn(),
   runCreate: vi.fn(),
   runUpdate: vi.fn(),
+  runUpdateMany: vi.fn(),
+  runFindMany: vi.fn(),
   runCount: vi.fn(),
   auditFindFirst: vi.fn(),
   createAudit: vi.fn(),
@@ -26,8 +28,10 @@ vi.mock('@/lib/db', () => ({
     runRequest: {
       findUnique: mocks.runFindUnique,
       findFirst: mocks.runFindFirst,
+      findMany: mocks.runFindMany,
       create: mocks.runCreate,
       update: mocks.runUpdate,
+      updateMany: mocks.runUpdateMany,
       count: mocks.runCount,
     },
     audit: { findFirst: mocks.auditFindFirst },
@@ -69,6 +73,8 @@ describe('trigger equivalence', () => {
     mocks.runCreate.mockResolvedValue({ id: 'run-1' })
     mocks.runUpdate.mockResolvedValue({})
     mocks.runCount.mockResolvedValue(0)
+    // No abandoned run by default, so these tests stay about trigger equivalence.
+    mocks.runFindMany.mockResolvedValue([])
     mocks.auditFindFirst.mockResolvedValue({ id: 'audit-parent' })
     mocks.createAudit.mockResolvedValue({ auditId: 'audit-1', reused: false })
   })
