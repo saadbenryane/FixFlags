@@ -38,6 +38,22 @@ Two further decisions follow from the index being the real authority:
 
 A failed read or a failed reconciliation must not leave the Site blocked, so both are caught and the run still becomes terminal. The audit itself remains recoverable through the existing stuck-audit sweep.
 
+## A recorded failure that is never stated is the same defect, seen by the customer
+
+Both leases were correct once the claim itself was recoverable. The remaining half of the same problem was on the other side of the claim: `watchBoardState` derives the Site's Watch state from the schedule and from run failures only. A Site whose alert channel was dead therefore showed "Watching weekly" and looked healthy, while the customer heard nothing at all.
+
+Watch is sold on telling you when your site breaks. A delivery channel that failed quietly converts that promise into a false one, and the customer has no way to notice, because the only symptom is an absence. That is the same failure as a stranded claim, one level out: work that is recorded but never surfaced. A database row nobody reads is not a customer promise.
+
+Three decisions carry over from the lease work:
+
+- **Delivery is not coverage.** The Site really was checked, and saying so is the point. `watchIsCovered` is untouched, because a broken alert channel must not make the system claim the Site stopped being monitored. The two facts are reported side by side instead of collapsing into one state.
+- **Read the evidence, do not re-derive it.** Delivery is a property of one alert, so the verdict is computed from the most recent warranted Watch alert. An older undelivered alert stays visible until a later alert is actually delivered, so nobody is told they were warned about a change nobody reached them about. A `NOT_APPLICABLE` run is never treated as a delivery claim.
+- **Terminal is not the same as failed.** A `FAILED` alert with retries left reads as in progress, because the bounded retry exists precisely so FixFlags keeps trying before admitting failure. Calling it terminal early is a false alarm about a system that is working.
+
+One thing that was wrong on the first attempt and is worth stating as a general rule: **the new read was unguarded.** Every other tenant-scoped read in that file is conditioned on a resolved `projectId`, and a provisional Site has none, so `projectId: null` matched other tenants' unscoped Watch alerts. It looked correct, typechecked, and passed every test that did not read the file. Adding a query to a file full of guarded queries does not make it guarded. An undelivered alert is precisely the state that must never leak sideways, and a test now pins the guard by reading the source.
+
+The provider error is never shown. `watchNotificationLastError` holds vendor internals, so the customer is told about their inbox and the evidence stays in the database and logs. A test asserts the copy leaks nothing about the provider.
+
 ## Why it matters
 
 `SENDING` looked like a safe design. It is the correct state to write, because it prevents two workers from double-sending. The defect is treating a state that can be entered without leaving as if it always has an exit. Any claim that wraps an external side effect has this shape: a provider call, a payment, a queue publish, a file write. The row is not the source of truth for whether the work completed; the provider is. A claim must therefore be recoverable by a later reader, not only by its original writer.
@@ -82,8 +98,10 @@ The `RunRequest` lease deployed as `9a2732ca`, with `/api/health` and `/api/heal
 
 A read-only production query afterwards: `run_requests.leaseUntil` present, **0** rows in `QUEUED` or `RUNNING`, 0 with an expired lease, 0 legacy NULL leases, and 0 `RUN_ABANDONED`. No Site was blocked and nothing was reclaimed. The defect was latent in production too, so this deploy removed a failure mode rather than repairing a live incident. It does not prove that reclamation works in production, because there was nothing to reclaim.
 
+Alert delivery honesty deployed as `a23919f5`, healthy with `migrations: ok` and readiness 200. Read-only production query: 16 Watch alerts, all **SENT**, 0 PENDING, 0 FAILED at any attempt count, and a maximum of 1 attempt ever made. **No customer would see the new notice today.** So that was latent too: it removes a way for a broken alert channel to look healthy rather than repairing a live incident, and it does not prove the notice reads well to a real customer, because no real customer has had an alert fail to deliver.
+
 ## Open
 
-Recovery is not yet observed in production, on either lease. Nothing was stranded and no email was sent to a real inbox. The honest tests are: for the notification lease, induce a regression on a watched Site, kill the worker mid-claim, and confirm the customer receives the alert after the lease expires; for the run lease, strand a run, request a new one, and confirm the Site verifies again instead of returning the stale audit or a `P2002`. Both need a deliberate worker kill and a real customer, and neither has been done.
+Recovery is not yet observed in production, on any of this. Nothing was stranded and no email was sent to a real inbox. The honest tests are: for the notification lease, induce a regression on a watched Site, kill the worker mid-claim, and confirm the customer receives the alert after the lease expires; for the run lease, strand a run, request a new one, and confirm the Site verifies again instead of returning the stale audit or a `P2002`; for the notice, point a watched Site at a bad email address and confirm the customer sees the failure stated rather than a healthy-looking board. All three need a deliberate failure and a real customer, and none has been done.
 
 The same reasoning applies to any claim wrapping an external side effect: payment, queue publish, file write. The pattern is now documented, but the other call sites have not been audited for it. `OutcomeBindingExecution` in `checkout-execution.ts` is the most likely remaining candidate, since it also guards an external browser side effect and is skipped when a record already exists.
