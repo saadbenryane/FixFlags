@@ -78,10 +78,12 @@ The Watch notification lease deployed as `80888d14`; `/api/health` and `/api/hea
 
 Read-only production query afterwards: column applied, index applied, **0 stranded SENDING rows**, 0 PENDING/FAILED undelivered, 16 SENT Watch alerts across 1 watched Site. The defect was therefore latent rather than currently costing a customer an alert. That is worth stating plainly: the fix removes a real failure mode, it does not rescue an already-lost alert, and it does not prove recovery in production. Nothing was stranded to recover.
 
-The `RunRequest` lease is not yet deployed.
+The `RunRequest` lease deployed as `9a2732ca`, with `/api/health` and `/api/health/ready` both green and the `migrations` subsystem ok, which is itself proof the column applied against the real Railway database.
+
+A read-only production query afterwards: `run_requests.leaseUntil` present, **0** rows in `QUEUED` or `RUNNING`, 0 with an expired lease, 0 legacy NULL leases, and 0 `RUN_ABANDONED`. No Site was blocked and nothing was reclaimed. The defect was latent in production too, so this deploy removed a failure mode rather than repairing a live incident. It does not prove that reclamation works in production, because there was nothing to reclaim.
 
 ## Open
 
-Recovery is not yet observed in production, because nothing was stranded and no email was sent to a real inbox. The honest test is inducing a regression on a watched Site, killing the worker mid-claim, and confirming the customer receives the alert after the lease expires. That requires a real customer inbox and a deliberate worker kill, and has not been done.
+Recovery is not yet observed in production, on either lease. Nothing was stranded and no email was sent to a real inbox. The honest tests are: for the notification lease, induce a regression on a watched Site, kill the worker mid-claim, and confirm the customer receives the alert after the lease expires; for the run lease, strand a run, request a new one, and confirm the Site verifies again instead of returning the stale audit or a `P2002`. Both need a deliberate worker kill and a real customer, and neither has been done.
 
 The same reasoning applies to any claim wrapping an external side effect: payment, queue publish, file write. The pattern is now documented, but the other call sites have not been audited for it. `OutcomeBindingExecution` in `checkout-execution.ts` is the most likely remaining candidate, since it also guards an external browser side effect and is skipped when a record already exists.
