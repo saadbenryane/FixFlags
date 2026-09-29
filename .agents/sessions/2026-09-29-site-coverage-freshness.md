@@ -16,6 +16,7 @@ The Site query now captures one `now` and passes it to coverage and health. The 
 - Green after change: 3 focused test files, 26 tests passed. The regression checks the exact eight-day boundary, stored time, visible Site and Search card status, and open-Flag precedence. The existing failed and checking paths remain green.
 - Scoped ESLint, `copy-drift-check`, `ui:drift-guard`, `knowledge:duplication-guard`, and `git diff --check` passed.
 - A nonincremental `tsc --noEmit` completed but failed on the separate in-progress Wave 1 journey code: `SiteOutcomeConfirm.tsx` choice type, two `run-goal-probe.ts` PathStepLabel mismatches, and a duplicate `BrowserJourneyConfig` import in `checkout-execution.ts`. It reported no error in this scope. These files are not mine to alter.
+- Read-only real local database path: all six completed project audits are dated 2026-09-23, so none is past the eight-day window yet. I confirmed each selected Project's latest audit is `COMPLETED`, then called the actual `loadSiteHome` query for three Sites. Each preserved its open-Flag priority (1, 12 and 2 Flags respectively); unevidenced cards remained `Not checked yet`. No database row was changed. This checks fresh-state integration and confirms why the stale-state acceptance still needs a controlled old-audit fixture; it is not stale-state production proof.
 - `npm run agent -- verify --dry-run` planned 30 checks because a different owner's `package.json` research edit is present. Full verification has not completed for this scope.
 
 ## Limits and next action
