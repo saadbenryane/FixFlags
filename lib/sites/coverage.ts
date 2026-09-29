@@ -28,6 +28,7 @@ export type SiteFlagSeed = {
   fix: string
   pageUrl: string | null
   status: string
+  resolvedInId: string | null
   area: SiteCardArea
 }
 

@@ -17,6 +17,7 @@ function toSiteFlagSeed(flag: {
   fix: string
   pageUrl: string | null
   status: string
+  resolvedInId: string | null
   improvementId?: string | null
   confidence?: number | null
 }): SiteFlagSeed {
@@ -35,6 +36,7 @@ function toSiteFlagSeed(flag: {
     fix: flag.fix,
     pageUrl: flag.pageUrl,
     status: flag.status,
+    resolvedInId: flag.resolvedInId,
     area: cardAreaForCheck(flag),
   }
 }
@@ -110,6 +112,7 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
           fix: flag?.fix ?? imp.recommendedChange,
           pageUrl: flag?.pageUrl ?? null,
           status: imp.status,
+          resolvedInId: null,
           area: cardAreaForCheck({
             checkId: flag?.checkId,
             rubric: flag?.rubric ?? 'EXPERIENCE',
@@ -136,6 +139,7 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
       fix: flag.fix,
       pageUrl: flag.pageUrl,
       status: flag.status,
+      resolvedInId: null,
       area: cardAreaForCheck(flag),
     }))
   }
@@ -164,6 +168,36 @@ export async function loadSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
 
 export async function loadSiteRecommendations(site: SiteRecord): Promise<SiteFlagSeed[]> {
   return (await loadSiteFindings(site)).recommendations
+}
+
+export async function loadSiteResolvedFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
+  if (site.kind !== 'project' || !site.projectId) return []
+  const rows = await prisma.flag.findMany({
+    where: {
+      audit: { projectId: site.projectId },
+      status: 'FIXED',
+      resolvedInId: { not: null },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 50,
+    select: {
+      id: true,
+      checkId: true,
+      rubric: true,
+      severity: true,
+      impactTag: true,
+      problem: true,
+      evidence: true,
+      whyItMatters: true,
+      fix: true,
+      pageUrl: true,
+      status: true,
+      resolvedInId: true,
+      createdAt: true,
+      confidence: true,
+    },
+  })
+  return rows.map((flag) => toSiteFlagSeed({ ...flag, improvementId: null }))
 }
 
 export type SiteFlagAttemptView = {
@@ -214,6 +248,7 @@ export async function loadSiteFlagDetail(
     ...flagRow,
     improvementId: improvement?.id,
     status: improvement?.status ?? flagRow.status,
+    resolvedInId: flagRow.resolvedInId ?? null,
   })
 
   const improvementId = seed.improvementId

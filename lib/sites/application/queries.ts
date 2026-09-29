@@ -7,7 +7,7 @@ import {
   type CoverageFact,
 } from '@/lib/sites/coverage'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
-import { loadSiteFlagDetail, loadSiteFindings } from '@/lib/sites/flags'
+import { loadSiteFlagDetail, loadSiteFindings, loadSiteResolvedFlags } from '@/lib/sites/flags'
 import { walkFinishedFromCoverage } from '@/lib/sites/first-outcome'
 import { listSiteOutcomes } from '@/lib/sites/outcomes'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
@@ -46,6 +46,7 @@ export type SiteHomeView = {
   cards: BoardCardView[]
   flags: SiteFlagSeed[]
   recommendations: SiteFlagSeed[]
+  resolvedFlags: SiteFlagSeed[]
   outcomes: SiteOutcomeView[]
   watching: boolean
   watch: {
@@ -186,7 +187,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     }
   }
 
-  const [{ flags, recommendations }, outcomes, pageCount, checkedPages, projectSettings] = await Promise.all([
+  const [{ flags, recommendations }, outcomes, pageCount, checkedPages, projectSettings, resolvedFlags] = await Promise.all([
     loadSiteFindings(site),
     listSiteOutcomes(site),
     countSitePages(site),
@@ -199,6 +200,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
         shopifyShops: { take: 1, select: { shopDomain: true, uninstalledAt: true } },
       },
     }) : null,
+    loadSiteResolvedFlags(site),
   ])
 
   const inFlight = isAuditInFlight(audit?.status)
@@ -317,6 +319,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     cards,
     flags,
     recommendations,
+    resolvedFlags,
     outcomes,
     watching,
     watch: {

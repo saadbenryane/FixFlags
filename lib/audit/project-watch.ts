@@ -405,8 +405,10 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
   const lead = regressCount > 0
     ? `FixFlags found <strong>${regressCount}</strong> new or regressed Flag${regressCount === 1 ? '' : 's'} on <strong>${host}</strong>.`
     : `FixFlags verified ${recoveryCount === 1 ? 'a recovery' : `<strong>${recoveryCount}</strong> recoveries`} on <strong>${host}</strong>.`
+  // Pick a lead flag: regressed/new first, then recovered, so the email links to
+  // the most actionable item. A recovered flag now shows its proof on the detail page.
   const leadFlag = (child.flags ?? []).find((flag) =>
-    isCustomerFlag(flag) && [...summary.regressed, ...summary.newIssues].some(
+    isCustomerFlag(flag) && [...summary.regressed, ...summary.newIssues, ...summary.fixed].some(
       (item) => item.problem === flag.problem && item.checkId === flag.checkId
     )
   )

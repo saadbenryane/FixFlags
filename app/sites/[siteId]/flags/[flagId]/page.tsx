@@ -1,3 +1,4 @@
+import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { loadSiteBoardFlag, loadSiteHome } from '@/lib/sites/application/queries'
@@ -65,6 +66,13 @@ export default async function SiteFlagPage({
   const home = await loadSiteHome(resolvedId)
   if (!home) notFound()
 
+  const proofAudit = flag.resolvedInId
+    ? await prisma.audit.findUnique({
+        where: { id: flag.resolvedInId },
+        select: { id: true, completedAt: true, createdAt: true },
+      })
+    : null
+
   return (
     <SiteShell
       siteId={resolvedId}
@@ -120,6 +128,24 @@ export default async function SiteFlagPage({
         </dl>
       </section>
 
+      {flag.status === 'FIXED' && flag.resolvedInId && proofAudit ? (
+        <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5" aria-labelledby="resolved-heading">
+          <h2 id="resolved-heading" className="font-medium text-success">Resolved</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This Flag was verified as fixed by an independent check on{' '}
+            <time dateTime={new Date(proofAudit.completedAt ?? proofAudit.createdAt).toISOString()}>
+              {new Date(proofAudit.completedAt ?? proofAudit.createdAt).toLocaleString()}
+            </time>
+            . The page no longer shows the problem.
+          </p>
+          {proofAudit.id !== flag.sourceAuditId ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Proof audit: {proofAudit.id}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
       {connectionContext.length > 0 ? (
         <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5">
           <h2 className="font-medium">Connected context</h2>
@@ -134,29 +160,31 @@ export default async function SiteFlagPage({
         </section>
       ) : null}
 
-      <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5">
-        <p className="text-xs text-muted-foreground">
-          Copying instructions does not close the Flag. Verify checks the same page and action again.
-        </p>
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-          {flag.fix}
-        </p>
-        <SiteFlagActions
-          siteId={resolvedId}
-          flagId={flag.id}
-          fixText={flag.fix}
-          promptText={boardFlagPrompt({
-            problem: flag.problem,
-            whyItMatters: flag.whyItMatters,
-            evidence: flag.evidenceMissing ? null : flag.evidence,
-            fix: flag.fix,
-            pageUrl: flag.pageUrl,
-            journeyName: relatedOutcome?.name,
-            expectedBehavior: flag.expectedBehavior,
-          })}
-          verifying={flag.verifying}
-        />
-      </section>
+      {flag.status !== 'FIXED' ? (
+        <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5">
+          <p className="text-xs text-muted-foreground">
+            Copying instructions does not close the Flag. Verify checks the same page and action again.
+          </p>
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+            {flag.fix}
+          </p>
+          <SiteFlagActions
+            siteId={resolvedId}
+            flagId={flag.id}
+            fixText={flag.fix}
+            promptText={boardFlagPrompt({
+              problem: flag.problem,
+              whyItMatters: flag.whyItMatters,
+              evidence: flag.evidenceMissing ? null : flag.evidence,
+              fix: flag.fix,
+              pageUrl: flag.pageUrl,
+              journeyName: relatedOutcome?.name,
+              expectedBehavior: flag.expectedBehavior,
+            })}
+            verifying={flag.verifying}
+          />
+        </section>
+      ) : null}
 
       <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5">
         <h2 className="font-medium">Verification attempts</h2>
