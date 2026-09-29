@@ -28,6 +28,8 @@ So the product ran 130 completed checks and produced 3685 Flags, and **not one c
 
 The code does the opposite of both. `components/sites/SiteBoard.tsx` filters `kind !== 'GENERIC'` in three places and `lib/mcp/tools/sites.ts:80` does the same, so every inferred Outcome is invisible. The view already carries them, `loadSiteHome` passes `listSiteOutcomes` straight through, so this is a presentation-boundary discard, not a missing query. And there is no "Looks right" or Edit affordance anywhere: the Outcome detail page has only `VerifyOutcomeButton`, which is disabled whenever there is no required binding.
 
+> Correction, 2026-09-29, after `signup-outcome-never-ran`: the "no affordance anywhere" claim above was **half wrong and the wrong half was load-bearing**. A `SiteOutcomeEdit` component did exist, and it was dead, not absent: nothing imported it, and its "Looks right" button posted a confirmation with no `kind`, which `94cf309d` had just made always fail. So the loop was not blocked by a missing control, it was blocked by a control that could not work. Treat "no affordance exists" as a claim to verify by grepping for references, not by reading one page.
+
 With 9 inferred Outcomes and 0 confirmed, Home shows zero Outcomes and the documented Home hierarchy cannot start. The only confirmation path that exists is "Confirm this page", which creates a single AVAILABILITY Outcome for the site root.
 
 ## Why it cannot simply be built

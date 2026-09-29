@@ -48,9 +48,25 @@ describe('POST /api/sites/[siteId]/outcomes', () => {
     expect(body.message).toBe(OUTCOME_CONFIRMATION.kindRequired)
   })
 
+  it('answers a kind FixFlags cannot run with 400 and the reason, never 404', async () => {
+    // The 404 branch would tell a customer their Outcome is gone. It is not.
+    // It is here, and FixFlags cannot watch it, so the answer is a refusal with
+    // something to do about it.
+    mocks.executeSiteCommand.mockResolvedValue({
+      ok: false,
+      error: OUTCOME_CONFIRMATION.kindUnwatchable,
+      code: 'OUTCOME_KIND_UNWATCHABLE',
+    })
+    const response = await POST(request({ outcomeId: 'out_1', confirmed: true, kind: 'SIGNUP' }), context)
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body.code).toBe('OUTCOME_KIND_UNWATCHABLE')
+    expect(body.message).toBe(OUTCOME_CONFIRMATION.kindUnwatchable)
+  })
+
   it('still answers a genuinely missing Outcome with 404', async () => {
     mocks.executeSiteCommand.mockResolvedValue({ ok: false, error: 'Outcome not found' })
-    const response = await POST(request({ outcomeId: 'out_x', confirmed: true, kind: 'SIGNUP' }), context)
+    const response = await POST(request({ outcomeId: 'out_x', confirmed: true, kind: 'CHECKOUT' }), context)
     expect(response.status).toBe(404)
   })
 

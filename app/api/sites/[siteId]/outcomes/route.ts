@@ -41,7 +41,7 @@ export async function POST(
     if (!result.ok) {
       // A refused confirmation is a client mistake, not a missing Outcome, and
       // the customer needs the reason rather than "not found".
-      if (result.code === 'OUTCOME_KIND_REQUIRED') {
+      if (result.code === 'OUTCOME_KIND_REQUIRED' || result.code === 'OUTCOME_KIND_UNWATCHABLE') {
         return apiError(result.error, 400, { code: result.code })
       }
       return apiError(result.error, 404)

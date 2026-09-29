@@ -1,5 +1,5 @@
 import { executeProductCommand } from '@/lib/products/application/commands'
-import { confirmPageAvailability, confirmSiteOutcome } from '@/lib/sites/outcomes'
+import { confirmPageAvailability, confirmSiteOutcome, outcomeKindWatchable } from '@/lib/sites/outcomes'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
@@ -65,6 +65,18 @@ export async function executeSiteCommand(command: SiteCommand) {
           ok: false as const,
           error: OUTCOME_CONFIRMATION.kindRequired,
           code: 'OUTCOME_KIND_REQUIRED' as const,
+        }
+      }
+      // A kind is necessary but not sufficient. Some kinds name a mechanism
+      // whose binding FixFlags cannot build or run yet, so accepting one records
+      // an agreement, enables Verify, and then answers "Couldn't verify" on
+      // every run with nothing the customer can change. Refuse it the same way,
+      // and point at what can actually be watched.
+      if (command.confirmed && command.kind && !outcomeKindWatchable(command.kind, site.url)) {
+        return {
+          ok: false as const,
+          error: OUTCOME_CONFIRMATION.kindUnwatchable,
+          code: 'OUTCOME_KIND_UNWATCHABLE' as const,
         }
       }
       const outcome = await confirmSiteOutcome({

@@ -3,14 +3,26 @@ import type { Prisma } from '@prisma/client'
 import type { SiteRecord } from '@/lib/sites/types'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { currentOutcomeState, type CustomerOutcomeState } from '@/lib/sites/outcome-state'
+import { validateBindingConfig } from '@/lib/sites/application/binding-config'
 
-function expectationForKind(kind: 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY'): string {
+/**
+ * The three things FixFlags can actually watch, and the only kinds a
+ * confirmation may name. This list is the seam between the two halves of the
+ * product that must never disagree: what the command will accept, and what the
+ * execution path can really run. Add a kind here and
+ * `lib/sites/__tests__/outcome-kind-mechanism-contract.test.ts` will hold it to
+ * producing a binding the validator accepts, or being refused.
+ */
+export const CONFIRMABLE_OUTCOME_KINDS = ['CHECKOUT', 'SIGNUP', 'AVAILABILITY'] as const
+export type ConfirmableOutcomeKind = (typeof CONFIRMABLE_OUTCOME_KINDS)[number]
+
+function expectationForKind(kind: ConfirmableOutcomeKind): string {
   if (kind === 'CHECKOUT') return 'The selected product appears in the cart and checkout opens.'
   if (kind === 'SIGNUP') return 'A person can complete the form when FixFlags has a safe, authorized fixture.'
   return 'The public page responds successfully.'
 }
 
-function bindingForConfirmedKind(kind: 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY', siteUrl: string) {
+export function bindingForConfirmedKind(kind: ConfirmableOutcomeKind, siteUrl: string) {
   if (kind === 'CHECKOUT') {
     return {
       key: 'checkout-browser-v1',
@@ -35,6 +47,33 @@ function bindingForConfirmedKind(kind: 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY', s
     required: true,
   }
 }
+
+/**
+ * Whether FixFlags can keep a promise about this kind, derived from the
+ * execution contract rather than asserted next to it.
+ *
+ * This is the question the confirmation command has to answer, and it has to be
+ * derived, because the failure it prevents is precisely a disagreement between
+ * two modules. `SIGNUP` is unwatchable because the binding it writes carries
+ * `safety: 'protected'` and no `fixtureId`, which `safeFormBindingConfigSchema`
+ * requires and `OutcomeFixture` has no shipped way to create. Confirming one
+ * records an agreement, puts a required binding on the Site, enables Verify on
+ * Home, and then BLOCKS on every run, forever, with nothing the customer can do
+ * about it.
+ *
+ * When a real fixture path lands and the config validates, this returns true and
+ * the refusal disappears on its own. That is the intended way for it to change.
+ */
+export function outcomeKindWatchable(kind: ConfirmableOutcomeKind, siteUrl = 'https://example.com'): boolean {
+  const binding = bindingForConfirmedKind(kind, siteUrl)
+  return validateBindingConfig(binding.mechanism, binding.config).success
+}
+
+/** The kinds a customer may be offered right now, in the order they are offered. */
+export function watchableOutcomeKinds(siteUrl?: string): ConfirmableOutcomeKind[] {
+  return CONFIRMABLE_OUTCOME_KINDS.filter((kind) => outcomeKindWatchable(kind, siteUrl))
+}
+
 
 function slugify(name: string): string {
   return (

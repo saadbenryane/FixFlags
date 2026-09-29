@@ -78,6 +78,39 @@ export const WATCH_OFFER = {
 export const OUTCOME_CONFIRMATION = {
   kindRequired:
     'FixFlags cannot watch this yet. Confirm what should keep working: a purchase, a signup, or that the page loads.',
+  /**
+   * A kind is not enough either. `SIGNUP` names a safe-form mechanism whose
+   * binding cannot validate, so accepting it records an agreement, enables
+   * Verify, and then reports "Couldn't verify" on every run with no way forward.
+   * The customer is told what is missing and what can be watched instead.
+   */
+  kindUnwatchable:
+    'FixFlags cannot watch a signup on this Site yet. It needs an approved test account and a way to undo the signup before it can check one. Confirm a purchase or that the page loads instead.',
+  /**
+   * The choice a customer gets instead of the dead end "Inferred, confirmation
+   * required", which named a requirement and offered no way to meet it. Each
+   * button is one of the things FixFlags can really check, in customer words.
+   */
+  proposeHeading: 'Confirm what FixFlags should watch',
+  proposeBody:
+    'FixFlags read this from your site. Choose what it should keep checking, and FixFlags will verify it on every check.',
+  inferredNote: 'Read from your site. Not being watched yet.',
+  confirmedNote: 'Confirmed by you. FixFlags checks it on every run.',
+  confirmedBadge: 'Confirmed',
+  nameLabel: 'Outcome name',
+  noneConfirmed: 'No Outcome has been confirmed for this Site yet.',
+  edit: 'Edit',
+  save: 'Save',
+  cancel: 'Cancel',
+  saved: 'Confirmed. FixFlags will keep watching this.',
+  saveFailed: 'Could not save this Outcome',
+} as const
+
+/** The watchable things, in customer words. Never "journey" or "binding". */
+export const OUTCOME_KIND_LABELS = {
+  CHECKOUT: 'A customer can reach checkout',
+  SIGNUP: 'A visitor can create an account',
+  AVAILABILITY: 'The page loads',
 } as const
 
 export const WATCH_ALERT_DELIVERY = {
