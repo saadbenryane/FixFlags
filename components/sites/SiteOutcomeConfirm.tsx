@@ -31,7 +31,7 @@ function ConfirmKind({
 }: {
   siteId: string
   outcome: SiteOutcomeView
-  choices: Array<'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY'>
+  choices: Array<'CHECKOUT' | 'SIGNUP' | 'LOGIN' | 'PASSWORD_RESET' | 'AVAILABILITY'>
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)

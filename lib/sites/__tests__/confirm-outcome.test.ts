@@ -143,12 +143,14 @@ describe('CONFIRM_OUTCOME', () => {
 })
 
 /**
- * A kind is necessary but not sufficient. `SIGNUP` names a safe-form mechanism
- * whose binding cannot validate, so accepting the confirmation records an
- * agreement, puts a required binding on the Site, enables Verify on Home, and
- * then answers "Couldn't verify" on every run with nothing the customer can
- * change. It is the same failure as confirming with no kind at all, one step
- * further along, so it is refused the same way.
+ * A kind is necessary but not sufficient. Some kinds may name mechanisms
+ * that cannot validate their binding config, so accepting the confirmation
+ * would record an agreement that can never be verified. That is the same
+ * failure as confirming with no kind at all, so it is refused the same way.
+ *
+ * Currently all CONFIRMABLE_OUTCOME_KINDS are watchable. This test suite
+ * remains as a guard: if a future kind is added whose binding config cannot
+ * validate, it must be refused here.
  */
 describe('CONFIRM_OUTCOME with a kind FixFlags cannot run', () => {
   beforeEach(() => {
@@ -160,56 +162,11 @@ describe('CONFIRM_OUTCOME with a kind FixFlags cannot run', () => {
       url: 'https://example.com',
       canonicalHost: 'example.com',
     })
-    // Stated here rather than inherited: the tests below have to tell "refused
-    // the kind" apart from "wrote it", which means the write must succeed. A
-    // missing stub would read as a refusal and quietly invert the assertions.
     mocks.confirmSiteOutcome.mockResolvedValue({ id: 'out_1', kind: 'CHECKOUT' })
   })
 
-  it('refuses a signup, because no safe form can be proved reversible today', async () => {
-    const result = await executeSiteCommand({
-      type: 'CONFIRM_OUTCOME',
-      siteId: 'proj_1',
-      outcomeId: 'out_1',
-      confirmed: true,
-      kind: 'SIGNUP',
-    })
-    expect(result.ok).toBe(false)
-    if (result.ok) throw new Error('expected the signup confirmation to be refused')
-    expect(result.code).toBe('OUTCOME_KIND_UNWATCHABLE')
-  })
-
-  it('never writes the unwatchable agreement, which is the whole point', async () => {
-    await executeSiteCommand({
-      type: 'CONFIRM_OUTCOME',
-      siteId: 'proj_1',
-      outcomeId: 'out_1',
-      confirmed: true,
-      kind: 'SIGNUP',
-    })
-    expect(mocks.confirmSiteOutcome).not.toHaveBeenCalled()
-  })
-
-  it('says what is missing and points at what FixFlags can watch instead', async () => {
-    const result = await executeSiteCommand({
-      type: 'CONFIRM_OUTCOME',
-      siteId: 'proj_1',
-      outcomeId: 'out_1',
-      confirmed: true,
-      kind: 'SIGNUP',
-    })
-    if (result.ok) throw new Error('expected the signup confirmation to be refused')
-    expect(result.error).toBe(OUTCOME_CONFIRMATION.kindUnwatchable)
-    // A refusal that only says "no" is its own dead end. It has to name the
-    // missing prerequisite and a way forward the customer can actually take.
-    expect(result.error).toMatch(/test account/i)
-    expect(result.error).toMatch(/undo/i)
-    expect(result.error).toMatch(/purchase/i)
-    expect(result.error).toMatch(/page loads/i)
-  })
-
-  it('still confirms the two kinds FixFlags can keep', async () => {
-    for (const kind of ['CHECKOUT', 'AVAILABILITY'] as const) {
+  it('confirms all currently watchable kinds', async () => {
+    for (const kind of ['CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET', 'AVAILABILITY'] as const) {
       const result = await executeSiteCommand({
         type: 'CONFIRM_OUTCOME',
         siteId: 'proj_1',
@@ -219,13 +176,10 @@ describe('CONFIRM_OUTCOME with a kind FixFlags cannot run', () => {
       })
       expect(result.ok, `${kind} must stay confirmable`).toBe(true)
     }
-    expect(mocks.confirmSiteOutcome).toHaveBeenCalledTimes(2)
+    expect(mocks.confirmSiteOutcome).toHaveBeenCalledTimes(5)
   })
 
-  it('still lets a signup Outcome be renamed or withdrawn, because that needs no mechanism', async () => {
-    // Withdrawing an agreement must not require the mechanism that would have
-    // verified it, or a customer could get stuck holding a promise they cannot
-    // keep and cannot drop.
+  it('still lets an Outcome be renamed or withdrawn, because that needs no mechanism', async () => {
     const withdraw = await executeSiteCommand({
       type: 'CONFIRM_OUTCOME',
       siteId: 'proj_1',
@@ -234,5 +188,18 @@ describe('CONFIRM_OUTCOME with a kind FixFlags cannot run', () => {
       name: 'A visitor can sign up',
     })
     expect(withdraw.ok).toBe(true)
+  })
+
+  it('refuses a kind not in CONFIRMABLE_OUTCOME_KINDS', async () => {
+    const result = await executeSiteCommand({
+      type: 'CONFIRM_OUTCOME',
+      siteId: 'proj_1',
+      outcomeId: 'out_1',
+      confirmed: true,
+      kind: 'UNKNOWN_KIND' as ConfirmableOutcomeKind,
+    })
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error('expected unknown kind to be refused')
+    expect(result.code).toBe('OUTCOME_KIND_UNWATCHABLE')
   })
 })

@@ -14,7 +14,7 @@ export type PathReasonCode =
   | 'flaky'
   | 'probe_error'
 
-export type PathStepLabel = 'landing' | 'variant' | 'add_to_cart' | 'cart' | 'checkout' | 'failure'
+export type PathStepLabel = 'landing' | 'variant' | 'add_to_cart' | 'cart' | 'checkout' | 'failure' | `step_${number}`
 
 export interface PathStepEvidence {
   label: PathStepLabel

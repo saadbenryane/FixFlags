@@ -61,7 +61,7 @@ describe('SiteOutcomeRow confirmation', () => {
     // offering a kind whose binding cannot validate, which is the exact defect
     // this row exists to prevent.
     const watchable = watchableOutcomeKinds()
-    expect(watchable).not.toContain('SIGNUP')
+    expect(watchable).toEqual(['CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET', 'AVAILABILITY'])
     render(<SiteOutcomeRow siteId="site-1" outcome={outcome()} />)
 
     const offered = screen.getAllByRole('button').map((button) => button.textContent)

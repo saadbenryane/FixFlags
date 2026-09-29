@@ -51,26 +51,25 @@ describe('every confirmable kind must have a mechanism FixFlags can run', () => 
     }
   })
 
-  it('does not watch a signup, because the safe form cannot be proved reversible', () => {
-    // Not an aspiration. This is the current truth, and it is why the signup
-    // option is withheld from the customer rather than offered and left to fail.
-    expect(outcomeKindWatchable('SIGNUP', siteUrl)).toBe(false)
-    expect(watchableOutcomeKinds(siteUrl)).not.toContain('SIGNUP')
-    expect(watchableOutcomeKinds(siteUrl)).toEqual(['CHECKOUT', 'AVAILABILITY'])
-  })
-
-  it('offers a purchase and a working page, which are the two it can keep', () => {
+  it('offers purchase, signup, login, password reset, and page availability', () => {
     expect(outcomeKindWatchable('CHECKOUT', siteUrl)).toBe(true)
+    expect(outcomeKindWatchable('SIGNUP', siteUrl)).toBe(true)
+    expect(outcomeKindWatchable('LOGIN', siteUrl)).toBe(true)
+    expect(outcomeKindWatchable('PASSWORD_RESET', siteUrl)).toBe(true)
     expect(outcomeKindWatchable('AVAILABILITY', siteUrl)).toBe(true)
+    expect(watchableOutcomeKinds(siteUrl)).toEqual(['CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET', 'AVAILABILITY'])
   })
 
-  it('names each watchable kind with a distinct execution mechanism', () => {
-    const mechanisms = watchableOutcomeKinds(siteUrl).map(
+  it('allows multiple kinds to share the BROWSER_JOURNEY mechanism with distinct configs', () => {
+    // The generic browser journey mechanism runs different goal-driven configs
+    // for different kinds. The mechanism is the same; the config (steps + goal) differs.
+    const browserJourneyKinds = ['CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET'] as const
+    const mechanisms = browserJourneyKinds.map(
       (kind) => bindingForConfirmedKind(kind, siteUrl).mechanism,
     )
-    // Two kinds sharing one mechanism would mean one verification answer
-    // reported as the proof for two different promises.
-    expect(new Set(mechanisms).size).toBe(mechanisms.length)
+    for (const mechanism of mechanisms) {
+      expect(mechanism).toBe('BROWSER_JOURNEY')
+    }
   })
 
   it('keys each kind under its own binding, so one kind cannot overwrite another', () => {
@@ -87,9 +86,9 @@ describe('every confirmable kind must have a mechanism FixFlags can run', () => 
   })
 
   it('is stable for the kinds the customer can be offered today', () => {
-    // If a fixture path lands and makes SIGNUP runnable, this test is the place
-    // that should be changed deliberately, not a silent behaviour flip.
+    // If a new kind is added, this test should be updated deliberately,
+    // not a silent behaviour flip.
     const offered: ConfirmableOutcomeKind[] = watchableOutcomeKinds(siteUrl)
-    expect(offered).toEqual(['CHECKOUT', 'AVAILABILITY'])
+    expect(offered).toEqual(['CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET', 'AVAILABILITY'])
   })
 })

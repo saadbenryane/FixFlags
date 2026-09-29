@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   attemptFindFirst: vi.fn(),
   attemptCreateMany: vi.fn(),
   attemptUpdateMany: vi.fn(),
-  runPathProbe: vi.fn(),
+  runGoalProbe: vi.fn(),
   persistJourneyResult: vi.fn(),
   flagUpdateMany: vi.fn(),
 }))
@@ -33,8 +33,8 @@ vi.mock('@/lib/db', () => ({
     },
   },
 }))
-vi.mock('@/lib/integrity/run-path-probe', () => ({
-  runPathProbe: mocks.runPathProbe,
+vi.mock('@/lib/integrity/run-goal-probe', () => ({
+  runGoalProbe: mocks.runGoalProbe,
 }))
 vi.mock('@/lib/audit/journey/run-journey-reviews', () => ({
   persistJourneyResult: mocks.persistJourneyResult,
@@ -54,7 +54,13 @@ describe('bound Checkout execution', () => {
           key: 'checkout-browser-v1',
           mechanism: 'BROWSER_JOURNEY',
           required: true,
-          config: { startUrl: 'https://shop.example/products/widget', safety: 'stop-at-checkout' },
+          config: {
+            startUrl: 'https://shop.example/products/widget',
+            steps: [{ action: 'wait', waitMs: 1_000 }],
+            goal: { type: 'url_pattern', pattern: '/checkouts?(/|$|\\?)', description: 'Reach the checkout page' },
+            safety: 'stop-at-checkout',
+            allowLocalhost: false,
+          },
         }],
       } }],
       audit: { url: 'https://shop.example' },
@@ -71,7 +77,7 @@ describe('bound Checkout execution', () => {
   })
 
   it('persists a confirmed purchase failure as one customer-level journey Flag', async () => {
-    mocks.runPathProbe.mockResolvedValue({
+    mocks.runGoalProbe.mockResolvedValue({
       health: 'RED',
       reason: 'add_to_cart_noop',
       confirmed: true,
@@ -113,35 +119,8 @@ describe('bound Checkout execution', () => {
     )
   })
 
-  it('does not submit a protected Signup form', async () => {
-    mocks.runFindFirst.mockResolvedValue({
-      id: 'run-1',
-      selections: [{ outcome: {
-        id: 'signup-1',
-        kind: 'SIGNUP',
-        bindings: [{
-          key: 'signup-form-v1',
-          mechanism: 'SAFE_FORM',
-          required: true,
-          config: { startUrl: 'https://shop.example/account/register', safety: 'protected' },
-        }],
-      } }],
-      audit: { url: 'https://shop.example' },
-    })
-
-    await runBoundCheckoutForAudit('audit-1')
-
-    expect(mocks.runPathProbe).not.toHaveBeenCalled()
-    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
-      create: expect.objectContaining({
-        disposition: 'BLOCKED',
-        reason: 'binding_configuration_invalid',
-      }),
-    }))
-  })
-
   it('persists blocked execution as inconclusive evidence without a Flag', async () => {
-    mocks.runPathProbe.mockResolvedValue({
+    mocks.runGoalProbe.mockResolvedValue({
       health: 'UNKNOWN',
       reason: 'bot_wall',
       confirmed: false,
@@ -162,7 +141,7 @@ describe('bound Checkout execution', () => {
   })
 
   it('keeps both confirmation walks and records no transient failure when a Flag is confirmed', async () => {
-    mocks.runPathProbe.mockResolvedValue({
+    mocks.runGoalProbe.mockResolvedValue({
       health: 'RED',
       reason: 'add_to_cart_noop',
       confirmed: true,
@@ -188,7 +167,7 @@ describe('bound Checkout execution', () => {
   })
 
   it('retains a recovered first walk as transient flakiness instead of a Flag', async () => {
-    mocks.runPathProbe.mockResolvedValue({
+    mocks.runGoalProbe.mockResolvedValue({
       health: 'UNKNOWN',
       reason: 'flaky',
       confirmed: false,

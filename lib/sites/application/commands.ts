@@ -1,5 +1,5 @@
 import { executeProductCommand } from '@/lib/products/application/commands'
-import { confirmPageAvailability, confirmSiteOutcome, outcomeKindWatchable } from '@/lib/sites/outcomes'
+import { CONFIRMABLE_OUTCOME_KINDS, type ConfirmableOutcomeKind, confirmPageAvailability, confirmSiteOutcome, outcomeKindWatchable } from '@/lib/sites/outcomes'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
@@ -18,7 +18,7 @@ export type SiteCommand =
       outcomeId: string
       name?: string
       confirmed: boolean
-      kind?: 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY'
+      kind?: ConfirmableOutcomeKind
     }
   | {
       type: 'RECORD_FIX_HANDOFF'
@@ -72,6 +72,13 @@ export async function executeSiteCommand(command: SiteCommand) {
       // an agreement, enables Verify, and then answers "Couldn't verify" on
       // every run with nothing the customer can change. Refuse it the same way,
       // and point at what can actually be watched.
+      if (command.confirmed && command.kind && !CONFIRMABLE_OUTCOME_KINDS.includes(command.kind)) {
+        return {
+          ok: false as const,
+          error: OUTCOME_CONFIRMATION.kindUnwatchable,
+          code: 'OUTCOME_KIND_UNWATCHABLE' as const,
+        }
+      }
       if (command.confirmed && command.kind && !outcomeKindWatchable(command.kind, site.url)) {
         return {
           ok: false as const,

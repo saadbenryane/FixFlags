@@ -4,6 +4,7 @@ import type { SiteRecord } from '@/lib/sites/types'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { currentOutcomeState, type CustomerOutcomeState } from '@/lib/sites/outcome-state'
 import { validateBindingConfig } from '@/lib/sites/application/binding-config'
+import type { BrowserJourneyConfig } from '@/lib/sites/application/binding-config'
 
 /**
  * The three things FixFlags can actually watch, and the only kinds a
@@ -13,13 +14,87 @@ import { validateBindingConfig } from '@/lib/sites/application/binding-config'
  * `lib/sites/__tests__/outcome-kind-mechanism-contract.test.ts` will hold it to
  * producing a binding the validator accepts, or being refused.
  */
-export const CONFIRMABLE_OUTCOME_KINDS = ['CHECKOUT', 'SIGNUP', 'AVAILABILITY'] as const
+export const CONFIRMABLE_OUTCOME_KINDS = ['CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET', 'AVAILABILITY'] as const
 export type ConfirmableOutcomeKind = (typeof CONFIRMABLE_OUTCOME_KINDS)[number]
 
 function expectationForKind(kind: ConfirmableOutcomeKind): string {
   if (kind === 'CHECKOUT') return 'The selected product appears in the cart and checkout opens.'
   if (kind === 'SIGNUP') return 'A person can complete the form when FixFlags has a safe, authorized fixture.'
+  if (kind === 'LOGIN') return 'A person can sign in with valid credentials and reach their account.'
+  if (kind === 'PASSWORD_RESET') return 'A person can request a password reset and receive the reset email.'
   return 'The public page responds successfully.'
+}
+
+function buildLoginJourneyConfig(siteUrl: string): BrowserJourneyConfig {
+  const base = new URL(siteUrl)
+  const loginUrl = new URL('/account/login', base).toString()
+  return {
+    startUrl: loginUrl,
+    steps: [
+      { action: 'wait', waitMs: 1_000 },
+      { action: 'fill', role: 'textbox', name: 'Email', value: process.env.FIXFLAGS_LOGIN_EMAIL ?? '' },
+      { action: 'fill', role: 'textbox', name: 'Password', value: process.env.FIXFLAGS_LOGIN_PASSWORD ?? '' },
+      { action: 'click', role: 'button', name: 'Sign in' },
+    ],
+    goal: {
+      type: 'url_pattern',
+      pattern: '/account(?!/login)',
+      description: 'Reach the account dashboard after login',
+    },
+    safety: 'none',
+    allowLocalhost: false,
+  }
+}
+
+function buildSignupJourneyConfig(siteUrl: string): BrowserJourneyConfig {
+  const base = new URL(siteUrl)
+  const signupUrl = new URL('/account/register', base).toString()
+  return {
+    startUrl: signupUrl,
+    steps: [
+      { action: 'wait', waitMs: 1_000 },
+      { action: 'fill', role: 'textbox', name: 'Email', value: process.env.FIXFLAGS_SIGNUP_EMAIL ?? '' },
+      { action: 'fill', role: 'textbox', name: 'Password', value: process.env.FIXFLAGS_SIGNUP_PASSWORD ?? '' },
+      { action: 'click', role: 'button', name: 'Create account' },
+    ],
+    goal: {
+      type: 'url_pattern',
+      pattern: '/account(?!/(register|login))',
+      description: 'Reach the account dashboard after signup',
+    },
+    safety: 'none',
+    allowLocalhost: false,
+  }
+}
+
+function buildPasswordResetJourneyConfig(siteUrl: string): BrowserJourneyConfig {
+  const base = new URL(siteUrl)
+  const resetUrl = new URL('/account/recover', base).toString()
+  return {
+    startUrl: resetUrl,
+    steps: [
+      { action: 'wait', waitMs: 1_000 },
+      { action: 'fill', role: 'textbox', name: 'Email', value: process.env.FIXFLAGS_LOGIN_EMAIL ?? '' },
+      { action: 'click', role: 'button', name: 'Reset password' },
+    ],
+    goal: {
+      type: 'text_present',
+      text: 'reset password',
+      description: 'See password reset confirmation message',
+    },
+    safety: 'none',
+    allowLocalhost: false,
+  }
+}
+
+function buildCheckoutJourneyConfig(startUrl: string, allowLocalhost: boolean): BrowserJourneyConfig {
+  return {
+    startUrl,
+    steps: [{ action: 'wait', waitMs: 1_000 }],
+    goal: { type: 'url_pattern', pattern: '/checkouts?(/|$|\\?)', description: 'Reach the checkout page' },
+    safety: 'stop-at-checkout',
+    allowLocalhost,
+  }
 }
 
 export function bindingForConfirmedKind(kind: ConfirmableOutcomeKind, siteUrl: string) {
@@ -27,16 +102,40 @@ export function bindingForConfirmedKind(kind: ConfirmableOutcomeKind, siteUrl: s
     return {
       key: 'checkout-browser-v1',
       mechanism: 'BROWSER_JOURNEY' as const,
-      config: { startUrl: siteUrl, safety: 'stop-at-checkout' },
+      config: {
+        startUrl: siteUrl,
+        steps: [{ action: 'wait', waitMs: 1_000 }],
+        goal: { type: 'url_pattern' as const, pattern: '/checkouts?(/|$|\\?)', description: 'Reach the checkout page' },
+        safety: 'stop-at-checkout' as const,
+      },
       scope: { device: 'mobile', expected: 'checkout_reached' },
       required: true,
     }
   }
   if (kind === 'SIGNUP') {
     return {
-      key: 'signup-form-v1',
-      mechanism: 'SAFE_FORM' as const,
-      config: { startUrl: siteUrl, safety: 'protected' },
+      key: 'signup-browser-v1',
+      mechanism: 'BROWSER_JOURNEY' as const,
+      config: buildSignupJourneyConfig(siteUrl),
+      scope: { device: 'mobile', expected: 'account_reached' },
+      required: true,
+    }
+  }
+  if (kind === 'LOGIN') {
+    return {
+      key: 'login-browser-v1',
+      mechanism: 'BROWSER_JOURNEY' as const,
+      config: buildLoginJourneyConfig(siteUrl),
+      scope: { device: 'mobile', expected: 'account_reached' },
+      required: true,
+    }
+  }
+  if (kind === 'PASSWORD_RESET') {
+    return {
+      key: 'password-reset-browser-v1',
+      mechanism: 'BROWSER_JOURNEY' as const,
+      config: buildPasswordResetJourneyConfig(siteUrl),
+      scope: { device: 'mobile', expected: 'reset_email_sent' },
       required: true,
     }
   }
@@ -103,7 +202,7 @@ async function toOutcomeView(row: {
   inferenceSource: string
   confirmedAt: Date | null
   pages: Array<{ pageId: string }>
-  kind: 'GENERIC' | 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY'
+  kind: 'GENERIC' | 'CHECKOUT' | 'SIGNUP' | 'LOGIN' | 'PASSWORD_RESET' | 'AVAILABILITY'
   criticality: 'CRITICAL' | 'IMPORTANT' | 'INFORMATIONAL'
   environment: string
   expectation: string | null
@@ -166,7 +265,7 @@ export type SiteOutcomeView = {
   confirmedAt: string | null
   pageIds: string[]
   pageUrls: string[]
-  kind: 'GENERIC' | 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY'
+  kind: 'GENERIC' | 'CHECKOUT' | 'SIGNUP' | 'LOGIN' | 'PASSWORD_RESET' | 'AVAILABILITY'
   criticality: 'CRITICAL' | 'IMPORTANT' | 'INFORMATIONAL'
   environment: string
   expectation: string | null
@@ -179,6 +278,16 @@ export type SiteOutcomeView = {
   flagId: string | null
   latestRunId: string | null
   running: boolean
+}
+
+/** Classify a journey type into a confirmable outcome kind, or return null if not verifiable. */
+function classifyJourneyType(journeyType: string): ConfirmableOutcomeKind | null {
+  const type = journeyType.toLowerCase()
+  if (type === 'checkout' || type === 'purchase' || type === 'buy_flow') return 'CHECKOUT'
+  if (type === 'login' || type === 'signin' || type === 'sign_in') return 'LOGIN'
+  if (type === 'signup' || type === 'register' || type === 'sign_up' || type === 'registration') return 'SIGNUP'
+  if (type === 'password_reset' || type === 'forgot_password' || type === 'reset_password' || type === 'recover_account') return 'PASSWORD_RESET'
+  return null
 }
 
 /** Worker projection: only observed pages and browser-planned journeys become Site facts. */
@@ -238,10 +347,21 @@ export async function syncOutcomesFromAudit(input: {
       })
       pages.set(rawUrl, page.id)
     }
+    // First pass: classify each journey to a confirmable kind
+    const classifiedJourneys = new Map<string, ConfirmableOutcomeKind>()
     for (const journey of audit.journeyReviews) {
-      const name = journey.journeyType.trim().replaceAll('_', ' ')
+      const kind = classifyJourneyType(journey.journeyType)
+      if (kind) {
+        classifiedJourneys.set(journey.journeyType, kind)
+      }
+    }
+    // Second pass: upsert outcomes for classified journeys only (no GENERIC ghosts)
+    for (const [journeyType, kind] of classifiedJourneys) {
+      const journey = audit.journeyReviews.find((j) => j.journeyType === journeyType)
+      if (!journey) continue
+      const name = journeyType.trim().replaceAll('_', ' ')
       if (!name) continue
-      const slug = slugify(journey.journeyType)
+      const slug = slugify(journeyType)
       const where: Prisma.SiteOutcomeWhereUniqueInput = input.site.projectId
         ? { projectId_slug: { projectId: input.site.projectId, slug } }
         : {
@@ -253,7 +373,7 @@ export async function syncOutcomesFromAudit(input: {
       // Never overwrite a user's label, confirmation, or deliberately edited intent.
       const outcome = await tx.siteOutcome.upsert({
         where,
-        create: { ...owner, name, slug, inferenceSource: 'browser' },
+        create: { ...owner, name, slug, kind, inferenceSource: 'browser' },
         update: {},
       })
       if (outcome.inferenceSource === 'user') continue
@@ -330,6 +450,7 @@ export async function syncOutcomesFromAudit(input: {
         },
       })
       checkoutOutcomeId = checkout.id
+      const bindingConfig = buildCheckoutJourneyConfig(startUrl, false)
       await tx.outcomeExecutionBinding.upsert({
         where: {
           outcomeId_key: { outcomeId: checkout.id, key: 'checkout-browser-v1' },
@@ -338,12 +459,12 @@ export async function syncOutcomesFromAudit(input: {
           outcomeId: checkout.id,
           mechanism: 'BROWSER_JOURNEY',
           key: 'checkout-browser-v1',
-          config: { startUrl, safety: 'stop-at-checkout' },
+          config: bindingConfig,
           scope: { device: 'mobile', expected: 'checkout_reached' },
           required: true,
         },
         update: observedStartUrl
-          ? { config: { startUrl, safety: 'stop-at-checkout' }, enabled: true }
+          ? { config: bindingConfig, enabled: true }
           : { enabled: true },
       })
     }
@@ -397,7 +518,7 @@ export async function confirmSiteOutcome(input: {
   outcomeId: string
   name?: string
   confirmed: boolean
-  kind?: 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY'
+  kind?: ConfirmableOutcomeKind
 }): Promise<SiteOutcomeView | null> {
   const ownerFilter =
     input.site.kind === 'project'

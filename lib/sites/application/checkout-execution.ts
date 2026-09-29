@@ -2,7 +2,7 @@ import type { OutcomeExecutionMechanism, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { persistJourneyResult } from '@/lib/audit/journey/run-journey-reviews'
 import { normalizeAuditUrl } from '@/lib/audit/url'
-import { runPathProbe } from '@/lib/integrity/run-path-probe'
+import { runGoalProbe, type BrowserJourneyConfig, type GoalDefinition, type GoalStep } from '@/lib/integrity/run-goal-probe'
 import { availabilityFlagCopy, type BindingDispositionName } from '@/lib/sites/application/binding-assessment'
 import { OUTCOME_RUN_LEASE_MS } from '@/lib/sites/application/run-requests'
 import { checkoutResultCopy } from '@/lib/sites/outcome-state'
@@ -118,6 +118,18 @@ async function recordExecution(input: {
   })
 }
 
+function buildCheckoutJourneyConfig(startUrl: string, allowLocalhost: boolean): BrowserJourneyConfig {
+  const steps: GoalStep[] = [
+    { action: 'wait', waitMs: 1_000 },
+  ]
+  const goal: GoalDefinition = {
+    type: 'url_pattern',
+    pattern: '/checkouts?(/|$|\\?)',
+    description: 'Reach the checkout page',
+  }
+  return { startUrl, steps, goal, safety: 'stop-at-checkout', allowLocalhost }
+}
+
 async function runCheckoutBinding(input: {
   auditId: string
   runId: string
@@ -127,10 +139,10 @@ async function runCheckoutBinding(input: {
   allowLocalhost: boolean
 }): Promise<void> {
   const startedAt = Date.now()
-  const result = await runPathProbe({
+  const config = buildCheckoutJourneyConfig(input.startUrl, input.allowLocalhost)
+  const result = await runGoalProbe({
     runId: `outcome-${input.runId}-${input.bindingKey}`,
-    url: input.startUrl,
-    allowLocalhost: input.allowLocalhost,
+    config,
   })
   const copy = checkoutResultCopy(result.reason)
   const isFlag = result.health === 'RED' && result.confirmed
@@ -192,8 +204,42 @@ async function runCheckoutBinding(input: {
     outcomeId: input.outcomeId,
     bindingKey: input.bindingKey,
     mechanism: 'BROWSER_JOURNEY',
-    // runPathProbe already confirmed a RED with a second walk. Persist both walks so a
-    // failure the confirmation attempt recovered stays visible as flakiness evidence.
+    attempts: result.attempts.map((attempt): BindingObservation => {
+      const classified = classifyWalk(attempt.outcome)
+      return {
+        disposition:
+          classified.health === 'GREEN' ? 'SUCCEEDED' : classified.health === 'RED' ? 'FAILED' : 'BLOCKED',
+        reason: classified.reason,
+        detail: { stepCount: attempt.steps.length, videoUrl: attempt.videoUrl },
+      }
+    }),
+    conclusive: {
+      disposition: isFlag ? 'FAILED' : isClear ? 'SUCCEEDED' : 'BLOCKED',
+      reason: result.reason,
+      detail: { stepCount: result.steps.length },
+    },
+  })
+}
+
+/** Generic browser journey runner for any goal-driven outcome (login, signup, password reset, etc.) */
+async function runGenericBrowserJourneyBinding(input: {
+  auditId: string
+  runId: string
+  outcomeId: string
+  bindingKey: string
+  config: BrowserJourneyConfig
+}): Promise<void> {
+  const result = await runGoalProbe({
+    runId: `outcome-${input.runId}-${input.bindingKey}`,
+    config: input.config,
+  })
+  const isFlag = result.health === 'RED' && result.confirmed
+  const isClear = result.health === 'GREEN' && result.confirmed
+  await recordBindingEvidence({
+    auditId: input.auditId,
+    outcomeId: input.outcomeId,
+    bindingKey: input.bindingKey,
+    mechanism: 'BROWSER_JOURNEY',
     attempts: result.attempts.map((attempt): BindingObservation => {
       const classified = classifyWalk(attempt.outcome)
       return {
@@ -422,7 +468,7 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
         })
         continue
       }
-      if (binding.mechanism === 'SAFE_FORM' || selection.outcome.kind === 'SIGNUP') {
+      if (binding.mechanism === 'SAFE_FORM') {
         if (validated.data.mechanism !== 'SAFE_FORM') {
           await recordExecution({ auditId, outcomeId: selection.outcome.id, bindingKey: binding.key, mechanism: binding.mechanism, disposition: 'BLOCKED', reason: 'binding_mechanism_mismatch' })
           continue
@@ -441,28 +487,40 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
         await recordExecution({ auditId, outcomeId: selection.outcome.id, bindingKey: binding.key, mechanism: binding.mechanism, disposition: 'BLOCKED', reason: 'binding_mechanism_mismatch' })
         continue
       }
-      const priorJourney = await prisma.journeyReview.findFirst({
-        where: { auditId, journeyType: 'checkout', startUrl },
-        select: { goalAchieved: true, blockedReason: true },
-      })
-      if (priorJourney) {
-        await recordExecution({
+      // BROWSER_JOURNEY: dispatch to checkout-specific or generic runner based on outcome kind
+      if (selection.outcome.kind === 'CHECKOUT') {
+        const priorJourney = await prisma.journeyReview.findFirst({
+          where: { auditId, journeyType: 'checkout', startUrl },
+          select: { goalAchieved: true, blockedReason: true },
+        })
+        if (priorJourney) {
+          await recordExecution({
+            auditId,
+            outcomeId: selection.outcome.id,
+            bindingKey: binding.key,
+            mechanism: 'BROWSER_JOURNEY',
+            disposition: priorJourney.goalAchieved ? 'SUCCEEDED' : priorJourney.blockedReason ? 'BLOCKED' : 'FAILED',
+            reason: priorJourney.blockedReason ?? (priorJourney.goalAchieved ? 'checkout_reached' : 'checkout_failed'),
+          })
+          continue
+        }
+        await runCheckoutBinding({
           auditId,
+          runId: request.id,
           outcomeId: selection.outcome.id,
           bindingKey: binding.key,
-          mechanism: 'BROWSER_JOURNEY',
-          disposition: priorJourney.goalAchieved ? 'SUCCEEDED' : priorJourney.blockedReason ? 'BLOCKED' : 'FAILED',
-          reason: priorJourney.blockedReason ?? (priorJourney.goalAchieved ? 'checkout_reached' : 'checkout_failed'),
+          startUrl,
+          allowLocalhost,
         })
         continue
       }
-      await runCheckoutBinding({
+      // LOGIN, SIGNUP, PASSWORD_RESET, and any future browser journey kinds use the generic runner
+      await runGenericBrowserJourneyBinding({
         auditId,
         runId: request.id,
         outcomeId: selection.outcome.id,
         bindingKey: binding.key,
-        startUrl,
-        allowLocalhost,
+        config: validated.data.config,
       })
     }
   }
