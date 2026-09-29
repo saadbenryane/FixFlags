@@ -38,7 +38,14 @@ export async function POST(
             kind: body.data.kind,
           },
     )
-    if (!result.ok) return apiError(result.error, 404)
+    if (!result.ok) {
+      // A refused confirmation is a client mistake, not a missing Outcome, and
+      // the customer needs the reason rather than "not found".
+      if (result.code === 'OUTCOME_KIND_REQUIRED') {
+        return apiError(result.error, 400, { code: result.code })
+      }
+      return apiError(result.error, 404)
+    }
     return NextResponse.json(result)
   } catch (error) {
     return handleRouteError(error)

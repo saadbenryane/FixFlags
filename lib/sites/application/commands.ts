@@ -5,6 +5,7 @@ import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { findReusableRun, requestOutcomeRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 import { recordSiteFlagFix, requireSiteFlagAttempt } from '@/lib/sites/application/flag-verification'
+import { OUTCOME_CONFIRMATION } from '@/lib/marketing/copy'
 
 export type SiteCommand =
   | {
@@ -54,6 +55,18 @@ export async function executeSiteCommand(command: SiteCommand) {
     case 'CONFIRM_OUTCOME': {
       const site = await loadSiteRecord(command.siteId)
       if (!site) return { ok: false as const, error: 'Site not found' }
+      // A kind is the execution mechanism that will verify the Outcome, not a
+      // label. Confirming without one writes an agreement FixFlags can never
+      // verify, and leaves the Outcome kind 'GENERIC', which the Site surfaces
+      // filter out. The customer would have confirmed something and seen no
+      // change, forever. Refuse it and say what is missing.
+      if (command.confirmed && !command.kind) {
+        return {
+          ok: false as const,
+          error: OUTCOME_CONFIRMATION.kindRequired,
+          code: 'OUTCOME_KIND_REQUIRED' as const,
+        }
+      }
       const outcome = await confirmSiteOutcome({
         site,
         outcomeId: command.outcomeId,

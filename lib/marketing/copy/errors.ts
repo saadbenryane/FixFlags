@@ -66,6 +66,20 @@ export const WATCH_OFFER = {
  * These strings exist so that failure is stated rather than implied by silence.
  * They say both facts plainly: Watch keeps checking, and it cannot warn you yet.
  */
+/**
+ * Outcome confirmation copy.
+ *
+ * A `kind` is not a label. It selects the execution mechanism that will verify
+ * the Outcome: a browser journey for a purchase, a safe form for a signup, an
+ * HTTP check for page availability. An Outcome confirmed without one would be an
+ * agreement FixFlags recorded, could never verify, and never showed, so the
+ * confirmation is refused rather than accepted and ignored.
+ */
+export const OUTCOME_CONFIRMATION = {
+  kindRequired:
+    'FixFlags cannot watch this yet. Confirm what should keep working: a purchase, a signup, or that the page loads.',
+} as const
+
 export const WATCH_ALERT_DELIVERY = {
   undeliveredTitle: 'Watch could not reach you',
   undeliveredBody: (when: string | null) =>
