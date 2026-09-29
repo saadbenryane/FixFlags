@@ -54,6 +54,22 @@ One thing that was wrong on the first attempt and is worth stating as a general 
 
 The provider error is never shown. `watchNotificationLastError` holds vendor internals, so the customer is told about their inbox and the evidence stays in the database and logs. A test asserts the copy leaks nothing about the provider.
 
+## The mirror image: value nobody is told about is also invisible
+
+The delivery work is a failure that was recorded and never stated. The opposite turned up next, and it is the same shape: a capability that exists and is never surfaced. Production had Watch enabled on **1 of 11 Sites**. Watch is the entire differentiator; the homepage already argues it, "a report from that run" versus a tool that keeps watching.
+
+`docs/workspace-interface.md` gives Home the question "what is FixFlags watching and what needs attention?" When Watch was off, Home answered only the second half: a sidebar reading "Not watching", a lead line about Flags. The one surface whose documented job was to answer the watching question was the surface that did not answer it, and silence about a disabled promise reads as the promise being kept.
+
+Two things worth generalizing.
+
+**A surface has to answer its own documented question.** The gap was not a missing feature, it was a mismatch between `docs/workspace-interface.md` and the code, and it was only findable by asking what each surface claims to answer and then reading it. The fix was to bring the code into line with the existing doc, not to write a new one.
+
+**State the gap, do not close it by fiat.** The tempting move was a "Turn on Watch" control on Home, because it is one button and it would clearly raise activation. It was rejected. Turning Watch on sends email, so consent is the customer's, and `docs/workspace-interface.md` assigns Watch configuration to Site settings, not Home. Home states the fact and links to the surface that owns the choice. Two tests hold that line: the Home section may not grow an `onClick`, and `lib/audit/create-audit.ts` may never set `watchInterval`, so scanning cannot switch Watch on as a side effect.
+
+**The loose-matcher trap.** A pre-existing test asserted Home never claims Watch is on, using `queryByText(/watching/i)`. That assertion started failing the moment honest copy said "not watching", which is the tell that the matcher was weaker than the invariant. It was tightened to the actual invariant, "Watching weekly" is absent, plus a positive assertion that the honest off-state is present. Weakening a guard because honest copy trips it is how a guard becomes decorative.
+
+One limit stated plainly: the evidence for the gap is 1 of 11 Sites watched. That is a read-only production query, not proof that this line raises activation. With 4 users and sessions ending Sep 12, nobody can currently diagnose retention from this data, and the honest claim is only that Home was silent on a question it owns.
+
 ## Why it matters
 
 `SENDING` looked like a safe design. It is the correct state to write, because it prevents two workers from double-sending. The defect is treating a state that can be entered without leaving as if it always has an exit. Any claim that wraps an external side effect has this shape: a provider call, a payment, a queue publish, a file write. The row is not the source of truth for whether the work completed; the provider is. A claim must therefore be recoverable by a later reader, not only by its original writer.
