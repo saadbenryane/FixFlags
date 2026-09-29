@@ -35,7 +35,7 @@ export function isTriageProviderConfigured(): boolean {
   return isProviderConfigured()
 }
 
-function buildTriageContext(
+export function buildTriageContext(
   url: string,
   metadata: PageMetadata,
   desktop: PageSpeedResult | null,

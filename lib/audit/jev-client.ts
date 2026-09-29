@@ -1,5 +1,3 @@
-import { getEnv } from '@/lib/env'
-
 export interface JevQuestionChoice {
   type: 'choice'
   instructions: string
@@ -58,7 +56,7 @@ export interface JevRequest {
 }
 
 function getJevApiKey(): string | null {
-  return getEnv().TYPESAFE_API_KEY ?? process.env.TYPESAFE_API_KEY ?? null
+  return process.env.TYPESAFE_API_KEY ?? null
 }
 
 function getJevModel(): string {

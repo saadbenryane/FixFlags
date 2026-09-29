@@ -27,6 +27,8 @@ Audit COMPLETED, score/verdict OK, no fix prompts?
 
 ## Before editing
 
+- `jev-client.ts` and `jev-triage.ts` are an unconnected experiment, not an enabled judge provider. They still compile and lint with the application. Reuse the exported `buildTriageContext` from `judge-triage.ts`; it is not a prompt-module export. Do not enable a new provider as part of a build repair.
+
 - Triage schema: `lib/audit/judge-triage-schema.ts`
 - Prescription schema: `lib/audit/judge-prescription-schema.ts`
 - Page text limits: change **both** `lib/audit/page-text-limits.ts` and `lib/prompts/system-prompt.ts`

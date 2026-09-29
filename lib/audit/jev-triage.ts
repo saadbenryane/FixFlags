@@ -1,9 +1,17 @@
-import { callJev, isJevConfigured, type JevQuestion, type JevAnswer } from './jev-client'
-import { buildTriageContext, type TriageContext } from '../prompts/system-prompt'
+import {
+  callJev,
+  isJevConfigured,
+  type JevQuestion,
+  type JevAnswer,
+  type JevAnswerChoice,
+  type JevAnswerScore,
+  type JevAnswerNoul,
+} from './jev-client'
+import type { TriageContext } from '../prompts/system-prompt'
+import { buildTriageContext } from './judge-triage'
 import { PageMetadata } from './metadata'
 import { PageSpeedResult } from './pagespeed'
 import { DeterministicFlag } from './checks'
-import { detectPagePurpose } from './page-purpose'
 import { RUBRIC_ORDER } from './constants'
 import type { TriageOutput } from './judge-triage-schema'
 
@@ -142,8 +150,7 @@ function buildJevTriageQuestions(): Record<string, JevQuestion> {
 
 function mapJevAnswersToTriage(
   answers: Record<string, JevAnswer>,
-  context: TriageContext,
-  flags: DeterministicFlag[]
+  context: TriageContext
 ): TriageOutput {
   const pageTypeAnswer = answers.pageType as JevAnswerChoice
   const messageScoreAnswer = answers.messageScore as JevAnswerScore
@@ -181,7 +188,7 @@ function mapJevAnswersToTriage(
 
   // Determine assessment state based on screenshot availability
   const hasVisuals = context.screenshotHint !== 'no-screenshot'
-  const visualState = hasVisuals ? 'ASSESSED' : 'PARTIAL' as const
+  const visualState: 'ASSESSED' | 'PARTIAL' = hasVisuals ? 'ASSESSED' : 'PARTIAL'
 
   const rubrics = RUBRIC_ORDER.map((name) => {
     const s = name === 'MESSAGE' ? messageScore : name === 'EXPERIENCE' ? experienceScore : reachScore
@@ -232,7 +239,6 @@ function mapJevAnswersToTriage(
     launchChecklist,
     rubrics,
     newFlags,
-    enrichments: [],
   }
 }
 
@@ -247,6 +253,11 @@ export async function runJevTriage(
   _maxTimeoutMs?: number,
   _knownObservations?: TriageContext['knownObservations']
 ): Promise<JevTriageResult> {
+  // Retain the experimental adapter's call signature; these inputs are not yet consumed.
+  void _desktopBase64
+  void _mobileBase64
+  void _maxTimeoutMs
+  void _knownObservations
   if (!isJevConfigured()) {
     throw new Error('JEV not configured - missing TYPESAFE_API_KEY')
   }
@@ -274,7 +285,7 @@ export async function runJevTriage(
     questions,
   })
 
-  const output = mapJevAnswersToTriage(response.answers, context, flags)
+  const output = mapJevAnswersToTriage(response.answers, context)
 
   return {
     output,
