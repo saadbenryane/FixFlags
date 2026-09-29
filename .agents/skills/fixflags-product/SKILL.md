@@ -30,6 +30,8 @@ Trace route, application service, persistence, tenancy, entitlements and UI toge
 
 Outcome confirmation must align the visible promise and target with the execution binding. A broad inferred sentence does not become verified merely by selecting HTTP availability. Exercise edits through the command boundary: renaming an already confirmed Outcome must preserve its confirmation time, binding configuration and evidence. Keep browser runtime helpers separate from database-backed Outcome modules; type-only imports are safe, runtime imports can pull Prisma into the browser even when the build passes.
 
+Customer-facing Outcome ↔ Flag links require persisted identity (`OutcomeAssessment.improvementId` or `Improvement.outcomeId`). Shared URL and check-name fragments are context, not proof of a relationship. If the identity is absent, keep the relationship unknown rather than inventing one.
+
 Launch execution goes through `requestSiteRun` in `lib/sites/application/run-requests.ts`. Watch, deployment webhooks, MCP, and flag verification are adapters. A recorded fix does not change an assessment. Safe Signup stays Couldn’t verify until an authorized reversible fixture exists. MCP OAuth metadata, PKCE, audience, and scopes live in `lib/mcp/oauth.ts`. Do not describe that local engine as a deployed launch.
 
 Site connections are optional context. Search Console and Analytics attach to one Site, match the host, and store aggregates only. They never mark an Outcome Clear. Shopify remains the commerce connection. Do not claim a provider in public copy until its connect, mismatch, and disconnect path has been exercised.

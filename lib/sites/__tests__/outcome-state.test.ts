@@ -36,17 +36,47 @@ describe('Outcome state', () => {
     expect(outcomeStatusLabel('CLEAR', true)).toBe('Verifying')
   })
 
-  it('ties a checkout Flag to the Checkout Outcome without a page list', () => {
-    const outcome = { flagId: null, pageUrls: [], kind: 'CHECKOUT' }
+  it('shows only the Flag independently linked to the Outcome', () => {
+    const outcome = { flagId: 'improvement-1', pageUrls: ['https://walk.example/products/tote'], kind: 'CHECKOUT' }
     expect(flagMatchesOutcome({
       id: 'flag-1',
+      improvementId: 'improvement-1',
       checkId: 'journey-checkout-failed-add_to_cart_noop',
       pageUrl: 'https://walk.example/products/tote',
     }, outcome)).toBe(true)
     expect(flagMatchesOutcome({
       id: 'flag-2',
       checkId: 'security-header',
-      pageUrl: 'https://walk.example',
+      pageUrl: 'https://walk.example/products/tote',
     }, outcome)).toBe(false)
+    expect(flagMatchesOutcome({
+      id: 'flag-3',
+      improvementId: 'improvement-2',
+      checkId: 'journey-checkout-failed-add_to_cart_noop',
+      pageUrl: 'https://walk.example/products/tote',
+    }, outcome)).toBe(false)
+    expect(flagMatchesOutcome({
+      id: 'flag-4',
+      checkId: 'journey-checkout-failed-add_to_cart_noop',
+      pageUrl: 'https://walk.example/products/tote',
+    }, { ...outcome, flagId: null })).toBe(false)
+    expect(flagMatchesOutcome({
+      id: 'flag-1',
+      improvementId: 'improvement-1',
+      checkId: null,
+      pageUrl: null,
+    }, outcome)).toBe(true)
+    expect(flagMatchesOutcome({
+      id: 'flag-5',
+      outcomeId: 'outcome-1',
+      checkId: null,
+      pageUrl: null,
+    }, { ...outcome, id: 'outcome-1', flagId: null })).toBe(true)
+    expect(flagMatchesOutcome({
+      id: 'flag-5',
+      outcomeId: 'outcome-2',
+      checkId: null,
+      pageUrl: null,
+    }, { ...outcome, id: 'outcome-1' })).toBe(false)
   })
 })

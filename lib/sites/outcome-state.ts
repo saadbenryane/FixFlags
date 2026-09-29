@@ -3,13 +3,14 @@ import type { OutcomeAssessmentState } from '@prisma/client'
 export type CustomerOutcomeState = 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY' | 'STALE'
 
 export function flagMatchesOutcome(
-  flag: { id: string; improvementId?: string | null; pageUrl?: string | null; checkId?: string | null },
-  outcome: { flagId: string | null; pageUrls: string[]; kind: string },
+  flag: { id: string; improvementId?: string | null; outcomeId?: string | null; pageUrl?: string | null; checkId?: string | null },
+  outcome: { id?: string; flagId: string | null; pageUrls: string[]; kind: string },
 ): boolean {
-  if (outcome.flagId && (flag.id === outcome.flagId || flag.improvementId === outcome.flagId)) return true
-  if (flag.pageUrl && outcome.pageUrls.includes(flag.pageUrl)) return true
-  const kind = outcome.kind.toLowerCase()
-  return kind !== 'generic' && Boolean(flag.checkId?.toLowerCase().includes(kind))
+  // The persisted relationship is the only basis for a customer-facing link.
+  // A diagnostic can share the same page and even a check-name fragment without
+  // being the failure that produced this Outcome's assessment.
+  if (flag.outcomeId && outcome.id) return flag.outcomeId === outcome.id
+  return Boolean(outcome.flagId && (flag.id === outcome.flagId || flag.improvementId === outcome.flagId))
 }
 
 export function outcomeStatusLabel(state: CustomerOutcomeState, running = false): string {
