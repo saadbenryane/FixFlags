@@ -2,12 +2,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import type { Route } from 'next'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { Input } from '@/components/ui/input'
-import { SCAN_LIMIT_GATE } from '@/lib/marketing/copy'
+import { SCAN_LIMIT_GATE, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 import type { PublicConnection } from '@/lib/sites/connections/match'
+import type { SiteHomeView } from '@/lib/sites/application/queries'
+import { formatAlertDate, siteWatchAlertNotice } from '@/lib/sites/watch-alert-notice'
 
 type NotificationLevel = 'FLAGS' | 'CRITICAL_ONLY' | 'OFF'
 type GoogleProvider = 'SEARCH_CONSOLE' | 'ANALYTICS'
@@ -27,7 +30,12 @@ export function SiteSettingsControls({
   initial,
 }: {
   siteId: string
-  watch?: { label: string; lastError: string | null; covered: boolean }
+  watch?: {
+    label: string
+    lastError: string | null
+    covered: boolean
+    alert?: SiteHomeView['watch']['alert']
+  }
   initial: {
     notificationLevel: NotificationLevel
     notifyOnRecovery: boolean
@@ -45,6 +53,7 @@ export function SiteSettingsControls({
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [watchNotice, setWatchNotice] = useState<string | null>(null)
+  const alertNotice = watch?.alert ? siteWatchAlertNotice(watch.alert) : null
 
   async function saveNotifications() {
     setBusy(true)
@@ -216,6 +225,17 @@ export function SiteSettingsControls({
         <h2 className="text-lg font-semibold">Watch</h2>
         <p className="mt-1 text-sm text-muted-foreground">{watch?.label ?? 'Not watching'}</p>
         {watch?.lastError ? <p className="mt-2 text-sm text-muted-foreground">{watch.lastError}</p> : null}
+        {alertNotice ? (
+          <div className="mt-3">
+            <Callout variant="warning">
+              <p className="font-medium">{alertNotice.title}</p>
+              <p className="mt-1">{WATCH_ALERT_DELIVERY.undeliveredBody(formatAlertDate(alertNotice.at))}</p>
+              <Button asChild size="sm" variant="outline" className="mt-2">
+                <Link href={alertNotice.actionHref as Route}>{alertNotice.actionLabel}</Link>
+              </Button>
+            </Callout>
+          </div>
+        ) : null}
         {watchNotice ? (
           <div className="mt-3">
             <Callout variant="info">

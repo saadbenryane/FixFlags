@@ -20,6 +20,7 @@ import {
   watchIsCovered,
   type WatchBoardState,
 } from '@/lib/sites/watch-state'
+import { watchAlertDelivery, type WatchAlertDeliveryState } from '@/lib/audit/watch-notification'
 import { buildBoardCards, type BoardCardView } from '@/lib/sites/board-card'
 import { connectionCardNotes, loadSiteConnectionViews } from '@/lib/sites/connections/read'
 import type { PublicConnection } from '@/lib/sites/connections/match'
@@ -54,6 +55,17 @@ export type SiteHomeView = {
     lastError: string | null
     covered: boolean
     label: string
+    /**
+     * Whether the last warranted Watch alert actually reached the customer.
+     * Carries the raw evidence as well as the verdict, so the notice is derived
+     * in one place rather than decided twice.
+     */
+    alert: {
+      state: WatchAlertDeliveryState
+      status: 'NOT_APPLICABLE' | 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | null
+      attempts: number
+      at: string | null
+    }
   }
   coverageSummary: string
   checkedPages?: Array<{ url: string; title: string | null; status: string }>
@@ -261,6 +273,27 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
   })
   const watching = watchIsCovered(watchState)
 
+  // Delivery is read from the most recent Watch alert rather than from the
+  // Project, because delivery is a property of one alert and not of the
+  // schedule. An older undelivered alert stays visible until a later alert is
+  // actually delivered, so a customer is never told they were warned about a
+  // change nobody reached them about.
+  //
+  // Guarded on a resolved projectId, like every other tenant-scoped read here. A
+  // provisional Site has none, and querying with projectId: null would match
+  // other tenants' unscoped Watch alerts.
+  const latestAlert = site.projectId
+    ? await prisma.audit.findFirst({
+      where: { projectId: site.projectId, recheckTrigger: 'WATCH', watchNotificationStatus: { not: 'NOT_APPLICABLE' } },
+      orderBy: { updatedAt: 'desc' },
+      select: { watchNotificationStatus: true, watchNotificationAttempts: true, updatedAt: true },
+    })
+    : null
+  const alertState = watchAlertDelivery({
+    status: latestAlert?.watchNotificationStatus ?? null,
+    attempts: latestAlert?.watchNotificationAttempts ?? 0,
+  })
+
   return {
     site,
     checkedPages,
@@ -293,6 +326,14 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
       lastError: site.watchLastError,
       covered: watching,
       label: watchBoardLabel(watchState, site.watchInterval),
+      // Reported beside coverage rather than inside it, so an undelivered alert
+      // can never remove the honest fact that the Site is still being checked.
+      alert: {
+        state: alertState,
+        status: latestAlert?.watchNotificationStatus ?? null,
+        attempts: latestAlert?.watchNotificationAttempts ?? 0,
+        at: latestAlert?.updatedAt.toISOString() ?? null,
+      },
     },
     coverageSummary: inFlight
       ? lastKnownFacts

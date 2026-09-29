@@ -44,6 +44,24 @@ export const AUDIT_ERRORS = {
   scanErrorBody: 'The review encountered an unexpected error. Try again.',
 } as const
 
+/**
+ * Watch alert delivery copy.
+ *
+ * A Site can be checked on schedule and still never tell the customer anything.
+ * These strings exist so that failure is stated rather than implied by silence.
+ * They say both facts plainly: Watch keeps checking, and it cannot warn you yet.
+ */
+export const WATCH_ALERT_DELIVERY = {
+  undeliveredTitle: 'Watch could not reach you',
+  undeliveredBody: (when: string | null) =>
+    when
+      ? `FixFlags found a change on ${when}, but the alert did not reach your inbox. Watch keeps checking, but it cannot warn you until this is fixed.`
+      : 'FixFlags found a change on this Site, but the alert did not reach your inbox. Watch keeps checking, but it cannot warn you until this is fixed.',
+  undeliveredAction: 'Check the email FixFlags sends to',
+  sidebarUndelivered: 'Last Watch alert was not delivered',
+  sidebarDelivering: 'Sending your last Watch alert',
+} as const
+
 export const SYSTEM_COPY = {
   actions: {
     retry: 'Try again',

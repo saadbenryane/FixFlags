@@ -10,6 +10,7 @@ import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
 import { Button } from '@/components/ui/button'
 import { useMe } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
+import { watchAlertSummary } from '@/lib/sites/watch-alert-notice'
 import { cn } from '@/lib/utils'
 
 type SiteRoute = 'home' | 'flags' | 'settings'
@@ -76,6 +77,12 @@ export function SiteShell({
           {signedIn ? (
             <div className="mt-auto space-y-3 border-t border-border/70 pt-4">
               <p className="text-xs text-muted-foreground">{watch.label}</p>
+              {/* A schedule that is running is not the same as a customer who was
+                  told. The sidebar states delivery so "Watching weekly" never
+                  stands alone as the only word on it. */}
+              {watchAlertSummary(watch.alert?.state ?? 'none') ? (
+                <p className="text-xs text-muted-foreground">{watchAlertSummary(watch.alert?.state ?? 'none')}</p>
+              ) : null}
               {watch.lastError ? <p className="text-xs text-muted-foreground">{watch.lastError}</p> : null}
               <Link href={`/sites/${siteId}/settings`} className="block text-sm text-muted-foreground hover:text-foreground">
                 Watch settings

@@ -18,8 +18,10 @@ import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { BoardCardView } from '@/lib/sites/board-card'
 import { STARTER_BOARD_CARDS, type SiteCardArea } from '@/lib/sites/card-areas'
 import { siteCheckNotice, siteSummaryNotice } from '@/lib/sites/check-notice'
+import { formatAlertDate, NO_ALERT_DELIVERY, siteWatchAlertNotice } from '@/lib/sites/watch-alert-notice'
 import { firstOutcomePrompt, homeBoardLead } from '@/lib/sites/first-outcome'
 import { outcomeCoverageLabel } from '@/lib/sites/outcome-state'
+import { WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 
 function isEmptyUncheckedCard(card: BoardCardView) {
   return card.id !== 'site' && card.state === 'unknown' && card.openFlagCount === 0 && card.activity !== 'checking'
@@ -39,7 +41,14 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
     state: view.watching ? 'watching' : 'off', interval: null, nextRunAt: null,
     lastError: null, covered: view.watching, label: view.watching ? 'Watching weekly' : 'Not watching',
   }
+  // A view predating alert delivery has no evidence to report, which is
+  // 'none' rather than a failure. Absent evidence is not a delivery problem.
+  const alert = watch.alert ?? NO_ALERT_DELIVERY
   const notice = siteCheckNotice({ status: view.audit.status, failureCode: view.audit.failureCode })
+  // A Site can be checked on schedule and still never tell the customer anything.
+  // The notice is stated rather than implied, because silence here reads as
+  // "all clear" when it is the opposite.
+  const alertNotice = siteWatchAlertNotice(alert)
   const summaryNote = siteSummaryNotice({ status: view.audit.status, failureCode: view.audit.failureCode })
   const outcomePrompt = firstOutcomePrompt({
     checking,
@@ -135,6 +144,18 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
         <AuditFailurePanel failureCode={view.audit.failureCode} onRetry={retryCheck} retryLoading={busy} />
       ) : summaryNote ? (
         <p className="rounded-2xl border border-border/80 bg-background p-4 text-sm text-muted-foreground" role="status">{summaryNote.body}</p>
+      ) : null}
+
+      {alertNotice ? (
+        <section className="rounded-2xl border border-border/80 bg-background p-5" role="status">
+          <h2 className="text-sm font-semibold">{alertNotice.title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {WATCH_ALERT_DELIVERY.undeliveredBody(formatAlertDate(alertNotice.at))}
+          </p>
+          <Button asChild size="sm" variant="outline" className="mt-3">
+            <Link href={alertNotice.actionHref as Route}>{alertNotice.actionLabel}</Link>
+          </Button>
+        </section>
       ) : null}
 
       {outcomePrompt ? (

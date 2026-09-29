@@ -15,6 +15,7 @@ import {
   toStoredWatchInterval,
   type WatchInterval,
 } from '@/lib/audit/watch-interval'
+import { WATCH_NOTIFICATION_ATTEMPT_LIMIT } from '@/lib/audit/watch-notification'
 
 export type { WatchInterval } from '@/lib/audit/watch-interval'
 export {
@@ -376,7 +377,7 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
   const claimed = await prisma.audit.updateMany({
     where: {
       id: childAuditId,
-      watchNotificationAttempts: { lt: 5 },
+      watchNotificationAttempts: { lt: WATCH_NOTIFICATION_ATTEMPT_LIMIT },
       OR: [
         { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
         {
@@ -474,7 +475,7 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
         { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
         { watchNotificationStatus: 'SENDING', watchNotificationLeaseUntil: { lt: now } },
       ],
-      watchNotificationAttempts: { lt: 5 },
+      watchNotificationAttempts: { lt: WATCH_NOTIFICATION_ATTEMPT_LIMIT },
       parentId: { not: null },
     },
     select: { id: true, parentId: true },

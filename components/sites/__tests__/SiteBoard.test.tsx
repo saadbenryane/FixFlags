@@ -5,7 +5,7 @@ import { SiteSettingsView } from '../SiteSettingsView'
 import { MeProvider, type MeUser } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { BoardCardView } from '@/lib/sites/board-card'
-import { AUDIT_ERRORS, CARE_HOME } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS, CARE_HOME, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 const SITE_PATH = '/sites/p_example'
@@ -111,6 +111,7 @@ function boardView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
       lastError: null,
       covered: false,
       label: 'Not watching',
+      alert: { state: 'none', status: null, attempts: 0, at: null },
     },
     coverageSummary: 'Checked recently · 0 open Flags',
     ...overrides,
@@ -448,5 +449,112 @@ describe('SiteBoard chrome', () => {
     for (const link of screen.getAllByRole('link', { name: 'Settings' })) {
       expect(link).toHaveAttribute('href', `${SITE_PATH}/settings`)
     }
+  })
+})
+
+/**
+ * Watch is sold on telling you when your site breaks. A delivery channel that
+ * failed quietly turns a working promise into a false one, so a Site whose
+ * checks are running but whose alerts never arrived has to say so, on its own.
+ */
+describe('an undelivered Watch alert', () => {
+  const watching = {
+    state: 'watching' as const,
+    interval: 'weekly' as const,
+    nextRunAt: '2026-10-06T00:00:00.000Z',
+    lastError: null,
+    // Coverage is untouched. The Site really is being checked.
+    covered: true,
+    label: 'Watching weekly',
+  }
+  const undelivered = {
+    ...watching,
+    alert: { state: 'undelivered' as const, status: 'FAILED' as const, attempts: 5, at: '2026-09-20T10:00:00.000Z' },
+  }
+
+  it('states the failure on the Site home rather than leaving a healthy-looking board', () => {
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard siteId="p_example" initial={boardView({ watch: undelivered, watching: true })} />
+      </MeProvider>
+    )
+    expect(screen.getByRole('heading', { name: WATCH_ALERT_DELIVERY.undeliveredTitle })).toBeInTheDocument()
+    // The board must still say checks are happening. Delivery failed, not coverage.
+    expect(screen.getByText('Watching weekly')).toBeInTheDocument()
+    expect(screen.getByText(/keeps checking/i)).toBeInTheDocument()
+  })
+
+  it('shows when it happened, so a stale failure is not read as current', () => {
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard siteId="p_example" initial={boardView({ watch: undelivered, watching: true })} />
+      </MeProvider>
+    )
+    expect(screen.getByText(/Sep 20, 2026/)).toBeInTheDocument()
+  })
+
+  it('leads to the email FixFlags sends to', () => {
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard siteId="p_example" initial={boardView({ watch: undelivered, watching: true })} />
+      </MeProvider>
+    )
+    const action = screen.getByRole('link', { name: WATCH_ALERT_DELIVERY.undeliveredAction })
+    expect(action).toHaveAttribute('href', '/settings')
+  })
+
+  it('also appears in Settings, where a customer would go to fix it', () => {
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteSettingsView siteId="p_example" view={boardView({ watch: undelivered, watching: true })} />
+      </MeProvider>
+    )
+    expect(screen.getByText(WATCH_ALERT_DELIVERY.undeliveredTitle)).toBeInTheDocument()
+  })
+
+  it('stays quiet for an alert still being delivered', () => {
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard
+          siteId="p_example"
+          initial={boardView({
+            watch: { ...watching, alert: { state: 'delivering', status: 'SENDING', attempts: 1, at: null } },
+            watching: true,
+          })}
+        />
+      </MeProvider>
+    )
+    expect(screen.queryByRole('heading', { name: WATCH_ALERT_DELIVERY.undeliveredTitle })).not.toBeInTheDocument()
+  })
+
+  it('stays quiet for a failure that is still being retried', () => {
+    // A false alarm about a system that is still working is its own kind of lie.
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard
+          siteId="p_example"
+          initial={boardView({
+            watch: { ...watching, alert: { state: 'delivering', status: 'FAILED', attempts: 2, at: null } },
+            watching: true,
+          })}
+        />
+      </MeProvider>
+    )
+    expect(screen.queryByRole('heading', { name: WATCH_ALERT_DELIVERY.undeliveredTitle })).not.toBeInTheDocument()
+  })
+
+  it('says nothing when delivery worked', () => {
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard
+          siteId="p_example"
+          initial={boardView({
+            watch: { ...watching, alert: { state: 'delivered', status: 'SENT', attempts: 1, at: '2026-09-20T10:00:00.000Z' } },
+            watching: true,
+          })}
+        />
+      </MeProvider>
+    )
+    expect(screen.queryByRole('heading', { name: WATCH_ALERT_DELIVERY.undeliveredTitle })).not.toBeInTheDocument()
   })
 })
