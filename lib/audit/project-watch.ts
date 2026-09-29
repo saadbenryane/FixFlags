@@ -28,6 +28,12 @@ export type SiteWatchJobKind = 'pulse' | 'full'
 
 const RETRY_MS = [15 * 60 * 1000, 60 * 60 * 1000, 6 * 60 * 60 * 1000] as const
 const LEASE_MS = 10 * 60 * 1000
+/**
+ * How long one worker may hold a notification claim. Long enough that a slow
+ * provider call is never stolen, short enough that a dead worker's alert is
+ * re-attempted within a Watch interval rather than being lost.
+ */
+const NOTIFICATION_LEASE_MS = 10 * 60 * 1000
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL ?? `${BRAND.name} <${BRAND.supportEmail}>`
 
 export function productWatchReadiness(): { available: boolean; error: string | null } {
@@ -290,6 +296,7 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
       watchRegressionCount: true,
       watchNotificationStatus: true,
       watchNotificationAttempts: true,
+      watchNotificationLeaseUntil: true,
       user: { select: { email: true, name: true } },
       project: { select: { watchInterval: true, notificationLevel: true, notifyOnRecovery: true } },
       flags: {
@@ -341,27 +348,48 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
   }
   if (regressCount === 0 && recoveryCount === 0) return
 
+  // Never overwrite a claim another worker still holds. Writing FAILED here
+  // would both lose their delivery and mark the alert failed while it is still
+  // legitimately in flight.
+  const leaseHeld = child.watchNotificationStatus === 'SENDING'
+    && child.watchNotificationLeaseUntil != null
+    && child.watchNotificationLeaseUntil > new Date()
+  if (leaseHeld) return
+
   if (!child.user?.email || !resend) {
     await prisma.audit.update({
       where: { id: childAuditId },
       data: {
         watchNotificationStatus: 'FAILED',
         watchNotificationLastError: 'Email delivery is not configured',
+        watchNotificationLeaseUntil: null,
       },
     })
     return
   }
 
+  // The claim is a lease, not a one-way flip. SENDING is claimable again once
+  // the lease expires, so a worker that dies mid-delivery cannot suppress the
+  // alert forever. A held lease is excluded, so a second worker never steals a
+  // delivery that is still in flight.
+  const claimNow = new Date()
   const claimed = await prisma.audit.updateMany({
     where: {
       id: childAuditId,
-      watchNotificationStatus: { in: ['PENDING', 'FAILED'] },
       watchNotificationAttempts: { lt: 5 },
+      OR: [
+        { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
+        {
+          watchNotificationStatus: 'SENDING',
+          watchNotificationLeaseUntil: { lt: claimNow },
+        },
+      ],
     },
     data: {
       watchNotificationStatus: 'SENDING',
       watchNotificationAttempts: { increment: 1 },
       watchNotificationLastError: null,
+      watchNotificationLeaseUntil: new Date(claimNow.getTime() + NOTIFICATION_LEASE_MS),
     },
   })
   if (claimed.count !== 1) return
@@ -401,13 +429,18 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
         watchNotificationStatus: 'SENT',
         watchNotifiedAt: new Date(),
         watchNotificationLastError: null,
+        watchNotificationLeaseUntil: null,
       },
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     await prisma.audit.update({
       where: { id: childAuditId },
-      data: { watchNotificationStatus: 'FAILED', watchNotificationLastError: message.slice(0, 1000) },
+      data: {
+        watchNotificationStatus: 'FAILED',
+        watchNotificationLastError: message.slice(0, 1000),
+        watchNotificationLeaseUntil: null,
+      },
     })
     logger.warn('Watch regression email failed', { childAuditId, error: message })
     return
@@ -430,11 +463,17 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
 }
 
 export async function retryPendingWatchNotifications(limit = 20): Promise<number> {
+  const now = new Date()
   const audits = await prisma.audit.findMany({
     where: {
       status: 'COMPLETED',
       recheckTrigger: 'WATCH',
-      watchNotificationStatus: { in: ['PENDING', 'FAILED'] },
+      // SENDING is included only when its lease has expired, which is how a
+      // delivery abandoned by a dead worker becomes deliverable again.
+      OR: [
+        { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
+        { watchNotificationStatus: 'SENDING', watchNotificationLeaseUntil: { lt: now } },
+      ],
       watchNotificationAttempts: { lt: 5 },
       parentId: { not: null },
     },

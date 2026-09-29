@@ -10,6 +10,7 @@ Read `AGENTS.md`, `.agents/BOARD.md`, `DEVELOPMENT.md`, `QUALITY.md`, and `SECUR
 ## Runtime contract
 
 - Node 22 is the supported repository, CI, CLI, build, and runtime baseline.
+- HTTP dependency security fixes must update the existing `package.json` override and lockfile together. Check the resolved graph with `npm ls undici`, rerun the security audit, and run full validation plus the container build for manifest changes. A previous green audit is not current evidence; the 2026-09-29 audit found GHSA-3wwx-pv8p-q78v in the former 7.29.0 pin.
 - `scripts/runtime-start.mjs` is the shell-free entry point for `web` and `worker` modes.
 - Process configuration wins. Local `.env.local` loading is development convenience and never overrides injected values.
 - Prisma commands use argument arrays. Runtime code must not import `scripts/` implementations or write into the repository.

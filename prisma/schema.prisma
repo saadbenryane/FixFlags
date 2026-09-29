@@ -652,6 +652,11 @@ model Audit {
   watchNotificationAttempts  Int                          @default(0)
   watchNotificationLastError String?
   /// *
+  ///    * Lease held by the worker currently delivering the Watch alert. Without
+  ///    it a worker death after claiming SENDING strands the alert forever,
+  ///    because a retry sweep only looks for PENDING and FAILED.
+  watchNotificationLeaseUntil DateTime?
+  /// *
   ///    * Per-audit scan access override (encrypted). Falls back to Project.scanAccessEncrypted.
   scanAccessEncrypted        String?
   technologyDetectionStatus  TechnologyDetectionStatus    @default(NOT_CAPTURED)
@@ -707,6 +712,9 @@ model Audit {
   @@index([parentId])
   @@index([normalizedDomain])
   @@index([siteId])
+  /// Supports the Watch notification retry sweep, which only ever looks at a
+  /// small set of undelivered alerts.
+  @@index([watchNotificationStatus, updatedAt])
   @@map("audits")
 }
 

@@ -372,12 +372,19 @@ describe('Product Watch', () => {
       for (const [, request] of providerFetch.mock.calls) {
         expect(new Headers(request.headers).get('Idempotency-Key')).toBe('fixflags-watch-child-1-v1')
       }
-      expect(mocks.auditFindMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: expect.objectContaining({
-          watchNotificationStatus: { in: ['PENDING', 'FAILED'] },
-          watchNotificationAttempts: { lt: 5 },
-        }),
-      }))
+      // Undelivered alerts stay eligible, and the attempt bound still caps
+      // retries so a permanently failing notification cannot loop forever.
+      const sweepWhere = mocks.auditFindMany.mock.calls[0]?.[0]?.where
+      expect(sweepWhere).toMatchObject({
+        OR: [
+          { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
+          {
+            watchNotificationStatus: 'SENDING',
+            watchNotificationLeaseUntil: expect.anything(),
+          },
+        ],
+        watchNotificationAttempts: { lt: 5 },
+      })
     })
 
     it('keeps an accepted notification sent when lifecycle telemetry fails', async () => {
@@ -419,6 +426,128 @@ describe('Product Watch', () => {
       })
       expect(mocks.sendEmail).toHaveBeenCalledTimes(1)
       expect(mocks.recordSiteLifecycleEvent).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('interrupted claim recovery', () => {
+    // A worker that dies after claiming SENDING but before persisting a terminal
+    // status leaves the alert in a state no retry can see. The customer would
+    // never learn their Site regressed, which breaks the promise that FixFlags
+    // watches while unattended.
+    const strandedChild = {
+      id: 'child-1',
+      url: 'https://example.com/',
+      projectId: 'project-1',
+      recheckTrigger: 'WATCH' as const,
+      completedAt: new Date('2026-07-22T12:00:00.000Z'),
+      watchRegressionCount: 1,
+      watchNotificationStatus: 'SENDING' as const,
+      watchNotificationAttempts: 1,
+      watchNotificationClaimedAt: new Date('2026-07-22T12:00:00.000Z'),
+      user: { email: 'owner@example.test', name: 'Owner' },
+      project: { watchInterval: 'WEEKLY' as const },
+    }
+
+    beforeEach(() => {
+      mocks.auditFindUnique.mockResolvedValue(strandedChild)
+      mocks.getFlagDiffSummary.mockResolvedValue({
+        fixed: [], inconclusive: [], unchanged: [], newIssues: [{ id: 'new' }], regressed: [],
+      })
+    })
+
+    it('makes an expired SENDING claim eligible again for retry', async () => {
+      mocks.auditFindMany.mockResolvedValue([{ id: 'child-1', parentId: 'parent-1' }])
+
+      await retryPendingWatchNotifications()
+
+      // The sweep must actually be able to see a stranded SENDING row, and only
+      // once its lease has expired.
+      const sweepWhere = mocks.auditFindMany.mock.calls[0]?.[0]?.where
+      expect(sweepWhere).toMatchObject({
+        OR: [
+          { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
+          {
+            watchNotificationStatus: 'SENDING',
+            watchNotificationLeaseUntil: { lt: expect.any(Date) },
+          },
+        ],
+      })
+    })
+
+    it('re-sends and records SENT for a claim abandoned by a dead worker', async () => {
+      const row = { ...strandedChild }
+      // Honour the where clause like a real updateMany would, otherwise the
+      // mock would let a claim succeed that the database would reject.
+      mocks.auditUpdateMany.mockImplementation(async ({ where, data }) => {
+        const allowed = where?.watchNotificationStatus?.in
+        if (Array.isArray(allowed) && !allowed.includes(row.watchNotificationStatus)) {
+          return { count: 0 }
+        }
+        if (where?.watchNotificationAttempts?.lt !== undefined
+          && row.watchNotificationAttempts >= where.watchNotificationAttempts.lt) {
+          return { count: 0 }
+        }
+        Object.assign(row, data)
+        return { count: 1 }
+      })
+      mocks.auditUpdate.mockImplementation(async ({ data }) => Object.assign(row, data))
+
+      await notifyWatchRegression('parent-1', 'child-1')
+
+      // Reclaimed, so the alert actually goes out instead of being suppressed.
+      expect(mocks.sendEmail).toHaveBeenCalledTimes(1)
+      expect(row.watchNotificationStatus).toBe('SENT')
+      expect(row.watchNotifiedAt).toBeInstanceOf(Date)
+      // The delivery key stays stable so a reclaim cannot double-send.
+      expect(mocks.sendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'owner@example.test' }),
+        { idempotencyKey: 'fixflags-watch-child-1-v1' }
+      )
+    })
+
+    it('leaves a SENDING claim alone while its lease is still valid', async () => {
+      // A second worker must never steal a claim that is still in flight.
+      mocks.auditFindUnique.mockResolvedValue({
+        ...strandedChild,
+        watchNotificationLeaseUntil: new Date(Date.now() + 60_000),
+      })
+      mocks.auditFindMany.mockResolvedValue([{ id: 'child-1', parentId: 'parent-1' }])
+
+      await retryPendingWatchNotifications()
+
+      expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
+      expect(mocks.sendEmail).not.toHaveBeenCalled()
+      // Nothing marked this alert failed while another worker still owned it.
+      expect(mocks.auditUpdate).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ watchNotificationStatus: 'FAILED' }),
+        })
+      )
+    })
+
+    it('makes the lease a condition of the claim, so the database is the authority', async () => {
+      // The read-time guard is only an optimisation. Concurrency safety has to
+      // live in the claim itself, or two workers racing on the same alert would
+      // both believe they own the delivery.
+      await notifyWatchRegression('parent-1', 'child-1')
+
+      const claimWhere = mocks.auditUpdateMany.mock.calls[0]?.[0]?.where
+      expect(claimWhere).toMatchObject({
+        OR: [
+          { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
+          {
+            watchNotificationStatus: 'SENDING',
+            watchNotificationLeaseUntil: { lt: expect.any(Date) },
+          },
+        ],
+        watchNotificationAttempts: { lt: 5 },
+      })
+      // Every claim takes a lease, and every terminal outcome releases it.
+      expect(mocks.auditUpdateMany.mock.calls[0]?.[0]?.data)
+        .toMatchObject({ watchNotificationLeaseUntil: expect.any(Date) })
+      for (const [call] of mocks.auditUpdate.mock.calls) {
+        expect(call.data).toMatchObject({ watchNotificationLeaseUntil: null })
+      }
     })
   })
 })
