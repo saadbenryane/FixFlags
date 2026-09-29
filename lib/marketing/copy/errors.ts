@@ -110,6 +110,8 @@ export const OUTCOME_CONFIRMATION = {
 export const OUTCOME_KIND_LABELS = {
   CHECKOUT: 'A customer can reach checkout',
   SIGNUP: 'A visitor can create an account',
+  LOGIN: 'A visitor can sign in',
+  PASSWORD_RESET: 'A visitor can reset their password',
   AVAILABILITY: 'The page loads',
 } as const
 
@@ -130,6 +132,8 @@ export const SYSTEM_COPY = {
     home: 'Home',
     goHome: 'Go home',
     dashboard: 'Dashboard',
+    siteHome: 'Back to Site',
+    allSites: 'All Sites',
     billing: 'Billing',
     close: 'Close',
     docsHome: 'Documentation home',
@@ -151,6 +155,10 @@ export const SYSTEM_COPY = {
     app: {
       title: 'Something went wrong',
       body: 'Your data was not changed. Try again or return to the dashboard.',
+    },
+    site: {
+      title: 'Could not load this Site',
+      body: 'Try again, return to this Site, or open all Sites.',
     },
     admin: {
       title: 'Something went wrong',
