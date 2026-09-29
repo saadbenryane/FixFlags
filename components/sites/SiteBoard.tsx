@@ -19,6 +19,7 @@ import type { BoardCardView } from '@/lib/sites/board-card'
 import { STARTER_BOARD_CARDS, type SiteCardArea } from '@/lib/sites/card-areas'
 import { siteCheckNotice, siteSummaryNotice } from '@/lib/sites/check-notice'
 import { formatAlertDate, NO_ALERT_DELIVERY, siteWatchAlertNotice } from '@/lib/sites/watch-alert-notice'
+import { watchOffNotice } from '@/lib/sites/watch-offer'
 import { firstOutcomePrompt, homeBoardLead } from '@/lib/sites/first-outcome'
 import { outcomeCoverageLabel } from '@/lib/sites/outcome-state'
 import { WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
@@ -45,6 +46,9 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
   // 'none' rather than a failure. Absent evidence is not a delivery problem.
   const alert = watch.alert ?? NO_ALERT_DELIVERY
   const notice = siteCheckNotice({ status: view.audit.status, failureCode: view.audit.failureCode })
+  // Home's own question is what FixFlags is watching. When the answer is nothing
+  // yet, that is said here rather than left for the customer to infer.
+  const offNotice = checking ? null : watchOffNotice({ state: watch.state, siteId })
   // A Site can be checked on schedule and still never tell the customer anything.
   // The notice is stated rather than implied, because silence here reads as
   // "all clear" when it is the opposite.
@@ -192,6 +196,16 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
         <section className="space-y-3" aria-labelledby="site-flags-heading">
           <h2 id="site-flags-heading" className="text-lg font-semibold">Current Flags <span className="text-sm font-normal text-muted-foreground">{view.flags.length}</span></h2>
           {view.flags.map((flag) => <SiteFlagRow key={flag.id} siteId={siteId} flag={flag} />)}
+        </section>
+      ) : null}
+
+      {offNotice ? (
+        <section className="rounded-2xl border border-border/80 bg-background p-5 sm:p-6" aria-labelledby="site-watch-off-heading">
+          <h2 id="site-watch-off-heading" className="text-sm font-semibold">{offNotice.title}</h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{offNotice.body}</p>
+          <Button asChild size="sm" variant="outline" className="mt-3">
+            <Link href={offNotice.actionHref as Route}>{offNotice.actionLabel}</Link>
+          </Button>
         </section>
       ) : null}
 

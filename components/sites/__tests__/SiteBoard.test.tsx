@@ -5,7 +5,7 @@ import { SiteSettingsView } from '../SiteSettingsView'
 import { MeProvider, type MeUser } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { BoardCardView } from '@/lib/sites/board-card'
-import { AUDIT_ERRORS, CARE_HOME, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS, CARE_HOME, WATCH_ALERT_DELIVERY, WATCH_OFFER } from '@/lib/marketing/copy'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 const SITE_PATH = '/sites/p_example'
@@ -239,7 +239,10 @@ describe('SiteBoard chrome', () => {
     expect(await screen.findByRole('heading', { name: 'This page loads' })).toBeVisible()
     expect(screen.queryByText('No Outcome yet')).not.toBeInTheDocument()
     expect(screen.getByText('The Flags that need you.')).toBeVisible()
-    expect(screen.queryByText(/watching/i)).not.toBeInTheDocument()
+    // The intent is that Home never claims Watch is on when it is off. Stated
+    // precisely, because the board is allowed to say Watch is NOT on.
+    expect(screen.queryByText('Watching weekly')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: WATCH_OFFER.title })).toBeInTheDocument()
     releaseRefresh()
     view.unmount()
     vi.unstubAllGlobals()
