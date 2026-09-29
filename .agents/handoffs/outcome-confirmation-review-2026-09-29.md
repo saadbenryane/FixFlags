@@ -21,6 +21,10 @@ Independent receipt: [session](../sessions/2026-09-29-outcome-confirmation-indep
 
 The earlier Flags build handoff is resolved locally by `8dd34a4c` (server searchParams + validated tab prop). Its owner records build and authenticated Open/Resolved route proof on BOARD. Do not repeat that repair or present it as a current blocker.
 
+## Later shared-tree gate
+
+At 2026-09-29 21:00 UTC, `npx tsc --noEmit --incremental false` completed against the current uncommitted Wave 1 tree with one error: `lib/sites/application/commands.ts:21` uses `ConfirmableOutcomeKind` without importing or defining that type. The source still showed that reference after the check. This is in opencode's active confirmation scope; the independent reviewer did not edit it. Re-run the gate after the owner settles the tree before treating any local review task as release-ready.
+
 ## Review-record validation
 
 `git diff --check` and `npm run knowledge:duplication-guard` passed. `npm run agent -- verify --dry-run` selected 30 checks because another owner's package.json research change is present. No product implementation changed in this review, so those unrelated full runtime checks were not repeated. An attempted `verify --help` started validation because the script does not support that flag; its identified process tree was stopped. This is not a new full-verification receipt.
