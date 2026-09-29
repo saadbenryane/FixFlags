@@ -132,12 +132,14 @@ function factsFromAudit(
     rubrics: Array<{ name: string; score: number | null }>
   } | null,
   flags: SiteFlagSeed[],
+  now: Date,
   lastKnown?: CoverageFact[] | null,
   retainLastKnownWhileChecking?: boolean
 ) {
   return buildCoverageFacts({
     auditStatus: audit?.status ?? 'QUEUED',
     completedAt: audit?.completedAt ?? null,
+    now,
     evidenceCoverage: audit?.evidenceCoverage,
     flags: flags.map((f) => ({
       checkId: f.checkId,
@@ -176,6 +178,7 @@ async function latestDesktopCapture(auditId: string | null): Promise<string | nu
 export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null> {
   const site = await loadSiteRecord(siteId)
   if (!site) return null
+  const now = new Date()
 
   let audit = await resolveLatestAudit(site)
   if (audit && isAuditInFlight(audit.status) && Date.now() - audit.updatedAt.getTime() > 15_000) {
@@ -211,7 +214,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
 
   const lastKnownFacts =
     prior != null
-      ? factsFromAudit(prior, flags)
+      ? factsFromAudit(prior, flags, now)
       : isAuditFinished(audit?.status)
         ? null
         : null
@@ -219,6 +222,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
   const coverage = factsFromAudit(
     audit,
     flags,
+    now,
     lastKnownFacts,
     Boolean(inFlight && lastKnownFacts)
   )
@@ -232,6 +236,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     hasLastKnown: Boolean(lastKnownFacts),
     flags,
     coverage,
+    now,
   })
   const siteCardState = health.state
   const captureUrl =

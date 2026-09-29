@@ -1,6 +1,6 @@
 import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
 import { STARTER_BOARD_CARDS } from '@/lib/sites/card-areas'
-import type { CoverageFact } from '@/lib/sites/coverage'
+import { siteCoverageIsStale, type CoverageFact } from '@/lib/sites/coverage'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 /** Starter areas that must be evidenced before the Site card can say healthy. */
@@ -26,6 +26,7 @@ export function siteCardHealth(input: {
   hasLastKnown: boolean
   flags: Array<{ severity: string }>
   coverage: CoverageFact[]
+  now: Date
 }): { state: CardHealthState; answer: string; statusLabel: string } {
   const open = input.flags.length
   const critical = input.flags.some((f) => f.severity === 'CRITICAL')
@@ -70,6 +71,14 @@ export function siteCardHealth(input: {
       state: 'unknown',
       answer: 'This check did not finish',
       statusLabel: 'Couldn’t verify',
+    }
+  }
+
+  if (input.coverage.some((fact) => REQUIRED_STARTER_AREAS.includes(fact.area) && fact.evidenced && siteCoverageIsStale(fact.checkedAt, input.now))) {
+    return {
+      state: 'unknown',
+      answer: SITE_BOARD_COPY.siteCheckOutOfDate,
+      statusLabel: SITE_BOARD_COPY.checkOutOfDate,
     }
   }
 

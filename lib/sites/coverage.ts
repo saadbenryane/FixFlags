@@ -1,5 +1,6 @@
 import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
 import { cardAreaForCheck } from '@/lib/sites/card-areas'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 export type CoverageFact = {
   area: SiteCardArea
@@ -11,6 +12,17 @@ export type CoverageFact = {
   score: number | null
   /** True when this area had enough evidence to answer health. */
   evidenced: boolean
+  /** Evidence exists but is too old to support a current healthy answer. */
+  stale?: boolean
+}
+
+/** A completed broad Site check is current for one weekly Watch cycle plus a day of grace. */
+export const SITE_COVERAGE_MAX_AGE_MS = 8 * 24 * 60 * 60 * 1000
+
+export function siteCoverageIsStale(checkedAt: Date | string | null, now: Date): boolean {
+  if (!checkedAt) return true
+  const checkedAtMs = checkedAt instanceof Date ? checkedAt.getTime() : Date.parse(checkedAt)
+  return !Number.isFinite(checkedAtMs) || now.getTime() - checkedAtMs >= SITE_COVERAGE_MAX_AGE_MS
 }
 
 export type SiteFlagSeed = {
@@ -79,6 +91,7 @@ export function isAuditFinished(status: string | null | undefined): boolean {
 export function buildCoverageFacts(input: {
   auditStatus: string
   completedAt: Date | null
+  now: Date
   evidenceCoverage: unknown
   flags: Array<{
     checkId: string | null
@@ -209,6 +222,20 @@ export function buildCoverageFacts(input: {
         openFlagCount: 0,
         score: null,
         evidenced: false,
+      }
+    }
+
+    if (siteCoverageIsStale(input.completedAt, input.now)) {
+      return {
+        area,
+        state: 'unknown' as const,
+        label: SITE_BOARD_COPY.checkOutOfDate,
+        detail: SITE_BOARD_COPY.checkOutOfDateDetail,
+        checkedAt,
+        openFlagCount: 0,
+        score: null,
+        evidenced: true,
+        stale: true,
       }
     }
 

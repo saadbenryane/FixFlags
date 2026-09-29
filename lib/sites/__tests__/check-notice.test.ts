@@ -50,6 +50,7 @@ describe('site check notice', () => {
     const coverage = buildCoverageFacts({
       auditStatus: 'FAILED',
       completedAt: null,
+      now: new Date('2026-09-29T12:00:00Z'),
       evidenceCoverage: null,
       flags: [],
       rubrics: [],

@@ -275,7 +275,7 @@ export function buildBoardCards(input: {
     const state = fact?.state ?? 'unknown'
     const status =
       boardCardHeaderText(state, activity, fact?.checkedAt ?? input.checkedAt) ??
-      boardCardStatusText(state, activity, isProblem ? SITE_BOARD_COPY.flagStatus : null)
+      boardCardStatusText(state, activity, isProblem ? SITE_BOARD_COPY.flagStatus : fact?.stale ? SITE_BOARD_COPY.checkOutOfDate : null)
     const outcomeName = isProblem ? outcomeNameForFlag(input.outcomes, firstFlag) : null
     const problem: BoardCardProblem | null =
       isProblem && firstFlag

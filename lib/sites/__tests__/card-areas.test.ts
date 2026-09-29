@@ -1,10 +1,73 @@
 import { describe, expect, it } from 'vitest'
 import { cardAreaForCheck, ADDABLE_BOARD_CARDS, STARTER_BOARD_CARDS } from '@/lib/sites/card-areas'
-import { buildCoverageFacts } from '@/lib/sites/coverage'
+import { buildCoverageFacts, SITE_COVERAGE_MAX_AGE_MS, siteCoverageIsStale } from '@/lib/sites/coverage'
 import { encodeSiteId, parseSiteId } from '@/lib/sites/types'
 import { siteCardHealth } from '@/lib/sites/site-health'
+import { buildBoardCards } from '@/lib/sites/board-card'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 describe('site card packaging', () => {
+  it('uses an eight-day evidence window with an exact cutoff', () => {
+    const checkedAt = new Date('2026-09-01T12:00:00Z')
+    expect(siteCoverageIsStale(checkedAt, new Date(checkedAt.getTime() + SITE_COVERAGE_MAX_AGE_MS - 1))).toBe(false)
+    expect(siteCoverageIsStale(checkedAt, new Date(checkedAt.getTime() + SITE_COVERAGE_MAX_AGE_MS))).toBe(true)
+    expect(siteCoverageIsStale(null, checkedAt)).toBe(true)
+  })
+
+  it('expires an old completed check without hiding its evidence or open Flags', () => {
+    const completedAt = new Date('2026-09-01T12:00:00Z')
+    const now = new Date('2026-09-10T12:00:00Z')
+    const facts = buildCoverageFacts({
+      auditStatus: 'COMPLETED',
+      completedAt,
+      now,
+      evidenceCoverage: { metadata: true, desktopPageSpeed: true, flowScan: true },
+      flags: [],
+      rubrics: [],
+    })
+    const search = facts.find((fact) => fact.area === 'search')
+    expect(search).toMatchObject({
+      state: 'unknown',
+      label: SITE_BOARD_COPY.checkOutOfDate,
+      checkedAt: completedAt.toISOString(),
+      evidenced: true,
+      stale: true,
+    })
+    const health = siteCardHealth({
+      inFlight: false,
+      finished: true,
+      hasLastKnown: false,
+      flags: [],
+      coverage: facts,
+      now,
+    })
+    expect(health).toMatchObject({ state: 'unknown', statusLabel: SITE_BOARD_COPY.checkOutOfDate })
+    const cards = buildBoardCards({
+      siteId: 'site-1',
+      inFlight: false,
+      hasLastKnown: false,
+      health,
+      coverageByArea: new Map(facts.map((fact) => [fact.area, fact])),
+      flags: [],
+      outcomes: [],
+      pageCount: 1,
+      captureUrl: null,
+      checkedAt: completedAt.toISOString(),
+    })
+    expect(cards.find((card) => card.id === 'site')?.status).toBe(SITE_BOARD_COPY.checkOutOfDate)
+    expect(cards.find((card) => card.id === 'search')?.status).toBe(SITE_BOARD_COPY.checkOutOfDate)
+
+    const withFlag = buildCoverageFacts({
+      auditStatus: 'COMPLETED',
+      completedAt,
+      now,
+      evidenceCoverage: { metadata: true },
+      flags: [{ checkId: 'title-missing', rubric: 'REACH', severity: 'IMPORTANT', impactTag: null, status: 'OPEN' }],
+      rubrics: [],
+    })
+    expect(withFlag.find((fact) => fact.area === 'search')?.state).toBe('problem')
+  })
+
   it('maps security and performance checks to board areas', () => {
     expect(cardAreaForCheck({ checkId: 'no-https' })).toBe('security')
     expect(cardAreaForCheck({ checkId: 'lcp-critical' })).toBe('performance')
@@ -46,6 +109,7 @@ describe('site card packaging', () => {
     const facts = buildCoverageFacts({
       auditStatus: 'CAPTURING',
       completedAt: null,
+      now: new Date('2026-09-29T12:00:00Z'),
       evidenceCoverage: null,
       flags: [],
       rubrics: [],
@@ -57,6 +121,7 @@ describe('site card packaging', () => {
     const facts = buildCoverageFacts({
       auditStatus: 'COMPLETED',
       completedAt: new Date('2026-09-08T12:00:00Z'),
+      now: new Date('2026-09-09T12:00:00Z'),
       evidenceCoverage: { desktopScreenshot: true },
       flags: [],
       rubrics: [],
@@ -69,6 +134,7 @@ describe('site card packaging', () => {
     const facts = buildCoverageFacts({
       auditStatus: 'COMPLETED',
       completedAt: new Date('2026-09-23T12:00:00Z'),
+      now: new Date('2026-09-24T12:00:00Z'),
       evidenceCoverage: {
         metadata: true,
         flowScan: false,
@@ -95,6 +161,7 @@ describe('site card packaging', () => {
     const facts = buildCoverageFacts({
       auditStatus: 'COMPLETED',
       completedAt: new Date('2026-09-23T12:00:00Z'),
+      now: new Date('2026-09-24T12:00:00Z'),
       evidenceCoverage: { flowScan: true },
       flags: [],
       rubrics: [{ name: 'MESSAGE', score: 92 }],
@@ -108,6 +175,7 @@ describe('site card packaging', () => {
     const facts = buildCoverageFacts({
       auditStatus: 'COMPLETED',
       completedAt: new Date('2026-09-08T12:00:00Z'),
+      now: new Date('2026-09-09T12:00:00Z'),
       evidenceCoverage: { desktopPageSpeed: true },
       flags: [],
       rubrics: [],
@@ -120,6 +188,7 @@ describe('site card packaging', () => {
     const prior = buildCoverageFacts({
       auditStatus: 'COMPLETED',
       completedAt: new Date('2026-09-01T12:00:00Z'),
+      now: new Date('2026-09-02T12:00:00Z'),
       evidenceCoverage: { desktopPageSpeed: true },
       flags: [],
       rubrics: [],
@@ -127,6 +196,7 @@ describe('site card packaging', () => {
     const facts = buildCoverageFacts({
       auditStatus: 'CHECKING',
       completedAt: null,
+      now: new Date('2026-09-29T12:00:00Z'),
       evidenceCoverage: null,
       flags: [],
       rubrics: [],
@@ -141,6 +211,7 @@ describe('site card packaging', () => {
     const facts = buildCoverageFacts({
       auditStatus: 'COMPLETED',
       completedAt: new Date('2026-09-08T12:00:00Z'),
+      now: new Date('2026-09-09T12:00:00Z'),
       evidenceCoverage: null,
       flags: [
         {
@@ -162,6 +233,7 @@ describe('site card packaging', () => {
     const coverage = buildCoverageFacts({
       auditStatus: 'COMPLETED',
       completedAt: new Date('2026-09-08T12:00:00Z'),
+      now: new Date('2026-09-09T12:00:00Z'),
       evidenceCoverage: { desktopScreenshot: true },
       flags: [],
       rubrics: [],
@@ -172,6 +244,7 @@ describe('site card packaging', () => {
       hasLastKnown: false,
       flags: [],
       coverage,
+      now: new Date('2026-09-09T12:00:00Z'),
     })
     expect(health.state).toBe('unknown')
     expect(health.answer).not.toMatch(/looking good/i)
@@ -181,6 +254,7 @@ describe('site card packaging', () => {
     const coverage = buildCoverageFacts({
       auditStatus: 'COMPLETED',
       completedAt: new Date('2026-09-08T12:00:00Z'),
+      now: new Date('2026-09-09T12:00:00Z'),
       evidenceCoverage: { desktopScreenshot: true },
       flags: [],
       rubrics: [],
@@ -189,6 +263,7 @@ describe('site card packaging', () => {
       state: 'healthy' as const,
       evidenced: true,
       label: 'Looking good',
+      checkedAt: new Date('2026-09-08T12:00:00Z').toISOString(),
     }))
     const health = siteCardHealth({
       inFlight: false,
@@ -196,6 +271,7 @@ describe('site card packaging', () => {
       hasLastKnown: false,
       flags: [],
       coverage,
+      now: new Date('2026-09-09T12:00:00Z'),
     })
     expect(health.state).toBe('healthy')
     expect(health.answer).toBe('0 Flags')
@@ -205,6 +281,7 @@ describe('site card packaging', () => {
     const facts = buildCoverageFacts({
       auditStatus: 'PARTIAL',
       completedAt: null,
+      now: new Date('2026-09-29T12:00:00Z'),
       evidenceCoverage: null,
       flags: [],
       rubrics: [],
