@@ -24,12 +24,16 @@ if (!response.ok) {
 }
 
 const pageHtml = await response.text()
+// A different Next app can expose the same /app/layout.css URL on port 3000.
+// Identify FixFlags before inspecting its font contract; a missing font class
+// on a real FixFlags page must still fail instead of being treated as a skip.
+const isFixFlagsPage = /<meta\b(?=[^>]*\bproperty=["']og:site_name["'])(?=[^>]*\bcontent=["']FixFlags["'])[^>]*>/i.test(pageHtml)
+if (optional && !isFixFlagsPage) {
+  skip('port is serving a different application')
+  process.exit(0)
+}
 const layoutMatch = pageHtml.match(/href="([^"]*\/app\/layout\.css\?v=[^"]+)"/)
 if (!layoutMatch) {
-  if (optional && !/font-variables|FixFlags/i.test(pageHtml)) {
-    skip('port is serving a different application')
-    process.exit(0)
-  }
   fail('could not find app layout stylesheet link in HTML')
 }
 

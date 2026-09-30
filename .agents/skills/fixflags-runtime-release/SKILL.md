@@ -43,6 +43,7 @@ Generate the current input list from `scripts/validate.mjs`. At minimum, contain
 - Queue recovery, retry exhaustion, duplicate-job idempotency, and scheduler locks are exercised against disposable PostgreSQL and Redis.
 - Deployed smoke validates health, browser/storage, AI configuration, generated route authorization boundaries, and optimized brand/marketing `_next/image` URLs (200, not `"url" parameter is not allowed`).
 - No required check is skipped and no shipped-readiness claim is updated before the credentialed journey matrix passes.
+- The optional local font probe may see an unrelated Next app on port 3000. It skips only when the page lacks FixFlags's `og:site_name` identity; a FixFlags page with a missing font class or stylesheet still fails. Use an explicit `FONT_RUNTIME_URL` to exercise a running FixFlags server.
 - After every production deploy, confirm `/api/health` commit matches the intended `main` tip before claiming UI fixes are live.
 
 ## Release credential checklist
