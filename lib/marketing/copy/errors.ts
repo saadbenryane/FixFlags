@@ -127,13 +127,13 @@ export const OUTCOME_KIND_NAMES = {
 } as const
 
 export const WATCH_ALERT_DELIVERY = {
-  undeliveredTitle: 'Watch could not reach you',
+  undeliveredTitle: 'Watch could not confirm delivery',
   undeliveredBody: (when: string | null) =>
     when
-      ? `FixFlags found a change on ${when}, but the alert did not reach your inbox. Watch keeps checking, but it cannot warn you until this is fixed.`
-      : 'FixFlags found a change on this Site, but the alert did not reach your inbox. Watch keeps checking, but it cannot warn you until this is fixed.',
+      ? `FixFlags found a change on ${when}, but could not confirm that the alert reached your inbox. Watch keeps checking. Check the email on your account so the next alert can reach you.`
+      : 'FixFlags found a change on this Site, but could not confirm that the alert reached your inbox. Watch keeps checking. Check the email on your account so the next alert can reach you.',
   undeliveredAction: 'Check the email FixFlags sends to',
-  sidebarUndelivered: 'Last Watch alert was not delivered',
+  sidebarUndelivered: 'Last Watch alert delivery was not confirmed',
   sidebarDelivering: 'Sending your last Watch alert',
 } as const
 

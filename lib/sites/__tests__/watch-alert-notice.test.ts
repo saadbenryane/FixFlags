@@ -32,6 +32,22 @@ describe('Watch alert delivery', () => {
     expect(watchAlertDelivery({ status: 'SENDING', attempts: 1 })).toBe('delivering')
   })
 
+  it('stops calling an expired final claim delivering', () => {
+    const now = new Date('2026-09-30T12:00:00.000Z')
+    expect(watchAlertDelivery({
+      status: 'SENDING',
+      attempts: WATCH_NOTIFICATION_ATTEMPT_LIMIT,
+      leaseUntil: '2026-09-30T11:59:00.000Z',
+      now,
+    })).toBe('undelivered')
+    expect(watchAlertDelivery({
+      status: 'SENDING',
+      attempts: WATCH_NOTIFICATION_ATTEMPT_LIMIT,
+      leaseUntil: '2026-09-30T12:01:00.000Z',
+      now,
+    })).toBe('delivering')
+  })
+
   it('keeps a failure that is still being retried out of the terminal state', () => {
     // The bounded retry exists so FixFlags keeps trying before admitting failure.
     // Calling this terminal early is a false alarm about a system that is working.
@@ -70,9 +86,19 @@ describe('Site notice for an undelivered alert', () => {
     expect(notice?.at).toBe('2026-09-20T10:00:00.000Z')
   })
 
+  it('states an expired final claim whose provider result is unknown', () => {
+    const notice = siteWatchAlertNotice({
+      status: 'SENDING',
+      attempts: exhausted,
+      leaseUntil: '2026-09-30T11:59:00.000Z',
+      at: '2026-09-30T11:58:00.000Z',
+    })
+    expect(notice?.title).toBe(WATCH_ALERT_DELIVERY.undeliveredTitle)
+  })
+
   it('says the checks are still happening, so the customer is not left guessing', () => {
     const notice = siteWatchAlertNotice({ status: 'FAILED', attempts: exhausted, at: null })
-    expect(notice?.title).toMatch(/could not reach/i)
+    expect(notice?.title).toMatch(/could not confirm/i)
     // Coverage and delivery are different facts. The copy must not imply the
     // Site stopped being checked, because it did not.
     expect(notice?.actionLabel).toBeTruthy()
@@ -92,7 +118,7 @@ describe('Site notice for an undelivered alert', () => {
     // would tell the customer about our email vendor rather than their problem.
     const body = WATCH_ALERT_DELIVERY.undeliveredBody('Sep 20, 2026')
     expect(body).not.toMatch(/resend|api key|provider|smtp|422|500|forbidden/i)
-    expect(body).toMatch(/did not reach your inbox/i)
+    expect(body).toMatch(/could not confirm.*reached your inbox/i)
   })
 
   it('reads the alert inside a resolved projectId, so no tenant sees another tenant alert', () => {
@@ -102,6 +128,8 @@ describe('Site notice for an undelivered alert', () => {
     const queries = readFileSync(resolve(root, 'lib/sites/application/queries.ts'), 'utf8')
     expect(queries).toMatch(/const latestAlert = site\.projectId\s*\?/)
     expect(queries).toContain('where: { projectId: site.projectId, recheckTrigger: \'WATCH\'')
+    expect(queries).toContain('watchNotificationLeaseUntil: true')
+    expect(queries).toContain('leaseUntil: latestAlert?.watchNotificationLeaseUntil')
   })
 
   it('avoids the banned voice patterns', () => {
@@ -126,7 +154,7 @@ describe('One-line delivery summary for Site chrome', () => {
   })
 
   it('states an undelivered alert rather than leaving only the schedule', () => {
-    expect(watchAlertSummary('undelivered')).toMatch(/not delivered/i)
+    expect(watchAlertSummary('undelivered')).toMatch(/not confirmed/i)
   })
 
   it('mentions a delivery still in progress, without alarming', () => {

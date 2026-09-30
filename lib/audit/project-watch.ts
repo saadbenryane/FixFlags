@@ -341,10 +341,37 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
   // Never overwrite a claim another worker still holds. Writing FAILED here
   // would both lose their delivery and mark the alert failed while it is still
   // legitimately in flight.
+  const deliveryNow = new Date()
   const leaseHeld = child.watchNotificationStatus === 'SENDING'
     && child.watchNotificationLeaseUntil != null
-    && child.watchNotificationLeaseUntil > new Date()
+    && child.watchNotificationLeaseUntil > deliveryNow
   if (leaseHeld) return
+
+  // A worker may die after the provider call on the final allowed claim. Once
+  // that lease expires, another send could duplicate an accepted email, while
+  // leaving SENDING forever falsely tells the customer delivery is in progress.
+  // Terminalize the uncertainty without making an unbounded sixth attempt.
+  if (
+    child.watchNotificationStatus === 'SENDING'
+    && child.watchNotificationAttempts >= WATCH_NOTIFICATION_ATTEMPT_LIMIT
+    && child.watchNotificationLeaseUntil != null
+    && child.watchNotificationLeaseUntil <= deliveryNow
+  ) {
+    await prisma.audit.updateMany({
+      where: {
+        id: childAuditId,
+        watchNotificationStatus: 'SENDING',
+        watchNotificationAttempts: { gte: WATCH_NOTIFICATION_ATTEMPT_LIMIT },
+        watchNotificationLeaseUntil: { lte: deliveryNow },
+      },
+      data: {
+        watchNotificationStatus: 'FAILED',
+        watchNotificationLastError: 'Delivery confirmation expired after the final attempt',
+        watchNotificationLeaseUntil: null,
+      },
+    })
+    return
+  }
 
   if (!child.user?.email || !resend) {
     await prisma.audit.update({
@@ -362,7 +389,7 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
   // the lease expires, so a worker that dies mid-delivery cannot suppress the
   // alert forever. A held lease is excluded, so a second worker never steals a
   // delivery that is still in flight.
-  const claimNow = new Date()
+  const claimNow = deliveryNow
   const claimed = await prisma.audit.updateMany({
     where: {
       id: childAuditId,
@@ -458,13 +485,15 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
     where: {
       status: 'COMPLETED',
       recheckTrigger: 'WATCH',
-      // SENDING is included only when its lease has expired, which is how a
-      // delivery abandoned by a dead worker becomes deliverable again.
+      // SENDING is included only when its lease has expired. Claims below the
+      // ceiling can be retried; an exhausted final claim is terminalized.
       OR: [
-        { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
+        {
+          watchNotificationStatus: { in: ['PENDING', 'FAILED'] },
+          watchNotificationAttempts: { lt: WATCH_NOTIFICATION_ATTEMPT_LIMIT },
+        },
         { watchNotificationStatus: 'SENDING', watchNotificationLeaseUntil: { lt: now } },
       ],
-      watchNotificationAttempts: { lt: WATCH_NOTIFICATION_ATTEMPT_LIMIT },
       parentId: { not: null },
     },
     select: { id: true, parentId: true },

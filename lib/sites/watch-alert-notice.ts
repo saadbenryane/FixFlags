@@ -26,6 +26,7 @@ export type SiteWatchAlertNotice = {
 export function siteWatchAlertNotice(input: {
   status: WatchNotificationStatusLike | null | undefined
   attempts: number
+  leaseUntil?: Date | string | null
   at: Date | string | null
 }): SiteWatchAlertNotice | null {
   if (watchAlertDelivery(input) !== 'undelivered') return null

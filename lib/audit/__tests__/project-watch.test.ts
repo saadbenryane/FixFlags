@@ -421,14 +421,17 @@ describe('Product Watch', () => {
       const sweepWhere = mocks.auditFindMany.mock.calls[0]?.[0]?.where
       expect(sweepWhere).toMatchObject({
         OR: [
-          { watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
+          {
+            watchNotificationStatus: { in: ['PENDING', 'FAILED'] },
+            watchNotificationAttempts: { lt: 5 },
+          },
           {
             watchNotificationStatus: 'SENDING',
             watchNotificationLeaseUntil: expect.anything(),
           },
         ],
-        watchNotificationAttempts: { lt: 5 },
       })
+      expect(sweepWhere.watchNotificationAttempts).toBeUndefined()
     })
 
     it('keeps an accepted notification sent when lifecycle telemetry fails', async () => {
@@ -567,6 +570,36 @@ describe('Product Watch', () => {
           data: expect.objectContaining({ watchNotificationStatus: 'FAILED' }),
         })
       )
+    })
+
+    it('terminalizes an expired final claim without risking a sixth send', async () => {
+      const expired = new Date(Date.now() - 60_000)
+      mocks.auditFindUnique.mockResolvedValue({
+        ...strandedChild,
+        watchNotificationAttempts: 5,
+        watchNotificationLeaseUntil: expired,
+      })
+
+      await notifyWatchRegression('parent-1', 'child-1')
+
+      expect(mocks.sendEmail).not.toHaveBeenCalled()
+      expect(mocks.auditUpdateMany).toHaveBeenCalledWith({
+        where: {
+          id: 'child-1',
+          watchNotificationStatus: 'SENDING',
+          watchNotificationAttempts: { gte: 5 },
+          watchNotificationLeaseUntil: { lte: expect.any(Date) },
+        },
+        data: {
+          watchNotificationStatus: 'FAILED',
+          watchNotificationLastError: 'Delivery confirmation expired after the final attempt',
+          watchNotificationLeaseUntil: null,
+        },
+      })
+      const claim = mocks.auditUpdateMany.mock.calls.find(([call]) =>
+        call.data?.watchNotificationAttempts?.increment === 1
+      )
+      expect(claim).toBeUndefined()
     })
 
     it('makes the lease a condition of the claim, so the database is the authority', async () => {

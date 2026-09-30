@@ -121,3 +121,17 @@ Alert delivery honesty deployed as `a23919f5`, healthy with `migrations: ok` and
 Recovery is not yet observed in production, on any of this. Nothing was stranded and no email was sent to a real inbox. The honest tests are: for the notification lease, induce a regression on a watched Site, kill the worker mid-claim, and confirm the customer receives the alert after the lease expires; for the run lease, strand a run, request a new one, and confirm the Site verifies again instead of returning the stale audit or a `P2002`; for the notice, point a watched Site at a bad email address and confirm the customer sees the failure stated rather than a healthy-looking board. All three need a deliberate failure and a real customer, and none has been done.
 
 The same reasoning applies to any claim wrapping an external side effect: payment, queue publish, file write. The pattern is now documented, but the other call sites have not been audited for it. `OutcomeBindingExecution` in `checkout-execution.ts` is the most likely remaining candidate, since it also guards an external browser side effect and is skipped when a record already exists.
+
+## Final-attempt uncertainty, 2026-09-30
+
+Independent review found the attempt ceiling and lease recovery conflicted on the fifth claim. A worker could increment attempts to five, write `SENDING`, call the provider, and die before saving the response. Once the lease expired, the retry sweep excluded the row because attempts were no longer below five, while the customer projection treated every `SENDING` row as active forever.
+
+The correct terminal state is uncertainty, not another send and not a claim that the inbox definitely missed the email. The provider may have accepted the fifth request before the worker died. The repair therefore:
+
+1. includes expired `SENDING` rows in the sweep independently of the retry ceiling;
+2. terminalizes an expired final claim as `FAILED` without making a sixth provider call;
+3. releases the lease and records an internal diagnostic;
+4. projects an exhausted expired claim as terminal even before the sweep persists the transition; and
+5. tells the customer FixFlags could not confirm delivery, while Watch keeps checking.
+
+Tests pin both halves: a live fifth lease still reads as delivering, an expired fifth lease does not, and the sender makes no sixth claim or provider call. This remains local evidence. No production alert was deliberately stranded and no real inbox result was observed.

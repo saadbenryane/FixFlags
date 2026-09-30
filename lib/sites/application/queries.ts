@@ -65,6 +65,7 @@ export type SiteHomeView = {
       state: WatchAlertDeliveryState
       status: 'NOT_APPLICABLE' | 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | null
       attempts: number
+      leaseUntil?: string | null
       at: string | null
     }
   }
@@ -293,12 +294,18 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     ? await prisma.audit.findFirst({
       where: { projectId: site.projectId, recheckTrigger: 'WATCH', watchNotificationStatus: { not: 'NOT_APPLICABLE' } },
       orderBy: { updatedAt: 'desc' },
-      select: { watchNotificationStatus: true, watchNotificationAttempts: true, updatedAt: true },
+      select: {
+        watchNotificationStatus: true,
+        watchNotificationAttempts: true,
+        watchNotificationLeaseUntil: true,
+        updatedAt: true,
+      },
     })
     : null
   const alertState = watchAlertDelivery({
     status: latestAlert?.watchNotificationStatus ?? null,
     attempts: latestAlert?.watchNotificationAttempts ?? 0,
+    leaseUntil: latestAlert?.watchNotificationLeaseUntil ?? null,
   })
 
   return {
@@ -340,6 +347,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
         state: alertState,
         status: latestAlert?.watchNotificationStatus ?? null,
         attempts: latestAlert?.watchNotificationAttempts ?? 0,
+        leaseUntil: latestAlert?.watchNotificationLeaseUntil?.toISOString() ?? null,
         at: latestAlert?.updatedAt.toISOString() ?? null,
       },
     },
