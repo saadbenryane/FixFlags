@@ -4,6 +4,8 @@
 
 **Status:** locally implemented and verified; not deployed or customer-validated
 
+**Commit:** `76462eed`
+
 **Scope:** finish the inherited `flag-resolve-truth-2026-09-29` customer path after the user explicitly transferred stale board ownership
 
 ## Customer outcome
