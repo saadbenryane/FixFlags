@@ -4,6 +4,8 @@
 
 **Status:** locally implemented and verified; not deployed or customer-validated
 
+**Commit:** `159ac1c8`
+
 **Scope:** close the inherited P1 in `watch-notification-lease-recovery-2026-09-29`
 
 ## Customer outcome
