@@ -4,6 +4,8 @@
 
 **Status:** locally implemented and verified; not deployed or customer-validated
 
+**Commit:** `b26e9716`
+
 **Scope:** finish the inherited `run-request-lease-recovery-2026-09-29` write-time ownership contract
 
 ## Customer outcome
