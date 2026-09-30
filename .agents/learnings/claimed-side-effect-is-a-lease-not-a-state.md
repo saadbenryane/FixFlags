@@ -87,6 +87,7 @@ This matters most for the promises FixFlags is sold on. "Trustworthy while unatt
 7. Keep any retry ceiling separate from the lease. Reclaiming an abandoned claim must not let a permanently failing notification loop forever.
 8. Keep the provider idempotency key stable across reclaims, so recovering a stranded claim cannot double-send. Verify this survives the retry path, not just the first send.
 9. Re-run the claim path with a mock that honours the `where` clause. A mock that ignores it will let a claim succeed that a real database rejects, which is how this class of bug hides behind a green test.
+10. Repeat the expiry predicate on the terminal write. The candidate read and the update are separate operations; a worker may renew between them. Status alone does not prove the lease is still abandoned.
 
 ## Rejected approaches
 
@@ -135,3 +136,9 @@ The correct terminal state is uncertainty, not another send and not a claim that
 5. tells the customer FixFlags could not confirm delivery, while Watch keeps checking.
 
 Tests pin both halves: a live fifth lease still reads as delivering, an expired fifth lease does not, and the sender makes no sixth claim or provider call. This remains local evidence. No production alert was deliberately stranded and no real inbox result was observed.
+
+## Reclamation reads are candidates, 2026-09-30
+
+The RunRequest recovery initially found expired rows with the correct inverse lease predicate, then terminalized each row with `where: { id, status }`. That left a check-then-write race: a live worker could renew the lease after the candidate read and still be overwritten as `RUN_ABANDONED`.
+
+The terminal `updateMany` now repeats `leaseUntil IS NULL OR leaseUntil < cutoff` alongside ID and active status. A focused race regression returns the stale candidate, simulates a renewal before the write, makes the guarded update affect zero rows, and proves the request reuses the live run instead of starting or failing another verification. This is the same rule as the notification claim: the read is an optimization; the conditional write is the authority.

@@ -105,7 +105,14 @@ export async function reclaimExpiredOutcomeRuns(projectId: string): Promise<numb
       }
     }
     const failed = await prisma.runRequest.updateMany({
-      where: { id: run.id, status: { in: [...ACTIVE_RUN_STATUSES] } },
+      // The earlier read is only a candidate list. A worker can renew its lease
+      // before this write, so expiry must be re-checked atomically here or a
+      // live run can be clobbered as abandoned.
+      where: {
+        id: run.id,
+        status: { in: [...ACTIVE_RUN_STATUSES] },
+        OR: [{ leaseUntil: null }, { leaseUntil: { lt: now } }],
+      },
       data: {
         status: 'FAILED',
         errorCode: 'RUN_ABANDONED',

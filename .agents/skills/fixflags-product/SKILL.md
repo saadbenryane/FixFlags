@@ -40,6 +40,8 @@ The public Analyze form checks the parsed URL hostname when rejecting a local de
 
 Launch execution goes through `requestSiteRun` in `lib/sites/application/run-requests.ts`. Watch, deployment webhooks, MCP, and flag verification are adapters. A recorded fix does not change an assessment. Safe Signup stays Couldn’t verify until an authorized reversible fixture exists. MCP OAuth metadata, PKCE, audience, and scopes live in `lib/mcp/oauth.ts`. Do not describe that local engine as a deployed launch.
 
+RunRequest lease reclamation is a conditional state transition, not a read-time decision. Candidate reads find expired or NULL leases, but the terminal `updateMany` must repeat that expiry predicate with the active status. A worker may renew between read and write; status alone is not authority to mark the run abandoned.
+
 Absence-based recovery belongs to the parent Flag: the completed child proves the old observation is gone but contains no recovered row to link. When a Watch notification or other consumer needs proof, carry the exact parent Flag ID through `FlagDiffSummaryItem`; do not rematch `summary.fixed` against `child.flags`. Resolution proof reads must require a completed audit from the same customer Site, and customer copy must state what that dated check established rather than imply permanent current health.
 
 Site connections are optional context. Search Console and Analytics attach to one Site, match the host, and store aggregates only. They never mark an Outcome Clear. Shopify remains the commerce connection. Do not claim a provider in public copy until its connect, mismatch, and disconnect path has been exercised.

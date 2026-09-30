@@ -525,7 +525,11 @@ describe('RunRequest tenant boundary and idempotency', () => {
       })
 
       expect(mocks.runUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
-        where: { id: 'run-stale', status: { in: ['QUEUED', 'RUNNING'] } },
+        where: {
+          id: 'run-stale',
+          status: { in: ['QUEUED', 'RUNNING'] },
+          OR: [{ leaseUntil: null }, { leaseUntil: { lt: expect.any(Date) } }],
+        },
         data: expect.objectContaining({
           status: 'FAILED',
           errorCode: 'RUN_ABANDONED',
@@ -548,6 +552,40 @@ describe('RunRequest tenant boundary and idempotency', () => {
       const reclaimedAt = mocks.runUpdateMany.mock.invocationCallOrder[0]
       const checkedAt = mocks.runFindFirst.mock.invocationCallOrder[0]
       expect(reclaimedAt).toBeLessThan(checkedAt)
+    })
+
+    it('does not clobber a run whose worker renewed after the reclaim read', async () => {
+      const renewedRun = {
+        id: 'run-stale',
+        projectId: 'project-1',
+        environment: 'production',
+        selections: [{ outcomeId: 'outcome-1' }],
+        auditId: 'audit-stale',
+        status: 'RUNNING',
+        leaseUntil: new Date(Date.now() + 600_000),
+      }
+      // The candidate read raced just before the worker renewed its lease.
+      mocks.runFindMany.mockResolvedValue([{ id: 'run-stale', auditId: null }])
+      mocks.runUpdateMany.mockImplementation(async ({ where }) => {
+        expect(where).toMatchObject({
+          OR: [{ leaseUntil: null }, { leaseUntil: { lt: expect.any(Date) } }],
+        })
+        return { count: 0 }
+      })
+      mocks.runFindFirst.mockResolvedValue(renewedRun)
+
+      const result = await requestOutcomeRun({
+        projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1',
+        source: 'WATCH', idempotencyKey: 'watch:project-1:renewed',
+      })
+
+      expect(result).toEqual({
+        runId: 'run-stale',
+        auditId: 'audit-stale',
+        outcomeIds: ['outcome-1'],
+        reused: true,
+      })
+      expect(mocks.createAudit).not.toHaveBeenCalled()
     })
 
     it('keeps a run whose audit already finished, so a real result is not thrown away', async () => {
