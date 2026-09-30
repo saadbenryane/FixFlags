@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { classifyWalk, combineAttempts } from '@/lib/integrity/classify'
+import { classifyWalk, combineAttempts, goalProbeReason } from '@/lib/integrity/classify'
 import type { WalkOutcome } from '@/lib/integrity/types'
 
 function outcome(overrides: Partial<WalkOutcome> = {}): WalkOutcome {
@@ -73,5 +73,19 @@ describe('combineAttempts', () => {
         { health: 'GREEN', reason: 'checkout_reached' }
       )
     ).toEqual({ health: 'UNKNOWN', reason: 'flaky', confirmed: false })
+  })
+})
+
+describe('goalProbeReason', () => {
+  it('does not label a generic successful goal as checkout', () => {
+    const green = { health: 'GREEN' as const, reason: 'checkout_reached' as const }
+    expect(goalProbeReason(green, 'reversible')).toBe('goal_reached')
+    expect(goalProbeReason(green, 'none')).toBe('goal_reached')
+    expect(goalProbeReason(green, 'stop-at-checkout')).toBe('checkout_reached')
+  })
+
+  it('preserves blocked and failed reasons', () => {
+    expect(goalProbeReason({ health: 'UNKNOWN', reason: 'bot_wall' }, 'reversible')).toBe('bot_wall')
+    expect(goalProbeReason({ health: 'RED', reason: 'http_error' }, 'reversible')).toBe('http_error')
   })
 })

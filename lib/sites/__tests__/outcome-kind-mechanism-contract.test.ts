@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { validateBindingConfig } from '@/lib/sites/application/binding-config'
+import { validateBindingConfig, validateBindingForOutcome } from '@/lib/sites/application/binding-config'
 import {
-  CONFIRMABLE_OUTCOME_KINDS,
   bindingForConfirmedKind,
   outcomeKindWatchable,
+} from '@/lib/sites/outcomes'
+import {
+  CONFIRMABLE_OUTCOME_KINDS,
+  nameForConfirmedOutcomeKind,
   watchableOutcomeKinds,
   type ConfirmableOutcomeKind,
-} from '@/lib/sites/outcomes'
+} from '@/lib/sites/outcome-kinds'
 
 /**
  * `kind` is not a label. It selects the execution mechanism that will verify the
@@ -39,7 +42,7 @@ describe('every confirmable kind must have a mechanism FixFlags can run', () => 
   })
 
   it('writes a binding the run path accepts, for every kind that is watchable', () => {
-    for (const kind of watchableOutcomeKinds(siteUrl)) {
+    for (const kind of watchableOutcomeKinds()) {
       const binding = bindingForConfirmedKind(kind, siteUrl)
       const validated = validateBindingConfig(binding.mechanism, binding.config)
       expect(validated.success, `${kind} writes a binding FixFlags cannot run`).toBe(true)
@@ -51,13 +54,41 @@ describe('every confirmable kind must have a mechanism FixFlags can run', () => 
     }
   })
 
-  it('offers purchase, signup, login, password reset, and page availability', () => {
+  it('does not trust fixture authorization asserted inside binding JSON', () => {
+    const base = {
+      startUrl: `${siteUrl}/account/register`,
+      steps: [
+        { action: 'fill' as const, role: 'textbox' as const, name: 'Email', value: 'fixture@example.com' },
+        { action: 'click' as const, role: 'button' as const, name: 'Create account' },
+      ],
+      goal: { type: 'url_pattern' as const, pattern: '/account' },
+    }
+
+    expect(validateBindingForOutcome('SIGNUP', 'BROWSER_JOURNEY', {
+      ...base,
+      safety: 'reversible',
+      authorized: true,
+      fixtureId: 'does-not-exist',
+      goalAfterStep: 2,
+    }).success).toBe(false)
+  })
+
+  it('blocks protected kinds even when a wait-only config could match on load', () => {
+    expect(validateBindingForOutcome('PASSWORD_RESET', 'BROWSER_JOURNEY', {
+      startUrl: `${siteUrl}/account/recover`,
+      steps: [{ action: 'wait', waitMs: 10 }],
+      goal: { type: 'text_present', text: 'Reset password' },
+      safety: 'none',
+    }).success).toBe(false)
+  })
+
+  it('offers only purchase and page availability until protected journeys have authorized fixtures', () => {
     expect(outcomeKindWatchable('CHECKOUT', siteUrl)).toBe(true)
-    expect(outcomeKindWatchable('SIGNUP', siteUrl)).toBe(true)
-    expect(outcomeKindWatchable('LOGIN', siteUrl)).toBe(true)
-    expect(outcomeKindWatchable('PASSWORD_RESET', siteUrl)).toBe(true)
+    expect(outcomeKindWatchable('SIGNUP', siteUrl)).toBe(false)
+    expect(outcomeKindWatchable('LOGIN', siteUrl)).toBe(false)
+    expect(outcomeKindWatchable('PASSWORD_RESET', siteUrl)).toBe(false)
     expect(outcomeKindWatchable('AVAILABILITY', siteUrl)).toBe(true)
-    expect(watchableOutcomeKinds(siteUrl)).toEqual(['CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET', 'AVAILABILITY'])
+    expect(watchableOutcomeKinds()).toEqual(['CHECKOUT', 'AVAILABILITY'])
   })
 
   it('allows multiple kinds to share the BROWSER_JOURNEY mechanism with distinct configs', () => {
@@ -88,7 +119,13 @@ describe('every confirmable kind must have a mechanism FixFlags can run', () => 
   it('is stable for the kinds the customer can be offered today', () => {
     // If a new kind is added, this test should be updated deliberately,
     // not a silent behaviour flip.
-    const offered: ConfirmableOutcomeKind[] = watchableOutcomeKinds(siteUrl)
-    expect(offered).toEqual(['CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET', 'AVAILABILITY'])
+    const offered: ConfirmableOutcomeKind[] = watchableOutcomeKinds()
+    expect(offered).toEqual(['CHECKOUT', 'AVAILABILITY'])
+  })
+
+  it('gives every confirmed execution kind one matching customer name', () => {
+    expect(nameForConfirmedOutcomeKind('CHECKOUT')).toBe('Checkout')
+    expect(nameForConfirmedOutcomeKind('AVAILABILITY')).toBe('This page loads')
+    expect(nameForConfirmedOutcomeKind('SIGNUP')).toBe('Signup')
   })
 })

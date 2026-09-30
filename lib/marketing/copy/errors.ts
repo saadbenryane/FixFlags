@@ -77,15 +77,16 @@ export const WATCH_OFFER = {
  */
 export const OUTCOME_CONFIRMATION = {
   kindRequired:
-    'FixFlags cannot watch this yet. Confirm what should keep working: a purchase, a signup, or that the page loads.',
+    'FixFlags cannot watch this yet. Confirm what should keep working: a purchase or that the page loads.',
   /**
-   * A kind is not enough either. `SIGNUP` names a safe-form mechanism whose
-   * binding cannot validate, so accepting it records an agreement, enables
-   * Verify, and then reports "Couldn't verify" on every run with no way forward.
-   * The customer is told what is missing and what can be watched instead.
+   * A kind is not enough either. Protected journeys need tenant-scoped test
+   * access and a reversible fixture. Without both, accepting one would record
+   * an agreement FixFlags cannot safely keep.
    */
   kindUnwatchable:
-    'FixFlags cannot watch a signup on this Site yet. It needs an approved test account and a way to undo the signup before it can check one. Confirm a purchase or that the page loads instead.',
+    'FixFlags cannot safely watch this Outcome on this Site yet. It needs approved test access and a way to undo any lasting action. Confirm a purchase or that the page loads instead.',
+  kindMismatch:
+    'This Outcome already has a different meaning. Edit its name, or confirm a separate inferred Outcome instead.',
   /**
    * The choice a customer gets instead of the dead end "Inferred, confirmation
    * required", which named a requirement and offered no way to meet it. Each
@@ -95,6 +96,7 @@ export const OUTCOME_CONFIRMATION = {
   proposeBody:
     'FixFlags read this from your site. Choose what it should keep checking, and FixFlags will verify it on every check.',
   inferredNote: 'Read from your site. Not being watched yet.',
+  unsupportedNote: 'FixFlags recognized this Outcome, but cannot safely watch it yet.',
   confirmedNote: 'Confirmed by you. FixFlags checks it on every run.',
   confirmedBadge: 'Confirmed',
   nameLabel: 'Outcome name',
@@ -103,6 +105,7 @@ export const OUTCOME_CONFIRMATION = {
   save: 'Save',
   cancel: 'Cancel',
   saved: 'Confirmed. FixFlags will keep watching this.',
+  renamed: 'Outcome name saved.',
   saveFailed: 'Could not save this Outcome',
 } as const
 
@@ -113,6 +116,14 @@ export const OUTCOME_KIND_LABELS = {
   LOGIN: 'A visitor can sign in',
   PASSWORD_RESET: 'A visitor can reset their password',
   AVAILABILITY: 'The page loads',
+} as const
+
+export const OUTCOME_KIND_NAMES = {
+  CHECKOUT: 'Checkout',
+  SIGNUP: 'Signup',
+  LOGIN: 'Login',
+  PASSWORD_RESET: 'Password reset',
+  AVAILABILITY: 'This page loads',
 } as const
 
 export const WATCH_ALERT_DELIVERY = {

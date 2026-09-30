@@ -196,4 +196,68 @@ describe('bound Checkout execution', () => {
       create: expect.objectContaining({ disposition: 'BLOCKED', reason: 'flaky' }),
     }))
   })
+
+  it('blocks an unauthorized interactive journey before Playwright can cause a side effect', async () => {
+    mocks.runFindFirst.mockResolvedValue({
+      id: 'run-1',
+      selections: [{ outcome: {
+        id: 'outcome-signup',
+        kind: 'SIGNUP',
+        bindings: [{
+          key: 'signup-browser-v1',
+          mechanism: 'BROWSER_JOURNEY',
+          required: true,
+          config: {
+            startUrl: 'https://shop.example/account/register',
+            steps: [
+              { action: 'fill', role: 'textbox', name: 'Email', value: 'probe@example.com' },
+              { action: 'click', role: 'button', name: 'Create account' },
+            ],
+            goal: { type: 'url_pattern', pattern: '/account' },
+            goalAfterStep: 2,
+            safety: 'none',
+          },
+        }],
+      } }],
+      audit: { url: 'https://shop.example' },
+    })
+
+    await expect(runBoundCheckoutForAudit('audit-1')).resolves.toBe(true)
+
+    expect(mocks.runGoalProbe).not.toHaveBeenCalled()
+    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({
+        outcomeId: 'outcome-signup',
+        disposition: 'BLOCKED',
+        reason: 'binding_configuration_invalid',
+      }),
+    }))
+  })
+
+  it('blocks a wait-only protected journey before a preexisting goal can Clear it', async () => {
+    mocks.runFindFirst.mockResolvedValue({
+      id: 'run-1',
+      selections: [{ outcome: {
+        id: 'outcome-reset',
+        kind: 'PASSWORD_RESET',
+        bindings: [{
+          key: 'password-reset-browser-v1',
+          mechanism: 'BROWSER_JOURNEY',
+          required: true,
+          config: {
+            startUrl: 'https://shop.example/account/recover',
+            steps: [{ action: 'wait', waitMs: 10 }],
+            goal: { type: 'text_present', text: 'Reset password' },
+            safety: 'none',
+          },
+        }],
+      } }],
+      audit: { url: 'https://shop.example' },
+    })
+    await expect(runBoundCheckoutForAudit('audit-1')).resolves.toBe(true)
+    expect(mocks.runGoalProbe).not.toHaveBeenCalled()
+    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ reason: 'protected_fixture_required' }),
+    }))
+  })
 })

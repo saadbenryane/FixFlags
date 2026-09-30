@@ -4,6 +4,7 @@ import { OUTCOME_CONFIRMATION } from '@/lib/marketing/copy'
 const mocks = vi.hoisted(() => ({
   loadSiteRecord: vi.fn(),
   confirmSiteOutcome: vi.fn(),
+  renameSiteOutcome: vi.fn(),
   confirmPageAvailability: vi.fn(),
   loadSiteFlagDetail: vi.fn(),
   executeProductCommand: vi.fn(),
@@ -16,6 +17,7 @@ vi.mock('@/lib/sites/outcomes', async (importOriginal) => ({
   // stubbing it here would test the stub.
   ...(await importOriginal<typeof import('@/lib/sites/outcomes')>()),
   confirmSiteOutcome: mocks.confirmSiteOutcome,
+  renameSiteOutcome: mocks.renameSiteOutcome,
   confirmPageAvailability: mocks.confirmPageAvailability,
 }))
 vi.mock('@/lib/sites/flags', () => ({ loadSiteFlagDetail: mocks.loadSiteFlagDetail }))
@@ -33,6 +35,8 @@ vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn(
 vi.mock('@/lib/db', () => ({ prisma: { siteOutcome: { findMany: vi.fn() }, outcomeAssessment: { upsert: vi.fn() } } }))
 
 import { executeSiteCommand } from '@/lib/sites/application/commands'
+import { OutcomeKindMismatchError } from '@/lib/sites/outcomes'
+import type { ConfirmableOutcomeKind } from '@/lib/sites/outcome-kinds'
 
 /**
  * An Outcome's `kind` is not a label. It selects the execution mechanism that
@@ -91,10 +95,10 @@ describe('CONFIRM_OUTCOME', () => {
     // "Outcome not found" would send a customer looking for a row that exists.
     expect(result.error).not.toMatch(/not found/i)
     expect(result.error).toBe(OUTCOME_CONFIRMATION.kindRequired)
-    // The three kinds are the three things FixFlags can actually watch, so the
-    // message names them rather than leaving the customer guessing.
+    // The safe runnable kinds are named rather than leaving the customer
+    // guessing.
     expect(result.error).toMatch(/purchase/i)
-    expect(result.error).toMatch(/signup/i)
+    expect(result.error).toMatch(/page loads/i)
   })
 
   it('confirms when a kind is supplied, because that is what will verify it', async () => {
@@ -111,9 +115,7 @@ describe('CONFIRM_OUTCOME', () => {
     )
   })
 
-  it('still allows correcting an inferred Outcome without re-confirming it', async () => {
-    // "Looks right / Edit corrects inferred intent" needs a way to withdraw an
-    // agreement and rename it. That path carries no kind and must keep working.
+  it('still allows withdrawing an inferred Outcome without assigning a mechanism', async () => {
     const result = await executeSiteCommand({
       type: 'CONFIRM_OUTCOME',
       siteId: 'proj_1',
@@ -125,6 +127,23 @@ describe('CONFIRM_OUTCOME', () => {
     expect(mocks.confirmSiteOutcome).toHaveBeenCalledWith(
       expect.objectContaining({ confirmed: false, name: 'A visitor can reach pricing' }),
     )
+  })
+
+  it('reports a semantic conflict when a known Outcome is reclassified', async () => {
+    mocks.confirmSiteOutcome.mockRejectedValueOnce(new OutcomeKindMismatchError('SIGNUP', 'AVAILABILITY'))
+    const result = await executeSiteCommand({
+      type: 'CONFIRM_OUTCOME',
+      siteId: 'proj_1',
+      outcomeId: 'out_1',
+      confirmed: true,
+      kind: 'AVAILABILITY',
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      error: OUTCOME_CONFIRMATION.kindMismatch,
+      code: 'OUTCOME_KIND_MISMATCH',
+    })
   })
 
   it('still reports a missing Outcome as missing', async () => {
@@ -142,15 +161,49 @@ describe('CONFIRM_OUTCOME', () => {
   })
 })
 
+describe('RENAME_OUTCOME', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.loadSiteRecord.mockResolvedValue({
+      siteId: 'proj_1',
+      kind: 'project',
+      projectId: 'proj_1',
+      url: 'https://example.com',
+      canonicalHost: 'example.com',
+    })
+    mocks.renameSiteOutcome.mockResolvedValue({
+      id: 'out_1',
+      name: 'A customer can check out',
+      kind: 'CHECKOUT',
+    })
+  })
+
+  it('renames without re-confirming or changing the execution kind', async () => {
+    const result = await executeSiteCommand({
+      type: 'RENAME_OUTCOME',
+      siteId: 'proj_1',
+      outcomeId: 'out_1',
+      name: 'A customer can check out',
+    })
+
+    expect(result.ok).toBe(true)
+    expect(mocks.renameSiteOutcome).toHaveBeenCalledWith(expect.objectContaining({
+      outcomeId: 'out_1',
+      name: 'A customer can check out',
+    }))
+    expect(mocks.confirmSiteOutcome).not.toHaveBeenCalled()
+  })
+})
+
 /**
  * A kind is necessary but not sufficient. Some kinds may name mechanisms
  * that cannot validate their binding config, so accepting the confirmation
  * would record an agreement that can never be verified. That is the same
  * failure as confirming with no kind at all, so it is refused the same way.
  *
- * Currently all CONFIRMABLE_OUTCOME_KINDS are watchable. This test suite
- * remains as a guard: if a future kind is added whose binding config cannot
- * validate, it must be refused here.
+ * Protected journeys are discovered but remain unwatchable until their binding
+ * carries tenant-scoped test access and a reversible fixture. The confirmation
+ * boundary refuses those promises before writing anything.
  */
 describe('CONFIRM_OUTCOME with a kind FixFlags cannot run', () => {
   beforeEach(() => {
@@ -166,7 +219,7 @@ describe('CONFIRM_OUTCOME with a kind FixFlags cannot run', () => {
   })
 
   it('confirms all currently watchable kinds', async () => {
-    for (const kind of ['CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET', 'AVAILABILITY'] as const) {
+    for (const kind of ['CHECKOUT', 'AVAILABILITY'] as const) {
       const result = await executeSiteCommand({
         type: 'CONFIRM_OUTCOME',
         siteId: 'proj_1',
@@ -176,7 +229,23 @@ describe('CONFIRM_OUTCOME with a kind FixFlags cannot run', () => {
       })
       expect(result.ok, `${kind} must stay confirmable`).toBe(true)
     }
-    expect(mocks.confirmSiteOutcome).toHaveBeenCalledTimes(5)
+    expect(mocks.confirmSiteOutcome).toHaveBeenCalledTimes(2)
+  })
+
+  it('refuses protected journeys before writing an agreement', async () => {
+    for (const kind of ['SIGNUP', 'LOGIN', 'PASSWORD_RESET'] as const) {
+      const result = await executeSiteCommand({
+        type: 'CONFIRM_OUTCOME',
+        siteId: 'proj_1',
+        outcomeId: 'out_1',
+        confirmed: true,
+        kind,
+      })
+      expect(result.ok, `${kind} must stay unavailable without a safe fixture`).toBe(false)
+      if (result.ok) throw new Error('expected protected journey to be refused')
+      expect(result.code).toBe('OUTCOME_KIND_UNWATCHABLE')
+    }
+    expect(mocks.confirmSiteOutcome).not.toHaveBeenCalled()
   })
 
   it('still lets an Outcome be renamed or withdrawn, because that needs no mechanism', async () => {

@@ -23,12 +23,44 @@ const goalDefinitionSchema = z.object({
   description: z.string().max(500).optional(),
 })
 
-export const browserJourneyConfigSchema = z.object({
+const browserJourneyBaseConfigSchema = z.object({
   startUrl: url,
   steps: z.array(goalStepSchema).max(20),
   goal: goalDefinitionSchema,
   safety: z.enum(['none', 'stop-at-checkout', 'reversible']).default('none'),
+  goalAfterStep: z.number().int().positive().max(20).optional(),
   allowLocalhost: z.boolean().optional(),
+})
+
+export const browserJourneyConfigSchema = browserJourneyBaseConfigSchema.superRefine((config, ctx) => {
+  if (config.goalAfterStep !== undefined && config.goalAfterStep > config.steps.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['goalAfterStep'],
+      message: 'goalAfterStep must name a configured step',
+    })
+  }
+
+  const lastInteractiveStep = config.steps.reduce(
+    (last, step, index) => step.action === 'click' || step.action === 'fill' ? index + 1 : last,
+    0,
+  )
+  if (lastInteractiveStep === 0) return
+
+  if (config.safety !== 'stop-at-checkout') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['safety'],
+      message: 'interactive browser journeys are supported only by the bounded checkout runner',
+    })
+  }
+  if (config.goalAfterStep === undefined || config.goalAfterStep < lastInteractiveStep) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['goalAfterStep'],
+      message: 'an action-dependent goal must be checked after the final interactive step',
+    })
+  }
 })
 
 export const checkoutBindingConfigSchema = z.object({
@@ -73,4 +105,27 @@ export function validateBindingConfig(
     success: true,
     data: { mechanism, config: parsed.data } as ValidatedBindingConfig,
   }
+}
+
+export function validateBindingForOutcome(
+  kind: string,
+  mechanism: OutcomeExecutionMechanism,
+  value: Prisma.JsonValue,
+): ReturnType<typeof validateBindingConfig> {
+  const validated = validateBindingConfig(mechanism, value)
+  if (!validated.success) return validated
+  if (kind === 'CHECKOUT') {
+    return validated.data.mechanism === 'BROWSER_JOURNEY' && validated.data.config.safety === 'stop-at-checkout'
+      ? validated
+      : { success: false, reason: 'binding_mechanism_mismatch' }
+  }
+  if (kind === 'AVAILABILITY') {
+    return validated.data.mechanism === 'HTTP_AVAILABILITY'
+      ? validated
+      : { success: false, reason: 'binding_mechanism_mismatch' }
+  }
+  if (kind === 'SIGNUP' || kind === 'LOGIN' || kind === 'PASSWORD_RESET') {
+    return { success: false, reason: 'protected_fixture_required' }
+  }
+  return { success: false, reason: 'outcome_kind_unsupported' }
 }

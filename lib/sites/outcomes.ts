@@ -1,29 +1,18 @@
 import { prisma } from '@/lib/db'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import type { SiteRecord } from '@/lib/sites/types'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { currentOutcomeState, type CustomerOutcomeState } from '@/lib/sites/outcome-state'
-import { validateBindingConfig } from '@/lib/sites/application/binding-config'
+import { validateBindingForOutcome } from '@/lib/sites/application/binding-config'
 import type { BrowserJourneyConfig } from '@/lib/sites/application/binding-config'
+import {
+  CONFIRMABLE_OUTCOME_KINDS,
+  expectationForKind,
+  nameForConfirmedOutcomeKind,
+  type ConfirmableOutcomeKind,
+} from '@/lib/sites/outcome-kinds'
 
-/**
- * The three things FixFlags can actually watch, and the only kinds a
- * confirmation may name. This list is the seam between the two halves of the
- * product that must never disagree: what the command will accept, and what the
- * execution path can really run. Add a kind here and
- * `lib/sites/__tests__/outcome-kind-mechanism-contract.test.ts` will hold it to
- * producing a binding the validator accepts, or being refused.
- */
-export const CONFIRMABLE_OUTCOME_KINDS = ['CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET', 'AVAILABILITY'] as const
-export type ConfirmableOutcomeKind = (typeof CONFIRMABLE_OUTCOME_KINDS)[number]
-
-function expectationForKind(kind: ConfirmableOutcomeKind): string {
-  if (kind === 'CHECKOUT') return 'The selected product appears in the cart and checkout opens.'
-  if (kind === 'SIGNUP') return 'A person can complete the form when FixFlags has a safe, authorized fixture.'
-  if (kind === 'LOGIN') return 'A person can sign in with valid credentials and reach their account.'
-  if (kind === 'PASSWORD_RESET') return 'A person can request a password reset and receive the reset email.'
-  return 'The public page responds successfully.'
-}
+export { CONFIRMABLE_OUTCOME_KINDS, nameForConfirmedOutcomeKind, type ConfirmableOutcomeKind }
 
 function buildLoginJourneyConfig(siteUrl: string): BrowserJourneyConfig {
   const base = new URL(siteUrl)
@@ -41,6 +30,7 @@ function buildLoginJourneyConfig(siteUrl: string): BrowserJourneyConfig {
       pattern: '/account(?!/login)',
       description: 'Reach the account dashboard after login',
     },
+    goalAfterStep: 4,
     safety: 'none',
     allowLocalhost: false,
   }
@@ -62,6 +52,7 @@ function buildSignupJourneyConfig(siteUrl: string): BrowserJourneyConfig {
       pattern: '/account(?!/(register|login))',
       description: 'Reach the account dashboard after signup',
     },
+    goalAfterStep: 4,
     safety: 'none',
     allowLocalhost: false,
   }
@@ -82,6 +73,7 @@ function buildPasswordResetJourneyConfig(siteUrl: string): BrowserJourneyConfig 
       text: 'reset password',
       description: 'See password reset confirmation message',
     },
+    goalAfterStep: 3,
     safety: 'none',
     allowLocalhost: false,
   }
@@ -153,27 +145,20 @@ export function bindingForConfirmedKind(kind: ConfirmableOutcomeKind, siteUrl: s
  *
  * This is the question the confirmation command has to answer, and it has to be
  * derived, because the failure it prevents is precisely a disagreement between
- * two modules. `SIGNUP` is unwatchable because the binding it writes carries
- * `safety: 'protected'` and no `fixtureId`, which `safeFormBindingConfigSchema`
- * requires and `OutcomeFixture` has no shipped way to create. Confirming one
- * records an agreement, puts a required binding on the Site, enables Verify on
- * Home, and then BLOCKS on every run, forever, with nothing the customer can do
- * about it.
+ * two modules. Interactive browser bindings must either stop at checkout or use
+ * an explicitly authorized reversible fixture. Login, Signup and Password reset
+ * do not yet have a tenant-scoped credential/fixture contract, so their configs
+ * fail validation and are refused before a browser can send a request.
  *
  * When a real fixture path lands and the config validates, this returns true and
  * the refusal disappears on its own. That is the intended way for it to change.
  */
 export function outcomeKindWatchable(kind: ConfirmableOutcomeKind, siteUrl = 'https://example.com'): boolean {
   const binding = bindingForConfirmedKind(kind, siteUrl)
-  return validateBindingConfig(binding.mechanism, binding.config).success
+  return validateBindingForOutcome(kind, binding.mechanism, binding.config).success
 }
 
 /** The kinds a customer may be offered right now, in the order they are offered. */
-export function watchableOutcomeKinds(siteUrl?: string): ConfirmableOutcomeKind[] {
-  return CONFIRMABLE_OUTCOME_KINDS.filter((kind) => outcomeKindWatchable(kind, siteUrl))
-}
-
-
 function slugify(name: string): string {
   return (
     name
@@ -525,40 +510,133 @@ export async function confirmSiteOutcome(input: {
       ? { projectId: input.site.projectId! }
       : { provisionalSiteId: input.site.provisionalSiteId! }
 
+  const updated = await prisma.$transaction(async (tx) => {
+    // Every confirmation, reconfirmation and withdrawal for one Outcome must
+    // observe the previous mutation after it commits. Without this row lock, a
+    // withdrawal can scan bindings before a concurrent confirmation inserts
+    // one, then win the confirmedAt write while leaving that binding enabled.
+    const ownerPredicate = input.site.kind === 'project'
+      ? Prisma.sql`"projectId" = ${input.site.projectId!}`
+      : Prisma.sql`"provisionalSiteId" = ${input.site.provisionalSiteId!}`
+    const locked = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+      SELECT "id"
+      FROM "site_outcomes"
+      WHERE "id" = ${input.outcomeId}
+        AND ${ownerPredicate}
+      FOR UPDATE
+    `)
+    if (locked.length === 0) return null
+    const outcome = await tx.siteOutcome.findFirst({
+      where: { id: input.outcomeId, ...ownerFilter },
+      select: { id: true, name: true, kind: true, confirmedAt: true },
+    })
+    if (!outcome) return null
+
+    if (input.confirmed && input.kind) {
+      if (outcome.kind !== 'GENERIC' && outcome.kind !== input.kind) {
+        throw new OutcomeKindMismatchError(outcome.kind, input.kind)
+      }
+
+      const binding = bindingForConfirmedKind(input.kind, input.site.url)
+      // One Outcome has one active semantic identity. Legacy or interrupted
+      // writes may have left another binding enabled, so retire it in the same
+      // transaction that installs the binding matching the agreed kind.
+      await tx.outcomeExecutionBinding.updateMany({
+        where: { outcomeId: outcome.id, key: { not: binding.key }, enabled: true },
+        data: { enabled: false },
+      })
+      await tx.outcomeExecutionBinding.upsert({
+        where: { outcomeId_key: { outcomeId: outcome.id, key: binding.key } },
+        create: { outcomeId: outcome.id, ...binding },
+        update: {
+          enabled: true,
+          required: binding.required,
+          mechanism: binding.mechanism,
+          config: binding.config,
+          scope: binding.scope,
+        },
+      })
+    } else if (!input.confirmed) {
+      // Withdrawing the agreement also stops its execution. Leaving an enabled
+      // binding behind would let unattended Watch keep exercising an Outcome
+      // the customer explicitly stopped confirming.
+      await tx.outcomeExecutionBinding.updateMany({
+        where: { outcomeId: outcome.id, enabled: true },
+        data: { enabled: false },
+      })
+    }
+
+    const semanticWhere: Prisma.SiteOutcomeWhereInput = input.confirmed && input.kind
+      ? { kind: { in: ['GENERIC', input.kind] } }
+      : {}
+    const changed = await tx.siteOutcome.updateMany({
+      where: { id: outcome.id, ...ownerFilter, ...semanticWhere },
+      data: {
+        // Classification gives a generic inference its canonical executable
+        // meaning once. A repeated same-kind request is stale/idempotent input,
+        // not permission to erase the customer's later rename.
+        ...(input.confirmed && input.kind && outcome.kind === 'GENERIC'
+          ? { name: nameForConfirmedOutcomeKind(input.kind) }
+          : !input.confirmed && input.name?.trim()
+            ? { name: input.name.trim() }
+            : {}),
+        inferenceSource: 'user',
+        confirmedAt: input.confirmed ? outcome.confirmedAt ?? new Date() : null,
+        ...(input.confirmed && input.kind
+          ? {
+              kind: input.kind,
+              criticality: input.kind === 'CHECKOUT' ? 'CRITICAL' as const : 'IMPORTANT' as const,
+              expectation: expectationForKind(input.kind),
+            }
+          : {}),
+      },
+    })
+    // This also closes the concurrent reclassification race: if another writer
+    // changed the kind after our read, throwing rolls back the binding writes.
+    if (changed.count !== 1) {
+      throw new OutcomeKindMismatchError(outcome.kind, input.kind ?? outcome.kind)
+    }
+
+    return tx.siteOutcome.findUniqueOrThrow({
+      where: { id: outcome.id },
+      include: {
+        pages: true,
+        bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true } },
+        assessments: { orderBy: { assessedAt: 'desc' }, take: 1 },
+        runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
+      },
+    })
+  })
+
+  return updated ? toOutcomeView(updated) : null
+}
+
+export class OutcomeKindMismatchError extends Error {
+  constructor(readonly existingKind: string, readonly requestedKind: string) {
+    super(`Outcome kind ${existingKind} cannot be changed to ${requestedKind}`)
+    this.name = 'OutcomeKindMismatchError'
+  }
+}
+
+/** Rename only the customer-visible label; preserve the agreement and proof. */
+export async function renameSiteOutcome(input: {
+  site: SiteRecord
+  outcomeId: string
+  name: string
+}): Promise<SiteOutcomeView | null> {
+  const ownerFilter =
+    input.site.kind === 'project'
+      ? { projectId: input.site.projectId! }
+      : { provisionalSiteId: input.site.provisionalSiteId! }
   const outcome = await prisma.siteOutcome.findFirst({
     where: { id: input.outcomeId, ...ownerFilter },
-    include: {
-      pages: true,
-      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true } },
-      assessments: { orderBy: { assessedAt: 'desc' }, take: 1 },
-      runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
-    },
+    select: { id: true },
   })
   if (!outcome) return null
 
-  if (input.confirmed && input.kind) {
-    const binding = bindingForConfirmedKind(input.kind, input.site.url)
-    await prisma.outcomeExecutionBinding.upsert({
-      where: { outcomeId_key: { outcomeId: outcome.id, key: binding.key } },
-      create: { outcomeId: outcome.id, ...binding },
-      update: { enabled: true, required: true, mechanism: binding.mechanism, config: binding.config },
-    })
-  }
-
   const updated = await prisma.siteOutcome.update({
     where: { id: outcome.id },
-    data: {
-      name: input.name?.trim() || outcome.name,
-      inferenceSource: 'user',
-      confirmedAt: input.confirmed ? new Date() : null,
-      ...(input.confirmed && input.kind
-        ? {
-            kind: input.kind,
-            criticality: input.kind === 'CHECKOUT' ? 'CRITICAL' as const : 'IMPORTANT' as const,
-            expectation: expectationForKind(input.kind),
-          }
-        : {}),
-    },
+    data: { name: input.name.trim(), inferenceSource: 'user' },
     include: {
       pages: true,
       bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true } },
@@ -566,7 +644,6 @@ export async function confirmSiteOutcome(input: {
       runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
     },
   })
-
   return toOutcomeView(updated)
 }
 

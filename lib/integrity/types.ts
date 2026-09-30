@@ -2,6 +2,7 @@ export type PathHealth = 'GREEN' | 'RED' | 'UNKNOWN'
 
 export type PathReasonCode =
   | 'checkout_reached'
+  | 'goal_reached'
   | 'http_error'
   | 'soft_unavailable'
   | 'buy_control_unclickable'

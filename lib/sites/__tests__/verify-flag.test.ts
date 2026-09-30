@@ -37,7 +37,6 @@ vi.mock('@/lib/sites/application/flag-verification', () => ({
   recordSiteFlagFix: mocks.recordSiteFlagFix,
   requireSiteFlagAttempt: mocks.requireSiteFlagAttempt,
 }))
-vi.mock('@/lib/sites/outcomes', () => ({ confirmSiteOutcome: vi.fn() }))
 vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn() }))
 
 import { executeSiteCommand } from '@/lib/sites/application/commands'

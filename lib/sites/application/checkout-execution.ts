@@ -6,9 +6,9 @@ import { runGoalProbe, type BrowserJourneyConfig, type GoalDefinition, type Goal
 import { availabilityFlagCopy, type BindingDispositionName } from '@/lib/sites/application/binding-assessment'
 import { OUTCOME_RUN_LEASE_MS } from '@/lib/sites/application/run-requests'
 import { checkoutResultCopy } from '@/lib/sites/outcome-state'
-import { validateBindingConfig, type AvailabilityBindingConfig, type SafeFormBindingConfig } from '@/lib/sites/application/binding-config'
+import { validateBindingForOutcome, type AvailabilityBindingConfig, type SafeFormBindingConfig } from '@/lib/sites/application/binding-config'
 import { executeSafeFormFixture } from '@/lib/sites/application/safe-form-executor'
-import { classifyWalk } from '@/lib/integrity/classify'
+import { classifyWalk, goalProbeReason } from '@/lib/integrity/classify'
 
 /** A bounded second attempt is required before a failure becomes a customer Flag. */
 const CONFIRMATION_ATTEMPTS = 2
@@ -22,7 +22,7 @@ type BindingObservation = {
 type BoundSelection = {
   outcome: {
     id: string
-    kind: 'GENERIC' | 'CHECKOUT' | 'SIGNUP' | 'AVAILABILITY'
+    kind: 'GENERIC' | 'CHECKOUT' | 'SIGNUP' | 'LOGIN' | 'PASSWORD_RESET' | 'AVAILABILITY'
     bindings: Array<{
       key: string
       mechanism: OutcomeExecutionMechanism
@@ -245,7 +245,7 @@ async function runGenericBrowserJourneyBinding(input: {
       return {
         disposition:
           classified.health === 'GREEN' ? 'SUCCEEDED' : classified.health === 'RED' ? 'FAILED' : 'BLOCKED',
-        reason: classified.reason,
+        reason: goalProbeReason(classified, input.config.safety),
         detail: { stepCount: attempt.steps.length, videoUrl: attempt.videoUrl },
       }
     }),
@@ -440,7 +440,7 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
         select: { id: true },
       })
       if (existing) continue
-      const validated = validateBindingConfig(binding.mechanism, binding.config)
+      const validated = validateBindingForOutcome(selection.outcome.kind, binding.mechanism, binding.config)
       if (!validated.success) {
         await recordExecution({
           auditId,

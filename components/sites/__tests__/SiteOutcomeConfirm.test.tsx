@@ -2,7 +2,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SiteOutcomeConfirmList, SiteOutcomeRow } from '@/components/sites/SiteOutcomeConfirm'
 import { OUTCOME_CONFIRMATION, OUTCOME_KIND_LABELS } from '@/lib/marketing/copy'
-import { watchableOutcomeKinds, type SiteOutcomeView } from '@/lib/sites/outcomes'
+import { watchableOutcomeKinds } from '@/lib/sites/outcome-kinds'
+import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 
 const refresh = vi.fn()
 
@@ -56,12 +57,13 @@ describe('SiteOutcomeRow confirmation', () => {
   })
 
   it('offers exactly the kinds FixFlags can check, and not one it cannot', () => {
-    // Asserted against the derived list, not against a hardcoded pair. A test
+    // Asserted against the browser-safe capability contract, not repeated in
+    // the component. A test
     // that names SIGNUP and finds no button passes even if the control starts
     // offering a kind whose binding cannot validate, which is the exact defect
     // this row exists to prevent.
     const watchable = watchableOutcomeKinds()
-    expect(watchable).toEqual(['CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET', 'AVAILABILITY'])
+    expect(watchable).toEqual(['CHECKOUT', 'AVAILABILITY'])
     render(<SiteOutcomeRow siteId="site-1" outcome={outcome()} />)
 
     const offered = screen.getAllByRole('button').map((button) => button.textContent)
@@ -127,6 +129,14 @@ describe('SiteOutcomeRow confirmation', () => {
     )
     const buttons = screen.getAllByRole('button').map((button) => button.textContent)
     expect(buttons[0]).toBe(OUTCOME_KIND_LABELS.CHECKOUT)
+    expect(buttons).not.toContain(OUTCOME_KIND_LABELS.AVAILABILITY)
+  })
+
+  it('does not offer a different binding for a known protected Outcome', () => {
+    render(<SiteOutcomeRow siteId="site-1" outcome={outcome({ kind: 'SIGNUP', name: 'Signup' })} />)
+    expect(screen.getByText(OUTCOME_CONFIRMATION.unsupportedNote)).toBeVisible()
+    expect(screen.queryByRole('button', { name: OUTCOME_KIND_LABELS.CHECKOUT })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: OUTCOME_KIND_LABELS.AVAILABILITY })).not.toBeInTheDocument()
   })
 
   it('says an inferred Outcome is not being watched yet, rather than implying otherwise', () => {
@@ -168,10 +178,11 @@ describe('SiteOutcomeRow correction', () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
     expect(lastBody(fetchMock)).toEqual({
+      action: 'rename',
       outcomeId: 'out-1',
-      confirmed: true,
       name: 'A customer can check out',
     })
+    expect(refresh).toHaveBeenCalled()
     vi.unstubAllGlobals()
   })
 

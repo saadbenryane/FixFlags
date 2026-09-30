@@ -8,7 +8,7 @@ import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { dismissConsentChrome, dismissOpenDialogs } from '@/lib/audit/browser/overlay-probe'
 import { getAuditBrowser } from '@/lib/audit/screenshot'
 import { logger } from '@/lib/logger'
-import { classifyWalk, combineAttempts } from './classify'
+import { classifyWalk, combineAttempts, goalProbeReason } from './classify'
 import { uploadIntegrityArtifact } from './storage'
 import type {
   PathProbeAttempt,
@@ -48,6 +48,8 @@ export interface BrowserJourneyConfig {
   steps: GoalStep[]
   goal: GoalDefinition
   safety?: 'none' | 'stop-at-checkout' | 'reversible'
+  /** One-based step count. Do not evaluate an action-dependent goal before this step. */
+  goalAfterStep?: number
   allowLocalhost?: boolean
 }
 
@@ -129,7 +131,9 @@ async function runGoalAttempt(
         await executeStep(page, step, steps, stepPngs, runId, attempt, stepLabel)
         finalUrl = page.url()
         
-        if (await checkGoal(page, options.config.goal)) {
+        const completedSteps = i + 1
+        const goalMayBeChecked = completedSteps >= (options.config.goalAfterStep ?? 1)
+        if (goalMayBeChecked && await checkGoal(page, options.config.goal)) {
           goalAchieved = true
           outcome.reachedCheckout = true
           outcome.failedStep = null
@@ -349,10 +353,11 @@ export async function runGoalProbe(options: RunGoalProbeOptions): Promise<PathPr
   }
   const combined = combineAttempts(firstClass, second ? classifyWalk(second.outcome) : null)
   const chosen = second && combined.health === 'RED' ? second : first
+  const reason = goalProbeReason(combined, options.config.safety)
 
   return {
     health: combined.health,
-    reason: combined.reason,
+    reason,
     confirmed: combined.confirmed,
     attempts: second ? [first, second] : [first],
     steps: chosen.steps,

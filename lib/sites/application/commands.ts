@@ -1,5 +1,12 @@
 import { executeProductCommand } from '@/lib/products/application/commands'
-import { CONFIRMABLE_OUTCOME_KINDS, type ConfirmableOutcomeKind, confirmPageAvailability, confirmSiteOutcome, outcomeKindWatchable } from '@/lib/sites/outcomes'
+import {
+  OutcomeKindMismatchError,
+  confirmPageAvailability,
+  confirmSiteOutcome,
+  outcomeKindWatchable,
+  renameSiteOutcome,
+} from '@/lib/sites/outcomes'
+import { CONFIRMABLE_OUTCOME_KINDS, type ConfirmableOutcomeKind } from '@/lib/sites/outcome-kinds'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail } from '@/lib/sites/flags'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
@@ -19,6 +26,12 @@ export type SiteCommand =
       name?: string
       confirmed: boolean
       kind?: ConfirmableOutcomeKind
+    }
+  | {
+      type: 'RENAME_OUTCOME'
+      siteId: string
+      outcomeId: string
+      name: string
     }
   | {
       type: 'RECORD_FIX_HANDOFF'
@@ -86,12 +99,35 @@ export async function executeSiteCommand(command: SiteCommand) {
           code: 'OUTCOME_KIND_UNWATCHABLE' as const,
         }
       }
-      const outcome = await confirmSiteOutcome({
+      let outcome
+      try {
+        outcome = await confirmSiteOutcome({
+          site,
+          outcomeId: command.outcomeId,
+          name: command.name,
+          confirmed: command.confirmed,
+          kind: command.kind,
+        })
+      } catch (error) {
+        if (error instanceof OutcomeKindMismatchError) {
+          return {
+            ok: false as const,
+            error: OUTCOME_CONFIRMATION.kindMismatch,
+            code: 'OUTCOME_KIND_MISMATCH' as const,
+          }
+        }
+        throw error
+      }
+      if (!outcome) return { ok: false as const, error: 'Outcome not found' }
+      return { ok: true as const, outcome }
+    }
+    case 'RENAME_OUTCOME': {
+      const site = await loadSiteRecord(command.siteId)
+      if (!site) return { ok: false as const, error: 'Site not found' }
+      const outcome = await renameSiteOutcome({
         site,
         outcomeId: command.outcomeId,
         name: command.name,
-        confirmed: command.confirmed,
-        kind: command.kind,
       })
       if (!outcome) return { ok: false as const, error: 'Outcome not found' }
       return { ok: true as const, outcome }

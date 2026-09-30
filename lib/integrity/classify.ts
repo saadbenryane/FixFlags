@@ -5,6 +5,15 @@ export interface ClassifiedWalk {
   reason: PathReasonCode
 }
 
+export function goalProbeReason(
+  classified: ClassifiedWalk,
+  safety: 'none' | 'stop-at-checkout' | 'reversible' | undefined,
+): PathReasonCode {
+  return classified.health === 'GREEN' && safety !== 'stop-at-checkout'
+    ? 'goal_reached'
+    : classified.reason
+}
+
 export function classifyWalk(outcome: WalkOutcome): ClassifiedWalk {
   if (outcome.botWall) return { health: 'UNKNOWN', reason: 'bot_wall' }
   if (outcome.passwordGate) return { health: 'UNKNOWN', reason: 'password_gate' }

@@ -6,7 +6,8 @@ import { Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { OUTCOME_CONFIRMATION, OUTCOME_KIND_LABELS } from '@/lib/marketing/copy'
 import { outcomeCoverageLabel, outcomeStatusLabel } from '@/lib/sites/outcome-state'
-import { watchableOutcomeKinds, type SiteOutcomeView } from '@/lib/sites/outcomes'
+import { watchableOutcomeKinds } from '@/lib/sites/outcome-kinds'
+import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 
 /**
  * "Looks right / Edit corrects inferred intent", which `docs/workspace-interface.md`
@@ -83,6 +84,7 @@ function ConfirmKind({
 }
 
 function RenameOutcome({ siteId, outcome }: { siteId: string; outcome: SiteOutcomeView }) {
+  const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(outcome.name)
@@ -100,19 +102,20 @@ function RenameOutcome({ siteId, outcome }: { siteId: string; outcome: SiteOutco
     setBusy(true)
     setMessage(null)
     try {
-      // Renaming carries the Outcome's own confirmed state and no kind, so this
-      // stays the correction path rather than becoming a new agreement.
+      // A rename corrects the label only. It does not renew, withdraw or change
+      // the customer's agreement about what FixFlags should execute.
       const res = await fetch(`/api/sites/${siteId}/outcomes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ outcomeId: outcome.id, confirmed: outcome.confirmedAt !== null, name }),
+        body: JSON.stringify({ action: 'rename', outcomeId: outcome.id, name }),
       })
       if (!res.ok) {
         setMessage(OUTCOME_CONFIRMATION.saveFailed)
         return
       }
-      setMessage(OUTCOME_CONFIRMATION.saved)
+      setMessage(OUTCOME_CONFIRMATION.renamed)
       setEditing(false)
+      router.refresh()
     } finally {
       setBusy(false)
     }
@@ -159,7 +162,8 @@ function RenameOutcome({ siteId, outcome }: { siteId: string; outcome: SiteOutco
 function offeredKinds(outcome: SiteOutcomeView) {
   const watchable = watchableOutcomeKinds()
   const own = outcome.kind as (typeof watchable)[number]
-  return watchable.includes(own) ? [own, ...watchable.filter((kind) => kind !== own)] : watchable
+  if (outcome.kind !== 'GENERIC') return watchable.includes(own) ? [own] : []
+  return watchable
 }
 
 /** One Outcome, with the choice that turns it into something FixFlags can check. */
@@ -196,7 +200,11 @@ export function SiteOutcomeRow({ siteId, outcome }: { siteId: string; outcome: S
         </div>
       ) : choices.length > 0 ? (
         <ConfirmKind siteId={siteId} outcome={outcome} choices={choices} />
-      ) : null}
+      ) : (
+        <p className="mt-3 border-t border-border/40 pt-3 text-sm text-muted-foreground">
+          {OUTCOME_CONFIRMATION.unsupportedNote}
+        </p>
+      )}
     </li>
   )
 }

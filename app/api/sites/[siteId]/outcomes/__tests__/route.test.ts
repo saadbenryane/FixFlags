@@ -64,6 +64,46 @@ describe('POST /api/sites/[siteId]/outcomes', () => {
     expect(body.message).toBe(OUTCOME_CONFIRMATION.kindUnwatchable)
   })
 
+  it.each(['LOGIN', 'PASSWORD_RESET'] as const)('routes %s to the command refusal instead of rejecting the known kind as malformed', async (kind) => {
+    mocks.executeSiteCommand.mockResolvedValue({
+      ok: false,
+      error: OUTCOME_CONFIRMATION.kindUnwatchable,
+      code: 'OUTCOME_KIND_UNWATCHABLE',
+    })
+    const response = await POST(request({ outcomeId: 'out_1', confirmed: true, kind }), context)
+    expect(response.status).toBe(400)
+    expect(mocks.executeSiteCommand).toHaveBeenCalledWith(expect.objectContaining({ kind }))
+  })
+
+  it('routes a rename as a label-only command', async () => {
+    const response = await POST(request({
+      action: 'rename',
+      outcomeId: 'out_1',
+      name: 'A customer can check out',
+    }), context)
+
+    expect(response.status).toBe(200)
+    expect(mocks.executeSiteCommand).toHaveBeenCalledWith({
+      type: 'RENAME_OUTCOME',
+      siteId: 'site-1',
+      outcomeId: 'out_1',
+      name: 'A customer can check out',
+    })
+  })
+
+  it('answers a known Outcome reclassification with a semantic conflict', async () => {
+    mocks.executeSiteCommand.mockResolvedValue({
+      ok: false,
+      error: OUTCOME_CONFIRMATION.kindMismatch,
+      code: 'OUTCOME_KIND_MISMATCH',
+    })
+    const response = await POST(request({ outcomeId: 'out_1', confirmed: true, kind: 'AVAILABILITY' }), context)
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body.code).toBe('OUTCOME_KIND_MISMATCH')
+    expect(body.message).toBe(OUTCOME_CONFIRMATION.kindMismatch)
+  })
+
   it('still answers a genuinely missing Outcome with 404', async () => {
     mocks.executeSiteCommand.mockResolvedValue({ ok: false, error: 'Outcome not found' })
     const response = await POST(request({ outcomeId: 'out_x', confirmed: true, kind: 'CHECKOUT' }), context)
