@@ -174,6 +174,8 @@ export type ThemeMatchableFlag = Pick<FlagData, 'problem' | 'evidence'> & {
  * Minimal subset for diff comparison.
  */
 export type FlagDiffSummaryItem = Pick<FlagData, 'checkId' | 'problem' | 'rubric' | 'severity'> & {
+  /** Exact persisted Flag represented by this diff item, when available. */
+  id?: string
   status?: string
   pageUrl?: string | null
   /** True when this Flag’s pageUrl was not reviewed on the parent audit. */

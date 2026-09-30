@@ -332,6 +332,7 @@ export async function getFlagDiffSummary(
       .map((matchKey) => monitoringByKey.get(matchKey))
       .find(Boolean)
     const item: FlagDiffSummaryItem = {
+      id: parentFlag.id,
       checkId: parentFlag.checkId,
       problem: parentFlag.problem,
       rubric: parentFlag.rubric,
@@ -366,6 +367,7 @@ export async function getFlagDiffSummary(
       fixed.push({ ...item, status: 'FIXED' })
     } else if (bucket === 'regressed') {
       regressed.push({
+        id: monitoringFlag.id,
         checkId: monitoringFlag.checkId,
         problem: monitoringFlag.problem,
         rubric: monitoringFlag.rubric,
@@ -374,6 +376,7 @@ export async function getFlagDiffSummary(
       })
     } else {
       unchanged.push({
+        id: monitoringFlag.id,
         checkId: monitoringFlag.checkId,
         problem: monitoringFlag.problem,
         rubric: monitoringFlag.rubric,
@@ -394,6 +397,7 @@ export async function getFlagDiffSummary(
     // a parent check can never appear here as a brand-new issue.
     const pageUrl = monitoringFlag.pageUrl ?? null
     newIssues.push({
+      id: monitoringFlag.id,
       checkId: monitoringFlag.checkId,
       problem: monitoringFlag.problem,
       rubric: monitoringFlag.rubric,

@@ -319,6 +319,50 @@ describe('Product Watch', () => {
     })
   })
 
+  it('links a recovery notification to the parent Flag that holds its proof', async () => {
+    mocks.auditFindUnique.mockResolvedValue({
+      id: 'child-1',
+      url: 'https://example.com/',
+      projectId: 'project-1',
+      recheckTrigger: 'WATCH',
+      completedAt: new Date('2026-07-22T12:00:00.000Z'),
+      watchRegressionCount: null,
+      watchNotificationStatus: null,
+      watchNotificationAttempts: 0,
+      user: { email: 'owner@example.com', name: 'Owner' },
+      project: {
+        watchInterval: 'WEEKLY',
+        notificationLevel: 'ALL',
+        notifyOnRecovery: true,
+      },
+    })
+    mocks.getFlagDiffSummary.mockResolvedValue({
+      fixed: [{
+        id: 'parent-fixed-flag',
+        checkId: 'cta-dead-link',
+        problem: 'Primary action was broken',
+        rubric: 'EXPERIENCE',
+        severity: 'IMPORTANT',
+        status: 'OPEN',
+      }],
+      inconclusive: [],
+      unchanged: [],
+      newIssues: [],
+      regressed: [],
+    })
+
+    await notifyWatchRegression('parent-1', 'child-1')
+
+    expect(mocks.sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        html: expect.stringContaining(
+          '/sites/project-1/flags/parent-fixed-flag?source=watch-email'
+        ),
+      }),
+      { idempotencyKey: 'fixflags-watch-child-1-v1' }
+    )
+  })
+
   describe('notification delivery truth', () => {
     beforeEach(() => {
       mocks.auditFindUnique.mockResolvedValue({

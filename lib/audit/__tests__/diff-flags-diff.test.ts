@@ -198,9 +198,14 @@ describe('getFlagDiffSummary', () => {
       ['b', 'c']
     )
     assert.deepEqual(
+      summary.fixed.map((i) => i.id).sort(),
+      ['p2', 'p3']
+    )
+    assert.deepEqual(
       summary.newIssues.map((i) => i.checkId),
       ['d']
     )
+    assert.deepEqual(summary.newIssues.map((i) => i.id), ['m2'])
     assert.deepEqual(summary.regressed, [])
     assert.deepEqual(summary.inconclusive, [])
   })

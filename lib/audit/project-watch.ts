@@ -300,17 +300,6 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
       watchNotificationLeaseUntil: true,
       user: { select: { email: true, name: true } },
       project: { select: { watchInterval: true, notificationLevel: true, notifyOnRecovery: true } },
-      flags: {
-        select: {
-          id: true,
-          checkId: true,
-          problem: true,
-          severity: true,
-          status: true,
-          confidence: true,
-          impactTag: true,
-        },
-      },
     },
   })
   if (!child || child.recheckTrigger !== 'WATCH' || !child.projectId) return
@@ -405,14 +394,12 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
   const lead = regressCount > 0
     ? `FixFlags found <strong>${regressCount}</strong> new or regressed Flag${regressCount === 1 ? '' : 's'} on <strong>${host}</strong>.`
     : `FixFlags verified ${recoveryCount === 1 ? 'a recovery' : `<strong>${recoveryCount}</strong> recoveries`} on <strong>${host}</strong>.`
-  // Pick a lead flag: regressed/new first, then recovered, so the email links to
-  // the most actionable item. A recovered flag now shows its proof on the detail page.
-  const leadFlag = (child.flags ?? []).find((flag) =>
-    isCustomerFlag(flag) && [...summary.regressed, ...summary.newIssues, ...summary.fixed].some(
-      (item) => item.problem === flag.problem && item.checkId === flag.checkId
-    )
-  )
-  const destination = leadFlag
+  // A recovered Flag is absent from the child audit by definition, so the diff
+  // summary must carry its parent Flag id. Looking only in child.flags makes a
+  // recovery email fall back to the list and strands the independent proof.
+  const leadFlag = [...summary.regressed, ...summary.newIssues, ...summary.fixed]
+    .find((flag) => flag.id && isCustomerFlag({ ...flag, status: 'OPEN' }))
+  const destination = leadFlag?.id
     ? `${SITE_URL}/sites/${child.projectId}/flags/${leadFlag.id}?source=watch-email`
     : `${SITE_URL}/sites/${child.projectId}/flags?source=watch-email`
 
@@ -421,7 +408,7 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
       from: FROM_EMAIL,
       to: child.user.email,
       subject,
-      html: `<p>Hi${child.user.name ? ` ${child.user.name}` : ''},</p><p>${lead}</p><p><a href="${destination}">${leadFlag ? 'Open this Flag' : 'Open this Site’s Flags'}</a></p><p>Verified: ${summary.fixed.length} · Couldn’t verify: ${summary.inconclusive.length} · Still open: ${summary.unchanged.length} · New: ${summary.newIssues.length} · Regressed: ${summary.regressed.length}</p>`,
+      html: `<p>Hi${child.user.name ? ` ${child.user.name}` : ''},</p><p>${lead}</p><p><a href="${destination}">${leadFlag?.id ? 'Open this Flag' : 'Open this Site’s Flags'}</a></p><p>Verified: ${summary.fixed.length} · Couldn’t verify: ${summary.inconclusive.length} · Still open: ${summary.unchanged.length} · New: ${summary.newIssues.length} · Regressed: ${summary.regressed.length}</p>`,
     }, { idempotencyKey: `fixflags-watch-${child.id}-v1` })
     // The provider SDK resolves rejected requests with an error, rather than throwing.
     if (error) throw new Error(error.message)

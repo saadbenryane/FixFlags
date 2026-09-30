@@ -66,9 +66,13 @@ export default async function SiteFlagPage({
   const home = await loadSiteHome(resolvedId)
   if (!home) notFound()
 
-  const proofAudit = flag.resolvedInId
-    ? await prisma.audit.findUnique({
-        where: { id: flag.resolvedInId },
+  const proofAudit = flag.resolvedInId && site.projectId
+    ? await prisma.audit.findFirst({
+        where: {
+          id: flag.resolvedInId,
+          projectId: site.projectId,
+          status: 'COMPLETED',
+        },
         select: { id: true, completedAt: true, createdAt: true },
       })
     : null
@@ -136,7 +140,7 @@ export default async function SiteFlagPage({
             <time dateTime={new Date(proofAudit.completedAt ?? proofAudit.createdAt).toISOString()}>
               {new Date(proofAudit.completedAt ?? proofAudit.createdAt).toLocaleString()}
             </time>
-            . The page no longer shows the problem.
+            . That check no longer found the problem.
           </p>
           {proofAudit.id !== flag.sourceAuditId ? (
             <p className="mt-2 text-xs text-muted-foreground">

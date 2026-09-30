@@ -171,6 +171,16 @@ describe('Open attention and Resolved are different lists', () => {
   })
 })
 
+describe('resolved proof stays tenant-scoped and evidence-bound', () => {
+  it('only accepts a completed proof audit from the same Site', () => {
+    const page = code('app/sites/[siteId]/flags/[flagId]/page.tsx')
+    expect(page).toMatch(/projectId:\s*site\.projectId/)
+    expect(page).toMatch(/status:\s*'COMPLETED'/)
+    expect(page).toContain('That check no longer found the problem.')
+    expect(page).not.toContain('The page no longer shows the problem.')
+  })
+})
+
 describe('the Flags tab is reachable from the Site chrome', () => {
   it('is linked from the Site shell navigation', () => {
     render(

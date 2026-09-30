@@ -78,7 +78,7 @@ export function SiteFlagsView({ siteId, view, tab }: { siteId: string; view: Sit
         <section aria-labelledby="resolved-flags-heading">
           <h2 id="resolved-flags-heading" className="sr-only">Resolved</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Flags verified as fixed by an independent re-check. Each shows the proof audit and time.
+            Flags verified as fixed by an independent re-check. Open one to see the proof audit and time.
           </p>
           <div className="mt-4 space-y-3">
             {view.resolvedFlags.length === 0 ? (
