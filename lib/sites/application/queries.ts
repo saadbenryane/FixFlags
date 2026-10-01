@@ -39,7 +39,6 @@ export type SiteHomeView = {
     id: string | null
     status: string | null
     progress: number
-    score: number | null
     walkFinished: boolean
     failureCode: string | null
   }
@@ -84,7 +83,6 @@ const auditSelect = {
   id: true,
   status: true,
   progress: true,
-  score: true,
   completedAt: true,
   createdAt: true,
   updatedAt: true,
@@ -96,7 +94,6 @@ const auditSelect = {
     select: { targetKey: true, status: true },
   },
   url: true,
-  rubrics: { select: { name: true, score: true } },
 } as const
 
 async function resolveLatestAudit(site: SiteRecord) {
@@ -134,7 +131,6 @@ function factsFromAudit(
     status: string
     completedAt: Date | null
     evidenceCoverage: unknown
-    rubrics: Array<{ name: string; score: number | null }>
     verifierExecutions?: Array<{ targetKey: string; status: string }>
   } | null,
   flags: SiteFlagSeed[],
@@ -155,7 +151,6 @@ function factsFromAudit(
       impactTag: f.impactTag,
       status: 'OPEN',
     })),
-    rubrics: (audit?.rubrics ?? []).map((r) => ({ name: r.name, score: r.score })),
     lastKnown,
     retainLastKnownWhileChecking,
   })
@@ -330,7 +325,6 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
       id: audit?.id ?? null,
       status: audit?.status ?? null,
       progress: audit?.progress ?? 0,
-      score: inFlight ? null : (audit?.score ?? null),
       walkFinished: walkFinishedFromCoverage(audit?.status, audit?.evidenceCoverage),
       failureCode: audit?.failureCode ?? null,
     },

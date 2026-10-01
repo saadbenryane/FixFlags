@@ -9,7 +9,6 @@ export type CoverageFact = {
   detail: string | null
   checkedAt: string | null
   openFlagCount: number
-  score: number | null
   /** True when this area had enough evidence to answer health. */
   evidenced: boolean
   /** Evidence exists but is too old to support a current healthy answer. */
@@ -58,6 +57,30 @@ type EvidenceCoverageShape = {
 function parseEvidence(value: unknown): EvidenceCoverageShape {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
   return value as EvidenceCoverageShape
+}
+
+function healthyEvidenceCopy(
+  area: SiteCardArea,
+  evidence: EvidenceCoverageShape
+): { answer: string; detail: string } {
+  switch (area) {
+    case 'conversion':
+      return SITE_BOARD_COPY.healthyEvidence.conversion
+    case 'search':
+      return SITE_BOARD_COPY.healthyEvidence.search
+    case 'performance':
+      if (evidence.desktopPageSpeed && evidence.mobilePageSpeed) {
+        return SITE_BOARD_COPY.healthyEvidence.performance.both
+      }
+      if (evidence.mobilePageSpeed) return SITE_BOARD_COPY.healthyEvidence.performance.mobile
+      return SITE_BOARD_COPY.healthyEvidence.performance.desktop
+    case 'uptime':
+      return SITE_BOARD_COPY.healthyEvidence.uptime
+    case 'accessibility':
+      return SITE_BOARD_COPY.healthyEvidence.accessibility
+    default:
+      return SITE_BOARD_COPY.healthyEvidence.fallback
+  }
 }
 
 /** Areas that received concrete public evidence for this analysis. */
@@ -110,7 +133,6 @@ export function buildCoverageFacts(input: {
     impactTag: string | null
     status?: string | null
   }>
-  rubrics: Array<{ name: string; score: number | null }>
   verifierExecutions?: Array<{ targetKey: string; status: string }>
   /**
    * When re-checking, pass last completed facts so cards keep prior health
@@ -141,9 +163,6 @@ export function buildCoverageFacts(input: {
   const journeyRan = Boolean(evidence.flowScan || evidence.journeyWalk)
   const pageSpeedRan = Boolean(evidence.desktopPageSpeed || evidence.mobilePageSpeed)
 
-  const rubricScore = (name: string) =>
-    input.rubrics.find((r) => r.name === name)?.score ?? null
-
   const areas: SiteCardArea[] = [
     'security',
     'search',
@@ -157,11 +176,6 @@ export function buildCoverageFacts(input: {
   return areas.map((area) => {
     const openFlagCount = openByArea.get(area) ?? 0
     const prior = lastKnownByArea.get(area)
-    let score: number | null = null
-    if (area === 'conversion') score = rubricScore('MESSAGE')
-    if (area === 'performance') score = rubricScore('EXPERIENCE')
-  // Per-area scores only. Never share one REACH score across three cards.
-    if (area === 'search' && evidenced.has('search')) score = null
 
     if (inFlight && input.retainLastKnownWhileChecking && prior) {
       return {
@@ -171,7 +185,6 @@ export function buildCoverageFacts(input: {
         detail: prior.detail
           ? `${prior.detail} · Checking now`
       : 'Checking now. Last known kept',
-        score: null,
         evidenced: prior.evidenced,
       }
     }
@@ -184,7 +197,6 @@ export function buildCoverageFacts(input: {
         detail: 'Live analysis in progress',
         checkedAt: prior?.checkedAt ?? null,
         openFlagCount: prior?.openFlagCount ?? 0,
-        score: null,
         evidenced: false,
       }
     }
@@ -197,7 +209,6 @@ export function buildCoverageFacts(input: {
         detail: 'This analysis did not finish',
         checkedAt: null,
         openFlagCount,
-        score: null,
         evidenced: false,
       }
     }
@@ -222,7 +233,6 @@ export function buildCoverageFacts(input: {
         detail: null,
         checkedAt,
         openFlagCount,
-        score: null,
         evidenced: true,
       }
     }
@@ -235,7 +245,6 @@ export function buildCoverageFacts(input: {
         detail: 'No public evidence for this area yet',
         checkedAt: null,
         openFlagCount: 0,
-        score: null,
         evidenced: false,
       }
     }
@@ -248,20 +257,19 @@ export function buildCoverageFacts(input: {
         detail: SITE_BOARD_COPY.checkOutOfDateDetail,
         checkedAt,
         openFlagCount: 0,
-        score: null,
         evidenced: true,
         stale: true,
       }
     }
 
+    const copy = healthyEvidenceCopy(area, evidence)
     return {
       area,
       state: 'healthy' as const,
-      label: 'Looking good',
-      detail: score != null ? `Score ${score}` : 'Latest check passed for this area',
+      label: copy.answer,
+      detail: copy.detail,
       checkedAt,
       openFlagCount: 0,
-      score,
       evidenced: true,
     }
   })

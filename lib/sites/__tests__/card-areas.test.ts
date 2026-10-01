@@ -23,7 +23,6 @@ describe('site card packaging', () => {
       now,
       evidenceCoverage: { metadata: true, desktopPageSpeed: true, flowScan: true },
       flags: [],
-      rubrics: [],
     })
     const search = facts.find((fact) => fact.area === 'search')
     expect(search).toMatchObject({
@@ -63,7 +62,6 @@ describe('site card packaging', () => {
       now,
       evidenceCoverage: { metadata: true },
       flags: [{ checkId: 'title-missing', rubric: 'REACH', severity: 'IMPORTANT', impactTag: null, status: 'OPEN' }],
-      rubrics: [],
     })
     expect(withFlag.find((fact) => fact.area === 'search')?.state).toBe('problem')
   })
@@ -112,7 +110,6 @@ describe('site card packaging', () => {
       now: new Date('2026-09-29T12:00:00Z'),
       evidenceCoverage: null,
       flags: [],
-      rubrics: [],
     })
     expect(facts.every((f) => f.state === 'checking')).toBe(true)
   })
@@ -124,13 +121,12 @@ describe('site card packaging', () => {
       now: new Date('2026-09-09T12:00:00Z'),
       evidenceCoverage: { desktopScreenshot: true },
       flags: [],
-      rubrics: [],
     })
     expect(facts.every((f) => f.state === 'unknown')).toBe(true)
     expect(facts.every((f) => f.evidenced === false)).toBe(true)
   })
 
-  it('does not call Conversion or Performance healthy from a score alone', () => {
+  it('does not call Conversion or Performance healthy without direct evidence', () => {
     const facts = buildCoverageFacts({
       auditStatus: 'COMPLETED',
       completedAt: new Date('2026-09-23T12:00:00Z'),
@@ -143,10 +139,6 @@ describe('site card packaging', () => {
         mobilePageSpeed: false,
       },
       flags: [],
-      rubrics: [
-        { name: 'MESSAGE', score: 92 },
-        { name: 'EXPERIENCE', score: 99 },
-      ],
     })
     const conversion = facts.find((fact) => fact.area === 'conversion')
     const performance = facts.find((fact) => fact.area === 'performance')
@@ -164,11 +156,14 @@ describe('site card packaging', () => {
       now: new Date('2026-09-24T12:00:00Z'),
       evidenceCoverage: { flowScan: true },
       flags: [],
-      rubrics: [{ name: 'MESSAGE', score: 92 }],
     })
     const conversion = facts.find((fact) => fact.area === 'conversion')
-    expect(conversion?.state).toBe('healthy')
-    expect(conversion?.label).toBe('Looking good')
+    expect(conversion).toMatchObject({
+      state: 'healthy',
+      label: 'Journey completed',
+      detail: 'Latest browser journey reached its expected end',
+    })
+    expect(conversion?.detail).not.toContain('Score')
   })
 
   it('marks performance evidenced from page speed coverage', () => {
@@ -178,10 +173,48 @@ describe('site card packaging', () => {
       now: new Date('2026-09-09T12:00:00Z'),
       evidenceCoverage: { desktopPageSpeed: true },
       flags: [],
-      rubrics: [],
     })
-    expect(facts.find((f) => f.area === 'performance')?.state).toBe('healthy')
+    expect(facts.find((f) => f.area === 'performance')).toMatchObject({
+      state: 'healthy',
+      label: 'Desktop speed measured',
+      detail: 'Desktop page speed evidence completed',
+    })
     expect(facts.find((f) => f.area === 'security')?.state).toBe('unknown')
+  })
+
+  it('names the performance viewport that produced evidence', () => {
+    const build = (evidenceCoverage: { desktopPageSpeed?: boolean; mobilePageSpeed?: boolean }) =>
+      buildCoverageFacts({
+        auditStatus: 'COMPLETED',
+        completedAt: new Date('2026-09-08T12:00:00Z'),
+        now: new Date('2026-09-09T12:00:00Z'),
+        evidenceCoverage,
+        flags: [],
+      }).find((fact) => fact.area === 'performance')
+
+    expect(build({ mobilePageSpeed: true })).toMatchObject({
+      label: 'Mobile speed measured',
+      detail: 'Mobile page speed evidence completed',
+    })
+    expect(build({ desktopPageSpeed: true, mobilePageSpeed: true })).toMatchObject({
+      label: 'Desktop + mobile measured',
+      detail: 'Page speed evidence completed on both viewports',
+    })
+  })
+
+  it('turns metadata evidence into a concrete Search answer', () => {
+    const facts = buildCoverageFacts({
+      auditStatus: 'COMPLETED',
+      completedAt: new Date('2026-09-08T12:00:00Z'),
+      now: new Date('2026-09-09T12:00:00Z'),
+      evidenceCoverage: { metadata: true },
+      flags: [],
+    })
+    expect(facts.find((fact) => fact.area === 'search')).toMatchObject({
+      state: 'healthy',
+      label: 'Metadata checked',
+      detail: 'Page metadata was available to inspect',
+    })
   })
 
   it('uses capture and verifier receipts for optional Uptime and Accessibility coverage', () => {
@@ -194,14 +227,17 @@ describe('site card packaging', () => {
         { targetKey: 'module:accessibility', status: 'COMPLETED' },
       ],
       flags: [],
-      rubrics: [],
     })
     expect(facts.find((f) => f.area === 'uptime')).toMatchObject({
       state: 'healthy',
+      label: 'Page reached',
+      detail: 'The page loaded and produced inspectable metadata',
       evidenced: true,
     })
     expect(facts.find((f) => f.area === 'accessibility')).toMatchObject({
       state: 'healthy',
+      label: 'Accessibility tested',
+      detail: 'Automated accessibility tests completed',
       evidenced: true,
     })
 
@@ -214,7 +250,6 @@ describe('site card packaging', () => {
         { targetKey: 'module:accessibility', status: 'NOT_APPLICABLE' },
       ],
       flags: [],
-      rubrics: [],
     })
     expect(notApplicable.find((f) => f.area === 'accessibility')).toMatchObject({
       state: 'unknown',
@@ -229,7 +264,6 @@ describe('site card packaging', () => {
       now: new Date('2026-09-02T12:00:00Z'),
       evidenceCoverage: { desktopPageSpeed: true },
       flags: [],
-      rubrics: [],
     })
     const facts = buildCoverageFacts({
       auditStatus: 'CHECKING',
@@ -237,7 +271,6 @@ describe('site card packaging', () => {
       now: new Date('2026-09-29T12:00:00Z'),
       evidenceCoverage: null,
       flags: [],
-      rubrics: [],
       lastKnown: prior,
       retainLastKnownWhileChecking: true,
     })
@@ -260,7 +293,6 @@ describe('site card packaging', () => {
           status: 'OPEN',
         },
       ],
-      rubrics: [{ name: 'MESSAGE', score: 62 }],
     })
     const conversion = facts.find((f) => f.area === 'conversion')
     expect(conversion?.state).toBe('problem')
@@ -274,7 +306,6 @@ describe('site card packaging', () => {
       now: new Date('2026-09-09T12:00:00Z'),
       evidenceCoverage: { desktopScreenshot: true },
       flags: [],
-      rubrics: [],
     })
     const health = siteCardHealth({
       inFlight: false,
@@ -295,12 +326,11 @@ describe('site card packaging', () => {
       now: new Date('2026-09-09T12:00:00Z'),
       evidenceCoverage: { desktopScreenshot: true },
       flags: [],
-      rubrics: [],
     }).map((fact) => ({
       ...fact,
       state: 'healthy' as const,
       evidenced: true,
-      label: 'Looking good',
+      label: 'Evidence checked',
       checkedAt: new Date('2026-09-08T12:00:00Z').toISOString(),
     }))
     const health = siteCardHealth({
@@ -322,7 +352,6 @@ describe('site card packaging', () => {
       now: new Date('2026-09-29T12:00:00Z'),
       evidenceCoverage: null,
       flags: [],
-      rubrics: [],
     })
     expect(facts.every((f) => f.state === 'checking')).toBe(true)
   })

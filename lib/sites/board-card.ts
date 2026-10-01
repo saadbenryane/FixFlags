@@ -35,7 +35,6 @@ export type BoardCardView = {
   detail: string | null
   facts: string[]
   coverage: string | null
-  score: number | null
   /** True when FixFlags has evidence for this area, including retained stale evidence. */
   evidenced: boolean
   openFlagCount: number
@@ -254,7 +253,6 @@ export function buildBoardCards(input: {
         detail: pages ?? (learning ? 'Getting to know what matters' : null),
         facts,
         coverage: null,
-        score: null,
         evidenced: Boolean(input.checkedAt || input.captureUrl || input.flags.length),
         openFlagCount: input.flags.length,
         checkedAt: input.checkedAt,
@@ -305,7 +303,6 @@ export function buildBoardCards(input: {
         : state === 'unknown'
           ? SITE_BOARD_COPY.notCheckedYet
           : null,
-      score: null,
       evidenced: fact?.evidenced ?? false,
       openFlagCount: areaFlags.length,
       checkedAt: fact?.checkedAt ?? null,

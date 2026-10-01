@@ -53,7 +53,6 @@ describe('site check notice', () => {
       now: new Date('2026-09-29T12:00:00Z'),
       evidenceCoverage: null,
       flags: [],
-      rubrics: [],
     })
     const health = siteCardHealth({
       inFlight: false,

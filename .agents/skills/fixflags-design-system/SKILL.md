@@ -20,6 +20,7 @@ The Site contract replaces the old report/chat experience. For maintenance on ex
 - Human status, Journeys and meaningful Flags lead. Coverage and freshness make health understandable. Customer language is Flag. Fix. Verify.; 0 Flags is the quiet attention state.
 - A Flag progressively exposes business context, proof, technical detail, fixing and verification.
 - Healthy can be short and quiet; no filler Flags, decorative analytics or invented activity.
+- Pair a healthy card's `0 Flags` status with one concrete evidence answer. Name what ran and, when relevant, the viewport. Do not use legacy rubric scores, `Looking good` or generic pass filler on the Site board.
 - Missing evidence, partial coverage, blocked checks, stale checks and watch activation failures must be visibly honest.
 - Context connections enrich existing cards. The dashboard is one flat card grid with a permanent Pages card; categories belong only in Add Card. Automated tests stay underneath cards. Board health uses undiluted Flag Orange `--brand` (`#FF5A00`) for attention and problems. Do not fade it with alpha or `--brand-muted`; that reads brown. Keep `--warning` amber for product caution such as billing and quota.
 - Reuse real evidence displays when appropriate. Capture highlights must come from actual measurements.

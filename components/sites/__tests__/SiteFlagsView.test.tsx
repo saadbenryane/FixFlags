@@ -74,7 +74,7 @@ function flagsView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
     host: 'example.com',
     statusLabel: '1 open Flag',
     statusState: 'attention',
-    audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, score: 80, walkFinished: true, failureCode: null },
+    audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, walkFinished: true, failureCode: null },
     cards: [],
     flags: [flag({ id: 'f-open', problem: 'Meta description is missing' })],
     recommendations: [],

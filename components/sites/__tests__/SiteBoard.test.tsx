@@ -31,7 +31,6 @@ function card(partial: Partial<BoardCardView> & Pick<BoardCardView, 'id' | 'name
     detail: null,
     facts: [],
     coverage: null,
-    score: null,
     evidenced: partial.evidenced ?? false,
     openFlagCount: 0,
     checkedAt: null,
@@ -70,7 +69,7 @@ function boardView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
     host: 'example.com',
     statusLabel: '1 Flag',
     statusState: 'attention',
-    audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, score: 80, walkFinished: false, failureCode: null },
+    audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, walkFinished: false, failureCode: null },
     cards: [
       card({ id: 'site', name: 'Pages', state: 'attention', answer: '2 Flags', status: 'Needs a fix' }),
       card({
@@ -93,7 +92,7 @@ function boardView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
         id: 'performance',
         name: 'Performance',
         state: 'healthy',
-        answer: 'Looking good',
+        answer: 'Desktop speed measured',
         status: '0 Flags',
       }),
       card({ id: 'security', name: 'Security', state: 'unknown', answer: SITE_BOARD_COPY.notCheckedYet }),
@@ -134,7 +133,7 @@ describe('SiteBoard chrome', () => {
         <SiteBoard
           siteId="p_example"
           initial={boardView({
-            audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, score: 80, walkFinished: true, failureCode: null },
+            audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, walkFinished: true, failureCode: null },
           })}
         />
       </MeProvider>
@@ -156,7 +155,7 @@ describe('SiteBoard chrome', () => {
         <SiteBoard
           siteId="p_example"
           initial={boardView({
-            audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, score: 80, walkFinished: true, failureCode: null },
+            audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, walkFinished: true, failureCode: null },
           })}
         />
       </MeProvider>
@@ -214,7 +213,7 @@ describe('SiteBoard chrome', () => {
         <SiteBoard
           siteId="p_example"
           initial={boardView({
-            audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, score: 80, walkFinished: true, failureCode: null },
+            audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, walkFinished: true, failureCode: null },
             flags: [{
               id: 'f1',
               sourceFlagId: 'f1',
@@ -257,7 +256,7 @@ describe('SiteBoard chrome', () => {
         <SiteBoard
           siteId="p_example"
           initial={boardView({
-            audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, score: 80, walkFinished: true, failureCode: null },
+            audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, walkFinished: true, failureCode: null },
           })}
         />
       </MeProvider>
@@ -287,7 +286,7 @@ describe('SiteBoard chrome', () => {
           statusLabel: 'Learning your website',
           statusState: 'checking',
           coverageSummary: 'Learning your website. Cards update as each area finishes.',
-          audit: { id: 'audit-1', status: 'QUEUED', progress: 0, score: null, walkFinished: false, failureCode: null },
+          audit: { id: 'audit-1', status: 'QUEUED', progress: 0, walkFinished: false, failureCode: null },
         }),
       }
     })
@@ -304,7 +303,6 @@ describe('SiteBoard chrome', () => {
               id: 'audit-1',
               status: 'FAILED',
               progress: 0,
-              score: null,
               walkFinished: false,
               failureCode: 'SITE_UNREACHABLE',
             },
@@ -344,7 +342,6 @@ describe('SiteBoard chrome', () => {
               id: 'audit-1',
               status: 'COMPLETED',
               progress: 100,
-              score: 80,
               walkFinished: true,
               failureCode: 'AI_PROVIDER_NOT_CONFIGURED',
             },
@@ -468,7 +465,7 @@ describe('SiteBoard chrome', () => {
             id: 'uptime',
             name: 'Uptime',
             state: 'healthy',
-            answer: 'Looking good',
+            answer: 'Page reached',
             status: 'Checked recently',
             checkedAt: '2026-10-01T10:00:00.000Z',
             evidenced: true,

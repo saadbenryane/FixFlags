@@ -21,7 +21,6 @@ function fact(area: CoverageFact['area'], state: CoverageFact['state'], label: s
     detail: `${area} detail`,
     checkedAt: '2026-09-08T12:00:00.000Z',
     openFlagCount: state === 'problem' ? 1 : 0,
-    score: null,
     evidenced: state !== 'unknown',
   }
 }
@@ -127,7 +126,7 @@ describe('board card contract', () => {
       siteId: 'p_example',
       inFlight: false,
       hasLastKnown: false,
-      health: { state: 'healthy', answer: SITE_BOARD_COPY.lookingGood, statusLabel: SITE_BOARD_COPY.lookingGood },
+      health: { state: 'healthy', answer: '0 Flags', statusLabel: '0 Flags' },
       coverageByArea: new Map([['tracking', fact('tracking', 'healthy', 'Key events are arriving')]]),
       flags: [],
       outcomes: [],

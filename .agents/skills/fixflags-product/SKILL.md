@@ -36,6 +36,8 @@ Broad Site category evidence expires after eight days, one weekly Watch cycle pl
 
 Optional broad-health cards use progressive evidence, not a separate customization system. Keep Uptime and Accessibility hidden while they are untouched, then reveal them for anonymous and signed-in customers when the Site view carries concrete evidence or an open Flag. Carry the coverage fact explicitly into the board view so stale retained evidence remains visible and a first in-flight check does not create empty cards. A completed page capture plus metadata is point-in-time Uptime evidence; Accessibility is evidenced only by a completed applicable `module:accessibility` verifier receipt or a mapped Flag. `NOT_APPLICABLE` is not coverage.
 
+Healthy Site category cards answer with the evidence that actually ran, such as a completed browser journey, inspected metadata, named page-speed viewports, a reached page or completed accessibility tests. Do not select report rubrics or carry report scores into the Site query and board view. `0 Flags` plus a concrete evidence fact is a trustworthy answer; `Looking good`, a numeric score or a generic pass sentence is not.
+
 Site route errors should retain a path back to the same Site and a separate All Sites escape. Use the route segment's error boundary and existing error-page component; avoid redirecting a customer to the legacy report or silently dropping Site context.
 
 The public Analyze form checks the parsed URL hostname when rejecting a local destination. A word such as `localhost` in a public page path or query is not a local destination. The server's `normalizeAuditUrl` and resolved-address checks remain authoritative before any audit is queued.

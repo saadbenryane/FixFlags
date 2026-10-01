@@ -54,7 +54,42 @@ export const SITE_BOARD_COPY = {
   addEmpty: 'Those cards are already on your board.',
   pagesLoading: 'Pages are loading',
   learning: 'Learning your website',
-  lookingGood: 'Looking good',
+  healthyEvidence: {
+    conversion: {
+      answer: 'Journey completed',
+      detail: 'Latest browser journey reached its expected end',
+    },
+    search: {
+      answer: 'Metadata checked',
+      detail: 'Page metadata was available to inspect',
+    },
+    performance: {
+      desktop: {
+        answer: 'Desktop speed measured',
+        detail: 'Desktop page speed evidence completed',
+      },
+      mobile: {
+        answer: 'Mobile speed measured',
+        detail: 'Mobile page speed evidence completed',
+      },
+      both: {
+        answer: 'Desktop + mobile measured',
+        detail: 'Page speed evidence completed on both viewports',
+      },
+    },
+    uptime: {
+      answer: 'Page reached',
+      detail: 'The page loaded and produced inspectable metadata',
+    },
+    accessibility: {
+      answer: 'Accessibility tested',
+      detail: 'Automated accessibility tests completed',
+    },
+    fallback: {
+      answer: 'Evidence checked',
+      detail: 'Latest public evidence completed',
+    },
+  },
 } as const
 
 export const CUSTOMER_TERMS = {
