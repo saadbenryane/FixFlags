@@ -503,6 +503,37 @@ describe('SiteBoard chrome', () => {
     expect(screen.getByRole('button', { name: 'Accessibility' })).toBeVisible()
   })
 
+  it('keeps stale starter evidence visible while hiding areas that were never checked', () => {
+    const checkedAt = '2026-09-01T10:00:00.000Z'
+    const cards = boardView().cards.map((item) =>
+      item.id === 'conversion'
+        ? card({
+            id: 'conversion',
+            name: 'Conversion',
+            state: 'unknown',
+            answer: SITE_BOARD_COPY.checkOutOfDate,
+            status: SITE_BOARD_COPY.checkOutOfDate,
+            detail: SITE_BOARD_COPY.checkOutOfDateDetail,
+            coverage: SITE_BOARD_COPY.checkOutOfDateDetail,
+            checkedAt,
+            evidenced: true,
+          })
+        : item
+    )
+    render(
+      <MeProvider initialUser={null}>
+        <SiteBoard siteId="p_example" initial={boardView({ cards })} />
+      </MeProvider>
+    )
+
+    expect(screen.getByRole('button', { name: 'Conversion' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Security' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversion' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent(SITE_BOARD_COPY.checkOutOfDateDetail)
+    expect(document.querySelector(`time[datetime="${checkedAt}"]`)).not.toBeNull()
+  })
+
   it('reveals an optional area with an open Flag even for an older view without evidence metadata', () => {
     const flagged = card({
       id: 'accessibility',

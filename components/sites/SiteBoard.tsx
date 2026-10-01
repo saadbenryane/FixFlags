@@ -25,7 +25,7 @@ import { outcomeCoverageLabel } from '@/lib/sites/outcome-state'
 import { WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 
 function isEmptyUncheckedCard(card: BoardCardView) {
-  return card.id !== 'site' && card.state === 'unknown' && card.openFlagCount === 0 && card.activity !== 'checking'
+  return card.id !== 'site' && !card.evidenced && card.state === 'unknown' && card.openFlagCount === 0 && card.activity !== 'checking'
 }
 
 export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHomeView }) {
