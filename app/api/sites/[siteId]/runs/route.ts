@@ -7,8 +7,16 @@ import { requestSiteRun } from '@/lib/sites/application/run-requests'
 import { requireSiteAccess } from '@/lib/sites/request-access'
 
 const requestSchema = z.object({
-  outcomeIds: z.array(z.string().min(1)).min(1).max(20),
+  outcomeIds: z.array(z.string().min(1)).max(20).default([]),
+  scope: z.enum(['outcomes', 'site']).default('outcomes'),
   environment: z.string().min(1).max(80).default('production'),
+}).superRefine((value, context) => {
+  if (value.scope === 'outcomes' && value.outcomeIds.length === 0) {
+    context.addIssue({ code: 'custom', path: ['outcomeIds'], message: 'Select at least one Outcome.' })
+  }
+  if (value.scope === 'site' && value.outcomeIds.length > 0) {
+    context.addIssue({ code: 'custom', path: ['outcomeIds'], message: 'Site care does not select Outcomes.' })
+  }
 })
 
 export async function POST(
@@ -37,10 +45,11 @@ export async function POST(
       projectId: access.decision.site.projectId,
       outcomeIds: parsed.data.outcomeIds,
       userId: session.user.id,
-      source: 'API',
+      source: 'WEB',
+      scope: parsed.data.scope === 'site' ? 'SITE' : 'OUTCOMES',
       environment: parsed.data.environment,
       idempotencyKey,
-      context: { action: 'run_outcomes' },
+      context: { action: parsed.data.scope === 'site' ? 'run_site_care' : 'run_outcomes' },
     })
     return NextResponse.json(result, { status: result.reused ? 200 : 202 })
   } catch (error) {

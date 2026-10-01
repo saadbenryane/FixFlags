@@ -534,6 +534,102 @@ describe('SiteBoard chrome', () => {
     expect(document.querySelector(`time[datetime="${checkedAt}"]`)).not.toBeNull()
   })
 
+  it('lets an owner refresh stale broad evidence through the Site run endpoint', async () => {
+    let releaseRefresh: () => void = () => {}
+    const refreshGate = new Promise<void>((resolve) => { releaseRefresh = resolve })
+    const checkedAt = '2026-09-01T10:00:00.000Z'
+    const cards = boardView().cards.map((item) => item.id === 'conversion'
+      ? card({
+          id: 'conversion', name: 'Conversion', state: 'unknown',
+          answer: SITE_BOARD_COPY.checkOutOfDate, status: SITE_BOARD_COPY.checkOutOfDate,
+          coverage: SITE_BOARD_COPY.checkOutOfDateDetail, checkedAt, evidenced: true,
+        })
+      : item)
+    const ownedView = boardView({
+      cards,
+      site: { ...boardView().site, projectId: 'project-1', userId: signedInUser.id },
+    })
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith('/runs')) {
+        return { ok: true, status: 202, json: async () => ({ runId: 'run-1', auditId: 'audit-new', outcomeIds: [] }) }
+      }
+      await refreshGate
+      return { ok: true, status: 200, json: async () => ownedView }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const rendered = render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard siteId="p_example" initial={ownedView} />
+      </MeProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      '/api/sites/p_example/runs',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ scope: 'site', outcomeIds: [] }),
+      }),
+    ))
+    expect(await screen.findByText('New check started')).toBeVisible()
+    expect(screen.getAllByText('Learning your website').length).toBeGreaterThan(0)
+    releaseRefresh()
+    rendered.unmount()
+    vi.unstubAllGlobals()
+  })
+
+  it('asks an anonymous visitor to claim the Site before refreshing stale evidence', () => {
+    const cards = boardView().cards.map((item) => item.id === 'conversion'
+      ? card({
+          id: 'conversion', name: 'Conversion', state: 'unknown',
+          answer: SITE_BOARD_COPY.checkOutOfDate, status: SITE_BOARD_COPY.checkOutOfDate,
+          coverage: SITE_BOARD_COPY.checkOutOfDateDetail, checkedAt: '2026-09-01T10:00:00.000Z', evidenced: true,
+        })
+      : item)
+    render(
+      <MeProvider initialUser={null}>
+        <SiteBoard siteId="p_example" initial={boardView({ cards })} />
+      </MeProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversion' }))
+    expect(screen.getByRole('link', { name: 'Sign in to check again' })).toHaveAttribute(
+      'href', `/sign-in?next=${encodeURIComponent(SITE_PATH)}`,
+    )
+  })
+
+  it('keeps stale evidence available when a new Site check cannot start', async () => {
+    const cards = boardView().cards.map((item) => item.id === 'conversion'
+      ? card({
+          id: 'conversion', name: 'Conversion', state: 'unknown',
+          answer: SITE_BOARD_COPY.checkOutOfDate, status: SITE_BOARD_COPY.checkOutOfDate,
+          coverage: SITE_BOARD_COPY.checkOutOfDateDetail, checkedAt: '2026-09-01T10:00:00.000Z', evidenced: true,
+        })
+      : item)
+    const ownedView = boardView({
+      cards,
+      site: { ...boardView().site, projectId: 'project-1', userId: signedInUser.id },
+    })
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false, status: 429, json: async () => ({ error: 'Check limit reached. Try again later.' }),
+    })))
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard siteId="p_example" initial={ownedView} />
+      </MeProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
+
+    expect(await screen.findByText('Check limit reached. Try again later.')).toBeVisible()
+    expect(screen.getByRole('dialog')).toHaveTextContent(SITE_BOARD_COPY.checkOutOfDateDetail)
+    expect(screen.getByRole('button', { name: 'Check again' })).toBeEnabled()
+    vi.unstubAllGlobals()
+  })
+
   it('reveals an optional area with an open Flag even for an older view without evidence metadata', () => {
     const flagged = card({
       id: 'accessibility',

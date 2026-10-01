@@ -22,7 +22,7 @@ import { formatAlertDate, NO_ALERT_DELIVERY, siteWatchAlertNotice } from '@/lib/
 import { watchOffNotice } from '@/lib/sites/watch-offer'
 import { firstOutcomePrompt, homeBoardLead } from '@/lib/sites/first-outcome'
 import { outcomeCoverageLabel } from '@/lib/sites/outcome-state'
-import { WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
+import { SITE_BOARD_COPY, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 
 function isEmptyUncheckedCard(card: BoardCardView) {
   return card.id !== 'site' && !card.evidenced && card.state === 'unknown' && card.openFlagCount === 0 && card.activity !== 'checking'
@@ -33,6 +33,7 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
   const { user } = useMe()
   const signedIn = Boolean(user)
   const [view, setView] = useState(initial)
+  const ownsSite = Boolean(user?.id && view.site.projectId && view.site.userId === user.id)
   const [selectedCard, setSelectedCard] = useState<SiteCardArea | null>(null)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -124,6 +125,43 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
       const body = await response.json().catch(() => ({})) as { error?: string }
       if (!response.ok) return setToast(body.error || 'Could not start this verification')
       setToast('Outcome verification started')
+      await refresh()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function refreshSiteEvidence() {
+    if (busy) return
+    setBusy(true)
+    try {
+      const response = await fetch(`/api/sites/${siteId}/runs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `web:site-care:${siteId}:${Date.now()}`,
+        },
+        body: JSON.stringify({ scope: 'site', outcomeIds: [] }),
+      })
+      const body = await response.json().catch(() => ({})) as { auditId?: string | null; error?: string }
+      if (!response.ok) {
+        if (response.status === 401) router.push(`/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`)
+        else setToast(body.error || SITE_BOARD_COPY.checkStartFailed)
+        return
+      }
+      setSelectedCard(null)
+      setToast(SITE_BOARD_COPY.checkStarted)
+      setView((current) => ({
+        ...current,
+        audit: {
+          ...current.audit,
+          id: body.auditId ?? current.audit.id,
+          status: 'QUEUED',
+          progress: 0,
+          walkFinished: false,
+          failureCode: null,
+        },
+      }))
       await refresh()
     } finally {
       setBusy(false)
@@ -244,6 +282,17 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
                 facts={selected.id === 'site' ? [] : selected.facts.filter((fact) => fact !== selected.answer)}
                 pages={selected.id === 'site' ? view.checkedPages ?? [] : undefined}
               />
+              {selected.status === SITE_BOARD_COPY.checkOutOfDate ? (
+                ownsSite ? (
+                  <Button className="mt-1 w-fit" variant="brand" disabled={busy} onClick={() => void refreshSiteEvidence()}>
+                    {busy ? SITE_BOARD_COPY.checking : SITE_BOARD_COPY.checkAgain}
+                  </Button>
+                ) : !signedIn ? (
+                  <Button asChild className="mt-1 w-fit" variant="brand">
+                    <Link href={`/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`}>{SITE_BOARD_COPY.signInToCheckAgain}</Link>
+                  </Button>
+                ) : null
+              ) : null}
               <div className="mt-5 space-y-3">
                 {selectedFlags.length === 0 ? <p className="text-sm text-muted-foreground">No open Flags in this area.</p> : selectedFlags.map((flag) => (
                   <Link key={flag.id} href={`/sites/${siteId}/flags/${flag.id}`} className="flex items-start justify-between gap-3 rounded-card border border-border/70 p-4">

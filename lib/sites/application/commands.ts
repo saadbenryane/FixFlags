@@ -160,6 +160,7 @@ export async function executeSiteCommand(command: SiteCommand) {
           source,
           idempotencyKey: command.idempotencyKey,
           outcomeIds: [initialFlag.outcomeId],
+          verificationTargetKind: 'OUTCOME',
         })
         if (reusable) {
           return {

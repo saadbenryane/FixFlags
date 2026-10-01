@@ -46,7 +46,7 @@ vi.mock('@/lib/analytics/site-events', () => ({
   recordSiteLifecycleEvent: vi.fn().mockResolvedValue({}),
 }))
 
-import { getOwnedRun, reconcileOutcomeRunsForAudit, requestOutcomeRun, requestSiteRun } from '@/lib/sites/application/run-requests'
+import { getOwnedRun, reconcileOutcomeRunsForAudit, requestOutcomeRun, requestSiteRun, retryFailedExecution } from '@/lib/sites/application/run-requests'
 
 const ownedOutcome = {
   id: 'outcome-1',
@@ -78,7 +78,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
     mocks.executionFindMany.mockResolvedValue([])
   })
 
-  it('refuses a run when no Outcome is selected and does not enqueue an Audit', async () => {
+  it('refuses an empty Outcome run when Site care was not explicitly requested', async () => {
     await expect(
       requestSiteRun({
         projectId: 'project-1',
@@ -87,6 +87,66 @@ describe('RunRequest tenant boundary and idempotency', () => {
         source: 'WATCH',
       }),
     ).rejects.toThrow('Select at least one Outcome')
+    expect(mocks.runCreate).not.toHaveBeenCalled()
+    expect(mocks.createAudit).not.toHaveBeenCalled()
+  })
+
+  it('runs broad Site care through the same durable request and Audit ledger', async () => {
+    mocks.outcomeFindMany.mockResolvedValue([])
+
+    const result = await requestSiteRun({
+      projectId: 'project-1',
+      outcomeIds: [],
+      userId: 'user-1',
+      source: 'WEB',
+      scope: 'SITE',
+      idempotencyKey: 'web:site-care:one',
+      context: { action: 'run_site_care' },
+    })
+
+    expect(result).toEqual({ runId: 'run-1', auditId: 'audit-1', outcomeIds: [], reused: false })
+    expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        projectId: 'project-1',
+        legacyOutcomeId: null,
+        source: 'WEB',
+        selections: undefined,
+        context: { action: 'run_site_care' },
+      }),
+    }))
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
+      url: 'https://shop.example/',
+      parentId: 'audit-parent',
+      recheckTrigger: 'MANUAL',
+      runRequestId: 'run-1',
+    }))
+  })
+
+  it('does not reuse an active Flag verification as a broad Site-care run', async () => {
+    mocks.outcomeFindMany.mockResolvedValue([])
+    mocks.runFindFirst.mockResolvedValueOnce({
+      id: 'run-diagnostic',
+      environment: 'production',
+      auditId: 'audit-diagnostic',
+      selections: [],
+      verificationTarget: {
+        kind: 'DIAGNOSTIC',
+        pageUrl: 'https://shop.example/contact',
+        checkId: 'form-feedback',
+        attemptId: 'attempt-1',
+        parentAuditId: 'audit-parent',
+      },
+    })
+
+    await expect(requestSiteRun({
+      projectId: 'project-1',
+      outcomeIds: [],
+      userId: 'user-1',
+      source: 'WEB',
+      scope: 'SITE',
+      idempotencyKey: 'web:site-care:two',
+    })).rejects.toThrow('Another Site run is already in progress')
+
     expect(mocks.runCreate).not.toHaveBeenCalled()
     expect(mocks.createAudit).not.toHaveBeenCalled()
   })
@@ -256,7 +316,7 @@ describe('RunRequest tenant boundary and idempotency', () => {
     await expect(requestOutcomeRun({
       projectId: 'project-1', outcomeId: 'outcome-1', userId: 'user-1',
       source: 'WEB', idempotencyKey: 'web:checkout:same',
-    })).rejects.toThrow('belongs to another Outcome selection')
+    })).rejects.toThrow('belongs to another Site run')
     expect(mocks.runCreate).not.toHaveBeenCalled()
   })
 
@@ -363,6 +423,44 @@ describe('RunRequest tenant boundary and idempotency', () => {
     }))
     expect(mocks.runUpdate).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ status: 'COMPLETED' }),
+    }))
+  })
+
+  it('completes broad Site care without inventing an Outcome assessment', async () => {
+    mocks.runFindMany.mockResolvedValue([{
+      id: 'run-care', projectId: 'project-1', requestedByUserId: 'user-1',
+      source: 'WEB', environment: 'production', requestedAt: new Date(),
+      selections: [], audit: { journeyReviews: [] },
+    }])
+
+    await reconcileOutcomeRunsForAudit('audit-care')
+
+    expect(mocks.assessmentUpsert).not.toHaveBeenCalled()
+    expect(mocks.runUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'run-care' },
+      data: expect.objectContaining({ status: 'COMPLETED', leaseUntil: null }),
+    }))
+  })
+
+  it('retries failed broad Site care through a fresh shared run', async () => {
+    mocks.auditFindUnique.mockResolvedValue({
+      id: 'audit-care', url: 'https://shop.example/', userId: 'user-1',
+      projectId: 'project-1', status: 'FAILED',
+    })
+    mocks.runFindFirst
+      .mockResolvedValueOnce({ id: 'run-care', selections: [], verificationTarget: null })
+      .mockResolvedValueOnce(null)
+    mocks.outcomeFindMany.mockResolvedValue([])
+    mocks.createAudit.mockResolvedValue({ auditId: 'audit-care-retry', reused: false })
+
+    const result = await retryFailedExecution('audit-care')
+
+    expect(result).toEqual({ ok: true, auditId: 'audit-care-retry', runId: 'run-1' })
+    expect(mocks.runCreate).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ projectId: 'project-1', source: 'INTERNAL', selections: undefined }),
+    }))
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
+      url: 'https://shop.example/', runRequestId: 'run-1',
     }))
   })
 

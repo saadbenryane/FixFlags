@@ -38,6 +38,8 @@ Optional broad-health cards use progressive evidence, not a separate customizati
 
 Anonymous beginner filtering may hide only cards with no evidence. An expired card remains `evidenced: true` even when its current state is `unknown`; keep that card visible with `Check out of date` and its original checked time.
 
+Refreshing stale broad Site evidence is explicit Site care, not a fabricated Outcome. Send an empty selection with `scope: 'SITE'` through `requestSiteRun`, retain one RunRequest and physical Audit ledger, and produce no Outcome assessment. A Site-care run and a targeted Flag verification are different execution scopes even when both have zero Outcome selections; never reuse one as the other.
+
 Healthy Site category cards answer with the evidence that actually ran, such as a completed browser journey, inspected metadata, named page-speed viewports, a reached page or completed accessibility tests. Do not select report rubrics or carry report scores into the Site query and board view. `0 Flags` plus a concrete evidence fact is a trustworthy answer; `Looking good`, a numeric score or a generic pass sentence is not.
 
 Site route errors should retain a path back to the same Site and a separate All Sites escape. Use the route segment's error boundary and existing error-page component; avoid redirecting a customer to the legacy report or silently dropping Site context.

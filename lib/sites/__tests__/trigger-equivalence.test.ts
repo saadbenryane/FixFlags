@@ -141,7 +141,7 @@ describe('trigger equivalence', () => {
         source: 'WATCH',
         idempotencyKey: 'watch:project-1:week-3',
       }),
-    ).rejects.toThrow('another Outcome selection')
+    ).rejects.toThrow('another Site run')
   })
 
   it('enters the same run command from a Shopify install on a linked Site', async () => {

@@ -175,6 +175,8 @@ export type RunInput = {
   outcomeIds: string[]
   userId: string
   source: RunRequestSource
+  /** Broad Site care has no Outcome selection but still uses this same durable command. */
+  scope?: 'OUTCOMES' | 'SITE'
   environment?: string
   idempotencyKey?: string
   context?: Record<string, string | number | boolean | null | undefined>
@@ -193,6 +195,33 @@ function sameSelection(
   return stored.length === selectedIds.length && stored.every((id, index) => id === selectedIds[index])
 }
 
+function verificationTargetIdentity(value: Prisma.JsonValue | SiteRunVerificationTarget | null | undefined): string | null {
+  if (!value || Array.isArray(value) || typeof value !== 'object') return null
+  const target = value as Record<string, unknown>
+  if (target.kind === 'OUTCOME') {
+    return JSON.stringify(['OUTCOME', target.outcomeId, target.attemptId, target.parentAuditId])
+  }
+  if (target.kind === 'DIAGNOSTIC') {
+    return JSON.stringify(['DIAGNOSTIC', target.pageUrl, target.checkId, target.attemptId, target.parentAuditId])
+  }
+  return JSON.stringify(value)
+}
+
+function verificationTargetKind(value: Prisma.JsonValue | SiteRunVerificationTarget | null | undefined): string | null {
+  if (!value || Array.isArray(value) || typeof value !== 'object') return null
+  const kind = (value as Record<string, unknown>).kind
+  return typeof kind === 'string' ? kind : null
+}
+
+function sameExecutionScope(
+  run: { selections?: Array<{ outcomeId: string }>; verificationTarget?: Prisma.JsonValue | null },
+  selectedIds: string[],
+  verificationTarget: SiteRunVerificationTarget | undefined,
+): boolean {
+  return sameSelection(run, selectedIds) &&
+    verificationTargetIdentity(run.verificationTarget) === verificationTargetIdentity(verificationTarget)
+}
+
 export async function requestSiteRun(input: RunInput): Promise<{
   runId: string
   auditId: string | null
@@ -200,7 +229,11 @@ export async function requestSiteRun(input: RunInput): Promise<{
   reused: boolean
 }> {
   const selectedIds = [...new Set(input.outcomeIds)].sort()
-  if (selectedIds.length === 0 && input.verificationTarget?.kind !== 'DIAGNOSTIC') {
+  const scope = input.scope ?? 'OUTCOMES'
+  if (scope === 'SITE' && (selectedIds.length > 0 || input.verificationTarget)) {
+    throw new Error('Site care cannot select an Outcome or Flag verification target')
+  }
+  if (scope !== 'SITE' && selectedIds.length === 0 && input.verificationTarget?.kind !== 'DIAGNOSTIC') {
     throw new Error('Select at least one Outcome')
   }
   if (
@@ -249,8 +282,8 @@ export async function requestSiteRun(input: RunInput): Promise<{
     include: { selections: { select: { outcomeId: true } } },
   })
   if (byKey) {
-    if (byKey.projectId !== input.projectId || byKey.environment !== environment || !sameSelection(byKey, selectedIds)) {
-      throw new Error('Run idempotency key belongs to another Outcome selection')
+    if (byKey.projectId !== input.projectId || byKey.environment !== environment || !sameExecutionScope(byKey, selectedIds, input.verificationTarget)) {
+      throw new Error('Run idempotency key belongs to another Site run')
     }
     return { runId: byKey.id, auditId: byKey.auditId, outcomeIds: selectedIds, reused: true }
   }
@@ -266,7 +299,9 @@ export async function requestSiteRun(input: RunInput): Promise<{
     include: { selections: { select: { outcomeId: true } } },
   })
   if (active) {
-    if (active.environment !== environment || !sameSelection(active, selectedIds)) throw new Error('Another Outcome selection is already running for this Site')
+    if (active.environment !== environment || !sameExecutionScope(active, selectedIds, input.verificationTarget)) {
+      throw new Error('Another Site run is already in progress')
+    }
     return { runId: active.id, auditId: active.auditId, outcomeIds: selectedIds, reused: true }
   }
 
@@ -311,7 +346,9 @@ export async function requestSiteRun(input: RunInput): Promise<{
         include: { selections: { select: { outcomeId: true } } },
       })
       if (concurrent) {
-        if (concurrent.environment !== environment || !sameSelection(concurrent, selectedIds)) throw new Error('Another Outcome selection is already running for this Site')
+        if (concurrent.environment !== environment || !sameExecutionScope(concurrent, selectedIds, input.verificationTarget)) {
+          throw new Error('Another Site run is already in progress')
+        }
         return { runId: concurrent.id, auditId: concurrent.auditId, outcomeIds: selectedIds, reused: true }
       }
       const sameKey = await prisma.runRequest.findUnique({
@@ -324,7 +361,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
         },
         include: { selections: { select: { outcomeId: true } } },
       })
-      if (sameKey && sameKey.environment === environment && sameSelection(sameKey, selectedIds)) {
+      if (sameKey && sameKey.environment === environment && sameExecutionScope(sameKey, selectedIds, input.verificationTarget)) {
         return { runId: sameKey.id, auditId: sameKey.auditId, outcomeIds: selectedIds, reused: true }
       }
     }
@@ -419,6 +456,7 @@ export async function findReusableRun(input: {
   idempotencyKey: string
   outcomeIds: string[]
   environment?: string
+  verificationTargetKind?: SiteRunVerificationTarget['kind']
 }): Promise<{ runId: string; auditId: string | null; outcomeIds: string[] } | null> {
   const selectedIds = [...new Set(input.outcomeIds)].sort()
   const environment = input.environment ?? 'production'
@@ -433,8 +471,12 @@ export async function findReusableRun(input: {
     include: { selections: { select: { outcomeId: true } } },
   })
   if (!existing) return null
-  if (existing.environment !== environment || !sameSelection(existing, selectedIds)) {
-    throw new Error('Run idempotency key belongs to another Outcome selection')
+  if (
+    existing.environment !== environment ||
+    !sameSelection(existing, selectedIds) ||
+    verificationTargetKind(existing.verificationTarget) !== (input.verificationTargetKind ?? null)
+  ) {
+    throw new Error('Run idempotency key belongs to another Site run')
   }
   return { runId: existing.id, auditId: existing.auditId, outcomeIds: selectedIds }
 }
@@ -456,15 +498,20 @@ export async function retryFailedExecution(auditId: string): Promise<
         include: { selections: { select: { outcomeId: true } } },
       })
     : null
-  if (run && audit.userId && audit.projectId && run.selections.length > 0) {
-    const started = await requestSiteRun({
-      projectId: audit.projectId,
-      outcomeIds: run.selections.map((selection) => selection.outcomeId),
-      userId: audit.userId,
-      source: 'INTERNAL',
-      idempotencyKey: `internal-retry:${audit.id}:${run.id}`,
-    })
-    return { ok: true, auditId: started.auditId, runId: started.runId }
+  if (run && audit.userId && audit.projectId) {
+    const outcomeIds = run.selections.map((selection) => selection.outcomeId)
+    if (outcomeIds.length > 0 || !run.verificationTarget) {
+      const started = await requestSiteRun({
+        projectId: audit.projectId,
+        outcomeIds,
+        userId: audit.userId,
+        source: 'INTERNAL',
+        scope: outcomeIds.length > 0 ? 'OUTCOMES' : 'SITE',
+        idempotencyKey: `internal-retry:${audit.id}:${run.id}`,
+        url: audit.url,
+      })
+      return { ok: true, auditId: started.auditId, runId: started.runId }
+    }
   }
   if (!audit.userId || !audit.projectId) return { ok: false, status: 409, error: 'This check has no owner to retry' }
   const outcomes = await prisma.siteOutcome.findMany({

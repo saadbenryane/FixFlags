@@ -46,10 +46,32 @@ describe('POST /api/sites/[siteId]/runs', () => {
       projectId: 'project-1',
       outcomeIds: ['outcome-1'],
       userId: 'user-1',
-      source: 'API',
+      source: 'WEB',
+      scope: 'OUTCOMES',
       environment: 'production',
       idempotencyKey: 'api:site:run:1',
       context: { action: 'run_outcomes' },
+    })
+  })
+
+  it('starts broad Site care without inventing an Outcome selection', async () => {
+    mocks.requestSiteRun.mockResolvedValueOnce({
+      runId: 'run-care', auditId: 'audit-care', outcomeIds: [], reused: false,
+    })
+
+    const response = await POST(request({ scope: 'site', outcomeIds: [] }, 'web:site-care:1'), context)
+
+    expect(response.status).toBe(202)
+    expect(await response.json()).toMatchObject({ runId: 'run-care', auditId: 'audit-care' })
+    expect(mocks.requestSiteRun).toHaveBeenCalledWith({
+      projectId: 'project-1',
+      outcomeIds: [],
+      userId: 'user-1',
+      source: 'WEB',
+      scope: 'SITE',
+      environment: 'production',
+      idempotencyKey: 'web:site-care:1',
+      context: { action: 'run_site_care' },
     })
   })
 
@@ -65,7 +87,7 @@ describe('POST /api/sites/[siteId]/runs', () => {
     expect(mocks.requestSiteRun).not.toHaveBeenCalled()
   })
 
-  it('requires a bounded idempotency key and a non-empty Outcome selection', async () => {
+  it('requires a bounded idempotency key and an explicit scope for an empty selection', async () => {
     const missingKey = await POST(request({ outcomeIds: ['outcome-1'] }, ''), context)
     const emptySelection = await POST(request({ outcomeIds: [] }), context)
 
