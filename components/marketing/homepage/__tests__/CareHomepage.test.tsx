@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { CareHomepage } from '../CareHomepage'
 import { CARE_HOME as C, SITE_BOARD_COPY, SITE_COMPARE } from '@/lib/marketing/copy'
 import { starterBoardNames } from '@/lib/sites/board-card'
+import { CONFIRMABLE_OUTCOME_KINDS, watchableOutcomeKinds } from '@/lib/sites/outcome-kinds'
 
 vi.mock('@/components/audit/AuditInput', () => ({ AuditInput: () => <div data-testid="url-entry" /> }))
 vi.mock('next/image', () => ({ default: ({ alt, src }: { alt: string; src: string }) => <span role="img" aria-label={alt} data-src={src} /> }))
@@ -119,6 +120,27 @@ describe('homepage conversion story', () => {
     expect(store).toHaveAttribute('aria-selected', 'true')
     expect(screen.getByText(C.coverage.audiences[1].items[1])).toBeInTheDocument()
     expect(screen.queryByText(C.coverage.audiences[0].items[0])).not.toBeInTheDocument()
+  })
+
+  it('keeps public Outcome claims aligned with the executable monitoring contract', () => {
+    const claims = C.coverage.audiences.flatMap((audience) => audience.items).join(' · ')
+    const watchable = new Set(watchableOutcomeKinds())
+    const claimPatterns = {
+      CHECKOUT: /(?:checkout|purchase flow)/i,
+      AVAILABILITY: /(?:pages? (?:stay )?(?:available|reachable)|product pages load)/i,
+      SIGNUP: /sign\s?up/i,
+      LOGIN: /log\s?in|login/i,
+      PASSWORD_RESET: /password reset/i,
+    } as const
+
+    for (const kind of CONFIRMABLE_OUTCOME_KINDS) {
+      expect(Boolean(claims.match(claimPatterns[kind])), `${kind} homepage claim`).toBe(watchable.has(kind))
+    }
+    expect(claims).not.toMatch(/forms? submit|core actions complete|success states appear/i)
+
+    render(<CareHomepage />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Web app' }))
+    expect(screen.getByText('Signup, login, and password reset are not monitored yet. They require a safe, approved test-access contract.')).toBeVisible()
   })
 
   it('supports arrow, Home, and End keys across audience tabs', () => {

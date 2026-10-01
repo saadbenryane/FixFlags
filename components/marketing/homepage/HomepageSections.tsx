@@ -167,6 +167,7 @@ export function HomepageCoverageSection() {
       <div className={s.coveragePanel} id={`coverage-panel-${active.id}`} role="tabpanel" aria-labelledby={`coverage-tab-${active.id}`}>
         <p>{active.summary}</p>
         <ul>{active.items.map(item => <li key={item}><Check size={16} aria-hidden="true" />{item}</li>)}</ul>
+        {'boundary' in active && active.boundary ? <p className={s.coverageBoundary}>{active.boundary}</p> : null}
       </div>
     </div>
   </section>

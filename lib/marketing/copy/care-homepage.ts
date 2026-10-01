@@ -9,7 +9,7 @@ export const CARE_HOME = {
   brand: 'FixFlags', signIn: 'Sign in',
   headlineLines: ['Your software runs.', 'FixFlags watches.'],
   hero: {
-    body: 'Independently know whether the important outcomes on your live website still work.',
+    body: 'Know when a public page goes unavailable or Checkout stops working, with evidence from across the live Site.',
     proof: 'Real browser journeys. Evidence you can act on.',
     trust: 'No credit card required',
     cta: 'Analyze',
@@ -107,22 +107,23 @@ export const CARE_HOME = {
   },
   coverage: {
     label: 'What FixFlags checks',
-    title: 'Built for what your website needs to do.',
-    body: 'Choose the closest match. These are examples from the broad analysis FixFlags runs across every site.',
+    title: 'What FixFlags can verify today.',
+    body: 'FixFlags can independently verify Checkout and public page availability. Broader analysis adds evidence about the live experience.',
     audiences: [
       {
         id: 'website', label: 'Website', summary: 'Keep the pages people rely on clear, reachable, and working.',
-        items: ['Forms submit', 'Links reach the right page', 'Pages stay available', 'Mobile layouts work', 'Pages load quickly', 'Accessibility essentials', 'Search access and metadata', 'Security fundamentals', 'Scripts stay error-free', 'Public tracking signals'],
+        items: ['Pages stay available', 'Links reach the right page', 'Mobile layouts work', 'Pages load quickly', 'Accessibility essentials', 'Search access and metadata', 'Security fundamentals', 'Scripts stay error-free', 'Public tracking signals'],
       },
       {
         id: 'store', label: 'Store', summary: 'Protect the path from product discovery to checkout.',
         items: ['Product pages load', 'Add to cart works', 'Cart state updates', 'Checkout stays reachable', 'Mobile purchase flow', 'Pages load quickly', 'Accessibility essentials', 'Purchase tracking signals', 'Security fundamentals'],
       },
       {
-        id: 'webapp', label: 'Web app', summary: 'Keep the actions that make the product useful working.',
-        items: ['Signup completes', 'Login opens the product', 'Core actions complete', 'Success states appear', 'Errors are understandable', 'Mobile and browser behavior', 'Pages stay responsive', 'Accessibility essentials', 'Scripts stay error-free', 'Public tracking signals'],
+        id: 'webapp', label: 'Web app', summary: 'Keep public product pages reachable and inspect the live experience around them.',
+        items: ['Public pages stay available', 'Links reach the right page', 'Mobile layouts work', 'Pages stay responsive', 'Accessibility essentials', 'Search access and metadata', 'Security fundamentals', 'Scripts stay error-free', 'Public tracking signals'],
+        boundary: 'Signup, login, and password reset are not monitored yet. They require a safe, approved test-access contract.',
       },
-    ] satisfies ReadonlyArray<{ id: HomepageAudienceKey; label: string; summary: string; items: readonly string[] }>,
+    ] satisfies ReadonlyArray<{ id: HomepageAudienceKey; label: string; summary: string; items: readonly string[]; boundary?: string }>,
   },
   actions: {
     label: 'Every Flag includes',
@@ -152,7 +153,7 @@ export const CARE_HOME = {
   integrations: {
     label: 'Integrations',
     title: 'Context beside the Flag.',
-    body: 'A URL is enough to start. Shopify, Analytics, Search Console, and GitHub add context when you connect them. They do not decide whether an Outcome is Clear.',
+    body: 'A URL is enough to start. Shopify, Analytics, and Search Console add context. They do not decide whether an Outcome is Clear. GitHub signs you in and helps hand a Flag to your coding workflow.',
     add: 'Add integration',
     addTitle: 'Add an integration',
     addBody: 'Connections add context beside a Flag. They do not mark an Outcome Clear.',
@@ -161,5 +162,5 @@ export const CARE_HOME = {
     added: 'Added',
     action: 'See how each one connects',
   },
-  close: { title: 'Know what still works.', body: 'Start with your URL. FixFlags watches the outcomes that matter and shows you the evidence when something breaks.', pricing: 'View pricing' },
+  close: { title: 'Know what still works.', body: 'Start with your URL. FixFlags monitors supported Outcomes and shows you the evidence when something breaks.', pricing: 'View pricing' },
 } as const
