@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { useMe } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { BoardCardView } from '@/lib/sites/board-card'
-import { STARTER_BOARD_CARDS, type SiteCardArea } from '@/lib/sites/card-areas'
+import { ADDABLE_BOARD_CARDS, STARTER_BOARD_CARDS, type SiteCardArea } from '@/lib/sites/card-areas'
 import { siteCheckNotice, siteSummaryNotice } from '@/lib/sites/check-notice'
 import { formatAlertDate, NO_ALERT_DELIVERY, siteWatchAlertNotice } from '@/lib/sites/watch-alert-notice'
 import { watchOffNotice } from '@/lib/sites/watch-offer'
@@ -134,6 +134,9 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
   const selectedFlags = selected ? view.flags.filter((flag) => selected.flagIds.includes(flag.id) || flag.area === selected.id) : []
   const selectedRecommendations = selected ? (view.recommendations ?? []).filter((item) => item.area === selected.id) : []
   const visibleCards = view.cards.filter((card) => {
+    if (ADDABLE_BOARD_CARDS.includes(card.id)) {
+      return card.evidenced || card.openFlagCount > 0
+    }
     if (!STARTER_BOARD_CARDS.includes(card.id)) return false
     return signedIn || checking || !isEmptyUncheckedCard(card)
   })

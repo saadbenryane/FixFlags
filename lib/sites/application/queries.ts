@@ -91,6 +91,10 @@ const auditSelect = {
   startedAt: true,
   failureCode: true,
   evidenceCoverage: true,
+  verifierExecutions: {
+    where: { targetKey: 'module:accessibility' },
+    select: { targetKey: true, status: true },
+  },
   url: true,
   rubrics: { select: { name: true, score: true } },
 } as const
@@ -131,6 +135,7 @@ function factsFromAudit(
     completedAt: Date | null
     evidenceCoverage: unknown
     rubrics: Array<{ name: string; score: number | null }>
+    verifierExecutions?: Array<{ targetKey: string; status: string }>
   } | null,
   flags: SiteFlagSeed[],
   now: Date,
@@ -142,6 +147,7 @@ function factsFromAudit(
     completedAt: audit?.completedAt ?? null,
     now,
     evidenceCoverage: audit?.evidenceCoverage,
+    verifierExecutions: audit?.verifierExecutions,
     flags: flags.map((f) => ({
       checkId: f.checkId,
       rubric: f.rubric,

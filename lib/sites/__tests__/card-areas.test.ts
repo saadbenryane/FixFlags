@@ -184,6 +184,44 @@ describe('site card packaging', () => {
     expect(facts.find((f) => f.area === 'security')?.state).toBe('unknown')
   })
 
+  it('uses capture and verifier receipts for optional Uptime and Accessibility coverage', () => {
+    const facts = buildCoverageFacts({
+      auditStatus: 'COMPLETED',
+      completedAt: new Date('2026-09-08T12:00:00Z'),
+      now: new Date('2026-09-09T12:00:00Z'),
+      evidenceCoverage: { desktopScreenshot: true, metadata: true },
+      verifierExecutions: [
+        { targetKey: 'module:accessibility', status: 'COMPLETED' },
+      ],
+      flags: [],
+      rubrics: [],
+    })
+    expect(facts.find((f) => f.area === 'uptime')).toMatchObject({
+      state: 'healthy',
+      evidenced: true,
+    })
+    expect(facts.find((f) => f.area === 'accessibility')).toMatchObject({
+      state: 'healthy',
+      evidenced: true,
+    })
+
+    const notApplicable = buildCoverageFacts({
+      auditStatus: 'COMPLETED',
+      completedAt: new Date('2026-09-08T12:00:00Z'),
+      now: new Date('2026-09-09T12:00:00Z'),
+      evidenceCoverage: { metadata: true },
+      verifierExecutions: [
+        { targetKey: 'module:accessibility', status: 'NOT_APPLICABLE' },
+      ],
+      flags: [],
+      rubrics: [],
+    })
+    expect(notApplicable.find((f) => f.area === 'accessibility')).toMatchObject({
+      state: 'unknown',
+      evidenced: false,
+    })
+  })
+
   it('retains last known health while checking', () => {
     const prior = buildCoverageFacts({
       auditStatus: 'COMPLETED',

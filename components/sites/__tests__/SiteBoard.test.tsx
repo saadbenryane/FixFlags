@@ -32,6 +32,7 @@ function card(partial: Partial<BoardCardView> & Pick<BoardCardView, 'id' | 'name
     facts: [],
     coverage: null,
     score: null,
+    evidenced: partial.evidenced ?? false,
     openFlagCount: 0,
     checkedAt: null,
     flagIds: [],
@@ -452,6 +453,77 @@ describe('SiteBoard chrome', () => {
     for (const link of screen.getAllByRole('link', { name: 'Settings' })) {
       expect(link).toHaveAttribute('href', `${SITE_PATH}/settings`)
     }
+  })
+
+  it('keeps optional areas out of the beginner view until FixFlags has evidence', () => {
+    renderBoard(null)
+    expect(screen.queryByRole('button', { name: 'Uptime' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Accessibility' })).not.toBeInTheDocument()
+  })
+
+  it('reveals an optional area when a check has evidence for it', () => {
+    const cards = boardView().cards.map((item) =>
+      item.id === 'uptime'
+        ? card({
+            id: 'uptime',
+            name: 'Uptime',
+            state: 'healthy',
+            answer: 'Looking good',
+            status: 'Checked recently',
+            checkedAt: '2026-10-01T10:00:00.000Z',
+            evidenced: true,
+          })
+        : item
+    )
+    render(
+      <MeProvider initialUser={null}>
+        <SiteBoard siteId="p_example" initial={boardView({ cards })} />
+      </MeProvider>
+    )
+    expect(screen.getByRole('button', { name: 'Uptime' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Accessibility' })).not.toBeInTheDocument()
+  })
+
+  it('keeps stale optional evidence visible instead of turning missing freshness into missing coverage', () => {
+    const cards = boardView().cards.map((item) =>
+      item.id === 'accessibility'
+        ? card({
+            id: 'accessibility',
+            name: 'Accessibility',
+            state: 'unknown',
+            answer: SITE_BOARD_COPY.checkOutOfDate,
+            status: SITE_BOARD_COPY.checkOutOfDate,
+            checkedAt: '2026-09-01T10:00:00.000Z',
+            evidenced: true,
+          })
+        : item
+    )
+    render(
+      <MeProvider initialUser={null}>
+        <SiteBoard siteId="p_example" initial={boardView({ cards })} />
+      </MeProvider>
+    )
+    expect(screen.getByRole('button', { name: 'Accessibility' })).toBeVisible()
+  })
+
+  it('reveals an optional area with an open Flag even for an older view without evidence metadata', () => {
+    const flagged = card({
+      id: 'accessibility',
+      name: 'Accessibility',
+      state: 'problem',
+      answer: 'Form controls are missing labels',
+      status: SITE_BOARD_COPY.flagStatus,
+      openFlagCount: 1,
+      flagIds: ['flag-accessibility'],
+    })
+    delete (flagged as Partial<BoardCardView>).evidenced
+    const cards = boardView().cards.map((item) => item.id === 'accessibility' ? flagged : item)
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard siteId="p_example" initial={boardView({ cards })} />
+      </MeProvider>
+    )
+    expect(screen.getByRole('button', { name: 'Accessibility' })).toBeVisible()
   })
 })
 

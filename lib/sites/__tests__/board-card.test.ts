@@ -139,6 +139,8 @@ describe('board card contract', () => {
     expect(withAnalytics?.sources).toEqual(['Google Analytics'])
     expect(cards.some((card) => card.id === 'uptime')).toBe(true)
     expect(cards.some((card) => card.id === 'accessibility')).toBe(true)
+    expect(cards.find((card) => card.id === 'security')?.evidenced).toBe(true)
+    expect(cards.find((card) => card.id === 'uptime')?.evidenced).toBe(false)
   })
 
   it('keeps unknown areas unknown when there are no Flags', () => {

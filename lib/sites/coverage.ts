@@ -63,7 +63,8 @@ function parseEvidence(value: unknown): EvidenceCoverageShape {
 /** Areas that received concrete public evidence for this analysis. */
 export function evidencedAreasFromCoverage(
   evidenceCoverage: unknown,
-  flags: Array<{ checkId: string | null; rubric: string; impactTag: string | null }>
+  flags: Array<{ checkId: string | null; rubric: string; impactTag: string | null }>,
+  verifierExecutions: Array<{ targetKey: string; status: string }> = []
 ): Set<SiteCardArea> {
   const evidenced = new Set<SiteCardArea>()
   const evidence = parseEvidence(evidenceCoverage)
@@ -71,6 +72,15 @@ export function evidencedAreasFromCoverage(
   if (evidence.desktopPageSpeed || evidence.mobilePageSpeed) evidenced.add('performance')
   if (evidence.metadata) evidenced.add('search')
   if (evidence.flowScan || evidence.journeyWalk) evidenced.add('conversion')
+  if (evidence.desktopScreenshot && evidence.metadata) evidenced.add('uptime')
+  if (
+    verifierExecutions.some(
+      (execution) =>
+        execution.targetKey === 'module:accessibility' && execution.status === 'COMPLETED'
+    )
+  ) {
+    evidenced.add('accessibility')
+  }
 
   for (const flag of flags) {
     evidenced.add(cardAreaForCheck(flag))
@@ -101,6 +111,7 @@ export function buildCoverageFacts(input: {
     status?: string | null
   }>
   rubrics: Array<{ name: string; score: number | null }>
+  verifierExecutions?: Array<{ targetKey: string; status: string }>
   /**
    * When re-checking, pass last completed facts so cards keep prior health
    * while activity shows checking.
@@ -121,7 +132,11 @@ export function buildCoverageFacts(input: {
     openByArea.set(area, (openByArea.get(area) ?? 0) + 1)
   }
 
-  const evidenced = evidencedAreasFromCoverage(input.evidenceCoverage, input.flags)
+  const evidenced = evidencedAreasFromCoverage(
+    input.evidenceCoverage,
+    input.flags,
+    input.verifierExecutions
+  )
   const evidence = parseEvidence(input.evidenceCoverage)
   const journeyRan = Boolean(evidence.flowScan || evidence.journeyWalk)
   const pageSpeedRan = Boolean(evidence.desktopPageSpeed || evidence.mobilePageSpeed)
