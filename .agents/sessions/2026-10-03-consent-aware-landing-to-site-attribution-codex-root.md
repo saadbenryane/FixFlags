@@ -40,6 +40,7 @@ which blocks honest diagnosis and conversion experiments.
 - Growth evaluation, skill validation, UI drift, copy drift, scoped ESLint, and non-incremental TypeScript passed.
 - This machine has a developer database but no `GA4_PROPERTY_ID` or GA service-account key, so the external
   dimension and read-only export could not be exercised here.
-- Broader repository gates are still pending.
+- Broader gates passed on the final tree: `npm run lint` (zero warnings), the full unit suite (475 files, 5755 tests
+  passed, 18 skipped), `npm run test:scripts` (98 passed), and `npm run build`.
 
 No deployment, GA property mutation, production export, or customer validation is claimed.
