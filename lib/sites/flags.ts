@@ -3,6 +3,7 @@ import { isCustomerFlag } from '@/lib/audit/attention'
 import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import { customerExpectedBehavior } from '@/lib/sites/flag-label'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
+import { siteFlagDetailStatus } from '@/lib/sites/flag-resolution'
 import type { SiteRecord } from '@/lib/sites/types'
 
 function toSiteFlagSeed(flag: {
@@ -247,7 +248,7 @@ export async function loadSiteFlagDetail(
   const seed = toSiteFlagSeed({
     ...flagRow,
     improvementId: improvement?.id,
-    status: improvement?.status ?? flagRow.status,
+    status: siteFlagDetailStatus(improvement?.status, flagRow.status),
     resolvedInId: flagRow.resolvedInId ?? null,
   })
 

@@ -40,6 +40,17 @@ export const SITE_BOARD_COPY = {
   pagesCardName: 'Pages',
   sampleLabel: 'Sample',
   flagStatus: 'Needs a fix',
+  flagRecovered: 'Recovered',
+  flagProofMissing: 'Couldn’t verify',
+  flagProofObserved: 'That check no longer found the problem.',
+  flagProofLead: 'An independent check on this Site no longer found the problem on',
+  flagProofMissingBody:
+    'The recovery proof is not a completed check on this Site. Verify looks at the same page again.',
+  flagResolvedList:
+    'Flags recorded as fixed. Open one for the completed check. If that check is missing, the Flag says so and offers Verify.',
+  flagProofLastCheck: 'Last completed check',
+  flagProofRunning:
+    'A new verification is still running. This note is the last completed check, not the current result.',
   needsAttention: 'Needs attention',
   lastChecked: 'Last checked',
   notCheckedYet: 'Not checked yet',

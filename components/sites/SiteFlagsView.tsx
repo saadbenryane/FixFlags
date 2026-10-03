@@ -4,6 +4,7 @@ import { SiteFlagRow } from '@/components/sites/SiteFlagRow'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { Button } from '@/components/ui/button'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 export const SITE_FLAG_TABS = ['open', 'resolved'] as const
 export type SiteFlagTab = (typeof SITE_FLAG_TABS)[number]
@@ -78,7 +79,7 @@ export function SiteFlagsView({ siteId, view, tab }: { siteId: string; view: Sit
         <section aria-labelledby="resolved-flags-heading">
           <h2 id="resolved-flags-heading" className="sr-only">Resolved</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Flags verified as fixed by an independent re-check. Open one to see the proof audit and time.
+            {SITE_BOARD_COPY.flagResolvedList}
           </p>
           <div className="mt-4 space-y-3">
             {view.resolvedFlags.length === 0 ? (

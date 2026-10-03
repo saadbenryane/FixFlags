@@ -7,6 +7,7 @@ import { SiteBoard } from '../SiteBoard'
 import { MeProvider, type MeUser } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -152,7 +153,8 @@ describe('Open attention and Resolved are different lists', () => {
     renderFlags('resolved')
     expect(screen.getByText('Alt text was missing')).toBeVisible()
     expect(screen.queryByText('Meta description is missing')).not.toBeInTheDocument()
-    expect(screen.getByText(/proof audit and time/i)).toBeVisible()
+    expect(screen.getByText(SITE_BOARD_COPY.flagResolvedList)).toBeVisible()
+    expect(screen.queryByText(/verified as fixed/i)).not.toBeInTheDocument()
   })
 
   it('never implies a Site is healthy just because nothing is open', () => {
@@ -176,8 +178,12 @@ describe('resolved proof stays tenant-scoped and evidence-bound', () => {
     const page = code('app/sites/[siteId]/flags/[flagId]/page.tsx')
     expect(page).toMatch(/projectId:\s*site\.projectId/)
     expect(page).toMatch(/status:\s*'COMPLETED'/)
-    expect(page).toContain('That check no longer found the problem.')
+    expect(page).toContain('flagResolutionView')
+    expect(page).toContain('FlagResolutionPanel')
     expect(page).not.toContain('The page no longer shows the problem.')
+    expect(page).not.toContain('verified as fixed')
+    const copy = code('lib/marketing/copy/terminology.ts')
+    expect(copy).toContain('That check no longer found the problem.')
   })
 })
 

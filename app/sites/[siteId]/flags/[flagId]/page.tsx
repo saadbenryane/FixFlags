@@ -14,6 +14,8 @@ import { boardFlagPrompt } from '@/lib/sites/board-card'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { connectionLines, loadSiteConnectionViews } from '@/lib/sites/connections/read'
 import { flagMatchesOutcome } from '@/lib/sites/outcome-state'
+import { flagResolutionView } from '@/lib/sites/flag-resolution'
+import { FlagResolutionPanel } from '@/components/sites/FlagResolutionPanel'
 
 function attemptLabel(outcome: string | null): string {
   if (!outcome) return 'Verifying…'
@@ -73,9 +75,32 @@ export default async function SiteFlagPage({
           projectId: site.projectId,
           status: 'COMPLETED',
         },
-        select: { id: true, completedAt: true, createdAt: true },
+        select: { id: true, status: true, completedAt: true, createdAt: true },
       })
     : null
+  const promptText = boardFlagPrompt({
+    problem: flag.problem,
+    whyItMatters: flag.whyItMatters,
+    evidence: flag.evidenceMissing ? null : flag.evidence,
+    fix: flag.fix,
+    pageUrl: flag.pageUrl,
+    journeyName: relatedOutcome?.name,
+    expectedBehavior: flag.expectedBehavior,
+  })
+  const resolution = flagResolutionView({
+    status: flag.status,
+    resolvedInId: flag.resolvedInId,
+    sourceAuditId: flag.sourceAuditId,
+    verifying: flag.verifying,
+    proof: proofAudit
+      ? {
+          id: proofAudit.id,
+          status: proofAudit.status,
+          completedAt: proofAudit.completedAt?.toISOString() ?? null,
+          createdAt: proofAudit.createdAt.toISOString(),
+        }
+      : null,
+  })
 
   return (
     <SiteShell
@@ -94,7 +119,13 @@ export default async function SiteFlagPage({
       <p className="text-xs text-muted-foreground">
         {site.canonicalHost} · {customerFlagContext(flag.area, flag.severity)}
       </p>
-      <p className="mt-3 text-sm font-medium text-brand">{SITE_BOARD_COPY.flagStatus}</p>
+      <FlagResolutionPanel
+        resolution={resolution}
+        siteId={resolvedId}
+        flagId={flag.id}
+        fixText={flag.fix}
+        promptText={promptText}
+      >
       {relatedOutcome ? (
         <p className="mt-3 text-sm">
           <Link href={`/sites/${resolvedId}/outcomes/${relatedOutcome.id}`} className="underline">
@@ -132,24 +163,6 @@ export default async function SiteFlagPage({
         </dl>
       </section>
 
-      {flag.status === 'FIXED' && flag.resolvedInId && proofAudit ? (
-        <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5" aria-labelledby="resolved-heading">
-          <h2 id="resolved-heading" className="font-medium text-success">Resolved</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            This Flag was verified as fixed by an independent check on{' '}
-            <time dateTime={new Date(proofAudit.completedAt ?? proofAudit.createdAt).toISOString()}>
-              {new Date(proofAudit.completedAt ?? proofAudit.createdAt).toLocaleString()}
-            </time>
-            . That check no longer found the problem.
-          </p>
-          {proofAudit.id !== flag.sourceAuditId ? (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Proof audit: {proofAudit.id}
-            </p>
-          ) : null}
-        </section>
-      ) : null}
-
       {connectionContext.length > 0 ? (
         <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5">
           <h2 className="font-medium">Connected context</h2>
@@ -163,8 +176,9 @@ export default async function SiteFlagPage({
           </ul>
         </section>
       ) : null}
+      </FlagResolutionPanel>
 
-      {flag.status !== 'FIXED' ? (
+      {resolution.kind === 'open' || resolution.kind === 'verifying' ? (
         <section className="mt-4 rounded-2xl border border-border/80 bg-background p-5">
           <p className="text-xs text-muted-foreground">
             Copying instructions does not close the Flag. Verify checks the same page and action again.
@@ -176,15 +190,7 @@ export default async function SiteFlagPage({
             siteId={resolvedId}
             flagId={flag.id}
             fixText={flag.fix}
-            promptText={boardFlagPrompt({
-              problem: flag.problem,
-              whyItMatters: flag.whyItMatters,
-              evidence: flag.evidenceMissing ? null : flag.evidence,
-              fix: flag.fix,
-              pageUrl: flag.pageUrl,
-              journeyName: relatedOutcome?.name,
-              expectedBehavior: flag.expectedBehavior,
-            })}
+            promptText={promptText}
             verifying={flag.verifying}
           />
         </section>
