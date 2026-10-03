@@ -24,6 +24,6 @@ The last step of Flag, Fix, Verify is the customer reading the check that recove
 
 `lib/sites/__tests__/flag-resolution.test.ts`, `components/sites/__tests__/FlagResolution.test.tsx`, and the Flag page source guard in `components/sites/__tests__/SiteFlagsView.test.tsx`. Replacing the attempt-id lookup with `resolvedInId` alone failed the Recovered decision, the in-flight history note, and the panel. The product skill states the same rule.
 
-## Still open
+## Resolved list
 
-The open Flag list omits `VERIFIED` improvements, and the Resolved list only loads flag rows with `FIXED` and `resolvedInId`. A verified improvement that never received `resolvedInId` can disappear from both lists even though its detail page can now show the check. That list gap is not fixed here.
+The open Flag list omits `VERIFIED`. `loadSiteResolvedFlags` now also loads a `VERIFIED` improvement when a comparable `IMPROVED` attempt has a `verificationAuditId`, and `selectResolvedFlags` shows that row once. The detail page still requires the audit to be a completed check on the same Site before it says Recovered. This list change is local until its own deploy.

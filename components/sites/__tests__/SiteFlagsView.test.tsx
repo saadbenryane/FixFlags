@@ -187,6 +187,11 @@ describe('resolved proof stays tenant-scoped and evidence-bound', () => {
     expect(page).not.toContain('verified as fixed')
     const copy = code('lib/marketing/copy/terminology.ts')
     expect(copy).toContain('That check no longer found the problem.')
+    const flags = code('lib/sites/flags.ts')
+    expect(flags).toContain("status: 'VERIFIED'")
+    expect(flags).toContain('comparable: true')
+    expect(flags).toContain('verificationAuditId: { not: null }')
+    expect(flags).toContain('selectResolvedFlags')
   })
 })
 

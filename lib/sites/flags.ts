@@ -3,7 +3,7 @@ import { isCustomerFlag } from '@/lib/audit/attention'
 import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import { customerExpectedBehavior } from '@/lib/sites/flag-label'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
-import { siteFlagDetailStatus } from '@/lib/sites/flag-resolution'
+import { selectResolvedFlags, siteFlagDetailStatus } from '@/lib/sites/flag-resolution'
 import type { SiteRecord } from '@/lib/sites/types'
 
 function toSiteFlagSeed(flag: {
@@ -198,7 +198,74 @@ export async function loadSiteResolvedFlags(site: SiteRecord): Promise<SiteFlagS
       confidence: true,
     },
   })
-  return rows.map((flag) => toSiteFlagSeed({ ...flag, improvementId: null }))
+  const verified = await prisma.improvement.findMany({
+    where: {
+      projectId: site.projectId,
+      status: 'VERIFIED',
+      attempts: {
+        some: {
+          outcome: 'IMPROVED',
+          comparable: true,
+          verificationAuditId: { not: null },
+        },
+      },
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: 50,
+    include: {
+      attempts: {
+        where: {
+          outcome: 'IMPROVED',
+          comparable: true,
+          verificationAuditId: { not: null },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+        select: { createdAt: true, verificationAuditId: true },
+      },
+      occurrences: {
+        orderBy: { createdAt: 'desc' },
+        include: {
+          flag: {
+            select: {
+              id: true,
+              checkId: true,
+              rubric: true,
+              severity: true,
+              impactTag: true,
+              problem: true,
+              evidence: true,
+              whyItMatters: true,
+              fix: true,
+              pageUrl: true,
+              confidence: true,
+            },
+          },
+        },
+      },
+    },
+  })
+
+  const fixedEntries = rows.map((flag) => ({
+    at: flag.createdAt.toISOString(),
+    seed: toSiteFlagSeed({ ...flag, improvementId: null }),
+  }))
+  const verifiedEntries = verified.flatMap((improvement) => {
+    const attempt = improvement.attempts[0]
+    const display = improvement.occurrences.find((occurrence) => occurrence.flag)?.flag
+    if (!attempt?.verificationAuditId || !display) return []
+    return [{
+      at: attempt.createdAt.toISOString(),
+      occurrenceFlagIds: improvement.occurrences.map((occurrence) => occurrence.flagId),
+      seed: toSiteFlagSeed({
+        ...display,
+        status: 'VERIFIED',
+        resolvedInId: null,
+        improvementId: improvement.id,
+      }),
+    }]
+  })
+  return selectResolvedFlags([...fixedEntries, ...verifiedEntries])
 }
 
 export type SiteFlagAttemptView = {

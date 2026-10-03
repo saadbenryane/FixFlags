@@ -120,3 +120,37 @@ export function flagResolutionView(input: FlagResolutionInput): FlagResolution {
   }
   return { kind: 'open', statusLabel: SITE_BOARD_COPY.flagStatus }
 }
+
+export type ResolvedFlagEntry<T extends { id: string; sourceFlagId?: string | null }> = {
+  at: string
+  seed: T
+  /** Other Flag ids that already represent this recovery, so the list shows it once. */
+  occurrenceFlagIds?: string[]
+}
+
+/**
+ * Newest recovery first, one row per Flag. A verified improvement that points
+ * at a Flag already in the list is the same recovery, not a second row.
+ */
+export function selectResolvedFlags<T extends { id: string; sourceFlagId?: string | null }>(
+  entries: Array<ResolvedFlagEntry<T>>,
+  limit = 50,
+): T[] {
+  const sorted = [...entries].sort((left, right) => {
+    const byTime = right.at.localeCompare(left.at)
+    if (byTime !== 0) return byTime
+    return left.seed.id.localeCompare(right.seed.id)
+  })
+  const seen = new Set<string>()
+  const selected: T[] = []
+  for (const entry of sorted) {
+    const keys = [entry.seed.id, entry.seed.sourceFlagId, ...(entry.occurrenceFlagIds ?? [])].filter(
+      (key): key is string => typeof key === 'string' && key.length > 0,
+    )
+    if (keys.some((key) => seen.has(key))) continue
+    for (const key of keys) seen.add(key)
+    selected.push(entry.seed)
+    if (selected.length >= limit) break
+  }
+  return selected
+}

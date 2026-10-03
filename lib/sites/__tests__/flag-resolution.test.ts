@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
-import { flagRecoveryProofId, flagResolutionView, siteFlagDetailStatus, type FlagResolutionInput } from '@/lib/sites/flag-resolution'
+import { flagRecoveryProofId, flagResolutionView, selectResolvedFlags, siteFlagDetailStatus, type FlagResolutionInput } from '@/lib/sites/flag-resolution'
 
 const PROOF_AT = '2026-09-20T17:58:10.414Z'
 
@@ -299,5 +299,38 @@ describe('flagResolutionView', () => {
     }))
     expect(view.kind).toBe('open')
     expect(view.statusLabel).toBe(SITE_BOARD_COPY.flagStatus)
+  })
+})
+
+describe('selectResolvedFlags', () => {
+  const fixed = { id: 'flag-fixed', sourceFlagId: 'flag-fixed', problem: 'Alt text was missing' }
+  const verified = { id: 'imp-verified', sourceFlagId: 'flag-open', problem: 'Buy button was below the fold' }
+
+  it('shows a verified improvement the fixed-flag list does not already contain', () => {
+    const selected = selectResolvedFlags([
+      { at: '2026-09-01T00:00:00.000Z', seed: fixed },
+      { at: '2026-09-20T17:58:10.414Z', seed: verified, occurrenceFlagIds: ['flag-open'] },
+    ])
+    expect(selected.map((flag) => flag.id)).toEqual(['imp-verified', 'flag-fixed'])
+  })
+
+  it('does not list the same Flag twice when the improvement points at a fixed row', () => {
+    const selected = selectResolvedFlags([
+      { at: '2026-09-01T00:00:00.000Z', seed: fixed },
+      {
+        at: '2026-09-20T17:58:10.414Z',
+        seed: { ...verified, sourceFlagId: 'flag-fixed' },
+        occurrenceFlagIds: ['flag-fixed'],
+      },
+    ])
+    expect(selected.map((flag) => flag.id)).toEqual(['imp-verified'])
+  })
+
+  it('keeps the fifty newest recoveries', () => {
+    const entries = Array.from({ length: 60 }, (_, index) => ({
+      at: `2026-09-${String((index % 28) + 1).padStart(2, '0')}T00:00:00.000Z`,
+      seed: { id: `flag-${index}`, sourceFlagId: `flag-${index}`, problem: `Flag ${index}` },
+    }))
+    expect(selectResolvedFlags(entries)).toHaveLength(50)
   })
 })

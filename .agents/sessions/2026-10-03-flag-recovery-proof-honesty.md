@@ -64,6 +64,14 @@ Focused Vitest after that wiring: 3 files, 35 tests passed. Scoped ESLint passed
 
 The open list still omits `VERIFIED` improvements, and the Resolved list still requires a flag row with `FIXED` and `resolvedInId`. That Flag can be absent from both lists. The scan-allowance files stayed unstaged.
 
+## Attempt proof deploy
+
+`b7555c2df6115e5237f45baed5367fa391adaf7d` is on `origin/main`. Railway `FixFlags` deployment `8d44d8c8-67f5-4ef5-b1ff-f876a3519d81` and `FixFlags Worker` deployment `604c4383-543c-4e60-b27a-e2693c048363` both reached SUCCESS for that commit. `https://fixflags.com/api/health` reports that commit with migrations ok. The Flag page was still not walked in a signed-in browser.
+
+## Resolved list
+
+`loadSiteResolvedFlags` also returns a `VERIFIED` improvement when its newest comparable `IMPROVED` attempt has a `verificationAuditId`. `selectResolvedFlags` keeps one row when that improvement points at a Flag already marked fixed. The detail page still says Recovered only for a completed same-Site check. Focused Vitest for the selection is in `flag-resolution.test.ts`. Typecheck passed. This list change is not in `b7555c2d`. Its own production health check comes after the commit that contains it.
+
 ## Next action
 
-After this follow-up is on `origin/main`, wait until `/api/health` matches that commit before calling the attempt proof live. Then show a verified improvement that has a completed attempt audit on the Resolved list, without calling a missing audit recovered. Leave the scan-allowance files to their owner. A signed-in phone and desktop walk is still outstanding.
+After the Resolved-list commit is on `origin/main`, wait until `/api/health` matches it before calling that list live. Leave the scan-allowance files to their owner. A signed-in phone and desktop walk is still outstanding.
