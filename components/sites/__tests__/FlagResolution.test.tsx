@@ -77,6 +77,64 @@ describe('Flag resolution panel', () => {
     expect(screen.queryByText(SITE_BOARD_COPY.verifying)).not.toBeInTheDocument()
   })
 
+  it('shows Recovered when a verified Flag cites its completed improved attempt', () => {
+    const resolution = flagResolutionView({
+      status: siteFlagDetailStatus('VERIFIED', 'OPEN'),
+      resolvedInId: null,
+      attemptProofId: 'audit-proof',
+      sourceAuditId: 'audit-source',
+      verifying: false,
+      proof: {
+        id: 'audit-proof',
+        status: 'COMPLETED',
+        completedAt: PROOF_AT,
+        createdAt: PROOF_AT,
+      },
+    })
+    const view = render(
+      <FlagResolutionPanel
+        resolution={resolution}
+        siteId="p_example"
+        flagId="flag-1"
+        fixText="Move the buy button above the fold."
+        promptText="Check the purchase path."
+      >
+        <p>Evidence stayed on the page.</p>
+      </FlagResolutionPanel>,
+    )
+    expect(screen.getByText(SITE_BOARD_COPY.flagRecovered, { selector: 'p' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.flagRecovered })).toBeVisible()
+    expect(screen.getByText(SITE_BOARD_COPY.flagProofObserved, { exact: false })).toBeVisible()
+    expect(screen.queryByText(SITE_BOARD_COPY.flagStatus)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.verifyFix })).not.toBeInTheDocument()
+    view.unmount()
+  })
+
+  it('offers Verify when a verified Flag cannot show its improved attempt', () => {
+    const resolution = flagResolutionView({
+      status: 'VERIFIED',
+      resolvedInId: null,
+      attemptProofId: 'audit-missing',
+      sourceAuditId: 'audit-source',
+      verifying: false,
+      proof: null,
+    })
+    render(
+      <FlagResolutionPanel
+        resolution={resolution}
+        siteId="p_example"
+        flagId="flag-1"
+        fixText="Move the buy button above the fold."
+        promptText="Check the purchase path."
+      />,
+    )
+    expect(screen.getAllByText(SITE_BOARD_COPY.flagProofMissing).length).toBeGreaterThan(0)
+    expect(screen.getByText(SITE_BOARD_COPY.flagProofMissingBody)).toBeVisible()
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix })).toBeVisible()
+    expect(screen.queryByText(SITE_BOARD_COPY.flagRecovered)).not.toBeInTheDocument()
+    expect(screen.queryByText(SITE_BOARD_COPY.flagStatus)).not.toBeInTheDocument()
+  })
+
   it('shows an in-flight attempt as still running, with the last check labeled as history', () => {
     panel(siteFlagDetailStatus('VERIFIED', 'FIXED'), {
       id: 'audit-proof',

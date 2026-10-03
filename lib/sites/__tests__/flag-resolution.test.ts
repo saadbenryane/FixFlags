@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
-import { flagResolutionView, siteFlagDetailStatus, type FlagResolutionInput } from '@/lib/sites/flag-resolution'
+import { flagRecoveryProofId, flagResolutionView, siteFlagDetailStatus, type FlagResolutionInput } from '@/lib/sites/flag-resolution'
 
 const PROOF_AT = '2026-09-20T17:58:10.414Z'
 
@@ -24,6 +24,49 @@ function completedProof(overrides: Partial<NonNullable<FlagResolutionInput['proo
     ...overrides,
   }
 }
+
+function attempt(overrides: Partial<{ outcome: string | null; comparable: boolean | null; verificationAuditId: string | null }> = {}) {
+  return {
+    outcome: 'IMPROVED' as string | null,
+    comparable: true as boolean | null,
+    verificationAuditId: 'audit-attempt' as string | null,
+    ...overrides,
+  }
+}
+
+describe('flagRecoveryProofId', () => {
+  it('keeps the recorded proof id ahead of any attempt', () => {
+    expect(flagRecoveryProofId({
+      status: 'VERIFIED',
+      resolvedInId: 'audit-recorded',
+      attempts: [attempt({ verificationAuditId: 'audit-attempt' })],
+    })).toBe('audit-recorded')
+  })
+
+  it('cites the newest comparable improved attempt when a verified Flag recorded none', () => {
+    expect(flagRecoveryProofId({
+      status: siteFlagDetailStatus('VERIFIED', 'OPEN'),
+      resolvedInId: null,
+      attempts: [
+        attempt({ outcome: 'UNCHANGED', verificationAuditId: 'audit-later' }),
+        attempt({ comparable: false, verificationAuditId: 'audit-incomparable' }),
+        attempt({ comparable: null, verificationAuditId: 'audit-unknown' }),
+        attempt({ verificationAuditId: '' }),
+        attempt({ verificationAuditId: 'audit-improved' }),
+      ],
+    })).toBe('audit-improved')
+  })
+
+  it('does not cite an attempt unless the loaded status is verified', () => {
+    for (const status of ['PROPOSED', 'OPEN', 'FIXED']) {
+      expect(flagRecoveryProofId({
+        status,
+        resolvedInId: null,
+        attempts: [attempt()],
+      })).toBeNull()
+    }
+  })
+})
 
 describe('flagResolutionView', () => {
   it('keeps an open Flag as needing a fix', () => {
@@ -182,10 +225,66 @@ describe('flagResolutionView', () => {
     expect(openRun.statusLabel).not.toBe(SITE_BOARD_COPY.flagStatus)
   })
 
+  it('says Recovered when a verified Flag cites its improved attempt and that check completed', () => {
+    const view = flagResolutionView(input({
+      status: siteFlagDetailStatus('VERIFIED', 'OPEN'),
+      resolvedInId: null,
+      attemptProofId: 'audit-proof',
+      proof: completedProof(),
+    }))
+    expect(view.kind).toBe('proven')
+    if (view.kind !== 'proven') return
+    expect(view.statusLabel).toBe(SITE_BOARD_COPY.flagRecovered)
+    expect(view.statusLabel).not.toBe(SITE_BOARD_COPY.flagStatus)
+    expect(view.proof.observedAt).toBe(PROOF_AT)
+    expect(view.proof.auditId).toBe('audit-proof')
+  })
+
+  it('says Couldn’t verify when a verified Flag cannot show that attempt', () => {
+    const view = flagResolutionView(input({
+      status: 'VERIFIED',
+      resolvedInId: null,
+      attemptProofId: 'audit-proof',
+      proof: null,
+    }))
+    expect(view.kind).toBe('unproven')
+    if (view.kind !== 'unproven') return
+    expect(view.statusLabel).toBe(SITE_BOARD_COPY.flagProofMissing)
+    expect(view.nextStep).toBe('verify')
+    expect(view.statusLabel).not.toBe(SITE_BOARD_COPY.flagStatus)
+  })
+
+  it('does not fall back to an attempt when the recorded proof id fails to match', () => {
+    const view = flagResolutionView(input({
+      status: 'VERIFIED',
+      resolvedInId: 'audit-recorded',
+      attemptProofId: 'audit-proof',
+      proof: completedProof(),
+    }))
+    expect(view.kind).toBe('unproven')
+    if (view.kind !== 'unproven') return
+    expect(view.statusLabel).toBe(SITE_BOARD_COPY.flagProofMissing)
+  })
+
+  it('keeps the improved-attempt check visible while that verified Flag is checked again', () => {
+    const view = flagResolutionView(input({
+      status: 'VERIFIED',
+      resolvedInId: null,
+      attemptProofId: 'audit-proof',
+      verifying: true,
+      proof: completedProof(),
+    }))
+    expect(view.kind).toBe('verifying')
+    if (view.kind !== 'verifying') return
+    expect(view.proof?.observedAt).toBe(PROOF_AT)
+    expect(view.statusLabel).not.toBe(SITE_BOARD_COPY.flagStatus)
+  })
+
   it('leaves a proposed improvement with no recorded proof as needing a fix', () => {
     const view = flagResolutionView(input({
       status: siteFlagDetailStatus('PROPOSED', 'OPEN'),
       resolvedInId: null,
+      attemptProofId: 'audit-proof',
       proof: completedProof(),
     }))
     expect(view.kind).toBe('open')

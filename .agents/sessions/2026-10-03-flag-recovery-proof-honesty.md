@@ -2,7 +2,7 @@
 
 **Owner:** `grok-goal-01a1030f`
 
-**Evidence level:** locally verified. Not production-verified, not deployed, and not customer-validated.
+**Evidence level:** `20ac5b2c` is on production health. The Flag page was not walked in a signed-in browser. The verified-attempt follow-up below is locally verified and is not production-verified until its own health check matches.
 
 **Barrier:** trust. A newcomer on a fixed Flag could not tell whether it was recovered, still needed a fix, or had no proof.
 
@@ -50,6 +50,20 @@ The Resolved list no longer introduces every row as verified as fixed. It tells 
 
 The regression calls `siteFlagDetailStatus('PROPOSED' | 'VERIFIED', 'FIXED')` and then `flagResolutionView`. Forcing the proof lookup back to `FIXED` failed those tests. Focused result after the fix: 3 files, 26 tests passed.
 
+## Deploy
+
+The owner asked to deploy this recovery change. `20ac5b2cc9ab17a5dd5c2321edfd3ebe45f5377b` was pushed to `origin/main`. Railway `FixFlags` deployment `c15008ae-ca47-413d-9806-39ea9f9afe86` and `FixFlags Worker` deployment `da70f1f0-bef7-4db7-a4b0-ce075a6af837` both reached SUCCESS for that commit. `https://fixflags.com/api/health` reports that commit, `migrations: ok`. No second manual Railway deploy was started. Paid checkout stayed closed. MCP was not made newly discoverable.
+
+Port 3000 on this machine is Commerce OS, not FixFlags. There is still no signed-in walk of one recovered Flag and one fixed Flag whose proof audit is missing.
+
+## Verified attempt without resolvedInId
+
+A later check can set the improvement to `VERIFIED` and store `verificationAuditId` without setting `resolvedInId`. The detail page now cites that audit when it is the newest comparable `IMPROVED` attempt, still only after the same-Site `COMPLETED` query. A recorded `resolvedInId` wins, and a failed match does not fall back to the attempt. `PROPOSED` with no `resolvedInId` stays Needs a fix. A `VERIFIED` Flag whose attempt audit is missing says Couldn’t verify and offers Verify.
+
+Focused Vitest after that wiring: 3 files, 35 tests passed. Scoped ESLint passed. Ignoring the attempt id and keeping only `resolvedInId` failed 3 tests. Full `npm run agent -- verify` was not run.
+
+The open list still omits `VERIFIED` improvements, and the Resolved list still requires a flag row with `FIXED` and `resolvedInId`. That Flag can be absent from both lists. The scan-allowance files stayed unstaged.
+
 ## Next action
 
-Do not deploy and do not push. When a local Next server and a signed-in Site are available, open one recovered Flag and one fixed Flag whose proof audit is missing, at phone width and desktop width. Until then, leave the scan-allowance files to their owner.
+After this follow-up is on `origin/main`, wait until `/api/health` matches that commit before calling the attempt proof live. Then show a verified improvement that has a completed attempt audit on the Resolved list, without calling a missing audit recovered. Leave the scan-allowance files to their owner. A signed-in phone and desktop walk is still outstanding.

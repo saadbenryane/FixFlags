@@ -14,7 +14,7 @@ import { boardFlagPrompt } from '@/lib/sites/board-card'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { connectionLines, loadSiteConnectionViews } from '@/lib/sites/connections/read'
 import { flagMatchesOutcome } from '@/lib/sites/outcome-state'
-import { flagResolutionView } from '@/lib/sites/flag-resolution'
+import { flagRecoveryProofId, flagResolutionView } from '@/lib/sites/flag-resolution'
 import { FlagResolutionPanel } from '@/components/sites/FlagResolutionPanel'
 
 function attemptLabel(outcome: string | null): string {
@@ -68,10 +68,15 @@ export default async function SiteFlagPage({
   const home = await loadSiteHome(resolvedId)
   if (!home) notFound()
 
-  const proofAudit = flag.resolvedInId && site.projectId
+  const proofId = flagRecoveryProofId({
+    status: flag.status,
+    resolvedInId: flag.resolvedInId,
+    attempts: flag.attempts,
+  })
+  const proofAudit = proofId && site.projectId
     ? await prisma.audit.findFirst({
         where: {
-          id: flag.resolvedInId,
+          id: proofId,
           projectId: site.projectId,
           status: 'COMPLETED',
         },
@@ -90,6 +95,7 @@ export default async function SiteFlagPage({
   const resolution = flagResolutionView({
     status: flag.status,
     resolvedInId: flag.resolvedInId,
+    attemptProofId: flag.resolvedInId ? null : proofId,
     sourceAuditId: flag.sourceAuditId,
     verifying: flag.verifying,
     proof: proofAudit

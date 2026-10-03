@@ -209,6 +209,7 @@ export type SiteFlagAttemptView = {
   comparable: boolean | null
   reason: string | null
   changeSummary: string | null
+  verificationAuditId: string | null
 }
 
 export type SiteFlagDetail = SiteFlagSeed & {
@@ -266,6 +267,7 @@ export async function loadSiteFlagDetail(
           comparable: true,
           verificationReason: true,
           changeSummary: true,
+          verificationAuditId: true,
         },
       })
     : []
@@ -290,6 +292,7 @@ export async function loadSiteFlagDetail(
       comparable: attempt.comparable,
       reason: attempt.verificationReason,
       changeSummary: attempt.changeSummary,
+      verificationAuditId: attempt.verificationAuditId,
     })),
     verifying: attempts.some((attempt) => attempt.outcome == null),
   }
