@@ -10,6 +10,9 @@ const envSchema = z.object({
   REDIS_URL: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
+  // TypeSafe System One (Jev). Research-only for now: nothing on the audit
+  // path reads it. See scripts/jev-validate.ts.
+  TYPESAFE_API_KEY: z.string().optional(),
   OPEN_CODE_API_KEY: z.string().optional(),
   BETTER_AUTH_SECRET: z.string().optional(),
   BETTER_AUTH_URL: z.string().url().optional(),

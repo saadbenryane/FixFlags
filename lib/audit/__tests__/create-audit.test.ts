@@ -32,6 +32,9 @@ const prismaMock = vi.hoisted(() => ({
   user: {
     findUnique: vi.fn(),
   },
+  siteLifecycleEvent: {
+    upsert: vi.fn(),
+  },
 }))
 
 const queueAdd = vi.hoisted(() => vi.fn())
@@ -116,6 +119,7 @@ describe('createAndEnqueueAudit', () => {
     prismaMock.audit.update.mockResolvedValue({})
     prismaMock.provisionalSite.findUnique.mockResolvedValue(null)
     prismaMock.user.findUnique.mockResolvedValue(signedInUser())
+    prismaMock.siteLifecycleEvent.upsert.mockResolvedValue({ id: 'event-1' })
     queueAdd.mockResolvedValue({ id: 'job-1' })
     checkAnonymousAuditAllowed.mockResolvedValue({ allowed: true })
     resolveIncludeAiForNewAudit.mockResolvedValue(false)
@@ -680,6 +684,40 @@ describe('createAndEnqueueAudit', () => {
     await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1' })
     expect(prismaMock.audit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ reviewDepth: 1 }),
+      select: { id: true, parentId: true },
+    })
+  })
+
+  it('attaches the consented journey key only to lifecycle telemetry', async () => {
+    const journeyId = `ffj_${'d'.repeat(32)}`
+    await createAndEnqueueAudit({
+      url: AUDIT_URL,
+      attribution: {
+        normalizedDomain: 'example.com',
+        source: 'HOMEPAGE',
+        referrer: null,
+        utmSource: null,
+        utmMedium: null,
+        utmCampaign: null,
+        gclid: null,
+        fbclid: null,
+        journeyId,
+      },
+    })
+
+    expect(prismaMock.siteLifecycleEvent.upsert).toHaveBeenCalledWith({
+      where: { idempotencyKey: 'analyze_started:audit-1' },
+      create: expect.objectContaining({
+        idempotencyKey: 'analyze_started:audit-1',
+        properties: expect.objectContaining({
+          anonymous: true,
+          journeyId,
+        }),
+      }),
+      update: {},
+    })
+    expect(prismaMock.audit.create).toHaveBeenCalledWith({
+      data: expect.not.objectContaining({ journeyId }),
       select: { id: true, parentId: true },
     })
   })

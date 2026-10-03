@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const findLifecycleEvents = vi.hoisted(() => vi.fn())
 const findAudits = vi.hoisted(() => vi.fn())
+const findGrowthArtifact = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({
   prisma: {
     siteLifecycleEvent: { findMany: findLifecycleEvents },
     audit: { findMany: findAudits },
+    growthArtifact: { findUnique: findGrowthArtifact },
   },
 }))
 
@@ -19,6 +21,7 @@ describe('Site first-value funnel', () => {
   beforeEach(() => {
     findLifecycleEvents.mockReset()
     findAudits.mockReset()
+    findGrowthArtifact.mockReset().mockResolvedValue(null)
   })
 
   it('keeps claimed anonymous starts in the immutable cohort', () => {
@@ -84,6 +87,76 @@ describe('Site first-value funnel', () => {
         { source: 'search', started: 2, firstUsefulResult: 2, claimed: 1 },
         { source: 'tool page', started: 1, firstUsefulResult: 0, claimed: 0 },
       ],
+      landing: {
+        status: 'missing',
+        fetchedAt: null,
+        startDate: null,
+        endDate: null,
+        landingSessions: null,
+        startedSessions: null,
+        firstUsefulResultSessions: null,
+        claimedSessions: null,
+        startRate: null,
+        resultRate: null,
+        claimRate: null,
+        instrumentedStarts: 0,
+        unattributedEventCount: 0,
+      },
+    })
+  })
+
+  it('joins unique consenting landing sessions to server result and claim truth', () => {
+    const journeyOne = `ffj_${'1'.repeat(32)}`
+    const journeyTwo = `ffj_${'2'.repeat(32)}`
+    const journeyNoStart = `ffj_${'3'.repeat(32)}`
+    const funnel = calculateSiteFirstValueFunnel({
+      starts: [
+        {
+          idempotencyKey: 'analyze_started:a1',
+          properties: { anonymous: true, journeyId: journeyOne },
+        },
+        {
+          idempotencyKey: 'analyze_started:a2',
+          properties: { anonymous: true, journeyId: journeyTwo },
+        },
+        {
+          idempotencyKey: 'analyze_started:a3',
+          properties: { anonymous: true, journeyId: journeyTwo },
+        },
+      ],
+      audits: [
+        { id: 'a1', userId: 'user-1', status: 'COMPLETED', utmSource: null, source: 'HOMEPAGE' },
+        { id: 'a2', userId: null, status: 'COMPLETED', utmSource: null, source: 'HOMEPAGE' },
+        { id: 'a3', userId: null, status: 'FAILED', utmSource: null, source: 'HOMEPAGE' },
+      ],
+      results: [
+        { idempotencyKey: 'first_useful_result:a1' },
+        { idempotencyKey: 'first_useful_result:a2' },
+      ],
+      landingArtifact: {
+        status: 'available',
+        fetchedAt: '2026-10-03T12:00:00.000Z',
+        startDate: '2026-09-05',
+        endDate: '2026-10-03',
+        journeyIds: [journeyOne, journeyTwo, journeyNoStart],
+        unattributedEventCount: 0,
+      },
+    })
+
+    expect(funnel.landing).toEqual({
+      status: 'available',
+      fetchedAt: '2026-10-03T12:00:00.000Z',
+      startDate: '2026-09-05',
+      endDate: '2026-10-03',
+      landingSessions: 3,
+      startedSessions: 2,
+      firstUsefulResultSessions: 2,
+      claimedSessions: 1,
+      startRate: 67,
+      resultRate: 67,
+      claimRate: 33,
+      instrumentedStarts: 3,
+      unattributedEventCount: 0,
     })
   })
 
@@ -136,6 +209,16 @@ describe('Site first-value funnel', () => {
     findLifecycleEvents
       .mockResolvedValueOnce(starts)
       .mockResolvedValueOnce([{ idempotencyKey: 'first_useful_result:a1' }])
+    findGrowthArtifact.mockResolvedValueOnce({
+      payload: {
+        status: 'available',
+        fetchedAt: '2026-10-03T12:00:00.000Z',
+        startDate: '2026-09-05',
+        endDate: '2026-10-03',
+        journeys: [],
+        unattributedEventCount: 0,
+      },
+    })
     findAudits.mockResolvedValueOnce([
       {
         id: 'a1',
@@ -151,6 +234,10 @@ describe('Site first-value funnel', () => {
     expect(findLifecycleEvents).toHaveBeenNthCalledWith(1, {
       where: { name: 'analyze_started', createdAt: { gte: since } },
       select: { idempotencyKey: true, properties: true },
+    })
+    expect(findGrowthArtifact).toHaveBeenCalledWith({
+      where: { path: 'ga/rolling-28d/landing-journeys' },
+      select: { payload: true },
     })
     expect(findLifecycleEvents).toHaveBeenNthCalledWith(2, {
       where: {

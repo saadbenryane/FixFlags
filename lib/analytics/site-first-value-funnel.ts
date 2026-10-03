@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { isAnalyticsJourneyId } from '@/lib/analytics/journey-id'
 
 const START_PREFIX = 'analyze_started:'
 const RESULT_PREFIX = 'first_useful_result:'
@@ -37,6 +38,32 @@ export type SiteFirstValueFunnel = {
   stillRunning: number
   missingAudit: number
   sources: FirstValueSourceRow[]
+  landing: LandingFirstValueFunnel
+}
+
+export type LandingJourneyArtifact = {
+  status: 'available' | 'partial' | 'unavailable'
+  fetchedAt: string
+  startDate: string
+  endDate: string
+  journeyIds: string[]
+  unattributedEventCount: number
+}
+
+export type LandingFirstValueFunnel = {
+  status: LandingJourneyArtifact['status'] | 'missing'
+  fetchedAt: string | null
+  startDate: string | null
+  endDate: string | null
+  landingSessions: number | null
+  startedSessions: number | null
+  firstUsefulResultSessions: number | null
+  claimedSessions: number | null
+  startRate: number | null
+  resultRate: number | null
+  claimRate: number | null
+  instrumentedStarts: number
+  unattributedEventCount: number
 }
 
 function eventAuditId(idempotencyKey: string, prefix: string): string | null {
@@ -52,6 +79,53 @@ function isAnonymousStart(properties: unknown): boolean {
     !Array.isArray(properties) &&
     (properties as Record<string, unknown>).anonymous === true,
   )
+}
+
+function eventJourneyId(properties: unknown): string | null {
+  if (!properties || typeof properties !== 'object' || Array.isArray(properties)) {
+    return null
+  }
+  const journeyId = (properties as Record<string, unknown>).journeyId
+  return isAnalyticsJourneyId(journeyId) ? journeyId : null
+}
+
+export function parseLandingJourneyArtifact(payload: unknown): LandingJourneyArtifact | null {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null
+  const record = payload as Record<string, unknown>
+  if (
+    record.status !== 'available' &&
+    record.status !== 'partial' &&
+    record.status !== 'unavailable'
+  ) {
+    return null
+  }
+  if (
+    typeof record.fetchedAt !== 'string' ||
+    typeof record.startDate !== 'string' ||
+    typeof record.endDate !== 'string' ||
+    !Array.isArray(record.journeys)
+  ) {
+    return null
+  }
+  const journeyIds = record.journeys
+    .map((row) =>
+      row && typeof row === 'object' && !Array.isArray(row)
+        ? (row as Record<string, unknown>).journeyId
+        : null,
+    )
+    .filter((journeyId): journeyId is string => isAnalyticsJourneyId(journeyId))
+
+  return {
+    status: record.status,
+    fetchedAt: record.fetchedAt,
+    startDate: record.startDate,
+    endDate: record.endDate,
+    journeyIds: [...new Set(journeyIds)],
+    unattributedEventCount:
+      typeof record.unattributedEventCount === 'number'
+        ? Math.max(0, record.unattributedEventCount)
+        : 0,
+  }
 }
 
 function percentage(value: number, total: number): number {
@@ -73,6 +147,7 @@ export function calculateSiteFirstValueFunnel(input: {
   starts: StartEventRow[]
   audits: AuditRow[]
   results: ResultEventRow[]
+  landingArtifact?: LandingJourneyArtifact | null
 }): SiteFirstValueFunnel {
   const startedIds = new Set(
     input.starts
@@ -96,6 +171,14 @@ export function calculateSiteFirstValueFunnel(input: {
   let failedBeforeResult = 0
   let stillRunning = 0
   const sourceRows = new Map<string, FirstValueSourceRow>()
+  const journeyByAuditId = new Map<string, string>()
+
+  for (const event of input.starts) {
+    if (!isAnonymousStart(event.properties)) continue
+    const auditId = eventAuditId(event.idempotencyKey, START_PREFIX)
+    const journeyId = eventJourneyId(event.properties)
+    if (auditId && journeyId) journeyByAuditId.set(auditId, journeyId)
+  }
 
   for (const auditId of startedIds) {
     const audit = auditsById.get(auditId)
@@ -122,6 +205,24 @@ export function calculateSiteFirstValueFunnel(input: {
 
   const started = startedIds.size
   const firstUsefulResult = resultIds.size
+  const landingJourneyIds = input.landingArtifact
+    ? new Set(input.landingArtifact.journeyIds)
+    : null
+  const startedJourneyIds = new Set<string>()
+  const resultJourneyIds = new Set<string>()
+  const claimedJourneyIds = new Set<string>()
+  if (landingJourneyIds && input.landingArtifact?.status !== 'unavailable') {
+    for (const [auditId, journeyId] of journeyByAuditId) {
+      if (!landingJourneyIds.has(journeyId)) continue
+      startedJourneyIds.add(journeyId)
+      if (resultIds.has(auditId)) resultJourneyIds.add(journeyId)
+      if (auditsById.get(auditId)?.userId) claimedJourneyIds.add(journeyId)
+    }
+  }
+  const landingSessions =
+    input.landingArtifact && input.landingArtifact.status !== 'unavailable'
+      ? landingJourneyIds!.size
+      : null
   return {
     started,
     firstUsefulResult,
@@ -135,6 +236,31 @@ export function calculateSiteFirstValueFunnel(input: {
       (left, right) =>
         right.started - left.started || left.source.localeCompare(right.source),
     ),
+    landing: {
+      status: input.landingArtifact?.status ?? 'missing',
+      fetchedAt: input.landingArtifact?.fetchedAt ?? null,
+      startDate: input.landingArtifact?.startDate ?? null,
+      endDate: input.landingArtifact?.endDate ?? null,
+      landingSessions,
+      startedSessions: landingSessions === null ? null : startedJourneyIds.size,
+      firstUsefulResultSessions:
+        landingSessions === null ? null : resultJourneyIds.size,
+      claimedSessions: landingSessions === null ? null : claimedJourneyIds.size,
+      startRate:
+        landingSessions === null
+          ? null
+          : percentage(startedJourneyIds.size, landingSessions),
+      resultRate:
+        landingSessions === null
+          ? null
+          : percentage(resultJourneyIds.size, landingSessions),
+      claimRate:
+        landingSessions === null
+          ? null
+          : percentage(claimedJourneyIds.size, landingSessions),
+      instrumentedStarts: journeyByAuditId.size,
+      unattributedEventCount: input.landingArtifact?.unattributedEventCount ?? 0,
+    },
   }
 }
 
@@ -142,10 +268,17 @@ export function calculateSiteFirstValueFunnel(input: {
 export async function loadSiteFirstValueFunnel(
   since: Date,
 ): Promise<SiteFirstValueFunnel> {
-  const starts = await prisma.siteLifecycleEvent.findMany({
-    where: { name: 'analyze_started', createdAt: { gte: since } },
-    select: { idempotencyKey: true, properties: true },
-  })
+  const [starts, landingArtifactRow] = await Promise.all([
+    prisma.siteLifecycleEvent.findMany({
+      where: { name: 'analyze_started', createdAt: { gte: since } },
+      select: { idempotencyKey: true, properties: true },
+    }),
+    prisma.growthArtifact.findUnique({
+      where: { path: 'ga/rolling-28d/landing-journeys' },
+      select: { payload: true },
+    }),
+  ])
+  const landingArtifact = parseLandingJourneyArtifact(landingArtifactRow?.payload)
   const auditIds = [
     ...new Set(
       starts
@@ -156,7 +289,12 @@ export async function loadSiteFirstValueFunnel(
   ]
 
   if (auditIds.length === 0) {
-    return calculateSiteFirstValueFunnel({ starts, audits: [], results: [] })
+    return calculateSiteFirstValueFunnel({
+      starts,
+      audits: [],
+      results: [],
+      landingArtifact,
+    })
   }
 
   const [audits, results] = await Promise.all([
@@ -181,5 +319,5 @@ export async function loadSiteFirstValueFunnel(
     }),
   ])
 
-  return calculateSiteFirstValueFunnel({ starts, audits, results })
+  return calculateSiteFirstValueFunnel({ starts, audits, results, landingArtifact })
 }

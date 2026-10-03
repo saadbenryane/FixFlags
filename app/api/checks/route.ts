@@ -16,6 +16,7 @@ import { enforceRateLimit, recordRateLimit, requestClientId } from '@/lib/securi
 import { resolveVisitorKey } from '@/lib/sites/visitor-identity'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { buildAttribution, parseClientAuditSource } from '@/lib/leads/attribution'
+import { isAnalyticsJourneyId } from '@/lib/analytics/journey-id'
 
 const createSchema = z.object({
   url: z.string().url('Enter a valid URL that starts with https://'),
@@ -27,6 +28,7 @@ const createSchema = z.object({
   utmCampaign: z.string().optional(),
   gclid: z.string().optional(),
   fbclid: z.string().optional(),
+  journeyId: z.string().refine(isAnalyticsJourneyId).optional(),
   scanAccess: scanAccessInputSchema.optional(),
 })
 
@@ -141,6 +143,7 @@ export async function POST(req: NextRequest) {
       utmCampaign: parsed.data.utmCampaign,
       gclid: parsed.data.gclid,
       fbclid: parsed.data.fbclid,
+      journeyId: parsed.data.journeyId,
     })
 
     const outcome = await checkAndPlan({

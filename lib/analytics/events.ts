@@ -5,6 +5,7 @@ import {
 } from '@/lib/analytics/ad-conversions'
 import { ensureGtagStub, isGaConfigured } from '@/lib/analytics/gtag'
 import { hasAnalyticsConsent } from '@/lib/analytics/consent'
+import { readOrCreateAnalyticsJourneyId } from '@/lib/analytics/journey-id'
 
 /**
  * Funnel events for launch instrumentation.
@@ -70,6 +71,7 @@ type EventParams = {
     utm_source?: string
     utm_campaign?: string
     device?: string
+    journey_id?: string
   }
   started_audit: {
     source?: string
@@ -77,6 +79,9 @@ type EventParams = {
     cta_placement?: 'hero' | 'final' | 'dashboard' | 'other'
     utm_source?: string
     utm_campaign?: string
+    journey_id?: string
+    audit_id?: string
+    reused?: boolean
   }
   scan_validation_failed: {
     reason?: string
@@ -273,6 +278,7 @@ export function trackLandingView() {
   trackEvent('landing_view', {
     path: typeof window !== 'undefined' ? window.location.pathname : undefined,
     device: deviceClass(),
+    journey_id: readOrCreateAnalyticsJourneyId() ?? undefined,
     ...utmParams(),
   })
 }

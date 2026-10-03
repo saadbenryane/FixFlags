@@ -108,6 +108,25 @@ describe('POST /api/checks - billing gating enforcement', () => {
     expect(body.reused).toBe(false)
   })
 
+  it('passes only a well-formed consented journey key into audit attribution', async () => {
+    const journeyId = `ffj_${'b'.repeat(32)}`
+
+    const accepted = await POST(postReq({ url: 'https://example.com', journeyId }))
+    expect(accepted.status).toBe(201)
+    expect(checkAndPlan).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attribution: expect.objectContaining({ journeyId }),
+      }),
+    )
+
+    vi.clearAllMocks()
+    const rejected = await POST(
+      postReq({ url: 'https://example.com', journeyId: 'customer@example.com' }),
+    )
+    expect(rejected.status).toBe(400)
+    expect(checkAndPlan).not.toHaveBeenCalled()
+  })
+
   it('returns reused true when an anonymous check resumes a last-hour public report', async () => {
     checkAndPlan.mockResolvedValue({
       reportId: 'recent-public',

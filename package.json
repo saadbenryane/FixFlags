@@ -47,6 +47,7 @@
     "demo:audit": "tsx scripts/demo-fixture-audit.ts",
     "demo:audit:offline": "tsx scripts/demo-fixture-audit.ts --offline",
     "accuracy:eval": "tsx scripts/accuracy-eval.ts",
+    "jev:validate": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/jev-validate.ts",
     "accuracy:probe": "npm run accuracy:browser --",
     "accuracy:browser": "tsx scripts/accuracy-browser-probe.ts",
     "accuracy:capture-fixtures": "tsx scripts/capture-accuracy-fixtures.ts",

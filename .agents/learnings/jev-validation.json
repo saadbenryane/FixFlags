@@ -1,0 +1,2175 @@
+{
+  "generatedAt": "2026-09-29T14:27:56.053Z",
+  "model": "jev-1.13.0",
+  "repeat": 2,
+  "fixtures": [
+    {
+      "fixture": "fixflags-com.html",
+      "tier": "gold",
+      "url": "https://fixflags.com",
+      "score": 89,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "B",
+        "EXPERIENCE": "B",
+        "REACH": "B"
+      },
+      "checklistPassed": 5,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 436,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 8,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0,
+            "1": 0,
+            "2": 0.0004,
+            "3": 0.0027,
+            "4": 0.0122,
+            "5": 0.0393,
+            "6": 0.0903,
+            "7": 0.149,
+            "8": 0.557,
+            "9": 0.149
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 8,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0,
+            "1": 0,
+            "2": 0.0004,
+            "3": 0.0027,
+            "4": 0.0122,
+            "5": 0.0393,
+            "6": 0.0903,
+            "7": 0.149,
+            "8": 0.557,
+            "9": 0.149
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 8,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0,
+            "1": 0,
+            "2": 0.0004,
+            "3": 0.0027,
+            "4": 0.0122,
+            "5": 0.0393,
+            "6": 0.0903,
+            "7": 0.149,
+            "8": 0.557,
+            "9": 0.149
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 8,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0,
+            "1": 0,
+            "2": 0.0004,
+            "3": 0.0027,
+            "4": 0.0122,
+            "5": 0.0393,
+            "6": 0.0903,
+            "7": 0.149,
+            "8": 0.557,
+            "9": 0.149
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.88
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.9
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "nextjs-org.html",
+      "tier": "gold",
+      "url": "https://nextjs.org",
+      "score": 89,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "B",
+        "EXPERIENCE": "B",
+        "REACH": "B"
+      },
+      "checklistPassed": 5,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 182,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 8,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0,
+            "1": 0,
+            "2": 0.0004,
+            "3": 0.0027,
+            "4": 0.0122,
+            "5": 0.0393,
+            "6": 0.0903,
+            "7": 0.149,
+            "8": 0.557,
+            "9": 0.149
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 8,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0,
+            "1": 0,
+            "2": 0.0004,
+            "3": 0.0027,
+            "4": 0.0122,
+            "5": 0.0393,
+            "6": 0.0903,
+            "7": 0.149,
+            "8": 0.557,
+            "9": 0.149
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 8,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0,
+            "1": 0,
+            "2": 0.0004,
+            "3": 0.0027,
+            "4": 0.0122,
+            "5": 0.0393,
+            "6": 0.0903,
+            "7": 0.149,
+            "8": 0.557,
+            "9": 0.149
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 8,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0,
+            "1": 0,
+            "2": 0.0004,
+            "3": 0.0027,
+            "4": 0.0122,
+            "5": 0.0393,
+            "6": 0.0903,
+            "7": 0.149,
+            "8": 0.557,
+            "9": 0.149
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.88
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.9
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "vercel-com.html",
+      "tier": "gold",
+      "url": "https://vercel.com",
+      "score": 89,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "B",
+        "EXPERIENCE": "B",
+        "REACH": "B"
+      },
+      "checklistPassed": 5,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 234,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 8,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0,
+            "1": 0,
+            "2": 0.0004,
+            "3": 0.0027,
+            "4": 0.0122,
+            "5": 0.0393,
+            "6": 0.0903,
+            "7": 0.149,
+            "8": 0.557,
+            "9": 0.149
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 8,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0,
+            "1": 0,
+            "2": 0.0004,
+            "3": 0.0027,
+            "4": 0.0122,
+            "5": 0.0393,
+            "6": 0.0903,
+            "7": 0.149,
+            "8": 0.557,
+            "9": 0.149
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 8,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0,
+            "1": 0,
+            "2": 0.0004,
+            "3": 0.0027,
+            "4": 0.0122,
+            "5": 0.0393,
+            "6": 0.0903,
+            "7": 0.149,
+            "8": 0.557,
+            "9": 0.149
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 8,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0,
+            "1": 0,
+            "2": 0.0004,
+            "3": 0.0027,
+            "4": 0.0122,
+            "5": 0.0393,
+            "6": 0.0903,
+            "7": 0.149,
+            "8": 0.557,
+            "9": 0.149
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.88
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.9
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "lovable-dev.html",
+      "tier": "builder",
+      "url": "https://lovable.dev",
+      "score": 56,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "D",
+        "EXPERIENCE": "D",
+        "REACH": "D"
+      },
+      "checklistPassed": 3,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 53,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.4
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.45
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "bolt-new.html",
+      "tier": "builder",
+      "url": "https://bolt.new",
+      "score": 56,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "D",
+        "EXPERIENCE": "D",
+        "REACH": "D"
+      },
+      "checklistPassed": 3,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 37,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.4
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.45
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "cineverse-replit-app.html",
+      "tier": "builder",
+      "url": "https://cineverse.replit.app",
+      "score": 56,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "D",
+        "EXPERIENCE": "D",
+        "REACH": "D"
+      },
+      "checklistPassed": 3,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 9,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.4
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.45
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "saadbenryane-com.html",
+      "tier": "personal",
+      "url": "https://saadbenryane.com",
+      "score": 56,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "D",
+        "EXPERIENCE": "D",
+        "REACH": "D"
+      },
+      "checklistPassed": 3,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 13,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.4
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.45
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "broken-page.html",
+      "tier": "broken",
+      "url": "https://example.com/broken",
+      "score": 22,
+      "launchReadiness": "not_ready",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "F",
+        "EXPERIENCE": "F",
+        "REACH": "F"
+      },
+      "checklistPassed": 2,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 9,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 2,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0.0771,
+            "1": 0.1271,
+            "2": 0.5448,
+            "3": 0.1271,
+            "4": 0.0771,
+            "5": 0.0335,
+            "6": 0.0104,
+            "7": 0.0023,
+            "8": 0.0004,
+            "9": 0
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 2,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0.0771,
+            "1": 0.1271,
+            "2": 0.5448,
+            "3": 0.1271,
+            "4": 0.0771,
+            "5": 0.0335,
+            "6": 0.0104,
+            "7": 0.0023,
+            "8": 0.0004,
+            "9": 0
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 2,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0.0771,
+            "1": 0.1271,
+            "2": 0.5448,
+            "3": 0.1271,
+            "4": 0.0771,
+            "5": 0.0335,
+            "6": 0.0104,
+            "7": 0.0023,
+            "8": 0.0004,
+            "9": 0
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 2,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0.0771,
+            "1": 0.1271,
+            "2": 0.5448,
+            "3": 0.1271,
+            "4": 0.0771,
+            "5": 0.0335,
+            "6": 0.0104,
+            "7": 0.0023,
+            "8": 0.0004,
+            "9": 0
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.4
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.2
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.45
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "not_ready",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.3
+          }
+        }
+      }
+    },
+    {
+      "fixture": "html5up-paradigm-shift.html",
+      "tier": "structural",
+      "url": "https://html5up.net",
+      "score": 56,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "D",
+        "EXPERIENCE": "D",
+        "REACH": "D"
+      },
+      "checklistPassed": 3,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 3,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.4
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.45
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "linear-app.html",
+      "tier": "structural",
+      "url": "https://linear.app",
+      "score": 56,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "D",
+        "EXPERIENCE": "D",
+        "REACH": "D"
+      },
+      "checklistPassed": 3,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 84,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.4
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.45
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "v0-dev.html",
+      "tier": "structural",
+      "url": "https://v0.dev",
+      "score": 56,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "D",
+        "EXPERIENCE": "D",
+        "REACH": "D"
+      },
+      "checklistPassed": 3,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 69,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.4
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.45
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "replit-com.html",
+      "tier": "structural",
+      "url": "https://replit.com",
+      "score": 56,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "D",
+        "EXPERIENCE": "D",
+        "REACH": "D"
+      },
+      "checklistPassed": 3,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 73,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.4
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.45
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "shopify-com.html",
+      "tier": "builder",
+      "url": "https://shopify.com",
+      "score": 56,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "D",
+        "EXPERIENCE": "D",
+        "REACH": "D"
+      },
+      "checklistPassed": 3,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 73,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.4
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.45
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "shopify-demo-store.html",
+      "tier": "structural",
+      "url": "https://minimalgear.co",
+      "score": 56,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "D",
+        "EXPERIENCE": "D",
+        "REACH": "D"
+      },
+      "checklistPassed": 3,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 17,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.4
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.45
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "blog-post.html",
+      "tier": "structural",
+      "url": "https://devblog.example.com/blog/bundle-size",
+      "score": 56,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "D",
+        "EXPERIENCE": "D",
+        "REACH": "D"
+      },
+      "checklistPassed": 3,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 10,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.4
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.45
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    },
+    {
+      "fixture": "forma-landing.html",
+      "tier": "structural",
+      "url": "https://forma.design",
+      "score": 56,
+      "launchReadiness": "fix_first",
+      "pageType": "homepage",
+      "grades": {
+        "MESSAGE": "D",
+        "EXPERIENCE": "D",
+        "REACH": "D"
+      },
+      "checklistPassed": 3,
+      "inputTokens": 3200,
+      "costUsd": 0.001344,
+      "durationMs": 9,
+      "answers": {
+        "pageType": {
+          "type": "choice",
+          "choice": "homepage",
+          "confidence": 0.8,
+          "probabilities": {
+            "homepage": 0.8,
+            "pricing": 0.05,
+            "landing": 0.05,
+            "dashboard": 0.03,
+            "portfolio": 0.03,
+            "article": 0.02,
+            "other": 0.02
+          }
+        },
+        "messageScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.72,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "experienceScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.7,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "reachScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.74,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "overallScore": {
+          "type": "score",
+          "score": 5,
+          "confidence": 0.75,
+          "probabilities": {
+            "0": 0.0022,
+            "1": 0.0096,
+            "2": 0.031,
+            "3": 0.0712,
+            "4": 0.1174,
+            "5": 0.5394,
+            "6": 0.1174,
+            "7": 0.0712,
+            "8": 0.031,
+            "9": 0.0096
+          },
+          "legend": {}
+        },
+        "hasHttps": {
+          "type": "noul",
+          "noul": 0.97
+        },
+        "hasSocialPreview": {
+          "type": "noul",
+          "noul": 0.4
+        },
+        "hasMobileCta": {
+          "type": "noul",
+          "noul": 0.7
+        },
+        "hasNoConsoleErrors": {
+          "type": "noul",
+          "noul": 0.85
+        },
+        "hasPrivacyContact": {
+          "type": "noul",
+          "noul": 0.45
+        },
+        "launchReadiness": {
+          "type": "choice",
+          "choice": "fix_first",
+          "confidence": 0.65,
+          "probabilities": {
+            "safe": 0.1,
+            "fix_first": 0.6,
+            "not_ready": 0.05
+          }
+        }
+      }
+    }
+  ],
+  "summary": {
+    "avgTokens": 6400,
+    "avgCostUsd": 0.0026880000000000007,
+    "avgLatencyMs": 141,
+    "stub": true,
+    "errorCount": 0,
+    "corpusProblems": []
+  }
+}

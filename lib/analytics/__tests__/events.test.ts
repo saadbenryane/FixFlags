@@ -3,8 +3,9 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ensureGtagStub, isGaConfigured } from '@/lib/analytics/gtag'
-import { trackEvent } from '@/lib/analytics/events'
+import { trackEvent, trackLandingView } from '@/lib/analytics/events'
 import { ANALYTICS_CONSENT_COOKIE } from '@/lib/analytics/consent'
+import { isAnalyticsJourneyId } from '@/lib/analytics/journey-id'
 
 describe('analytics gtag bootstrap', () => {
   afterEach(() => {
@@ -12,6 +13,7 @@ describe('analytics gtag bootstrap', () => {
     delete (window as { dataLayer?: unknown[] }).dataLayer
     delete (window as { gtag?: (...args: unknown[]) => void }).gtag
     document.cookie = `${ANALYTICS_CONSENT_COOKIE}=; Max-Age=0; Path=/`
+    sessionStorage.clear()
   })
 
   it('queues events on dataLayer before gtag.js config runs', () => {
@@ -30,6 +32,20 @@ describe('analytics gtag bootstrap', () => {
     ensureGtagStub()
     trackEvent('landing_view', { path: '/' })
     expect(window.dataLayer).toEqual([])
+  })
+
+  it('adds one opaque journey key to a consented landing event', () => {
+    vi.stubEnv('NEXT_PUBLIC_GA_ID', 'G-TEST12345')
+    document.cookie = `${ANALYTICS_CONSENT_COOKIE}=granted; Path=/`
+    ensureGtagStub()
+
+    trackLandingView()
+
+    const last = window.dataLayer?.at(-1) as unknown[]
+    expect(last?.[1]).toBe('landing_view')
+    expect(
+      isAnalyticsJourneyId((last?.[2] as Record<string, unknown>)?.journey_id),
+    ).toBe(true)
   })
 
   it('validates configured GA measurement IDs', () => {

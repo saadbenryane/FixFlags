@@ -1,6 +1,14 @@
 import { google } from 'googleapis'
 import { GA4_KEY_EVENTS } from '@/lib/growth/ga-key-events'
 import { googleServiceAccount } from '@/lib/growth/google-auth'
+import { ANALYTICS_JOURNEY_PARAM } from '@/lib/analytics/journey-id'
+
+export const GA4_JOURNEY_DIMENSION = {
+  parameterName: ANALYTICS_JOURNEY_PARAM,
+  displayName: 'FixFlags journey ID',
+  description: 'Opaque consented browser-session key used to join landing acquisition to a Site start.',
+  scope: 'EVENT',
+} as const
 
 function propertyResource(): string {
   const raw = process.env.GA4_PROPERTY_ID?.trim()
@@ -13,6 +21,10 @@ export interface ConfigureGaKeyEventsResult {
   created: string[]
   existing: string[]
   failed: Array<{ eventName: string; reason: string }>
+  journeyDimension: {
+    status: 'created' | 'existing' | 'failed'
+    reason?: string
+  }
 }
 
 export async function configureGaKeyEvents(): Promise<ConfigureGaKeyEventsResult | null> {
@@ -28,6 +40,10 @@ export async function configureGaKeyEvents(): Promise<ConfigureGaKeyEventsResult
   })
 
   const listed = await admin.properties.keyEvents.list({ parent: property })
+  const customDimensions = await admin.properties.customDimensions.list({
+    parent: property,
+    pageSize: 200,
+  })
   const existingNames = new Set(
     (listed.data.keyEvents ?? [])
       .map((event) => event.eventName)
@@ -60,5 +76,31 @@ export async function configureGaKeyEvents(): Promise<ConfigureGaKeyEventsResult
     }
   }
 
-  return { property, created, existing, failed }
+  let journeyDimension: ConfigureGaKeyEventsResult['journeyDimension']
+  const existingJourneyDimension = (customDimensions.data.customDimensions ?? []).find(
+    (dimension) => dimension.parameterName === GA4_JOURNEY_DIMENSION.parameterName,
+  )
+  if (existingJourneyDimension?.scope === GA4_JOURNEY_DIMENSION.scope) {
+    journeyDimension = { status: 'existing' }
+  } else if (existingJourneyDimension) {
+    journeyDimension = {
+      status: 'failed',
+      reason: `Existing ${GA4_JOURNEY_DIMENSION.parameterName} dimension has scope ${existingJourneyDimension.scope ?? 'unknown'}, expected EVENT`,
+    }
+  } else {
+    try {
+      await admin.properties.customDimensions.create({
+        parent: property,
+        requestBody: GA4_JOURNEY_DIMENSION,
+      })
+      journeyDimension = { status: 'created' }
+    } catch (error) {
+      journeyDimension = {
+        status: 'failed',
+        reason: error instanceof Error ? error.message : String(error),
+      }
+    }
+  }
+
+  return { property, created, existing, failed, journeyDimension }
 }

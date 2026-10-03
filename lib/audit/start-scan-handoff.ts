@@ -101,6 +101,9 @@ export function trackStartedAudit(args: {
   ctaPlacement?: 'hero' | 'final' | 'dashboard' | 'other'
   utmSource?: string | null
   utmCampaign?: string | null
+  journeyId?: string | null
+  auditId?: string | null
+  reused?: boolean
 }) {
   trackEvent('started_audit', {
     source: args.source,
@@ -108,5 +111,8 @@ export function trackStartedAudit(args: {
     cta_placement: args.ctaPlacement,
     utm_source: args.utmSource ?? undefined,
     utm_campaign: args.utmCampaign ?? undefined,
+    journey_id: args.journeyId ?? undefined,
+    audit_id: args.auditId ?? undefined,
+    reused: args.reused,
   })
 }

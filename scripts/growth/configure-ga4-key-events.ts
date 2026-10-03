@@ -14,12 +14,16 @@ async function main(): Promise<void> {
   console.log(`[configure-ga4-key-events] property ${result.property}`)
   if (result.created.length) console.log(`created: ${result.created.join(', ')}`)
   if (result.existing.length) console.log(`already configured: ${result.existing.join(', ')}`)
+  console.log(`journey dimension: ${result.journeyDimension.status}`)
+  if (result.journeyDimension.reason) {
+    console.error(`failed journey dimension: ${result.journeyDimension.reason}`)
+  }
   if (result.failed.length) {
     for (const failure of result.failed) {
       console.error(`failed ${failure.eventName}: ${failure.reason}`)
     }
-    process.exit(1)
   }
+  if (result.failed.length || result.journeyDimension.status === 'failed') process.exit(1)
 }
 
 main().catch((error) => {

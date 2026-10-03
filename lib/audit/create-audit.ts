@@ -625,7 +625,11 @@ export async function createAndEnqueueAudit(
     idempotencyKey: `analyze_started:${audit.id}`,
     userId: userId ?? null,
     projectId: projectId ?? null,
-    properties: { anonymous: !userId, trigger: options.recheckTrigger ?? 'manual' },
+    properties: {
+      anonymous: !userId,
+      trigger: options.recheckTrigger ?? 'manual',
+      journeyId: options.attribution?.journeyId,
+    },
   }).catch(() => undefined)
 
   return {

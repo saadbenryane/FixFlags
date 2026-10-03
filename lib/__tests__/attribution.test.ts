@@ -22,12 +22,14 @@ describe('audit attribution', () => {
       source: 'HOMEPAGE',
       pathname: '/',
       searchParams: params,
+      journeyId: `ffj_${'c'.repeat(32)}`,
     })
     assert.equal(attr.normalizedDomain, 'example.com')
     assert.equal(attr.source, 'HOMEPAGE')
     assert.equal(attr.utmSource, 'google')
     assert.equal(attr.utmMedium, 'cpc')
     assert.equal(attr.utmCampaign, 'launch')
+    assert.equal(attr.journeyId, `ffj_${'c'.repeat(32)}`)
   })
 
   it('accepts MCP and dashboard client sources', () => {

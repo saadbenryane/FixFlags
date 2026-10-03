@@ -21,9 +21,9 @@ surfaces behind decision-driving claims. Other matrix entries remain working not
 copy or prioritization until they gain a dated primary source.
 
 **Open work:** complete the scenario-level MCP competitor audit, deploy the locally implemented attributable
-Site-start cohort, and produce a fresh GA4/GSC and server-funnel pull. Item 15 remains blocked on the first two
-product-launch gates in the roadmap as well as on that competitor audit. Re-verify every external figure
-immediately before publication.
+landing-to-claim cohort, register its GA4 `journey_id` event dimension, and produce a fresh GA4/GSC and
+server-funnel pull. Item 15 remains blocked on the first two product-launch gates in the roadmap as well as on
+that competitor audit. Re-verify every external figure immediately before publication.
 
 ---
 
@@ -291,6 +291,10 @@ These are the findings strong enough to change decisions after the 2026-10-02 co
 13. **Mutable current ownership is not a cohort key.** The old admin query counted `Audit.userId IS NULL`, so a
     successful Site claim removed its original anonymous start from the denominator. Cohort membership must come
     from the immutable `analyze_started` event and only then read later result and claim state from the same audit.
+14. **Consent is part of acquisition-cohort semantics.** The local bridge creates one random tab-scoped
+    `journey_id` only after analytics consent, sends it to GA4 and the exact immutable Site-start event, and never
+    exposes the private anonymous Site-owner cookie. Missing GA exports stay unavailable and collapsed dimension
+    rows stay partial. Deployment, GA dimension registration, and a fresh production read remain open.
 
 ### Superseded or unproven initial conclusions
 
@@ -321,7 +325,7 @@ funnel is attributable. Stable item numbers are retained so existing handoffs do
 | #   | Action                                                                                                                                                                                                                                                                                                                                                                                       | Impact                                                             | Effort | Depends on | Lands in                                                                                   |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------ | ---------- | ------------------------------------------------------------------------------------------ |
 | 1   | **Make the shipped product loop attributable. Locally implemented 2026-10-03.** Preserve the 17 durable `SiteLifecycleEvent` stages. Cohort anonymous `analyze_started:<auditId>` events and match `first_useful_result:<auditId>` plus later claim state from that exact Audit. Raw lifecycle volumes are activity, not a sequential funnel. Deployment and a fresh production read remain open. | Very high. Nothing downstream is falsifiable without it.           | M      | —          | `lib/analytics/site-first-value-funnel.ts`, admin analytics, focused tests |
-| 2   | **Close the remaining visitor-to-start attribution gap** so landing visitor → anonymous Site start is computable end to end. The server cohort now covers start → result → claim; pre-start GA/session identity is still separate.                                                                                                                                                              | Very high. The full acquisition funnel cannot yet be produced. | M      | 1          | consent-aware session/audit correlation                            |
+| 2   | **Close the remaining visitor-to-start attribution gap. Locally implemented 2026-10-03.** A consented homepage session receives one opaque tab-scoped `journey_id`; GA4 records it on `landing_view`, and the exact immutable `analyze_started:<auditId>` event retains it without a raw URL or private owner token. The admin joins that session through result and later claim. GA dimension registration, deployment, and a fresh export remain open. | Very high. The full acquisition funnel cannot yet be produced from production evidence. | M | 1 | journey contract, GA dimension/export, admin cohort |
 | 3   | **Publish a dated funnel baseline** per stage with `fetchedAt`, replacing "Tracked" with real values. Signups and paid conversion are currently unnumbered.                                                                                                                                                                                                                                  | High. Every later claim needs a denominator.                       | S      | 1, 2       | `docs/growth/metrics.md`                                                                   |
 
 ### Repairing the leak
@@ -496,9 +500,10 @@ the board so analytics call sites, copy and shared verification files have one o
 >    browser-only `FunnelEvent` union. `SiteLifecycleEvent` is the durable registry. The admin cohort fixes each
 >    anonymous start by `analyze_started:<auditId>`, matches the exact `first_useful_result:<auditId>`, and reads
 >    later claim state without removing claimers from the denominator. Deploy it and capture a dated read.
-> 2. **Close the remaining visitor-to-start attribution gap.** GA4 still cannot join a consenting landing
->    session to a Site start, so the full visitor-to-claim funnel cannot be computed. Make that join explicit
->    without weakening consent or persisting raw URLs.
+> 2. **Use the locally implemented visitor-to-start bridge.** A random `journey_id` is created only after
+>    analytics consent, attached to GA4 `landing_view` and the exact immutable Site start, then joined through
+>    result and later claim. Register the event-scoped GA dimension, deploy it, and capture a dated export.
+>    Never substitute the private Site-owner cookie, persist raw URLs, or report missing/partial telemetry as zero.
 > 3. **Publish a dated funnel baseline.** Replace "Tracked" with real values for signups and paid conversion.
 >    Every later claim needs a denominator.
 > 4. **Measure start-to-result loss.** Establish unique denominators, then locate loss between submit, validation,

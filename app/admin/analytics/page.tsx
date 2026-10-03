@@ -389,6 +389,61 @@ export default async function AdminAnalyticsPage() {
       </section>
 
       <section className="space-y-4">
+        <SectionTitle>Consenting landing-to-value cohort (latest GA4 rolling 28 days)</SectionTitle>
+        <p className="max-w-4xl text-sm text-muted-foreground">
+          One opaque journey ID joins a consented homepage session to the exact anonymous Site start,
+          first useful result, and later claim. It is created only after analytics consent, lasts for one
+          browser tab, and contains no visitor cookie, URL, account, or customer content.
+        </p>
+        {firstValueFunnel.landing.landingSessions === null ? (
+          <Card>
+            <CardContent className="pt-6 text-sm text-muted-foreground">
+              No joinable GA4 journey export is available yet. Configure the <code>journey_id</code> event
+              dimension, deploy the instrumentation, and run the GA pull. Missing telemetry is not counted as zero.
+              {firstValueFunnel.landing.instrumentedStarts > 0
+                ? ` ${firstValueFunnel.landing.instrumentedStarts} recent anonymous starts already carry the server-side journey key.`
+                : ''}
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <MetricCard
+                label="Consenting landing sessions"
+                value={firstValueFunnel.landing.landingSessions.toLocaleString()}
+                variant="subtle"
+              />
+              <MetricCard
+                label="Anonymous Sites started"
+                value={(firstValueFunnel.landing.startedSessions ?? 0).toLocaleString()}
+                detail={<span className="text-xs text-muted-foreground">{firstValueFunnel.landing.startRate}% of landing sessions</span>}
+                variant="subtle"
+              />
+              <MetricCard
+                label="First useful result"
+                value={(firstValueFunnel.landing.firstUsefulResultSessions ?? 0).toLocaleString()}
+                detail={<span className="text-xs text-muted-foreground">{firstValueFunnel.landing.resultRate}% of landing sessions</span>}
+                variant="subtle"
+              />
+              <MetricCard
+                label="Claimed later"
+                value={(firstValueFunnel.landing.claimedSessions ?? 0).toLocaleString()}
+                detail={<span className="text-xs text-muted-foreground">{firstValueFunnel.landing.claimRate}% of landing sessions</span>}
+                variant="subtle"
+              />
+            </div>
+            <p className="max-w-4xl text-xs text-muted-foreground">
+              GA window {firstValueFunnel.landing.startDate} to {firstValueFunnel.landing.endDate}; fetched {firstValueFunnel.landing.fetchedAt}.
+              {' '}{firstValueFunnel.landing.instrumentedStarts} recent anonymous starts carry a journey key.
+              {firstValueFunnel.landing.status === 'partial'
+                ? ` GA4 grouped ${firstValueFunnel.landing.unattributedEventCount} landing events without a usable journey key, so this cohort is partial.`
+                : ''}
+            </p>
+          </>
+        )}
+      </section>
+
+      <section className="space-y-4">
         <SectionTitle>Anonymous Site first-value cohort (started in the last 30 days)</SectionTitle>
         <p className="max-w-4xl text-sm text-muted-foreground">
           Each start is fixed by its immutable server event, then matched to the same check&apos;s first useful

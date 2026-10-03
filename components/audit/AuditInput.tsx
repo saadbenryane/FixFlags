@@ -18,6 +18,7 @@ import {
 } from '@/lib/audit/start-scan-handoff'
 import { ReportClaimDialog } from '@/components/auth/ReportClaimDialog'
 import { PlanLimitNotice } from '@/components/audit/PlanLimitNotice'
+import { readOrCreateAnalyticsJourneyId } from '@/lib/analytics/journey-id'
 
 const AUTOSTART_DONE_KEY = 'ff:autostart-url'
 
@@ -135,6 +136,7 @@ export function AuditInput({
     setUrl(normalized)
     setLoading(true)
     const params = new URLSearchParams(window.location.search)
+    const journeyId = isLanding ? readOrCreateAnalyticsJourneyId() : null
     const result = await startScanWithHandoff({
       url: normalized,
       body: {
@@ -145,6 +147,7 @@ export function AuditInput({
         utmCampaign: params.get('utm_campaign') ?? undefined,
         gclid: params.get('gclid') ?? undefined,
         fbclid: params.get('fbclid') ?? undefined,
+        journeyId: journeyId ?? undefined,
       },
       navigate: (href) => router.replace(href as Route),
       onStarted: (data) => {
@@ -156,6 +159,9 @@ export function AuditInput({
           ctaPlacement: resolvedPlacement ?? (isLanding ? 'hero' : 'dashboard'),
           utmSource: params.get('utm_source'),
           utmCampaign: params.get('utm_campaign'),
+          journeyId,
+          auditId: typeof data.reportId === 'string' ? data.reportId : null,
+          reused: data.reused === true,
         })
       },
     })

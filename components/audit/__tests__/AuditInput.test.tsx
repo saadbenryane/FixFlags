@@ -6,6 +6,8 @@ import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy'
 const startScanWithHandoff = vi.hoisted(() => vi.fn())
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }))
 const trackEvent = vi.hoisted(() => vi.fn())
+const trackStartedAudit = vi.hoisted(() => vi.fn())
+const readOrCreateAnalyticsJourneyId = vi.hoisted(() => vi.fn())
 
 vi.mock('next/navigation', () => ({
   useRouter: () => router,
@@ -14,9 +16,10 @@ vi.mock('next/navigation', () => ({
 }))
 vi.mock('@/lib/audit/start-scan-handoff', () => ({
   startScanWithHandoff,
-  trackStartedAudit: vi.fn(),
+  trackStartedAudit,
 }))
 vi.mock('@/lib/analytics/events', () => ({ trackEvent }))
+vi.mock('@/lib/analytics/journey-id', () => ({ readOrCreateAnalyticsJourneyId }))
 vi.mock('@/components/auth/AuthFlow', () => ({
   AuthFlow: ({ dialogTitle }: { dialogTitle?: string }) => <div>{dialogTitle}</div>,
 }))
@@ -26,6 +29,40 @@ import { AuditInput } from '@/components/audit/AuditInput'
 describe('AuditInput scan handoff', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    readOrCreateAnalyticsJourneyId.mockReturnValue(null)
+  })
+
+  it('hands one consented journey key to the check and exact GA start event', async () => {
+    const journeyId = `ffj_${'a'.repeat(32)}`
+    readOrCreateAnalyticsJourneyId.mockReturnValue(journeyId)
+    startScanWithHandoff.mockImplementation(async (options) => {
+      options.onStarted?.({ reportId: 'audit-attributed', reused: false, isLoggedIn: false })
+      return { ok: true, siteId: 'site-attributed', reportId: 'audit-attributed' }
+    })
+    render(
+      <MeProvider initialUser={null}>
+        <AuditInput variant="landing" idSuffix="-attribution" />
+      </MeProvider>,
+    )
+
+    const input = screen.getByRole('textbox', { name: 'Website URL' })
+    await waitFor(() => expect(input).toBeEnabled())
+    fireEvent.change(input, { target: { value: 'example.com' } })
+    fireEvent.submit(input.closest('form')!)
+
+    await waitFor(() => expect(startScanWithHandoff).toHaveBeenCalledOnce())
+    expect(startScanWithHandoff).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ journeyId }),
+      }),
+    )
+    expect(trackStartedAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        journeyId,
+        auditId: 'audit-attributed',
+        reused: false,
+      }),
+    )
   })
 
   it('shows an in-flight submit button while the scan request is pending without report chrome', async () => {
