@@ -1,5 +1,17 @@
 # Competitors
 
+> **SUPERSEDED 2026-10-01. Do not use for copy or decisions.** The competitive picture was re-researched from
+> primary sources and now lives as an evidence-labeled working brief in
+> [`competitive-and-conversion-briefing.md`](competitive-and-conversion-briefing.md). This file is retained as
+> history per the never-delete rule in [`README.md`](README.md). Re-verify its external claims through the
+> briefing's evidence ledger before using them in copy or a roadmap decision.
+>
+> Known errors in the content below, corrected in the briefing: **PageLens** (`pagelens.ai`) is an
+> AI-search-visibility / GEO tool, not a QA product. **Signo** could not be verified to exist as described.
+> **Scout QA** (`scoutqa.ai`) is owned by **Katalon, Inc.**, not an indie product, and is distinct from the
+> unrelated `scoutscans.com`. The Message/Experience/Reach rubric framing and the "recurring scheduling not
+> shipped" claim are both obsolete. Schedule now exists: free weekly, Pro daily.
+
 Who else ranks for FixFlags-relevant queries, their moats, our wedges.
 
 Canonical market summary: [`knowledge/market.md`](../../knowledge/market.md). Moat strategy: [`knowledge/product.md`](../../knowledge/product.md).

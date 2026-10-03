@@ -49,7 +49,8 @@ what Layer 1 collects.
 | `experiments.md` | Hypothesis → outcome log | Per experiment |
 | `learnings.md` | What worked / didn't, dated | Per iteration |
 | `opportunities.md` | GSC/analytics-derived opportunities | Weekly |
-| `competitors.md` | Who ranks, their moats, our wedges | Monthly |
+| `competitors.md` | Historical. Superseded by the briefing below; retained as history | Frozen |
+| `competitive-and-conversion-briefing.md` | Dated competitive evidence ledger, corrected working picture, provisional conversion plan, and constrained handoff prompts | On new research |
 | `growth-memory.md` | Append-only weekly digest (the brain) | Weekly |
 | `decision-log.md` | Major decisions with review dates | Per decision |
 | `weekly-review/` | Per-week detail files | Weekly |

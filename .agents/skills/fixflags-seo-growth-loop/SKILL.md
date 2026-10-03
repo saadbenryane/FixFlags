@@ -72,6 +72,13 @@ For the target query or topic:
 - look for information or utility only FixFlags can provide from real Site, Outcome, Flag, coverage, verification, or graph evidence
 - verify claims against current product behavior and attributable data
 
+For product-competitor research, keep a dated primary-source ledger. Record the exact surface and scenario
+checked, not just a vendor name. Treat a missing capability as "not found on the checked surfaces," never as a
+universal absence. One current counterexample invalidates an exhaustive `none` claim. Compare verification
+products across at least four separate questions: who executes, who defines the expected result, who may certify
+recovery, and how recovery or recurrence is preserved. Vendor-authored fleet research may support an adjacent
+problem statement, but it is not independent validation of FixFlags, customer demand, or product-market fit.
+
 Do not copy competitors. Use them to reveal an unmet task, evidence gap, format expectation, or clarity problem.
 Do not target generic `website audit` or `SEO audit` volume during the foundation phase.
 
