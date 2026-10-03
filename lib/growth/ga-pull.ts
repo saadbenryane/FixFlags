@@ -13,6 +13,8 @@ import {
 
 export type { GrowthPullOptions } from '@/lib/growth/pull-options'
 
+const GA_LANDING_JOURNEY_ROW_LIMIT = 100_000
+
 function getGa4Property(): string {
   const raw = process.env.GA4_PROPERTY_ID?.trim()
   if (!raw) throw new Error('GA4_PROPERTY_ID env var is required')
@@ -34,11 +36,13 @@ export interface GaLandingJourneyArtifact {
   status: 'available' | 'partial' | 'unavailable'
   journeys: Array<{ journeyId: string; eventCount: number }>
   unattributedEventCount: number
+  rowLimitReached: boolean
 }
 
 export function buildGaLandingJourneyArtifact(
   rows: Array<Record<string, string | number>>,
   metadata: Pick<GaLandingJourneyArtifact, 'fetchedAt' | 'startDate' | 'endDate'>,
+  rowLimit = GA_LANDING_JOURNEY_ROW_LIMIT,
 ): GaLandingJourneyArtifact {
   const journeys: GaLandingJourneyArtifact['journeys'] = []
   let unattributedEventCount = 0
@@ -53,9 +57,13 @@ export function buildGaLandingJourneyArtifact(
   }
   return {
     ...metadata,
-    status: unattributedEventCount > 0 ? 'partial' : 'available',
+    status:
+      unattributedEventCount > 0 || rows.length >= rowLimit
+        ? 'partial'
+        : 'available',
     journeys,
     unattributedEventCount,
+    rowLimitReached: rows.length >= rowLimit,
   }
 }
 
@@ -156,7 +164,7 @@ export async function runGaPull(options: GrowthPullOptions = {}): Promise<GaPull
       ['eventCount'],
       options,
       requestedDateRange,
-      10_000,
+      GA_LANDING_JOURNEY_ROW_LIMIT,
       undefined,
       {
         filter: {
@@ -176,6 +184,7 @@ export async function runGaPull(options: GrowthPullOptions = {}): Promise<GaPull
       status: 'unavailable',
       journeys: [],
       unattributedEventCount: 0,
+      rowLimitReached: false,
     }
   }
   const result: GaPullResult = {

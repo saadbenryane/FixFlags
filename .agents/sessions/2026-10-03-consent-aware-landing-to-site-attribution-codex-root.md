@@ -21,7 +21,8 @@ which blocks honest diagnosis and conversion experiments.
   `analyze_started:<auditId>` lifecycle event. The API validates the key format; the Audit row and private
   `ff_anon_visitor` ownership token remain untouched.
 - The GA setup command registers `journey_id` as an event-scoped custom dimension. The rolling GA pull stores
-  only opaque keys and counts, marks unusable grouped rows partial, and marks an unqueryable dimension unavailable.
+  only opaque keys and counts, marks unusable grouped rows or a saturated export row limit partial, and marks an
+  unqueryable dimension unavailable.
 - The admin analytics page joins unique consenting landing sessions through durable result and claim truth. It
   never renders a missing export as zero.
 
@@ -29,6 +30,16 @@ which blocks honest diagnosis and conversion experiments.
 
 - Focused unit/component/route coverage: 9 files, 80 tests passed.
 - Scoped ESLint and non-incremental TypeScript passed.
-- Broader repository gates and a real browser path are still pending.
+- A real 375×812 Playwright path waited for hydration, granted analytics consent, submitted `example.com`, and
+  intercepted the check API before any scan. The same `ffj_…` key appeared in session storage, the POST body,
+  `landing_view`, and `started_audit`; the latter also carried `audit-browser-proof` and `reused: false`. The page
+  had no horizontal overflow.
+- The configured developer database loader still reconciles 27 anonymous starts, 9 results, and 1 later claim.
+  With no rolling GA journey artifact yet it returned `landing.status: missing`, null landing/result/claim values,
+  and zero instrumented starts rather than a fabricated zero-conversion cohort.
+- Growth evaluation, skill validation, UI drift, copy drift, scoped ESLint, and non-incremental TypeScript passed.
+- This machine has a developer database but no `GA4_PROPERTY_ID` or GA service-account key, so the external
+  dimension and read-only export could not be exercised here.
+- Broader repository gates are still pending.
 
 No deployment, GA property mutation, production export, or customer validation is claimed.

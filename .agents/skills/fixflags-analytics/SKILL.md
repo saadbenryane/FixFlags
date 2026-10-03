@@ -73,7 +73,8 @@ Before shipping funnel changes: every `FunnelEvent` union member must have a `tr
   cookie, and never put URLs, accounts, emails, or customer content in the key.
 - GA4 must register `journey_id` as an event-scoped custom dimension before the rolling journey export is
   queryable. A missing/unqueryable export is `unavailable`, not a zero-session cohort. `(other)`, `(not set)`,
-  or other unusable dimension rows make the cohort `partial` and must remain visible to operators.
+  other unusable dimension rows, or a saturated export row limit make the cohort `partial` and must remain
+  visible to operators.
 - Anonymous Site start → first useful result → later claim uses `loadSiteFirstValueFunnel`. Cohort membership is
   the immutable `analyze_started:<auditId>` server event. Never use current `Audit.userId IS NULL` as the start
   denominator because claiming mutates ownership and removes successful claimers from that query.

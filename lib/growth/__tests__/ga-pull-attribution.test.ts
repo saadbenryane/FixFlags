@@ -20,6 +20,7 @@ describe('GA landing journey export', () => {
       status: 'available',
       journeys: [{ journeyId, eventCount: 2 }],
       unattributedEventCount: 0,
+      rowLimitReached: false,
     })
   })
 
@@ -37,6 +38,18 @@ describe('GA landing journey export', () => {
       status: 'partial',
       journeys: [],
       unattributedEventCount: 10,
+      rowLimitReached: false,
     })
+  })
+
+  it('marks a saturated export partial instead of silently truncating it', () => {
+    const journeyId = `ffj_${'b'.repeat(32)}`
+    expect(
+      buildGaLandingJourneyArtifact(
+        [{ 'customEvent:journey_id': journeyId, eventCount: 1 }],
+        metadata,
+        1,
+      ),
+    ).toMatchObject({ status: 'partial', rowLimitReached: true })
   })
 })

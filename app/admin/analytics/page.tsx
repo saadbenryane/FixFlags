@@ -436,7 +436,7 @@ export default async function AdminAnalyticsPage() {
               GA window {firstValueFunnel.landing.startDate} to {firstValueFunnel.landing.endDate}; fetched {firstValueFunnel.landing.fetchedAt}.
               {' '}{firstValueFunnel.landing.instrumentedStarts} recent anonymous starts carry a journey key.
               {firstValueFunnel.landing.status === 'partial'
-                ? ` GA4 grouped ${firstValueFunnel.landing.unattributedEventCount} landing events without a usable journey key, so this cohort is partial.`
+                ? ` This cohort is partial${firstValueFunnel.landing.unattributedEventCount > 0 ? ` because GA4 grouped ${firstValueFunnel.landing.unattributedEventCount} landing events without a usable journey key` : ''}${firstValueFunnel.landing.rowLimitReached ? ' because the journey export reached its row limit' : ''}.`
                 : ''}
             </p>
           </>

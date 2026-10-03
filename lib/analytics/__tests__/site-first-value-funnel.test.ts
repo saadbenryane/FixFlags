@@ -101,6 +101,7 @@ describe('Site first-value funnel', () => {
         claimRate: null,
         instrumentedStarts: 0,
         unattributedEventCount: 0,
+        rowLimitReached: false,
       },
     })
   })
@@ -140,6 +141,7 @@ describe('Site first-value funnel', () => {
         endDate: '2026-10-03',
         journeyIds: [journeyOne, journeyTwo, journeyNoStart],
         unattributedEventCount: 0,
+        rowLimitReached: false,
       },
     })
 
@@ -157,6 +159,7 @@ describe('Site first-value funnel', () => {
       claimRate: 33,
       instrumentedStarts: 3,
       unattributedEventCount: 0,
+      rowLimitReached: false,
     })
   })
 
@@ -217,6 +220,7 @@ describe('Site first-value funnel', () => {
         endDate: '2026-10-03',
         journeys: [],
         unattributedEventCount: 0,
+        rowLimitReached: false,
       },
     })
     findAudits.mockResolvedValueOnce([

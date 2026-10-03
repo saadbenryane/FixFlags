@@ -48,6 +48,7 @@ export type LandingJourneyArtifact = {
   endDate: string
   journeyIds: string[]
   unattributedEventCount: number
+  rowLimitReached: boolean
 }
 
 export type LandingFirstValueFunnel = {
@@ -64,6 +65,7 @@ export type LandingFirstValueFunnel = {
   claimRate: number | null
   instrumentedStarts: number
   unattributedEventCount: number
+  rowLimitReached: boolean
 }
 
 function eventAuditId(idempotencyKey: string, prefix: string): string | null {
@@ -125,6 +127,7 @@ export function parseLandingJourneyArtifact(payload: unknown): LandingJourneyArt
       typeof record.unattributedEventCount === 'number'
         ? Math.max(0, record.unattributedEventCount)
         : 0,
+    rowLimitReached: record.rowLimitReached === true,
   }
 }
 
@@ -260,6 +263,7 @@ export function calculateSiteFirstValueFunnel(input: {
           : percentage(claimedJourneyIds.size, landingSessions),
       instrumentedStarts: journeyByAuditId.size,
       unattributedEventCount: input.landingArtifact?.unattributedEventCount ?? 0,
+      rowLimitReached: input.landingArtifact?.rowLimitReached ?? false,
     },
   }
 }
