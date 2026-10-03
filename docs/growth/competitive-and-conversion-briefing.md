@@ -20,9 +20,10 @@ date," never "the vendor does not have it." Prices and capabilities change. Part
 surfaces behind decision-driving claims. Other matrix entries remain working notes and must not enter public
 copy or prioritization until they gain a dated primary source.
 
-**Open work:** complete the scenario-level MCP competitor audit, produce a fresh GA4/GSC pull, and make the
-Site-start-to-result funnel attributable. Item 15 remains blocked on the first two product-launch gates in the
-roadmap as well as on that competitor audit. Re-verify every external figure immediately before publication.
+**Open work:** complete the scenario-level MCP competitor audit, deploy the locally implemented attributable
+Site-start cohort, and produce a fresh GA4/GSC and server-funnel pull. Item 15 remains blocked on the first two
+product-launch gates in the roadmap as well as on that competitor audit. Re-verify every external figure
+immediately before publication.
 
 ---
 
@@ -272,19 +273,24 @@ These are the findings strong enough to change decisions after the 2026-10-02 co
    substantial portion of scheduled execution and evidence. The earlier "~80%" figure had no measurement.
 6. **The Shopify price comparison needs tier precision.** Jagged Pixel starts at USD 29, while its App Store listing
    places automated UI tests on the USD 99 Pro tier. Do not describe USD 29 as the checkout-test price.
-7. **FixFlags instrumentation is legacy-weighted, not entirely report-era.** `FunnelEvent` currently has 49
-   members, including Shopify, waitlist and Help events, but it lacks the new Site → Outcome → Flag → Verify loop.
+7. **The client registry is not the whole product funnel.** `FunnelEvent` has 49 legacy-weighted browser events,
+   while `SiteLifecycleEvent` has 17 durable server events for the Site → Outcome → Flag → Verify loop. Do not
+   duplicate server truth into GA merely to make the client union look current.
 8. **The conversion funnel is not currently reproducible.** The document's 17-start/3-completion baseline has no
-   committed source or query. The committed September 8 GA4 artifacts report different event counts and cannot
-   join an organic session to a Site start or unique completed Site analysis.
+   committed source. The committed September 8 GA4 artifacts report different event counts. A local 2026-10-03
+   repair can now cohort an immutable anonymous Site start to that exact check's first useful result and later
+   claim, but it is not deployed and no fresh production baseline has been captured.
 9. **The last reproducible search baseline is dated September 8, not October 1.** It reports seven clicks and 53
    impressions, all brand or brand-adjacent. It supports a foundation phase, not a current volume forecast.
 10. **Only Checkout and Availability are watchable today.** The MCP contract is local and undiscoverable pending
     exact-client and production-canary proof. Public positioning must preserve both limits.
 11. **Agent Status provides adjacent, vendor-authored evidence** that transport availability and semantic quality
     can diverge. It does not measure FixFlags, Checkout recovery, or coding-agent changes to the wrong object.
-12. **Measure, prove, then position.** A fresh attributable funnel and one real public recovery proof must precede
+12. **Measure, prove, then position.** A fresh production funnel and one real public recovery proof must precede
     a site-wide comparison rewrite or an MCP acquisition page.
+13. **Mutable current ownership is not a cohort key.** The old admin query counted `Audit.userId IS NULL`, so a
+    successful Site claim removed its original anonymous start from the denominator. Cohort membership must come
+    from the immutable `analyze_started` event and only then read later result and claim state from the same audit.
 
 ### Superseded or unproven initial conclusions
 
@@ -314,8 +320,8 @@ funnel is attributable. Stable item numbers are retained so existing handoffs do
 
 | #   | Action                                                                                                                                                                                                                                                                                                                                                                                       | Impact                                                             | Effort | Depends on | Lands in                                                                                   |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------ | ---------- | ------------------------------------------------------------------------------------------ |
-| 1   | **Instrument the new product loop.** Add events: `site_added`, `outcome_assessed` with the Clear/Flag/Couldn't verify/Stale value, `flag_raised`, `flag_viewed` in the Site workspace, `verify_requested`, `recovery_proven`, `flag_recurrence`, `watch_run`, `flag_sent_to_ai`, `mcp_tool_invoked`. Every `FunnelEvent` member needs a real call site or it must be removed from the union. | Very high. Nothing downstream is falsifiable without it.           | M      | —          | `lib/analytics/events.ts`, call sites, `lib/analytics/__tests__/funnel-call-sites.test.ts` |
-| 2   | **Close the anonymous-to-signup attribution gap** so visitor → signup is computable end to end.                                                                                                                                                                                                                                                                                              | Very high. Currently the central funnel metric cannot be produced. | M      | 1          | `lib/analytics/signup-conversion.ts`, session/audit correlation                            |
+| 1   | **Make the shipped product loop attributable. Locally implemented 2026-10-03.** Preserve the 17 durable `SiteLifecycleEvent` stages. Cohort anonymous `analyze_started:<auditId>` events and match `first_useful_result:<auditId>` plus later claim state from that exact Audit. Raw lifecycle volumes are activity, not a sequential funnel. Deployment and a fresh production read remain open. | Very high. Nothing downstream is falsifiable without it.           | M      | —          | `lib/analytics/site-first-value-funnel.ts`, admin analytics, focused tests |
+| 2   | **Close the remaining visitor-to-start attribution gap** so landing visitor → anonymous Site start is computable end to end. The server cohort now covers start → result → claim; pre-start GA/session identity is still separate.                                                                                                                                                              | Very high. The full acquisition funnel cannot yet be produced. | M      | 1          | consent-aware session/audit correlation                            |
 | 3   | **Publish a dated funnel baseline** per stage with `fetchedAt`, replacing "Tracked" with real values. Signups and paid conversion are currently unnumbered.                                                                                                                                                                                                                                  | High. Every later claim needs a denominator.                       | S      | 1, 2       | `docs/growth/metrics.md`                                                                   |
 
 ### Repairing the leak
@@ -486,14 +492,13 @@ the board so analytics call sites, copy and shared verification files have one o
 >
 > **Your ordered work.** Items 1 through 7 and 11, 12, 17, 20 of the plan in the briefing. In order:
 >
-> 1. **Instrument the new product loop.** `FunnelEvent` currently has 49 legacy-weighted members, including
->    Shopify, waitlist and Help events. Add real call sites for the shipped loop: site added, Outcome assessed
->    with its Clear/Flag/Couldn't verify/Stale
->    value, Flag raised, Flag viewed in the Site workspace, Verify requested, recovery proven, recurrence, Watch
->    run, Flag sent to AI, MCP tool invoked. Every `FunnelEvent` union member must have a `trackEvent` call site
->    or be removed from the union; `lib/analytics/__tests__/funnel-call-sites.test.ts` enforces this.
-> 2. **Close the anonymous-to-signup attribution gap.** GA4 currently cannot join sessions to Site starts, so
->    visitor-to-signup cannot be computed. Make it computable.
+> 1. **Use the attributable Site cohort already implemented locally.** Do not add the Site lifecycle to the
+>    browser-only `FunnelEvent` union. `SiteLifecycleEvent` is the durable registry. The admin cohort fixes each
+>    anonymous start by `analyze_started:<auditId>`, matches the exact `first_useful_result:<auditId>`, and reads
+>    later claim state without removing claimers from the denominator. Deploy it and capture a dated read.
+> 2. **Close the remaining visitor-to-start attribution gap.** GA4 still cannot join a consenting landing
+>    session to a Site start, so the full visitor-to-claim funnel cannot be computed. Make that join explicit
+>    without weakening consent or persisting raw URLs.
 > 3. **Publish a dated funnel baseline.** Replace "Tracked" with real values for signups and paid conversion.
 >    Every later claim needs a denominator.
 > 4. **Measure start-to-result loss.** Establish unique denominators, then locate loss between submit, validation,

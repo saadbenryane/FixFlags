@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { SectionTitle } from '@/components/ui/typography'
 import { StatValue } from '@/components/admin/StatValue'
 import { MetricCard } from '@/components/admin/MetricCard'
-import { startOf, pct } from '@/lib/admin/date-ranges'
+import { startOf } from '@/lib/admin/date-ranges'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { subscriptionMetrics } from '@/lib/analytics/subscription-metrics'
 import {
@@ -14,6 +14,7 @@ import {
   type DurationDistribution,
 } from '@/lib/analytics/improvement-value-metrics'
 import { SITE_LIFECYCLE_EVENTS } from '@/lib/analytics/site-events'
+import { loadSiteFirstValueFunnel } from '@/lib/analytics/site-first-value-funnel'
 
 function planPriceUsd(plan: keyof typeof PLAN_DEFINITIONS): number {
   return Number(PLAN_DEFINITIONS[plan].price.replace(/[^0-9.]/g, '')) || 0
@@ -58,8 +59,6 @@ export default async function AdminAnalyticsPage() {
     auditsToday,
     auditsWeek,
     auditsMonth,
-    anonAuditsMonth,
-    anonCompletedMonth,
     anonUnlinkedLeads,
     improvementValueRows,
     watchedProducts,
@@ -76,10 +75,6 @@ export default async function AdminAnalyticsPage() {
     prisma.audit.count({ where: { createdAt: { gte: todayStart } } }),
     prisma.audit.count({ where: { createdAt: { gte: weekAgo } } }),
     prisma.audit.count({ where: { createdAt: { gte: monthAgo } } }),
-    prisma.audit.count({ where: { userId: null, createdAt: { gte: monthAgo } } }),
-    prisma.audit.count({
-      where: { userId: null, status: 'COMPLETED', createdAt: { gte: monthAgo } },
-    }),
     prisma.lead.count({ where: { linkedUserId: null } }),
     prisma.improvementCycle.findMany({
       where: { createdAt: { gte: monthAgo } },
@@ -139,6 +134,7 @@ export default async function AdminAnalyticsPage() {
     completedAuditsMonth,
     trafficSources,
     siteLifecycleCounts,
+    firstValueFunnel,
   ] =
     await Promise.all([
       prisma.user.findMany({
@@ -174,6 +170,7 @@ export default async function AdminAnalyticsPage() {
         _count: { _all: true },
         where: { createdAt: { gte: monthAgo } },
       }),
+      loadSiteFirstValueFunnel(monthAgo),
     ])
 
   const mrr = activePaidUsers.reduce(
@@ -201,8 +198,6 @@ export default async function AdminAnalyticsPage() {
     siteLifecycleCounts.map((row) => [row.name, row._count._all])
   )
 
-  const loggedInAuditsMonth = Math.max(0, auditsMonth - anonAuditsMonth)
-  const anonCompleteRate = pct(anonCompletedMonth, anonAuditsMonth)
   const improvementValue = calculateImprovementValueMetrics(improvementValueRows, {
     activeProductCount,
   })
@@ -241,9 +236,10 @@ export default async function AdminAnalyticsPage() {
       </PageHeader>
 
       <section className="space-y-4">
-        <SectionTitle>Site lifecycle funnel (last 30 days)</SectionTitle>
+        <SectionTitle>Site lifecycle activity (last 30 days)</SectionTitle>
         <p className="max-w-4xl text-sm text-muted-foreground">
-          Durable, idempotent server events. Counts show stage volume and make drop-off visible without storing URLs, prompts, evidence, or email addresses.
+          Durable, idempotent server-event volume without URLs, prompts, evidence, or email addresses.
+          These events describe different actions and are not a sequential conversion funnel.
         </p>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {SITE_LIFECYCLE_EVENTS.map((event) => (
@@ -393,27 +389,65 @@ export default async function AdminAnalyticsPage() {
       </section>
 
       <section className="space-y-4">
-        <SectionTitle>Anonymous first-value conversion (last 30 days)</SectionTitle>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <SectionTitle>Anonymous Site first-value cohort (started in the last 30 days)</SectionTitle>
+        <p className="max-w-4xl text-sm text-muted-foreground">
+          Each start is fixed by its immutable server event, then matched to the same check&apos;s first useful
+          result and later account claim. Claiming a Site never removes its start from this denominator.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
-            label="Anonymous checks started"
-            value={anonAuditsMonth.toLocaleString()}
+            label="Anonymous Sites started"
+            value={firstValueFunnel.started.toLocaleString()}
             variant="subtle"
           />
           <MetricCard
-            label="Anonymous checks completed"
-            value={anonCompletedMonth.toLocaleString()}
-            detail={<span className="text-xs text-muted-foreground">{anonCompleteRate}% of starts</span>}
+            label="First useful result"
+            value={firstValueFunnel.firstUsefulResult.toLocaleString()}
+            detail={<span className="text-xs text-muted-foreground">{firstValueFunnel.resultRate}% of starts</span>}
             variant="subtle"
           />
           <MetricCard
-            label="Signed-in checks started"
-            value={loggedInAuditsMonth.toLocaleString()}
+            label="Claimed after start"
+            value={firstValueFunnel.claimed.toLocaleString()}
+            detail={<span className="text-xs text-muted-foreground">{firstValueFunnel.claimRate}% of starts</span>}
             variant="subtle"
           />
+          <MetricCard
+            label="Failed before useful result"
+            value={firstValueFunnel.failedBeforeResult.toLocaleString()}
+            detail={<span className="text-xs text-muted-foreground">{firstValueFunnel.stillRunning} pending or missing result</span>}
+            variant="subtle"
+          />
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader><CardTitle className="text-sm">Cohort by acquisition source</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {firstValueFunnel.sources.length === 0 ? (
+                <p className="text-muted-foreground">No anonymous Site starts in this period.</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-[minmax(0,1fr)_3rem_3rem_3rem] gap-3 border-b pb-2 text-xs text-muted-foreground">
+                    <span>Source</span><span className="text-right">Start</span><span className="text-right">Result</span><span className="text-right">Claim</span>
+                  </div>
+                  {firstValueFunnel.sources.slice(0, 8).map((row) => (
+                    <div key={row.source} className="grid grid-cols-[minmax(0,1fr)_3rem_3rem_3rem] items-center gap-3">
+                      <span className="truncate text-muted-foreground">{row.source}</span>
+                      <span className="text-right font-mono tabular-nums">{row.started}</span>
+                      <span className="text-right font-mono tabular-nums">{row.firstUsefulResult}</span>
+                      <span className="text-right font-mono tabular-nums">{row.claimed}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </CardContent>
+          </Card>
           <MetricCard
             label="Unlinked leads (domains)"
             value={anonUnlinkedLeads.toLocaleString()}
+            detail={firstValueFunnel.missingAudit > 0
+              ? <span className="text-xs text-destructive">{firstValueFunnel.missingAudit} cohort records missing their check</span>
+              : <span className="text-xs text-muted-foreground">Cohort records reconciled</span>}
             action={
               <Link href="/admin/leads" className="text-xs text-brand underline">
                 Open leads &rarr;
@@ -422,9 +456,6 @@ export default async function AdminAnalyticsPage() {
             variant="subtle"
           />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Anonymous checks have no account when created. The durable lifecycle above continues at first useful result and Site claim after signup.
-        </p>
       </section>
 
       <section className="space-y-4">
