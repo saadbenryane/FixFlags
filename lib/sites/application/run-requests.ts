@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { Prisma, type RunRequestSource } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { createAndEnqueueAudit } from '@/lib/audit/create-audit'
+import { createAndEnqueueAudit, AuditLimitError } from '@/lib/audit/create-audit'
 import { buildAttribution } from '@/lib/leads/attribution'
 import { assessRequiredBindings } from '@/lib/sites/application/binding-assessment'
 import { checkoutResultCopy, currentOutcomeState } from '@/lib/sites/outcome-state'
@@ -222,6 +222,30 @@ function sameExecutionScope(
     verificationTargetIdentity(run.verificationTarget) === verificationTargetIdentity(verificationTarget)
 }
 
+/**
+ * Which Site runs count against the plan's scan allowance.
+ *
+ * Only a Site-wide re-scan that a person or an agent asked for is a scan. Two
+ * things are deliberately excluded, and both exclusions are load-bearing:
+ *
+ * - **Scheduled Watch.** `siteCarePolicy` states that review-credit counters
+ *   never decide whether Watch is available, and every pricing surface promises
+ *   Free "verified weekly". Metering the schedule would make the promise a lie on
+ *   the plan that can least afford it.
+ * - **Outcome and diagnostic verification.** A Verify run exists to resolve one
+ *   named Outcome after a fix. Charging for it would tax the exact loop the
+ *   product is built to produce, and would leave someone who shipped a fix unable
+ *   to prove it.
+ *
+ * What is left is the repeatable, whole-Site, user-initiated "Check again", which
+ * is the action a plan limit can honestly mean. Before this rule every Site run
+ * was unmetered, so the allowance only applied to the legacy new-URL path and a
+ * Free Site could be re-checked without limit.
+ */
+function consumesScanAllowance(scope: 'OUTCOMES' | 'SITE', source: RunRequestSource): boolean {
+  return scope === 'SITE' && source !== 'WATCH'
+}
+
 export async function requestSiteRun(input: RunInput): Promise<{
   runId: string
   auditId: string | null
@@ -402,7 +426,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
       recheckTrigger: input.source === 'WATCH' ? 'WATCH' : 'MANUAL',
       auditMode: input.source === 'WATCH' ? 'CRITICAL_PATH' : 'SINGLE',
       monitoringMode: input.source === 'WATCH' ? 'FULL' : undefined,
-      skipUsageCount: true,
+      skipUsageCount: !consumesScanAllowance(scope, input.source),
       useProjectScanAccess: true,
       verificationAttemptId: input.verificationTarget?.attemptId ?? input.verificationAttemptId,
       reuseActiveManual: false,
@@ -432,12 +456,16 @@ export async function requestSiteRun(input: RunInput): Promise<{
     })
     return { runId: run.id, auditId: started.auditId, outcomeIds: selectedIds, reused: started.reused }
   } catch (error) {
+    // A blocked run still has to say why. Overwriting a plan-limit reason with a
+    // generic start failure would tell a customer whose Site they are watching
+    // that FixFlags simply could not start, which is both false and unactionable.
+    const limit = error instanceof AuditLimitError ? error : null
     await prisma.runRequest.update({
       where: { id: run.id },
       data: {
         status: 'FAILED',
-        errorCode: 'RUN_START_FAILED',
-        errorMessage: 'FixFlags could not start this verification.',
+        errorCode: limit ? limit.code : 'RUN_START_FAILED',
+        errorMessage: limit ? limit.message : 'FixFlags could not start this verification.',
         completedAt: new Date(),
         leaseUntil: null,
       },

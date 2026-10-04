@@ -371,7 +371,9 @@ export const SCAN_HANDOFF = {
  * two surfaces: starting a new analysis for an account that already watches as
  * many websites as its plan includes, and saving a claimed Site that would need
  * one more. `check-limit` is the period allowance running out, which renews on
- * its own and is therefore not the same message.
+ * its own and is therefore not the same message. `anon-scan-limit` is the
+ * signed-out teaser allowance and names the account's better result rather than
+ * only the blocked one.
  */
 export const PLAN_LIMIT_NOTICE = {
   copy: {
@@ -386,6 +388,10 @@ export const PLAN_LIMIT_NOTICE = {
     'claim-limit': {
       title: 'This Site could not be saved',
       body: 'Your plan already covers as many websites as it includes, so this Site could not be added to your account. Plans that cover more websites verify every day.',
+    },
+    'anon-scan-limit': {
+      title: 'Your next scan is next week',
+      body: 'Signed out, FixFlags checks one website a week. A free account checks deeper, keeps the history, and watches for changes on its own.',
     },
   },
   upgradeCta: 'See plans',

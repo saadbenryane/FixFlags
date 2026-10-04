@@ -41,7 +41,8 @@ import {
   claimsAnonymousReport,
   trackAnonymousAuditId,
 } from '@/lib/audit/usage'
-import { createAnonymousClaim } from '@/lib/security/anonymous-claim'
+import { createAnonymousClaim, createAnonymousClaims } from '@/lib/security/anonymous-claim'
+import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 
 process.env.BETTER_AUTH_SECRET = 'test-anonymous-claim-secret-at-least-32-chars'
 
@@ -95,8 +96,8 @@ describe('checkAnonymousAuditAllowed', () => {
     expect(prismaMock.audit.count).not.toHaveBeenCalled()
   })
 
-  it('blocks when a tracked teaser audit still exists', async () => {
-    cookieStore.get.mockReturnValue({ value: createAnonymousClaim('teaser-1') })
+  it('blocks when a tracked teaser audit is inside the current window', async () => {
+    cookieStore.get.mockReturnValue({ value: createAnonymousClaims(['teaser-1']) })
     prismaMock.audit.count.mockResolvedValueOnce(1)
     const result = await checkAnonymousAuditAllowed()
     expect(result).toMatchObject({
@@ -104,10 +105,35 @@ describe('checkAnonymousAuditAllowed', () => {
       code: 'AUTH_REQUIRED',
       action: 'signup',
     })
-    expect(result.error).toContain('free scan')
+    expect(result.error).toBe(PLAN_LIMIT_NOTICE.copy['anon-scan-limit'].body)
+    // The window filter is what makes the allowance repeat instead of expiring
+    // with the cookie, so it belongs in the count and cannot be applied later.
     expect(prismaMock.audit.count).toHaveBeenCalledWith({
-      where: { id: { in: ['teaser-1'] }, userId: null },
+      where: {
+        id: { in: ['teaser-1'] },
+        userId: null,
+        createdAt: { gte: expect.any(Date) },
+      },
     })
+  })
+
+  it('counts every tracked teaser scan, not just the newest', async () => {
+    cookieStore.get.mockReturnValue({ value: createAnonymousClaims(['teaser-2', 'teaser-1']) })
+    prismaMock.audit.count.mockResolvedValueOnce(1)
+    await expect(checkAnonymousAuditAllowed()).resolves.toMatchObject({ allowed: false })
+    expect(prismaMock.audit.count).toHaveBeenCalledWith({
+      where: {
+        id: { in: ['teaser-2', 'teaser-1'] },
+        userId: null,
+        createdAt: { gte: expect.any(Date) },
+      },
+    })
+  })
+
+  it('allows again when the tracked audit is older than the window', async () => {
+    cookieStore.get.mockReturnValue({ value: createAnonymousClaims(['teaser-1']) })
+    prismaMock.audit.count.mockResolvedValueOnce(0)
+    await expect(checkAnonymousAuditAllowed()).resolves.toEqual({ allowed: true })
   })
 
   it('allows again when the tracked audit no longer exists (stale cookie)', async () => {
@@ -138,6 +164,23 @@ describe('trackAnonymousAuditId', () => {
       expect.stringMatching(/^[^.]+\.[^.]+$/),
       expect.objectContaining({ httpOnly: true, sameSite: 'lax', path: '/' })
     )
+  })
+
+  it('keeps earlier scans reachable instead of overwriting them', async () => {
+    // A visitor now earns more than one scan. Replacing the previous id would
+    // lock them out of the report they already have, which is a silent loss of
+    // evidence they were already shown.
+    cookieStore.get.mockReturnValue({ value: createAnonymousClaims(['first-scan']) })
+    await trackAnonymousAuditId('second-scan')
+    const [, written] = cookieStore.set.mock.calls.at(-1)!
+    expect(readAnonAuditIds(written as string)).toEqual(['second-scan', 'first-scan'])
+  })
+
+  it('deduplicates a re-tracked id so a retry cannot inflate the count', async () => {
+    cookieStore.get.mockReturnValue({ value: createAnonymousClaims(['teaser-1']) })
+    await trackAnonymousAuditId('teaser-1')
+    const [, written] = cookieStore.set.mock.calls.at(-1)!
+    expect(readAnonAuditIds(written as string)).toEqual(['teaser-1'])
   })
 
   it('scopes the claim cookie to www and apex of the product host', async () => {

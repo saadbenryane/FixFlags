@@ -7,6 +7,7 @@ import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { BoardCardView } from '@/lib/sites/board-card'
 import { AUDIT_ERRORS, CARE_HOME, WATCH_ALERT_DELIVERY, WATCH_OFFER } from '@/lib/marketing/copy'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 
 const SITE_PATH = '/sites/p_example'
 
@@ -612,8 +613,15 @@ describe('SiteBoard chrome', () => {
       cards,
       site: { ...boardView().site, projectId: 'project-1', userId: signedInUser.id },
     })
+    // A spent allowance answers 402 with the server's own wording. Stale evidence
+    // has to stay readable either way, and the reason has to be the limit.
     vi.stubGlobal('fetch', vi.fn(async () => ({
-      ok: false, status: 429, json: async () => ({ error: 'Check limit reached. Try again later.' }),
+      ok: false,
+      status: 402,
+      json: async () => ({
+        code: 'UPGRADE_REQUIRED',
+        message: PLAN_LIMIT_NOTICE.copy['check-limit'].body,
+      }),
     })))
     render(
       <MeProvider initialUser={signedInUser}>
@@ -624,7 +632,9 @@ describe('SiteBoard chrome', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Conversion' }))
     fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
 
-    expect(await screen.findByText('Check limit reached. Try again later.')).toBeVisible()
+    expect(await screen.findByText(PLAN_LIMIT_NOTICE.copy['check-limit'].body)).toBeVisible()
+    // The generic start-failure copy would be a lie here: nothing broke.
+    expect(screen.queryByText(SITE_BOARD_COPY.checkStartFailed)).not.toBeInTheDocument()
     expect(screen.getByRole('dialog')).toHaveTextContent(SITE_BOARD_COPY.checkOutOfDateDetail)
     expect(screen.getByRole('button', { name: 'Check again' })).toBeEnabled()
     vi.unstubAllGlobals()

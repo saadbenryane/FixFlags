@@ -28,6 +28,9 @@ function isEmptyUncheckedCard(card: BoardCardView) {
   return card.id !== 'site' && !card.evidenced && card.state === 'unknown' && card.openFlagCount === 0 && card.activity !== 'checking'
 }
 
+/** Plan-capacity answers from the run command, which own their own wording. */
+const LIMIT_CODES = new Set(['UPGRADE_REQUIRED', 'TOKEN_LIMIT', 'AUTH_REQUIRED'])
+
 export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHomeView }) {
   const router = useRouter()
   const { user } = useMe()
@@ -122,8 +125,14 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
       const response = await fetch(`/api/sites/${siteId}/outcomes/${outcomeId}/verify`, {
         method: 'POST', headers: { 'Idempotency-Key': `web:${outcomeId}:${Date.now()}` },
       })
-      const body = await response.json().catch(() => ({})) as { error?: string }
-      if (!response.ok) return setToast(body.error || 'Could not start this verification')
+      const body = await response.json().catch(() => ({})) as { message?: string }
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          router.push(`/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`)
+          return
+        }
+        return setToast(body.message || 'Could not start this verification')
+      }
       setToast('Outcome verification started')
       await refresh()
     } finally {
@@ -143,10 +152,14 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
         },
         body: JSON.stringify({ scope: 'site', outcomeIds: [] }),
       })
-      const body = await response.json().catch(() => ({})) as { auditId?: string | null; error?: string }
+      const body = await response.json().catch(() => ({})) as { auditId?: string | null; message?: string; code?: string }
       if (!response.ok) {
         if (response.status === 401) router.push(`/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`)
-        else setToast(body.error || SITE_BOARD_COPY.checkStartFailed)
+        // A spent allowance is the server's canonical explanation. Falling back to
+        // "could not start a new check" here would report a working failure for a
+        // limit, and leave the customer re-pressing a button that cannot work.
+        else if (LIMIT_CODES.has(body.code ?? '')) setToast(body.message ?? SITE_BOARD_COPY.checkStartFailed)
+        else setToast(SITE_BOARD_COPY.checkStartFailed)
         return
       }
       setSelectedCard(null)

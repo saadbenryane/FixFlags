@@ -4,8 +4,9 @@ import { hasUnlimitedScans, isDevUnlimitedScans } from '@/lib/auth/permissions'
 import type { UsageLimitResult } from '@/lib/audit/check-limit'
 import { consumePurchasedCredit } from '@/lib/billing/credits'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
-import { createAnonymousClaim, verifyAnonymousClaim } from '@/lib/security/anonymous-claim'
+import { createAnonymousClaims, readAnonymousClaimIds } from '@/lib/security/anonymous-claim'
 import { sharedCookieDomain } from '@/lib/http/site-host'
+import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 import { rollUserUsagePeriod } from '@/lib/billing/usage-period'
 
 type CookieReader = {
@@ -25,13 +26,29 @@ export {
 
 export const ANON_AUDIT_IDS_COOKIE = 'ff_anon_report_ids'
 
+/**
+ * Signed-out visitors get a repeating teaser allowance rather than one scan for
+ * the lifetime of the cookie. Weekly, not monthly, because the only thing an
+ * anonymous scan can produce is evidence on the page in front of them; waiting a
+ * month to re-read it teaches nothing that a second scan would not.
+ *
+ * It stays below the Free plan deliberately. A signed-out scan is a teaser: no AI
+ * judge, one page of depth, no history and no Watch. Granting an anonymous
+ * visitor the Free plan's frequency would give away the paid tier's headline
+ * number for a strictly thinner result, and would remove the reason to claim the
+ * report. Frequency is therefore the one thing the signed-out tier does not sell.
+ */
+export const ANON_SCAN_LIMIT = 1
+export const ANON_SCAN_WINDOW_SECONDS = 60 * 60 * 24 * 7
+
+const ANON_SCAN_LIMIT_MESSAGE = PLAN_LIMIT_NOTICE.copy['anon-scan-limit'].body
+
 /** Soft ceiling: clearing cookies must not unlock unlimited free triage. */
-export const ANON_IP_SOFT_LIMIT = 1
-export const ANON_IP_SOFT_WINDOW_SECONDS = 60 * 60 * 24
+export const ANON_IP_SOFT_LIMIT = ANON_SCAN_LIMIT
+export const ANON_IP_SOFT_WINDOW_SECONDS = ANON_SCAN_WINDOW_SECONDS
 
 export function readAnonAuditIds(raw: string | undefined): string[] {
-  const claim = verifyAnonymousClaim(raw)
-  return claim ? [claim.auditId] : []
+  return readAnonymousClaimIds(raw)
 }
 
 /** Prefer a valid signed claim when www/apex left both a host-only and Domain cookie. */
@@ -75,26 +92,26 @@ async function requestHostname(): Promise<string | null> {
 }
 
 /**
- * Anonymous users get one free scan (the "teaser"). After they've used it, any
- * further scan requires a free account, which also provides the AI fix prompts.
+ * Anonymous allowance gate. Counts this browser's own teaser scans inside the
+ * current window rather than treating any past claim as permanent, so a visitor
+ * can come back next week. The IP ceiling below is what actually bounds abuse,
+ * because a cleared cookie is not a new visitor.
  */
 export async function checkAnonymousAuditAllowed(): Promise<UsageLimitResult> {
   if (isDevUnlimitedScans()) return { allowed: true }
 
   const ids = await readClaimedAnonymousIds()
   if (ids.length > 0) {
-    // Confirm at least one tracked audit still exists so a stale/garbage cookie
-    // can't permanently lock a first-time visitor.
-    const used = await prisma.audit.count({
-      where: {
-        id: { in: ids },
-        userId: null,
-      },
+    // Confirm the tracked scans still exist so a stale or garbage cookie cannot
+    // permanently lock a first-time visitor.
+    const windowStart = new Date(Date.now() - ANON_SCAN_WINDOW_SECONDS * 1000)
+    const usedInWindow = await prisma.audit.count({
+      where: { id: { in: ids }, userId: null, createdAt: { gte: windowStart } },
     })
-    if (used > 0) {
+    if (usedInWindow >= ANON_SCAN_LIMIT) {
       return {
         allowed: false,
-        error: 'You’ve used your free scan. Create a free account for fix prompts and more checks.',
+        error: ANON_SCAN_LIMIT_MESSAGE,
         code: 'AUTH_REQUIRED',
         action: 'signup',
       }
@@ -118,12 +135,20 @@ export async function enforceAnonymousIpSoftCeiling(clientId: string): Promise<v
   })
 }
 
-/** Track the single anon teaser audit id (product gate is binary). */
+/**
+ * Record a teaser scan and keep every earlier one reachable.
+ *
+ * The previous scan is prepended rather than replaced. A signed-out visitor now
+ * earns more than one scan, and each of those reports has to stay openable from
+ * this browser, so overwriting would leave the earlier report unreachable the
+ * moment a second scan happened.
+ */
 export async function trackAnonymousAuditId(auditId: string): Promise<void> {
   const cookieStore = await cookies()
   const domain = sharedCookieDomain(undefined, await requestHostname())
   const secure = process.env.NODE_ENV === 'production'
-  const value = createAnonymousClaim(auditId)
+  const existing = readAnonAuditIdsFromStore(cookieStore)
+  const value = createAnonymousClaims([auditId, ...existing])
   const base = {
     httpOnly: true,
     maxAge: 60 * 60 * 24 * 30,

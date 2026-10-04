@@ -197,8 +197,14 @@ describe('checkAnonymousAuditAllowed', () => {
     mockCookieGet.mockReturnValue({ value: createAnonymousClaim('id1') })
     mockAuditCount.mockResolvedValue(1)
     await checkAnonymousAuditAllowed()
+    // Scoped to this browser's own ids, anonymous only, and inside the current
+    // allowance window so the teaser repeats instead of expiring with the cookie.
     expect(mockAuditCount).toHaveBeenCalledWith({
-      where: { id: { in: ['id1'] }, userId: null },
+      where: {
+        id: { in: ['id1'] },
+        userId: null,
+        createdAt: { gte: expect.any(Date) },
+      },
     })
     delete process.env.DEV_SIMULATE_BILLING
   })

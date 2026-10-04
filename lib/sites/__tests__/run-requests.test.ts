@@ -39,9 +39,10 @@ vi.mock('@/lib/db', () => ({
     outcomeBindingExecution: { findMany: mocks.executionFindMany },
   },
 }))
-vi.mock('@/lib/audit/create-audit', () => ({
-  createAndEnqueueAudit: mocks.createAudit,
-}))
+vi.mock('@/lib/audit/create-audit', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/audit/create-audit')>('@/lib/audit/create-audit')
+  return { ...actual, createAndEnqueueAudit: mocks.createAudit }
+})
 vi.mock('@/lib/analytics/site-events', () => ({
   recordSiteLifecycleEvent: vi.fn().mockResolvedValue({}),
 }))
@@ -119,6 +120,71 @@ describe('RunRequest tenant boundary and idempotency', () => {
       parentId: 'audit-parent',
       recheckTrigger: 'MANUAL',
       runRequestId: 'run-1',
+      // A user-initiated whole-Site re-scan is the one action a plan allowance
+      // can honestly mean, so it is the one action that counts.
+      skipUsageCount: false,
+    }))
+  })
+
+  it('does not charge the allowance for an Outcome verification', async () => {
+    // Verify is the Flag -> Fix -> Verify loop. Charging for it would tax the
+    // exact behaviour the product exists to produce and would strand someone
+    // who shipped a fix but could not then prove it.
+    await requestSiteRun({
+      projectId: 'project-1',
+      outcomeIds: ['outcome-1'],
+      userId: 'user-1',
+      source: 'WEB',
+      scope: 'OUTCOMES',
+      idempotencyKey: 'web:checkout:verify',
+    })
+
+    expect(mocks.createAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ skipUsageCount: true }),
+    )
+  })
+
+  it('does not charge the allowance for a scheduled Watch run', async () => {
+    // Every pricing surface promises Free "verified weekly". Metering the
+    // schedule would make that promise false on the plan least able to absorb it.
+    await requestSiteRun({
+      projectId: 'project-1',
+      outcomeIds: ['outcome-1'],
+      userId: 'user-1',
+      source: 'WATCH',
+      idempotencyKey: 'watch:project-1:tick:outcome-1',
+    })
+
+    expect(mocks.createAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ skipUsageCount: true, recheckTrigger: 'WATCH' }),
+    )
+  })
+
+  it('records the plan limit as the failure reason instead of a start failure', async () => {
+    mocks.outcomeFindMany.mockResolvedValue([])
+    const { AuditLimitError } = await import('@/lib/audit/create-audit')
+    mocks.createAudit.mockRejectedValueOnce(
+      new AuditLimitError('UPGRADE_REQUIRED', { message: 'This period’s analyses are used up' }),
+    )
+
+    await expect(requestSiteRun({
+      projectId: 'project-1',
+      outcomeIds: [],
+      userId: 'user-1',
+      source: 'WEB',
+      scope: 'SITE',
+      idempotencyKey: 'web:site-care:blocked',
+    })).rejects.toThrow('This period’s analyses are used up')
+
+    // Reporting "could not start" for a spent allowance is both false and leaves
+    // the customer with nothing to do about it.
+    expect(mocks.runUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'run-1' },
+      data: expect.objectContaining({
+        status: 'FAILED',
+        errorCode: 'UPGRADE_REQUIRED',
+        errorMessage: 'This period’s analyses are used up',
+      }),
     }))
   })
 

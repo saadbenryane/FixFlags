@@ -374,9 +374,13 @@ export const UPGRADE_MOMENTS = {
 } as const
 
 export const USAGE_METER_COPY = {
-  regionLabel: 'Websites monitored',
-  compactLabel: 'Usage',
-  panelLabel: 'Websites monitored',
+  // The heading stays period-free because an unlimited plan has no period, and a
+  // heading that promises one would contradict the count shown beneath it. Where
+  // a limit really does apply, `usedCaption` and `progressLabel` say "this
+  // period", which is also what tells a customer when the meter resets.
+  regionLabel: 'Checks',
+  compactLabel: 'Checks',
+  panelLabel: 'Checks',
   usedOfLimit: (used: number, limit: number) => `${used} of ${limit}`,
   usedCaption: 'used this period',
   remainingCaption: (n: number) =>
@@ -384,7 +388,7 @@ export const USAGE_METER_COPY = {
   remainingShort: (n: number) => `${n} remaining`,
   usedThisMonthCaption: (n: number) => `${n} used`,
   panelNote:
-    'Free verifies 1 website weekly. Join the waitlist for daily verification on more websites.',
+    'Watch and Verify are not counted here. Free verifies 1 website weekly. Join the waitlist for daily verification on more websites.',
   progressLabel: (used: number, limit: number) =>
     `${used} of ${limit} used this period`,
   pending: (n: number) => `${n} in progress`,
