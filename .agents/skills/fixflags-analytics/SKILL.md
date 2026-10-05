@@ -84,6 +84,12 @@ Before shipping funnel changes: every `FunnelEvent` union member must have a `tr
 - Subscription activation, expansion, cancellation, payment failure, and churn come from `SubscriptionLifecycleEvent`, never `User.updatedAt`.
 - Keep event-derived revenue cohorts separate from acquisition totals. Do not label independently sourced totals as a conversion funnel.
 - Scheduler jobs persist their canonical results. Writing documentation exports is an explicit developer command only.
+- Watch launch readiness comes from `loadWatchLaunchReadiness`, using durable `RunRequest`, `Audit`, notification,
+  Flag occurrence, and `AuditRunCost` records. Do not infer a pass from missing rows. The 14-day/100-run sample,
+  notification, quiet-Clear, repeated-failure deduplication, and cost paths must each be exercised. Historical
+  zero-regression rows without `watchRecoveryCount` are unavailable evidence because recovery and unchanged Clear
+  cannot otherwise be distinguished. Inspect the same projection with `npm run watch:launch-readiness`; use
+  `-- --require-pass` only for an explicit release gate.
 
 ## Scan duration claims
 

@@ -59,6 +59,7 @@
     "smoke:triage:prod": "tsx scripts/smoke-triage-prod.ts",
     "audit:capabilities": "tsx scripts/audit-capability-report.ts",
     "signups": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/signup-count.ts",
+    "watch:launch-readiness": "DOTENV_CONFIG_PATH=.env.local tsx -r dotenv/config scripts/watch-launch-readiness.ts",
     "worker": "FIXFLAGS_PROCESS_ROLE=worker AUDIT_WORKER_CONCURRENCY=${AUDIT_WORKER_CONCURRENCY:-1} tsx worker/index.ts",
     "worker:watch": "FIXFLAGS_PROCESS_ROLE=worker AUDIT_WORKER_CONCURRENCY=${AUDIT_WORKER_CONCURRENCY:-1} tsx watch worker/index.ts",
     "worker:build": "node scripts/build-worker.mjs",

@@ -15,6 +15,7 @@ import {
 } from '@/lib/analytics/improvement-value-metrics'
 import { SITE_LIFECYCLE_EVENTS } from '@/lib/analytics/site-events'
 import { loadSiteFirstValueFunnel } from '@/lib/analytics/site-first-value-funnel'
+import { loadWatchLaunchReadiness } from '@/lib/analytics/watch-launch-readiness'
 
 function planPriceUsd(plan: keyof typeof PLAN_DEFINITIONS): number {
   return Number(PLAN_DEFINITIONS[plan].price.replace(/[^0-9.]/g, '')) || 0
@@ -42,6 +43,16 @@ const REJECTION_LABELS = {
   MISUNDERSTOOD_PRODUCT_CONTEXT: 'Misunderstood Product context',
 } as const
 
+const WATCH_GATE_LABELS = {
+  sample: 'Observation sample',
+  terminalCompletion: 'Terminal completion',
+  noLostRuns: 'No lost runs',
+  notificationRecords: 'Notification records',
+  quietClear: 'Quiet Clear results',
+  flagDeduplication: 'Flag deduplication',
+  economics: 'Daily-care economics',
+} as const
+
 export default async function AdminAnalyticsPage() {
   const todayStart = startOf(0)
   const weekAgo = startOf(7)
@@ -63,6 +74,7 @@ export default async function AdminAnalyticsPage() {
     improvementValueRows,
     watchedProducts,
     activeProductCount,
+    watchLaunchReadiness,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
@@ -125,6 +137,7 @@ export default async function AdminAnalyticsPage() {
         audits: { some: { status: 'COMPLETED', completedAt: { gte: monthAgo } } },
       },
     }),
+    loadWatchLaunchReadiness(),
   ])
 
   const [
@@ -234,6 +247,58 @@ export default async function AdminAnalyticsPage() {
           Open GA4 dashboard &rarr;
         </Link>
       </PageHeader>
+
+      <section className="space-y-4">
+        <SectionTitle>Watch launch evidence</SectionTitle>
+        <p className="max-w-4xl text-sm text-muted-foreground">
+          A 14-day, 100-execution production cohort. Missing evidence stays collecting or unavailable;
+          it never counts as a pass. Paid access remains waitlisted until every gate passes.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            label="Overall gate"
+            value={watchLaunchReadiness.status}
+            detail={<span className="text-xs text-muted-foreground">As of {watchLaunchReadiness.asOf.slice(0, 10)} UTC</span>}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Scheduled executions"
+            value={`${watchLaunchReadiness.metrics.scheduledExecutions}/100`}
+            detail={<span className="text-xs text-muted-foreground">14-day minimum</span>}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Terminal completion"
+            value={watchLaunchReadiness.metrics.terminalCompletionRate === null
+              ? 'N/A'
+              : `${watchLaunchReadiness.metrics.terminalCompletionRate.toFixed(2)}%`}
+            detail={<span className="text-xs text-muted-foreground">99% required · target outages excluded</span>}
+            variant="subtle"
+          />
+          <MetricCard
+            label="Projected daily-care COGS"
+            value={watchLaunchReadiness.metrics.projectedDailyCareCostUsd === null
+              ? 'N/A'
+              : `$${watchLaunchReadiness.metrics.projectedDailyCareCostUsd.toFixed(2)}`}
+            detail={<span className="text-xs text-muted-foreground">per Site / month · $12 maximum</span>}
+            variant="subtle"
+          />
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Release gates</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {Object.entries(watchLaunchReadiness.gates).map(([key, gate]) => (
+              <div key={key} className="grid gap-1 border-b border-border/40 pb-3 last:border-0 last:pb-0 sm:grid-cols-[11rem_6rem_1fr] sm:gap-3">
+                <span>{WATCH_GATE_LABELS[key as keyof typeof WATCH_GATE_LABELS]}</span>
+                <span className="font-mono text-xs uppercase text-muted-foreground">{gate.status}</span>
+                <span className="text-muted-foreground">{gate.summary}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
 
       <section className="space-y-4">
         <SectionTitle>Site lifecycle activity (last 30 days)</SectionTitle>

@@ -648,6 +648,9 @@ model Audit {
   watchNotifiedAt            DateTime?
   recheckTrigger             RecheckTrigger?
   watchRegressionCount       Int?
+  /// Recovery count is persisted separately so an unchanged Clear run can be
+  /// proven quiet without confusing it with a requested recovery notification.
+  watchRecoveryCount         Int?
   watchNotificationStatus    WatchNotificationStatus      @default(NOT_APPLICABLE)
   watchNotificationAttempts  Int                          @default(0)
   watchNotificationLastError String?

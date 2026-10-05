@@ -306,6 +306,7 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
       recheckTrigger: true,
       completedAt: true,
       watchRegressionCount: true,
+      watchRecoveryCount: true,
       watchNotificationStatus: true,
       watchNotificationAttempts: true,
       watchNotificationLeaseUntil: true,
@@ -315,39 +316,46 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
   })
   if (!child || child.recheckTrigger !== 'WATCH' || !child.projectId) return
   await markWatchCompleted(child.projectId, child.completedAt ?? new Date())
+  // Delivery is already confirmed. Historical rows may not have the newer
+  // recovery classification, but rewriting SENT to PENDING while backfilling
+  // would make the same alert eligible for delivery again.
+  if (child.watchNotificationStatus === 'SENT') return
 
   let regressCount = child.watchRegressionCount
-  let recoveryCount = 0
+  let recoveryCount = child.watchRecoveryCount
   let summary: Awaited<ReturnType<typeof getFlagDiffSummary>> | null = null
-  if (regressCount === null) {
+  if (regressCount === null || recoveryCount === null) {
     summary = await getFlagDiffSummary(parentAuditId, childAuditId)
-    const customerRegressions = [...summary.regressed, ...summary.newIssues].filter((flag) =>
-      isCustomerFlag(flag)
-    )
-    const alertRegressions = child.project?.notificationLevel === 'CRITICAL_ONLY'
-      ? customerRegressions.filter((flag) => flag.severity === 'CRITICAL')
-      : child.project?.notificationLevel === 'OFF'
-        ? []
-        : customerRegressions
-    regressCount = alertRegressions.length
-    recoveryCount = child.project?.notifyOnRecovery
-      ? summary.fixed.filter((flag) => isCustomerFlag({ ...flag, status: 'OPEN' })).length
-      : 0
+    if (regressCount === null) {
+      const customerRegressions = [...summary.regressed, ...summary.newIssues].filter((flag) =>
+        isCustomerFlag(flag)
+      )
+      const alertRegressions = child.project?.notificationLevel === 'CRITICAL_ONLY'
+        ? customerRegressions.filter((flag) => flag.severity === 'CRITICAL')
+        : child.project?.notificationLevel === 'OFF'
+          ? []
+          : customerRegressions
+      regressCount = alertRegressions.length
+    }
+    recoveryCount ??= summary.fixed.filter((flag) =>
+      isCustomerFlag({ ...flag, status: 'OPEN' })
+    ).length
+    const alertRecoveryCount = child.project?.notifyOnRecovery ? recoveryCount : 0
     await prisma.audit.update({
       where: { id: childAuditId },
       data: {
         watchRegressionCount: regressCount,
-        watchNotificationStatus: regressCount > 0 || recoveryCount > 0 ? 'PENDING' : 'NOT_APPLICABLE',
+        watchRecoveryCount: recoveryCount,
+        watchNotificationStatus: regressCount > 0 || alertRecoveryCount > 0 ? 'PENDING' : 'NOT_APPLICABLE',
       },
     })
   }
-  if (child.watchNotificationStatus === 'SENT') return
-
   summary ??= await getFlagDiffSummary(parentAuditId, childAuditId)
-  if (recoveryCount === 0 && child.project?.notifyOnRecovery) {
-    recoveryCount = summary.fixed.filter((flag) => isCustomerFlag({ ...flag, status: 'OPEN' })).length
-  }
-  if (regressCount === 0 && recoveryCount === 0) return
+  recoveryCount ??= summary.fixed.filter((flag) =>
+    isCustomerFlag({ ...flag, status: 'OPEN' })
+  ).length
+  const alertRecoveryCount = child.project?.notifyOnRecovery ? recoveryCount : 0
+  if (regressCount === 0 && alertRecoveryCount === 0) return
 
   // Never overwrite a claim another worker still holds. Writing FAILED here
   // would both lose their delivery and mark the alert failed while it is still

@@ -15,6 +15,12 @@ This is not a production attestation. Public MCP discovery, paid activation, and
 until the exact-SHA canary, real Codex/Claude Code/Cursor matrix, GA4/GSC baseline, competitive scenario, rollback
 rehearsal, and 14-day/100-run Watch reliability and COGS gates pass.
 
+The Watch gate is now executable rather than prose-only. `npm run watch:launch-readiness` reads durable scheduled
+run, terminal state, notification, quiet-Clear, repeated-Flag, and cost evidence; `-- --require-pass` exits non-zero
+unless every gate passes. Missing or historically ambiguous evidence remains collecting or unavailable. Local
+upgrade and fresh-database migration checks passed, as did the full 30-command gate with receipt
+`.agent-runs/2026-10-05T18-55-25-846Z-container-build.log`. This is not the production 14-day/100-run result.
+
 ## Status
 
 Local current-product implementation and verification completed on 2026-07-26. Release verification remains blocked only on operator-provided disposable fixtures, reset consent, deployed service configuration, and external sandbox credentials. No production database reset was attempted.

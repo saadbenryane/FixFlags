@@ -327,7 +327,11 @@ describe('Product Watch', () => {
     expect(mocks.sendEmail).not.toHaveBeenCalled()
     expect(mocks.auditUpdate).toHaveBeenCalledWith({
       where: { id: 'child-1' },
-      data: { watchRegressionCount: 0, watchNotificationStatus: 'NOT_APPLICABLE' },
+      data: {
+        watchRegressionCount: 0,
+        watchRecoveryCount: 1,
+        watchNotificationStatus: 'NOT_APPLICABLE',
+      },
     })
   })
 
