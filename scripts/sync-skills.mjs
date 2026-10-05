@@ -7,6 +7,7 @@ import process from 'node:process'
 const CANONICAL = 'public/.well-known/skills/fixflags/SKILL.md'
 const AGENTS_TARGET = '.agents/skills/fixflags/SKILL.md'
 const CLAUDE_TARGET = '.claude/skills/fixflags/SKILL.md'
+const CLI_TARGET = 'fixflags-cli/SKILL.md'
 
 function insertAfterFrontmatter(source, text) {
   const match = source.match(/^(---[\s\S]*?---\n)/)
@@ -33,6 +34,12 @@ function main() {
   mkdirSync(path.dirname(agentsPath), { recursive: true })
   writeFileSync(agentsPath, insertAfterFrontmatter(source, agentsComment))
   console.log(`  ${AGENTS_TARGET} ← ${CANONICAL}`)
+
+  // Package the same customer skill with the CLI so private client-matrix
+  // setup never depends on opening the intentionally withheld discovery URL.
+  const cliPath = path.join(root, CLI_TARGET)
+  writeFileSync(cliPath, source)
+  console.log(`  ${CLI_TARGET} ← ${CANONICAL}`)
 
   // Write deprecated pointer to .claude/skills/fixflags/SKILL.md
   const claudePath = path.join(root, CLAUDE_TARGET)

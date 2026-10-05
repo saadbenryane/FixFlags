@@ -56,6 +56,12 @@ fixflags check https://fixflags.com --wait --plan
 fixflags recheck <original-report-id> --wait --diff
 ```
 
+The generated MCP configuration must invoke the CLI through `npx` at the
+package's own immutable version. A customer following `npx fixflags init` may
+not have a global `fixflags` binary, and a floating dist-tag would make an
+existing editor installation change without review. Parse the generated Codex
+TOML and Claude/Cursor JSON with the actual clients before promotion.
+
 Prereleases publish to `beta`; stable versions publish to `candidate`.
 After the clean-install and production proofs pass for the exact candidate SHA, dispatch `promote-latest.yml` with version `1.0.5` and that full SHA.
 The workflow verifies `candidate` again, moves only that immutable version to `latest`, and uploads `fixflags-1.0.5-promotion-receipt`.

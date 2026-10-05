@@ -9,6 +9,7 @@
   "files": [
     "bin",
     "dist",
+    "SKILL.md",
     "README.md"
   ],
   "scripts": {

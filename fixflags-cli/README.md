@@ -11,6 +11,8 @@ npx fixflags init
 
 `fixflags init` installs the retained FixFlags skill and local MCP bridge without replacing existing editor configuration. It supports Codex, Claude Code, Cursor, and Windsurf. Browser login stores the credential in the operating-system credential store. For CI, set `FIXFLAGS_API_KEY`.
 
+The generated editor configuration launches the same immutable CLI version through `npx`, so the documented `npx fixflags init` flow does not require a separate global install and cannot silently move to a newer package version.
+
 The normal agent loop is:
 
 1. list an owned Site and its Outcomes;

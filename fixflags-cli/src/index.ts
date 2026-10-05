@@ -272,7 +272,7 @@ program
         })
         console.log(result.dryRun ? 'FixFlags init preview:' : chalk.green('FixFlags connected to this project.'))
         for (const file of result.files) console.log(`  ${file}`)
-        console.log(`Skill: ${result.skillUrl}`)
+        console.log(`Skill: bundled with ${result.skillSource}`)
         if (!process.env.FIXFLAGS_API_KEY) {
           console.log(
             chalk.gray('MCP uses the CLI credential store through fixflags mcp; no secret was written to the project.')

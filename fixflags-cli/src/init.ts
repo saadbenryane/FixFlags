@@ -25,6 +25,24 @@ interface PlannedWrite {
   content: string
 }
 
+function mcpLaunchCommand() {
+  const packageMetadata = JSON.parse(
+    readFileSync(new URL('../package.json', import.meta.url), 'utf8')
+  ) as { name?: unknown; version?: unknown }
+  if (
+    packageMetadata.name !== 'fixflags' ||
+    typeof packageMetadata.version !== 'string' ||
+    !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(packageMetadata.version)
+  ) {
+    throw new Error('Cannot determine this FixFlags CLI package version.')
+  }
+  return {
+    command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
+    args: ['--yes', `fixflags@${packageMetadata.version}`, 'mcp'],
+    env: { FIXFLAGS_API_URL: API_BASE },
+  }
+}
+
 function atomicWrite(path: string, content: string): void {
   mkdirSync(dirname(path), { recursive: true })
   const temporary = `${path}.${process.pid}.tmp`
@@ -94,14 +112,10 @@ ${body.trim()}
 export async function initializeFixFlags(options: InitOptions = {}) {
   const cwd = options.cwd ?? process.cwd()
   const scope = options.scope ?? 'project'
-  const skillUrl = `${API_BASE}/.well-known/skills/fixflags/SKILL.md`
-  const response = await fetch(skillUrl)
-  if (!response.ok) {
-    throw new Error(`Could not download the FixFlags skill (${response.status}).`)
-  }
-  const skill = await response.text()
+  const mcpServer = mcpLaunchCommand()
+  const skill = readFileSync(new URL('../SKILL.md', import.meta.url), 'utf8')
   if (!skill.startsWith('---\n') || !skill.includes('\nname: fixflags\n')) {
-    throw new Error('The downloaded FixFlags skill is invalid.')
+    throw new Error('The bundled FixFlags skill is invalid.')
   }
 
   const editors =
@@ -111,7 +125,6 @@ export async function initializeFixFlags(options: InitOptions = {}) {
         ? [options.editor]
         : detectedEditors(cwd)
   const writes: PlannedWrite[] = []
-
   for (const editor of editors) {
     if (editor === 'cursor') {
       const skillPath =
@@ -125,11 +138,7 @@ export async function initializeFixFlags(options: InitOptions = {}) {
       writes.push({ path: skillPath, content: cursorRule(skill) })
       writes.push({
         path: mcpPath,
-        content: mergeMcpJson(mcpPath, {
-          command: 'fixflags',
-          args: ['mcp'],
-          env: { FIXFLAGS_API_URL: API_BASE },
-        }),
+        content: mergeMcpJson(mcpPath, mcpServer),
       })
       continue
     }
@@ -140,11 +149,7 @@ export async function initializeFixFlags(options: InitOptions = {}) {
       writes.push({ path: join(root, 'skills', 'fixflags', 'SKILL.md'), content: skill })
       writes.push({
         path: mcpPath,
-        content: mergeMcpJson(mcpPath, {
-          command: 'fixflags',
-          args: ['mcp'],
-          env: { FIXFLAGS_API_URL: API_BASE },
-        }),
+        content: mergeMcpJson(mcpPath, mcpServer),
       })
       continue
     }
@@ -162,7 +167,7 @@ export async function initializeFixFlags(options: InitOptions = {}) {
         path: configPath,
         content: replaceManagedBlock(
           existing,
-          `[mcp_servers.fixflags]\ncommand = "fixflags"\nargs = ["mcp"]\nenv = { FIXFLAGS_API_URL = "${API_BASE}" }`
+          `[mcp_servers.fixflags]\ncommand = ${JSON.stringify(mcpServer.command)}\nargs = [${mcpServer.args.map((arg) => JSON.stringify(arg)).join(', ')}]\nenv = { FIXFLAGS_API_URL = ${JSON.stringify(API_BASE)} }`
         ),
       })
       continue
@@ -177,11 +182,7 @@ export async function initializeFixFlags(options: InitOptions = {}) {
       writes.push({ path: join(root, 'skills', 'fixflags', 'SKILL.md'), content: skill })
       writes.push({
         path: mcpPath,
-        content: mergeMcpJson(mcpPath, {
-          command: 'fixflags',
-          args: ['mcp'],
-          env: { FIXFLAGS_API_URL: API_BASE },
-        }),
+        content: mergeMcpJson(mcpPath, mcpServer),
       })
       continue
     }
@@ -214,6 +215,6 @@ export async function initializeFixFlags(options: InitOptions = {}) {
     editors,
     dryRun: Boolean(options.dryRun),
     files: writes.map((write) => relative(cwd, write.path) || write.path),
-    skillUrl,
+    skillSource: mcpServer.args[1],
   }
 }

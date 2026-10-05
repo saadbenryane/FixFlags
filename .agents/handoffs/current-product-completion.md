@@ -21,6 +21,12 @@ unless every gate passes. Missing or historically ambiguous evidence remains col
 upgrade and fresh-database migration checks passed, as did the full 30-command gate with receipt
 `.agent-runs/2026-10-05T18-55-25-846Z-container-build.log`. This is not the production 14-day/100-run result.
 
+CLI editor bootstrap is also locally repaired: the generated server command uses the CLI package's exact version
+through `npx`, and the canonical customer skill ships in the tarball instead of depending on the withheld public
+discovery URL. Installed Codex, Claude Code, and Cursor clients parsed the generated configuration, but no client
+was approved, authenticated, or allowed to run the Outcome loop. Registry `latest` remains 1.0.4 and repository
+1.0.5 remains unpublished. See `../sessions/2026-10-05-cli-editor-bootstrap-command.md`.
+
 ## Status
 
 Local current-product implementation and verification completed on 2026-07-26. Release verification remains blocked only on operator-provided disposable fixtures, reset consent, deployed service configuration, and external sandbox credentials. No production database reset was attempted.

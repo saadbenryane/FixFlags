@@ -40,21 +40,7 @@ function runCli(args, options) {
 function startServer() {
   let revoked = false
   let tokenPolls = 0
-  const skill = `---
-name: fixflags
-description: Check and verify a deployed product with FixFlags.
----
-
-# FixFlags
-
-Ask FixFlags to independently verify the important Outcome after a change.
-`
   const server = createServer((request, response) => {
-    if (request.url === '/.well-known/skills/fixflags/SKILL.md') {
-      response.writeHead(200, { 'content-type': 'text/markdown' })
-      response.end(skill)
-      return
-    }
     if (request.url === '/api/cli/auth/device' && request.method === 'POST') {
       response.writeHead(201, { 'content-type': 'application/json' })
       response.end(
@@ -182,10 +168,18 @@ test('init merges MCP configuration, installs the canonical rule, and is idempot
   assert.equal(first.code, 0, first.stderr)
   const mcpPath = join(root, '.cursor', 'mcp.json')
   const firstConfig = readFileSync(mcpPath, 'utf8')
-  assert.match(firstConfig, /"command": "fixflags"/)
-  assert.match(firstConfig, /"mcp"/)
+  const parsedCursorConfig = JSON.parse(firstConfig)
+  assert.match(parsedCursorConfig.mcpServers.fixflags.command, /^npx(?:\.cmd)?$/)
+  assert.deepEqual(parsedCursorConfig.mcpServers.fixflags.args, [
+    '--yes',
+    'fixflags@1.0.5',
+    'mcp',
+  ])
   assert.doesNotMatch(firstConfig, /ff_live_/)
-  assert.match(readFileSync(join(root, '.cursor', 'rules', 'fixflags.mdc'), 'utf8'), /independently verify the important Outcome/)
+  assert.match(
+    readFileSync(join(root, '.cursor', 'rules', 'fixflags.mdc'), 'utf8'),
+    /fixflags\.list_sites/,
+  )
 
   const second = await runCli(['init', 'https://product.example', '--editor', 'cursor', '--yes'], options)
   assert.equal(second.code, 0, second.stderr)
@@ -193,9 +187,13 @@ test('init merges MCP configuration, installs the canonical rule, and is idempot
 
   const all = await runCli(['init', 'https://product.example', '--editor', 'all', '--yes'], options)
   assert.equal(all.code, 0, all.stderr)
-  assert.match(readFileSync(join(root, '.mcp.json'), 'utf8'), /"command": "fixflags"/)
-  assert.match(readFileSync(join(root, '.windsurf', 'mcp_config.json'), 'utf8'), /"command": "fixflags"/)
-  assert.match(readFileSync(join(root, '.codex', 'config.toml'), 'utf8'), /mcp_servers\.fixflags/)
+  const claudeConfig = JSON.parse(readFileSync(join(root, '.mcp.json'), 'utf8'))
+  const windsurfConfig = JSON.parse(readFileSync(join(root, '.windsurf', 'mcp_config.json'), 'utf8'))
+  assert.deepEqual(claudeConfig.mcpServers.fixflags.args, ['--yes', 'fixflags@1.0.5', 'mcp'])
+  assert.deepEqual(windsurfConfig.mcpServers.fixflags.args, ['--yes', 'fixflags@1.0.5', 'mcp'])
+  const codexConfig = readFileSync(join(root, '.codex', 'config.toml'), 'utf8')
+  assert.match(codexConfig, /mcp_servers\.fixflags/)
+  assert.match(codexConfig, /args = \["--yes", "fixflags@1\.0\.5", "mcp"\]/)
   assert.equal(existsSync(join(root, '.fixflags', 'lovable-setup.md')), false)
   assert.equal(existsSync(join(root, '.fixflags', 'bolt-setup.md')), false)
 

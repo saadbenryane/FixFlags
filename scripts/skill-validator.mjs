@@ -12,6 +12,7 @@ const DEPRECATED_SKILLS_ROOT = '.opencode/skills'
 const IDE_INTEGRATIONS_ROOT = 'ide-integrations'
 const SEO_SKILL = '.agents/skills/fixflags-seo-growth-loop/SKILL.md'
 const SEO_CURSOR_SKILL = '.cursor/skills/fixflags-seo-growth-loop/SKILL.md'
+const CLI_SKILL = 'fixflags-cli/SKILL.md'
 const MAX_SKILL_LINES = 260
 const STALE = [
   /AGENTS\.md Project facts/i,
@@ -234,6 +235,18 @@ export function validateSkills(root = process.cwd()) {
     if (!agentSkill.includes('.well-known/skills/fixflags/SKILL.md')) {
       errors.push(`${AGENT_SKILLS_ROOT}/fixflags/SKILL.md: must reference canonical .well-known location`)
     }
+  }
+
+  // The unpublished CLI candidate carries the canonical customer skill so
+  // editor setup can be tested while public MCP discovery remains withheld.
+  const cliSkillPath = path.join(root, CLI_SKILL)
+  if (!existsSync(cliSkillPath)) {
+    errors.push(`${CLI_SKILL}: bundled customer skill is missing`)
+  } else if (
+    existsSync(canonicalPath) &&
+    readFileSync(cliSkillPath, 'utf8') !== readFileSync(canonicalPath, 'utf8')
+  ) {
+    errors.push(`${CLI_SKILL}: must exactly match ${CUSTOMER_SKILLS_ROOT}/fixflags/SKILL.md`)
   }
 
   // === Validate .claude/skills/fixflags/SKILL.md is a deprecated pointer ===
