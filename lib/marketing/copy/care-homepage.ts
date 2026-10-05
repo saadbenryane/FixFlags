@@ -108,7 +108,7 @@ export const CARE_HOME = {
   coverage: {
     label: 'What FixFlags checks',
     title: 'What FixFlags can verify today.',
-    body: 'FixFlags can independently verify Checkout and public page availability. Broader analysis adds evidence about the live experience.',
+    body: 'FixFlags can independently verify Checkout, public page availability, and Signup when you provide a reversible Safe Form fixture. Broader analysis adds evidence about the live experience.',
     audiences: [
       {
         id: 'website', label: 'Website', summary: 'Keep the pages people rely on clear, reachable, and working.',
@@ -120,8 +120,8 @@ export const CARE_HOME = {
       },
       {
         id: 'webapp', label: 'Web app', summary: 'Keep public product pages reachable and inspect the live experience around them.',
-        items: ['Public pages stay available', 'Links reach the right page', 'Mobile layouts work', 'Pages stay responsive', 'Accessibility essentials', 'Search access and metadata', 'Security fundamentals', 'Scripts stay error-free', 'Public tracking signals'],
-        boundary: 'Signup, login, and password reset are not monitored yet. They require a safe, approved test-access contract.',
+        items: ['Public pages stay available', 'Safe Signup completes', 'Links reach the right page', 'Mobile layouts work', 'Pages stay responsive', 'Accessibility essentials', 'Search access and metadata', 'Security fundamentals', 'Scripts stay error-free', 'Public tracking signals'],
+        boundary: 'Safe Signup requires your synthetic data plus same-origin reset and cleanup hooks. Login and password reset are not monitored yet.',
       },
     ] satisfies ReadonlyArray<{ id: HomepageAudienceKey; label: string; summary: string; items: readonly string[]; boundary?: string }>,
   },

@@ -83,6 +83,18 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
               name: outcome.name,
               state: outcome.state,
               summary: outcome.summary,
+              enabled: outcome.enabled,
+              environment: outcome.environment,
+              coverage: outcome.coverage,
+              methods: outcome.bindings.map((binding) => ({
+                key: binding.key,
+                mechanism: binding.mechanism,
+                required: binding.required,
+                version: binding.version,
+              })),
+              limitation: outcome.bindings.some((binding) => binding.required)
+                ? outcome.state === 'COULD_NOT_VERIFY' ? outcome.summary : null
+                : 'No independent verification method is configured.',
               lastVerifiedAt: outcome.lastVerifiedAt,
               validUntil: outcome.validUntil,
               flagId: outcome.flagId,
@@ -113,7 +125,7 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
       try {
         const site = await ownedSite(user.id, siteId)
         const selected = outcomeIds?.length ? outcomeIds : (await listSiteOutcomes(site))
-          .filter((outcome) => outcome.criticality !== 'INFORMATIONAL' && outcome.bindings.some((binding) => binding.required))
+          .filter((outcome) => outcome.enabled && outcome.criticality !== 'INFORMATIONAL' && outcome.bindings.some((binding) => binding.required))
           .map((outcome) => outcome.id)
         const run = await requestSiteRun({
           projectId: site.projectId!,

@@ -111,7 +111,7 @@ export function BoardCard({
   href,
   wide,
   activity,
-  icon: Icon,
+  icon,
   onOpen,
   metric,
   flags,
@@ -130,7 +130,7 @@ export function BoardCard({
   href?: string | null
   wide?: boolean
   activity?: 'checking' | null
-  icon: LucideIcon
+  icon: SiteCardArea
   chart?: 'bars' | 'none'
   onOpen?: () => void
   metric?: boolean
@@ -139,6 +139,7 @@ export function BoardCard({
   sources?: string[] | null
   checkedAt?: string | null
 }) {
+  const Icon = BOARD_CARD_ICONS[icon]
   const checking = activity === 'checking' || state === 'checking'
   const className = [
     styles.card,
@@ -234,7 +235,6 @@ export function ProductBoardCard({
   card: BoardCardView
   onOpen?: () => void
 }) {
-  const Icon = BOARD_CARD_ICONS[card.id] ?? Globe2
   const problem = card.problem
 
   return (
@@ -251,7 +251,7 @@ export function ProductBoardCard({
       action={problem ? SITE_BOARD_COPY.openFlag : undefined}
       wide={card.wide}
       activity={card.activity}
-      icon={Icon}
+      icon={card.id}
       onOpen={onOpen}
       flags={card.id === 'site' ? [] : card.flagChips}
       sources={card.sources}

@@ -1,6 +1,7 @@
 'use client'
 
 import { SITE_BOARD_COPY as C } from '@/lib/marketing/copy/terminology'
+import { formatEvidenceTimestamp } from '@/lib/time/format'
 import styles from './BoardDetails.module.css'
 
 export type CheckedPage = { url: string; title: string | null; status: string }
@@ -31,7 +32,7 @@ export function BoardDetails({ image, checkedAt, sources, coverage, facts = [], 
     </section>
     <dl className={styles.provenance}>
       {sources?.length ? <div><dt>{C.sources}</dt><dd>{[...new Set(sources)].join(' · ')}</dd></div> : null}
-      <div><dt>{C.lastChecked}</dt><dd>{checkedAt ? <time dateTime={checkedAt}>{new Date(checkedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}</time> : C.noFreshness}</dd></div>
+      <div><dt>{C.lastChecked}</dt><dd>{checkedAt && formatEvidenceTimestamp(checkedAt) ? <time dateTime={checkedAt}>{formatEvidenceTimestamp(checkedAt)}</time> : C.noFreshness}</dd></div>
     </dl>
     {children}
   </div>

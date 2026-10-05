@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { validateBindingConfig, validateBindingForOutcome } from '@/lib/sites/application/binding-config'
+import { validateBindingForOutcome } from '@/lib/sites/application/binding-config'
 import {
   bindingForConfirmedKind,
   outcomeKindWatchable,
@@ -29,12 +29,18 @@ import {
  */
 describe('every confirmable kind must have a mechanism FixFlags can run', () => {
   const siteUrl = 'https://shop.example'
+  const fixture = { id: 'fixture-1', targetUrl: `${siteUrl}/account/register` }
 
   it('rejects nothing silently: each kind is either watchable or refused', () => {
     for (const kind of CONFIRMABLE_OUTCOME_KINDS) {
-      const binding = bindingForConfirmedKind(kind, siteUrl)
-      const validated = validateBindingConfig(binding.mechanism, binding.config)
-      const watchable = outcomeKindWatchable(kind, siteUrl)
+      const configuredFixture = kind === 'SIGNUP' ? fixture : undefined
+      const binding = bindingForConfirmedKind(kind, siteUrl, configuredFixture)
+      const watchable = outcomeKindWatchable(kind, siteUrl, configuredFixture)
+      if (!binding) {
+        expect(watchable, `${kind} has no binding and must stay unavailable`).toBe(false)
+        continue
+      }
+      const validated = validateBindingForOutcome(kind, binding.mechanism, binding.config)
       // The two answers must come from the same question, or the command would
       // accept a kind the run path cannot execute.
       expect(watchable, `${kind} disagrees with its own binding validator`).toBe(validated.success)
@@ -43,8 +49,10 @@ describe('every confirmable kind must have a mechanism FixFlags can run', () => 
 
   it('writes a binding the run path accepts, for every kind that is watchable', () => {
     for (const kind of watchableOutcomeKinds()) {
-      const binding = bindingForConfirmedKind(kind, siteUrl)
-      const validated = validateBindingConfig(binding.mechanism, binding.config)
+      const binding = bindingForConfirmedKind(kind, siteUrl, kind === 'SIGNUP' ? fixture : undefined)
+      expect(binding).not.toBeNull()
+      if (!binding) continue
+      const validated = validateBindingForOutcome(kind, binding.mechanism, binding.config)
       expect(validated.success, `${kind} writes a binding FixFlags cannot run`).toBe(true)
       if (!validated.success) continue
       // A binding that cannot run is not the only way to be false. A binding the
@@ -82,29 +90,27 @@ describe('every confirmable kind must have a mechanism FixFlags can run', () => 
     }).success).toBe(false)
   })
 
-  it('offers only purchase and page availability until protected journeys have authorized fixtures', () => {
+  it('supports Signup only when the command supplies an authorized fixture identity', () => {
     expect(outcomeKindWatchable('CHECKOUT', siteUrl)).toBe(true)
     expect(outcomeKindWatchable('SIGNUP', siteUrl)).toBe(false)
+    expect(outcomeKindWatchable('SIGNUP', siteUrl, fixture)).toBe(true)
     expect(outcomeKindWatchable('LOGIN', siteUrl)).toBe(false)
     expect(outcomeKindWatchable('PASSWORD_RESET', siteUrl)).toBe(false)
     expect(outcomeKindWatchable('AVAILABILITY', siteUrl)).toBe(true)
-    expect(watchableOutcomeKinds()).toEqual(['CHECKOUT', 'AVAILABILITY'])
+    expect(watchableOutcomeKinds()).toEqual(['CHECKOUT', 'SIGNUP', 'AVAILABILITY'])
   })
 
-  it('allows multiple kinds to share the BROWSER_JOURNEY mechanism with distinct configs', () => {
-    // The generic browser journey mechanism runs different goal-driven configs
-    // for different kinds. The mechanism is the same; the config (steps + goal) differs.
-    const browserJourneyKinds = ['CHECKOUT', 'SIGNUP', 'LOGIN', 'PASSWORD_RESET'] as const
-    const mechanisms = browserJourneyKinds.map(
-      (kind) => bindingForConfirmedKind(kind, siteUrl).mechanism,
-    )
-    for (const mechanism of mechanisms) {
-      expect(mechanism).toBe('BROWSER_JOURNEY')
-    }
+  it('keeps bounded checkout and reversible Signup on distinct mechanisms', () => {
+    expect(bindingForConfirmedKind('CHECKOUT', siteUrl)?.mechanism).toBe('BROWSER_JOURNEY')
+    expect(bindingForConfirmedKind('SIGNUP', siteUrl, fixture)?.mechanism).toBe('SAFE_FORM')
+    expect(bindingForConfirmedKind('LOGIN', siteUrl)).toBeNull()
+    expect(bindingForConfirmedKind('PASSWORD_RESET', siteUrl)).toBeNull()
   })
 
   it('keys each kind under its own binding, so one kind cannot overwrite another', () => {
-    const keys = CONFIRMABLE_OUTCOME_KINDS.map((kind) => bindingForConfirmedKind(kind, siteUrl).key)
+    const keys = CONFIRMABLE_OUTCOME_KINDS
+      .map((kind) => bindingForConfirmedKind(kind, siteUrl, kind === 'SIGNUP' ? fixture : undefined)?.key)
+      .filter((key): key is string => Boolean(key))
     expect(new Set(keys).size).toBe(keys.length)
   })
 
@@ -120,7 +126,7 @@ describe('every confirmable kind must have a mechanism FixFlags can run', () => 
     // If a new kind is added, this test should be updated deliberately,
     // not a silent behaviour flip.
     const offered: ConfirmableOutcomeKind[] = watchableOutcomeKinds()
-    expect(offered).toEqual(['CHECKOUT', 'AVAILABILITY'])
+    expect(offered).toEqual(['CHECKOUT', 'SIGNUP', 'AVAILABILITY'])
   })
 
   it('gives every confirmed execution kind one matching customer name', () => {

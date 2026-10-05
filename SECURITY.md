@@ -101,7 +101,8 @@ Product Signal ingestion is the explicit exception.
 - Next.js 15: regular updates, check security advisories
 - better-auth 1.6: relatively new auth library, audit updates
 - BullMQ 5: relies on Redis security
-- All npm packages: `npm audit --audit-level=moderate` is part of full verification. High/critical and unresolved applicable moderate advisories block release.
+- Runtime packages: `npm run security:audit` blocks every moderate-or-higher advisory.
+- Build-only packages: the same gate accepts only exact reviewed advisory URLs and indirect dependency paths recorded in [docs/security/toolchain-risk.md](docs/security/toolchain-risk.md). A new advisory, direct dependency, runtime path, or dependency drift blocks release.
 
 ## Prompt injection risks
 

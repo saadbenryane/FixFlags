@@ -8,7 +8,7 @@
 
 The card grid explains broader Product health after Home has shown watched Outcomes and attention. Every card answers an understandable category question about the same Site. Checks create evidence; Outcome assessments answer whether important results work; cards organize supporting health; Flags create attention. Shopify and future connections enrich this Site rather than create separate products. Pages may contribute to several Outcomes or none.
 
-Desktop navigation remains Home, Flags, Site settings. Mobile remains Home, Flags, More. Outcomes are primary Home content; Pages, Journeys and category diagnostics are reached through Outcome/card depth. The FixFlags Agent is a FAB, not a nav item. Capabilities do not become permanent navigation destinations.
+Desktop and mobile navigation remain Home, Flags, Settings. Outcomes are primary Home content; Pages, Journeys and category diagnostics are reached through Outcome/card depth. The FixFlags Agent is a FAB, not a nav item. Capabilities do not become permanent navigation destinations.
 
 ## Connected screens
 

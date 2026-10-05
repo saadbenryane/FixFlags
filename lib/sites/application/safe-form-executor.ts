@@ -6,16 +6,24 @@ import { getBrowser } from '@/lib/audit/screenshot'
 import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { DESKTOP_CAPTURE_PROFILE } from '@/lib/audit/browser/capture-profile'
 
-const mappingSchema = z.object({
-  fields: z.record(z.string(), z.string().min(1).max(300)),
-  submit: z.string().min(1).max(300),
-})
-const valuesSchema = z.record(z.string(), z.string().max(1000))
-const successSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('text'), value: z.string().min(1).max(500) }),
-  z.object({ type: z.literal('selector'), value: z.string().min(1).max(300) }),
-  z.object({ type: z.literal('url'), value: z.string().url().max(2048) }),
+const roleSchema = z.enum(['button', 'link', 'textbox', 'combobox', 'checkbox', 'radio'])
+export const accessibleTargetSchema = z.discriminatedUnion('by', [
+  z.object({ by: z.literal('label'), value: z.string().min(1).max(200) }),
+  z.object({ by: z.literal('placeholder'), value: z.string().min(1).max(200) }),
+  z.object({ by: z.literal('role'), role: roleSchema, value: z.string().min(1).max(200) }),
 ])
+export const safeFormMappingSchema = z.object({
+  fields: z.record(z.string().min(1).max(80), accessibleTargetSchema),
+  submit: accessibleTargetSchema,
+})
+export const safeFormValuesSchema = z.record(z.string().min(1).max(80), z.string().max(1000))
+export const safeFormSuccessSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('text'), value: z.string().min(1).max(500) }),
+  z.object({ type: z.literal('url'), value: z.string().url().max(2048) }),
+  z.object({ type: z.literal('target'), target: accessibleTargetSchema }),
+])
+
+export type AccessibleTarget = z.infer<typeof accessibleTargetSchema>
 
 export type SafeFormExecutionResult = {
   disposition: 'SUCCEEDED' | 'FAILED' | 'BLOCKED'
@@ -23,7 +31,7 @@ export type SafeFormExecutionResult = {
   detail: { fieldCount: number; cleanupStatus: 'succeeded' | 'failed' | 'not_started' }
 }
 
-function safeExactOrigin(url: string, origin: string): string | null {
+export function safeExactOrigin(url: string, origin: string): string | null {
   const normalized = normalizeAuditUrl(url)
   if (!normalized.ok) return null
   return new URL(normalized.url).origin === origin ? normalized.url : null
@@ -50,11 +58,12 @@ export async function executeSafeFormFixture(input: {
   fixtureId: string
   startUrl: string
   allowLocalhost: boolean
+  requireAuthorization?: boolean
 }): Promise<SafeFormExecutionResult> {
   const fixture = await prisma.outcomeFixture.findFirst({
     where: { id: input.fixtureId, projectId: input.projectId, enabled: true },
   })
-  if (!fixture?.authorizedAt) {
+  if (!fixture || (input.requireAuthorization !== false && (!fixture.authorizedAt || fixture.lastDryRunVersion !== fixture.version))) {
     return { disposition: 'BLOCKED', reason: 'fixture_not_authorized', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
   }
   const target = normalizeAuditUrl(input.startUrl)
@@ -68,12 +77,12 @@ export async function executeSafeFormFixture(input: {
     return { disposition: 'BLOCKED', reason: 'fixture_hook_origin_mismatch', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
   }
 
-  const mapping = mappingSchema.safeParse(fixture.fieldMapping)
-  const success = successSchema.safeParse(fixture.successCriterion)
-  let values: z.infer<typeof valuesSchema>
+  const mapping = safeFormMappingSchema.safeParse(fixture.fieldMapping)
+  const success = safeFormSuccessSchema.safeParse(fixture.successCriterion)
+  let values: z.infer<typeof safeFormValuesSchema>
   let hookSecret: string | null = null
   try {
-    values = valuesSchema.parse(JSON.parse(decryptSecret(fixture.encryptedValues)))
+    values = safeFormValuesSchema.parse(JSON.parse(decryptSecret(fixture.encryptedValues)))
     hookSecret = fixture.encryptedHookSecret ? decryptSecret(fixture.encryptedHookSecret) : null
   } catch {
     return { disposition: 'BLOCKED', reason: 'fixture_secret_unavailable', detail: { fieldCount: 0, cleanupStatus: 'not_started' } }
@@ -94,10 +103,10 @@ export async function executeSafeFormFixture(input: {
     allowLocalhost: input.allowLocalhost,
   })
   try {
-    for (const [key, selector] of Object.entries(mapping.data.fields)) {
-      await session.page.locator(selector).first().fill(values[key]!)
+    for (const [key, target] of Object.entries(mapping.data.fields)) {
+      await targetLocator(session.page, target).first().fill(values[key]!)
     }
-    await session.page.locator(mapping.data.submit).first().click({ timeout: 8_000 })
+    await targetLocator(session.page, mapping.data.submit).first().click({ timeout: 8_000 })
     const observedOrigin = new URL(session.page.url()).origin
     if (observedOrigin !== origin) {
       reason = 'form_left_authorized_origin'
@@ -105,10 +114,10 @@ export async function executeSafeFormFixture(input: {
       const found = await session.page.getByText(success.data.value, { exact: false }).first().isVisible().catch(() => false)
       disposition = found ? 'SUCCEEDED' : 'FAILED'
       reason = found ? 'success_criterion_observed' : 'success_text_missing'
-    } else if (success.data.type === 'selector') {
-      const found = await session.page.locator(success.data.value).first().isVisible().catch(() => false)
+    } else if (success.data.type === 'target') {
+      const found = await targetLocator(session.page, success.data.target).first().isVisible().catch(() => false)
       disposition = found ? 'SUCCEEDED' : 'FAILED'
-      reason = found ? 'success_criterion_observed' : 'success_selector_missing'
+      reason = found ? 'success_criterion_observed' : 'success_target_missing'
     } else {
       const found = new URL(session.page.url()).href === new URL(success.data.value).href
       disposition = found ? 'SUCCEEDED' : 'FAILED'
@@ -125,4 +134,10 @@ export async function executeSafeFormFixture(input: {
     return { disposition: 'BLOCKED', reason: 'fixture_cleanup_unproven', detail: { fieldCount: Object.keys(mapping.data.fields).length, cleanupStatus } }
   }
   return { disposition, reason, detail: { fieldCount: Object.keys(mapping.data.fields).length, cleanupStatus } }
+}
+
+function targetLocator(page: Awaited<ReturnType<typeof createAuditPage>>['page'], target: AccessibleTarget) {
+  if (target.by === 'label') return page.getByLabel(target.value, { exact: true })
+  if (target.by === 'placeholder') return page.getByPlaceholder(target.value, { exact: true })
+  return page.getByRole(target.role, { name: target.value, exact: true })
 }

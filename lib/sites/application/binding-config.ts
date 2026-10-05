@@ -125,7 +125,10 @@ export function validateBindingForOutcome(
       : { success: false, reason: 'binding_mechanism_mismatch' }
   }
   if (kind === 'SIGNUP' || kind === 'LOGIN' || kind === 'PASSWORD_RESET') {
-    return { success: false, reason: 'protected_fixture_required' }
+    if (kind !== 'SIGNUP') return { success: false, reason: 'protected_fixture_required' }
+    return validated.data.mechanism === 'SAFE_FORM'
+      ? validated
+      : { success: false, reason: 'protected_fixture_required' }
   }
   return { success: false, reason: 'outcome_kind_unsupported' }
 }

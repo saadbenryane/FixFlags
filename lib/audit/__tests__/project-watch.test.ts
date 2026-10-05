@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   auditUpdate: vi.fn(),
   requestSiteRun: vi.fn(),
   siteOutcomeFindMany: vi.fn(),
+  siteOutcomeUpdateMany: vi.fn(),
+  transaction: vi.fn(),
   getFlagDiffSummary: vi.fn(),
   sendEmail: vi.fn(),
   recordSiteLifecycleEvent: vi.fn(),
@@ -20,6 +22,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    $transaction: mocks.transaction,
     project: {
       findMany: mocks.projectFindMany,
       findFirst: mocks.projectFindFirst,
@@ -33,7 +36,7 @@ vi.mock('@/lib/db', () => ({
       updateMany: mocks.auditUpdateMany,
       update: mocks.auditUpdate,
     },
-    siteOutcome: { findMany: mocks.siteOutcomeFindMany },
+    siteOutcome: { findMany: mocks.siteOutcomeFindMany, updateMany: mocks.siteOutcomeUpdateMany },
   },
 }))
 vi.mock('@/lib/sites/application/run-requests', () => ({
@@ -69,9 +72,11 @@ describe('Product Watch', () => {
     mocks.projectFindMany.mockResolvedValue([project])
     mocks.projectUpdate.mockResolvedValue(project)
     mocks.projectUpdateMany.mockResolvedValue({ count: 1 })
+    mocks.siteOutcomeUpdateMany.mockResolvedValue({ count: 1 })
+    mocks.transaction.mockImplementation(async (operations: Array<Promise<unknown>>) => Promise.all(operations))
     mocks.auditUpdateMany.mockResolvedValue({ count: 1 })
     mocks.sendEmail.mockResolvedValue({ data: { id: 'email-1' }, error: null })
-    mocks.projectFindFirst.mockResolvedValue({ id: 'project-1', user: project.user })
+    mocks.projectFindFirst.mockResolvedValue({ id: 'project-1', user: project.user, watchInterval: project.watchInterval })
     mocks.siteOutcomeFindMany.mockResolvedValue([])
     mocks.requestSiteRun.mockResolvedValue({ runId: 'run-1', auditId: 'child-1', reused: false })
   })
@@ -115,7 +120,7 @@ describe('Product Watch', () => {
     expect(mocks.projectUpdate).not.toHaveBeenCalled()
   })
 
-  it('pauses without wiping the interval', async () => {
+  it('pauses the schedule and returns Outcomes to manual freshness', async () => {
     const result = await setProjectWatch({
       projectId: 'project-1',
       userId: 'user-1',
@@ -130,13 +135,17 @@ describe('Product Watch', () => {
         watchLastError: 'Paused. This Site is not on a check schedule.',
       }),
     }))
-    expect(mocks.projectUpdate.mock.calls[0][0].data.watchInterval).toBeUndefined()
+    expect(mocks.projectUpdate.mock.calls[0][0].data.watchInterval).toBeNull()
+    expect(mocks.siteOutcomeUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: { staleAfterMinutes: 11520 },
+    }))
   })
 
   it('enables weekly watching on Free', async () => {
     mocks.projectFindFirst.mockResolvedValue({
       id: 'project-1',
       user: { ...project.user, plan: 'FREE' },
+      watchInterval: project.watchInterval,
     })
 
     const result = await setProjectWatch({
@@ -158,7 +167,10 @@ describe('Product Watch', () => {
 
     expect(result).toEqual({ ok: true })
     expect(mocks.projectUpdate).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ watchInterval: 'DAILY' }),
+      data: expect.objectContaining({ watchInterval: 'DAILY', watchNextRunAt: expect.any(Date) }),
+    }))
+    expect(mocks.siteOutcomeUpdateMany).toHaveBeenCalledWith(expect.objectContaining({
+      data: { staleAfterMinutes: 2160 },
     }))
   })
 

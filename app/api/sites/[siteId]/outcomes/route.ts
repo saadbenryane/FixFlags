@@ -17,6 +17,7 @@ const schema = z.union([
     confirmed: z.boolean(),
     name: z.string().max(120).optional(),
     kind: z.enum(CONFIRMABLE_OUTCOME_KINDS).optional(),
+    fixtureId: z.string().min(1).optional(),
   }),
 ])
 
@@ -49,6 +50,7 @@ export async function POST(
             confirmed: body.data.confirmed,
             name: body.data.name,
             kind: body.data.kind,
+            fixtureId: body.data.fixtureId,
           },
     )
     if (!result.ok) {
@@ -58,6 +60,7 @@ export async function POST(
         result.code === 'OUTCOME_KIND_REQUIRED'
         || result.code === 'OUTCOME_KIND_UNWATCHABLE'
         || result.code === 'OUTCOME_KIND_MISMATCH'
+        || result.code === 'OUTCOME_FIXTURE_REQUIRED'
       ) {
         return apiError(result.error, 400, { code: result.code })
       }

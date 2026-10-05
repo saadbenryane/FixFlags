@@ -35,6 +35,7 @@ describe('ProductWatchControls', () => {
     expect(weekly).toHaveAttribute('aria-checked', 'true')
     expect(weekly).toHaveClass('min-h-11', 'min-w-11')
     expect(screen.getByText(/Next check:/i)).toBeInTheDocument()
+    expect(screen.getByText(/Aug 20, 2026, 12:00 PM UTC/)).toBeInTheDocument()
     expect(screen.queryByText(/Last attempt/i)).not.toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
   })

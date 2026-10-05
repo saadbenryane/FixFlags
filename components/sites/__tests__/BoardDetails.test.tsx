@@ -14,6 +14,7 @@ describe('card evidence', () => {
     expect(screen.getByText('Partial')).toBeInTheDocument()
     expect(screen.getByText('Could not check')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Contact/ })).toHaveAttribute('href', 'https://example.com/contact')
+    expect(screen.getByText('Sep 8, 2026, 12:00 PM UTC')).toBeInTheDocument()
   })
   it('does not invent checked pages or freshness when neither exists', () => {
     render(<BoardDetails pages={[]} />)

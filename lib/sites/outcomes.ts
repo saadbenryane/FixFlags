@@ -14,71 +14,6 @@ import {
 
 export { CONFIRMABLE_OUTCOME_KINDS, nameForConfirmedOutcomeKind, type ConfirmableOutcomeKind }
 
-function buildLoginJourneyConfig(siteUrl: string): BrowserJourneyConfig {
-  const base = new URL(siteUrl)
-  const loginUrl = new URL('/account/login', base).toString()
-  return {
-    startUrl: loginUrl,
-    steps: [
-      { action: 'wait', waitMs: 1_000 },
-      { action: 'fill', role: 'textbox', name: 'Email', value: process.env.FIXFLAGS_LOGIN_EMAIL ?? '' },
-      { action: 'fill', role: 'textbox', name: 'Password', value: process.env.FIXFLAGS_LOGIN_PASSWORD ?? '' },
-      { action: 'click', role: 'button', name: 'Sign in' },
-    ],
-    goal: {
-      type: 'url_pattern',
-      pattern: '/account(?!/login)',
-      description: 'Reach the account dashboard after login',
-    },
-    goalAfterStep: 4,
-    safety: 'none',
-    allowLocalhost: false,
-  }
-}
-
-function buildSignupJourneyConfig(siteUrl: string): BrowserJourneyConfig {
-  const base = new URL(siteUrl)
-  const signupUrl = new URL('/account/register', base).toString()
-  return {
-    startUrl: signupUrl,
-    steps: [
-      { action: 'wait', waitMs: 1_000 },
-      { action: 'fill', role: 'textbox', name: 'Email', value: process.env.FIXFLAGS_SIGNUP_EMAIL ?? '' },
-      { action: 'fill', role: 'textbox', name: 'Password', value: process.env.FIXFLAGS_SIGNUP_PASSWORD ?? '' },
-      { action: 'click', role: 'button', name: 'Create account' },
-    ],
-    goal: {
-      type: 'url_pattern',
-      pattern: '/account(?!/(register|login))',
-      description: 'Reach the account dashboard after signup',
-    },
-    goalAfterStep: 4,
-    safety: 'none',
-    allowLocalhost: false,
-  }
-}
-
-function buildPasswordResetJourneyConfig(siteUrl: string): BrowserJourneyConfig {
-  const base = new URL(siteUrl)
-  const resetUrl = new URL('/account/recover', base).toString()
-  return {
-    startUrl: resetUrl,
-    steps: [
-      { action: 'wait', waitMs: 1_000 },
-      { action: 'fill', role: 'textbox', name: 'Email', value: process.env.FIXFLAGS_LOGIN_EMAIL ?? '' },
-      { action: 'click', role: 'button', name: 'Reset password' },
-    ],
-    goal: {
-      type: 'text_present',
-      text: 'reset password',
-      description: 'See password reset confirmation message',
-    },
-    goalAfterStep: 3,
-    safety: 'none',
-    allowLocalhost: false,
-  }
-}
-
 function buildCheckoutJourneyConfig(startUrl: string, allowLocalhost: boolean): BrowserJourneyConfig {
   return {
     startUrl,
@@ -89,7 +24,11 @@ function buildCheckoutJourneyConfig(startUrl: string, allowLocalhost: boolean): 
   }
 }
 
-export function bindingForConfirmedKind(kind: ConfirmableOutcomeKind, siteUrl: string) {
+export function bindingForConfirmedKind(
+  kind: ConfirmableOutcomeKind,
+  siteUrl: string,
+  fixture?: { id: string; targetUrl: string },
+) {
   if (kind === 'CHECKOUT') {
     return {
       key: 'checkout-browser-v1',
@@ -106,31 +45,19 @@ export function bindingForConfirmedKind(kind: ConfirmableOutcomeKind, siteUrl: s
   }
   if (kind === 'SIGNUP') {
     return {
-      key: 'signup-browser-v1',
-      mechanism: 'BROWSER_JOURNEY' as const,
-      config: buildSignupJourneyConfig(siteUrl),
-      scope: { device: 'mobile', expected: 'account_reached' },
+      key: 'signup-safe-form-v1',
+      mechanism: 'SAFE_FORM' as const,
+      config: {
+        startUrl: fixture?.targetUrl ?? siteUrl,
+        safety: 'reversible' as const,
+        authorized: true as const,
+        fixtureId: fixture?.id ?? '',
+      },
+      scope: { device: 'desktop', expected: 'signup_completed' },
       required: true,
     }
   }
-  if (kind === 'LOGIN') {
-    return {
-      key: 'login-browser-v1',
-      mechanism: 'BROWSER_JOURNEY' as const,
-      config: buildLoginJourneyConfig(siteUrl),
-      scope: { device: 'mobile', expected: 'account_reached' },
-      required: true,
-    }
-  }
-  if (kind === 'PASSWORD_RESET') {
-    return {
-      key: 'password-reset-browser-v1',
-      mechanism: 'BROWSER_JOURNEY' as const,
-      config: buildPasswordResetJourneyConfig(siteUrl),
-      scope: { device: 'mobile', expected: 'reset_email_sent' },
-      required: true,
-    }
-  }
+  if (kind === 'LOGIN' || kind === 'PASSWORD_RESET') return null
   return {
     key: 'page-availability-v1',
     mechanism: 'HTTP_AVAILABILITY' as const,
@@ -146,15 +73,20 @@ export function bindingForConfirmedKind(kind: ConfirmableOutcomeKind, siteUrl: s
  * This is the question the confirmation command has to answer, and it has to be
  * derived, because the failure it prevents is precisely a disagreement between
  * two modules. Interactive browser bindings must either stop at checkout or use
- * an explicitly authorized reversible fixture. Login, Signup and Password reset
- * do not yet have a tenant-scoped credential/fixture contract, so their configs
- * fail validation and are refused before a browser can send a request.
+ * an explicitly authorized reversible fixture. Signup has that tenant-scoped
+ * contract. Login and Password reset remain unavailable until they can meet the
+ * same standard.
  *
  * When a real fixture path lands and the config validates, this returns true and
  * the refusal disappears on its own. That is the intended way for it to change.
  */
-export function outcomeKindWatchable(kind: ConfirmableOutcomeKind, siteUrl = 'https://example.com'): boolean {
-  const binding = bindingForConfirmedKind(kind, siteUrl)
+export function outcomeKindWatchable(
+  kind: ConfirmableOutcomeKind,
+  siteUrl = 'https://example.com',
+  fixture?: { id: string; targetUrl: string },
+): boolean {
+  const binding = bindingForConfirmedKind(kind, siteUrl, fixture)
+  if (!binding) return false
   return validateBindingForOutcome(kind, binding.mechanism, binding.config).success
 }
 
@@ -190,8 +122,10 @@ async function toOutcomeView(row: {
   kind: 'GENERIC' | 'CHECKOUT' | 'SIGNUP' | 'LOGIN' | 'PASSWORD_RESET' | 'AVAILABILITY'
   criticality: 'CRITICAL' | 'IMPORTANT' | 'INFORMATIONAL'
   environment: string
+  enabled: boolean
+  staleAfterMinutes: number
   expectation: string | null
-  bindings: Array<{ key: string; required: boolean; scope: Prisma.JsonValue | null }>
+  bindings: Array<{ key: string; required: boolean; scope: Prisma.JsonValue | null; mechanism: string; version: number }>
   assessments: Array<{
     state: 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY'
     summary: string
@@ -222,11 +156,15 @@ async function toOutcomeView(row: {
     kind: row.kind,
     criticality: row.criticality,
     environment: row.environment,
+    enabled: row.enabled,
+    staleAfterMinutes: row.staleAfterMinutes,
     expectation: row.expectation,
     bindings: row.bindings.map((binding) => ({
       key: binding.key,
       required: binding.required,
       scope: binding.scope,
+      mechanism: binding.mechanism,
+      version: binding.version,
     })),
     coverage: latest?.coverage ?? null,
     state: currentOutcomeState(latest),
@@ -253,8 +191,10 @@ export type SiteOutcomeView = {
   kind: 'GENERIC' | 'CHECKOUT' | 'SIGNUP' | 'LOGIN' | 'PASSWORD_RESET' | 'AVAILABILITY'
   criticality: 'CRITICAL' | 'IMPORTANT' | 'INFORMATIONAL'
   environment: string
+  enabled: boolean
+  staleAfterMinutes: number
   expectation: string | null
-  bindings: Array<{ key: string; required: boolean; scope: Prisma.JsonValue | null }>
+  bindings: Array<{ key: string; required: boolean; scope: Prisma.JsonValue | null; mechanism: string; version: number }>
   coverage: Prisma.JsonValue | null
   state: CustomerOutcomeState
   summary: string
@@ -504,11 +444,23 @@ export async function confirmSiteOutcome(input: {
   name?: string
   confirmed: boolean
   kind?: ConfirmableOutcomeKind
+  fixtureId?: string
 }): Promise<SiteOutcomeView | null> {
   const ownerFilter =
     input.site.kind === 'project'
       ? { projectId: input.site.projectId! }
       : { provisionalSiteId: input.site.provisionalSiteId! }
+
+  let safeFixture: { id: string; targetUrl: string } | undefined
+  if (input.confirmed && input.kind === 'SIGNUP') {
+    if (!input.site.projectId || !input.fixtureId) throw new OutcomeFixtureRequiredError()
+    const fixture = await prisma.outcomeFixture.findFirst({
+      where: { id: input.fixtureId, projectId: input.site.projectId, enabled: true, authorizedAt: { not: null } },
+      select: { id: true, targetUrl: true, version: true, lastDryRunVersion: true },
+    })
+    if (!fixture || fixture.lastDryRunVersion !== fixture.version) throw new OutcomeFixtureRequiredError()
+    safeFixture = { id: fixture.id, targetUrl: fixture.targetUrl }
+  }
 
   const updated = await prisma.$transaction(async (tx) => {
     // Every confirmation, reconfirmation and withdrawal for one Outcome must
@@ -537,7 +489,8 @@ export async function confirmSiteOutcome(input: {
         throw new OutcomeKindMismatchError(outcome.kind, input.kind)
       }
 
-      const binding = bindingForConfirmedKind(input.kind, input.site.url)
+      const binding = bindingForConfirmedKind(input.kind, input.site.url, safeFixture)
+      if (!binding) throw new OutcomeFixtureRequiredError()
       // One Outcome has one active semantic identity. Legacy or interrupted
       // writes may have left another binding enabled, so retire it in the same
       // transaction that installs the binding matching the agreed kind.
@@ -601,7 +554,7 @@ export async function confirmSiteOutcome(input: {
       where: { id: outcome.id },
       include: {
         pages: true,
-        bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true } },
+        bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true } },
         assessments: { orderBy: { assessedAt: 'desc' }, take: 1 },
         runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
       },
@@ -615,6 +568,13 @@ export class OutcomeKindMismatchError extends Error {
   constructor(readonly existingKind: string, readonly requestedKind: string) {
     super(`Outcome kind ${existingKind} cannot be changed to ${requestedKind}`)
     this.name = 'OutcomeKindMismatchError'
+  }
+}
+
+export class OutcomeFixtureRequiredError extends Error {
+  constructor() {
+    super('A current, authorized Safe Form fixture is required for Signup.')
+    this.name = 'OutcomeFixtureRequiredError'
   }
 }
 
@@ -639,7 +599,7 @@ export async function renameSiteOutcome(input: {
     data: { name: input.name.trim(), inferenceSource: 'user' },
     include: {
       pages: true,
-      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true } },
+      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true } },
       assessments: { orderBy: { assessedAt: 'desc' }, take: 1 },
       runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
     },
@@ -657,7 +617,7 @@ export async function listSiteOutcomes(site: SiteRecord): Promise<SiteOutcomeVie
     where: ownerFilter,
     include: {
       pages: true,
-      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true } },
+      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true } },
       assessments: { orderBy: { assessedAt: 'desc' }, take: 1 },
       runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 1 },
     },
@@ -665,4 +625,187 @@ export async function listSiteOutcomes(site: SiteRecord): Promise<SiteOutcomeVie
   })
 
   return Promise.all(rows.map((row) => toOutcomeView(row)))
+}
+
+export type SiteOutcomeDetailView = Omit<SiteOutcomeView, 'bindings'> & {
+  bindings: Array<SiteOutcomeView['bindings'][number] & {
+    latestEvidence: {
+      disposition: string
+      reason: string
+      detail: Prisma.JsonValue | null
+      createdAt: string
+      auditId: string
+    } | null
+  }>
+  limitation: string | null
+  recoveryAction: string | null
+  lastSuccessfulVerificationAt: string | null
+  timeline: Array<{
+    id: string
+    type: 'run' | 'assessment' | 'attempt' | 'flag' | 'fix' | 'verify'
+    at: string
+    title: string
+    detail: string
+    auditId: string | null
+  }>
+}
+
+export async function loadSiteOutcomeDetail(
+  site: SiteRecord,
+  outcomeId: string,
+): Promise<SiteOutcomeDetailView | null> {
+  const ownerFilter = site.kind === 'project'
+    ? { projectId: site.projectId! }
+    : { provisionalSiteId: site.provisionalSiteId! }
+  const row = await prisma.siteOutcome.findFirst({
+    where: { id: outcomeId, ...ownerFilter },
+    include: {
+      pages: true,
+      bindings: { where: { enabled: true }, select: { key: true, required: true, scope: true, mechanism: true, version: true } },
+      assessments: { orderBy: { assessedAt: 'desc' }, take: 20 },
+      runSelections: { include: { runRequest: true }, orderBy: { runRequest: { requestedAt: 'desc' } }, take: 20 },
+      bindingAttempts: { orderBy: { createdAt: 'desc' }, take: 20 },
+    },
+  })
+  if (!row) return null
+  const view = await toOutcomeView(row)
+  const [executions, lastSuccessful, improvements] = await Promise.all([
+    prisma.outcomeBindingExecution.findMany({
+      where: { outcomeId: row.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    }),
+    prisma.outcomeAssessment.findFirst({
+      where: { outcomeId: row.id, state: 'CLEAR' },
+      orderBy: { assessedAt: 'desc' },
+      select: { assessedAt: true },
+    }),
+    site.projectId ? prisma.improvement.findMany({
+      where: { projectId: site.projectId, outcomeId: row.id },
+      select: {
+        id: true,
+        title: true,
+        occurrences: {
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          select: { id: true, kind: true, createdAt: true, auditId: true },
+        },
+        attempts: {
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          select: {
+            id: true,
+            createdAt: true,
+            changeSummary: true,
+            outcome: true,
+            verificationReason: true,
+            sourceAuditId: true,
+            verificationAuditId: true,
+          },
+        },
+      },
+    }) : Promise.resolve([]),
+  ])
+  const latestByKey = new Map(executions.map((execution) => [execution.bindingKey, execution]))
+  const timeline = [
+    ...row.runSelections.map(({ runRequest }) => ({
+      id: `run:${runRequest.id}`,
+      type: 'run' as const,
+      at: runRequest.requestedAt.toISOString(),
+      title: runRequest.status === 'COMPLETED' ? 'Verification completed' : runRequest.status === 'FAILED' ? 'Verification failed' : 'Verification started',
+      detail: runRequest.errorMessage ?? `Run ${runRequest.status.toLowerCase()}`,
+      auditId: runRequest.auditId,
+    })),
+    ...row.assessments.map((assessment) => ({
+      id: `assessment:${assessment.id}`,
+      type: 'assessment' as const,
+      at: assessment.assessedAt.toISOString(),
+      title: currentOutcomeState(assessment) === 'CLEAR' ? 'Clear' : currentOutcomeState(assessment) === 'FLAG' ? 'Flag found' : 'Couldn’t verify',
+      detail: assessment.summary,
+      auditId: assessment.auditId,
+    })),
+    ...row.bindingAttempts.map((attempt) => ({
+      id: `attempt:${attempt.id}`,
+      type: 'attempt' as const,
+      at: attempt.createdAt.toISOString(),
+      title: `${attempt.bindingKey} ${attempt.disposition.toLowerCase()}`,
+      detail: attempt.reason,
+      auditId: attempt.auditId,
+    })),
+    ...improvements.flatMap((improvement) => improvement.occurrences.map((occurrence) => ({
+      id: `flag:${occurrence.id}`,
+      type: 'flag' as const,
+      at: occurrence.createdAt.toISOString(),
+      title: occurrence.kind === 'REGRESSED'
+        ? 'Flag recurred'
+        : occurrence.kind === 'CLEARED'
+          ? 'Flag recovered'
+          : 'Flag recorded',
+      detail: improvement.title,
+      auditId: occurrence.auditId,
+    }))),
+    ...improvements.flatMap((improvement) => improvement.attempts.map((attempt) => ({
+      id: `fix:${attempt.id}`,
+      type: attempt.outcome ? 'verify' as const : 'fix' as const,
+      at: attempt.createdAt.toISOString(),
+      title: attempt.outcome
+        ? attempt.outcome === 'IMPROVED' ? 'Recovery verified' : `Verification ${attempt.outcome.toLowerCase()}`
+        : 'Fix recorded',
+      detail: attempt.changeSummary ?? attempt.verificationReason ?? improvement.title,
+      auditId: attempt.verificationAuditId ?? attempt.sourceAuditId,
+    }))),
+  ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
+
+  const requiredBindings = view.bindings.filter((binding) => binding.required)
+  const limitation = !view.enabled
+    ? 'This Outcome is paused. Its last evidence is preserved, but FixFlags will not schedule or start another verification.'
+    : requiredBindings.length === 0
+      ? 'No independent verification method is configured.'
+      : view.state === 'COULD_NOT_VERIFY'
+        ? view.summary
+        : null
+  const recoveryAction = !view.enabled
+    ? 'Enable this Outcome to verify it again.'
+    : requiredBindings.length === 0
+      ? 'Configure a supported verification method in Site settings.'
+      : view.state === 'STALE'
+        ? 'Run a fresh verification before relying on this result.'
+        : view.state === 'COULD_NOT_VERIFY'
+          ? 'Review the method or fixture, then verify again.'
+          : null
+
+  return {
+    ...view,
+    bindings: view.bindings.map((binding) => {
+      const evidence = latestByKey.get(binding.key)
+      return {
+        ...binding,
+        latestEvidence: evidence ? {
+          disposition: evidence.disposition,
+          reason: evidence.reason,
+          detail: evidence.detail,
+          createdAt: evidence.createdAt.toISOString(),
+          auditId: evidence.auditId,
+        } : null,
+      }
+    }),
+    limitation,
+    recoveryAction,
+    lastSuccessfulVerificationAt: lastSuccessful?.assessedAt.toISOString() ?? null,
+    timeline,
+  }
+}
+
+export async function setSiteOutcomeEnabled(input: {
+  site: SiteRecord
+  outcomeId: string
+  enabled: boolean
+}): Promise<SiteOutcomeDetailView | null> {
+  if (!input.site.projectId) return null
+  const changed = await prisma.siteOutcome.updateMany({
+    where: { id: input.outcomeId, projectId: input.site.projectId },
+    data: { enabled: input.enabled },
+  })
+  if (changed.count !== 1) return null
+  return loadSiteOutcomeDetail(input.site, input.outcomeId)
 }

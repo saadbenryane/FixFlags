@@ -11,6 +11,7 @@ import { SCAN_LIMIT_GATE, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 import type { PublicConnection } from '@/lib/sites/connections/match'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { formatAlertDate, siteWatchAlertNotice } from '@/lib/sites/watch-alert-notice'
+import { formatEvidenceTimestamp } from '@/lib/time/format'
 
 type NotificationLevel = 'FLAGS' | 'CRITICAL_ONLY' | 'OFF'
 type GoogleProvider = 'SEARCH_CONSOLE' | 'ANALYTICS'
@@ -365,7 +366,7 @@ function GoogleConnectionCard({
       ) : null}
       {connection.configured && connection.detail ? <p className="mt-2 text-sm text-muted-foreground">{connection.detail}</p> : null}
       {connection.lastSyncedAt ? (
-        <p className="mt-2 text-xs text-muted-foreground">Last read {new Date(connection.lastSyncedAt).toLocaleString()}</p>
+        <p className="mt-2 text-xs text-muted-foreground">Last read {formatEvidenceTimestamp(connection.lastSyncedAt)}</p>
       ) : null}
       <div className="mt-4 flex flex-wrap gap-2">
         {!connection.configured ? (

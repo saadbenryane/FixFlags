@@ -25,9 +25,14 @@ const fixture = {
   cleanupUrl: 'https://example.com/test/cleanup',
   encryptedHookSecret: 'hook-secret',
   encryptedValues: JSON.stringify({ email: 'synthetic@example.test' }),
-  fieldMapping: { fields: { email: '#email' }, submit: 'button[type=submit]' },
+  fieldMapping: {
+    fields: { email: { by: 'label', value: 'Email' } },
+    submit: { by: 'role', role: 'button', value: 'Create account' },
+  },
   successCriterion: { type: 'text', value: 'Check your inbox' },
   authorizedAt: new Date(),
+  version: 1,
+  lastDryRunVersion: 1,
 }
 
 describe('Safe Form executor', () => {
@@ -42,7 +47,9 @@ describe('Safe Form executor', () => {
     const locator = { first: () => ({ fill: mocks.fill, click: mocks.click, isVisible: mocks.isVisible }) }
     mocks.createAuditPage.mockResolvedValue({
       page: {
-        locator: () => locator,
+        getByLabel: () => locator,
+        getByPlaceholder: () => locator,
+        getByRole: () => locator,
         getByText: () => locator,
         url: () => 'https://example.com/signup',
         context: () => ({ close: mocks.close }),
@@ -134,7 +141,9 @@ describe('Safe Form executor', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })))
     mocks.createAuditPage.mockResolvedValue({
       page: {
-        locator: () => ({ first: () => ({ fill: mocks.fill, click: mocks.click, isVisible: mocks.isVisible }) }),
+        getByLabel: () => ({ first: () => ({ fill: mocks.fill, click: mocks.click, isVisible: mocks.isVisible }) }),
+        getByPlaceholder: () => ({ first: () => ({ fill: mocks.fill, click: mocks.click, isVisible: mocks.isVisible }) }),
+        getByRole: () => ({ first: () => ({ fill: mocks.fill, click: mocks.click, isVisible: mocks.isVisible }) }),
         getByText: () => ({ first: () => ({ isVisible: mocks.isVisible }) }),
         url: () => 'https://elsewhere.example/redirected',
         context: () => ({ close: mocks.close }),

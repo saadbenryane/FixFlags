@@ -24,6 +24,8 @@ function outcome(overrides: Partial<SiteOutcomeView> = {}): SiteOutcomeView {
     kind: 'GENERIC',
     criticality: 'IMPORTANT',
     environment: 'production',
+    enabled: true,
+    staleAfterMinutes: 11520,
     expectation: null,
     bindings: [],
     coverage: null,
@@ -63,11 +65,27 @@ describe('SiteOutcomeRow confirmation', () => {
     // offering a kind whose binding cannot validate, which is the exact defect
     // this row exists to prevent.
     const watchable = watchableOutcomeKinds()
-    expect(watchable).toEqual(['CHECKOUT', 'AVAILABILITY'])
+    expect(watchable).toEqual(['CHECKOUT', 'SIGNUP', 'AVAILABILITY'])
     render(<SiteOutcomeRow siteId="site-1" outcome={outcome()} />)
 
     const offered = screen.getAllByRole('button').map((button) => button.textContent)
-    expect(offered).toEqual(watchable.map((kind) => OUTCOME_KIND_LABELS[kind]))
+    expect(offered).toEqual(['CHECKOUT', 'AVAILABILITY'].map((kind) => OUTCOME_KIND_LABELS[kind as 'CHECKOUT' | 'AVAILABILITY']))
+  })
+
+  it('offers Signup only with a current authorized fixture and sends its identity', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(respond({ ok: true }))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<SiteOutcomeRow siteId="site-1" outcome={outcome({ kind: 'SIGNUP' })} fixtures={[{
+      id: 'fixture-1', name: 'Safe signup', targetUrl: 'https://example.com/signup',
+      fieldMapping: {}, successCriterion: {}, resetUrl: 'https://example.com/reset',
+      cleanupUrl: 'https://example.com/cleanup', version: 2, lastDryRunVersion: 2,
+      lastDryRunAt: new Date().toISOString(), lastDryRunResult: { disposition: 'SUCCEEDED' },
+      authorizedAt: new Date().toISOString(), enabled: true, hasValues: true, hasHookSecret: true,
+    }]} />)
+    fireEvent.click(screen.getByRole('button', { name: OUTCOME_KIND_LABELS.SIGNUP }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    expect(lastBody(fetchMock)).toMatchObject({ kind: 'SIGNUP', fixtureId: 'fixture-1' })
+    vi.unstubAllGlobals()
   })
 
   it('sends the kind the customer chose, so the Outcome gets a mechanism', async () => {

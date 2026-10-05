@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Globe2, Plus } from 'lucide-react'
-import { AddBoardCard, AddCardLibrary, BoardCard, BoardGrid, BoardStatus, BOARD_CARD_ICONS } from '@/components/sites/BoardCard'
+import { AddBoardCard, AddCardLibrary, BoardCard, BoardGrid, BoardStatus } from '@/components/sites/BoardCard'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { CARE_HOME as C, INTEGRATIONS_PAGE, SITE_BOARD_COPY } from '@/lib/marketing/copy'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
@@ -57,7 +57,7 @@ export function HomepageHero({
               answer={C.site.answer}
               visual={{ src: HOMEPAGE_EVIDENCE.site, alt: C.site.imageAlt }}
               wide
-              icon={BOARD_CARD_ICONS.site}
+              icon="site"
               sources={[SITE_BOARD_COPY.browserSource]}
               onOpen={() => onOpen('site')}
             />
@@ -69,7 +69,7 @@ export function HomepageHero({
               detail={C.flag.body}
               outcome={C.flag.outcome}
               action={C.flag.action}
-              icon={BOARD_CARD_ICONS.conversion}
+              icon="conversion"
               flags={[{ id: 'conversion-flag', title: C.flag.title, href: '#flag-example' }]}
               sources={[SITE_BOARD_COPY.browserSource]}
               onOpen={() => onOpen('conversion')}
@@ -83,7 +83,7 @@ export function HomepageHero({
               detail={card.detail}
               chart={card.chart}
               metric
-              icon={BOARD_CARD_ICONS[card.id]}
+              icon={card.id}
               flags={card.id === 'performance' ? [...C.performanceFlags] : undefined}
               sources={[SITE_BOARD_COPY.browserSource]}
               onOpen={() => onOpen(card)}
@@ -97,7 +97,7 @@ export function HomepageHero({
                 state="healthy"
                 answer={card.value}
                 detail={card.detail}
-                icon={BOARD_CARD_ICONS[id]}
+                icon={id}
                 sources={[SITE_BOARD_COPY.browserSource]}
                 onOpen={() => onOpen(card)}
               />

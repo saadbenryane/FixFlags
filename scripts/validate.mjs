@@ -87,7 +87,9 @@ const containerValidationFiles = new Set([
   'railway.toml',
   'railway.worker.toml',
   'scripts/db-run.mjs',
+  'scripts/build-worker.mjs',
   'scripts/runtime-start.mjs',
+  'scripts/security-audit.mjs',
 ])
 
 const docsOnlyExtensions = new Set(['.md', '.txt'])
@@ -268,7 +270,7 @@ export function fullCommands() {
     command('knowledge:duplication-guard', 'npm', ['run', 'knowledge:duplication-guard']),
     command('completeness:audit', 'npm', ['run', 'completeness:audit']),
     command('audit:capabilities', 'npm', ['run', 'audit:capabilities']),
-    command('security:audit', 'npm', ['audit', '--audit-level=moderate']),
+    command('security:audit', 'npm', ['run', 'security:audit']),
     command('test:scripts', 'npm', ['run', 'test:scripts']),
     command('test:unit', 'npm', ['run', 'test:unit']),
     command('test:coverage', 'npm', ['run', 'test:coverage']),

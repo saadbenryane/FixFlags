@@ -23,7 +23,7 @@ Customer chrome follows [product-architecture.md](product-architecture.md). Do n
 
 Account, billing and Site switching are supporting controls. Outcomes and Flags are primary content; Pages, Journeys, category health and execution diagnostics are depth. No Agent | Report split, scores-first hero, raw-check grid, arbitrary dashboard builder or integration marketplace.
 
-**Today's local tabs** Dashboard · Flags · Site are a stepping stone. Retire the third primary tab once settings exist. Mobile: Home · Flags · More.
+The released Site shell uses Home · Flags · Settings on desktop and mobile. Pages, Journeys and diagnostics stay inside Outcome or card depth rather than becoming permanent navigation destinations.
 
 ## Home hierarchy
 

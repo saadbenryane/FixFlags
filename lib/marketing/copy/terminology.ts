@@ -67,6 +67,8 @@ export const SITE_BOARD_COPY = {
   addTitle: 'Add to your board',
   addBody: 'Watch another public area of this website.',
   addEmpty: 'Those cards are already on your board.',
+  broaderHealth: 'Broader health',
+  broaderHealthWithRecommendations: 'Broader health and recommendations',
   pagesLoading: 'Pages are loading',
   learning: 'Learning your website',
   healthyEvidence: {

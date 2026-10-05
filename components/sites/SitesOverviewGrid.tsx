@@ -26,7 +26,7 @@ export function SitesOverviewGrid({ sites }: { sites: SiteSummary[] }) {
             flagCount={site.flagCount}
             footer={site.watch}
             href={`/sites/${site.id}` as Route}
-            icon={Globe2}
+            icon="site"
           />
         ))}
         <Link href={'/new' as Route} aria-label="Analyze a website URL" className={styles.addCard}>

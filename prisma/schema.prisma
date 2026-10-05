@@ -2030,7 +2030,13 @@ model OutcomeFixture {
   resetUrl            String
   cleanupUrl          String
   encryptedHookSecret String?
-  authorizedAt        DateTime
+  /// Incremented whenever executable configuration or secrets change.
+  version             Int      @default(1)
+  /// The latest version exercised through reset, submit, assertion, and cleanup.
+  lastDryRunVersion   Int?
+  lastDryRunAt        DateTime?
+  lastDryRunResult    Json?
+  authorizedAt        DateTime?
   enabled             Boolean  @default(true)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt

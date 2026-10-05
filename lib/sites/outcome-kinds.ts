@@ -12,7 +12,7 @@ export type ConfirmableOutcomeKind = (typeof CONFIRMABLE_OUTCOME_KINDS)[number]
  * independently validates the concrete binding before accepting a
  * confirmation; the contract test keeps this customer-facing list aligned.
  */
-const WATCHABLE_OUTCOME_KINDS = ['CHECKOUT', 'AVAILABILITY'] as const satisfies readonly ConfirmableOutcomeKind[]
+const WATCHABLE_OUTCOME_KINDS = ['CHECKOUT', 'SIGNUP', 'AVAILABILITY'] as const satisfies readonly ConfirmableOutcomeKind[]
 
 export function watchableOutcomeKinds(): ConfirmableOutcomeKind[] {
   return [...WATCHABLE_OUTCOME_KINDS]

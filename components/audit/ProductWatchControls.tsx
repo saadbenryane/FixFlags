@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { PRODUCT_WATCH_COPY, REPORT_COPY } from '@/lib/marketing/copy'
+import { formatEvidenceTimestamp } from '@/lib/time/format'
 
 type Interval = 'weekly' | 'daily' | null
 type WatchState = {
@@ -36,8 +37,7 @@ const buildInitialState = (interval: Interval, state?: Partial<WatchState>): Wat
 })
 
 function formatDate(value: string | null): string {
-  if (!value) return PRODUCT_WATCH_COPY.never
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
+  return formatEvidenceTimestamp(value) ?? PRODUCT_WATCH_COPY.never
 }
 
 export function ProductWatchControls({

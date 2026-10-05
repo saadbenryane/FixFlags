@@ -140,7 +140,7 @@ describe('homepage conversion story', () => {
 
     render(<CareHomepage />)
     fireEvent.click(screen.getByRole('tab', { name: 'Web app' }))
-    expect(screen.getByText('Signup, login, and password reset are not monitored yet. They require a safe, approved test-access contract.')).toBeVisible()
+    expect(screen.getByText('Safe Signup requires your synthetic data plus same-origin reset and cleanup hooks. Login and password reset are not monitored yet.')).toBeVisible()
   })
 
   it('supports arrow, Home, and End keys across audience tabs', () => {

@@ -16,6 +16,7 @@ import {
   type WatchInterval,
 } from '@/lib/audit/watch-interval'
 import { WATCH_NOTIFICATION_ATTEMPT_LIMIT } from '@/lib/audit/watch-notification'
+import { outcomeFreshnessMinutes } from '@/lib/sites/application/care-policy'
 
 export type { WatchInterval } from '@/lib/audit/watch-interval'
 export {
@@ -55,7 +56,7 @@ export async function setProjectWatch(input: {
   const clock = dependencies.clock ?? systemClock
   const project = await prisma.project.findFirst({
     where: { id: input.projectId, userId: input.userId },
-    select: { id: true, user: true },
+    select: { id: true, user: true, watchInterval: true },
   })
   if (!project) return { ok: false, error: 'Site not found' }
 
@@ -84,24 +85,34 @@ export async function setProjectWatch(input: {
     }
   }
 
-  await prisma.project.update({
-    where: { id: project.id },
-    data: input.interval
-      ? {
-          watchInterval: toStoredWatchInterval(input.interval),
-          watchNextRunAt: calcWatchNextRun(input.interval, clock.now()),
-          watchLeaseUntil: null,
-          watchConsecutiveFailures: 0,
-          watchLastError: null,
-        }
-      : {
-          watchNextRunAt: null,
-          watchLeaseUntil: null,
-          watchLastError: project.user
-            ? 'Paused. This Site is not on a check schedule.'
-            : null,
-        },
-  })
+  const now = clock.now()
+  const previous = fromStoredWatchInterval(project.watchInterval)
+  const tightened = input.interval === 'daily' && previous !== 'daily'
+  await prisma.$transaction([
+    prisma.project.update({
+      where: { id: project.id },
+      data: input.interval
+        ? {
+            watchInterval: toStoredWatchInterval(input.interval),
+            // Tightening the promise cannot wait a whole daily cycle before its
+            // first evidence. The scheduler claims this due row normally.
+            watchNextRunAt: tightened ? now : calcWatchNextRun(input.interval, now),
+            watchLeaseUntil: null,
+            watchConsecutiveFailures: 0,
+            watchLastError: null,
+          }
+        : {
+            watchInterval: null,
+            watchNextRunAt: null,
+            watchLeaseUntil: null,
+            watchLastError: 'Paused. This Site is not on a check schedule.',
+          },
+    }),
+    prisma.siteOutcome.updateMany({
+      where: { projectId: project.id },
+      data: { staleAfterMinutes: outcomeFreshnessMinutes(input.interval) },
+    }),
+  ])
   return { ok: true }
 }
 

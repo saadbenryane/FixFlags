@@ -8,6 +8,7 @@ import { OUTCOME_CONFIRMATION, OUTCOME_KIND_LABELS } from '@/lib/marketing/copy'
 import { outcomeCoverageLabel, outcomeStatusLabel } from '@/lib/sites/outcome-state'
 import { watchableOutcomeKinds } from '@/lib/sites/outcome-kinds'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
+import type { OutcomeFixtureView } from '@/lib/sites/application/outcome-fixtures'
 
 /**
  * "Looks right / Edit corrects inferred intent", which `docs/workspace-interface.md`
@@ -29,14 +30,17 @@ function ConfirmKind({
   siteId,
   outcome,
   choices,
+  fixtures,
 }: {
   siteId: string
   outcome: SiteOutcomeView
   choices: Array<'CHECKOUT' | 'SIGNUP' | 'LOGIN' | 'PASSWORD_RESET' | 'AVAILABILITY'>
+  fixtures: OutcomeFixtureView[]
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [fixtureId, setFixtureId] = useState(fixtures[0]?.id ?? '')
 
   async function save(kind: string) {
     setBusy(true)
@@ -45,7 +49,7 @@ function ConfirmKind({
       const res = await fetch(`/api/sites/${siteId}/outcomes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ outcomeId: outcome.id, confirmed: true, kind }),
+        body: JSON.stringify({ outcomeId: outcome.id, confirmed: true, kind, ...(kind === 'SIGNUP' ? { fixtureId } : {}) }),
       })
       if (!res.ok) {
         // The route answers 400 with the reason a confirmation was refused, and
@@ -66,6 +70,14 @@ function ConfirmKind({
       <fieldset disabled={busy}>
         <legend className="text-sm font-medium">{OUTCOME_CONFIRMATION.proposeHeading}</legend>
         <p className="mt-1 max-w-prose text-sm text-muted-foreground">{OUTCOME_CONFIRMATION.proposeBody}</p>
+        {choices.includes('SIGNUP') ? (
+          <label className="mt-3 block max-w-sm text-sm font-medium">
+            Safe Signup fixture
+            <select className="mt-1 min-h-11 w-full rounded-md border border-border bg-background px-3" value={fixtureId} onChange={(event) => setFixtureId(event.target.value)}>
+              {fixtures.map((fixture) => <option key={fixture.id} value={fixture.id}>{fixture.name}</option>)}
+            </select>
+          </label>
+        ) : null}
         <div className="mt-3 flex flex-wrap gap-2">
           {choices.map((kind) => (
             <Button key={kind} size="sm" variant="outline" onClick={() => void save(kind)}>
@@ -159,17 +171,18 @@ function RenameOutcome({ siteId, outcome }: { siteId: string; outcome: SiteOutco
  * scan settled would be the funnel-design task `docs/workspace-interface.md`
  * rules out.
  */
-function offeredKinds(outcome: SiteOutcomeView) {
+function offeredKinds(outcome: SiteOutcomeView, fixtures: OutcomeFixtureView[]) {
   const watchable = watchableOutcomeKinds()
+  const available = fixtures.length > 0 ? watchable : watchable.filter((kind) => kind !== 'SIGNUP')
   const own = outcome.kind as (typeof watchable)[number]
-  if (outcome.kind !== 'GENERIC') return watchable.includes(own) ? [own] : []
-  return watchable
+  if (outcome.kind !== 'GENERIC') return available.includes(own) ? [own] : []
+  return available
 }
 
 /** One Outcome, with the choice that turns it into something FixFlags can check. */
-export function SiteOutcomeRow({ siteId, outcome }: { siteId: string; outcome: SiteOutcomeView }) {
+export function SiteOutcomeRow({ siteId, outcome, fixtures = [] }: { siteId: string; outcome: SiteOutcomeView; fixtures?: OutcomeFixtureView[] }) {
   const confirmed = outcome.confirmedAt !== null
-  const choices = confirmed ? [] : offeredKinds(outcome)
+  const choices = confirmed ? [] : offeredKinds(outcome, fixtures)
   return (
     <li className="rounded-card border border-border/60 px-4 py-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -199,7 +212,7 @@ export function SiteOutcomeRow({ siteId, outcome }: { siteId: string; outcome: S
           <RenameOutcome siteId={siteId} outcome={outcome} />
         </div>
       ) : choices.length > 0 ? (
-        <ConfirmKind siteId={siteId} outcome={outcome} choices={choices} />
+        <ConfirmKind siteId={siteId} outcome={outcome} choices={choices} fixtures={fixtures} />
       ) : (
         <p className="mt-3 border-t border-border/40 pt-3 text-sm text-muted-foreground">
           {OUTCOME_CONFIRMATION.unsupportedNote}
@@ -209,14 +222,14 @@ export function SiteOutcomeRow({ siteId, outcome }: { siteId: string; outcome: S
   )
 }
 
-export function SiteOutcomeConfirmList({ siteId, outcomes }: { siteId: string; outcomes: SiteOutcomeView[] }) {
+export function SiteOutcomeConfirmList({ siteId, outcomes, fixtures = [] }: { siteId: string; outcomes: SiteOutcomeView[]; fixtures?: OutcomeFixtureView[] }) {
   if (outcomes.length === 0) {
     return <p className="text-sm text-muted-foreground">{OUTCOME_CONFIRMATION.noneConfirmed}</p>
   }
   return (
     <ul className="mt-4 space-y-3">
       {outcomes.map((outcome) => (
-        <SiteOutcomeRow key={outcome.id} siteId={siteId} outcome={outcome} />
+        <SiteOutcomeRow key={outcome.id} siteId={siteId} outcome={outcome} fixtures={fixtures.filter((fixture) => Boolean(fixture.authorizedAt) && fixture.lastDryRunVersion === fixture.version)} />
       ))}
     </ul>
   )

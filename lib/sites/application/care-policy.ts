@@ -13,6 +13,16 @@ export type SiteCarePolicy = {
   targetedVerify: boolean
 }
 
+export const OUTCOME_FRESHNESS_MINUTES = {
+  daily: 36 * 60,
+  weekly: 8 * 24 * 60,
+  manual: 8 * 24 * 60,
+} as const
+
+export function outcomeFreshnessMinutes(interval: 'weekly' | 'daily' | null): number {
+  return interval ? OUTCOME_FRESHNESS_MINUTES[interval] : OUTCOME_FRESHNESS_MINUTES.manual
+}
+
 /**
  * A Session identity can carry a null plan before the account row is read, so
  * the derived cap has to survive a plan that is not in the plan definitions.

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import type { FlagProofNote, FlagResolution } from '@/lib/sites/flag-resolution'
+import { formatEvidenceTimestamp } from '@/lib/time/format'
 
 function ProofNote({
   heading,
@@ -20,7 +21,7 @@ function ProofNote({
       {note ? <p className="mt-2 text-sm text-muted-foreground">{note}</p> : null}
       <p className="mt-2 text-sm text-muted-foreground">
         {SITE_BOARD_COPY.flagProofLead}{' '}
-        <time dateTime={proof.observedAt}>{new Date(proof.observedAt).toLocaleString()}</time>
+        <time dateTime={proof.observedAt}>{formatEvidenceTimestamp(proof.observedAt) ?? 'Unknown time'}</time>
         . {proof.observation}
       </p>
       {proof.showAuditId ? (

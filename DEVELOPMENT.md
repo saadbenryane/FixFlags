@@ -4,7 +4,7 @@
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22
 - Docker (local Postgres 16 + Redis 7)
 - npm
 

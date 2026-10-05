@@ -23,6 +23,7 @@ import { watchOffNotice } from '@/lib/sites/watch-offer'
 import { firstOutcomePrompt, homeBoardLead } from '@/lib/sites/first-outcome'
 import { outcomeCoverageLabel } from '@/lib/sites/outcome-state'
 import { SITE_BOARD_COPY, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
+import { formatEvidenceTimestamp } from '@/lib/time/format'
 
 function isEmptyUncheckedCard(card: BoardCardView) {
   return card.id !== 'site' && !card.evidenced && card.state === 'unknown' && card.openFlagCount === 0 && card.activity !== 'checking'
@@ -232,13 +233,16 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
           href={`/sites/${siteId}/outcomes/${outcome.id}` as Route}
           expectation={outcome.expectation ?? outcome.summary}
           coverage={outcomeCoverageLabel(outcome.environment, outcome.bindings)}
-          freshness={outcome.lastVerifiedAt ? `${outcome.state === 'COULD_NOT_VERIFY' ? 'Last attempted' : 'Last verified'} ${new Date(outcome.lastVerifiedAt).toLocaleString()}` : 'No completed verification yet'}
+          freshness={outcome.lastVerifiedAt && formatEvidenceTimestamp(outcome.lastVerifiedAt)
+            ? `${outcome.state === 'COULD_NOT_VERIFY' ? 'Last attempted' : 'Last verified'} ${formatEvidenceTimestamp(outcome.lastVerifiedAt)}`
+            : 'No completed verification yet'}
           state={outcome.state}
           running={outcome.running}
+          label={outcome.enabled ? 'Watched Outcome' : 'Paused Outcome'}
           actions={(
             <div className="flex gap-2">
               {outcome.state === 'FLAG' && outcome.flagId ? <Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${outcome.flagId}`}>Open Flag</Link></Button> : null}
-              <Button size="sm" variant={outcome.state === 'FLAG' ? 'brand' : 'outline'} disabled={busy || outcome.running || !outcome.bindings.some((binding) => binding.required)} onClick={() => void verifyOutcome(outcome.id)}>
+              <Button size="sm" variant={outcome.state === 'FLAG' ? 'brand' : 'outline'} disabled={busy || !outcome.enabled || outcome.running || !outcome.bindings.some((binding) => binding.required)} onClick={() => void verifyOutcome(outcome.id)}>
                 {outcome.running ? 'Verifying…' : 'Verify'}
               </Button>
             </div>
@@ -264,7 +268,7 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
       ) : null}
 
       <section aria-labelledby="broader-health-heading">
-        <h2 id="broader-health-heading" className="mb-3 text-lg font-semibold">Broader health and recommendations</h2>
+        <h2 id="broader-health-heading" className="mb-3 text-lg font-semibold">{(view.recommendations ?? []).length > 0 ? SITE_BOARD_COPY.broaderHealthWithRecommendations : SITE_BOARD_COPY.broaderHealth}</h2>
         <BoardSurface host={view.host} state={view.statusState} label={view.statusLabel} count={view.flags.length} onOpen={() => {
           opener.current = document.activeElement as HTMLElement
           setSelectedCard('site')

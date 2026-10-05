@@ -1,5 +1,20 @@
 # Current product completion handoff
 
+## 2026-10-04 evidence-gated launch update
+
+The July closeout below is retained as historical evidence for the legacy report product. The current Site product
+now has a locally verified Outcome responsibility view, pause/enable and cadence freshness, version-authorized
+Safe Signup fixtures, a permanent runtime/toolchain dependency gate, direct worker bundling, Home · Flags ·
+Settings navigation, and dead Product workspace cleanup. The authenticated Sites dashboard's server/client card
+boundary and Site evidence timestamp hydration were repaired during the final browser walk. The final 30-command
+repository gate passed with container receipt `.agent-runs/2026-10-04T22-58-40-683Z-container-build.log`;
+authenticated desktop and 375px dashboard/Site walks passed without overflow or console errors. Full details:
+[`../sessions/2026-10-04-evidence-gated-launch-implementation.md`](../sessions/2026-10-04-evidence-gated-launch-implementation.md).
+
+This is not a production attestation. Public MCP discovery, paid activation, and the launch claim remain closed
+until the exact-SHA canary, real Codex/Claude Code/Cursor matrix, GA4/GSC baseline, competitive scenario, rollback
+rehearsal, and 14-day/100-run Watch reliability and COGS gates pass.
+
 ## Status
 
 Local current-product implementation and verification completed on 2026-07-26. Release verification remains blocked only on operator-provided disposable fixtures, reset consent, deployed service configuration, and external sandbox credentials. No production database reset was attempted.

@@ -1,6 +1,6 @@
 # Competitive and conversion briefing
 
-**Initial research date:** 2026-10-01. **Corrective review:** 2026-10-02.
+**Initial research date:** 2026-10-01. **Corrective reviews:** 2026-10-02 and 2026-10-04.
 **Status:** evidence-safe working brief; the conversion baseline and MCP category claim remain open.
 **Supersedes the factual content of** [`competitors.md`](competitors.md). That file's narrative described the
 retired "AI-built product QA" positioning and misidentified two of its three named competitors. Its history is
@@ -34,9 +34,10 @@ Needed context for any agent reading this cold.
 FixFlags is **the independent monitor for software that acts**. Tagline: **Your software runs. FixFlags watches.**
 
 - A customer adds a live product by URL, a **Site**. Shop, SaaS, service business.
-- The local product can execute important **Outcomes**: Checkout and page availability. Signup, Login,
-  Password reset and Publish have declarative configs but are **intentionally blocked** by
-  `watchableOutcomeKinds()` until a tenant-scoped credential and reversible fixture contract exists.
+- The local product can execute important **Outcomes**: Checkout, page availability, and Safe Signup. Signup is
+  available only with encrypted synthetic data, exact-origin reset and cleanup hooks, a successful dry run, and
+  version-bound customer authorization. Login, Password reset, Publish, and generalized agent evaluation remain
+  unavailable.
 - Each Outcome reads **Clear**, **Flag**, **Couldn't verify**, or **Stale**.
 - Evidence is real and preserved: Playwright capture, screenshots, network/HTTP status, journey steps,
   deterministic checks, AI judgment, with truth labels distinguishing reproduced from merely observed.
@@ -282,8 +283,9 @@ These are the findings strong enough to change decisions after the 2026-10-02 co
    claim, but it is not deployed and no fresh production baseline has been captured.
 9. **The last reproducible search baseline is dated September 8, not October 1.** It reports seven clicks and 53
    impressions, all brand or brand-adjacent. It supports a foundation phase, not a current volume forecast.
-10. **Only Checkout and Availability are watchable today.** The MCP contract is local and undiscoverable pending
-    exact-client and production-canary proof. Public positioning must preserve both limits.
+10. **Checkout, Availability, and version-authorized Safe Signup are locally watchable today.** Login and
+    Password reset remain unavailable. The MCP contract is local and undiscoverable pending exact-client and
+    production-canary proof. Public positioning must preserve those limits.
 11. **Agent Status provides adjacent, vendor-authored evidence** that transport availability and semantic quality
     can diverge. It does not measure FixFlags, Checkout recovery, or coding-agent changes to the wrong object.
 12. **Measure, prove, then position.** A fresh production funnel and one real public recovery proof must precede
@@ -455,9 +457,10 @@ Paste this to a design and taste agent. It is self-contained.
 >   Recommendation, Journey, Coverage, Verify, Watch, Analyze. Do not introduce a synonym for Flag.
 > - No em dashes in customer copy. No filler: comprehensive, seamless, robust, game-changing, revolutionary,
 >   unlock, leverage.
-> - **Claim parity.** `watchableOutcomeKinds()` permits only **Checkout** and **Availability** today. Signup,
->   Login, Password reset, Publish, form completion and agent evaluation must NOT be described as monitored
->   behavior. Do not print 24/7, hourly, or page counts. Do not print 3/30/90. Never say "You're covered."
+> - **Claim parity.** `watchableOutcomeKinds()` permits only **Checkout**, **Safe Signup**, and **Availability**
+>   today. Safe Signup claims must name the reversible fixture requirement. Login, Password reset, Publish,
+>   arbitrary form completion and agent evaluation must NOT be described as monitored behavior. Do not print
+>   24/7, hourly, or page counts. Do not print 3/30/90. Never say "You're covered."
 >   Never say "Resolved" without independent verification. There is a claim-parity test at
 >   `CareHomepage.test.tsx`; keep it passing.
 > - MCP is locally implemented and intentionally undiscoverable pending exact-client and production-canary proof.

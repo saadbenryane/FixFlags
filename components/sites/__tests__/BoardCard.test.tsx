@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { BoardCard, AddBoardCard } from '../BoardCard'
-import { Globe2 } from 'lucide-react'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 describe('BoardCard chrome', () => {
@@ -12,7 +11,7 @@ describe('BoardCard chrome', () => {
         status="Checks passed"
         state="healthy"
         answer="Protected"
-        icon={Globe2}
+        icon="site"
         onOpen={() => undefined}
       />
     )
@@ -30,7 +29,7 @@ describe('BoardCard chrome', () => {
         status="Needs a fix"
         state="problem"
         answer="No confirmation after contact"
-        icon={Globe2}
+        icon="site"
         flags={[{ id: 'flag-1', title: 'No confirmation after contact', href: '#flag-example' }]}
         onOpen={onOpen}
       />

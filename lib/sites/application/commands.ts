@@ -1,5 +1,6 @@
 import { executeProductCommand } from '@/lib/products/application/commands'
 import {
+  OutcomeFixtureRequiredError,
   OutcomeKindMismatchError,
   confirmPageAvailability,
   confirmSiteOutcome,
@@ -26,6 +27,7 @@ export type SiteCommand =
       name?: string
       confirmed: boolean
       kind?: ConfirmableOutcomeKind
+      fixtureId?: string
     }
   | {
       type: 'RENAME_OUTCOME'
@@ -92,7 +94,8 @@ export async function executeSiteCommand(command: SiteCommand) {
           code: 'OUTCOME_KIND_UNWATCHABLE' as const,
         }
       }
-      if (command.confirmed && command.kind && !outcomeKindWatchable(command.kind, site.url)) {
+      const fixtureContract = command.fixtureId ? { id: command.fixtureId, targetUrl: site.url } : undefined
+      if (command.confirmed && command.kind && !outcomeKindWatchable(command.kind, site.url, fixtureContract)) {
         return {
           ok: false as const,
           error: OUTCOME_CONFIRMATION.kindUnwatchable,
@@ -107,6 +110,7 @@ export async function executeSiteCommand(command: SiteCommand) {
           name: command.name,
           confirmed: command.confirmed,
           kind: command.kind,
+          fixtureId: command.fixtureId,
         })
       } catch (error) {
         if (error instanceof OutcomeKindMismatchError) {
@@ -114,6 +118,13 @@ export async function executeSiteCommand(command: SiteCommand) {
             ok: false as const,
             error: OUTCOME_CONFIRMATION.kindMismatch,
             code: 'OUTCOME_KIND_MISMATCH' as const,
+          }
+        }
+        if (error instanceof OutcomeFixtureRequiredError) {
+          return {
+            ok: false as const,
+            error: error.message,
+            code: 'OUTCOME_FIXTURE_REQUIRED' as const,
           }
         }
         throw error

@@ -30,6 +30,8 @@ Trace route, application service, persistence, tenancy, entitlements and UI toge
 
 Outcome confirmation must align the visible promise and target with the execution binding. A broad inferred sentence does not become verified merely by selecting HTTP availability. Exercise edits through the command boundary: renaming an already confirmed Outcome must preserve its confirmation time, binding configuration and evidence. Keep browser runtime helpers separate from database-backed Outcome modules; type-only imports are safe, runtime imports can pull Prisma into the browser even when the build passes.
 
+Props crossing from a server-rendered Site surface into a client component must remain React-serializable. Pass stable identifiers such as `SiteCardArea`, then resolve Lucide components inside the client module. Persisted evidence times rendered by a client component must use `formatEvidenceTimestamp`; implicit host or browser locale and time-zone formatting can replace customer evidence during hydration even when the production build passes.
+
 Customer-facing Outcome ↔ Flag links require persisted identity (`OutcomeAssessment.improvementId` or `Improvement.outcomeId`). Shared URL and check-name fragments are context, not proof of a relationship. If the identity is absent, keep the relationship unknown rather than inventing one.
 
 Broad Site category evidence expires after eight days, one weekly Watch cycle plus a day of grace. Preserve the last checked time and open Flags, but do not show an old pass as current healthy coverage. Pass one explicit clock from the Site query into pure coverage and health calculations; tests must pin their clock.
