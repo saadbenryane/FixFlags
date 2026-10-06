@@ -70,7 +70,11 @@ in the launch contract.
 
 Requires real interactive sessions in three external tools, with a real API key
 scoped to a real Site. `journey:mcp-full-loop` proves the MCP *protocol* works,
-not that those three agents complete the loop. Unproven.
+not that those three agents complete the loop. The latest local host preflight is
+recorded in
+`.agents/sessions/2026-10-06-mcp-client-matrix-preflight.md`: Codex and Claude
+Code are installed but not authenticated/approved for this run, and Cursor is
+absent. Unproven.
 
 ### 3. Paid checkout opening
 

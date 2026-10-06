@@ -28,5 +28,6 @@ The integrated customer changes include:
 - The final pre-integration 30-command manifest passed on the exact source candidate, including database validation/drift, TypeScript, lint, all repository guards, runtime/toolchain audit, 5,000+ tests, coverage, accuracy, optimized Next build, worker bundle, and production container: `.agent-runs/2026-10-06T14-52-53-492Z-container-build.log`.
 - A fresh `npm run security:audit` passed immediately before integration: the runtime graph is clean and the toolchain contains only the reviewed build-only `braces` chain.
 - Heartbeat returned `ok: true` with no blocked or queued work.
+- A read-only production check after integration returned healthy database, Redis, migrations, worker, browser, storage, AI, auth, billing, email, and Product Watch. Production still reported commit `dd1c247b32696822436af66d064d70164cb65e9f`, so none of this local candidate is represented as deployed evidence.
 
 No push, deployment, database reset, MCP discovery opening, CLI publication, or paid-access change occurred.
