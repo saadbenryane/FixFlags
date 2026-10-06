@@ -93,6 +93,12 @@ describe('validate.mjs', () => {
       })
     })
 
+    it('affected mode runs script contracts when a repository guard changes', () => {
+      const plan = buildPlan('affected', ['scripts/power-tools-visibility-guard.mjs'])
+      const labels = plan.commands.map((command) => command.label)
+      assert.ok(labels.includes('test:scripts'))
+    })
+
     it('full mode runs all checks', () => {
       const plan = buildPlan('full', ['lib/audit/runner.ts'])
       const labels = plan.commands.map((c) => c.label)

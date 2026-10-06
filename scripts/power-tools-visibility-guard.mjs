@@ -43,7 +43,7 @@ function walk(directory, files = []) {
   for (const entry of readdirSync(directory)) {
     const absolute = path.join(directory, entry)
     if (statSync(absolute).isDirectory()) walk(absolute, files)
-    else if (/\.(?:ts|tsx)$/.test(entry)) files.push(absolute)
+    else if (/\.(?:ts|tsx|md)$/.test(entry)) files.push(absolute)
   }
   return files
 }
@@ -63,12 +63,14 @@ function discoveryFiles(root) {
     ...walk(path.join(root, 'app/(marketing)')),
     ...walk(path.join(root, 'app/(app)/dashboard')),
     ...walk(path.join(root, 'app/(app)/settings')),
+    ...walk(path.join(root, 'content/docs')),
     path.join(root, 'app/sitemap.ts'),
   ]
   return [...new Set(files)].filter((file) => {
     if (!existsSync(file) || file.includes(`${path.sep}__tests__${path.sep}`)) return false
     // A parked page is not expected to avoid linking to itself. Everything else is.
     if (/(?:dashboard[\\/]mcp-|settings[\\/]integrations|docs[\\/](?:cli|mcp|integrations)|help[\\/]mcp)/.test(file)) return false
+    if (file === path.join(root, 'content/docs/mcp.md')) return false
     if (/(?:lib[\\/]help[\\/]catalog)\.tsx?$/.test(file)) return false
     return !/(?:copy[\\/]auth|copy[\\/]brand|copy[\\/]tools)\.ts$/.test(file)
   })

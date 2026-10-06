@@ -58,6 +58,7 @@ const scopes = {
   },
   scripts: {
     prefixes: ['scripts/'],
+    test: ['npm', ['run', 'test:scripts']],
   },
   worker: {
     prefixes: ['worker/'],

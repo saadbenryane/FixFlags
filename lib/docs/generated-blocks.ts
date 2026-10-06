@@ -1,4 +1,5 @@
 import { renderMcpToolReference } from '@/lib/docs/mcp-tool-reference'
+import { MCP_IS_DISCOVERABLE } from '@/lib/mcp/discoverability'
 
 /**
  * Facts a document must state from the code that owns them, not from a copy.
@@ -8,6 +9,9 @@ import { renderMcpToolReference } from '@/lib/docs/mcp-tool-reference'
  * quietly lost its content reads as deliberate.
  */
 const GENERATED_BLOCKS: Record<string, () => string> = {
+  'mcp-guide-link': () => MCP_IS_DISCOVERABLE
+    ? '- [MCP for coding agents](/docs/mcp) for independent verification after a change.'
+    : '',
   'mcp-tools': renderMcpToolReference,
 }
 

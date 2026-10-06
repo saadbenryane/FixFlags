@@ -3,6 +3,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { applyGeneratedBlocks } from '@/lib/docs/generated-blocks'
 import { mcpToolNames } from '@/lib/docs/mcp-tool-reference'
+import { MCP_IS_DISCOVERABLE } from '@/lib/mcp/discoverability'
 
 /**
  * The published MCP guide is the contract an agent configures itself from. A tool
@@ -16,7 +17,16 @@ function renderedMcpGuide() {
   return applyGeneratedBlocks(readFileSync(source, 'utf8'), 'mcp.md')
 }
 
+function renderedDocsIndex() {
+  const source = path.join(process.cwd(), 'content', 'docs', 'index.md')
+  return applyGeneratedBlocks(readFileSync(source, 'utf8'), 'index.md')
+}
+
 describe('published MCP guide', () => {
+  it('shows the public guide link only when MCP discovery is open', () => {
+    expect(renderedDocsIndex().includes('/docs/mcp')).toBe(MCP_IS_DISCOVERABLE)
+  })
+
   it('names every tool FixFlags serves', () => {
     const guide = renderedMcpGuide()
     for (const name of mcpToolNames()) {

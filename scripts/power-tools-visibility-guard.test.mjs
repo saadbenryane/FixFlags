@@ -7,6 +7,7 @@ import {
   GATED_MCP_DISCOVERY_PREFIXES,
   PARKED_PUBLIC_PREFIXES,
   powerToolVisibilityFailures,
+  runPowerToolsVisibilityGuard,
 } from './power-tools-visibility-guard.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -32,6 +33,10 @@ test('accepts retained implementations when every public prefix is parked and un
     },
     mcpGateSource: mcpGate(),
   }), [])
+})
+
+test('the real rendered public sources contain no withheld power-tool link', () => {
+  assert.deepEqual(runPowerToolsVisibilityGuard(root), [])
 })
 
 test('rejects missing route parking, inconsistent repository responses, and public links', () => {
