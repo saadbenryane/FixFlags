@@ -7,7 +7,7 @@ The coding agent may describe a commit, deployment, or affected area. That conte
 ## Connect
 
 1. Sign in and open [Developer keys](/settings/api-keys).
-2. Create a key for your client and copy the secret when it appears. It is shown once.
+2. Create a key for your client, choose only the run or Fix → Verify access it needs, and copy the secret when it appears. It is shown once.
 3. Open [MCP setup](/dashboard/mcp-setup) and add the configuration for your client.
 4. Ask the client to list FixFlags Sites, then list Outcomes for the Site you own.
 
@@ -21,11 +21,13 @@ These are the tools FixFlags serves. The list is generated from the tool registr
 
 Reading a Site, running its Outcomes, and reading the resulting Flags is the whole path. Recording a fix and verifying it are separate tools on purpose: FixFlags owns the verification, and a client cannot mark its own change Clear.
 
-Checkout is the first first-class Outcome. Broad Site checks still run in FixFlags and remain visible under the Site board.
+FixFlags can currently execute Checkout, public page availability, and Safe Signup Outcomes. Safe Signup requires a synthetic-data fixture with exact-origin reset and cleanup hooks, a successful dry run, and authorization for that fixture version. Fixture setup and secrets stay in the FixFlags UI; MCP cannot read or change them. Login and password reset are not available yet.
 
 ## Async runs
 
 Verification is asynchronous. Start a run, keep the returned run ID, and poll that run until it completes or fails. A failed or blocked execution returns **Couldn't verify** rather than inventing a Flag. A completed result includes the Outcome state and a linkable Flag when one exists.
+
+The Outcome listing includes the expected result, current answer, coverage, freshness, customer-readable method evidence, limitations, and recovery action. It does not return fixture configuration, raw form values, hook credentials, or raw execution detail.
 
 ## Security and independence
 
