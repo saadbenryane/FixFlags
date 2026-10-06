@@ -1,6 +1,6 @@
 # Current product implementation
 
-**Workspace implementation inventory, reconciled 2026-09-21. Not a production release attestation.**
+**Workspace implementation inventory, reconciled 2026-10-06. Not a production release attestation.**
 
 The accepted destination is [the full vision](knowledge/vision.md). [ROADMAP.md](ROADMAP.md) and [the PRD](docs/product-prd.md) define upcoming implementation. This file describes reusable code and current compatibility behavior; it does not freeze the old experience.
 
@@ -9,11 +9,11 @@ The accepted destination is [the full vision](knowledge/vision.md). [ROADMAP.md]
 | Area                  | Existing implementation                                                                                                                                    | Boundary                                                                                                                                       |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | URL analysis          | Audit worker, Playwright capture, deterministic checks, AI judgment, source evidence and persisted execution progress                                      | Lands on a Site board. Legacy `/report/[id]` remains for public evidence; signed-in owners with a Site redirect there.                         |
-| Customer persistence  | Owned Project (customer Site), adapted `SiteOutcome` with Checkout expectation/binding/assessment, Flags via `isCustomerFlag`, Watch                         | Checkout is the first Outcome; other inferred Outcomes remain descriptive until individually bound. Recommendations stay in card depth.       |
+| Customer persistence  | Owned Project (customer Site), adapted `SiteOutcome` with Checkout, page-availability, and version-authorized Safe Signup bindings/assessments, Flags via `isCustomerFlag`, Watch | Other inferred Outcomes remain descriptive until individually bound. Login and Password reset stay unavailable. Recommendations stay in card depth. |
 | Current report        | /report/[id], report projections, ranked Flags, evidence and gated prompts                                                                                 | Compatibility for public evidence and anonymous teasers                                                                                        |
 | Product workspace     | /sites/[id] Home · Flags · Site settings                                                                                                                   | Parked `/products/[id]` remains undiscoverable                                                                                                 |
 | Fix and comparison    | Send a Flag to your AI, clipboard handoff, independent targeted Verify                                                                                     | Checkout-targeted Verify now enters the shared RunRequest path; other Flags retain the existing verifier. Absence is not Verified.            |
-| Monitoring            | Project watch: Free weekly full, paid daily full. Pulse vs full types exist; hourly pulse is not scheduled until costed.                                   | Do not print 24h or hourly until pulse ships. 3/30/90 pool stays hidden.                                                                       |
+| Monitoring            | Project Watch: Free weekly full, paid daily full; durable scheduling/recovery/notification records; 14-day/100-run reliability and COGS projection | Paid access remains waitlisted until the production projection passes. Do not print 24h or hourly until pulse ships. 3/30/90 pool stays hidden. |
 | Shopify               | Native install, purchase-path walks, Can buy / Can't buy. RED paths upsert a Flag on a matching Site                                                       | Connection, not a second product                                                                                                               |
 | Signals               | Narrow ProductSignal path and observer foundation                                                                                                          | Supporting context only; not Outcome truth or full real-user monitoring.                                                                       |
 | MCP/CLI               | SDK v2 stateless HTTP server with a legacy-client mode, nine registry-defined Site/Outcome/Run/Flag tools, OAuth discovery/scopes, API keys, device auth, stdio bridge, editor setup and interaction ledger | Local contract and authorization are implemented. Exact-client and production canary proof remain. |
@@ -56,6 +56,13 @@ Do not advertise Meta, repository scanning, or hourly Watch as shipped. Analytic
 
 ## Proof and operating status
 
-Use [QUALITY.md](QUALITY.md), the actual changed code, focused evaluations and release receipts to determine readiness. The workspace contains substantial uncommitted work from multiple tasks. Git HEAD alone does not identify all of it, and local checks do not attest a deployed release.
+Use [QUALITY.md](QUALITY.md), the actual changed code, focused evaluations and
+release receipts to determine readiness. The workspace was clean after local
+candidate `0e155da3f0b340c22cf84ba7ce555301061267dd` was committed. Its final
+full verification passed, but the exact-SHA foundation receipt is `BLOCKED`
+because the disposable release database, container environment file, and
+explicit reset authorization are absent. Production still requires a fresh
+deployed-SHA check. Git history and local checks do not attest a deployed
+release.
 
 Support, billing, auth and existing customer commands should continue to describe real current behavior until cutover. The [roadmap](ROADMAP.md) owns migration gates and successor priorities.

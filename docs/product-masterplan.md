@@ -1,6 +1,6 @@
 # FixFlags independent-monitor masterplan
 
-**Status: ACTIVE TARGET AND SOLE IMPLEMENTATION PLAN. Reconciled 2026-09-21 against the Checkout implementation on `main`; exact-SHA production proof remains open.**
+**Status: ACTIVE TARGET AND SOLE IMPLEMENTATION PLAN. Reconciled 2026-10-06 against the local Outcome candidate on `main`; exact-SHA production proof remains open.**
 
 FixFlags is the independent monitor for software that acts.
 
@@ -13,13 +13,13 @@ This file owns what to build, in what order, and what may be called launch-ready
 | Slice element | Local implementation | Remaining proof |
 | --- | --- | --- |
 | Outcome/binding/assessment | Additive `SiteOutcome` semantics, `OutcomeExecutionBinding`, `OutcomeAssessment` and non-destructive migrations | Fresh production migration and exact-revision canary |
-| Shared execution | One tenant-scoped `RunRequest` from web, Watch and MCP into the existing Audit worker; database-enforced one active run | Credentialed schedule/restart and competing-trigger exercise |
+| Shared execution | One tenant-scoped `RunRequest` from UI, Watch, MCP, deployment, API, Shopify, and internal retry into the existing Audit worker; database-enforced one active run | Credentialed schedule/restart and competing-trigger exercise |
 | Truth | Confirmed Checkout success is Clear; confirmed reproducible failure is Flag; blocked/unknown is Couldn't verify; expired evidence is Stale | Real owned-Site broken → fixed → recovery sequence |
 | Incident | Checkout occurrence reuses a stable Site Flag identity; targeted Verify keeps attempt history | Recurrence and notification return on a canary Site |
 | Developer access | Site/Outcome/Run/Flag MCP tools, hashed account keys, device flow, CLI bridge, OAuth discovery/scopes, setup and docs | Credentialed Codex/Claude/Cursor client matrix and exact-SHA production proof |
 | Public hierarchy | Checkout Outcome leads the Site board and homepage example; broad cards remain | Complete mobile/public route pass and exact deployed sample |
 
-This checkpoint is **not** the public launch. No acceptance checkbox below is closed merely by a migration or unit test. The next highest-leverage work is an end-to-end credentialed Checkout canary followed by external-client and live connection proof on the exact deployed revision.
+This checkpoint is **not** the public launch. No acceptance checkbox below is closed merely by a migration or unit test. The next highest-leverage work is an end-to-end credentialed Checkout and Safe Signup canary, followed by external-client and live connection proof on the exact deployed revision.
 
 | Authority                                  | Source                                                          |
 | ------------------------------------------ | --------------------------------------------------------------- |
@@ -76,8 +76,8 @@ The launch container remains the existing customer **Site** because the current 
 
 ### Debt that blocks launch
 
-1. Only Checkout currently has complete Outcome semantics. Other inferred Outcomes remain descriptive; a second binding must prove the model beyond commerce.
-2. Web, Watch, and MCP now enter through one RunRequest, but deployment, integration, and legacy API triggers still enter report-shaped services.
+1. Checkout, page availability, and version-authorized reversible Safe Signup now have complete local Outcome semantics. Login, Password reset, and machine-facing Outcomes remain unavailable until they meet the same evidence and side-effect standard.
+2. UI, Watch, MCP, deployment, API, Shopify, and internal retry now enter through one tenant-scoped RunRequest command. The exact-SHA restart, competing-trigger, and recovery exercises remain open.
 3. The registered MCP surface is Outcome-first; old report tools are removed from server discovery while legacy CLI handlers remain an explicit compatibility boundary. Exact-client and production proof remain open.
 4. Remote MCP supports OAuth discovery with scoped, audience-bound tokens. API keys remain appropriate for CI and the stdio bridge; credentialed client-matrix proof remains open.
 5. Deployment verification is Railway-specific and generic rather than Site/Outcome-scoped.
@@ -330,7 +330,7 @@ MCP-server and agent-tool correctness, permission/side-effect evaluators, sandbo
 
 ## 11. Launch acceptance criteria
 
-Local engine status on 2026-10-06, not a production attestation: one RunRequest executes every required Checkout, version-authorized Safe Signup, and page-availability binding; Watch and Railway use that command; Signup without a current reversible fixture stays Couldn’t verify; MCP publishes protected-resource metadata, authorization-code PKCE, audience checks, scope challenges, and permission-scoped expiring developer keys. New UI-created keys default to read-only evidence for 90 days and make run or Fix → Verify access an explicit choice; CLI device approval creates a 90-day full-workflow key. Historical empty-scope keys stay compatible until replaced. The last clean full local verification manifest passed on the preceding candidate, including the production web build, direct worker bundle, runtime dependency inspection, and container build. Railway repo triggers for both FixFlags web and FixFlags Worker report `checkSuites: true`. The unpublished 1.0.5 CLI bundles the canonical customer skill and generates credential-free exact-version `npx` MCP commands that installed Codex, Claude Code, and Cursor clients parse. That is configuration compatibility, not an authenticated matrix pass. Credentialed sessions, the exact-SHA production canary, the production Watch reliability/COGS window, and opening paid checkout remain outside this local proof. The checklist below stays open until exact-candidate receipts exist.
+Local engine status on 2026-10-06, not a production attestation: one RunRequest executes every required Checkout, version-authorized Safe Signup, and page-availability binding; every launch trigger enters that command; Signup without a current reversible fixture stays Couldn’t verify; MCP publishes protected-resource metadata, authorization-code PKCE, audience checks, scope challenges, and permission-scoped expiring developer keys. New UI-created keys default to read-only evidence for 90 days and make run or Fix → Verify access an explicit choice; CLI device approval creates a 90-day full-workflow key. Historical empty-scope keys stay compatible until replaced. The clean full local manifest passed for candidate `0e155da3f0b340c22cf84ba7ce555301061267dd`, including the production web build, direct worker bundle, runtime dependency inspection, and container build. Its foundation receipt correctly remains blocked before execution because required operator-owned release inputs are absent. `billing-open` now runs the durable Watch reliability/COGS projection first and refuses a receipt unless every 14-day/100-run threshold passes. Railway repo triggers for both FixFlags web and FixFlags Worker report `checkSuites: true`. The unpublished 1.0.5 CLI bundles the canonical customer skill and generates credential-free exact-version `npx` MCP commands that installed Codex and Claude Code parse; Cursor is absent on the current host. That is host/configuration preflight, not an authenticated matrix pass. Credentialed sessions, the exact-SHA production canary, the production Watch reliability/COGS window, and opening paid checkout remain outside this local proof. The checklist below stays open until exact-candidate receipts exist.
 
 The checklist is the contract; the [release evidence runbook](release-evidence-runbook.md) says how each item is actually proven, which fixtures the release run needs, and which items are still waiting on something outside this repository. A box moves only when a receipt exists for the exact candidate revision.
 
