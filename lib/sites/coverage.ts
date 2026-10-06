@@ -76,11 +76,27 @@ function healthyEvidenceCopy(
       return SITE_BOARD_COPY.healthyEvidence.performance.desktop
     case 'uptime':
       return SITE_BOARD_COPY.healthyEvidence.uptime
+    case 'security':
+      return SITE_BOARD_COPY.healthyEvidence.security
+    case 'tracking':
+      return SITE_BOARD_COPY.healthyEvidence.tracking
     case 'accessibility':
       return SITE_BOARD_COPY.healthyEvidence.accessibility
     default:
       return SITE_BOARD_COPY.healthyEvidence.fallback
   }
+}
+
+/** Completed check-module receipts Home must load. A Flag is not required. */
+export const AREA_EVIDENCE_MODULE_KEYS = [
+  'module:accessibility',
+  'module:trust',
+  'module:security',
+  'module:measurement',
+] as const
+
+function completedModule(executions: Array<{ targetKey: string; status: string }>, key: string): boolean {
+  return executions.some((execution) => execution.targetKey === key && execution.status === 'COMPLETED')
 }
 
 /** Areas that received concrete public evidence for this analysis. */
@@ -96,14 +112,14 @@ export function evidencedAreasFromCoverage(
   if (evidence.metadata) evidenced.add('search')
   if (evidence.flowScan || evidence.journeyWalk) evidenced.add('conversion')
   if (evidence.desktopScreenshot && evidence.metadata) evidenced.add('uptime')
+  if (completedModule(verifierExecutions, 'module:accessibility')) evidenced.add('accessibility')
   if (
-    verifierExecutions.some(
-      (execution) =>
-        execution.targetKey === 'module:accessibility' && execution.status === 'COMPLETED'
-    )
+    completedModule(verifierExecutions, 'module:trust') &&
+    completedModule(verifierExecutions, 'module:security')
   ) {
-    evidenced.add('accessibility')
+    evidenced.add('security')
   }
+  if (completedModule(verifierExecutions, 'module:measurement')) evidenced.add('tracking')
 
   for (const flag of flags) {
     evidenced.add(cardAreaForCheck(flag))

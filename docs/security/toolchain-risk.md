@@ -20,3 +20,12 @@ advisory cannot hide a production vulnerability or stop all later verification.
 
 This is a bounded threat-model decision, not a blanket audit waiver. The full
 toolchain report remains inspected on every validation run.
+
+## Resolved advisory drift
+
+On 2026-10-06 the same gate caught three newly published denial-of-service
+advisories. FixFlags upgraded every affected path to the published patched
+release: `source-map-js@1.2.2`, `fast-copy@4.1.2`, and
+`postcss-selector-parser@7.1.6`. Exact overrides keep a later lockfile refresh
+from reintroducing vulnerable transitive versions. These are fixes, not entries
+in the reviewed-exception list.

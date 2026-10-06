@@ -25,9 +25,9 @@ export function VerifyOutcomeButton({
         method: 'POST',
         headers: { 'Idempotency-Key': `web:${outcomeId}:${Date.now()}` },
       })
-      const body = await response.json().catch(() => ({})) as { error?: string }
+      const body = await response.json().catch(() => ({})) as { message?: string; error?: string }
       if (!response.ok) {
-        setMessage(body.error ?? 'Could not start this verification')
+        setMessage(body.message ?? body.error ?? 'Could not start this verification')
         return
       }
       setMessage('Verification started')

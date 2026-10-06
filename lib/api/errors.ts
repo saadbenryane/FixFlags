@@ -7,6 +7,7 @@ import { logger } from '@/lib/logger'
 import { isSupportError } from '@/lib/live-support/errors'
 import { AuditUrlError } from '@/lib/audit/url'
 import { AuditLimitError } from '@/lib/audit/create-audit'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 
 export interface ApiErrorBody {
   code: UsageLimitCode | string
@@ -48,6 +49,10 @@ export function handleRouteError(err: unknown, fallback = 'Something went wrong'
   // centrally because any route that starts a scan can now reach it, and a route
   // that omits the branch reports "could not start" for a limit that is simply
   // spent, which is both false and leaves the customer with nothing to do.
+  if (err instanceof SiteRunRefusal) {
+    return apiError(err.message, err.status, { code: err.code, requestId })
+  }
+
   if (err instanceof AuditLimitError) {
     return apiError(err.message, 402, { code: err.code, action: err.action, requestId })
   }

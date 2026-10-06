@@ -61,6 +61,13 @@ the production origin. None of this has run.
 Criterion: each agent authenticates, resolves Site and Outcome, runs, reconnects
 and polls, inspects a Flag, records a fix, and verifies.
 
+For each client, first connect with a `Read evidence` key and record that a
+`fixflags.run` call is rejected with `INSUFFICIENT_SCOPE`. Then reconnect with a
+non-expired `Fix and verify` key for the full loop. Also record rejection of one
+expired key. This proves the client is using the credential under test rather
+than an ambient account session and covers the permission/expiry boundary named
+in the launch contract.
+
 Requires real interactive sessions in three external tools, with a real API key
 scoped to a real Site. `journey:mcp-full-loop` proves the MCP *protocol* works,
 not that those three agents complete the loop. Unproven.

@@ -6,6 +6,8 @@ import { MeProvider, type MeUser } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { BoardCardView } from '@/lib/sites/board-card'
 import { AUDIT_ERRORS, CARE_HOME, WATCH_ALERT_DELIVERY, WATCH_OFFER } from '@/lib/marketing/copy'
+import { checkoutResultCopy, UNASSESSED_OUTCOME_SUMMARY } from '@/lib/sites/outcome-state'
+import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 
@@ -127,7 +129,123 @@ function renderBoard(user: MeUser | null) {
   )
 }
 
+function watchedOutcome(partial: Partial<SiteOutcomeView> & Pick<SiteOutcomeView, 'name' | 'state' | 'summary'>): SiteOutcomeView {
+  return {
+    id: 'out-1',
+    slug: 'checkout',
+    description: null,
+    inferenceSource: 'browser',
+    confirmedAt: null,
+    pageIds: [],
+    pageUrls: [],
+    kind: 'CHECKOUT',
+    criticality: 'CRITICAL',
+    environment: 'production',
+    enabled: true,
+    staleAfterMinutes: 60,
+    expectation: 'The selected product appears in the cart and checkout opens.',
+    bindings: [{ key: 'checkout-browser-v1', required: true, scope: null, mechanism: 'BROWSER_JOURNEY', version: 1 }],
+    coverage: null,
+    lastVerifiedAt: '2026-10-05T18:00:00.000Z',
+    validUntil: '2026-10-06T18:00:00.000Z',
+    flagId: null,
+    latestRunId: 'run-1',
+    running: false,
+    ...partial,
+  }
+}
+
 describe('SiteBoard chrome', () => {
+  it('shows the Checkout assessment on Home and keeps the promise', () => {
+    const summary = checkoutResultCopy('no_buy_control').summary
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard
+          siteId="p_example"
+          initial={boardView({
+            outcomes: [watchedOutcome({ name: 'Checkout', state: 'COULD_NOT_VERIFY', summary })],
+          })}
+        />
+      </MeProvider>,
+    )
+    expect(screen.getByRole('heading', { name: 'Checkout' })).toBeVisible()
+    expect(screen.getByText(summary)).toBeVisible()
+    expect(screen.getByText('The selected product appears in the cart and checkout opens.')).toBeVisible()
+    expect(screen.getByText('Couldn’t verify')).toBeVisible()
+  })
+
+  it('keeps an unassessed Outcome on its expectation', () => {
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard
+          siteId="p_example"
+          initial={boardView({
+            outcomes: [watchedOutcome({
+              name: 'Checkout',
+              state: 'COULD_NOT_VERIFY',
+              summary: UNASSESSED_OUTCOME_SUMMARY,
+              lastVerifiedAt: null,
+              validUntil: null,
+              latestRunId: null,
+            })],
+          })}
+        />
+      </MeProvider>,
+    )
+    expect(screen.getByText('The selected product appears in the cart and checkout opens.')).toBeVisible()
+    expect(screen.queryByText(UNASSESSED_OUTCOME_SUMMARY)).not.toBeInTheDocument()
+  })
+
+  it('tells Home that a stale Clear needs a fresh verification', () => {
+    const summary = 'FixFlags completed every required check for this Outcome.'
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard
+          siteId="p_example"
+          initial={boardView({
+            outcomes: [watchedOutcome({
+              name: 'Page loads',
+              kind: 'AVAILABILITY',
+              state: 'STALE',
+              summary,
+              staleAfterMinutes: 11520,
+              lastVerifiedAt: '2026-09-23T22:57:02.000Z',
+            })],
+          })}
+        />
+      </MeProvider>,
+    )
+    expect(screen.getByRole('status')).toHaveTextContent('Stale')
+    expect(screen.getByText(summary)).toBeVisible()
+    expect(screen.getByText('Run a fresh verification before relying on this result.')).toBeVisible()
+    expect(screen.getByText(/A result stays current for 8 days/)).toBeVisible()
+    expect(screen.getByText(/This result is past that window/)).toBeVisible()
+  })
+
+  it('keeps a current Clear free of the stale next step', () => {
+    const summary = 'FixFlags completed every required check for this Outcome.'
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard
+          siteId="p_example"
+          initial={boardView({
+            outcomes: [watchedOutcome({
+              name: 'Page loads',
+              kind: 'AVAILABILITY',
+              state: 'CLEAR',
+              summary,
+              staleAfterMinutes: 11520,
+            })],
+          })}
+        />
+      </MeProvider>,
+    )
+    expect(screen.getByRole('status')).toHaveTextContent('Clear')
+    expect(screen.getByText(summary)).toBeVisible()
+    expect(screen.queryByText('Run a fresh verification before relying on this result.')).not.toBeInTheDocument()
+    expect(screen.queryByText(/past that window/)).not.toBeInTheDocument()
+  })
+
   it('offers to watch the page after a finished walk with no Outcome', () => {
     render(
       <MeProvider initialUser={null}>
@@ -634,6 +752,42 @@ describe('SiteBoard chrome', () => {
 
     expect(await screen.findByText(PLAN_LIMIT_NOTICE.copy['check-limit'].body)).toBeVisible()
     // The generic start-failure copy would be a lie here: nothing broke.
+    expect(screen.queryByText(SITE_BOARD_COPY.checkStartFailed)).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toHaveTextContent(SITE_BOARD_COPY.checkOutOfDateDetail)
+    expect(screen.getByRole('button', { name: 'Check again' })).toBeEnabled()
+    vi.unstubAllGlobals()
+  })
+
+  it('shows the server reason when Check again cannot start', async () => {
+    const cards = boardView().cards.map((item) => item.id === 'conversion'
+      ? card({
+          id: 'conversion', name: 'Conversion', state: 'unknown',
+          answer: SITE_BOARD_COPY.checkOutOfDate, status: SITE_BOARD_COPY.checkOutOfDate,
+          coverage: SITE_BOARD_COPY.checkOutOfDateDetail, checkedAt: '2026-09-01T10:00:00.000Z', evidenced: true,
+        })
+      : item)
+    const ownedView = boardView({
+      cards,
+      site: { ...boardView().site, projectId: 'project-1', userId: signedInUser.id },
+    })
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false,
+      status: 409,
+      json: async () => ({
+        code: 'SITE_RUN_REFUSED',
+        message: 'Another Site run is already in progress',
+      }),
+    })))
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard siteId="p_example" initial={ownedView} />
+      </MeProvider>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Conversion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
+
+    expect(await screen.findByText('Another Site run is already in progress')).toBeVisible()
     expect(screen.queryByText(SITE_BOARD_COPY.checkStartFailed)).not.toBeInTheDocument()
     expect(screen.getByRole('dialog')).toHaveTextContent(SITE_BOARD_COPY.checkOutOfDateDetail)
     expect(screen.getByRole('button', { name: 'Check again' })).toBeEnabled()

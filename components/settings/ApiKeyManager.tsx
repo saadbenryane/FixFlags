@@ -6,6 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { createApiKey, type CreatedApiKey } from '@/lib/api/api-key-client'
 import type { ApiKeyClient } from '@/lib/mcp/builders'
+import {
+  DEFAULT_DEVELOPER_KEY_EXPIRY_DAYS,
+  DEFAULT_DEVELOPER_KEY_SCOPE_PRESET,
+  DEVELOPER_KEY_EXPIRY_DAYS,
+  DEVELOPER_KEY_SCOPE_PRESETS,
+  developerKeyScopeLabel,
+  type DeveloperKeyExpiryDays,
+  type DeveloperKeyScopePreset,
+} from '@/lib/mcp/developer-key-policy'
+import { formatEvidenceTimestamp } from '@/lib/time/format'
 
 interface ApiKeySummary {
   id: string
@@ -13,6 +23,8 @@ interface ApiKeySummary {
   prefix: string
   lastFour: string
   client: ApiKeyClient | null
+  scopes: string[]
+  expiresAt: string | null
   lastUsed: string | null
   createdAt: string
 }
@@ -30,6 +42,8 @@ export function ApiKeyManager() {
   const [keys, setKeys] = useState<ApiKeySummary[]>([])
   const [name, setName] = useState('My coding agent')
   const [client, setClient] = useState<ApiKeyClient>('codex')
+  const [scopePreset, setScopePreset] = useState<DeveloperKeyScopePreset>(DEFAULT_DEVELOPER_KEY_SCOPE_PRESET)
+  const [expiresInDays, setExpiresInDays] = useState<DeveloperKeyExpiryDays>(DEFAULT_DEVELOPER_KEY_EXPIRY_DAYS)
   const [created, setCreated] = useState<CreatedApiKey | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -54,7 +68,12 @@ export function ApiKeyManager() {
     setMessage('')
     setCreated(null)
     try {
-      const next = await createApiKey({ name, client })
+      const next = await createApiKey({
+        name,
+        client,
+        scopePreset,
+        expiresInDays,
+      })
       setCreated(next)
       await loadKeys()
       setMessage('Key created. Copy it now. FixFlags will not show it again.')
@@ -90,10 +109,16 @@ export function ApiKeyManager() {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleCreate} className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-end">
+      <form onSubmit={handleCreate} className="grid gap-4 md:grid-cols-2">
         <label htmlFor="api-key-name" className="space-y-2 text-sm font-medium">
           Key name
-          <Input id="api-key-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={80} required />
+          <Input
+            id="api-key-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            maxLength={80}
+            required
+          />
         </label>
         <label htmlFor="api-key-client" className="space-y-2 text-sm font-medium">
           Client
@@ -103,11 +128,52 @@ export function ApiKeyManager() {
             onChange={(event) => setClient(event.target.value as ApiKeyClient)}
             className="flex h-11 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
-            {CLIENTS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            {CLIENTS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </label>
-        <Button type="submit" disabled={submitting} className="min-h-11">
-          {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden /> : <KeyRound className="mr-2 h-4 w-4" aria-hidden />}
+        <label htmlFor="api-key-access" className="space-y-2 text-sm font-medium">
+          Access
+          <select
+            id="api-key-access"
+            value={scopePreset}
+            onChange={(event) => setScopePreset(event.target.value as DeveloperKeyScopePreset)}
+            className="flex h-11 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
+            {DEVELOPER_KEY_SCOPE_PRESETS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <span className="block text-xs font-normal text-muted-foreground">
+            {DEVELOPER_KEY_SCOPE_PRESETS.find((option) => option.id === scopePreset)?.description}
+          </span>
+        </label>
+        <label htmlFor="api-key-expiry" className="space-y-2 text-sm font-medium">
+          Expires after
+          <select
+            id="api-key-expiry"
+            value={expiresInDays}
+            onChange={(event) => setExpiresInDays(Number(event.target.value) as DeveloperKeyExpiryDays)}
+            className="flex h-11 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
+            {DEVELOPER_KEY_EXPIRY_DAYS.map((days) => (
+              <option key={days} value={days}>
+                {days} days
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button type="submit" disabled={submitting} className="min-h-11 md:self-end">
+          {submitting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />
+          ) : (
+            <KeyRound className="mr-2 h-4 w-4" aria-hidden />
+          )}
           Create key
         </Button>
       </form>
@@ -116,7 +182,9 @@ export function ApiKeyManager() {
         <div className="rounded-card border border-brand/30 bg-brand-muted p-4">
           <p className="text-sm font-medium">Copy this key now</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <code className="min-w-0 flex-1 overflow-x-auto rounded-[var(--radius-control)] bg-background px-3 py-3 text-sm">{created.key}</code>
+            <code className="min-w-0 flex-1 overflow-x-auto rounded-[var(--radius-control)] bg-background px-3 py-3 text-sm">
+              {created.key}
+            </code>
             <Button type="button" variant="outline" onClick={() => void handleCopy()} className="min-h-11">
               {copied ? <Check className="mr-2 h-4 w-4" aria-hidden /> : <Copy className="mr-2 h-4 w-4" aria-hidden />}
               {copied ? 'Copied' : 'Copy'}
@@ -125,7 +193,9 @@ export function ApiKeyManager() {
         </div>
       ) : null}
 
-      <p aria-live="polite" className="min-h-5 text-sm text-muted-foreground">{message}</p>
+      <p aria-live="polite" className="min-h-5 text-sm text-muted-foreground">
+        {message}
+      </p>
 
       <div>
         <h2 className="text-base font-semibold">Active keys</h2>
@@ -140,10 +210,19 @@ export function ApiKeyManager() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{key.name}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {key.prefix}…{key.lastFour} · {key.client ?? 'MCP'} · {key.lastUsed ? `Last used ${new Date(key.lastUsed).toLocaleDateString()}` : 'Never used'}
+                    {key.prefix}…{key.lastFour} · {key.client ?? 'MCP'} · {developerKeyScopeLabel(key.scopes)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {key.lastUsed ? `Last used ${formatEvidenceTimestamp(key.lastUsed)}` : 'Never used'} ·{' '}
+                    {key.expiresAt ? `Expires ${formatEvidenceTimestamp(key.expiresAt)}` : 'Legacy key with no expiry'}
                   </p>
                 </div>
-                <Button type="button" variant="ghost" onClick={() => void handleRevoke(key.id)} className="min-h-11 sm:self-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => void handleRevoke(key.id)}
+                  className="min-h-11 sm:self-center"
+                >
                   <Trash2 className="mr-2 h-4 w-4" aria-hidden /> Revoke
                 </Button>
               </li>

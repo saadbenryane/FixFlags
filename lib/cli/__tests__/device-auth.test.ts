@@ -20,9 +20,7 @@ const prisma = vi.hoisted(() => ({
     deleteMany: vi.fn(),
   },
   apiKey: { count: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
-  $transaction: vi.fn(async (input) =>
-    typeof input === 'function' ? input(prisma) : Promise.all(input)
-  ),
+  $transaction: vi.fn(async (input) => (typeof input === 'function' ? input(prisma) : Promise.all(input))),
 }))
 
 vi.mock('@/lib/db', () => ({ prisma }))
@@ -32,6 +30,7 @@ vi.mock('@/lib/security/crypto', () => ({
 }))
 
 import {
+  decideCliDeviceAuthorization,
   exchangeCliDeviceCode,
   hashCliUserCode,
   normalizeUserCode,
@@ -53,11 +52,42 @@ describe('CLI device authorization', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     state.authorization = authorization()
+    prisma.apiKey.count.mockResolvedValue(0)
+    prisma.apiKey.create.mockResolvedValue({ id: 'key-1' })
   })
 
   it('normalizes human-entered codes before hashing', () => {
     expect(normalizeUserCode('abcd-efgh')).toBe('ABCDEFGH')
     expect(hashCliUserCode('ABCD-EFGH')).toBe(hashCliUserCode('abcd efgh'))
+  })
+
+  it('issues the CLI bridge a scoped, expiring full-workflow key', async () => {
+    const result = await decideCliDeviceAuthorization({
+      userCode: 'ABCD-EFGH',
+      userId: 'user-1',
+      approve: true,
+    })
+
+    expect(result).toEqual({ ok: true, status: 'APPROVED' })
+    expect(prisma.apiKey.count).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        revokedAt: null,
+        audience: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: expect.any(Date) } }],
+      },
+    })
+    expect(prisma.apiKey.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'user-1',
+        client: 'cli',
+        scopes: ['sites:read', 'runs:read', 'runs:write', 'flags:read', 'flags:write'],
+        expiresAt: expect.any(Date),
+      }),
+    })
+    const expiresAt = prisma.apiKey.create.mock.calls[0]![0].data.expiresAt as Date
+    expect(expiresAt.getTime()).toBeGreaterThan(Date.now() + 89 * 24 * 60 * 60 * 1000)
+    expect(state.authorization.apiKeyId).toBe('key-1')
   })
 
   it('keeps pending authorization pending and enforces the poll interval', async () => {

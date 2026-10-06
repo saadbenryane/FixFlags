@@ -2,13 +2,19 @@ import type { OutcomeExecutionMechanism, Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { persistJourneyResult } from '@/lib/audit/journey/run-journey-reviews'
 import { normalizeAuditUrl } from '@/lib/audit/url'
-import { runGoalProbe, type BrowserJourneyConfig, type GoalDefinition, type GoalStep } from '@/lib/integrity/run-goal-probe'
+import { runGoalProbe, type BrowserJourneyConfig } from '@/lib/integrity/run-goal-probe'
+import { runPathProbe } from '@/lib/integrity/run-path-probe'
 import { availabilityFlagCopy, type BindingDispositionName } from '@/lib/sites/application/binding-assessment'
 import { OUTCOME_RUN_LEASE_MS } from '@/lib/sites/application/run-requests'
 import { checkoutResultCopy } from '@/lib/sites/outcome-state'
 import { validateBindingForOutcome, type AvailabilityBindingConfig, type SafeFormBindingConfig } from '@/lib/sites/application/binding-config'
 import { executeSafeFormFixture } from '@/lib/sites/application/safe-form-executor'
 import { classifyWalk, goalProbeReason } from '@/lib/integrity/classify'
+import {
+  checkoutAttemptObservation,
+  checkoutProbeVerdict,
+  storedAttemptIsPurchaseWalk,
+} from '@/lib/integrity/purchase'
 
 /** A bounded second attempt is required before a failure becomes a customer Flag. */
 const CONFIRMATION_ATTEMPTS = 2
@@ -118,18 +124,6 @@ async function recordExecution(input: {
   })
 }
 
-function buildCheckoutJourneyConfig(startUrl: string, allowLocalhost: boolean): BrowserJourneyConfig {
-  const steps: GoalStep[] = [
-    { action: 'wait', waitMs: 1_000 },
-  ]
-  const goal: GoalDefinition = {
-    type: 'url_pattern',
-    pattern: '/checkouts?(/|$|\\?)',
-    description: 'Reach the checkout page',
-  }
-  return { startUrl, steps, goal, safety: 'stop-at-checkout', allowLocalhost }
-}
-
 async function runCheckoutBinding(input: {
   auditId: string
   runId: string
@@ -139,20 +133,21 @@ async function runCheckoutBinding(input: {
   allowLocalhost: boolean
 }): Promise<void> {
   const startedAt = Date.now()
-  const config = buildCheckoutJourneyConfig(input.startUrl, input.allowLocalhost)
-  const result = await runGoalProbe({
+  const result = await runPathProbe({
     runId: `outcome-${input.runId}-${input.bindingKey}`,
-    config,
+    url: input.startUrl,
+    allowLocalhost: input.allowLocalhost,
   })
-  const copy = checkoutResultCopy(result.reason)
-  const isFlag = result.health === 'RED' && result.confirmed
-  const isClear = result.health === 'GREEN' && result.confirmed
+  const verdict = checkoutProbeVerdict(result)
+  const copy = checkoutResultCopy(verdict.reason)
+  const isFlag = verdict.isFlag
+  const isClear = verdict.isClear
   await persistJourneyResult(input.auditId, {
     journeyType: 'checkout',
     startUrl: input.startUrl,
     status: isClear || isFlag ? 'COMPLETED' : 'ABANDONED',
     goalAchieved: isClear,
-    blockedReason: isClear || isFlag ? null : result.reason,
+    blockedReason: isClear || isFlag ? null : verdict.reason,
     abandonedReason: isClear || isFlag ? null : copy.summary,
     durationMs: Date.now() - startedAt,
     steps: result.steps.map((step, index) => ({
@@ -169,7 +164,7 @@ async function runCheckoutBinding(input: {
     findings: isFlag
       ? [
           {
-            checkId: `journey-checkout-failed-${result.reason}`,
+            checkId: `journey-checkout-failed-${verdict.reason}`,
             stepNumber: Math.max(1, result.steps.length),
             url: result.finalUrl,
             rubric: 'EXPERIENCE',
@@ -205,17 +200,16 @@ async function runCheckoutBinding(input: {
     bindingKey: input.bindingKey,
     mechanism: 'BROWSER_JOURNEY',
     attempts: result.attempts.map((attempt): BindingObservation => {
-      const classified = classifyWalk(attempt.outcome)
+      const observation = checkoutAttemptObservation(attempt)
       return {
-        disposition:
-          classified.health === 'GREEN' ? 'SUCCEEDED' : classified.health === 'RED' ? 'FAILED' : 'BLOCKED',
-        reason: classified.reason,
+        disposition: observation.disposition,
+        reason: observation.reason,
         detail: { stepCount: attempt.steps.length, videoUrl: attempt.videoUrl },
       }
     }),
     conclusive: {
-      disposition: isFlag ? 'FAILED' : isClear ? 'SUCCEEDED' : 'BLOCKED',
-      reason: result.reason,
+      disposition: verdict.disposition,
+      reason: verdict.reason,
       detail: { stepCount: result.steps.length },
     },
   })
@@ -491,16 +485,23 @@ export async function runBoundOutcomeExecutions(auditId: string): Promise<boolea
       if (selection.outcome.kind === 'CHECKOUT') {
         const priorJourney = await prisma.journeyReview.findFirst({
           where: { auditId, journeyType: 'checkout', startUrl },
-          select: { goalAchieved: true, blockedReason: true },
+          select: {
+            goalAchieved: true,
+            blockedReason: true,
+            steps: { select: { actionType: true, actionDetail: true, elementDescription: true } },
+          },
         })
-        if (priorJourney) {
+        // A wait-only review can be marked achieved by landing on checkout.
+        // Reuse the stored verdict only when that review already bought.
+        if (priorJourney && storedAttemptIsPurchaseWalk(priorJourney.steps)) {
+          const purchased = Boolean(priorJourney.goalAchieved)
           await recordExecution({
             auditId,
             outcomeId: selection.outcome.id,
             bindingKey: binding.key,
             mechanism: 'BROWSER_JOURNEY',
-            disposition: priorJourney.goalAchieved ? 'SUCCEEDED' : priorJourney.blockedReason ? 'BLOCKED' : 'FAILED',
-            reason: priorJourney.blockedReason ?? (priorJourney.goalAchieved ? 'checkout_reached' : 'checkout_failed'),
+            disposition: purchased ? 'SUCCEEDED' : priorJourney.blockedReason ? 'BLOCKED' : 'FAILED',
+            reason: priorJourney.blockedReason ?? (purchased ? 'checkout_reached' : 'checkout_failed'),
           })
           continue
         }

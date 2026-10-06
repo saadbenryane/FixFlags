@@ -257,6 +257,79 @@ describe('site card packaging', () => {
     })
   })
 
+  it('evidences security and tracking only from completed module checks', () => {
+    const base = {
+      auditStatus: 'COMPLETED' as const,
+      completedAt: new Date('2026-09-08T12:00:00Z'),
+      now: new Date('2026-09-09T12:00:00Z'),
+      evidenceCoverage: {
+        metadata: true,
+        desktopPageSpeed: true,
+        mobilePageSpeed: true,
+        flowScan: true,
+        desktopScreenshot: true,
+      },
+      flags: [],
+    }
+    const withoutModules = buildCoverageFacts(base)
+    expect(withoutModules.find((fact) => fact.area === 'security')?.state).toBe('unknown')
+    expect(withoutModules.find((fact) => fact.area === 'tracking')?.state).toBe('unknown')
+    const hidden = siteCardHealth({
+      inFlight: false,
+      finished: true,
+      hasLastKnown: false,
+      flags: [],
+      coverage: withoutModules,
+      now: base.now,
+      outcomes: [{ state: 'STALE', enabled: true }],
+    })
+    expect(hidden.statusLabel).toBe('Coverage incomplete')
+
+    const withModules = buildCoverageFacts({
+      ...base,
+      verifierExecutions: [
+        { targetKey: 'module:trust', status: 'COMPLETED' },
+        { targetKey: 'module:security', status: 'COMPLETED' },
+        { targetKey: 'module:measurement', status: 'COMPLETED' },
+      ],
+    })
+    expect(withModules.find((fact) => fact.area === 'security')).toMatchObject({
+      state: 'healthy',
+      evidenced: true,
+      label: 'Security checked',
+      detail: 'HTTPS and mixed content checks completed',
+    })
+    expect(withModules.find((fact) => fact.area === 'tracking')).toMatchObject({
+      state: 'healthy',
+      evidenced: true,
+      label: 'Measurement checked',
+      detail: 'Public measurement checks completed',
+    })
+    const stale = siteCardHealth({
+      inFlight: false,
+      finished: true,
+      hasLastKnown: false,
+      flags: [],
+      coverage: withModules,
+      now: base.now,
+      outcomes: [{ state: 'STALE', enabled: true }],
+    })
+    expect(stale.state).not.toBe('healthy')
+    expect(stale.statusLabel).toBe('Stale')
+    expect(stale.answer).toBe('A watched result is out of date.')
+
+    const incomplete = buildCoverageFacts({
+      ...base,
+      verifierExecutions: [
+        { targetKey: 'module:trust', status: 'NOT_APPLICABLE' },
+        { targetKey: 'module:security', status: 'COMPLETED' },
+        { targetKey: 'module:measurement', status: 'NOT_APPLICABLE' },
+      ],
+    })
+    expect(incomplete.find((fact) => fact.area === 'security')?.state).toBe('unknown')
+    expect(incomplete.find((fact) => fact.area === 'tracking')?.state).toBe('unknown')
+  })
+
   it('retains last known health while checking', () => {
     const prior = buildCoverageFacts({
       auditStatus: 'COMPLETED',
@@ -343,6 +416,54 @@ describe('site card packaging', () => {
     })
     expect(health.state).toBe('healthy')
     expect(health.answer).toBe('0 Flags')
+
+    const stale = siteCardHealth({
+      inFlight: false,
+      finished: true,
+      hasLastKnown: false,
+      flags: [],
+      coverage,
+      now: new Date('2026-09-09T12:00:00Z'),
+      outcomes: [{ state: 'STALE', enabled: true }],
+    })
+    expect(stale.state).not.toBe('healthy')
+    expect(stale.statusLabel).toBe('Stale')
+    expect(stale.answer).not.toBe('0 Flags')
+
+    const unverified = siteCardHealth({
+      inFlight: false,
+      finished: true,
+      hasLastKnown: false,
+      flags: [],
+      coverage,
+      now: new Date('2026-09-09T12:00:00Z'),
+      outcomes: [{ state: 'COULD_NOT_VERIFY', enabled: true }],
+    })
+    expect(unverified.statusLabel).toBe('Couldn’t verify')
+
+    const flagged = siteCardHealth({
+      inFlight: false,
+      finished: true,
+      hasLastKnown: false,
+      flags: [],
+      coverage,
+      now: new Date('2026-09-09T12:00:00Z'),
+      outcomes: [{ state: 'FLAG', enabled: true }],
+    })
+    expect(flagged.state).not.toBe('healthy')
+    expect(flagged.statusLabel).toBe(SITE_BOARD_COPY.flagStatus)
+
+    const paused = siteCardHealth({
+      inFlight: false,
+      finished: true,
+      hasLastKnown: false,
+      flags: [],
+      coverage,
+      now: new Date('2026-09-09T12:00:00Z'),
+      outcomes: [{ state: 'STALE', enabled: false }],
+    })
+    expect(paused.state).toBe('healthy')
+    expect(paused.answer).toBe('0 Flags')
   })
 
   it('does not treat PARTIAL as a finished AuditStatus', () => {

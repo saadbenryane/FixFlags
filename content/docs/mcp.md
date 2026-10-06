@@ -30,7 +30,7 @@ Verification is asynchronous. Start a run, keep the returned run ID, and poll th
 ## Security and independence
 
 - Every Site, Outcome, run, and Flag lookup is checked against the authenticated account.
-- API keys are stored hashed and can be revoked at any time.
+- Developer keys are stored hashed, shown once, permission-scoped, time-bounded, and revocable. New keys default to read-only evidence for 90 days.
 - FixFlags owns the browser execution and evidence. A caller cannot mark its own change Clear.
 - Secrets, prompts, raw page content, and arbitrary URLs are not persisted as run context.
 - Scheduled Watch continues without an MCP client connected.

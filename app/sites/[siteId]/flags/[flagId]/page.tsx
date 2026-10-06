@@ -9,7 +9,8 @@ import { Surface } from '@/components/ui/surface'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { SiteFlagActions } from '@/components/sites/SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
-import { customerFlagContext } from '@/lib/sites/flag-label'
+import { customerAttemptSource, customerFlagContext } from '@/lib/sites/flag-label'
+import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { boardFlagPrompt } from '@/lib/sites/board-card'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { connectionLines, loadSiteConnectionViews } from '@/lib/sites/connections/read'
@@ -210,12 +211,16 @@ export default async function SiteFlagPage({
           </p>
         ) : (
           <ul className="mt-3 space-y-3">
-            {flag.attempts.map((attempt) => (
+            {flag.attempts.map((attempt) => {
+              const when = formatEvidenceTimestamp(attempt.createdAt)
+              return (
               <li key={attempt.id}>
                 <Surface variant="nested" className="text-sm">
                 <p className="font-medium">{attemptLabel(attempt.outcome)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {new Date(attempt.createdAt).toLocaleString()} · {attempt.builder}
+                  {when ? <time dateTime={attempt.createdAt}>{when}</time> : 'Time not recorded'}
+                  {' · '}
+                  <span>{customerAttemptSource(attempt.builder)}</span>
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {attempt.changeSummary?.trim() || SITE_BOARD_COPY.changeUndescribed}
@@ -225,7 +230,8 @@ export default async function SiteFlagPage({
                 ) : null}
                 </Surface>
               </li>
-            ))}
+              )
+            })}
           </ul>
         )}
       </section>

@@ -2,6 +2,7 @@ import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
 import { STARTER_BOARD_CARDS } from '@/lib/sites/card-areas'
 import { siteCoverageIsStale, type CoverageFact } from '@/lib/sites/coverage'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import type { CustomerOutcomeState } from '@/lib/sites/outcome-state'
 
 /** Starter areas that must be evidenced before the Site card can say healthy. */
 export const REQUIRED_STARTER_AREAS: SiteCardArea[] = STARTER_BOARD_CARDS.filter(
@@ -27,6 +28,7 @@ export function siteCardHealth(input: {
   flags: Array<{ severity: string }>
   coverage: CoverageFact[]
   now: Date
+  outcomes?: Array<{ state: CustomerOutcomeState; enabled?: boolean }>
 }): { state: CardHealthState; answer: string; statusLabel: string } {
   const open = input.flags.length
   const critical = input.flags.some((f) => f.severity === 'CRITICAL')
@@ -87,6 +89,29 @@ export function siteCardHealth(input: {
       state: 'unknown',
       answer: 'Checked some areas. Others are not verified yet.',
       statusLabel: 'Coverage incomplete',
+    }
+  }
+
+  const watched = (input.outcomes ?? []).filter((outcome) => outcome.enabled !== false)
+  if (watched.some((outcome) => outcome.state === 'FLAG')) {
+    return {
+      state: 'attention',
+      answer: 'A watched result needs a fix.',
+      statusLabel: SITE_BOARD_COPY.flagStatus,
+    }
+  }
+  if (watched.some((outcome) => outcome.state === 'STALE')) {
+    return {
+      state: 'unknown',
+      answer: 'A watched result is out of date.',
+      statusLabel: 'Stale',
+    }
+  }
+  if (watched.some((outcome) => outcome.state === 'COULD_NOT_VERIFY')) {
+    return {
+      state: 'unknown',
+      answer: 'A watched result could not be verified.',
+      statusLabel: 'Couldn’t verify',
     }
   }
 

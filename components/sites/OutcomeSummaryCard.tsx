@@ -11,8 +11,10 @@ export function OutcomeSummaryCard({
   name,
   href,
   expectation,
+  answer,
   coverage,
   freshness,
+  nextStep,
   state,
   running = false,
   label = 'Watched Outcome',
@@ -21,13 +23,16 @@ export function OutcomeSummaryCard({
   name: string
   href?: Route
   expectation: string
+  answer?: string
   coverage: string
   freshness: string
+  nextStep?: string
   state: OutcomeState
   running?: boolean
   label?: string
   actions?: ReactNode
 }) {
+  const result = answer && answer !== expectation ? answer : null
   const StateIcon = state === 'CLEAR' ? Check : state === 'FLAG' ? CircleAlert : state === 'STALE' ? Clock3 : CircleHelp
   return (
     <section className="rounded-2xl border border-border/80 bg-background p-5 sm:p-6">
@@ -37,7 +42,9 @@ export function OutcomeSummaryCard({
           <h2 className="mt-1 text-xl font-semibold">
             {href ? <Link href={href} className="hover:underline">{name}</Link> : name}
           </h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{expectation}</p>
+          <p className={cn('mt-2 max-w-2xl text-sm', result ? 'text-foreground' : 'text-muted-foreground')}>{result ?? expectation}</p>
+          {result ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{expectation}</p> : null}
+          {nextStep ? <p className="mt-2 max-w-2xl text-sm font-medium">{nextStep}</p> : null}
           <p className="mt-2 text-xs text-muted-foreground">{coverage}</p>
           <p className="mt-1 text-xs text-muted-foreground">{freshness}</p>
         </div>

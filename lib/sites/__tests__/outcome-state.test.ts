@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkoutResultCopy, currentOutcomeState, flagMatchesOutcome, outcomeCoverageLabel, outcomeStatusLabel } from '@/lib/sites/outcome-state'
+import { checkoutResultCopy, currentOutcomeState, customerMechanismLabel, flagMatchesOutcome, outcomeCoverageLabel, outcomeFreshnessDisclosure, outcomeStatusLabel } from '@/lib/sites/outcome-state'
 
 describe('Outcome state', () => {
   it('keeps a fresh completed conclusion and derives stale from its validity window', () => {
@@ -33,7 +33,21 @@ describe('Outcome state', () => {
     ])).toBe('Production · purchase path, form')
     expect(outcomeCoverageLabel('production', [])).toBe('Not configured for independent verification')
     expect(outcomeStatusLabel('COULD_NOT_VERIFY')).toBe('Couldn’t verify')
+    expect(outcomeStatusLabel('STALE')).toBe('Stale')
     expect(outcomeStatusLabel('CLEAR', true)).toBe('Verifying')
+    expect(outcomeFreshnessDisclosure('CLEAR', 11520)).toBe('A result stays current for 8 days.')
+    expect(outcomeFreshnessDisclosure('STALE', 11520)).toBe('A result stays current for 8 days. This result is past that window.')
+    expect(outcomeFreshnessDisclosure('CLEAR', 120)).toBe('A result stays current for 2 hours.')
+    expect(outcomeFreshnessDisclosure('STALE', 90)).toBe('A result stays current for 90 minutes. This result is past that window.')
+  })
+
+  it('names a verification method without the mechanism enum', () => {
+    expect(customerMechanismLabel('BROWSER_JOURNEY', 'checkout-browser-v1')).toBe('Purchase path')
+    expect(customerMechanismLabel('SAFE_FORM', 'signup-safe-form-v1')).toBe('Form')
+    expect(customerMechanismLabel('HTTP_AVAILABILITY', 'page-availability-v1')).toBe('Page availability')
+    expect(customerMechanismLabel('HTTP_AVAILABILITY', 'supporting-observation-v1')).toBe('Page availability')
+    expect(customerMechanismLabel('BROWSER_JOURNEY', 'notes-v1')).toBe('Check')
+    expect(customerMechanismLabel('CUSTOM_SIGNAL', 'notes-v1')).toBe('Check')
   })
 
   it('shows only the Flag independently linked to the Outcome', () => {

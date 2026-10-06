@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { SiteFlagActions } from '../SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
@@ -9,6 +9,10 @@ vi.mock('next/navigation', () => ({
 }))
 
 describe('SiteFlagActions', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     Object.defineProperty(navigator, 'clipboard', {
@@ -59,5 +63,36 @@ describe('SiteFlagActions', () => {
       '/api/sites/p_site/flags/flag-1/verify',
       expect.anything()
     )
+  })
+
+  it('shows the server reason when Flag verification cannot start', async () => {
+    const reason = 'This Flag has no comparable source scope to verify.'
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ message: reason, code: 'HTTP_400' }),
+    }))
+    render(<SiteFlagActions siteId="p_site" flagId="flag-1" fixText="Show a confirmation." />)
+
+    await screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }).click()
+
+    expect(await screen.findByText(reason)).toBeVisible()
+    expect(screen.queryByText(SITE_BOARD_COPY.verificationFailed)).not.toBeInTheDocument()
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('still shows an error field when the server did not send message', async () => {
+    const reason = 'Claim this Site before verifying a fix.'
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: reason }),
+    }))
+    render(<SiteFlagActions siteId="p_site" flagId="flag-1" fixText="Show a confirmation." />)
+
+    await screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }).click()
+
+    expect(await screen.findByText(reason)).toBeVisible()
+    expect(screen.queryByText(SITE_BOARD_COPY.verificationFailed)).not.toBeInTheDocument()
   })
 })

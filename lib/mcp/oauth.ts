@@ -47,7 +47,9 @@ export function credentialAllows(
   credential: { audience: string | null; scopes: string[] },
   scope: string,
 ): boolean {
-  if (!credential.audience) return true
+  // Preserve pre-scope account keys, but enforce every explicitly scoped key
+  // regardless of whether it came from OAuth, the UI, or the CLI bridge.
+  if (!credential.audience && credential.scopes.length === 0) return true
   if (credential.scopes.includes(scope)) return true
   if (scope === 'runs:read' && credential.scopes.includes('runs:write')) return true
   if (scope === 'flags:read' && credential.scopes.includes('flags:write')) return true

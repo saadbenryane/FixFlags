@@ -47,7 +47,10 @@ vi.mock('@/lib/analytics/site-events', () => ({
   recordSiteLifecycleEvent: vi.fn().mockResolvedValue({}),
 }))
 
+import { summaryFor } from '@/lib/sites/application/binding-assessment'
 import { getOwnedRun, reconcileOutcomeRunsForAudit, requestOutcomeRun, requestSiteRun, retryFailedExecution } from '@/lib/sites/application/run-requests'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
+import { checkoutResultCopy } from '@/lib/sites/outcome-state'
 
 const ownedOutcome = {
   id: 'outcome-1',
@@ -204,14 +207,19 @@ describe('RunRequest tenant boundary and idempotency', () => {
       },
     })
 
-    await expect(requestSiteRun({
+    const pending = requestSiteRun({
       projectId: 'project-1',
       outcomeIds: [],
       userId: 'user-1',
       source: 'WEB',
       scope: 'SITE',
       idempotencyKey: 'web:site-care:two',
-    })).rejects.toThrow('Another Site run is already in progress')
+    })
+    await expect(pending).rejects.toBeInstanceOf(SiteRunRefusal)
+    await expect(pending).rejects.toMatchObject({
+      message: 'Another Site run is already in progress',
+      status: 409,
+    })
 
     expect(mocks.runCreate).not.toHaveBeenCalled()
     expect(mocks.createAudit).not.toHaveBeenCalled()
@@ -527,6 +535,65 @@ describe('RunRequest tenant boundary and idempotency', () => {
     }))
     expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({
       url: 'https://shop.example/', runRequestId: 'run-1',
+    }))
+  })
+
+  function checkoutRun(executions: { bindingKey: string; disposition: string; reason: string }[]) {
+    mocks.executionFindMany.mockResolvedValue(executions)
+    mocks.runFindMany.mockResolvedValue([{
+      id: 'run-1', projectId: 'project-1', requestedByUserId: 'user-1',
+      source: 'WEB', environment: 'production', requestedAt: new Date(),
+      selections: [{
+        outcomeId: 'checkout-1',
+        outcome: {
+          id: 'checkout-1', kind: 'CHECKOUT', bindingPolicy: 'ALL_REQUIRED', staleAfterMinutes: 60,
+          bindings: [{ key: 'checkout-browser-v1', required: true, mechanism: 'BROWSER_JOURNEY', scope: null }],
+        },
+      }],
+      audit: { journeyReviews: [] },
+    }])
+  }
+
+  it('tells the customer why a blocked Checkout could not be verified', async () => {
+    checkoutRun([{ bindingKey: 'checkout-browser-v1', disposition: 'BLOCKED', reason: 'no_buy_control' }])
+
+    await reconcileOutcomeRunsForAudit('audit-1')
+
+    expect(mocks.assessmentUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({
+        outcomeId: 'checkout-1',
+        state: 'COULD_NOT_VERIFY',
+        summary: checkoutResultCopy('no_buy_control').summary,
+      }),
+    }))
+    expect(checkoutResultCopy('no_buy_control').summary).not.toBe(
+      summaryFor('required_coverage_incomplete', 'COULD_NOT_VERIFY'),
+    )
+  })
+
+  it('uses the same purchase explanation for a bot wall', async () => {
+    checkoutRun([{ bindingKey: 'checkout-browser-v1', disposition: 'BLOCKED', reason: 'bot_wall' }])
+
+    await reconcileOutcomeRunsForAudit('audit-1')
+
+    expect(mocks.assessmentUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({
+        state: 'COULD_NOT_VERIFY',
+        summary: checkoutResultCopy('bot_wall').summary,
+      }),
+    }))
+  })
+
+  it('keeps coverage language when Checkout never ran', async () => {
+    checkoutRun([])
+
+    await reconcileOutcomeRunsForAudit('audit-1')
+
+    expect(mocks.assessmentUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({
+        state: 'COULD_NOT_VERIFY',
+        summary: summaryFor('required_coverage_incomplete', 'COULD_NOT_VERIFY'),
+      }),
     }))
   })
 

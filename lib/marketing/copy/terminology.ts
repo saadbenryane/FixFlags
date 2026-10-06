@@ -98,6 +98,14 @@ export const SITE_BOARD_COPY = {
       answer: 'Page reached',
       detail: 'The page loaded and produced inspectable metadata',
     },
+    security: {
+      answer: 'Security checked',
+      detail: 'HTTPS and mixed content checks completed',
+    },
+    tracking: {
+      answer: 'Measurement checked',
+      detail: 'Public measurement checks completed',
+    },
     accessibility: {
       answer: 'Accessibility tested',
       detail: 'Automated accessibility tests completed',

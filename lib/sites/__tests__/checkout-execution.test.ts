@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   attemptCreateMany: vi.fn(),
   attemptUpdateMany: vi.fn(),
   runGoalProbe: vi.fn(),
+  runPathProbe: vi.fn(),
   persistJourneyResult: vi.fn(),
   flagUpdateMany: vi.fn(),
 }))
@@ -35,6 +36,9 @@ vi.mock('@/lib/db', () => ({
 }))
 vi.mock('@/lib/integrity/run-goal-probe', () => ({
   runGoalProbe: mocks.runGoalProbe,
+}))
+vi.mock('@/lib/integrity/run-path-probe', () => ({
+  runPathProbe: mocks.runPathProbe,
 }))
 vi.mock('@/lib/audit/journey/run-journey-reviews', () => ({
   persistJourneyResult: mocks.persistJourneyResult,
@@ -77,7 +81,7 @@ describe('bound Checkout execution', () => {
   })
 
   it('persists a confirmed purchase failure as one customer-level journey Flag', async () => {
-    mocks.runGoalProbe.mockResolvedValue({
+    mocks.runPathProbe.mockResolvedValue({
       health: 'RED',
       reason: 'add_to_cart_noop',
       confirmed: true,
@@ -120,7 +124,7 @@ describe('bound Checkout execution', () => {
   })
 
   it('persists blocked execution as inconclusive evidence without a Flag', async () => {
-    mocks.runGoalProbe.mockResolvedValue({
+    mocks.runPathProbe.mockResolvedValue({
       health: 'UNKNOWN',
       reason: 'bot_wall',
       confirmed: false,
@@ -141,7 +145,7 @@ describe('bound Checkout execution', () => {
   })
 
   it('keeps both confirmation walks and records no transient failure when a Flag is confirmed', async () => {
-    mocks.runGoalProbe.mockResolvedValue({
+    mocks.runPathProbe.mockResolvedValue({
       health: 'RED',
       reason: 'add_to_cart_noop',
       confirmed: true,
@@ -167,14 +171,19 @@ describe('bound Checkout execution', () => {
   })
 
   it('retains a recovered first walk as transient flakiness instead of a Flag', async () => {
-    mocks.runGoalProbe.mockResolvedValue({
+    mocks.runPathProbe.mockResolvedValue({
       health: 'UNKNOWN',
       reason: 'flaky',
       confirmed: false,
       steps: [],
       attempts: [
         { outcome: { buyControlFound: true, buyControlClicked: true, cartUpdated: false }, steps: [], videoUrl: null },
-        { outcome: { reachedCheckout: true, cartUpdated: true }, steps: [], videoUrl: null },
+        {
+          outcome: { reachedCheckout: true, buyControlClicked: true, cartUpdated: true },
+          steps: [],
+          videoUrl: null,
+          finalUrl: 'https://shop.example/checkout',
+        },
       ],
       finalUrl: 'https://shop.example/checkout',
       failedStep: null,
@@ -225,6 +234,7 @@ describe('bound Checkout execution', () => {
     await expect(runBoundCheckoutForAudit('audit-1')).resolves.toBe(true)
 
     expect(mocks.runGoalProbe).not.toHaveBeenCalled()
+    expect(mocks.runPathProbe).not.toHaveBeenCalled()
     expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
       create: expect.objectContaining({
         outcomeId: 'outcome-signup',
@@ -256,8 +266,61 @@ describe('bound Checkout execution', () => {
     })
     await expect(runBoundCheckoutForAudit('audit-1')).resolves.toBe(true)
     expect(mocks.runGoalProbe).not.toHaveBeenCalled()
+    expect(mocks.runPathProbe).not.toHaveBeenCalled()
     expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
       create: expect.objectContaining({ reason: 'protected_fixture_required' }),
     }))
+  })
+
+  it('reuses a stored purchase walk without probing again', async () => {
+    mocks.journeyFindFirst.mockResolvedValue({
+      goalAchieved: true,
+      blockedReason: null,
+      steps: [
+        { actionType: 'add_to_cart', actionDetail: { label: 'add_to_cart' } },
+        { actionType: 'checkout', actionDetail: { label: 'checkout' } },
+      ],
+    })
+
+    await runBoundCheckoutForAudit('audit-1')
+
+    expect(mocks.runPathProbe).not.toHaveBeenCalled()
+    expect(mocks.executionUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ disposition: 'SUCCEEDED', reason: 'checkout_reached' }),
+    }))
+  })
+
+  it('does not copy a goal-achieved review that never bought', async () => {
+    mocks.journeyFindFirst.mockResolvedValue({
+      goalAchieved: true,
+      blockedReason: null,
+      steps: [
+        { actionType: 'navigate', actionDetail: { label: 'landing' } },
+        { actionType: 'checkout', actionDetail: { label: 'checkout' } },
+      ],
+    })
+    mocks.runPathProbe.mockResolvedValue({
+      health: 'UNKNOWN',
+      reason: 'no_buy_control',
+      confirmed: false,
+      steps: [],
+      attempts: [{
+        outcome: { buyControlFound: false, buyControlClicked: false, reachedCheckout: false },
+        steps: [],
+        videoUrl: null,
+        finalUrl: 'https://shop.example/products/widget',
+      }],
+      finalUrl: 'https://shop.example/products/widget',
+      failedStep: 'add_to_cart',
+    })
+
+    await runBoundCheckoutForAudit('audit-1')
+
+    expect(mocks.runPathProbe).toHaveBeenCalled()
+    expect(mocks.persistJourneyResult).toHaveBeenCalledWith(
+      'audit-1',
+      expect.objectContaining({ goalAchieved: false, findings: [] }),
+    )
+    expect(mocks.executionUpsert.mock.calls.some((call) => call[0]?.create?.disposition === 'SUCCEEDED')).toBe(false)
   })
 })

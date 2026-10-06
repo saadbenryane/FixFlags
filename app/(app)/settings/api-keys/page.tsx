@@ -13,7 +13,7 @@ export default function ApiKeysPage() {
       </Button>
       <PageHeader
         title="Developer keys"
-        description="A scoped key lets your own tooling act for your account. It can reach only Sites this account owns."
+        description="Choose what your tooling may do and when access expires. Every key can reach only Sites this account owns."
       />
       <Card>
         <CardHeader>

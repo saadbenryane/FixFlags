@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
-import {
-  generateApiKey,
-  MAX_ACTIVE_API_KEYS,
-} from '@/lib/security/api-keys'
+import { generateApiKey, MAX_ACTIVE_API_KEYS } from '@/lib/security/api-keys'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { isApiKeyClient } from '@/lib/mcp/builders'
+import { developerKeyExpiresAt, developerKeyExpiryDays, developerKeyPreset } from '@/lib/mcp/developer-key-policy'
 
 export async function GET() {
   try {
@@ -16,13 +14,20 @@ export async function GET() {
     if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
 
     const keys = await prisma.apiKey.findMany({
-      where: { userId: session.user.id, revokedAt: null },
+      where: {
+        userId: session.user.id,
+        revokedAt: null,
+        audience: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
       select: {
         id: true,
         name: true,
         prefix: true,
         lastFour: true,
         client: true,
+        scopes: true,
+        expiresAt: true,
         lastUsed: true,
         createdAt: true,
       },
@@ -41,7 +46,12 @@ export async function POST(req: NextRequest) {
     if (!session?.user) return apiError('Unauthorized', 401, { code: 'UNAUTHORIZED' })
 
     const clientId = requestClientId(await headers())
-    await enforceRateLimit({ scope: 'api-keys', identifier: `${session.user.id}:${clientId}`, limit: 10, windowSeconds: 60 })
+    await enforceRateLimit({
+      scope: 'api-keys',
+      identifier: `${session.user.id}:${clientId}`,
+      limit: 10,
+      windowSeconds: 60,
+    })
 
     const body = await req.json().catch(() => ({}))
     const name = typeof body.name === 'string' ? body.name.trim().slice(0, 80) : 'Default'
@@ -52,9 +62,28 @@ export async function POST(req: NextRequest) {
       })
     }
     const client = body.client ?? null
+    const preset = developerKeyPreset(body.scopePreset)
+    if (!preset) {
+      return apiError('Choose a supported access level', 400, {
+        code: 'INVALID_API_KEY_SCOPE',
+        action: 'choose_supported_scope',
+      })
+    }
+    const expiresInDays = developerKeyExpiryDays(body.expiresInDays)
+    if (!expiresInDays) {
+      return apiError('Choose a supported expiration period', 400, {
+        code: 'INVALID_API_KEY_EXPIRY',
+        action: 'choose_supported_expiry',
+      })
+    }
 
     const activeCount = await prisma.apiKey.count({
-      where: { userId: session.user.id, revokedAt: null },
+      where: {
+        userId: session.user.id,
+        revokedAt: null,
+        audience: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
     })
     if (activeCount >= MAX_ACTIVE_API_KEYS) {
       return apiError(`You can have up to ${MAX_ACTIVE_API_KEYS} active API keys`, 409, {
@@ -72,6 +101,8 @@ export async function POST(req: NextRequest) {
         keyHash: generated.keyHash,
         prefix: generated.prefix,
         lastFour: generated.lastFour,
+        scopes: [...preset.scopes],
+        expiresAt: developerKeyExpiresAt(expiresInDays),
       },
     })
 
@@ -83,6 +114,8 @@ export async function POST(req: NextRequest) {
         prefix: apiKey.prefix,
         lastFour: apiKey.lastFour,
         client: apiKey.client,
+        scopes: apiKey.scopes,
+        expiresAt: apiKey.expiresAt,
       },
       { status: 201 }
     )
@@ -94,7 +127,10 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
-    if (!session?.user) return apiError('Sign in to access this resource', 401, { code: 'UNAUTHORIZED' })
+    if (!session?.user)
+      return apiError('Sign in to access this resource', 401, {
+        code: 'UNAUTHORIZED',
+      })
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

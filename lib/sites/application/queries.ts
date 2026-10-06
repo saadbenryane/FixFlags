@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { type CardHealthState } from '@/lib/sites/card-areas'
 import {
+  AREA_EVIDENCE_MODULE_KEYS,
   buildCoverageFacts,
   isAuditFinished,
   isAuditInFlight,
@@ -29,6 +30,8 @@ import { loadTechnologyProfile } from '@/lib/audit/technology-profile'
 import { recoverAuditJobOnPoll } from '@/lib/audit/recover-audit-job'
 
 export type { BoardCardView }
+
+const areaEvidenceModuleKeys: string[] = [...AREA_EVIDENCE_MODULE_KEYS]
 
 export type SiteHomeView = {
   site: SiteRecord
@@ -90,7 +93,7 @@ const auditSelect = {
   failureCode: true,
   evidenceCoverage: true,
   verifierExecutions: {
-    where: { targetKey: 'module:accessibility' },
+    where: { targetKey: { in: areaEvidenceModuleKeys } },
     select: { targetKey: true, status: true },
   },
   url: true,
@@ -239,6 +242,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     flags,
     coverage,
     now,
+    outcomes: outcomes.map((outcome) => ({ state: outcome.state, enabled: outcome.enabled })),
   })
   const siteCardState = health.state
   const captureUrl =

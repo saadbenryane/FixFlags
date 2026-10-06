@@ -6,6 +6,7 @@ import { buildAttribution } from '@/lib/leads/attribution'
 import { assessRequiredBindings } from '@/lib/sites/application/binding-assessment'
 import { checkoutResultCopy, currentOutcomeState } from '@/lib/sites/outcome-state'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { RateLimitError } from '@/lib/security/rate-limit'
 import { logger } from '@/lib/logger'
 
@@ -255,16 +256,16 @@ export async function requestSiteRun(input: RunInput): Promise<{
   const selectedIds = [...new Set(input.outcomeIds)].sort()
   const scope = input.scope ?? 'OUTCOMES'
   if (scope === 'SITE' && (selectedIds.length > 0 || input.verificationTarget)) {
-    throw new Error('Site care cannot select an Outcome or Flag verification target')
+    throw new SiteRunRefusal('Site care cannot select an Outcome or Flag verification target', 400)
   }
   if (scope !== 'SITE' && selectedIds.length === 0 && input.verificationTarget?.kind !== 'DIAGNOSTIC') {
-    throw new Error('Select at least one Outcome')
+    throw new SiteRunRefusal('Select at least one Outcome', 400)
   }
   if (
     input.verificationTarget?.kind === 'OUTCOME' &&
     !selectedIds.includes(input.verificationTarget.outcomeId)
   ) {
-    throw new Error('Verification target must be included in the Outcome selection')
+    throw new SiteRunRefusal('Verification target must be included in the Outcome selection', 400)
   }
   const outcomes = await prisma.siteOutcome.findMany({
     where: {
@@ -281,17 +282,17 @@ export async function requestSiteRun(input: RunInput): Promise<{
       },
     },
   })
-  if (outcomes.length !== selectedIds.length) throw new Error('Outcome not found')
+  if (outcomes.length !== selectedIds.length) throw new SiteRunRefusal('Outcome not found', 404)
   const environment = input.environment ?? 'production'
   if (outcomes.some((outcome) => outcome.environment !== environment)) {
-    throw new Error('Outcome is not configured for this environment')
+    throw new SiteRunRefusal('Outcome is not configured for this environment', 400)
   }
   const first = outcomes.find((outcome) => outcome.id === selectedIds[0]) ?? null
   const project = first?.project ?? await prisma.project.findFirst({
     where: { id: input.projectId, userId: input.userId, deletedAt: null },
     select: { url: true },
   })
-  if (!project) throw new Error('Site not found')
+  if (!project) throw new SiteRunRefusal('Site not found', 404)
 
   const requestedKey =
     input.idempotencyKey?.trim() || `${input.source.toLowerCase()}:${randomUUID()}`
@@ -307,7 +308,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
   })
   if (byKey) {
     if (byKey.projectId !== input.projectId || byKey.environment !== environment || !sameExecutionScope(byKey, selectedIds, input.verificationTarget)) {
-      throw new Error('Run idempotency key belongs to another Site run')
+      throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
     }
     return { runId: byKey.id, auditId: byKey.auditId, outcomeIds: selectedIds, reused: true }
   }
@@ -324,7 +325,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
   })
   if (active) {
     if (active.environment !== environment || !sameExecutionScope(active, selectedIds, input.verificationTarget)) {
-      throw new Error('Another Site run is already in progress')
+      throw new SiteRunRefusal('Another Site run is already in progress', 409)
     }
     return { runId: active.id, auditId: active.auditId, outcomeIds: selectedIds, reused: true }
   }
@@ -371,7 +372,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
       })
       if (concurrent) {
         if (concurrent.environment !== environment || !sameExecutionScope(concurrent, selectedIds, input.verificationTarget)) {
-          throw new Error('Another Site run is already in progress')
+          throw new SiteRunRefusal('Another Site run is already in progress', 409)
         }
         return { runId: concurrent.id, auditId: concurrent.auditId, outcomeIds: selectedIds, reused: true }
       }
@@ -418,7 +419,7 @@ export async function requestSiteRun(input: RunInput): Promise<{
           select: { id: true },
         })
     if (parentAuditId && !parent)
-      throw new Error('Verification source is no longer available')
+      throw new SiteRunRefusal('Verification source is no longer available', 409)
     const started = await createAndEnqueueAudit({
       url: auditUrl,
       userId: input.userId,
@@ -504,7 +505,7 @@ export async function findReusableRun(input: {
     !sameSelection(existing, selectedIds) ||
     verificationTargetKind(existing.verificationTarget) !== (input.verificationTargetKind ?? null)
   ) {
-    throw new Error('Run idempotency key belongs to another Site run')
+    throw new SiteRunRefusal('Run idempotency key belongs to another Site run', 409)
   }
   return { runId: existing.id, auditId: existing.auditId, outcomeIds: selectedIds }
 }
@@ -637,7 +638,8 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
             auditId,
             improvementId: linkedImprovement?.id,
             state: verdict.state,
-            summary: checkoutBinding && verdict.state !== 'COULD_NOT_VERIFY'
+            // A blocked purchase names its reason. A Checkout that never ran stays a coverage gap.
+            summary: checkoutBinding && verdict.reason !== 'required_coverage_incomplete'
               ? checkoutResultCopy(verdict.reason === 'required_bindings_succeeded' ? 'checkout_reached' : verdict.reason).summary
               : verdict.summary,
             evidence: {

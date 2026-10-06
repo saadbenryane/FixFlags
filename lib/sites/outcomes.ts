@@ -2,7 +2,9 @@ import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import type { SiteRecord } from '@/lib/sites/types'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
-import { currentOutcomeState, type CustomerOutcomeState } from '@/lib/sites/outcome-state'
+import { observedPurchaseStart } from '@/lib/sites/checkout-inference'
+import { OUTCOME_DETAIL_COPY } from '@/lib/marketing/copy/workspace'
+import { availabilityCouldNotVerifyRecovery, checkoutCouldNotVerifyRecovery, currentOutcomeState, customerBindingResult, outcomeStatusLabel, staleOutcomeRecovery, UNASSESSED_OUTCOME_SUMMARY, type CustomerOutcomeState } from '@/lib/sites/outcome-state'
 import { validateBindingForOutcome } from '@/lib/sites/application/binding-config'
 import type { BrowserJourneyConfig } from '@/lib/sites/application/binding-config'
 import {
@@ -168,7 +170,7 @@ async function toOutcomeView(row: {
     })),
     coverage: latest?.coverage ?? null,
     state: currentOutcomeState(latest),
-    summary: latest?.summary ?? 'Not verified yet.',
+    summary: latest?.summary ?? UNASSESSED_OUTCOME_SUMMARY,
     lastVerifiedAt: latest?.assessedAt.toISOString() ?? null,
     validUntil: latest?.validUntil.toISOString() ?? null,
     flagId: latest?.improvementId ?? null,
@@ -225,14 +227,13 @@ export async function syncOutcomesFromAudit(input: {
     where: { id: input.auditId },
     select: {
       projectId: true,
-      productContract: true,
       pages: { select: { url: true, title: true } },
-      flags: { select: { checkId: true, pageUrl: true, problem: true } },
+      flags: { select: { checkId: true, pageUrl: true } },
       journeyReviews: {
         select: {
           journeyType: true,
           startUrl: true,
-          steps: { select: { url: true } },
+          steps: { select: { url: true, actionType: true, actionDetail: true, elementDescription: true } },
         },
       },
     },
@@ -282,6 +283,8 @@ export async function syncOutcomesFromAudit(input: {
     }
     // Second pass: upsert outcomes for classified journeys only (no GENERIC ghosts)
     for (const [journeyType, kind] of classifiedJourneys) {
+      // A journey named checkout is not a purchase. Checkout is created below, only from a buyable start.
+      if (kind === 'CHECKOUT') continue
       const journey = audit.journeyReviews.find((j) => j.journeyType === journeyType)
       if (!journey) continue
       const name = journeyType.trim().replaceAll('_', ' ')
@@ -316,33 +319,29 @@ export async function syncOutcomesFromAudit(input: {
       }
     }
 
-    const checkoutSignal = [
-      JSON.stringify(audit.productContract ?? {}),
-      ...audit.flags.flatMap((flag) => [flag.checkId ?? '', flag.problem, flag.pageUrl ?? '']),
-      ...audit.pages.map((page) => page.url),
-      ...audit.journeyReviews.map((journey) => journey.journeyType),
-    ].join(' ')
-    if (
-      /\b(checkout|add(?:\s+|-)to(?:\s+|-)cart|purchase|buy(?:\s+|-)now|payment|\/products?\/|\/cart(?:\/|\b))/i.test(
-        checkoutSignal,
-      )
-    ) {
-      const linkedPath = input.site.projectId
-        ? await tx.revenuePath.findFirst({
-            where: {
-              shop: { projectId: input.site.projectId, uninstalledAt: null },
-            },
-            orderBy: { updatedAt: 'desc' },
-            select: { storefrontUrl: true },
-          })
-        : null
-      const flaggedPage = audit.flags.find((flag) =>
-        /checkout|cart|purchase|buy/i.test(`${flag.checkId ?? ''} ${flag.problem}`),
-      )?.pageUrl
-      const productPage = audit.pages.find((page) => /\/products?\//i.test(page.url))?.url
-      const checkoutJourney = audit.journeyReviews.find((journey) => journey.journeyType === 'checkout')
-      const observedStartUrl = linkedPath?.storefrontUrl ?? flaggedPage ?? productPage ?? checkoutJourney?.startUrl
-      const startUrl = observedStartUrl ?? input.site.url
+    const linkedPath = input.site.projectId
+      ? await tx.revenuePath.findFirst({
+          where: {
+            shop: { projectId: input.site.projectId, uninstalledAt: null },
+          },
+          orderBy: { updatedAt: 'desc' },
+          select: { storefrontUrl: true },
+        })
+      : null
+    const startUrl = observedPurchaseStart({
+      siteUrl: input.site.url,
+      pageUrls: [
+        ...audit.pages.map((page) => page.url),
+        ...audit.journeyReviews.flatMap((journey) => [
+          journey.startUrl,
+          ...journey.steps.map((step) => step.url),
+        ]),
+      ],
+      flags: audit.flags,
+      steps: audit.journeyReviews.flatMap((journey) => journey.steps),
+      storefrontUrl: linkedPath?.storefrontUrl,
+    })
+    if (startUrl) {
       const where: Prisma.SiteOutcomeWhereUniqueInput = input.site.projectId
         ? {
             projectId_slug: {
@@ -356,42 +355,47 @@ export async function syncOutcomesFromAudit(input: {
               slug: 'checkout',
             },
           }
-      const checkout = await tx.siteOutcome.upsert({
+      const existing = await tx.siteOutcome.findUnique({
         where,
-        create: {
-          ...owner,
-          name: 'Checkout',
-          slug: 'checkout',
-          description: 'A customer can add a product and reach checkout.',
-          kind: 'CHECKOUT',
-          criticality: 'CRITICAL',
-          expectation: 'The selected product appears in the cart and checkout opens.',
-          inferenceSource: 'browser',
-        },
-        update: {
-          kind: 'CHECKOUT',
-          criticality: 'CRITICAL',
-          expectation: 'The selected product appears in the cart and checkout opens.',
-        },
+        select: { inferenceSource: true, confirmedAt: true },
       })
-      checkoutOutcomeId = checkout.id
-      const bindingConfig = buildCheckoutJourneyConfig(startUrl, false)
-      await tx.outcomeExecutionBinding.upsert({
-        where: {
-          outcomeId_key: { outcomeId: checkout.id, key: 'checkout-browser-v1' },
-        },
-        create: {
-          outcomeId: checkout.id,
-          mechanism: 'BROWSER_JOURNEY',
-          key: 'checkout-browser-v1',
-          config: bindingConfig,
-          scope: { device: 'mobile', expected: 'checkout_reached' },
-          required: true,
-        },
-        update: observedStartUrl
-          ? { config: bindingConfig, enabled: true }
-          : { enabled: true },
-      })
+      // A customer-owned Checkout keeps its label and start. Analysis must not replace it.
+      if (existing?.inferenceSource !== 'user' && !existing?.confirmedAt) {
+        const checkout = await tx.siteOutcome.upsert({
+          where,
+          create: {
+            ...owner,
+            name: 'Checkout',
+            slug: 'checkout',
+            description: 'A customer can add a product and reach checkout.',
+            kind: 'CHECKOUT',
+            criticality: 'CRITICAL',
+            expectation: 'The selected product appears in the cart and checkout opens.',
+            inferenceSource: 'browser',
+          },
+          update: {
+            kind: 'CHECKOUT',
+            criticality: 'CRITICAL',
+            expectation: 'The selected product appears in the cart and checkout opens.',
+          },
+        })
+        checkoutOutcomeId = checkout.id
+        const bindingConfig = buildCheckoutJourneyConfig(startUrl, false)
+        await tx.outcomeExecutionBinding.upsert({
+          where: {
+            outcomeId_key: { outcomeId: checkout.id, key: 'checkout-browser-v1' },
+          },
+          create: {
+            outcomeId: checkout.id,
+            mechanism: 'BROWSER_JOURNEY',
+            key: 'checkout-browser-v1',
+            config: bindingConfig,
+            scope: { device: 'mobile', expected: 'checkout_reached' },
+            required: true,
+          },
+          update: { config: bindingConfig, enabled: true },
+        })
+      }
     }
   })
   if (checkoutOutcomeId && input.site.projectId) {
@@ -636,6 +640,8 @@ export type SiteOutcomeDetailView = Omit<SiteOutcomeView, 'bindings'> & {
       createdAt: string
       auditId: string
     } | null
+    /** Evidence-card sentence for this method. A method with no execution uses the empty-evidence sentence. */
+    customerSentence: string
   }>
   limitation: string | null
   recoveryAction: string | null
@@ -706,7 +712,11 @@ export async function loadSiteOutcomeDetail(
       },
     }) : Promise.resolve([]),
   ])
-  const latestByKey = new Map(executions.map((execution) => [execution.bindingKey, execution]))
+  // The query is newest first. Keep the first row per key. A later write would keep an older attempt.
+  const latestByKey = new Map<string, (typeof executions)[number]>()
+  for (const execution of executions) {
+    if (!latestByKey.has(execution.bindingKey)) latestByKey.set(execution.bindingKey, execution)
+  }
   const timeline = [
     ...row.runSelections.map(({ runRequest }) => ({
       id: `run:${runRequest.id}`,
@@ -720,18 +730,25 @@ export async function loadSiteOutcomeDetail(
       id: `assessment:${assessment.id}`,
       type: 'assessment' as const,
       at: assessment.assessedAt.toISOString(),
-      title: currentOutcomeState(assessment) === 'CLEAR' ? 'Clear' : currentOutcomeState(assessment) === 'FLAG' ? 'Flag found' : 'Couldn’t verify',
+      title: outcomeStatusLabel(currentOutcomeState(assessment)),
       detail: assessment.summary,
       auditId: assessment.auditId,
     })),
-    ...row.bindingAttempts.map((attempt) => ({
-      id: `attempt:${attempt.id}`,
-      type: 'attempt' as const,
-      at: attempt.createdAt.toISOString(),
-      title: `${attempt.bindingKey} ${attempt.disposition.toLowerCase()}`,
-      detail: attempt.reason,
-      auditId: attempt.auditId,
-    })),
+    ...row.bindingAttempts.map((attempt) => {
+      const sentence = customerBindingResult({
+        key: attempt.bindingKey,
+        disposition: attempt.disposition,
+        reason: attempt.reason,
+      })
+      return {
+        id: `attempt:${attempt.id}`,
+        type: 'attempt' as const,
+        at: attempt.createdAt.toISOString(),
+        title: sentence.headline,
+        detail: sentence.detail ?? '',
+        auditId: attempt.auditId,
+      }
+    }),
     ...improvements.flatMap((improvement) => improvement.occurrences.map((occurrence) => ({
       id: `flag:${occurrence.id}`,
       type: 'flag' as const,
@@ -757,6 +774,8 @@ export async function loadSiteOutcomeDetail(
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
 
   const requiredBindings = view.bindings.filter((binding) => binding.required)
+  const checkoutBinding = requiredBindings.find((binding) => binding.key.includes('checkout'))
+  const availabilityBinding = requiredBindings.find((binding) => binding.mechanism === 'HTTP_AVAILABILITY')
   const limitation = !view.enabled
     ? 'This Outcome is paused. Its last evidence is preserved, but FixFlags will not schedule or start another verification.'
     : requiredBindings.length === 0
@@ -769,15 +788,26 @@ export async function loadSiteOutcomeDetail(
     : requiredBindings.length === 0
       ? 'Configure a supported verification method in Site settings.'
       : view.state === 'STALE'
-        ? 'Run a fresh verification before relying on this result.'
+        ? staleOutcomeRecovery()
         : view.state === 'COULD_NOT_VERIFY'
-          ? 'Review the method or fixture, then verify again.'
+          ? view.kind === 'CHECKOUT'
+            ? checkoutCouldNotVerifyRecovery(checkoutBinding ? latestByKey.get(checkoutBinding.key)?.reason : null)
+            : view.kind === 'AVAILABILITY'
+              ? availabilityCouldNotVerifyRecovery(availabilityBinding ? latestByKey.get(availabilityBinding.key)?.reason : null)
+              : 'Review the method or fixture, then verify again.'
           : null
 
   return {
     ...view,
     bindings: view.bindings.map((binding) => {
       const evidence = latestByKey.get(binding.key)
+      const sentence = evidence
+        ? customerBindingResult({
+            key: binding.key,
+            disposition: evidence.disposition,
+            reason: evidence.reason,
+          })
+        : null
       return {
         ...binding,
         latestEvidence: evidence ? {
@@ -787,6 +817,7 @@ export async function loadSiteOutcomeDetail(
           createdAt: evidence.createdAt.toISOString(),
           auditId: evidence.auditId,
         } : null,
+        customerSentence: sentence?.headline ?? OUTCOME_DETAIL_COPY.noEvidence,
       }
     }),
     limitation,

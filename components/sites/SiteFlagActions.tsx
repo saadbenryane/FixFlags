@@ -69,13 +69,13 @@ export function SiteFlagActions({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ changeSummary: changeSummary.trim() }),
       })
-      const body = (await res.json().catch(() => ({}))) as { error?: string; signup?: boolean }
+      const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string; signup?: boolean }
       if (res.status === 401 || body.signup) {
         router.push(`/sign-up?next=${encodeURIComponent(`/sites/${siteId}/flags/${flagId}`)}`)
         return
       }
       if (!res.ok) {
-        setMessage(body.error || SITE_BOARD_COPY.verificationFailed)
+        setMessage(body.message || body.error || SITE_BOARD_COPY.verificationFailed)
         return
       }
       setVerificationRunning(true)

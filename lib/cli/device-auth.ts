@@ -5,6 +5,11 @@ import {
   generateApiKey,
   MAX_ACTIVE_API_KEYS,
 } from '@/lib/security/api-keys'
+import {
+  DEVELOPER_KEY_SCOPE_PRESETS,
+  DEFAULT_DEVELOPER_KEY_EXPIRY_DAYS,
+  developerKeyExpiresAt,
+} from '@/lib/mcp/developer-key-policy'
 
 export const CLI_DEVICE_EXPIRES_SECONDS = 10 * 60
 export const CLI_DEVICE_POLL_SECONDS = 5
@@ -117,13 +122,19 @@ export async function decideCliDeviceAuthorization(input: {
     }
 
     const activeCount = await tx.apiKey.count({
-      where: { userId: input.userId, revokedAt: null },
+      where: {
+        userId: input.userId,
+        revokedAt: null,
+        audience: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
     })
     if (activeCount >= MAX_ACTIVE_API_KEYS) {
       return { ok: false as const, code: 'API_KEY_LIMIT' }
     }
 
     const generated = generateApiKey()
+    const fullAccess = DEVELOPER_KEY_SCOPE_PRESETS.find((preset) => preset.id === 'fix_and_verify')!
     const apiKey = await tx.apiKey.create({
       data: {
         userId: input.userId,
@@ -132,6 +143,8 @@ export async function decideCliDeviceAuthorization(input: {
         keyHash: generated.keyHash,
         prefix: generated.prefix,
         lastFour: generated.lastFour,
+        scopes: [...fullAccess.scopes],
+        expiresAt: developerKeyExpiresAt(DEFAULT_DEVELOPER_KEY_EXPIRY_DAYS),
       },
     })
     await tx.cliDeviceAuthorization.update({

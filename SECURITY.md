@@ -38,6 +38,7 @@
 - No Prisma import on edge — `proxy.ts` does cookie-presence check only
 - Protected pages (`/admin/`, `/settings/`) gated by middleware; server validates session on API routes
 - admin role configured via `ADMIN_USER_IDS` env var
+- Newly created developer keys carry an explicit MCP permission set and a 30, 90, or 365 day expiry. The default is read-only evidence for 90 days. CLI device approval issues a 90-day key for the complete Fix → Verify workflow. Existing empty-scope account keys retain their historical full-access behavior until the owner replaces or revokes them; every non-empty scope set is enforced even without an OAuth audience.
 
 ## Report access invariants
 
@@ -56,7 +57,7 @@
 - `.env.local` is gitignored
 - No hardcoded secrets, tokens, or passwords in source
 - GitHub tokens encrypted with AES-256-GCM via `TOKEN_ENCRYPTION_KEY`
-- API keys hashed with bcrypt (or similar), stored with `ff_live_` prefix
+- API keys are SHA-256 hashed, stored with an `ff_live_` prefix hint and last four characters only, shown once at creation, permission-scoped, expiring, and revocable. Listing keys never returns the hash or secret.
 - Stripe webhook signature verified on every event
 
 ## Production access

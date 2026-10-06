@@ -21,7 +21,7 @@ import { siteCheckNotice, siteSummaryNotice } from '@/lib/sites/check-notice'
 import { formatAlertDate, NO_ALERT_DELIVERY, siteWatchAlertNotice } from '@/lib/sites/watch-alert-notice'
 import { watchOffNotice } from '@/lib/sites/watch-offer'
 import { firstOutcomePrompt, homeBoardLead } from '@/lib/sites/first-outcome'
-import { outcomeCoverageLabel } from '@/lib/sites/outcome-state'
+import { outcomeCoverageLabel, outcomeFreshnessDisclosure, staleOutcomeRecovery, UNASSESSED_OUTCOME_SUMMARY } from '@/lib/sites/outcome-state'
 import { SITE_BOARD_COPY, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 
@@ -29,8 +29,15 @@ function isEmptyUncheckedCard(card: BoardCardView) {
   return card.id !== 'site' && !card.evidenced && card.state === 'unknown' && card.openFlagCount === 0 && card.activity !== 'checking'
 }
 
-/** Plan-capacity answers from the run command, which own their own wording. */
-const LIMIT_CODES = new Set(['UPGRADE_REQUIRED', 'TOKEN_LIMIT', 'AUTH_REQUIRED'])
+function outcomeCardFreshness(outcome: SiteHomeView['outcomes'][number]): string {
+  const when = outcome.lastVerifiedAt ? formatEvidenceTimestamp(outcome.lastVerifiedAt) : null
+  if (!when) return 'No completed verification yet'
+  if (outcome.state === 'COULD_NOT_VERIFY') return `Last attempted ${when}`
+  if (outcome.state === 'STALE') {
+    return `Last verified ${when}. ${outcomeFreshnessDisclosure(outcome.state, outcome.staleAfterMinutes)}`
+  }
+  return `Last verified ${when}`
+}
 
 export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHomeView }) {
   const router = useRouter()
@@ -156,11 +163,10 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
       const body = await response.json().catch(() => ({})) as { auditId?: string | null; message?: string; code?: string }
       if (!response.ok) {
         if (response.status === 401) router.push(`/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`)
-        // A spent allowance is the server's canonical explanation. Falling back to
-        // "could not start a new check" here would report a working failure for a
-        // limit, and leave the customer re-pressing a button that cannot work.
-        else if (LIMIT_CODES.has(body.code ?? '')) setToast(body.message ?? SITE_BOARD_COPY.checkStartFailed)
-        else setToast(SITE_BOARD_COPY.checkStartFailed)
+        // A spent allowance and a busy Site both explain themselves. Replacing
+        // that sentence with a generic failure leaves the customer retrying a
+        // check that cannot start.
+        else setToast(body.message || SITE_BOARD_COPY.checkStartFailed)
         return
       }
       setSelectedCard(null)
@@ -232,10 +238,10 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
           name={outcome.name}
           href={`/sites/${siteId}/outcomes/${outcome.id}` as Route}
           expectation={outcome.expectation ?? outcome.summary}
+          answer={outcome.summary !== UNASSESSED_OUTCOME_SUMMARY ? outcome.summary : undefined}
           coverage={outcomeCoverageLabel(outcome.environment, outcome.bindings)}
-          freshness={outcome.lastVerifiedAt && formatEvidenceTimestamp(outcome.lastVerifiedAt)
-            ? `${outcome.state === 'COULD_NOT_VERIFY' ? 'Last attempted' : 'Last verified'} ${formatEvidenceTimestamp(outcome.lastVerifiedAt)}`
-            : 'No completed verification yet'}
+          freshness={outcomeCardFreshness(outcome)}
+          nextStep={outcome.state === 'STALE' ? staleOutcomeRecovery() : undefined}
           state={outcome.state}
           running={outcome.running}
           label={outcome.enabled ? 'Watched Outcome' : 'Paused Outcome'}
