@@ -4,7 +4,8 @@ import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { MCP_TOOLS } from '@/lib/mcp/tool-manifest'
 import { mcpCoreError, mcpStructuredResult } from '@/lib/mcp/contract'
-import { listSiteOutcomes } from '@/lib/sites/outcomes'
+import { mcpOutcomePayload } from '@/lib/mcp/outcome-payload'
+import { listSiteOutcomes, loadSiteOutcomeDetail } from '@/lib/sites/outcomes'
 import { loadSiteRecord } from '@/lib/sites/ensure-site'
 import { loadSiteFlagDetail, loadSiteFlags } from '@/lib/sites/flags'
 import { getOwnedRun, requestSiteRun } from '@/lib/sites/application/run-requests'
@@ -74,32 +75,16 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
       try {
         const site = await ownedSite(user.id, siteId)
         const outcomes = await listSiteOutcomes(site)
+        const details = await Promise.all(
+          outcomes
+            .filter((outcome) => outcome.kind !== 'GENERIC')
+            .map((outcome) => loadSiteOutcomeDetail(site, outcome.id)),
+        )
         return mcpStructuredResult({
           siteId: site.siteId,
-          outcomes: outcomes
-            .filter((outcome) => outcome.kind !== 'GENERIC')
-            .map((outcome) => ({
-              outcomeId: outcome.id,
-              name: outcome.name,
-              state: outcome.state,
-              summary: outcome.summary,
-              enabled: outcome.enabled,
-              environment: outcome.environment,
-              coverage: outcome.coverage,
-              methods: outcome.bindings.map((binding) => ({
-                key: binding.key,
-                mechanism: binding.mechanism,
-                required: binding.required,
-                version: binding.version,
-              })),
-              limitation: outcome.bindings.some((binding) => binding.required)
-                ? outcome.state === 'COULD_NOT_VERIFY' ? outcome.summary : null
-                : 'No independent verification method is configured.',
-              lastVerifiedAt: outcome.lastVerifiedAt,
-              validUntil: outcome.validUntil,
-              flagId: outcome.flagId,
-              running: outcome.running,
-            })),
+          outcomes: details
+            .filter((outcome) => outcome != null)
+            .map((outcome) => mcpOutcomePayload(outcome)),
         })
       } catch (error) {
         return mcpCoreError(error)
