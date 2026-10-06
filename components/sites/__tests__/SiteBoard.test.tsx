@@ -543,18 +543,25 @@ describe('SiteBoard chrome', () => {
     expect(screen.getByRole('button', { name: 'Performance' })).toBeInTheDocument()
   })
 
-  it('keeps Settings focused on Watch, Outcomes, connections, and developer access', () => {
+  it('orders Settings by customer responsibility and keeps connection cards subordinate', () => {
     render(
       <MeProvider initialUser={null}>
         <SiteSettingsView siteId="p_example" view={boardView()} />
       </MeProvider>
     )
     expect(screen.getByRole('heading', { name: 'Site settings' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Watch' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Outcomes and fixtures' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Connections' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Developer access' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Remove Site' })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      'Outcomes and fixtures',
+      'Watch',
+      'Notifications',
+      'Connections',
+      'Developer access',
+      'Danger zone',
+    ])
+    expect(screen.getByRole('heading', { name: 'Shopify', level: 3 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Search Console', level: 3 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Analytics', level: 3 })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove Site' })).toBeInTheDocument()
   })
 
   it('keeps watch and All Sites for signed-in owners', () => {

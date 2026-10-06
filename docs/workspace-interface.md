@@ -18,7 +18,7 @@ Customer chrome follows [product-architecture.md](product-architecture.md). Do n
 | -------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | Home           | What is FixFlags watching and what needs attention? | Outcome state first, meaningful Flags second, broader Product-health cards and diagnostics below |
 | Flags          | What needs me?                                      | Prioritized attention; resolved history without polluting current attention                      |
-| Site settings  | How is this Site configured?                        | Watch, notifications, connections, danger zone. Not a third product mode                         |
+| Site settings  | How is this Site configured?                        | Outcomes and protected fixtures, Watch, notifications, connections, developer access, danger zone, in that order. Not a third product mode |
 | FixFlags Agent | Ask FixFlags                                        | Persistent FAB (later). Not a nav item. Can escalate to support                                  |
 
 Account, billing and Site switching are supporting controls. Outcomes and Flags are primary content; Pages, Journeys, category health and execution diagnostics are depth. No Agent | Report split, scores-first hero, raw-check grid, arbitrary dashboard builder or integration marketplace.

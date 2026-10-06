@@ -278,7 +278,7 @@ export function SiteSettingsControls({
 
       <h2 className="text-lg font-semibold lg:col-span-2">Connections</h2>
       <section className="rounded-2xl border border-border/80 bg-background p-5">
-        <h2 className="text-lg font-semibold">Shopify</h2>
+        <h3 className="text-lg font-semibold">Shopify</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Add purchase-path evidence to this Site’s Conversion card and Flags.
         </p>
@@ -327,7 +327,7 @@ export function SiteSettingsControls({
         </Button>
       </section>
       <section className="rounded-2xl border border-destructive/30 bg-background p-5 lg:col-span-2">
-        <h2 className="text-lg font-semibold">Remove Site</h2>
+        <h2 className="text-lg font-semibold">Danger zone</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Stops Watch, disconnects Shopify, and removes this Site from your account.
         </p>
@@ -359,7 +359,7 @@ function GoogleConnectionCard({
   const linked = connection.status === 'connected' || connection.status === 'mismatch' || connection.status === 'needs_reauth'
   return (
     <section className="rounded-2xl border border-border/80 bg-background p-5">
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <h3 className="text-lg font-semibold">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       {connection.propertyLabel ? (
         <p className="mt-3 text-sm">Property <strong>{connection.propertyLabel}</strong></p>
