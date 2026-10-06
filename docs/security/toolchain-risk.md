@@ -41,3 +41,9 @@ The same refresh exposed critical `GHSA-pqg4-j6r4-53mv` through
 range at `1.11.0`; the exact override uses `shell-quote@1.12.0`. The dependency
 remains build-only, but a patched release exists, so it is fixed rather than
 added to the exception list.
+
+The next audit refresh caught high-severity `GHSA-6qxp-vccf-f47h` in
+`@modelcontextprotocol/client@2.1.0`. FixFlags imports that package only in the
+MCP SDK lifecycle test, so it is now a development dependency on patched
+`^2.3.1` instead of a production dependency. The advisory is fixed rather than
+suppressed, and the production image must not contain the client package.

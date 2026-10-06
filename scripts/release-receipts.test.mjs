@@ -37,6 +37,7 @@ function receipt(stage, overrides = {}) {
         : 'https://release.fixflags.test',
     databaseIdentityHash: ['foundation', 'fixture-binding', 'credentialed-core', 'billing-open', 'billing-closed', 'external'].includes(stage) ? 'db-hash' : null,
     apiKeyIdentityHash: null,
+    watchDatabaseIdentityHash: stage === 'billing-open' ? 'watch-db-hash' : null,
     containerImageDigest: stage === 'foundation' ? `sha256:${'d'.repeat(64)}` : undefined,
     releaseEnvironmentRevision: stage === 'fixture-binding' ? SHA : undefined,
     watchLaunchReadiness: stage === 'billing-open' ? passingWatchEvidence() : undefined,
@@ -54,13 +55,27 @@ function passingWatchEvidence(overrides = {}) {
     databaseIdentityHash: 'watch-db-hash',
     status: 'passed',
     asOf: '2026-10-06T00:00:00.000Z',
+    windowStart: '2026-09-22T00:00:00.000Z',
+    firstWatchRequestedAt: '2026-09-21T23:59:59.000Z',
     metrics: {
       observationDays: 14,
       scheduledExecutions: 100,
+      settledExecutions: 100,
+      targetFailuresExcluded: 0,
+      terminalCompletions: 99,
       terminalCompletionRate: 99,
       lostScheduledRuns: 0,
+      notificationAttempts: 2,
+      durableNotificationRecords: 2,
+      sentNotifications: 2,
+      unchangedClearRuns: 97,
+      unclassifiedQuietRuns: 0,
       quietViolations: 0,
+      repeatedFailureGroups: 1,
       duplicateActiveFlagGroups: 0,
+      costedExecutions: 100,
+      missingCostExecutions: 0,
+      medianWatchCostUsd: 0.4,
       projectedDailyCareCostUsd: 12,
     },
     gates: {
@@ -152,6 +167,38 @@ describe('release evidence receipts', () => {
         metrics: { ...passingWatchEvidence().metrics, scheduledExecutions: 99 },
       }), context),
       /thresholds/,
+    )
+    assert.throws(
+      () => validateWatchLaunchEvidence(passingWatchEvidence({
+        gates: {
+          ...passingWatchEvidence().gates,
+          notificationRecord: passingWatchEvidence().gates.notificationRecords,
+        },
+      }), context),
+      /incomplete gate proof/,
+    )
+    assert.throws(
+      () => validateWatchLaunchEvidence(passingWatchEvidence({
+        gates: Object.fromEntries(
+          Object.entries(passingWatchEvidence().gates).filter(([name]) => name !== 'quietClear'),
+        ),
+      }), context),
+      /incomplete gate proof/,
+    )
+    assert.throws(
+      () => validateWatchLaunchEvidence(passingWatchEvidence({
+        metrics: {
+          ...passingWatchEvidence().metrics,
+          durableNotificationRecords: 1,
+        },
+      }), context),
+      /thresholds/,
+    )
+    assert.throws(
+      () => validateWatchLaunchEvidence(passingWatchEvidence({
+        firstWatchRequestedAt: '2026-09-23T00:00:00.000Z',
+      }), context),
+      /observation window/,
     )
   })
 
@@ -395,6 +442,21 @@ describe('release evidence receipts', () => {
       () => validateFinalReceiptObjects(
         separated.map((value) => value.stage === 'billing-open'
           ? { ...value, watchLaunchReadiness: undefined }
+          : value),
+        SHA,
+      ),
+      /no passing Watch launch evidence/,
+    )
+    assert.throws(
+      () => validateFinalReceiptObjects(
+        separated.map((value) => value.stage === 'billing-open'
+          ? {
+              ...value,
+              watchLaunchReadiness: {
+                ...value.watchLaunchReadiness,
+                gates: {},
+              },
+            }
           : value),
         SHA,
       ),

@@ -19,6 +19,32 @@ export const RELEASE_ENV_STAGES = new Set([
 export const PRODUCTION_STAGES = new Set(['deployed'])
 export const RELEASE_CLI_VERSION = '1.0.5'
 const TERMINAL_STATUSES = new Set(['passed', 'failed', 'timedOut', 'skipped', 'interrupted'])
+const WATCH_LAUNCH_GATE_NAMES = [
+  'sample',
+  'terminalCompletion',
+  'noLostRuns',
+  'notificationRecords',
+  'quietClear',
+  'flagDeduplication',
+  'economics',
+]
+const WATCH_COUNT_METRICS = [
+  'scheduledExecutions',
+  'settledExecutions',
+  'targetFailuresExcluded',
+  'terminalCompletions',
+  'lostScheduledRuns',
+  'notificationAttempts',
+  'durableNotificationRecords',
+  'sentNotifications',
+  'unchangedClearRuns',
+  'unclassifiedQuietRuns',
+  'quietViolations',
+  'repeatedFailureGroups',
+  'duplicateActiveFlagGroups',
+  'costedExecutions',
+  'missingCostExecutions',
+]
 const RELEASE_FIXTURE_ENV_KEYS = new Set([
   'RELEASE_FIXTURE_MANIFEST',
   'RELEASE_ENV_URL',
@@ -296,6 +322,13 @@ export function buildReceiptContext(stage, env, options = {}) {
   return { gitSha, targetOrigin, databaseIdentityHash, apiKeyIdentityHash, watchDatabaseIdentityHash }
 }
 
+function evidenceTimestamp(value) {
+  if (typeof value !== 'string') return null
+  const timestamp = Date.parse(value)
+  if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString() !== value) return null
+  return timestamp
+}
+
 export function validateWatchLaunchEvidence(evidence, context) {
   if (evidence?.schemaVersion !== 1) throw new Error('Watch launch evidence schema is unsupported')
   if (evidence.gitSha !== context.gitSha) throw new Error('Watch launch evidence revision mismatch')
@@ -303,33 +336,82 @@ export function validateWatchLaunchEvidence(evidence, context) {
     throw new Error('Watch launch evidence database mismatch')
   }
   if (evidence.status !== 'passed') throw new Error('Watch launch evidence is not passed')
-  const gates = evidence.gates && typeof evidence.gates === 'object'
-    ? Object.values(evidence.gates)
+  const gateNames = evidence.gates && typeof evidence.gates === 'object' && !Array.isArray(evidence.gates)
+    ? Object.keys(evidence.gates).sort()
     : []
-  if (gates.length !== 7 || gates.some((gate) => gate?.status !== 'passed')) {
+  if (JSON.stringify(gateNames) !== JSON.stringify([...WATCH_LAUNCH_GATE_NAMES].sort())) {
     throw new Error('Watch launch evidence has incomplete gate proof')
   }
-  const scheduledExecutions = evidence.metrics?.scheduledExecutions
-  const terminalCompletionRate = evidence.metrics?.terminalCompletionRate
-  const projectedDailyCareCostUsd = evidence.metrics?.projectedDailyCareCostUsd
+  if (WATCH_LAUNCH_GATE_NAMES.some((name) => (
+    evidence.gates[name]?.status !== 'passed' ||
+    typeof evidence.gates[name]?.summary !== 'string' ||
+    evidence.gates[name].summary.trim().length === 0
+  ))) {
+    throw new Error('Watch launch evidence has incomplete gate proof')
+  }
+
+  const asOfMs = evidenceTimestamp(evidence.asOf)
+  const windowStartMs = evidenceTimestamp(evidence.windowStart)
+  const firstWatchRequestedAtMs = evidenceTimestamp(evidence.firstWatchRequestedAt)
   if (
-    evidence.metrics?.observationDays !== 14 ||
-    !Number.isFinite(scheduledExecutions) ||
+    asOfMs === null ||
+    windowStartMs === null ||
+    firstWatchRequestedAtMs === null ||
+    asOfMs - windowStartMs !== 14 * 24 * 60 * 60 * 1000 ||
+    firstWatchRequestedAtMs > windowStartMs
+  ) {
+    throw new Error('Watch launch evidence has an invalid observation window')
+  }
+
+  const metrics = evidence.metrics
+  if (!metrics || typeof metrics !== 'object' || Array.isArray(metrics)) {
+    throw new Error('Watch launch evidence has invalid metrics')
+  }
+  if (WATCH_COUNT_METRICS.some((name) => !Number.isInteger(metrics[name]) || metrics[name] < 0)) {
+    throw new Error('Watch launch evidence has invalid count metrics')
+  }
+  const scheduledExecutions = metrics.scheduledExecutions
+  const terminalCompletionRate = metrics.terminalCompletionRate
+  const projectedDailyCareCostUsd = metrics.projectedDailyCareCostUsd
+  const medianWatchCostUsd = metrics.medianWatchCostUsd
+  if (
+    metrics.observationDays !== 14 ||
     scheduledExecutions < 100 ||
+    metrics.settledExecutions > scheduledExecutions ||
+    metrics.targetFailuresExcluded > metrics.settledExecutions ||
+    metrics.terminalCompletions > metrics.settledExecutions ||
     !Number.isFinite(terminalCompletionRate) ||
     terminalCompletionRate < 99 ||
-    evidence.metrics?.lostScheduledRuns !== 0 ||
-    evidence.metrics?.quietViolations !== 0 ||
-    evidence.metrics?.duplicateActiveFlagGroups !== 0 ||
+    terminalCompletionRate > 100 ||
+    metrics.lostScheduledRuns !== 0 ||
+    metrics.notificationAttempts < 1 ||
+    metrics.durableNotificationRecords !== metrics.notificationAttempts ||
+    metrics.sentNotifications > metrics.durableNotificationRecords ||
+    metrics.unchangedClearRuns < 1 ||
+    metrics.unclassifiedQuietRuns !== 0 ||
+    metrics.quietViolations !== 0 ||
+    metrics.repeatedFailureGroups < 1 ||
+    metrics.duplicateActiveFlagGroups !== 0 ||
+    metrics.costedExecutions < 1 ||
+    metrics.missingCostExecutions !== 0 ||
+    !Number.isFinite(medianWatchCostUsd) ||
+    medianWatchCostUsd < 0 ||
     !Number.isFinite(projectedDailyCareCostUsd) ||
+    projectedDailyCareCostUsd < 0 ||
+    Math.abs(projectedDailyCareCostUsd - medianWatchCostUsd * 30) > 1e-9 ||
     projectedDailyCareCostUsd > 12
   ) {
     throw new Error('Watch launch evidence does not satisfy the paid-opening thresholds')
   }
   return {
+    schemaVersion: evidence.schemaVersion,
+    gitSha: evidence.gitSha,
+    databaseIdentityHash: evidence.databaseIdentityHash,
     status: evidence.status,
     asOf: evidence.asOf,
-    metrics: evidence.metrics,
+    windowStart: evidence.windowStart,
+    firstWatchRequestedAt: evidence.firstWatchRequestedAt,
+    metrics,
     gates: evidence.gates,
   }
 }
@@ -603,14 +685,15 @@ export function validateFinalReceiptObjects(receipts, expectedGitSha) {
     if (stage === 'foundation' && !/^sha256:[a-f0-9]{64}$/.test(receipt.containerImageDigest ?? '')) {
       throw new Error('foundation release receipt has no valid container image digest')
     }
-    if (
-      stage === 'billing-open' &&
-      (
-        receipt.watchLaunchReadiness?.status !== 'passed' ||
-        Object.values(receipt.watchLaunchReadiness?.gates ?? {}).some((gate) => gate?.status !== 'passed')
-      )
-    ) {
-      throw new Error('billing-open release receipt has no passing Watch launch evidence')
+    if (stage === 'billing-open') {
+      try {
+        validateWatchLaunchEvidence(receipt.watchLaunchReadiness, {
+          gitSha: receipt.gitSha,
+          watchDatabaseIdentityHash: receipt.watchDatabaseIdentityHash,
+        })
+      } catch {
+        throw new Error('billing-open release receipt has no passing Watch launch evidence')
+      }
     }
     if (stage === 'fixture-binding' && receipt.releaseEnvironmentRevision !== receipt.gitSha) {
       throw new Error('fixture-binding release receipt has no exact revision attestation')
