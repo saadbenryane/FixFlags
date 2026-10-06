@@ -29,3 +29,15 @@ release: `source-map-js@1.2.2`, `fast-copy@4.1.2`, and
 `postcss-selector-parser@7.1.6`. Exact overrides keep a later lockfile refresh
 from reintroducing vulnerable transitive versions. These are fixes, not entries
 in the reviewed-exception list.
+
+Later that day, the gate caught high-severity `GHSA-wq5f-xc86-pv6w` in
+`sharp@0.35.4` (and Next's transitive path to it) within minutes of publication.
+The advisory marks every version below `0.35.5` vulnerable, so both the direct
+dependency and exact override now require patched `sharp@0.35.5`. No exception
+or audit suppression was added.
+
+The same refresh exposed critical `GHSA-pqg4-j6r4-53mv` through
+`concurrently@9.2.4` and its pinned `shell-quote@1.9.0`. The advisory fixes the
+range at `1.11.0`; the exact override uses `shell-quote@1.12.0`. The dependency
+remains build-only, but a patched release exists, so it is fixed rather than
+added to the exception list.

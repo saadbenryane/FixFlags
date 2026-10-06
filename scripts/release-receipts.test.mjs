@@ -5,7 +5,7 @@ import { chmodSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from '
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { REQUIRED_RELEASE_JOURNEYS } from './release-journeys.mjs'
-import { assertCleanReleaseCandidate, buildReceiptContext, expectedReleaseArtifactLabels, expectedReleaseCommandLabels, hydrateReleaseFixtureEnvironment, inspectPlaywrightJourneys, RELEASE_CLI_VERSION, releaseStageCommands, requireStageJourneys, runReleaseStage, validateFinalReceiptObjects } from './release-receipts.mjs'
+import { assertCleanReleaseCandidate, buildReceiptContext, expectedReleaseArtifactLabels, expectedReleaseCommandLabels, hydrateReleaseFixtureEnvironment, inspectPlaywrightJourneys, RELEASE_CLI_VERSION, releaseStageCommands, requireStageJourneys, runReleaseStage, validateFinalReceiptObjects, validateWatchLaunchEvidence } from './release-receipts.mjs'
 
 const SHA = 'a'.repeat(40)
 function temp() { return mkdtempSync(path.join(tmpdir(), 'fixflags-release-')) }
@@ -16,6 +16,7 @@ function baseEnv(overrides = {}) {
     RELEASE_ENV_API_KEY: 'ff_release_test',
     PRODUCTION_URL: 'https://fixflags.com',
     PRODUCTION_API_KEY: 'ff_production_test',
+    RELEASE_WATCH_READ_DATABASE_URL: 'postgresql://watch:read@watch-db.test/fixflags_production',
     ...overrides,
   }
 }
@@ -38,9 +39,39 @@ function receipt(stage, overrides = {}) {
     apiKeyIdentityHash: null,
     containerImageDigest: stage === 'foundation' ? `sha256:${'d'.repeat(64)}` : undefined,
     releaseEnvironmentRevision: stage === 'fixture-binding' ? SHA : undefined,
+    watchLaunchReadiness: stage === 'billing-open' ? passingWatchEvidence() : undefined,
     journeys: [],
     commands: expectedReleaseCommandLabels(stage).map((label) => ({ label, exitCode: 0, durationMs: 1 })),
     artifacts: expectedReleaseArtifactLabels(stage).map((label) => ({ label, sha256: 'c'.repeat(64) })),
+    ...overrides,
+  }
+}
+function passingWatchEvidence(overrides = {}) {
+  const passed = { status: 'passed', summary: 'Passed.' }
+  return {
+    schemaVersion: 1,
+    gitSha: SHA,
+    databaseIdentityHash: 'watch-db-hash',
+    status: 'passed',
+    asOf: '2026-10-06T00:00:00.000Z',
+    metrics: {
+      observationDays: 14,
+      scheduledExecutions: 100,
+      terminalCompletionRate: 99,
+      lostScheduledRuns: 0,
+      quietViolations: 0,
+      duplicateActiveFlagGroups: 0,
+      projectedDailyCareCostUsd: 12,
+    },
+    gates: {
+      sample: passed,
+      terminalCompletion: passed,
+      noLostRuns: passed,
+      notificationRecords: passed,
+      quietClear: passed,
+      flagDeduplication: passed,
+      economics: passed,
+    },
     ...overrides,
   }
 }
@@ -87,13 +118,41 @@ describe('release evidence receipts', () => {
 
   it('filters each browser stage to its owned web journeys and excludes parked stages', () => {
     const core = releaseStageCommands('credentialed-core')[0][2].at(-1)
-    const billing = releaseStageCommands('billing-open')[0][2].at(-1)
+    const billingCommands = releaseStageCommands('billing-open')
+    const billing = billingCommands.find(([label]) => label === 'credentialed-journeys')[2].at(-1)
     assert.match(core, /anonymous-claim/)
     assert.doesNotMatch(core, /billing-webhook-active/)
     assert.match(billing, /billing-webhook-active/)
+    assert.deepEqual(
+      billingCommands.map(([label]) => label),
+      ['watch-launch-readiness', 'credentialed-journeys'],
+    )
+    assert.deepEqual(
+      expectedReleaseArtifactLabels('billing-open'),
+      ['watch-launch-readiness', 'playwright-report'],
+    )
     assert.deepEqual(expectedReleaseCommandLabels('registry-cli'), [])
     assert.deepEqual(expectedReleaseArtifactLabels('registry-cli'), ['cli-registry-evidence', 'playwright-report'])
     assert.deepEqual(expectedReleaseCommandLabels('deployed'), ['deployment-attestation', 'deployed-smoke'])
+  })
+
+  it('binds paid-opening Watch evidence to the candidate, database, and every threshold', () => {
+    const context = { gitSha: SHA, watchDatabaseIdentityHash: 'watch-db-hash' }
+    assert.equal(validateWatchLaunchEvidence(passingWatchEvidence(), context).status, 'passed')
+    assert.throws(
+      () => validateWatchLaunchEvidence(passingWatchEvidence({ gitSha: 'b'.repeat(40) }), context),
+      /revision mismatch/,
+    )
+    assert.throws(
+      () => validateWatchLaunchEvidence(passingWatchEvidence({ status: 'collecting' }), context),
+      /is not passed/,
+    )
+    assert.throws(
+      () => validateWatchLaunchEvidence(passingWatchEvidence({
+        metrics: { ...passingWatchEvidence().metrics, scheduledExecutions: 99 },
+      }), context),
+      /thresholds/,
+    )
   })
 
   it('hydrates browser inputs from a private fixture manifest without exposing its values', () => {
@@ -150,6 +209,66 @@ describe('release evidence receipts', () => {
     assert.equal(value.status, 'PASS')
     assert.deepEqual(commandOrder, ['scripts/release-revision-attestation.mjs', 'tsx'])
     assert.equal(value.releaseEnvironmentRevision, SHA)
+  })
+
+  it('runs and preserves passing Watch evidence before the paid-open journey', () => {
+    const workingDirectory = temp()
+    const directory = path.join(workingDirectory, 'test-results', 'release', 'run-1')
+    mkdirSync(directory, { recursive: true })
+    const manifestPath = path.join(workingDirectory, 'fixtures.json')
+    const env = baseEnv({
+      RELEASE_FRESH_DATABASE_URL: 'postgresql://release:test@db.test/fixflags_release',
+      RELEASE_FIXTURE_MANIFEST: manifestPath,
+      E2E_ADMIN_EMAIL: 'admin@example.test',
+      E2E_ADMIN_PASSWORD: 'fixture',
+      E2E_GATE_MEMBER_RELEASED_ENTRY_ID: 'released-entry',
+      E2E_GATE_MEMBER_BLOCKED_ENTRY_ID: 'blocked-entry',
+      E2E_STRIPE_SECRET_KEY: 'sk_test_fixture',
+      E2E_PAID_OPEN_EXPECTED: 'true',
+    })
+    const context = buildReceiptContext('billing-open', env, { gitSha: SHA })
+    writeFileSync(manifestPath, JSON.stringify({
+      schemaVersion: 1,
+      runId: 'run-1',
+      gitSha: SHA,
+      targetOrigin: 'https://release.fixflags.test',
+      databaseIdentityHash: context.databaseIdentityHash,
+      fixtures: {},
+    }), { mode: 0o600 })
+    chmodSync(manifestPath, 0o600)
+
+    const commandOrder = []
+    const value = runReleaseStage('billing-open', env, {
+      workingDirectory,
+      gitSha: SHA,
+      repositoryStatus: '',
+      executor: (_executable, args, commandEnv) => {
+        if (args.includes('watch:launch-readiness')) {
+          commandOrder.push('watch-launch-readiness')
+          writeFileSync(
+            commandEnv.RELEASE_WATCH_READINESS_EVIDENCE_FILE,
+            JSON.stringify(passingWatchEvidence({
+              databaseIdentityHash: context.watchDatabaseIdentityHash,
+            })),
+          )
+        } else {
+          commandOrder.push('credentialed-journeys')
+          writeFileSync(
+            path.join(directory, 'playwright.json'),
+            JSON.stringify(report(['billing-webhook-active'])),
+          )
+        }
+        return { status: 0 }
+      },
+    })
+
+    assert.equal(value.status, 'PASS')
+    assert.deepEqual(commandOrder, ['watch-launch-readiness', 'credentialed-journeys'])
+    assert.equal(value.watchLaunchReadiness.status, 'passed')
+    assert.deepEqual(
+      value.artifacts.map((artifact) => artifact.label).sort(),
+      ['playwright-report', 'watch-launch-readiness'],
+    )
   })
 
   it('does not mint a customer release receipt for the parked registry CLI stage', () => {
@@ -272,6 +391,15 @@ describe('release evidence receipts', () => {
         : value,
     )
     assert.doesNotThrow(() => validateFinalReceiptObjects(separated, SHA))
+    assert.throws(
+      () => validateFinalReceiptObjects(
+        separated.map((value) => value.stage === 'billing-open'
+          ? { ...value, watchLaunchReadiness: undefined }
+          : value),
+        SHA,
+      ),
+      /no passing Watch launch evidence/,
+    )
     assert.throws(
       () => validateFinalReceiptObjects([...separated, { ...receipt('deployed'), targetOrigin: 'https://wrong-production.example' }], SHA),
       /duplicate stages/,

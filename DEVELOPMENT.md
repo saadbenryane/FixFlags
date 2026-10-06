@@ -71,7 +71,7 @@ consumers; restart the worker deliberately when worker code changes.
 | `npm run verify` | Full manifest: database checks, typecheck, source lint, guards, audits, tests, packaging, and builds |
 | `npm run verify:release` | Clean install, full manifest, browser journeys, Docker build, and deployed readiness probes |
 
-Release verification requires designated non-customer resources: `RELEASE_FRESH_DATABASE_URL`, `RELEASE_ALLOW_DATABASE_RESET=true`, `RELEASE_CONTAINER_ENV_FILE`, and `RELEASE_ENV_URL`.
+Release verification requires designated non-customer resources: `RELEASE_FRESH_DATABASE_URL`, `RELEASE_ALLOW_DATABASE_RESET=true`, `RELEASE_CONTAINER_ENV_FILE`, and `RELEASE_ENV_URL`. The paid-opening stage additionally requires `RELEASE_WATCH_READ_DATABASE_URL`, an operator-controlled read-only connection to production Watch evidence that must be distinct from the disposable release database.
 Credentialed fixtures and their manifest are permitted only in release-environment stages.
 The fixture-binding stage first requires `/api/health` to report the exact candidate SHA, then provisions fixtures.
 The production stage uses only `PRODUCTION_URL`; it never hydrates the release fixture manifest.

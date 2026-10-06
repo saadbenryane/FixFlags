@@ -198,6 +198,10 @@ export function releaseStageCommands(stage) {
   if (JOURNEYS_BY_STAGE[stage]) {
     const grep = (JOURNEYS_BY_STAGE[stage] ?? []).map((id) => `\\[journey:${id}\\]`).join('|')
     const journeyCommand = ['credentialed-journeys', 'npm', ['run', 'test:e2e:release', '--', '--grep', grep]]
+    if (stage === 'billing-open') return [
+      ['watch-launch-readiness', 'npm', ['run', 'watch:launch-readiness', '--', '--require-pass', '--release-gate']],
+      journeyCommand,
+    ]
     if (stage === 'registry-cli') return [
       ['registry-package', 'node', [
         'scripts/verify-cli-registry.mjs',
@@ -237,6 +241,7 @@ function fileHash(file) {
 
 export function expectedReleaseArtifactLabels(stage) {
   if (stage === 'fixture-binding') return ['release-env-revision', 'fixture-manifest']
+  if (stage === 'billing-open') return ['watch-launch-readiness', 'playwright-report']
   if (stage === 'registry-cli') return ['cli-registry-evidence', 'playwright-report']
   if (JOURNEYS_BY_STAGE[stage]) return ['playwright-report']
   if (stage === 'deployed') return ['deployment-attestation', 'smoke-evidence']
@@ -285,7 +290,48 @@ export function buildReceiptContext(stage, env, options = {}) {
   const apiKeyIdentityHash = apiKey
     ? createHash('sha256').update(apiKey).digest('hex')
     : null
-  return { gitSha, targetOrigin, databaseIdentityHash, apiKeyIdentityHash }
+  const watchDatabaseIdentityHash = stage === 'billing-open' && env.RELEASE_WATCH_READ_DATABASE_URL
+    ? createHash('sha256').update(canonicalDatabaseIdentity(env.RELEASE_WATCH_READ_DATABASE_URL)).digest('hex')
+    : null
+  return { gitSha, targetOrigin, databaseIdentityHash, apiKeyIdentityHash, watchDatabaseIdentityHash }
+}
+
+export function validateWatchLaunchEvidence(evidence, context) {
+  if (evidence?.schemaVersion !== 1) throw new Error('Watch launch evidence schema is unsupported')
+  if (evidence.gitSha !== context.gitSha) throw new Error('Watch launch evidence revision mismatch')
+  if (evidence.databaseIdentityHash !== context.watchDatabaseIdentityHash) {
+    throw new Error('Watch launch evidence database mismatch')
+  }
+  if (evidence.status !== 'passed') throw new Error('Watch launch evidence is not passed')
+  const gates = evidence.gates && typeof evidence.gates === 'object'
+    ? Object.values(evidence.gates)
+    : []
+  if (gates.length !== 7 || gates.some((gate) => gate?.status !== 'passed')) {
+    throw new Error('Watch launch evidence has incomplete gate proof')
+  }
+  const scheduledExecutions = evidence.metrics?.scheduledExecutions
+  const terminalCompletionRate = evidence.metrics?.terminalCompletionRate
+  const projectedDailyCareCostUsd = evidence.metrics?.projectedDailyCareCostUsd
+  if (
+    evidence.metrics?.observationDays !== 14 ||
+    !Number.isFinite(scheduledExecutions) ||
+    scheduledExecutions < 100 ||
+    !Number.isFinite(terminalCompletionRate) ||
+    terminalCompletionRate < 99 ||
+    evidence.metrics?.lostScheduledRuns !== 0 ||
+    evidence.metrics?.quietViolations !== 0 ||
+    evidence.metrics?.duplicateActiveFlagGroups !== 0 ||
+    !Number.isFinite(projectedDailyCareCostUsd) ||
+    projectedDailyCareCostUsd > 12
+  ) {
+    throw new Error('Watch launch evidence does not satisfy the paid-opening thresholds')
+  }
+  return {
+    status: evidence.status,
+    asOf: evidence.asOf,
+    metrics: evidence.metrics,
+    gates: evidence.gates,
+  }
 }
 
 export function runReleaseStage(stage, env = process.env, options = {}) {
@@ -336,6 +382,10 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
       receiptDirectory(env, workingDirectory),
       `${stage}-registry.json`,
     )
+    const watchReadinessEvidenceFile = path.join(
+      receiptDirectory(env, workingDirectory),
+      `${stage}-watch-readiness.json`,
+    )
     const targetEnv = RELEASE_ENV_STAGES.has(stage)
       ? {
           E2E_BASE_URL: env.RELEASE_ENV_URL,
@@ -358,6 +408,8 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
       RELEASE_DOGFOOD_EVIDENCE_FILE: dogfoodEvidenceFile,
       RELEASE_REVISION_EVIDENCE_FILE: revisionEvidenceFile,
       RELEASE_CLI_REGISTRY_EVIDENCE_FILE: cliRegistryEvidenceFile,
+      RELEASE_WATCH_READINESS_EVIDENCE_FILE: watchReadinessEvidenceFile,
+      RELEASE_WATCH_DATABASE_IDENTITY_HASH: context.watchDatabaseIdentityHash ?? '',
     }
     const executor = options.executor ?? ((executable, args, commandEnv) => spawnSync(executable, args, { cwd: workingDirectory, env: commandEnv, stdio: 'inherit' }))
     for (const [label, executable, args] of (options.commands ?? releaseStageCommands(stage))) {
@@ -469,6 +521,10 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
         gitSha: registry.gitSha,
       }
     }
+    if (stage === 'billing-open') {
+      const watchEvidence = JSON.parse(readFileSync(watchReadinessEvidenceFile, 'utf8'))
+      context.watchLaunchReadiness = validateWatchLaunchEvidence(watchEvidence, context)
+    }
     const artifactFiles = []
     if (stage === 'fixture-binding') {
       artifactFiles.push(['release-env-revision', revisionEvidenceFile])
@@ -476,6 +532,9 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
     }
     if (JOURNEYS_BY_STAGE[stage]) {
       artifactFiles.push(['playwright-report', playwrightReportPath(env, workingDirectory)])
+    }
+    if (stage === 'billing-open') {
+      artifactFiles.push(['watch-launch-readiness', watchReadinessEvidenceFile])
     }
     if (stage === 'registry-cli') {
       artifactFiles.push(['cli-registry-evidence', cliRegistryEvidenceFile])
@@ -543,6 +602,15 @@ export function validateFinalReceiptObjects(receipts, expectedGitSha) {
     }
     if (stage === 'foundation' && !/^sha256:[a-f0-9]{64}$/.test(receipt.containerImageDigest ?? '')) {
       throw new Error('foundation release receipt has no valid container image digest')
+    }
+    if (
+      stage === 'billing-open' &&
+      (
+        receipt.watchLaunchReadiness?.status !== 'passed' ||
+        Object.values(receipt.watchLaunchReadiness?.gates ?? {}).some((gate) => gate?.status !== 'passed')
+      )
+    ) {
+      throw new Error('billing-open release receipt has no passing Watch launch evidence')
     }
     if (stage === 'fixture-binding' && receipt.releaseEnvironmentRevision !== receipt.gitSha) {
       throw new Error('fixture-binding release receipt has no exact revision attestation')

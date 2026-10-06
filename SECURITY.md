@@ -64,6 +64,7 @@
 
 - Railway deployment. No direct SSH or DB access without Railway dashboard.
 - Database: PostgreSQL 16, accessible only within Railway network.
+- Paid-opening evidence may query production Watch records only through the operator-supplied `RELEASE_WATCH_READ_DATABASE_URL`. The release command starts a read-only transaction, serializes only aggregate metrics and a database identity hash, and refuses the disposable release database.
 - Redis: accessible only within Railway network.
 - No admin accounts in code — seeded via `npm run db:seed` with dev-only credentials.
 

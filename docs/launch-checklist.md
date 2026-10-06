@@ -27,7 +27,7 @@ npm run verify:release
 1. Foundation: clean install, disposable database migrations, full verification, image build, web and worker topology, and one real completed scan.
 2. Fixture binding: exact-revision remote release environment plus the private disposable fixture manifest.
 3. Credentialed core: signup, claim, Site return, Flag, Fix, Verify, Watch, notification return, support, and access boundaries.
-4. Billing open and billing closed: test-mode checkout, webhook transitions, portal, revocation, and waitlist behavior in both switch states.
+4. Billing open and billing closed: the open stage first requires passing SHA-bound Watch reliability/COGS evidence, then test-mode checkout, webhook transitions, portal, revocation, and waitlist behavior in both switch states.
 5. External providers: only integrations that are exposed to customers.
 6. Deployed proof: health and readiness on the exact candidate SHA, followed by final receipt validation.
 
@@ -42,6 +42,7 @@ Remote and credentialed stages additionally require:
 - `RELEASE_E2E_TARGET=remote`
 - `RELEASE_ENV_URL` serving the exact candidate revision
 - `RELEASE_FIXTURE_MANIFEST` containing disposable, non-production identities
+- `RELEASE_WATCH_READ_DATABASE_URL` for the `billing-open` stage, using an operator-controlled read-only role against durable production Watch evidence and never the disposable release database
 - the provider and sandbox credentials demanded by `scripts/release-preflight.mjs`
 
 Release stages fail closed when evidence or credentials are missing. Never replace a required probe with a skip.

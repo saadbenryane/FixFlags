@@ -61,6 +61,7 @@ export const CREDENTIALED_CORE_INPUTS = [
 export const BILLING_OPEN_INPUTS = [
   'RELEASE_ENV_URL',
   'RELEASE_FIXTURE_MANIFEST',
+  'RELEASE_WATCH_READ_DATABASE_URL',
   'E2E_ADMIN_EMAIL',
   'E2E_ADMIN_PASSWORD',
   'E2E_GATE_MEMBER_RELEASED_ENTRY_ID',
@@ -203,6 +204,23 @@ function validateProductionBinding(env, issues) {
   }
 }
 
+function validateWatchReadDatabase(env, issues) {
+  if (!env.RELEASE_WATCH_READ_DATABASE_URL) return
+  try {
+    const watchIdentity = canonicalDatabaseIdentity(env.RELEASE_WATCH_READ_DATABASE_URL)
+    if (
+      env.RELEASE_FRESH_DATABASE_URL &&
+      watchIdentity === canonicalDatabaseIdentity(env.RELEASE_FRESH_DATABASE_URL)
+    ) {
+      issues.push('RELEASE_WATCH_READ_DATABASE_URL must not identify the disposable release database')
+    }
+  } catch (error) {
+    issues.push(
+      `RELEASE_WATCH_READ_DATABASE_URL ${error instanceof Error ? error.message : 'must be valid'}`,
+    )
+  }
+}
+
 export function validateReleasePreflight(
   env,
   options = {}
@@ -230,6 +248,9 @@ export function validateReleasePreflight(
   }
   if (typedStage === 'billing-open' && env.E2E_PAID_OPEN_EXPECTED !== 'true') {
     issues.push('E2E_PAID_OPEN_EXPECTED must equal true for billing-open')
+  }
+  if (typedStage === 'billing-open') {
+    validateWatchReadDatabase(env, issues)
   }
   if (typedStage === 'billing-closed' && env.E2E_PAID_OPEN_EXPECTED !== 'false') {
     issues.push('E2E_PAID_OPEN_EXPECTED must equal false for billing-closed')

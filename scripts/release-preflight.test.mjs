@@ -8,6 +8,7 @@ function validEnv(overrides = {}) {
     RELEASE_ALLOW_DATABASE_RESET: 'true',
     RELEASE_E2E_TARGET: 'remote',
     RELEASE_FRESH_DATABASE_URL: 'postgresql://release:test@db.test/fixflags_release?sslmode=require',
+    RELEASE_WATCH_READ_DATABASE_URL: 'postgresql://watch:read@watch-db.test/fixflags_production?sslmode=require',
     RELEASE_CONTAINER_ENV_FILE: '/tmp/release-container.env',
     RELEASE_FIXTURE_MANIFEST: '/tmp/release-fixtures.json',
     RELEASE_ENV_URL: 'https://release.fixflags.test',
@@ -76,6 +77,23 @@ describe('release preflight contract', () => {
   it('rejects live Stripe keys in billing-open', () => {
     const issues = validateReleasePreflight(validEnv({ E2E_STRIPE_SECRET_KEY: 'sk_live_secret' }), { checkFile: false, stage: 'billing-open' })
     assert.ok(issues.some((issue) => issue.includes('test-mode')))
+  })
+
+  it('requires Watch evidence from a database distinct from the disposable release database', () => {
+    const missing = validateReleasePreflight(
+      validEnv({ RELEASE_WATCH_READ_DATABASE_URL: '' }),
+      { checkFile: false, stage: 'billing-open' },
+    )
+    assert.ok(missing.includes('Missing RELEASE_WATCH_READ_DATABASE_URL'))
+
+    const same = validateReleasePreflight(
+      validEnv({
+        RELEASE_WATCH_READ_DATABASE_URL:
+          'postgres://another:credential@db.test:5432/fixflags_release?schema=public',
+      }),
+      { checkFile: false, stage: 'billing-open' },
+    )
+    assert.ok(same.some((issue) => issue.includes('must not identify the disposable release database')))
   })
 
   it('binds paid-open and paid-closed billing stages to immutable opposite configs', () => {

@@ -301,15 +301,20 @@ export function calculateWatchLaunchReadiness(input: {
   }
 }
 
-export async function loadWatchLaunchReadiness(asOf = new Date()): Promise<WatchLaunchReadiness> {
+type WatchReadinessClient = Pick<typeof prisma, 'runRequest'>
+
+export async function loadWatchLaunchReadiness(
+  asOf = new Date(),
+  client: WatchReadinessClient = prisma,
+): Promise<WatchLaunchReadiness> {
   const windowStart = new Date(asOf.getTime() - OBSERVATION_DAYS * DAY_MS)
   const [firstRun, rows] = await Promise.all([
-    prisma.runRequest.findFirst({
+    client.runRequest.findFirst({
       where: { source: 'WATCH', requestedAt: { lte: asOf } },
       orderBy: { requestedAt: 'asc' },
       select: { requestedAt: true },
     }),
-    prisma.runRequest.findMany({
+    client.runRequest.findMany({
       where: { source: 'WATCH', requestedAt: { gte: windowStart, lte: asOf } },
       orderBy: { requestedAt: 'asc' },
       select: {

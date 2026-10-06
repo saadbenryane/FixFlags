@@ -81,7 +81,10 @@ absent. Unproven.
 Stays closed. Opening requires blocker B5 in the masterplan: reliability and cost
 evidence from real production Watch cycles. `DEV_SIMULATE_BILLING` exists for
 tests and is not production evidence. Do not set `STRIPE_PAID_OPEN` or
-`NEXT_PUBLIC_PAID_OPEN`.
+`NEXT_PUBLIC_PAID_OPEN`. The `billing-open` release stage runs
+`watch:launch-readiness -- --require-pass --release-gate` before its Stripe
+journey and records the SHA-bound Watch projection as a hashed release artifact.
+It cannot pass while any Watch gate is collecting, unavailable, or failed.
 
 ### 4. Cost and reliability evidence
 
@@ -97,7 +100,7 @@ tree changes mid-gate.
 
 ```bash
 npm run doctor
-npm run verify                 # 29 local checks
+npm run verify                 # full local manifest
 npm run verify:release         # foundation -> fixture-binding -> credentialed-core
                                # -> billing-open -> billing-closed -> external
                                # -> deployed
@@ -141,6 +144,13 @@ than a convenience.
 A second, unrelated owner is required by `tenant-isolation`; it uses
 `E2E_GATE_NON_MEMBER_EMAIL` / `E2E_GATE_NON_MEMBER_PASSWORD` and falls back to
 the existing `E2E_WATCH_*` probe account.
+
+`billing-open` also requires `RELEASE_WATCH_READ_DATABASE_URL`, an
+operator-controlled read-only PostgreSQL connection to the durable Watch cohort.
+It must not identify the disposable `RELEASE_FRESH_DATABASE_URL`. The gate opens
+a read-only transaction, writes no customer data, and stores only a database
+identity hash plus aggregate reliability/economics evidence in the receipt. The
+connection value is never serialized.
 
 ## Reporting a result honestly
 
