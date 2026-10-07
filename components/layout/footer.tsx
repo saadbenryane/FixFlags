@@ -5,12 +5,10 @@ import { FooterNewsletter } from '@/components/layout/FooterNewsletter'
 import { FooterThemeToggle } from '@/components/layout/FooterThemeToggle'
 import { CookiePreferencesButton } from '@/components/analytics/CookiePreferencesButton'
 import { Container } from '@/components/ui/container'
-import { BRAND, LANDING_PAGE } from '@/lib/marketing/copy'
+import { BRAND } from '@/lib/marketing/copy'
 import { FOOTER_COLUMNS, LEGAL_LINKS } from '@/lib/site/nav'
 
 export function Footer() {
-  const { tagline, madeWith } = LANDING_PAGE.footer
-
   return (
     <footer className="border-t border-border/45 bg-background">
       <Container
@@ -21,7 +19,7 @@ export function Footer() {
           <div className="col-span-2 space-y-4 lg:col-span-1">
             <Logo variant="lockup" size="lg" href="/" />
             <p className="max-w-[15rem] text-xs leading-[1.65] text-muted-foreground text-pretty">
-              {tagline}
+              {BRAND.tagline}
             </p>
           </div>
 
@@ -41,7 +39,7 @@ export function Footer() {
               © {new Date().getFullYear()} {BRAND.name}
             </p>
             <p className="text-2xs leading-relaxed text-muted-foreground">
-              {madeWith}
+              {BRAND.category}
             </p>
             <FooterThemeToggle />
             <CookiePreferencesButton className="min-h-11 text-2xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring" />
