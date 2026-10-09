@@ -39,7 +39,7 @@ export function HomepageHero({
     <div className={s.heroBoard} id="product">
       <div className={s.board} role="region" aria-label={C.boardAria}>
         <div className={s.boardHeader}>
-          <span><Globe2 size={16} aria-hidden="true" />{C.boardHost}</span>
+          <span><Globe2 size={16} aria-hidden="true" />{C.boardHost}<small className={s.boardSample}>{C.boardLabel}</small></span>
           <BoardStatus state="attention" label={C.boardSummary} count={4} onOpen={() => onOpen('site')} />
         </div>
         {connected.length > 0 ? <ul className={s.connectionRow} aria-label="Sample connections">
@@ -52,26 +52,28 @@ export function HomepageHero({
             <BoardCard
               name={C.site.label}
               status={C.site.status}
-              state="healthy"
+              state="problem"
               answer={C.site.answer}
               visual={{ src: HOMEPAGE_EVIDENCE.site, alt: C.site.imageAlt }}
               wide
               icon="site"
+              flags={[{ id: 'availability-flag', title: C.site.answer, href: '#monitoring' }]}
               sources={[SITE_BOARD_COPY.browserSource]}
               onOpen={() => onOpen('site')}
+              showFlagPreview
             />
             <BoardCard
               name={C.flag.name}
               status={C.flag.status}
               state="problem"
               answer={C.flag.title}
-              detail={C.flag.body}
               outcome={C.flag.outcome}
               action={C.flag.action}
               icon="conversion"
-              flags={[{ id: 'conversion-flag', title: C.flag.title, href: '#flag-example' }]}
+              flags={[...C.conversionFlags]}
               sources={[SITE_BOARD_COPY.browserSource]}
               onOpen={() => onOpen('conversion')}
+              showFlagPreview
             />
             {C.cards.map(card => <BoardCard
               key={card.id}
@@ -79,13 +81,13 @@ export function HomepageHero({
               status={card.status}
               state={card.tone === 'attention' ? 'attention' : 'healthy'}
               answer={card.value}
-              detail={card.detail}
               chart={card.chart}
               metric
               icon={card.id}
               flags={card.id === 'performance' ? [...C.performanceFlags] : undefined}
               sources={[SITE_BOARD_COPY.browserSource]}
               onOpen={() => onOpen(card)}
+              showFlagPreview
             />)}
             {extra.map(id => {
               const card = C.library[id]
@@ -95,10 +97,10 @@ export function HomepageHero({
                 status={card.status}
                 state="healthy"
                 answer={card.value}
-                detail={card.detail}
                 icon={id}
                 sources={[SITE_BOARD_COPY.browserSource]}
                 onOpen={() => onOpen(card)}
+                showFlagPreview
               />
             })}
             <button type="button" className="flex min-h-[164px] flex-col items-start justify-center gap-3 rounded-card border border-dashed border-border bg-transparent p-[18px] text-left hover:border-foreground/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setAddOpen(true)}>

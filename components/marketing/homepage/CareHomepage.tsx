@@ -9,7 +9,6 @@ import { HomepageHero, type HomepageDetailCard } from './HomepageHero'
 import {
   HomepageCoverageSection,
   HomepageFinalSection,
-  HomepageHandoffSection,
   HomepageIntegrationsSection,
   HomepageMonitoringSection,
   HomepageWorkflowSection,
@@ -24,10 +23,16 @@ type PreviewCard = (typeof C.cards)[number] | (typeof C.library)[keyof typeof C.
 
 export function CareHomepage() {
   const [selected, setSelected] = useState<HomepageDetailCard | null>(null)
-  const [showInstructions, setShowInstructions] = useState(false)
   const [copyResult, setCopyResult] = useState<HomepageCopyResult>(null)
   const dialogOpener = useRef<HTMLElement | null>(null)
   const selectedPreview = selected && selected !== 'site' && selected !== 'conversion' ? selected as PreviewCard : null
+  const selectedFlags = selected === 'site'
+    ? [{ id: 'availability-flag', title: C.site.answer, href: '#monitoring' }]
+    : selected === 'conversion'
+      ? C.conversionFlags
+      : selectedPreview?.id === 'performance'
+        ? C.performanceFlags
+        : []
 
   const openCard = (card: HomepageDetailCard) => {
     dialogOpener.current = document.activeElement as HTMLElement
@@ -43,22 +48,15 @@ export function CareHomepage() {
       setCopyResult({ source, message: C.actions.copied })
     } catch {
       setCopyResult({ source, message: C.actions.copyFailed })
-      setShowInstructions(true)
     }
   }
 
   return <div className={s.home}>
     <HomepageHero onOpen={openCard} />
-    <HomepageWorkflowSection onViewFlag={() => openCard('conversion')} />
-    <HomepageCoverageSection />
-    <HomepageHandoffSection
-      showInstructions={showInstructions}
-      copyResult={copyResult}
-      onToggleDetails={() => setShowInstructions(value => !value)}
-      onCopy={source => void copyFlag(source)}
-    />
-    <MarketingCompareSection />
     <HomepageMonitoringSection />
+    <HomepageWorkflowSection onViewFlag={() => openCard('conversion')} onCopy={source => void copyFlag(source)} copyResult={copyResult} />
+    <HomepageCoverageSection />
+    <MarketingCompareSection />
     <HomepageIntegrationsSection />
     <HomepageFinalSection />
 
@@ -67,10 +65,12 @@ export function CareHomepage() {
         <DialogTitle>{selected === 'site' ? C.site.label : selected === 'conversion' ? C.flag.name : selectedPreview?.name}</DialogTitle>
         <DialogDescription>{selected === 'site' ? C.site.question : selected === 'conversion' ? C.flag.question : selectedPreview?.question}</DialogDescription>
         {selected === 'site' ? <>
-          <p className={s.detailAnswer}>{C.site.answer}</p>
+          <p className={s.detailAnswer}>{C.site.status}</p>
+          <ul className={s.dialogFlagList} aria-label={C.details.flagsLabel}>{selectedFlags.map(flag => <li key={flag.id}>{flag.title}</li>)}</ul>
           <BoardDetails image={{ src: HOMEPAGE_EVIDENCE.site, alt: C.site.imageAlt }} checkedAt={C.exampleCheckedAt} sources={[SITE_BOARD_COPY.browserSource]} facts={C.site.facts} coverage={C.site.coverage} />
         </> : selected === 'conversion' ? <>
-          <p className={s.detailAnswer}>{C.flag.title}</p>
+          <p className={s.detailAnswer}>{C.flag.status}</p>
+          <ul className={s.dialogFlagList} aria-label={C.details.flagsLabel}>{selectedFlags.map(flag => <li key={flag.id}>{flag.title}</li>)}</ul>
           <p className={s.scope}>{C.flag.body}</p>
           <BoardDetails image={{ src: HOMEPAGE_EVIDENCE.failed, alt: C.flag.cropAlt }} checkedAt={C.exampleCheckedAt} sources={[SITE_BOARD_COPY.browserSource]} facts={C.flag.facts} coverage={C.workflow.source} />
           <div className={s.mcpActions}>
@@ -80,7 +80,8 @@ export function CareHomepage() {
           <p className={s.copyStatus} role="status">{copyResult?.source === 'ai' || copyResult?.source === 'share' ? copyResult.message : ''}</p>
           <a href="#flag-example" className={s.textLink} onClick={() => { dialogOpener.current = null; setSelected(null) }}>{C.flag.action}<ArrowRight size={17} aria-hidden="true" /></a>
         </> : selectedPreview ? <>
-          <p className={s.detailAnswer}>{selectedPreview.answer}</p>
+          <p className={s.detailAnswer}>{selectedFlags.length > 0 ? selectedPreview.status : selectedPreview.answer}</p>
+          {selectedFlags.length > 0 ? <ul className={s.dialogFlagList} aria-label={C.details.flagsLabel}>{selectedFlags.map(flag => <li key={flag.id}>{flag.title}</li>)}</ul> : null}
           <BoardDetails checkedAt={C.exampleCheckedAt} sources={[SITE_BOARD_COPY.browserSource]} facts={selectedPreview.facts} coverage={selectedPreview.coverage} />
         </> : null}
       </DialogContent>

@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { usePathname } from 'next/navigation'
 import { Footer } from '@/components/layout/footer'
 import { BRAND } from '@/lib/marketing/copy'
 
@@ -12,6 +13,8 @@ vi.mock('next/image', () => ({
     src: string
   }) => <span role="img" aria-label={alt} data-src={src} />,
 }))
+
+vi.mock('next/navigation', () => ({ usePathname: vi.fn(() => '/pricing') }))
 
 vi.mock('@/components/layout/FooterNewsletter', () => ({
   FooterNewsletter: () => <aside data-testid="footer-newsletter" />,
@@ -43,6 +46,13 @@ describe('Footer', () => {
     render(<Footer />)
 
     expect(screen.getByTestId('footer-newsletter')).toBeInTheDocument()
+  })
+
+  it('removes the competing newsletter conversion from the homepage only', () => {
+    vi.mocked(usePathname).mockReturnValue('/')
+    render(<Footer />)
+
+    expect(screen.queryByTestId('footer-newsletter')).not.toBeInTheDocument()
   })
 
   it('does not render legacy marketing copy', () => {

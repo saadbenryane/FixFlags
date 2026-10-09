@@ -133,7 +133,7 @@ export function Header({
             <nav
               className={cn(
                 'items-center',
-                isMarketing ? 'hidden justify-center gap-0 lg:flex' : 'hidden gap-0.5 md:flex'
+                isMarketing ? 'hidden justify-center gap-2 xl:gap-4 lg:flex' : 'hidden gap-0.5 md:flex'
               )}
             >
               {navLinks.map((link) => (
@@ -159,7 +159,7 @@ export function Header({
             </nav>
           ) : null}
 
-          <div className="flex min-w-0 items-center justify-end gap-1">
+          <div className="flex min-w-0 items-center justify-end gap-2">
             <div
               className={cn(
                 'items-center gap-0.5',

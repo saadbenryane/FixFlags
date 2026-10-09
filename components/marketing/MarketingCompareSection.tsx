@@ -1,54 +1,36 @@
 import { LandingSectionHeader } from "@/components/marketing/landing/LandingSectionHeader";
-import { RevealOnView } from "@/components/marketing/landing/RevealOnView";
 import { Container } from "@/components/ui/container";
 import { Section } from "@/components/ui/section";
 import { SITE_COMPARE } from "@/lib/marketing/copy";
-import { cn } from "@/lib/utils";
+import { ArrowUpRight, Check, X } from "lucide-react";
 
 type ColumnId = (typeof SITE_COMPARE.columns)[number]["id"];
 
-/**
- * Phones get a decision aid instead of the table. Each question leads with the
- * FixFlags answer, because that is the decision the reader is making, and keeps
- * the other two tools underneath as one honest comparison line. Nothing scrolls
- * sideways and no column is dropped.
- */
-function CompareDecisionAid() {
-  const copy = SITE_COMPARE;
-  const others = copy.columns.filter((col) => !("highlight" in col && col.highlight));
-  const primary = copy.columns.find((col) => "highlight" in col && col.highlight) ?? copy.columns[2];
+type CompareValue = (typeof SITE_COMPARE.rows)[number]["values"][ColumnId];
+
+function CompareMark({
+  product,
+  capability,
+  value,
+}: {
+  product: string;
+  capability: string;
+  value: CompareValue;
+}) {
+  const qualifier = "qualifier" in value ? value.qualifier : undefined;
+  const accessible = value.supported
+    ? `${product}: ${capability} supported${qualifier ? `, ${qualifier}` : ""}`
+    : `${product}: ${capability} not included`;
 
   return (
-    <ul
-      className="flex flex-col gap-3 md:hidden"
-      aria-label={copy.mobileLabel}
-    >
-      {copy.rows.map((row) => (
-        <li
-          key={row.id}
-          className="rounded-card border border-border/60 bg-background/80 p-4 shadow-card"
-        >
-          <p className="text-sm font-medium text-foreground text-pretty">
-            {row.question}
-          </p>
-          <p className="mt-2 text-sm font-semibold leading-snug text-brand text-pretty">
-            {row.values[primary.id as ColumnId]}
-          </p>
-          <dl className="mt-3 flex flex-col gap-1.5 border-t border-border/50 pt-3">
-            {others.map((col) => (
-              <div key={col.id} className="flex gap-2 text-xs leading-snug">
-                <dt className="shrink-0 font-medium text-muted-foreground">
-                  {col.label}
-                </dt>
-                <dd className="text-foreground text-pretty">
-                  {row.values[col.id as ColumnId]}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </li>
-      ))}
-    </ul>
+    <span className="inline-grid justify-items-center gap-1 text-center" aria-label={accessible}>
+      {value.supported ? (
+        <Check className="h-[18px] w-[18px] text-success" strokeWidth={2.25} aria-hidden="true" />
+      ) : (
+        <X className="h-[18px] w-[18px] text-muted-foreground/65" strokeWidth={1.8} aria-hidden="true" />
+      )}
+      {qualifier ? <small className="max-w-16 text-[9px] font-medium leading-tight text-muted-foreground sm:text-[10px]">{qualifier}</small> : null}
+    </span>
   );
 }
 
@@ -56,59 +38,45 @@ function CompareRows() {
   const copy = SITE_COMPARE;
 
   return (
-    <>
-      <CompareDecisionAid />
-      <div className="hidden overflow-hidden rounded-card border border-border/60 bg-background/80 shadow-card md:block">
-        <table className="w-full border-collapse text-left">
-          <caption className="sr-only">{copy.headline}</caption>
-          <thead>
-            <tr className="border-b border-border/60">
-              <th scope="col" className="w-[28%] px-5 py-4 text-xs font-medium uppercase tracking-label text-muted-foreground">
-                Question
+    <div className="overflow-hidden rounded-card border border-border/60 bg-background/80 shadow-card">
+      <table className="w-full table-fixed border-collapse text-left" aria-label={copy.mobileLabel}>
+        <caption className="sr-only">{copy.headline}</caption>
+        <colgroup>
+          <col className="w-[42%] sm:w-[36%]" />
+          {copy.columns.map(column => <col key={column.id} className="w-[14.5%] sm:w-[16%]" />)}
+        </colgroup>
+        <thead>
+          <tr className="border-b border-border/60">
+            <th scope="col" className="px-3 py-3 text-[10px] font-medium text-muted-foreground sm:px-5 sm:py-4 sm:text-xs">
+              {copy.capabilityLabel}
+            </th>
+            {copy.columns.map((col) => (
+              <th key={col.id} scope="col" className="px-1 py-2 text-center text-[10px] font-semibold leading-tight tracking-heading text-foreground sm:px-3 sm:py-4 sm:text-xs lg:text-sm">
+                <a href={col.source} aria-label={col.label} target={col.source.startsWith("http") ? "_blank" : undefined} rel={col.source.startsWith("http") ? "noopener noreferrer" : undefined} className="inline-flex min-h-11 items-center justify-center gap-1 hover:text-brand hover:underline">
+                  <span className="sm:hidden">{col.shortLabel}</span>
+                  <span className="hidden sm:inline">{col.label}</span>
+                  <ArrowUpRight className="hidden h-3 w-3 lg:block" aria-hidden="true" />
+                </a>
               </th>
-              {copy.columns.map((col) => {
-                const highlight = "highlight" in col && col.highlight;
-                return (
-                  <th
-                    key={col.id}
-                    scope="col"
-                    className={cn(
-                      "px-4 py-4 text-left text-sm font-semibold tracking-heading",
-                      highlight ? "bg-brand/[0.04] text-brand" : "text-foreground",
-                    )}
-                  >
-                    {col.label}
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {copy.rows.map((row) => (
-              <tr key={row.id} className="border-b border-border/50 last:border-b-0">
-                <th scope="row" className="px-5 py-4 text-left align-top text-sm font-medium text-foreground text-pretty">
-                  {row.question}
-                </th>
-                {copy.columns.map((col) => {
-                  const highlight = "highlight" in col && col.highlight;
-                  return (
-                    <td
-                      key={col.id}
-                      className={cn(
-                        "px-4 py-4 align-top text-sm leading-snug text-foreground text-pretty",
-                        highlight && "bg-brand/[0.04] font-medium",
-                      )}
-                    >
-                      {row.values[col.id as ColumnId]}
-                    </td>
-                  );
-                })}
-              </tr>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </>
+          </tr>
+        </thead>
+        <tbody>
+          {copy.rows.map((row) => (
+            <tr key={row.id} className="border-b border-border/50 last:border-b-0">
+              <th scope="row" className="px-3 py-3 text-left align-middle text-[11px] font-medium leading-snug text-foreground text-pretty sm:px-5 sm:py-4 sm:text-sm">
+                {row.capability}
+              </th>
+              {copy.columns.map((col) => (
+                <td key={col.id} className="px-1 py-3 text-center align-middle sm:px-3 sm:py-4">
+                  <CompareMark product={col.label} capability={row.capability} value={row.values[col.id as ColumnId]} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -117,26 +85,23 @@ function CompareBody() {
 
   return (
     <>
-      <RevealOnView>
-        <LandingSectionHeader
-          align="left"
-          label={copy.label}
-          headline={copy.headlineDisplay}
-          accentPeriod={copy.headlineAccentPeriod}
-          size="lg"
-          className="max-w-2xl"
-        />
-      </RevealOnView>
+      <LandingSectionHeader
+        align="left"
+        label={copy.label}
+        headline={copy.headlineDisplay}
+        accentPeriod={copy.headlineAccentPeriod}
+        size="lg"
+        className="max-w-2xl"
+      />
 
-      <RevealOnView className="mt-10">
+      <div className="mt-8 sm:mt-10">
         <CompareRows />
-      </RevealOnView>
+      </div>
 
-      <RevealOnView>
-        <p className="mt-6 max-w-2xl text-sm leading-relaxed text-muted-foreground text-pretty sm:text-base">
-          {copy.subline}
-        </p>
-      </RevealOnView>
+      <p className="mt-5 max-w-2xl text-xs leading-relaxed text-muted-foreground text-pretty sm:text-sm">
+        {copy.subline} {copy.legend}
+      </p>
+      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{copy.sourceNote}</p>
     </>
   );
 }

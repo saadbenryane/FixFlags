@@ -1,86 +1,56 @@
 'use client'
 
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useRef, useState } from 'react'
 import type { Route } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight, Check, ChevronRight, CircleCheck, Copy, Eye, Share2, Sparkles } from 'lucide-react'
+import { ArrowRight, Copy, Sparkles } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
-import { CARE_HOME as C, INTEGRATIONS_PAGE, type HomepageAudienceKey } from '@/lib/marketing/copy'
+import { CARE_HOME as C, INTEGRATIONS_PAGE } from '@/lib/marketing/copy'
 import { HOMEPAGE_EVIDENCE, HomepageIntro, HomepageUrlEntry, Signal } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
 
 export type HomepageCopySource = 'read' | 'share' | 'ai'
 export type HomepageCopyResult = { source: HomepageCopySource; message: string } | null
 
-const actionIcons = { read: Eye, share: Share2, ai: Sparkles }
-
-function useScrollStep<T extends HTMLElement>(dragging: RefObject<boolean>) {
-  const ref = useRef<T>(null)
-  const [activeStep, setActiveStep] = useState('flag')
-  const [reveal, setReveal] = useState(18)
-
-  useEffect(() => {
-    const node = ref.current
-    if (!node) return
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    let frame = 0
-    const update = () => {
-      frame = 0
-      const steps = Array.from(node.querySelectorAll<HTMLElement>('[data-step]'))
-      const readingLine = window.innerHeight * .42
-      let current = steps[0]
-      for (const step of steps) if (step.getBoundingClientRect().top <= readingLine) current = step
-      if (current?.dataset.step) setActiveStep(previous => previous === current?.dataset.step ? previous : current!.dataset.step!)
-      if (reduced || dragging.current) return
-      const first = steps[0]?.getBoundingClientRect()
-      const last = steps.at(-1)?.getBoundingClientRect()
-      if (!first || !last) return
-      const span = last.bottom - first.top
-      if (span < 24) return
-      const progress = Math.min(1, Math.max(0, (readingLine - first.top) / span))
-      setReveal(Math.round(progress * 100))
-    }
-    const schedule = () => { if (!frame) frame = requestAnimationFrame(update) }
-    update()
-    window.addEventListener('scroll', schedule, { passive: true })
-    window.addEventListener('resize', schedule)
-    return () => {
-      cancelAnimationFrame(frame)
-      window.removeEventListener('scroll', schedule)
-      window.removeEventListener('resize', schedule)
-    }
-  }, [dragging])
-
-  return { ref, activeStep, reveal, setReveal }
-}
-
-export function HomepageWorkflowSection({ onViewFlag }: { onViewFlag: () => void }) {
+export function HomepageWorkflowSection({
+  onViewFlag,
+  onCopy,
+  copyResult,
+}: {
+  onViewFlag: () => void
+  onCopy: (source: HomepageCopySource) => void
+  copyResult: HomepageCopyResult
+}) {
   const dragging = useRef(false)
   const frameRef = useRef<HTMLDivElement>(null)
-  const workflow = useScrollStep<HTMLElement>(dragging)
-  const verified = workflow.reveal >= 55
+  const [reveal, setReveal] = useState(18)
+  const verified = reveal >= 55
   const revealFromClientX = (clientX: number) => {
     const frame = frameRef.current
     if (!frame) return
     const rect = frame.getBoundingClientRect()
     const next = ((clientX - rect.left) / Math.max(rect.width, 1)) * 100
-    workflow.setReveal(Math.round(Math.min(100, Math.max(0, next))))
+    setReveal(Math.round(Math.min(100, Math.max(0, next))))
   }
 
   return <section
-    ref={workflow.ref}
     className={`${s.section} ${s.workflow}`}
     id="flag-example"
-    data-active-step={workflow.activeStep}
-    style={{ ['--workflow-reveal' as string]: `${workflow.reveal}%` }}
+    style={{ ['--workflow-reveal' as string]: `${reveal}%` }}
   >
     <HomepageIntro {...C.workflow} />
     <div className={s.workflowGrid}>
       <ol className={s.workflowSteps}>
-        {C.workflow.steps.map((item, index) => <li key={item.id} data-step={item.id} aria-current={workflow.activeStep === item.id ? 'step' : undefined}>
+        {C.workflow.steps.map((item, index) => <li key={item.id} data-step={item.id}>
           <span className={s.stepNumber}>0{index + 1}</span>
-          <div><p>{item.label}</p><h3>{item.title}</h3><span>{item.body}</span></div>
+          <div><p>{item.label}</p><h3>{item.title}</h3><span>{item.body}</span>
+            {item.id === 'fix' ? <div className={s.workflowActions}>
+              <button type="button" onClick={() => onCopy('share')}><Copy size={15} aria-hidden="true" />{C.actions.choices[1].action}</button>
+              <button type="button" onClick={() => onCopy('ai')}><Sparkles size={15} aria-hidden="true" />{C.actions.choices[2].action}</button>
+              <span role="status">{copyResult?.source === 'share' || copyResult?.source === 'ai' ? copyResult.message : ''}</span>
+            </div> : null}
+          </div>
         </li>)}
       </ol>
       <div className={s.evidenceStage}>
@@ -101,7 +71,7 @@ export function HomepageWorkflowSection({ onViewFlag }: { onViewFlag: () => void
               aria-label={C.workflow.compareLabel}
               aria-valuemin={0}
               aria-valuemax={100}
-              aria-valuenow={workflow.reveal}
+              aria-valuenow={reveal}
               aria-valuetext={verified ? C.workflow.passedTitle : C.workflow.failedTitle}
               onPointerDown={event => {
                 dragging.current = true
@@ -115,7 +85,7 @@ export function HomepageWorkflowSection({ onViewFlag }: { onViewFlag: () => void
                 const next = event.key === 'ArrowRight' ? 5 : event.key === 'ArrowLeft' ? -5 : event.key === 'Home' ? -100 : event.key === 'End' ? 100 : 0
                 if (!next && event.key !== 'Home' && event.key !== 'End') return
                 event.preventDefault()
-                workflow.setReveal(value => Math.min(100, Math.max(0, event.key === 'Home' ? 0 : event.key === 'End' ? 100 : value + next)))
+                setReveal(value => Math.min(100, Math.max(0, event.key === 'Home' ? 0 : event.key === 'End' ? 100 : value + next)))
               }}
             ><i /></button>
             <div className={s.flagDock}>
@@ -133,91 +103,31 @@ export function HomepageWorkflowSection({ onViewFlag }: { onViewFlag: () => void
 }
 
 export function HomepageCoverageSection() {
-  const [audience, setAudience] = useState<HomepageAudienceKey>('website')
-  const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
-  const active = C.coverage.audiences.find(item => item.id === audience) ?? C.coverage.audiences[0]
-
-  const selectFromKeyboard = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
-    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
-    event.preventDefault()
-    const last = C.coverage.audiences.length - 1
-    const next = event.key === 'Home' ? 0 : event.key === 'End' ? last : event.key === 'ArrowRight' ? (index + 1) % (last + 1) : (index - 1 + last + 1) % (last + 1)
-    const nextAudience = C.coverage.audiences[next]
-    setAudience(nextAudience.id)
-    tabRefs.current[next]?.focus()
-  }
-
   return <section className={`${s.section} ${s.coverage}`}>
     <HomepageIntro {...C.coverage} />
-    <div className={s.coverageCard}>
-      <div className={s.audienceTabs} role="tablist" aria-label={C.coverage.label}>
-        {C.coverage.audiences.map((item, index) => <button
-          key={item.id}
-          ref={node => { tabRefs.current[index] = node }}
-          id={`coverage-tab-${item.id}`}
-          type="button"
-          role="tab"
-          aria-selected={audience === item.id}
-          aria-controls={`coverage-panel-${item.id}`}
-          tabIndex={audience === item.id ? 0 : -1}
-          onClick={() => setAudience(item.id)}
-          onKeyDown={event => selectFromKeyboard(event, index)}
-        >{item.label}</button>)}
-      </div>
-      <div className={s.coveragePanel} id={`coverage-panel-${active.id}`} role="tabpanel" aria-labelledby={`coverage-tab-${active.id}`}>
-        <p>{active.summary}</p>
-        <ul>{active.items.map(item => <li key={item}><Check size={16} aria-hidden="true" />{item}</li>)}</ul>
-        {'boundary' in active && active.boundary ? <p className={s.coverageBoundary}>{active.boundary}</p> : null}
-      </div>
+    <div className={s.coverageGrid}>
+      {C.coverage.audiences.map(item => <article key={item.id} className={s.coverageCard}>
+          <p className={s.coverageType}>{item.label}</p>
+          <h3>{item.question}</h3>
+          <p className={s.coverageOutcome}>{item.monitored}</p>
+        </article>)}
     </div>
-  </section>
-}
-
-export function HomepageHandoffSection({
-  showInstructions,
-  copyResult,
-  onToggleDetails,
-  onCopy,
-}: {
-  showInstructions: boolean
-  copyResult: HomepageCopyResult
-  onToggleDetails: () => void
-  onCopy: (source: HomepageCopySource) => void
-}) {
-  return <section className={`${s.section} ${s.actions}`}>
-    <HomepageIntro label={C.actions.label} title={C.actions.title} body={C.actions.body} />
-    <div className={s.actionWorkbench}>
-      <article className={s.fixPacket}>
-        <div className={s.fixPacketTop}><Signal tone="bad">{C.workflow.failedLabel}</Signal><span>{C.workflow.page}</span></div>
-        <h3>{C.flag.title}</h3>
-        <p>{C.flag.body}</p>
-        <dl>{C.actions.packet.map(item => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}</dl>
-      </article>
-      <div className={s.actionRoutes}>{C.actions.choices.map(choice => {
-        const Icon = actionIcons[choice.id]
-        const source = choice.id as HomepageCopySource
-        return <article key={choice.id}>
-          <span className={s.actionIcon}><Icon size={20} strokeWidth={1.7} aria-hidden="true" /></span>
-          <div><h3>{choice.title}</h3><p>{choice.body}</p></div>
-          {choice.id === 'read'
-            ? <button aria-expanded={showInstructions} aria-controls="flag-details" onClick={onToggleDetails}>{showInstructions ? C.actions.hide : choice.action}<ChevronRight size={16} aria-hidden="true" /></button>
-            : <button onClick={() => onCopy(source)}><Copy size={15} aria-hidden="true" />{choice.action}</button>}
-          <p className={s.copyStatus} role="status">{copyResult?.source === source ? copyResult.message : ''}</p>
-        </article>
-      })}</div>
+    <div className={s.coverageShared}>
+      <p><span>{C.coverage.analysisLabel}</span>{C.coverage.analysis.join(' · ')}</p>
+      <p className={s.coverageBoundary}>{C.coverage.boundary}</p>
     </div>
-    <div id="flag-details" hidden={!showInstructions} className={s.expandedInstructions}><p>{C.workflow.instructions}</p></div>
-    <p className={s.verifyLine}><CircleCheck size={18} aria-hidden="true" />{C.actions.verify}</p>
   </section>
 }
 
 export function HomepageMonitoringSection() {
-  return <section className={`${s.section} ${s.quiet}`}>
-    <HomepageIntro title={C.quiet.title} body={C.quiet.body} />
-    <div className={s.notificationStack}>
-      {C.quiet.notifications.map((item, index) => <article key={item.title} className={`${s.notification} ${s[`notification${index}`]}`}>
-        <div className={s.notificationTop}><Logo variant="mark" size="sm" /><b>{C.brand}</b><span>{item.time}</span></div>
-        <Signal tone={item.tone}>{item.status}</Signal><h3>{item.title}</h3><p>{item.detail}</p>
+  return <section className={`${s.section} ${s.monitoring}`} id="monitoring">
+    <div>
+      <HomepageIntro label={C.monitoring.label} title={C.monitoring.title} body={C.monitoring.body} />
+    </div>
+    <div className={s.notificationStack} aria-label="Illustrative monitoring notifications">
+      {C.monitoring.notifications.map((item, index) => <article key={item.title} className={`${s.notification} ${s[`notification${index}`]}`}>
+        <div className={s.notificationTop}><Signal tone={item.tone}>{item.status}</Signal><span>{item.time}</span></div>
+        <h3>{item.title}</h3><p>{item.detail}</p>
       </article>)}
     </div>
   </section>
@@ -226,13 +136,15 @@ export function HomepageMonitoringSection() {
 export function HomepageIntegrationsSection() {
   return <section className={`${s.section} ${s.integrations}`}>
     <HomepageIntro label={C.integrations.label} title={C.integrations.title} body={C.integrations.body} />
-    <div className={s.integrationGrid}>
-      {INTEGRATIONS_PAGE.items.map(item => <article key={item.id}>
-        <h3>{item.title}</h3>
-        <p>{item.summary}</p>
-        <span>{item.limit}</span>
-        <Link href={item.href as Route}>{item.action}<ArrowRight size={16} aria-hidden="true" /></Link>
-      </article>)}
+    <div className={s.orbitalField}>
+      <Image src="/marketing/visuals/integrations-orbital-field-v1.webp" alt="" fill sizes="(max-width: 767px) 100vw, 1120px" className={s.orbitalBackdrop} />
+      <div className={s.orbitalCenter}><Logo variant="mark" size="lg" /><span>FixFlags</span><small>Live Site outcomes</small></div>
+      <div className={s.integrationOrbit}>
+        {INTEGRATIONS_PAGE.items.map(item => <Link key={item.id} href={item.href as Route} className={s.integrationNode} data-integration={item.id}>
+          <span className={s.integrationLogo}><Image src={item.logo} alt={`${item.title} logo`} width={28} height={28} /></span>
+          <span><strong>{item.title}</strong><small>{item.purpose}</small></span>
+        </Link>)}
+      </div>
     </div>
     <Link href={'/integrations' as Route} className={s.integrationLink}>{C.integrations.action}<ArrowRight size={16} aria-hidden="true" /></Link>
   </section>

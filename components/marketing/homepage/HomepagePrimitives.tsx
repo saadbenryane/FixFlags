@@ -1,3 +1,6 @@
+'use client'
+
+import { useEffect } from 'react'
 import { AuditInput } from '@/components/audit/AuditInput'
 import { CARE_HOME as C } from '@/lib/marketing/copy'
 import s from './CareHomepage.module.css'
@@ -17,7 +20,22 @@ export function HomepageIntro({ label, title, body }: { label?: string; title: s
 }
 
 export function HomepageUrlEntry({ final = false }: { final?: boolean }) {
-  return <div className={s.entry} id={final ? undefined : 'audit'}>
+  useEffect(() => {
+    if (final) return
+    const focusFromHash = () => {
+      if (window.location.hash !== '#analyze') return
+      const field = document.getElementById('audit-url-care-hero') as HTMLInputElement | null
+      if (!field) return
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      field.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' })
+      window.requestAnimationFrame(() => field.focus({ preventScroll: true }))
+    }
+    focusFromHash()
+    window.addEventListener('hashchange', focusFromHash)
+    return () => window.removeEventListener('hashchange', focusFromHash)
+  }, [final])
+
+  return <div className={s.entry} id={final ? undefined : 'analyze'}>
     <AuditInput variant="landing" idSuffix={final ? '-care-final' : '-care-hero'} ctaPlacement={final ? 'final' : 'hero'} showLandingExtras={false} submitLabel={C.hero.cta} urlPlaceholder={C.hero.placeholder} />
     <p className={s.trust}>{C.hero.trust}</p>
   </div>

@@ -8,6 +8,8 @@ export const INTEGRATIONS_PAGE = {
     {
       id: 'shopify',
       title: 'Shopify',
+      logo: '/brand/integrations/shopify.svg',
+      purpose: 'Store context',
       summary: 'Store context and the product-to-checkout journey.',
       body: 'Adds the store and an independent walk from the product to checkout, on the same Site.',
       limit: 'A Flag can show that customers cannot buy.',
@@ -17,6 +19,8 @@ export const INTEGRATIONS_PAGE = {
     {
       id: 'analytics',
       title: 'Analytics',
+      logo: '/brand/integrations/google-analytics.svg',
+      purpose: 'Audience context',
       summary: 'Audience context for the watched pages people open.',
       body: 'Shows which watched pages people open. The counts sit beside the Flag.',
       limit: 'Session counts do not decide Clear.',
@@ -26,6 +30,8 @@ export const INTEGRATIONS_PAGE = {
     {
       id: 'search-console',
       title: 'Search Console',
+      logo: '/brand/integrations/google-search-console.svg',
+      purpose: 'Search context',
       summary: 'Search context for pages earning impressions.',
       body: 'Shows the queries and pages that earn impressions, next to the check FixFlags already ran.',
       limit: 'Search numbers do not decide Clear.',
@@ -35,6 +41,8 @@ export const INTEGRATIONS_PAGE = {
     {
       id: 'github',
       title: 'GitHub',
+      logo: '/brand/integrations/github.svg',
+      purpose: 'Flag handoff',
       summary: 'Send an evidence-backed Flag to the agent working in the repository.',
       body: 'Sign in with GitHub. Send the Flag, with the page and the proof, to the agent working in the repository.',
       limit: 'FixFlags does not scan the repository or edit the code.',

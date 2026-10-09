@@ -11,10 +11,10 @@ for (const width of [375, 390, 1086, 1144]) {
       page.getByRole('heading', { level: 1, name: /Your software runs\.\s*FixFlags watches\./i })
     ).toBeVisible()
     await expect(
-      page.getByText('Independently know whether the important outcomes on your live website still work.', { exact: true }).first()
+      page.getByText('Know when your website is down, Checkout stops working, or Signup breaks. FixFlags checks the live experience and raises a Flag with what failed.', { exact: true }).first()
     ).toBeVisible()
     await expect(
-      page.getByRole('heading', { name: /A score and a prompt still leave it unwatched/ })
+      page.getByRole('heading', { name: /Different tools watch different layers/ })
     ).toBeAttached()
 
     const geometry = await page.evaluate(() => ({
@@ -37,11 +37,34 @@ test('homepage navigation and mobile menu use their real destinations', async ({
   const integrations = page.getByRole('navigation').getByRole('link', { name: 'Integrations', exact: true }).first()
   await expect(integrations).toHaveAttribute('href', '/integrations')
 
+  const analyze = page.getByRole('link', { name: 'Analyze', exact: true }).first()
+  await expect(analyze).toHaveAttribute('href', '/#analyze')
+  await analyze.click()
+  await expect(page.getByRole('textbox', { name: 'Website URL' }).first()).toBeFocused()
+
   await page.setViewportSize({ width: 375, height: 812 })
   await page.getByRole('button', { name: 'Open menu' }).click()
   await expect(
     page.getByRole('dialog').getByRole('link', { name: 'Product' })
   ).toBeVisible()
+  await expect(page.getByRole('dialog').getByRole('link', { name: 'Analyze' })).toHaveAttribute('href', '/#analyze')
+})
+
+test('homepage exposes three outcome cards and four monitoring states', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+
+  await expect(page.getByRole('heading', { name: 'Is the site reachable?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Can customers buy?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Can people sign up?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Website is down' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Checkout stopped working' }).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Signup no longer completes' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Checkout works again' })).toBeVisible()
+  await expect(page.getByRole('tablist')).toHaveCount(0)
+
+  const height = await page.evaluate(() => document.documentElement.scrollHeight)
+  expect(height).toBeLessThanOrEqual(7900)
 })
 
 test('homepage controls keep practical hit targets and reduced motion', async ({ page }) => {

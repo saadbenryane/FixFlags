@@ -41,6 +41,58 @@ describe('BoardCard chrome', () => {
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
+  it('renders the opt-in homepage Flag preview without duplicating the count', () => {
+    render(
+      <BoardCard
+        name="Conversion"
+        status="5 Flags"
+        state="problem"
+        answer="Checkout stopped working"
+        icon="conversion"
+        flags={Array.from({ length: 5 }, (_, index) => ({ id: `flag-${index}`, title: `Flag ${index + 1}`, href: `#flag-${index}` }))}
+        onOpen={() => undefined}
+        showFlagPreview
+      />
+    )
+
+    expect(screen.getByText('5 Flags')).toBeInTheDocument()
+    expect(screen.getAllByText('5 Flags')).toHaveLength(1)
+    expect(screen.getByText('Flag 1')).toBeInTheDocument()
+    expect(screen.getByText('Flag 2')).toBeInTheDocument()
+    expect(screen.queryByText('Flag 3')).not.toBeInTheDocument()
+    expect(screen.getByText('+3 more')).toBeInTheDocument()
+  })
+
+  it('shows up to three Flag titles and uses Clear instead of 0 Flags', () => {
+    const { rerender } = render(
+      <BoardCard
+        name="Pages"
+        status="3 Flags"
+        state="problem"
+        answer="Pages have Flags"
+        icon="site"
+        flags={Array.from({ length: 3 }, (_, index) => ({ id: `flag-${index}`, title: `Page Flag ${index + 1}`, href: `#flag-${index}` }))}
+        onOpen={() => undefined}
+        showFlagPreview
+      />
+    )
+    expect(screen.getByText('Page Flag 3')).toBeInTheDocument()
+
+    rerender(
+      <BoardCard
+        name="Security"
+        status="Clear"
+        state="healthy"
+        answer="HTTPS protections checked"
+        icon="security"
+        onOpen={() => undefined}
+        showFlagPreview
+      />
+    )
+    expect(screen.getByText('Clear')).toBeInTheDocument()
+    expect(screen.queryByText('0 Flags')).not.toBeInTheDocument()
+  })
+
   it('keeps the overview concise without modifying the underlying finding', () => {
     const title = 'Primary CTA is hidden below the fold on mobile'
     const card: BoardCardView = {

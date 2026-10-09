@@ -79,8 +79,10 @@ describe('homepage conversion story', () => {
     const board = screen.getByRole('region', { name: C.boardAria })
     expect([C.site.label, C.flag.name, ...C.cards.map(card => card.name)]).toEqual(starterBoardNames())
     expect(within(board).getByRole('button', { name: C.boardSummary })).toHaveTextContent('4')
-    expect(within(board).getByRole('button', { name: `Open ${C.flag.name}` })).toHaveTextContent('1 Flag')
-    expect(within(board).getByRole('button', { name: 'Open Performance' })).toHaveTextContent('3 Flags')
+    expect(within(board).getByRole('button', { name: `Open ${C.site.label}` })).toHaveTextContent('1 Flag')
+    expect(within(board).getByRole('button', { name: `Open ${C.flag.name}` })).toHaveTextContent('2 Flags')
+    expect(within(board).getByRole('button', { name: 'Open Performance' })).toHaveTextContent('1 Flag')
+    expect(within(board).getByText(C.boardLabel)).toBeInTheDocument()
     expect(within(board).getByText(C.flag.title)).toBeInTheDocument()
     expect(within(board).queryByRole('button', { name: /Checkout: Flag/ })).not.toBeInTheDocument()
     expect(within(board).queryByText(/contact/i)).not.toBeInTheDocument()
@@ -110,20 +112,17 @@ describe('homepage conversion story', () => {
     await waitFor(() => expect(card).toHaveFocus())
   })
 
-  it('defaults coverage to Website and switches examples without changing modes', () => {
+  it('shows all three monitored-outcome cards without hiding them behind tabs', () => {
     render(<CareHomepage />)
-    const website = screen.getByRole('tab', { name: 'Website' })
-    const store = screen.getByRole('tab', { name: 'Store' })
-    expect(website).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByText(C.coverage.audiences[0].items[0])).toBeInTheDocument()
-    fireEvent.click(store)
-    expect(store).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByText(C.coverage.audiences[1].items[1])).toBeInTheDocument()
-    expect(screen.queryByText(C.coverage.audiences[0].items[0])).not.toBeInTheDocument()
+    for (const audience of C.coverage.audiences) {
+      expect(screen.getByRole('heading', { name: audience.question })).toBeInTheDocument()
+      expect(screen.getByText(audience.monitored)).toBeInTheDocument()
+    }
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
   })
 
   it('keeps public Outcome claims aligned with the executable monitoring contract', () => {
-    const claims = C.coverage.audiences.flatMap((audience) => audience.items).join(' · ')
+    const claims = C.coverage.audiences.map((audience) => `${audience.question} ${audience.monitored}`).join(' · ')
     const watchable = new Set(watchableOutcomeKinds())
     const claimPatterns = {
       CHECKOUT: /(?:checkout|purchase flow)/i,
@@ -139,28 +138,22 @@ describe('homepage conversion story', () => {
     expect(claims).not.toMatch(/forms? submit|core actions complete|success states appear/i)
 
     render(<CareHomepage />)
-    fireEvent.click(screen.getByRole('tab', { name: 'Web app' }))
-    expect(screen.getByText('Safe Signup requires your synthetic data plus same-origin reset and cleanup hooks. Login and password reset are not monitored yet.')).toBeVisible()
+    expect(screen.getByText(C.coverage.audiences[2].boundary)).toBeVisible()
   })
 
-  it('supports arrow, Home, and End keys across audience tabs', () => {
+  it('keeps each audience and monitored outcome visible in the document order', () => {
     render(<CareHomepage />)
-    const website = screen.getByRole('tab', { name: 'Website' })
-    website.focus()
-    fireEvent.keyDown(website, { key: 'ArrowRight' })
-    expect(screen.getByRole('tab', { name: 'Store' })).toHaveFocus()
-    fireEvent.keyDown(screen.getByRole('tab', { name: 'Store' }), { key: 'End' })
-    expect(screen.getByRole('tab', { name: 'Web app' })).toHaveFocus()
-    fireEvent.keyDown(screen.getByRole('tab', { name: 'Web app' }), { key: 'Home' })
-    expect(website).toHaveFocus()
+    const headings = C.coverage.audiences.map(item => screen.getByRole('heading', { name: item.question }))
+    expect(headings[0].compareDocumentPosition(headings[1]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(headings[1].compareDocumentPosition(headings[2]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('presents optional detail, teammate, and AI handoff routes', () => {
+  it('keeps teammate and AI handoff actions inside the Fix step', () => {
     render(<CareHomepage />)
-    for (const choice of C.actions.choices) expect(screen.getByRole('heading', { name: choice.title })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: C.actions.choices[0].action }))
-    expect(screen.getByText(C.workflow.instructions)).toBeVisible()
-    expect(screen.getByText(C.actions.verify)).toBeInTheDocument()
+    const fixStep = screen.getByRole('heading', { name: C.workflow.steps[1].title }).closest('li')!
+    expect(within(fixStep).getByRole('button', { name: C.actions.choices[1].action })).toBeInTheDocument()
+    expect(within(fixStep).getByRole('button', { name: C.actions.choices[2].action })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: C.actions.title })).not.toBeInTheDocument()
   })
 
   it('copies the same evidence-backed Flag for a teammate or coding AI', async () => {
@@ -172,28 +165,27 @@ describe('homepage conversion story', () => {
     expect(writeText).toHaveBeenCalledWith(C.workflow.instructions)
   })
 
-  it('opens the details when clipboard access fails', async () => {
+  it('explains how to recover when clipboard access fails', async () => {
     const writeText = vi.fn().mockRejectedValue(new Error('Clipboard unavailable'))
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     render(<CareHomepage />)
     fireEvent.click(screen.getByRole('button', { name: C.actions.choices[2].action }))
     expect(await screen.findByText(C.actions.copyFailed)).toBeInTheDocument()
-    expect(screen.getByText(C.workflow.instructions)).toBeVisible()
   })
 
-  it('shows two meaningful monitoring notifications', () => {
+  it('shows three named Flags and one verified recovery', () => {
     render(<CareHomepage />)
-    for (const item of C.quiet.notifications) expect(screen.getAllByText(item.title).length).toBeGreaterThan(0)
-    expect(C.quiet.notifications).toHaveLength(2)
+    for (const item of C.monitoring.notifications) expect(screen.getAllByText(item.title).length).toBeGreaterThan(0)
+    expect(C.monitoring.notifications.filter(item => item.tone === 'bad')).toHaveLength(3)
+    expect(C.monitoring.notifications.filter(item => item.tone === 'good')).toHaveLength(1)
   })
 
   it('links each integration to a real destination', () => {
     render(<CareHomepage />)
     expect(screen.getByRole('link', { name: /See how each one connects/i })).toHaveAttribute('href', '/integrations')
-    expect(screen.getByRole('link', { name: /Connect Shopify/i })).toHaveAttribute('href', '/install')
-    const search = screen.getByRole('heading', { name: 'Search Console' }).closest('article')!
-    expect(within(search).getByRole('link')).toHaveAttribute('href', '/integrations#search-console')
-    expect(screen.getByRole('link', { name: /Sign in with GitHub/i })).toHaveAttribute('href', '/sign-in')
+    expect(screen.getByRole('link', { name: /Shopify/i })).toHaveAttribute('href', '/install')
+    expect(screen.getByRole('link', { name: /Search Console/i })).toHaveAttribute('href', '/integrations#search-console')
+    expect(screen.getByRole('link', { name: /GitHub/i })).toHaveAttribute('href', '/sign-in')
     expect(screen.queryByText(/Coming later/i)).not.toBeInTheDocument()
   })
 
@@ -220,5 +212,6 @@ describe('homepage conversion story', () => {
     expect(container.textContent).not.toMatch(/One Flag\. Ready|Fix it yourself|Needs attention|Fresh check passed/i)
     expect(container.textContent).not.toMatch(/Connect MCP|MCP (watches|monitors)|real visitor failures|paid traffic/i)
     expect(container.textContent).not.toMatch(/controlled example|not a live assessment|testimonial|customers saved/i)
+    expect(container.textContent).not.toMatch(/The proof is ready|Safe Form fixture|An important outcome changed|Evidence and the next step are ready|PageSpeed Insights|An agent you ask/i)
   })
 })

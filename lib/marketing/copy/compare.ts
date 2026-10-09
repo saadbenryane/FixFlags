@@ -1,66 +1,70 @@
-/**
- * Owner revision 2026-09-24.
- * Cells are phrases. A speed score and an agent must not add up to FixFlags.
- * Shared by the Care homepage and pricing through MarketingCompareSection.
- */
+/** Category comparison verified against the vendors' official product pages. */
 export const SITE_COMPARE = {
-  label: "Compare",
-  headlineDisplay: "A score and a prompt still leave it unwatched",
+  label: 'Compare',
+  headlineDisplay: 'Different tools watch different layers',
   headlineAccentPeriod: true,
-  headline: "A score and a prompt still leave it unwatched.",
-  mobileLabel: "What each tool can tell you, and what FixFlags adds.",
-  subline:
-    "PageSpeed times a page. An agent answers what you remember to ask. Use both, and the live site is still waiting for you to look. FixFlags keeps watch and proves a fix with a fresh check.",
+  headline: 'Different tools watch different layers.',
+  mobileLabel: 'How SonarQube, UptimeRobot, Datadog Synthetic Monitoring, and FixFlags differ.',
+  capabilityLabel: 'Capability',
+  subline: 'Use the right tool for the failure you need to catch.',
+  legend: 'Check means supported in the scoped product. X means it is not part of that product.',
+  sourceNote: 'Official product descriptions checked October 9, 2026.',
   columns: [
-    { id: "psi", label: "PageSpeed Insights" },
-    { id: "agent", label: "An agent you ask" },
-    { id: "fixflags", label: "FixFlags", highlight: true },
+    { id: 'sonarqube', label: 'SonarQube', shortLabel: 'Sonar', source: 'https://www.sonarsource.com/products/sonarqube/' },
+    { id: 'uptimerobot', label: 'UptimeRobot', shortLabel: 'Uptime', source: 'https://uptimerobot.com/website-monitoring/' },
+    { id: 'datadog', label: 'Datadog Synthetics', shortLabel: 'Datadog', source: 'https://docs.datadoghq.com/synthetics/browser_tests/' },
+    { id: 'fixflags', label: 'FixFlags', shortLabel: 'FixFlags', source: '/how-it-works' },
   ] as const,
   rows: [
     {
-      id: "speed",
-      question: "Is this page slow right now?",
+      id: 'code-analysis',
+      capability: 'Static code analysis',
       values: {
-        psi: "A lab score for that URL",
-        agent: "Only if you ask, and it may guess",
-        fixflags: "Measured on the live site",
+        sonarqube: { supported: true },
+        uptimerobot: { supported: false },
+        datadog: { supported: false },
+        fixflags: { supported: false },
       },
     },
     {
-      id: "tomorrow",
-      question: "Will you know if checkout breaks next week?",
+      id: 'availability',
+      capability: 'Public URL availability',
       values: {
-        psi: "Only if someone runs it again",
-        agent: "Only if someone asks again",
-        fixflags: "Watch raises a Flag",
+        sonarqube: { supported: false },
+        uptimerobot: { supported: true },
+        datadog: { supported: true },
+        fixflags: { supported: true },
       },
     },
     {
-      id: "fixed",
-      question: "Who decides the fix worked?",
+      id: 'checkout',
+      capability: 'Browser checkout journey',
       values: {
-        psi: "A new score does not retry the purchase",
-        agent: "Often the same agent that made the change",
-        fixflags: "A fresh, independent check",
+        sonarqube: { supported: false },
+        uptimerobot: { supported: false },
+        datadog: { supported: true, qualifier: 'Authored' },
+        fixflags: { supported: true, qualifier: 'Supported' },
       },
     },
     {
-      id: "proof",
-      question: "Where does the proof stay?",
+      id: 'signup',
+      capability: 'Signup journey',
       values: {
-        psi: "A report from that run",
-        agent: "A chat that moves on",
-        fixflags: "The Site, the page, and the Flag",
+        sonarqube: { supported: false },
+        uptimerobot: { supported: false },
+        datadog: { supported: true, qualifier: 'Authored' },
+        fixflags: { supported: true, qualifier: 'Configured' },
       },
     },
     {
-      id: "ask",
-      question: "What if you never ask the right question?",
+      id: 'recheck',
+      capability: 'Fresh live-site recheck',
       values: {
-        psi: "You opened one tool for one URL",
-        agent: "Nothing runs until you write the prompt",
-        fixflags: "It watches the outcome anyway",
+        sonarqube: { supported: false },
+        uptimerobot: { supported: true, qualifier: 'Endpoint' },
+        datadog: { supported: true, qualifier: 'Test' },
+        fixflags: { supported: true, qualifier: 'Same outcome' },
       },
     },
   ] as const,
-} as const;
+} as const

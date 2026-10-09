@@ -1,9 +1,7 @@
 import type { Route } from 'next'
 import Link from 'next/link'
 import { Logo } from '@/components/brand/Logo'
-import { FooterNewsletter } from '@/components/layout/FooterNewsletter'
-import { FooterThemeToggle } from '@/components/layout/FooterThemeToggle'
-import { CookiePreferencesButton } from '@/components/analytics/CookiePreferencesButton'
+import { FooterBottom } from '@/components/layout/FooterBottom'
 import { Container } from '@/components/ui/container'
 import { BRAND } from '@/lib/marketing/copy'
 import { FOOTER_COLUMNS, LEGAL_LINKS } from '@/lib/site/nav'
@@ -33,20 +31,7 @@ export function Footer() {
 
         </div>
 
-        <div className="mt-10 grid gap-7 border-t border-border/55 pt-7 lg:mt-8 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)] lg:items-start lg:gap-10 lg:pt-8">
-          <div className="space-y-2 lg:pr-7">
-            <p className="text-2xs leading-relaxed text-muted-foreground">
-              © {new Date().getFullYear()} {BRAND.name}
-            </p>
-            <p className="text-2xs leading-relaxed text-muted-foreground">
-              {BRAND.category}
-            </p>
-            <FooterThemeToggle />
-            <CookiePreferencesButton className="min-h-11 text-2xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring" />
-          </div>
-
-          <FooterNewsletter className="lg:justify-self-end" />
-        </div>
+        <FooterBottom year={new Date().getFullYear()} brandName={BRAND.name} category={BRAND.category} />
       </Container>
     </footer>
   )

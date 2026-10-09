@@ -80,10 +80,10 @@ export function BoardGrid({ children }: { children: React.ReactNode }) {
   return <div className={styles.grid}>{children}</div>
 }
 
-export function BoardStatus({ state, label, text = label, count = 0, onOpen }: {
-  state: CardHealthState; label: string; text?: string; count?: number; onOpen?: () => void
+export function BoardStatus({ state, label, text = label, count = 0, onOpen, showText = false }: {
+  state: CardHealthState; label: string; text?: string; count?: number; onOpen?: () => void; showText?: boolean
 }) {
-  const content = <><i aria-hidden="true" />{count > 0 ? <span>{count} {count === 1 ? 'Flag' : 'Flags'}</span> : state === 'unknown' || state === 'checking' ? <span>{text}</span> : <span className="sr-only">{label}</span>}</>
+  const content = <><i aria-hidden="true" />{count > 0 ? <span>{count} {count === 1 ? 'Flag' : 'Flags'}</span> : state === 'unknown' || state === 'checking' || showText ? <span>{text}</span> : <span className="sr-only">{label}</span>}</>
   const className = `${styles.signal} ${SIGNAL_CLASS[state]} ${state === 'checking' ? styles.checkingDot : ''}`
   return onOpen
     ? <button type="button" className={`${className} ${styles.statusButton}`} onClick={onOpen} aria-label={label} title={label}>{content}</button>
@@ -109,6 +109,7 @@ export function BoardCard({
   flagCount,
   incompleteReason,
   compact = false,
+  showFlagPreview = false,
 }: {
   name: string
   status: string
@@ -130,6 +131,7 @@ export function BoardCard({
   flagCount?: number
   incompleteReason?: string | null
   compact?: boolean
+  showFlagPreview?: boolean
   flags?: BoardCardFlag[] | null
   sources?: string[] | null
   checkedAt?: string | null
@@ -141,14 +143,20 @@ export function BoardCard({
     compact ? styles.compact : '',
     wide ? styles.wide : '',
     visual ? styles.withVisual : '',
+    showFlagPreview ? styles.flagPreviewCard : '',
+    showFlagPreview && (state === 'attention' || state === 'problem') ? styles.flagPreviewOpen : '',
+    showFlagPreview && state === 'healthy' ? styles.flagPreviewClear : '',
   ]
     .filter(Boolean)
     .join(' ')
 
   const count = flagCount ?? flags?.length ?? 0
-  const signalLabel = state === 'healthy' && !checking ? flagCountLabel(count) : status
+  const signalLabel = showFlagPreview && state === 'healthy' && !checking ? status : state === 'healthy' && !checking ? flagCountLabel(count) : status
   const footerLabel = count > 0 ? flagCountLabel(count) : state === 'healthy' && !checking ? flagCountLabel(0) : status
   const openLabel = action ?? SITE_BOARD_COPY.viewDetails
+  const previewFlags = flags ?? []
+  const visiblePreviewFlags = previewFlags.length > 3 ? previewFlags.slice(0, 2) : previewFlags.slice(0, 3)
+  const hiddenPreviewCount = Math.max(0, previewFlags.length - visiblePreviewFlags.length)
 
   const body = (
     <>
@@ -161,8 +169,13 @@ export function BoardCard({
           objectPosition="center top"
         />
       ) : null}
-      <strong className={metric ? styles.metric : styles.answer}>{answer}</strong>
-      {detail ? <span className={styles.detail}>{detail}</span> : null}
+      {showFlagPreview && visiblePreviewFlags.length > 0 ? (
+        <ul className={styles.flagPreviewList}>
+          {visiblePreviewFlags.map(flag => <li key={flag.id}>{flag.title}</li>)}
+          {hiddenPreviewCount > 0 ? <li className={styles.flagPreviewMore}>+{hiddenPreviewCount} more</li> : null}
+        </ul>
+      ) : <strong className={metric ? styles.metric : styles.answer}>{answer}</strong>}
+      {!showFlagPreview && detail ? <span className={styles.detail}>{detail}</span> : null}
       {incompleteReason ? <span className={styles.incompleteNote}>{incompleteReason}</span> : null}
       {footer ? <span className={styles.footer}>{footer}</span> : null}
       {href && !onOpen ? (
@@ -180,7 +193,7 @@ export function BoardCard({
         <Icon size={17} aria-hidden="true" />
         {name}
       </span>
-      <BoardStatus state={checking ? 'checking' : state} label={`${name}: ${signalLabel}`} text={state === 'unknown' || checking ? signalLabel : ''} />
+      <BoardStatus state={checking ? 'checking' : state} label={`${name}: ${signalLabel}`} text={signalLabel} count={showFlagPreview ? count : 0} showText={showFlagPreview} />
     </span>
   )
 
@@ -213,10 +226,10 @@ export function BoardCard({
         <span className={styles.body}>
           {body}
         </span>
-        <span className={styles.cardActions}>
-          <span className={styles.flagMeta}>
+        <span className={`${styles.cardActions} ${showFlagPreview ? styles.previewActions : ''}`}>
+          {!showFlagPreview ? <span className={styles.flagMeta}>
             {footerLabel}
-          </span>
+          </span> : null}
           <span className={styles.openButton}>
             <ArrowRight size={17} aria-hidden="true" />
           </span>
