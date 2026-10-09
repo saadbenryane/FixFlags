@@ -24,8 +24,6 @@ function panel(status: string, proof: { id: string; status: string; completedAt:
       resolution={resolution}
       siteId="p_example"
       flagId="flag-1"
-      fixText="Move the buy button above the fold."
-      promptText="Check the purchase path."
     >
       <p>Evidence stayed on the page.</p>
     </FlagResolutionPanel>,
@@ -96,8 +94,6 @@ describe('Flag resolution panel', () => {
         resolution={resolution}
         siteId="p_example"
         flagId="flag-1"
-        fixText="Move the buy button above the fold."
-        promptText="Check the purchase path."
       >
         <p>Evidence stayed on the page.</p>
       </FlagResolutionPanel>,
@@ -124,8 +120,6 @@ describe('Flag resolution panel', () => {
         resolution={resolution}
         siteId="p_example"
         flagId="flag-1"
-        fixText="Move the buy button above the fold."
-        promptText="Check the purchase path."
       />,
     )
     expect(screen.getAllByText(SITE_BOARD_COPY.flagProofMissing).length).toBeGreaterThan(0)

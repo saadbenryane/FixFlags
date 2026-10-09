@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it, vi, beforeEach } from 'vitest'
+vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn().mockResolvedValue(undefined) }))
 
 // Controllable prisma + queue doubles. retryAudit only touches audit.findUnique
 // / audit.update and the queue, so stub exactly those boundaries.

@@ -27,37 +27,52 @@ describe('ApiKeyManager', () => {
     })
   })
 
-  it('defaults to read-only access and sends an explicit expiry', async () => {
+  it('creates a Fix and verify key without asking for an implementation client', async () => {
     render(<ApiKeyManager />)
     await screen.findByText('No active keys.')
 
-    expect(screen.getByRole('combobox', { name: /Access/ })).toHaveValue('read_only')
+    expect(screen.queryByRole('combobox', { name: /Access/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: /Client/ })).not.toBeInTheDocument()
+    expect(screen.getByText(/Fix and verify/)).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: /Expires after/ })).toHaveValue('90')
+    fireEvent.change(screen.getByRole('textbox', { name: /Key name/ }), { target: { value: 'Release agent' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create key' }))
 
     await waitFor(() => {
       expect(createApiKey).toHaveBeenCalledWith({
-        name: 'My coding agent',
-        client: 'codex',
-        scopePreset: 'read_only',
+        name: 'Release agent',
+        client: 'other',
+        scopePreset: 'fix_and_verify',
         expiresInDays: 90,
       })
     })
-    expect(await screen.findByText('ff_live_secret_once')).toBeInTheDocument()
+    expect(await screen.findByRole('textbox', { name: 'New API key' })).toHaveValue('ff_live_secret_once')
     expect(screen.getByText('Key created. Copy it now. FixFlags will not show it again.')).toBeInTheDocument()
   })
 
-  it('makes complete write access a visible opt-in', async () => {
+  it('selects the revealed key when the browser blocks copying', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'))
+    Object.assign(navigator, { clipboard: { writeText } })
+    render(<ApiKeyManager />)
+    await screen.findByText('No active keys.')
+    fireEvent.change(screen.getByRole('textbox', { name: /Key name/ }), { target: { value: 'Release agent' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create key' }))
+    const key = await screen.findByRole('textbox', { name: 'New API key' })
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
+    expect(await screen.findByText('Copy was blocked by this browser. The key is selected so you can copy it manually.')).toBeInTheDocument()
+    expect(key).toHaveFocus()
+    expect(key).toHaveProperty('selectionStart', 0)
+    expect(key).toHaveProperty('selectionEnd', 'ff_live_secret_once'.length)
+  })
+
+  it('lets the customer choose expiration without configuring scopes', async () => {
     render(<ApiKeyManager />)
     await screen.findByText('No active keys.')
 
-    fireEvent.change(screen.getByRole('combobox', { name: /Access/ }), {
-      target: { value: 'fix_and_verify' },
-    })
     fireEvent.change(screen.getByRole('combobox', { name: /Expires after/ }), {
       target: { value: '30' },
     })
-    expect(screen.getByText(/complete Flag → Fix → Verify workflow/)).toBeInTheDocument()
+    fireEvent.change(screen.getByRole('textbox', { name: /Key name/ }), { target: { value: 'CI release' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create key' }))
 
     await waitFor(() => {

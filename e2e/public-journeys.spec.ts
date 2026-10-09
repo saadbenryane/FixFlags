@@ -87,7 +87,7 @@ for (const width of widths) {
     for (const heading of ['Pages', 'Conversion', 'Security', 'Search', 'Performance', 'Tracking']) {
       await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
     }
-    await expect(page.getByText('Evidence', { exact: true })).toBeVisible()
+    await expect(page.getByText('Fixture evidence', { exact: true })).toBeVisible()
     await expect(page.getByText('Proposed change', { exact: true })).toBeVisible()
     await expect(page.getByText('Verify succeeds when', { exact: true })).toBeVisible()
 

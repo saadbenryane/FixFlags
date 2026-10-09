@@ -16,20 +16,21 @@ Customer chrome follows [product-architecture.md](product-architecture.md). Do n
 
 | Destination    | Customer question                                   | Contents                                                                                         |
 | -------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Home           | What is FixFlags watching and what needs attention? | Outcome state first, meaningful Flags second, broader Product-health cards and diagnostics below |
+| Websites       | Which websites are mine?                            | Full-width Site rows at `/dashboard`, preceded by one persistent Analyze control                    |
+| Site Overview  | What works and what needs fixing on this website?  | Site identity, monitoring, visible recovery, and a prioritized grid of category summary cards       |
 | Flags          | What needs me?                                      | Prioritized attention; resolved history without polluting current attention                      |
-| Site settings  | How is this Site configured?                        | Outcomes and protected fixtures, Watch, notifications, connections, developer access, danger zone, in that order. Not a third product mode |
-| FixFlags Agent | Ask FixFlags                                        | Persistent FAB (later). Not a nav item. Can escalate to support                                  |
+| Site settings  | How is this Site configured?                        | Outcomes and coverage, monitoring, notifications, actionable connections, and Remove Site          |
+| Ask FixFlags   | Explain this evidence                               | Contextual action at Site or Flag depth, never persistent global chrome                              |
 
 Account, billing and Site switching are supporting controls. Outcomes and Flags are primary content; Pages, Journeys, category health and execution diagnostics are depth. No Agent | Report split, scores-first hero, raw-check grid, arbitrary dashboard builder or integration marketplace.
 
-The released Site shell uses Home · Flags · Settings on desktop and mobile. Pages, Journeys and diagnostics stay inside Outcome or card depth rather than becoming permanent navigation destinations.
+The selected Site uses Overview · Flags · Settings on desktop and mobile, with All websites as the return action. Production verification remains separate from local implementation. Pages, Journeys and diagnostics stay inside card depth rather than becoming permanent navigation destinations.
 
 ## Home hierarchy
 
-The [card-board experience](card-board-experience.md) remains the design source for the broader Product-health area, not the entire Home hierarchy. Home first shows concrete Outcomes and their Clear/Flag/Couldn’t verify/Stale state, then attention, then Pages, Security, Search, Performance, Conversion, Tracking and other category depth. Public evidence works before connections, which enrich the same product.
+The [card-board experience](card-board-experience.md) owns the selected Site's flat grid. Show confirmed concrete visitor-action cards and scoped website-health cards together; preserve their different evidence semantics. Do not render an empty Outcomes heading or put the full Flag list above the grid. One compact Add action in the Site header offers real Outcome, coverage, and configured-connection options. Public evidence works before connections, which enrich the same product.
 
-Site identity and watched Outcomes lead. Journeys provide human-browser execution for some Outcomes. Attention appears as Flags when needed; a quiet Site still shows the scope and freshness required for each Clear answer.
+Site identity, monitoring, and one current result lead. The Flag count is that result only when Flags exist or the evidence is current and clear. Incomplete scope and its recovery action remain visible. Execution detail appears only while work is running, interrupted, partial, or failed. Completed pipeline narration does not remain on Overview. Attention appears on the related cards, with the full list on Flags; a quiet Site still supplies scope and freshness in card depth.
 
 Do not force a green overall label when an important Outcome is unverified or stale. A Site can be reachable while Checkout fails. A security or HTTP signal can fail without proving Checkout failed. Distinguish Outcome health from raw signal/category health.
 
@@ -41,9 +42,9 @@ Show expectation, state, freshness, related pages/actions, execution methods and
 
 ## Flag detail
 
-Start with what happened and where. Show certainty, impact explanation, evidence and Fix this. Add context and technical detail progressively. Evidence matches the claimed page, viewport and time; missing evidence has an honest state.
+Start with what happened and where. Show affected scope, observed behavior, expected behavior, evidence, and limitations. Add technical detail progressively. Evidence matches the claimed page, viewport and time; missing evidence has an honest state.
 
-Fix this may expose Send a Flag to your AI, Share and View technical details. Keep fix instructions and safe export structured around reproduction, expected result and verification criteria. Never automatically message another person or tool.
+Copy fix prompt is the single coding-tool handoff. Ask FixFlags is reserved for grounded product explanation. Keep fix instructions structured around reproduction, expected result and verification criteria. Never automatically message another person or tool.
 
 Verify fix shows real progress and retains prior attempts. Resolved shows fresh independent proof and time. Neither copying nor “Done” resolves the Flag.
 

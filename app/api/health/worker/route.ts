@@ -5,8 +5,8 @@ import {
 } from '@/lib/queue/worker-heartbeat'
 import { getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { prisma } from '@/lib/db'
-import { AUDIT_DEADLINE_MS } from '@/lib/audit/pipeline-config'
 import { getRateLimitRedisHealth } from '@/lib/security/rate-limit'
+import { auditDeadlineMsForDepth } from '@/lib/audit/review-depth'
 
 export const dynamic = 'force-dynamic'
 const EVENT_LOOP_LAG_LIMIT_MS = 250
@@ -35,7 +35,7 @@ export async function GET() {
     prisma.audit.count({
       where: {
         status: { notIn: ['COMPLETED', 'FAILED'] },
-        startedAt: { lt: new Date(Date.now() - AUDIT_DEADLINE_MS) },
+        OR: ([1, 2, 3] as const).map((depth) => ({ reviewDepth: depth, startedAt: { lt: new Date(Date.now() - auditDeadlineMsForDepth(depth)) } })),
       },
     }),
     readStalledJobCount(),
@@ -74,6 +74,7 @@ export async function GET() {
   const ok =
     redisReachable &&
     worker.alive &&
+    worker.browserOk &&
     !duplicateLocalWorkers &&
     !leakedBrowserContexts &&
     !excessiveEventLoopLag &&

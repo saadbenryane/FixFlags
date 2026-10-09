@@ -82,6 +82,94 @@ for (const dir of SCAN_DIRS) {
   }
 }
 
+// Customer Site language is a product contract. These phrases represent the
+// superseded dashboard taxonomy and must not return through component-local
+// copy. Tests are excluded because they may assert that retired language is
+// absent.
+const customerSurfaceRoots = [
+  'app/sites',
+  'app/(app)/dashboard',
+  'components/sites',
+  'components/settings',
+]
+const retiredSiteCopy = [
+  [/Watch off/, 'use the typed monitoring projection'],
+  [/Back to Home/, 'use All websites'],
+  [/Copy all/, 'copy actions belong to a specific Flag'],
+  [/Developer access/, 'API keys are global navigation'],
+  [/\b\d+\/\d+ pages reached\b/, 'use compact coverage language such as 21 of 24 pages'],
+  [/Full FixFlags access/, 'name the scoped Fix and verify permission'],
+]
+
+for (const root of customerSurfaceRoots) {
+  const base = join(ROOT, root)
+  if (!existsSync(base)) continue
+  for (const file of walk(base)) {
+    const rel = relative(ROOT, file)
+    if (rel.includes('/__tests__/')) continue
+    const content = readFileSync(file, 'utf8')
+    for (const [pattern, reason] of retiredSiteCopy) {
+      if (pattern.test(content)) violations.push(`${rel}: retired Site copy (${reason})`)
+    }
+  }
+}
+
+for (const removedPath of [
+  'components/sites/SiteAgentPanel.tsx',
+  'components/sites/SiteWatchCard.tsx',
+  'components/settings/ProjectScanAccessPanel.tsx',
+]) {
+  if (existsSync(join(ROOT, removedPath))) {
+    violations.push(`${removedPath}: retired customer-product implementation returned`)
+  }
+}
+
+const siteQueries = readFileSync(join(ROOT, 'lib/sites/application/queries.ts'), 'utf8')
+for (const retiredField of ['statusLabel:', 'statusState:', 'watching:', 'coverageSummary:']) {
+  if (siteQueries.includes(retiredField)) {
+    violations.push(`lib/sites/application/queries.ts: duplicate Site presentation field ${retiredField}`)
+  }
+}
+
+for (const file of walk(join(ROOT, 'components/sites'))) {
+  const rel = relative(ROOT, file)
+  if (rel.includes('/__tests__/')) continue
+  const content = readFileSync(file, 'utf8')
+  if (content.includes('boardFlagPrompt')) {
+    violations.push(`${rel}: Site prompt reconstructed in a component instead of requested from the Site endpoint`)
+  }
+  if (/promptText\?\.trim\(\)\s*\|\|\s*fixText/.test(content)) {
+    violations.push(`${rel}: fix text silently substituted for the canonical prompt`)
+  }
+}
+
+for (const file of walk(join(ROOT, 'components/sites'))) {
+  const rel = relative(ROOT, file)
+  if (rel.includes('/__tests__/')) continue
+  const content = readFileSync(file, 'utf8')
+  if (content.includes("'0 Flags'") || content.includes('"0 Flags"')) {
+    violations.push(`${rel}: component invented a Flag count instead of using the presentation`)
+  }
+}
+
+const billingPage = readFileSync(join(ROOT, 'app/(app)/billing/page.tsx'), 'utf8')
+if (!billingPage.includes('billingAccountState(')) {
+  violations.push('app/(app)/billing/page.tsx: billing must use the explicit account state')
+}
+if (/searchParams|activating/.test(billingPage)) {
+  violations.push('app/(app)/billing/page.tsx: activation must not be inferred from navigation')
+}
+
+const apiKeys = readFileSync(join(ROOT, 'components/settings/ApiKeyManager.tsx'), 'utf8')
+if (/placeholder=/.test(apiKeys)) {
+  violations.push('components/settings/ApiKeyManager.tsx: API key name must start blank')
+}
+
+const siteSettings = readFileSync(join(ROOT, 'components/sites/SiteSettingsControls.tsx'), 'utf8')
+if (siteSettings.includes('unavailableReason')) {
+  violations.push('components/sites/SiteSettingsControls.tsx: unconfigured connection leaked into customer settings')
+}
+
 const reportShell = readFileSync(join(ROOT, 'components/audit/AuditReport.tsx'), 'utf8')
 const reportExplorerCount = (reportShell.match(/<LiveReportExplorer\b/g) ?? []).length
 if (reportExplorerCount !== 1) {

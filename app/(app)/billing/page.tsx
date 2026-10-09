@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { hasRevokedSubscriptionStatus } from '@/lib/auth/entitlements'
 import { Button } from '@/components/ui/button'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
 import { ManageSubscriptionButton } from '@/components/billing/ManageSubscriptionButton'
@@ -15,6 +14,8 @@ import { Card } from '@/components/ui/card'
 import { Container } from '@/components/ui/container'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { BILLING_PAGE_COPY, HELP_CENTER } from '@/lib/marketing/copy'
+import { billingAccountState } from '@/lib/billing/account-state'
+import { isPaidOpenServer } from '@/lib/billing/paid-open'
 import { helpHrefForSlug, helpHrefForSurface } from '@/lib/help/contextual'
 import { TextLink } from '@/components/ui/text-link'
 
@@ -40,12 +41,23 @@ export default async function BillingPage() {
   if (!user) notFound()
 
   const planDef = PLAN_DEFINITIONS[user.plan]
-  const siteCount = await prisma.project.count({ where: { userId: user.id, deletedAt: null } })
+  const [siteCount, waitlist] = await Promise.all([
+    prisma.project.count({ where: { userId: user.id, deletedAt: null } }),
+    prisma.paidPlanWaitlistEntry.findFirst({
+      where: { userId: user.id, convertedAt: null },
+      select: { id: true },
+    }),
+  ])
+  const accountState = billingAccountState({
+    plan: user.plan,
+    subscriptionStatus: user.subscriptionStatus,
+    paidCheckoutOpen: isPaidOpenServer(),
+    waitlisted: Boolean(waitlist),
+  })
   // A lapsed subscription (payment failure, cancellation) only updates subscriptionStatus via
   // the Stripe webhook - plan can lag behind until a separate subscription.updated event
   // resyncs it. Billing must show the true current state, not the stale plan field.
-  const isPaid = user.plan !== 'FREE' && !hasRevokedSubscriptionStatus(user.subscriptionStatus)
-  const isActivating = isPaid && !user.stripeCustomerId
+  const isPaid = accountState === 'active'
   const hasStripeCustomer = Boolean(user.stripeCustomerId)
   const copy = BILLING_PAGE_COPY
 
@@ -95,23 +107,19 @@ export default async function BillingPage() {
             {user.subscriptionStatus === 'CANCELED' ? copy.canceledBody : copy.unpaidBody}
           </Callout>
         )}
-        <div className="border-t border-border/60 pt-5 text-sm text-muted-foreground">
-          {siteCount === 1 ? '1 website connected' : `${siteCount} websites connected`} ·{' '}
-          {isPaid ? 'Daily Watch' : 'Weekly Watch'}
-        </div>
-        {isActivating && (
-          <p className="text-xs text-muted-foreground">{copy.activatingHint}</p>
-        )}
-        {user.stripeCurrentPeriodEnd && isPaid && !isActivating && (
+        <dl className="grid gap-3 border-t border-border/60 pt-5 text-sm sm:grid-cols-3">
+          <div><dt className="text-xs text-muted-foreground">Websites</dt><dd className="mt-1 font-medium">{siteCount}{planDef.projectLimit ? ` of ${planDef.projectLimit}` : ''}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">Cadence</dt><dd className="mt-1 font-medium">{isPaid ? 'Daily monitoring' : 'Weekly monitoring'}</dd></div>
+          <div><dt className="text-xs text-muted-foreground">Billing status</dt><dd className="mt-1 font-medium">{copy.state[accountState]}</dd></div>
+        </dl>
+        {user.stripeCurrentPeriodEnd && isPaid && (
           <p className="text-xs text-muted-foreground">
             {copy.periodEnds(new Date(user.stripeCurrentPeriodEnd).toLocaleDateString())}
           </p>
         )}
         <BillingPlanActions
           isPaid={isPaid}
-          isActivating={isActivating}
           hasStripeCustomer={hasStripeCustomer}
-          showPlanPickerCta={!isActivating}
         />
       </Card>
 

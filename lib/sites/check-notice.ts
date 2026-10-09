@@ -1,5 +1,6 @@
 import { AUDIT_ERRORS } from '@/lib/marketing/copy'
 import { getUserFacingAuditError } from '@/lib/audit/user-facing-errors'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 export type SiteCheckNotice = {
   title: string
@@ -11,6 +12,7 @@ const SUMMARY_SKIPPED: Record<string, string> = {
   AI_PROVIDER_NOT_CONFIGURED: 'The written summary did not run. The Flags below come from the browser check.',
   AUDIT_TIMEOUT: 'The written summary ran out of time. The Flags below come from the browser check.',
   AUDIT_PIPELINE_FAILED: 'The written summary did not finish. The Flags below come from the browser check.',
+  AI_CONTRACT_INVALID: SITE_BOARD_COPY.partialReview,
 }
 
 /** Customer notice for a Site check that stopped. In-progress work is not a failure. */

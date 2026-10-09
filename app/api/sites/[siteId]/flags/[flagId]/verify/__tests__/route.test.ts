@@ -16,10 +16,10 @@ vi.mock('@/lib/sites/application/commands', () => ({ executeSiteCommand: mocks.e
 
 import { POST } from '@/app/api/sites/[siteId]/flags/[flagId]/verify/route'
 
-function request() {
+function request(idempotencyKey?: string) {
   return new Request('http://localhost/api/sites/site-1/flags/flag-1/verify', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {}) },
     body: JSON.stringify({ changeSummary: 'Show the confirmation.' }),
   })
 }
@@ -58,5 +58,29 @@ describe('POST /api/sites/[siteId]/flags/[flagId]/verify', () => {
     expect(response.status).toBe(409)
     expect(body.message).toBe('Another Site run is already in progress')
     expect(body.message).not.toBe('Something went wrong')
+  })
+
+  it('accepts a fresh verification and returns its RunRequest identity', async () => {
+    mocks.executeSiteCommand.mockResolvedValue({
+      ok: true,
+      runId: 'run-1',
+      verificationAuditId: 'audit-2',
+      siteId: 'site-1',
+      parentAuditId: 'audit-1',
+      flagId: 'flag-1',
+      attemptId: 'attempt-1',
+      expectedBehavior: 'The confirmation appears.',
+    })
+
+    const response = await POST(request('verify-once'), context)
+    const body = await response.json()
+
+    expect(response.status).toBe(202)
+    expect(body).toMatchObject({ accepted: true, runRequestId: 'run-1', verificationAuditId: 'audit-2' })
+    expect(mocks.executeSiteCommand).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'VERIFY_FLAG',
+      idempotencyKey: 'verify-once',
+      source: 'WEB',
+    }))
   })
 })

@@ -91,11 +91,23 @@ await check('migrations', async () => {
   return 'database schema current'
 })
 
-await check('worker', async () => {
+await check('worker prerequisites (not liveness)', async () => {
   await access(new URL('../worker/index.ts', import.meta.url))
   if (!process.env.REDIS_URL) throw new Error('Redis is required by the worker')
   return 'entry point and queue dependency ready'
 })
+
+if (process.argv.includes('--live')) {
+  await check('live worker and browser', async () => {
+    const origin = process.env.NEXT_PUBLIC_APP_URL
+    const response = await fetch(`${origin}/api/health/worker`, { signal: AbortSignal.timeout(5000) })
+    const health = await response.json()
+    if (!health.worker?.alive || !health.worker.browserOk || health.worker.workerCount !== 1) {
+      throw new Error('A single healthy browser worker is not running')
+    }
+    return 'single worker heartbeat and successful browser probe confirmed'
+  })
+}
 
 const failed = results.filter((result) => !result.ok)
 for (const result of results) {

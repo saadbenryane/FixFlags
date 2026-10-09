@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   CircleHelp,
   BookOpen,
+  KeyRound,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/brand/Logo'
@@ -37,17 +38,18 @@ interface SidebarItem {
 }
 
 const PRIMARY_ITEMS: SidebarItem[] = [
-  { href: '/dashboard', label: 'Sites', icon: Boxes },
+  { href: '/dashboard', label: 'Websites', icon: Boxes },
 ]
 
 const SECONDARY_ITEMS: SidebarItem[] = [
   { href: '/billing', label: 'Billing', icon: CreditCard },
+  { href: '/settings/api-keys', label: 'API keys', icon: KeyRound },
   { href: '/docs', label: 'Docs', icon: BookOpen },
   { href: '/help', label: 'Help', icon: CircleHelp },
 ]
 
 const ADMIN_ITEM: SidebarItem = { href: '/admin', label: 'Admin', icon: ShieldCheck }
-const SETTINGS_ITEM: SidebarItem = { href: '/settings', label: 'Settings', icon: Settings }
+const SETTINGS_ITEM: SidebarItem = { href: '/settings', label: 'Account', icon: Settings }
 
 export function SidebarNav({
   onNav,
@@ -167,14 +169,14 @@ function SidebarFooter({ compact = false }: { compact?: boolean }) {
 export function DesktopSidebar({ showAdmin }: { showAdmin?: boolean }) {
   return (
     <TooltipProvider delayDuration={150}>
-      <aside className="fixed inset-y-0 z-navbar hidden w-16 flex-col border-r border-border/50 glass-surface-strong md:flex">
+      <aside className="fixed inset-y-0 z-navbar hidden w-48 flex-col border-r border-border/50 bg-background md:flex">
         <div className="flex h-[var(--header-height)] shrink-0 items-center justify-center border-b border-border/40">
-          <Logo variant="mark" size="sm" href="/dashboard" />
+          <Logo variant="lockup" size="sm" href="/dashboard" />
         </div>
         <div className="flex-1 overflow-y-auto px-2 py-3">
-          <SidebarNav showAdmin={showAdmin} compact />
+          <SidebarNav showAdmin={showAdmin} />
         </div>
-        <SidebarFooter compact />
+        <SidebarFooter />
       </aside>
     </TooltipProvider>
   )

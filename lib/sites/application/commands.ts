@@ -144,7 +144,7 @@ export async function executeSiteCommand(command: SiteCommand) {
       return { ok: true as const, outcome }
     }
     case 'RECORD_FIX_HANDOFF': {
-      await executeProductCommand({
+      const handoff = await executeProductCommand({
         type: 'RECORD_FLAG_ACTION',
         flagId: command.flagId,
         userId: command.userId,
@@ -157,7 +157,7 @@ export async function executeSiteCommand(command: SiteCommand) {
         userId: command.userId,
         properties: { channel: command.builder },
       })
-      return { ok: true as const }
+      return { ok: true as const, handoff }
     }
     case 'VERIFY_FLAG': {
       const initialSite = await loadSiteRecord(command.siteId)

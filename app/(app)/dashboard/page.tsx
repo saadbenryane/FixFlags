@@ -8,7 +8,7 @@ import { AuditInput } from '@/components/audit/AuditInput'
 import { getAppViewer } from '@/lib/auth/app-viewer'
 import { normalizeAuditUrl } from '@/lib/audit/url'
 import { loadSiteSummaries } from '@/lib/sites/application/list-sites'
-import { SCAN_HANDOFF } from '@/lib/marketing/copy'
+import { SCAN_HANDOFF, WEBSITES_COPY } from '@/lib/marketing/copy'
 
 /**
  * The sign-up handoff lands here as `?url=`. The signup gate sends the visitor
@@ -47,23 +47,19 @@ export default async function DashboardPage({
         <DashboardCheckoutToast />
       </Suspense>
 
-      <PageHeader title="Your Sites" />
-      <p className="max-w-2xl text-sm text-muted-foreground">
-        Each Site keeps its Cards, Journeys, Flags, fixes, verification history, and Watch state together.
-      </p>
-      {resumedUrl ? (
-        <div className="rounded-[var(--radius-card)] border border-border/60 bg-card p-4 sm:p-5">
-          <p className="mb-3 text-sm font-medium text-foreground">
-            {SCAN_HANDOFF.resuming(resumedUrl)}
-          </p>
-          <AuditInput
-            idSuffix="-handoff"
-            source="dashboard"
-            initialUrl={resumedUrl}
-            autoStart
-          />
-        </div>
-      ) : null}
+      <PageHeader title="Websites" />
+      <section aria-labelledby="analyze-heading" className="rounded-[var(--radius-card)] border border-border/60 bg-card p-4 sm:p-5">
+        <h2 id="analyze-heading" className="mb-1 text-base font-semibold">{WEBSITES_COPY.analyzeTitle}</h2>
+        <p className="mb-3 text-sm text-muted-foreground">
+          {resumedUrl ? SCAN_HANDOFF.resuming(resumedUrl) : WEBSITES_COPY.analyzeBody}
+        </p>
+        <AuditInput
+          idSuffix="-dashboard"
+          source="dashboard"
+          initialUrl={resumedUrl ?? undefined}
+          autoStart={Boolean(resumedUrl)}
+        />
+      </section>
       <SitesOverviewGrid sites={sites} />
     </Container>
   )

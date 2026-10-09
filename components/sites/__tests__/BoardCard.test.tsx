@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { BoardCard, AddBoardCard } from '../BoardCard'
+import { BoardCard, ProductBoardCard } from '../BoardCard'
+import type { BoardCardView } from '@/lib/sites/board-card'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 describe('BoardCard chrome', () => {
@@ -16,12 +17,12 @@ describe('BoardCard chrome', () => {
       />
     )
     expect(screen.queryByText(SITE_BOARD_COPY.lastChecked)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Security: 0 Flags' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Security' })).toBeInTheDocument()
     expect(screen.queryByText('Checks passed')).not.toBeInTheDocument()
     expect(screen.queryByText('Needs attention')).not.toBeInTheDocument()
   })
 
-  it('opens the same detail from a compact Flag count or the card', () => {
+  it('opens detail from one predictable card target', () => {
     const onOpen = vi.fn()
     render(
       <BoardCard
@@ -35,16 +36,27 @@ describe('BoardCard chrome', () => {
       />
     )
     expect(screen.queryByText('Needs a fix')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Conversion: Needs a fix' }))
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
     expect(onOpen).toHaveBeenCalledTimes(1)
-    fireEvent.click(screen.getByRole('button', { name: 'Conversion' }))
-    expect(onOpen).toHaveBeenCalledTimes(2)
   })
 
-  it('renders Add card', () => {
+  it('keeps the overview concise without modifying the underlying finding', () => {
+    const title = 'Primary CTA is hidden below the fold on mobile'
+    const card: BoardCardView = {
+      id: 'conversion', name: 'Conversion', question: 'Can visitors continue?', state: 'problem', status: 'Needs a fix',
+      answer: title, detail: 'Long explanation of the finding.', facts: [], coverage: 'Mobile only', evidenced: true,
+      openFlagCount: 1, checkedAt: null, flagIds: ['f1'], flagChips: [{ id: 'f1', title, href: '#f1' }], sources: [],
+      activity: null, wide: false, captureUrl: null, captureAlt: null, cropUrl: null, cropAlt: null,
+      problem: { title, body: 'Long explanation of the finding.', outcomeName: null, href: '#f1', actionLabel: 'Open' },
+    }
     const onOpen = vi.fn()
-    render(<AddBoardCard onOpen={onOpen} />)
-    fireEvent.click(screen.getByRole('button', { name: SITE_BOARD_COPY.addCard }))
-    expect(onOpen).toHaveBeenCalled()
+    render(<ProductBoardCard card={card} compact onOpen={onOpen} />)
+    expect(screen.getByText('Main button off-screen on mobile')).toBeVisible()
+    expect(screen.queryByText('Long explanation of the finding.')).not.toBeInTheDocument()
+    expect(card.answer).toBe(title)
+    expect(card.problem?.body).toBe('Long explanation of the finding.')
+    fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
+    expect(onOpen).toHaveBeenCalledOnce()
   })
 })

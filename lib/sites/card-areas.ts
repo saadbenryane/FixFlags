@@ -23,7 +23,7 @@ export const STARTER_BOARD_CARDS: SiteCardArea[] = [
 ]
 
 /** Public-check cards the Add library can place on a board. No connections required. */
-export const ADDABLE_BOARD_CARDS: SiteCardArea[] = ['uptime', 'accessibility']
+export const ADDABLE_BOARD_CARDS: SiteCardArea[] = ['accessibility']
 
 export type CardHealthState =
   | 'healthy'

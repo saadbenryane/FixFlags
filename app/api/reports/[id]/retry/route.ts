@@ -7,6 +7,7 @@ import { retryAudit } from '@/lib/audit/retry-audit'
 import { enforceRateLimit, requestClientId } from '@/lib/security/rate-limit'
 import { readClaimedAnonymousIds } from '@/lib/audit/usage'
 import { headers } from 'next/headers'
+import { requestSiteRun } from '@/lib/sites/application/run-requests'
 
 export async function POST(
   _req: NextRequest,
@@ -21,7 +22,7 @@ export async function POST(
     await enforceRateLimit({ scope: 'audit-retry', identifier: `${session?.user?.id ?? clientId}:${clientId}`, limit: 10, windowSeconds: 60 })
     const audit = await prisma.audit.findUnique({
       where: { id },
-      select: { userId: true, isPublic: true, status: true, triageAt: true, failureCode: true },
+      select: { userId: true, projectId: true, isPublic: true, status: true, triageAt: true, failureCode: true },
     })
     if (!audit) return apiError('Report not found', 404)
     if (
@@ -37,6 +38,10 @@ export async function POST(
       return apiError('Only failed or AI-degraded reports can be retried', 400)
     }
 
+    if (audit.projectId && session?.user?.id === audit.userId) {
+      const run = await requestSiteRun({ projectId: audit.projectId, userId: session.user.id, source: 'WEB', scope: 'SITE', outcomeIds: [] })
+      return NextResponse.json({ status: 'QUEUED', auditId: run.auditId, runId: run.runId })
+    }
     const result = await retryAudit(id)
     return NextResponse.json(result)
   } catch (err) {

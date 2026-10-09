@@ -11,6 +11,12 @@ import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 export const BROWSER_SOURCE = SITE_BOARD_COPY.browserSource
 
+/** Short customer label only; never mutate a recorded diagnosis or its scope. */
+export function boardFindingTitle(title: string): string {
+  return SITE_BOARD_COPY.compactHeadlines[title as keyof typeof SITE_BOARD_COPY.compactHeadlines]
+    ?? (/^All touch targets must be 24px large, or leave sufficient space \(\d+ elements?\)$/.test(title) ? SITE_BOARD_COPY.smallTouchTargets : title)
+}
+
 export type BoardCardProblem = {
   title: string
   body: string | null
@@ -49,6 +55,49 @@ export type BoardCardView = {
   cropUrl: string | null
   cropAlt: string | null
   problem: BoardCardProblem | null
+  /** Missing work proven for this area by the latest Audit, separate from retained findings. */
+  incompleteReason?: string | null
+}
+
+/** Deterministic module failures have a known card owner. Other pipeline failures
+ * cannot be assigned to an area without evidence. */
+export const FAILED_MODULE_AREAS: Partial<Record<string, SiteCardArea[]>> = {
+  metadata: ['site', 'search', 'uptime'],
+  'og-image': ['search'], seo: ['search'],
+  accessibility: ['accessibility'],
+  trust: ['security'], security: ['security'], 'security-headers': ['security'],
+  measurement: ['tracking'],
+  performance: ['performance'], mobile: ['performance'], 'mobile-ux-quality': ['performance'],
+  content: ['conversion'], slop: ['conversion'], 'auth-checkout': ['conversion'],
+  'messaging-clarity': ['conversion'], 'conversion-friction': ['conversion'],
+  'trust-psychology': ['conversion'], 'cta-focus': ['conversion'],
+  layout: ['conversion'], interaction: ['conversion'], 'visual-polish': ['conversion'],
+  'visual-hierarchy': ['conversion'],
+}
+
+export function incompleteCardReason(input: {
+  card: Pick<BoardCardView, 'id' | 'openFlagCount' | 'evidenced'>
+  auditStatus: string | null
+  failureCode: string | null
+  failedModules: string[]
+  triageCompleted: boolean
+  extraReviewCompleted: boolean
+}): string | null {
+  if (input.auditStatus !== 'COMPLETED') return null
+  if (input.failedModules.some((module) => FAILED_MODULE_AREAS[module]?.includes(input.card.id))) {
+    return SITE_BOARD_COPY.cardCheckIncomplete
+  }
+  // Prescription enriches recorded Flags. Its failure does not invalidate a
+  // completed browser check or imply that healthy cards were never checked.
+  if (input.triageCompleted && !input.extraReviewCompleted &&
+      ['AI_CONTRACT_INVALID', 'AI_REVIEW_FAILED'].includes(input.failureCode ?? '') &&
+      input.card.openFlagCount > 0 && input.card.id !== 'site') {
+    return SITE_BOARD_COPY.cardReviewIncomplete
+  }
+  if (input.failureCode && !input.card.evidenced && input.card.id !== 'site') {
+    return SITE_BOARD_COPY.cardCheckIncomplete
+  }
+  return null
 }
 
 export function boardCardStatusText(
@@ -196,6 +245,21 @@ export function boardFlagPrompt(input: {
   ]
     .filter((line): line is string => Boolean(line))
     .join('\n\n')
+}
+
+export function boardAreaPrompt(areaName: string, flags: SiteFlagSeed[]): string {
+  if (flags.length === 0) return ''
+  const prompts = flags.map((flag, index) => boardFlagPrompt({
+    problem: flag.problem,
+    pageUrl: flag.pageUrl,
+    whyItMatters: flag.whyItMatters,
+    evidence: flag.evidence,
+    fix: flag.fix,
+  }).replace('FixFlags Flag:', `FixFlags Flag ${index + 1}:`))
+  return [
+    `Fix every open ${areaName} Flag below. Keep unrelated behavior unchanged, preserve the evidence scope for each page, and verify every fix against its stated evidence.`,
+    ...prompts,
+  ].join('\n\n---\n\n')
 }
 
 function chipsForFlags(siteId: string, flags: SiteFlagSeed[]): BoardCardFlagChip[] {

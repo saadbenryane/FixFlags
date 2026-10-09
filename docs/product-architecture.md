@@ -163,8 +163,10 @@ Verification must select the same Outcome, environment, success condition, and c
 ```text
 Sites
 Billing
-Account settings
-Help/support
+API keys
+Docs
+Help
+Account
 ```
 
 No Reports, raw Runs, Tests, MCP analytics, or Agent workspace in primary navigation.
@@ -172,25 +174,25 @@ No Reports, raw Runs, Tests, MCP analytics, or Agent workspace in primary naviga
 ### Site
 
 ```text
-Home
-  What FixFlags is watching (Outcomes)
-  Needs attention (Flags)
-  Broader Product health (category cards)
+Overview
+  Site identity, monitoring cadence, visible recovery
+  Prioritized category card grid: confirmed visitor actions and scoped website health
+  Compact link to open Flags, not a duplicate problem list
 Flags
   inbox → detail → Fix → Verify → history
 Settings
-  Outcomes · Watch · notifications · connections · developer access · danger zone
+  Outcomes and coverage · monitoring · notifications · connections · Remove Site
 ```
 
 Pages and category cards remain inspectable depth. Outcome detail shows expected behavior, state/freshness, related surfaces, evidence, recent runs, Flags, and diagnostics. Raw checks and steps are disclosed progressively.
 
-Desktop and mobile share the same objects. Mobile uses Home · Flags · More; Outcome and Flag detail become full-screen. The FixFlags Agent remains a context-aware control, not a tab.
+Websites (`/dashboard`) shows all Sites as full-width resource rows below one persistent Analyze control. A selected Site retains its URLs and uses Overview · Flags · Settings on desktop and mobile, with All websites as the return action. Outcome is the underlying responsibility model; visible cards use concrete visitor-action names. Essential progress and recovery stay visible, while completed execution detail is progressive depth. Ask FixFlags is contextual, not persistent chrome or a tab.
 
 ## Trigger model
 
 | Trigger     | Purpose                                     | Authority                                |
 | ----------- | ------------------------------------------- | ---------------------------------------- |
-| Schedule    | keep selected important Outcomes current    | Watch policy                             |
+| Schedule    | keep selected important Outcomes current    | Monitoring policy                        |
 | Human UI    | analyze, run or verify intentionally        | authenticated owner/session              |
 | MCP         | coding agent requests independent evidence  | scoped token/key acting for owner        |
 | Deployment  | focus monitoring after a successful release | verified provider adapter + Site mapping |

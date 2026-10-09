@@ -1,17 +1,19 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { cache } from 'swr/_internal'
 import { SiteBoard } from '../SiteBoard'
 import { SiteSettingsView } from '../SiteSettingsView'
 import { MeProvider, type MeUser } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { BoardCardView } from '@/lib/sites/board-card'
-import { AUDIT_ERRORS, CARE_HOME, WATCH_ALERT_DELIVERY, WATCH_OFFER } from '@/lib/marketing/copy'
+import { AUDIT_ERRORS, CARE_HOME, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 import { checkoutResultCopy, UNASSESSED_OUTCOME_SUMMARY } from '@/lib/sites/outcome-state'
 import type { SiteOutcomeView } from '@/lib/sites/outcomes'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 
 const SITE_PATH = '/sites/p_example'
+beforeEach(() => { for (const key of cache.keys()) cache.delete(key) })
 
 const push = vi.hoisted(() => vi.fn())
 
@@ -52,14 +54,14 @@ function card(partial: Partial<BoardCardView> & Pick<BoardCardView, 'id' | 'name
 }
 
 function boardView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
-  return {
+  const view: SiteHomeView = {
     site: {
       siteId: 'p_example',
-      kind: 'provisional',
+      kind: 'project',
       url: 'https://example.com',
       canonicalHost: 'example.com',
       name: 'example.com',
-      projectId: null,
+      projectId: 'p_example',
       provisionalSiteId: 'example',
       primaryAuditId: 'audit-1',
       watchInterval: null,
@@ -67,11 +69,18 @@ function boardView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
       watchLastRunAt: null,
       watchLastError: null,
       watchConsecutiveFailures: 0,
-      userId: null,
+      userId: 'u1',
     },
-    host: 'example.com',
-    statusLabel: '1 Flag',
-    statusState: 'attention',
+    presentation: {
+      identity: { siteId: 'p_example', name: 'example.com', host: 'example.com', preview: null },
+      result: { state: 'flags', label: 'Flags found' },
+      monitoring: { state: 'not_monitored', label: 'Not monitored' },
+      coverage: { pagesReached: 0, pagesExpected: 0, label: '0 pages', complete: false },
+      freshness: { checkedAt: null, stale: false, label: 'No completed analysis' },
+      flags: { count: 0, label: '0 Flags', fixFirstCount: 0 },
+      run: { state: 'idle', label: 'Run details', auditId: 'audit-1', recoveryAction: null },
+      categories: [],
+    },
     audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, walkFinished: false, failureCode: null },
     cards: [
       card({ id: 'site', name: 'Pages', state: 'attention', answer: '2 Flags', status: 'Needs a fix' }),
@@ -105,20 +114,43 @@ function boardView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
     ],
     flags: [],
     recommendations: [],
+    resolvedFlags: [],
     outcomes: [],
-    watching: false,
     watch: {
       state: 'off',
       interval: null,
       nextRunAt: null,
+      lastRunAt: null,
       lastError: null,
       covered: false,
-      label: 'Not watching',
+      label: 'Not monitored',
       alert: { state: 'none', status: null, attempts: 0, at: null },
     },
-    coverageSummary: 'Checked recently · 0 open Flags',
+    settings: {
+      notificationLevel: 'FLAGS', notifyOnRecovery: true,
+      shopify: { configured: true, state: 'not_connected', domain: null },
+      searchConsole: { provider: 'SEARCH_CONSOLE', configured: false, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null },
+      analytics: { provider: 'ANALYTICS', configured: false, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null },
+    },
     ...overrides,
   }
+  view.presentation.categories = view.cards.map((item, index) => ({
+      id: item.id,
+      name: item.name,
+      state: item.id === 'site'
+        ? view.presentation.result.state === 'checking' ? 'checking' : view.presentation.coverage.complete ? 'healthy' : 'unknown'
+        : item.state,
+      answer: item.id === 'site' ? view.presentation.coverage.label : item.answer,
+      status: item.id === 'site' ? view.presentation.result.label : item.status,
+      flagCount: item.id === 'site' ? 0 : item.openFlagCount,
+      fixFirstCount: 0,
+      checkedAt: item.checkedAt,
+      freshness: view.presentation.freshness.label,
+      coverageLimitation: item.incompleteReason ?? null,
+      rank: index,
+      href: `/sites/p_example?category=${item.id}`,
+  }))
+  return view
 }
 
 function renderBoard(user: MeUser | null) {
@@ -135,7 +167,7 @@ function watchedOutcome(partial: Partial<SiteOutcomeView> & Pick<SiteOutcomeView
     slug: 'checkout',
     description: null,
     inferenceSource: 'browser',
-    confirmedAt: null,
+    confirmedAt: '2026-10-05T17:00:00.000Z',
     pageIds: [],
     pageUrls: [],
     kind: 'CHECKOUT',
@@ -257,9 +289,10 @@ describe('SiteBoard chrome', () => {
         />
       </MeProvider>
     )
-    expect(screen.getByRole('heading', { name: 'No Outcome yet' })).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Confirm this page' })).toBeVisible()
-    expect(screen.getByText(/did not confirm a purchase path/)).toBeVisible()
+    expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.cardsHeading })).toHaveClass('sr-only')
+    expect(screen.getByRole('button', { name: SITE_BOARD_COPY.addCard })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Confirm this page' })).not.toBeInTheDocument()
+    expect(screen.queryByText(SITE_BOARD_COPY.cardGuidance)).not.toBeInTheDocument()
   })
 
   it('confirms the page and does not say a watch schedule started', async () => {
@@ -270,7 +303,7 @@ describe('SiteBoard chrome', () => {
     }))
     vi.stubGlobal('fetch', fetchMock)
     render(
-      <MeProvider initialUser={null}>
+      <MeProvider initialUser={signedInUser}>
         <SiteBoard
           siteId="p_example"
           initial={boardView({
@@ -328,7 +361,7 @@ describe('SiteBoard chrome', () => {
       return { ok: true, status: 200, json: async () => boardView() }
     }))
     const view = render(
-      <MeProvider initialUser={null}>
+      <MeProvider initialUser={signedInUser}>
         <SiteBoard
           siteId="p_example"
           initial={boardView({
@@ -350,6 +383,10 @@ describe('SiteBoard chrome', () => {
               status: 'OPEN',
               area: 'search',
             }],
+            presentation: {
+              ...boardView().presentation,
+              flags: { count: 1, label: '1 Flag', fixFirstCount: 0 },
+            },
           })}
         />
       </MeProvider>
@@ -357,11 +394,10 @@ describe('SiteBoard chrome', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Confirm this page' }))
     expect(await screen.findByRole('heading', { name: 'This page loads' })).toBeVisible()
     expect(screen.queryByText('No Outcome yet')).not.toBeInTheDocument()
-    expect(screen.getByText('The Flags that need you.')).toBeVisible()
     // The intent is that Home never claims Watch is on when it is off. Stated
     // precisely, because the board is allowed to say Watch is NOT on.
     expect(screen.queryByText('Watching weekly')).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: WATCH_OFFER.title })).toBeInTheDocument()
+    expect(screen.getByText('Not monitored')).toBeInTheDocument()
     releaseRefresh()
     view.unmount()
     vi.unstubAllGlobals()
@@ -380,10 +416,8 @@ describe('SiteBoard chrome', () => {
         />
       </MeProvider>
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm this page' }))
-    await waitFor(() => {
-      expect(push).toHaveBeenCalledWith(`/sign-in?next=${encodeURIComponent(SITE_PATH)}`)
-    })
+    fireEvent.click(screen.getAllByRole('button', { name: SITE_BOARD_COPY.addCard })[0])
+    expect(screen.getByRole('link', { name: 'Sign in to configure' })).toHaveAttribute('href', `/sign-in?next=${encodeURIComponent(SITE_PATH)}`)
     vi.unstubAllGlobals()
   })
 
@@ -432,7 +466,6 @@ describe('SiteBoard chrome', () => {
 
     expect(screen.getByText('Check failed')).toBeVisible()
     expect(screen.getByText(AUDIT_ERRORS.unreachable)).toBeVisible()
-    expect(screen.getByText('This check did not finish')).toBeVisible()
     expect(screen.queryByText('Learning your website')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
@@ -442,7 +475,7 @@ describe('SiteBoard chrome', () => {
     await waitFor(() => {
       expect(screen.queryByText('Check failed')).not.toBeInTheDocument()
     })
-    expect(screen.getAllByText('Learning your website').length).toBeGreaterThan(0)
+    expect(screen.getByText('Check started again')).toBeVisible()
     releaseRefresh()
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/sites/p_example', { cache: 'no-store' })
@@ -497,12 +530,16 @@ describe('SiteBoard chrome', () => {
               status: 'OPEN',
               area: 'search',
             }],
+            presentation: {
+              ...boardView().presentation,
+              flags: { count: 1, label: '1 Flag', fixFirstCount: 0 },
+            },
           })}
         />
       </MeProvider>
     )
-    expect(screen.getByText('Search · Important Flag')).toBeVisible()
-    expect(screen.queryByText(/search · important/)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '1 Flag. View Flags' })).toHaveAttribute('href', `${SITE_PATH}/flags`)
+    expect(screen.queryByText('Search · Important Flag')).not.toBeInTheDocument()
   })
 
   it('shows Sign in with a next path for logged-out visitors', () => {
@@ -519,28 +556,24 @@ describe('SiteBoard chrome', () => {
     expect(screen.queryByRole('link', { name: 'All Sites' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Keep watching' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Confirm this page' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Not watching')).not.toBeInTheDocument()
+    expect(screen.getByText('Not monitored')).toBeInTheDocument()
     const rail = screen.getByRole('navigation', { name: 'Site' })
     expect(rail).toBeInTheDocument()
-    expect(rail).toHaveTextContent('Home')
+    expect(rail).toHaveTextContent('Overview')
     expect(rail).toHaveTextContent('Flags')
-    expect(rail).toHaveTextContent('Settings')
-    const settingsLinks = screen.getAllByRole('link', { name: 'Settings' })
-    expect(settingsLinks.length).toBeGreaterThan(0)
-    for (const link of settingsLinks) {
-      expect(link).toHaveAttribute('href', '/sites/p_example/settings')
-    }
+    expect(rail).not.toHaveTextContent('Settings')
+    expect(screen.queryByRole('link', { name: 'Settings' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'More' })).not.toBeInTheDocument()
     expect(rail).not.toHaveTextContent('Not watching')
     expect(rail).not.toHaveTextContent('Keep watching')
     expect(rail).not.toHaveTextContent('All Sites')
-    expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.addCard })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: SITE_BOARD_COPY.addCard })).toHaveLength(1)
     expect(screen.queryByRole('button', { name: 'Security' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Tracking' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Pages' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Conversion' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Performance' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Pages' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Conversion' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Search' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Performance' })).toBeInTheDocument()
   })
 
   it('orders Settings by customer responsibility and keeps connection cards subordinate', () => {
@@ -549,42 +582,60 @@ describe('SiteBoard chrome', () => {
         <SiteSettingsView siteId="p_example" view={boardView()} />
       </MeProvider>
     )
-    expect(screen.getByRole('heading', { name: 'Site settings' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'example.com', level: 1 })).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual([
-      'Outcomes and fixtures',
-      'Watch',
+      'Outcomes and coverage',
+      'Monitoring',
       'Notifications',
       'Connections',
-      'Developer access',
-      'Danger zone',
+      'Remove Site',
     ])
     expect(screen.getByRole('heading', { name: 'Shopify', level: 3 })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Search Console', level: 3 })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Analytics', level: 3 })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Search Console', level: 3 })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Analytics', level: 3 })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Remove Site' })).toBeInTheDocument()
   })
 
   it('keeps watch and All Sites for signed-in owners', () => {
     renderBoard(signedInUser)
     expect(screen.queryByRole('link', { name: CARE_HOME.signIn })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'All Sites' }).length).toBeGreaterThan(0)
-    expect(screen.getByRole('link', { name: 'Watch settings' })).toHaveAttribute('href', `${SITE_PATH}/settings`)
-    expect(screen.getByText('Not watching')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.addCard })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Security' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Tracking' })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: /All websites/ }).length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: 'Not monitored' })).toHaveAttribute('href', `${SITE_PATH}/settings#watch`)
+    expect(screen.getAllByRole('button', { name: SITE_BOARD_COPY.addCard })).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Open Security' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Tracking' })).toBeInTheDocument()
     for (const link of screen.getAllByRole('link', { name: 'Settings' })) {
       expect(link).toHaveAttribute('href', `${SITE_PATH}/settings`)
     }
   })
 
-  it('keeps optional areas out of the beginner view until FixFlags has evidence', () => {
+  it('hides optional areas without evidence for logged-out visitors', () => {
     renderBoard(null)
     expect(screen.queryByRole('button', { name: 'Uptime' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Accessibility' })).not.toBeInTheDocument()
   })
 
-  it('reveals an optional area when a check has evidence for it', () => {
+  it('combines page reachability in the Pages card', () => {
+    render(
+      <MeProvider initialUser={signedInUser}>
+        <SiteBoard siteId="p_example" initial={boardView({
+          checkedPages: [
+            { url: 'https://example.com', title: 'Home', status: 'COMPLETED' },
+            { url: 'https://example.com/about', title: 'About', status: 'COMPLETED' },
+            { url: 'https://example.com/contact', title: 'Contact', status: 'FAILED' },
+          ],
+          presentation: {
+            ...boardView().presentation,
+            coverage: { pagesReached: 2, pagesExpected: 3, label: '2 of 3 pages', complete: false },
+          },
+        })} />
+      </MeProvider>
+    )
+    expect(screen.getAllByText('2 of 3 pages')).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'Uptime' })).not.toBeInTheDocument()
+  })
+
+  it('keeps reachability combined with Pages even when legacy uptime evidence exists', () => {
     const cards = boardView().cards.map((item) =>
       item.id === 'uptime'
         ? card({
@@ -603,7 +654,7 @@ describe('SiteBoard chrome', () => {
         <SiteBoard siteId="p_example" initial={boardView({ cards })} />
       </MeProvider>
     )
-    expect(screen.getByRole('button', { name: 'Uptime' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Uptime' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Accessibility' })).not.toBeInTheDocument()
   })
 
@@ -626,7 +677,7 @@ describe('SiteBoard chrome', () => {
         <SiteBoard siteId="p_example" initial={boardView({ cards })} />
       </MeProvider>
     )
-    expect(screen.getByRole('button', { name: 'Accessibility' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Open Accessibility' })).toBeVisible()
   })
 
   it('keeps stale starter evidence visible while hiding areas that were never checked', () => {
@@ -652,10 +703,10 @@ describe('SiteBoard chrome', () => {
       </MeProvider>
     )
 
-    expect(screen.getByRole('button', { name: 'Conversion' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Open Conversion' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Security' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Conversion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
     expect(screen.getByRole('dialog')).toHaveTextContent(SITE_BOARD_COPY.checkOutOfDateDetail)
     expect(document.querySelector(`time[datetime="${checkedAt}"]`)).not.toBeNull()
   })
@@ -689,7 +740,7 @@ describe('SiteBoard chrome', () => {
       </MeProvider>
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Conversion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
     fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
@@ -700,7 +751,7 @@ describe('SiteBoard chrome', () => {
       }),
     ))
     expect(await screen.findByText('New check started')).toBeVisible()
-    expect(screen.getAllByText('Learning your website').length).toBeGreaterThan(0)
+    expect(screen.getByText('New check started')).toBeVisible()
     releaseRefresh()
     rendered.unmount()
     vi.unstubAllGlobals()
@@ -720,7 +771,7 @@ describe('SiteBoard chrome', () => {
       </MeProvider>
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Conversion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
     expect(screen.getByRole('link', { name: 'Sign in to check again' })).toHaveAttribute(
       'href', `/sign-in?next=${encodeURIComponent(SITE_PATH)}`,
     )
@@ -754,7 +805,7 @@ describe('SiteBoard chrome', () => {
       </MeProvider>
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Conversion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
     fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
 
     expect(await screen.findByText(PLAN_LIMIT_NOTICE.copy['check-limit'].body)).toBeVisible()
@@ -791,7 +842,7 @@ describe('SiteBoard chrome', () => {
       </MeProvider>
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Conversion' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Conversion' }))
     fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
 
     expect(await screen.findByText('Another Site run is already in progress')).toBeVisible()
@@ -818,7 +869,7 @@ describe('SiteBoard chrome', () => {
         <SiteBoard siteId="p_example" initial={boardView({ cards })} />
       </MeProvider>
     )
-    expect(screen.getByRole('button', { name: 'Accessibility' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Open Accessibility' })).toBeVisible()
   })
 })
 
@@ -835,22 +886,28 @@ describe('an undelivered Watch alert', () => {
     lastError: null,
     // Coverage is untouched. The Site really is being checked.
     covered: true,
-    label: 'Watching weekly',
+    label: 'Weekly',
   }
   const undelivered = {
     ...watching,
     alert: { state: 'undelivered' as const, status: 'FAILED' as const, attempts: 5, at: '2026-09-20T10:00:00.000Z' },
   }
 
+  function weeklyBoard(watch: typeof undelivered) {
+    const view = boardView({ watch, watching: true })
+    view.presentation = { ...view.presentation, monitoring: { state: 'weekly', label: 'Weekly' } }
+    return view
+  }
+
   it('states the failure on the Site home rather than leaving a healthy-looking board', () => {
     render(
       <MeProvider initialUser={signedInUser}>
-        <SiteBoard siteId="p_example" initial={boardView({ watch: undelivered, watching: true })} />
+        <SiteBoard siteId="p_example" initial={weeklyBoard(undelivered)} />
       </MeProvider>
     )
     expect(screen.getByRole('heading', { name: WATCH_ALERT_DELIVERY.undeliveredTitle })).toBeInTheDocument()
     // The board must still say checks are happening. Delivery failed, not coverage.
-    expect(screen.getByText('Watching weekly')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Weekly' })).toBeInTheDocument()
     expect(screen.getByText(/keeps checking/i)).toBeInTheDocument()
   })
 

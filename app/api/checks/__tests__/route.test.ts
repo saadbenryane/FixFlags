@@ -1,5 +1,6 @@
 import { describe, it, vi, expect, beforeEach } from 'vitest'
 import type { NextRequest } from 'next/server'
+vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn().mockResolvedValue(undefined) }))
 
 /**
  * Route-level billing gating on POST /api/checks (core scan endpoint).

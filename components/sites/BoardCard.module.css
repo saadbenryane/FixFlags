@@ -1,9 +1,10 @@
 .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: stretch; }
-.card { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; min-height: 180px; padding: 18px; border: 1px solid hsl(var(--border) / .65); border-radius: 13px; background: hsl(var(--background)); text-align: left; color: inherit; }
+.card { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; min-height: 180px; padding: 18px; border: 1px solid hsl(var(--border) / .65); border-radius: 13px; background: hsl(var(--background)); text-align: left; color: inherit; font: inherit; }
+.card:is(button) { width: 100%; cursor: pointer; }
+.card:is(button):focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
 .card:has(.body:hover) { border-color: hsl(var(--foreground) / .25); box-shadow: 0 4px 16px hsl(var(--foreground) / .04); }
-.problem { border-color: hsl(var(--brand) / .7); }
-.problem:has(.body:hover) { border-color: hsl(var(--brand)); }
-.checking { box-shadow: 0 0 0 1px hsl(var(--brand)); }
+.problem, .good, .incomplete { border-color: hsl(var(--border) / .65); }
+.problem:has(.body:hover), .good:has(.body:hover), .incomplete:has(.body:hover) { border-color: hsl(var(--foreground) / .25); }
 .header { display: flex; align-items: center; gap: 8px; width: 100%; margin-bottom: 12px; font-size: 13px; font-weight: 550; }
 .title { display: inline-flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
 .title svg { flex-shrink: 0; }
@@ -12,17 +13,27 @@
 .healthy { --signal-color: hsl(var(--success)); }
 .attention, .problemSignal, .checkingSignal { --signal-color: hsl(var(--brand)); }
 .unknown { --signal-color: hsl(var(--muted-foreground) / .4); }
-.checkingDot i { animation: board-card-pulse 1s ease-in-out infinite; }
+.checkingDot i { background: hsl(var(--foreground) / .6); animation: board-card-pulse 1.6s ease-in-out 2; }
 .statusButton { min-width: 44px; min-height: 44px; justify-content: center; margin: -12px -10px -12px 0; border-radius: 8px; padding-inline: 8px; }
 .statusButton:hover { background: hsl(var(--muted)); }
 .statusButton:focus-visible, .body:focus-visible, .addCard:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
 .body { display: flex; flex-direction: column; align-items: flex-start; width: 100%; flex: 1; min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; color: inherit; font: inherit; cursor: pointer; text-decoration: none; }
-.answer { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-family: var(--font-display), sans-serif; font-size: 22px; font-weight: 600; line-height: 1.25; letter-spacing: -.035em; text-wrap: pretty; }
+.answer { overflow: visible; overflow-wrap: anywhere; font-family: var(--font-display), sans-serif; font-size: 22px; font-weight: 600; line-height: 1.25; letter-spacing: -.035em; text-wrap: pretty; }
 .metric { font-size: 24px; font-weight: 550; letter-spacing: -.035em; line-height: 1.2; font-variant-numeric: tabular-nums; }
-.detail { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin-top: 8px; font-size: 13px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
+.detail { overflow-wrap: anywhere; margin-top: 8px; font-size: 13px; line-height: 1.5; color: hsl(var(--muted-foreground)); }
+.incompleteNote { display: inline-flex; margin-top: 8px; font-size: 12px; font-weight: 550; color: hsl(var(--muted-foreground)); }
+.compact { min-height: 164px; }
+.compact .visual { height: 96px; }
+.compact .answer { font-size: 20px; }
+.compact .action { justify-content: flex-end; padding-top: 8px; }
 .footer { margin-top: auto; padding-top: 12px; font-size: 12px; color: hsl(var(--muted-foreground)); }
 .action { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; margin-top: auto; padding-top: 12px; min-height: 32px; font-size: 12px; font-weight: 500; color: hsl(var(--muted-foreground)); }
 .action svg { width: 16px; height: 16px; }
+.cardActions { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; margin-top: auto; padding-top: 14px; }
+.flagMeta { display: inline-flex; min-height: 44px; align-items: center; padding: 0 4px; border-radius: 8px; color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 550; }
+.cardActionButtons { display: inline-flex; align-items: center; gap: 4px; }
+.openButton { display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; border-radius: 8px; color: hsl(var(--muted-foreground)); }
+.openButton:hover { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
 .visual { position: relative; width: 100%; height: 126px; overflow: hidden; border: 1px solid hsl(var(--border) / .8); border-radius: 10px; background: hsl(var(--muted)); }
 .visual img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
 .withVisual .body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px 20px; align-content: stretch; }
@@ -64,4 +75,5 @@
   .addCard { min-height: 72px; padding: 16px; flex-direction: row; align-items: center; justify-content: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) { .checkingDot i { animation: none; } }
+@keyframes board-border-pulse { 50% { box-shadow: 0 0 0 1px hsl(var(--foreground) / .3); } }
 @keyframes board-card-pulse { 50% { opacity: .45; } }

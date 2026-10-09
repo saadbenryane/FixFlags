@@ -8,6 +8,7 @@ import { ActiveAuditBanner } from '@/components/audit/ActiveAuditBanner'
 import { SupportWidgetLazy } from '@/components/live-support/SupportWidgetLazy'
 import { SupportProvider } from '@/components/live-support/SupportProvider'
 import { GlobalMeshBackdrop } from '@/components/marketing/landing/GlobalMeshBackdrop'
+import { CustomerMain } from '@/components/layout/customer-frame'
 import { cn } from '@/lib/utils'
 
 interface SiteShellProps {
@@ -67,23 +68,23 @@ export function SiteShell({
               right={headerRight}
               showNavigation={false}
             />
-            <main id="main-content" className="flex min-h-0 flex-1" tabIndex={-1}>
+            <CustomerMain className="flex min-h-0">
               <ReportAppRail showAdmin={showAdmin} />
               <div className="min-w-0 flex-1">{children}</div>
-            </main>
+            </CustomerMain>
           </>
         ) : hasSidebar ? (
           <div className="flex flex-1">
             <DesktopSidebar showAdmin={showAdmin} />
-            <div className="flex min-w-0 flex-1 flex-col md:pl-16">
+            <div className="flex min-w-0 flex-1 flex-col md:pl-48">
               <div className="sticky top-0 z-navbar flex h-14 items-center gap-3 border-b border-border/40 px-4 glass-nav md:hidden">
                 <MobileSidebar showAdmin={showAdmin} />
                 <Logo variant="lockup" size="sm" href="/dashboard" />
               </div>
               <ActiveAuditBanner />
-              <main id="main-content" className="flex-1" tabIndex={-1}>
+              <CustomerMain>
                 {children}
-              </main>
+              </CustomerMain>
             </div>
           </div>
         ) : (
@@ -96,9 +97,9 @@ export function SiteShell({
               showNavigation={showHeaderNavigation}
             />
             <ActiveAuditBanner />
-            <main id="main-content" className="flex-1" tabIndex={-1}>
+            <CustomerMain>
               {children}
-            </main>
+            </CustomerMain>
           </>
         )}
         {!immersive && showFooter && resolvedFooter === 'minimal' && <MinimalFooter />}

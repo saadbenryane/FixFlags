@@ -428,4 +428,13 @@ export const BILLING_PAGE_COPY = {
     'Subscription invoices and PDF receipts live in the Stripe customer portal.',
   historyViewInvoices: 'Open invoices',
   historyHelpCta: 'How invoices work',
+  state: {
+    free: 'Free',
+    waitlisted: 'Waitlisted',
+    checkout_available: 'Checkout available',
+    pending_activation: 'Pending activation',
+    active: 'Active',
+    past_due: 'Past due',
+    canceled: 'Canceled',
+  },
 } as const

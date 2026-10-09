@@ -5,13 +5,11 @@ import { signInUrl } from '@/lib/auth/redirect-path'
 import { prisma } from '@/lib/db'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { PLAN_DEFINITIONS } from '@/lib/billing/plans'
-import { AccountSettingsForms } from '@/components/settings/AccountSettingsForms'
+import { AccountDangerZone, AccountSettingsForms } from '@/components/settings/AccountSettingsForms'
 import { ConnectedAccounts } from '@/components/settings/ConnectedAccounts'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { AUTH } from '@/lib/marketing/copy'
-import Link from 'next/link'
-import { ArrowRight, KeyRound } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { isGithubOAuthConfigured, isGoogleOAuthConfigured } from '@/lib/auth/env'
 
 export default async function SettingsPage() {
   const session = await auth.api.getSession({ headers: await headers() })
@@ -46,19 +44,10 @@ export default async function SettingsPage() {
     <div className="space-y-8">
       <PageHeader title={settingsCopy.pageTitle} description={settingsCopy.pageDescription} />
 
-      <ConnectedAccounts
-        email={user.email}
-        emailVerified={user.emailVerified}
-        hasPassword={hasPassword}
-        passkeyCount={user.passkeys.length}
-        linkedProviders={linkedProviders}
-        twoFactorEnabled={user.twoFactorEnabled}
-      />
-
       <Card variant="subtle">
         <CardHeader>
-          <CardTitle className="text-base">{settingsCopy.account.title}</CardTitle>
-          <CardDescription>{settingsCopy.account.description}</CardDescription>
+          <CardTitle className="text-base">Profile</CardTitle>
+          <CardDescription>Your plan, name, and email address.</CardDescription>
         </CardHeader>
         <CardContent>
           <AccountSettingsForms
@@ -71,16 +60,22 @@ export default async function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card variant="subtle">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><KeyRound className="h-4 w-4" /> Developer access</CardTitle>
-          <CardDescription>Create a key to let your own tooling act for your account. A run always names one Site and carries an idempotency key.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild variant="outline" className="min-h-11">
-            <Link href="/settings/api-keys">Manage keys <ArrowRight className="ml-2 h-4 w-4" /></Link>
-          </Button>
-        </CardContent>
+      <ConnectedAccounts
+        email={user.email}
+        emailVerified={user.emailVerified}
+        hasPassword={hasPassword}
+        passkeyCount={user.passkeys.length}
+        linkedProviders={linkedProviders}
+        twoFactorEnabled={user.twoFactorEnabled}
+        availableProviders={[
+          ...(isGoogleOAuthConfigured() ? ['google' as const] : []),
+          ...(isGithubOAuthConfigured() ? ['github' as const] : []),
+        ]}
+      />
+
+      <Card variant="subtle" className="border-destructive/30">
+        <CardHeader><CardTitle className="text-base">Danger zone</CardTitle><CardDescription>Permanently remove this FixFlags account.</CardDescription></CardHeader>
+        <CardContent><AccountDangerZone /></CardContent>
       </Card>
     </div>
   )

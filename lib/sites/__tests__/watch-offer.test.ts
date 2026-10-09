@@ -49,10 +49,8 @@ describe('Home notice for a Site that is not watched', () => {
   it('keeps Watch a customer choice rather than a side effect of scanning', () => {
     // Auto-enabling Watch would send email nobody asked for. The notice is a
     // statement and a link, and the board must not grow its own control.
-    const board = readFileSync(resolve(root, 'components/sites/SiteBoard.tsx'), 'utf8')
-    const section = board.slice(board.indexOf('offNotice ?'), board.indexOf('offNotice ?') + 700)
-    expect(section).toContain('<Link')
-    expect(section).not.toMatch(/onClick/)
+    const shell = readFileSync(resolve(root, 'components/sites/SiteShell.tsx'), 'utf8')
+    expect(shell).toContain('href={`/sites/${siteId}/settings#watch`}')
     // Nothing in the scan path may switch Watch on as a side effect.
     const createAudit = readFileSync(resolve(root, 'lib/audit/create-audit.ts'), 'utf8')
     expect(createAudit).not.toMatch(/watchInterval\s*:/)

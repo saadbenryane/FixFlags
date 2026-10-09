@@ -17,6 +17,7 @@ import { resolveVisitorKey } from '@/lib/sites/visitor-identity'
 import { computeEnqueueDelay, getWorkerQueueEstimate } from '@/lib/queue/estimate'
 import { buildAttribution, parseClientAuditSource } from '@/lib/leads/attribution'
 import { isAnalyticsJourneyId } from '@/lib/analytics/journey-id'
+import { requireExecutionReady } from '@/lib/queue/execution-readiness'
 
 const createSchema = z.object({
   url: z.string().url('Enter a valid URL that starts with https://'),
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
     const visitorKey = session?.user ? undefined : await resolveVisitorKey()
 
     const criticalPath = parsed.data.mode !== 'single'
+    await requireExecutionReady()
 
     // Hard abuse ceilings, on separate counters from the soft delay limits below.
     // Normal bursts stay delay-queued; only egregious flooding from a single

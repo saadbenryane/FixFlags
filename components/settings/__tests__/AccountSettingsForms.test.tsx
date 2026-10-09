@@ -20,7 +20,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/lib/auth-client', () => ({ authClient }))
 vi.mock('sonner', () => ({ toast }))
 
-import { AccountSettingsForms } from '@/components/settings/AccountSettingsForms'
+import { AccountDangerZone, AccountSettingsForms, PasswordSettings } from '@/components/settings/AccountSettingsForms'
 
 const ac = AUTH.settings.account
 
@@ -64,7 +64,7 @@ describe('AccountSettingsForms', () => {
     expect(screen.getByRole('link', { name: ac.managePlanCta })).toHaveAttribute('href', '/billing')
   })
 
-  it('saves name, email, and password from one action', async () => {
+  it('saves profile changes from one action', async () => {
     renderAccount()
 
     fireEvent.change(screen.getByRole('textbox', { name: ac.nameLabel }), {
@@ -73,13 +73,6 @@ describe('AccountSettingsForms', () => {
     fireEvent.change(screen.getByRole('textbox', { name: /Email address/ }), {
       target: { value: 'new@example.com' },
     })
-    fireEvent.change(screen.getByLabelText(ac.currentPasswordLabel), {
-      target: { value: 'old-pass-word' },
-    })
-    fireEvent.change(screen.getByLabelText(ac.newPasswordLabel), {
-      target: { value: 'new-pass-word' },
-    })
-
     fireEvent.click(screen.getByRole('button', { name: ac.saveCta }))
 
     await waitFor(() => {
@@ -88,18 +81,13 @@ describe('AccountSettingsForms', () => {
         newEmail: 'new@example.com',
         callbackURL: '/settings',
       })
-      expect(authClient.changePassword).toHaveBeenCalledWith({
-        currentPassword: 'old-pass-word',
-        newPassword: 'new-pass-word',
-        revokeOtherSessions: true,
-      })
     })
     expect(toast.success).toHaveBeenCalledWith(ac.changeEmailSuccess)
     expect(screen.getByRole('button', { name: ac.saveCta })).toBeDisabled()
   })
 
   it('keeps delete confirmation in a modal', async () => {
-    renderAccount()
+    render(<AccountDangerZone />)
 
     expect(screen.queryByLabelText(ac.deletePasswordLabel)).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: ac.deleteCta }))
@@ -120,6 +108,16 @@ describe('AccountSettingsForms', () => {
         callbackURL: '/',
       })
     })
+  })
+
+  it('reveals and changes a password only after the customer asks', async () => {
+    render(<PasswordSettings hasPassword />)
+    expect(screen.queryByLabelText(ac.currentPasswordLabel)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Change password' }))
+    fireEvent.change(screen.getByLabelText(ac.currentPasswordLabel), { target: { value: 'old-pass-word' } })
+    fireEvent.change(screen.getByLabelText(ac.newPasswordLabel), { target: { value: 'new-pass-word' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Change password' }).at(-1)!)
+    await waitFor(() => expect(authClient.changePassword).toHaveBeenCalledWith({ currentPassword: 'old-pass-word', newPassword: 'new-pass-word', revokeOtherSessions: true }))
   })
 
   it('warns before in-app navigation when there are unsaved changes', async () => {

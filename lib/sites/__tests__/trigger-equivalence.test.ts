@@ -38,6 +38,7 @@ vi.mock('@/lib/db', () => ({
   },
 }))
 vi.mock('@/lib/audit/create-audit', () => ({ createAndEnqueueAudit: mocks.createAudit }))
+vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/analytics/site-events', () => ({
   recordSiteLifecycleEvent: vi.fn().mockResolvedValue({}),
 }))

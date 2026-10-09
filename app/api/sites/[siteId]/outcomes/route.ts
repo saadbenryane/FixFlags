@@ -3,9 +3,11 @@ import { z } from 'zod'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { CONFIRMABLE_OUTCOME_KINDS } from '@/lib/sites/outcome-kinds'
 import { requireSiteAccess } from '@/lib/sites/request-access'
+import { createSiteOutcome, OutcomeFixtureRequiredError } from '@/lib/sites/outcomes'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 
 const schema = z.union([
+  z.object({ action: z.literal('create'), kind: z.enum(['AVAILABILITY', 'SIGNUP']), targetUrl: z.string().url().max(2048), fixtureId: z.string().min(1).optional() }),
   z.object({ watchPage: z.literal(true) }),
   z.object({
     action: z.literal('rename'),
@@ -32,6 +34,19 @@ export async function POST(
 
     const body = schema.safeParse(await req.json().catch(() => ({})))
     if (!body.success) return apiError('Invalid outcome update', 400)
+
+    if ('action' in body.data && body.data.action === 'create') {
+      if (access.decision.role !== 'owner') return apiError('Sign in and claim this Site first.', 403)
+      try {
+        const outcome = await createSiteOutcome({ site: access.decision.site, ...body.data })
+        return NextResponse.json({ ok: true, outcome })
+      } catch (error) {
+        if (error instanceof OutcomeFixtureRequiredError) return apiError(error.message, 400, { code: 'OUTCOME_FIXTURE_REQUIRED' })
+        throw error
+      }
+    }
+
+    if (access.decision.role !== 'owner') return apiError('Sign in and claim this Site first.', 403)
 
     const result = await executeSiteCommand(
       'watchPage' in body.data

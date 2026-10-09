@@ -95,7 +95,7 @@ describe('SidebarNav', () => {
 
     const links = screen.getAllByRole('link').map((link) => link.getAttribute('href'))
     expect(links.at(-1)).toBe('/settings')
-    expect(links).toEqual(['/dashboard', '/billing', '/docs', '/help', '/settings'])
+    expect(links).toEqual(['/dashboard', '/billing', '/settings/api-keys', '/docs', '/help', '/settings'])
   })
 
   it('places Admin before Settings when enabled', () => {

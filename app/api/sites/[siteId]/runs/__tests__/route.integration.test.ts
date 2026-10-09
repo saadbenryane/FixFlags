@@ -39,6 +39,7 @@ vi.mock('@/lib/db', () => ({
 }))
 vi.mock('@/lib/audit/create-audit', () => ({ createAndEnqueueAudit: mocks.createAudit }))
 vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: vi.fn().mockResolvedValue({}) }))
+vi.mock('@/lib/queue/execution-readiness', () => ({ requireExecutionReady: vi.fn().mockResolvedValue(undefined) }))
 
 import { POST } from '@/app/api/sites/[siteId]/runs/route'
 

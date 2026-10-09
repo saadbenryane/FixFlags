@@ -51,11 +51,18 @@ export async function POST(
       siteId: resolvedId,
       userId: session.user.id,
       flagId,
+      idempotencyKey: req.headers.get('Idempotency-Key')?.trim() || undefined,
+      source: 'WEB',
       ...(parsed.data.changeSummary ? { changeSummary: parsed.data.changeSummary } : {}),
     })
 
     if (!result.ok) return apiError(result.error, 400)
-    return NextResponse.json(result)
+    if (!('runId' in result)) return apiError('Verification could not be started', 500)
+    return NextResponse.json({
+      ...result,
+      accepted: true,
+      runRequestId: result.runId,
+    }, { status: 202 })
   } catch (error) {
     return handleRouteError(error)
   }

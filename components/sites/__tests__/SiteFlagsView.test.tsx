@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { SiteFlagsView, siteFlagTab } from '../SiteFlagsView'
 import { SiteBoard } from '../SiteBoard'
@@ -50,12 +50,19 @@ function flag(overrides: Partial<SiteFlagSeed> & Pick<SiteFlagSeed, 'id' | 'prob
     pageUrl: 'https://example.com/',
     status: 'OPEN',
     area: 'search',
+    affectedPaths: ['https://example.com/'],
+    affectedPageCount: 1,
+    priorityBand: 'other',
+    priorityScore: 55,
+    relatedOutcome: null,
+    verificationState: 'unverified',
+    latestOccurrenceAt: null,
     ...overrides,
   }
 }
 
 function flagsView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
-  return {
+  const base: SiteHomeView = {
     site: {
       siteId: 'p_example',
       kind: 'provisional',
@@ -72,28 +79,40 @@ function flagsView(overrides: Partial<SiteHomeView> = {}): SiteHomeView {
       watchConsecutiveFailures: 0,
       userId: 'u1',
     },
-    host: 'example.com',
-    statusLabel: '1 open Flag',
-    statusState: 'attention',
+    presentation: {
+      identity: { siteId: 'p_example', name: 'example.com', host: 'example.com', preview: null },
+      result: { state: 'flags', label: 'Flags found' },
+      monitoring: { state: 'not_monitored', label: 'Not monitored' },
+      coverage: { pagesReached: 1, pagesExpected: 1, label: '1 page', complete: true },
+      freshness: { checkedAt: null, stale: false, label: 'No completed analysis' },
+      flags: { count: 1, label: '1 Flag', fixFirstCount: 0 },
+      run: { state: 'idle', label: 'Run details', auditId: 'audit-1', recoveryAction: null },
+      categories: [],
+    },
     audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, walkFinished: true, failureCode: null },
     cards: [],
     flags: [flag({ id: 'f-open', problem: 'Meta description is missing' })],
     recommendations: [],
     resolvedFlags: [flag({ id: 'f-fixed', problem: 'Alt text was missing', status: 'FIXED' })],
     outcomes: [],
-    watching: false,
     watch: {
       state: 'off',
       interval: null,
       nextRunAt: null,
+      lastRunAt: null,
       lastError: null,
       covered: false,
       label: 'Not watching',
       alert: { state: 'none', status: null, attempts: 0, at: null },
     },
-    coverageSummary: 'Checked recently · 1 open Flag',
-    ...overrides,
+    settings: {
+      notificationLevel: 'FLAGS', notifyOnRecovery: true,
+      shopify: { configured: true, state: 'not_connected', domain: null },
+      searchConsole: { provider: 'SEARCH_CONSOLE', configured: false, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null },
+      analytics: { provider: 'ANALYTICS', configured: false, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null },
+    },
   }
+  return { ...base, ...overrides, presentation: { ...base.presentation, ...overrides.presentation } }
 }
 
 /**
@@ -130,10 +149,15 @@ describe('the tab is read on the server', () => {
 
   it('reaches both tabs as real links the customer can open', () => {
     renderFlags('open')
-    const open = screen.getByRole('tab', { name: /open attention/i })
+    const open = screen.getByRole('tab', { name: /open \(1\)/i })
     const resolved = screen.getByRole('tab', { name: /resolved/i })
     expect(open).toHaveAttribute('aria-selected', 'true')
     expect(resolved).toHaveAttribute('href', '/sites/p_example/flags?tab=resolved')
+    open.focus()
+    fireEvent.keyDown(open, { key: 'ArrowRight' })
+    expect(resolved).toHaveFocus()
+    expect(open).toHaveAttribute('aria-selected', 'true')
+    expect(resolved).toHaveAttribute('aria-selected', 'false')
   })
 })
 
@@ -155,15 +179,20 @@ describe('Open attention and Resolved are different lists', () => {
     expect(screen.queryByText('Meta description is missing')).not.toBeInTheDocument()
     expect(screen.getByText(SITE_BOARD_COPY.flagResolvedList)).toBeVisible()
     expect(screen.queryByText(/verified as fixed/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View proof' })).toHaveAttribute('href', expect.stringContaining('/flags/'))
+    expect(screen.queryByRole('button', { name: /copy fix prompt/i })).not.toBeInTheDocument()
   })
 
   it('never implies a Site is healthy just because nothing is open', () => {
     renderFlags('open', flagsView({
       flags: [],
-      statusState: 'unknown',
-      coverageSummary: 'Conversion was not checked yet.',
+      presentation: {
+        ...flagsView().presentation,
+        result: { state: 'could_not_verify', label: 'Couldn’t verify' },
+        flags: { count: 0, label: '0 Flags', fixFirstCount: 0 },
+      },
     }))
-    expect(screen.getByText(/No Flags yet\. Coverage is still incomplete\./)).toBeVisible()
+    expect(screen.getByText('No Flags found. Coverage is incomplete.')).toBeVisible()
     expect(screen.queryByText('Nothing needs you right now.')).not.toBeInTheDocument()
   })
 
@@ -199,7 +228,7 @@ describe('the Flags tab is reachable from the Site chrome', () => {
   it('is linked from the Site shell navigation', () => {
     render(
       <MeProvider initialUser={signedInUser}>
-        <SiteBoard siteId="p_example" initial={flagsView({ statusState: 'checking' })} />
+        <SiteBoard siteId="p_example" initial={flagsView()} />
       </MeProvider>
     )
     const links = screen.getAllByRole('link', { name: /^Flags/ })

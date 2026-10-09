@@ -1,19 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Check, Copy, KeyRound, Loader2, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { API_KEY_COPY } from '@/lib/marketing/copy/terminology'
 import { Input } from '@/components/ui/input'
 import { createApiKey, type CreatedApiKey } from '@/lib/api/api-key-client'
 import type { ApiKeyClient } from '@/lib/mcp/builders'
 import {
   DEFAULT_DEVELOPER_KEY_EXPIRY_DAYS,
-  DEFAULT_DEVELOPER_KEY_SCOPE_PRESET,
   DEVELOPER_KEY_EXPIRY_DAYS,
-  DEVELOPER_KEY_SCOPE_PRESETS,
   developerKeyScopeLabel,
   type DeveloperKeyExpiryDays,
-  type DeveloperKeyScopePreset,
 } from '@/lib/mcp/developer-key-policy'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 
@@ -29,26 +27,16 @@ interface ApiKeySummary {
   createdAt: string
 }
 
-const CLIENTS: Array<{ value: ApiKeyClient; label: string }> = [
-  { value: 'codex', label: 'Codex' },
-  { value: 'claudeCode', label: 'Claude Code' },
-  { value: 'cursor', label: 'Cursor' },
-  { value: 'windsurf', label: 'Windsurf' },
-  { value: 'cli', label: 'FixFlags CLI' },
-  { value: 'other', label: 'Another MCP client' },
-]
-
 export function ApiKeyManager() {
   const [keys, setKeys] = useState<ApiKeySummary[]>([])
-  const [name, setName] = useState('My coding agent')
-  const [client, setClient] = useState<ApiKeyClient>('codex')
-  const [scopePreset, setScopePreset] = useState<DeveloperKeyScopePreset>(DEFAULT_DEVELOPER_KEY_SCOPE_PRESET)
+  const [name, setName] = useState('')
   const [expiresInDays, setExpiresInDays] = useState<DeveloperKeyExpiryDays>(DEFAULT_DEVELOPER_KEY_EXPIRY_DAYS)
   const [created, setCreated] = useState<CreatedApiKey | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [copied, setCopied] = useState(false)
   const [message, setMessage] = useState('')
+  const revealedKey = useRef<HTMLInputElement>(null)
 
   async function loadKeys() {
     const response = await fetch('/api/api-keys')
@@ -70,8 +58,8 @@ export function ApiKeyManager() {
     try {
       const next = await createApiKey({
         name,
-        client,
-        scopePreset,
+        client: 'other',
+        scopePreset: 'fix_and_verify',
         expiresInDays,
       })
       setCreated(next)
@@ -91,7 +79,9 @@ export function ApiKeyManager() {
       setCopied(true)
       window.setTimeout(() => setCopied(false), 1800)
     } catch {
-      setMessage('Copy was blocked by this browser. Select the key above to copy it manually.')
+      setMessage('Copy was blocked by this browser. The key is selected so you can copy it manually.')
+      revealedKey.current?.focus()
+      revealedKey.current?.select()
     }
   }
 
@@ -120,39 +110,6 @@ export function ApiKeyManager() {
             required
           />
         </label>
-        <label htmlFor="api-key-client" className="space-y-2 text-sm font-medium">
-          Client
-          <select
-            id="api-key-client"
-            value={client}
-            onChange={(event) => setClient(event.target.value as ApiKeyClient)}
-            className="flex h-11 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-          >
-            {CLIENTS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label htmlFor="api-key-access" className="space-y-2 text-sm font-medium">
-          Access
-          <select
-            id="api-key-access"
-            value={scopePreset}
-            onChange={(event) => setScopePreset(event.target.value as DeveloperKeyScopePreset)}
-            className="flex h-11 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-          >
-            {DEVELOPER_KEY_SCOPE_PRESETS.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <span className="block text-xs font-normal text-muted-foreground">
-            {DEVELOPER_KEY_SCOPE_PRESETS.find((option) => option.id === scopePreset)?.description}
-          </span>
-        </label>
         <label htmlFor="api-key-expiry" className="space-y-2 text-sm font-medium">
           Expires after
           <select
@@ -168,7 +125,10 @@ export function ApiKeyManager() {
             ))}
           </select>
         </label>
-        <Button type="submit" disabled={submitting} className="min-h-11 md:self-end">
+        <p className="text-sm text-muted-foreground md:col-span-2">
+          Access: <span className="font-medium text-foreground">{API_KEY_COPY.accessName}</span>. {API_KEY_COPY.accessDescription}
+        </p>
+        <Button type="submit" disabled={submitting || !name.trim()} className="min-h-11 md:col-span-2 md:w-fit">
           {submitting ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />
           ) : (
@@ -182,9 +142,14 @@ export function ApiKeyManager() {
         <div className="rounded-card border border-brand/30 bg-brand-muted p-4">
           <p className="text-sm font-medium">Copy this key now</p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <code className="min-w-0 flex-1 overflow-x-auto rounded-[var(--radius-control)] bg-background px-3 py-3 text-sm">
-              {created.key}
-            </code>
+            <input
+              ref={revealedKey}
+              readOnly
+              value={created.key}
+              aria-label="New API key"
+              onFocus={(event) => event.currentTarget.select()}
+              className="min-h-11 min-w-0 flex-1 overflow-x-auto rounded-[var(--radius-control)] border border-border bg-background px-3 font-mono text-sm"
+            />
             <Button type="button" variant="outline" onClick={() => void handleCopy()} className="min-h-11">
               {copied ? <Check className="mr-2 h-4 w-4" aria-hidden /> : <Copy className="mr-2 h-4 w-4" aria-hidden />}
               {copied ? 'Copied' : 'Copy'}
@@ -210,7 +175,7 @@ export function ApiKeyManager() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{key.name}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {key.prefix}…{key.lastFour} · {key.client ?? 'MCP'} · {developerKeyScopeLabel(key.scopes)}
+                    {key.prefix}…{key.lastFour} · {developerKeyScopeLabel(key.scopes)}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {key.lastUsed ? `Last used ${formatEvidenceTimestamp(key.lastUsed)}` : 'Never used'} ·{' '}

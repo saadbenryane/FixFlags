@@ -25,11 +25,22 @@ function renderControls() {
   return render(
     <SiteSettingsControls
       siteId="site-1"
-      watch={{ label: 'Not watching', lastError: null, covered: false }}
+      watch={{
+        state: 'off',
+        interval: null,
+        nextRunAt: null,
+        lastRunAt: null,
+        lastError: null,
+        covered: false,
+        label: 'Not monitored',
+        alert: { state: 'none', status: null, attempts: 0, at: null },
+      }}
       initial={{
         notificationLevel: 'FLAGS',
         notifyOnRecovery: true,
-        shopify: { state: 'not_connected', domain: null },
+        shopify: { configured: true, state: 'not_connected', domain: null },
+        searchConsole: { provider: 'SEARCH_CONSOLE', configured: false, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null },
+        analytics: { provider: 'ANALYTICS', configured: false, status: 'not_connected', propertyLabel: null, detail: null, lastSyncedAt: null },
       }}
     />
   )
@@ -37,7 +48,8 @@ function renderControls() {
 
 /** Click a cadence and wait for the confirmation the control renders for it. */
 async function choose(label: 'Weekly' | 'Daily', confirmation: string) {
-  fireEvent.click(screen.getByRole('button', { name: label }))
+  fireEvent.change(screen.getByRole('combobox', { name: 'Schedule' }), { target: { value: label.toLowerCase() } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save monitoring' }))
   return screen.findByText(confirmation)
 }
 
@@ -51,7 +63,7 @@ describe('SiteSettingsControls Watch', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     renderControls()
-    await choose('Daily', 'Watch is daily.')
+    await choose('Daily', 'Daily monitoring is active.')
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/sites/site-1/watch',
@@ -76,7 +88,7 @@ describe('SiteSettingsControls Watch', () => {
 
     renderControls()
     // The applied cadence is stated, and the reason is stated next to it.
-    await choose('Daily', 'Watch is weekly.')
+    await choose('Daily', 'Weekly monitoring is active.')
 
     expect(screen.getByText(DAILY_ON_FREE)).toBeInTheDocument()
     expect(
@@ -100,10 +112,10 @@ describe('SiteSettingsControls Watch', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     renderControls()
-    await choose('Daily', 'Watch is weekly.')
+    await choose('Daily', 'Weekly monitoring is active.')
     expect(screen.getByText(DAILY_ON_FREE)).toBeInTheDocument()
 
-    await choose('Weekly', 'Watch is weekly.')
+    await choose('Weekly', 'Weekly monitoring is active.')
     expect(screen.queryByText(DAILY_ON_FREE)).not.toBeInTheDocument()
     expect(refresh).toHaveBeenCalled()
   })

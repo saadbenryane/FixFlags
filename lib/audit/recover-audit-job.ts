@@ -6,6 +6,7 @@ import { AUDIT_DEADLINE_MS, STUCK_AUDIT_MINUTES } from '@/lib/audit/pipeline-con
 import { resolveStuckAuditRecovery, stuckAuditCutoff } from '@/lib/audit/stuck-audit-recovery'
 import { persistImprovementCycle } from '@/lib/audit/finalize'
 import { logger } from '@/lib/logger'
+import { asReviewDepth, auditDeadlineMsForDepth } from '@/lib/audit/review-depth'
 
 /** Re-enqueue when worker heartbeat is dead and job has waited this long. */
 export const WORKER_DEAD_RECOVERY_SECONDS = 90
@@ -37,14 +38,16 @@ export interface RecoverAuditJobAudit {
   updatedAt: Date
   startedAt?: Date | null
   createdAt?: Date | null
+  reviewDepth?: number
 }
 
 export function isAuditPastDeadline(
   startedAt: Date | null | undefined,
-  nowMs = Date.now()
+  nowMs = Date.now(),
+  reviewDepth = 1,
 ): boolean {
   if (!startedAt) return false
-  return nowMs - startedAt.getTime() > AUDIT_DEADLINE_MS
+  return nowMs - startedAt.getTime() > auditDeadlineMsForDepth(asReviewDepth(reviewDepth))
 }
 
 /**
@@ -149,7 +152,7 @@ export async function recoverAuditJobOnPoll(
   // "Audit is already running". FINALIZING is still non-terminal and receives
   // the same grace; a lost worker must not leave it there indefinitely.
   if (
-    isAuditPastDeadline(audit.startedAt, Date.now() - POLL_FORCE_FAIL_GRACE_MS)
+    isAuditPastDeadline(audit.startedAt, Date.now() - POLL_FORCE_FAIL_GRACE_MS, audit.reviewDepth)
   ) {
     if (job && jobState === 'active') {
       await job.moveToFailed(new Error('Audit exceeded deadline'), '0', true)
@@ -236,13 +239,13 @@ export async function recoverAuditJobOnPoll(
  */
 export async function recoverStuckAuditOnCron(
   auditId: string,
-  audit: Pick<RecoverAuditJobAudit, 'status' | 'startedAt'>
+  audit: Pick<RecoverAuditJobAudit, 'status' | 'startedAt' | 'reviewDepth'>
 ): Promise<RecoverAuditJobResult> {
   if (audit.status === 'COMPLETED' || audit.status === 'FAILED') {
     return 'noop'
   }
 
-  if (isAuditPastDeadline(audit.startedAt)) {
+  if (isAuditPastDeadline(audit.startedAt, Date.now() - POLL_FORCE_FAIL_GRACE_MS, audit.reviewDepth)) {
     const queue = getAuditQueue()
     const job = await queue.getJob(auditId)
     const jobState = job ? await job.getState() : null
@@ -337,7 +340,7 @@ export async function recoverCompletedImprovementProjections(
  * of truth shared by the HTTP endpoint (/api/cron/recover-stuck-audits) and the
  * internal recovery scheduler, so both behave identically.
  */
-async function queryStuckAudits(cutoff: Date, retries = 2): Promise<Array<{ id: string; status: string; startedAt: Date | null }>> {
+async function queryStuckAudits(cutoff: Date, retries = 2): Promise<Array<{ id: string; status: string; startedAt: Date | null; reviewDepth: number }>> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       return await prisma.audit.findMany({
@@ -345,7 +348,7 @@ async function queryStuckAudits(cutoff: Date, retries = 2): Promise<Array<{ id: 
           status: { notIn: ['COMPLETED', 'FAILED'] },
           updatedAt: { lt: cutoff },
         },
-        select: { id: true, status: true, startedAt: true },
+        select: { id: true, status: true, startedAt: true, reviewDepth: true },
       })
     } catch (err) {
       if (attempt < retries) {

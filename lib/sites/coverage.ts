@@ -1,6 +1,7 @@
 import type { CardHealthState, SiteCardArea } from '@/lib/sites/card-areas'
 import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
+import type { FlagPriorityBand, FlagVerificationState } from '@/lib/sites/presentation'
 
 export type CoverageFact = {
   area: SiteCardArea
@@ -41,6 +42,13 @@ export type SiteFlagSeed = {
   status: string
   resolvedInId: string | null
   area: SiteCardArea
+  affectedPaths: string[]
+  affectedPageCount: number
+  priorityBand: FlagPriorityBand
+  priorityScore: number
+  relatedOutcome: { id: string; name: string } | null
+  verificationState: FlagVerificationState
+  latestOccurrenceAt: string | null
 }
 
 type EvidenceCoverageShape = {
@@ -193,14 +201,12 @@ export function buildCoverageFacts(input: {
     const openFlagCount = openByArea.get(area) ?? 0
     const prior = lastKnownByArea.get(area)
 
-    if (inFlight && input.retainLastKnownWhileChecking && prior) {
+    if ((inFlight || input.auditStatus === 'FAILED') && input.retainLastKnownWhileChecking && prior) {
       return {
         ...prior,
-        state: prior.state === 'unknown' ? 'checking' : prior.state,
+        state: prior.state,
         label: prior.label,
-        detail: prior.detail
-          ? `${prior.detail} · Checking now`
-      : 'Checking now. Last known kept',
+        detail: prior.detail,
         evidenced: prior.evidenced,
       }
     }
@@ -208,9 +214,9 @@ export function buildCoverageFacts(input: {
     if (inFlight) {
       return {
         area,
-        state: 'checking' as const,
-        label: 'Checking now',
-        detail: 'Live analysis in progress',
+        state: 'unknown' as const,
+        label: 'Waiting for evidence',
+        detail: null,
         checkedAt: prior?.checkedAt ?? null,
         openFlagCount: prior?.openFlagCount ?? 0,
         evidenced: false,

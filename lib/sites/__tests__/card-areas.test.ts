@@ -85,7 +85,7 @@ describe('site card packaging', () => {
       'performance',
       'tracking',
     ])
-    expect(ADDABLE_BOARD_CARDS).toEqual(['uptime', 'accessibility'])
+    expect(ADDABLE_BOARD_CARDS).toEqual(['accessibility'])
   })
 
   it('encodes provisional site ids without touching graph Site', () => {
@@ -111,7 +111,7 @@ describe('site card packaging', () => {
       evidenceCoverage: null,
       flags: [],
     })
-    expect(facts.every((f) => f.state === 'checking')).toBe(true)
+    expect(facts.every((f) => f.state === 'unknown' && f.label === 'Waiting for evidence')).toBe(true)
   })
 
   it('keeps completed areas unknown when there was no evidence', () => {
@@ -348,7 +348,7 @@ describe('site card packaging', () => {
       retainLastKnownWhileChecking: true,
     })
     expect(facts.find((f) => f.area === 'performance')?.state).toBe('healthy')
-    expect(facts.find((f) => f.area === 'performance')?.detail).toMatch(/Checking now/)
+    expect(facts.find((f) => f.area === 'performance')?.detail).toBe('Desktop page speed evidence completed')
   })
 
   it('marks problem when open critical flags exist after completion', () => {
@@ -474,6 +474,6 @@ describe('site card packaging', () => {
       evidenceCoverage: null,
       flags: [],
     })
-    expect(facts.every((f) => f.state === 'checking')).toBe(true)
+    expect(facts.every((f) => f.state === 'unknown' && f.label === 'Waiting for evidence')).toBe(true)
   })
 })

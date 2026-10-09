@@ -15,6 +15,7 @@ const baseURL = externalBaseUrl ?? 'http://127.0.0.1:3107'
 const credentialedDatabaseUrl =
   process.env.E2E_CREDENTIALED === 'true' ? process.env.RELEASE_FRESH_DATABASE_URL : undefined
 const reportCrossBrowser = process.env.E2E_REPORT_CROSS_BROWSER === 'true'
+const withWorker = process.env.E2E_WITH_WORKER === 'true'
 
 const localRuntimeEnv = {
   FIXFLAGS_ALLOW_DEGRADED_LOCAL: 'true',
@@ -53,8 +54,9 @@ export default defineConfig({
     : {
         // Keep browser verification isolated from active local development
         // servers that may also be compiling the same workspace.
-        command:
-          'node scripts/next-build.mjs .next-e2e --no-lint && npm run worker:build && node scripts/prepare-standalone-runtime.mjs && concurrently -k -n web,worker "node scripts/runtime-start.mjs web" "node scripts/runtime-start.mjs worker"',
+        command: withWorker
+          ? 'node scripts/next-build.mjs .next-e2e --no-lint && npm run worker:build && node scripts/prepare-standalone-runtime.mjs && concurrently -k -n web,worker "node scripts/runtime-start.mjs web" "node scripts/runtime-start.mjs worker"'
+          : 'node scripts/next-build.mjs .next-e2e --no-lint && node scripts/prepare-standalone-runtime.mjs && node scripts/runtime-start.mjs web',
         env: localRuntimeEnv,
         url: baseURL,
         reuseExistingServer: false,

@@ -19,12 +19,12 @@ export function watchBoardState(input: {
 
 export function watchBoardLabel(state: WatchBoardState, interval: 'weekly' | 'daily' | null): string {
   if (state === 'watching') {
-    return interval === 'daily' ? 'Watching daily' : 'Watching weekly'
+    return interval === 'daily' ? 'Daily' : 'Weekly'
   }
-  if (state === 'paused') return 'Watch paused'
-  if (state === 'delayed') return 'Watch delayed'
-  if (state === 'quota') return 'Watch waiting on quota'
-  return 'Not watching'
+  if (state === 'paused') return 'Paused'
+  if (state === 'delayed') return 'Delayed'
+  if (state === 'quota') return 'Plan limit reached'
+  return 'Not monitored'
 }
 
 /** True only after a successful schedule write (interval + next run). */

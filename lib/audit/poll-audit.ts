@@ -23,7 +23,7 @@ export async function pollAuditUntilDone(options: PollAuditOptions): Promise<{
   while (Date.now() - start < timeoutMs && !signal?.aborted) {
     const audit = await prisma.audit.findUnique({
       where: { id: auditId },
-      select: { status: true, updatedAt: true, startedAt: true, createdAt: true },
+      select: { status: true, updatedAt: true, startedAt: true, createdAt: true, reviewDepth: true },
     })
 
     if (audit && !TERMINAL_STATUSES.has(audit.status)) {

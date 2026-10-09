@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Globe2, Plus } from 'lucide-react'
-import { AddBoardCard, AddCardLibrary, BoardCard, BoardGrid, BoardStatus } from '@/components/sites/BoardCard'
+import { BoardCard, BoardGrid, BoardStatus } from '@/components/sites/BoardCard'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { CARE_HOME as C, INTEGRATIONS_PAGE, SITE_BOARD_COPY } from '@/lib/marketing/copy'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
@@ -20,8 +20,7 @@ export function HomepageHero({
 }: {
   onOpen: (card: HomepageDetailCard) => void
 }) {
-  const [libraryOpen, setLibraryOpen] = useState(false)
-  const [integrationsOpen, setIntegrationsOpen] = useState(false)
+  const [addOpen, setAddOpen] = useState(false)
   const [extra, setExtra] = useState<HomepageExtraCardId[]>([])
   const [connected, setConnected] = useState<Array<(typeof INTEGRATIONS_PAGE.items)[number]['id']>>([])
   const present: SiteCardArea[] = [...STARTER_AREAS, ...extra]
@@ -102,30 +101,31 @@ export function HomepageHero({
                 onOpen={() => onOpen(card)}
               />
             })}
-            <AddBoardCard onOpen={() => setLibraryOpen(true)} />
-            <button type="button" className={s.boardAdd} onClick={() => setIntegrationsOpen(true)}>
-              <span className={s.boardAddSymbol} aria-hidden="true"><Plus size={22} /></span>
-              <strong>{C.integrations.add}</strong>
+            <button type="button" className="flex min-h-[164px] flex-col items-start justify-center gap-3 rounded-card border border-dashed border-border bg-transparent p-[18px] text-left hover:border-foreground/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setAddOpen(true)}>
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted" aria-hidden="true"><Plus size={22} /></span>
+              <strong className="text-sm font-medium">{SITE_BOARD_COPY.addCard}</strong>
             </button>
           </BoardGrid>
         </div>
       </div>
     </div>
-    <AddCardLibrary
-      open={libraryOpen}
-      onOpenChange={setLibraryOpen}
-      present={present}
-      onAdd={id => {
-        if (id === 'uptime' || id === 'accessibility') setExtra(current => current.includes(id) ? current : [...current, id])
-        setLibraryOpen(false)
-      }}
-      exampleNote={C.integrations.sampleNote}
-    />
-    <Dialog open={integrationsOpen} onOpenChange={setIntegrationsOpen}>
+    <Dialog open={addOpen} onOpenChange={setAddOpen}>
       <DialogContent className={s.dialog}>
-        <DialogTitle>{C.integrations.addTitle}</DialogTitle>
-        <DialogDescription>{C.integrations.addBody}</DialogDescription>
+        <DialogTitle>{SITE_BOARD_COPY.addTitle}</DialogTitle>
+        <DialogDescription>Choose additional coverage or a connection for this Site.</DialogDescription>
         <ul className={s.integrationPicker}>
+          {(['uptime', 'accessibility'] as const).filter(id => !present.includes(id)).map(id => {
+            const card = C.library[id]
+            return <li key={id}>
+              <button type="button" onClick={() => {
+                setExtra(current => current.includes(id) ? current : [...current, id])
+                setAddOpen(false)
+              }}>
+                <span><strong>{card.name}</strong><small>{card.detail}</small></span>
+                <em><Plus size={16} aria-hidden="true" /> Add coverage</em>
+              </button>
+            </li>
+          })}
           {INTEGRATIONS_PAGE.items.map(item => {
             const added = connected.includes(item.id)
             return <li key={item.id}>

@@ -9,6 +9,7 @@ import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { RateLimitError } from '@/lib/security/rate-limit'
 import { logger } from '@/lib/logger'
+import { requireExecutionReady } from '@/lib/queue/execution-readiness'
 
 const ACTIVE_RUN_STATUSES = ['QUEUED', 'RUNNING'] as const
 const INTERACTIVE_RUN_LIMIT_PER_DAY = 24
@@ -329,6 +330,8 @@ export async function requestSiteRun(input: RunInput): Promise<{
     }
     return { runId: active.id, auditId: active.auditId, outcomeIds: selectedIds, reused: true }
   }
+
+  if (input.source !== 'WATCH') await requireExecutionReady()
 
   if (input.source === 'WEB' || input.source === 'MCP' || input.source === 'API') {
     const recentRuns = await prisma.runRequest.count({

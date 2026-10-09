@@ -34,10 +34,11 @@ export default async function OutcomeDetailPage({ params }: {
   return (
     <SiteShell
       siteId={home.site.siteId}
+      ownerId={home.site.userId}
       activeRoute="home"
       title={outcome.name}
       description={outcome.expectation ?? outcome.summary}
-      flagCount={home.flags.length}
+      presentation={home.presentation}
       watch={home.watch}
       checking={outcome.running}
     >

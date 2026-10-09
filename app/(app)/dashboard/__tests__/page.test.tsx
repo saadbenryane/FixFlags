@@ -87,15 +87,15 @@ describe('/dashboard handoff', () => {
   it('ignores an uncheckable handoff URL rather than offering a dead scan', async () => {
     await renderPage({ url: 'http://localhost:3000' })
 
-    await waitFor(() => expect(screen.getByText('Your Sites')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Websites')).toBeInTheDocument())
     expect(mocks.startScanWithHandoff).not.toHaveBeenCalled()
-    expect(screen.queryByRole('textbox', { name: 'Website URL' })).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Website URL' })).toBeInTheDocument()
   })
 
   it('starts no scan when no handoff URL is present', async () => {
     await renderPage({})
 
-    await waitFor(() => expect(screen.getByText('Your Sites')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Websites')).toBeInTheDocument())
     expect(mocks.startScanWithHandoff).not.toHaveBeenCalled()
   })
 })

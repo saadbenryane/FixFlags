@@ -93,21 +93,19 @@ describe('Flag verification attempts', () => {
         pageUrl: 'https://shop.example/products/tote',
         viewport: null,
         expectedBehavior: 'The selected product appears in the cart.',
-        attempts: [
-          attempt('attempt-site', 'site', 'IMPROVED'),
-          attempt('attempt-copy', 'copy', null),
-          attempt('attempt-unknown', 'custom_signal', 'UNCHANGED'),
-        ],
+        attempts: [attempt('attempt-site', 'site', 'IMPROVED'), attempt('attempt-copy', 'copy', null), attempt('attempt-unknown', 'custom_signal', 'UNCHANGED')],
       },
     })
   })
 
   it('names how the attempt was recorded and uses the shared UTC evidence clock', async () => {
     const clock = formatEvidenceTimestamp(ATTEMPTED)
-    render(await SiteFlagPage({
-      params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }),
-      searchParams: Promise.resolve({}),
-    }))
+    render(
+      await SiteFlagPage({
+        params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }),
+        searchParams: Promise.resolve({}),
+      }),
+    )
 
     expect(screen.getByText('From this Site')).toBeVisible()
     expect(screen.getByText('Copied instructions')).toBeVisible()
@@ -116,5 +114,25 @@ describe('Flag verification attempts', () => {
     expect(screen.queryByText(/· site\b/)).not.toBeInTheDocument()
     expect(screen.queryByText(/· copy\b/)).not.toBeInTheDocument()
     expect(screen.queryByText(/custom_signal/)).not.toBeInTheDocument()
+  })
+
+  it('leads from evidence to a two-step fix and independent verification path', async () => {
+    render(
+      await SiteFlagPage({
+        params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }),
+        searchParams: Promise.resolve({}),
+      }),
+    )
+
+    expect(screen.getByRole('heading', { name: 'What FixFlags saw' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Fix and verify' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Fix the problem' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Verify on the live Site' })).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Verification history' })).toBeVisible()
+    expect(
+      screen.getByRole('link', {
+        name: /https:\/\/shop\.example\/products\/tote/,
+      }),
+    ).toHaveAttribute('href', 'https://shop.example/products/tote')
   })
 })

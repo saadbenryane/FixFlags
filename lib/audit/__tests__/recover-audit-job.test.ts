@@ -92,6 +92,14 @@ describe('deadline helpers', () => {
     assert.equal(isAuditPastDeadline(new Date(Date.now() - 2 * HOUR)), true)
   })
 
+  it('uses the execution depth deadline rather than killing a live deep review', () => {
+    const now = Date.now()
+    const started = new Date(now - 360_000)
+    assert.equal(isAuditPastDeadline(started, now, 1), true)
+    assert.equal(isAuditPastDeadline(started, now, 3), false)
+    assert.equal(isAuditPastDeadline(new Date(now - 700_000), now, 3), true)
+  })
+
   it('isWorkerDownGiveUp respects the 180s bound', () => {
     assert.equal(isWorkerDownGiveUp(null), false)
     assert.equal(isWorkerDownGiveUp(new Date(Date.now() - 60_000)), false)

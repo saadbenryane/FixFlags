@@ -22,4 +22,9 @@ describe('card evidence', () => {
     expect(screen.getByText('No completed check recorded yet.')).toBeInTheDocument()
     expect(screen.queryByText('Checked')).not.toBeInTheDocument()
   })
+  it('does not render an empty scope heading', () => {
+    render(<BoardDetails checkedAt="2026-10-07T12:00:00Z" sources={['FixFlags browser']} />)
+    expect(screen.queryByRole('heading', { name: 'What was checked' })).not.toBeInTheDocument()
+    expect(screen.getByText('FixFlags browser')).toBeVisible()
+  })
 })

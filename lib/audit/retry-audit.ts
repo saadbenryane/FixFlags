@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { getAuditQueue } from '@/lib/queue/client'
 import { PIPELINE_PROGRESS } from '@/lib/audit/progress'
+import { requireExecutionReady } from '@/lib/queue/execution-readiness'
 
 export async function retryAudit(auditId: string): Promise<{ status: string }> {
   const audit = await prisma.audit.findUnique({
@@ -11,6 +12,7 @@ export async function retryAudit(auditId: string): Promise<{ status: string }> {
   if (audit.status !== 'FAILED' && audit.status !== 'COMPLETED') {
     throw new Error('Can only retry failed or completed audits for summary refresh')
   }
+  await requireExecutionReady()
 
   // The audit's DB status is already terminal (FAILED/COMPLETED - guarded
   // above). Any job still in the queue is therefore stale (e.g. a run that blew

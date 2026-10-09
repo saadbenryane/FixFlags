@@ -4,6 +4,7 @@ import { cardAreaForCheck } from '@/lib/sites/card-areas'
 import { customerExpectedBehavior } from '@/lib/sites/flag-label'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
 import { selectResolvedFlags, siteFlagDetailStatus } from '@/lib/sites/flag-resolution'
+import { compareFlagPriority, flagPriority, type FlagVerificationState } from '@/lib/sites/presentation'
 import type { SiteRecord } from '@/lib/sites/types'
 
 function toSiteFlagSeed(flag: {
@@ -21,7 +22,21 @@ function toSiteFlagSeed(flag: {
   resolvedInId: string | null
   improvementId?: string | null
   confidence?: number | null
+  affectedPaths?: unknown
+  relatedOutcome?: { id: string; name: string } | null
+  verificationState?: FlagVerificationState
+  latestOccurrenceAt?: string | Date | null
 }): SiteFlagSeed {
+  const storedPaths = Array.isArray(flag.affectedPaths)
+    ? flag.affectedPaths.filter((path): path is string => typeof path === 'string' && path.length > 0)
+    : []
+  const affectedPaths = [...new Set((storedPaths.length > 0 ? storedPaths : [flag.pageUrl]).filter((path): path is string => Boolean(path)))]
+  const priority = flagPriority({
+    severity: flag.severity,
+    confidence: flag.confidence,
+    affectedPageCount: affectedPaths.length,
+    outcomeId: flag.relatedOutcome?.id,
+  })
   return {
     id: flag.improvementId ?? flag.id,
     sourceFlagId: flag.id,
@@ -39,7 +54,25 @@ function toSiteFlagSeed(flag: {
     status: flag.status,
     resolvedInId: flag.resolvedInId,
     area: cardAreaForCheck(flag),
+    affectedPaths,
+    affectedPageCount: affectedPaths.length,
+    priorityBand: priority.band,
+    priorityScore: priority.score,
+    relatedOutcome: flag.relatedOutcome ?? null,
+    verificationState: flag.verificationState ?? (flag.status === 'REGRESSED' ? 'regressed' : 'unverified'),
+    latestOccurrenceAt: flag.latestOccurrenceAt instanceof Date
+      ? flag.latestOccurrenceAt.toISOString()
+      : flag.latestOccurrenceAt ?? null,
   }
+}
+
+function verificationState(status: string, verifying: boolean): FlagVerificationState {
+  if (verifying) return 'verifying'
+  if (status === 'VERIFIED' || status === 'FIXED') return 'verified'
+  if (status === 'UNVERIFIED') return 'could_not_verify'
+  if (status === 'REGRESSED') return 'regressed'
+  if (status === 'READY_TO_VERIFY') return 'unverified'
+  return 'still_open'
 }
 
 /** A missing action already explains the page. Do not also say that action was slow. */
@@ -79,7 +112,11 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
         status: { in: ['PROPOSED', 'ACCEPTED', 'IN_PROGRESS', 'READY_TO_VERIFY', 'UNVERIFIED'] },
       },
       orderBy: [{ priority: 'asc' }, { updatedAt: 'desc' }],
-      include: { occurrences: { orderBy: { createdAt: 'desc' }, take: 1, include: { flag: true } } },
+      include: {
+        outcome: { select: { id: true, name: true } },
+        occurrences: { orderBy: { createdAt: 'desc' }, include: { flag: true } },
+        attempts: { orderBy: { createdAt: 'desc' }, take: 1, select: { outcome: true } },
+      },
     })
 
     const latestAudit = await prisma.audit.findFirst({
@@ -97,52 +134,43 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
 
     if (improvements.length > 0) {
       const projected = improvements.map((imp) => {
-        const flag = auditFlags.find((f) => f.fingerprint === imp.fingerprint) ?? imp.occurrences?.[0]?.flag
-        return {
-          id: imp.id,
-          sourceFlagId: flag?.id ?? null,
-          confidence: flag?.confidence ?? null,
-          improvementId: imp.id,
-          checkId: flag?.checkId ?? null,
-          rubric: flag?.rubric ?? 'EXPERIENCE',
-          severity: flag?.severity ?? 'IMPORTANT',
-          impactTag: flag?.impactTag ?? null,
-          problem: imp.title || flag?.problem || 'Open Flag',
-          evidence: flag?.evidence ?? imp.expectedBenefit,
-          whyItMatters: flag?.whyItMatters ?? imp.expectedBenefit,
-          fix: flag?.fix ?? imp.recommendedChange,
-          pageUrl: flag?.pageUrl ?? null,
-          status: imp.status,
-          resolvedInId: null,
-          area: cardAreaForCheck({
-            checkId: flag?.checkId,
-            rubric: flag?.rubric ?? 'EXPERIENCE',
-            impactTag: flag?.impactTag,
+        const currentOccurrenceFlags = (imp.occurrences ?? [])
+          .map((occurrence) => occurrence.flag)
+          .filter((flag) => flag.status === 'OPEN' || flag.status === 'REGRESSED')
+        const auditFlag = auditFlags.find((candidate) => candidate.fingerprint === imp.fingerprint)
+        const flag = auditFlag ?? currentOccurrenceFlags[0] ?? imp.occurrences?.[0]?.flag
+        const paths = currentOccurrenceFlags.map((candidate) => candidate.pageUrl).filter((path): path is string => Boolean(path))
+        if (auditFlag?.pageUrl) paths.push(auditFlag.pageUrl)
+        return toSiteFlagSeed({
+          ...(flag ?? {
+            id: imp.id,
+            checkId: null,
+            rubric: 'EXPERIENCE',
+            severity: 'IMPORTANT',
+            impactTag: null,
+            problem: imp.title || 'Open Flag',
+            evidence: imp.expectedBenefit,
+            whyItMatters: imp.expectedBenefit,
+            fix: imp.recommendedChange,
+            pageUrl: null,
+            resolvedInId: null,
           }),
-        }
+          status: imp.status,
+          improvementId: imp.id,
+          affectedPaths: paths,
+          relatedOutcome: imp.outcome ?? null,
+          verificationState: verificationState(imp.status, imp.attempts?.[0]?.outcome == null && Boolean(imp.attempts?.length)),
+          latestOccurrenceAt: imp.occurrences?.[0]?.createdAt ?? null,
+        })
       })
-      const represented = new Set(projected.map((flag) => flag.sourceFlagId))
-      return [...projected, ...auditFlags.filter((flag) => !represented.has(flag.id)).map(toSiteFlagSeed)]
+      const representedFingerprints = new Set(improvements.map((improvement) => improvement.fingerprint))
+      return [
+        ...projected,
+        ...auditFlags.filter((flag) => !flag.fingerprint || !representedFingerprints.has(flag.fingerprint)).map(toSiteFlagSeed),
+      ].sort(compareFlagPriority)
     }
 
-    return auditFlags.map((flag) => ({
-      id: flag.id,
-      sourceFlagId: flag.id,
-      confidence: flag.confidence,
-      improvementId: null,
-      checkId: flag.checkId,
-      rubric: flag.rubric,
-      severity: flag.severity,
-      impactTag: flag.impactTag,
-      problem: flag.problem,
-      evidence: flag.evidence,
-      whyItMatters: flag.whyItMatters,
-      fix: flag.fix,
-      pageUrl: flag.pageUrl,
-      status: flag.status,
-      resolvedInId: null,
-      area: cardAreaForCheck(flag),
-    }))
+    return auditFlags.map((flag) => toSiteFlagSeed(flag)).sort(compareFlagPriority)
   }
 
   const auditId = site.primaryAuditId
@@ -153,7 +181,7 @@ async function loadAllOpenSiteFlags(site: SiteRecord): Promise<SiteFlagSeed[]> {
     orderBy: [{ severity: 'asc' }, { createdAt: 'desc' }],
   })
 
-  return flags.map((flag) => toSiteFlagSeed(flag))
+  return flags.map((flag) => toSiteFlagSeed(flag)).sort(compareFlagPriority)
 }
 
 export async function loadSiteFindings(site: SiteRecord): Promise<{
@@ -262,6 +290,9 @@ export async function loadSiteResolvedFlags(site: SiteRecord): Promise<SiteFlagS
         status: 'VERIFIED',
         resolvedInId: null,
         improvementId: improvement.id,
+        affectedPaths: improvement.occurrences.map((occurrence) => occurrence.flag?.pageUrl).filter((path): path is string => Boolean(path)),
+        verificationState: 'verified',
+        latestOccurrenceAt: attempt.createdAt,
       }),
     }]
   })
@@ -341,8 +372,26 @@ export async function loadSiteFlagDetail(
 
   const expectedBehavior = customerExpectedBehavior(seed.checkId, flagRow?.verificationRule)
 
-  return {
+  const occurrenceScope = improvementId
+    ? await prisma.improvementOccurrence.findMany({
+        where: { improvementId },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true, flag: { select: { pageUrl: true, status: true } } },
+      })
+    : []
+  const affectedPaths = [...new Set(occurrenceScope
+    .filter((occurrence) => occurrence.flag.status === 'OPEN' || occurrence.flag.status === 'REGRESSED')
+    .map((occurrence) => occurrence.flag.pageUrl)
+    .filter((path): path is string => Boolean(path)))]
+  const scopedSeed = toSiteFlagSeed({
     ...seed,
+    affectedPaths: affectedPaths.length > 0 ? affectedPaths : seed.affectedPaths,
+    latestOccurrenceAt: occurrenceScope[0]?.createdAt ?? seed.latestOccurrenceAt,
+    verificationState: verificationState(seed.status, attempts.some((attempt) => attempt.outcome == null)),
+  })
+
+  return {
+    ...scopedSeed,
     outcomeId: improvement?.outcomeId ?? null,
     sourceAuditId: flagRow.auditId,
     verificationRule: flagRow.verificationRule,

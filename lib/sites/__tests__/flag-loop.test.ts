@@ -4,10 +4,10 @@ import { FLAG_STATUS_LABELS } from '@/lib/marketing/copy/flags'
 import { plannedWatchJobs } from '@/lib/audit/project-watch'
 
 describe('Flag. Fix. Verify. loop contract', () => {
-  it('locks Analyze, the core loop, Send a Flag to your AI, and independent Verify', () => {
+  it('locks Analyze, the core loop, Copy fix prompt, and independent Verify', () => {
     expect(ANALYZE_CTA).toBe('Analyze')
     expect(CORE_LOOP_LABEL).toBe('Flag. Fix. Verify.')
-    expect(SITE_BOARD_COPY.sendFlagToAi).toBe('Send a Flag to your AI')
+    expect(SITE_BOARD_COPY.sendFlagToAi).toBe('Copy fix prompt')
     expect(SITE_BOARD_COPY.verifyFix).toBe('Verify fix')
     expect(FLAG_STATUS_LABELS.FIXED.label).toBe('Verified')
     expect(FLAG_STATUS_LABELS.FIXED.description).toMatch(/Independent check/)

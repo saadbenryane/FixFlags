@@ -8,7 +8,6 @@ import {
   Accessibility,
   Gauge,
   Globe2,
-  Plus,
   Radio,
   Search,
   ShieldCheck,
@@ -16,13 +15,14 @@ import {
   ArrowRight,
   type LucideIcon,
 } from 'lucide-react'
-import { ADDABLE_BOARD_CARDS, CARD_CATALOG, type CardHealthState, type SiteCardArea } from '@/lib/sites/card-areas'
+import { type CardHealthState, type SiteCardArea } from '@/lib/sites/card-areas'
 import {
+  boardFindingTitle,
   type BoardCardFlagChip,
   type BoardCardView,
 } from '@/lib/sites/board-card'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { flagCountLabel } from '@/lib/sites/presentation'
 import styles from './BoardCard.module.css'
 
 export const BOARD_CARD_ICONS: Record<SiteCardArea, LucideIcon> = {
@@ -90,15 +90,6 @@ export function BoardStatus({ state, label, text = label, count = 0, onOpen }: {
     : <span className={className} title={label}>{content}</span>
 }
 
-export function BoardSurface({ host, state, label, count, onOpen, children }: {
-  host: string; state: CardHealthState; label: string; text?: string; count?: number; onOpen: () => void; children: React.ReactNode
-}) {
-  return <div className={styles.surface}>
-    <div className={styles.surfaceHeader}><span><Globe2 size={16} aria-hidden="true" />{host}</span><BoardStatus state={state} label={label} count={count} onOpen={onOpen} /></div>
-    {children}
-  </div>
-}
-
 export function BoardCard({
   name,
   status,
@@ -116,6 +107,8 @@ export function BoardCard({
   metric,
   flags,
   flagCount,
+  incompleteReason,
+  compact = false,
 }: {
   name: string
   status: string
@@ -135,6 +128,8 @@ export function BoardCard({
   onOpen?: () => void
   metric?: boolean
   flagCount?: number
+  incompleteReason?: string | null
+  compact?: boolean
   flags?: BoardCardFlag[] | null
   sources?: string[] | null
   checkedAt?: string | null
@@ -143,15 +138,16 @@ export function BoardCard({
   const checking = activity === 'checking' || state === 'checking'
   const className = [
     styles.card,
+    compact ? styles.compact : '',
     wide ? styles.wide : '',
     visual ? styles.withVisual : '',
-    state === 'problem' && !visual ? styles.problem : '',
-    checking ? styles.checking : '',
   ]
     .filter(Boolean)
     .join(' ')
 
-  const signalLabel = checking ? SITE_BOARD_COPY.checking : state === 'healthy' ? '0 Flags' : status
+  const count = flagCount ?? flags?.length ?? 0
+  const signalLabel = state === 'healthy' && !checking ? flagCountLabel(count) : status
+  const footerLabel = count > 0 ? flagCountLabel(count) : state === 'healthy' && !checking ? flagCountLabel(0) : status
   const openLabel = action ?? SITE_BOARD_COPY.viewDetails
 
   const body = (
@@ -167,10 +163,11 @@ export function BoardCard({
       ) : null}
       <strong className={metric ? styles.metric : styles.answer}>{answer}</strong>
       {detail ? <span className={styles.detail}>{detail}</span> : null}
+      {incompleteReason ? <span className={styles.incompleteNote}>{incompleteReason}</span> : null}
       {footer ? <span className={styles.footer}>{footer}</span> : null}
-      {onOpen || href ? (
+      {href && !onOpen ? (
         <span className={styles.action}>
-          <span>{openLabel}</span>
+          <span className={compact ? 'sr-only' : undefined}>{openLabel}</span>
           <ArrowRight size={18} aria-hidden="true" />
         </span>
       ) : null}
@@ -183,7 +180,7 @@ export function BoardCard({
         <Icon size={17} aria-hidden="true" />
         {name}
       </span>
-      <BoardStatus state={checking ? 'checking' : state} label={`${name}: ${signalLabel}`} text={checking ? signalLabel : ''} count={flagCount ?? flags?.length} onOpen={onOpen} />
+      <BoardStatus state={checking ? 'checking' : state} label={`${name}: ${signalLabel}`} text={state === 'unknown' || checking ? signalLabel : ''} />
     </span>
   )
 
@@ -211,12 +208,20 @@ export function BoardCard({
 
   if (onOpen) {
     return (
-      <article className={className} aria-label={name}>
+      <button type="button" className={className} onClick={onOpen} aria-label={`Open ${name}`}>
         {header}
-        <button type="button" className={styles.body} onClick={onOpen} aria-label={name}>
+        <span className={styles.body}>
           {body}
-        </button>
-      </article>
+        </span>
+        <span className={styles.cardActions}>
+          <span className={styles.flagMeta}>
+            {footerLabel}
+          </span>
+          <span className={styles.openButton}>
+            <ArrowRight size={17} aria-hidden="true" />
+          </span>
+        </span>
+      </button>
     )
   }
 
@@ -231,19 +236,27 @@ export function BoardCard({
 export function ProductBoardCard({
   card,
   onOpen,
+  compact = false,
 }: {
   card: BoardCardView
   onOpen?: () => void
+  compact?: boolean
 }) {
   const problem = card.problem
+  const originalAnswer = card.answer
+  // Presentation-only labels for known findings. Keep the original diagnosis
+  // and measured scope in card depth; never summarize unknown claims by truncation.
+  const answer = compact ? boardFindingTitle(originalAnswer) : originalAnswer
 
   return (
     <BoardCard
       name={card.name}
       status={card.status}
       state={card.state}
-      answer={card.id === 'site' ? card.detail ?? 'Website overview' : card.answer}
-      detail={card.id === 'site' ? null : problem ? problem.body : card.detail}
+      answer={answer}
+      detail={card.id === 'site' || (compact && card.evidenced && card.state !== 'unknown') ? null : problem ? problem.body : card.detail}
+      compact={compact}
+      incompleteReason={compact ? null : card.incompleteReason}
 
       visual={card.captureUrl && card.captureAlt ? { src: card.captureUrl, alt: card.captureAlt } : null}
       crop={card.cropUrl && card.cropAlt ? { src: card.cropUrl, alt: card.cropAlt } : null}
@@ -253,69 +266,10 @@ export function ProductBoardCard({
       activity={card.activity}
       icon={card.id}
       onOpen={onOpen}
+      flagCount={card.openFlagCount}
       flags={card.id === 'site' ? [] : card.flagChips}
       sources={card.sources}
       checkedAt={card.checkedAt}
     />
-  )
-}
-
-export function AddBoardCard({ onOpen }: { onOpen: () => void }) {
-  return (
-    <button type="button" className={styles.addCard} onClick={onOpen}>
-      <span className={styles.addSymbol} aria-hidden="true">
-        <Plus size={22} />
-      </span>
-      <strong>{SITE_BOARD_COPY.addCard}</strong>
-    </button>
-  )
-}
-
-export function AddCardLibrary({
-  open,
-  onOpenChange,
-  present,
-  onAdd,
-  exampleNote,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  present: SiteCardArea[]
-  onAdd: (id: SiteCardArea) => void
-  exampleNote?: string | null
-}) {
-  const available = ADDABLE_BOARD_CARDS.filter((id) => !present.includes(id))
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogTitle>{SITE_BOARD_COPY.addTitle}</DialogTitle>
-        <DialogDescription>{SITE_BOARD_COPY.addBody}</DialogDescription>
-        {available.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{SITE_BOARD_COPY.addEmpty}</p>
-        ) : (
-          <ul className={styles.libraryList}>
-            {available.map((id) => {
-              const Icon = BOARD_CARD_ICONS[id]
-              const card = CARD_CATALOG[id]
-              return (
-                <li key={id}>
-                  <button type="button" className={styles.libraryItem} onClick={() => onAdd(id)}>
-                    <span className={styles.libraryIcon} aria-hidden="true">
-                      <Icon size={18} />
-                    </span>
-                    <span>
-                      <strong>{card.name}</strong>
-                      <small>{card.question}</small>
-                    </span>
-                    <Plus size={16} aria-hidden="true" />
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-        {exampleNote ? <p className="text-xs text-muted-foreground">{exampleNote}</p> : null}
-      </DialogContent>
-    </Dialog>
   )
 }

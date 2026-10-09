@@ -2,6 +2,7 @@
 export const progressiveAuditSelect = {
   id: true,
   status: true,
+  reviewDepth: true,
   progress: true,
   progressDetail: true,
   score: true,

@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import { createHash } from 'node:crypto'
+import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import type { SiteRecord } from '@/lib/sites/types'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { observedPurchaseStart } from '@/lib/sites/checkout-inference'
@@ -449,6 +451,7 @@ export async function confirmSiteOutcome(input: {
   confirmed: boolean
   kind?: ConfirmableOutcomeKind
   fixtureId?: string
+  targetUrl?: string
 }): Promise<SiteOutcomeView | null> {
   const ownerFilter =
     input.site.kind === 'project'
@@ -493,7 +496,7 @@ export async function confirmSiteOutcome(input: {
         throw new OutcomeKindMismatchError(outcome.kind, input.kind)
       }
 
-      const binding = bindingForConfirmedKind(input.kind, input.site.url, safeFixture)
+      const binding = bindingForConfirmedKind(input.kind, input.targetUrl ?? input.site.url, safeFixture)
       if (!binding) throw new OutcomeFixtureRequiredError()
       // One Outcome has one active semantic identity. Legacy or interrupted
       // writes may have left another binding enabled, so retire it in the same
@@ -566,6 +569,33 @@ export async function confirmSiteOutcome(input: {
   })
 
   return updated ? toOutcomeView(updated) : null
+}
+
+/** Owner creation uses the same confirmation and binding contract as inferred Outcomes. */
+export async function createSiteOutcome(input: {
+  site: SiteRecord; kind: 'AVAILABILITY' | 'SIGNUP'; targetUrl: string; fixtureId?: string
+}): Promise<SiteOutcomeView | null> {
+  if (!input.site.projectId) throw new SiteRunRefusal('Claim this Site first.', 403)
+  const target = new URL(input.targetUrl)
+  if (!['http:', 'https:'].includes(target.protocol) || target.username || target.password || target.origin !== new URL(input.site.url).origin) {
+    throw new SiteRunRefusal('Choose a page on this website’s exact origin.', 400)
+  }
+  target.hash = ''
+  if (input.kind === 'SIGNUP') {
+    const fixture = await prisma.outcomeFixture.findFirst({
+      where: { id: input.fixtureId ?? '', projectId: input.site.projectId, enabled: true, authorizedAt: { not: null } },
+      select: { version: true, lastDryRunVersion: true, targetUrl: true },
+    })
+    if (!fixture || fixture.version !== fixture.lastDryRunVersion || fixture.targetUrl !== target.toString()) throw new OutcomeFixtureRequiredError()
+  }
+  const slug = `${input.kind.toLowerCase()}-${createHash('sha256').update(target.toString()).digest('hex').slice(0, 24)}`
+  const row = await prisma.siteOutcome.upsert({
+    where: { projectId_slug: { projectId: input.site.projectId, slug } },
+    create: { projectId: input.site.projectId, slug, name: nameForConfirmedOutcomeKind(input.kind), kind: input.kind,
+      expectation: expectationForKind(input.kind), inferenceSource: 'user' },
+    update: {},
+  })
+  return confirmSiteOutcome({ site: input.site, outcomeId: row.id, confirmed: true, kind: input.kind, fixtureId: input.fixtureId, targetUrl: target.toString() })
 }
 
 export class OutcomeKindMismatchError extends Error {

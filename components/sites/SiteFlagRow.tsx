@@ -1,22 +1,36 @@
 import Link from 'next/link'
-import { ChevronRight, CircleAlert } from 'lucide-react'
+import { CircleAlert } from 'lucide-react'
 import type { SiteFlagSeed } from '@/lib/sites/coverage'
-import { customerFlagContext } from '@/lib/sites/flag-label'
 import { cn } from '@/lib/utils'
+import { CARD_CATALOG } from '@/lib/sites/card-areas'
+import { Button } from '@/components/ui/button'
+import { SitePromptCopyButton } from '@/components/sites/SitePromptCopyButton'
+
+function pageLabel(url: string | null): string | null {
+  if (!url) return null
+  try {
+    const page = new URL(url)
+    return page.pathname === '/' ? page.host : page.pathname
+  } catch {
+    return null
+  }
+}
 
 export function SiteFlagRow({ siteId, flag }: { siteId: string; flag: SiteFlagSeed }) {
+  const scope = flag.affectedPageCount > 1
+    ? `${flag.affectedPageCount} affected pages`
+    : pageLabel(flag.affectedPaths[0] ?? flag.pageUrl)
   return (
-    <Link
-      href={`/sites/${siteId}/flags/${flag.id}`}
-      className="flex min-h-11 items-start gap-3 rounded-2xl border border-border/80 bg-background p-5 transition hover:border-foreground/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-    >
+    <article className="flex min-h-20 flex-col gap-3 border-b border-border/60 bg-background px-4 py-4 last:border-b-0 sm:flex-row sm:items-center">
       <CircleAlert className={cn('mt-0.5 h-5 w-5', flag.severity === 'CRITICAL' ? 'text-destructive' : 'text-brand')} aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-muted-foreground">{customerFlagContext(flag.area, flag.severity)}</p>
-        <h3 className="mt-1 font-medium">{flag.problem}</h3>
-        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{flag.whyItMatters}</p>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground"><span>{CARD_CATALOG[flag.area].name}</span>{scope ? <span aria-hidden="true">·</span> : null}{scope ? <span className="min-w-0 break-words">{scope}</span> : null}</p>
+        <h3 className="mt-1 text-sm font-medium sm:text-base">{flag.problem}</h3>
       </div>
-      <ChevronRight className="h-5 w-5 text-muted-foreground" aria-hidden />
-    </Link>
+      <div className="flex shrink-0 items-center gap-2 pl-8 sm:pl-0">
+        <SitePromptCopyButton compact siteId={siteId} flagId={flag.id} />
+        <Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${flag.id}`}>View Flag</Link></Button>
+      </div>
+    </article>
   )
 }

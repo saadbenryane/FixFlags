@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Callout } from '@/components/ui/callout'
 import { Input } from '@/components/ui/input'
-import { SCAN_LIMIT_GATE, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
+import { SCAN_LIMIT_GATE, SITE_BOARD_COPY, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 import type { PublicConnection } from '@/lib/sites/connections/match'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import { formatAlertDate, siteWatchAlertNotice } from '@/lib/sites/watch-alert-notice'
@@ -16,47 +16,35 @@ import { formatEvidenceTimestamp } from '@/lib/time/format'
 type NotificationLevel = 'FLAGS' | 'CRITICAL_ONLY' | 'OFF'
 type GoogleProvider = 'SEARCH_CONSOLE' | 'ANALYTICS'
 
-const emptyConnection = (provider: GoogleProvider): PublicConnection => ({
-  provider,
-  configured: false,
-  status: 'not_connected',
-  propertyLabel: null,
-  detail: null,
-  lastSyncedAt: null,
-})
-
 export function SiteSettingsControls({
   siteId,
   watch,
   initial,
 }: {
   siteId: string
-  watch?: {
-    label: string
-    lastError: string | null
-    covered: boolean
-    alert?: SiteHomeView['watch']['alert']
-  }
+  watch: SiteHomeView['watch']
   initial: {
-    notificationLevel: NotificationLevel
-    notifyOnRecovery: boolean
-    shopify: { state: 'connected' | 'unavailable' | 'not_connected'; domain: string | null }
-    searchConsole?: PublicConnection
-    analytics?: PublicConnection
+    notificationLevel: NotificationLevel | null
+    notifyOnRecovery: boolean | null
+    shopify: { configured?: boolean; state: 'connected' | 'unavailable' | 'not_connected'; domain: string | null }
+    searchConsole: PublicConnection
+    analytics: PublicConnection
   }
 }) {
   const router = useRouter()
-  const [level, setLevel] = useState(initial.notificationLevel)
-  const [recovery, setRecovery] = useState(initial.notifyOnRecovery)
+  const [level, setLevel] = useState<NotificationLevel | null>(initial.notificationLevel)
+  const [recovery, setRecovery] = useState<boolean | null>(initial.notifyOnRecovery)
   const [shop, setShop] = useState(initial.shopify.domain ?? '')
-  const [searchConsole, setSearchConsole] = useState(initial.searchConsole ?? emptyConnection('SEARCH_CONSOLE'))
-  const [analytics, setAnalytics] = useState(initial.analytics ?? emptyConnection('ANALYTICS'))
+  const [searchConsole, setSearchConsole] = useState(initial.searchConsole)
+  const [analytics, setAnalytics] = useState(initial.analytics)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [watchNotice, setWatchNotice] = useState<string | null>(null)
-  const alertNotice = watch?.alert ? siteWatchAlertNotice(watch.alert) : null
+  const [cadence, setCadence] = useState<'weekly' | 'daily' | 'off'>(watch.interval ?? 'off')
+  const alertNotice = watch.alert ? siteWatchAlertNotice(watch.alert) : null
 
   async function saveNotifications() {
+    if (!level || recovery == null) return
     setBusy(true)
     setMessage(null)
     try {
@@ -129,23 +117,6 @@ export function SiteSettingsControls({
     }
   }
 
-  async function syncGoogle(provider: GoogleProvider) {
-    setBusy(true)
-    setMessage(null)
-    try {
-      const response = await fetch(`/api/sites/${siteId}/connections/google`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, action: 'sync' }),
-      })
-      const body = await response.json().catch(() => ({})) as { detail?: string; error?: string }
-      setMessage(response.ok ? body.detail ?? 'Connection updated.' : body.error ?? 'Could not refresh this connection.')
-      if (response.ok) router.refresh()
-    } finally {
-      setBusy(false)
-    }
-  }
-
   async function disconnectGoogle(provider: GoogleProvider) {
     setBusy(true)
     setMessage(null)
@@ -206,14 +177,14 @@ export function SiteSettingsControls({
         code?: string
       }
       if (!response.ok) {
-        setMessage(body.message ?? body.error ?? 'Could not update Watch.')
+        setMessage(body.message ?? body.error ?? 'Could not update monitoring.')
         return
       }
       // A cadence the plan does not include is never saved quietly. The route
       // answers with the cadence it did apply plus the reason, and both are
       // shown: the confirmation names what is live, the notice says why.
       setWatchNotice(body.code === 'INTERVAL_NOT_ALLOWED' ? body.message ?? null : null)
-      setMessage(interval ? `Watch is ${body.interval ?? interval}.` : 'Watch is paused.')
+      setMessage(interval ? `${body.interval === 'daily' ? 'Daily' : 'Weekly'} monitoring is active.` : 'Monitoring is not active.')
       router.refresh()
     } finally {
       setBusy(false)
@@ -221,11 +192,15 @@ export function SiteSettingsControls({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <section className="rounded-2xl border border-border/80 bg-background p-5">
-        <h2 className="text-lg font-semibold">Watch</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{watch?.label ?? 'Not watching'}</p>
-        {watch?.lastError ? <p className="mt-2 text-sm text-muted-foreground">{watch.lastError}</p> : null}
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <section id="watch" className="rounded-2xl border border-border/80 bg-background p-5">
+        <h2 className="text-lg font-semibold">Monitoring</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{watch.label}</p>
+        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          {watch.nextRunAt ? <div><dt className="text-xs text-muted-foreground">Next analysis</dt><dd>{formatEvidenceTimestamp(watch.nextRunAt)}</dd></div> : null}
+          {watch.lastRunAt ? <div><dt className="text-xs text-muted-foreground">Last successful analysis</dt><dd>{formatEvidenceTimestamp(watch.lastRunAt)}</dd></div> : null}
+        </dl>
+        {watch.lastError ? <p className="mt-2 text-sm text-muted-foreground">{watch.lastError}</p> : null}
         {alertNotice ? (
           <div className="mt-3">
             <Callout variant="warning">
@@ -248,14 +223,18 @@ export function SiteSettingsControls({
           </div>
         ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button variant={watch?.covered ? 'outline' : 'brand'} disabled={busy} onClick={() => void setWatch('weekly')}>Weekly</Button>
-          <Button variant="outline" disabled={busy} onClick={() => void setWatch('daily')}>Daily</Button>
-          <Button variant="outline" disabled={busy || !watch?.covered} onClick={() => void setWatch(null)}>Pause</Button>
+          <label className="text-sm">Schedule
+            <select className="ml-3 min-h-11 rounded-md border border-border bg-background px-3" value={cadence} onChange={(event) => setCadence(event.target.value as typeof cadence)} disabled={busy}>
+              <option value="off">Not monitored</option><option value="weekly">Weekly</option><option value="daily">Daily</option>
+            </select>
+          </label>
+          <Button variant="outline" disabled={busy || (cadence === 'off' && !watch.covered && !watch.interval)} onClick={() => void setWatch(cadence === 'off' ? null : cadence)}>{busy ? 'Saving…' : 'Save monitoring'}</Button>
         </div>
       </section>
       <section className="rounded-2xl border border-border/80 bg-background p-5">
         <h2 className="text-lg font-semibold">Notifications</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Choose when Watch should email you.</p>
+        {level == null || recovery == null ? <p className="mt-1 text-sm text-muted-foreground">{SITE_BOARD_COPY.notificationsUnavailable}</p> : <>
+        <p className="mt-1 text-sm text-muted-foreground">Choose when monitoring should email you.</p>
         <label className="mt-4 block text-sm font-medium" htmlFor="site-notification-level">Email me</label>
         <select
           id="site-notification-level"
@@ -264,7 +243,7 @@ export function SiteSettingsControls({
           onChange={(event) => setLevel(event.target.value as NotificationLevel)}
         >
           <option value="FLAGS">New and regressed Flags</option>
-          <option value="CRITICAL_ONLY">Critical Flags only</option>
+          <option value="CRITICAL_ONLY">Fix-first Flags only</option>
           <option value="OFF">No Flag emails</option>
         </select>
         <label className="mt-4 flex min-h-11 items-center gap-3 text-sm">
@@ -274,10 +253,11 @@ export function SiteSettingsControls({
         <Button className="mt-4" variant="outline" disabled={busy} onClick={() => void saveNotifications()}>
           Save notifications
         </Button>
+        </>}
       </section>
 
-      <h2 className="text-lg font-semibold lg:col-span-2">Connections</h2>
-      <section className="rounded-2xl border border-border/80 bg-background p-5">
+      <h2 id="connections" className="text-lg font-semibold">Connections</h2>
+      {initial.shopify.configured === false ? null : <section className="rounded-2xl border border-border/80 bg-background p-5">
         <h3 className="text-lg font-semibold">Shopify</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Add purchase-path evidence to this Site’s Conversion card and Flags.
@@ -296,40 +276,28 @@ export function SiteSettingsControls({
             <Button variant="brand" disabled={busy || !shop.trim()} onClick={() => void connectShopify()}>Connect Shopify</Button>
           </div>
         )}
-      </section>
-      <GoogleConnectionCard
+      </section>}
+      {searchConsole.configured ? <GoogleConnectionCard
         title="Search Console"
         description="Show queries and pages that earn impressions. The numbers sit beside the independent check."
         connection={searchConsole}
         busy={busy}
         onConnect={() => void connectGoogle('SEARCH_CONSOLE')}
-        onSync={() => void syncGoogle('SEARCH_CONSOLE')}
         onDisconnect={() => void disconnectGoogle('SEARCH_CONSOLE')}
-      />
-      <GoogleConnectionCard
+      /> : null}
+      {analytics.configured ? <GoogleConnectionCard
         title="Analytics"
         description="Show which watched pages people open. Session counts stay context. FixFlags still verifies the Outcome itself."
         connection={analytics}
         busy={busy}
         onConnect={() => void connectGoogle('ANALYTICS')}
-        onSync={() => void syncGoogle('ANALYTICS')}
         onDisconnect={() => void disconnectGoogle('ANALYTICS')}
-      />
-      {message ? <p className="text-sm text-muted-foreground lg:col-span-2" role="status">{message}</p> : null}
-      <section className="rounded-2xl border border-border/80 bg-background p-5 lg:col-span-2">
-        <h2 className="text-lg font-semibold">Developer access</h2>
+      /> : null}
+      {message ? <p className="text-sm text-muted-foreground" role="status">{message}</p> : null}
+      <section className="rounded-2xl border border-destructive/30 bg-background p-5">
+        <h2 className="text-lg font-semibold">Remove Site</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          API keys act for your account. A run names this Site and includes an idempotency key.
-        </p>
-        <p className="mt-3 text-sm">Site <strong className="font-mono text-xs">{siteId}</strong></p>
-        <Button className="mt-4" variant="outline" asChild>
-          <a href="/settings/api-keys">API keys</a>
-        </Button>
-      </section>
-      <section className="rounded-2xl border border-destructive/30 bg-background p-5 lg:col-span-2">
-        <h2 className="text-lg font-semibold">Danger zone</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Stops Watch, disconnects Shopify, and removes this Site from your account.
+          Stops monitoring, disconnects Site connections, and removes this Site from your account.
         </p>
         <Button className="mt-4" variant="destructive" disabled={busy} onClick={() => void removeSite()}>
           Remove Site
@@ -345,7 +313,6 @@ function GoogleConnectionCard({
   connection,
   busy,
   onConnect,
-  onSync,
   onDisconnect,
 }: {
   title: string
@@ -353,10 +320,10 @@ function GoogleConnectionCard({
   connection: PublicConnection
   busy: boolean
   onConnect: () => void
-  onSync: () => void
   onDisconnect: () => void
 }) {
-  const linked = connection.status === 'connected' || connection.status === 'mismatch' || connection.status === 'needs_reauth'
+  const linked = connection.status === 'connected'
+  const reconnect = connection.status === 'mismatch' || connection.status === 'needs_reauth' || connection.status === 'revoked'
   return (
     <section className="rounded-2xl border border-border/80 bg-background p-5">
       <h3 className="text-lg font-semibold">{title}</h3>
@@ -369,16 +336,10 @@ function GoogleConnectionCard({
         <p className="mt-2 text-xs text-muted-foreground">Last read {formatEvidenceTimestamp(connection.lastSyncedAt)}</p>
       ) : null}
       <div className="mt-4 flex flex-wrap gap-2">
-        {!connection.configured ? (
-          <p className="text-sm text-muted-foreground">{connection.detail ?? 'Google sign-in is not configured on this FixFlags server yet.'}</p>
-        ) : linked ? (
-          <>
-            <Button variant="outline" disabled={busy} onClick={onSync}>Refresh</Button>
-            <Button variant="outline" disabled={busy} onClick={onDisconnect}>Disconnect</Button>
-            {connection.status !== 'connected' ? (
-              <Button variant="brand" disabled={busy} onClick={onConnect}>Reconnect</Button>
-            ) : null}
-          </>
+        {linked ? (
+          <Button variant="outline" disabled={busy} onClick={onDisconnect}>Disconnect</Button>
+        ) : reconnect ? (
+          <Button variant="brand" disabled={busy} onClick={onConnect}>Reconnect</Button>
         ) : (
           <Button variant="brand" disabled={busy} onClick={onConnect}>Connect {title}</Button>
         )}

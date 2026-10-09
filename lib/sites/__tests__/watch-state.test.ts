@@ -36,7 +36,7 @@ describe('watch board truth', () => {
         }),
         'weekly'
       )
-    ).toBe('Watch paused')
+    ).toBe('Paused')
     expect(
       watchBoardState({
         interval: 'weekly',

@@ -44,12 +44,13 @@ describe('ConnectedAccounts', () => {
       />,
     )
 
-    expect(screen.getByText(AUTH.connectedAccounts.title)).toBeInTheDocument()
+    expect(screen.getByText('Sign-in methods')).toBeInTheDocument()
     expect(screen.getByText(AUTH.connectedAccounts.google)).toBeInTheDocument()
     expect(screen.getByText(AUTH.connectedAccounts.signedInVia('Google'))).toBeInTheDocument()
     expect(screen.queryByLabelText(/passkey name/i)).not.toBeInTheDocument()
     expect(await screen.findByText(AUTH.security.passkeysEmpty)).toBeInTheDocument()
     expect(screen.getByText(AUTH.security.enableTitle)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Set password' })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: AUTH.security.addPasskey }))
     await waitFor(() => {

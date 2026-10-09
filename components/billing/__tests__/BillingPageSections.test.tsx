@@ -53,9 +53,7 @@ describe('BillingPlanActions', () => {
     render(
       <BillingPlanActions
         isPaid={false}
-        isActivating={false}
         hasStripeCustomer={false}
-        showPlanPickerCta
       />,
     )
 

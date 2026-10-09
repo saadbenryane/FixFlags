@@ -4,6 +4,7 @@ import { Check, CircleAlert, CircleHelp, Clock3 } from 'lucide-react'
 import type { Route } from 'next'
 import { outcomeStatusLabel } from '@/lib/sites/outcome-state'
 import { cn } from '@/lib/utils'
+import styles from './BoardCard.module.css'
 
 type OutcomeState = 'CLEAR' | 'FLAG' | 'COULD_NOT_VERIFY' | 'STALE'
 
@@ -19,6 +20,7 @@ export function OutcomeSummaryCard({
   running = false,
   label = 'Watched Outcome',
   actions,
+  compact = false,
 }: {
   name: string
   href?: Route
@@ -31,12 +33,13 @@ export function OutcomeSummaryCard({
   running?: boolean
   label?: string
   actions?: ReactNode
+  compact?: boolean
 }) {
   const result = answer && answer !== expectation ? answer : null
   const StateIcon = state === 'CLEAR' ? Check : state === 'FLAG' ? CircleAlert : state === 'STALE' ? Clock3 : CircleHelp
   return (
-    <section className="rounded-2xl border border-border/80 bg-background p-5 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+    <section className={compact ? cn(styles.card, state === 'FLAG' && styles.problem, state === 'CLEAR' && styles.good) : 'rounded-2xl border border-border/80 bg-background p-5 sm:p-6'}>
+      <div className={cn('flex flex-wrap items-start justify-between gap-4', compact && 'h-full w-full flex-col')}>
         <div className="min-w-0">
           <p className="text-sm font-medium text-muted-foreground">{label}</p>
           <h2 className="mt-1 text-xl font-semibold">
@@ -45,10 +48,10 @@ export function OutcomeSummaryCard({
           <p className={cn('mt-2 max-w-2xl text-sm', result ? 'text-foreground' : 'text-muted-foreground')}>{result ?? expectation}</p>
           {result ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{expectation}</p> : null}
           {nextStep ? <p className="mt-2 max-w-2xl text-sm font-medium">{nextStep}</p> : null}
-          <p className="mt-2 text-xs text-muted-foreground">{coverage}</p>
+          {!compact ? <p className="mt-2 text-xs text-muted-foreground">{coverage}</p> : null}
           <p className="mt-1 text-xs text-muted-foreground">{freshness}</p>
         </div>
-        <div className="flex min-w-[9rem] flex-col items-end gap-3">
+        <div className={cn('flex gap-3', compact ? 'mt-auto w-full flex-wrap items-center justify-between' : 'min-w-[9rem] flex-col items-end')}>
           <span className={cn(
             'inline-flex min-h-8 items-center gap-2 rounded-full border px-3 text-sm font-medium',
             state === 'CLEAR' && 'border-success/30 text-success',

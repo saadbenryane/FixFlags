@@ -241,8 +241,9 @@ The Fix may be performed by the customer, a teammate, an agency, or an AI coding
 
 Preferred customer actions:
 
-- Fix this, when the next step is simply to act
-- Send a Flag to your AI, when the customer wants to hand the Flag to an AI coding tool
+- Copy fix prompt, when the customer wants to hand the Flag to a coding tool
+- Verify fix, after a change is available on the live product
+- Ask FixFlags, when the customer wants an explanation grounded in the current Site or Flag
 - Share, when another person should receive the Flag
 
 Copying a prompt records handoff, not implementation. External sending requires the customer's action.

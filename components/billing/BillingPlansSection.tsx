@@ -79,11 +79,10 @@ export function BillingPlansSection({ currentPlan }: Props) {
                     <span className="pb-0.5 text-xs text-muted-foreground">{plan.period}</span>
                   ) : null}
                 </div>
-                <p className="mt-0.5 text-xs font-medium text-muted-foreground">{plan.audits}</p>
               </div>
 
               <ul className="flex-1 space-y-1.5 text-xs leading-snug text-muted-foreground">
-                {plan.features.slice(0, 4).map((feature) => (
+                {plan.features.filter((feature) => !/^Verified /.test(feature)).slice(0, 4).map((feature) => (
                   <li key={feature} className="flex items-start gap-1.5">
                     <CheckCircle2
                       className={cn(

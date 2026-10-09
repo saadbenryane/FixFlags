@@ -4,7 +4,7 @@ import { SITE_BOARD_COPY as C } from '@/lib/marketing/copy/terminology'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import styles from './BoardDetails.module.css'
 
-export type CheckedPage = { url: string; title: string | null; status: string }
+export type CheckedPage = { url: string; title: string | null; status: string; checkedAt?: string }
 
 export function BoardDetails({ image, checkedAt, sources, coverage, facts = [], pages, children }: {
   image?: { src: string; alt: string } | null
@@ -21,15 +21,15 @@ export function BoardDetails({ image, checkedAt, sources, coverage, facts = [], 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={image.src} alt={image.alt} width={1280} height={720} />
     </a> : null}
-    <section>
+    {coverage || facts.length > 0 || pages !== undefined ? <section>
       <h3>{C.checkedScope}</h3>
       {coverage ? <p>{coverage}</p> : null}
       {facts.length > 0 ? <ul>{[...new Set(facts)].filter(fact => fact !== coverage).map(fact => <li key={fact}>{fact}</li>)}</ul> : null}
       {pages ? pages.length > 0 ? <ul className={styles.pages}>{pages.map(page => <li key={page.url}>
         <a href={page.url} target="_blank" rel="noopener noreferrer">{page.title || page.url}<small>{page.title ? page.url : null}</small></a>
-        <span>{page.status === 'COMPLETED' ? 'Checked' : page.status === 'PARTIAL' ? 'Partial' : page.status === 'FAILED' ? 'Could not check' : 'In progress'}</span>
+        <span>{page.status === 'COMPLETED' ? 'Checked' : page.status === 'PARTIAL' ? 'Partial' : page.status === 'FAILED' ? 'Could not check' : 'In progress'}{page.checkedAt ? <small>{formatEvidenceTimestamp(page.checkedAt)}</small> : null}</span>
       </li>)}</ul> : <p>{C.noPages}</p> : null}
-    </section>
+    </section> : null}
     <dl className={styles.provenance}>
       {sources?.length ? <div><dt>{C.sources}</dt><dd>{[...new Set(sources)].join(' · ')}</dd></div> : null}
       <div><dt>{C.lastChecked}</dt><dd>{checkedAt && formatEvidenceTimestamp(checkedAt) ? <time dateTime={checkedAt}>{formatEvidenceTimestamp(checkedAt)}</time> : C.noFreshness}</dd></div>
