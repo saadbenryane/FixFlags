@@ -1,3 +1,10 @@
+---
+status: supporting
+authority: architecture
+reviewed_at: 2026-10-10
+supersedes: []
+---
+
 # Report Contract
 
 **LEGACY COMPATIBILITY.** This contract applies to existing report routes while they remain. The report is not the product. [Vision](vision.md), [product architecture](../docs/product-architecture.md), [Site PRD](../docs/product-prd.md) and [Site interface](../docs/workspace-interface.md) govern all new product work. Retirement sequence: [product-masterplan.md](../docs/product-masterplan.md) Wave K. Rubric, score, Agent/Report, prompt and diff rules below preserve old behavior only; they cannot constrain the new Site surface.

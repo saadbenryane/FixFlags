@@ -1,6 +1,66 @@
+# Stable project defaults. Per-chat model and reasoning choices still take precedence.
+model = "gpt-6.1-sol"
+model_reasoning_effort = "medium"
+model_verbosity = "low"
+tool_output_token_limit = 8000
+project_doc_max_bytes = 8192
+
+[agents]
+enabled = true
+max_concurrent_threads_per_session = 3
+
+# Keep the desktop task/worktree control plane available. Everything else is
+# opt-in so routine repository work does not load unrelated tools or skills.
+[plugins."codex-app-tools@openai-bundled"]
+enabled = true
+
+[plugins."browser@openai-bundled"]
+enabled = false
+
+[plugins."unified-computer-use@openai-bundled"]
+enabled = false
+
+[plugins."computer-use@openai-bundled"]
+enabled = false
+
+[plugins."code-review@openai-bundled"]
+enabled = false
+
+[plugins."visualize@openai-bundled"]
+enabled = false
+
+[plugins."documents@openai-primary-runtime"]
+enabled = false
+
+[plugins."pdf@openai-primary-runtime"]
+enabled = false
+
+[plugins."spreadsheets@openai-primary-runtime"]
+enabled = false
+
+[plugins."presentations@openai-primary-runtime"]
+enabled = false
+
+[plugins."template-creator@openai-primary-runtime"]
+enabled = false
+
+[apps._default]
+enabled = false
+
+# The app-provided JavaScript and native-computer bridges are not required for
+# ordinary code work. Enable them for one invocation as documented in
+# docs/codex-harness.md.
+[mcp_servers.node_repl]
+command = "false"
+enabled = false
+
+[mcp_servers.computer-use]
+enabled = false
+
 # BEGIN FIXFLAGS MANAGED
 [mcp_servers.fixflags]
 command = "fixflags"
 args = ["mcp"]
 env = { FIXFLAGS_API_URL = "https://fixflags.com" }
+enabled = false
 # END FIXFLAGS MANAGED
