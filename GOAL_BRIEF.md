@@ -1,7 +1,20 @@
-# Next-version implementation brief
+---
+status: historical
+authority: evidence
+reviewed_at: 2026-10-09
+supersedes: []
+---
 
-The former Agent-led Report Workspace goal is superseded as product direction. Its implementation and release receipts remain in the original [.agents/sessions/](.agents/sessions/) records; they are not completion evidence for this version.
+# Historical goal pointer
 
-The accepted [vision](knowledge/vision.md) is “Your website, looked after.” Start with Phase 1 in [ROADMAP.md](ROADMAP.md), follow the concrete first slice and acceptance cases in [docs/product-prd.md](docs/product-prd.md), and use [docs/site-v2-migration.md](docs/site-v2-migration.md) to preserve existing foundations.
+The former Agent-led Report Workspace goal and the later website-care wording are superseded as current product direction. Their implementation and release receipts remain available in Git history and `.agents/sessions/`; they do not prove completion of the current product.
 
-This file is an implementation pointer, not an active automatic goal or release authorization. Claim scope on [.agents/BOARD.md](.agents/BOARD.md), preserve other work, and record actual behavior evidence for each phase.
+Current authority:
+
+- Purpose: [knowledge/vision.md](knowledge/vision.md), accepted September 21.
+- Customer structure: [docs/product-architecture.md](docs/product-architecture.md).
+- Sequence: [docs/product-masterplan.md](docs/product-masterplan.md) and [ROADMAP.md](ROADMAP.md).
+- First acceptance contracts: [docs/product-prd.md](docs/product-prd.md).
+- Migration boundaries: [docs/site-v2-migration.md](docs/site-v2-migration.md).
+
+This file is not an automatic goal, active task, release authorization, or default context source. Use `npm run agent` for live state.

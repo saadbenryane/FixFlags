@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: architecture
+reviewed_at: 2026-10-10
+supersedes: []
+---
+
 # Site understanding and memory
 
 **TARGET.** The [vision](vision.md) defines the enduring model. The [PRD](../docs/product-prd.md) defines the objects and behavior; the [migration design](../docs/site-v2-migration.md) owns physical persistence choices.

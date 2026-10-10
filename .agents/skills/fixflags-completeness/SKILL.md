@@ -5,7 +5,7 @@ description: Reconcile FixFlags code, product contracts, UI, tests, skills, and 
 
 # FixFlags completeness
 
-Read `AGENTS.md`, `.agents/BOARD.md`, and `knowledge/README.md` first. Claim the write scope on `main`. Preserve every existing change.
+Read `AGENTS.md` and run `npm run agent -- status` first. Use `npm run agent -- context docs` only for the smallest relevant authority map. Claim substantial write scope with `npm run agent -- task claim`; preserve every existing change.
 
 ## Workflow
 

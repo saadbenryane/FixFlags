@@ -40,7 +40,7 @@ export const cases = [
     ['scripts/project-agent.mjs', '--json'],
     (stdout) => {
       const payload = JSON.parse(stdout)
-      return payload.project === 'qewos' && payload.state.changedFiles.total >= 0 && payload.recommendations.total > 0
+      return payload.project === 'fixflags' && payload.state.changedFiles.total >= 0 && payload.recommendations.total > 0
     }
   ),
   {
@@ -53,10 +53,10 @@ export const cases = [
     grade: (result) => result.valid ? 'pass' : 'fail',
   },
   commandCase(
-    'report-ui',
-    'Real report UI tests preserve progressive and failure states.',
+    'site-ui',
+    'Current Site, Outcome, and Flag UI tests preserve the customer responsibility loop.',
     'npx',
-    ['vitest', 'run', 'components/audit/__tests__/AuditFailurePanel.test.tsx', 'components/audit/__tests__/AuditReportProgressive.test.tsx']
+    ['vitest', 'run', 'components/sites/__tests__/SiteBoard.test.tsx', 'components/sites/__tests__/FlagResolution.test.tsx', 'app/sites/[siteId]/outcomes/[outcomeId]/__tests__/page.test.tsx']
   ),
   commandCase(
     'audit-pipeline',
@@ -93,7 +93,7 @@ export const cases = [
     description: 'Always-loaded root instructions stay below the pilot budget.',
     async run() {
       const bytes = Buffer.byteLength(readFileSync('AGENTS.md', 'utf8'))
-      return { valid: bytes < 12_000, bytes }
+      return { valid: bytes <= 7_500, bytes }
     },
     grade: (result) => result.valid ? 'pass' : 'fail',
   },

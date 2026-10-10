@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: interface
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # Site interface contract
 
 **TARGET.** Behavior: [PRD](product-prd.md). IA: [product-architecture.md](product-architecture.md). Intent: [vision](../knowledge/vision.md). Language: [voice-and-copy.md](voice-and-copy.md). Plan: [product-masterplan.md](product-masterplan.md). Tokens: [DESIGN.md](../DESIGN.md). Current report routes retain their [legacy contract](../knowledge/report-contract.md) during migration.

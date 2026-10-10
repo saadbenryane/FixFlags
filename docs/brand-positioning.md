@@ -1,6 +1,6 @@
 # Brand positioning
 
-**TARGET, 2026-09-08.** [The owner's vision](../knowledge/vision.md) is authoritative; [SOUL.md](../SOUL.md) owns personality and [voice-and-copy.md](voice-and-copy.md) owns wording.
+**SUPPORTING, reconciled 2026-09-21.** [The accepted vision](../knowledge/vision.md) is authoritative; [SOUL.md](../SOUL.md) owns personality and [voice-and-copy.md](voice-and-copy.md) owns current wording.
 
 FixFlags is the place a business connects its website once and trusts to notice when something needs attention. The brand promise is “Your website, looked after.”
 

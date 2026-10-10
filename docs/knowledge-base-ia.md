@@ -1,3 +1,10 @@
+---
+status: supporting
+authority: interface
+reviewed_at: 2026-10-10
+supersedes: []
+---
+
 # Knowledge base information architecture
 
 FixFlags ships three public knowledge surfaces. Each has a distinct job; overlap is resolved by canonical ownership and cross-links. Customer product objects follow [product-architecture.md](product-architecture.md). Report-shaped docs are compatibility until [product-masterplan.md](product-masterplan.md) Wave J/K retarget them to Site, Pages, Journeys, and Flags.

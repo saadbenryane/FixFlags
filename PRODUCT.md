@@ -1,3 +1,10 @@
+---
+status: supporting
+authority: evidence
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # Current product implementation
 
 **Workspace implementation inventory, reconciled 2026-10-06. Not a production release attestation.**

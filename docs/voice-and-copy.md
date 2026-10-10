@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: interface
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # FixFlags messaging
 
 **Canonical customer-facing language. Status: NEXT for public surfaces; this document is the source of truth for new copy. Runtime strings still live in `lib/marketing/copy.ts` until the relevant waves in [product-masterplan.md](product-masterplan.md) land.**

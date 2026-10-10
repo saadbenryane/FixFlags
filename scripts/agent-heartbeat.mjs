@@ -1,352 +1,236 @@
 #!/usr/bin/env node
 /**
- * FixFlags company readout — deterministic board/goal state used by:
- *  - humans: `npm run agent:heartbeat` (tier-aware, emoji-scannable)
- *  - the pi-web heartbeat runtime: `node scripts/agent-heartbeat.mjs --json`
+ * FixFlags company readout — deterministic live-lease and goal state used by:
+ *  - humans: `npm run agent:heartbeat` (tier-aware, compact)
+ *  - scheduler/dispatch automation: `node scripts/agent-heartbeat.mjs --json`
  *
- * The --json payload feeds the deterministic evidence packet
- * (.agents/company/heartbeat-cadence.md). Never fabricates metrics; every
- * number comes from .agents/BOARD.md / .agents/GOAL.md.
+ * Live ownership comes from the shared Git-common-dir lease store. Historical
+ * board rows and session archives are deliberately excluded.
  */
 
-import fs from "node:fs";
-import path from "node:path";
+import fs from 'node:fs'
+import path from 'node:path'
+import { leaseOverlap, listLeases } from './agent-coordination.mjs'
 
-const repoRoot = process.cwd();
-const boardPath = path.join(repoRoot, ".agents", "BOARD.md");
-const goalPath = path.join(repoRoot, ".agents", "GOAL.md");
-
-const statusOrder = [
-  "proposed",
-  "claimed",
-  "in-progress",
-  "review",
-  "blocked",
-  "queued",
-  "done",
-  "superseded",
-  "parked",
-  "abandoned",
-];
-const statusEmojis = {
-  proposed: "💡",
-  claimed: "📌",
-  "in-progress": "🟡",
-  review: "👀",
-  blocked: "🚫",
-  queued: "⏳",
-  done: "✅",
-  superseded: "🔁",
-  parked: "🅿️",
-  abandoned: "🗑️",
-};
-
-const STATUS_ALIASES = {
-  "in_progress": "in-progress",
-};
-
-function normalizeBoardStatus(raw) {
-  const trimmed = String(raw ?? "").trim().toLowerCase();
-  return STATUS_ALIASES[trimmed] ?? trimmed;
-}
-
-function isMarkdownSeparatorRow(cols) {
-  return cols.length > 0 && cols.every((cell) => /^:?-{3,}:?$/.test(cell));
-}
-
-/** @typedef {{id?: string, task: string, status: string, owner: string, scope: string, updated?: string}} BoardRow */
-/** @typedef {{type: string, message: string, row?: string}} HeartbeatWarning */
-/** @typedef {{activeRows: BoardRow[], counts: Record<string, number>, warnings: HeartbeatWarning[]}} ParsedBoard */
-/** @typedef {{status: string, lastTurn: string, condition: string, warning?: string}} ParsedGoal */
+const repoRoot = process.cwd()
+const goalPath = path.join(repoRoot, '.agents', 'GOAL.md')
 
 function readFileSafe(filePath) {
   try {
-    return fs.readFileSync(filePath, "utf8");
+    return fs.readFileSync(filePath, 'utf8')
   } catch {
-    return "";
+    return ''
   }
-}
-
-function parseBoard(text) {
-  const activeSection = text.includes("\n## Completed")
-    ? text.slice(0, text.indexOf("\n## Completed"))
-    : text;
-
-  const rows = [];
-  const counts = {};
-  const warnings = [];
-
-  for (const [index, rawLine] of activeSection.split("\n").entries()) {
-    const line = rawLine.trim();
-    if (!line.startsWith("|") || !line.includes("|")) continue;
-
-    const cols = line
-      .split("|")
-      .map((c) => c.trim())
-      .filter((c, i, a) => i !== 0 && i !== a.length - 1);
-
-    if (line.includes("Task ID") || isMarkdownSeparatorRow(cols)) continue;
-
-    if (cols.length < 3) {
-      warnings.push({
-        type: "board_row_invalid",
-        message: "Skipping malformed board row (insufficient columns)",
-        row: line,
-      });
-      continue;
-    }
-
-    const task = cols[0];
-    const statusRaw = cols[1];
-    const owner = cols[2];
-    const scope = cols[4] ?? "n/a";
-    const updated = cols.at(-1);
-    const status = normalizeBoardStatus(statusRaw);
-
-    if (!status || !statusOrder.includes(status)) {
-      warnings.push({
-        type: "board_row_invalid",
-        message: `Skipping board row with unknown status "${statusRaw ?? 'n/a'}"`,
-        row: line,
-      });
-      continue;
-    }
-    counts[status] = (counts[status] ?? 0) + 1;
-    rows.push({
-      id: (task ?? `row-${index + 1}`).trim().split(/\s+/)[0],
-      task: task.trim(),
-      status,
-      owner: (owner ?? "unassigned").trim() || "unassigned",
-      scope: (scope ?? "n/a").trim() || "n/a",
-      updated: updated?.trim(),
-    });
-  }
-
-  return { activeRows: rows, counts, warnings };
 }
 
 function parseGoal(text) {
   if (!text) {
     return {
-      status: "unavailable",
-      condition: "unavailable",
-      lastTurn: "none",
-      warning: "GOAL.md is missing",
-    };
+      status: 'unavailable',
+      condition: 'unavailable',
+      lastTurn: 'none',
+      warning: 'GOAL.md is missing',
+    }
   }
 
-  const activeGoalSection = text.includes("## Active goal")
+  const activeGoalSection = text.includes('## Active goal')
     ? text.slice(
-        text.indexOf("## Active goal"),
-        text.includes("## Achieved") ? text.indexOf("## Achieved") : text.length,
+        text.indexOf('## Active goal'),
+        text.includes('## Achieved') ? text.indexOf('## Achieved') : text.length,
       )
-    : text;
+    : text
 
-  const statusMatch = activeGoalSection.match(/\| \*\*Status\*\* \|\s*([^|]+)\|/);
-  const conditionMatch = activeGoalSection.match(/\| \*\*Condition\*\* \|\s*([^|]+)\|/);
+  const statusMatch = activeGoalSection.match(/\| \*\*Status\*\* \|\s*([^|]+)\|/)
+  const conditionMatch = activeGoalSection.match(/\| \*\*Condition\*\* \|\s*([^|]+)\|/)
   const turnRows = activeGoalSection
-    .split("\n")
-    .filter((line) => /^\|\s*\d+\s*\|/.test(line.trim()));
+    .split('\n')
+    .filter((line) => /^\|\s*\d+\s*\|/.test(line.trim()))
+  const latestTurn = turnRows.at(-1) || 'none'
+  const parts = `${latestTurn}`.split('|').map((value) => value.trim())
+  const rawLastTurn = parts.length >= 3 ? parts[2] : `${latestTurn}`
+  const lastTurn = rawLastTurn && rawLastTurn.length > 180
+    ? `${rawLastTurn.slice(0, 177).trim()}…`
+    : rawLastTurn
+  const status = statusMatch?.[1]?.trim() || 'unavailable'
+  const condition = conditionMatch?.[1]?.trim() || 'unavailable'
+  const warning = status === 'unavailable' || condition === 'unavailable'
+    ? 'GOAL.md is missing Active goal status/condition'
+    : undefined
 
-  const latestTurn = turnRows.at(-1) || "none";
-  const parts = `${latestTurn}`.split("|").map((value) => value.trim());
-  const rawLastTurn = parts.length >= 3 ? parts[2] : `${latestTurn}`;
-  const lastTurn = rawLastTurn && rawLastTurn.length > 180 ? `${rawLastTurn.slice(0, 177).trim()}…` : rawLastTurn;
-
-  const status = statusMatch && statusMatch[1] ? statusMatch[1].trim() : "unavailable";
-  const condition = conditionMatch && conditionMatch[1] ? conditionMatch[1].trim() : "unavailable";
-  const warningMessage = status === "unavailable" || condition === "unavailable" ? "GOAL.md is missing Active goal status/condition" : undefined;
-
-  return {
-    status,
-    lastTurn: lastTurn || "none",
-    condition,
-    warning: warningMessage,
-  };
+  return { status, lastTurn: lastTurn || 'none', condition, warning }
 }
 
 function formatLine(text) {
-  return text.replace(/\s+/g, " ").trim();
+  return text.replace(/\s+/g, ' ').trim()
 }
 
-function byStatus(rows, status) {
-  return rows.filter((r) => r.status === status);
-}
-
-function chooseNextAction(rows) {
-  const priority = ["blocked", "review", "in-progress", "claimed", "proposed", "queued", "done"];
-  for (const status of priority) {
-    const hit = rows.find((row) => row.status === status);
-    if (hit) return hit;
+function normalizeLease(lease) {
+  return {
+    id: lease.taskId,
+    task: lease.title,
+    status: lease.status === 'in_progress' ? 'in-progress' : lease.status,
+    owner: lease.owner,
+    scope: lease.scope,
+    worktree: lease.worktree,
+    relatedPaths: lease.relatedPaths,
+    updated: lease.updatedAt,
+    expiresAt: lease.expiresAt,
   }
-  return null;
 }
 
-/** Structured payload consumed by the pi-web heartbeat packet builder. */
-function buildJson({ board, goal, next }) {
-  const warnings = [
-    ...(board.warnings ?? []),
-    ...(goal.warning ? [{ type: "goal_readout", message: goal.warning }] : []),
-  ];
-
-  const fallbackReasons = [];
-  if (board.warnings && board.warnings.length > 0) {
-    for (const warning of board.warnings) {
-      fallbackReasons.push({
-        source: "board",
-        reason: warning.message,
-        line: warning.row || "unknown",
-      });
+function buildOwnership() {
+  const result = listLeases(repoRoot)
+  const liveLeases = result.leases.filter((lease) => !lease.expired)
+  const active = liveLeases.map(normalizeLease)
+  const expired = result.leases.filter((lease) => lease.expired).map(normalizeLease)
+  const conflicts = []
+  for (let leftIndex = 0; leftIndex < liveLeases.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < liveLeases.length; rightIndex += 1) {
+      const overlap = leaseOverlap(liveLeases[leftIndex], liveLeases[rightIndex])
+      if (overlap) conflicts.push({ currentTaskId: liveLeases[leftIndex].taskId, ...overlap })
     }
   }
-  if (goal.warning) {
-    fallbackReasons.push({
-      source: "goal",
-      reason: goal.warning,
-      line: "active-goal-section",
-    });
+  const counts = active.reduce((totals, lease) => {
+    totals[lease.status] = (totals[lease.status] ?? 0) + 1
+    return totals
+  }, {})
+  if (expired.length > 0) counts.expired = expired.length
+  return {
+    active,
+    expired,
+    conflicts,
+    counts,
+    warnings: result.warnings,
+    leaseDirectory: result.leaseDirectory,
   }
+}
 
-  const unresolvedWork = [];
-  const blockedRows = byStatus(board.activeRows, "blocked");
-  const queuedRows = byStatus(board.activeRows, "queued");
-  for (const row of [...blockedRows, ...queuedRows]) {
+function chooseNextAction(ownership) {
+  return ownership.active.find((lease) => lease.status === 'in-progress')
+    ?? ownership.active.find((lease) => lease.status === 'claimed')
+    ?? ownership.expired[0]
+    ?? null
+}
+
+function buildJson({ ownership, goal, next }) {
+  const warnings = [
+    ...ownership.warnings.map((message) => ({ type: 'lease_readout', message })),
+    ...(goal.warning ? [{ type: 'goal_readout', message: goal.warning }] : []),
+  ]
+  const unresolvedWork = [
+    ...ownership.expired.map((lease) => ({
+      ...lease,
+      actionHint: 'revalidate-or-reclaim',
+      reason: `lease expired at ${lease.expiresAt}`,
+    })),
+    ...ownership.conflicts.map((conflict) => ({
+      id: conflict.currentTaskId,
+      task: `scope conflict with ${conflict.taskId}`,
+      status: 'conflict',
+      owner: conflict.owner,
+      scope: conflict.reasons.join('; '),
+      actionHint: 'coordinate-before-writing',
+    })),
+  ]
+  if (unresolvedWork.length === 0) {
     unresolvedWork.push({
-      id: row.id,
-      task: row.task,
-      status: row.status,
-      owner: row.owner,
-      scope: row.scope,
-      updated: row.updated,
-      actionHint: row.status === "blocked" ? "unblock" : "schedule",
-    });
-  }
-  if (unresolvedWork.length === 0 && (!blockedRows.length || !queuedRows.length)) {
-    unresolvedWork.push({
-      id: "none",
-      task: "no unresolved work",
-      status: "none",
-      owner: "none",
-      scope: "none",
-      updated: null,
-      actionHint: "none",
-      reason: "no blocked or queued tasks found",
-    });
+      id: 'none',
+      task: 'no unresolved ownership work',
+      status: 'none',
+      owner: 'none',
+      scope: 'none',
+      actionHint: 'none',
+      reason: 'no expired leases or direct conflicts found',
+    })
   }
 
   return {
     ok: true,
     generatedAt: new Date().toISOString(),
-    board: {
-      counts: board.counts,
-      blocked: blockedRows,
-      queued: queuedRows,
-      inProgress: byStatus(board.activeRows, "in-progress"),
-      review: byStatus(board.activeRows, "review"),
-      warnings: board.warnings,
-    },
+    ownership,
     goal,
     nextOwner: next ? { owner: next.owner, task: next.task, status: next.status } : null,
     warnings,
-    fallbackReasons,
+    fallbackReasons: warnings.map((warning) => ({
+      source: warning.type === 'goal_readout' ? 'goal' : 'leases',
+      reason: warning.message,
+    })),
     unresolvedWork,
-  };
+  }
 }
 
-/** Human-readable, tier-shaped output (default operational). */
-function renderTier(tier, { board, goal, next }) {
-  const activeCount = Object.values(board.counts).reduce((sum, count) => sum + count, 0);
-  const lines = [];
-
-  lines.push("FixFlags Agentic Engine Heartbeat", "--------------------------------");
-
-  if (activeCount === 0) {
-    lines.push("status: noop");
-    return lines.join("\n");
+function renderTier(tier, { ownership, goal, next }) {
+  const lines = ['FixFlags Agentic Engine Heartbeat', '--------------------------------']
+  const activeCount = ownership.active.length
+  if (activeCount === 0 && ownership.expired.length === 0) {
+    lines.push('status: noop')
+    return lines.join('\n')
   }
 
   lines.push(
-    statusOrder
-      .map((status) => `  ${statusEmojis[status]} ${status}: ${board.counts[status] || 0}`)
-      .join("\n"),
-  );
+    `active leases: ${activeCount}`,
+    `claimed: ${ownership.counts.claimed ?? 0}`,
+    `in progress: ${ownership.counts['in-progress'] ?? 0}`,
+    `expired: ${ownership.expired.length}`,
+    `direct conflicts: ${ownership.conflicts.length}`,
+  )
 
-  if (tier === "operational" || tier === "daily") {
-    const pressure = [...byStatus(board.activeRows, "blocked"), ...byStatus(board.activeRows, "queued")];
-    lines.push("\nBacklog pressure (blocked/queued):");
-    if (pressure.length) {
-      for (const row of pressure.slice(0, 6)) lines.push(`  - ${row.task} [${row.status}] owner=${row.owner}`);
-    } else {
-      lines.push("  none (no blocked or queued tasks in active board)");
-    }
+  if (tier === 'operational' || tier === 'daily') {
+    lines.push('\nOwnership requiring attention:')
+    const attention = [
+      ...ownership.expired.map((lease) => `${lease.task} [expired] owner=${lease.owner}`),
+      ...ownership.conflicts.map((conflict) => `${conflict.currentTaskId} conflicts with ${conflict.taskId} owner=${conflict.owner}`),
+    ]
+    lines.push(...(attention.length > 0 ? attention.slice(0, 6).map((item) => `  - ${item}`) : ['  none']))
   }
 
-  if (tier === "daily" || tier === "weekly") {
-    lines.push(`\nActive goal status: ${goal.status}`);
-    lines.push(`Last logged turn: ${formatLine(goal.lastTurn)}`);
+  if (tier === 'daily' || tier === 'weekly') {
+    lines.push(`\nActive goal status: ${goal.status}`)
+    lines.push(`Last logged turn: ${formatLine(goal.lastTurn)}`)
   }
 
-  if (tier === "weekly") {
-    lines.push("\nNext owner actions (active):");
-    for (const row of board.activeRows.filter((r) => r.status === "blocked" || r.status === "queued")) {
-      lines.push(`  - ${row.task} [${row.status}] owner=${row.owner} updated=${row.updated || "?"}`);
-    }
+  if (tier === 'weekly') {
+    lines.push('\nLive ownership:')
+    lines.push(...ownership.active.map((lease) => `  - ${lease.task} [${lease.status}] owner=${lease.owner} expires=${lease.expiresAt}`))
   }
 
-  const allWarnings = [];
-  if (board.warnings && board.warnings.length > 0) {
-    for (const warning of board.warnings) {
-      allWarnings.push({ ...warning, message: `board readout: ${warning.message}` });
-    }
-  }
-  if (goal.warning) {
-    allWarnings.push({ type: "goal_readout", message: `goal readout: ${goal.warning}` });
-  }
-
-  if (allWarnings.length > 0) {
-    lines.push("\nProvider notices:");
-    for (const warning of allWarnings) {
-      lines.push(`  - ${warning.message}`);
-    }
+  if (ownership.warnings.length > 0 || goal.warning) {
+    lines.push('\nProvider notices:')
+    for (const warning of ownership.warnings) lines.push(`  - lease readout: ${warning}`)
+    if (goal.warning) lines.push(`  - goal readout: ${goal.warning}`)
   }
 
   if (next) {
-    lines.push("\nNext owner action:", `  ${next.task} (${next.status})`, `  Owner: ${next.owner}`);
+    lines.push('\nNext owner action:', `  ${next.task} (${next.status})`, `  Owner: ${next.owner}`)
   } else {
-    lines.push("\nNext owner action: none (no actionable rows found)");
+    lines.push('\nNext owner action: none (no live or expired leases found)')
   }
-
-  return lines.join("\n");
+  return lines.join('\n')
 }
 
 function main() {
-  const argv = process.argv.slice(2);
-  const asJson = argv.includes("--json");
-  const tierArg = argv.find((a) => a.startsWith("--tier="));
-  const tier = tierArg ? tierArg.split("=")[1] : argv.includes("--tier") ? argv[argv.indexOf("--tier") + 1] : null;
-  const tierName = ["operational", "daily", "weekly"].includes(tier) ? tier : "operational";
+  const argv = process.argv.slice(2)
+  const asJson = argv.includes('--json')
+  const tierArg = argv.find((argument) => argument.startsWith('--tier='))
+  const tier = tierArg
+    ? tierArg.split('=')[1]
+    : argv.includes('--tier')
+      ? argv[argv.indexOf('--tier') + 1]
+      : null
+  const tierName = ['operational', 'daily', 'weekly'].includes(tier) ? tier : 'operational'
 
-  const boardText = readFileSafe(boardPath);
-  if (!boardText) {
-    if (asJson) {
-      console.error(JSON.stringify({ ok: false, error: "Could not read .agents/BOARD.md from: " + boardPath }));
-    } else {
-      console.error("Could not read .agents/BOARD.md from:", boardPath);
-    }
-    process.exitCode = 1;
-    return;
+  try {
+    const ownership = buildOwnership()
+    const goal = parseGoal(readFileSafe(goalPath))
+    const next = chooseNextAction(ownership)
+    if (asJson) console.log(JSON.stringify(buildJson({ ownership, goal, next }), null, 2))
+    else console.log(renderTier(tierName, { ownership, goal, next }))
+  } catch (error) {
+    const message = `Could not read live leases: ${error instanceof Error ? error.message : String(error)}`
+    if (asJson) console.error(JSON.stringify({ ok: false, error: message }))
+    else console.error(message)
+    process.exitCode = 1
   }
-
-  const board = parseBoard(boardText);
-  const goal = goalPath ? parseGoal(readFileSafe(goalPath)) : { status: "unavailable", lastTurn: "none", condition: "unavailable" };
-  const next = chooseNextAction(board.activeRows);
-
-  if (asJson) {
-    console.log(JSON.stringify(buildJson({ board, goal, next }), null, 2));
-    return;
-  }
-
-  console.log(renderTier(tierName, { board, goal, next }));
 }
 
-main();
+main()

@@ -36,12 +36,12 @@ Suggested contract fields:
 
 ## 3) Backlog Pressure & Objective Worker
 
-**Purpose:** reduce operating entropy from board/goal drift.
+**Purpose:** reduce operating entropy from ownership/goal drift.
 
-- **Typical scope:** parse `.agents/BOARD.md` + `.agents/GOAL.md`, identify backlog pressure, recommend one owner for next action.
+- **Typical scope:** parse live leases via `npm run agent -- ownership` plus `.agents/GOAL.md`, identify execution pressure, recommend one owner for the next action.
 - **Preferred modality:** deterministic with lightweight summarization.
 - **Deliverable:** one-line executive signal with owner and rationale.
-- **Verification:** board parse success, objective status extraction, next-action recommendation reproducibility.
+- **Verification:** lease-store validation, objective status extraction, next-action recommendation reproducibility.
 
 Suggested contract fields:
 - Scope: `backlog pressure`
@@ -55,7 +55,7 @@ Suggested contract fields:
 **Purpose:** surface recurring external/internal signals and rank what matters most to current objectives.
 
 - **Typical scope:** support queue sentiment, issue clustering, false-positive and defect patterns, growth or retention friction signals.
-- **Preferred modality:** deterministic extraction from `.agents/BOARD.md`, logs, and support/review artifacts, then concise synthesis.
+- **Preferred modality:** deterministic extraction from live ownership, logs, and support/review artifacts, then concise synthesis.
 - **Deliverable:** one compact signal memo with 5 top signals and evidence links.
 - **Verification:** evidence-first pointers that exist in tracked files; no synthetic counts.
 
@@ -68,9 +68,9 @@ Suggested contract fields:
 
 ## 5) FixFlags Backlog Prioritizer
 
-**Purpose:** convert board/goal state into the next owner action with lowest-friction sequence.
+**Purpose:** convert ownership/goal state into the next owner action with lowest-friction sequence.
 
-- **Typical scope:** identify blocked/queued pressure, objective gaps, sequencing conflicts.
+- **Typical scope:** identify expired/conflicting ownership, objective gaps, and sequencing constraints.
 - **Preferred modality:** deterministic parse + limited reasoning for trade-offs.
 - **Deliverable:** ranked backlog list and one recommended next action owner.
 - **Verification:** reproducible parse + one owner recommendation with rationale.
@@ -80,7 +80,7 @@ Suggested contract fields:
 - Modality: `deterministic`
 - Model level: `free`
 - Autonomy: `2`
-- Result capture: `.agents/sessions/` + `.agents/BOARD.md` delta notes.
+- Result capture: optional per-task history + lease completion evidence.
 
 ## 6) FixFlags Escalation Steward
 
@@ -106,8 +106,8 @@ Suggested contract fields:
 - **Preferred modality:** deterministic.
 - **Deliverable:** one compact proof packet with:
   - heartbeat JSON source or `npm run agent:heartbeat -- --json` output
-  - owner-referenced blocker details from `.agents/BOARD.md`
-  - linked `.agents/sessions/*` evidence artifact.
+  - owner-referenced conflicts or expiries from `npm run agent -- ownership`
+  - linked canonical evidence or per-task history when the work warrants it.
 - **Verification:** all claims are evidence-linked and tied to an owner with one next action.
 
 Suggested contract fields:
@@ -115,11 +115,11 @@ Suggested contract fields:
 - Modality: `deterministic`
 - Model level: `free`
 - Autonomy: `2`
-- Result capture: session artifact + evidence references in `.agents/sessions/`.
+- Result capture: evidence references in a per-task history record when durable capture is warranted.
 
 ## Hardening rules
 
-No launch or blocker judgment is made before a spawned worker posts evidence in `.agents/sessions/`.
-Board scan must verify queued and blocked IDs with owners before any queue status classification.
+No launch or blocker judgment is made without named verification evidence.
+Ownership checks must verify active, expired, and conflicting leases before assigning another writer.
 Every output tag includes its evidence source before a judgment is rendered.
-Chat-only decisions are forbidden; meaningful conclusions are filed in `.agents/sessions/*`.
+Meaningful accepted decisions must reach a canonical document or per-task history rather than surviving only in chat.

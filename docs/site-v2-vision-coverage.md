@@ -1,6 +1,6 @@
 # Vision coverage by phase
 
-Traceability for the complete [September 8 owner vision](../knowledge/vision.md). This is planning coverage, not implementation completion. Phase definitions live in [ROADMAP.md](../ROADMAP.md); behavioral proof lives in [the PRD](product-prd.md).
+Traceability for the accepted [September 21 independent-monitor vision](../knowledge/vision.md). This is planning coverage, not implementation completion. Phase definitions live in [ROADMAP.md](../ROADMAP.md); behavioral proof lives in [the PRD](product-prd.md).
 
 | Vision sections | Implementation home | Phase |
 | --- | --- | --- |

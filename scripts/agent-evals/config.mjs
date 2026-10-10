@@ -5,7 +5,7 @@ export const config = {
   cases: [
     'repository-orientation',
     'docs-only-routing',
-    'report-ui',
+    'site-ui',
     'audit-pipeline',
     'prompt-contract',
     'billing-gates',

@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: interface
+reviewed_at: 2026-10-10
+supersedes: []
+---
+
 # FixFlags card-board experience
 
 **CUSTOMER BOARD CONTRACT, reconciled 2026-10-07 with owner testing.** The selected Site Overview uses the retained flat card grid. Visitor-action cards use the existing Outcome domain; website-health cards retain their distinct evidence scope. This is design acceptance, not a production release claim.

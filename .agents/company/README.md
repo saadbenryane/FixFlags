@@ -51,11 +51,11 @@ Canonical index for the AI-native operating model. All policy lives here; other 
 
 - `npm run agent:heartbeat` is the operational readout for CEO/executive weekly checks.
 - `npm run agent:heartbeat -- --json` renders machine-readable heartbeat packets for scheduler/dispatch automation.
-- `npm run agent:release-continuity` runs the same board+goal readout plus lightweight continuity checks for local runtime, CLI/MCP, and optional cloud smoke.
-- `scripts/agent-heartbeat.mjs` renders board + objective status into a single actionable signal.
+- `npm run agent:release-continuity` combines lightweight continuity checks for local runtime, CLI/MCP, and optional cloud smoke.
+- `scripts/agent-heartbeat.mjs` renders live lease ownership + objective status into a single actionable signal.
 
 - `.agents/README.md` points to this file as the operating model anchor.
-- `.agents/BOARD.md` records active task scope.
+- `npm run agent -- ownership` reads active task scope from the shared Git-common-dir lease store.
 - `.agents/GOAL.md` references the operating-state loop for executive work.
 - `knowledge/README.md` cross-references the agent operating model as canonical process.
 
@@ -63,7 +63,7 @@ Keep this directory minimal and practical; avoid duplicating policy in unrelated
 
 ## Hardening rules
 
-No launch or blocker judgment is made before a spawned worker posts evidence in `.agents/sessions/`.
-Board scan must verify queued and blocked IDs with owners before any queue status classification.
+No launch or blocker judgment is made without named verification evidence. Meaningful decision-heavy work may preserve a durable record; routine fixes do not require session bureaucracy.
+Ownership checks must verify current leases, expiries, and conflicts before assigning another writer.
 Every output tag includes its evidence source before a judgment is rendered.
-Chat-only decisions are forbidden; meaningful conclusions are filed in `.agents/sessions/*`.
+Meaningful accepted decisions must reach a canonical document or a task history record rather than surviving only in chat.

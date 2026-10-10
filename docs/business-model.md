@@ -1,3 +1,10 @@
+---
+status: supporting
+authority: product
+reviewed_at: 2026-10-10
+supersedes: []
+---
+
 # FixFlags business model
 
 The accepted commercial direction is one Site product, sold per website. [Business and plan strategy](../knowledge/strategy.md) owns the rationale, [the product masterplan](product-masterplan.md) owns the launch gate, and `lib/billing/plans.ts` owns implemented plan behavior.

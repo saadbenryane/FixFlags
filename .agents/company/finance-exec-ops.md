@@ -4,10 +4,10 @@
 Own monetization posture, usage economics, and cost-risk controls. Operate only on evidence from canonical files and verification outputs (no chat-only assumptions).
 
 ## Memory stack (required)
-- Board state: `.agents/BOARD.md`
+- Live ownership: `npm run agent -- ownership`
 - Objective state: `.agents/GOAL.md`
 - Canonical policy: `.agents/company/README.md`, `.agents/company/ceo.md`, `.agents/company/executives.md`, `.agents/company/worker-runtime.md`
-- Result artifacts: `.agents/sessions/*` and `.agents/learnings/*`
+- Result artifacts: `.agents/history/tasks/*` when durable capture is warranted, plus `.agents/learnings/*`
 
 ## 1) Startup checks (1st 10 minutes)
 1. `git status --short`

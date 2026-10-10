@@ -1,3 +1,10 @@
+---
+status: supporting
+authority: product
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # FixFlags roadmap
 
 **Direction accepted 2026-09-21. Outcome responsibility and Safe Signup are implemented locally; launch evidence gates remain open.**

@@ -56,3 +56,6 @@ next-env.d.ts
 
 # Archon live Work (operational — not branch-tracked)
 .archon/board.md
+# Local Codex harness telemetry can contain account-specific usage data.
+.agents/evals/harness/runs.jsonl
+scripts/agent-evals/reports/*.json

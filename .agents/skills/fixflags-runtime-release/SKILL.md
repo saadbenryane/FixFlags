@@ -5,7 +5,7 @@ description: Build, diagnose, and verify FixFlags production runtime and release
 
 # FixFlags runtime and release
 
-Read `AGENTS.md`, `.agents/BOARD.md`, `DEVELOPMENT.md`, `QUALITY.md`, and `SECURITY.md` before changing production startup or release behavior.
+Read `AGENTS.md`, `DEVELOPMENT.md`, `QUALITY.md`, and `SECURITY.md` before changing production startup or release behavior. Inspect live ownership with `npm run agent -- ownership`; do not read the retired board.
 
 ## Runtime contract
 

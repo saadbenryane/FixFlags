@@ -20,7 +20,7 @@ import { runAccuracyFixtureChecks } from '@/lib/audit/fixture-html'
  * own question set, score mapping and triage conversion.
  *
  * It does NOT import `lib/audit/jev-triage.ts`. That adapter is an in-flight
- * experiment owned by another agent (see .agents/BOARD.md,
+ * experiment owned by another agent (check `npm run agent -- ownership`,
  * restore-ci-triage-adapter-2026-09-29) and currently does not typecheck.
  * Coupling this research gate to unreferenced experiment code would inherit
  * that breakage and blur whose scope is whose.

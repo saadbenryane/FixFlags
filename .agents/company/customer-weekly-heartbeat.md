@@ -14,7 +14,7 @@ YYYY-WW
 ## Status
 [Evidence-based update | NO-OP | Escalation]
 
-## Signals (board + market, top 5)
+## Signals (execution + market, top 5)
 1. <signal> — <proof link>
 2. <signal> — <proof link>
 3. <signal> — <proof link>
@@ -24,10 +24,11 @@ YYYY-WW
 ## Objective progress
 - <objective> — <Blocked | At risk | On track> — <one-line evidence>
 
-## Backlog pressure
-- Queued items: <n>
-- Blocked > 72h: <n>
-- Top 3 urgency blockers:
+## Execution pressure
+- Active leases: <n>
+- Expired leases: <n>
+- Direct conflicts: <n>
+- Top 3 unresolved objective constraints:
   1. <item> — <why urgent>
   2. <item> — <why urgent>
   3. <item> — <why urgent>

@@ -1,6 +1,6 @@
 # Audience and market work
 
-The September 8 [vision](vision.md) defines the current audience: a business that depends on its website working and wants someone to notice important failures. Stores, SaaS, service businesses and other Outcome-driven websites fit the same model. Shopify is a focused entry wedge.
+The accepted September 21 [vision](vision.md) defines the current audience: people and businesses that depend on software producing important live Outcomes and need independent evidence that those Outcomes still work. Sites remain the launch wedge; stores, SaaS, service businesses, APIs, and agentic products fit the same responsibility model.
 
 Earlier competitor narratives and AI-builder-only positioning are retired as active strategy; Git preserves their historical versions. Market statements need fresh source verification before reuse in public copy. No competitor feature, market-size or pricing claim is established by this planning pass.
 

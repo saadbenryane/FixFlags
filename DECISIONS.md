@@ -1,6 +1,15 @@
+---
+status: canonical
+authority: operations
+reviewed_at: 2026-10-10
+supersedes: []
+---
+
 # Decisions
 
-**Active direction, 2026-09-09:** the complete FixFlags product is one Site with Pages, Journeys, Flags, Recommendations, connections, monitoring, and a later FixFlags Agent. [Product architecture](docs/product-architecture.md) owns customer IA. [Product masterplan](docs/product-masterplan.md) owns sequence. Public language remains [voice-and-copy.md](docs/voice-and-copy.md). Reports and the legacy Agent pane are compatibility, then retired. Public copy still claims only shipped behavior.
+**Active direction, 2026-09-21:** FixFlags is the independent monitor for software that acts. [The accepted vision](knowledge/vision.md) owns purpose and audience; [product architecture](docs/product-architecture.md) owns customer IA; [product masterplan](docs/product-masterplan.md) owns sequence. Public language remains [voice-and-copy.md](docs/voice-and-copy.md). Reports and the legacy Agent pane are compatibility, then retired. Public copy still claims only shipped behavior.
+
+**Prior active direction, 2026-09-09:** the complete FixFlags product was framed as one Site with Pages, Journeys, Flags, Recommendations, connections, monitoring, and a later FixFlags Agent. The September 21 direction preserves the Site foundation while broadening the independent-monitor responsibility around Outcomes.
 
 **Prior active direction, 2026-09-08:** adopt the owner's complete [Your website, looked after vision](knowledge/vision.md). The Site experience replaces reports; inferred Outcomes, meaningful Flags, explicit coverage and fresh independent recovery define it. Preserve brand, useful foundations, accounts, billing and plans. Shopify becomes a connection and native distribution wedge in the same product. [ROADMAP.md](ROADMAP.md) orders the Site engineering cutover; [migration design](docs/site-v2-migration.md) scopes compatibility.
 

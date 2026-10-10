@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: operations
+reviewed_at: 2026-10-10
+supersedes: []
+---
+
 # Privacy and Site learning
 
 **Target policy boundaries; current enforcement lives in [SECURITY.md](../SECURITY.md).** The new Site may learn privately from its own history and authorized context. Earlier wording that FixFlags never learns the customer's product is retired.

@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: architecture
+reviewed_at: 2026-10-10
+supersedes: []
+---
+
 # Site and independent-monitor migration and reuse
 
 **Implementation design.** The [vision](../knowledge/vision.md) determines the experience; [product-architecture.md](product-architecture.md) owns customer IA; [product-masterplan.md](product-masterplan.md) owns sequence. This file owns the transition from current code. [ROADMAP.md](../ROADMAP.md) orders the Site engineering cutover.

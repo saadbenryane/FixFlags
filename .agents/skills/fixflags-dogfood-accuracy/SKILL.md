@@ -9,8 +9,8 @@ Read `AGENTS.md`, then `.agents/skills/fixflags-scan-accuracy/SKILL.md` and `.ag
 
 ## Start from evidence
 
-1. Run `git status`, `npm run agent`, and read `.agents/BOARD.md`.
-2. Claim a non-overlapping accuracy scope before writes.
+1. Run `git status --short`, `npm run agent`, and `npm run agent -- ownership`.
+2. Claim a non-overlapping accuracy scope with `npm run agent -- task claim` before writes.
 3. Resolve the exact audit ID from the report URL or local database.
 4. View the persisted report via the web UI at `https://fixflags.com/report/<audit-id>` or use Prisma Studio for DB inspection.
 
