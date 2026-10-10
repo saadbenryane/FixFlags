@@ -16,7 +16,7 @@ function ProofNote({ heading, proof, note, current = false }: { heading: string;
       <p className="mt-2 text-sm text-muted-foreground">
         {SITE_BOARD_COPY.flagProofLead} <time dateTime={proof.observedAt}>{formatEvidenceTimestamp(proof.observedAt) ?? 'Unknown time'}</time>. {proof.observation}
       </p>
-      {proof.showAuditId ? <p className="mt-2 text-xs text-muted-foreground">Proof audit: {proof.auditId}</p> : null}
+      {proof.showAuditId ? <details className="mt-2 text-xs text-muted-foreground"><summary className="min-h-11 cursor-pointer py-3">Check details</summary><p className="break-all">Check reference: {proof.auditId}</p></details> : null}
     </section>
   )
 }

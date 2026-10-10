@@ -14,18 +14,17 @@ import {
   releaseLease,
   validateLeaseStore,
 } from './agent-coordination.mjs'
-import { parseLegacyBoard } from './migrate-agent-board.mjs'
 import { buildPlan } from './validate.mjs'
 
 const DEFAULT_LIMIT = 10
 const RECOMMENDATION_LIMIT = 5
 const FAILURE_LINES = 40
-const INSTRUCTION_BUDGET_BYTES = 8192
+const INSTRUCTION_BUDGET_BYTES = 3500
 const MODULE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const CONTEXT_MANIFEST = '.agents/context-manifest.json'
 const ALLOWED_AUTHORITIES = new Set(['product', 'architecture', 'interface', 'operations', 'evidence'])
 const ALLOWED_SOURCE_STATUSES = new Set(['canonical', 'supporting'])
-const FORBIDDEN_DEFAULT_CONTEXT = ['.agents/BOARD.md', '.agents/history/', '.agents/sessions/', '.agents/handoffs/']
+const FORBIDDEN_DEFAULT_CONTEXT = ['.agents/history/', '.agents/sessions/', '.agents/handoffs/']
 const OPTIONAL_PLUGIN_TABLES = [
   'plugins."browser@openai-bundled"',
   'plugins."unified-computer-use@openai-bundled"',
@@ -105,7 +104,7 @@ export function buildHome(cwd) {
     verification: { reason: plan.reason, commandCount: plan.commands.length },
     warnings,
     recommendations,
-    next: ['npm run agent -- verify --dry-run', 'npm run agent -- context <area>'],
+    next: ['npm run agent -- context <area>'],
   }
 }
 
@@ -340,12 +339,12 @@ function validateRouteIsolation(cwd) {
 }
 
 function validateCurrentAuthority(cwd) {
-  const markdown = git(cwd, ['ls-files', '*.md']).split('\n').filter(Boolean).filter((sourcePath) =>
+  const markdown = (git(cwd, ['ls-files', '*.md']) || '').split('\n').filter(Boolean).filter((sourcePath) =>
     !sourcePath.startsWith('.agents/history/')
     && !sourcePath.startsWith('.agents/sessions/')
     && !sourcePath.startsWith('.agents/handoffs/')
     && sourcePath !== '.agents/BOARD-archive.md',
-  )
+  ).filter((sourcePath) => existsSync(path.join(cwd, sourcePath)))
   const stale = markdown.filter((sourcePath) => {
     const content = readFileSync(path.join(cwd, sourcePath), 'utf8')
     return /September 8 vision|September 8[^\n]{0,80}(?:current|active|authoritative)|sole active direction[^\n]{0,80}September 8/i.test(content)
@@ -365,9 +364,9 @@ function validateHarnessNames(cwd) {
   return { ok: stale.length === 0, detail: stale.length ? `stale harness naming: ${stale.join(', ')}` : 'FixFlags and current Site scenarios only' }
 }
 
-function validateSkillRouting(cwd) {
+function validateCustomerIntegrations(cwd) {
   const result = spawnSync(process.execPath, ['scripts/skill-validator.mjs'], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
-  const detail = result.status === 0 ? 'project skill contracts validate' : `${result.stderr || result.stdout}`.trim().split('\n').slice(-3).join('; ')
+  const detail = result.status === 0 ? 'public customer skill and IDE integrations validate' : `${result.stderr || result.stdout}`.trim().split('\n').slice(-3).join('; ')
   return { ok: result.status === 0, detail }
 }
 
@@ -382,21 +381,12 @@ export function buildDoctor(cwd) {
   checks.push({ name: 'route-isolation', ...validateRouteIsolation(cwd) })
   checks.push({ name: 'current-authority', ...validateCurrentAuthority(cwd) })
   checks.push({ name: 'optional-tools', ...validateOptionalTools(cwd) })
-  checks.push({ name: 'skill-routing', ...validateSkillRouting(cwd) })
+  checks.push({ name: 'customer-integrations', ...validateCustomerIntegrations(cwd) })
   checks.push({ name: 'telemetry-privacy', ...validateTelemetryPrivacy(cwd) })
   checks.push({ name: 'harness-naming', ...validateHarnessNames(cwd) })
   const leaseStore = validateLeaseStore(cwd)
   checks.push({ name: 'lease-store', ok: leaseStore.ok && leaseStore.expired === 0, detail: `${leaseStore.active} active, ${leaseStore.expired} expired${leaseStore.warnings.length ? `; ${leaseStore.warnings.join('; ')}` : ''}` })
-  const boardPath = path.join(cwd, '.agents/BOARD.md')
-  const board = existsSync(boardPath) ? readFileSync(boardPath, 'utf8') : ''
-  checks.push({ name: 'board-pointer', ok: board.includes('Live ownership uses Git-common-dir task leases'), detail: board ? `${Buffer.byteLength(board)} bytes` : 'missing' })
-  const legacyPath = path.join(cwd, '.agents/history/legacy-board-2026-10-09.md')
-  if (!existsSync(legacyPath)) checks.push({ name: 'legacy-board-preserved', ok: false, detail: 'missing .agents/history/legacy-board-2026-10-09.md' })
-  else {
-    const parsed = parseLegacyBoard(readFileSync(legacyPath, 'utf8'))
-    checks.push({ name: 'legacy-board-preserved', ok: parsed.records.length > 0 && parsed.warnings.length === 0, detail: `${parsed.records.length} records, ${parsed.warnings.length} warnings` })
-  }
-  return { schemaVersion: 2, command: 'doctor', status: checks.every((item) => item.ok) ? 'passed' : 'failed', checks, next: ['npm run agent', 'npm run agent -- verify --dry-run'] }
+  return { schemaVersion: 2, command: 'doctor', status: checks.every((item) => item.ok) ? 'passed' : 'failed', checks, next: ['npm run agent'] }
 }
 
 function resolveContext(cwd, requestedArea) {
@@ -429,7 +419,7 @@ export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
         emitError(payload, options.json)
         return 2
       }
-      emit({ schemaVersion: 2, command, requestedArea, area: resolved.area, ...resolved.context, next: [`npm run agent -- eval ${resolved.area}`, 'npm run agent -- verify --dry-run'] }, options.json, options.full)
+      emit({ schemaVersion: 2, command, requestedArea, area: resolved.area, ...resolved.context }, options.json, options.full)
       return 0
     }
     if (command === 'ownership') {
@@ -446,7 +436,7 @@ export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
       }
       if (action === 'claim') {
         const result = claimLease(cwd, { taskId, owner: options.owner, title: options.title, scope: options.scope, relatedPaths: options.paths, reclaimReason: options.reclaim })
-        emit({ schemaVersion: 2, command, action, status: 'claimed', ...result, next: [`npm run agent -- task heartbeat ${taskId} --owner ${result.lease.owner}`, 'npm run agent -- verify --dry-run'] }, options.json, options.full)
+        emit({ schemaVersion: 2, command, action, status: 'claimed', ...result, next: [`npm run agent -- task heartbeat ${taskId} --owner ${result.lease.owner}`] }, options.json, options.full)
         return 0
       }
       if (action === 'heartbeat') {
@@ -472,7 +462,7 @@ export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
       return payload.status === 'passed' ? 0 : 1
     }
     if (command === 'learn') {
-      emit({ schemaVersion: 2, command, learnings: listLearnings(cwd), next: ['npm run agent -- context <area>', 'npm run agent -- verify --dry-run'] }, options.json, options.full)
+      emit({ schemaVersion: 2, command, learnings: listLearnings(cwd), next: ['npm run agent -- context <area>'] }, options.json, options.full)
       return 0
     }
     if (command === 'verify') {
@@ -488,7 +478,7 @@ export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
         const result = execute(cwd, item.executable, item.args, item.label, options.full)
         lastLog = result.logPath
         if (!result.ok) {
-          emit({ schemaVersion: 2, command, status: result.unavailable ? 'unavailable' : 'failed', reason: item.label, logPath: result.logPath, failureExcerpt: result.excerpt, next: [`Open ${result.logPath}`, 'npm run agent -- verify --dry-run'] }, options.json, options.full)
+          emit({ schemaVersion: 2, command, status: result.unavailable ? 'unavailable' : 'failed', reason: item.label, logPath: result.logPath, failureExcerpt: result.excerpt, next: [`Open ${result.logPath}`] }, options.json, options.full)
           return result.unavailable ? 3 : 1
         }
       }
@@ -510,7 +500,7 @@ export function main(argv = process.argv.slice(2), cwd = process.cwd()) {
         return 0
       }
       const result = execute(cwd, executable, commandArgs, `eval-${resolved.area}`, options.full)
-      emit({ schemaVersion: 2, command, status: result.ok ? 'passed' : result.unavailable ? 'unavailable' : 'failed', reason: resolved.area, logPath: result.logPath, failureExcerpt: result.excerpt, next: result.ok ? ['npm run agent -- verify --dry-run'] : [`Open ${result.logPath}`] }, options.json, options.full)
+      emit({ schemaVersion: 2, command, status: result.ok ? 'passed' : result.unavailable ? 'unavailable' : 'failed', reason: resolved.area, logPath: result.logPath, failureExcerpt: result.excerpt, next: result.ok ? [] : [`Open ${result.logPath}`] }, options.json, options.full)
       return result.ok ? 0 : result.unavailable ? 3 : 1
     }
     const payload = errorPayload('UNKNOWN_COMMAND', `Unknown command: ${command}`, 'Use: agent [status|context <area>|ownership|task <action>|doctor|verify|eval <area>|learn]')

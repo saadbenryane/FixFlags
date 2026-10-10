@@ -188,7 +188,20 @@ function watchedOutcome(partial: Partial<SiteOutcomeView> & Pick<SiteOutcomeView
 }
 
 describe('SiteBoard chrome', () => {
-  it('shows the Checkout assessment on Home and keeps the promise', () => {
+  it('reports interrupted Outcome verification without changing the recorded verdict', async () => {
+    const view = boardView({ outcomes: [watchedOutcome({ name: 'Checkout', state: 'FLAG', summary: 'Checkout did not open' })] })
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input).endsWith('/verify')) throw new TypeError('Network interrupted')
+      return { ok: true, status: 200, json: async () => view }
+    }))
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={view} /></MeProvider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Check again' }))
+    expect(await screen.findByText(SITE_BOARD_COPY.connectionInterrupted)).toBeVisible()
+    expect(screen.getByText('Checkout did not open')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Check again' })).toBeEnabled()
+    vi.unstubAllGlobals()
+  })
+  it('leads with the Checkout result and links to its complete details', () => {
     const summary = checkoutResultCopy('no_buy_control').summary
     render(
       <MeProvider initialUser={signedInUser}>
@@ -202,7 +215,8 @@ describe('SiteBoard chrome', () => {
     )
     expect(screen.getByRole('heading', { name: 'Checkout' })).toBeVisible()
     expect(screen.getByText(summary)).toBeVisible()
-    expect(screen.getByText('The selected product appears in the cart and checkout opens.')).toBeVisible()
+    expect(screen.queryByText('The selected product appears in the cart and checkout opens.')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Checkout', exact: true })).toHaveAttribute('href', '/sites/p_example/outcomes/out-1')
     expect(screen.getByText('Couldn’t verify')).toBeVisible()
   })
 
@@ -458,7 +472,7 @@ describe('SiteBoard chrome', () => {
     expect(screen.queryByRole('link', { name: 'All Sites' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Keep watching' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Confirm this page' })).not.toBeInTheDocument()
-    expect(screen.getByText('Not monitored')).toBeInTheDocument()
+    expect(screen.getByText('Monitoring off')).toBeInTheDocument()
     const rail = screen.getByRole('navigation', { name: 'Site' })
     expect(rail).toBeInTheDocument()
     expect(rail).toHaveTextContent('Overview')
@@ -502,7 +516,7 @@ describe('SiteBoard chrome', () => {
     renderBoard(signedInUser)
     expect(screen.queryByRole('link', { name: CARE_HOME.signIn })).not.toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: /All websites/ }).length).toBeGreaterThan(0)
-    expect(screen.getByRole('link', { name: 'Not monitored' })).toHaveAttribute('href', `${SITE_PATH}/settings#watch`)
+    expect(screen.getByRole('link', { name: 'Monitoring off' })).toHaveAttribute('href', `${SITE_PATH}/settings#watch`)
     expect(screen.getAllByRole('button', { name: SITE_BOARD_COPY.addCard })).toHaveLength(1)
     expect(screen.getByRole('button', { name: 'Open Security' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open Tracking' })).toBeInTheDocument()
@@ -809,7 +823,7 @@ describe('an undelivered Watch alert', () => {
     )
     expect(screen.getByRole('heading', { name: WATCH_ALERT_DELIVERY.undeliveredTitle })).toBeInTheDocument()
     // The board must still say checks are happening. Delivery failed, not coverage.
-    expect(screen.getByRole('link', { name: 'Weekly' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Monitoring on · Weekly' })).toBeInTheDocument()
     expect(screen.getByText(/keeps checking/i)).toBeInTheDocument()
   })
 

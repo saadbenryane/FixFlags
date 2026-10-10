@@ -202,6 +202,10 @@ export function buildCoverageFacts(input: {
     const prior = lastKnownByArea.get(area)
 
     if ((inFlight || input.auditStatus === 'FAILED') && input.retainLastKnownWhileChecking && prior) {
+      if (prior.state === 'healthy' && siteCoverageIsStale(prior.checkedAt, input.now)) {
+        return { ...prior, state: 'unknown' as const, label: SITE_BOARD_COPY.checkOutOfDate,
+          detail: SITE_BOARD_COPY.checkOutOfDateDetail, stale: true }
+      }
       return {
         ...prior,
         state: prior.state,
@@ -260,6 +264,17 @@ export function buildCoverageFacts(input: {
     }
 
     if (!areaEvidenced || !requiredCheckRan) {
+      if (prior?.evidenced) {
+        return {
+          ...prior,
+          state: 'unknown' as const,
+          label: SITE_BOARD_COPY.checkOutOfDate,
+          detail: 'Previous evidence retained. This area was not verified by the latest check.',
+          openFlagCount,
+          evidenced: true,
+          stale: true,
+        }
+      }
       return {
         area,
         state: 'unknown' as const,

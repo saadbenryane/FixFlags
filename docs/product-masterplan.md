@@ -17,6 +17,14 @@ This file owns what to build, in what order, and what may be called launch-ready
 
 ### First vertical slice: Checkout
 
+### Free-launch completion checkpoint
+
+The current implementation pass completes the free-launch scope; paid checkout stays closed. `RELEASE_PROFILE=free-launch` is the release default. It requires foundation, fixture binding, credentialed core (including MCP), billing-closed compatibility, external notification proof, and deployed attestation. `RELEASE_PROFILE=paid-opening` additionally requires the existing paid-opening Watch reliability/cost and Stripe stage. Receipts carry the profile and cannot be combined across profiles.
+
+Site category depth and MCP now share sanitized recorded execution results. New metadata executions also persist bounded assertion observations; historical module completion never creates individual passes. Outcome attribution uses persisted identity. Missing latest category evidence retains dated prior evidence without certifying current health. Executable Outcomes precede broad diagnostics on Overview; settled monitoring has one header management entry.
+
+These are workspace changes, not a deployment attestation. [The credentialed matrix](../.agents/sessions/credentialed-journey-matrix.md) records outstanding release and usability evidence. Existing earlier receipts remain tied to their own revisions. Preserve disabled CI and Railway configuration throughout this pass.
+
 | Slice element | Local implementation | Remaining proof |
 | --- | --- | --- |
 | Outcome/binding/assessment | Additive `SiteOutcome` semantics, `OutcomeExecutionBinding`, `OutcomeAssessment` and non-destructive migrations | Fresh production migration and exact-revision canary |

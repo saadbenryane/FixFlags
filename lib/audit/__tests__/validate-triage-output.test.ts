@@ -44,7 +44,7 @@ describe('reconcileLaunchChecklist', () => {
 
 describe('groundTriageTextFlags', () => {
   const context = {
-    pageText: 'Product teams use DemoSite to run releases. “Cut failed releases by 30%” — Sarah Chen, CTO at Acme.',
+    pageText: 'Product teams use DemoSite to run releases. “Cut failed releases by 30%” - Sarah Chen, CTO at Acme.',
     metadata: { title: 'DemoSite release checklists', description: 'Release planning for product teams',
       h1s: ['Ship every release without a last-minute scramble'], ctaTexts: ['Start free'], hasStructuredData: true },
   }

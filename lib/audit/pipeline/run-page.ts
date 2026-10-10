@@ -480,7 +480,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     const scopeKey = `page:${normalizedUrl}`
     const receipt = {
       source: 'DETERMINISTIC', pageUrl: normalizedUrl,
-      status: execution.applicable ? 'COMPLETED' as const : 'NOT_APPLICABLE' as const,
+      status: execution.failed ? 'FAILED' as const : execution.applicable ? 'COMPLETED' as const : 'NOT_APPLICABLE' as const,
       detail: { kind: 'site-module-check', ...execution, pageUrl: normalizedUrl },
       evidenceReference: { auditId: ctx.auditId, pageUrl: normalizedUrl, module: execution.module },
     }

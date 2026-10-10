@@ -11,9 +11,9 @@ import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { CARE_HOME as C } from '@/lib/marketing/copy'
 import { HOMEPAGE_SAMPLE as S } from '@/lib/marketing/copy/care-homepage'
 import { HomepageHero, type HomepageDetailCard } from './HomepageHero'
-import { HomepageFinalSection, HomepageWorkflowSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
-import { HOMEPAGE_EVIDENCE } from './HomepagePrimitives'
+import { HomepageFinalSection, HomepageIntegrationsSection, HomepageWorkflowSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
 import s from './CareHomepage.module.css'
+import { HomepageCheckoutExample } from './HomepageCheckoutExample'
 
 export function CareHomepage() {
   const [selected, setSelected] = useState<HomepageDetailCard | null>(null)
@@ -37,7 +37,7 @@ export function CareHomepage() {
   const copyFlag = async (source: HomepageCopySource, text: string = C.workflow.instructions) => {
     try {
       await navigator.clipboard.writeText(text)
-      setCopyResult({ source, message: S.guidanceCopied })
+      setCopyResult({ source, message: source === 'share' ? C.story.copied : S.guidanceCopied })
     } catch {
       if (selected === null) { openCard('conversion'); setFlag('checkout') }
       setManualPrompt(text)
@@ -45,17 +45,18 @@ export function CareHomepage() {
     }
   }
   const restoreFocus = (event: Event) => { event.preventDefault(); opener.current?.focus() }
-  const title = flag ? flag === 'availability' ? S.availabilityTitle : C.flag.title : selectedCard?.name ?? (selected === 'monitoring' ? C.monitoring.detailTitle : selected === 'coverage' ? S.coverageTitle : S.overviewTitle)
+  const title = flag ? flag === 'availability' ? S.availabilityTitle : C.flag.title : selectedCard?.name ?? C.monitoring.detailTitle
 
   return <div className={s.home}>
     <HomepageHero onOpen={openCard} />
-    <HomepageWorkflowSection onViewFlag={() => { openCard('conversion'); setFlag('checkout') }} onCopy={source => void copyFlag(source)} copyResult={copyResult} />
+    <HomepageWorkflowSection onCopy={source => void copyFlag(source)} copyResult={copyResult} />
+    <HomepageIntegrationsSection />
     <HomepageFinalSection />
     <ResponsiveDepth open={selected !== null} onOpenChange={open => { if (!open) setSelected(null) }} onCloseAutoFocus={restoreFocus} className={s.dialog}>
       {flag ? <button type="button" className={s.backButton} onClick={() => { setFlag(null); setManualPrompt(null); setCopyResult(null); requestAnimationFrame(() => heading.current?.focus()) }}><ArrowLeft size={16} aria-hidden="true" />{S.backAction}</button> : null}
       <p className={s.depthSample}>{S.sampleLabel}</p>
       <DialogTitle ref={heading} tabIndex={-1}>{title}</DialogTitle>
-      <DialogDescription>{flag ? flag === 'availability' ? S.availabilityScope : C.flag.outcome : selectedCard?.scope ?? (selected === 'monitoring' ? C.monitoring.summary : selected === 'coverage' ? S.coverageBody : S.overviewBody)}</DialogDescription>
+      <DialogDescription>{flag ? flag === 'availability' ? S.availabilityScope : C.flag.outcome : selectedCard?.context ?? C.monitoring.summary}</DialogDescription>
       {selected === 'monitoring' ? <>
         <div className={s.monitoringTiming}><strong>{C.monitoring.cadence}</strong><p>{C.monitoring.next}<span>{C.monitoring.nextValue}</span></p></div>
         <p className={s.scope}>{C.monitoring.sample}</p>
@@ -70,14 +71,15 @@ export function CareHomepage() {
           <div><dt>{S.observedLabel}</dt><dd>{flag === 'availability' ? S.availabilityObserved : C.flag.body}</dd></div>
           <div><dt>{S.expectedLabel}</dt><dd>{flag === 'availability' ? S.availabilityExpected : S.checkoutExpected}</dd></div>
         </dl>
-        <BoardDetails image={{ src: flag === 'availability' ? '/marketing/evidence/pricing-unavailable.png' : HOMEPAGE_EVIDENCE.failed, alt: flag === 'availability' ? S.availabilityAlt : C.flag.cropAlt }} sources={[flag === 'availability' ? S.sources.http : S.sources.browser]} checkedAt={C.exampleCheckedAt} />
+        {flag === 'checkout' ? <HomepageCheckoutExample /> : null}
+        <BoardDetails image={flag === 'availability' ? { src: '/marketing/evidence/pricing-unavailable.png', alt: S.availabilityAlt } : undefined} sources={[flag === 'availability' ? S.sources.http : S.sources.browser]} checkedAt={C.exampleCheckedAt} />
         <section className={s.fixGuidance}><h3>{S.fixTitle}</h3><p>{flag === 'availability' ? S.availabilityFix : C.workflow.instructions}</p>
           <button type="button" onClick={() => void copyFlag('read', prompt)}><Copy size={16} aria-hidden="true" />{S.sampleCopy}</button>
           <p className={s.copyStatus} role="status">{copyResult?.source === 'read' ? copyResult.message : ''}</p>
         </section>
         {flag === 'checkout' ? <section className={s.recoveryProof}>
           <button type="button" aria-expanded={proof} onClick={() => setProof(value => !value)}>{S.recoveryAction}<ArrowRight size={16} aria-hidden="true" /></button>
-          {proof ? <><h3>{S.proofTitle}</h3><p>{S.proofBody}</p><BoardDetails image={{ src: HOMEPAGE_EVIDENCE.passed, alt: S.proofAlt }} sources={[S.sources.browser]} checkedAt="2026-09-14T09:15:00Z" /></> : null}
+          {proof ? <><h3>{S.proofTitle}</h3><p>{S.proofBody}</p><HomepageCheckoutExample recovered /></> : null}
         </section> : <p className={s.scope}>{S.unresolved}</p>}
       </> : selectedCard ? <>
         <div className={s.depthAnswer}><strong>{selectedCard.answer}</strong><BoardStatus state={selectedCard.state} label={selectedCard.status} showText /></div>
@@ -86,12 +88,12 @@ export function CareHomepage() {
           <div><strong>{result.label}</strong><span data-result={result.status}>{result.status}</span></div><p>{result.detail}</p>
           {result.status === 'Flag' ? <button type="button" onClick={openFlag}>{S.detailAction}<ArrowRight size={16} aria-hidden="true" /></button> : null}
         </li>)}</ul>
-        <BoardDetails checkedAt={selectedCard.checkedAt} sources={[selectedCard.flag ? selectedCard.flag === 'availability' ? S.sources.http : S.sources.browser : S.sources.diagnostics]} coverage={selectedCard.scope} />
+        <details className={s.evidenceDisclosure}>
+          <summary>{S.evidenceAction}</summary>
+          <BoardDetails checkedAt={selectedCard.checkedAt} sources={[selectedCard.flag ? selectedCard.flag === 'availability' ? S.sources.http : S.sources.browser : S.sources.diagnostics]} coverage={selectedCard.scope} />
+        </details>
         {selectedCard.connection ? <aside className={s.contextConnection}><Link href={selectedCard.connection.href as Route}>{selectedCard.connection.label}<ArrowRight size={14} aria-hidden="true" /></Link><p>{selectedCard.connection.body}</p><small>{S.connections}</small></aside> : null}
-      </> : <ul className={s.coverageList}>{S.categories.map(card => <li key={card.id}>
-        <button type="button" onClick={() => { setSelected(card.id); requestAnimationFrame(() => heading.current?.focus()) }}><strong>{card.name}</strong><BoardStatus state={card.state} label={card.status} showText /><ArrowRight size={16} aria-hidden="true" /></button><p>{card.scope}</p>
-      </li>)}</ul>}
-      {selected === 'coverage' ? <section className={s.supportedCoverage}><h3>{C.coverage.title}</h3><ul>{C.coverage.audiences.map(item => <li key={item.id}><strong>{item.question}</strong><p>{item.monitored}</p></li>)}</ul><p>{C.coverage.boundary}</p></section> : null}
+      </> : null}
       {manualPrompt ? <div className={s.manualCopy}><label htmlFor="sample-guidance">{S.guidanceLabel}</label><textarea id="sample-guidance" readOnly value={manualPrompt} onFocus={event => event.currentTarget.select()} rows={6} /></div> : null}
       <p className={s.sampleNote}>{S.note}</p>
       <a className={s.textLink} href="#analyze" onClick={() => { opener.current = document.getElementById('audit-url-care-hero'); setSelected(null) }}>{S.analyzeAction}<ArrowRight size={16} aria-hidden="true" /></a>

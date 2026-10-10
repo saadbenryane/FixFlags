@@ -2,135 +2,113 @@
   "schemaVersion": 1,
   "areas": {
     "orientation": {
-      "description": "Understand the repository, current product authority, implementation map, and near-term direction.",
+      "description": "Locate current authority and implementation without loading product history.",
       "sources": [
-        { "path": "AGENTS.md", "status": "canonical", "authority": "operations", "reason": "Stable repository rules and task routing." },
-        { "path": "CANONICAL-SOURCES.md", "status": "canonical", "authority": "operations", "reason": "Authority map for product and engineering facts.", "deeperRoute": "docs" },
-        { "path": "knowledge/vision.md", "status": "canonical", "authority": "product", "reason": "Accepted independent-monitor product direction.", "deeperRoute": "product" },
-        { "path": "CODEMAP.md", "status": "canonical", "authority": "architecture", "reason": "Repository execution and ownership map." },
-        { "path": "ROADMAP.md", "status": "supporting", "authority": "product", "reason": "Sequenced work and delivery boundaries.", "deeperRoute": "release" }
+        { "path": "AGENTS.md", "status": "canonical", "authority": "operations", "reason": "Repository working rules." },
+        { "path": "CANONICAL-SOURCES.md", "status": "canonical", "authority": "operations", "reason": "Authority map." },
+        { "path": "CODEMAP.md", "status": "canonical", "authority": "architecture", "reason": "Implementation entry points." }
       ],
-      "commands": ["npm run agent", "npm run agent -- verify --dry-run"]
+      "commands": ["npm run agent"]
     },
     "product": {
-      "description": "Change the Site product without inventing a parallel domain or confusing shipped, next, and vision layers.",
+      "description": "Resolve product purpose, customer objects, and current implementation.",
       "sources": [
-        { "path": "knowledge/vision.md", "status": "canonical", "authority": "product", "reason": "Accepted product purpose and hierarchy." },
-        { "path": "docs/product-architecture.md", "status": "canonical", "authority": "architecture", "reason": "Site, Outcome, execution, Flag, evidence, and Watch model." },
-        { "path": "docs/product-prd.md", "status": "canonical", "authority": "product", "reason": "Behavioral acceptance for the current product." },
-        { "path": "docs/product-masterplan.md", "status": "supporting", "authority": "product", "reason": "Delivery sequence and retained infrastructure.", "deeperRoute": "release" },
-        { "path": "PRODUCT.md", "status": "supporting", "authority": "evidence", "reason": "Implemented baseline rather than target direction." }
+        { "path": "knowledge/vision.md", "status": "canonical", "authority": "product", "reason": "Purpose and audience." },
+        { "path": "docs/product-architecture.md", "status": "canonical", "authority": "architecture", "reason": "Site, Outcome, Flag, evidence, and Watch model." },
+        { "path": "PRODUCT.md", "status": "supporting", "authority": "evidence", "reason": "Implemented behavior." }
       ],
-      "commands": ["npm run product:contract-guard", "npm run agent -- verify --dry-run"]
+      "commands": ["npm run product:contract-guard"]
     },
     "ui": {
-      "description": "Change the Site interface, states, or customer language using the current design and product contracts.",
+      "description": "Change interface behavior or customer language without importing historical proposals.",
       "sources": [
-        { "path": "DESIGN.md", "status": "canonical", "authority": "interface", "reason": "Visual system and interaction constraints." },
-        { "path": "docs/workspace-interface.md", "status": "canonical", "authority": "interface", "reason": "Current Site interface states and hierarchy." },
-        { "path": "docs/product-prd.md", "status": "canonical", "authority": "product", "reason": "Customer behavior and acceptance criteria.", "deeperRoute": "product" },
-        { "path": "docs/voice-and-copy.md", "status": "canonical", "authority": "interface", "reason": "Customer-facing language and vocabulary." },
+        { "path": "DESIGN.md", "status": "canonical", "authority": "interface", "reason": "Visual and interaction principles." },
+        { "path": "docs/workspace-interface.md", "status": "canonical", "authority": "interface", "reason": "Current Site interface contract." },
+        { "path": "docs/voice-and-copy.md", "status": "canonical", "authority": "interface", "reason": "Voice, vocabulary, and claim boundaries." },
         { "path": "lib/design/tokens.css", "status": "supporting", "authority": "interface", "reason": "Executable design tokens." }
       ],
-      "commands": ["npm run ui:drift-guard", "npm run agent -- verify --dry-run"]
+      "commands": ["npm run ui:drift-guard"]
     },
     "audit": {
-      "description": "Work on deterministic checks, capture, evidence, scoring, persistence, and scan accuracy.",
+      "description": "Work on capture, checks, evidence, persistence, or scan accuracy.",
       "sources": [
-        { "path": "docs/audit-pipeline.md", "status": "canonical", "authority": "architecture", "reason": "Pipeline stages and persistence flow." },
+        { "path": "docs/audit-pipeline.md", "status": "canonical", "authority": "architecture", "reason": "Current pipeline." },
         { "path": "QUALITY.md", "status": "canonical", "authority": "operations", "reason": "Correctness and evidence expectations." },
-        { "path": "lib/audit/", "status": "supporting", "authority": "evidence", "reason": "Executable audit implementation." },
-        { "path": "lib/audit/checks/index.ts", "status": "supporting", "authority": "architecture", "reason": "Registered check boundary." },
-        { "path": ".agents/accuracy/", "status": "supporting", "authority": "evidence", "reason": "Accuracy corpus and adjudicated false positives." }
+        { "path": "lib/audit/checks/index.ts", "status": "supporting", "authority": "architecture", "reason": "Registered check boundary." }
       ],
-      "commands": ["npm run accuracy:eval", "npm run audit:capabilities", "npm run agent -- verify --dry-run"]
+      "commands": ["npm run accuracy:eval", "npm run audit:capabilities"]
     },
     "outcomes": {
-      "description": "Change Outcome execution, Flags, verification, history, or always-on Watch.",
+      "description": "Change Outcome execution, Flags, verification, history, or Watch.",
       "sources": [
-        { "path": "docs/product-architecture.md", "status": "canonical", "authority": "architecture", "reason": "Outcome and evidence domain contract." },
-        { "path": "docs/product-prd.md", "status": "canonical", "authority": "product", "reason": "Outcome and Watch acceptance states." },
-        { "path": "lib/sites/application/", "status": "supporting", "authority": "evidence", "reason": "Tenant-scoped Site application commands and queries." },
-        { "path": "lib/audit/task-contracts.ts", "status": "supporting", "authority": "architecture", "reason": "Check-to-plan and re-check-to-diff contract." },
-        { "path": "knowledge/evidence-rules.md", "status": "canonical", "authority": "product", "reason": "Coverage, scope, freshness, and proof rules." }
+        { "path": "docs/product-architecture.md", "status": "canonical", "authority": "architecture", "reason": "Outcome and evidence model." },
+        { "path": "knowledge/evidence-rules.md", "status": "canonical", "authority": "product", "reason": "Coverage, freshness, and recovery truth." },
+        { "path": "lib/sites/application/queries.ts", "status": "supporting", "authority": "evidence", "reason": "Tenant-scoped application boundary." }
       ],
-      "commands": ["npm run product:contract-guard", "npm run agent -- verify --dry-run"]
+      "commands": ["npm run product:contract-guard"]
     },
     "cli": {
-      "description": "Work on launch-scope MCP, public CLI workflows, integrations, and discovery gates.",
+      "description": "Work on MCP, CLI, or editor integrations.",
       "sources": [
-        { "path": "lib/mcp/", "status": "supporting", "authority": "evidence", "reason": "MCP authorization and tool implementation." },
-        { "path": "fixflags-cli/", "status": "supporting", "authority": "evidence", "reason": "Public CLI implementation and tests." },
-        { "path": "lib/integrations/", "status": "supporting", "authority": "evidence", "reason": "Editor and service integration boundary." },
-        { "path": "SECURITY.md", "status": "canonical", "authority": "operations", "reason": "Credential and tenant-boundary requirements.", "deeperRoute": "security" },
-        { "path": "docs/product-masterplan.md", "status": "supporting", "authority": "product", "reason": "Launch boundary and parked capabilities." }
+        { "path": "SECURITY.md", "status": "canonical", "authority": "operations", "reason": "Credential and tenant boundaries.", "deeperRoute": "security" },
+        { "path": "lib/mcp/tools/sites.ts", "status": "supporting", "authority": "evidence", "reason": "Site and Outcome MCP implementation." },
+        { "path": "fixflags-cli/src/index.ts", "status": "supporting", "authority": "evidence", "reason": "CLI entry point." }
       ],
-      "commands": ["npm run test:cli", "npm run mcp:quality-gate", "npm run agent -- verify --dry-run"]
+      "commands": ["npm run test:cli", "npm run mcp:quality-gate"]
     },
     "auth-billing": {
-      "description": "Change authentication, anonymous claiming, entitlements, plans, checkout, or billing gates.",
+      "description": "Change authentication, claiming, entitlements, plans, or checkout.",
       "sources": [
-        { "path": "SECURITY.md", "status": "canonical", "authority": "operations", "reason": "Authentication and authorization constraints.", "deeperRoute": "security" },
-        { "path": "lib/auth/", "status": "supporting", "authority": "evidence", "reason": "Session, claim, and entitlement implementation." },
-        { "path": "lib/billing/", "status": "supporting", "authority": "evidence", "reason": "Plan and checkout implementation." },
-        { "path": "app/(auth)/", "status": "supporting", "authority": "interface", "reason": "Executable customer authentication flows." },
-        { "path": "docs/stripe-setup.md", "status": "supporting", "authority": "operations", "reason": "Billing environment and webhook setup." }
+        { "path": "SECURITY.md", "status": "canonical", "authority": "operations", "reason": "Authorization requirements.", "deeperRoute": "security" },
+        { "path": "lib/auth/access-policy.ts", "status": "supporting", "authority": "architecture", "reason": "Access policy." },
+        { "path": "lib/billing/plans.ts", "status": "supporting", "authority": "evidence", "reason": "Executable plan definitions." }
       ],
-      "commands": ["npm run billing:plans-guard", "npm run agent -- verify --dry-run"]
+      "commands": ["npm run billing:plans-guard"]
     },
     "security": {
-      "description": "Review tenant isolation, public reads, webhooks, secrets, middleware, and release boundaries.",
+      "description": "Review tenant isolation, public reads, webhooks, secrets, and middleware.",
       "sources": [
-        { "path": "SECURITY.md", "status": "canonical", "authority": "operations", "reason": "Repository security contract." },
-        { "path": "lib/security/", "status": "supporting", "authority": "evidence", "reason": "Executable security helpers and tests." },
-        { "path": "middleware.ts", "status": "supporting", "authority": "architecture", "reason": "Request boundary and edge constraints." },
-        { "path": "app/api/webhooks/", "status": "supporting", "authority": "evidence", "reason": "Externally invoked mutation boundaries." },
+        { "path": "SECURITY.md", "status": "canonical", "authority": "operations", "reason": "Security contract." },
+        { "path": "middleware.ts", "status": "supporting", "authority": "architecture", "reason": "Request boundary." },
         { "path": "lib/graph/queries.ts", "status": "supporting", "authority": "architecture", "reason": "Public graph read boundary." }
       ],
-      "commands": ["npm run security:audit", "npm run agent -- verify --dry-run"]
+      "commands": ["npm run security:audit"]
     },
     "prompts": {
-      "description": "Change model selection, triage, or prescription prompts while preserving stable cacheable prefixes.",
+      "description": "Change model selection or AI prompts.",
       "sources": [
         { "path": "lib/prompts/system-prompt.ts", "status": "canonical", "authority": "architecture", "reason": "Stable system prompt boundary." },
         { "path": "lib/audit/judge-config.ts", "status": "canonical", "authority": "architecture", "reason": "Provider and judge configuration." },
-        { "path": "lib/billing/costs.ts", "status": "supporting", "authority": "evidence", "reason": "Executable cost accounting." },
         { "path": "QUALITY.md", "status": "canonical", "authority": "operations", "reason": "Grounding and evaluation expectations." }
       ],
-      "commands": ["npx vitest run lib/prompts/", "npm run agent -- verify --dry-run"]
+      "commands": ["npx vitest run lib/prompts/"]
     },
     "release": {
-      "description": "Build, verify, and recover the production-like web, worker, database, queue, and container path.",
+      "description": "Build, verify, or recover the production-like runtime.",
       "sources": [
-        { "path": "QUALITY.md", "status": "canonical", "authority": "operations", "reason": "Verification and evidence requirements." },
-        { "path": "DEVELOPMENT.md", "status": "canonical", "authority": "operations", "reason": "Local and release command catalog." },
-        { "path": "scripts/validate.mjs", "status": "supporting", "authority": "evidence", "reason": "Executable verification planner." },
-        { "path": "scripts/runtime-start.mjs", "status": "supporting", "authority": "architecture", "reason": "Production web and worker startup boundary." },
-        { "path": "lib/queue/", "status": "supporting", "authority": "evidence", "reason": "Queue behavior and recovery implementation." }
+        { "path": "QUALITY.md", "status": "canonical", "authority": "operations", "reason": "Release proof." },
+        { "path": "DEVELOPMENT.md", "status": "canonical", "authority": "operations", "reason": "Environment and commands." },
+        { "path": "scripts/runtime-start.mjs", "status": "supporting", "authority": "architecture", "reason": "Web and worker startup." }
       ],
-      "commands": ["npm run agent:release-continuity", "npm run agent -- verify --dry-run"]
+      "commands": ["npm run agent:release-continuity"]
     },
     "growth": {
-      "description": "Improve organic discovery through measured SEO and analytics cycles.",
+      "description": "Work on SEO and analytics using maintained sources, not agent skills.",
       "sources": [
-        { "path": "docs/growth/", "status": "canonical", "authority": "product", "reason": "Growth loop and measurement contracts." },
-        { "path": "lib/growth/", "status": "supporting", "authority": "evidence", "reason": "Growth computation and reporting." },
-        { "path": "lib/analytics/", "status": "supporting", "authority": "evidence", "reason": "Analytics event implementation." },
-        { "path": "scripts/seo-guard.mjs", "status": "supporting", "authority": "operations", "reason": "Deterministic SEO guard." },
-        { "path": ".agents/skills/fixflags-seo-growth-loop/SKILL.md", "status": "supporting", "authority": "operations", "reason": "Conditional growth workflow." }
+        { "path": "docs/growth/README.md", "status": "canonical", "authority": "product", "reason": "Growth workspace map." },
+        { "path": "lib/growth/", "status": "supporting", "authority": "evidence", "reason": "Growth implementation." },
+        { "path": "lib/analytics/", "status": "supporting", "authority": "evidence", "reason": "Analytics implementation." }
       ],
-      "commands": ["npm run seo:guard", "npm run agent -- verify --dry-run"]
+      "commands": ["npm run seo:guard"]
     },
     "docs": {
-      "description": "Update canonical knowledge without duplicating facts or promoting historical evidence into instruction.",
+      "description": "Update canonical knowledge without duplicating it.",
       "sources": [
-        { "path": "CANONICAL-SOURCES.md", "status": "canonical", "authority": "operations", "reason": "Single authority map." },
-        { "path": "docs/document-status-policy.md", "status": "canonical", "authority": "operations", "reason": "Metadata, status, authority, and historical-document policy." },
-        { "path": "EVOLUTION-RULES.md", "status": "canonical", "authority": "operations", "reason": "Knowledge-change workflow." },
-        { "path": "knowledge/README.md", "status": "supporting", "authority": "operations", "reason": "Knowledge directory map." },
-        { "path": "docs/voice-and-copy.md", "status": "canonical", "authority": "interface", "reason": "Public-language authority.", "deeperRoute": "ui" }
+        { "path": "CANONICAL-SOURCES.md", "status": "canonical", "authority": "operations", "reason": "Authority map." },
+        { "path": "docs/document-status-policy.md", "status": "canonical", "authority": "operations", "reason": "Document status rules." },
+        { "path": "EVOLUTION-RULES.md", "status": "canonical", "authority": "operations", "reason": "Knowledge-change workflow." }
       ],
-      "commands": ["npm run knowledge:duplication-guard", "npm run agent -- verify --dry-run"]
+      "commands": ["npm run knowledge:duplication-guard"]
     }
   },
   "aliases": {

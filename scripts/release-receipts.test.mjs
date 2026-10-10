@@ -5,12 +5,17 @@ import { chmodSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from '
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { REQUIRED_RELEASE_JOURNEYS } from './release-journeys.mjs'
-import { assertCleanReleaseCandidate, buildReceiptContext, expectedReleaseArtifactLabels, expectedReleaseCommandLabels, hydrateReleaseFixtureEnvironment, inspectPlaywrightJourneys, RELEASE_CLI_VERSION, releaseStageCommands, requireStageJourneys, runReleaseStage, validateFinalReceiptObjects, validateWatchLaunchEvidence } from './release-receipts.mjs'
+import { assertCleanReleaseCandidate, buildReceiptContext, expectedReleaseArtifactLabels, expectedReleaseCommandLabels, hydrateReleaseFixtureEnvironment, inspectPlaywrightJourneys, RELEASE_CLI_VERSION, releaseStageCommands, requireStageJourneys, runReleaseStage, validateFinalReceiptObjects as validateProfileReceipts, validateWatchLaunchEvidence } from './release-receipts.mjs'
+import { requiredReleaseStages, releaseProfile } from './release-profiles.mjs'
+import { JOURNEYS_BY_STAGE } from './release-journeys.mjs'
+
+const validateFinalReceiptObjects = (receipts, sha) => validateProfileReceipts(receipts, sha, 'paid-opening')
 
 const SHA = 'a'.repeat(40)
 function temp() { return mkdtempSync(path.join(tmpdir(), 'fixflags-release-')) }
 function baseEnv(overrides = {}) {
   return {
+    RELEASE_PROFILE: 'paid-opening',
     RELEASE_RUN_ID: 'run-1',
     RELEASE_ENV_URL: 'https://release.fixflags.test',
     RELEASE_ENV_API_KEY: 'ff_release_test',
@@ -26,6 +31,7 @@ function report(ids, status = 'passed') {
 function receipt(stage, overrides = {}) {
   return {
     schemaVersion: 2,
+    profile: 'paid-opening',
     runId: 'run-1',
     stage,
     status: 'PASS',
@@ -92,6 +98,20 @@ function passingWatchEvidence(overrides = {}) {
 }
 
 describe('release evidence receipts', () => {
+  it('requires MCP for free launch and rejects mixed profiles, missing journeys and paid stages', () => {
+    assert.equal(releaseProfile({}), 'free-launch')
+    assert.throws(() => releaseProfile({ RELEASE_PROFILE: 'unknown' }), /Unknown release profile/)
+    const receipts = requiredReleaseStages().map(stage => receipt(stage, {
+      profile: 'free-launch',
+      journeys: (JOURNEYS_BY_STAGE[stage] ?? []).map(id => ({ id, status: 'PASS' })),
+    }))
+    assert.equal(validateProfileReceipts(receipts, SHA).profile, 'free-launch')
+    assert.throws(() => validateProfileReceipts(receipts.map(value => ({ ...value,
+      journeys: value.journeys.filter(journey => journey.id !== 'mcp-full-loop'),
+    })), SHA), /Missing PASS evidence.*mcp-full-loop/)
+    assert.throws(() => validateProfileReceipts(receipts.map(value => ({ ...value, profile: 'paid-opening' })), SHA), /profile mismatch/)
+    assert.throws(() => validateProfileReceipts([...receipts, receipt('billing-open')], SHA), /Unknown release receipt stage/)
+  })
   it('rejects dirty tracked and untracked source while ignoring owned release artifacts', () => {
     assert.throws(() => assertCleanReleaseCandidate(' M lib/audit/runner.ts\n'), /source changes/)
     assert.throws(() => assertCleanReleaseCandidate('?? scripts/new-proof.mjs\n'), /source changes/)
@@ -383,7 +403,7 @@ describe('release evidence receipts', () => {
   it('never hydrates release fixture manifests into production stages', () => {
     const workingDirectory = temp()
     let observedEnv
-    const value = runReleaseStage('deployed', baseEnv({ RELEASE_FIXTURE_MANIFEST: path.join(workingDirectory, 'missing-release-fixtures.json') }), {
+    const value = runReleaseStage('deployed', baseEnv({ RELEASE_FIXTURE_MANIFEST: path.join(workingDirectory, 'missing-release-fixtures.json'), E2E_API_KEY: 'fixture-secret' }), {
       workingDirectory,
       gitSha: SHA,
       repositoryStatus: '',

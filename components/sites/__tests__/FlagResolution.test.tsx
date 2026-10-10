@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { FlagResolutionPanel } from '@/components/sites/FlagResolutionPanel'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
@@ -59,7 +59,9 @@ describe('Flag resolution panel', () => {
     expect(screen.getByRole('heading', { name: SITE_BOARD_COPY.flagRecovered })).toBeVisible()
     expect(screen.getByText(SITE_BOARD_COPY.flagProofLead, { exact: false })).toBeVisible()
     expect(screen.getByText(SITE_BOARD_COPY.flagProofObserved, { exact: false })).toBeVisible()
-    expect(screen.getByText('Proof audit: audit-proof')).toBeVisible()
+    expect(screen.getByText('Check reference: audit-proof')).not.toBeVisible()
+    fireEvent.click(screen.getByText('Check details'))
+    expect(screen.getByText('Check reference: audit-proof')).toBeVisible()
     expect(document.querySelector('time')?.getAttribute('datetime')).toBe(PROOF_AT)
     expect(screen.queryByText(SITE_BOARD_COPY.flagStatus)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: SITE_BOARD_COPY.verifyFix })).not.toBeInTheDocument()

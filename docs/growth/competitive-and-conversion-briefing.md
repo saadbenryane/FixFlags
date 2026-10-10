@@ -487,7 +487,7 @@ the board so analytics call sites, copy and shared verification files have one o
 
 > You are establishing FixFlags' conversion measurement and go-to-market foundation. Work in
 > `/Users/saadbenryane/Code/FixFlags`. Read `AGENTS.md`, `docs/growth/competitive-and-conversion-briefing.md`,
-> `.agents/skills/fixflags-analytics/SKILL.md`, `docs/growth/metrics.md`, `docs/growth/experiments.md`, and
+> `lib/analytics/`, `docs/growth/metrics.md`, `docs/growth/experiments.md`, and
 > `lib/analytics/events.ts` first.
 >
 > **Context.** FixFlags is an independent monitor for live software that watches whether important Outcomes

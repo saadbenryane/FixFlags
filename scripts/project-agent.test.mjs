@@ -86,7 +86,7 @@ describe('project-agent', () => {
     assert.ok(result.stdout.trim().split(/\s+/).length < 500)
   })
 
-  it('enforces the complete deterministic harness policy', () => {
+  it('enforces the focused repository harness policy', () => {
     const doctor = buildDoctor(cwd)
     assert.equal(doctor.status, 'passed', JSON.stringify(doctor.checks.filter((check) => !check.ok), null, 2))
     assert.deepEqual(doctor.checks.map((check) => check.name), [
@@ -96,12 +96,10 @@ describe('project-agent', () => {
       'route-isolation',
       'current-authority',
       'optional-tools',
-      'skill-routing',
+      'customer-integrations',
       'telemetry-privacy',
       'harness-naming',
       'lease-store',
-      'board-pointer',
-      'legacy-board-preserved',
     ])
   })
 

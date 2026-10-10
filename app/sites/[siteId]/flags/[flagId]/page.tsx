@@ -240,7 +240,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                             {' · '}
                             <span>{customerAttemptSource(attempt.builder)}</span>
                           </p>
-                          <p className="mt-2 text-sm text-muted-foreground">{attempt.changeSummary?.trim() || SITE_BOARD_COPY.changeUndescribed}</p>
+                          {attempt.changeSummary?.trim() ? <p className="mt-2 text-sm text-muted-foreground">{attempt.changeSummary}</p> : null}
                           {attempt.reason ? <p className="mt-2 text-sm text-muted-foreground">{attempt.reason}</p> : null}
                         </div>
                       </li>

@@ -134,7 +134,7 @@ describe('validate.mjs', () => {
       const labels = buildPlan('release', []).commands.map((command) => command.label)
       assert.deepEqual(labels, [
         'release:foundation', 'release:fixture-binding', 'release:credentialed-core',
-        'release:billing-open', 'release:billing-closed', 'release:external',
+        'release:billing-closed', 'release:external',
         'release:deployed', 'release:final',
       ])
       for (const item of buildPlan('release', []).commands.slice(0, -1)) {

@@ -1,6 +1,5 @@
-# Stable project defaults. Per-chat model and reasoning choices still take precedence.
-model = "gpt-6.1-sol"
-model_reasoning_effort = "medium"
+# Model and reasoning come from user settings and the per-chat picker.
+# Project overrides here can cause desktop selections to revert.
 model_verbosity = "low"
 tool_output_token_limit = 8000
 project_doc_max_bytes = 8192

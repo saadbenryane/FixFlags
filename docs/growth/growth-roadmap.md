@@ -74,7 +74,7 @@ MIN_SAMPLE_SIZE, and measure before scaling.
   `ToolUsage` rows accumulating.
 - Attribution parameters on all public surface links (`AuditSource` enum
   extended with `TOOL_PAGE` / `ISSUE_PAGE` / `BENCHMARK_PAGE`).
-- A full `fixflags-seo-growth-loop` cycle completed with a pre-registered
+- A full SEO review cycle completed with a pre-registered
   intervention and a comparable follow-up decision.
 
 ## Phase 3 — Scale the families (not started)

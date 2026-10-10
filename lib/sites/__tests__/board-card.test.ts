@@ -7,6 +7,7 @@ import {
   boardFlagPrompt,
   buildBoardCards,
   starterBoardNames,
+  outcomeNameForFlag,
 } from '@/lib/sites/board-card'
 import { CARE_HOME } from '@/lib/marketing/copy'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
@@ -42,6 +43,12 @@ const conversionFlag: SiteFlagSeed = {
 }
 
 describe('board card contract', () => {
+  it('uses only persisted Outcome identity even on overlapping URLs', () => {
+    const outcomes = [{ name: 'Checkout', pageUrls: ['https://example.com'] }]
+    expect(outcomeNameForFlag(outcomes, { relatedOutcome: null })).toBeNull()
+    expect(outcomeNameForFlag(outcomes, { relatedOutcome: { id: 'signup', name: 'Signup' } })).toBe('Signup')
+    expect(outcomeNameForFlag(outcomes, null)).toBeNull()
+  })
   it('names starter cards from CARD_CATALOG in board order', () => {
     expect(starterBoardNames()).toEqual([
       'Pages',
@@ -114,7 +121,7 @@ describe('board card contract', () => {
     expect(conversion?.state).toBe('problem')
     expect(conversion?.status).toBe(SITE_BOARD_COPY.flagStatus)
     expect(conversion?.answer).toBe(conversionFlag.problem)
-    expect(conversion?.problem?.outcomeName).toBe('Get in touch')
+    expect(conversion?.problem?.outcomeName).toBeNull()
     expect(conversion?.problem?.href).toBe('/sites/p_example/flags/flag-1')
     expect(conversion?.flagChips).toEqual([
       { id: 'flag-1', title: conversionFlag.problem, href: '/sites/p_example/flags/flag-1' },

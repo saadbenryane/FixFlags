@@ -65,7 +65,7 @@ export function SitePromptCopyButton({
           {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
           {copied ? SITE_BOARD_COPY.copyPromptCopied : SITE_BOARD_COPY.copyPrompt}
         </Button>
-        {message && !copied ? <span className="sr-only" role="status" aria-live="polite">{message}</span> : null}
+        {message && !copied ? <span className="mt-2 text-sm text-muted-foreground" role="status" aria-live="polite">{message}</span> : null}
       </span>
       <Dialog open={Boolean(manualPrompt)} onOpenChange={(open) => { if (!open) setManualPrompt(null) }}>
         <DialogContent>

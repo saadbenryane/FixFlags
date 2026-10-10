@@ -43,6 +43,7 @@ export const MONITORING_COPY = {
   return: 'Back to your website',
   review: 'Review coverage',
   reviewTitle: 'What FixFlags is watching',
+  reviewBody: 'Your selected checks, their latest result, and when they’ll run again.',
   addPage: 'Add this page to monitoring',
   resume: 'Finish setup',
   manage: 'Manage monitoring',

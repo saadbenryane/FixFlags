@@ -124,7 +124,7 @@ The comprehensive release-proof receipt is a separate verification workflow: it 
 
 ### Concurrent agent work
 
-One foreground writer may use the main checkout. Concurrent writers use separate managed worktrees and coordinate live scope through `npm run agent -- ownership` plus the `npm run agent -- task ...` lease commands. Read-only investigation may share a checkout. Preserve existing changes, stop on overlapping scope, and assign one integration owner before parallel implementation begins. The retired `.agents/BOARD.md` is historical evidence, not live ownership.
+One foreground writer may use the main checkout. Concurrent writers use separate managed worktrees and coordinate live scope through `npm run agent -- ownership` plus the `npm run agent -- task ...` lease commands. Read-only investigation may share a checkout. Preserve existing changes, stop on overlapping scope, and assign one integration owner before parallel implementation begins. Archived board records are historical evidence, not live ownership.
 
 ## Debugging
 

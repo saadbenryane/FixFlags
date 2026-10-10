@@ -23,7 +23,7 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
   const db = new PrismaClient()
   const nonce = randomBytes(8).toString('hex')
   const email = `reliability-${nonce}@example.invalid`, password = `Ff!${randomBytes(18).toString('base64url')}`
-  const output = '.agents/artifacts/customer-reliability'; await mkdir(output, { recursive: true })
+  const output = process.env.FIXFLAGS_EXPERIENCE_CAPTURE === '1' ? '.agents/artifacts/product-experience-completion/customer' : '.agents/artifacts/customer-reliability'; await mkdir(output, { recursive: true })
   const proof: Record<string, unknown> = { environment: 'local production web + real queue/worker/Chromium/PostgreSQL; controlled HTTP, email and S3-compatible protocol transports; not external provider or production proof' }
   const user = await db.user.create({ data: { email, name: 'Reliability <fixture>', emailVerified: true, auditsUsed: 3 } })
   await db.account.create({ data: { userId: user.id, accountId: user.id, providerId: 'credential', password: await hashPassword(password) } })
@@ -75,6 +75,20 @@ test('controlled customer Flag, unresolved verification, repair, recovery and pr
     const activation = await activated.json(); expect(activation.firstCheck).toBe('requested')
     const firstPageRun = await db.runRequest.findFirst({ where: { projectId, id: { not: baseline.runId } }, orderBy: { requestedAt: 'desc' } })
     expect(firstPageRun).toBeTruthy(); await waitRun(firstPageRun!.id, 'CLEAR')
+    if (process.env.FIXFLAGS_EXPERIENCE_CAPTURE === '1') {
+      for (const [name, width] of [['desktop', 1440], ['mobile', 390]] as const) {
+        await page.setViewportSize({ width, height: 900 })
+        await page.goto(`/sites/${projectId}`, { waitUntil: 'networkidle' })
+        const consent = page.getByRole('button', { name: 'Only necessary', exact: true })
+        if (await consent.isVisible()) await consent.click()
+        await page.screenshot({ path: `${output}/${name}-overview.png`, fullPage: true })
+        await page.goto(`/sites/${projectId}/outcomes/${outcome.id}`, { waitUntil: 'networkidle' })
+        await page.screenshot({ path: `${output}/${name}-check.png`, fullPage: true })
+        await page.goto(`/sites/${projectId}/settings`, { waitUntil: 'networkidle' })
+        await page.screenshot({ path: `${output}/${name}-settings.png`, fullPage: true })
+      }
+      await page.setViewportSize({ width: 1440, height: 900 })
+    }
     // Advance only this fixture's schedule; refuse to process other Sites.
     expect(await db.project.count({ where: { id: { not: projectId }, watchInterval: { not: null }, watchNextRunAt: { lte: new Date() } } })).toBe(0)
     await control({ broken: true, rejectNextEmail: true })

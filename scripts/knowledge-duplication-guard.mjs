@@ -9,7 +9,7 @@
  *
  * Exit code 1 = violations found. Exit code 0 = clean.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, extname } from 'node:path'
 
 const ROOT = process.cwd()
@@ -66,7 +66,6 @@ const RULES = [
       'QUALITY.md',
       'test-strategy.md',
       'lib/audit/codemap.md',
-      '.opencode/skills/fixflags-audit-pipeline.md',
     ],
   },
 
@@ -290,17 +289,11 @@ const semanticChecks = [
     description: 'Development docs must not contain a fixed admin password',
     pattern: /password123|Email:\s*`[^`]+`\s*\/\s*password:/i,
   },
-  {
-    file: '.cursor/skills/fixflags-completeness/SKILL.md',
-    id: 'unsafe-clean-install',
-    description: 'Completeness workflow must not recursively delete dependencies',
-    pattern: /rm\s+-rf\s+(?:\.\/)?node_modules/i,
-  },
 ]
 
 for (const check of semanticChecks) {
   const absolute = join(ROOT, check.file)
-  if (!statSync(absolute).isFile()) continue
+  if (!existsSync(absolute) || !statSync(absolute).isFile()) continue
   const content = readFileSync(absolute, 'utf8')
   const match = content.match(check.pattern)
   if (!match) continue

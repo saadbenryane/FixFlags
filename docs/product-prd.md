@@ -30,6 +30,14 @@ A customer connects a live product, understands the Outcomes FixFlags watches, s
 
 ## Primary human journey
 
+Free-launch completion acceptance:
+
+- Overview places confirmed executable Outcomes before broad categories, prioritizing Flag, Couldn't verify, Stale, then Clear. Settled monitoring has one management entry; incomplete activation remains actionable.
+- Category depth and MCP expose the same tenant-scoped execution receipts and explicitly recorded assertions, retaining their originating Audit, page, timestamp and limitations. Module completion alone never creates an assertion pass.
+- Missing latest category evidence retains dated historical evidence; expired health never becomes current while a new run is pending. Interrupted execution exposes actionable customer feedback and operational diagnostics.
+- Free-launch receipts require the MCP protocol loop and reject skipped journeys, missing evidence, mixed revisions and mixed profiles. Paid-opening retains its additional commercial and reliability gates.
+- Sign-off includes five representative website-owner usability sessions without coaching, with observed failures corrected and affected tasks repeated. Automated runs cannot substitute for those sessions.
+
 1. **Analyze.** Enter a safe public URL and create/resume one provisional Site.
 2. **Learn visibly.** Persist real pages, evidence, and candidate Outcomes. Show partial/failed work honestly.
 3. **Confirm responsibility.** Let the customer confirm/edit an important Outcome without configuring a testing framework.

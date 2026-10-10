@@ -76,8 +76,25 @@ function CardMedia({
   )
 }
 
-export function BoardGrid({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={`${styles.grid} ${className ?? ''}`.trim()}>{children}</div>
+export type BoardSummaryItem = {
+  label: string
+  value: number | string
+  state: 'attention' | 'healthy' | 'unknown'
+}
+
+export function BoardSummaryStrip({ items, label = 'Website status summary' }: { items: readonly BoardSummaryItem[]; label?: string }) {
+  return <div role="group" aria-label={label}>
+    <dl className={styles.summaryStrip}>
+      {items.map(item => <div key={item.label} className={`${styles.summaryItem} ${styles[`summary-${item.state}`]}`}>
+        <dt>{item.label}</dt>
+        <dd>{item.value}</dd>
+      </div>)}
+    </dl>
+  </div>
+}
+
+export function BoardGrid({ children, className, layout = 'grid' }: { children: React.ReactNode; className?: string; layout?: 'grid' | 'rows' }) {
+  return <div className={`${styles.grid} ${layout === 'rows' ? styles.rowGrid : ''} ${className ?? ''}`.trim()}>{children}</div>
 }
 
 export function BoardStatus({ state, label, text = label, count = 0, onOpen, showText = false }: {
@@ -110,6 +127,7 @@ export function BoardCard({
   incompleteReason,
   compact = false,
   showFlagPreview = false,
+  layout = 'card',
 }: {
   name: string
   status: string
@@ -132,6 +150,7 @@ export function BoardCard({
   incompleteReason?: string | null
   compact?: boolean
   showFlagPreview?: boolean
+  layout?: 'card' | 'row'
   flags?: BoardCardFlag[] | null
   sources?: string[] | null
   checkedAt?: string | null
@@ -157,6 +176,37 @@ export function BoardCard({
   const previewFlags = flags ?? []
   const visiblePreviewFlags = previewFlags.length > 3 ? previewFlags.slice(0, 2) : previewFlags.slice(0, 3)
   const hiddenPreviewCount = Math.max(0, previewFlags.length - visiblePreviewFlags.length)
+
+  if (layout === 'row') {
+    const rowClassName = `${styles.boardRow} ${checking ? styles.rowChecking : ''}`
+    const rowContent = <>
+      <span className={styles.rowTitle}><Icon size={18} aria-hidden="true" />{name}</span>
+      <span className={styles.rowResult}>
+        <strong>{answer}</strong>
+        {detail ? <span>{detail}</span> : null}
+        {incompleteReason ? <span>{incompleteReason}</span> : null}
+      </span>
+      <span className={styles.rowStatus}>
+        <BoardStatus
+          state={checking ? 'checking' : state}
+          label={`${name}: ${footerLabel}`}
+          text={footerLabel}
+          count={count > 0 ? count : 0}
+          showText
+        />
+      </span>
+      {(href || onOpen) ? <span className={styles.rowArrow}><ArrowRight size={17} aria-hidden="true" /></span> : null}
+    </>
+
+    if (href && !onOpen) {
+      const external = href.startsWith('#') || href.startsWith('http')
+      return external
+        ? <a className={rowClassName} href={href} aria-label={name}>{rowContent}</a>
+        : <Link className={rowClassName} href={href as Route} aria-label={name}>{rowContent}</Link>
+    }
+    if (onOpen) return <button type="button" className={rowClassName} onClick={onOpen} aria-label={`Open ${name}`}>{rowContent}</button>
+    return <article className={rowClassName} aria-label={name}>{rowContent}</article>
+  }
 
   const body = (
     <>
@@ -250,10 +300,12 @@ export function ProductBoardCard({
   card,
   onOpen,
   compact = false,
+  layout = 'card',
 }: {
   card: BoardCardView
   onOpen?: () => void
   compact?: boolean
+  layout?: 'card' | 'row'
 }) {
   const problem = card.problem
   const originalAnswer = card.answer
@@ -283,6 +335,7 @@ export function ProductBoardCard({
       flags={card.id === 'site' ? [] : card.flagChips}
       sources={card.sources}
       checkedAt={card.checkedAt}
+      layout={layout}
     />
   )
 }

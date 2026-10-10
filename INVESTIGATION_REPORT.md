@@ -260,7 +260,7 @@ npx fixflags mcp  # Secure local bridge for editor MCP configs
 3. **Freeze Accuracy Regression Fixtures**
    - Capture pixel-perfect screenshot baselines for corpus
    - Add visual regression gate to `npm run accuracy:eval`
-   - Document fixture capture process in `.agents/skills/fixflags-scan-accuracy/`
+   - Document fixture capture in the maintained audit-pipeline or quality documentation.
 
 4. **Complete API Route Contract Tests**
    - Target: all public `/api/*` routes have handler-level tests
@@ -355,7 +355,6 @@ npx fixflags mcp  # Secure local bridge for editor MCP configs
 ### Verification Commands
 ```bash
 npm run agent                    # Compact repo state + next actions
-npm run agent -- verify --dry-run # Preview changed-file verification
 npm run agent -- verify           # Changed-file verification
 npm run agent -- verify --full    # Full project gate
 npm run validate:quick            # Lint + typecheck

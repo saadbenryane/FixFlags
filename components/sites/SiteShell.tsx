@@ -67,7 +67,11 @@ export function SiteShell({
   const [failedPreview, setFailedPreview] = useState<string | null>(null)
   const [captureOpen, setCaptureOpen] = useState(false)
   const monitoring = presentation?.monitoring
-  const watchLabel = monitoring?.label ?? watch.label
+  const monitoringState = monitoring?.state ?? (watch.state === 'watching' ? watch.interval === 'daily' ? 'daily' : 'weekly' : watch.state === 'off' ? 'not_monitored' : watch.state === 'quota' ? 'quota_blocked' : watch.state)
+  const cadenceLabel = monitoring?.label ?? watch.label
+  const watchLabel = monitoringState === 'daily' || monitoringState === 'weekly'
+    ? `Monitoring on · ${cadenceLabel}`
+    : monitoringState === 'not_monitored' ? 'Monitoring off' : `Monitoring · ${cadenceLabel}`
   const identity = presentation?.identity
   const attention = presentation ? customerAttention(presentation) : null
   const flagCount = presentation?.flags.count ?? 0
@@ -127,14 +131,12 @@ export function SiteShell({
               {identity && activeRoute !== 'home' ? <p className="mt-1 max-w-xl text-sm text-muted-foreground">{activeRoute === 'flags' ? 'Flags' : 'Settings'}</p> : null}
               {identity && activeRoute === 'home' ? <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                 <span>{presentation.coverage.label}</span>
-                <span aria-hidden="true">·</span>
-                <span>{presentation.freshness.label}</span>
               </p> : null}
               {!identity && description ? <p className="mt-1 max-w-xl text-sm text-muted-foreground">{description}</p> : null}
               {statusMessage ? <p role="status" className="mt-2 text-sm text-foreground">{statusMessage}</p> : null}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {identity && ownsSite ? <Link href={`/sites/${siteId}/settings#watch`} className={cn('inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-control)] border px-3 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring', monitoringClass(monitoring?.state, watch.state))}>
                 <Radio className="h-4 w-4" aria-hidden />
                 {watchLabel}

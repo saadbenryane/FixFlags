@@ -4,11 +4,12 @@ import { mkdir } from 'node:fs/promises'
 import { CARE_HOME as C, HOMEPAGE_SAMPLE as S } from '../lib/marketing/copy/care-homepage'
 
 async function visit(page: import('@playwright/test').Page) {
-  await page.goto('/', { waitUntil: 'networkidle' })
+  await page.goto('/', { waitUntil: 'load' })
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  await expect(page.getByRole('textbox', { name: 'Website URL' }).first()).toBeEnabled()
+  await expect(page.getByRole('textbox', { name: 'Website URL' }).first()).toBeEnabled({ timeout: 15_000 })
   const consent = page.getByRole('button', { name: 'Only necessary', exact: true })
   if (await consent.isVisible()) await consent.click()
+  await expect(page.getByText(C.hero.eyebrow, { exact: true })).toBeVisible()
 }
 
 for (const width of [320, 390, 768, 1086, 1280, 1440]) {
@@ -18,8 +19,16 @@ for (const width of [320, 390, 768, 1086, 1280, 1440]) {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await visit(page)
     await expect(page.getByRole('heading', { level: 1, name: /Your software runs\.\s*FixFlags watches\./ })).toBeVisible()
+    const benefits = page.getByRole('list', { name: 'What FixFlags does' }).getByRole('listitem')
+    const benefitTops = await benefits.evaluateAll(nodes => nodes.map(node => Math.round(node.getBoundingClientRect().top)))
+    expect(new Set(benefitTops).size).toBe(1)
+    const heroControlType = await page.getByRole('button', { name: C.hero.cta, exact: true }).first().evaluate(node => getComputedStyle(node).fontSize)
+    expect(heroControlType).toBe('19px')
+    if (width === 1440) {
+      const headlineSize = await page.getByRole('heading', { level: 1 }).evaluate(node => getComputedStyle(node).fontSize)
+      expect(headlineSize).toBe('101px')
+    }
     const board = page.getByRole('region', { name: C.boardAria })
-    for (const name of Object.values(S.groups)) await expect(board.getByRole('region', { name })).toBeVisible()
     for (const card of S.categories) {
       const tile = board.getByRole('button', { name: `Open ${card.name}` })
       await expect(tile).toBeVisible()
@@ -28,8 +37,17 @@ for (const width of [320, 390, 768, 1086, 1280, 1440]) {
         return { overflow: node.scrollWidth > node.clientWidth, font: getComputedStyle(title).fontSize, height: node.getBoundingClientRect().height, spans: spans.length }
       })
       expect(geometry.overflow).toBe(false)
-      expect(geometry.font).toBe('18px')
+      expect(geometry.font).toBe('16px')
       expect(geometry.height).toBeGreaterThanOrEqual(44)
+    }
+    const integrationNodes = page.locator('[data-integration]')
+    await expect(integrationNodes).toHaveCount(4)
+    for (const node of await integrationNodes.all()) {
+      const box = await node.boundingBox()
+      expect(box!.height).toBeGreaterThanOrEqual(44)
+      expect(box!.x).toBeGreaterThanOrEqual(0)
+      expect(box!.x + box!.width).toBeLessThanOrEqual(width)
+      expect(await node.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await expect(page.getByRole('table')).toHaveCount(0)
@@ -44,10 +62,10 @@ test('category depth, Flag scope, sample recovery, keyboard and focus return', a
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByText('Safe Signup', { exact: true })).toBeVisible()
   await dialog.getByRole('button', { name: S.detailAction }).click()
-  await expect(dialog.getByRole('heading', { name: C.flag.title })).toBeFocused()
-  await expect(dialog.getByRole('img', { name: C.flag.cropAlt })).toHaveAttribute('src', '/marketing/evidence/purchase-broken.png')
+  await expect(dialog.getByRole('heading', { name: C.flag.title, level: 2 })).toBeFocused()
+  await expect(dialog.getByRole('region', { name: C.story.example.failedLabel })).toBeVisible()
   await dialog.getByRole('button', { name: S.recoveryAction }).click()
-  await expect(dialog.getByRole('img', { name: S.proofAlt })).toHaveAttribute('src', '/marketing/evidence/purchase-verified.png')
+  await expect(dialog.getByRole('region', { name: C.story.example.recoveredLabel })).toBeVisible()
   await page.keyboard.press('Tab')
   expect(await dialog.evaluate(node => node.contains(document.activeElement))).toBe(true)
   await page.keyboard.press('Escape'); await expect(dialog).not.toBeVisible(); await expect(opener).toBeFocused()
@@ -60,10 +78,10 @@ test('category depth, Flag scope, sample recovery, keyboard and focus return', a
 
 test('mobile depth uses the viewport and returns to the real URL field', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: 'reduce' }); await visit(page)
-  await page.getByRole('button', { name: S.coverageAction }).click()
+  await page.getByRole('button', { name: 'Open Pages', exact: true }).click()
   const dialog = page.getByRole('dialog'); const box = await dialog.boundingBox()
   expect(box!.width).toBeCloseTo(390, 0); expect(box!.height).toBeCloseTo(844, 0)
-  await expect(dialog.getByText(C.coverage.boundary)).toBeAttached()
+  await expect(dialog.getByText(S.evidenceAction, { exact: true })).toBeVisible()
   await dialog.getByRole('link', { name: S.analyzeAction }).click()
   await expect(dialog).not.toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Website URL' }).first()).toBeFocused()
@@ -87,9 +105,23 @@ test('unknown states remain visible and scheduled scope stays explicit', async (
   await expect(dialog.getByText(C.monitoring.nextValue)).toBeVisible()
   await expect(dialog.getByText('1 Flag', { exact: true })).toHaveCount(2)
   await page.keyboard.press('Escape'); await expect(monitoring).toBeFocused()
-  const slider = page.getByRole('slider', { name: C.workflow.compareLabel }); await slider.focus()
-  await page.keyboard.press('End'); await expect(slider).toHaveAttribute('aria-valuenow', '100')
-  await page.keyboard.press('Home'); await expect(slider).toHaveAttribute('aria-valuenow', '0')
+  const after = page.getByRole('button', { name: C.story.after, exact: true })
+  await after.focus(); await page.keyboard.press('Enter')
+  await expect(after).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('heading', { name: C.story.afterTitle })).toBeVisible()
+  await expect(page.getByRole('region', { name: C.story.example.recoveredLabel })).toBeVisible()
+  await page.getByRole('button', { name: C.story.before, exact: true }).click()
+  await expect(page.getByRole('button', { name: C.story.copy })).toBeVisible()
+})
+
+test('integrations remain real navigable connections', async ({ page }) => {
+  await visit(page)
+  await expect(page.locator('[data-integration="shopify"]')).toHaveAttribute('href', '/install')
+  await expect(page.locator('[data-integration="github"]')).toHaveAttribute('href', '/sign-in')
+  const link = page.getByRole('link', { name: C.integrations.action })
+  await link.focus(); await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/integrations$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Context beside the Flag.' })).toBeVisible()
 })
 
 test('Analyze validates and submits through the existing Site handoff', async ({ page }) => {
@@ -101,7 +133,7 @@ test('Analyze validates and submits through the existing Site handoff', async ({
   await visit(page)
   const field = page.getByRole('textbox', { name: 'Website URL' }).first()
   await field.fill('https://example.com')
-  await page.getByRole('button', { name: 'Analyze', exact: true }).first().click()
+  await page.getByRole('button', { name: C.hero.cta, exact: true }).first().click()
   await expect(page).toHaveURL(/\/sites\/submitted-site/, { timeout: 15000 })
   expect(submitted).toMatchObject({ url: 'https://example.com', source: 'homepage' })
 })
@@ -132,7 +164,7 @@ test('monitoring detail remains readable and accessible on phone and desktop', a
 
 test('reduced motion and sample controls retain usable targets', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: 'reduce' }); await visit(page)
-  const controls = [page.getByRole('button', { name: 'Analyze', exact: true }).first(), page.getByRole('button', { name: S.coverageAction }), page.getByRole('button', { name: C.monitoring.action }), page.getByRole('slider')]
+  const controls = [page.getByRole('button', { name: C.hero.cta, exact: true }).first(), page.getByRole('button', { name: 'Open Pages', exact: true }), page.getByRole('button', { name: C.monitoring.action }), page.getByRole('button', { name: C.story.after, exact: true })]
   for (const control of controls) {
     const box = await control.boundingBox(); expect(box!.height).toBeGreaterThanOrEqual(44); expect(box!.width).toBeGreaterThanOrEqual(44)
   }
@@ -140,21 +172,38 @@ test('reduced motion and sample controls retain usable targets', async ({ page }
   expect(animations).toBe(0)
 })
 
+test('the sample keeps categories in a readable row hierarchy at every width', async ({ page }) => {
+  for (const width of [390, 750, 1440]) {
+    await page.setViewportSize({ width, height: 900 }); await visit(page)
+    const pages = await page.getByRole('button', { name: 'Open Pages', exact: true }).boundingBox()
+    const conversion = await page.getByRole('button', { name: 'Open Conversion', exact: true }).boundingBox()
+    expect(Math.abs(pages!.x - conversion!.x)).toBeLessThan(2)
+    expect(conversion!.y).toBeGreaterThan(pages!.y + pages!.height - 2)
+  }
+})
+
 test('captures the actual local experience when requested', async ({ page }) => {
   test.skip(process.env.FIXFLAGS_CAPTURE_HOMEPAGE_EVIDENCE !== '1', 'Explicit visual evidence capture')
-  const output = '.agents/artifacts/homepage-release-quality'; await mkdir(output, { recursive: true })
+  const output = '.agents/artifacts/product-experience-completion'; await mkdir(output, { recursive: true })
   for (const [name, width] of [['desktop', 1440], ['mobile', 390]] as const) {
     await page.setViewportSize({ width, height: 900 }); await page.emulateMedia({ reducedMotion: 'reduce' }); await visit(page)
     await page.evaluate(async () => { await document.fonts.ready; for (const image of document.images) image.loading = 'eager' })
     await page.waitForFunction(() => Array.from(document.images).every(image => image.complete && image.naturalWidth > 0))
     await page.screenshot({ path: `${output}/${name}.png`, fullPage: true })
-    await page.locator('#product').screenshot({ path: `${output}/${name}-board.png` })
+    await page.evaluate(() => scrollTo(0, 0))
+    const boardClip = await page.locator('#product').boundingBox()
+    await page.screenshot({ path: `${output}/${name}-board.png`, fullPage: true, clip: boardClip! })
+    const storyClip = await page.locator('#flag-example').boundingBox()
+    await page.screenshot({ path: `${output}/${name}-story.png`, fullPage: true, clip: storyClip! })
+    const integrationClip = await page.locator('#integrations').boundingBox()
+    await page.screenshot({ path: `${output}/${name}-integrations.png`, fullPage: true, clip: integrationClip! })
     await page.getByRole('button', { name: C.monitoring.action }).click()
     await page.getByRole('dialog').screenshot({ path: `${output}/${name}-monitoring.png` })
     await page.keyboard.press('Escape')
-    const slider = page.getByRole('slider', { name: C.workflow.compareLabel })
-    await slider.focus(); await page.keyboard.press('End')
-    await page.locator('#flag-example').screenshot({ path: `${output}/${name}-recovery.png` })
+    await page.getByRole('button', { name: C.story.after, exact: true }).click()
+    await page.evaluate(() => scrollTo(0, 0))
+    const recoveryClip = await page.locator('#flag-example').boundingBox()
+    await page.screenshot({ path: `${output}/${name}-recovery.png`, fullPage: true, clip: recoveryClip! })
   }
 })
 
@@ -162,7 +211,7 @@ test('captures the actual local experience when requested', async ({ page }) => 
 test('brand buttons retain Flag Orange and meet contrast in both themes', async ({ page }) => {
   await visit(page)
   await page.getByRole('textbox', { name: 'Website URL' }).first().fill('https://example.com')
-  const button = page.getByRole('button', { name: 'Analyze', exact: true }).first()
+  const button = page.getByRole('button', { name: C.hero.cta, exact: true }).first()
   for (const dark of [false, true]) {
     await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark)
     for (const hover of [false, true]) {
@@ -177,10 +226,13 @@ test('brand buttons retain Flag Orange and meet contrast in both themes', async 
           return channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722
         }
         const fg = luminance(style.color), bg = luminance(style.backgroundColor)
-        return { ratio: (Math.max(fg, bg) + .05) / (Math.min(fg, bg) + .05), background: style.backgroundColor }
+        return { ratio: (Math.max(fg, bg) + .05) / (Math.min(fg, bg) + .05), background: style.backgroundColor, foreground: style.color, size: parseFloat(style.fontSize), weight: Number(style.fontWeight) }
       })
       if (!hover) expect(contrast.background).toBe('rgb(255, 90, 0)')
-      expect(contrast.ratio).toBeGreaterThanOrEqual(4.5)
+      expect(contrast.foreground).toBe('rgb(255, 255, 255)')
+      expect(contrast.size).toBeGreaterThanOrEqual(18.667)
+      expect(contrast.weight).toBeGreaterThanOrEqual(700)
+      expect(contrast.ratio).toBeGreaterThanOrEqual(3)
     }
     const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
     expect(result.violations.map(item => ({ id: item.id, targets: item.nodes.map(node => node.target) }))).toEqual([])

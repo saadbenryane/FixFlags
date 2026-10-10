@@ -21,7 +21,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 | Task contracts     | `lib/audit/task-contracts.ts`  | Check-to-plan and re-check-to-diff application outcomes |
 | Queue processor    | `lib/queue/worker.ts`          | BullMQ audit job processor                              |
 | Worker runtime     | `worker/index.ts`              | Required dedicated Playwright and recovery process      |
-| Marketing copy     | `lib/marketing/copy.ts`        | Single source of truth for all marketing text           |
+| Marketing copy     | `lib/marketing/copy/`          | Exact rendered customer strings by surface              |
 | Design tokens      | `lib/design/tokens.css`        | Canonical design tokens (colors, shadows, radii)        |
 | AI prompts         | `lib/prompts/system-prompt.ts` | Triage + prescription prompt builders                   |
 | DB schema          | `prisma/schema.prisma`         | Prisma schema and migrations                            |
@@ -73,7 +73,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 - **New check module** → add to `lib/audit/checks/`, register in `checks/index.ts` barrel, add check IDs to `check-ids.ts`, update capability report
 - **Queue/worker behavior** → `lib/queue/` (read `lib/queue/codemap.md`)
 - **Billing/subscription logic** → `lib/billing/` (read `lib/billing/codemap.md`)
-- **Marketing copy** → `lib/marketing/copy.ts` ONLY (never hardcode in components)
+- **Marketing copy** → the relevant module under `lib/marketing/copy/`; `copy.ts` is the export barrel
 - **Design tokens** → `lib/design/tokens.css` (semantic tokens, never raw hex)
 - **Canonical report UI** → `components/audit/AuditReport.tsx`, `components/report/ReportExplorer.tsx`, `lib/report/explorer-model.ts`. Default route is Agent beside Report.
 - **Flag interaction UI** → `components/report/` (explorer, detail panel, fix loop)
@@ -122,7 +122,7 @@ FixFlags is the independent Product Intelligence System for AI-built software. P
 
 - **Edge middleware** (`proxy.ts`) must stay Prisma-free (edge runtime limitation)
 - **Knowledge graph** (`graph_*` tables) is internal-only; public pages read through `lib/graph/queries.ts`
-- **Marketing copy** is centralized in `lib/marketing/copy.ts`; components import from there
+- **Marketing copy** is centralized under `lib/marketing/copy/`; components import through the barrel or the relevant surface module
 - **Design tokens** use semantic names (`bg-card`, `text-brand`); raw hex only in `tokens.css` and `brand-spec.ts`
 - **AI prompts** split system (stable, cacheable) from user (per-request) for prompt caching
 - **Report UI** hierarchy lives only in `knowledge/report-contract.md`. Default `/report/[id]` is Agent beside Report. Preview, Timeline, and Canvas stay parked there. Legacy `/share/[token]` is compatibility-only.

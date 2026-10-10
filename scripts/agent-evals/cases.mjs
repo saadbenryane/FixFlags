@@ -93,7 +93,7 @@ export const cases = [
     description: 'Always-loaded root instructions stay below the pilot budget.',
     async run() {
       const bytes = Buffer.byteLength(readFileSync('AGENTS.md', 'utf8'))
-      return { valid: bytes <= 7_500, bytes }
+      return { valid: bytes <= 3_500, bytes }
     },
     grade: (result) => result.valid ? 'pass' : 'fail',
   },

@@ -1,8 +1,22 @@
 import { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
+import type { CheckAssertion } from './assertion'
 
-export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
+export function runMetadataChecks(meta: PageMetadata, record?: (assertion: CheckAssertion) => void): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
+  // Record only the presence assertions actually evaluated here. These are
+  // bounded observations, not claims about search ranking or rendered previews.
+  for (const [key, name, present] of [
+    ['title-presence', 'Page title is specified', Boolean(meta.title)],
+    ['description-presence', 'Meta description is specified', Boolean(meta.description)],
+    ['preview-image-presence', 'Link preview image is specified', Boolean(meta.ogImage)],
+    ['preview-title-presence', 'Link preview title is specified', Boolean(meta.ogTitle)],
+    ['preview-description-presence', 'Link preview description is specified', Boolean(meta.ogDescription)],
+    ['viewport-presence', 'Mobile viewport is declared', Boolean(meta.viewport)],
+    ['language-presence', 'Page language is declared', Boolean(meta.lang)],
+  ] as const) {
+    record?.({ key, name, expected: name, observed: present ? 'Present in captured page metadata' : 'Absent from captured page metadata', passed: present })
+  }
 
   if (!meta.title) {
     findings.push({

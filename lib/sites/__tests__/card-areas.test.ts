@@ -7,6 +7,18 @@ import { buildBoardCards } from '@/lib/sites/board-card'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
 
 describe('site card packaging', () => {
+  it('retains unrelated dated coverage after a completed scoped run', () => {
+    const completedAt = new Date('2026-10-09T12:00:00Z')
+    const now = new Date('2026-10-10T12:00:00Z')
+    const prior = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt, now,
+      evidenceCoverage: { desktopPageSpeed: true }, flags: [] })
+    const latest = buildCoverageFacts({ auditStatus: 'COMPLETED', completedAt: now, now,
+      evidenceCoverage: { metadata: true }, flags: [], lastKnown: prior })
+    expect(latest.find(fact => fact.area === 'performance')).toMatchObject({
+      evidenced: true, state: 'unknown', checkedAt: completedAt.toISOString(),
+    })
+    expect(latest.find(fact => fact.area === 'search')).toMatchObject({ state: 'healthy', checkedAt: now.toISOString() })
+  })
   it('uses an eight-day evidence window with an exact cutoff', () => {
     const checkedAt = new Date('2026-09-01T12:00:00Z')
     expect(siteCoverageIsStale(checkedAt, new Date(checkedAt.getTime() + SITE_COVERAGE_MAX_AGE_MS - 1))).toBe(false)
@@ -330,7 +342,7 @@ describe('site card packaging', () => {
     expect(incomplete.find((fact) => fact.area === 'tracking')?.state).toBe('unknown')
   })
 
-  it('retains last known health while checking', () => {
+  it('retains dated evidence without showing expired health while checking', () => {
     const prior = buildCoverageFacts({
       auditStatus: 'COMPLETED',
       completedAt: new Date('2026-09-01T12:00:00Z'),
@@ -347,8 +359,7 @@ describe('site card packaging', () => {
       lastKnown: prior,
       retainLastKnownWhileChecking: true,
     })
-    expect(facts.find((f) => f.area === 'performance')?.state).toBe('healthy')
-    expect(facts.find((f) => f.area === 'performance')?.detail).toBe('Desktop page speed evidence completed')
+    expect(facts.find((f) => f.area === 'performance')).toMatchObject({ state: 'unknown', stale: true, evidenced: true, checkedAt: '2026-09-01T12:00:00.000Z' })
   })
 
   it('marks problem when open critical flags exist after completion', () => {

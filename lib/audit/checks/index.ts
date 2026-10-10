@@ -27,6 +27,7 @@ import type { DeterministicFlag } from '../flag-types'
 import { filterToolingPathFlags } from '../tooling-path-filter'
 import { detectPagePurpose } from '../page-purpose'
 import { suppressOverlappingFlags } from '../suppression'
+import type { CheckAssertion } from './assertion'
 
 export type { DeterministicFlag } from '../flag-types'
 export type { AxeViolation } from './accessibility'
@@ -34,7 +35,7 @@ export type { AxeViolation } from './accessibility'
 export interface RunAllChecksResult {
   flags: DeterministicFlag[]
   failedModules: string[]
-  executions: Array<{ module: string; passed: boolean; applicable: boolean }>
+  executions: Array<{ module: string; passed: boolean; applicable: boolean; failed?: boolean; assertions?: CheckAssertion[] }>
 }
 
 export async function runAllChecks(
@@ -50,6 +51,7 @@ export async function runAllChecks(
 ): Promise<RunAllChecksResult> {
   const failedModules: string[] = []
   const executions: RunAllChecksResult['executions'] = []
+  const metadataAssertions: CheckAssertion[] = []
 
   // Detect the page's high-level purpose once. Conversion-friction, content,
   // and trust-psychology checks gate on this so they do not fire on docs,
@@ -61,7 +63,7 @@ export async function runAllChecks(
   // Group checks into independent buckets for parallel execution.
   // Each bucket reads from different data sources, so they can run concurrently.
   const bucketA: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [
-    { name: 'metadata',        run: () => runMetadataChecks(metadata) },
+    { name: 'metadata',        run: () => runMetadataChecks(metadata, assertion => metadataAssertions.push(assertion)) },
     { name: 'og-image',        run: () => runOgImageUrlCheck(url, metadata) },
     { name: 'accessibility',   run: () => runAccessibilityChecks(metadata, desktop ?? mobile, axeViolations) },
     { name: 'seo',             run: () => runSeoChecks(url, metadata) },
@@ -103,12 +105,13 @@ export async function runAllChecks(
           : name === 'accessibility' ? axeViolations !== undefined
           : ['layout', 'interaction', 'cta-focus', 'visual-polish', 'visual-hierarchy', 'mobile-ux-quality'].includes(name)
             ? Boolean(captureMetrics) : true
-        executions.push({ module: name, passed: results.length === 0, applicable })
+        executions.push({ module: name, passed: results.length === 0, applicable,
+          ...(name === 'metadata' ? { assertions: metadataAssertions } : {}) })
         findings.push(...results)
       } catch (err) {
         logger.error(`Check module "${name}" failed`, err)
         failedModules.push(name)
-        executions.push({ module: name, passed: false, applicable: false })
+        executions.push({ module: name, passed: false, applicable: false, failed: true })
       }
     }
     return findings

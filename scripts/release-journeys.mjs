@@ -17,6 +17,7 @@ export const REQUIRED_RELEASE_JOURNEYS = [
   'watch-truth',
   'tenant-isolation',
   'site-surfaces',
+  'mcp-full-loop',
   // Access and identity.
   'anonymous-claim',
   'passkey-2fa-recovery',
@@ -30,7 +31,6 @@ export const REQUIRED_RELEASE_JOURNEYS = [
 // Retained for an explicit, non-customer power-tools verification run. These
 // annotations remain valid, but they cannot satisfy or block the web release.
 export const PARKED_POWER_TOOL_JOURNEYS = [
-  'mcp-full-loop',
   'cli-registry-loop',
 ]
 
@@ -45,12 +45,18 @@ export const JOURNEYS_BY_STAGE = {
     'watch-truth',
     'tenant-isolation',
     'site-surfaces',
+    'mcp-full-loop',
     'anonymous-claim',
     'passkey-2fa-recovery',
   ],
   'billing-open': ['billing-webhook-active'],
   'billing-closed': ['billing-revoked'],
   external: ['watch-child-notification'],
+}
+
+export function requiredReleaseJourneys(profile = 'free-launch') {
+  if (!['free-launch', 'paid-opening'].includes(profile)) throw new Error(`Unknown release profile: ${profile}`)
+  return REQUIRED_RELEASE_JOURNEYS.filter(id => profile === 'paid-opening' || id !== 'billing-webhook-active')
 }
 
 export function journeyAnnotation(id) {

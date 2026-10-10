@@ -1,6 +1,6 @@
 .details { display: grid; gap: 24px; min-width: 0; }
-.capture { display: block; overflow: hidden; border: 1px solid hsl(var(--border)); border-radius: 10px; }
-.capture img { display: block; width: 100%; height: auto; max-height: 360px; object-fit: contain; }
+.capture { display: block; width: fit-content; max-width: 100%; margin-inline: auto; overflow: hidden; border: 1px solid hsl(var(--border)); border-radius: 10px; }
+.capture img { display: block; width: auto; max-width: 100%; height: auto; max-height: 520px; object-fit: contain; }
 .details h3 { margin-bottom: 10px; font-size: 13px; font-weight: 600; }
 .details p, .details li { font-size: 14px; line-height: 1.6; color: hsl(var(--muted-foreground)); }
 .details ul { display: grid; gap: 8px; }

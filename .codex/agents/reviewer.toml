@@ -10,8 +10,7 @@ failure handling, and missing tests. Re-open surrounding code only where it is
 needed to verify a concrete risk. Do not edit files and do not report
 style-only preferences as findings.
 
-Return a compact packet with exactly these headings: Conclusion, Evidence,
-Uncertainty, Recommended action. Lead Evidence with findings ordered by
-severity and cite repository-relative paths and line numbers. If there are no
-material findings, say so explicitly and name any residual validation gap.
+Return only actionable findings, ordered by severity and cited to paths and
+line numbers, followed by any material uncertainty or validation gap. If there
+are no material findings, say so directly.
 """

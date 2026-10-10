@@ -5,7 +5,8 @@ import { execFileSync, spawnSync } from 'node:child_process'
 import { chmodSync, lstatSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { KNOWN_RELEASE_JOURNEYS, REQUIRED_RELEASE_JOURNEYS, JOURNEYS_BY_STAGE } from './release-journeys.mjs'
+import { KNOWN_RELEASE_JOURNEYS, requiredReleaseJourneys, JOURNEYS_BY_STAGE } from './release-journeys.mjs'
+import { releaseProfile, requiredReleaseStages } from './release-profiles.mjs'
 import { canonicalDatabaseIdentity, RELEASE_STAGES, validateReleasePreflight } from './release-preflight.mjs'
 
 export const REQUIRED_RECEIPT_STAGES = [...RELEASE_STAGES]
@@ -57,6 +58,7 @@ const RELEASE_FIXTURE_ENV_KEYS = new Set([
   'E2E_BILLING_PAID_PASSWORD',
   'E2E_PRO_EMAIL',
   'E2E_PRO_PASSWORD',
+  'E2E_API_KEY',
   'E2E_PRO_REPORT_ID',
   'E2E_STUDIO_EMAIL',
   'E2E_STUDIO_PASSWORD',
@@ -140,6 +142,7 @@ export function hydrateReleaseFixtureEnvironment(env) {
     E2E_BILLING_PAID_PASSWORD: fixtures.pro?.password,
     E2E_PRO_EMAIL: fixtures.pro?.email,
     E2E_PRO_PASSWORD: fixtures.pro?.password,
+    E2E_API_KEY: fixtures.pro?.apiKey,
     E2E_PRO_REPORT_ID: fixtures.pro?.reportId,
     E2E_SITE_ID: fixtures.pro?.siteId,
     E2E_SITE_OWNER_EMAIL: fixtures.pro?.email,
@@ -301,6 +304,7 @@ function validateFixtureManifest(env, context) {
 
 export function buildReceiptContext(stage, env, options = {}) {
   if (!REQUIRED_RECEIPT_STAGES.includes(stage)) throw new Error(`Unknown release stage: ${stage}`)
+  if (!requiredReleaseStages(releaseProfile(env)).includes(stage)) throw new Error(`Stage ${stage} is not part of ${releaseProfile(env)}`)
   const gitSha = options.gitSha ?? currentGitSha()
   const targetOrigin = stage === 'foundation'
     ? null
@@ -319,7 +323,7 @@ export function buildReceiptContext(stage, env, options = {}) {
   const watchDatabaseIdentityHash = stage === 'billing-open' && env.RELEASE_WATCH_READ_DATABASE_URL
     ? createHash('sha256').update(canonicalDatabaseIdentity(env.RELEASE_WATCH_READ_DATABASE_URL)).digest('hex')
     : null
-  return { gitSha, targetOrigin, databaseIdentityHash, apiKeyIdentityHash, watchDatabaseIdentityHash }
+  return { gitSha, targetOrigin, databaseIdentityHash, apiKeyIdentityHash, watchDatabaseIdentityHash, profile: releaseProfile(env) }
 }
 
 function evidenceTimestamp(value) {
@@ -652,18 +656,21 @@ export function runReleaseStage(stage, env = process.env, options = {}) {
   return receipt
 }
 
-export function validateFinalReceiptObjects(receipts, expectedGitSha) {
+export function validateFinalReceiptObjects(receipts, expectedGitSha, profile = 'free-launch') {
+  const requiredStages = requiredReleaseStages(profile)
+  const requiredJourneys = requiredReleaseJourneys(profile)
   const byStage = new Map(receipts.map((receipt) => [receipt.stage, receipt]))
   if (byStage.size !== receipts.length) throw new Error('Release receipts contain duplicate stages')
   const unknownStages = receipts
     .map((receipt) => receipt.stage)
-    .filter((stage) => !REQUIRED_RECEIPT_STAGES.includes(stage))
+    .filter((stage) => !requiredStages.includes(stage))
   if (unknownStages.length > 0) {
     throw new Error(`Unknown release receipt stage: ${[...new Set(unknownStages)].join(', ')}`)
   }
-  for (const stage of REQUIRED_RECEIPT_STAGES) {
+  for (const stage of requiredStages) {
     const receipt = byStage.get(stage)
     if (!receipt) throw new Error(`Missing valid ${stage} release receipt`)
+    if (receipt.profile !== profile) throw new Error(`${stage} release receipt profile mismatch`)
     if (receipt.schemaVersion !== 2) throw new Error(`${stage} release receipt is not schema v2`)
     if (receipt.status !== 'PASS') throw new Error(`${stage} release receipt is not PASS`)
     const expectedLabels = expectedReleaseCommandLabels(stage)
@@ -737,12 +744,13 @@ export function validateFinalReceiptObjects(receipts, expectedGitSha) {
   const databaseIdentities = new Set(receipts.map((receipt) => receipt.databaseIdentityHash).filter(Boolean))
   if (databaseIdentities.size !== 1) throw new Error('Release receipts have mixed database identities')
   const journeys = new Map(receipts.flatMap((receipt) => receipt.journeys ?? []).map((journey) => [journey.id, journey.status]))
-  for (const id of REQUIRED_RELEASE_JOURNEYS) {
+  for (const id of requiredJourneys) {
     if (journeys.get(id) !== 'PASS') throw new Error(`Missing PASS evidence for release journey: ${id}`)
   }
   return {
     runId: receipts[0].runId,
     gitSha: expectedGitSha,
+    profile,
     releaseOrigin: [...releaseOrigins][0],
     productionOrigin: [...productionOrigins][0],
   }
@@ -756,11 +764,12 @@ export function validateFinalReceipts(env = process.env, options = {}) {
     { cwd: workingDirectory, encoding: 'utf8' },
   ))
   const directory = receiptDirectory(env, workingDirectory)
-  const receipts = REQUIRED_RECEIPT_STAGES.map((stage) => {
+  const profile = releaseProfile(env)
+  const receipts = requiredReleaseStages(profile).map((stage) => {
     try { return JSON.parse(readFileSync(path.join(directory, `${stage}.json`), 'utf8')) }
     catch { throw new Error(`Missing valid ${stage} release receipt`) }
   })
-  const result = validateFinalReceiptObjects(receipts, options.gitSha ?? currentGitSha())
+  const result = validateFinalReceiptObjects(receipts, options.gitSha ?? currentGitSha(), profile)
   const now = new Date().toISOString()
   writeReceipt({
     schemaVersion: 2,
@@ -768,12 +777,13 @@ export function validateFinalReceipts(env = process.env, options = {}) {
     stage: 'final',
     status: 'PASS',
     gitSha: result.gitSha,
+    profile,
     targetOrigin: result.productionOrigin,
     databaseIdentityHash: receipts.find((receipt) => receipt.databaseIdentityHash)?.databaseIdentityHash ?? null,
     startedAt: now,
     completedAt: now,
     commands: [{ label: 'aggregate-stage-receipts', exitCode: 0, durationMs: 0 }],
-    journeys: REQUIRED_RELEASE_JOURNEYS.map((id) => ({ id, status: 'PASS' })),
+    journeys: requiredReleaseJourneys(profile).map((id) => ({ id, status: 'PASS' })),
     artifacts: [],
   }, env, workingDirectory)
   return result

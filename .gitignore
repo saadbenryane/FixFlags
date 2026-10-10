@@ -48,9 +48,6 @@ next-env.d.ts
 /scripts/agent-evals/reports/*.json
 .agent-runs/
 
-# active goal state (template committed at .agents/GOAL.md.example)
-.agents/GOAL.md
-
 # local browser-proof screenshots and JSON readouts
 .agents/artifacts/
 

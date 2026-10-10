@@ -94,6 +94,10 @@ Needs real production runs, not synthetic load.
 
 ## Release sequence
 
+Release commands default to `RELEASE_PROFILE=free-launch`. This profile requires every stage below except `billing-open`; it includes the MCP protocol journey in credentialed core. The separate `RELEASE_PROFILE=paid-opening` profile retains `billing-open`, including production Watch cost/reliability proof. The `billing-closed` stage still requires its real Stripe test-mode and access-revocation proof but does not require the production Watch cost database. Each receipt records its profile; the final gate rejects missing or mixed-profile evidence. Historical receipts without the profile must be rerun.
+
+The MCP protocol journey is mandatory. External Codex, Claude Code and Cursor session proof and observed owner usability are recorded in [the credentialed matrix](../.agents/sessions/credentialed-journey-matrix.md); neither is established by a successful protocol fixture.
+
 Run from a clean candidate revision, in this order. Do not commit between stages:
 the repo side-effect guard in `scripts/validate.mjs` fails the run if the working
 tree changes mid-gate.
@@ -101,9 +105,10 @@ tree changes mid-gate.
 ```bash
 npm run doctor
 npm run verify                 # full local manifest
-npm run verify:release         # foundation -> fixture-binding -> credentialed-core
-                               # -> billing-open -> billing-closed -> external
-                               # -> deployed
+npm run verify:release         # free-launch: foundation -> fixture-binding
+                               # -> credentialed-core -> billing-closed -> external -> deployed
+RELEASE_PROFILE=paid-opening npm run verify:release
+                               # also requires billing-open before billing-closed
 ```
 
 `verify:release` owns stage order. Each stage writes a receipt under
@@ -125,7 +130,7 @@ commit, or the release run fails in one direction or the other.
 
 | Stage | Journeys |
 | --- | --- |
-| `credentialed-core` | `outcome-loop`, `watch-truth`, `tenant-isolation`, `site-surfaces`, `anonymous-claim`, `passkey-2fa-recovery` |
+| `credentialed-core` | `outcome-loop`, `watch-truth`, `tenant-isolation`, `site-surfaces`, `mcp-full-loop`, `anonymous-claim`, `passkey-2fa-recovery` |
 | `billing-open` | `billing-webhook-active` |
 | `billing-closed` | `billing-revoked` |
 | `external` | `watch-child-notification` |
@@ -154,11 +159,8 @@ connection value is never serialized.
 
 ## Reporting a result honestly
 
-Cite `.agents/sessions/*` and the heartbeat packet, not recollection:
-
-```bash
-npm run agent:heartbeat -- --json
-```
+Cite the staged or final release receipt produced by this runbook, not a chat
+summary, archived session, or recollection.
 
 If a gate could not run, say so and leave the box unchecked. A criterion with no
 receipt is open, regardless of how complete the code looks.

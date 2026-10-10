@@ -177,21 +177,10 @@ export function pageCountLabel(pageCount: number): string {
 }
 
 export function outcomeNameForFlag(
-  outcomes: Array<Pick<SiteOutcomeView, 'name' | 'pageUrls'>>,
-  flag: Pick<SiteFlagSeed, 'pageUrl'> | null | undefined
+  _outcomes: Array<Pick<SiteOutcomeView, 'name' | 'pageUrls'>>,
+  flag: Pick<SiteFlagSeed, 'relatedOutcome'> | null | undefined
 ): string | null {
-  if (!flag) return outcomes[0]?.name ?? null
-  if (flag.pageUrl) {
-    const match = outcomes.find((outcome) =>
-      outcome.pageUrls.some(
-        (url) =>
-          url === flag.pageUrl ||
-          Boolean(flag.pageUrl && (flag.pageUrl.startsWith(url) || url.startsWith(flag.pageUrl)))
-      )
-    )
-    if (match) return match.name
-  }
-  return outcomes[0]?.name ?? null
+  return flag?.relatedOutcome?.name ?? null
 }
 
 export function starterBoardNames(): string[] {

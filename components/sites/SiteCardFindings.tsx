@@ -61,7 +61,7 @@ export function SiteCardFindings({ siteId, flags, recommendations }: { siteId: s
   </section>
 }
 
-function RecommendationList({ recommendations }: { recommendations: SiteFlagSeed[] }) {
+export function RecommendationList({ recommendations }: { recommendations: SiteFlagSeed[] }) {
   if (recommendations.length === 0) return null
   return <section className="space-y-2 border-t border-border/60 pt-4" aria-labelledby="recommendations-heading">
     <h3 id="recommendations-heading" className="text-sm font-medium text-muted-foreground">Suggestions</h3>

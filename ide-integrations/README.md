@@ -52,7 +52,7 @@ Or run `npx fixflags init` for automatic configuration.
 
 ### OpenCode
 
-FixFlags skills load automatically from `.agents/skills/`. See `opencode.json` for MCP and tool configuration.
+Run `npx fixflags init` and use the generated MCP configuration. The canonical customer workflow remains `public/.well-known/skills/fixflags/SKILL.md`; this repository does not provide internal OpenCode skills.
 
 ## How it works
 

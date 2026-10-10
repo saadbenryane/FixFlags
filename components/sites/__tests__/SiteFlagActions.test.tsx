@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { SiteFlagActions } from '../SiteFlagActions'
 import { SITE_BOARD_COPY } from '@/lib/marketing/copy/terminology'
@@ -92,7 +92,7 @@ describe('SiteFlagActions', () => {
     const dialog = await screen.findByRole('dialog')
     await screen.getAllByRole('button', { name: SITE_BOARD_COPY.verifyFix }).at(-1)!.click()
 
-    expect(await screen.findByText(reason)).toBeVisible()
+    expect(await within(dialog).findByText(reason)).toBeVisible()
     expect(dialog).toBeVisible()
     expect(screen.queryByText(SITE_BOARD_COPY.verificationFailed)).not.toBeInTheDocument()
     expect(refresh).not.toHaveBeenCalled()
@@ -112,5 +112,17 @@ describe('SiteFlagActions', () => {
 
     expect(await screen.findByText(reason)).toBeVisible()
     expect(screen.queryByText(SITE_BOARD_COPY.verificationFailed)).not.toBeInTheDocument()
+  })
+
+  it('keeps connection uncertainty visible inside the verification dialog', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    render(<SiteFlagActions siteId="p_site" flagId="flag-1" />)
+    await screen.getByRole('button', { name: SITE_BOARD_COPY.verifyFix }).click()
+    const dialog = screen.getByRole('dialog')
+    await within(dialog).getByRole('button', { name: SITE_BOARD_COPY.verifyFix }).click()
+    expect(await within(dialog).findByText(SITE_BOARD_COPY.verificationConnectionLost)).toBeVisible()
+    expect(dialog).toBeVisible()
+    expect(refresh).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText(SITE_BOARD_COPY.verificationStarted)).not.toBeInTheDocument()
   })
 })

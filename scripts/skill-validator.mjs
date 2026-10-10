@@ -5,13 +5,8 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
-const SKILLS_ROOT = '.cursor/skills'
-const AGENT_SKILLS_ROOT = '.agents/skills'
 const CUSTOMER_SKILLS_ROOT = 'public/.well-known/skills'
-const DEPRECATED_SKILLS_ROOT = '.opencode/skills'
 const IDE_INTEGRATIONS_ROOT = 'ide-integrations'
-const SEO_SKILL = '.agents/skills/fixflags-seo-growth-loop/SKILL.md'
-const SEO_CURSOR_SKILL = '.cursor/skills/fixflags-seo-growth-loop/SKILL.md'
 const CLI_SKILL = 'fixflags-cli/SKILL.md'
 const MAX_SKILL_LINES = 260
 const STALE = [
@@ -62,8 +57,6 @@ function frontmatter(source) {
 }
 
 export function validateSkills(root = process.cwd()) {
-  const skillsRoot = path.join(root, SKILLS_ROOT)
-  const agentSkillsRoot = path.join(root, AGENT_SKILLS_ROOT)
   const customerSkillsRoot = path.join(root, CUSTOMER_SKILLS_ROOT)
   const ideRoot = path.join(root, IDE_INTEGRATIONS_ROOT)
   const errors = []
@@ -75,8 +68,8 @@ export function validateSkills(root = process.cwd()) {
     errors.push(`${CUSTOMER_SKILLS_ROOT}/fixflags/SKILL.md: canonical customer skill is missing`)
   }
 
-  // === Basic structure checks on all skill directories ===
-  const roots = [skillsRoot, agentSkillsRoot, customerSkillsRoot].filter(existsSync)
+  // === Basic structure checks on the public customer skill ===
+  const roots = [customerSkillsRoot].filter(existsSync)
   const directories = roots.flatMap((currentRoot) =>
     readdirSync(currentRoot)
       .filter((entry) => {
@@ -133,53 +126,6 @@ export function validateSkills(root = process.cwd()) {
     }
   }
 
-  // === SEO growth-loop process contract ===
-  const seoSkillPath = path.join(root, SEO_SKILL)
-  const seoCursorSkillPath = path.join(root, SEO_CURSOR_SKILL)
-  if (!existsSync(seoSkillPath)) {
-    errors.push(`${SEO_SKILL}: canonical SEO growth-loop skill is missing`)
-  } else {
-    const seoSkill = readFileSync(seoSkillPath, 'utf8')
-    for (const required of [
-      /GSC average position is not an exact rank/,
-      /implemented.*baseline.*blocked/s,
-      /docs\/growth\/experiments\.md/,
-      /references\/google-search-principles\.md/,
-      /references\/opportunity-playbook\.md/,
-      /references\/ranking-strategy\.md/,
-      /Do not require a paid SERP provider/,
-    ]) {
-      if (!required.test(seoSkill)) {
-        errors.push(`${SEO_SKILL}: missing SEO loop contract ${required}`)
-      }
-    }
-  }
-
-  if (!existsSync(seoCursorSkillPath)) {
-    errors.push(`${SEO_CURSOR_SKILL}: thin Cursor wrapper is missing`)
-  } else {
-    const seoCursorSkill = readFileSync(seoCursorSkillPath, 'utf8')
-    if (!seoCursorSkill.includes(`Canonical source: \`${SEO_SKILL}\``)) {
-      errors.push(`${SEO_CURSOR_SKILL}: must point to canonical SEO skill`)
-    }
-    if (!/thin wrapper/i.test(seoCursorSkill)) {
-      errors.push(`${SEO_CURSOR_SKILL}: must remain a thin wrapper`)
-    }
-  }
-
-  // === Deprecated pointer validation for .opencode/skills ===
-  const deprecatedRoot = path.join(root, DEPRECATED_SKILLS_ROOT)
-  if (existsSync(deprecatedRoot)) {
-    for (const file of markdownFiles(deprecatedRoot)) {
-      if (path.basename(file) === 'README.md') continue
-      const source = readFileSync(file, 'utf8')
-      const substantiveLines = source.split('\n').filter((line) => line.trim() && !line.startsWith('#'))
-      if (!/deprecated pointer/i.test(source) || substantiveLines.length > 1) {
-        errors.push(`${path.relative(root, file)}: deprecated mirror must be a fact-free canonical pointer`)
-      }
-    }
-  }
-
   // === Validate IDE integration files ===
   if (existsSync(ideRoot)) {
     // Collect all skill-like files in ide-integrations (non-directory files + immediate children)
@@ -228,15 +174,6 @@ export function validateSkills(root = process.cwd()) {
     }
   }
 
-  // === Validate .agents/skills/fixflags/SKILL.md references canonical location ===
-  const agentSkillPath = path.join(agentSkillsRoot, 'fixflags', 'SKILL.md')
-  if (existsSync(agentSkillPath)) {
-    const agentSkill = readFileSync(agentSkillPath, 'utf8')
-    if (!agentSkill.includes('.well-known/skills/fixflags/SKILL.md')) {
-      errors.push(`${AGENT_SKILLS_ROOT}/fixflags/SKILL.md: must reference canonical .well-known location`)
-    }
-  }
-
   // The unpublished CLI candidate carries the canonical customer skill so
   // editor setup can be tested while public MCP discovery remains withheld.
   const cliSkillPath = path.join(root, CLI_SKILL)
@@ -247,19 +184,6 @@ export function validateSkills(root = process.cwd()) {
     readFileSync(cliSkillPath, 'utf8') !== readFileSync(canonicalPath, 'utf8')
   ) {
     errors.push(`${CLI_SKILL}: must exactly match ${CUSTOMER_SKILLS_ROOT}/fixflags/SKILL.md`)
-  }
-
-  // === Validate .claude/skills/fixflags/SKILL.md is a deprecated pointer ===
-  const claudeSkillPath = path.join(root, '.claude/skills/fixflags/SKILL.md')
-  if (existsSync(claudeSkillPath)) {
-    const claudeSkill = readFileSync(claudeSkillPath, 'utf8')
-    if (!/deprecated pointer/i.test(claudeSkill)) {
-      errors.push(`.claude/skills/fixflags/SKILL.md: must be a deprecated pointer to canonical`)
-    }
-    const substantiveLines = claudeSkill.split('\n').filter((line) => line.trim() && !line.startsWith('#') && !line.startsWith('>'))
-    if (substantiveLines.length > 3) {
-      errors.push(`.claude/skills/fixflags/SKILL.md: deprecated pointer must be minimal (has ${substantiveLines.length} substantive lines)`)
-    }
   }
 
   return errors
@@ -273,6 +197,6 @@ if (isDirect) {
     for (const error of errors) console.error(`  ${error}`)
     process.exitCode = 1
   } else {
-    console.log('Skill validation passed.')
+    console.log('Customer skill and IDE integration validation passed.')
   }
 }

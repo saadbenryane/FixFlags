@@ -116,7 +116,7 @@ describe('Flag verification attempts', () => {
     expect(screen.queryByText(/custom_signal/)).not.toBeInTheDocument()
   })
 
-  it('leads from evidence to a two-step fix and independent verification path', async () => {
+  it('connects evidence with fix guidance, verification and preserved history', async () => {
     render(
       await SiteFlagPage({
         params: Promise.resolve({ siteId: 'site-1', flagId: 'flag-1' }),
@@ -126,8 +126,8 @@ describe('Flag verification attempts', () => {
 
     expect(screen.getByRole('heading', { name: 'What FixFlags saw' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Fix and verify' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Fix the problem' })).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Verify on the live Site' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Copy fix prompt' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Verify fix' })).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Verification history' })).toBeVisible()
     expect(
       screen.getByRole('link', {

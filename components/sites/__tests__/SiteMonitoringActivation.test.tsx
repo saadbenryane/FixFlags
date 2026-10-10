@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SiteMonitoringActivation } from '../SiteMonitoringActivation'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
@@ -36,6 +36,21 @@ describe('monitoring activation experience', () => {
   it('does not call a scheduled first check a success', () => {
     show({ ...fixture, watch: { ...fixture.watch, interval: 'weekly', nextRunAt: '2026-10-17T09:00:00Z', state: 'watching' }, outcomes: [{ id: 'p1', slug: 'page-loads', name: 'This page loads', kind: 'AVAILABILITY', enabled: true, confirmedAt: '2026-10-10T09:00:00Z', bindings: [{ required: true }], lastVerifiedAt: null, state: 'COULD_NOT_VERIFY' }] } as SiteHomeView)
     expect(screen.getByText(C.firstPending)).toBeVisible(); expect(screen.queryByText(C.pageClear)).not.toBeInTheDocument()
+  })
+  it('keeps completed-check detail in the monitoring review while showing scope and the next check', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ intervals: ['weekly'] })))
+    const active = { ...fixture, watch: { ...fixture.watch, interval: 'weekly', nextRunAt: '2026-10-17T09:00:00Z', state: 'watching' }, outcomes: [{ id: 'p1', slug: 'page-loads', name: 'This page loads', kind: 'AVAILABILITY', enabled: true, confirmedAt: '2026-10-10T09:00:00Z', bindings: [{ required: true }], lastVerifiedAt: '2026-10-10T09:00:00Z', state: 'CLEAR', running: false }] } as SiteHomeView
+    show(active)
+    expect(screen.getByText('This page loads')).toBeVisible()
+    expect(screen.queryByText(C.pageClear)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: C.review }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText(C.pageClear)).toBeVisible()
+    expect(within(dialog).getByText(C.last)).toBeVisible()
+    expect(within(dialog).getByText(C.next)).toBeVisible()
+    expect(within(dialog).getByText(C.scope)).toBeVisible()
+    await screen.findByRole('combobox')
+    expect(refresh).not.toHaveBeenCalled()
   })
   it('makes loading failure retryable without assuming weekly access', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue(response({ intervals: ['weekly'] })))

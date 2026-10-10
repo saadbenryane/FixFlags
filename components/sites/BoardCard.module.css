@@ -1,4 +1,30 @@
 .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.grid.rowGrid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.summaryStrip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 18px 0 12px; }
+.summaryItem { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 10px; min-width: 0; min-height: 72px; padding: 14px 16px 14px 30px; border: 1px solid hsl(var(--border) / .7); border-radius: 12px; background: hsl(var(--background)); }
+.summaryItem::before { content: ''; position: absolute; left: 15px; width: 7px; height: 7px; border-radius: 50%; background: var(--summary-signal); }
+.summaryItem dt { min-width: 0; overflow-wrap: anywhere; font-size: 12px; line-height: 1.35; color: hsl(var(--muted-foreground)); }
+.summaryItem dd { order: -1; margin: 0; font-family: var(--font-display), sans-serif; font-size: 23px; font-weight: 650; line-height: 1; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.summary-attention { --summary-signal: hsl(var(--brand)); }
+.summary-healthy { --summary-signal: hsl(var(--success)); }
+.summary-unknown { --summary-signal: hsl(var(--muted-foreground) / .45); }
+.boardRow { display: grid; grid-template-columns: minmax(132px, .65fr) minmax(0, 1.55fr) minmax(90px, auto) 32px; align-items: center; gap: 18px; width: 100%; min-width: 0; min-height: 80px; padding: 14px 16px; border: 1px solid hsl(var(--border) / .65); border-radius: 12px; background: hsl(var(--background)); color: inherit; font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.boardRow:hover { border-color: hsl(var(--foreground) / .25); box-shadow: 0 4px 16px hsl(var(--foreground) / .04); }
+.boardRow:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+.rowTitle { display: inline-flex; align-items: center; gap: 9px; min-width: 0; overflow-wrap: anywhere; font-size: 13px; font-weight: 550; }
+.rowTitle svg { flex-shrink: 0; }
+.rowResult { display: flex; flex-direction: column; min-width: 0; gap: 3px; }
+.rowResult strong { overflow-wrap: anywhere; font-size: 16px; font-weight: 600; line-height: 1.35; letter-spacing: -.018em; }
+.rowResult > span { overflow-wrap: anywhere; font-size: 12px; line-height: 1.45; color: hsl(var(--muted-foreground)); }
+.rowStatus { justify-self: end; }
+.rowArrow { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; color: hsl(var(--muted-foreground)); }
+.boardRow:hover .rowArrow { background: hsl(var(--muted)); color: hsl(var(--foreground)); }
+.outcomeRow { cursor: default; }
+.outcomeRowTitle > span { display: flex; flex-direction: column; min-width: 0; }
+.outcomeRowTitle small { font-size: 11px; font-weight: 500; color: hsl(var(--muted-foreground)); }
+.outcomeRowTitle h2 { margin-top: 2px; overflow-wrap: anywhere; font-size: 13px; font-weight: 600; }
+.rowResult .rowNextStep { color: hsl(var(--foreground)); font-weight: 550; }
+.outcomeRowActions { display: flex; justify-content: flex-end; min-width: 32px; }
 .card { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; min-height: 164px; padding: 18px; border: 1px solid hsl(var(--border) / .65); border-radius: 13px; background: hsl(var(--background)); text-align: left; color: inherit; font: inherit; }
 .card:is(button) { width: 100%; cursor: pointer; }
 .card:is(button):focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
@@ -78,6 +104,18 @@
   .wide { grid-column: auto; }
 }
 @media (max-width: 767px) {
+  .summaryStrip { gap: 7px; }
+  .summaryItem { grid-template-columns: minmax(0, 1fr); align-content: center; min-height: 76px; padding: 12px 10px 12px 24px; }
+  .summaryItem::before { left: 10px; }
+  .summaryItem dt { font-size: 11px; }
+  .summaryItem dd { font-size: 21px; }
+  .boardRow { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 14px; min-height: 108px; padding: 14px 16px; }
+  .rowTitle { grid-column: 1; grid-row: 1; }
+  .rowStatus { grid-column: 2; grid-row: 1; }
+  .rowResult { grid-column: 1; grid-row: 2; }
+  .rowArrow { grid-column: 2; grid-row: 2; align-self: end; }
+  .outcomeRow { min-height: 132px; }
+  .outcomeRowActions { grid-column: 1 / -1; grid-row: 3; justify-content: flex-start; }
   .card { min-height: 144px; padding: 16px; }
   .flagPreviewCard { min-height: 126px; }
   .withVisual .body { grid-template-columns: 104px minmax(0, 1fr); gap: 6px 14px; }

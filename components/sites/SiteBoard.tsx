@@ -4,10 +4,11 @@ import Link from 'next/link'
 import type { Route } from 'next'
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
-import { FileCheck } from 'lucide-react'
+import { FileCheck, RefreshCw } from 'lucide-react'
 import { AuditFailurePanel } from '@/components/audit/AuditFailurePanel'
-import { BOARD_CARD_ICONS, BoardGrid, ProductBoardCard } from '@/components/sites/BoardCard'
-import { SiteCardFindings } from '@/components/sites/SiteCardFindings'
+import { BOARD_CARD_ICONS, BoardGrid, BoardSummaryStrip, ProductBoardCard } from '@/components/sites/BoardCard'
+import { RecommendationList, SiteCardFindings } from '@/components/sites/SiteCardFindings'
+import { SiteCheckResults } from '@/components/sites/SiteCheckResults'
 import { SiteActivityPanel } from '@/components/sites/SiteActivityPanel'
 import { useSiteResource } from '@/hooks/useSiteResource'
 import { SiteCheckLibrary } from '@/components/sites/SiteCheckLibrary'
@@ -49,7 +50,8 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
   const router = useRouter()
   const { user } = useMe()
   const signedIn = Boolean(user)
-  const { view, refresh, disconnected } = useSiteResource(siteId, initial)
+  const { view, refresh, disconnected: updatesDisconnected } = useSiteResource(siteId, initial)
+  const disconnected = updatesDisconnected || Boolean(view.recoveryUnavailable)
   const setView = (update: (current: SiteHomeView) => SiteHomeView) => { void refresh(update(view), { revalidate: false }) }
   const ownsSite = Boolean(user?.id && view.site.projectId && view.site.userId === user.id)
   const [libraryOpen, setLibraryOpen] = useState(false)
@@ -83,13 +85,14 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
         audit: { ...current.audit, status: 'QUEUED', failureCode: null, progress: 0 } }))
       await refresh()
     } catch {
-      setToast('The connection was interrupted. Your evidence is saved. Please try again.')
+      setToast(SITE_BOARD_COPY.connectionInterrupted)
     } finally {
       setBusy(false)
     }
   }
 
   async function verifyOutcome(outcomeId: string) {
+    if (busy) return
     setBusy(true)
     try {
       const response = await fetch(`/api/sites/${siteId}/outcomes/${outcomeId}/verify`, {
@@ -103,8 +106,10 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
         }
         return setToast(body.message || 'Could not start this verification')
       }
-      setToast('Check requested')
+      setToast(SITE_BOARD_COPY.checkStarted)
       await refresh()
+    } catch {
+      setToast(SITE_BOARD_COPY.connectionInterrupted)
     } finally {
       setBusy(false)
     }
@@ -147,7 +152,7 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
       }))
       await refresh()
     } catch {
-      setToast('The connection was interrupted. Your evidence is saved. Please try again.')
+      setToast(SITE_BOARD_COPY.connectionInterrupted)
     } finally {
       setBusy(false)
     }
@@ -168,6 +173,17 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
     if (!STARTER_BOARD_CARDS.includes(category.id)) return false
     return signedIn || checking || !isEmptyUncheckedCard(card)
   })
+  const confirmedOutcomes = view.outcomes.filter((outcome) => outcome.kind !== 'GENERIC' && outcome.confirmedAt).sort((left, right) => {
+    const rank = { FLAG: 0, COULD_NOT_VERIFY: 1, STALE: 2, CLEAR: 3 }
+    return rank[left.state] - rank[right.state]
+  })
+  const clearRows = visibleCategories.filter(category => category.state === 'healthy').length + confirmedOutcomes.filter(outcome => outcome.state === 'CLEAR').length
+  const unverifiedRows = visibleCategories.filter(category => category.state === 'unknown' || category.state === 'checking').length + confirmedOutcomes.filter(outcome => outcome.state === 'COULD_NOT_VERIFY' || outcome.state === 'STALE').length
+  const summaryItems = [
+    { value: view.presentation.flags.count, label: view.presentation.flags.count === 1 ? 'Flag' : 'Flags', state: 'attention' as const },
+    { value: clearRows, label: 'With 0 Flags', state: 'healthy' as const },
+    { value: unverifiedRows, label: 'Still to check', state: 'unknown' as const },
+  ]
   const banner = runBanner({
     run: view.presentation.run,
     monitoring: view.presentation.monitoring,
@@ -177,7 +193,13 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
 
   return (
     <SiteShell siteId={siteId} ownerId={view.site.userId} activeRoute="home" title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
-      headerAction={<SiteCheckLibrary open={libraryOpen} onOpenChange={setLibraryOpen} siteId={siteId} view={view} owner={ownsSite} onRefresh={refresh} onOpenCard={setSelectedCard} onCheck={refreshSiteEvidence} />}>
+      headerAction={<>
+        {ownsSite ? <span className="text-xs text-muted-foreground sm:text-sm">{view.presentation.freshness.label}</span> : null}
+        {ownsSite ? <Button variant="outline" size="sm" className="min-h-11" disabled={busy || checking || disconnected} onClick={() => void refreshSiteEvidence()}>
+          <RefreshCw className="h-4 w-4" aria-hidden />{checking ? SITE_BOARD_COPY.checking : 'Recheck'}
+        </Button> : null}
+        <SiteCheckLibrary open={libraryOpen} onOpenChange={setLibraryOpen} siteId={siteId} view={view} owner={ownsSite} onRefresh={refresh} onOpenCard={setSelectedCard} onCheck={refreshSiteEvidence} />
+      </>}>
       {showActivityPanel ? <SiteActivityPanel banner={banner} activity={view.activity} disconnected={disconnected} onRetry={ownsSite ? refreshSiteEvidence : undefined} retryBusy={busy}>
       {notice ? (
         <AuditFailurePanel failureCode={view.audit.failureCode} onRetry={retryCheck} retryLoading={busy} />
@@ -188,7 +210,7 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
       {!view.activity && notice ? <AuditFailurePanel failureCode={view.audit.failureCode} onRetry={retryCheck} retryLoading={busy} /> : null}
       {!view.activity && summaryNote ? <p role="status" className="text-sm text-muted-foreground">{summaryNote.body}</p> : null}
 
-      <SiteMonitoringActivation siteId={siteId} view={view} owner={ownsSite} checking={checking} onRefresh={refresh} onExploreCoverage={() => setLibraryOpen(true)} />
+      <SiteMonitoringActivation hideSettled siteId={siteId} view={view} owner={ownsSite} checking={checking} onRefresh={refresh} onExploreCoverage={() => setLibraryOpen(true)} />
       {alertNotice ? (
       <section className="rounded-card border border-border/80 bg-background p-5" role="status">
           <h2 className="text-sm font-semibold">{alertNotice.title}</h2>
@@ -203,24 +225,9 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
 
       <section aria-labelledby="website-cards-heading" className="space-y-3">
         <h2 id="website-cards-heading" className="sr-only">{SITE_BOARD_COPY.cardsHeading}</h2>
-        <BoardGrid>
-            {visibleCategories.map((category) => {
-              const card = cardsById.get(category.id)!
-              const displayCard = {
-                ...card,
-                state: category.state,
-                status: category.status,
-                answer: category.answer,
-                detail: card.id === 'site' ? null : card.detail,
-                openFlagCount: category.flagCount,
-                ...(card.id === 'site' ? { facts: [], flagIds: [], flagChips: [], captureUrl: null, captureAlt: null } : {}),
-              }
-              return <ProductBoardCard key={card.id} compact card={displayCard} onOpen={() => {
-                opener.current = document.activeElement as HTMLElement
-                setSelectedCard(card.id)
-              }} />
-            })}
-      {view.outcomes.filter((outcome) => outcome.kind !== 'GENERIC' && outcome.confirmedAt).map((outcome) => (
+        <BoardSummaryStrip items={summaryItems} />
+        <BoardGrid layout="rows">
+      {confirmedOutcomes.map((outcome) => (
         <OutcomeSummaryCard
           key={outcome.id}
           compact
@@ -233,7 +240,8 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
           nextStep={outcome.state === 'STALE' ? staleOutcomeRecovery() : undefined}
           state={outcome.state}
           running={outcome.running}
-          label={outcome.enabled ? 'Visitor action' : 'Paused'}
+          label={outcome.enabled ? SITE_BOARD_COPY.websiteCheck : 'Paused'}
+          layout="row"
           actions={(
             <div className="flex gap-2">
               {outcome.state === 'FLAG' && outcome.flagId ? <Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${outcome.flagId}`}>Open Flag</Link></Button> : null}
@@ -244,6 +252,22 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
           )}
         />
       ))}
+            {visibleCategories.map((category) => {
+              const card = cardsById.get(category.id)!
+              const displayCard = {
+                ...card,
+                state: category.state,
+                status: category.status,
+                answer: category.answer,
+                detail: card.id === 'site' ? null : card.detail,
+                openFlagCount: category.flagCount,
+                ...(card.id === 'site' ? { facts: [], flagIds: [], flagChips: [], captureUrl: null, captureAlt: null } : {}),
+              }
+              return <ProductBoardCard key={card.id} compact layout="row" card={displayCard} onOpen={() => {
+                opener.current = document.activeElement as HTMLElement
+                setSelectedCard(card.id)
+              }} />
+            })}
         </BoardGrid>
       </section>
 
@@ -255,7 +279,9 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
           <DialogDescription>{selectedFlags.length ? `${selectedFlags.length} open Flags` : selected?.answer}</DialogDescription>
           {selected ? (
             <>
-              <SiteCardFindings key={selected.id} siteId={siteId} flags={selectedFlags} recommendations={selectedRecommendations} />
+              <SiteCardFindings key={selected.id} siteId={siteId} flags={selectedFlags} recommendations={[]} />
+              <SiteCheckResults results={(view.checkResults ?? []).filter(result => result.area === selected.id)} />
+              <RecommendationList recommendations={selectedRecommendations} />
               {selected.incompleteReason ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border p-3 text-sm"><p>{selected.incompleteReason}. {SITE_BOARD_COPY.cardRetryExplanation}</p>{ownsSite ? <Button variant="outline" size="sm" disabled={busy || disconnected} onClick={() => void refreshSiteEvidence()}>{busy ? SITE_BOARD_COPY.checking : SITE_BOARD_COPY.checkAgain}</Button> : null}</div> : null}
               <section className="mt-2 rounded-card border border-border p-4">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold"><FileCheck className="h-4 w-4 text-muted-foreground" aria-hidden />{SITE_BOARD_COPY.findingEvidence}</h3>

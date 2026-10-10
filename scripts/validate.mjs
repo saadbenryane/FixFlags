@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import { releaseProfile, requiredReleaseStages } from './release-profiles.mjs'
 
 const mode = process.argv[2] ?? 'affected'
 const workspaceRoot = process.cwd()
@@ -282,15 +283,7 @@ export function fullCommands() {
 }
 
 export function releaseCommands() {
-  const stages = [
-    'foundation',
-    'fixture-binding',
-    'credentialed-core',
-    'billing-open',
-    'billing-closed',
-    'external',
-    'deployed',
-  ]
+  const stages = requiredReleaseStages(releaseProfile())
   return [
     ...stages.map((stage) => command(`release:${stage}`, 'node', ['scripts/release-receipts.mjs', 'stage', stage])),
     command('release:final', 'node', ['scripts/release-receipts.mjs', 'final']),

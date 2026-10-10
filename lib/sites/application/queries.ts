@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/db'
+import { logger } from '@/lib/logger'
+import type { SiteCheckResult } from '@/lib/sites/check-results'
+import { loadSiteCheckResults } from '@/lib/sites/application/check-results'
 import {
-  AREA_EVIDENCE_MODULE_KEYS,
   buildCoverageFacts,
   isAuditFinished,
   isAuditInFlight,
@@ -42,12 +44,11 @@ import {
 
 export type { BoardCardView }
 
-const areaEvidenceModuleKeys: string[] = [...AREA_EVIDENCE_MODULE_KEYS]
-
 export type SiteHomeView = {
   site: SiteRecord
   presentation: SitePresentation
   activity?: SiteActivity
+  recoveryUnavailable?: boolean
   audit: {
     id: string | null
     status: string | null
@@ -60,6 +61,7 @@ export type SiteHomeView = {
   recommendations: SiteFlagSeed[]
   resolvedFlags: SiteFlagSeed[]
   outcomes: SiteOutcomeView[]
+  checkResults?: SiteCheckResult[]
   watch: {
     state: WatchBoardState
     interval: 'weekly' | 'daily' | null
@@ -107,8 +109,8 @@ const auditSelect = {
   failureCode: true,
   evidenceCoverage: true,
   verifierExecutions: {
-    where: { targetKey: { in: areaEvidenceModuleKeys } },
-    select: { targetKey: true, status: true },
+    where: { targetKey: { startsWith: 'module:' } },
+    select: { id: true, targetKey: true, status: true, pageUrl: true, detail: true, updatedAt: true },
   },
   url: true,
 } as const
@@ -203,12 +205,14 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
   const now = new Date()
 
   let audit = await resolveLatestAudit(site)
+  let recoveryUnavailable = false
   if (audit && isAuditInFlight(audit.status) && Date.now() - audit.updatedAt.getTime() > 15_000) {
     try {
       await recoverAuditJobOnPoll(audit.id, audit)
       audit = await resolveLatestAudit(site)
-    } catch {
-      // The board still shows the current status if the queue cannot be reached.
+    } catch (error) {
+      recoveryUnavailable = true
+      logger.warn('Site run recovery unavailable', { siteId, error })
     }
   }
 
@@ -230,23 +234,21 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
 
   const inFlight = isAuditInFlight(audit?.status)
   const prior =
-    (inFlight || audit?.status === 'FAILED') && site.kind === 'project'
+    site.kind === 'project'
       ? await resolvePriorCompletedAudit(site, audit?.id ?? null)
       : null
 
   const lastKnownFacts =
     prior != null
       ? factsFromAudit(prior, flags, now)
-      : isAuditFinished(audit?.status)
-        ? null
-        : null
+      : null
 
   const coverage = factsFromAudit(
     audit,
     flags,
     now,
     lastKnownFacts,
-    Boolean((inFlight || audit?.status === 'FAILED') && lastKnownFacts)
+    Boolean(lastKnownFacts)
   )
 
   const coverageByArea = new Map(coverage.map((c) => [c.area, c]))
@@ -423,6 +425,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
 
   return {
     site,
+    recoveryUnavailable,
     activity: projectSiteActivity({ status: audit?.status ?? null, startedAt: audit?.startedAt ?? null, failureCode: audit?.failureCode ?? null,
       pages: checkedPages, events: [...(audit?.pipelineEvents ?? [])].reverse() }),
     checkedPages: checkedPages.map((page) => ({ ...page, checkedAt: page.updatedAt.toISOString() })),
@@ -439,6 +442,7 @@ export async function loadSiteHome(siteId: string): Promise<SiteHomeView | null>
     recommendations,
     resolvedFlags,
     outcomes,
+    checkResults: await loadSiteCheckResults(site, audit?.id ?? null),
     watch: {
       state: watchState,
       interval: site.watchInterval,

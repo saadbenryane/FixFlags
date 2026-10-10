@@ -17,7 +17,7 @@ Document status and metadata rules are defined in [docs/document-status-policy.m
 | --- | --- | --- |
 | Purpose and audience | [knowledge/vision.md](knowledge/vision.md) | Accepted 2026-09-21 owner direction |
 | Customer objects and navigation | [docs/product-architecture.md](docs/product-architecture.md) | Site, Outcomes, Flags, execution methods, Agent, history |
-| Customer language | [docs/voice-and-copy.md](docs/voice-and-copy.md) | Vocabulary and claims; rendered copy remains code-backed |
+| Customer language | [docs/voice-and-copy.md](docs/voice-and-copy.md) | Durable voice, vocabulary, and claim boundaries; exact rendered strings live in `lib/marketing/copy/` |
 | Evidence and health truth | [knowledge/evidence-rules.md](knowledge/evidence-rules.md) | Coverage, certainty, lifecycle, and independent recovery |
 | Product sequence | [docs/product-masterplan.md](docs/product-masterplan.md) | Now/Next/Later plan, not evidence that work shipped |
 | Delivery gates | [ROADMAP.md](ROADMAP.md) | Vertical slices and exit evidence |
@@ -50,7 +50,6 @@ Document status and metadata rules are defined in [docs/document-status-policy.m
 - [docs/business-model.md](docs/business-model.md) summarizes current packaging; strategy and code remain authoritative for intent and enforcement.
 - [docs/knowledge-base-ia.md](docs/knowledge-base-ia.md) covers Help, Docs, and FAQ surfaces while public content remains partly report-shaped.
 - `content/docs/*` describes shipped public behavior and may lag the target until its scheduled migration.
-- [docs/experience-review.md](docs/experience-review.md) records the October 10 product-experience investigation, evidence boundaries, and recommendations. [.agents/handoffs/homepage-experience.md](.agents/handoffs/homepage-experience.md) tracks the continuation. Neither replaces vision, design, language, or release authority.
 - [knowledge/README.md](knowledge/README.md) is a compact question index and vocabulary guide, not another product specification.
 
 ## Historical or retired sources
@@ -59,6 +58,7 @@ These files can explain previous work but cannot override current direction:
 
 - [NOW.md](NOW.md) and [GOAL_BRIEF.md](GOAL_BRIEF.md): retained snapshots and migration pointers.
 - `.agents/sessions/*`, `.agents/handoffs/*`, `.agents/learnings/*`: evidence with local scope, never default instructions.
+- [docs/experience-review.md](docs/experience-review.md) and [.agents/handoffs/homepage-experience.md](.agents/handoffs/homepage-experience.md): dated product-experience evidence, not active implementation instructions.
 - [docs/messaging-migration.md](docs/messaging-migration.md), [docs/product-ui-intent.md](docs/product-ui-intent.md), [docs/gtm-launch-strategy.md](docs/gtm-launch-strategy.md), and [docs/launch-kit.md](docs/launch-kit.md): pointers or retired plans.
 - [knowledge/site-intelligence.md](knowledge/site-intelligence.md), [docs/live-review-and-product-intelligence-prd.md](docs/live-review-and-product-intelligence-prd.md), and [docs/offering.md](docs/offering.md): superseded drafts or stubs.
 - [docs/unified-audit-tool-architecture.md](docs/unified-audit-tool-architecture.md), [docs/scan-roadmap.md](docs/scan-roadmap.md), and [docs/journey-review-architecture.md](docs/journey-review-architecture.md): historical research.

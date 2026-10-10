@@ -55,6 +55,9 @@ export function SiteFlagActions({ siteId, flagId, verifying = false }: { siteId:
       setVerifyOpen(false)
       setMessage(SITE_BOARD_COPY.verificationStarted)
       router.refresh()
+    } catch {
+      setMessage(SITE_BOARD_COPY.verificationConnectionLost)
+      router.refresh()
     } finally {
       setBusy(false)
     }
@@ -63,35 +66,18 @@ export function SiteFlagActions({ siteId, flagId, verifying = false }: { siteId:
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-start gap-3">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-semibold text-background" aria-hidden="true">
-            1
-          </span>
-          <div>
-            <h3 className="font-semibold">{SITE_BOARD_COPY.fixStep}</h3>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.fixStepBody}</p>
-          </div>
-        </div>
-        <div className="mt-4 [&>span]:w-full [&_button]:w-full"><SitePromptCopyButton siteId={siteId} flagId={flagId} /></div>
-        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.copyDoesNotResolve}</p>
+        <div className="[&>span]:w-full [&_button]:w-full"><SitePromptCopyButton siteId={siteId} flagId={flagId} /></div>
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.fixStepBody}</p>
       </div>
 
       <div className="border-t border-border/80 pt-5">
-        <div className="flex items-start gap-3">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-brand text-xs font-semibold text-foreground" aria-hidden="true">
-            2
-          </span>
-          <div>
-            <h3 className="font-semibold">{SITE_BOARD_COPY.verifyStep}</h3>
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.verifyStepBody}</p>
-          </div>
-        </div>
-        <Button className="mt-4 w-full" variant="brand" disabled={busy || verificationRunning} onClick={() => setVerifyOpen(true)}>
+        <p className="text-sm leading-relaxed text-muted-foreground">{SITE_BOARD_COPY.verifyStepBody}</p>
+        <Button className="mt-3 w-full" variant="brand" disabled={busy || verificationRunning} onClick={() => { setMessage(null); setVerifyOpen(true) }}>
           <ShieldCheck aria-hidden="true" />
           {verificationRunning ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}
         </Button>
-        {message ? (
-          <p className="text-sm text-muted-foreground" role="status" aria-live="polite">
+        {message && !verifyOpen ? (
+          <p className="mt-3 text-sm text-muted-foreground" role="status" aria-live="polite">
             {message}
           </p>
         ) : null}
@@ -99,12 +85,13 @@ export function SiteFlagActions({ siteId, flagId, verifying = false }: { siteId:
       <Dialog open={verifyOpen} onOpenChange={setVerifyOpen}>
         <DialogContent>
           <DialogTitle>{SITE_BOARD_COPY.verifyFix}</DialogTitle>
-          <DialogDescription>FixFlags will independently analyze the same page and behavior. The Flag stays open unless the evidence proves recovery.</DialogDescription>
+          <DialogDescription>{SITE_BOARD_COPY.verifyDescription}</DialogDescription>
           <div className="space-y-1">
             <label htmlFor="flag-change-summary" className="text-sm font-medium">{SITE_BOARD_COPY.changeLabel}</label>
             <p id="flag-change-summary-hint" className="text-xs text-muted-foreground">{SITE_BOARD_COPY.changeHint}</p>
             <Textarea id="flag-change-summary" aria-describedby="flag-change-summary-hint" value={changeSummary} onChange={(event) => setChangeSummary(event.target.value)} rows={3} placeholder={SITE_BOARD_COPY.changePlaceholder} />
           </div>
+          {message ? <p role="status" aria-live="polite" className="text-sm leading-relaxed">{message}</p> : null}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setVerifyOpen(false)}>Cancel</Button>
             <Button type="button" variant="brand" disabled={busy} onClick={() => void verify()}>{busy ? SITE_BOARD_COPY.verifying : SITE_BOARD_COPY.verifyFix}</Button>

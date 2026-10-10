@@ -1,9 +1,8 @@
-# Prototype Instructions
+# Prototype instructions
 
-Run the local server yourself and open the preview in the browser available to this environment. Do not give the user server-start instructions when you can run it.
+- Run the local server and inspect the available preview when changing visible behavior.
+- Build application UI in `src/`.
+- Preserve `.openai/hosting.json`, `worker/index.js`, `scripts/prepare-sites-build.mjs`, and `tests/sites-worker.test.mjs` so the prototype remains portable to Sites.
+- Before a Sites handoff, run `npm run build` and `npm run test:sites`. The build must produce `dist/client/index.html`, `dist/server/index.js`, and `dist/.openai/hosting.json`.
 
-Before making substantial visual changes, use the Product Design plugin's `get-context` skill when the visual source is unclear or no longer matches the current goal. When the user gives durable prototype-specific design feedback, preferences, or decisions, record them in `AGENTS.md`.
-
-When implementing from a selected generated mock, treat that image as the source of truth for layout, component anatomy, density, spacing, color, typography, visible content, and hierarchy.
-
-Build app UI in `src/`. Keep `.openai/hosting.json`, `worker/index.js`, `scripts/prepare-sites-build.mjs`, and `tests/sites-worker.test.mjs` intact so the same local prototype can be handed to Sites. Before a Sites handoff, run `npm run build` and `npm run test:sites`; the build must leave `dist/client/index.html`, `dist/server/index.js`, and `dist/.openai/hosting.json`.
+A supplied mock may guide layout and visual hierarchy. Do not copy its wording, data, or product claims unless the user explicitly makes those elements authoritative. Do not add durable instructions to this file unless the user asks to change the prototype's operating rules.

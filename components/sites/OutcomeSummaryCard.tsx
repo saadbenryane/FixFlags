@@ -18,9 +18,10 @@ export function OutcomeSummaryCard({
   nextStep,
   state,
   running = false,
-  label = 'Watched Outcome',
+  label = 'Website check',
   actions,
   compact = false,
+  layout = 'card',
 }: {
   name: string
   href?: Route
@@ -34,19 +35,43 @@ export function OutcomeSummaryCard({
   label?: string
   actions?: ReactNode
   compact?: boolean
+  layout?: 'card' | 'row'
 }) {
   const result = answer && answer !== expectation ? answer : null
   const StateIcon = state === 'CLEAR' ? Check : state === 'FLAG' ? CircleAlert : state === 'STALE' ? Clock3 : CircleHelp
+  if (layout === 'row') {
+    return <section className={cn(styles.boardRow, styles.outcomeRow)}>
+      <span className={cn(styles.rowTitle, styles.outcomeRowTitle)}>
+        <StateIcon className={cn('h-[18px] w-[18px]', running && 'motion-safe:animate-pulse')} aria-hidden />
+        <span><small>{label}</small><h2>{href ? <Link href={href} className="hover:underline">{name}</Link> : name}</h2></span>
+      </span>
+      <span className={styles.rowResult}>
+        <strong>{result ?? expectation}</strong>
+        {nextStep ? <span className={styles.rowNextStep}>{nextStep}</span> : null}
+        <span>{coverage}</span>
+        <span>{freshness}</span>
+      </span>
+      <span className={styles.rowStatus}>
+        <span className={cn(
+          'inline-flex min-h-8 items-center gap-2 rounded-full border px-3 text-sm font-medium',
+          state === 'CLEAR' && 'border-success/30 text-success',
+          state === 'FLAG' && 'border-brand text-brand',
+          (state === 'STALE' || state === 'COULD_NOT_VERIFY') && 'border-border text-muted-foreground'
+        )} role="status">{outcomeStatusLabel(state, running)}</span>
+      </span>
+      <span className={styles.outcomeRowActions}>{actions}</span>
+    </section>
+  }
   return (
     <section className={compact ? cn(styles.card, state === 'FLAG' && styles.problem, state === 'CLEAR' && styles.good) : 'rounded-2xl border border-border/80 bg-background p-5 sm:p-6'}>
       <div className={cn('flex flex-wrap items-start justify-between gap-4', compact && 'h-full w-full flex-col')}>
         <div className="min-w-0">
           <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <h2 className="mt-1 text-xl font-semibold">
+          <h2 className={cn('mt-1 font-semibold', compact ? 'text-lg' : 'text-xl')}>
             {href ? <Link href={href} className="hover:underline">{name}</Link> : name}
           </h2>
           <p className={cn('mt-2 max-w-2xl text-sm', result ? 'text-foreground' : 'text-muted-foreground')}>{result ?? expectation}</p>
-          {result ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{expectation}</p> : null}
+          {result && !compact ? <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{expectation}</p> : null}
           {nextStep ? <p className="mt-2 max-w-2xl text-sm font-medium">{nextStep}</p> : null}
           {!compact ? <p className="mt-2 text-xs text-muted-foreground">{coverage}</p> : null}
           <p className="mt-1 text-xs text-muted-foreground">{freshness}</p>

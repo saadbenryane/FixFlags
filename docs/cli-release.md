@@ -74,9 +74,8 @@ GitHub repositories, but npm provenance attestations require a public source
 repository. The public npm package therefore uses short-lived OIDC credentials
 without claiming provenance.
 
-## Agent operations
+## Operational status
 
-Codex, Cursor, Claude, and other repository-aware agents must follow
-`.cursor/skills/fixflags-npm-operations/SKILL.md`. `AGENTS.md` routes CLI work
-to that skill. Run `npm run cli:status` for registry tags, publication time, and
-download statistics without exposing credentials.
+Run `npm run cli:status` for registry tags, publication time, and download
+statistics without exposing credentials. This document and the release
+workflows are authoritative; there is no separate repository agent skill.

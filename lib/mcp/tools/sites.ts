@@ -11,6 +11,7 @@ import { loadSiteFlagDetail, loadSiteFlags } from '@/lib/sites/flags'
 import { getOwnedRun, requestSiteRun } from '@/lib/sites/application/run-requests'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
 import { recordSiteFlagFix } from '@/lib/sites/application/flag-verification'
+import { loadSiteCheckResults } from '@/lib/sites/application/check-results'
 
 async function ownedSite(userId: string, siteId: string) {
   const site = await loadSiteRecord(siteId)
@@ -80,8 +81,10 @@ export function registerSiteOutcomeTools(server: McpServer, user: User) {
             .filter((outcome) => outcome.kind !== 'GENERIC')
             .map((outcome) => loadSiteOutcomeDetail(site, outcome.id)),
         )
+        const latestAudit = await prisma.audit.findFirst({ where: { projectId: site.projectId! }, orderBy: { createdAt: 'desc' }, select: { id: true } })
         return mcpStructuredResult({
           siteId: site.siteId,
+          checkResults: await loadSiteCheckResults(site, latestAudit?.id ?? null),
           outcomes: details
             .filter((outcome) => outcome != null)
             .map((outcome) => mcpOutcomePayload(outcome)),

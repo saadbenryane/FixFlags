@@ -254,7 +254,7 @@ describe('AuditInput scan handoff', () => {
     expect(screen.getByRole('button', { name: /see how it works/i })).toBeInTheDocument()
   })
 
-  it('centers the landing submit label and parks the arrow on the right', async () => {
+  it('keeps the landing label and decorative arrow in one submit control', async () => {
     render(
       <MeProvider initialUser={null}>
         <AuditInput variant="landing" showLandingExtras={false} idSuffix="-cta-layout" />
@@ -262,8 +262,7 @@ describe('AuditInput scan handoff', () => {
     )
 
     const submit = await screen.findByRole('button', { name: /Analyze/i })
-    expect(submit.className).toMatch(/grid-cols-\[1fr_auto_1fr\]/)
-    expect(submit.querySelector('svg')).not.toBeNull()
+    expect(submit.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
     expect(submit.textContent).toMatch(/Analyze/)
   })
 })

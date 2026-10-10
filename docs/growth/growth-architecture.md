@@ -99,8 +99,8 @@ per-Product technology context is owner-only on the Product detail page.
 **Script:** `scripts/growth/pull-gsc.ts`
 **Output:** dated query, page, and summary snapshots in
 `docs/growth/metrics/`, plus `GrowthArtifact` records keyed by segment.
-**Schedule:** manual. The SEO growth-loop skill defines the recurring review
-contract; unattended scheduling is not part of its first version.
+**Schedule:** manual. `docs/growth/weekly-review/` defines the review artifact;
+unattended scheduling is not part of its first version.
 
 **Why it matters:** Without GSC data, every prioritization decision in
 `backlog.md` is structural reasoning, not measured demand. This is the single
@@ -113,7 +113,7 @@ highest-leverage unlock for Layer 2.
 **Client funnel events (shipped via `lib/analytics/events.ts` + admin page):**
 
 - Full launch funnel including `landing_view`, `audit_intent`, `started_audit`, `signup_started` (email + OAuth), `fix_prompt_copied`, `recheck_*`
-- See `.cursor/skills/fixflags-analytics/SKILL.md`
+- Event definitions and required call sites live in `lib/analytics/` and its tests.
 
 **Still incomplete:** end-to-end organic attribution reporting. Source/UTM
 capture and GA4 exports exist, but the weekly review must not present
@@ -198,7 +198,7 @@ advantages.
 **Purpose:** Compose `weekly-review/YYYY-Www.md` from comparable live data,
 close the prior intervention, and pre-register one next intervention.
 
-**Current path:** `.agents/skills/fixflags-seo-growth-loop/SKILL.md`
+**Current path:** `docs/growth/weekly-review/` and `docs/growth/experiments.md`
 **Future automation:** `scripts/growth/weekly-review.ts` only after the manual
 artifact and decision contract proves stable.
 
