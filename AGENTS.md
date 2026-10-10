@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: operations
-reviewed_at: 2026-10-09
+reviewed_at: 2026-10-10
 supersedes: []
 ---
 
@@ -16,6 +16,8 @@ FixFlags is the independent monitor for software that acts: **Your software runs
 The accepted September 21 direction lives in [knowledge/vision.md](knowledge/vision.md). The existing Site product is the migration base. Build around important Outcomes, independent execution, meaningful Flags, fresh verification, always-on Watch, and launch-scope MCP.
 
 Use [CANONICAL-SOURCES.md](CANONICAL-SOURCES.md) to resolve authority. Older reports, plans, sessions, handoffs, and research are evidence, not instructions. Never present VISION or NEXT behavior as SHIPPED.
+
+For product-experience and homepage work, read the scoped [experience review](docs/experience-review.md) and [continuation handoff](.agents/handoffs/homepage-experience.md). The founder approved the October 10 homepage implementation: retain the brand and URL entry, demonstrate a comprehensive interactive board, follow coherent sample recovery, and distinguish scheduled monitoring. Show the full supported product through progressive depth. Commercial access, numerical limits, deployment and backend execution changes remain outside this scope. Inspect actual desktop and mobile rendering.
 
 ## Start here
 

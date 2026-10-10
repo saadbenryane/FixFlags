@@ -152,7 +152,7 @@ export function BoardCard({
 
   const count = flagCount ?? flags?.length ?? 0
   const signalLabel = showFlagPreview && state === 'healthy' && !checking ? status : state === 'healthy' && !checking ? flagCountLabel(count) : status
-  const footerLabel = count > 0 ? flagCountLabel(count) : state === 'healthy' && !checking ? flagCountLabel(0) : status
+  const footerLabel = state === 'unknown' || checking ? status : count > 0 ? flagCountLabel(count) : state === 'healthy' ? flagCountLabel(0) : status
   const openLabel = action ?? SITE_BOARD_COPY.viewDetails
   const previewFlags = flags ?? []
   const visiblePreviewFlags = previewFlags.length > 3 ? previewFlags.slice(0, 2) : previewFlags.slice(0, 3)
@@ -193,7 +193,7 @@ export function BoardCard({
         <Icon size={17} aria-hidden="true" />
         {name}
       </span>
-      <BoardStatus state={checking ? 'checking' : state} label={`${name}: ${signalLabel}`} text={signalLabel} count={showFlagPreview ? count : 0} showText={showFlagPreview} />
+      {(!onOpen || showFlagPreview) ? <BoardStatus state={checking ? 'checking' : state} label={`${name}: ${signalLabel}`} text={signalLabel} count={showFlagPreview ? count : 0} showText={showFlagPreview} /> : null}
     </span>
   )
 
@@ -228,7 +228,7 @@ export function BoardCard({
         </span>
         <span className={`${styles.cardActions} ${showFlagPreview ? styles.previewActions : ''}`}>
           {!showFlagPreview ? <span className={styles.flagMeta}>
-            {footerLabel}
+            <BoardStatus state={checking ? 'checking' : state} label={`${name}: ${footerLabel}`} text={footerLabel} showText />
           </span> : null}
           <span className={styles.openButton}>
             <ArrowRight size={17} aria-hidden="true" />

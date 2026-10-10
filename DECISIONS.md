@@ -15,6 +15,14 @@ supersedes: []
 
 This supersedes the September 7 draft and earlier product-positioning, report-layout, fixed-rubric, Finish Plan primary-artifact and commercial-wedge decisions. Existing security, ownership and billing protections remain governed by code and current security/compatibility contracts; adopting the vision does not relax them.
 
+## Experience collaboration decisions
+
+| Date | Decision | Why and alternatives | Tradeoff and implementation |
+| --- | --- | --- | --- |
+| 2026-10-10 | Founder approves the homepage experience implementation: brand and URL → comprehensive website board → coherent Flag recovery → truthful ongoing monitoring. | Full category exploration, shared Site components, calm status hierarchy and contextual integrations make breadth discoverable. Remove the large homepage comparison. | Illustrative evidence is labeled and scoped; only configured Outcomes are scheduled. No deployment, commercial, quota or backend execution changes. The proposed 60-day grant and numerical limits are not approved. [Delivery handoff](.agents/handoffs/homepage-experience.md). |
+| 2026-10-10 | The founder requires full supported product exploration and intends temporary free validation access. Website customers lead the initial experience; broad architecture remains. | Explicit correction rejects one-insight signup optimization and predetermined positioning. Capability access is distinct from economic execution limits. | Updated vision, strategy, DESIGN.md, AGENTS.md and the existing review. Commercial changes remain unapproved; the later homepage implementation approval below supersedes the research-only restriction. No runtime entitlement or billing changes. |
+| 2026-10-10 | Prepare the product-experience collaboration through investigation and documentation before redesigning. Reuse existing canonical homes and one scoped continuation handoff. | Owner's first assignment explicitly excludes application changes. A parallel product specification or premature homepage rewrite would obscure established authority. | Keep the September 21 vision and current model until reviewed. Watch → Flag → Fix → Watch, tile taxonomy, section reductions, and positioning remain hypotheses. [Experience review](docs/experience-review.md), [handoff](.agents/handoffs/homepage-experience.md), and AGENTS.md provide retrieval. No application behavior changed. |
+
 ## Historical decision ledger
 
 Entries below explain previous implementation choices. Their status is historical, not a directive for the next version. Read current canonical sources before applying them; older versions and detailed discussion remain in Git.

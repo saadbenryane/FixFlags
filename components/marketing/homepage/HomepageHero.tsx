@@ -1,149 +1,49 @@
 'use client'
 
-import { useState } from 'react'
-import { Globe2, Plus } from 'lucide-react'
-import { BoardCard, BoardGrid, BoardStatus } from '@/components/sites/BoardCard'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { CARE_HOME as C, INTEGRATIONS_PAGE, SITE_BOARD_COPY } from '@/lib/marketing/copy'
+import Image from 'next/image'
+import { ArrowRight } from 'lucide-react'
+import { BoardCard, BoardGrid } from '@/components/sites/BoardCard'
+import { CARE_HOME as C } from '@/lib/marketing/copy'
+import { HOMEPAGE_SAMPLE as S } from '@/lib/marketing/copy/care-homepage'
 import type { SiteCardArea } from '@/lib/sites/card-areas'
-import { HOMEPAGE_EVIDENCE, HomepageUrlEntry } from './HomepagePrimitives'
+import { HOMEPAGE_EVIDENCE, HomepageIntro, HomepageUrlEntry } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
 
-type PreviewCard = (typeof C.cards)[number] | (typeof C.library)[keyof typeof C.library]
-export type HomepageDetailCard = PreviewCard | 'site' | 'conversion'
-export type HomepageExtraCardId = 'uptime' | 'accessibility'
+export type HomepageDetailCard = SiteCardArea | 'overview' | 'coverage'
 
-const STARTER_AREAS: SiteCardArea[] = ['site', 'conversion', 'security', 'search', 'performance', 'tracking']
-
-export function HomepageHero({
-  onOpen,
-}: {
-  onOpen: (card: HomepageDetailCard) => void
-}) {
-  const [addOpen, setAddOpen] = useState(false)
-  const [extra, setExtra] = useState<HomepageExtraCardId[]>([])
-  const [connected, setConnected] = useState<Array<(typeof INTEGRATIONS_PAGE.items)[number]['id']>>([])
-  const present: SiteCardArea[] = [...STARTER_AREAS, ...extra]
-
-  return <section className={s.hero}>
-    <div className={s.heroContent}>
-      <h1>
-        <span className={s.headlineLead}>{C.headlineLines[0]}</span>
-        <br />
-        <span className={s.headlineAccent}>{C.headlineLines[1]}</span>
-      </h1>
-      <p className={s.heroBody}>{C.hero.body}</p>
-      <p className={s.heroProof}>{C.hero.proof}</p>
-      <HomepageUrlEntry />
-    </div>
-    <div className={s.heroBoard} id="product">
+export function HomepageHero({ onOpen }: { onOpen: (card: HomepageDetailCard) => void }) {
+  return <>
+    <section className={s.hero}>
+      <div className={s.heroContent}>
+        <h1><span className={s.headlineLead}>{C.headlineLines[0]}</span><br /><span className={s.headlineAccent}>{C.headlineLines[1]}</span></h1>
+        <p className={s.heroBody}>{C.hero.body}</p>
+        <HomepageUrlEntry />
+        <a className={s.sampleLink} href="#product">{S.exploreAction}<ArrowRight size={16} aria-hidden="true" /></a>
+      </div>
+    </section>
+    <section className={`${s.section} ${s.sampleSection}`} id="product" tabIndex={-1}>
+      <HomepageIntro title={S.title} body={S.body} />
       <div className={s.board} role="region" aria-label={C.boardAria}>
         <div className={s.boardHeader}>
-          <span><Globe2 size={16} aria-hidden="true" />{C.boardHost}<small className={s.boardSample}>{C.boardLabel}</small></span>
-          <BoardStatus state="attention" label={C.boardSummary} count={4} onOpen={() => onOpen('site')} />
+          <div className={s.boardIdentity}>
+            <Image src={HOMEPAGE_EVIDENCE.site} alt={S.identityAlt} width={76} height={54} />
+            <div><strong>{C.boardHost}</strong><span>{C.boardLabel}</span></div>
+          </div>
+          <button type="button" className={s.boardResult} onClick={() => onOpen('overview')}>{S.summary}<ArrowRight size={16} aria-hidden="true" /></button>
         </div>
-        {connected.length > 0 ? <ul className={s.connectionRow} aria-label="Sample connections">
-          {INTEGRATIONS_PAGE.items.filter(item => connected.includes(item.id)).map(item => (
-            <li key={item.id}><strong>{item.title}</strong><span>{item.limit}</span></li>
-          ))}
-        </ul> : null}
-        <div className={s.boardStage}>
-          <BoardGrid className={s.heroBoardGrid}>
-            <BoardCard
-              name={C.site.label}
-              status={C.site.status}
-              state="problem"
-              answer={C.site.answer}
-              visual={{ src: HOMEPAGE_EVIDENCE.site, alt: C.site.imageAlt }}
-              wide
-              icon="site"
-              flags={[{ id: 'availability-flag', title: C.site.answer, href: '#monitoring' }]}
-              sources={[SITE_BOARD_COPY.browserSource]}
-              onOpen={() => onOpen('site')}
-              showFlagPreview
-            />
-            <BoardCard
-              name={C.flag.name}
-              status={C.flag.status}
-              state="problem"
-              answer={C.flag.title}
-              outcome={C.flag.outcome}
-              action={C.flag.action}
-              icon="conversion"
-              flags={[...C.conversionFlags]}
-              sources={[SITE_BOARD_COPY.browserSource]}
-              onOpen={() => onOpen('conversion')}
-              showFlagPreview
-            />
-            {C.cards.map(card => <BoardCard
-              key={card.id}
-              name={card.name}
-              status={card.status}
-              state={card.tone === 'attention' ? 'attention' : 'healthy'}
-              answer={card.value}
-              chart={card.chart}
-              metric
-              icon={card.id}
-              flags={card.id === 'performance' ? [...C.performanceFlags] : undefined}
-              sources={[SITE_BOARD_COPY.browserSource]}
-              onOpen={() => onOpen(card)}
-              showFlagPreview
-            />)}
-            {extra.map(id => {
-              const card = C.library[id]
-              return <BoardCard
-                key={card.id}
-                name={card.name}
-                status={card.status}
-                state="healthy"
-                answer={card.value}
-                icon={id}
-                sources={[SITE_BOARD_COPY.browserSource]}
-                onOpen={() => onOpen(card)}
-                showFlagPreview
-              />
-            })}
-            <button type="button" className={s.boardAdd} onClick={() => setAddOpen(true)}>
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted" aria-hidden="true"><Plus size={22} /></span>
-              <strong className="text-sm font-medium">{SITE_BOARD_COPY.addCard}</strong>
-            </button>
-          </BoardGrid>
+        <div className={s.boardContext}>
+          <p><span>{S.snapshotLabel}</span>{S.snapshot}</p>
+          <p><span>{S.watchLabel}</span>{S.watchValue}<a href="#monitoring">{S.watchAction}<ArrowRight size={14} aria-hidden="true" /></a></p>
+        </div>
+        <BoardGrid className={s.sampleGrid}>
+          {S.categories.map(card => <BoardCard key={card.id} name={card.name} status={card.status} state={card.state} answer={card.answer} detail={card.context} icon={card.id} flagCount={card.flagCount} onOpen={() => onOpen(card.id)} />)}
+        </BoardGrid>
+        <div className={s.boardFooter}>
+          <button type="button" onClick={() => onOpen('coverage')}>{S.coverageAction}<ArrowRight size={16} aria-hidden="true" /></button>
+          <a href="#analyze">{S.analyzeAction}<ArrowRight size={16} aria-hidden="true" /></a>
         </div>
       </div>
-    </div>
-    <Dialog open={addOpen} onOpenChange={setAddOpen}>
-      <DialogContent className={s.dialog}>
-        <DialogTitle>{SITE_BOARD_COPY.addTitle}</DialogTitle>
-        <DialogDescription>Choose additional coverage or a connection for this Site.</DialogDescription>
-        <ul className={s.integrationPicker}>
-          {(['uptime', 'accessibility'] as const).filter(id => !present.includes(id)).map(id => {
-            const card = C.library[id]
-            return <li key={id}>
-              <button type="button" onClick={() => {
-                setExtra(current => current.includes(id) ? current : [...current, id])
-                setAddOpen(false)
-              }}>
-                <span><strong>{card.name}</strong><small>{card.detail}</small></span>
-                <em><Plus size={16} aria-hidden="true" /> Add coverage</em>
-              </button>
-            </li>
-          })}
-          {INTEGRATIONS_PAGE.items.map(item => {
-            const added = connected.includes(item.id)
-            return <li key={item.id}>
-              <button
-                type="button"
-                disabled={added}
-                onClick={() => setConnected(current => current.includes(item.id) ? current : [...current, item.id])}
-              >
-                <span><strong>{item.title}</strong><small>{item.body}</small></span>
-                <em>{added ? C.integrations.added : C.integrations.addAction}</em>
-              </button>
-            </li>
-          })}
-        </ul>
-        <p className={s.sampleNote}>{C.integrations.sampleNote}</p>
-      </DialogContent>
-    </Dialog>
-  </section>
+      <p className={s.sampleNote}>{S.note}</p>
+    </section>
+  </>
 }

@@ -443,21 +443,13 @@ Target launch line:
 **Your software runs.**
 **FixFlags watches.**
 
-Supporting message should make independent live Outcome monitoring concrete, starting with websites and browser journeys. Do not imply generalized agent evaluation before it exists. Distribute checks, journeys, Watch, and MCP proof across the page instead of forcing every capability into one sentence.
+Approved October 10 narrative: promise and URL → explore a website → follow a Flag through recovery → see what keeps running. The complete interactive board carries the breadth; category depth carries technical detail. Keep integrations contextual to their answer and coding-agent handoff beside fix guidance. The large homepage competitor matrix is removed.
 
-Primary CTA: Analyze. The interaction begins with a URL.
+Supporting copy: “FixFlags checks your live website, shows what needs attention, and lets you verify your fixes with fresh evidence.” Primary CTA: Analyze. Preserve the existing real URL submission path.
 
-Introduce concrete business risk where useful, then return to reassurance.
+Use a visible Sample designation. Every demonstration Flag must have matching scope and evidence. Diagnostic results and schedules may be illustrative when identified; fixture captures do not establish actual customer recovery. Avoid fabricated measurements and live-looking verification actions.
 
-Dashboard preview: Flag counts, useful metrics, no “Controlled example, not a live assessment.” If a demo designation is required, use a subtle Sample treatment. Add a natural CTA after the preview.
-
-How FixFlags works: Flag. Fix. Verify. Responsibility must be obvious almost instantly.
-
-Coverage section: concrete Outcomes first, then the breadth of 100+ automated tests, real browser journeys, and broader Product health. Do not present FixFlags as a generic checklist or journeys-only tool.
-
-Integrations: make FixFlags smarter. Do not promise unsupported integrations.
-
-AI: one complete story around connect → request independent verification → inspect Flag → fix → verify again. Keep Send a Flag to your AI as the human handoff language.
+Analysis, configured monitoring and independent verification remain distinct. State what ran, when, and what remains unverified; show scheduled scope and cadence without implying instant outage detection or blanket recurring diagnostics. Copying guidance does not resolve a Flag.
 
 ## Examples
 

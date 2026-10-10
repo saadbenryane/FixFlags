@@ -1,115 +1,121 @@
 import { expect, test } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
+import { CARE_HOME as C, HOMEPAGE_SAMPLE as S } from '../lib/marketing/copy/care-homepage'
 
-for (const width of [375, 390, 768, 1086, 1280, 1440]) {
-  test(`refined homepage remains complete at ${width}px`, async ({ page }) => {
-    const errors: string[] = []
-    page.on('pageerror', (error) => errors.push(error.message))
-    await page.setViewportSize({ width, height: width < 600 ? 844 : 732 })
-    await page.goto('/')
+async function visit(page: import('@playwright/test').Page) {
+  await page.goto('/', { waitUntil: 'networkidle' })
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Website URL' }).first()).toBeEnabled()
+  const consent = page.getByRole('button', { name: 'Only necessary', exact: true })
+  if (await consent.isVisible()) await consent.click()
+}
 
-    await expect(
-      page.getByRole('heading', { level: 1, name: /Your software runs\.\s*FixFlags watches\./i })
-    ).toBeVisible()
-    await expect(
-      page.getByText('Know when your site is down, checkout breaks, or signup stops working. FixFlags raises a Flag with what failed.', { exact: true }).first()
-    ).toBeVisible()
-    await expect(
-      page.getByRole('heading', { name: /Different tools watch different layers/ })
-    ).toBeAttached()
-    await expect(
-      page.getByRole('table', { name: /How SonarQube, UptimeRobot, Datadog Synthetic Monitoring, and FixFlags differ/ })
-    ).toBeAttached()
-
-    const geometry = await page.evaluate(() => ({
-      clientWidth: document.documentElement.clientWidth,
-      scrollWidth: document.documentElement.scrollWidth,
-      scrollHeight: document.documentElement.scrollHeight,
-    }))
-    expect(geometry.scrollWidth).toBeLessThanOrEqual(geometry.clientWidth + 1)
-    if (width <= 390) expect(geometry.scrollHeight).toBeLessThanOrEqual(7900)
+for (const width of [320, 390, 768, 1086, 1280, 1440]) {
+  test(`complete homepage reflows at ${width}px`, async ({ page }) => {
+    const errors: string[] = []; page.on('pageerror', error => errors.push(error.message))
+    await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await visit(page)
+    await expect(page.getByRole('heading', { level: 1, name: /Your software runs\.\s*FixFlags watches\./ })).toBeVisible()
+    const board = page.getByRole('region', { name: C.boardAria })
+    for (const card of S.categories) {
+      const tile = board.getByRole('button', { name: `Open ${card.name}` })
+      await expect(tile).toBeVisible()
+      const geometry = await tile.evaluate(node => {
+        const title = node.querySelector('strong')!; const spans = node.querySelectorAll('span')
+        return { overflow: node.scrollWidth > node.clientWidth, font: getComputedStyle(title).fontSize, height: node.getBoundingClientRect().height, spans: spans.length }
+      })
+      expect(geometry.overflow).toBe(false)
+      expect(geometry.font).toBe('18px')
+      expect(geometry.height).toBeGreaterThanOrEqual(44)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await expect(page.getByRole('table')).toHaveCount(0)
     expect(errors).toEqual([])
   })
 }
 
-test('homepage navigation and mobile menu use their real destinations', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 })
-  await page.goto('/')
-  await page.waitForTimeout(500)
+test('category depth, Flag scope, sample recovery, keyboard and focus return', async ({ page }) => {
+  await visit(page)
+  const opener = page.getByRole('button', { name: 'Open Conversion', exact: true })
+  await opener.focus(); await page.keyboard.press('Enter')
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('Safe Signup', { exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: S.detailAction }).click()
+  await expect(dialog.getByRole('heading', { name: C.flag.title })).toBeFocused()
+  await expect(dialog.getByRole('img', { name: C.flag.cropAlt })).toHaveAttribute('src', '/marketing/evidence/purchase-broken.png')
+  await dialog.getByRole('button', { name: S.recoveryAction }).click()
+  await expect(dialog.getByRole('img', { name: S.proofAlt })).toHaveAttribute('src', '/marketing/evidence/purchase-verified.png')
+  await page.keyboard.press('Tab')
+  expect(await dialog.evaluate(node => node.contains(document.activeElement))).toBe(true)
+  await page.keyboard.press('Escape'); await expect(dialog).not.toBeVisible(); await expect(opener).toBeFocused()
+  await page.getByRole('button', { name: 'Open Pages', exact: true }).click()
+  await dialog.getByRole('button', { name: S.detailAction }).click()
+  await expect(dialog.getByRole('img', { name: S.availabilityAlt })).toHaveAttribute('src', '/marketing/evidence/pricing-unavailable.png')
+  await expect(dialog.getByText(S.unresolved)).toBeVisible()
+  await expect(dialog.getByRole('button', { name: S.recoveryAction })).toHaveCount(0)
+})
 
-  const product = page.getByRole('navigation').getByRole('link', { name: 'Product', exact: true }).first()
-  await expect(product).toHaveAttribute('href', '/#product')
-
-  const integrations = page.getByRole('navigation').getByRole('link', { name: 'Integrations', exact: true }).first()
-  await expect(integrations).toHaveAttribute('href', '/integrations')
-
-  const analyze = page.getByRole('link', { name: 'Analyze', exact: true }).first()
-  await expect(analyze).toHaveAttribute('href', '/#analyze')
-  await analyze.click()
+test('mobile depth uses the viewport and returns to the real URL field', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: 'reduce' }); await visit(page)
+  await page.getByRole('button', { name: S.coverageAction }).click()
+  const dialog = page.getByRole('dialog'); const box = await dialog.boundingBox()
+  expect(box!.width).toBeCloseTo(390, 0); expect(box!.height).toBeCloseTo(844, 0)
+  await expect(dialog.getByText(C.coverage.boundary)).toBeAttached()
+  await dialog.getByRole('link', { name: S.analyzeAction }).click()
+  await expect(dialog).not.toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Website URL' }).first()).toBeFocused()
-
-  await page.setViewportSize({ width: 375, height: 812 })
-  await page.getByRole('button', { name: 'Open menu' }).click()
-  await expect(
-    page.getByRole('dialog').getByRole('link', { name: 'Product' })
-  ).toBeVisible()
-  await expect(page.getByRole('dialog').getByRole('link', { name: 'Analyze' })).toHaveAttribute('href', '/#analyze')
 })
 
-test('homepage exposes three outcome cards and four monitoring states', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/')
-
-  await expect(page.getByRole('heading', { name: 'Is the site reachable?' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Can customers buy?' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Can people sign up?' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Website is down' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Checkout stopped working' }).first()).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Signup stopped working' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Checkout works again' })).toBeVisible()
-  await expect(page.getByRole('tablist')).toHaveCount(0)
-
-  const height = await page.evaluate(() => document.documentElement.scrollHeight)
-  expect(height).toBeLessThanOrEqual(7900)
+test('unknown states remain visible and scheduled scope stays explicit', async ({ page }) => {
+  await visit(page)
+  await page.getByRole('button', { name: 'Open Performance', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('Unavailable', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('Recommendation', { exact: true })).toBeVisible()
+  await expect(dialog.getByText('0 Flags', { exact: true })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await page.getByRole('link', { name: S.watchAction }).click()
+  await expect(page.getByText(C.monitoring.sample)).toBeVisible()
+  await expect(page.getByText('Not scheduled', { exact: true })).toBeVisible()
+  await expect(page.getByText(C.monitoring.note)).toBeVisible()
+  const slider = page.getByRole('slider', { name: C.workflow.compareLabel }); await slider.focus()
+  await page.keyboard.press('End'); await expect(slider).toHaveAttribute('aria-valuenow', '100')
+  await page.keyboard.press('Home'); await expect(slider).toHaveAttribute('aria-valuenow', '0')
 })
 
-test('homepage controls keep practical hit targets and reduced motion', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.goto('/')
+test('Analyze validates and submits through the existing Site handoff', async ({ page }) => {
+  let submitted: unknown
+  await page.route('**/api/checks', async route => {
+    submitted = route.request().postDataJSON()
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reportId: 'sample-audit', siteId: 'submitted-site', isLoggedIn: false }) })
+  })
+  await visit(page)
+  const field = page.getByRole('textbox', { name: 'Website URL' }).first()
+  await field.fill('https://example.com')
+  await page.getByRole('button', { name: 'Analyze', exact: true }).first().click()
+  await expect(page).toHaveURL(/\/sites\/submitted-site/, { timeout: 15000 })
+  expect(submitted).toMatchObject({ url: 'https://example.com', source: 'homepage' })
+})
 
-  const primaryControls = [
-    page.getByRole('button', { name: 'Open menu' }),
-    page.getByRole('button', { name: 'Analyze' }).first(),
-    page.getByRole('textbox', { name: 'Website URL' }).first(),
-  ]
-
-  for (const control of primaryControls) {
-    const box = await control.boundingBox()
-    expect(box).not.toBeNull()
-    expect(box!.width).toBeGreaterThanOrEqual(44)
-    expect(box!.height).toBeGreaterThanOrEqual(44)
+test('reduced motion and sample controls retain usable targets', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: 'reduce' }); await visit(page)
+  const controls = [page.getByRole('button', { name: 'Analyze', exact: true }).first(), page.getByRole('button', { name: S.coverageAction }), page.getByRole('slider')]
+  for (const control of controls) {
+    const box = await control.boundingBox(); expect(box!.height).toBeGreaterThanOrEqual(44); expect(box!.width).toBeGreaterThanOrEqual(44)
   }
-
-  expect(
-    await page.evaluate(() =>
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    )
-  ).toBe(true)
+  const animations = await page.locator('#product').evaluate(node => node.getAnimations({ subtree: true }).filter(animation => animation.playState === 'running').length)
+  expect(animations).toBe(0)
 })
 
-test('captures desktop and mobile homepage evidence on request', async ({ page }) => {
-  test.skip(process.env.FIXFLAGS_CAPTURE_HOMEPAGE_EVIDENCE !== '1', 'Run explicitly when recording local evidence')
-  const output = '.agents/artifacts/homepage-outcomes-2026-10-10'
-  await mkdir(output, { recursive: true })
-
-  for (const viewport of [{ name: 'mobile', width: 390, height: 844 }, { name: 'desktop', width: 1440, height: 900 }]) {
-    await page.setViewportSize({ width: viewport.width, height: viewport.height })
-    await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.goto('/')
-    for (const logo of await page.getByRole('img', { name: / logo$/i }).all()) await logo.scrollIntoViewIfNeeded()
-    await page.waitForFunction(() => Array.from(document.querySelectorAll<HTMLImageElement>('img[alt$=" logo"]')).every(image => image.complete && image.naturalWidth > 0))
-    await page.evaluate(() => window.scrollTo(0, 0))
-    await page.screenshot({ path: `${output}/homepage-${viewport.name}.png`, fullPage: true })
+test('captures the actual local experience when requested', async ({ page }) => {
+  test.skip(process.env.FIXFLAGS_CAPTURE_HOMEPAGE_EVIDENCE !== '1', 'Explicit visual evidence capture')
+  const output = '.agents/artifacts/homepage-experience'; await mkdir(output, { recursive: true })
+  for (const [name, width] of [['desktop', 1440], ['mobile', 390]] as const) {
+    await page.setViewportSize({ width, height: 900 }); await page.emulateMedia({ reducedMotion: 'reduce' }); await visit(page)
+    await page.evaluate(async () => { await document.fonts.ready; for (const image of document.images) image.loading = 'eager' })
+    await page.waitForFunction(() => Array.from(document.images).every(image => image.complete && image.naturalWidth > 0))
+    await page.screenshot({ path: `${output}/${name}.png`, fullPage: true })
+    await page.locator('#product').screenshot({ path: `${output}/${name}-board.png` })
   }
 })

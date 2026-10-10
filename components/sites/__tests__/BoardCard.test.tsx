@@ -93,6 +93,13 @@ describe('BoardCard chrome', () => {
     expect(screen.queryByText('0 Flags')).not.toBeInTheDocument()
   })
 
+  it.each(['Partial', 'Out of date', 'Not configured'])('preserves %s instead of implying a passing count', status => {
+    render(<BoardCard name="Performance" status={status} state="unknown" answer="No current measurement" icon="performance" onOpen={() => undefined} />)
+    expect(screen.getByText(status)).toBeVisible()
+    expect(screen.queryByText('0 Flags')).not.toBeInTheDocument()
+    expect(screen.queryByText('Clear')).not.toBeInTheDocument()
+  })
+
   it('keeps the overview concise without modifying the underlying finding', () => {
     const title = 'Primary CTA is hidden below the fold on mobile'
     const card: BoardCardView = {

@@ -9,6 +9,8 @@ supersedes: []
 
 **Accepted direction, 2026-09-21.** This replaces the narrower website-care framing while preserving its product and engineering foundation.
 
+**Strategic experience direction, 2026-10-10:** websites are the initial market; the broader independent-monitor architecture remains. Customers should explore the full supported breadth, including successful checks, failures, uncertainty, uncovered scope, evidence, fixes, and monitoring history. Prioritize without suppressing useful results for signup. **Comprehensive underneath. Effortless on the surface.** The founder intends temporary free access to supported capabilities during validation, with sustainable execution limits and safety intact; [strategy](strategy.md) owns that commercial intent. Positioning, tile taxonomy, public workflow framing, and access numbers remain under review. This assignment permits research and documentation, not application changes. [The experience review](../docs/experience-review.md) separates research, recommendations, and remaining proof.
+
 # FixFlags is the independent monitor for software that acts.
 
 # Your software runs. FixFlags watches.
@@ -83,7 +85,7 @@ An Outcome is an important result FixFlags is responsible for watching:
 - an API performs the expected operation;
 - an MCP tool or agent task reaches the allowed final state.
 
-The current `SiteOutcome` provides a useful identity and inference seed, but it is not yet a health model. It must gain a clear expectation, execution bindings, scope, assessment, freshness, evidence, and Flag/history relationships before it becomes the primary customer view. Adapt it in place. Do not create parallel Monitor, Objective, Task, or Test concepts without a concrete need.
+`SiteOutcome` is the responsibility model, adapted in place from its original identity and inference seed. It requires a clear expectation, execution bindings, scope, assessment, freshness, evidence, and Flag/history relationships before an inferred action can become a verified customer responsibility. Availability, Checkout, and Safe Signup now have these contracts in the workspace; [PRODUCT.md](../PRODUCT.md) owns the implementation inventory and release boundaries. Do not create parallel Monitor, Objective, Task, or Test concepts without a concrete need.
 
 A browser **Journey** is one way to execute a human-facing Outcome. It is not the universal abstraction. Checkout may use a Journey; an API Outcome may use an HTTP verifier; an agent Outcome may later use tool and final-state evaluators.
 

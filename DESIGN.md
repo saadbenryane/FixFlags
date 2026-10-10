@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: interface
-reviewed_at: 2026-10-09
+reviewed_at: 2026-10-10
 supersedes: []
 ---
 
@@ -13,11 +13,15 @@ _Validated visual and interaction standards. Code-enforced where possible, docum
 
 ## Design principles
 
-1. Calm, clear care for the website. Human status and evidence lead. Public language follows Flag. Fix. Verify. and 0 Flags, not dashboard-operation copy.
+1. Calm, clear care for the website. Human status and evidence lead. Prioritize useful results without suppressing breadth. Public workflow framing is under review; keep the underlying fix and independent-verification responsibilities precise.
 2. Preserve FixFlags' brand identity and approved orange through canonical tokens.
 3. Mobile-first simplicity. Desktop shares the same mental model.
 4. Progressive depth: understandable Flag first, technical detail when needed.
 5. Coverage and freshness make healthy states trustworthy; scores remain secondary.
+
+For experience reviews, distinguish observed defects from proposed design changes. Equivalent answers should use equivalent type hierarchy and alignment; media, metrics, and lists may vary when their information warrants it. A narrow card must reflow its category and status without overlap. Evaluate the shared component with real-length content before imposing fixed heights. Current evidence and proposed first improvements: [experience review](docs/experience-review.md).
+
+**Founder correction, October 10:** comprehensive underneath, effortless on the surface. Prioritization must not suppress useful results to create a signup teaser. The overview gives bounded current health, coverage, freshness, monitoring, and important attention; category depth exposes all available results and scope; a Flag owns its observation, evidence, fix guidance, and recovery proof. Keep successful, failed, incomplete, stale, not applicable, and unchecked states distinguishable. Use measured execution receipts rather than inventing a pass ledger from absent Flags. Tile taxonomy and the public loop remain design questions, not fixed marketing requirements.
 
 ## Authoritative sources (in priority order)
 
@@ -52,7 +56,7 @@ _Validated visual and interaction standards. Code-enforced where possible, docum
 | ---------- | --------------------- | ----------------------------------------------------- |
 | 60%        | Background / canvas   | `--background` (white `#FFFFFF` / dark ink `#0B0B0D`) |
 | 30%        | Foreground / ink      | `--foreground`, `--card`, `--muted` (stone `#F5F6F7`) |
-| 10%        | Brand orange (signal) | `--brand` Flag Orange `#FF5A00` in both themes, with accessible ink CTA text |
+| 10%        | Brand orange (signal) | `--brand` Flag Orange `#FF5A00` in both themes; CTA label policy below |
 
 - Dark mode: fully re-authored, not inverted. Graphite canvas, charcoal glass, warm orbs.
 - One accent per surface. Do not layer multiple accent colors.
@@ -119,7 +123,9 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 - Focus ring on `--ring`
 - Light mode product primary: ink. Marketing accent CTAs: bright brand orange with white labels (`variant="brand"`), as requested by the owner. The September 8 palette replaces the former dark orange button fill.
 
-### Card (`glass-surface`)
+### Legacy card (`glass-surface`)
+
+These rules apply to existing glass surfaces. The Site board uses `components/sites/BoardCard.tsx` and its CSS module, with the flat-card contract above. Do not introduce glass styling into the board merely to satisfy this legacy recipe.
 
 - `border-0 shadow-card`
 - Inner elements use `rounded-nested-md`
@@ -178,5 +184,5 @@ Every interactive element must define: rest, hover, focus, active, disabled.
 - Default blue/inter font stacks
 - `transition: all`
 - Raw hex values except `grade.*`
-- Borders on cards (use shadows)
+- Heavy or redundant borders; thin board-card borders follow the Shapes and Depth rules above
 - Default gray backgrounds (use white canvas / ink)

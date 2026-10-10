@@ -1,12 +1,13 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import type { Route } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Copy, Sparkles } from 'lucide-react'
+import { BoardStatus } from '@/components/sites/BoardCard'
+import type { CardHealthState } from '@/lib/sites/card-areas'
 import { Logo } from '@/components/brand/Logo'
-import { CARE_HOME as C, INTEGRATIONS_PAGE } from '@/lib/marketing/copy'
+import { CARE_HOME as C } from '@/lib/marketing/copy'
 import { HOMEPAGE_EVIDENCE, HomepageIntro, HomepageUrlEntry, Signal } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
 
@@ -102,54 +103,23 @@ export function HomepageWorkflowSection({
   </section>
 }
 
-export function HomepageCoverageSection() {
-  return <section className={`${s.section} ${s.coverage}`}>
-    <HomepageIntro {...C.coverage} />
-    <div className={s.coverageGrid}>
-      {C.coverage.audiences.map(item => <article key={item.id} className={s.coverageCard}>
-          <p className={s.coverageType}>{item.label}</p>
-          <h3>{item.question}</h3>
-          <p className={s.coverageOutcome}>{item.monitored}</p>
-        </article>)}
-    </div>
-    <div className={s.coverageShared}>
-      <p><span>{C.coverage.analysisLabel}</span>{C.coverage.analysis.join(' · ')}</p>
-      <p className={s.coverageBoundary}>{C.coverage.boundary}</p>
-    </div>
-  </section>
-}
-
 export function HomepageMonitoringSection() {
   return <section className={`${s.section} ${s.monitoring}`} id="monitoring">
-    <div>
-      <HomepageIntro label={C.monitoring.label} title={C.monitoring.title} body={C.monitoring.body} />
-    </div>
-    <div className={s.notificationStack} aria-label="Illustrative monitoring notifications">
-      {C.monitoring.notifications.map((item, index) => <article key={item.title} className={`${s.notification} ${s[`notification${index}`]}`}>
-        <div className={s.notificationTop}><Signal tone={item.tone}>{item.status}</Signal><span>{item.time}</span></div>
-        <h3>{item.title}</h3><p>{item.detail}</p>
+    <HomepageIntro label={C.monitoring.label} title={C.monitoring.title} body={C.monitoring.body} />
+    <div className={s.schedule}>
+      <p className={s.scheduleLabel}>{C.monitoring.sample}</p>
+      <div className={s.scheduleHead} aria-hidden="true"><span>{C.monitoring.configured}</span><span>{C.monitoring.last}</span><span>{C.monitoring.next}</span></div>
+      {C.monitoring.rows.map(row => <article key={row.name} className={s.scheduleRow}>
+        <div><h3>{row.name}</h3><p>{row.scope}</p><BoardStatus state={row.state as CardHealthState} label={row.status} showText /></div>
+        <dl><dt>{C.monitoring.last}</dt><dd>{row.last}</dd></dl>
+        <dl><dt>{C.monitoring.next}</dt><dd>{row.next}</dd></dl>
       </article>)}
+      <p className={s.scheduleNote}>{C.monitoring.note}</p>
     </div>
-  </section>
-}
-
-export function HomepageIntegrationsSection() {
-  return <section className={`${s.section} ${s.integrations}`}>
-    <HomepageIntro label={C.integrations.label} title={C.integrations.title} body={C.integrations.body} />
-    <div className={s.orbitalField}>
-      <Image src="/marketing/visuals/integrations-orbital-field-v1.webp" alt="" fill sizes="(max-width: 767px) 100vw, 1120px" className={s.orbitalBackdrop} />
-      <div className={s.orbitalCenter}><Logo variant="mark" size="lg" /><span>FixFlags</span><small>Live Site outcomes</small></div>
-      <div className={s.integrationOrbit}>
-        {INTEGRATIONS_PAGE.items.map(item => <Link key={item.id} href={item.href as Route} className={s.integrationNode} data-integration={item.id}>
-          <span className={s.integrationLogo}><Image src={item.logo} alt={`${item.title} logo`} width={28} height={28} /></span>
-          <span><strong>{item.title}</strong><small>{item.purpose}</small></span>
-        </Link>)}
-      </div>
-    </div>
-    <Link href={'/integrations' as Route} className={s.integrationLink}>{C.integrations.action}<ArrowRight size={16} aria-hidden="true" /></Link>
+    <HomepageFinalSection />
   </section>
 }
 
 export function HomepageFinalSection() {
-  return <section className={`${s.section} ${s.final}`} id="plans"><h2>{C.close.title}</h2><p>{C.close.body}</p><HomepageUrlEntry final /><Link href="/pricing" className={s.textLink}>{C.close.pricing}<ArrowRight size={16} aria-hidden="true" /></Link></section>
+  return <div className={s.final} id="plans"><h2>{C.close.title}</h2><p>{C.close.body}</p><HomepageUrlEntry final /><Link href="/pricing" className={s.textLink}>{C.close.pricing}<ArrowRight size={16} aria-hidden="true" /></Link></div>
 }

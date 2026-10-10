@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: operations
-reviewed_at: 2026-10-09
+reviewed_at: 2026-10-10
 supersedes: []
 ---
 
@@ -50,6 +50,7 @@ Document status and metadata rules are defined in [docs/document-status-policy.m
 - [docs/business-model.md](docs/business-model.md) summarizes current packaging; strategy and code remain authoritative for intent and enforcement.
 - [docs/knowledge-base-ia.md](docs/knowledge-base-ia.md) covers Help, Docs, and FAQ surfaces while public content remains partly report-shaped.
 - `content/docs/*` describes shipped public behavior and may lag the target until its scheduled migration.
+- [docs/experience-review.md](docs/experience-review.md) records the October 10 product-experience investigation, evidence boundaries, and recommendations. [.agents/handoffs/homepage-experience.md](.agents/handoffs/homepage-experience.md) tracks the continuation. Neither replaces vision, design, language, or release authority.
 - [knowledge/README.md](knowledge/README.md) is a compact question index and vocabulary guide, not another product specification.
 
 ## Historical or retired sources

@@ -11,6 +11,8 @@ supersedes: []
 
 ## Free relationship
 
+**Founder direction, October 10:** temporarily offer the full supported product for free while validating utility, reliability, dependence, and willingness to pay. Separate capability access from bounded Sites, analysis depth, execution frequency, and infrastructure usage. Account ownership and protected-action safeguards still apply. Do not activate payments, alter subscriber records, or change runtime entitlements in this research assignment. Proposed temporary limits and economics are in [the experience review](../docs/experience-review.md) and require approval. Current Free/Pro/Studio enforcement remains code-backed.
+
 A URL gives useful understanding before installation and ideally before account creation. Keeping the Site creates the relationship and provides enough real ongoing monitoring to demonstrate care. The free product is not merely a static report or a signup teaser.
 
 Observation should increase usefulness at sustainable cost. Avoid treating installation itself as an immediate paywall trigger. Bounded abuse protection, collection limits and transparent retention are compatible with meaningful free value.
@@ -19,7 +21,7 @@ Observation should increase usefulness at sustainable cost. Avoid treating insta
 
 Paid plans deepen how much responsibility FixFlags takes: checking frequency, page and Outcome coverage, verification depth, history, observation scale, useful premium context, alert speed, Sites, collaboration and agent workflows. The same underlying evidence standards apply at every tier.
 
-The public list is **per website**, not unlimited Sites and not a checks-per-month bundle. Free is one website, verified weekly. Paid is `$49` per website per month, verified every day. Studio is the same product for several websites, billed per website, quoted on the waitlist. Stripe IDs and live subscriber allowances do not change until an explicit checkout pass. `STRIPE_PAID_OPEN` stays false while paid intent goes through the waitlist.
+The current public list is **per website**, not unlimited Sites and not a checks-per-month bundle. Free is one website, verified weekly. Paid is `$49` per website per month, verified every day. **The founder now treats that Pro price as a commercial hypothesis to validate, not a settled willingness-to-pay result.** Studio is the same product for several websites, billed per website, quoted on the waitlist. Stripe IDs and live subscriber allowances do not change until an explicit checkout pass. `STRIPE_PAID_OPEN` stays false while paid intent goes through the waitlist. A waitlist entry is interest, not a purchase.
 
 True full Playwright + judge every hour will not profit at `$49`/site. Sell one sentence, run two jobs: a cheap **pulse** (up, important URL still loads) between verifications, and a bounded **verification** (browser journeys, Flags, evidence) weekly on Free and daily on Pro, scoped to inferred journeys. Do not claim a full Flag audit every hour. Do not print page counts.
 

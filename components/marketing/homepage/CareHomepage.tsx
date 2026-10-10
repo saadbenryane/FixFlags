@@ -1,90 +1,91 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { ArrowRight, Copy } from 'lucide-react'
+import Link from 'next/link'
+import type { Route } from 'next'
+import { ArrowLeft, ArrowRight, Copy } from 'lucide-react'
 import { BoardDetails } from '@/components/sites/BoardDetails'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { CARE_HOME as C, SITE_BOARD_COPY } from '@/lib/marketing/copy'
+import { ResponsiveDepth } from '@/components/sites/ResponsiveDepth'
+import { BoardStatus } from '@/components/sites/BoardCard'
+import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { CARE_HOME as C } from '@/lib/marketing/copy'
+import { HOMEPAGE_SAMPLE as S } from '@/lib/marketing/copy/care-homepage'
 import { HomepageHero, type HomepageDetailCard } from './HomepageHero'
-import {
-  HomepageCoverageSection,
-  HomepageFinalSection,
-  HomepageIntegrationsSection,
-  HomepageMonitoringSection,
-  HomepageWorkflowSection,
-  type HomepageCopyResult,
-  type HomepageCopySource,
-} from './HomepageSections'
+import { HomepageMonitoringSection, HomepageWorkflowSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
 import { HOMEPAGE_EVIDENCE } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
-import { MarketingCompareSection } from '@/components/marketing/MarketingCompareSection'
-
-type PreviewCard = (typeof C.cards)[number] | (typeof C.library)[keyof typeof C.library]
 
 export function CareHomepage() {
   const [selected, setSelected] = useState<HomepageDetailCard | null>(null)
+  const [flag, setFlag] = useState<'availability' | 'checkout' | null>(null)
+  const [proof, setProof] = useState(false)
   const [copyResult, setCopyResult] = useState<HomepageCopyResult>(null)
-  const dialogOpener = useRef<HTMLElement | null>(null)
-  const selectedPreview = selected && selected !== 'site' && selected !== 'conversion' ? selected as PreviewCard : null
-  const selectedFlags = selected === 'site'
-    ? [{ id: 'availability-flag', title: C.site.answer, href: '#monitoring' }]
-    : selected === 'conversion'
-      ? C.conversionFlags
-      : selectedPreview?.id === 'performance'
-        ? C.performanceFlags
-        : []
-
+  const [manualPrompt, setManualPrompt] = useState<string | null>(null)
+  const opener = useRef<HTMLElement | null>(null)
+  const heading = useRef<HTMLHeadingElement | null>(null)
+  const selectedCard = S.categories.find(card => card.id === selected)
+  const prompt = flag === 'availability' ? S.availabilityPrompt : C.workflow.instructions
   const openCard = (card: HomepageDetailCard) => {
-    dialogOpener.current = document.activeElement as HTMLElement
-    setSelected(card)
+    opener.current = document.activeElement as HTMLElement
+    setSelected(card); setFlag(null); setProof(false); setManualPrompt(null); setCopyResult(null)
   }
-  const restoreFocus = (event: Event) => {
-    event.preventDefault()
-    dialogOpener.current?.focus()
+  const openFlag = () => {
+    if (!selectedCard?.flag) return
+    setFlag(selectedCard.flag); setProof(false); setCopyResult(null)
+    requestAnimationFrame(() => heading.current?.focus())
   }
-  const copyFlag = async (source: HomepageCopySource) => {
+  const copyFlag = async (source: HomepageCopySource, text: string = C.workflow.instructions) => {
     try {
-      await navigator.clipboard.writeText(C.workflow.instructions)
-      setCopyResult({ source, message: C.actions.copied })
+      await navigator.clipboard.writeText(text)
+      setCopyResult({ source, message: S.guidanceCopied })
     } catch {
-      setCopyResult({ source, message: C.actions.copyFailed })
+      if (selected === null) { openCard('conversion'); setFlag('checkout') }
+      setManualPrompt(text)
+      setCopyResult({ source, message: S.copyFailed })
     }
   }
+  const restoreFocus = (event: Event) => { event.preventDefault(); opener.current?.focus() }
+  const title = flag ? flag === 'availability' ? S.availabilityTitle : C.flag.title : selectedCard?.name ?? (selected === 'coverage' ? S.coverageTitle : S.overviewTitle)
 
   return <div className={s.home}>
     <HomepageHero onOpen={openCard} />
+    <HomepageWorkflowSection onViewFlag={() => { openCard('conversion'); setFlag('checkout') }} onCopy={source => void copyFlag(source)} copyResult={copyResult} />
     <HomepageMonitoringSection />
-    <HomepageWorkflowSection onViewFlag={() => openCard('conversion')} onCopy={source => void copyFlag(source)} copyResult={copyResult} />
-    <HomepageCoverageSection />
-    <MarketingCompareSection />
-    <HomepageIntegrationsSection />
-    <HomepageFinalSection />
-
-    <Dialog open={selected !== null} onOpenChange={open => { if (!open) setSelected(null) }}>
-      <DialogContent className={s.dialog} onCloseAutoFocus={restoreFocus}>
-        <DialogTitle>{selected === 'site' ? C.site.label : selected === 'conversion' ? C.flag.name : selectedPreview?.name}</DialogTitle>
-        <DialogDescription>{selected === 'site' ? C.site.question : selected === 'conversion' ? C.flag.question : selectedPreview?.question}</DialogDescription>
-        {selected === 'site' ? <>
-          <p className={s.detailAnswer}>{C.site.status}</p>
-          <ul className={s.dialogFlagList} aria-label={C.details.flagsLabel}>{selectedFlags.map(flag => <li key={flag.id}>{flag.title}</li>)}</ul>
-          <BoardDetails image={{ src: HOMEPAGE_EVIDENCE.site, alt: C.site.imageAlt }} checkedAt={C.exampleCheckedAt} sources={[SITE_BOARD_COPY.browserSource]} facts={C.site.facts} coverage={C.site.coverage} />
-        </> : selected === 'conversion' ? <>
-          <p className={s.detailAnswer}>{C.flag.status}</p>
-          <ul className={s.dialogFlagList} aria-label={C.details.flagsLabel}>{selectedFlags.map(flag => <li key={flag.id}>{flag.title}</li>)}</ul>
-          <p className={s.scope}>{C.flag.body}</p>
-          <BoardDetails image={{ src: HOMEPAGE_EVIDENCE.failed, alt: C.flag.cropAlt }} checkedAt={C.exampleCheckedAt} sources={[SITE_BOARD_COPY.browserSource]} facts={C.flag.facts} coverage={C.workflow.source} />
-          <div className={s.mcpActions}>
-            <button type="button" onClick={() => void copyFlag('ai')}><Copy size={15} aria-hidden="true" />{SITE_BOARD_COPY.copyPrompt}</button>
-            <button type="button" onClick={() => void copyFlag('share')}><Copy size={15} aria-hidden="true" />{C.actions.choices[1].action}</button>
-          </div>
-          <p className={s.copyStatus} role="status">{copyResult?.source === 'ai' || copyResult?.source === 'share' ? copyResult.message : ''}</p>
-          <a href="#flag-example" className={s.textLink} onClick={() => { dialogOpener.current = null; setSelected(null) }}>{C.flag.action}<ArrowRight size={17} aria-hidden="true" /></a>
-        </> : selectedPreview ? <>
-          <p className={s.detailAnswer}>{selectedFlags.length > 0 ? selectedPreview.status : selectedPreview.answer}</p>
-          {selectedFlags.length > 0 ? <ul className={s.dialogFlagList} aria-label={C.details.flagsLabel}>{selectedFlags.map(flag => <li key={flag.id}>{flag.title}</li>)}</ul> : null}
-          <BoardDetails checkedAt={C.exampleCheckedAt} sources={[SITE_BOARD_COPY.browserSource]} facts={selectedPreview.facts} coverage={selectedPreview.coverage} />
-        </> : null}
-      </DialogContent>
-    </Dialog>
+    <ResponsiveDepth open={selected !== null} onOpenChange={open => { if (!open) setSelected(null) }} onCloseAutoFocus={restoreFocus} className={s.dialog}>
+      {flag ? <button type="button" className={s.backButton} onClick={() => { setFlag(null); setManualPrompt(null); setCopyResult(null); requestAnimationFrame(() => heading.current?.focus()) }}><ArrowLeft size={16} aria-hidden="true" />{S.backAction}</button> : null}
+      <p className={s.depthSample}>{S.sampleLabel}</p>
+      <DialogTitle ref={heading} tabIndex={-1}>{title}</DialogTitle>
+      <DialogDescription>{flag ? flag === 'availability' ? S.availabilityScope : C.flag.outcome : selectedCard?.scope ?? (selected === 'coverage' ? S.coverageBody : S.overviewBody)}</DialogDescription>
+      {flag ? <>
+        <dl className={s.flagFacts}>
+          <div><dt>{S.observedLabel}</dt><dd>{flag === 'availability' ? S.availabilityObserved : C.flag.body}</dd></div>
+          <div><dt>{S.expectedLabel}</dt><dd>{flag === 'availability' ? S.availabilityExpected : S.checkoutExpected}</dd></div>
+        </dl>
+        <BoardDetails image={{ src: flag === 'availability' ? '/marketing/evidence/pricing-unavailable.png' : HOMEPAGE_EVIDENCE.failed, alt: flag === 'availability' ? S.availabilityAlt : C.flag.cropAlt }} sources={[flag === 'availability' ? S.sources.http : S.sources.browser]} checkedAt={C.exampleCheckedAt} />
+        <section className={s.fixGuidance}><h3>{S.fixTitle}</h3><p>{flag === 'availability' ? S.availabilityFix : C.workflow.instructions}</p>
+          <button type="button" onClick={() => void copyFlag('read', prompt)}><Copy size={16} aria-hidden="true" />{S.sampleCopy}</button>
+          <p className={s.copyStatus} role="status">{copyResult?.source === 'read' ? copyResult.message : ''}</p>
+        </section>
+        {flag === 'checkout' ? <section className={s.recoveryProof}>
+          <button type="button" aria-expanded={proof} onClick={() => setProof(value => !value)}>{S.recoveryAction}<ArrowRight size={16} aria-hidden="true" /></button>
+          {proof ? <><h3>{S.proofTitle}</h3><p>{S.proofBody}</p><BoardDetails image={{ src: HOMEPAGE_EVIDENCE.passed, alt: S.proofAlt }} sources={[S.sources.browser]} checkedAt="2026-09-14T09:15:00Z" /></> : null}
+        </section> : <p className={s.scope}>{S.unresolved}</p>}
+      </> : selectedCard ? <>
+        <div className={s.depthAnswer}><strong>{selectedCard.answer}</strong><BoardStatus state={selectedCard.state} label={selectedCard.status} showText /></div>
+        <h3 className={s.resultsTitle}>{S.resultsTitle}</h3>
+        <ul className={s.resultList}>{selectedCard.results.map(result => <li key={result.label}>
+          <div><strong>{result.label}</strong><span data-result={result.status}>{result.status}</span></div><p>{result.detail}</p>
+          {result.status === 'Flag' ? <button type="button" onClick={openFlag}>{S.detailAction}<ArrowRight size={16} aria-hidden="true" /></button> : null}
+        </li>)}</ul>
+        <BoardDetails checkedAt={selectedCard.checkedAt} sources={[selectedCard.flag ? selectedCard.flag === 'availability' ? S.sources.http : S.sources.browser : S.sources.diagnostics]} coverage={selectedCard.scope} />
+        {selectedCard.connection ? <aside className={s.contextConnection}><Link href={selectedCard.connection.href as Route}>{selectedCard.connection.label}<ArrowRight size={14} aria-hidden="true" /></Link><p>{selectedCard.connection.body}</p><small>{S.connections}</small></aside> : null}
+      </> : <ul className={s.coverageList}>{S.categories.map(card => <li key={card.id}>
+        <button type="button" onClick={() => { setSelected(card.id); requestAnimationFrame(() => heading.current?.focus()) }}><strong>{card.name}</strong><BoardStatus state={card.state} label={card.status} showText /><ArrowRight size={16} aria-hidden="true" /></button><p>{card.scope}</p>
+      </li>)}</ul>}
+      {selected === 'coverage' ? <section className={s.supportedCoverage}><h3>{C.coverage.title}</h3><ul>{C.coverage.audiences.map(item => <li key={item.id}><strong>{item.question}</strong><p>{item.monitored}</p></li>)}</ul><p>{C.coverage.boundary}</p></section> : null}
+      {manualPrompt ? <div className={s.manualCopy}><label htmlFor="sample-guidance">{S.guidanceLabel}</label><textarea id="sample-guidance" readOnly value={manualPrompt} onFocus={event => event.currentTarget.select()} rows={6} /></div> : null}
+      <p className={s.sampleNote}>{S.note}</p>
+      <a className={s.textLink} href="#analyze" onClick={() => { opener.current = document.getElementById('audit-url-care-hero'); setSelected(null) }}>{S.analyzeAction}<ArrowRight size={16} aria-hidden="true" /></a>
+    </ResponsiveDepth>
   </div>
 }

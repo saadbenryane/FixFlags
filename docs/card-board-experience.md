@@ -60,6 +60,8 @@ In production, checking retains the last known health result and its time. Stale
 
 ## Grid and interaction system
 
+October 10 shared refinement: regular category cards use one category label, an 18px UI-type answer, concise context, and a single visible status in the footer with one whole-card target. Unknown/checking states retain their status rather than implying a passing count. The homepage sample uses four desktop columns with Pages spanning two, two tablet columns and one phone column; all seven categories remain accessible. Shared Flag-preview mode remains compatible.
+
 Desktop: 12 columns, 16px gaps, standard cards spanning 3 columns, wide cards spanning 6. Compact shares standard width with reduced content and height. Approximately 20px padding, 17px desktop/16px mobile radius, thin subtle borders and restrained shadows. The owner's homepage-alignment refinement uses white cards, clean stone-gray canvas, ink type, Inter body and Inter Tight headings. Preserve the latest canonical bright orange `#FF5A00` with ink button labels; amber has a distinct semantic role. Earlier brown-orange and olive-gray prototype styling is superseded. Map prototype values into canonical tokens during implementation.
 
 No dragging, resizing, arbitrary cards, or new monitoring domain. Prototype layout customization is not a shipped capability. Pages stays a coverage card. Cards rank by Fix-first Flags, other Flags, incomplete or stale evidence, then current zero-Flag categories.

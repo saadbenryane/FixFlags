@@ -1,6 +1,6 @@
 ---
 name: fixflags-marketing
-description: Write and review FixFlags communication against the accepted website-care vision and actually released capabilities, with one brand, one Site product and evidence-backed proof.
+description: Write and review FixFlags communication against the accepted independent-monitor vision and actually released capabilities, with one brand, one Site product and evidence-backed proof.
 ---
 
 # FixFlags marketing
@@ -9,7 +9,9 @@ Read AGENTS.md, knowledge/vision.md, SOUL.md and docs/voice-and-copy.md. PRODUCT
 
 ## Direction
 
-The target headline is “Your website, looked after.” Positioning, vocabulary, Flag. Fix. Verify., Analyze, notifications, two AIs (FixFlags Agent vs Send a Flag to your AI), MCP and privacy live in docs/voice-and-copy.md. Architecture: docs/product-architecture.md. Remaining public copy is sequenced in docs/product-masterplan.md. The live homepage hero uses Analyze, the building promise (Keep building. FixFlags monitors your live website and lets you know when a Flag matters), and 100+ automated tests / real browser journeys. Use one product: persistent Site, Journeys, Flags, coverage and ongoing monitoring. Shopify has a tailored connection/native distribution path, not a separate company-wide product. Do not implement the rest of that plan unless the task owns it.
+Current positioning and vocabulary come from docs/voice-and-copy.md and knowledge/vision.md. The live homepage uses “Your software runs. FixFlags watches.” and Analyze with a URL. The older “Your website, looked after.” headline is historical public positioning; do not prescribe it from this skill. The Site product remains the website launch base. Outcomes, meaningful Flags, coverage, fresh verification, and scheduled monitoring must be explained through implemented behavior. Shopify is a connection/native distribution path, not a second company-wide product.
+
+The October 10 homepage direction is approved for implementation: retain the brand promise and URL entry; show comprehensive category depth, coherent sample evidence and recovery, then configured monitoring. Prioritize without suppressing useful results. Keep integrations contextual and comparison off the homepage. See .agents/handoffs/homepage-experience.md for delivery evidence. Numerical promotional limits and the proposed 60-day grant were rejected as unsupported; no commercial or entitlement change is authorized.
 
 The former “Finish what your AI started” positioning, report-first story and two-product menu are retired for the new version. Verify / Observe / Connect describe internal sources; they are not the default customer navigation.
 
@@ -23,7 +25,7 @@ The former “Finish what your AI started” positioning, report-first story and
 6. Put rendered marketing copy in lib/marketing/copy.ts and its modules. Reconcile page titles, metadata, social previews, pricing, help/docs, emails and native Shopify materials when behavior rolls out.
 7. Verify content, links, claim parity and rendered mobile/desktop behavior for changed public surfaces.
 
-The homepage capability tabs must follow the executable Outcome contract, not the vision examples. Treat `watchableOutcomeKinds()` as authoritative. It currently permits Checkout, Availability and Safe Signup. Describe Signup only with its synthetic-data, exact-origin reset and cleanup, successful dry-run and fixture-version authorization boundary. Login and Password reset remain unavailable. Keep the visible protected-flow boundary and `CareHomepage.test.tsx` claim-parity regression aligned when the contract changes.
+The homepage coverage depth must follow the executable Outcome contract, not the vision examples. Treat `watchableOutcomeKinds()` as authoritative. It currently permits Checkout, Availability and Safe Signup. Describe Signup only with its synthetic-data, exact-origin reset and cleanup, successful dry-run and fixture-version authorization boundary. Login and Password reset remain unavailable. Keep the visible protected-flow boundary and `CareHomepage.test.tsx` claim-parity regression aligned when the contract changes.
 
 Public pricing: `$49` per website per month, one free website verified weekly, Pro verified every day. Paid CTA is the waitlist, not a nameless Beta and not `/request-demo` as the Pro card. Do not print 24/7, hourly Flag audits, 3/30/90, or page counts. `/request-demo` may remain as a URL. Legal/privacy is URL-first. The Pages card is the first Site card. Recommendations stay in card depth and are not marketed as a product.
 

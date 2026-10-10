@@ -9,7 +9,7 @@ export const CARE_HOME = {
   brand: 'FixFlags', signIn: 'Sign in',
   headlineLines: ['Your software runs.', 'FixFlags watches.'],
   hero: {
-    body: 'Know when your site is down, checkout breaks, or signup stops working. FixFlags raises a Flag with what failed.',
+    body: 'FixFlags checks your live website, shows what needs attention, and lets you verify your fixes with fresh evidence.',
     proof: '100+ automated tests. Real browser journeys. Independent verification.',
     trust: 'No credit card required',
     cta: 'Analyze',
@@ -17,7 +17,7 @@ export const CARE_HOME = {
   },
   boardHost: EXAMPLE_HOST,
   boardLabel: 'Sample Site',
-  boardSummary: '4 Flags. View flags.',
+  boardSummary: '2 Flags · Analysis incomplete',
   exampleCheckedAt: '2026-09-14T09:00:00.000Z',
   boardAria: `${EXAMPLE_HOST} board`,
   details: { flagsLabel: 'Flags in this category' },
@@ -32,7 +32,7 @@ export const CARE_HOME = {
   },
   flag: {
     name: CARD_CATALOG.conversion.name,
-    status: '2 Flags',
+    status: '1 Flag',
     title: 'Add to cart stopped working',
     body: 'The cart stayed empty after Add to cart.',
     outcome: 'Complete a purchase',
@@ -81,24 +81,23 @@ export const CARE_HOME = {
   },
   conversionFlags: [
     { id: 'checkout-flag', title: 'Add to cart stopped working', href: '#flag-example' },
-    { id: 'signup-flag', title: 'Signup no longer completes', href: '#monitoring' },
   ],
   performanceFlags: [{ id: 'perf-1', title: 'Campaign page is slow', href: '#product' }],
   monitoring: {
-    label: 'Continuous monitoring',
-    title: 'Know when your site stops working.',
-    body: 'FixFlags checks the live site and raises a Flag when a page or customer journey fails.',
-    notifications: [
-      { status: 'Flag', title: 'Website is down', detail: '503 on /', time: 'Just now', tone: 'bad' },
-      { status: 'Flag', title: 'Checkout stopped working', detail: 'Canvas Tote · Cart stayed empty', time: '4 min ago', tone: 'bad' },
-      { status: 'Flag · When configured', title: 'Signup stopped working', detail: '/signup · No confirmation', time: '7 min ago', tone: 'bad' },
-      { status: 'Verified', title: 'Checkout works again', detail: 'Fresh browser journey passed', time: '12 min ago', tone: 'good' },
+    label: 'Monitoring', title: 'Know what FixFlags is watching.',
+    body: 'Analysis shows what was checked. Monitoring keeps configured behavior on a schedule.',
+    sample: 'Example schedule · after checkout recovery', configured: 'Configured behavior', last: 'Last execution', next: 'Next scheduled check',
+    rows: [
+      { name: 'Public page availability', scope: '/pricing', status: '1 Flag', state: 'problem', last: '14 Sep · 09:00 UTC', next: '15 Sep · 09:00 UTC' },
+      { name: 'Checkout', scope: 'Product → cart → checkout', status: 'Verified recovery', state: 'healthy', last: '14 Sep · 09:15 UTC', next: '15 Sep · 09:00 UTC' },
+      { name: 'Safe Signup', scope: 'An authorized fixture is required', status: 'Not configured', state: 'unknown', last: 'Not run', next: 'Not scheduled' },
     ],
+    note: 'This sample uses a daily schedule. Daily checks do not provide immediate outage detection. Broader diagnostic areas retain their own analysis time.',
   },
   workflow: {
     label: 'Flag. Fix. Verify.',
-    title: 'A green deploy does not mean the live site works.',
-    body: 'FixFlags reruns the same live journey before a Flag closes.',
+    title: 'The fix is a change. The proof is a fresh check.',
+    body: 'Pass the evidence to the person or AI making the change. Then independently verify the same behavior.',
     steps: [
       { id: 'flag', label: 'Flag', title: 'Checkout stopped working.', body: 'Product page → Add to cart → cart stayed empty.' },
       { id: 'fix', label: 'Fix', title: 'Fix the right thing.', body: 'Page, steps, observed result, expected result.' },
@@ -113,9 +112,9 @@ export const CARE_HOME = {
     compareLabel: 'Drag to compare the empty cart with the verified cart',
     passedLabel: 'Verified',
     passedTitle: 'Cart updated. Checkout opened.',
-    proofLabel: 'Live checkout journey',
+    proofLabel: 'Sample checkout journey',
     page: '/products/canvas-tote',
-    source: 'Browser journey · Product to checkout',
+    source: 'Local browser fixtures · Product to checkout',
     instructions: 'On the Canvas Tote page, select Add to cart and observe that the cart remains empty. Restore the add-to-cart action so the selected product appears in the cart and checkout remains reachable. Publish the change, then run a fresh browser journey and verify that the cart shows one item and checkout opens.',
   },
   coverage: {
@@ -166,5 +165,95 @@ export const CARE_HOME = {
     added: 'Added',
     action: 'See how each one connects',
   },
-  close: { title: 'Keep building. FixFlags keeps watch.', body: 'Start with your URL. See what works now, then keep it under watch.', pricing: 'View pricing' },
+  close: { title: 'Start with your website.', body: 'Explore the results. Choose the behavior you want to keep under watch.', pricing: 'View pricing' },
+} as const
+
+/** Illustrative analysis snapshot, not a customer assessment or live schedule. */
+export type SampleCategory = {
+  id: import('@/lib/sites/card-areas').SiteCardArea
+  name: string
+  state: import('@/lib/sites/card-areas').CardHealthState
+  answer: string
+  context: string
+  status: string
+  flagCount: number
+  scope: string
+  checkedAt: string | null
+  results: readonly { label: string; status: string; detail: string }[]
+  flag?: 'availability' | 'checkout'
+  connection?: { label: string; body: string; href: string }
+}
+
+export const HOMEPAGE_SAMPLE = {
+  exploreAction: 'Explore the sample',
+  identityAlt: 'Everyday Goods sample homepage, shown for website identity',
+  title: 'A website you can explore.',
+  body: 'Open an area to see the results and evidence.',
+  note: 'Sample snapshot. Diagnostic results and schedules are illustrative; captures come from local browser fixtures.',
+  summary: '2 Flags · Analysis incomplete',
+  snapshot: '14 Sep 2026 · 09:00 UTC',
+  snapshotLabel: 'Analysis snapshot',
+  watchLabel: 'Monitoring',
+  watchValue: '2 configured behaviors',
+  watchAction: 'View schedule',
+  coverageAction: 'View coverage',
+  analyzeAction: 'Analyze your website',
+  overviewTitle: 'Website condition',
+  overviewBody: 'Two Flags need a fix. Performance is incomplete, Security is out of date, and Tracking is not configured.',
+  coverageTitle: 'What this sample covers',
+  coverageBody: 'Analysis and scheduled behavior have different scopes. A successful result only describes the evidence shown.',
+  resultsTitle: 'Results in this area',
+  sampleLabel: 'Sample',
+  detailAction: 'View Flag and evidence',
+  backAction: 'Back to results',
+  fixTitle: 'Fix guidance',
+  observedLabel: 'Observed',
+  expectedLabel: 'Expected',
+  scopeLabel: 'Scope',
+  proofTitle: 'Fresh verification',
+  proofBody: 'The local recovery fixture shows the cart updating and checkout becoming available. This is sample proof, not a customer recovery or a run started by this page.',
+  availabilityTitle: 'Pricing page is unavailable',
+  availabilityObserved: 'A request to /pricing received HTTP 404 in the local fixture.',
+  availabilityExpected: 'The pricing page responds successfully and displays its content.',
+  availabilityFix: 'Restore the /pricing route and its content, then verify that the same URL responds successfully.',
+  availabilityPrompt: 'FixFlags sample Flag: /pricing returns HTTP 404. Restore the route and pricing content. After publishing, request a fresh independent check of /pricing and confirm a successful response. Copying this prompt does not resolve a Flag.',
+  availabilityAlt: 'Local pricing fixture: HTTP 404, page unavailable',
+  unresolved: 'Recovery has not been verified for this sample Flag.',
+  guidanceCopied: 'Sample fix guidance copied. No verification was started.',
+  copyFailed: 'Clipboard unavailable. Select and copy the guidance below.',
+  sampleCopy: 'Copy sample fix guidance',
+  connections: 'Connections add context; they do not establish recovery.',
+  recoveryAction: 'View sample recovery',
+  sources: { http: 'Local HTTP fixture', browser: 'Local browser fixture', diagnostics: 'Illustrative diagnostic results' },
+  guidanceLabel: 'Sample fix guidance',
+  availabilityScope: '/pricing · public page response',
+  checkoutExpected: 'The selected product appears in the cart and checkout opens.',
+  proofAlt: 'Local recovery fixture: Canvas Tote in the cart with checkout available',
+  notVerified: 'Not verified',
+  categories: [
+    { id: 'site', name: CARD_CATALOG.site.name, state: 'problem', answer: 'Pricing page is unavailable', context: 'Homepage and product page opened · /pricing returned HTTP 404', status: '1 Flag', flagCount: 1, flag: 'availability',
+      scope: 'Homepage, product page and pricing URL. A page response does not establish a purchase journey.', checkedAt: '2026-09-14T09:00:00Z',
+      results: [ { label: '/pricing', status: 'Flag', detail: 'HTTP 404 in the local availability fixture.' }, { label: 'Homepage and product page', status: 'Checked', detail: 'Public pages opened in the sample browser.' } ] },
+    { id: 'conversion', name: CARD_CATALOG.conversion.name, state: 'problem', answer: 'Add to cart leaves the cart empty', context: 'Canvas Tote · product to cart', status: '1 Flag', flagCount: 1, flag: 'checkout',
+      scope: 'Product → Add to cart → cart → checkout entry. No payment or real order.', checkedAt: '2026-09-14T09:00:00Z',
+      results: [ { label: 'Checkout journey', status: 'Flag', detail: 'The cart stayed empty after Add to cart.' }, { label: 'Safe Signup', status: 'Not configured', detail: 'Requires synthetic data, an exact-origin reset and cleanup path, and authorization after a successful dry run.' } ],
+      connection: { label: 'Shopify context', body: 'A connected store can add product context beside the same browser evidence.', href: '/shopify' } },
+    { id: 'security', name: CARD_CATALOG.security.name, state: 'unknown', answer: 'Earlier checks are out of date', context: 'A fresh analysis is needed', status: 'Out of date', flagCount: 0,
+      scope: 'Public security basics only. No server-side or penetration-test claim.', checkedAt: '2026-09-01T09:00:00Z',
+      results: [ { label: 'Public protections', status: 'Out of date', detail: 'The earlier illustrative result is too old to describe the current snapshot.' }, { label: 'Server-side security', status: 'Outside coverage', detail: 'Not established by public browser inspection.' } ] },
+    { id: 'search', name: CARD_CATALOG.search.name, state: 'healthy', answer: 'Checked pages can be crawled', context: 'Public search fundamentals', status: '0 Flags', flagCount: 0,
+      scope: 'Illustrative title and crawl-access results for the homepage and product page. No ranking claim.', checkedAt: '2026-09-14T09:00:00Z',
+      results: [ { label: 'Page titles', status: 'Checked', detail: 'Both sample pages have descriptive titles.' }, { label: 'Crawl access', status: 'Checked', detail: 'The illustrative pages allow search-engine access.' }, { label: 'Search rankings', status: 'Outside coverage', detail: 'Crawlability does not establish visibility or rankings.' } ],
+      connection: { label: 'Search Console context', body: 'A connection adds search-performance context alongside technical analysis.', href: '/integrations#search-console' } },
+    { id: 'performance', name: CARD_CATALOG.performance.name, state: 'unknown', answer: 'Performance analysis is incomplete', context: 'Mobile measurement unavailable', status: 'Partial', flagCount: 0,
+      scope: 'This illustrative snapshot has no complete mobile lab measurement. No loading-time value is asserted.', checkedAt: null,
+      results: [ { label: 'Mobile lab measurement', status: 'Unavailable', detail: 'The run did not produce a usable measurement.' }, { label: 'Next step', status: 'Recommendation', detail: 'Run analysis again before drawing a performance conclusion.' } ] },
+    { id: 'tracking', name: CARD_CATALOG.tracking.name, state: 'unknown', answer: 'Expected events are not configured', context: 'No event-delivery conclusion', status: 'Not configured', flagCount: 0,
+      scope: 'Public instrumentation can be observed; expected event delivery requires defined scope.', checkedAt: null,
+      results: [ { label: 'Expected events', status: 'Not configured', detail: 'This sample has no agreed events to verify.' }, { label: 'Next step', status: 'Recommendation', detail: 'Define the events that matter before treating a missing event as a Flag.' } ],
+      connection: { label: 'Analytics context', body: 'Audience context enriches the result. Session counts do not verify a journey.', href: '/integrations#analytics' } },
+    { id: 'accessibility', name: CARD_CATALOG.accessibility.name, state: 'healthy', answer: 'Public-page essentials checked', context: 'Automated checks · 2 sample pages', status: '0 Flags', flagCount: 0,
+      scope: 'Illustrative automated results on the homepage and product page. Human accessibility review remains outside this sample.', checkedAt: '2026-09-14T09:00:00Z',
+      results: [ { label: 'Controls have names', status: 'Checked', detail: 'The sample reports names for the public controls it inspected.' }, { label: 'Human review', status: 'Outside coverage', detail: 'Automated checks cannot establish complete accessibility.' } ] },
+  ] as readonly SampleCategory[],
 } as const
