@@ -76,8 +76,8 @@ function CardMedia({
   )
 }
 
-export function BoardGrid({ children }: { children: React.ReactNode }) {
-  return <div className={styles.grid}>{children}</div>
+export function BoardGrid({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={`${styles.grid} ${className ?? ''}`.trim()}>{children}</div>
 }
 
 export function BoardStatus({ state, label, text = label, count = 0, onOpen, showText = false }: {

@@ -22,17 +22,30 @@ export function HomepageIntro({ label, title, body }: { label?: string; title: s
 export function HomepageUrlEntry({ final = false }: { final?: boolean }) {
   useEffect(() => {
     if (final) return
-    const focusFromHash = () => {
-      if (window.location.hash !== '#analyze') return
+    const focusField = () => {
       const field = document.getElementById('audit-url-care-hero') as HTMLInputElement | null
       if (!field) return
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
       field.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' })
       window.requestAnimationFrame(() => field.focus({ preventScroll: true }))
     }
+    const focusFromHash = () => {
+      if (window.location.hash === '#analyze') focusField()
+    }
+    const focusFromLink = (event: MouseEvent) => {
+      const link = (event.target as Element | null)?.closest<HTMLAnchorElement>('a[href]')
+      if (!link) return
+      const destination = new URL(link.href, window.location.href)
+      if (destination.origin !== window.location.origin || destination.pathname !== window.location.pathname || destination.hash !== '#analyze') return
+      window.requestAnimationFrame(focusField)
+    }
     focusFromHash()
     window.addEventListener('hashchange', focusFromHash)
-    return () => window.removeEventListener('hashchange', focusFromHash)
+    document.addEventListener('click', focusFromLink)
+    return () => {
+      window.removeEventListener('hashchange', focusFromHash)
+      document.removeEventListener('click', focusFromLink)
+    }
   }, [final])
 
   return <div className={s.entry} id={final ? undefined : 'analyze'}>

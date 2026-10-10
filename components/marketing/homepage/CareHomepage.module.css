@@ -215,7 +215,7 @@
 .notification h3 { margin-top: 18px; font-size: 18px; font-weight: 550; line-height: 1.28; letter-spacing: -.025em; }
 .notification p { margin-top: 7px; font-family: var(--font-mono); font-size: 11px; line-height: 1.5; color: hsl(var(--primary-foreground) / .68); }
 
-.integrations { position: relative; background: #090909; color: #fff; }
+.integrations { position: relative; background: rgb(9 9 9); color: rgb(255 255 255); }
 .integrations .intro { max-width: 690px; }
 .integrations .intro > p:last-child { color: rgb(255 255 255 / .68); }
 .orbitalField { position: relative; min-height: 540px; margin-top: 44px; overflow: hidden; border: 1px solid rgb(255 255 255 / .12); border-radius: 22px; isolation: isolate; }
@@ -225,18 +225,18 @@
 .orbitalCenter > span { font-size: 17px; font-weight: 700; }
 .orbitalCenter small { color: rgb(255 255 255 / .58); font-size: 10px; }
 .integrationOrbit { position: absolute; inset: 0; }
-.integrationNode { position: absolute; display: flex; align-items: center; gap: 12px; width: min(260px, calc(50% - 90px)); min-height: 82px; padding: 13px; border: 1px solid rgb(255 255 255 / .14); border-radius: 14px; background: rgb(10 10 10 / .8); color: #fff; box-shadow: 0 16px 44px rgb(0 0 0 / .35); backdrop-filter: blur(10px); }
+.integrationNode { position: absolute; display: flex; align-items: center; gap: 12px; width: min(260px, calc(50% - 90px)); min-height: 82px; padding: 13px; border: 1px solid rgb(255 255 255 / .14); border-radius: 14px; background: rgb(10 10 10 / .8); color: rgb(255 255 255); box-shadow: 0 16px 44px rgb(0 0 0 / .35); backdrop-filter: blur(10px); }
 .integrationNode:hover { border-color: hsl(var(--brand)); transform: translateY(-2px); }
 .integrationNode[data-integration='shopify'] { top: 13%; left: 7%; }
 .integrationNode[data-integration='analytics'] { top: 12%; right: 7%; }
 .integrationNode[data-integration='search-console'] { bottom: 12%; left: 9%; }
 .integrationNode[data-integration='github'] { right: 8%; bottom: 13%; }
-.integrationLogo { display: grid; place-items: center; width: 46px; height: 46px; flex: 0 0 46px; border-radius: 12px; background: #fff; }
+.integrationLogo { display: grid; place-items: center; width: 46px; height: 46px; flex: 0 0 46px; border-radius: 12px; background: rgb(255 255 255); }
 .integrationLogo img { width: 27px; height: 27px; }
 .integrationNode > span:last-child { display: grid; gap: 4px; min-width: 0; }
 .integrationNode strong { font-size: 14px; }
 .integrationNode small { color: rgb(255 255 255 / .62); font-size: 11px; line-height: 1.4; }
-.integrationLink { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; margin-top: 20px; color: #fff; font-size: 13px; font-weight: 600; }
+.integrationLink { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; margin-top: 20px; color: rgb(255 255 255); font-size: 13px; font-weight: 600; }
 .integrationLink:hover { color: hsl(var(--brand)); }
 
 .final { text-align: center; padding-top: 76px; padding-bottom: 76px; }
@@ -301,27 +301,29 @@
   .heroBoard { margin-top: 36px; }
   .board { padding: 14px; border-radius: 16px; }
   .boardHeader { margin-bottom: 16px; }
-  .section { padding: 56px 24px; }
+  .heroBoardGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .heroBoardGrid > :first-child { grid-column: 1 / -1; }
+  .section { padding: 44px 24px; }
   .workflow { padding-top: 48px; }
   .intro h2, .final h2 { font-size: clamp(34px, 8vw, 44px); }
   .intro > p:last-child:not(.eyebrow) { margin-top: 16px; font-size: 16px; }
   .workflowGrid, .monitoring { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .workflowGrid { display: flex; flex-direction: column; margin-top: 30px; }
   .evidenceStage { position: relative; top: auto; z-index: 0; order: -1; padding-bottom: 4px; background: hsl(var(--background)); }
-  .compareFrame { width: min(88vw, 310px); aspect-ratio: 390 / 540; }
+  .compareFrame { width: min(88vw, 300px); aspect-ratio: 390 / 540; }
   .workflowSteps li { min-height: auto; padding-bottom: 24px; }
   .flagDock { left: 8px; right: 8px; bottom: 8px; }
   .flagDock strong { font-size: 12px; }
   .boardAdd { min-height: 72px; padding: 16px; flex-direction: row; align-items: center; }
   .coverageGrid { grid-template-columns: minmax(0, 1fr); margin-top: 30px; }
-  .coverageCard { min-height: 148px; padding: 20px; }
+  .coverageCard { min-height: 140px; padding: 20px; }
   .coverageOutcome { padding-top: 22px; }
   .coverageShared { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 18px 20px; }
   .actionWorkbench { margin-top: 38px; }
   .actionRoutes article { grid-template-columns: 44px minmax(0, 1fr); }
   .actionRoutes article > button { grid-column: 2; grid-row: 3; justify-self: start; padding-inline: 0; }
   .actionRoutes .copyStatus { grid-row: 4; }
-  .monitoring { min-height: 0; padding-top: 60px; padding-bottom: 60px; }
+  .monitoring { min-height: 0; padding-top: 52px; padding-bottom: 52px; }
   .notificationStack { grid-template-columns: minmax(0, 1fr); }
   .orbitalField { min-height: 420px; margin-top: 30px; }
   .orbitalCenter { top: 50%; width: 118px; padding: 14px; }
@@ -336,7 +338,7 @@
   .integrationLogo img { width: 22px; height: 22px; }
   .integrationNode strong { font-size: 12px; }
   .integrationNode small { font-size: 9px; line-height: 1.25; }
-  .final { padding-top: 64px; padding-bottom: 64px; }
+  .final { padding-top: 56px; padding-bottom: 56px; }
   .dialog { width: calc(100% - 32px); padding: 28px 22px; }
 }
 

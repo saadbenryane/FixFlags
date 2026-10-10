@@ -48,7 +48,7 @@ export function HomepageHero({
           ))}
         </ul> : null}
         <div className={s.boardStage}>
-          <BoardGrid>
+          <BoardGrid className={s.heroBoardGrid}>
             <BoardCard
               name={C.site.label}
               status={C.site.status}
@@ -103,7 +103,7 @@ export function HomepageHero({
                 showFlagPreview
               />
             })}
-            <button type="button" className="flex min-h-[164px] flex-col items-start justify-center gap-3 rounded-card border border-dashed border-border bg-transparent p-[18px] text-left hover:border-foreground/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setAddOpen(true)}>
+            <button type="button" className={s.boardAdd} onClick={() => setAddOpen(true)}>
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted" aria-hidden="true"><Plus size={22} /></span>
               <strong className="text-sm font-medium">{SITE_BOARD_COPY.addCard}</strong>
             </button>

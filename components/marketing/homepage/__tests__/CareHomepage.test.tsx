@@ -44,24 +44,23 @@ describe('homepage conversion story', () => {
     expect(within(compareSection!).getAllByText(SITE_COMPARE.columns[0].label).length).toBeGreaterThan(0)
     expect(within(compareSection!).getAllByText(SITE_COMPARE.columns[1].label).length).toBeGreaterThan(0)
     expect(within(compareSection!).getByRole('columnheader', { name: SITE_COMPARE.columns[2].label })).toBeInTheDocument()
-    expect(within(compareSection!).getByText(SITE_COMPARE.subline)).toBeInTheDocument()
+    expect(within(compareSection!).getByText((content) => content.includes(SITE_COMPARE.subline))).toBeInTheDocument()
   })
 
-  it('follows the reading position forward and backward through all three steps', async () => {
-    let offset = 0
-    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      const index = C.workflow.steps.findIndex(step => step.id === this.dataset.step)
-      return { top: index * 500 + 300 - offset } as DOMRect
-    })
+  it('renders one accessible comparison matrix at every viewport', () => {
+    render(<CareHomepage />)
+    const table = screen.getByRole('table', { name: SITE_COMPARE.mobileLabel })
+    expect(within(table).getAllByRole('row')).toHaveLength(SITE_COMPARE.rows.length + 1)
+    expect(within(table).getByLabelText('Datadog Synthetics: Browser checkout journey supported, Authored')).toBeInTheDocument()
+    expect(within(table).getByLabelText('UptimeRobot: Browser checkout journey not included')).toBeInTheDocument()
+  })
+
+  it('renders the three workflow steps without scroll-gated content', () => {
     render(<CareHomepage />)
     const workflow = document.getElementById('flag-example')!
-    expect(workflow).toHaveAttribute('data-active-step', 'flag')
-    for (const index of [1, 2, 1, 0]) {
-      offset = index * 500
-      fireEvent.scroll(window)
-      await waitFor(() => expect(workflow).toHaveAttribute('data-active-step', C.workflow.steps[index].id))
-      expect(workflow.querySelectorAll('[aria-current="step"]')).toHaveLength(1)
-    }
+    expect(workflow).not.toHaveAttribute('data-active-step')
+    expect(workflow.querySelectorAll('[data-step]')).toHaveLength(3)
+    expect(workflow.querySelectorAll('[aria-current="step"]')).toHaveLength(0)
   })
 
   it('keeps the established hero and real Analyze entry points', () => {
@@ -84,6 +83,8 @@ describe('homepage conversion story', () => {
     expect(within(board).getByRole('button', { name: 'Open Performance' })).toHaveTextContent('1 Flag')
     expect(within(board).getByText(C.boardLabel)).toBeInTheDocument()
     expect(within(board).getByText(C.flag.title)).toBeInTheDocument()
+    expect(within(board).getByText(C.conversionFlags[1].title)).toBeInTheDocument()
+    expect(within(board).queryByText('0 Flags')).not.toBeInTheDocument()
     expect(within(board).queryByRole('button', { name: /Checkout: Flag/ })).not.toBeInTheDocument()
     expect(within(board).queryByText(/contact/i)).not.toBeInTheDocument()
   })
@@ -105,7 +106,7 @@ describe('homepage conversion story', () => {
     card.focus()
     fireEvent.click(card)
     const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByText(C.flag.title)).toBeInTheDocument()
+    for (const flag of C.conversionFlags) expect(within(dialog).getByText(flag.title)).toBeInTheDocument()
     expect(within(dialog).getByRole('img', { name: C.flag.cropAlt })).toHaveAttribute('src', '/marketing/evidence/purchase-broken.png')
     expect(within(dialog).getByRole('button', { name: SITE_BOARD_COPY.copyPrompt })).toBeInTheDocument()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
@@ -119,6 +120,9 @@ describe('homepage conversion story', () => {
       expect(screen.getByText(audience.monitored)).toBeInTheDocument()
     }
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+    const coverage = screen.getByRole('heading', { name: C.coverage.title }).closest('section')!
+    expect(coverage.querySelector('svg')).toBeNull()
+    expect(within(coverage).getByText(C.coverage.analysis.join(' · '))).toBeInTheDocument()
   })
 
   it('keeps public Outcome claims aligned with the executable monitoring contract', () => {
@@ -126,7 +130,7 @@ describe('homepage conversion story', () => {
     const watchable = new Set(watchableOutcomeKinds())
     const claimPatterns = {
       CHECKOUT: /(?:checkout|purchase flow)/i,
-      AVAILABILITY: /(?:pages? (?:stay )?(?:available|reachable)|product pages load)/i,
+      AVAILABILITY: /(?:pages? (?:stay )?(?:available|reachable)|public page availability|product pages load)/i,
       SIGNUP: /sign\s?up/i,
       LOGIN: /log\s?in|login/i,
       PASSWORD_RESET: /password reset/i,
@@ -138,7 +142,7 @@ describe('homepage conversion story', () => {
     expect(claims).not.toMatch(/forms? submit|core actions complete|success states appear/i)
 
     render(<CareHomepage />)
-    expect(screen.getByText(C.coverage.audiences[2].boundary)).toBeVisible()
+    expect(screen.getByText(C.coverage.boundary)).toBeVisible()
   })
 
   it('keeps each audience and monitored outcome visible in the document order', () => {
@@ -213,5 +217,6 @@ describe('homepage conversion story', () => {
     expect(container.textContent).not.toMatch(/Connect MCP|MCP (watches|monitors)|real visitor failures|paid traffic/i)
     expect(container.textContent).not.toMatch(/controlled example|not a live assessment|testimonial|customers saved/i)
     expect(container.textContent).not.toMatch(/The proof is ready|Safe Form fixture|An important outcome changed|Evidence and the next step are ready|PageSpeed Insights|An agent you ask/i)
+    expect(container.textContent).not.toMatch(/A page can disappear|The button responds\. The cart stays empty|Can people reach it\?|Did the fix restore it\?/i)
   })
 })

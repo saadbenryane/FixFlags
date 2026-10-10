@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { usePathname } from 'next/navigation'
 import { Footer } from '@/components/layout/footer'
 import { BRAND } from '@/lib/marketing/copy'
@@ -35,6 +35,10 @@ const LEGACY_TAGLINE =
 const LEGACY_MADE_WITH = 'Built for businesses that depend on their website.'
 
 describe('Footer', () => {
+  beforeEach(() => {
+    vi.mocked(usePathname).mockReturnValue('/pricing')
+  })
+
   it('renders the canonical brand tagline and category', () => {
     render(<Footer />)
 
