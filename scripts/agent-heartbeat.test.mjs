@@ -1,54 +1,25 @@
 #!/usr/bin/env node
-/**
- * Unit tests for the FixFlags company readout (scripts/agent-heartbeat.mjs).
- * Parses fixture BOARD/GOAL content through the script's --json mode and
- * asserts the deterministic payload shape consumed by the heartbeat packet.
- *
- * Usage:
- *   node scripts/agent-heartbeat.test.mjs
- *   npm run test:heartbeat
- */
+/** Unit tests for the deterministic live-lease heartbeat readout. */
 
-import { execFileSync } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const scriptPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "agent-heartbeat.mjs");
+const scriptPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'agent-heartbeat.mjs')
+let passed = 0
+let failed = 0
 
-let passed = 0;
-let failed = 0;
-
-function ok(name) {
-  passed += 1;
-  console.log(`  ok   ${name}`);
+function assert(condition, name, detail = '') {
+  if (condition) {
+    passed += 1
+    console.log(`  ok   ${name}`)
+  } else {
+    failed += 1
+    console.error(`  FAIL ${name}${detail ? ` — ${detail}` : ''}`)
+  }
 }
-
-function bad(name, detail = "") {
-  failed += 1;
-  console.error(`  FAIL ${name}${detail ? ` — ${detail}` : ""}`);
-}
-
-function assert(cond, name, detail = "") {
-  if (cond) ok(name);
-  else bad(name, detail);
-}
-
-const FIXTURE_BOARD = `# Task Board
-
-| Task ID               | Status      | Owner      | Branch/worktree | Scope         | Files/areas | Dependencies | Updated |
-| --------------------- | ----------- | ---------- | --------------- | ------------- | ----------- | ------------ | ------- |
-| task-one              | in-progress | agent-a    | main            | Scope A       | files-a     | none         | 2026-08-10 |
-| task-two              | blocked     | agent-b    | main            | Scope B       | files-b     | dep-b        | 2026-08-09 |
-| task-three            | done        | agent-c    | main            | Scope C       | files-c     | none         | 2026-08-08 |
-
-## Completed
-
-| Task ID      | Owner    | Scope | Completed |
-| ------------ | -------- | ----- | --------- |
-| old-task     | agent-x  | old   | 2026-07-01 |
-`;
 
 const FIXTURE_GOAL = `# Goal state
 
@@ -64,124 +35,103 @@ const FIXTURE_GOAL = `# Goal state
 | Turn | Work | Proof | Verdict | Reason |
 |------|------|-------|---------|--------|
 | 1 | Did a thing. | passed | PARTIAL | More to do. |
-`;
+`
+
+function git(cwd, args) {
+  execFileSync('git', args, { cwd, stdio: 'ignore' })
+}
 
 function runReadout(cwd, args = []) {
-  return execFileSync(process.execPath, [scriptPath, ...args], { cwd, encoding: "utf8" });
+  return execFileSync(process.execPath, [scriptPath, ...args], { cwd, encoding: 'utf8' })
 }
 
-function runReadoutExpectFailure(cwd, args = []) {
-  try {
-    execFileSync(process.execPath, [scriptPath, ...args], {
-      cwd,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    return { ok: true };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : `${error}`;
-    return { ok: false, message };
+function withFixture(callback) {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'hb-readout-'))
+  fs.mkdirSync(path.join(directory, '.agents'), { recursive: true })
+  fs.writeFileSync(path.join(directory, '.agents', 'GOAL.md'), FIXTURE_GOAL)
+  git(directory, ['init', '-q'])
+  const leaseDirectory = path.join(directory, '.git', 'fixflags-agent', 'leases')
+  fs.mkdirSync(leaseDirectory, { recursive: true })
+  const now = Date.now()
+  const leases = [
+    {
+      schemaVersion: 1,
+      taskId: 'task-one',
+      title: 'Task one',
+      owner: 'agent-a',
+      scope: 'Scope A',
+      relatedPaths: ['files-a'],
+      worktree: directory,
+      status: 'in_progress',
+      createdAt: new Date(now - 3_600_000).toISOString(),
+      updatedAt: new Date(now - 60_000).toISOString(),
+      expiresAt: new Date(now + 86_400_000).toISOString(),
+    },
+    {
+      schemaVersion: 1,
+      taskId: 'task-two',
+      title: 'Task two',
+      owner: 'agent-b',
+      scope: 'Scope B',
+      relatedPaths: ['files-b'],
+      worktree: directory,
+      status: 'claimed',
+      createdAt: new Date(now - 172_800_000).toISOString(),
+      updatedAt: new Date(now - 172_800_000).toISOString(),
+      expiresAt: new Date(now - 86_400_000).toISOString(),
+    },
+  ]
+  for (const lease of leases) {
+    fs.writeFileSync(path.join(leaseDirectory, `${lease.taskId}.json`), `${JSON.stringify(lease, null, 2)}\n`)
   }
-}
-
-function withFixture(fn) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hb-readout-"));
-  fs.mkdirSync(path.join(dir, ".agents"), { recursive: true });
-  fs.writeFileSync(path.join(dir, ".agents", "BOARD.md"), FIXTURE_BOARD);
-  fs.writeFileSync(path.join(dir, ".agents", "GOAL.md"), FIXTURE_GOAL);
   try {
-    return fn(dir);
+    return callback(directory, leaseDirectory)
   } finally {
-    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(directory, { recursive: true, force: true })
   }
 }
 
-withFixture((dir) => {
-  const out = JSON.parse(runReadout(dir, ["--json"]));
-  assert(out.ok === true, "json: ok flag");
-  assert(out.board.counts["in-progress"] === 1 && out.board.counts.blocked === 1 && out.board.counts.done === 1, `json: board counts (got ${JSON.stringify(out.board.counts)})`);
-  assert(out.board.counts.done === 1, "json: completed section excluded from active counts");
-  assert(out.board.blocked.length === 1 && out.board.blocked[0].id === "task-two" && out.board.blocked[0].owner === "agent-b", "json: blocked rows with id/owner");
-  assert(out.board.queued.length === 0, "json: no queued rows in fixture");
-  assert(out.goal.status === "active" && out.goal.condition.includes("Something complete"), "json: goal status + condition");
-  assert(out.goal.lastTurn.includes("Did a thing"), "json: last logged turn captured");
-  assert(out.nextOwner && out.nextOwner.task === "task-two" && out.nextOwner.owner === "agent-b", "json: next owner = first blocked row");
-  assert(out.warnings.length === 0, "json: clean fixture produces no warnings");
+withFixture((directory) => {
+  const output = JSON.parse(runReadout(directory, ['--json']))
+  assert(output.ok === true, 'json: ok flag')
+  assert(output.ownership.counts['in-progress'] === 1, 'json: active lease count')
+  assert(output.ownership.expired.length === 1 && output.ownership.expired[0].id === 'task-two', 'json: expired lease surfaced')
+  assert(output.goal.status === 'active' && output.goal.condition.includes('Something complete'), 'json: goal status and condition')
+  assert(output.goal.lastTurn.includes('Did a thing'), 'json: last logged turn captured')
+  assert(output.nextOwner?.task === 'Task one' && output.nextOwner.owner === 'agent-a', 'json: live in-progress lease is next owner')
+  assert(output.unresolvedWork[0].actionHint === 'revalidate-or-reclaim', 'json: expired lease requires explicit action')
 
-  const human = runReadout(dir, ["--tier=weekly"]);
-  assert(human.includes("🟡 in-progress: 1") && human.includes("🚫 blocked: 1"), "human: emoji counts");
-  assert(human.includes("Active goal status: active"), "human: goal line in daily/weekly tiers");
-  assert(human.includes("task-two [blocked] owner=agent-b"), "human: next owner action");
+  const weekly = runReadout(directory, ['--tier=weekly'])
+  assert(weekly.includes('active leases: 1') && weekly.includes('expired: 1'), 'human: live and expired counts')
+  assert(weekly.includes('Active goal status: active'), 'human: goal line in weekly tier')
+  assert(weekly.includes('Task one [in-progress] owner=agent-a'), 'human: live ownership details')
+})
 
-  const operational = runReadout(dir, ["--tier=operational"]);
-  assert(!operational.includes("Active goal status"), "human: operational tier omits goal section");
-});
+withFixture((directory, leaseDirectory) => {
+  fs.writeFileSync(path.join(leaseDirectory, 'bad.json'), '{not json')
+  const output = JSON.parse(runReadout(directory, ['--json']))
+  assert(output.warnings.some((warning) => warning.type === 'lease_readout'), 'json: malformed lease warning surfaced')
+})
 
-withFixture((dir) => {
-  const boardPath = path.join(dir, ".agents", "BOARD.md");
-  const malformedBoard = [
-    "# Task Board",
-    "",
-    "| Task ID               | Status      | Owner      | Branch/worktree | Scope         | Files/areas | Dependencies | Updated |",
-    "| --------------------- | ----------- | ---------- | --------------- | ------------- | ----------- | ------------ | ------- |",
-    "| task-two              | blocked     | agent-b    | main            | Scope B       | files-b     | dep-b        | 2026-08-09 |",
-    "| malformed-row-no-status",
-    "| task-one              | unknown     | agent-a    | main            | Scope A       | files-a     | none         | 2026-08-10 |",
-    "| task-three            | done        | agent-c    | main            | Scope C       | files-c     | none         | 2026-08-08 |",
-    "",
-    "## Completed",
-    "| Task ID      | Owner    | Scope | Completed |",
-    "| ------------ | -------- | ----- | --------- |",
-    "| old-task     | agent-x  | old   | 2026-07-01 |",
-  ].join("\n");
+withFixture((directory) => {
+  fs.unlinkSync(path.join(directory, '.agents', 'GOAL.md'))
+  const output = JSON.parse(runReadout(directory, ['--json']))
+  assert(output.goal.status === 'unavailable', 'json: missing GOAL.md is explicit')
+  assert(output.goal.warning === 'GOAL.md is missing', 'json: missing GOAL.md warning present')
+})
 
-  fs.writeFileSync(boardPath, malformedBoard, "utf8");
-  const out = JSON.parse(runReadout(dir, ["--json"]));
-  assert(out.board.counts["blocked"] === 1 && out.board.counts["done"] === 1, "json: malformed rows are ignored");
-  assert(Array.isArray(out.warnings) && out.warnings.length >= 1, "json: malformed/invalid rows are surfaced in warnings");
-});
+const outsideGit = fs.mkdtempSync(path.join(os.tmpdir(), 'hb-readout-no-git-'))
+try {
+  let failure = ''
+  try {
+    runReadout(outsideGit, ['--json'])
+  } catch (error) {
+    failure = error instanceof Error ? error.message : String(error)
+  }
+  assert(failure.includes('Could not read live leases'), 'json: missing Git lease store exits with explicit failure')
+} finally {
+  fs.rmSync(outsideGit, { recursive: true, force: true })
+}
 
-withFixture((dir) => {
-  const boardPath = path.join(dir, ".agents", "BOARD.md");
-  const compactSeparatorBoard = `# Task Board
-
-| Task ID | Status | Owner | Branch/worktree | Scope | Files/areas | Dependencies | Updated |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| task-proposed | proposed | agent-d | main | Scope D | files-d | none | 2026-08-31 |
-| task-claimed | claimed | agent-e | main | Scope E | files-e | none | 2026-08-31 |
-| task-underscore | in_progress | agent-f | main | Scope F | files-f | none | 2026-08-31 |
-| task-superseded | superseded | agent-g | main | Scope G | files-g | none | 2026-08-31 |
-| task-parked | parked | agent-h | main | Scope H | files-h | none | 2026-08-31 |
-
-## Completed
-
-| Task ID | Owner | Scope | Completed |
-| --- | --- | --- | --- |
-| old-task | agent-x | old | 2026-07-01 |
-`;
-  fs.writeFileSync(boardPath, compactSeparatorBoard, "utf8");
-  const out = JSON.parse(runReadout(dir, ["--json"]));
-  assert(out.warnings.length === 0, `json: compact Markdown separators are ignored (warnings=${JSON.stringify(out.warnings)})`);
-  assert(out.board.counts.proposed === 1, `json: proposed is a valid board status (got ${JSON.stringify(out.board.counts)})`);
-  assert(out.board.counts.claimed === 1, "json: claimed is a valid board status");
-  assert(out.board.counts["in-progress"] === 1, "json: in_progress normalizes to in-progress");
-  assert(out.board.counts.superseded === 1, "json: superseded is a valid inactive board status");
-  assert(out.board.counts.parked === 1, "json: parked is a valid inactive board status");
-  assert(!Object.keys(out.board.counts).includes("---"), "json: separator cells are not treated as task ids");
-});
-
-withFixture((dir) => {
-  fs.unlinkSync(path.join(dir, ".agents", "GOAL.md"));
-  const out = JSON.parse(runReadout(dir, ["--json"]));
-  assert(out.goal.status === "unavailable", "json: missing GOAL.md → explicit unavailable");
-  assert(out.goal.warning === "GOAL.md is missing", "json: missing GOAL.md warning present");
-});
-
-withFixture((dir) => {
-  fs.unlinkSync(path.join(dir, ".agents", "BOARD.md"));
-  const result = runReadoutExpectFailure(dir, ["--json"]);
-  assert(!result.ok, "json: missing BOARD.md exits with failure");
-  assert(typeof result.message === "string" && result.message.includes("Could not read .agents/BOARD.md"), "json: missing BOARD.md surfaces read error");
-});
-console.log(`\nagent-heartbeat: ${passed} passed, ${failed} failed`);
-process.exitCode = failed > 0 ? 1 : 0;
+console.log(`\nagent-heartbeat: ${passed} passed, ${failed} failed`)
+process.exitCode = failed > 0 ? 1 : 0

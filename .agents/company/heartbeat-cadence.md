@@ -53,11 +53,11 @@ decision need, owner). No fabricated metrics: every line names its source.
 
 ### Operational (every 6h) — the agent productivity pulse
 
-- Board pulse: status counts; top blocked + queued items with owners.
+- Ownership pulse: active and expired leases, direct conflicts, and owners.
 - Fleet health: per company session (role/scope, streaming, status error flags,
   turns since last wake).
 - Turns run per company session since its last wake (from session files).
-- Board deltas since last wake: rows completed, newly blocked.
+- Ownership deltas since last wake: leases opened, finished, expired, or newly conflicting.
 - Goal status + last logged turn.
 - Next owner: one owner + action (from the readout).
 - NO-OP rule: nothing meaningful → reply `noop`, no escalation.
@@ -66,7 +66,7 @@ decision need, owner). No fabricated metrics: every line names its source.
 
 Everything in operational, plus:
 
-- What changed since yesterday: completed rows, newly blocked rows, turns run
+- What changed since yesterday: lease completions, expiries or conflicts, turns run
   per session.
 - Objective progress one-liner (GOAL.md status) with evidence.
 - Open decision needs / escalations (max 2, founder format when a decision is
@@ -80,7 +80,7 @@ Mirrors `customer-weekly-heartbeat.md` (customer scope) generalized:
 - Company / project / week.
 - Top 5 signals with proof links.
 - Objective progress per objective: Blocked / At risk / On track + one-line evidence.
-- Backlog pressure: queued count, blocked > 72h count, top 3 urgency blockers.
+- Execution pressure: active count, expired leases, direct conflicts, and the top unresolved objective constraints.
 - Decision need: single question + recommendation + cost of waiting.
 - Next action owner + deadline.
 - Strategic scan status (ALIGNED / EVOLVE / DEFER / CONFLICT) when a directive was issued.
@@ -90,20 +90,20 @@ Mirrors `customer-weekly-heartbeat.md` (customer scope) generalized:
 
 | Signal | Source | Provider |
 |--------|--------|----------|
-| Board counts, blocked/queued, next owner | `.agents/BOARD.md` | `scripts/agent-heartbeat.mjs --json` (fixflags) |
+| Live ownership, expiries/conflicts, next owner | Git-common-dir lease store | `scripts/agent-heartbeat.mjs --json` (fixflags) |
 | Goal status, condition, last turn | `.agents/GOAL.md` | same readout |
 | Company session status/streaming | `data/subagents.json` (ceo/executive rows) | `companyRecords` |
 | Turns since last wake per session | `~/.pi/agent/sessions/<cwd>/<ts>_<id>.jsonl` | `countTurnsSince` |
 | Crew/subagent fleet counts | `data/subagents.json` (crewmate/secondmate/scout) | `readFleet` |
 
-A provider that fails is reported **explicitly** (`board readout unavailable —
+A provider that fails is reported **explicitly** (`lease readout unavailable —
 reason`), never silently omitted.
 
 ## Persistence & history
 
 - **State file** `data/company-heartbeat-state.json`: per-session
   `lastRunAt`, `lastOperationalAt`, `lastDailyAt`, `lastWeeklyAt`, and the last
-  board snapshot (for deltas). Written after every wake; survives restarts so
+  ownership snapshot (for deltas). Written after every wake; survives restarts so
   cadence is real, not reset.
 - **History log** `data/company-heartbeat-history.jsonl`: append-only,
   bounded (default 200 entries). One line per wake:

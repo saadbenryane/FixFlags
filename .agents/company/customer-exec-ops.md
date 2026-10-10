@@ -8,10 +8,10 @@ This document is canonical for FixFlags executive worker dispatch and reporting 
 ## FixFlags executive memory stack (required)
 Use only canonical files; never rely on chat memory.
 
-- **Signals & board state:** `.agents/BOARD.md`
+- **Live ownership:** `npm run agent -- ownership`
 - **Objective state:** `.agents/GOAL.md`
 - **Cross-project context:** `knowledge/README.md`
-- **Session outcome logs:** `.agents/sessions/<YYYY-MM-DD>-<task-id>-<agent>.md`
+- **Durable task outcomes:** `.agents/history/tasks/<task-id>.md` when the work is multi-step or decision-heavy
 - **Durable learnings:** `.agents/learnings/`
 
 ## Worker personas (FixFlags executive)
@@ -29,8 +29,8 @@ One worker per narrow scope. All three default to free models and autonomy level
 
 ### Persona B: FixFlags Backlog Prioritizer
 - Role: convert signals into queue priorities tied to objectives and backlog pressure.
-- Scope: objective vs backlog alignment, objective progress gaps, blocked items.
-- Modality: deterministic checks (BOARD, GOAL, objective artifacts) + concise LLM judgement.
+- Scope: objective vs execution alignment, objective progress gaps, expired or conflicting ownership.
+- Modality: deterministic checks (live leases, GOAL, objective artifacts) + concise LLM judgement.
 - Allowed budget: 3,000 tokens or 1 hour wall time.
 - Success criteria: ranked backlog action list with estimated delay cost.
 
@@ -50,7 +50,7 @@ Template for CEO-ready weekly review:
 
 - **Signal:** 5 strongest product/market signals with proof links.
 - **Objective progress:** one line per objective; status = Blocked / At risk / On track.
-- **Backlog pressure:** queued count, items blocked > 72h, top 3 urgency blockers.
+- **Execution pressure:** active and expired leases, conflicts, and top unresolved objective constraints.
 - **Decision need:** single recommendation and impact of waiting.
 
 Use concise language; evidence links over prose. No invented metrics.

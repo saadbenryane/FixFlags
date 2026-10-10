@@ -29,8 +29,9 @@ substituting synthetic production proof.
 
 ## Work discipline
 
-Claim non-overlapping scope on [.agents/BOARD.md](../.agents/BOARD.md), inspect
-the current workspace, and preserve other work. Record a capability as planned,
+Inspect live ownership with `npm run agent -- ownership`, claim substantial
+write scope with `npm run agent -- task claim`, inspect the current workspace,
+and preserve other work. Record a capability as planned,
 implemented, locally verified, production verified, or customer validated.
 Only exact-candidate receipts may advance launch acceptance. A clean working
 tree, unit test, or local manifest does not attest production behavior.

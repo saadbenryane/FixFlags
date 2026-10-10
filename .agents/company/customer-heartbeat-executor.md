@@ -3,9 +3,9 @@
 Run this at each **weekly founder review** wake (no automatic noisy check-ins; operational ping remains internal only). Keep it deterministic-first.
 
 ## Wake procedure
-1. Read `.agents/BOARD.md` — active tasks, ownership, blocked items.
+1. Run `npm run agent -- ownership` — active leases, expiries, and direct conflicts.
 2. Read `.agents/GOAL.md` — objective condition, proof, turn log, verdicts.
-3. Read latest `.agents/sessions/*` for outcomes and open context.
+3. Read a relevant task history or session only when the objective points to it; never load the archive by default.
 4. Scan `.agents/learnings/` for durable lessons relevant to executive scope.
 5. Produce heartbeat packet per `customer-weekly-heartbeat.md`.
 6. If no meaningful signal: return **NO-OP** and state `noop`.
@@ -19,7 +19,7 @@ Run this at each **weekly founder review** wake (no automatic noisy check-ins; o
 ## Verification policy
 - Every claim names the check that passed (`npm run agent -- verify`, tests, smoke, or other evidence commands).
 - No fabricated evidence. No invention of metrics.
-- Learnings are promoted to `.agents/learnings/` by the CEO; executive records evidence in sessions and this executor.
+- Learnings are promoted to `.agents/learnings/` by the CEO; durable task history is reserved for meaningful multi-step or decision-heavy work.
 
 ## Budget discipline
 - Free models first. Paid models require CEO approval and a budget ledger entry.

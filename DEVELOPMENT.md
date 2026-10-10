@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: operations
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # Development
 
 *Verified setup, commands, and operational procedures.*
@@ -116,7 +123,7 @@ The deployment receipt requires every GitHub check to pass, a successful post-CI
 
 ### Concurrent agent work
 
-Agents work directly on `main` and coordinate write ownership through `.agents/BOARD.md`. Do not create worktrees for routine tasks. Preserve existing changes and stop when file ownership conflicts.
+One foreground writer may use the main checkout. Concurrent writers use separate managed worktrees and coordinate live scope through `npm run agent -- ownership` plus the `npm run agent -- task ...` lease commands. Read-only investigation may share a checkout. Preserve existing changes, stop on overlapping scope, and assign one integration owner before parallel implementation begins. The retired `.agents/BOARD.md` is historical evidence, not live ownership.
 
 ## Debugging
 

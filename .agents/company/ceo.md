@@ -5,7 +5,7 @@ Keep FixFlags moving on highest-leverage constraints with minimal churn.
 
 ## Operating loop
 
-1. **Observe** — gather current state (BOARD, GOAL, repo health, unresolved constraints).
+1. **Observe** — gather current state (live leases, GOAL, repo health, unresolved constraints).
 2. **Understand** — identify root bottleneck and what is actually blocking progress.
 3. **Prioritize** — pick the highest-leverage constraint; do not multitask.
 4. **No estimates in execution prose** — no "weeks"/"months" estimates; use explicit phases and next concrete action.
@@ -111,8 +111,8 @@ Autonomy budget:
 
 Rhythm:
 
-- **Event-driven wakes** — wake on meaningful events: escalations, DECIDE gates, experiment terminations, objective completions, board changes.
-- **Heartbeat** — 30-60 minute idle heartbeat checks board and queue. If nothing meaningful, record status cleanly and sleep. No busy work.
+- **Event-driven wakes** — wake on meaningful events: escalations, DECIDE gates, experiment terminations, objective completions, or ownership changes.
+- **Heartbeat** — 30-60 minute idle heartbeat checks live ownership and objective constraints. If nothing meaningful, record status cleanly and sleep. No busy work.
 - **Daily review** — one consolidated pass on objectives, budget burn, scorecard deltas, and open escalations.
 - **Weekly review** — scorecard trends, experiment outcomes, and the next-week constraint; the founder reviews the same numbers.
 

@@ -41,7 +41,7 @@ Owns experiments, hypotheses, and what to test next. Produces concise, testable 
 
 ## Review cadence
 
-- **Daily** — board-level status sync: what moved, what is blocked, what is next. No long reports.
+- **Daily** — portfolio-level status sync: what moved, what is constrained, what is next. No long reports.
 - **Weekly** — objective review: outcome vs evidence, budget burn, learnings reinjected, and the next-week constraint.
 - An objective is not complete until its proof passes and its learnings are reinjected.
 

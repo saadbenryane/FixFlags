@@ -1,102 +1,76 @@
-# Multi-Agent Coordination
+---
+status: supporting
+authority: operations
+reviewed_at: 2026-10-09
+supersedes: []
+---
 
-**Product direction, 2026-09-08:** [knowledge/vision.md](../knowledge/vision.md) is the complete accepted owner revision. [ROADMAP.md](../ROADMAP.md), [Site PRD](../docs/product-prd.md) and [migration design](../docs/site-v2-migration.md) govern new work. Older report/Shopify session plans are historical and may supply reusable implementation evidence, not competing product direction.
+# Agent coordination
 
+Read the root [AGENTS.md](../AGENTS.md) first. This file describes coordination mechanics; it does not define product direction. The September 21 [vision](../knowledge/vision.md) is current.
 
-## Overview
+## Compact control plane
 
-This directory enables safe parallel work by multiple AI agents (Cursor, Claude Code, Codex, Hermes, etc.). Read `AGENTS.md` (the canonical entry point) first, then consult this system before any substantial write task.
+| Command | Purpose |
+| --- | --- |
+| `npm run agent` | Bounded repository, ownership, and next-action summary |
+| `npm run agent -- status` | Repository and current lease state |
+| `npm run agent -- context <area>` | Small task-specific authority map |
+| `npm run agent -- ownership` | Active leases and direct conflicts |
+| `npm run agent -- task claim` | Claim a substantial write scope |
+| `npm run agent -- task heartbeat` | Extend the current lease |
+| `npm run agent -- task finish` | Finish ownership and record warranted history |
+| `npm run agent -- task release` | Release incomplete or abandoned scope |
+| `npm run agent -- doctor` | Validate harness and coordination health |
+| `npm run agent -- verify --dry-run` | Preview proportional checks |
 
-## Files and directories
+Use these commands instead of reading `.agents/BOARD.md`, archives, or every session.
 
-| Path | Purpose |
-|------|---------|
-| `BOARD.md` | Active task board — claim here before starting. Older terminal rows: `BOARD-archive.md`. |
-| `GOAL.md` | Active goal state (gitignored): Condition, Proof, Constraints, turn Bound, Turn log with verdicts. Template: `GOAL.md.example`; detail briefs: `GOAL_BRIEF.md` (root) |
-| `GOAL.md.example` | Committed template for goal-state tracking |
-| `sessions/` | Implementation records for substantial work |
-| `scripts/agent-heartbeat.mjs` | Executive heartbeat helper (board + goal status + backlog pressure) |
-| `company/` | Operating policy and temporary worker model |
-| `handoffs/` | Handoff documents for incomplete work between agents |
-| `learnings/` | Validated project learnings (durable, not guesses). Active growth notes may live in `docs/growth/learnings.md` until promoted here. |
-| `evals/` | Evaluation suites for quality verification |
+## Ownership rules
 
-## Rules
+1. A substantial write task has one owner and one non-overlapping scope.
+2. One foreground writer may use the main checkout. Concurrent writers use separate managed worktrees.
+3. Read-only research and review can share a checkout and do not require a write lease.
+4. Live leases are shared through the repository's Git common directory, not a tracked branch file.
+5. Heartbeat an active lease; expired leases warn and are never silently reassigned.
+6. Reclaim an expired lease only with a recorded reason.
+7. Stop on an unresolved path or scope conflict.
+8. One integration owner combines concurrent work.
+9. Never reset, clean, stash, overwrite, delete, or discard another worker's changes.
 
-1. **Every substantial write task has a unique ID and owner.**
-2. **Only one agent owns a write scope at a time.** Read-only research may run in parallel.
-3. **Claim tasks on BOARD.md before starting.** Check for overlapping ownership. Record branch as `main`.
-4. **Always work on `main` (pre-prod).** Do not create feature branches, `agent/*` branches, or git worktrees unless the user explicitly asks. Pull latest `main`, commit, and push to `main`.
-5. **Never alter, reset, clean, stash, delete, switch, overwrite, discard, or force-push another agent's work on `main`.**
-6. **Stop and document** ambiguous ownership or conflicting state.
-7. **Create a handoff** before leaving meaningful work incomplete.
-8. **Archive records** after useful knowledge is promoted into canonical docs, code, tests, or evals.
-9. **After a BOARD task that changes product behavior or docs:** update the relevant `.agents/skills/*/SKILL.md` body. `.cursor/skills/*/SKILL.md` files are thin wrappers and should stay wrappers.
+The former Markdown board is retained as migration history or a compatibility pointer. It is not live ownership state.
 
-## Filesystem & operational helpers
+## Worktrees
 
-| Command | Use |
-|---------|------|
-| `npm run agent` | Compact live repository state and next actions |
-| `npm run agent:heartbeat` | Board/goals summary with actionable next owner and pressure readout |
-| `npm run agent:heartbeat -- --json` | Same heartbeat as machine-readable payload |
-| `npm run agent:release-continuity` | Runtime + CLI/MCP + cloud continuity plan/readout for release cadence |
-| `npm run agent:release-continuity -- --check --strict` | Run continuity checks and fail if any required gate fails |
+Use a managed worktree when two writers could overlap in time. Do not create one for a trivial task with no concurrent writer; setup, dependency installation, and cold caches also have cost.
 
-## PiWeb vs FixFlags
+Before writing in a worktree, confirm its branch, ignored environment dependencies, install state, and lease. Before cleanup, preserve committed work and any needed ignored artifacts. Integration and archival remain the task owner's responsibility.
 
-PiWeb (`/Users/saadbenryane/Code/pi-web`) is the session and workflow interface. FixFlags is the product. Interface/session issues go through FirstMate. Product work happens in this repository.
+## Durable records
 
-## Skills
+Create a session only for:
 
-Canonical skill **bodies** live in `.agents/skills/`. `.cursor/skills/` files are thin wrappers that point at those bodies. Prefer those over any mirrored copies under `.opencode/skills/` (deprecated mirrors; may lag).
-
-| Skill | Use for |
-|-------|---------|
-| `fixflags-product-intelligence` | Vision, PI, Integrity Engine, Finish Plan, privacy/OSS |
-| `fixflags-product` | Entitlements, billing, report UX, shipped loop |
-| `fixflags-audit-pipeline` | Triage, prescription, recovery, browser observer |
-| `fixflags-marketing` | Copy, GTM, positioning |
-| `fixflags-completeness` | Doc drift, verify green |
-| `fixflags-analytics` | Funnel events |
-| `fixflags-design-system` | Design system, accessibility, responsive review, and polish |
-
-Vision alignment: agents doing product strategy must read `knowledge/vision.md` and must not invent parallel narratives in skills.
-
-## Session conventions
-
-Create session records only for:
-- Substantial implementation
-- Durable decisions
-- Important discoveries
-- Meaningful failures
-- Incomplete work
-- Architecture, schema, deployment, security, design, or soul changes
+- a consequential decision or important validated discovery;
+- meaningful failure or unresolved risk;
+- work that must continue across chats;
+- architecture, schema, deployment, security, or release evidence that future work needs.
 
 File: `.agents/sessions/<YYYY-MM-DD>-<task-id>-<agent>.md`
 
-## Handoff conventions
-
-Require a handoff whenever another agent must continue, review, integrate, or unblock incomplete work.
+Create a handoff only when another person or agent must continue, review, integrate, or unblock incomplete work.
 
 File: `.agents/handoffs/<task-id>.md`
 
-## Learning conventions
+Routine fixes, read-only exploration, and completed local work do not require session or handoff documents. Do not copy raw transcripts, source, secrets, customer data, or full tool logs into records. Link to commits, tests, and canonical sources instead.
 
-Store durable, validated learnings under `.agents/learnings/`. Active growth notes may live in `docs/growth/learnings.md` until promoted here. Each entry must include: date, scope, confidence, evidence, discovery, why it matters, correct approach, where prevention was encoded.
+## Learnings and evaluations
 
-Prefer permanent prevention (in order): tests → types → scripts → CI → canonical docs → AGENTS.md rules.
+Store only durable, validated discoveries in `.agents/learnings/`. Prefer prevention in this order: tests, types, scripts, CI, canonical docs, then agent instructions. Speculation and temporary progress do not qualify.
 
-## Eval conventions
+Evaluation definitions live in `.agents/evals/`. CI checks must be deterministic and must not invoke paid models. Model benchmarks are deliberate, human-triggered evaluations.
 
-See `.agents/evals/README.md` for eval definitions.
+## Optional operating systems
 
-## AI operating model
+`.agents/company/` and heartbeat/release-continuity workflows apply only when the user or active goal explicitly invokes that operating model. They are not startup requirements for normal repository work.
 
-Canonical company operating model: `.agents/company/README.md`. All operating policy lives there; this file references, not duplicates.
-
-- CEO strategy, routing, rhythm, gates, scorecard, dogfooding: `.agents/company/ceo.md`
-- Executive ownership, objectives, paid-model approvals: `.agents/company/executives.md`
-- Temporary worker task contracts: `.agents/company/worker-runtime.md`
-- Canonical cross-links from this directory: `.agents/BOARD.md`, `.agents/GOAL.md`, `knowledge/README.md`
-- All policy changes in this scope land only in `.agents/company/*` unless approved by the current goal owner.
+Project skill bodies live in `.agents/skills/`; other clients should use thin wrappers. Update a skill only when its trigger, durable workflow, or contract changes, not after every product or documentation edit.
