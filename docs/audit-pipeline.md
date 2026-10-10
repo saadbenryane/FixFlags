@@ -51,7 +51,7 @@ events before dropping `Audit.pipelineLog`; there is no dual-write path.
 
 | Mode          | Enum            | Behavior |
 | ------------- | --------------- | -------- |
-| Teaser capture | `SINGLE` | Anonymous teaser. Reduced pipeline (no slow-3G, no flow). Fully review the pasted page. Open-check unique eligible public destinations. Stored `reviewDepth` is 1. |
+| Teaser capture | `SINGLE` | Anonymous teaser. Reduced pipeline (no slow-3G). Walk the primary CTA when the remaining deadline allows. Fully review the pasted page. Open-check unique eligible public destinations. Stored `reviewDepth` is 1. |
 | Full capture | `CRITICAL_PATH` | Signed-in and claimed reviews. Full pasted-page capture (flow, slow-3G). How far full judgment goes is stored `reviewDepth`, not this enum. Keep the enum value for existing rows and parked MCP. It is not a 6-URL crawler. |
 
 `reviewDepth` is stored at create time from the owner's plan (`lib/billing/plans.ts` `reviewDepthForPlan`). Update reviews and Watch copy that stored value.
@@ -102,7 +102,7 @@ Screenshot base64 for prescription is loaded via `loadAuditScreenshotBase64` fro
 | Phase                  | When              | Job         | Gated by                          |
 | ---------------------- | ----------------- | ----------- | --------------------------------- |
 | Deterministic checks   | Always            | `audit`     | —                                 |
-| Triage (phase 1)       | Primary page only | `audit`     | LLM keys + deadline budget        |
+| Triage (phase 1)       | Every fully reviewed page | `audit`     | LLM keys + deadline budget        |
 | Prescription (phase 2) | After triage      | `ai-review` | `includeAi` + signed-in + credits |
 
 ### `includeAi` vs `triageAt` vs `aiReviewAt`
@@ -110,6 +110,12 @@ Screenshot base64 for prescription is loaded via `loadAuditScreenshotBase64` fro
 - **`triageAt`** — phase-1 triage succeeded (score, verdict, rubric grades, AI flag titles).
 - **`aiReviewAt`** — phase-2 prescription succeeded (fix prompts, evidence, whyItMatters).
 - **`includeAi`** — resolved by `lib/audit/ai-report-entitlement.ts` at audit create time. Controls whether prescription is enqueued after triage, not whether triage runs.
+
+AI triage may return zero new findings. MESSAGE and REACH findings require an
+exact quoted excerpt from the supplied page text or metadata; unsupported or
+invented excerpts are discarded before persistence and verdict selection.
+The headline and subheading are evaluated together. A visible named testimonial
+with a numerical result must not be described as lacking those details.
 
 Anonymous visitors: triage runs; fix prompts stripped by `lib/audit/report-access.ts`.
 
@@ -200,12 +206,19 @@ Production scans use **Playwright + Chromium** only (`lib/audit/screenshot.ts`, 
 | Step                         | Where                        | Notes                                                                                                                                                               |
 | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Desktop + mobile screenshots | `captureScreenshots`         | Parallel pages; desktop required                                                                                                                                    |
-| CTA flow scan                | Primary page desktop session | `runFlowScan`; failures → `skipped`                                                                                                                                 |
+| CTA flow scan                | Deferred primary desktop session | `runFlowScan` after checks when the current deadline allows; failures → `skipped`                                                                                                                                 |
 | Slow 3G replay               | `pipeline/run-page.ts`       | `runSlowReplay` when deadline budget > 30s                                                                                                                          |
 | Network engagement           | Desktop + mobile sessions    | Merged `networkFailures`; `journeySafe` on flow capture                                                                                                             |
 | Technology profile           | Primary desktop session      | Up to 300 deduplicated public resources plus allowlisted document headers and runtime markers; no extra navigation, bodies, cookies, queries, or authorization data |
 | Journey templates            | `runner.ts` (Pro+)           | Inline before finalize; not a separate queue job                                                                                                                    |
 | Visual evidence              | `finalize-from-outcome.ts`   | Graceful; must not fail audit                                                                                                                                       |
+
+The deferred CTA walk retains its network failures and current form probe in
+the originating page's evidence, and stores the serialized walk on the Audit.
+Capture and walk findings are deduplicated before judgment. Browser contexts
+close even when the walk throws. Verification receipts are written after the
+walk; skipped or timed-out walks do not establish completed flow coverage.
+The walk budget is checked after capture and preserves the minimum judge budget.
 
 `lib/audit/deterministic-audit.ts` is an **offline/demo probe** (accuracy scripts, flow demos). It is not the production entry point.
 

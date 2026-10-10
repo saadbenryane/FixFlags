@@ -27,7 +27,7 @@ import { serializeFlowData } from '../flow/flow-url'
 import { PIPELINE_PROGRESS, PIPELINE_PROGRESS_SUBSTEP } from '../progress'
 import { DESKTOP_VIEWPORT, MOBILE_VIEWPORT } from '../viewports'
 import { assertDeadline } from './context'
-import { SLOW_REPLAY_MIN_BUDGET_MS } from '../pipeline-config'
+import { MIN_JUDGE_BUDGET_MS, SLOW_REPLAY_MIN_BUDGET_MS } from '../pipeline-config'
 import { resolveAuditPipelineMode, type AuditPipelineMode } from './mode'
 import { detectTechnologies, inferIndustry } from '../tech-detect'
 import { persistTechnologyObservations } from '../technology-profile'
@@ -165,8 +165,6 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   const captureStart = ctx.clock.now().getTime()
 
   const shouldRunFlow = input.primary && input.position === 0
-  const hasDeadlineBudgetForFlow =
-    input.primary && input.position === 0 && ctx.deadline - ctx.clock.now().getTime() > 60_000
 
   let initialScreenshotPersisted = false
   const onInitialScreenshot = input.primary
@@ -528,20 +526,6 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       pageUrl: normalizedUrl,
     }))
 
-  await recordTargetedPageVerifierExecutions({
-    auditId: ctx.auditId,
-    pageUrl: normalizedUrl,
-    primary: input.primary && input.position === 0,
-    failedModules,
-    flowCompleted: Boolean(flowResult),
-    availableTools: [
-      'html-parse',
-      'browser-capture',
-      ...(pagespeed?.desktop && pagespeed?.mobile ? ['pagespeed' as const] : []),
-      ...(flowResult ? ['flow-navigation' as const] : []),
-    ],
-  })
-
   await ctx.events.log({
     stage: 'checking',
     event: 'checks_completed',
@@ -560,6 +544,8 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   // Deferred flow scan: run after checks complete if deadline budget allows.
   // This moves ~20s of flow scanning out of the critical path so checks and
   // triage start sooner. Flow flags merge into the flag array for triage.
+  const hasDeadlineBudgetForFlow =
+    ctx.deadline - ctx.clock.now().getTime() > 60_000
   if (shouldRunFlow && hasDeadlineBudgetForFlow && !captured.flowResult) {
     await ctx.events.log({ stage: 'checking', event: 'flow_started_deferred' })
     if (input.primary) {
@@ -569,9 +555,10 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       })
     }
     const flowStart = ctx.clock.now().getTime()
+    let flowSession: Awaited<ReturnType<typeof createAuditPage>> | null = null
     try {
       const browser = await getAuditBrowser()
-      const flowSession = await createAuditPage(browser, normalizedUrl, {
+      flowSession = await createAuditPage(browser, normalizedUrl, {
         profile: DESKTOP_CAPTURE_PROFILE,
         scanAccess: ctx.scanAccess,
         journeySafe: true,
@@ -588,12 +575,9 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
         fetchHeaders: scanAccessToFetchHeaders(ctx.scanAccess),
         deadlineMs: Math.max(
           1,
-          Math.min(20_000, ctx.deadline - ctx.clock.now().getTime() - 15_000)
+          Math.min(20_000, ctx.deadline - ctx.clock.now().getTime() - MIN_JUDGE_BUDGET_MS)
         ),
       })
-      flowSession.disposeNetwork()
-      await flowSession.page.close().catch(() => {})
-      await flowSession.page.context().close().catch(() => {})
       await ctx.events.log({
         stage: 'checking',
         event: 'flow_completed_deferred',
@@ -612,6 +596,18 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
         event: 'flow_failed_deferred',
         error: err instanceof Error ? err.message : String(err),
       })
+    } finally {
+      if (flowSession) {
+        storedPerformance.networkFailures = [
+          ...storedPerformance.networkFailures,
+          ...flowSession.networkFailures,
+        ].slice(0, 80)
+        flags.push(...runNetworkEngagementChecks(
+          flowSession.networkFailures, flowSession.formProbe
+        ).map((flag) => ({ ...flag, pageUrl: normalizedUrl })))
+        flowSession.disposeNetwork()
+        await flowSession.page.context().close().catch(() => {})
+      }
     }
   } else if (shouldRunFlow && !hasDeadlineBudgetForFlow) {
     await ctx.events.log({
@@ -619,6 +615,43 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
       event: 'flow_skipped_deadline_deferred',
     })
   }
+
+  // Record and persist the walk only after it finishes. A timeout or skipped
+  // probe is not positive verification evidence, even when it returned data.
+  const flowCompleted = Boolean(flowResult && !['skipped', 'timeout'].includes(flowResult.status))
+  await recordTargetedPageVerifierExecutions({
+    auditId: ctx.auditId,
+    pageUrl: normalizedUrl,
+    primary: input.primary && input.position === 0,
+    failedModules,
+    flowCompleted,
+    availableTools: [
+      'html-parse',
+      'browser-capture',
+      ...(pagespeed?.desktop && pagespeed?.mobile ? ['pagespeed' as const] : []),
+      ...(flowCompleted ? ['flow-navigation' as const] : []),
+    ],
+  })
+
+  if (shouldRunFlow) {
+    await prisma.auditPage.update({
+      where: { id: page.id },
+      data: { performanceData: { ...storedPerformance, industryGuess } as never },
+    })
+    await prisma.audit.update({
+      where: { id: ctx.auditId },
+      data: {
+        performanceData: storedPerformance as never,
+        ...(flowResult ? { flowData: serializeFlowData(flowResult) as never } : {}),
+      },
+    })
+  }
+  // Capture and the deferred walk can observe the same failure. Keep one
+  // corrective action while retaining the combined network evidence above.
+  const distinctFlags = suppressFlagsForPageRole(suppressOverlappingFlags(
+    flags.filter((flag, index) => flags.findIndex((other) => other.checkId === flag.checkId) === index)
+  ), input.role)
+  flags.splice(0, flags.length, ...distinctFlags.map((flag) => ({ ...flag, pageUrl: normalizedUrl })))
 
   const harvests = screenshots?.evidenceHarvest ?? []
   const flowCheckId = flowResult ? flowCheckIdForStatus(flowResult.status) : null
@@ -665,7 +698,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
     mobileError: pagespeed?.mobileError,
     desktopScreenshot: Boolean(desktopBase64),
     mobileScreenshot: Boolean(mobileBase64 || screenshots?.mobileUrl),
-    flowScan: Boolean(input.primary && input.position === 0 && flowResult),
+    flowScan: Boolean(input.primary && input.position === 0 && flowCompleted),
     flowResult: input.primary && input.position === 0 ? flowResult : null,
     desktopBase64,
     mobileBase64,

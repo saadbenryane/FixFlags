@@ -127,13 +127,14 @@ export function normalizeTriageRawOutput(raw: unknown): unknown {
 function parseTriageOutput(
   raw: unknown,
   flags: DeterministicFlag[],
-  pagePurpose: ReturnType<typeof detectPagePurpose>['purpose']
+  pagePurpose: ReturnType<typeof detectPagePurpose>['purpose'],
+  context: ReturnType<typeof buildTriageContext>
 ): TriageOutput {
   const parsed = triageOutputSchema.safeParse(normalizeTriageRawOutput(raw))
   if (!parsed.success) {
     throw new Error(`Invalid triage output: ${parsed.error.message}`)
   }
-  return validateTriageOutput(parsed.data, flags, pagePurpose)
+  return validateTriageOutput(parsed.data, flags, pagePurpose, context)
 }
 
 async function runAnthropicTriage(
@@ -202,7 +203,7 @@ async function runAnthropicTriage(
     }
 
     return {
-      output: parseTriageOutput(toolUse.input, flags, context.pagePurpose?.purpose ?? 'unknown'),
+      output: parseTriageOutput(toolUse.input, flags, context.pagePurpose?.purpose ?? 'unknown', context),
       usage: {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
@@ -284,7 +285,7 @@ async function runOpenAITriage(
 
     const raw = JSON.parse(rawContent)
     return {
-      output: parseTriageOutput(raw, flags, context.pagePurpose?.purpose ?? 'unknown'),
+      output: parseTriageOutput(raw, flags, context.pagePurpose?.purpose ?? 'unknown', context),
       usage: {
         inputTokens: response.usage?.prompt_tokens ?? 0,
         outputTokens: response.usage?.completion_tokens ?? 0,

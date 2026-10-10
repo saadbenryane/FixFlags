@@ -45,6 +45,8 @@ vi.mock('@/lib/audit/browser/page-session', () => ({
       close: vi.fn(async () => undefined),
       context: () => ({ close: vi.fn(async () => undefined) }),
     },
+    networkFailures: [],
+    formProbe: null,
     disposeNetwork: vi.fn(),
   })),
 }))
@@ -69,8 +71,8 @@ vi.mock('@/lib/audit/checks/slow-replay', () => ({
     },
   ]),
 }))
-vi.mock('@/lib/audit/checks/network-engagement', () => ({
-  runNetworkEngagementChecks: vi.fn(() => []),
+vi.mock('@/lib/improvements/verifier-provenance', () => ({
+  recordTargetedPageVerifierExecutions: vi.fn(async () => 0),
 }))
 vi.mock('@/lib/audit/persist', () => ({ persistDeterministicFlags: vi.fn() }))
 vi.mock('@/lib/audit/pipeline/triage-step', () => ({ runTriageStep: vi.fn() }))
@@ -105,6 +107,8 @@ vi.mock('@/lib/audit/metadata', () => ({
 
 import { runPage } from '@/lib/audit/pipeline/run-page'
 import { runSlowReplayChecks } from '@/lib/audit/checks/slow-replay'
+import { recordTargetedPageVerifierExecutions } from '@/lib/improvements/verifier-provenance'
+import { createAuditPage } from '@/lib/audit/browser/page-session'
 import { runFlowScan } from '@/lib/audit/flow/run-flow-scan'
 import { captureScreenshots } from '@/lib/audit/screenshot'
 import type { PipelineContext } from '@/lib/audit/pipeline/types'
@@ -128,6 +132,11 @@ function pipelineContext(deadlineMs = 120_000): PipelineContext {
 describe('runPage production capture path', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(runFlowScan).mockResolvedValue({ status: 'success', steps: [], finalUrl: 'https://example.com/' })
+    vi.mocked(createAuditPage).mockResolvedValue({
+      page: { context: () => ({ close: vi.fn(async () => undefined) }) },
+      disposeNetwork: vi.fn(), networkFailures: [], formProbe: null,
+    } as never)
     prismaMock.auditPage.create.mockResolvedValue({ id: 'page-1' })
     prismaMock.auditPage.update.mockResolvedValue({})
     prismaMock.audit.findUnique.mockResolvedValue({ projectId: null, userId: 'user-1', parentId: null })
@@ -241,4 +250,77 @@ describe('runPage production capture path', () => {
       true
     )
   })
+
+  it('retains deferred engagement failures, persists flow, and records verification after the walk', async () => {
+    const failure = { url: 'https://example.com/api/signup', method: 'POST', status: 500,
+      resourceType: 'fetch', sameOrigin: true, engagementPath: true, at: Date.now() }
+    const close = vi.fn(async () => undefined)
+    const disposeNetwork = vi.fn()
+    vi.mocked(createAuditPage).mockResolvedValue({
+      page: { context: () => ({ close }) }, disposeNetwork,
+      networkFailures: [failure], formProbe: { url: failure.url, method: 'POST', status: 500 },
+    } as never)
+    const result = await runPage(pipelineContext(), {
+      url: 'https://example.com', position: 0, role: 'primary', primary: true,
+    })
+    expect(result.flags.map(flag => flag.checkId)).toContain('api-engagement-server-error')
+    expect(result.flags.map(flag => flag.checkId)).toContain('form-submit-api-server-error')
+    expect(recordTargetedPageVerifierExecutions).toHaveBeenCalledWith(expect.objectContaining({
+      flowCompleted: true, availableTools: expect.arrayContaining(['flow-navigation']),
+    }))
+    expect(vi.mocked(recordTargetedPageVerifierExecutions).mock.invocationCallOrder[0])
+      .toBeGreaterThan(vi.mocked(runFlowScan).mock.invocationCallOrder[0])
+    expect(prismaMock.audit.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        flowData: expect.objectContaining({ status: 'success' }),
+        performanceData: expect.objectContaining({ networkFailures: [failure] }),
+      }),
+    }))
+    expect(close).toHaveBeenCalledOnce()
+    expect(disposeNetwork).toHaveBeenCalledOnce()
+  })
+
+  it('closes a failed walk and preserves observed failures without claiming flow coverage', async () => {
+    const failure = { url: 'https://example.com/api/signup', method: 'POST', status: 403,
+      resourceType: 'fetch', sameOrigin: true, engagementPath: true, at: Date.now() }
+    const close = vi.fn(async () => undefined)
+    const disposeNetwork = vi.fn()
+    vi.mocked(createAuditPage).mockResolvedValue({
+      page: { context: () => ({ close }) }, disposeNetwork, networkFailures: [failure], formProbe: null,
+    } as never)
+    vi.mocked(runFlowScan).mockRejectedValueOnce(new Error('walk interrupted'))
+    const result = await runPage(pipelineContext(), {
+      url: 'https://example.com', position: 0, role: 'primary', primary: true,
+    })
+    expect(result.flowScan).toBe(false)
+    expect(result.flags.map(flag => flag.checkId)).toContain('api-engagement-unauthorized')
+    expect(close).toHaveBeenCalledOnce()
+    expect(disposeNetwork).toHaveBeenCalledOnce()
+    expect(recordTargetedPageVerifierExecutions).toHaveBeenCalledWith(expect.objectContaining({
+      flowCompleted: false,
+    }))
+  })
+
+  it.each(['timeout', 'skipped'] as const)('does not count %s flow as completed verification', async status => {
+    vi.mocked(runFlowScan).mockResolvedValueOnce({ status, steps: [], finalUrl: 'https://example.com/' })
+    const result = await runPage(pipelineContext(), {
+      url: 'https://example.com', position: 0, role: 'primary', primary: true,
+    })
+    expect(result.flowScan).toBe(false)
+    expect(recordTargetedPageVerifierExecutions).toHaveBeenCalledWith(expect.objectContaining({ flowCompleted: false }))
+  })
+
+  it('rechecks the flow budget after capture consumes time', async () => {
+    const ctx = pipelineContext()
+    captureMock.mockImplementationOnce(async () => {
+      ctx.deadline = Date.now() + 40_000
+      return { desktopUrl: 'https://cdn/desktop.png', mobileUrl: 'https://cdn/mobile.png',
+        desktopBase64: 'abc', mobileBase64: 'def', desktopHtml: '<html></html>',
+        consoleErrors: [], captureStatus: { desktop: 'ok', mobile: 'ok' } }
+    })
+    await runPage(ctx, { url: 'https://example.com', position: 0, role: 'primary', primary: true })
+    expect(runFlowScan).not.toHaveBeenCalled()
+    expect(recordTargetedPageVerifierExecutions).toHaveBeenCalledWith(expect.objectContaining({ flowCompleted: false }))
+  })
+
 })

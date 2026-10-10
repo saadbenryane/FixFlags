@@ -109,7 +109,7 @@ export const triageOutputSchema = z
               .string()
               .min(1)
               .describe(
-                '1-2 sentences of concrete page evidence (quote copy, layout, or behavior). No fix instructions.'
+                '1-2 sentences of concrete page evidence. For MESSAGE and REACH, quote exact supplied copy or metadata in double quotes. For EXPERIENCE, identify the observed element, layout, or behavior. No fix instructions.'
               ),
             whyItMatters: z
               .string()
@@ -129,7 +129,7 @@ export const triageOutputSchema = z
           .strict()
       )
       .describe(
-        '2-5 net-new flags for UX-expert issues deterministic rules cannot catch. Include problem, evidence, and whyItMatters. Do not restate a deterministic flag. Do NOT write fixes or editor prompts.'
+        '0-5 supported net-new flags (an empty array is valid) for UX-expert issues deterministic rules cannot catch. Include problem, evidence, and whyItMatters. Do not restate a deterministic flag. Do NOT write fixes or editor prompts.'
       ),
   })
   .strict()

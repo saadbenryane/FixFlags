@@ -8,6 +8,8 @@ import {
 } from './judge-utils'
 import { groundedReportVerdict } from './verdict'
 import type { PagePurpose } from './page-purpose'
+import type { TriageContext } from '@/lib/prompts/system-prompt'
+import { TRIAGE_TEXT } from './page-text-limits'
 
 /**
  * AI triage flags are a single LLM read over screenshots + page text, so a
@@ -61,10 +63,35 @@ function enforceAiConfidenceGates(
   })
 }
 
+function normalizedEvidenceText(value: string): string {
+  return value.toLowerCase().replace(/[‘’]/g, "'").replace(/\s+/g, ' ').trim()
+}
+
+/** Content judgments need a real excerpt, not the model's paraphrase of a supposed absence. */
+export function groundTriageTextFlags(
+  flags: TriageOutput['newFlags'],
+  context: Pick<TriageContext, 'pageText' | 'metadata'>
+): TriageOutput['newFlags'] {
+  const captured = normalizedEvidenceText([
+    context.pageText.slice(0, TRIAGE_TEXT), context.metadata.title,
+    context.metadata.description, ...context.metadata.h1s, ...context.metadata.ctaTexts,
+  ].filter(Boolean).join('\n'))
+  return flags.filter(flag => {
+    // Layout observations can be grounded in screenshots without quoted copy.
+    if (flag.rubric === 'EXPERIENCE') return Boolean(flag.evidence.trim())
+    const excerpts = [...flag.evidence.matchAll(/["“]([^"”]+)["”]|'([^'\n]+)'/g)]
+    return excerpts.some(match => {
+      const excerpt = normalizedEvidenceText(match[1] ?? match[2])
+      return excerpt.length >= 6 && captured.includes(excerpt)
+    })
+  })
+}
+
 export function validateTriageOutput(
   output: TriageOutput,
   deterministicFlags: DeterministicFlag[],
-  pagePurpose: PagePurpose = 'unknown'
+  pagePurpose: PagePurpose = 'unknown',
+  context?: Pick<TriageContext, 'pageText' | 'metadata'>
 ): TriageOutput {
   assertValidRubrics(output.rubrics)
   assertRubricConsistency(output.rubrics)
@@ -75,7 +102,8 @@ export function validateTriageOutput(
   // Keep captured deterministic facts, but reject model-invented conversion,
   // navigation, or trust priorities for a page whose job is to be minimal.
   const purposeGroundedFlags = pagePurpose === 'placeholder' ? [] : deduplicatedFlags
-  const newFlags = enforceAiConfidenceGates(purposeGroundedFlags)
+  const groundedFlags = context ? groundTriageTextFlags(purposeGroundedFlags, context) : purposeGroundedFlags
+  const newFlags = enforceAiConfidenceGates(groundedFlags)
   return {
     ...output,
     // The verdict is a public judgment surface. Anchor it to the same highest-

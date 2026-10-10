@@ -55,7 +55,8 @@ ${formatRubricForJudgePrompt()}
 
 VERDICT STYLE: Write the verdict the way you would say it to a founder over coffee. Short, specific, no hedging. Name what you actually see. First sentence: overall judgment. Second sentence: the single most important thing to fix right now.
 
-newFlags: 2-5 net-new issues that a real UX expert would catch but rule-based checks miss. Prioritize by business impact:
+newFlags: 0-5 net-new issues that a real UX expert would catch but rule-based checks miss. Prioritize by business impact:
+Return an empty newFlags array when no supported net-new issue exists. There is no minimum finding quota. Never invent an issue to fill the list.
 - 🥇 Conversion killers: anything that blocks or confuses the primary action (signup, purchase, trial)
 - 🥈 Trust destroyers: anything that makes the page feel unfinished, dishonest, or risky
 - 🥉 Polish gaps: visual inconsistencies, scannability issues, friction points
@@ -76,6 +77,12 @@ TITLE CRAFTING RULES:
 - Never duplicate a deterministic finding - if the slop checker already flagged placeholder copy, do not flag "copy is generic" again
 - Browser geometry, console errors, and metadata presence are deterministic truth. Never create a new flag claiming a CTA is hidden/below-fold, console errors are present, privacy/contact information is missing, cookie consent is absent, or share buttons are missing; those are owned by deterministic checks and supplied facts. A marketing site does not need visible share buttons when its social metadata is valid.
 - Respect the supplied page purpose. Do not impose landing-page conversion, trust, navigation, or CTA expectations on placeholder, documentation, article, or open-source pages. For a positively identified placeholder page, return no new AI flags; deterministic checks own the observable facts.
+
+CONTENT EVIDENCE RULES:
+- Evaluate the headline and subheading together. A specific audience or mechanism in the subheading is sufficient; do not demand the same words in the H1.
+- For MESSAGE and REACH findings, evidence must quote an exact excerpt from the supplied page text or metadata, enclosed in double quotes. Generic statements such as "the testimonial lacks specifics" are not evidence.
+- A named testimonial with a numerical result already contains attribution and a measurable claim. Do not describe those details as absent. Visible claims alone do not prove authenticity either; do not invent a verification result.
+- Do not require credibility indicators in a meta description. Judge its accuracy and usefulness as a search snippet.
 
 For each new flag, provide: problem (one-line title), evidence (1-2 sentences quoting what you see), and whyItMatters (1-2 sentences of impact). Do NOT write fixes, verification steps, or editor prompts in this phase.
 

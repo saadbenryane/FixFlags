@@ -80,7 +80,7 @@ const VALID_OUTPUT = {
       impactTag: 'CLARITY',
       severity: 'IMPORTANT',
       problem: 'Value proposition buried',
-      evidence: 'The first screen shows features before benefits.',
+      evidence: 'The hero says "Example" without describing a benefit.',
       whyItMatters: 'Users decide in the first seconds whether to stay.',
       confidence: 0.7,
       pageUrl: null,
@@ -151,7 +151,7 @@ function runAttempt(provider: string, extra: Record<string, unknown> = {}): void
   mocks.runLlmWithRetry.mockImplementation(
     async ({ attemptFn }: { attemptFn: (p: string, input: Record<string, unknown>) => Promise<unknown> }) =>
       attemptFn(provider, {
-        context: { url: 'https://example.com', metadata: METADATA, scores: {}, topOpportunities: [], deterministicFlags: [] },
+        context: { url: 'https://example.com', pageText: METADATA.pageText, metadata: METADATA, scores: {}, topOpportunities: [], deterministicFlags: [] },
         flags: FLAGS,
         desktopBase64: null,
         mobileBase64: null,
@@ -253,11 +253,25 @@ describe('runTriageWithRetry provider paths', () => {
       null
     )
     assert.equal(result.output.score, 72)
+    assert.equal(result.output.newFlags.length, 1)
     assert.equal(result.usage.inputTokens, 10)
     assert.equal(result.usage.outputTokens, 5)
     const createArgs = mocks.openaiCreate.mock.calls[0][0]
     assert.equal(createArgs.model, 'gpt-4o-mini')
     assert.equal(createArgs.messages[1].content[0].type, 'image_url')
+  })
+
+  it('discards unsupported model content claims at the provider boundary', async () => {
+    runAttempt('openai')
+    mocks.openaiCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ ...VALID_OUTPUT, newFlags: [
+        { ...VALID_OUTPUT.newFlags[0], evidence: 'The testimonial is generic and lacks quantifiable results.' },
+        { ...VALID_OUTPUT.newFlags[0], evidence: 'The page says "Guaranteed to double your revenue".' },
+      ] }) } }],
+      usage: { prompt_tokens: 10, completion_tokens: 5 },
+    })
+    const result = await runTriageWithRetry('https://example.com', METADATA, null, null, FLAGS, null, null)
+    assert.deepEqual(result.output.newFlags, [])
   })
 
   it('throws when the OpenAI response has no content', async () => {

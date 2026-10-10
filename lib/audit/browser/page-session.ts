@@ -240,7 +240,9 @@ export async function createAuditPage(
     networkFailures: network.failures,
     technologyResources: network.resources,
     technologyResourcesTruncated: network.resourcesTruncated,
-    formProbe: formProbeState?.result ?? null,
+    // The interaction happens after navigation; expose the current probe,
+    // rather than freezing its initial null value in the returned session.
+    get formProbe() { return formProbeState?.result ?? null },
     disposeNetwork: network.dispose,
   }
 }

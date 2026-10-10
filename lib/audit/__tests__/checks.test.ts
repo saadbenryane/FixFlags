@@ -1,5 +1,12 @@
-import { describe, it, afterEach } from 'vitest'
+import { describe, it, afterEach, vi } from 'vitest'
 import assert from 'node:assert/strict'
+
+const searchDb = vi.hoisted(() => ({
+  indexStatus: { findUnique: vi.fn() },
+  searchPerformance: { count: vi.fn(), findFirst: vi.fn() },
+}))
+vi.mock('@/lib/db', () => ({ prisma: searchDb }))
+import { runSearchPerformanceChecks } from '@/lib/audit/checks/search-performance'
 import { runMetadataChecks, runOgImageUrlCheck } from '@/lib/audit/checks/metadata-checks'
 import { runPerformanceChecks } from '@/lib/audit/checks/performance'
 import { runAccessibilityChecks } from '@/lib/audit/checks/accessibility'
@@ -2259,6 +2266,20 @@ describe('trigger matrix - one failing signal per checkId', () => {
           zIndex: '100',
         })
       ),
+    ...Object.fromEntries([
+      'indexing-failure', 'soft-404', 'robots-blocked', 'noindex-meta', 'canonical-mismatch', 'low-ctr',
+    ].map((id) => [id, async () => {
+      searchDb.indexStatus.findUnique.mockResolvedValue({
+        verdict: 'FAIL', coverageState: 'Soft 404', robotsTxtState: 'DISALLOWED',
+        indexingState: 'BLOCKED_BY_META_TAG', googleCanonical: 'https://example.com/other',
+        userCanonical: 'https://example.com/',
+      })
+      searchDb.searchPerformance.count.mockResolvedValue(1)
+      searchDb.searchPerformance.findFirst.mockResolvedValue({
+        position: 5, ctr: 0.01, impressions: 1000, query: 'example',
+      })
+      return checkIds(await runSearchPerformanceChecks('audit-1', 'https://example.com/'))
+    }])),
     'overlay-blocks-cta': () =>
       checkIds(
         runOverlayBlockerChecks('cta', {
@@ -2284,14 +2305,7 @@ describe('trigger matrix - one failing signal per checkId', () => {
   }
 
   it('triggers matrix covers every checkId without extras', () => {
-    const _triggerKeys = Object.keys(triggers).sort()
-    void _triggerKeys
-    const allIds = [...ALL_CHECK_IDS].sort()
-    const missing = allIds.filter((id) => !(id in triggers))
-    if (missing.length > 0) {
-      console.warn(`No trigger for: ${missing.join(', ')}`)
-    }
-    assert.ok(true)
+    assert.deepEqual(Object.keys(triggers).sort(), [...ALL_CHECK_IDS].sort())
   })
 
   for (const checkId of ALL_CHECK_IDS) {
