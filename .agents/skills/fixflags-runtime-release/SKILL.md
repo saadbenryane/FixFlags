@@ -23,11 +23,14 @@ Read `AGENTS.md`, `DEVELOPMENT.md`, `QUALITY.md`, and `SECURITY.md` before chang
 1. Run `npm run agent -- context release` and inspect Git ownership before edits.
 2. Treat a push to `origin/main` as a production code deployment. Commit only
    the intended verified changes, push `main`, and wait for the Railway `QewOS`
-   deployment to reach `SUCCESS`.
+   deployment to reach `SUCCESS`. Keep Railway **Wait for CI disabled** for
+   production `FixFlags` web and `FixFlags Worker`. GitHub Actions CI is temporarily
+   disabled at the user's request (2026-10-10); do not re-enable `ci.yml` until the
+   user explicitly asks. Use proportional local checks before pushing.
 3. Trace configuration from `lib/env.ts` through readiness, startup, migrations, web, worker, and scheduler.
 4. Build once. Exercise both web and worker modes from that image, including graceful termination and restart.
 5. Inspect image contents and history for secrets, local data, repository-write assumptions, missing standalone assets, and unnecessary files.
-6. Run `npm run agent -- verify`, then `npm run verify:release` with explicit disposable database reset authorization and required smoke credentials.
+6. For comprehensive release proof, run `npm run agent -- verify`, then `npm run verify:release` with explicit disposable database reset authorization and required smoke credentials. This separate proof workflow is not a prerequisite for ordinary shipping; never re-enable Railway Wait for CI to satisfy it.
 7. Verify production behavior and `/api/health` after the new deployment, not
    against the previous live version.
 8. Treat missing release resources as a blocker. Never turn a required probe into a skip or fallback.

@@ -85,8 +85,9 @@ The production stage uses only `PRODUCTION_URL`; it never hydrates the release f
 The release and production origins must be distinct.
 The database name must include `release` or `test`; the gate refuses to reset the normal `DATABASE_URL`.
 The container environment file and fixture manifest must be regular files with mode `0600`.
-Before production proof, enable Railway Wait for CI for both web and worker.
-The deployment receipt requires every GitHub check to pass, a successful post-CI Railway transition for web and worker on the exact SHA, and `/api/health` to report that same SHA.
+GitHub Actions **CI is temporarily disabled at the user's request (2026-10-10)**. Keep `.github/workflows/ci.yml` disabled until the user explicitly asks to enable it again. The workflow and tests are retained; do not re-enable them as part of routine fixes or releases. After explicit authorization, restore it with `gh workflow enable ci.yml`.
+Keep Railway **Wait for CI disabled** for both production web (`FixFlags`) and worker (`FixFlags Worker`). Pushes to `main` start deployment without waiting for GitHub Actions. Run proportional local checks before pushing and confirm successful deployment plus the exact SHA from `/api/health` afterward. Runtime migrations and readiness checks still gate startup.
+The comprehensive release-proof receipt is a separate verification workflow: it requires every GitHub check to pass, a successful post-CI Railway transition for web and worker on the exact SHA, and `/api/health` to report that same SHA. Do not enable Wait for CI to obtain that receipt or make it a prerequisite for ordinary shipping.
 
 ### Demo / testing
 | Command | Purpose |
