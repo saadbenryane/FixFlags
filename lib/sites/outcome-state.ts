@@ -122,7 +122,7 @@ export function checkoutResultCopy(reason: string): {
     case 'http_error':
       return {
         summary: 'The purchase path was unavailable.',
-        problem: 'A required purchase page returned an unavailable response.',
+        problem: 'A page needed for checkout is unavailable.',
         evidence: 'FixFlags reproduced the unavailable purchase path in two independent attempts.',
         fix: 'Restore the failed product, cart, or checkout page and verify the purchase path again.',
       }

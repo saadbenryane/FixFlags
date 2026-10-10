@@ -172,7 +172,7 @@ async function runCheckoutBinding(input: {
             impactTag: 'REVENUE',
             problem: copy.problem,
             evidence: copy.evidence,
-            whyItMatters: 'Customers cannot complete the purchase Outcome while this failure persists.',
+            whyItMatters: 'Customers can’t reach checkout while this problem persists.',
             fix: copy.fix,
             screenshotUrl: result.steps.at(-1)?.screenshotUrl ?? null,
             confidence: 0.95,
@@ -204,7 +204,7 @@ async function runCheckoutBinding(input: {
       return {
         disposition: observation.disposition,
         reason: observation.reason,
-        detail: { stepCount: attempt.steps.length, videoUrl: attempt.videoUrl },
+        detail: { stepCount: attempt.steps.length, videoUrl: attempt.videoUrl, httpStatus: attempt.outcome.httpStatus, finalUrl: attempt.finalUrl },
       }
     }),
     conclusive: {

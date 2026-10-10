@@ -10,6 +10,8 @@ import { SiteRunRefusal } from '@/lib/sites/application/run-refusal'
 import { RateLimitError } from '@/lib/security/rate-limit'
 import { logger } from '@/lib/logger'
 import { requireExecutionReady } from '@/lib/queue/execution-readiness'
+import { normalizeAuditUrl } from '@/lib/audit/url'
+import { validateBindingForOutcome } from '@/lib/sites/application/binding-config'
 
 const ACTIVE_RUN_STATUSES = ['QUEUED', 'RUNNING'] as const
 const INTERACTIVE_RUN_LIMIT_PER_DAY = 24
@@ -403,9 +405,11 @@ export async function requestSiteRun(input: RunInput): Promise<{
     const singleStart = typeof singleConfig?.startUrl === 'string' ? singleConfig.startUrl : null
     // Watch and multi-Outcome runs enter at the Site. One bound Outcome can
     // start at its own page. Each binding still executes from its own config.
-    const auditUrl = input.verificationTarget?.kind === 'DIAGNOSTIC'
+    const requestedUrl = input.verificationTarget?.kind === 'DIAGNOSTIC'
       ? input.verificationTarget.pageUrl
       : input.url ?? (input.source === 'WATCH' || !singleStart ? project.url : singleStart)
+    const normalized = normalizeAuditUrl(requestedUrl)
+    const auditUrl = normalized.ok ? normalized.url : requestedUrl
     const parentAuditId = input.verificationTarget?.parentAuditId ?? input.parentAuditId
     const parent = parentAuditId
       ? await prisma.audit.findFirst({
@@ -657,6 +661,11 @@ export async function reconcileOutcomeRunsForAudit(auditId: string): Promise<voi
               requiredBindings: verdict.requiredBindings,
               observedBindings: verdict.observedBindings,
               scope: checkoutBinding?.scope ?? null,
+              bindings: requiredBindings.map((binding) => {
+                const validated = validateBindingForOutcome(outcome.kind, binding.mechanism, binding.config)
+                return { key: binding.key, mechanism: binding.mechanism, version: binding.version,
+                  config: validated.success ? validated.data.config : null, scope: binding.scope }
+              }) as unknown as Prisma.InputJsonArray,
             },
             assessedAt,
             validUntil,

@@ -4,8 +4,6 @@ import { useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Copy, Sparkles } from 'lucide-react'
-import { BoardStatus } from '@/components/sites/BoardCard'
-import type { CardHealthState } from '@/lib/sites/card-areas'
 import { Logo } from '@/components/brand/Logo'
 import { CARE_HOME as C } from '@/lib/marketing/copy'
 import { HOMEPAGE_EVIDENCE, HomepageIntro, HomepageUrlEntry, Signal } from './HomepagePrimitives'
@@ -103,23 +101,6 @@ export function HomepageWorkflowSection({
   </section>
 }
 
-export function HomepageMonitoringSection() {
-  return <section className={`${s.section} ${s.monitoring}`} id="monitoring">
-    <HomepageIntro label={C.monitoring.label} title={C.monitoring.title} body={C.monitoring.body} />
-    <div className={s.schedule}>
-      <p className={s.scheduleLabel}>{C.monitoring.sample}</p>
-      <div className={s.scheduleHead} aria-hidden="true"><span>{C.monitoring.configured}</span><span>{C.monitoring.last}</span><span>{C.monitoring.next}</span></div>
-      {C.monitoring.rows.map(row => <article key={row.name} className={s.scheduleRow}>
-        <div><h3>{row.name}</h3><p>{row.scope}</p><BoardStatus state={row.state as CardHealthState} label={row.status} showText /></div>
-        <dl><dt>{C.monitoring.last}</dt><dd>{row.last}</dd></dl>
-        <dl><dt>{C.monitoring.next}</dt><dd>{row.next}</dd></dl>
-      </article>)}
-      <p className={s.scheduleNote}>{C.monitoring.note}</p>
-    </div>
-    <HomepageFinalSection />
-  </section>
-}
-
 export function HomepageFinalSection() {
-  return <div className={s.final} id="plans"><h2>{C.close.title}</h2><p>{C.close.body}</p><HomepageUrlEntry final /><Link href="/pricing" className={s.textLink}>{C.close.pricing}<ArrowRight size={16} aria-hidden="true" /></Link></div>
+  return <section className={`${s.section} ${s.final}`} id="plans"><h2>{C.close.title}</h2><p>{C.close.body}</p><HomepageUrlEntry final /><Link href="/pricing" className={s.textLink}>{C.close.pricing}<ArrowRight size={16} aria-hidden="true" /></Link></section>
 }

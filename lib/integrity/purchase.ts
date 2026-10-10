@@ -27,7 +27,8 @@ export interface StoredPurchaseStep {
 
 /** Success is this attempt using a buy control and then reaching checkout. */
 export function purchaseAttemptSucceeded(outcome: WalkOutcome, finalUrl: string | null | undefined): boolean {
-  return Boolean(outcome.buyControlClicked && outcome.reachedCheckout && !isTerminalOrderUrl(finalUrl))
+  return Boolean(outcome.buyControlClicked && outcome.reachedCheckout &&
+    classifyWalk(outcome).health === 'GREEN' && !isTerminalOrderUrl(finalUrl))
 }
 
 export function isTerminalOrderUrl(url: string | null | undefined): boolean {

@@ -64,6 +64,18 @@ describe.skipIf(!playwrightChromiumAvailable())('runPathProbe', () => {
     expect(result.videoUrl || result.gifUrl).toBeTruthy()
   }, 90_000)
 
+  for (const failure of ['http-failure', 'visible-error']) {
+    it(`does not certify a ${failure} destination merely because its URL is checkout`, async () => {
+      const result = await runPathProbe({ runId: `destination-${failure}-${Date.now()}`, url: `${origin}/${failure}/`, allowLocalhost: true, browser })
+      expect(result.health).toBe('RED')
+      expect(result.confirmed).toBe(true)
+      expect(result.attempts).toHaveLength(2)
+      expect(result.reason).toBe(failure === 'http-failure' ? 'http_error' : 'checkout_error')
+      expect(result.attempts.every(attempt => !attempt.outcome.reachedCheckout)).toBe(true)
+      if (failure === 'http-failure') expect(result.attempts.every(attempt => attempt.outcome.httpStatus === 503)).toBe(true)
+    }, 90_000)
+  }
+
   it('returns UNKNOWN when the page has no buy control', async () => {
     const result = await runPathProbe({
       runId: `unknown-${Date.now()}`,
@@ -95,6 +107,13 @@ async function listenFixtures(): Promise<{ origin: string; close: () => Promise<
 
 async function serveFixture(request: IncomingMessage, response: ServerResponse): Promise<void> {
   const raw = (request.url ?? '/').split('?')[0]
+  const failure = raw.match(/^\/(http-failure|visible-error)(?:\/|$)/)?.[1]
+  if (failure) {
+    const checkout = raw.endsWith('/checkout')
+    response.writeHead(checkout && failure === 'http-failure' ? 503 : 200, { 'Content-Type': 'text/html' })
+    response.end(checkout ? '<h1>Checkout is unavailable</h1><p>Something went wrong.</p>' : `<h1>Trail Pack</h1><a href="/${failure}/checkout">Buy now</a>`)
+    return
+  }
   let relative = decodeURIComponent(raw).replace(/^\//, '')
   if (raw === '/checkout' || raw === '/checkout/') relative = 'green/checkout.html'
   else if (relative.endsWith('/')) relative += 'index.html'

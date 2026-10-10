@@ -129,11 +129,12 @@ export function isPageComparableAbsence(input: {
   return ownedUrls.every((url) => pageIsReobservationComparable(byUrl.get(url)))
 }
 
-async function loadAuditCoverage(auditId: string): Promise<{
+async function loadAuditCoverage(auditId: string | null): Promise<{
   status: string | undefined
   reportCompleteness: ReportCompleteness | null | undefined
   pages: ChildPageCoverage[]
 }> {
+  if (!auditId) return { status: undefined, reportCompleteness: null, pages: [] }
   const audit = await prisma.audit.findUnique({
     where: { id: auditId },
     select: {
@@ -295,7 +296,7 @@ export function classifyArbitraryReportFlagDiff(input: {
 }
 
 export async function getFlagDiffSummary(
-  parentAuditId: string,
+  parentAuditId: string | null,
   monitoringAuditId: string
 ): Promise<{
   fixed: FlagDiffSummaryItem[]
@@ -305,7 +306,7 @@ export async function getFlagDiffSummary(
   newIssues: FlagDiffSummaryItem[]
 }> {
   const [parentFlags, monitoringFlags, child, parent] = await Promise.all([
-    prisma.flag.findMany({ where: { auditId: parentAuditId } }),
+    parentAuditId ? prisma.flag.findMany({ where: { auditId: parentAuditId } }) : Promise.resolve([]),
     prisma.flag.findMany({ where: { auditId: monitoringAuditId } }),
     loadAuditCoverage(monitoringAuditId),
     loadAuditCoverage(parentAuditId),

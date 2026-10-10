@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { parseMetadataFromHtml } from '../metadata'
 import { detectPagePurpose } from '../page-purpose'
+import { runFlowChecks } from '../checks/flow'
+import { runMobileUXQualityChecks } from '../checks/mobile-ux-quality'
+import type { CaptureMetrics } from '../capture-metrics'
+import type { FlowScanResult } from '../flow/run-flow-scan'
 import { runLayoutChecks } from '../checks/layout'
 import { runConversionFrictionChecks } from '../checks/conversion-friction'
 
@@ -22,4 +26,14 @@ describe('documentation-only notice purpose', () => {
     const meta = parseMetadataFromHtml(html('<a href="/checkout">Buy now</a>'))
     expect(detectPagePurpose(meta, 'https://unseen.test/').purpose).toBe('marketing')
   })
+})
+
+it('does not turn an informational link into conversion guidance while retaining real browser failures', () => {
+  const metrics = { mobilePrimaryCtaTopPx: 900, mobilePrimaryCtaText: 'Learn more', mobileViewportHeight: 812, inputsBelow16px: [] } as unknown as CaptureMetrics
+  const meta = parseMetadataFromHtml(html('<a href="https://reference.test/">Learn more</a>'))
+  expect(runMobileUXQualityChecks(meta, metrics, 'placeholder')).toEqual([])
+  expect(runMobileUXQualityChecks(meta, metrics, 'marketing').some(flag => flag.checkId === 'mobile-cta-weak-label')).toBe(true)
+  expect(runFlowChecks({ status: 'external_leave' } as FlowScanResult, 'placeholder')).toEqual([])
+  expect(runFlowChecks({ status: 'external_leave' } as FlowScanResult, 'marketing').some(flag => flag.checkId === 'flow-cta-external-leave')).toBe(true)
+  expect(runFlowChecks({ status: 'error_response', httpStatus: 503 } as unknown as FlowScanResult, 'placeholder').length).toBeGreaterThan(0)
 })

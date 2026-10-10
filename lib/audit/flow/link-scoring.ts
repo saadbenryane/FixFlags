@@ -5,7 +5,7 @@ export { normalizeSiteHost }
 const AUTH_UTILITY_PATTERN = /\b(login|log in|sign in|signin)\b/i
 const PRICING_PATTERN = /pricing|plans?\b|price/
 const PRIMARY_CONVERSION_PATTERN =
-  /book (a call|demo)|schedule|get started|start free|try free|sign up|signup|register|get-started|start trial|contact sales|request demo|watch demo|get early access|claim (your|this|the|a spot)|reserve (my|your|a|the|your spot|a spot)|shop now|browse (our|the|all|plans|packages)|see (how|what|the|our|it|it in action)|view (plans|pricing|products|our|the|demo)|find (your|out)/i
+  /buy now|add to cart|purchase|\bcheckout\b|book (a call|demo)|schedule|get started|start free|try free|sign up|signup|register|get-started|start trial|contact sales|request demo|watch demo|get early access|claim (your|this|the|a spot)|reserve (my|your|a|the|your spot|a spot)|shop now|browse (our|the|all|plans|packages)|see (how|what|the|our|it|it in action)|view (plans|pricing|products|our|the|demo)|find (your|out)/i
 const FEATURES_PATTERN = /\b(features?|product|how it works|solutions?|integrations?|capabilities|what we do|platform)\b/i
 const SECONDARY_CONVERSION_PATTERN = /signup|sign-up|register|try|demo|contact|book|learn more|explore|shop|browse|watch|find|claim|reserve/i
 const TRUST_PATTERN = /\b(about|team|company|customers?|case studies?|testimonials?|stories|our story|who we are)\b/i

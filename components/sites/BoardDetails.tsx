@@ -3,24 +3,27 @@
 import { SITE_BOARD_COPY as C } from '@/lib/marketing/copy/terminology'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import styles from './BoardDetails.module.css'
+import { useState } from 'react'
 
 export type CheckedPage = { url: string; title: string | null; status: string; checkedAt?: string }
 
-export function BoardDetails({ image, checkedAt, sources, coverage, facts = [], pages, children }: {
+export function BoardDetails({ image, checkedAt, checkedLabel = C.lastChecked, sources, coverage, facts = [], pages, children }: {
   image?: { src: string; alt: string } | null
   checkedAt?: string | null
+  checkedLabel?: string
   sources?: readonly string[]
   coverage?: string | null
   facts?: readonly string[]
   pages?: CheckedPage[]
   children?: React.ReactNode
 }) {
+  const [failedImage, setFailedImage] = useState<string | null>(null)
   return <div className={styles.details}>
-    {image ? <a href={image.src} target="_blank" rel="noopener noreferrer" aria-label={C.capture} className={styles.capture}>
+    {image && failedImage !== image.src ? <a href={image.src} target="_blank" rel="noopener noreferrer" aria-label={C.capture} className={styles.capture}>
       {/* Authenticated captures must use the viewer's session, not next/image. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={image.src} alt={image.alt} width={1280} height={720} />
-    </a> : null}
+      <img src={image.src} alt={image.alt} width={1280} height={720} onError={() => setFailedImage(image.src)} />
+    </a> : image ? <p role="status">{C.captureUnavailable}</p> : null}
     {coverage || facts.length > 0 || pages !== undefined ? <section>
       <h3>{C.checkedScope}</h3>
       {coverage ? <p>{coverage}</p> : null}
@@ -32,7 +35,7 @@ export function BoardDetails({ image, checkedAt, sources, coverage, facts = [], 
     </section> : null}
     <dl className={styles.provenance}>
       {sources?.length ? <div><dt>{C.sources}</dt><dd>{[...new Set(sources)].join(' · ')}</dd></div> : null}
-      <div><dt>{C.lastChecked}</dt><dd>{checkedAt && formatEvidenceTimestamp(checkedAt) ? <time dateTime={checkedAt}>{formatEvidenceTimestamp(checkedAt)}</time> : C.noFreshness}</dd></div>
+      <div><dt>{checkedLabel}</dt><dd>{checkedAt && formatEvidenceTimestamp(checkedAt) ? <time dateTime={checkedAt}>{formatEvidenceTimestamp(checkedAt)}</time> : C.noFreshness}</dd></div>
     </dl>
     {children}
   </div>

@@ -21,6 +21,7 @@ function toSiteFlagSeed(flag: {
   status: string
   resolvedInId: string | null
   improvementId?: string | null
+  sourceFlagId?: string | null
   confidence?: number | null
   affectedPaths?: unknown
   relatedOutcome?: { id: string; name: string } | null
@@ -39,7 +40,7 @@ function toSiteFlagSeed(flag: {
   })
   return {
     id: flag.improvementId ?? flag.id,
-    sourceFlagId: flag.id,
+    sourceFlagId: flag.sourceFlagId ?? flag.id,
     confidence: flag.confidence ?? null,
     improvementId: flag.improvementId ?? null,
     checkId: flag.checkId,
@@ -370,7 +371,12 @@ export async function loadSiteFlagDetail(
       })
     : []
 
-  const expectedBehavior = customerExpectedBehavior(seed.checkId, flagRow?.verificationRule)
+  const linkedOutcome = improvement?.outcomeId && site.projectId
+    ? await prisma.siteOutcome.findFirst({
+        where: { id: improvement.outcomeId, projectId: site.projectId },
+        select: { id: true, name: true, expectation: true },
+      }) : null
+  const expectedBehavior = linkedOutcome?.expectation?.trim() || customerExpectedBehavior(seed.checkId, flagRow?.verificationRule)
 
   const occurrenceScope = improvementId
     ? await prisma.improvementOccurrence.findMany({
@@ -392,6 +398,7 @@ export async function loadSiteFlagDetail(
 
   return {
     ...scopedSeed,
+    relatedOutcome: linkedOutcome ? { id: linkedOutcome.id, name: linkedOutcome.name } : scopedSeed.relatedOutcome,
     outcomeId: improvement?.outcomeId ?? null,
     sourceAuditId: flagRow.auditId,
     verificationRule: flagRow.verificationRule,

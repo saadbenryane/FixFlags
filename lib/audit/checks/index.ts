@@ -80,7 +80,7 @@ export async function runAllChecks(
   const bucketB: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [
     { name: 'performance',     run: () => runPerformanceChecks(desktop, mobile) },
     { name: 'mobile',          run: () => runMobileChecks(mobile) },
-    { name: 'mobile-ux-quality', run: () => runMobileUXQualityChecks(metadata, captureMetrics ?? null) },
+    { name: 'mobile-ux-quality', run: () => runMobileUXQualityChecks(metadata, captureMetrics ?? null, purpose.purpose) },
   ]
 
   const bucketC: Array<{ name: string; run: () => DeterministicFlag[] | Promise<DeterministicFlag[]> }> = [

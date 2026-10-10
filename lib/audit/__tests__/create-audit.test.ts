@@ -13,6 +13,7 @@ import {
 const prismaMock = vi.hoisted(() => ({
   $transaction: vi.fn(),
   $executeRaw: vi.fn(),
+  runRequest: { updateMany: vi.fn() },
   audit: {
     create: vi.fn(),
     findFirst: vi.fn(),
@@ -543,6 +544,13 @@ describe('createAndEnqueueAudit', () => {
     })
   })
 
+  it('creates owned Site executions privately and attaches the tenant request before enqueue', async () => {
+    prismaMock.runRequest.updateMany.mockResolvedValue({ count: 1 })
+    await createAndEnqueueAudit({ url: AUDIT_URL, userId: 'user-1', runRequestId: 'run-1' })
+    expect(prismaMock.audit.create.mock.calls[0][0].data.isPublic).toBe(false)
+    expect(prismaMock.runRequest.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'run-1', projectId: 'project-1', requestedByUserId: 'user-1', auditId: null } }))
+  })
+
   it('inherits encrypted scan access from the parent project', async () => {
     const config = { httpBasic: { username: 'preview', password: 'secret' } }
     const encrypted = encryptScanAccess(config)
@@ -562,6 +570,7 @@ describe('createAndEnqueueAudit', () => {
 
     const created = prismaMock.audit.create.mock.calls[0][0].data
     expect(decryptScanAccess(created.scanAccessEncrypted)).toEqual(config)
+    expect(created.isPublic).toBe(false)
   })
 
   it('respects explicit scan access over project inheritance', async () => {

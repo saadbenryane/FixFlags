@@ -18,6 +18,7 @@ import { flagRecoveryProofId, flagResolutionView } from '@/lib/sites/flag-resolu
 import { verificationResult, verificationResultLabel } from '@/lib/sites/presentation'
 import { FlagResolutionPanel } from '@/components/sites/FlagResolutionPanel'
 import { CARD_CATALOG } from '@/lib/sites/card-areas'
+import { BoardDetails } from '@/components/sites/BoardDetails'
 
 function attemptLabel(attempt: { outcome: string | null; comparable: boolean | null; reason: string | null }): string {
   return verificationResultLabel(verificationResult(attempt))
@@ -39,7 +40,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
   const detail = await loadSiteBoardFlag(resolvedId, flagId)
   if (!detail) notFound()
 
-  const { site, flag } = detail
+  const { site, flag, capture } = detail
   const affectedPaths = flag.affectedPaths ?? (flag.pageUrl ? [flag.pageUrl] : [])
   if (access.decision.role === 'owner') {
     await recordSiteLifecycleEvent({
@@ -101,6 +102,11 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
         }
       : null,
   })
+  const title = resolution.kind === 'proven'
+    ? relatedOutcome?.kind === 'CHECKOUT' ? SITE_BOARD_COPY.checkoutRecovered
+      : relatedOutcome?.kind === 'AVAILABILITY' ? SITE_BOARD_COPY.pageRecovered
+        : SITE_BOARD_COPY.problemRecovered
+    : flag.problem
 
   return (
     <SiteShell siteId={resolvedId} ownerId={site.userId} activeRoute="flags" title={flag.problem} description={flag.whyItMatters} presentation={home.presentation} watch={home.watch} checking={flag.verifying}>
@@ -117,8 +123,8 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
           </p>
         </div>
         <FlagResolutionPanel resolution={resolution} siteId={resolvedId} flagId={flag.id}>
-          <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">{flag.problem}</h1>
-          <p className="mt-3 max-w-2xl text-base text-muted-foreground">{flag.whyItMatters}</p>
+          <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight sm:text-4xl">{title}</h1>
+          <p className="mt-3 max-w-2xl text-base text-muted-foreground">{resolution.kind === 'proven' ? SITE_BOARD_COPY.recoveredBody : flag.whyItMatters}</p>
           {relatedOutcome ? (
             <p className="mt-3 text-sm text-muted-foreground">
               Affects{' '}
@@ -128,7 +134,7 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
             </p>
           ) : null}
 
-          <div className={resolution.kind === 'open' || resolution.kind === 'verifying' ? 'mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start' : 'mt-6'}>
+          <div className={resolution.kind === 'open' || resolution.kind === 'verifying' ? 'mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start' : 'mt-6 space-y-6'}>
             <div className="space-y-6">
               <section className="overflow-hidden rounded-[17px] border border-border bg-background shadow-sm" aria-labelledby="flag-evidence-heading">
                 <div className="flex items-center gap-3 border-b border-border/70 px-5 py-4 sm:px-6">
@@ -137,13 +143,14 @@ export default async function SiteFlagPage({ params, searchParams }: { params: P
                   </span>
                   <div>
                     <h2 id="flag-evidence-heading" className="font-semibold">
-                      {SITE_BOARD_COPY.flagEvidence}
+                      {resolution.kind === 'proven' ? SITE_BOARD_COPY.previousFailure : SITE_BOARD_COPY.flagEvidence}
                     </h2>
-                    <p className="text-xs text-muted-foreground">{SITE_BOARD_COPY.flagObserved}</p>
+                    <p className="text-xs text-muted-foreground">{resolution.kind === 'proven' ? flag.problem : SITE_BOARD_COPY.flagObserved}</p>
                   </div>
                 </div>
                 <div className="space-y-5 p-5 sm:p-6">
                   {flag.evidenceMissing ? <p className="text-sm leading-relaxed text-muted-foreground">Evidence for this Flag was not stored. Verify will capture a fresh look at the same page.</p> : <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">{flag.evidence}</p>}
+                  {capture ? <BoardDetails image={{ src: capture.url, alt: SITE_BOARD_COPY.flagCaptureAlt }} checkedAt={capture.recordedAt} checkedLabel={SITE_BOARD_COPY.captureRecorded} /> : null}
                   <div className="rounded-[13px] bg-muted p-4">
                     <div className="flex items-start gap-3">
                       <Target className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />

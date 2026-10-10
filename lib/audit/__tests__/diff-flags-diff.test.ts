@@ -242,6 +242,15 @@ describe('getFlagDiffSummary', () => {
     assert.equal(summary.fixed.length, 0)
   })
 
+  it('treats first-Watch observations as new without inventing recoveries or losing confidence', async () => {
+    prismaMock.flag.findMany.mockResolvedValue([{ ...flag({ id: 'new-checkout', severity: 'CRITICAL' }), confidence: 0.95, impactTag: 'REVENUE' }])
+    const summary = await getFlagDiffSummary(null, 'first-watch')
+    expect(summary.fixed).toEqual([])
+    expect(summary.newIssues).toEqual([expect.objectContaining({ id: 'new-checkout', confidence: 0.95, impactTag: 'REVENUE' })])
+    expect(prismaMock.flag.findMany).toHaveBeenCalledTimes(1)
+    expect(prismaMock.audit.findUnique).toHaveBeenCalledTimes(1)
+  })
+
   it('returns empty buckets when there are no flags', async () => {
     prismaMock.flag.findMany.mockResolvedValue([])
     const summary = await getFlagDiffSummary('parent-audit', 'monitoring-audit')

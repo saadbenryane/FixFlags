@@ -11,7 +11,7 @@ import { DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { CARE_HOME as C } from '@/lib/marketing/copy'
 import { HOMEPAGE_SAMPLE as S } from '@/lib/marketing/copy/care-homepage'
 import { HomepageHero, type HomepageDetailCard } from './HomepageHero'
-import { HomepageMonitoringSection, HomepageWorkflowSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
+import { HomepageFinalSection, HomepageWorkflowSection, type HomepageCopyResult, type HomepageCopySource } from './HomepageSections'
 import { HOMEPAGE_EVIDENCE } from './HomepagePrimitives'
 import s from './CareHomepage.module.css'
 
@@ -45,18 +45,27 @@ export function CareHomepage() {
     }
   }
   const restoreFocus = (event: Event) => { event.preventDefault(); opener.current?.focus() }
-  const title = flag ? flag === 'availability' ? S.availabilityTitle : C.flag.title : selectedCard?.name ?? (selected === 'coverage' ? S.coverageTitle : S.overviewTitle)
+  const title = flag ? flag === 'availability' ? S.availabilityTitle : C.flag.title : selectedCard?.name ?? (selected === 'monitoring' ? C.monitoring.detailTitle : selected === 'coverage' ? S.coverageTitle : S.overviewTitle)
 
   return <div className={s.home}>
     <HomepageHero onOpen={openCard} />
     <HomepageWorkflowSection onViewFlag={() => { openCard('conversion'); setFlag('checkout') }} onCopy={source => void copyFlag(source)} copyResult={copyResult} />
-    <HomepageMonitoringSection />
+    <HomepageFinalSection />
     <ResponsiveDepth open={selected !== null} onOpenChange={open => { if (!open) setSelected(null) }} onCloseAutoFocus={restoreFocus} className={s.dialog}>
       {flag ? <button type="button" className={s.backButton} onClick={() => { setFlag(null); setManualPrompt(null); setCopyResult(null); requestAnimationFrame(() => heading.current?.focus()) }}><ArrowLeft size={16} aria-hidden="true" />{S.backAction}</button> : null}
       <p className={s.depthSample}>{S.sampleLabel}</p>
       <DialogTitle ref={heading} tabIndex={-1}>{title}</DialogTitle>
-      <DialogDescription>{flag ? flag === 'availability' ? S.availabilityScope : C.flag.outcome : selectedCard?.scope ?? (selected === 'coverage' ? S.coverageBody : S.overviewBody)}</DialogDescription>
-      {flag ? <>
+      <DialogDescription>{flag ? flag === 'availability' ? S.availabilityScope : C.flag.outcome : selectedCard?.scope ?? (selected === 'monitoring' ? C.monitoring.summary : selected === 'coverage' ? S.coverageBody : S.overviewBody)}</DialogDescription>
+      {selected === 'monitoring' ? <>
+        <div className={s.monitoringTiming}><strong>{C.monitoring.cadence}</strong><p>{C.monitoring.next}<span>{C.monitoring.nextValue}</span></p></div>
+        <p className={s.scope}>{C.monitoring.sample}</p>
+        <ul className={s.monitoringChecks}>{C.monitoring.rows.map(row => <li key={row.name}>
+          <div><h3>{row.name}</h3><BoardStatus state={row.state} label={row.status} showText /></div>
+          <p>{row.scope}</p><dl><dt>{C.monitoring.last}</dt><dd>{row.last}</dd></dl>
+        </li>)}</ul>
+        <div className={s.monitoringGap}><h3>{C.monitoring.unconfiguredTitle}</h3><p>{C.monitoring.unconfiguredBody}</p><span>{C.monitoring.notScheduled}</span></div>
+        <p className={s.scope}>{C.monitoring.note}</p><p className={s.scope}>{C.monitoring.setup}</p>
+      </> : flag ? <>
         <dl className={s.flagFacts}>
           <div><dt>{S.observedLabel}</dt><dd>{flag === 'availability' ? S.availabilityObserved : C.flag.body}</dd></div>
           <div><dt>{S.expectedLabel}</dt><dd>{flag === 'availability' ? S.availabilityExpected : S.checkoutExpected}</dd></div>

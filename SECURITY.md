@@ -58,6 +58,14 @@ supersedes: []
 - Legacy `/share/[token]` reads remain compatibility-only. The product no longer creates or manages protected share links. Do not treat `ShareLink.passwordHash` as a live product contract.
 - Canvas is private to the paid report owner. Generated documents are schema-validated, evidence-grounded, and cannot contain executable markup, external resources, or inaccessible source references.
 
+## Captured evidence access
+
+- New tenant-owned Site runs and credentialed captures are private at Audit creation. Anonymous public analysis retains its public-report behavior.
+- Private screenshots stream through `/api/screenshots` after `resolveAuditAccess`; public-report compatibility remains unchanged. Responses and new screenshot objects use `private, no-store`.
+- `/api/integrity-assets` authorizes the owner of the persisted Outcome RunRequest, or an active Shopify path's linked Site owner / verified Shopify ID-token session. Knowing an artifact URL does not grant access. Invalid namespaces and path traversal are rejected before storage reads.
+- Flag detail shows a capture only through its exact persisted JourneyFinding and source Audit in the same Site. Preserve the raw Flag ID separately from its durable Improvement ID. Do not substitute the latest Site thumbnail for failure evidence.
+- Local signed S3-compatible protocol tests do not establish a real bucket's permissions. Release requires credentialed private-bucket upload, owner retrieval, denied cross-tenant/anonymous retrieval, and actual display.
+
 ## Secrets management
 
 - All secrets are environment variables

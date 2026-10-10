@@ -83,6 +83,13 @@ describe('RunRequest tenant boundary and idempotency', () => {
     mocks.executionFindMany.mockResolvedValue([])
   })
 
+  it('matches the persisted root URL when Watch starts from a canonical Site host', async () => {
+    mocks.projectFindFirst.mockResolvedValue({ url: 'https://shop.example' })
+    await requestSiteRun({ projectId: 'project-1', outcomeIds: ['outcome-1'], userId: 'user-1', source: 'WATCH' })
+    expect(mocks.auditFindFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { projectId: 'project-1', status: 'COMPLETED', url: 'https://shop.example/' } }))
+    expect(mocks.createAudit).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://shop.example/', parentId: 'audit-parent', recheckTrigger: 'WATCH' }))
+  })
+
   it('refuses an empty Outcome run when Site care was not explicitly requested', async () => {
     await expect(
       requestSiteRun({

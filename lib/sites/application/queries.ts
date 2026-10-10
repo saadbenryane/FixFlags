@@ -491,5 +491,23 @@ export async function loadSiteBoardFlag(siteId: string, flagId: string) {
   if (!site) return null
   const flag = await loadSiteFlagDetail(site, flagId)
   if (!flag) return null
-  return { site, flag }
+  const finding = await prisma.journeyFinding.findFirst({
+    where: {
+      flagId: flag.sourceFlagId ?? flag.id,
+      journeyReview: { auditId: flag.sourceAuditId, audit: site.projectId ? { projectId: site.projectId } : { id: site.primaryAuditId ?? '' } },
+    },
+    select: { screenshotUrl: true, createdAt: true },
+  })
+  // Only the exact persisted finding owns this image. The newest Site capture
+  // may show a different page, device or later repair.
+  let capture = null
+  if (finding?.screenshotUrl) {
+    try {
+      const url = new URL(finding.screenshotUrl, 'https://fixflags.com')
+      if (url.pathname.startsWith('/api/integrity-assets/') || url.pathname.startsWith('/api/screenshots/')) {
+        capture = { url: `${url.pathname}${url.search}`, recordedAt: finding.createdAt.toISOString() }
+      }
+    } catch { /* An unusable reference is not visual evidence. */ }
+  }
+  return { site, flag, capture }
 }

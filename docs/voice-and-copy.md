@@ -1,7 +1,7 @@
 ---
 status: canonical
 authority: interface
-reviewed_at: 2026-10-09
+reviewed_at: 2026-10-10
 supersedes: []
 ---
 
@@ -449,11 +449,15 @@ Target launch line:
 **Your software runs.**
 **FixFlags watches.**
 
-Approved October 10 narrative: promise and URL → explore a website → follow a Flag through recovery → see what keeps running. The complete interactive board carries the breadth; category depth carries technical detail. Keep integrations contextual to their answer and coding-agent handoff beside fix guidance. The large homepage competitor matrix is removed.
+October 10 simplicity refinement: promise and URL → explore a website, including what keeps being checked → follow a Flag through recovery → analyze your own website. Monitoring belongs in the existing sample board, with scope, last checked, next check and setup limits in its responsive depth. Do not build a second monitoring console on the homepage. The complete interactive board carries the breadth; category depth carries technical detail. Keep integrations contextual to their answer and coding-agent handoff beside fix guidance. The large homepage competitor matrix is removed.
+
+The later release-quality refinement leads with **Know how your website is doing.** The sample groups existing results as Needs attention, Checked, and Still to check. All seven areas remain visible; the latter group preserves Partial, Out of date and Not configured individually. These are presentation groups, not new product objects or claims that a whole category works. Successful answers name the actual bounded result. Monitoring is one concrete scope/cadence control, with operational detail in existing depth. Coverage and check times belongs beside freshness; Analyze your website is the board's next-step link.
 
 Supporting copy: “FixFlags checks your live website, shows what needs attention, and lets you verify your fixes with fresh evidence.” Primary CTA: Analyze. Preserve the existing real URL submission path.
 
 Use a visible Sample designation. Every demonstration Flag must have matching scope and evidence. Diagnostic results and schedules may be illustrative when identified; fixture captures do not establish actual customer recovery. Avoid fabricated measurements and live-looking verification actions.
+
+The static cart recovery fixture shows an item and a Checkout control. Describe that visible result; it does not prove the control works or checkout opened. Keep the sample recovery label and distinguish the demonstration from an executed verification.
 
 Analysis, configured monitoring and independent verification remain distinct. State what ran, when, and what remains unverified; show scheduled scope and cadence without implying instant outage detection or blanket recurring diagnostics. Copying guidance does not resolve a Flag.
 

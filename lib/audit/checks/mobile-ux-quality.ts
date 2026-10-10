@@ -1,10 +1,12 @@
 import type { CaptureMetrics } from '../capture-metrics'
 import type { PageMetadata } from '../metadata'
 import type { DeterministicFlag } from '../flag-types'
+import { needsFirstStep, type PagePurpose } from '../page-purpose'
 
 export function runMobileUXQualityChecks(
   meta: PageMetadata,
-  captureMetrics: CaptureMetrics | null
+  captureMetrics: CaptureMetrics | null,
+  purpose: PagePurpose = 'marketing'
 ): DeterministicFlag[] {
   const findings: DeterministicFlag[] = []
 
@@ -29,7 +31,7 @@ export function runMobileUXQualityChecks(
   const primaryCtaTop = captureMetrics.mobilePrimaryCtaTopPx
   const viewportHeight = captureMetrics.mobileViewportHeight
 
-  if (primaryCtaTop !== null && viewportHeight > 0) {
+  if (needsFirstStep(purpose) && primaryCtaTop !== null && viewportHeight > 0) {
     // The metric is an absolute document position; the thumb-zone ratio is
     // about the CTA's position in the initial viewport, so use the
     // viewport-relative top.

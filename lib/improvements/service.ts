@@ -20,7 +20,7 @@ import {
   ensureProductProject,
   mutateProjectIntelligence,
 } from '@/lib/audit/ensure-product-project'
-import { assessVerificationCoverage } from '@/lib/improvements/verification-coverage'
+import { assessVerificationCoverage, assessTargetedOutcomeCoverage } from '@/lib/improvements/verification-coverage'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import {
   normalizeImprovementRejectionReason,
@@ -175,11 +175,10 @@ export async function createImprovementAttempt(input: {
   handoffReference?: string
   pullRequestReference?: string
   deploymentReference?: string
-  changeSummary: string
+  changeSummary?: string | null
 }, dependencies: ImprovementServiceDependencies = {}) {
   const clock = dependencies.clock ?? systemClock
-  const changeSummary = input.changeSummary.trim()
-  if (!changeSummary) throw new Error('Describe the implemented change before verification')
+  const changeSummary = input.changeSummary?.trim() || null
   const improvement = await prisma.improvement.findFirst({
     where: {
       id: input.improvementId,
@@ -217,7 +216,9 @@ export async function createImprovementAttempt(input: {
       handoffReference: input.handoffReference,
       pullRequestReference: input.pullRequestReference,
       deploymentReference: input.deploymentReference,
-      changeSummary,
+      // An omitted description is honest. On a retry it must not erase an
+      // earlier description on the same pending attempt.
+      changeSummary: changeSummary ?? (existing ? undefined : null),
     }
     const attempt = existing
       ? await tx.improvementAttempt.update({ where: { id: existing.id }, data })
@@ -619,6 +620,10 @@ export async function reconcileImprovementVerification(input: {
         journeyReviewIncluded: true,
         journeyReviewAt: true,
         pages: { select: { url: true, status: true } },
+        runRequests: { select: {
+          id: true, projectId: true, status: true, environment: true, verificationTarget: true,
+          assessments: { select: { outcomeId: true, auditId: true, runRequestId: true, state: true, coverage: true, evidence: true } },
+        } },
         verifierExecutions: {
           select: {
             targetKey: true,
@@ -663,8 +668,16 @@ export async function reconcileImprovementVerification(input: {
     reconciledImprovementIds.add(occurrence.improvementId)
     const attempt = occurrence.improvement.attempts[0]
     if (!attempt) continue
+    const targetedRun = verificationAudit.runRequests?.find((run) => {
+      const target = run.verificationTarget
+      return target && !Array.isArray(target) && typeof target === 'object' &&
+        (target.kind === 'OUTCOME' || target.kind === 'DIAGNOSTIC')
+    })
+    const target = targetedRun?.verificationTarget as Record<string, unknown> | undefined
+    // One targeted request is not authority to reconcile another pending fix.
+    if (target && target.attemptId !== attempt.id) continue
     const current = currentByKey.get(improvementFingerprint(occurrence.flag))
-    const coverageDecision = assessVerificationCoverage({
+    let coverageDecision = assessVerificationCoverage({
       status: verificationAudit.status,
       reportCompleteness: verificationAudit.reportCompleteness,
       evidenceCoverage: verificationAudit.evidenceCoverage,
@@ -678,14 +691,30 @@ export async function reconcileImprovementVerification(input: {
       pageUrl: occurrence.flag.pageUrl,
       verifierExecutions: verificationAudit.verifierExecutions,
     })
+    if (target?.kind === 'OUTCOME' && targetedRun) {
+      const sourceAssessment = occurrence.improvement.outcomeId
+        ? await prisma.outcomeAssessment.findFirst({
+            where: { auditId: input.parentAuditId, outcomeId: occurrence.improvement.outcomeId },
+            orderBy: { assessedAt: 'desc' }, select: { state: true, coverage: true },
+          }) : null
+      coverageDecision = assessTargetedOutcomeCoverage({
+        auditId: verificationAudit.id, auditStatus: verificationAudit.status,
+        projectId: verificationAudit.projectId, parentAuditId: input.parentAuditId,
+        outcomeId: occurrence.improvement.outcomeId, attemptId: attempt.id,
+        run: targetedRun, sourceAssessment,
+      })
+    }
     const stableAiIdentity =
       occurrence.flag.source !== 'AI' || Boolean(occurrence.flag.fingerprint)
     const comparable = coverageDecision.comparable && stableAiIdentity
     const reason = !stableAiIdentity
       ? 'The original AI observation has no stable evidence fingerprint for comparison.'
       : coverageDecision.reason
+    const targetedState = target?.kind === 'OUTCOME' ? targetedRun?.assessments.find(item => item.outcomeId === target.outcomeId)?.state : null
     const outcome: VerificationOutcome = !comparable
       ? 'INCONCLUSIVE'
+      : targetedState === 'FLAG'
+        ? current?.status === 'REGRESSED' ? 'REGRESSED' : 'UNCHANGED'
       : !current
         ? 'IMPROVED'
         : current.status === 'REGRESSED'

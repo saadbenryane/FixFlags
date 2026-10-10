@@ -7,6 +7,7 @@ import { formatOverlayEvidence } from '../browser/overlay-probe'
 import { runOverlayBlockerChecks } from './overlay'
 import type { DeterministicFlag } from '../flag-types'
 import { registerCheck } from './registry'
+import { needsFirstStep, type PagePurpose } from '../page-purpose'
 
 const FLOW_CHECK_DESCRIPTORS = [
   { id: 'flow-no-cta-found', severity: 'IMPORTANT', tags: ['requiresBrowser', 'cta-flow'] },
@@ -202,7 +203,7 @@ function runMultiStepFlowChecks(result: FlowScanResult): DeterministicFlag[] {
   return findings
 }
 
-export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
+export function runFlowChecks(result: FlowScanResult, purpose: PagePurpose = 'marketing'): DeterministicFlag[] {
   const findings: DeterministicFlag[] = [
     ...runMultiStepFlowChecks(result),
     ...runPostClickFlowChecks(result.postClickMetrics),
@@ -334,10 +335,11 @@ export function runFlowChecks(result: FlowScanResult): DeterministicFlag[] {
   // the same stuck destination. Keep the post-click one (carries the loading
   // element label). This lives here (not in the barrel's suppressOverlappingFlags)
   // because flow flags are concatenated after runAllChecks returns.
-  const ids = new Set(findings.map((f) => f.checkId))
+  const scoped = needsFirstStep(purpose) ? findings : findings.filter(flag => !['flow-no-cta-found', 'flow-cta-external-leave'].includes(flag.checkId))
+  const ids = new Set(scoped.map((f) => f.checkId))
   if (ids.has('flow-cta-stuck-loading') && ids.has('flow-destination-stuck-loading')) {
-    return findings.filter((f) => f.checkId !== 'flow-destination-stuck-loading')
+    return scoped.filter((f) => f.checkId !== 'flow-destination-stuck-loading')
   }
 
-  return findings
+  return scoped
 }

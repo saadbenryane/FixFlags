@@ -138,7 +138,7 @@ const { getAuditBrowser, getBrowserDiagnostics } = await import('../../lib/audit
 const { touchWorkerHeartbeat } = await import('../../lib/queue/worker-heartbeat')
 await getAuditBrowser()
 await touchWorkerHeartbeat({ browserOk: getBrowserDiagnostics().connected, queueState: 'idle' })
-const web = spawn(process.execPath, ['.next-verify/standalone/server.js'], { env: { ...process.env, PORT: '3145', HOSTNAME: '127.0.0.1', FIXFLAGS_PROCESS_ROLE: 'web' }, stdio: 'inherit' })
+const web = spawn(process.execPath, ['.next-e2e/standalone/server.js'], { env: { ...process.env, PORT: '3145', HOSTNAME: '127.0.0.1', FIXFLAGS_PROCESS_ROLE: 'web' }, stdio: 'inherit' })
 await mkdir('.cache', { recursive: true })
 await writeFile('.cache/customer-reliability-runtime.json', JSON.stringify({ token, prefix, redisUrl: redisUrl.toString(), fixtureOrigin }))
 console.log('LOCAL RELIABILITY FIXTURE READY: app 3145, transport 3146; no external email or storage')

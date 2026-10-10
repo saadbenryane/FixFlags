@@ -157,3 +157,51 @@ export function assessVerificationCoverage(input: {
     coverage,
   }
 }
+
+/** Targeted Outcome proof uses the same required binding scope as its failure. */
+export function assessTargetedOutcomeCoverage(input: {
+  auditId: string; auditStatus: string; projectId: string; parentAuditId: string
+  outcomeId: string | null; attemptId: string
+  run: {
+    id: string; projectId: string; status: string; environment: string; verificationTarget: Prisma.JsonValue
+    assessments: Array<{ outcomeId: string; auditId: string; runRequestId: string; state: string; coverage: Prisma.JsonValue; evidence: Prisma.JsonValue }>
+  }
+  sourceAssessment: { state: string; coverage: Prisma.JsonValue } | null
+}): VerificationCoverageDecision {
+  const record = (value: Prisma.JsonValue | null): Record<string, Prisma.JsonValue> =>
+    value && !Array.isArray(value) && typeof value === 'object' ? value as Record<string, Prisma.JsonValue> : {}
+  const keys = (value: Prisma.JsonValue | undefined): string[] => Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string').sort() : []
+  const target = record(input.run.verificationTarget)
+  const assessment = input.run.assessments.find(item => item.outcomeId === input.outcomeId && item.auditId === input.auditId && item.runRequestId === input.run.id)
+  const source = record(input.sourceAssessment?.coverage ?? null)
+  const observed = record(assessment?.coverage ?? null)
+  const required = keys(observed.requiredBindings)
+  const bindings = (value: Prisma.JsonValue | undefined): Prisma.JsonValue[] => Array.isArray(value)
+    ? [...value].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))) : []
+  const sourceBindings = bindings(source.bindings)
+  const observedBindings = bindings(observed.bindings)
+  const sameScope = required.length > 0 && JSON.stringify(required) === JSON.stringify(keys(source.requiredBindings)) &&
+    sourceBindings.length === required.length && observedBindings.length === required.length &&
+    JSON.stringify(sourceBindings) === JSON.stringify(observedBindings) &&
+    observed.environment === source.environment && observed.environment === input.run.environment &&
+    JSON.stringify(observed.scope ?? null) === JSON.stringify(source.scope ?? null)
+  const conclusive = assessment?.state === 'CLEAR' || assessment?.state === 'FLAG'
+  const executed = Boolean(assessment && Object.keys(record(assessment.evidence)).length > 0 &&
+    required.every(key => keys(observed.observedBindings).includes(key)))
+  const comparable = input.auditStatus === 'COMPLETED' && input.run.status === 'COMPLETED' &&
+    input.run.projectId === input.projectId && target.kind === 'OUTCOME' && target.attemptId === input.attemptId &&
+    target.outcomeId === input.outcomeId && target.parentAuditId === input.parentAuditId &&
+    input.sourceAssessment?.state === 'FLAG' && sameScope && conclusive && executed
+  return {
+    comparable,
+    reason: comparable ? 'The same behavior was checked again.' : 'This check did not cover the same behavior.',
+    coverage: {
+      completeReview: input.auditStatus === 'COMPLETED', evidenceComparable: comparable,
+      relevantPageCovered: sameScope, verifierExecuted: executed,
+      verifierStatus: executed ? 'COMPLETED' : 'MISSING', targetKey: input.outcomeId ? `outcome:${input.outcomeId}` : null,
+      scopeKey: input.run.environment, executionEvidenceReference: assessment?.evidence ?? null,
+      failedModules: [], source: 'OUTCOME', pageUrl: null,
+    },
+  }
+}

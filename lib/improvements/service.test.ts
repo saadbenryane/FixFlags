@@ -275,6 +275,22 @@ describe('materializeAttentionForAudit', () => {
 })
 
 describe('createImprovementAttempt', () => {
+  it('records an undescribed verification request without inventing a change or recovery', async () => {
+    mocks.improvementFindFirst.mockResolvedValue({ id: 'improvement-1' })
+    mocks.attemptCreate.mockResolvedValue({ id: 'attempt-1' })
+    await createImprovementAttempt({ improvementId: 'improvement-1', projectId: 'product-1', userId: 'user-1', sourceAuditId: 'review-1', builder: 'site' })
+    expect(mocks.attemptCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ changeSummary: null }) }))
+    expect(mocks.improvementUpdate).toHaveBeenCalledWith({ where: { id: 'improvement-1' }, data: { status: 'READY_TO_VERIFY' } })
+  })
+
+  it('keeps the existing declared change when a pending verification request is repeated without one', async () => {
+    mocks.improvementFindFirst.mockResolvedValue({ id: 'improvement-1' })
+    mocks.attemptFindFirst.mockResolvedValue({ id: 'attempt-1' })
+    mocks.attemptUpdate.mockResolvedValue({ id: 'attempt-1' })
+    await createImprovementAttempt({ improvementId: 'improvement-1', projectId: 'product-1', userId: 'user-1', sourceAuditId: 'review-1', builder: 'site' })
+    expect(mocks.attemptUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ changeSummary: undefined }) }))
+  })
+
   it('enforces Product ownership and advances a declared change to verification', async () => {
     mocks.improvementFindFirst.mockResolvedValue({ id: 'improvement-1' })
     mocks.attemptCreate.mockResolvedValue({ id: 'attempt-1' })

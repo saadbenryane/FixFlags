@@ -67,6 +67,9 @@ export async function persistImprovementCycle(
     await projectSiteAnalysis(auditId)
     if (parentId) await diffFlagsAgainstParent(auditId, parentId)
     await executeProductCommand({ type: 'MATERIALIZE_ATTENTION', auditId })
+    // Targeted recovery consumes the persisted binding assessment, rather than
+    // treating optional broad-report evidence as the Outcome's success rule.
+    await reconcileOutcomeRunsForAudit(auditId)
     if (parentId) {
       await executeProductCommand({
         type: 'RECONCILE_UPDATE_REVIEW',
@@ -74,7 +77,12 @@ export async function persistImprovementCycle(
         verificationAuditId: auditId,
       })
     }
-    await reconcileOutcomeRunsForAudit(auditId)
+    if (!parentId) {
+      // A first Watch still owns a result and an alert. Missing comparison
+      // history cannot strand a meaningful newly observed failure in PENDING.
+      const { notifyWatchRegression } = await import('@/lib/audit/project-watch')
+      await notifyWatchRegression(null, auditId)
+    }
     // improvementProjectedAt is a completion receipt, not a lease. Write it
     // only after every idempotent projection step succeeds so a process crash
     // leaves the Review recoverable by the scheduler.

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   runRequestFindMany: vi.fn(async () => []),
   persistAuditRunCost: vi.fn(),
   diffFlagsAgainstParent: vi.fn(),
+  notifyWatchRegression: vi.fn(),
   materializeAttentionForAudit: vi.fn(),
   reconcileImprovementVerification: vi.fn(),
   logPipelineEvent: vi.fn(),
@@ -35,6 +36,8 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/billing/costs', () => ({
   persistAuditRunCost: mocks.persistAuditRunCost,
 }))
+
+vi.mock('@/lib/audit/project-watch', () => ({ notifyWatchRegression: mocks.notifyWatchRegression }))
 
 vi.mock('@/lib/audit/diff-flags', () => ({
   diffFlagsAgainstParent: mocks.diffFlagsAgainstParent,
@@ -81,6 +84,12 @@ import {
 } from '../finalize'
 
 describe('persistImprovementCycle', () => {
+  it('classifies a completed first Watch without waiting for comparison history', async () => {
+    mocks.auditFindUnique.mockResolvedValue({ improvementProjectedAt: null })
+    await persistImprovementCycle('first-watch', null)
+    assert.deepEqual(mocks.notifyWatchRegression.mock.calls.at(-1), [null, 'first-watch'])
+  })
+
   beforeEach(() => resetMocks())
 
   it('projects a completed Review and writes the completion receipt last', async () => {

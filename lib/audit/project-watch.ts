@@ -296,7 +296,7 @@ async function markWatchCompleted(projectId: string, completedAt: Date) {
 }
 
 /** Persist regression state and deliver at most once for a WATCH child. */
-export async function notifyWatchRegression(parentAuditId: string, childAuditId: string): Promise<void> {
+export async function notifyWatchRegression(parentAuditId: string | null, childAuditId: string): Promise<void> {
   const child = await prisma.audit.findUnique({
     where: { id: childAuditId },
     select: {
@@ -345,7 +345,15 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
       },
     })
   }
-  if (regressCount === 0 && alertRecoveryCount === 0) return
+  if (regressCount === 0 && alertRecoveryCount === 0) {
+    if (child.watchNotificationStatus === 'PENDING' || child.watchNotificationStatus === 'FAILED') {
+      await prisma.audit.updateMany({
+        where: { id: childAuditId, watchNotificationStatus: { in: ['PENDING', 'FAILED'] } },
+        data: { watchNotificationStatus: 'NOT_APPLICABLE', watchNotificationLeaseUntil: null },
+      })
+    }
+    return
+  }
 
   // Never overwrite a claim another worker still holds. Writing FAILED here
   // would both lose their delivery and mark the alert failed while it is still
@@ -376,18 +384,6 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
       data: {
         watchNotificationStatus: 'FAILED',
         watchNotificationLastError: 'Delivery confirmation expired after the final attempt',
-        watchNotificationLeaseUntil: null,
-      },
-    })
-    return
-  }
-
-  if (!child.user?.email || !resend) {
-    await prisma.audit.update({
-      where: { id: childAuditId },
-      data: {
-        watchNotificationStatus: 'FAILED',
-        watchNotificationLastError: 'Email delivery is not configured',
         watchNotificationLeaseUntil: null,
       },
     })
@@ -441,6 +437,7 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
     ? `<p>Checked ${escapeEmailHtml(child.completedAt.toISOString())}.</p>` : ''
 
   try {
+    if (!child.user?.email || !resend) throw new Error('Email delivery is not configured')
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: child.user.email,
@@ -505,7 +502,6 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
         },
         { watchNotificationStatus: 'SENDING', watchNotificationLeaseUntil: { lt: now } },
       ],
-      parentId: { not: null },
     },
     select: { id: true, parentId: true },
     take: limit,
@@ -513,7 +509,7 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
   })
   for (const audit of audits) {
     try {
-      await notifyWatchRegression(audit.parentId!, audit.id)
+      await notifyWatchRegression(audit.parentId, audit.id)
     } catch (error) {
       // A broken audit must not prevent alerts for the rest of the batch.
       logger.warn('Watch notification retry failed', {

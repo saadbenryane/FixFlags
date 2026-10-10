@@ -86,9 +86,9 @@ export function runMetadataChecks(meta: PageMetadata): DeterministicFlag[] {
       rubric: 'REACH',
       impactTag: 'SHARING',
       severity: 'IMPORTANT',
-      problem: 'og:image is missing, link previews show blank',
-      evidence: 'No <meta property="og:image"> tag found in <head>',
-      fix: '1. Open your page metadata export (layout.tsx or page.tsx)\n2. Add openGraph: { images: [\'https://yourdomain.com/og.png\'] }\n3. Generate a 1200x630px PNG with your branding or product screenshot',
+      problem: 'No image is specified for link previews',
+      evidence: 'No <meta property="og:image"> tag found in <head>. A sharing service may choose a fallback; its rendered preview was not tested.',
+      fix: '1. Choose an image that represents this page (1200×630px is a common size)\n2. Add <meta property="og:image" content="https://yourdomain.com/og.png"> to the page head, or set the equivalent field in your framework\n3. Confirm the image loads publicly and check the preview in the sharing services you use',
       confidence: 1.0,
       source: 'DETERMINISTIC',
     })

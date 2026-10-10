@@ -19,6 +19,7 @@ for (const width of [320, 390, 768, 1086, 1280, 1440]) {
     await visit(page)
     await expect(page.getByRole('heading', { level: 1, name: /Your software runs\.\s*FixFlags watches\./ })).toBeVisible()
     const board = page.getByRole('region', { name: C.boardAria })
+    for (const name of Object.values(S.groups)) await expect(board.getByRole('region', { name })).toBeVisible()
     for (const card of S.categories) {
       const tile = board.getByRole('button', { name: `Open ${card.name}` })
       await expect(tile).toBeVisible()
@@ -76,10 +77,16 @@ test('unknown states remain visible and scheduled scope stays explicit', async (
   await expect(dialog.getByText('Recommendation', { exact: true })).toBeVisible()
   await expect(dialog.getByText('0 Flags', { exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
-  await page.getByRole('link', { name: S.watchAction }).click()
-  await expect(page.getByText(C.monitoring.sample)).toBeVisible()
-  await expect(page.getByText('Not scheduled', { exact: true })).toBeVisible()
-  await expect(page.getByText(C.monitoring.note)).toBeVisible()
+  const monitoring = page.getByRole('button', { name: C.monitoring.action })
+  await monitoring.focus(); await page.keyboard.press('Enter')
+  await expect(dialog.getByRole('heading', { name: C.monitoring.detailTitle })).toBeVisible()
+  await expect(dialog.getByText(C.monitoring.sample)).toBeVisible()
+  await expect(dialog.getByText('Not scheduled', { exact: true })).toBeVisible()
+  await expect(dialog.getByText(C.monitoring.note)).toBeVisible()
+  await expect(dialog.getByText(C.monitoring.setup)).toBeVisible()
+  await expect(dialog.getByText(C.monitoring.nextValue)).toBeVisible()
+  await expect(dialog.getByText('1 Flag', { exact: true })).toHaveCount(2)
+  await page.keyboard.press('Escape'); await expect(monitoring).toBeFocused()
   const slider = page.getByRole('slider', { name: C.workflow.compareLabel }); await slider.focus()
   await page.keyboard.press('End'); await expect(slider).toHaveAttribute('aria-valuenow', '100')
   await page.keyboard.press('Home'); await expect(slider).toHaveAttribute('aria-valuenow', '0')
@@ -99,9 +106,33 @@ test('Analyze validates and submits through the existing Site handoff', async ({
   expect(submitted).toMatchObject({ url: 'https://example.com', source: 'homepage' })
 })
 
+test('monitoring detail remains readable and accessible on phone and desktop', async ({ page }) => {
+  for (const width of [320, 1440]) {
+    await page.setViewportSize({ width, height: 844 }); await visit(page)
+    const opener = page.getByRole('button', { name: C.monitoring.action })
+    await opener.click()
+    const dialog = page.getByRole('dialog')
+    for (const row of C.monitoring.rows) {
+      await expect(dialog.getByRole('heading', { name: row.name })).toBeVisible()
+      await expect(dialog.getByText(row.scope, { exact: true })).toBeVisible()
+    }
+    expect(await dialog.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true)
+    await page.keyboard.press('Tab')
+    expect(await dialog.evaluate(node => node.contains(document.activeElement))).toBe(true)
+    for (const dark of [false, true]) {
+      await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark)
+      // Measure the settled theme, as in the full-page contrast check below.
+      await page.waitForTimeout(250)
+      const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
+      expect(result.violations.map(item => ({ id: item.id, targets: item.nodes.map(node => node.target) }))).toEqual([])
+    }
+    await page.keyboard.press('Escape'); await expect(opener).toBeFocused()
+  }
+})
+
 test('reduced motion and sample controls retain usable targets', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await page.emulateMedia({ reducedMotion: 'reduce' }); await visit(page)
-  const controls = [page.getByRole('button', { name: 'Analyze', exact: true }).first(), page.getByRole('button', { name: S.coverageAction }), page.getByRole('slider')]
+  const controls = [page.getByRole('button', { name: 'Analyze', exact: true }).first(), page.getByRole('button', { name: S.coverageAction }), page.getByRole('button', { name: C.monitoring.action }), page.getByRole('slider')]
   for (const control of controls) {
     const box = await control.boundingBox(); expect(box!.height).toBeGreaterThanOrEqual(44); expect(box!.width).toBeGreaterThanOrEqual(44)
   }
@@ -111,13 +142,19 @@ test('reduced motion and sample controls retain usable targets', async ({ page }
 
 test('captures the actual local experience when requested', async ({ page }) => {
   test.skip(process.env.FIXFLAGS_CAPTURE_HOMEPAGE_EVIDENCE !== '1', 'Explicit visual evidence capture')
-  const output = '.agents/artifacts/homepage-experience'; await mkdir(output, { recursive: true })
+  const output = '.agents/artifacts/homepage-release-quality'; await mkdir(output, { recursive: true })
   for (const [name, width] of [['desktop', 1440], ['mobile', 390]] as const) {
     await page.setViewportSize({ width, height: 900 }); await page.emulateMedia({ reducedMotion: 'reduce' }); await visit(page)
     await page.evaluate(async () => { await document.fonts.ready; for (const image of document.images) image.loading = 'eager' })
     await page.waitForFunction(() => Array.from(document.images).every(image => image.complete && image.naturalWidth > 0))
     await page.screenshot({ path: `${output}/${name}.png`, fullPage: true })
     await page.locator('#product').screenshot({ path: `${output}/${name}-board.png` })
+    await page.getByRole('button', { name: C.monitoring.action }).click()
+    await page.getByRole('dialog').screenshot({ path: `${output}/${name}-monitoring.png` })
+    await page.keyboard.press('Escape')
+    const slider = page.getByRole('slider', { name: C.workflow.compareLabel })
+    await slider.focus(); await page.keyboard.press('End')
+    await page.locator('#flag-example').screenshot({ path: `${output}/${name}-recovery.png` })
   }
 })
 

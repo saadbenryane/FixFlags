@@ -414,7 +414,7 @@ describe('Product Watch', () => {
       mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [critical], inconclusive: [], unchanged: [], newIssues: [critical], regressed: [] })
       await notifyWatchRegression('parent-1', 'child-1')
       expect(mocks.sendEmail).not.toHaveBeenCalled()
-      expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
+      expect(mocks.auditUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ watchNotificationStatus: 'NOT_APPLICABLE' }) }))
     })
 
     it('does not notify low-confidence findings even when an older count was persisted', async () => {

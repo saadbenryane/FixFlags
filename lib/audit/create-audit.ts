@@ -255,11 +255,13 @@ export async function createAndEnqueueAudit(
   const data = {
     url,
     userId,
-    isPublic: true,
+    // Anonymous analysis retains its public-report contract. Owned Site runs
+    // and credentialed captures contain tenant evidence, not public shares.
+    isPublic: !options.runRequestId && !resolvedScanAccess,
     projectId,
     scanAccessEncrypted: resolvedScanAccess ? encryptScanAccess(resolvedScanAccess) : null,
     parentId: options.parentId ?? null,
-    recheckTrigger: options.parentId ? (options.recheckTrigger ?? 'MANUAL') : null,
+    recheckTrigger: options.recheckTrigger === 'WATCH' ? ('WATCH' as const) : options.parentId ? (options.recheckTrigger ?? 'MANUAL') : null,
     watchNotificationStatus:
       options.recheckTrigger === 'WATCH' ? ('PENDING' as const) : ('NOT_APPLICABLE' as const),
     skipUsageCount: options.skipUsageCount ?? false,

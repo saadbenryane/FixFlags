@@ -17,6 +17,7 @@ import {
 import { runAllChecks, suppressOverlappingFlags } from '../checks'
 import { suppressFlagsForPageRole } from '../suppression'
 import { runFlowChecks } from '../checks/flow'
+import { detectPagePurpose } from '../page-purpose'
 import { runSlowReplayChecks } from '../checks/slow-replay'
 import { runNetworkEngagementChecks } from '../checks/network-engagement'
 import type { FlowScanResult } from '../flow/run-flow-scan'
@@ -503,7 +504,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
   const flags = suppressFlagsForPageRole(suppressOverlappingFlags(
     detFlags
       .concat(
-        input.primary && input.position === 0 && flowResult ? runFlowChecks(flowResult) : []
+        input.primary && input.position === 0 && flowResult ? runFlowChecks(flowResult, detectPagePurpose(metadata, normalizedUrl).purpose) : []
       )
       .concat(
         input.primary && input.position === 0
@@ -598,7 +599,7 @@ export async function runPage(ctx: PipelineContext, input: RunPageInput): Promis
         event: 'flow_completed_deferred',
         durationMs: ctx.clock.now().getTime() - flowStart,
       })
-      const flowFlags = runFlowChecks(flowResult).map((flag) => ({
+      const flowFlags = runFlowChecks(flowResult, detectPagePurpose(metadata, normalizedUrl).purpose).map((flag) => ({
         ...flag,
         pageUrl: normalizedUrl,
       }))

@@ -104,6 +104,13 @@ async function runAttempt(
     page = session.page
     finalUrl = page.url()
     outcome.httpStatus = session.httpStatus
+    // The landing response cannot certify a later checkout navigation. Keep
+    // the final main-frame response, excluding cart APIs and other resources.
+    page.on('response', (response) => {
+      if (response.request().isNavigationRequest() && response.frame() === page!.mainFrame()) {
+        outcome.httpStatus = response.status()
+      }
+    })
 
     await dismissConsentChrome(page)
     await dismissOpenDialogs(page)
@@ -117,9 +124,10 @@ async function runAttempt(
     await captureStep(page, runId, attempt, 'landing', steps, stepPngs)
 
     if (isCheckoutUrl(page.url())) {
-      outcome.reachedCheckout = true
-      outcome.failedStep = null
-      await captureStep(page, runId, attempt, 'checkout', steps, stepPngs)
+      outcome.checkoutErrorVisible = await pageShowsCheckoutError(page)
+      outcome.reachedCheckout = !outcome.checkoutErrorVisible && (outcome.httpStatus ?? 200) < 400
+      outcome.failedStep = outcome.reachedCheckout ? null : 'checkout'
+      await captureStep(page, runId, attempt, outcome.reachedCheckout ? 'checkout' : 'failure', steps, stepPngs)
       return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
 
@@ -149,10 +157,11 @@ async function runAttempt(
     finalUrl = page.url()
 
     if (isCheckoutUrl(page.url())) {
-      outcome.reachedCheckout = true
+      outcome.checkoutErrorVisible = await pageShowsCheckoutError(page)
+      outcome.reachedCheckout = !outcome.checkoutErrorVisible && (outcome.httpStatus ?? 200) < 400
       outcome.cartUpdated = true
-      outcome.failedStep = null
-      await captureStep(page, runId, attempt, 'checkout', steps, stepPngs)
+      outcome.failedStep = outcome.reachedCheckout ? null : 'checkout'
+      await captureStep(page, runId, attempt, outcome.reachedCheckout ? 'checkout' : 'failure', steps, stepPngs)
       return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
 
@@ -178,10 +187,11 @@ async function runAttempt(
 
     finalUrl = page.url()
     if (isCheckoutUrl(page.url()) || (await shopPayVisible(page))) {
-      outcome.reachedCheckout = true
+      outcome.checkoutErrorVisible = await pageShowsCheckoutError(page)
+      outcome.reachedCheckout = !outcome.checkoutErrorVisible && (outcome.httpStatus ?? 200) < 400
       outcome.cartUpdated = true
-      outcome.failedStep = null
-      await captureStep(page, runId, attempt, 'checkout', steps, stepPngs)
+      outcome.failedStep = outcome.reachedCheckout ? null : 'checkout'
+      await captureStep(page, runId, attempt, outcome.reachedCheckout ? 'checkout' : 'failure', steps, stepPngs)
       return await finishAttempt({ runId, attempt, page, steps, stepPngs, outcome, finalUrl: page.url() })
     }
 
