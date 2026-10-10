@@ -338,6 +338,9 @@ export async function getFlagDiffSummary(
       rubric: parentFlag.rubric,
       severity: parentFlag.severity,
       status: parentFlag.status,
+      confidence: parentFlag.confidence,
+      impactTag: parentFlag.impactTag,
+      pageUrl: parentFlag.pageUrl,
     }
 
     if (!monitoringFlag) {
@@ -373,6 +376,9 @@ export async function getFlagDiffSummary(
         rubric: monitoringFlag.rubric,
         severity: monitoringFlag.severity,
         status: 'REGRESSED',
+        confidence: monitoringFlag.confidence,
+        impactTag: monitoringFlag.impactTag,
+        pageUrl: monitoringFlag.pageUrl,
       })
     } else {
       unchanged.push({
@@ -382,6 +388,9 @@ export async function getFlagDiffSummary(
         rubric: monitoringFlag.rubric,
         severity: monitoringFlag.severity,
         status: 'OPEN',
+        confidence: monitoringFlag.confidence,
+        impactTag: monitoringFlag.impactTag,
+        pageUrl: monitoringFlag.pageUrl,
       })
     }
   }
@@ -403,6 +412,8 @@ export async function getFlagDiffSummary(
       rubric: monitoringFlag.rubric,
       severity: monitoringFlag.severity,
       status: monitoringFlag.status,
+      confidence: monitoringFlag.confidence,
+      impactTag: monitoringFlag.impactTag,
       pageUrl,
       foundOnNewPage: isFoundOnNewlyReviewedPage({
         pageUrl,

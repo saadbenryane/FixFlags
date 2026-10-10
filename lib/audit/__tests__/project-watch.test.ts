@@ -379,6 +379,51 @@ describe('Product Watch', () => {
     )
   })
 
+  describe('customer notification selection', () => {
+    const important = { id: 'important', checkId: 'title-missing', problem: 'Search title is missing', rubric: 'SEO', severity: 'IMPORTANT', confidence: 0.95, status: 'OPEN' }
+    const critical = { ...important, id: 'critical', checkId: 'journey-checkout-failed', problem: 'Checkout <failed>', severity: 'CRITICAL' }
+    beforeEach(() => {
+      mocks.auditFindUnique.mockResolvedValue({
+        id: 'child-1', url: 'https://example.com/', projectId: 'project-1',
+        recheckTrigger: 'WATCH', completedAt: new Date('2026-10-10T12:00:00Z'),
+        watchRegressionCount: 1, watchRecoveryCount: 0,
+        watchNotificationStatus: 'FAILED', watchNotificationAttempts: 1,
+        user: { email: 'owner@example.test', name: 'Owner <img src=x>' },
+        project: { notificationLevel: 'CRITICAL_ONLY', notifyOnRecovery: true },
+      })
+      mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], newIssues: [important, critical], regressed: [] })
+    })
+
+    it('links and explains the eligible critical Flag rather than an excluded finding', async () => {
+      await notifyWatchRegression('parent-1', 'child-1')
+      const message = mocks.sendEmail.mock.calls[0][0]
+      expect(message.to).toBe('owner@example.test')
+      expect(message.subject).toContain('1 Flag')
+      expect(message.html).toContain('/flags/critical?')
+      expect(message.html).not.toContain('/flags/important?')
+      expect(message.html).toContain('Checkout &lt;failed&gt;')
+      expect(message.html).toContain('Owner &lt;img src=x&gt;')
+      expect(message.html).not.toContain('<img src=x>')
+      expect(message.text).toContain('Checkout <failed>')
+      expect(message.text).toContain('2026-10-10T12:00:00.000Z')
+    })
+
+    it('respects an opt-out during retry, including recovery email', async () => {
+      const child = await mocks.auditFindUnique()
+      mocks.auditFindUnique.mockResolvedValue({ ...child, project: { notificationLevel: 'OFF', notifyOnRecovery: true } })
+      mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [critical], inconclusive: [], unchanged: [], newIssues: [critical], regressed: [] })
+      await notifyWatchRegression('parent-1', 'child-1')
+      expect(mocks.sendEmail).not.toHaveBeenCalled()
+      expect(mocks.auditUpdateMany).not.toHaveBeenCalled()
+    })
+
+    it('does not notify low-confidence findings even when an older count was persisted', async () => {
+      mocks.getFlagDiffSummary.mockResolvedValue({ fixed: [], inconclusive: [], unchanged: [], newIssues: [{ ...critical, confidence: 0.2 }], regressed: [] })
+      await notifyWatchRegression('parent-1', 'child-1')
+      expect(mocks.sendEmail).not.toHaveBeenCalled()
+    })
+  })
+
   describe('notification delivery truth', () => {
     beforeEach(() => {
       mocks.auditFindUnique.mockResolvedValue({

@@ -436,6 +436,12 @@ Find the right place and level of emphasis on the marketing site and supporting 
 
 Preferred homes: Privacy page, a short FAQ answer, and a quiet line in account or help copy. If a marketing line is needed, keep it one sentence and true.
 
+## Human language in monitoring
+
+October 10 founder requirement: important sentences must pass the spoken-language test. Lead with the customer result, then expose technical evidence through depth. Prefer “Checking this page…” and “This page opened when we checked.” over execution terminology. A scoped check does not establish that the whole website works.
+
+Use **Turn on monitoring** for activation and **Check again** for a fresh independent run. Name the public page, real saved cadence, next scheduled check and notification choice. “Your schedule is saved. We couldn’t start the first check.” preserves a meaningful partial success. A queued first check is not a pass; copying guidance does not imply a fix. Keep ordinary language precise rather than adding reassuring filler.
+
 ## Homepage direction
 
 Target launch line:

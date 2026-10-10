@@ -14,48 +14,54 @@ import type { SiteHomeView } from '@/lib/sites/application/queries'
 type Cadence = 'weekly' | 'daily'
 type Result = { ok: boolean; stage?: 'coverage' | 'schedule'; message?: string; interval?: Cadence; firstCheck?: 'requested' | 'unavailable'; reused?: boolean }
 
-export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefresh }: {
-  siteId: string; view: SiteHomeView; owner: boolean; checking: boolean; onRefresh: () => Promise<unknown>
+export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefresh, onExploreCoverage }: {
+  siteId: string; view: SiteHomeView; owner: boolean; checking: boolean; onRefresh: () => Promise<unknown>; onExploreCoverage: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [intervals, setIntervals] = useState<Cadence[] | null>(null)
-  const [cadence, setCadence] = useState<Cadence>('weekly')
+  const [cadence, setCadence] = useState<Cadence>(view.watch.interval ?? 'weekly')
   const [loadError, setLoadError] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
+  const [authRequired, setAuthRequired] = useState(false)
   const [reload, setReload] = useState(0)
+  const exploring = useRef(false)
   const trigger = useRef<HTMLButtonElement>(null)
   const resultFocus = useRef<HTMLParagraphElement>(null)
   const ready = view.outcomes.filter(item => item.confirmedAt && item.enabled && item.bindings.some(binding => binding.required))
   const page = ready.find(item => item.kind === 'AVAILABILITY' && item.slug === 'page-loads')
   const scheduled = Boolean(view.watch.interval && view.watch.nextRunAt && ready.length)
-  const needsSetup = !scheduled || !page || result?.firstCheck === 'unavailable'
-  const pageAnswer = page?.running ? C.checking : !page?.lastVerifiedAt ? C.firstPending : page.state === 'CLEAR' ? C.pageClear : page.state === 'FLAG' ? C.pageFlag : page.state === 'STALE' ? C.stale : C.couldNotCheck
+  const needsFirstCheck = Boolean(page && !page.running && !page.lastVerifiedAt)
+  const needsSetup = !scheduled || !page || needsFirstCheck || result?.firstCheck === 'unavailable'
+  const pageAnswer = page?.running ? C.checking : !page?.lastVerifiedAt ? page?.latestRunId && !page.running ? C.couldNotCheck : C.firstPending : page.state === 'CLEAR' ? C.pageClear : page.state === 'FLAG' ? C.pageFlag : page.state === 'STALE' ? C.stale : C.couldNotCheck
   const status = result ? !result.ok ? result.message ?? C.readiness : result.firstCheck === 'unavailable' ? C.checkFailed : result.reused ? C.requestedBefore : C.queued : null
 
   useEffect(() => {
-    if (!open || !owner) return
+    if (!open || !owner || authRequired) return
     let active = true
     setIntervals(null); setLoadError(false)
     void fetch(`/api/sites/${siteId}/watch`).then(async response => {
+      if (response.status === 401 || response.status === 403) { if (active) setAuthRequired(true); return }
       if (!response.ok) throw new Error('Options unavailable')
       const body = await response.json() as { intervals: Cadence[] }
       const allowed = body.intervals.filter(value => value === 'weekly' || value === 'daily')
       if (!active) return
       setIntervals(allowed)
-      setCadence(view.watch.interval && allowed.includes(view.watch.interval) ? view.watch.interval : allowed.includes('weekly') ? 'weekly' : allowed[0] ?? 'weekly')
+      setCadence(current => allowed.includes(current) ? current : allowed.includes('weekly') ? 'weekly' : allowed[0] ?? 'weekly')
     }).catch(() => { if (active) setLoadError(true) })
     return () => { active = false }
-  }, [open, owner, siteId, reload, view.watch.interval])
+  }, [open, owner, siteId, reload, authRequired])
 
   async function activate() {
     if (busy || !intervals?.includes(cadence)) return
     setBusy(true); setResult(null)
     try {
       const response = await fetch(`/api/sites/${siteId}/watch/activate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ interval: cadence }) })
+      if (response.status === 401 || response.status === 403) { setAuthRequired(true); return }
       const body = await response.json().catch(() => null) as Result | null
       setResult(body && typeof body.ok === 'boolean' ? body : { ok: false, message: C.readiness })
-      await onRefresh()
+      // The response is authoritative even if a later overview refresh fails.
+      await onRefresh().catch(() => undefined)
     } catch { setResult({ ok: false, message: C.readiness }) }
     finally { setBusy(false); requestAnimationFrame(() => resultFocus.current?.focus()) }
   }
@@ -72,28 +78,29 @@ export function SiteMonitoringActivation({ siteId, view, owner, checking, onRefr
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{scheduled ? page ? pageAnswer : C.scheduled(view.watch.interval!) : C.offBody}</p>
           {scheduled ? <p className="mt-2 text-xs text-muted-foreground">{ready.map(item => item.name).join(' · ')}</p> : null}
         </div>
-        <Button ref={trigger} variant={needsSetup ? 'brand' : 'outline'} disabled={checking} onClick={() => { setOpen(true); setResult(null) }}>{needsSetup ? C.turnOn : C.review}</Button>
+        <Button ref={trigger} variant={needsSetup ? 'brand' : 'outline'} disabled={checking && !scheduled} onClick={() => { setOpen(true); setResult(null) }}>{needsSetup ? scheduled ? page ? C.checkPage : C.addPage : C.turnOn : C.review}</Button>
       </div>
       {scheduled ? <dl className="mt-4 grid gap-3 border-t border-border pt-4 text-sm sm:grid-cols-2">
         <div><dt className="text-xs text-muted-foreground">{C.last}</dt><dd className="mt-1">{page?.lastVerifiedAt ? formatEvidenceTimestamp(page.lastVerifiedAt) : C.notRun}</dd></div>
         <div><dt className="text-xs text-muted-foreground">{C.next}</dt><dd className="mt-1">{formatEvidenceTimestamp(view.watch.nextRunAt!)}</dd></div>
       </dl> : null}
+      {status && !open ? <p role="status" className="mt-3 text-sm">{status}</p> : null}
       {view.watch.lastError ? <p className="mt-3 text-sm text-muted-foreground">{C.needsAttention} <Link href={`/sites/${siteId}/settings#watch`}>{C.manage}</Link></p> : null}
     </section>
-    <ResponsiveDepth open={open} onOpenChange={value => { if (!busy) setOpen(value) }} onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
-      <DialogTitle>{C.setupTitle}</DialogTitle><DialogDescription>{C.setupBody}</DialogDescription>
-      {!owner ? <div className="space-y-4"><h3 className="font-semibold">{C.claimTitle}</h3><p className="text-sm text-muted-foreground">{C.claimBody}</p><div className="flex flex-wrap gap-2"><Button asChild variant="brand"><Link href={signUpHref}>{C.signUp}</Link></Button><Button asChild variant="outline"><Link href={signedInHref}>{C.signIn}</Link></Button></div></div> : <>
+    <ResponsiveDepth className="content-start motion-reduce:!animate-none" open={open} onOpenChange={setOpen} onCloseAutoFocus={event => { event.preventDefault(); if (!exploring.current) trigger.current?.focus(); exploring.current = false }}>
+      <DialogTitle>{scheduled && page ? C.reviewTitle : C.setupTitle}</DialogTitle><DialogDescription>{C.setupBody}</DialogDescription>
+      {!owner || authRequired ? <div className="space-y-4"><h3 className="font-semibold">{authRequired ? C.signInAgain : C.claimTitle}</h3><p className="text-sm text-muted-foreground">{C.claimBody}</p><div className="flex flex-wrap gap-2"><Button asChild variant="brand"><Link href={signUpHref}>{C.signUp}</Link></Button><Button asChild variant="outline"><Link href={signedInHref}>{C.signIn}</Link></Button></div></div> : <>
         <div className="border-y border-border py-4"><h3 className="text-sm font-semibold">{C.page}</h3><p className="mt-1 break-all text-sm">{view.site.url}</p><p className="mt-2 text-sm text-muted-foreground">{C.expectation}</p>
           {ready.filter(item => item.id !== page?.id).length ? <div className="mt-4"><h3 className="text-sm font-semibold">{C.existing}</h3><ul className="mt-2 space-y-1 text-sm">{ready.filter(item => item.id !== page?.id).map(item => <li key={item.id}>{item.name}</li>)}</ul></div> : null}
         </div>
         {loadError ? <div role="status"><p>{C.unavailable}</p><p className="mt-1 text-sm text-muted-foreground">{C.unavailableBody}</p><Button variant="outline" className="mt-3" onClick={() => setReload(value => value + 1)}>{C.retry}</Button></div> : intervals === null ? <p role="status" className="text-sm text-muted-foreground">{C.loading}</p> : intervals.length === 0 ? <p role="status">{C.readiness}</p> : <>
-          <label className="flex flex-wrap items-center justify-between gap-3 text-sm font-medium" htmlFor="monitoring-cadence">{C.cadence}<select id="monitoring-cadence" className="min-h-11 rounded-control border border-border bg-background px-3" value={cadence} disabled={busy} onChange={event => setCadence(event.target.value as Cadence)}>{intervals.map(item => <option value={item} key={item}>{item === 'daily' ? C.daily : C.weekly}</option>)}</select></label>
+          <label className="flex flex-wrap items-center justify-between gap-3 text-sm font-medium" htmlFor="monitoring-cadence">{C.cadence}<select id="monitoring-cadence" className="min-h-11 rounded-control border border-border bg-background px-3" value={cadence} disabled={busy || (scheduled && !needsSetup)} onChange={event => setCadence(event.target.value as Cadence)}>{intervals.map(item => <option value={item} key={item}>{item === 'daily' ? C.daily : C.weekly}</option>)}</select></label>
           <p className="text-sm leading-relaxed text-muted-foreground">{view.settings.notificationLevel === 'OFF' ? C.noEmails : view.settings.notificationLevel === 'CRITICAL_ONLY' ? C.criticalEmails : C.emails}{view.settings.notificationLevel !== 'OFF' && view.settings.notifyOnRecovery ? ` ${C.recoveryEmails}` : ''}</p>
           {status ? <p ref={resultFocus} tabIndex={-1} role="status" className="rounded-control bg-muted p-3 text-sm leading-relaxed focus-visible:outline focus-visible:outline-ring">{status}</p> : null}
           {result?.ok && result.interval ? <p className="text-sm">{C.scheduled(result.interval)}</p> : null}
-          {(!scheduled || needsSetup || result?.ok === false) && !(result?.ok && result.firstCheck === 'requested') ? <Button variant="brand" disabled={busy} onClick={() => void activate()}>{busy ? C.activating : result ? C.retry : C.turnOn}</Button> : <Button variant="outline" onClick={() => setOpen(false)}>{C.return}</Button>}
+          {(!scheduled || needsSetup || result?.ok === false) && !(result?.ok && result.firstCheck === 'requested') ? <Button variant="brand" disabled={busy} onClick={() => void activate()}>{busy ? C.activating : result ? C.retry : scheduled ? C.checkPage : C.turnOn}</Button> : <Button variant="outline" onClick={() => setOpen(false)}>{C.return}</Button>}
         </>}
-        <div className="border-t border-border pt-4"><p className="text-xs leading-relaxed text-muted-foreground">{C.scope}</p><Link className="mt-3 inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4" href={`/sites/${siteId}/settings#settings-outcomes-heading`} onClick={() => setOpen(false)}>{C.expand}</Link><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{C.protected}</p></div>
+        <div className="border-t border-border pt-4">{scheduled ? <Link className="inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4" href={`/sites/${siteId}/settings#watch`}>{C.manage}</Link> : null}<p className="text-xs leading-relaxed text-muted-foreground">{C.scope}</p><Button variant="link" className="mt-3 px-0 text-foreground" onClick={() => { exploring.current = true; setOpen(false); requestAnimationFrame(() => onExploreCoverage()) }}>{C.expand}</Button><p className="mt-1 text-xs leading-relaxed text-muted-foreground">{C.protected}</p></div>
       </>}
     </ResponsiveDepth>
   </>

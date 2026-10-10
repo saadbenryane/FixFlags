@@ -273,7 +273,8 @@ describe('SiteBoard chrome', () => {
       </MeProvider>,
     )
     expect(screen.getByRole('status')).toHaveTextContent('Clear')
-    expect(screen.getByText(summary)).toBeVisible()
+    expect(screen.getByText('This page opened when we checked.')).toBeVisible()
+    expect(screen.queryByText(summary)).not.toBeInTheDocument()
     expect(screen.queryByText('Run a fresh verification before relying on this result.')).not.toBeInTheDocument()
     expect(screen.queryByText(/past that window/)).not.toBeInTheDocument()
   })
@@ -295,112 +296,13 @@ describe('SiteBoard chrome', () => {
     expect(screen.queryByText(SITE_BOARD_COPY.cardGuidance)).not.toBeInTheDocument()
   })
 
-  it('confirms the page and does not say a watch schedule started', async () => {
-    const fetchMock = vi.fn(async () => ({
-      ok: true,
-      status: 200,
-      json: async () => boardView(),
-    }))
-    vi.stubGlobal('fetch', fetchMock)
-    render(
-      <MeProvider initialUser={signedInUser}>
-        <SiteBoard
-          siteId="p_example"
-          initial={boardView({
-            audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, walkFinished: true, failureCode: null },
-          })}
-        />
-      </MeProvider>
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm this page' }))
-    expect(await screen.findByText('This page is confirmed')).toBeVisible()
-    expect(screen.queryByText(/outcome saved/i)).not.toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/sites/p_example/outcomes',
-      expect.objectContaining({
-        method: 'POST',
-        body: JSON.stringify({ watchPage: true }),
-      }),
-    )
-    vi.unstubAllGlobals()
-  })
-
-  it('shows This page loads before the board reload finishes', async () => {
-    let releaseRefresh: () => void = () => {}
-    const refreshGate = new Promise<void>((resolve) => {
-      releaseRefresh = resolve
-    })
-    const outcome = {
-      id: 'out-1',
-      name: 'This page loads',
-      slug: 'page-loads',
-      description: null,
-      inferenceSource: 'user' as const,
-      confirmedAt: '2026-09-24T00:00:00.000Z',
-      pageIds: [],
-      pageUrls: ['https://example.com'],
-      kind: 'AVAILABILITY' as const,
-      criticality: 'IMPORTANT' as const,
-      environment: 'production',
-      expectation: 'The public page responds successfully.',
-      bindings: [{ key: 'availability', required: true, scope: null }],
-      coverage: null,
-      state: 'COULD_NOT_VERIFY' as const,
-      summary: 'Not verified yet.',
-      lastVerifiedAt: null,
-      validUntil: null,
-      flagId: null,
-      latestRunId: null,
-      running: false,
-    }
-    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
-      if (String(input).endsWith('/outcomes')) {
-        return { ok: true, status: 200, json: async () => ({ ok: true, outcome }) }
-      }
-      await refreshGate
-      return { ok: true, status: 200, json: async () => boardView() }
-    }))
-    const view = render(
-      <MeProvider initialUser={signedInUser}>
-        <SiteBoard
-          siteId="p_example"
-          initial={boardView({
-            audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, walkFinished: true, failureCode: null },
-            flags: [{
-              id: 'f1',
-              sourceFlagId: 'f1',
-              confidence: null,
-              improvementId: null,
-              checkId: 'meta-description-missing',
-              rubric: 'REACH',
-              severity: 'IMPORTANT',
-              impactTag: 'SEO',
-              problem: 'Meta description is missing',
-              evidence: 'The page has no meta description.',
-              whyItMatters: 'Search results have less to show.',
-              fix: 'Add a meta description.',
-              pageUrl: 'https://example.com',
-              status: 'OPEN',
-              area: 'search',
-            }],
-            presentation: {
-              ...boardView().presentation,
-              flags: { count: 1, label: '1 Flag', fixFirstCount: 0 },
-            },
-          })}
-        />
-      </MeProvider>
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm this page' }))
-    expect(await screen.findByRole('heading', { name: 'This page loads' })).toBeVisible()
-    expect(screen.queryByText('No Outcome yet')).not.toBeInTheDocument()
-    // The intent is that Home never claims Watch is on when it is off. Stated
-    // precisely, because the board is allowed to say Watch is NOT on.
-    expect(screen.queryByText('Watching weekly')).not.toBeInTheDocument()
-    expect(screen.getByText('Not monitored')).toBeInTheDocument()
-    releaseRefresh()
-    view.unmount()
-    vi.unstubAllGlobals()
+  it('offers monitoring directly without a separate confirmation step or hiding results', () => {
+    render(<MeProvider initialUser={signedInUser}><SiteBoard siteId="p_example" initial={boardView({ audit: { id: 'audit-1', status: 'COMPLETED', progress: 100, walkFinished: true, failureCode: null } })} /></MeProvider>)
+    expect(screen.getByRole('button', { name: 'Turn on monitoring' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Confirm this page' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Pages' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Open Search' })).toBeVisible()
+    expect(screen.getByText('Monitoring is off.')).toBeVisible()
   })
 
   it('sends an unsigned visitor to sign in when confirming the page is refused', async () => {

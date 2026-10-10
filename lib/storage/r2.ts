@@ -111,7 +111,7 @@ export async function uploadScreenshot(
       Key: key,
       Body: imageBuffer,
       ContentType: 'image/png',
-      CacheControl: 'public, max-age=31536000',
+      CacheControl: 'private, no-store',
     })
   )
 

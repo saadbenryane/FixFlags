@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const m = vi.hoisted(() => ({ load: vi.fn(), user: vi.fn(), prior: vi.fn(), command: vi.fn(), run: vi.fn(), allowed: vi.fn() }))
-vi.mock('@/lib/db', () => ({ prisma: { user: { findUnique: m.user }, runRequest: { findFirst: m.prior } } }))
+const m = vi.hoisted(() => ({ load: vi.fn(), user: vi.fn(), prior: vi.fn(), command: vi.fn(), run: vi.fn(), allowed: vi.fn(), page: vi.fn() }))
+vi.mock('@/lib/db', () => ({ prisma: { user: { findUnique: m.user }, runRequest: { findFirst: m.prior }, siteOutcome: { findFirst: m.page } } }))
 vi.mock('@/lib/sites/ensure-site', () => ({ loadSiteRecord: m.load }))
 vi.mock('@/lib/auth/entitlements', () => ({ allowedWatchIntervals: m.allowed }))
 vi.mock('@/lib/sites/application/commands', () => ({ executeSiteCommand: m.command }))
@@ -11,7 +11,7 @@ const off = { siteId: 'site-1', projectId: 'project-1', userId: 'owner', watchIn
 const on = { ...off, watchInterval: 'weekly', watchNextRunAt: new Date('2026-10-17T09:00:00Z') }
 describe('monitoring activation', () => {
   beforeEach(() => {
-    vi.resetAllMocks(); m.load.mockResolvedValueOnce(off).mockResolvedValue(on); m.user.mockResolvedValue({ id: 'owner' }); m.allowed.mockReturnValue(['weekly']); m.prior.mockResolvedValue(null)
+    vi.resetAllMocks(); m.load.mockResolvedValueOnce(off).mockResolvedValue(on); m.user.mockResolvedValue({ id: 'owner' }); m.allowed.mockReturnValue(['weekly']); m.prior.mockResolvedValue(null); m.page.mockResolvedValue(null)
     m.command.mockImplementation(async command => command.type === 'CONFIRM_PAGE_AVAILABILITY' ? { ok: true, outcome: { id: 'page-1' } } : { ok: true })
     m.run.mockResolvedValue({ runId: 'run-1', reused: false })
   })
@@ -44,10 +44,10 @@ describe('monitoring activation', () => {
     expect(await activateSiteMonitoring(input)).toMatchObject({ ok: true, interval: 'daily' })
   })
   it('preserves an existing schedule and reuses the first check on repeated activation', async () => {
-    m.load.mockReset().mockResolvedValue(on)
+    m.load.mockReset().mockResolvedValue(on); m.page.mockResolvedValue({ id: 'page-1' })
     m.prior.mockResolvedValue({ id: 'run-1', status: 'COMPLETED', idempotencyKey: 'monitoring-start:page-1' }); m.run.mockResolvedValue({ reused: true })
     expect(await activateSiteMonitoring(input)).toMatchObject({ ok: true, reused: true })
-    expect(m.command).toHaveBeenCalledTimes(1)
+    expect(m.command).not.toHaveBeenCalled()
     expect(m.run).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'monitoring-start:page-1' }))
   })
   it('keeps the saved schedule when the first check cannot start', async () => {
@@ -60,4 +60,28 @@ describe('monitoring activation', () => {
     expect(m.run).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'monitoring-start:page-1:retry:failed-1' }))
     expect(m.prior).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ projectId: 'project-1', selections: { some: { outcomeId: 'page-1' } } }) }))
   })
+  it('retries a crashed enqueue only after its lease expires', async () => {
+    m.prior.mockResolvedValue({ id: 'interrupted-1', status: 'QUEUED', idempotencyKey: 'monitoring-start:page-1', auditId: null, leaseUntil: new Date(0) })
+    await activateSiteMonitoring(input)
+    expect(m.run).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'monitoring-start:page-1:retry:interrupted-1' }))
+  })
+  it('does not duplicate an enqueue that still has a live lease', async () => {
+    m.prior.mockResolvedValue({ id: 'active-1', status: 'QUEUED', idempotencyKey: 'monitoring-start:page-1', auditId: null, leaseUntil: new Date(Date.now() + 60000) })
+    await activateSiteMonitoring(input)
+    expect(m.run).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'monitoring-start:page-1' }))
+  })
+
+  it('requests a fresh check when the customer restarts paused monitoring', async () => {
+    m.prior.mockResolvedValue({ id: 'completed-1', status: 'COMPLETED', idempotencyKey: 'monitoring-start:page-1' })
+    await activateSiteMonitoring(input)
+    expect(m.run).toHaveBeenCalledWith(expect.objectContaining({ idempotencyKey: 'monitoring-start:page-1:resume:completed-1' }))
+  })
+
+  it('recognizes an already queued Watch that includes this page and other coverage', async () => {
+    m.prior.mockResolvedValueOnce(null).mockResolvedValue({ id: 'watch-batch' })
+    m.run.mockRejectedValue(new Error('another scope is active'))
+    expect(await activateSiteMonitoring(input)).toMatchObject({ ok: true, firstCheck: 'requested', reused: true })
+    expect(m.prior).toHaveBeenLastCalledWith(expect.objectContaining({ where: expect.objectContaining({ projectId: 'project-1', auditId: { not: null }, selections: { some: { outcomeId: 'page-1' } } }) }))
+  })
+
 })

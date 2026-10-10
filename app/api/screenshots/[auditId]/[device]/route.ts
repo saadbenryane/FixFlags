@@ -55,7 +55,8 @@ export async function GET(
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'image/png',
-        'Cache-Control': 'private, max-age=3600',
+        'Cache-Control': 'private, no-store',
+        Vary: 'Cookie',
       },
     })
   } catch (err) {

@@ -105,3 +105,12 @@ Protected Login/Password reset/Publish may be discovered and shown as unsupporte
 ## Scope limits
 
 Launch does not require generalized autonomous-agent evaluation, arbitrary Outcome builders, a new System root, raw test/run dashboards, session replay, autonomous code changes, irreversible purchases/refunds, or every integration. The architecture must permit deterministic HTTP/API and later MCP/agent evaluators without changing the customer hierarchy.
+
+
+## Monitoring activation — approved October 10
+
+After analysis, the comprehensive Site overview offers **Turn on monitoring** in place of a separate public-page confirmation step. Anonymous visitors retain the same Site through the existing authentication/claim flow. Owners see the exact public URL, already confirmed executable coverage, account-permitted cadence, and current notification preferences before confirming.
+
+Activation uses existing Site commands to confirm public-page availability, save an allowed schedule and request one initial independent check. It never automatically authorizes Checkout or Signup. Repeated activation preserves existing confirmation and the next scheduled time, and reuses the initial run. Failed or interrupted enqueue attempts remain retryable. Schedule persistence, pending execution, a passing check, a Flag and unavailable evidence are separate states; partial setup stays visible and recoverable.
+
+The initial check covers the public page, not every diagnostic category. The complete analysis stays accessible, and Settings allows coverage expansion. Existing entitlements, quotas, email readiness and frequency policy remain authoritative. This is an implemented local interface contract; production execution and notification reliability require release evidence.

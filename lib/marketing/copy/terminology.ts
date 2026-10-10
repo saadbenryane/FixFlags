@@ -140,6 +140,7 @@ export const SITE_BOARD_COPY = {
   checking: 'Checking',
   browserSource: 'FixFlags browser',
   addCard: 'Add to this Site',
+  previewUnavailable: 'Website preview unavailable',
   addTitle: 'Add to this Site',
   addBody: 'Add an Outcome, more coverage, or an available connection.',
   addEmpty: 'Everything available is already configured.',

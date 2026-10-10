@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Route } from 'next'
 import Link from 'next/link'
 import { Flag, Globe2, LayoutGrid, Radio } from 'lucide-react'
@@ -9,6 +9,7 @@ import { Logo } from '@/components/brand/Logo'
 import { SiteChromeAuth } from '@/components/sites/SiteChromeAuth'
 import { useMe } from '@/hooks/useMe'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
+import { SITE_BOARD_COPY } from '@/lib/marketing/copy'
 import { cn } from '@/lib/utils'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
 import { CustomerMain, customerMobileBarClass } from '@/components/layout/customer-frame'
@@ -24,9 +25,9 @@ const routes = [
 
 function monitoringClass(state: MonitoringState | undefined, legacy: SiteHomeView['watch']['state']): string {
   const resolved = state ?? (legacy === 'watching' ? 'weekly' : legacy === 'off' ? 'not_monitored' : legacy === 'quota' ? 'quota_blocked' : legacy)
-  if (resolved === 'weekly' || resolved === 'daily') return 'border-success/60 text-success'
+  if (resolved === 'weekly' || resolved === 'daily') return 'border-success/60 text-foreground'
   if (resolved === 'not_monitored') return 'border-border text-muted-foreground'
-  return 'border-brand text-brand'
+  return 'border-brand text-foreground'
 }
 
 function routeHref(siteId: string, route: SiteRoute): Route {
@@ -62,12 +63,20 @@ export function SiteShell({
   const signedIn = Boolean(user)
   const ownsSite = Boolean(user && ownerId && user.id === ownerId)
   const visibleRoutes = routes.filter(([id]) => id !== 'settings' || ownsSite)
+  const previewImage = useRef<HTMLImageElement>(null)
+  const [failedPreview, setFailedPreview] = useState<string | null>(null)
   const [captureOpen, setCaptureOpen] = useState(false)
   const monitoring = presentation?.monitoring
   const watchLabel = monitoring?.label ?? watch.label
   const identity = presentation?.identity
   const attention = presentation ? customerAttention(presentation) : null
   const flagCount = presentation?.flags.count ?? 0
+  const previewUrl = identity?.preview?.url
+  useEffect(() => {
+    const image = previewImage.current
+    // An unavailable image can finish before hydration attaches onError.
+    if (previewUrl && image?.complete && image.naturalWidth === 0) setFailedPreview(previewUrl)
+  }, [previewUrl])
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -103,16 +112,16 @@ export function SiteShell({
               {signedIn ? <Link href="/dashboard" className="flex min-h-11 items-center text-sm text-muted-foreground">← All websites</Link> : <SiteChromeAuth />}
             </div>
             <div className="flex min-w-0 items-center gap-3">
-              {identity ? identity.preview ? <button type="button" className="h-14 w-16 shrink-0 overflow-hidden rounded-control border border-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setCaptureOpen(true)} aria-label={`Open captured page for ${identity.host}`}>
+              {identity ? identity.preview && identity.preview.url !== failedPreview ? <button type="button" className="h-14 w-16 shrink-0 overflow-hidden rounded-control border border-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring" onClick={() => setCaptureOpen(true)} aria-label={`Open captured page for ${identity.host}`}>
                 {/* Authorized captures use the current browser session. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={identity.preview.url} alt="" width={128} height={112} className="h-full w-full object-cover object-top" />
-              </button> : <span className="flex h-14 w-16 shrink-0 items-center justify-center rounded-control border border-border text-muted-foreground" aria-label="No website preview yet"><Globe2 className="h-5 w-5" aria-hidden /></span> : null}
+                <img ref={previewImage} src={identity.preview.url} onError={() => setFailedPreview(identity.preview!.url)} alt="" width={128} height={112} className="h-full w-full object-cover object-top" />
+              </button> : <span className="flex h-14 w-16 shrink-0 items-center justify-center rounded-control border border-border text-muted-foreground" role="img" aria-label={identity.preview ? SITE_BOARD_COPY.previewUnavailable : "No website preview yet"}><Globe2 className="h-5 w-5" aria-hidden /></span> : null}
               <div className="min-w-0">
               <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                 <h1 className="break-words text-2xl font-semibold tracking-tight">{identity?.host ?? title}</h1>
-                {attention ? <Link href={`/sites/${siteId}/flags`} className={cn('text-sm font-medium', attention.tone === 'attention' ? 'text-brand' : attention.tone === 'clear' ? 'text-success' : 'text-muted-foreground')} aria-label={`${attention.text}. View Flags`}>
-                  {attention.text}
+                {attention ? <Link href={`/sites/${siteId}/flags`} className={cn('text-sm font-medium', attention.tone === 'attention' || attention.tone === 'clear' ? 'text-foreground' : 'text-muted-foreground')} aria-label={`${attention.text}. View Flags`}>
+                  {attention.tone === 'attention' ? <span aria-hidden="true" className="mr-2 inline-block h-2 w-2 rounded-full bg-brand" /> : null}{attention.text}
                 </Link> : null}
               </div>
               {identity && activeRoute !== 'home' ? <p className="mt-1 max-w-xl text-sm text-muted-foreground">{activeRoute === 'flags' ? 'Flags' : 'Settings'}</p> : null}

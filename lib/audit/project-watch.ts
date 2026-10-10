@@ -321,26 +321,21 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
   // would make the same alert eligible for delivery again.
   if (child.watchNotificationStatus === 'SENT') return
 
-  let regressCount = child.watchRegressionCount
-  let recoveryCount = child.watchRecoveryCount
-  let summary: Awaited<ReturnType<typeof getFlagDiffSummary>> | null = null
-  if (regressCount === null || recoveryCount === null) {
-    summary = await getFlagDiffSummary(parentAuditId, childAuditId)
-    if (regressCount === null) {
-      const customerRegressions = [...summary.regressed, ...summary.newIssues].filter((flag) =>
-        isCustomerFlag(flag)
-      )
-      const alertRegressions = child.project?.notificationLevel === 'CRITICAL_ONLY'
-        ? customerRegressions.filter((flag) => flag.severity === 'CRITICAL')
-        : child.project?.notificationLevel === 'OFF'
-          ? []
-          : customerRegressions
-      regressCount = alertRegressions.length
-    }
-    recoveryCount ??= summary.fixed.filter((flag) =>
-      isCustomerFlag({ ...flag, status: 'OPEN' })
-    ).length
-    const alertRecoveryCount = child.project?.notifyOnRecovery ? recoveryCount : 0
+  const summary = await getFlagDiffSummary(parentAuditId, childAuditId)
+  // Apply today's preferences on every retry, including the destination. A
+  // queued alert is not permission to ignore a customer's later opt-out.
+  const alertRegressions = [...summary.regressed, ...summary.newIssues].filter((flag) =>
+    isCustomerFlag(flag) && child.project?.notificationLevel !== 'OFF' &&
+    (child.project?.notificationLevel !== 'CRITICAL_ONLY' || flag.severity === 'CRITICAL')
+  )
+  const recoveries = summary.fixed.filter((flag) => isCustomerFlag({ ...flag, status: 'OPEN' }))
+  const alertRecoveries = child.project?.notificationLevel !== 'OFF' && child.project?.notifyOnRecovery
+    ? recoveries : []
+  const regressCount = alertRegressions.length
+  const recoveryCount = recoveries.length
+  const alertRecoveryCount = alertRecoveries.length
+  if (child.watchNotificationStatus !== 'SENDING' &&
+      (child.watchRegressionCount === null || child.watchRecoveryCount === null)) {
     await prisma.audit.update({
       where: { id: childAuditId },
       data: {
@@ -350,11 +345,6 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
       },
     })
   }
-  summary ??= await getFlagDiffSummary(parentAuditId, childAuditId)
-  recoveryCount ??= summary.fixed.filter((flag) =>
-    isCustomerFlag({ ...flag, status: 'OPEN' })
-  ).length
-  const alertRecoveryCount = child.project?.notifyOnRecovery ? recoveryCount : 0
   if (regressCount === 0 && alertRecoveryCount === 0) return
 
   // Never overwrite a claim another worker still holds. Writing FAILED here
@@ -435,26 +425,28 @@ export async function notifyWatchRegression(parentAuditId: string, childAuditId:
   })()
 
   const subject = regressCount > 0
-    ? `Regression on ${host}: ${regressCount} Flag${regressCount === 1 ? '' : 's'}`
-    : `Verified recovery on ${host}`
+    ? `Needs attention on ${host}: ${regressCount} Flag${regressCount === 1 ? '' : 's'}`
+    : `Recovery verified on ${host}`
   const lead = regressCount > 0
-    ? `FixFlags found <strong>${regressCount}</strong> new or regressed Flag${regressCount === 1 ? '' : 's'} on <strong>${host}</strong>.`
-    : `FixFlags verified ${recoveryCount === 1 ? 'a recovery' : `<strong>${recoveryCount}</strong> recoveries`} on <strong>${host}</strong>.`
-  // A recovered Flag is absent from the child audit by definition, so the diff
-  // summary must carry its parent Flag id. Looking only in child.flags makes a
-  // recovery email fall back to the list and strands the independent proof.
-  const leadFlag = [...summary.regressed, ...summary.newIssues, ...summary.fixed]
-    .find((flag) => flag.id && isCustomerFlag({ ...flag, status: 'OPEN' }))
+    ? `FixFlags found <strong>${regressCount}</strong> problem${regressCount === 1 ? '' : 's'} that need${regressCount === 1 ? 's' : ''} attention on <strong>${escapeEmailHtml(host)}</strong>.`
+    : `An independent check verified ${alertRecoveryCount === 1 ? 'a recovery' : `<strong>${alertRecoveryCount}</strong> recoveries`} on <strong>${escapeEmailHtml(host)}</strong>.`
+  // Recovered rows live on the parent. Use the same eligible items for counts,
+  // problem text and the exact Flag link; never link a filtered-out finding.
+  const leadFlag = [...alertRegressions, ...alertRecoveries].find((flag) => flag.id)
   const destination = leadFlag?.id
-    ? `${SITE_URL}/sites/${child.projectId}/flags/${leadFlag.id}?source=watch-email`
-    : `${SITE_URL}/sites/${child.projectId}/flags?source=watch-email`
+    ? `${SITE_URL}/sites/${encodeURIComponent(child.projectId)}/flags/${encodeURIComponent(leadFlag.id)}?source=watch-email`
+    : `${SITE_URL}/sites/${encodeURIComponent(child.projectId)}/flags?source=watch-email`
+  const problem = leadFlag?.problem ? `<p><strong>${escapeEmailHtml(leadFlag.problem)}</strong></p>` : ''
+  const checked = child.completedAt
+    ? `<p>Checked ${escapeEmailHtml(child.completedAt.toISOString())}.</p>` : ''
 
   try {
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: child.user.email,
       subject,
-      html: `<p>Hi${child.user.name ? ` ${child.user.name}` : ''},</p><p>${lead}</p><p><a href="${destination}">${leadFlag?.id ? 'Open this Flag' : 'Open this Site’s Flags'}</a></p><p>Verified: ${summary.fixed.length} · Couldn’t verify: ${summary.inconclusive.length} · Still open: ${summary.unchanged.length} · New: ${summary.newIssues.length} · Regressed: ${summary.regressed.length}</p>`,
+      html: `<p>Hi${child.user.name ? ` ${escapeEmailHtml(child.user.name)}` : ''},</p><p>${lead}</p>${problem}${checked}<p><a href="${escapeEmailHtml(destination)}">${leadFlag?.id ? 'See evidence and next steps' : 'Open this Site’s Flags'}</a></p>`,
+      text: `Hi${child.user.name ? ` ${child.user.name}` : ''},\n\n${regressCount > 0 ? `FixFlags found ${regressCount} problem${regressCount === 1 ? '' : 's'} that need${regressCount === 1 ? 's' : ''} attention on ${host}.` : `An independent check verified recovery on ${host}.`}\n\n${leadFlag?.problem ?? ''}\n${child.completedAt ? `Checked ${child.completedAt.toISOString()}.\n` : ''}\nSee evidence and next steps: ${destination}`,
     }, { idempotencyKey: `fixflags-watch-${child.id}-v1` })
     // The provider SDK resolves rejected requests with an error, rather than throwing.
     if (error) throw new Error(error.message)
@@ -531,4 +523,10 @@ export async function retryPendingWatchNotifications(limit = 20): Promise<number
     }
   }
   return audits.length
+}
+
+function escapeEmailHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character]!)
 }

@@ -12,6 +12,7 @@ import { SiteActivityPanel } from '@/components/sites/SiteActivityPanel'
 import { useSiteResource } from '@/hooks/useSiteResource'
 import { SiteCheckLibrary } from '@/components/sites/SiteCheckLibrary'
 import { BoardDetails } from '@/components/sites/BoardDetails'
+import { MONITORING_COPY } from '@/lib/marketing/copy'
 import { SiteMonitoringActivation } from '@/components/sites/SiteMonitoringActivation'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { OutcomeSummaryCard } from '@/components/sites/OutcomeSummaryCard'
@@ -24,7 +25,6 @@ import type { BoardCardView } from '@/lib/sites/board-card'
 import { ADDABLE_BOARD_CARDS, STARTER_BOARD_CARDS, type SiteCardArea } from '@/lib/sites/card-areas'
 import { siteCheckNotice, siteSummaryNotice } from '@/lib/sites/check-notice'
 import { formatAlertDate, NO_ALERT_DELIVERY, siteWatchAlertNotice } from '@/lib/sites/watch-alert-notice'
-import { firstOutcomePrompt } from '@/lib/sites/first-outcome'
 import { outcomeCoverageLabel, outcomeFreshnessDisclosure, staleOutcomeRecovery, UNASSESSED_OUTCOME_SUMMARY } from '@/lib/sites/outcome-state'
 import { SITE_BOARD_COPY, WATCH_ALERT_DELIVERY } from '@/lib/marketing/copy'
 import { formatEvidenceTimestamp } from '@/lib/time/format'
@@ -52,6 +52,7 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
   const { view, refresh, disconnected } = useSiteResource(siteId, initial)
   const setView = (update: (current: SiteHomeView) => SiteHomeView) => { void refresh(update(view), { revalidate: false }) }
   const ownsSite = Boolean(user?.id && view.site.projectId && view.site.userId === user.id)
+  const [libraryOpen, setLibraryOpen] = useState(false)
   const [selectedCard, setSelectedCard] = useState<SiteCardArea | null>(null)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -69,12 +70,6 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
   // "all clear" when it is the opposite.
   const alertNotice = siteWatchAlertNotice(alert)
   const summaryNote = siteSummaryNotice({ status: view.audit.status, failureCode: view.audit.failureCode })
-  const outcomePrompt = firstOutcomePrompt({
-    checking,
-    walkFinished: view.audit.walkFinished,
-    customerOutcomeCount: view.outcomes.filter((outcome) => outcome.kind !== 'GENERIC').length,
-  })
-
   async function retryCheck() {
     if (!view.audit.id || busy) return
     setBusy(true)
@@ -94,30 +89,6 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
     }
   }
 
-  async function confirmPageOutcome() {
-    setBusy(true)
-    try {
-      const response = await fetch(`/api/sites/${siteId}/outcomes`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ watchPage: true }),
-      })
-      if (response.ok) {
-        const body = await response.json().catch(() => ({})) as { outcome?: SiteHomeView['outcomes'][number] }
-        setToast('This page is confirmed')
-        if (body.outcome?.kind && body.outcome.kind !== 'GENERIC') {
-          setView((current) => ({
-            ...current,
-            outcomes: current.outcomes.some((outcome) => outcome.id === body.outcome?.id) ? current.outcomes : [...current.outcomes, body.outcome!],
-          }))
-        }
-        await refresh()
-      } else if (response.status === 401 || response.status === 403) {
-        router.push(`/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`)
-      } else setToast('Could not confirm this page. Try again.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   async function verifyOutcome(outcomeId: string) {
     setBusy(true)
     try {
@@ -132,7 +103,7 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
         }
         return setToast(body.message || 'Could not start this verification')
       }
-      setToast('Outcome verification started')
+      setToast('Check requested')
       await refresh()
     } finally {
       setBusy(false)
@@ -206,7 +177,7 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
 
   return (
     <SiteShell siteId={siteId} ownerId={view.site.userId} activeRoute="home" title={view.presentation.identity.host} description="" presentation={view.presentation} watch={watch} statusMessage={toast}
-      headerAction={<SiteCheckLibrary siteId={siteId} view={view} owner={ownsSite} onRefresh={refresh} onOpenCard={setSelectedCard} onCheck={refreshSiteEvidence} />}>
+      headerAction={<SiteCheckLibrary open={libraryOpen} onOpenChange={setLibraryOpen} siteId={siteId} view={view} owner={ownsSite} onRefresh={refresh} onOpenCard={setSelectedCard} onCheck={refreshSiteEvidence} />}>
       {showActivityPanel ? <SiteActivityPanel banner={banner} activity={view.activity} disconnected={disconnected} onRetry={ownsSite ? refreshSiteEvidence : undefined} retryBusy={busy}>
       {notice ? (
         <AuditFailurePanel failureCode={view.audit.failureCode} onRetry={retryCheck} retryLoading={busy} />
@@ -217,7 +188,7 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
       {!view.activity && notice ? <AuditFailurePanel failureCode={view.audit.failureCode} onRetry={retryCheck} retryLoading={busy} /> : null}
       {!view.activity && summaryNote ? <p role="status" className="text-sm text-muted-foreground">{summaryNote.body}</p> : null}
 
-      <SiteMonitoringActivation siteId={siteId} view={view} owner={ownsSite} checking={checking} onRefresh={refresh} />
+      <SiteMonitoringActivation siteId={siteId} view={view} owner={ownsSite} checking={checking} onRefresh={refresh} onExploreCoverage={() => setLibraryOpen(true)} />
       {alertNotice ? (
       <section className="rounded-card border border-border/80 bg-background p-5" role="status">
           <h2 className="text-sm font-semibold">{alertNotice.title}</h2>
@@ -256,7 +227,7 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
           name={outcome.name}
           href={`/sites/${siteId}/outcomes/${outcome.id}` as Route}
           expectation={outcome.expectation ?? outcome.summary}
-          answer={outcome.summary !== UNASSESSED_OUTCOME_SUMMARY ? outcome.summary : undefined}
+          answer={outcome.kind === 'AVAILABILITY' && outcome.state === 'CLEAR' ? MONITORING_COPY.pageClear : outcome.summary !== UNASSESSED_OUTCOME_SUMMARY ? outcome.summary : undefined}
           coverage={outcomeCoverageLabel(outcome.environment, outcome.bindings)}
           freshness={outcomeCardFreshness(outcome)}
           nextStep={outcome.state === 'STALE' ? staleOutcomeRecovery() : undefined}
@@ -267,14 +238,13 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
             <div className="flex gap-2">
               {outcome.state === 'FLAG' && outcome.flagId ? <Button size="sm" variant="outline" asChild><Link href={`/sites/${siteId}/flags/${outcome.flagId}`}>Open Flag</Link></Button> : null}
               <Button size="sm" variant={outcome.state === 'FLAG' ? 'brand' : 'outline'} disabled={busy || !outcome.enabled || outcome.running || !outcome.bindings.some((binding) => binding.required)} onClick={() => void verifyOutcome(outcome.id)}>
-                {outcome.running ? 'Verifying…' : 'Verify'}
+                {outcome.running ? 'Checking again…' : 'Check again'}
               </Button>
             </div>
           )}
         />
       ))}
         </BoardGrid>
-        {outcomePrompt && ownsSite ? <Button variant="outline" disabled={busy} onClick={() => void confirmPageOutcome()}>Confirm this page</Button> : null}
       </section>
 
       <ResponsiveDepth open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedCard(null) }} onCloseAutoFocus={(event) => {

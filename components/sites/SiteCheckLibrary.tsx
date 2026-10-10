@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -10,26 +10,30 @@ import { SITE_BOARD_COPY } from '@/lib/marketing/copy'
 import type { SiteHomeView } from '@/lib/sites/application/queries'
 import type { OutcomeFixtureView } from '@/lib/sites/application/outcome-fixtures'
 
-export function SiteCheckLibrary({ siteId, view, owner, onRefresh, onOpenCard, onCheck }: {
+export function SiteCheckLibrary({ siteId, view, owner, onRefresh, onOpenCard, onCheck, open: controlledOpen, onOpenChange }: {
+  open?: boolean; onOpenChange?: (open: boolean) => void
   siteId: string; view: SiteHomeView; owner: boolean; onRefresh: () => Promise<unknown>
   onOpenCard?: (id: keyof typeof CARD_CATALOG) => void; onCheck?: () => Promise<void>
 }) {
-  const [open, setOpen] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const [localOpen, setLocalOpen] = useState(false)
+  const open = controlledOpen ?? localOpen
+  const setOpen = (value: boolean) => { setLocalOpen(value); onOpenChange?.(value) }
   const [tab, setTab] = useState<'Visitor actions' | 'Website checks' | 'Connections'>('Visitor actions')
   const [target, setTarget] = useState(view.site.url)
   const [fixtures, setFixtures] = useState<OutcomeFixtureView[]>([])
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
-  async function show() {
-    setOpen(true)
-    if (!owner) return
-    try {
-      const response = await fetch(`/api/sites/${siteId}/outcome-fixtures`)
+  useEffect(() => {
+    if (!open || !owner) return
+    let active = true
+    void fetch(`/api/sites/${siteId}/outcome-fixtures`).then(async response => {
       if (!response.ok) throw new Error('Signup setup could not be loaded. Try again.')
       const body = await response.json() as { fixtures: OutcomeFixtureView[] }
-      setFixtures(body.fixtures)
-    } catch (error) { setMessage(error instanceof Error ? error.message : 'Could not load setup.') }
-  }
+      if (active) setFixtures(body.fixtures)
+    }).catch(error => { if (active) setMessage(error instanceof Error ? error.message : 'Could not load setup.') })
+    return () => { active = false }
+  }, [open, owner, siteId])
   async function add(body: object) {
     if (busy) return
     setBusy(true); setMessage(null)
@@ -47,14 +51,15 @@ export function SiteCheckLibrary({ siteId, view, owner, onRefresh, onOpenCard, o
   return <>
     <button
       type="button"
-      onClick={() => void show()}
+      ref={trigger}
+      onClick={() => setOpen(true)}
       aria-label={SITE_BOARD_COPY.addCard}
       className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-border bg-background px-3 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <Plus className="h-4 w-4" aria-hidden />
       <span>Add</span>
     </button>
-    <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[85dvh] max-w-xl overflow-auto">
+    <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[85dvh] max-w-xl overflow-auto" onCloseAutoFocus={event => { event.preventDefault(); trigger.current?.focus() }}>
       <DialogTitle>{SITE_BOARD_COPY.addCard}</DialogTitle><DialogDescription>Keep a visitor action working, inspect website health, or connect useful context. Every card explains what was checked.</DialogDescription>
       <div className="flex flex-wrap gap-2" aria-label="Card categories">{(['Visitor actions', 'Website checks', 'Connections'] as const).map((item) => <Button key={item} variant={tab === item ? 'secondary' : 'ghost'} aria-pressed={tab === item} onClick={() => setTab(item)}>{item}</Button>)}</div>
       {!owner ? <div className="space-y-3"><p>Sign in and claim this website to configure Outcomes or connections.</p><Button asChild><Link href={`/sign-in?next=${encodeURIComponent(`/sites/${siteId}`)}`}>Sign in to configure</Link></Button></div> : null}

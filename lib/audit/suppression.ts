@@ -1,6 +1,7 @@
 import type { DeterministicFlag } from './flag-types'
 
 const SUPPRESSIONS: Array<[string, string]> = [
+  ['hierarchy-no-headline', 'h1-missing'],
   ['no-contact-info', 'trust-no-direct-contact'],
   ['hierarchy-competing-actions', 'competing-ctas'],
   ['mobile-load-delay-content', 'loading-state-slow'],

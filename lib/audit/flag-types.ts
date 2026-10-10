@@ -177,6 +177,8 @@ export type FlagDiffSummaryItem = Pick<FlagData, 'checkId' | 'problem' | 'rubric
   /** Exact persisted Flag represented by this diff item, when available. */
   id?: string
   status?: string
+  confidence?: number | null
+  impactTag?: string | null
   pageUrl?: string | null
   /** True when this Flag’s pageUrl was not reviewed on the parent audit. */
   foundOnNewPage?: boolean

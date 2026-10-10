@@ -128,6 +128,6 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ siteId
     const access = await requireSiteOwner(siteId)
     if (!access.ok) return apiError(access.message, access.status)
     const { monitoringOptions } = await import('@/lib/sites/application/monitoring-activation')
-    return NextResponse.json({ intervals: await monitoringOptions(access.decision.site.userId!) })
+    return NextResponse.json({ intervals: await monitoringOptions(access.decision.site.userId!) }, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) { return handleRouteError(error, 'We couldn’t load your monitoring options.') }
 }

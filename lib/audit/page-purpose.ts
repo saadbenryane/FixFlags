@@ -86,6 +86,17 @@ export function detectPagePurpose(
     pattern.test(docsContent)
   ).length
 
+  // A documentation-only domain notice can be long when translated. Length
+  // does not turn it into a product offer. Require the explicit declaration,
+  // sparse navigation and no commercial action, rather than a hostname rule.
+  const documentationOnlyNotice = /\bdomain\b.{0,100}\b(?:documentation examples|examples (?:in|of) documentation)\b/i.test(pageText)
+    && /\bnot a service\b/i.test(pageText)
+    && linkCount < 5 && navCount <= 1
+    && !(meta.ctaTexts ?? []).some((text) => /\b(buy|cart|checkout|pricing|trial|sign up|register|book|subscribe)\b/i.test(text))
+  if (documentationOnlyNotice) {
+    return { purpose: 'placeholder', reasons: ['explicit documentation-only domain notice; no commercial action'] }
+  }
+
   // 1. Placeholder / minimal page: too little content to be a real marketing
   //    page. example.com lives here. Note: a lone generic link such as
   //    "Learn more" still counts as a CTA in metadata, so we do not require
