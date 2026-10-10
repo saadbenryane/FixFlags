@@ -22,3 +22,5 @@ export * from './copy/agent'
 export * from './copy/care-homepage'
 export * from './copy/integrations'
 export * from './copy/compare'
+
+export * from './copy/monitoring'

@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { executeSiteCommand } from '@/lib/sites/application/commands'
-import { requireSiteAccess } from '@/lib/sites/request-access'
+import { requireSiteOwner, requireSiteAccess } from '@/lib/sites/request-access'
 import { handleRouteError, apiError } from '@/lib/api/errors'
 import { allowedWatchIntervals } from '@/lib/auth/entitlements'
 import { prisma } from '@/lib/db'
@@ -118,4 +118,16 @@ export async function POST(
   } catch (error) {
     return handleRouteError(error)
   }
+}
+
+
+/** Only the owner may read account-specific activation options. */
+export async function GET(_req: NextRequest, context: { params: Promise<{ siteId: string }> }) {
+  try {
+    const { siteId } = await context.params
+    const access = await requireSiteOwner(siteId)
+    if (!access.ok) return apiError(access.message, access.status)
+    const { monitoringOptions } = await import('@/lib/sites/application/monitoring-activation')
+    return NextResponse.json({ intervals: await monitoringOptions(access.decision.site.userId!) })
+  } catch (error) { return handleRouteError(error, 'We couldn’t load your monitoring options.') }
 }

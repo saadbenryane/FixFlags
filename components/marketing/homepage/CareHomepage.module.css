@@ -58,7 +58,7 @@
 .stepNumber { position: relative; z-index: 1; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: hsl(var(--muted)); font-family: var(--font-mono); font-size: 11px; color: hsl(var(--muted-foreground)); }
 .workflowSteps li[data-step='flag'] .stepNumber { background: hsl(var(--brand)); color: hsl(var(--brand-foreground)); }
 .workflowSteps li[data-step='fix'] .stepNumber { background: hsl(var(--foreground)); color: hsl(var(--background)); }
-.workflowSteps li[data-step='verify'] .stepNumber { background: hsl(var(--success)); color: hsl(var(--success-foreground)); }
+.workflowSteps li[data-step='verify'] .stepNumber { background: hsl(var(--success)); color: hsl(var(--brand-foreground)); }
 .workflowSteps li p { font-size: 12px; font-weight: 600; color: hsl(var(--muted-foreground)); }
 .workflowSteps h3 { margin-top: 6px; font-size: 20px; font-weight: 600; letter-spacing: -.025em; }
 .workflowSteps li div > span { display: block; margin-top: 7px; font-size: 14px; line-height: 1.65; color: hsl(var(--muted-foreground)); }

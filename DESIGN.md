@@ -121,7 +121,7 @@ See `lib/design/tokens.css` for full HSL values. Raw hex only in `lib/design/bra
 - Layered shadow on hover
 - Min 44×44px hit target (`min-h-11 min-w-11`); carousel prev/next controls follow same rule
 - Focus ring on `--ring`
-- Light mode product primary: ink. Marketing accent CTAs: bright brand orange with white labels (`variant="brand"`), as requested by the owner. The September 8 palette replaces the former dark orange button fill.
+- Light mode product primary: ink. Marketing accent CTAs: bright brand orange with ink labels (`variant="brand"`), approved in the October 10 quality sprint for accessible contrast. The September 8 palette replaces the former dark orange button fill.
 
 ### Legacy card (`glass-surface`)
 

@@ -12,6 +12,7 @@ import { SiteActivityPanel } from '@/components/sites/SiteActivityPanel'
 import { useSiteResource } from '@/hooks/useSiteResource'
 import { SiteCheckLibrary } from '@/components/sites/SiteCheckLibrary'
 import { BoardDetails } from '@/components/sites/BoardDetails'
+import { SiteMonitoringActivation } from '@/components/sites/SiteMonitoringActivation'
 import { SiteShell } from '@/components/sites/SiteShell'
 import { OutcomeSummaryCard } from '@/components/sites/OutcomeSummaryCard'
 import { Button } from '@/components/ui/button'
@@ -216,8 +217,9 @@ export function SiteBoard({ siteId, initial }: { siteId: string; initial: SiteHo
       {!view.activity && notice ? <AuditFailurePanel failureCode={view.audit.failureCode} onRetry={retryCheck} retryLoading={busy} /> : null}
       {!view.activity && summaryNote ? <p role="status" className="text-sm text-muted-foreground">{summaryNote.body}</p> : null}
 
+      <SiteMonitoringActivation siteId={siteId} view={view} owner={ownsSite} checking={checking} onRefresh={refresh} />
       {alertNotice ? (
-        <section className="rounded-card border border-border/80 bg-background p-5" role="status">
+      <section className="rounded-card border border-border/80 bg-background p-5" role="status">
           <h2 className="text-sm font-semibold">{alertNotice.title}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             {WATCH_ALERT_DELIVERY.undeliveredBody(formatAlertDate(alertNotice.at))}

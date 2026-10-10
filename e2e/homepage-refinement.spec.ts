@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
 import { mkdir } from 'node:fs/promises'
 import { CARE_HOME as C, HOMEPAGE_SAMPLE as S } from '../lib/marketing/copy/care-homepage'
 
@@ -117,5 +118,34 @@ test('captures the actual local experience when requested', async ({ page }) => 
     await page.waitForFunction(() => Array.from(document.images).every(image => image.complete && image.naturalWidth > 0))
     await page.screenshot({ path: `${output}/${name}.png`, fullPage: true })
     await page.locator('#product').screenshot({ path: `${output}/${name}-board.png` })
+  }
+})
+
+
+test('brand buttons retain Flag Orange and meet contrast in both themes', async ({ page }) => {
+  await visit(page)
+  await page.getByRole('textbox', { name: 'Website URL' }).first().fill('https://example.com')
+  const button = page.getByRole('button', { name: 'Analyze', exact: true }).first()
+  for (const dark of [false, true]) {
+    await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark)
+    for (const hover of [false, true]) {
+      if (hover) await button.hover(); else await page.mouse.move(0, 0)
+      await page.waitForTimeout(250)
+      const contrast = await button.evaluate(node => {
+        const style = getComputedStyle(node)
+        const luminance = (rgb: string) => {
+          const channels = rgb.match(/[\d.]+/g)!.slice(0, 3).map(Number).map(value => {
+            const s = value / 255; return s <= .04045 ? s / 12.92 : ((s + .055) / 1.055) ** 2.4
+          })
+          return channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722
+        }
+        const fg = luminance(style.color), bg = luminance(style.backgroundColor)
+        return { ratio: (Math.max(fg, bg) + .05) / (Math.min(fg, bg) + .05), background: style.backgroundColor }
+      })
+      if (!hover) expect(contrast.background).toBe('rgb(255, 90, 0)')
+      expect(contrast.ratio).toBeGreaterThanOrEqual(4.5)
+    }
+    const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
+    expect(result.violations.map(item => ({ id: item.id, targets: item.nodes.map(node => node.target) }))).toEqual([])
   }
 })
