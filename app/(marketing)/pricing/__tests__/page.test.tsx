@@ -6,6 +6,7 @@ import PricingRoute from '@/app/(marketing)/pricing/page'
 import { PricingPage } from '@/components/pricing/PricingPage'
 import { MeProvider } from '@/hooks/useMe'
 import { PRICING } from '@/lib/marketing/copy/plans'
+import { SITE_COMPARE } from '@/lib/marketing/copy/compare'
 
 vi.mock('next/image', () => ({
   default: ({ alt, src }: { alt?: string; src: string }) => (
@@ -54,7 +55,7 @@ describe('/pricing', () => {
     expect(screen.getByRole('button', { name: 'Analyze' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /waitlist/i })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Compare plans' })).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /A score and a prompt still leave it unwatched/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: new RegExp(SITE_COMPARE.headlineDisplay) })).toBeInTheDocument()
   })
 
   it('embeds FAQPage structured data on the route', () => {

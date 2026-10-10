@@ -43,7 +43,7 @@ describe('customer-visible truth', () => {
     const homepage = source('lib/marketing/copy/care-homepage.ts')
     expect(homepage).not.toMatch(/paid checkout is open|Analytics marked this Clear|guaranteed recovery/i)
     expect(homepage).not.toContain('Coming later')
-    expect(homepage).toContain('They do not decide whether an Outcome is Clear.')
+    expect(homepage).toContain('They do not mark an Outcome Clear.')
     expect(source('lib/marketing/copy/integrations.ts')).toContain('does not scan the repository')
     expect(source('lib/marketing/copy/compare.ts')).not.toContain('values: { psi: false')
   })
