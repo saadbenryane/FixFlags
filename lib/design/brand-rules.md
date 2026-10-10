@@ -1,6 +1,6 @@
 # FixFlags Brand Rules: Brand sheet 2026-07
 
-Source: FixFlags brand guidelines. Reference assets in `public/brand/`. Identity and palette stay; the September 8 vision replaces prior positioning. Target interface: docs/workspace-interface.md. Report-specific details below are legacy compatibility only.
+Source: FixFlags brand guidelines. Reference assets in `public/brand/`. Identity and palette stay; the accepted September 21 vision owns current positioning. Target interface: docs/workspace-interface.md. Report-specific details below are legacy compatibility only.
 
 ## Identity
 

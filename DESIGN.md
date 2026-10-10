@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: interface
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # Design Standards
 
 _Validated visual and interaction standards. Code-enforced where possible, documented where not._

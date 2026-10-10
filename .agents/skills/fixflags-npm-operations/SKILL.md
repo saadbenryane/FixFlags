@@ -5,8 +5,8 @@ description: Operate the public FixFlags npm CLI from the private QewOS reposito
 
 # FixFlags npm operations
 
-Keep QewOS private while maintaining the public `fixflags` package. Read
-`AGENTS.md`, `.agents/BOARD.md`, `docs/cli-release.md`,
+Keep the private source repository private while maintaining the public `fixflags` package. Read
+`AGENTS.md`, run `npm run agent -- ownership`, then read `docs/cli-release.md`,
 `fixflags-cli/package.json`, `fixflags-cli/README.md`, and
 `.github/workflows/publish-cli.yml` before changing release behavior.
 

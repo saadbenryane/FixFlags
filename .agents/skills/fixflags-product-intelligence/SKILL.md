@@ -1,6 +1,6 @@
 ---
 name: fixflags-product-intelligence
-description: Align FixFlags features and persistence with the accepted Site, Outcomes, Flags and coverage vision; distinguish target work, current implementation, private learning and migration.
+description: Resolve FixFlags product-authority, persistence, evidence, and migration questions for Sites, Outcomes, Flags, coverage, and private learning. Use when target intent conflicts with current models or documents; use fixflags-product for ordinary feature implementation.
 ---
 
 # FixFlags Product Intelligence
@@ -19,7 +19,7 @@ Read AGENTS.md first. The complete owner vision is knowledge/vision.md. Customer
 
 ## Working rules
 
-1. Use the September 8 revision as the sole active direction. Do not revive report-first, AI-builder-only, two-product or Shopify-only strategy.
+1. Use the accepted September 21 independent-monitor revision as the sole active direction. Do not revive report-first, AI-builder-only, two-product, website-care-only, or Shopify-only strategy.
 2. Customer Site is permanent. Pages belong to the Site. Inferred Journeys (Outcomes in the model) give them meaning. Customer Flags are durable attention with evidence history. Recommendations are improvements that are not Flags.
 3. Verify / Observe / Connect are internal evidence sources. Keep the small Home · Flags interface. The first board card is Pages. The FixFlags Agent is a later FAB, not a destination.
 4. Coverage and freshness qualify every healthy claim. 0 Flags means nothing important enough to act on; it is not proof of untested behavior.

@@ -1,6 +1,13 @@
+---
+status: canonical
+authority: operations
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # Quality
 
-**Version boundary, 2026-09-08:** the [new Site PRD](docs/product-prd.md) and [roadmap](ROADMAP.md) add target acceptance. Existing report matrices below verify legacy behavior and reusable infrastructure. Their prior readiness labels do not establish new-version completion.
+**Version boundary, 2026-09-21:** the [current Site PRD](docs/product-prd.md) and [roadmap](ROADMAP.md) add target acceptance for the independent-monitor direction. Existing report matrices below verify legacy behavior and reusable infrastructure. Their prior readiness labels do not establish new-version completion.
 
 For new Site work, exercise URL-to-Site continuity, tenant isolation, Outcome correction, scoped coverage/freshness, independent relevant recovery, idempotent Keep watching, quiet monitoring and entitlement migration. For documentation-only vision preparation, source-fidelity, link, skill and drift checks are the scoped verification equivalent; no deployed readiness claim follows.
 

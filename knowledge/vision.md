@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: product
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # FixFlags product vision
 
 **Accepted direction, 2026-09-21.** This replaces the narrower website-care framing while preserving its product and engineering foundation.

@@ -1,3 +1,10 @@
+---
+status: supporting
+authority: product
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # FixFlags independent-monitor masterplan
 
 **Status: ACTIVE TARGET AND SOLE IMPLEMENTATION PLAN. Reconciled 2026-10-06 against the local Outcome candidate on `main`; exact-SHA production proof remains open.**

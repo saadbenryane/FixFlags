@@ -1,22 +1,20 @@
-# NOW
+---
+status: historical
+authority: evidence
+reviewed_at: 2026-10-09
+supersedes: []
+---
 
-Updated: 2026-08-23 (Africa/Casablanca)
+# Historical August 23 snapshot
 
-## Live / origin
+This file previously tracked a deployment and report-copy checkpoint from 2026-08-23. Its branch SHA, Railway rollout note, anonymous re-check state, and temporary prohibitions are expired operational evidence, not current instructions.
 
-- origin/main: `f97544bc` (Copy-all ranked bundle)
-- prior: `a23453e1` Recheck anon www/apex
-- packaging leak on main: `5f317606` (do not add more)
-- Railway may still be rolling onto f97544bc. Prove via `/api/health` commit.
+Use these sources instead:
 
-## Two bars
+- Current repository and ownership state: `npm run agent`.
+- Current product direction: [knowledge/vision.md](knowledge/vision.md).
+- Delivery sequence and gates: [ROADMAP.md](ROADMAP.md).
+- Current implementation: [PRODUCT.md](PRODUCT.md) and code.
+- Historical details: Git history for this file and the scoped session records under `.agents/sessions/`.
 
-1. Recheck on the finished report: TRUE for the session that scanned (www and apex, `ff_anon_report_ids` Domain claim, POST `/api/reports/{id}/re-check`). FALSE if Noa opens a marketing sample with no claim cookie.
-2. Copy the plan: TRUE on f97544bc. First line `Make a plan to fix these issues, then implement them in this product.` then numbered ranked top flags. Not one CTA. Per-flag copy can stay one issue.
-
-## Do not
-
-- Extra chrome
-- Megaprompt
-- More packaging
-- Stripe
+Do not restore this file to a live status dashboard. Dynamic state belongs in project-agent output and live task leases.

@@ -1,60 +1,78 @@
+---
+status: canonical
+authority: operations
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # Canonical sources
 
-One authoritative home per concept. The September 21 [independent-monitor vision](knowledge/vision.md) replaces earlier product direction. The Site product remains the migration base; companion documents must not introduce competing product definitions or a parallel monitor/test hierarchy.
+This is the sole authority map for product and engineering documentation. The September 21 [independent-monitor vision](knowledge/vision.md) supersedes earlier report-first, Shopify-only, and website-care direction where they conflict.
 
-| Concept                          | Canonical home                                                                                                   | Scope                                                                                                                                                      |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Product vision                   | [knowledge/vision.md](knowledge/vision.md)                                                                       | Complete owner narrative, accepted 2026-09-21. Customer vocabulary defers to voice-and-copy                                                                |
-| Product information architecture | [docs/product-architecture.md](docs/product-architecture.md)                                                     | Customer objects, navigation, cards, Agent, support, history, integrations, report retirement                                                              |
-| How FixFlags speaks              | [docs/voice-and-copy.md](docs/voice-and-copy.md)                                                                 | Positioning, vocabulary, Flag/Recommendation, Analyze, Flag. Fix. Verify., two AIs, notifications, privacy; rendered copy comes from lib/marketing/copy.ts |
-| Evidence and health truth        | [knowledge/evidence-rules.md](knowledge/evidence-rules.md)                                                       | Certainty, coverage, lifecycle, independent resolution                                                                                                     |
-| Complete implementation plan     | [docs/product-masterplan.md](docs/product-masterplan.md)                                                         | Now/Next/Later, waves, truth matrix, critical path; not a claim that the product already shipped                                                           |
-| Delivery roadmap                 | [ROADMAP.md](ROADMAP.md)                                                                                         | Outcome/run/MCP vertical-slice gates and exit evidence; does not replace the masterplan                                                                    |
-| New behavior requirements        | [docs/product-prd.md](docs/product-prd.md)                                                                       | Target contracts and acceptance scenarios; IA owned by product-architecture                                                                                |
-| New interface states             | [docs/workspace-interface.md](docs/workspace-interface.md)                                                       | Progressive states and Flag detail; nav follows product-architecture                                                                                       |
-| Card-board design                | [docs/card-board-experience.md](docs/card-board-experience.md)                                                   | Flat grid, card anatomy, library, prototype; first card is Pages                                                                                           |
-| Current implementation           | [PRODUCT.md](PRODUCT.md)                                                                                         | Code baseline and gaps; never future feature promises                                                                                                      |
-| Persistence reuse                | [docs/site-v2-migration.md](docs/site-v2-migration.md)                                                           | Tenant model, adapters, history, billing, cutover                                                                                                          |
-| Site understanding               | [knowledge/product-intelligence.md](knowledge/product-intelligence.md)                                           | Persistent model and private learning boundary                                                                                                             |
-| Checking architecture            | [knowledge/integrity-engine.md](knowledge/integrity-engine.md), [docs/audit-pipeline.md](docs/audit-pipeline.md) | Target evidence role; current execution mechanics respectively                                                                                             |
-| Pricing direction                | [knowledge/strategy.md](knowledge/strategy.md)                                                                   | Free relationship and paid responsibility; runtime prices/limits come from lib/billing                                                                     |
-| Privacy and security             | [knowledge/privacy.md](knowledge/privacy.md), [SECURITY.md](SECURITY.md)                                         | Collection minimization and enforced security boundaries                                                                                                   |
-| Brand identity                   | [SOUL.md](SOUL.md)                                                                                               | Personality and enduring promise                                                                                                                           |
-| Visual system                    | [DESIGN.md](DESIGN.md)                                                                                           | Existing tokens and visual rules; code tokens are authoritative values                                                                                     |
-| Former messaging-migration plan  | [docs/messaging-migration.md](docs/messaging-migration.md)                                                       | Stub. Use the masterplan                                                                                                                                   |
-| Current code architecture        | [ARCHITECTURE.md](ARCHITECTURE.md), [CODEMAP.md](CODEMAP.md)                                                     | Existing code structure, not a new UI mandate                                                                                                              |
-| Quality and release proof        | [QUALITY.md](QUALITY.md)                                                                                         | Relevant checks, real-path proof and release receipts                                                                                                      |
-| Legacy report compatibility      | [knowledge/report-contract.md](knowledge/report-contract.md)                                                     | Existing report routes only; retired as target experience                                                                                                  |
-| Durable decisions                | [DECISIONS.md](DECISIONS.md)                                                                                     | Active decision plus explicitly scoped historical record                                                                                                   |
-| Task ownership                   | [.agents/BOARD.md](.agents/BOARD.md)                                                                             | Scope and owner; not competing commercial strategy                                                                                                         |
-| Version preparation receipt      | [.agents/sessions/site-v2-readiness-2026-09-08.md](.agents/sessions/site-v2-readiness-2026-09-08.md)             | What this documentation pass did and checked                                                                                                               |
-| Agent routing                    | [AGENTS.md](AGENTS.md), [.agents/README.md](.agents/README.md)                                                   | Work entrypoint and scope discipline                                                                                                                       |
-| Knowledge index                  | [knowledge/README.md](knowledge/README.md)                                                                       | Links and vocabulary, not another full vision                                                                                                              |
+Document status and metadata rules are defined in [docs/document-status-policy.md](docs/document-status-policy.md). A file's presence in the repository does not make it current.
 
-## Historical, stub, or compatibility documents
+## Product authority
 
-These must not be treated as the live product definition.
+| Concept | Canonical source | Boundary |
+| --- | --- | --- |
+| Purpose and audience | [knowledge/vision.md](knowledge/vision.md) | Accepted 2026-09-21 owner direction |
+| Customer objects and navigation | [docs/product-architecture.md](docs/product-architecture.md) | Site, Outcomes, Flags, execution methods, Agent, history |
+| Customer language | [docs/voice-and-copy.md](docs/voice-and-copy.md) | Vocabulary and claims; rendered copy remains code-backed |
+| Evidence and health truth | [knowledge/evidence-rules.md](knowledge/evidence-rules.md) | Coverage, certainty, lifecycle, and independent recovery |
+| Product sequence | [docs/product-masterplan.md](docs/product-masterplan.md) | Now/Next/Later plan, not evidence that work shipped |
+| Delivery gates | [ROADMAP.md](ROADMAP.md) | Vertical slices and exit evidence |
+| Behavior requirements | [docs/product-prd.md](docs/product-prd.md) | Target contracts and acceptance scenarios |
+| Interface states | [docs/workspace-interface.md](docs/workspace-interface.md) | Progressive UI states and Flag detail |
+| Card-board design | [docs/card-board-experience.md](docs/card-board-experience.md) | Card anatomy, library, and prototype |
+| Current implementation | [PRODUCT.md](PRODUCT.md) | What code does today; never a future promise |
+| Persistence migration | [docs/site-v2-migration.md](docs/site-v2-migration.md) | Tenant model, adapters, history, billing, cutover |
+| Pricing direction | [knowledge/strategy.md](knowledge/strategy.md) | Strategy only; runtime limits and prices remain code-backed |
 
-| Document                                                                                             | Status                                                                          |
-| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| [docs/messaging-migration.md](docs/messaging-migration.md)                                           | Stub → masterplan                                                               |
-| [knowledge/site-intelligence.md](knowledge/site-intelligence.md)                                     | Superseded draft pointer                                                        |
-| [docs/live-review-and-product-intelligence-prd.md](docs/live-review-and-product-intelligence-prd.md) | Retired stub                                                                    |
-| [docs/offering.md](docs/offering.md)                                                                 | Stub                                                                            |
-| [docs/product-ui-intent.md](docs/product-ui-intent.md)                                               | Pointer                                                                         |
-| [docs/unified-audit-tool-architecture.md](docs/unified-audit-tool-architecture.md)                   | Historical research                                                             |
-| [docs/scan-roadmap.md](docs/scan-roadmap.md)                                                         | Historical scan expansion                                                       |
-| [docs/journey-review-architecture.md](docs/journey-review-architecture.md)                           | Historical journey MVP notes                                                    |
-| [docs/business-model.md](docs/business-model.md)                                                     | Current packaging summary; strategy and launch gates remain canonical elsewhere |
-| [docs/year-1-operating-plan.md](docs/year-1-operating-plan.md)                                       | Retired operating numbers                                                       |
-| [docs/gtm-launch-strategy.md](docs/gtm-launch-strategy.md)                                           | Pointer                                                                         |
-| [docs/launch-kit.md](docs/launch-kit.md)                                                             | Pointer; do not publish old kit                                                 |
-| [knowledge/finish-plan.md](knowledge/finish-plan.md)                                                 | Legacy ranking/compat                                                           |
-| [knowledge/report-contract.md](knowledge/report-contract.md)                                         | Legacy report routes only                                                       |
-| [docs/brand-positioning.md](docs/brand-positioning.md)                                               | Target brand; wording defers to voice-and-copy                                  |
-| [docs/knowledge-base-ia.md](docs/knowledge-base-ia.md)                                               | Help/Docs/FAQ surfaces; report topics until Wave J                              |
-| `content/docs/*`                                                                                     | Shipped public docs; still report-shaped until masterplan Wave J                |
+## Engineering authority
 
-Older session plans and research can explain history. They cannot lock a report layout, a Shopify-only launch, or obsolete positioning into future work. When a rule conflicts, replace it in active guidance; keep factual compatibility constraints where code still depends on them.
+| Concept | Canonical source | Boundary |
+| --- | --- | --- |
+| Code location | [CODEMAP.md](CODEMAP.md) | Repository map |
+| Current architecture | [ARCHITECTURE.md](ARCHITECTURE.md) | Existing system, not a UI mandate |
+| Audit execution | [docs/audit-pipeline.md](docs/audit-pipeline.md) | Current checking mechanics |
+| Product intelligence | [knowledge/product-intelligence.md](knowledge/product-intelligence.md) | Persistent understanding and private-learning boundary |
+| Integrity engine | [knowledge/integrity-engine.md](knowledge/integrity-engine.md) | Target evidence role |
+| Privacy and security | [knowledge/privacy.md](knowledge/privacy.md), [SECURITY.md](SECURITY.md) | Collection policy and enforced boundaries |
+| Quality and release proof | [QUALITY.md](QUALITY.md) | Proportional checks and real-path evidence |
+| Visual system | [DESIGN.md](DESIGN.md) | Principles; code owns exact token values |
+| Brand identity | [SOUL.md](SOUL.md) | Personality and enduring promise |
+| Durable decisions | [DECISIONS.md](DECISIONS.md) | Active decisions and explicitly scoped historical records |
+| Agent operations | [AGENTS.md](AGENTS.md), [.agents/README.md](.agents/README.md) | Stable entrypoint and coordination contract |
 
-Conflict order for the new product: [vision](knowledge/vision.md) on purpose; [product-architecture](docs/product-architecture.md) on customer objects and navigation; [voice-and-copy](docs/voice-and-copy.md) on public words; [evidence-rules](knowledge/evidence-rules.md) on certainty and recovery; [product-masterplan](docs/product-masterplan.md) on sequence; [PRODUCT.md](PRODUCT.md) on what the code does today. Public copy may only claim shipped behavior.
+## Compatibility and supporting sources
+
+- [knowledge/report-contract.md](knowledge/report-contract.md) governs existing report routes only. It does not define the target experience.
+- [docs/business-model.md](docs/business-model.md) summarizes current packaging; strategy and code remain authoritative for intent and enforcement.
+- [docs/knowledge-base-ia.md](docs/knowledge-base-ia.md) covers Help, Docs, and FAQ surfaces while public content remains partly report-shaped.
+- `content/docs/*` describes shipped public behavior and may lag the target until its scheduled migration.
+- [knowledge/README.md](knowledge/README.md) is a compact question index and vocabulary guide, not another product specification.
+
+## Historical or retired sources
+
+These files can explain previous work but cannot override current direction:
+
+- [NOW.md](NOW.md) and [GOAL_BRIEF.md](GOAL_BRIEF.md): retained snapshots and migration pointers.
+- `.agents/sessions/*`, `.agents/handoffs/*`, `.agents/learnings/*`: evidence with local scope, never default instructions.
+- [docs/messaging-migration.md](docs/messaging-migration.md), [docs/product-ui-intent.md](docs/product-ui-intent.md), [docs/gtm-launch-strategy.md](docs/gtm-launch-strategy.md), and [docs/launch-kit.md](docs/launch-kit.md): pointers or retired plans.
+- [knowledge/site-intelligence.md](knowledge/site-intelligence.md), [docs/live-review-and-product-intelligence-prd.md](docs/live-review-and-product-intelligence-prd.md), and [docs/offering.md](docs/offering.md): superseded drafts or stubs.
+- [docs/unified-audit-tool-architecture.md](docs/unified-audit-tool-architecture.md), [docs/scan-roadmap.md](docs/scan-roadmap.md), and [docs/journey-review-architecture.md](docs/journey-review-architecture.md): historical research.
+- [docs/year-1-operating-plan.md](docs/year-1-operating-plan.md) and [knowledge/finish-plan.md](knowledge/finish-plan.md): retired operating assumptions and legacy compatibility.
+
+## Conflict order
+
+For product conflicts, use this order:
+
+1. Explicit current user direction for the task.
+2. [knowledge/vision.md](knowledge/vision.md) for purpose and audience.
+3. [docs/product-architecture.md](docs/product-architecture.md) for customer objects and navigation.
+4. [docs/voice-and-copy.md](docs/voice-and-copy.md) for public words.
+5. [knowledge/evidence-rules.md](knowledge/evidence-rules.md) for certainty and recovery.
+6. [docs/product-masterplan.md](docs/product-masterplan.md) and [ROADMAP.md](ROADMAP.md) for sequence.
+7. [PRODUCT.md](PRODUCT.md) and code for what is shipped now.
+
+When two sources at the same level disagree, stop treating either disputed claim as authoritative. Resolve the conflict in the canonical home, record a consequential decision when needed, and update pointers rather than creating another specification. Public copy may claim only shipped behavior.

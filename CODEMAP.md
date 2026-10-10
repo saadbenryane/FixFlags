@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: architecture
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # Repository Atlas: FixFlags
 
 ## Project Responsibility

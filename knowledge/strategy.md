@@ -1,6 +1,13 @@
+---
+status: canonical
+authority: product
+reviewed_at: 2026-10-10
+supersedes: []
+---
+
 # Business and plan strategy
 
-**TARGET direction from the September 8 vision.** Existing billing and plans are reusable infrastructure. Current prices, identifiers, quotas and checkout behavior are owned by lib/billing/, lib/auth/entitlements.ts and their tests; this document does not silently change customer entitlements.
+**TARGET direction from the accepted September 21 vision.** Existing billing and plans are reusable infrastructure. Current prices, identifiers, quotas and checkout behavior are owned by lib/billing/, lib/auth/entitlements.ts and their tests; this document does not silently change customer entitlements.
 
 ## Free relationship
 

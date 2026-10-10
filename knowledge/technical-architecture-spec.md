@@ -1,6 +1,6 @@
 # Target architecture entrypoint
 
-The previous future architecture draft is superseded by the September 8 Site direction.
+This previous future-architecture draft is historical. The accepted September 21 direction, current architecture, product architecture, and migration design govern new work.
 
 Start with [migration and reuse](../docs/site-v2-migration.md) for physical models, adapters and cutover; [PRD](../docs/product-prd.md) for domain contracts; [evidence rules](evidence-rules.md) for truth; [ARCHITECTURE.md](../ARCHITECTURE.md) for existing implementation.
 

@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: architecture
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # Audit pipeline
 
 Canonical reference for the FixFlags scan pipeline: stages, AI phases, degradation, recovery, and debugging.

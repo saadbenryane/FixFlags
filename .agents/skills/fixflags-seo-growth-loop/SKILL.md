@@ -22,7 +22,7 @@ Rankings are an intermediate signal. Prefer improvements that help the intended 
 
 Before proposing or changing anything:
 
-1. Inspect current ownership in `.agents/BOARD.md` and preserve other agents' work.
+1. Run `npm run agent -- ownership` and preserve other agents' work.
 2. Read the latest completed SEO experiment and weekly review.
 3. Inspect `docs/growth/metrics/` freshness. A committed export is a snapshot, not live data.
 4. Check whether GSC and GA4 can be read without printing secrets:
@@ -117,7 +117,7 @@ Never optimize solely for raw traffic. Guard against lower-quality visits, weake
 
 ### 5. Build
 
-Claim the scope on `.agents/BOARD.md` before edits. Follow the canonical source:
+Claim substantial write scope with `npm run agent -- task claim` before edits. Follow the canonical source:
 
 - rendered marketing copy: `lib/marketing/copy.ts` and its modules
 - indexable route registry: `lib/marketing/seo-routes.ts`

@@ -1,6 +1,13 @@
+---
+status: canonical
+authority: product
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # Evidence, health and Flag truth
 
-**TARGET contract for the September 8 vision.** Existing serializers and stored enums require explicit adapters; this document does not claim they already implement these rules.
+**TARGET contract for the accepted September 21 vision.** Existing serializers and stored enums require explicit adapters; this document does not claim they already implement these rules.
 
 ## Four customer statements
 

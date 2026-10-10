@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: architecture
+reviewed_at: 2026-10-10
+supersedes: []
+---
+
 # Integrity Engine
 
 The engine supplies evidence for the [Site vision](vision.md). [Evidence rules](evidence-rules.md) govern what that evidence can claim. Current execution details remain in [docs/audit-pipeline.md](../docs/audit-pipeline.md).

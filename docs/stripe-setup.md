@@ -1,3 +1,10 @@
+---
+status: supporting
+authority: operations
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # Stripe setup (FixFlags)
 
 Test vs live is determined only by key prefix (`sk_test_` / `sk_live_`) and matching price IDs. Never mix test prices with live keys.

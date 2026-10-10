@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: product
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # FixFlags independent-monitor requirements
 
 **Status: TARGET, accepted 2026-09-21.** Purpose: [vision](../knowledge/vision.md). Architecture: [product-architecture](product-architecture.md). Delivery: [masterplan](product-masterplan.md) and [roadmap](../ROADMAP.md). Current behavior: [PRODUCT.md](../PRODUCT.md).

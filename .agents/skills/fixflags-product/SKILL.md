@@ -1,11 +1,11 @@
 ---
 name: fixflags-product
-description: Route FixFlags product work to the Site vision, target behavior, migration, current access and billing contracts, shared application services and verification.
+description: Implement ordinary FixFlags product work across Site, Outcome, Flag, access, billing, shared application services, and verification. Use fixflags-product-intelligence only when authority, persistence, or migration contracts conflict.
 ---
 
 # FixFlags product
 
-Read AGENTS.md and claim non-overlapping scope. Keep current implementation distinct from the new product target.
+Read `AGENTS.md`, load the `product` context route, and claim substantial non-overlapping writes through `npm run agent -- task claim`. Keep current implementation distinct from the product target.
 
 ## Canonical routing
 

@@ -1,7 +1,21 @@
+---
+status: supporting
+authority: evidence
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # Sessions
 
-Implementation records for substantial agent work. See [agent workflow](../README.md).
+Sessions are scoped evidence records, not default instructions or a second product roadmap. Create one only for a consequential decision, meaningful failure, important validated discovery, cross-chat continuation, or material architecture/security/release receipt. See the [coordination contract](../README.md).
 
-Current product direction is [the complete September 8 vision](../../knowledge/vision.md). Implementation starts from [ROADMAP.md](../../ROADMAP.md) and [the Site PRD](../../docs/product-prd.md). The [readiness receipt](site-v2-readiness-2026-09-08.md) records this reconciliation.
+The current product direction is the [September 21 vision](../../knowledge/vision.md). Older report, Shopify launch, paid-traffic, website-care, and release sessions describe their own work only. Previous “complete” labels do not establish current requirements or readiness.
 
-Older report, Shopify launch, paid-traffic and release sessions remain evidence of their own work only. Their company bets, locked interfaces and previous “complete” labels do not establish the new version's requirements or readiness. [archive/](archive/) is historical, not active canon.
+When consulting a session:
+
+- confirm its scope, date, code revision, and evidence;
+- reconcile claims with current canonical sources;
+- promote durable truth into code, tests, or the canonical document;
+- never copy raw prompts, customer data, secrets, or full tool logs into a new record.
+
+The [archive](archive/) and dated receipts are historical unless a current canonical source explicitly links them for a bounded purpose.

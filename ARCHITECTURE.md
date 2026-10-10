@@ -1,6 +1,13 @@
+---
+status: canonical
+authority: architecture
+reviewed_at: 2026-10-10
+supersedes: []
+---
+
 # Architecture
 
-**Existing implementation and reusable infrastructure.** The [September 8 vision](knowledge/vision.md) is the target; [docs/site-v2-migration.md](docs/site-v2-migration.md) replaces the old local-runtime/protocol/network roadmap.
+**Existing implementation and reusable infrastructure.** The accepted [September 21 vision](knowledge/vision.md) is the target; [docs/site-v2-migration.md](docs/site-v2-migration.md) replaces the old local-runtime/protocol/network roadmap.
 
 New customer Site behavior is governed by [the PRD](docs/product-prd.md). Current Project, Audit, Improvement, report and graph sections below describe compatibility and foundations, not a mandate to retain the old experience. The global graph Site/Page models are distinct from private customer Sites.
 

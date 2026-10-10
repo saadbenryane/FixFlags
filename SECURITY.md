@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: operations
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # Security
 
 *Assets, trust boundaries, invariants, and dangerous operations.*

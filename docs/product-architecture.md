@@ -1,3 +1,10 @@
+---
+status: canonical
+authority: architecture
+reviewed_at: 2026-10-09
+supersedes: []
+---
+
 # FixFlags product architecture
 
 **Status: TARGET. Reconciled 2026-09-21.** Public claims still follow [PRODUCT.md](../PRODUCT.md). Sequence and launch scope live in [product-masterplan.md](product-masterplan.md).
