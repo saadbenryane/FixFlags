@@ -13,6 +13,8 @@ import { getBrowserDiagnostics } from '../screenshot'
 import { readWorkerHeartbeat } from '@/lib/queue/worker-heartbeat'
 import { StorageUploadError, StorageNotConfiguredError } from '../pipeline-errors'
 
+const DELIVERY_RECHECK_MS = 30_000
+
 export async function persistTaskPlan(auditId: string, plans: TaskPlan[]) {
   validateTaskGraph(plans)
   return executionTransaction(async tx => {
@@ -52,22 +54,25 @@ export async function loadTaskGraph(auditId: string) {
 }
 
 export async function dispatchTask(taskId: string): Promise<boolean> {
-  const now = new Date(), lease = new Date(now.getTime() + 30_000)
+  const now = new Date(), lease = new Date(now.getTime() + DELIVERY_RECHECK_MS)
   const won = await prisma.auditVerifierExecution.updateMany({
-    where: { id: taskId, workState: 'READY', workRetryAt: { lte: now },
+    where: { id: taskId, workState: 'READY',
       OR: [{ workDispatchLeaseUntil: null }, { workDispatchLeaseUntil: { lte: now } }],
       audit: { status: { not: 'FAILED' } },
-      AND: [{ OR: [{ audit: { status: { not: 'COMPLETED' } } }, { workKind: 'finalize' }] }] },
+      AND: [{ OR: [{ workRetryAt: null }, { workRetryAt: { lte: now } }] },
+        { OR: [{ audit: { status: { not: 'COMPLETED' } } }, { workKind: 'finalize' }] }] },
     data: { workDispatchLeaseUntil: lease },
   })
   if (won.count !== 1) return false
   const task = await prisma.auditVerifierExecution.findUniqueOrThrow({ where: { id: taskId } })
+  if (task.workState !== 'READY' || task.workDispatchLeaseUntil?.getTime() !== lease.getTime()) return false
+  const dispatchOwner = { id: taskId, workState: 'READY' as const, workGeneration: task.workGeneration, workDispatchLeaseUntil: lease }
   try {
     const resource = queueForTask(task.workKind as TaskKind, taskInputSchema.parse(task.workInput))
     if (resource === 'browser' && !getBrowserDiagnostics().connected && !(await readWorkerHeartbeat().catch(() => null))?.browserOk) {
       await executionTransaction(async tx => {
         await tx.$queryRaw`SELECT "id" FROM "audits" WHERE "id" = ${task.auditId} FOR UPDATE`
-        const updated = await tx.auditVerifierExecution.updateMany({ where: { id: taskId, workState: 'READY', workDispatchLeaseUntil: lease },
+        const updated = await tx.auditVerifierExecution.updateMany({ where: dispatchOwner,
           data: { workState: 'RETRY_WAIT', workDispatchLeaseUntil: null, workDispatchState: 'PENDING',
             workRetryAt: new Date(Date.now() + 20_000), workErrorCode: 'BROWSER_UNHEALTHY',
             workRecoveryUntil: task.workRecoveryUntil ?? new Date(Date.now() + 30 * 60_000) } })
@@ -80,14 +85,16 @@ export async function dispatchTask(taskId: string): Promise<boolean> {
     const existingJob = await queue.getJob(jobId)
     const existingState = existingJob ? await existingJob.getState() : null
     if (existingJob && (existingState === 'failed' || existingState === 'completed')) await existingJob.retry(existingState)
-    else await queue.add('audit-task', { auditId: task.auditId, taskId, generation: task.workGeneration + 1 },
+    else if (!existingJob) await queue.add('audit-task', { auditId: task.auditId, taskId, generation: task.workGeneration + 1 },
       { jobId, attempts: 1, removeOnComplete: 100, removeOnFail: 500,
         priority: task.workKind === 'http' ? 1 : task.workKind === 'check' ? 2 : 3 })
-    await prisma.auditVerifierExecution.updateMany({ where: { id: taskId, workDispatchLeaseUntil: lease },
-      data: { workDispatchState: 'SENT', workDispatchLeaseUntil: null } })
+    // A delivered job can wait in a busy queue without occupying every recovery
+    // batch. Recheck later so a lost Redis delivery still gets reconstructed.
+    await prisma.auditVerifierExecution.updateMany({ where: dispatchOwner,
+      data: { workDispatchState: 'SENT', workDispatchLeaseUntil: null, workRetryAt: new Date(Date.now() + DELIVERY_RECHECK_MS) } })
     return true
   } catch {
-    await prisma.auditVerifierExecution.updateMany({ where: { id: taskId, workDispatchLeaseUntil: lease },
+    await prisma.auditVerifierExecution.updateMany({ where: dispatchOwner,
       data: { workDispatchState: 'PENDING', workDispatchLeaseUntil: null, workRetryAt: new Date(Date.now() + 5000),
         workErrorCode: 'QUEUE_UNAVAILABLE' } })
     return false
@@ -147,11 +154,15 @@ export async function reconcileTasks(auditId: string) {
         data: { workState: 'READY', status: 'PENDING', workRetryAt: now, workDispatchState: 'PENDING' },
       })
       if (changed.count) ready.push(task.id)
-    } else if (task.workState === 'READY' && (!task.workRetryAt || task.workRetryAt <= now)) ready.push(task.id)
+    } else if (task.workState === 'READY' && (!task.workRetryAt || task.workRetryAt <= now) &&
+      (!task.workDispatchLeaseUntil || task.workDispatchLeaseUntil <= now)) ready.push(task.id)
   }
   if (tasks.some(task => ['check', 'search'].includes(task.workKind ?? '') && task.workState === 'COMPLETED'))
     await prisma.audit.updateMany({ where: { id: auditId, status: { in: ['QUEUED', 'CAPTURING'] } }, data: { status: 'CHECKING' } })
-  return ready
+  // Old, due deliveries rotate behind undispatched work after each queue check.
+  // Graph insertion order must not let a blocked resource starve other queues.
+  const dueAt = new Map(tasks.map(task => [task.id, task.workRetryAt?.getTime() ?? 0]))
+  return ready.sort((left, right) => dueAt.get(left)! - dueAt.get(right)!)
 }
 
 export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHandler>) {
@@ -173,7 +184,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
         workState: 'RUNNING', workLeaseUntil: { gt: now }, workInput: { path: ['fixtureId'], equals: input.fixtureId } }, select: { id: true } })
       if (activeFixture) {
         await tx.auditVerifierExecution.updateMany({ where: { id: original.id, workState: 'READY', workGeneration: job.generation - 1 },
-          data: { workState: 'RETRY_WAIT', workRetryAt: new Date(Date.now() + 5000), workErrorCode: 'FIXTURE_BUSY', workDispatchState: 'PENDING' } })
+          data: { workState: 'RETRY_WAIT', workRetryAt: new Date(Date.now() + 5000), workErrorCode: 'FIXTURE_BUSY', workDispatchState: 'PENDING', workDispatchLeaseUntil: null } })
         await recordProgress(tx, job.auditId, { taskId: original.id, kind: original.workKind!, state: 'RETRY_WAIT' })
         return { count: 0 }
       }
@@ -183,7 +194,7 @@ export async function executeTask(rawJob: unknown, handlers: Map<string, TaskHan
       audit: { status: { not: 'FAILED' } },
       OR: [{ audit: { status: { not: 'COMPLETED' } } }, { workKind: 'finalize' }] },
     data: { workState: 'RUNNING', status: 'RUNNING', workToken: token, workGeneration: { increment: 1 },
-      workAttempts: { increment: 1 }, workLeaseUntil: new Date(now.getTime() + EXECUTION_LEASE_MS) },
+      workAttempts: { increment: 1 }, workLeaseUntil: new Date(now.getTime() + EXECUTION_LEASE_MS), workDispatchLeaseUntil: null },
     })
   })
   if (claimed.count !== 1) return

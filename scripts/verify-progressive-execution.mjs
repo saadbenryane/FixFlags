@@ -40,7 +40,8 @@ try {
   redisCreated = true
   const port = run('docker', ['port', redisName, '6379/tcp']).split(':').at(-1)
   const output = run(process.execPath, ['node_modules/vitest/vitest.mjs', 'run',
-    'lib/audit/progressive/__tests__/execution.integration.test.ts', 'lib/audit/browser/keyboard-probe.test.ts'], {
+    'lib/audit/progressive/__tests__/execution.integration.test.ts',
+    'lib/audit/progressive/__tests__/dispatch.integration.test.ts', 'lib/audit/browser/keyboard-probe.test.ts'], {
     ...env, REDIS_URL: `redis://127.0.0.1:${port}`, PROGRESSIVE_EXECUTION_DB_REQUIRED: 'true',
     KEYBOARD_BROWSER_REQUIRED: 'true',
     TOKEN_ENCRYPTION_KEY: '11'.repeat(32), OPENAI_API_KEY: '', ANTHROPIC_API_KEY: '', PAGESPEED_API_KEY: '',
