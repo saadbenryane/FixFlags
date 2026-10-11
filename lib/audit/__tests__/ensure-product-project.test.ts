@@ -8,9 +8,11 @@ const prismaMock = vi.hoisted(() => ({
   },
 }))
 const assertCanCreateProduct = vi.hoisted(() => vi.fn())
+const ensureDefaultMonitoring = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/billing/product-capacity', () => ({ assertCanCreateProduct }))
+vi.mock('@/lib/sites/application/default-monitoring', () => ({ ensureDefaultMonitoring }))
 
 import { ensureProductProject } from '@/lib/audit/ensure-product-project'
 
@@ -34,6 +36,7 @@ describe('ensureProductProject', () => {
 
     const project = await ensureProductProject('user-1', 'https://example.com/path')
     expect(project.id).toBe('anchor-1')
+    expect(ensureDefaultMonitoring).toHaveBeenCalledWith(prismaMock, 'anchor-1', 'user-1')
     expect(assertCanCreateProduct).toHaveBeenCalledWith(prismaMock, 'user-1')
     expect(prismaMock.project.upsert).toHaveBeenCalledWith(
       expect.objectContaining({

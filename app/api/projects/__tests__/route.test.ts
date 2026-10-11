@@ -14,9 +14,11 @@ const prismaMock = vi.hoisted(() => ({
   project: { count: vi.fn(), findUnique: vi.fn(), upsert: vi.fn() },
 }))
 const getSession = vi.hoisted(() => vi.fn())
+const ensureDefaultMonitoring = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('@/lib/auth', () => ({ auth: { api: { getSession } } }))
+vi.mock('@/lib/sites/application/default-monitoring', () => ({ ensureDefaultMonitoring }))
 vi.mock('next/headers', () => ({ headers: async () => new Headers() }))
 vi.mock('@/lib/security/rate-limit', () => ({
   recordRateLimit: vi.fn(),

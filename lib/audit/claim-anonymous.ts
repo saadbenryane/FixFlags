@@ -10,7 +10,6 @@ import { enqueueAiReview } from '@/lib/audit/enqueue-ai-review'
 import { hasUnlimitedScans } from '@/lib/auth/permissions'
 import {
   canonicalProductHost,
-  canonicalProductUrl,
   mergeContractIntoProductIntelligence,
   parseProductIntelligence,
   productNameFromUrl,
@@ -20,6 +19,7 @@ import { assertCanCreateProduct } from '@/lib/billing/product-capacity'
 import { claimProvisionalSitesForProject, migrateProvisionalSiteDataToProject } from '@/lib/sites/ensure-site'
 import { recordSiteLifecycleEvent } from '@/lib/analytics/site-events'
 import { productTransaction } from '@/lib/billing/product-transaction'
+import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
 
 async function unlockClaimedAudit(audit: {
   id: string
@@ -98,11 +98,11 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
               create: {
                 userId,
                 name: productNameFromUrl(audit.url),
-                url: canonicalProductUrl(audit.url),
+                url: new URL(audit.url).origin,
                 canonicalHost,
                 isManaged: false,
               },
-              update: { url: canonicalProductUrl(audit.url), deletedAt: null },
+              update: { deletedAt: null },
               select: { id: true, productIntelligence: true, deletedAt: true },
             })
         }
@@ -155,6 +155,9 @@ export async function claimAnonymousAudits(userId: string): Promise<number> {
           .filter((a) => canonicalProductHost(a.url) === host)
           .map((a) => a.id),
       })
+      // Migrate before creating defaults so the original Outcome and binding
+      // survive claiming rather than being replaced by a newly created row.
+      await productTransaction(tx => ensureDefaultMonitoring(tx, project.id, userId))
       await recordSiteLifecycleEvent({
         name: 'site_claimed',
         idempotencyKey: `site_claimed:${userId}:${project.id}`,

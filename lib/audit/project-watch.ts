@@ -19,6 +19,8 @@ import {
 import { WATCH_NOTIFICATION_ATTEMPT_LIMIT } from '@/lib/audit/watch-notification'
 import { outcomeFreshnessMinutes } from '@/lib/sites/application/care-policy'
 import { watchIntervalMinutes, watchScheduleSchema } from '@/lib/sites/watch-schedule'
+import { ensureDefaultMonitoring, initializeDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
+import { productTransaction } from '@/lib/billing/product-transaction'
 
 export type { WatchInterval } from '@/lib/audit/watch-interval'
 export {
@@ -149,8 +151,10 @@ export async function processDueProjectWatches(
   errors: number
 }> {
   const now = (dependencies.clock ?? systemClock).now()
+  await initializeDefaultMonitoring(limit, now)
   const due = await prisma.project.findMany({
     where: {
+      deletedAt: null,
       watchInterval: { not: null },
       watchNextRunAt: { lte: now },
       OR: [{ watchLeaseUntil: null }, { watchLeaseUntil: { lt: now } }],
@@ -213,6 +217,7 @@ export async function processDueProjectWatches(
     processed += 1
 
     try {
+      await productTransaction(tx => ensureDefaultMonitoring(tx, project.id, project.userId, now))
       const active = await prisma.audit.findFirst({
         where: {
           projectId: project.id,

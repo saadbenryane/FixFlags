@@ -23,6 +23,7 @@ const remainingAiReportCredits = vi.hoisted(() => vi.fn())
 const enqueueAiReview = vi.hoisted(() => vi.fn())
 const hasUnlimitedScans = vi.hoisted(() => vi.fn())
 const assertCanCreateProduct = vi.hoisted(() => vi.fn())
+const monitoring = vi.hoisted(() => ({ ensure: vi.fn(), claim: vi.fn(), migrate: vi.fn() }))
 
 vi.mock('@/lib/db', () => ({ prisma: prismaMock }))
 vi.mock('next/headers', () => ({ cookies: async () => cookieStore }))
@@ -37,6 +38,8 @@ vi.mock('@/lib/audit/ai-report-entitlement', () => ({ remainingAiReportCredits }
 vi.mock('@/lib/audit/enqueue-ai-review', () => ({ enqueueAiReview }))
 vi.mock('@/lib/auth/permissions', () => ({ hasUnlimitedScans }))
 vi.mock('@/lib/billing/product-capacity', () => ({ assertCanCreateProduct }))
+vi.mock('@/lib/sites/application/default-monitoring', () => ({ ensureDefaultMonitoring: monitoring.ensure }))
+vi.mock('@/lib/sites/ensure-site', () => ({ claimProvisionalSitesForProject: monitoring.claim, migrateProvisionalSiteDataToProject: monitoring.migrate }))
 import { claimAnonymousAudits } from '@/lib/audit/claim-anonymous'
 import { ANON_AUDIT_IDS_COOKIE } from '@/lib/audit/usage'
 import { createAnonymousClaim } from '@/lib/security/anonymous-claim'
@@ -86,6 +89,13 @@ describe('claimAnonymousAudits', () => {
     const claimed = await claimAnonymousAudits('u1')
     expect(claimed).toBe(0)
     expect(prismaMock.audit.findMany).not.toHaveBeenCalled()
+  })
+
+  it('initializes monitoring after preserving provisional identity and its binding history', async () => {
+    prismaMock.project.findUnique.mockResolvedValue({ id: 'project-1', productIntelligence: null })
+    await claimAnonymousAudits('u1')
+    expect(monitoring.ensure).toHaveBeenCalledWith(prismaMock, 'project-1', 'u1')
+    expect(monitoring.migrate.mock.invocationCallOrder[0]).toBeLessThan(monitoring.ensure.mock.invocationCallOrder[0])
   })
 
   it('does not claim a known audit id from an unsigned or tampered cookie', async () => {

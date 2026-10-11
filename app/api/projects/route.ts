@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { auth } from '@/lib/auth'
@@ -9,7 +10,7 @@ import {
 } from '@/lib/billing/product-capacity'
 import { apiError, handleRouteError } from '@/lib/api/errors'
 import { recordRateLimit, requestClientId } from '@/lib/security/rate-limit'
-import { canonicalProductHost, canonicalProductUrl } from '@/lib/audit/product-intelligence'
+import { canonicalProductHost } from '@/lib/audit/product-intelligence'
 import { productTransaction } from '@/lib/billing/product-transaction'
 import { PLAN_LIMIT_NOTICE } from '@/lib/marketing/copy/auth'
 
@@ -65,14 +66,14 @@ export async function POST(req: NextRequest) {
   }
 
   const canonicalHost = canonicalProductHost(parsed.data.url)
-  const canonicalUrl = canonicalProductUrl(parsed.data.url)
+  const canonicalUrl = new URL(parsed.data.url).origin
   const project = await productTransaction(async (tx) => {
     const existing = await tx.project.findUnique({
       where: { userId_canonicalHost: { userId: user.id, canonicalHost } },
     })
     if (!existing || existing.deletedAt) await assertCanCreateProduct(tx, user.id)
 
-    return tx.project.upsert({
+    const saved = await tx.project.upsert({
       where: { userId_canonicalHost: { userId: user.id, canonicalHost } },
       create: {
         userId: user.id,
@@ -89,6 +90,8 @@ export async function POST(req: NextRequest) {
         deletedAt: null,
       },
     })
+    await ensureDefaultMonitoring(tx, saved.id, user.id)
+    return saved
   })
 
     return NextResponse.json(project, { status: 201 })

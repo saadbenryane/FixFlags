@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   getFlagDiffSummary: vi.fn(),
   sendEmail: vi.fn(),
   recordSiteLifecycleEvent: vi.fn(),
+  initializeDefaultMonitoring: vi.fn(),
+  ensureDefaultMonitoring: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -42,6 +44,9 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/sites/application/run-requests', () => ({
   requestSiteRun: mocks.requestSiteRun,
 }))
+vi.mock('@/lib/sites/application/default-monitoring', () => ({ initializeDefaultMonitoring: mocks.initializeDefaultMonitoring,
+  ensureDefaultMonitoring: mocks.ensureDefaultMonitoring }))
+vi.mock('@/lib/billing/product-transaction', () => ({ productTransaction: (operation: (tx: object) => unknown) => operation({}) }))
 vi.mock('@/lib/audit/diff-flags', () => ({ getFlagDiffSummary: mocks.getFlagDiffSummary }))
 vi.mock('@/lib/email/client', () => ({ resend: { emails: { send: mocks.sendEmail } } }))
 vi.mock('@/lib/analytics/site-events', () => ({ recordSiteLifecycleEvent: mocks.recordSiteLifecycleEvent }))

@@ -9,6 +9,7 @@ import {
 } from '@/lib/audit/product-intelligence'
 import { assertCanCreateProduct } from '@/lib/billing/product-capacity'
 import { productTransaction } from '@/lib/billing/product-transaction'
+import { ensureDefaultMonitoring } from '@/lib/sites/application/default-monitoring'
 
 const MAX_PI_MUTATION_ATTEMPTS = 5
 
@@ -34,15 +35,17 @@ export async function ensureProductProject(
     })
     if (existing) {
       if (existing.deletedAt) await assertCanCreateProduct(tx, userId)
-      return tx.project.update({
+      const project = await tx.project.update({
         where: { id: existing.id },
         data: { deletedAt: null },
         select: { id: true, productIntelligence: true },
       })
+      await ensureDefaultMonitoring(tx, project.id, userId)
+      return project
     }
 
     await assertCanCreateProduct(tx, userId)
-    return tx.project.upsert({
+    const project = await tx.project.upsert({
       where: { userId_canonicalHost: { userId, canonicalHost } },
       create: {
         userId,
@@ -54,6 +57,8 @@ export async function ensureProductProject(
       update: { deletedAt: null },
       select: { id: true, productIntelligence: true },
     })
+    await ensureDefaultMonitoring(tx, project.id, userId)
+    return project
   }
   const project = transaction
     ? await resolve(transaction)
